@@ -1,0 +1,804 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+import * as hud from '../src/ui/hud.js';
+import { createBus } from '../src/core/eventBus.js';
+
+function overlaps(a, b) {
+  return a.x < b.x + b.width
+    && a.x + a.width > b.x
+    && a.y < b.y + b.height
+    && a.y + a.height > b.y;
+}
+
+test('the contacts list stays out of the flight HUD until the player locks something', () => {
+  assert.equal(typeof hud.contactRosterVisible, 'function',
+    'HUD must expose the contact-roster visibility contract');
+  assert.equal(hud.contactRosterVisible({
+    locked: false,
+    eligibleContactCount: 1,
+    pinned: true,
+    nearbyHostile: true,
+    revealActive: true,
+  }), false, 'a pin, a hostile, or a scan does not mount the list');
+  assert.equal(hud.contactRosterVisible({ locked: true }), true, 'a lock mounts the list');
+
+  const parent = { children: [], insertBefore(node, before) {
+    const at = this.children.indexOf(before);
+    if (node.parentNode) node.parentNode.removeChild(node);
+    node.parentNode = this;
+    if (at < 0) this.children.push(node);
+    else this.children.splice(at, 0, node);
+  }, appendChild(node) {
+    if (node.parentNode) node.parentNode.removeChild(node);
+    node.parentNode = this;
+    this.children.push(node);
+  }, removeChild(node) {
+    const i = this.children.indexOf(node);
+    if (i >= 0) this.children.splice(i, 1);
+    if (node.parentNode === this) node.parentNode = null;
+  } };
+  const roster = { parentNode: null };
+  const radar = { parentNode: parent };
+  parent.children.push(radar);
+  assert.equal(hud.mountContactRoster(parent, roster, radar, false), false);
+  assert.equal(roster.parentNode, null);
+  assert.equal(hud.mountContactRoster(parent, roster, radar, true), true);
+  assert.equal(roster.parentNode, parent);
+  assert.equal(parent.children[0], roster);
+  assert.equal(parent.children[1], radar);
+});
+
+test('persistent roster stays in the reserved right stack at target resolutions', () => {
+  for (const [width, height] of [[1920, 1080], [2560, 1440]]) {
+    const layout = hud.resolveObjectiveHudLayout(width, height);
+    assert.equal(overlaps(layout.objective, layout.rightDock), false,
+      `${width}x${height}: roster/radar stack must not overlap the objective tracker`);
+    assert.ok(layout.rightDock.x >= 0 && layout.rightDock.y >= 0
+      && layout.rightDock.x + layout.rightDock.width <= width
+      && layout.rightDock.y + layout.rightDock.height <= height,
+    `${width}x${height}: roster/radar stack stays inside the viewport`);
+    assert.ok(hud.contactDisplayLimit(width, height) <= 5,
+      `${width}x${height}: compact overflow cap remains active`);
+  }
+
+  const hudStyles = readFileSync(new URL('../src/ui/views/hudStyles.js', import.meta.url), 'utf8');
+  assert.match(hudStyles, /\.sf-rightdock\s*\{[^}]*flex-direction:column/s,
+    'roster, selected-target detail, and radar must remain one non-overlapping vertical stack');
+});
+
+test('the live HUD mounts only its active ORRERY instruments and retains flight feedback', () => {
+  const fixture = mountHudFixture();
+  try {
+    assert.ok(fixture.document.querySelector('.orr-hud-cluster'), 'the active flight instrument mounts');
+    for (const selector of ['.sf-leftstack', '.sf-cluster-chassis', '.sf-prail', '.sf-command-deck', '.sf-wpn-heats']) {
+      assert.equal(fixture.document.querySelector(selector), null, `${selector} has retired from the live HUD`);
+    }
+    assert.ok(fixture.document.querySelector('.sf-vtape'), 'the contextual travel instrument remains reachable');
+    fixture.state.player.tether = { active: true, length: 120, restLength: 120, load: 0.4 };
+    fixture.hud.frame(0.2);
+    assert.equal(fixture.document.getElementById('hud').dataset.tether, 'latched', 'tether feedback survives retirement');
+    assert.equal(fixture.document.getElementById('hud').dataset.threat, 'contact', 'hostile contact feedback survives retirement');
+    const hostile = fixture.contacts.find((entity) => entity.id === 'threat-1');
+    hostile.pos.x = 2000;
+    fixture.hud.frame(0.2);
+    assert.equal(fixture.document.getElementById('hud').dataset.threat, 'near', 'approaching hostiles still raise the threat channel');
+    assert.ok(fixture.document.querySelector('.sf-threat-ring__arc').getAttribute('d'), 'the visible threat ring still points at the hostile');
+    fixture.state.player.tether.active = false;
+    fixture.hud.frame(0.1);
+    assert.equal(fixture.document.getElementById('hud').dataset.tether, 'idle', 'release clears tether feedback');
+  } finally {
+    fixture.restore();
+  }
+});
+
+test('mounted HUD roster stays visible, capped, clickable, and rebuild-free at high refresh', () => {
+  for (const fps of [60, 144, 240]) {
+    const fixture = mountHudFixture();
+    try {
+      const seconds = 2;
+      for (let frame = 0; frame < fps * seconds; frame += 1) {
+        fixture.state.simTime += 1 / fps;
+        fixture.state.tick += 1;
+        for (const contact of fixture.contacts) contact.pos.x += contact.vel.x / fps;
+        fixture.hud.frame(1 / fps);
+      }
+
+      const overview = fixture.document.querySelector('.sf-overview');
+      const rows = overview.querySelectorAll('.sf-overview-row');
+      assert.equal(globalThis.getComputedStyle(overview).display, 'flex',
+        `${fps} FPS keeps a populated real roster visible`);
+      assert.equal(rows.length, 5, `${fps} FPS mounts the responsive five-row cap`);
+      assert.deepEqual(rows.map((row) => row.querySelector('.sf-overview-row__name')?.textContent),
+        ['Selected Wreck', 'Threat One', 'Threat Two', 'Wing Ally', 'Other Wreck'],
+        `${fps} FPS keeps selected/threat/ally/wreck ordering in the mounted DOM`);
+      assert.equal(overview.querySelector('.sf-overview-footer')?.textContent, '+2 OTHERS',
+        `${fps} FPS mounts truthful compact overflow`);
+      // The roster is reconciled by entity id, so a moving contact never tears the subtree down.
+      // The 5 Hz cadence itself is covered by hud-contact-roster-keyed-rows.test.mjs, which counts
+      // the text writes the reconcile performs instead of the rebuilds it no longer performs.
+      assert.equal(overview.rebuildCount, 0,
+        `${fps} FPS never rebuilds the roster subtree (retained keyed rows)`);
+
+      let toast = null;
+      fixture.bus.on('toast', (payload) => { toast = payload; });
+      rows[1].click();
+      assert.equal(fixture.state.player.targetId, 'threat-1', `${fps} FPS real row click selects target`);
+      assert.match(toast?.text || '', /Selected target: Threat One/,
+        `${fps} FPS real row click emits selection feedback`);
+    } finally {
+      fixture.restore();
+    }
+  }
+});
+
+test('moving prograde projection retains exact per-HUD records at high refresh', () => {
+  let expectedPresentation = null;
+  for (const fps of [60, 144, 240]) {
+    const calls = [];
+    const worldToScreen = (point, out) => {
+      assert.ok(out && typeof out === 'object', `${fps} FPS supplies a retained projection output`);
+      out.x = 960 + point.x;
+      out.y = 540 + point.z;
+      out.onScreen = true;
+      calls.push({
+        src: point,
+        dst: out,
+        input: { x: point.x, y: point.y, z: point.z },
+        output: { x: out.x, y: out.y, onScreen: out.onScreen },
+      });
+      return out;
+    };
+    const fixture = mountHudFixture({ worldToScreen, targetId: null });
+    try {
+      const frames = fps * 2;
+      for (let frame = 0; frame < frames; frame += 1) {
+        fixture.state.simTime += 1 / fps;
+        fixture.state.tick += 1;
+        if (frame < fps) {
+          fixture.player.pos.x = 20 * ((frame + 1) / fps);
+          fixture.player.pos.z = 0;
+          fixture.player.vel.x = 20;
+          fixture.player.vel.z = 0;
+        } else {
+          fixture.player.pos.x = 100;
+          fixture.player.pos.z = 200 + 20 * ((frame - fps + 1) / fps);
+          fixture.player.vel.x = 0;
+          fixture.player.vel.z = 20;
+        }
+        fixture.hud.frame(1 / fps);
+      }
+
+      // Other HUD consumers share worldToScreen on their own cadences (the threat halo scans
+      // hostiles at 30 Hz, and the crescent's ship-under probe in orrery/hudAdapter.js projects
+      // the hull position every frame — its endpoint collides with prograde A's by design, since
+      // A is anchored at the ship). Identify the prograde pair by their call contract: the B
+      // record is the only one publishing the ship + velocity*36 endpoint, and A is the record
+      // always called immediately before B (hud.js issues them back to back).
+      const lastCallByRecord = new Map();
+      for (const c of calls) lastCallByRecord.set(c.src, c);
+      const bRecord = [...lastCallByRecord.keys()].find((record) => {
+        const last = lastCallByRecord.get(record).input;
+        return last.x === 100 && last.z === 256;
+      });
+      assert.ok(bRecord, `${fps} FPS prograde B projects the ship's forward point each frame`);
+      const bCallIdx = calls.map((c, i) => (c.src === bRecord ? i : -1)).filter((i) => i >= 0);
+      const aRecord = bCallIdx.length ? calls[bCallIdx[0] - 1].src : null;
+      assert.ok(aRecord && bCallIdx.every((i) => calls[i - 1] && calls[i - 1].src === aRecord),
+        `${fps} FPS prograde A is projected immediately before B on every frame`);
+      const progradeRecords = [aRecord, bRecord];
+      const progradeCalls = calls.filter((c) => progradeRecords.includes(c.src));
+      assert.equal(progradeCalls.length, frames * 2, `${fps} FPS prograde calls land once per frame`);
+      const inputIdentities = new Set(progradeCalls.map((c) => c.src));
+      const outputIdentities = new Set(progradeCalls.map((c) => c.dst));
+      assert.equal(inputIdentities.size, 2, `${fps} FPS retains exactly two world-point records`);
+      assert.equal(outputIdentities.size, 2, `${fps} FPS retains exactly two screen-result records`);
+      const [screenA, screenB] = outputIdentities;
+      assert.notEqual(screenA, screenB, `${fps} FPS keeps A and B outputs distinct through delta math`);
+      assert.deepEqual(progradeCalls.slice(-2).map(({ input, output }) => ({ input, output })), [
+        {
+          input: { x: 100, y: 0, z: 220 },
+          output: { x: 1060, y: 760, onScreen: true },
+        },
+        {
+          input: { x: 100, y: 0, z: 256 },
+          output: { x: 1060, y: 796, onScreen: true },
+        },
+      ], `${fps} FPS republishes the moved/turned A and B scalar coordinates`);
+      const prograde = fixture.document.querySelector('.sf-protick');
+      const presentation = {
+        transform: prograde.style.transform,
+        opacity: prograde.style.opacity,
+      };
+      assert.equal(presentation.transform,
+        'translate3d(1060.0px,800.0px,0) translate(-4px,-1px) rotate(90.0deg)',
+        `${fps} FPS preserves the exact moved/turned prograde placement and heading`);
+      if (expectedPresentation == null) expectedPresentation = presentation;
+      else assert.deepEqual(presentation, expectedPresentation,
+        `${fps} FPS preserves the same final prograde placement and visibility`);
+      assert.equal(prograde.style.opacity, '0.900', `${fps} FPS leaves the moving prograde cue visible`);
+      const heatReadout = fixture.document.querySelectorAll('.orr-cluster__read')
+        .find((row) => row.querySelector('.orr-label')?.textContent === 'Heat');
+      const heatValue = heatReadout?.querySelector('.orr-value');
+      fixture.player.data.weapons.push({ _heat: 87, heatMax: 100 });
+      for (let i = 0; i < Math.ceil(fps * 0.5); i += 1) fixture.hud.frame(1 / fps);
+      assert.equal(heatValue?.textContent, '87%',
+        `${fps} FPS active heat instrument repaints a newly armed mount every frame`);
+      fixture.player.data.weapons.length = 0;
+      for (let i = 0; i < Math.ceil(fps * 0.5); i += 1) fixture.hud.frame(1 / fps);
+      assert.equal(heatValue?.textContent, '0%',
+        `${fps} FPS active heat instrument clears after the last mount is removed`);
+    } finally {
+      fixture.restore();
+    }
+  }
+});
+
+test('selected-target projections retain exact per-HUD center and radius records at high refresh', () => {
+  const identitiesFromPriorHud = new Set();
+  for (const fps of [60, 144, 240]) {
+    const calls = [];
+    const worldToScreen = (point, out) => {
+      assert.ok(out && typeof out === 'object', `${fps} FPS supplies a retained target projection output`);
+      out.x = 100 + point.x;
+      out.y = 200 + point.z;
+      out.onScreen = true;
+      calls.push({
+        src: point,
+        dst: out,
+        input: { x: point.x, y: point.y, z: point.z },
+        output: { x: out.x, y: out.y, onScreen: out.onScreen },
+      });
+      return out;
+    };
+    const fixture = mountHudFixture({ worldToScreen });
+    try {
+      const target = fixture.contacts[0];
+      fixture.player.vel.x = 0;
+      fixture.player.vel.z = 0;
+      const frames = fps;
+      for (let frame = 0; frame < frames; frame += 1) {
+        const progress = (frame + 1) / frames;
+        fixture.state.simTime += 1 / fps;
+        fixture.state.tick += 1;
+        target.pos.x = 300 + 20 * progress;
+        target.pos.z = 40 * progress;
+        target.radius = 10 + 4 * progress;
+        fixture.hud.frame(1 / fps);
+      }
+
+      // The threat halo shares worldToScreen on a slower 30 Hz cadence; the selected-target
+      // contract is its own two records hit every frame (center x2, radius x3). Identify them by
+      // the target coordinates they publish on the final frame.
+      const lastCallByRecord = new Map();
+      for (const c of calls) lastCallByRecord.set(c.src, c);
+      const targetRecords = [...lastCallByRecord.keys()].filter((record) => {
+        const last = lastCallByRecord.get(record).input;
+        return last.z === 40 && (last.x === 320 || last.x === 340);
+      });
+      assert.equal(targetRecords.length, 2, `${fps} FPS retains one center and one radius world record`);
+      const targetCalls = calls.filter((c) => targetRecords.includes(c.src));
+      assert.equal(targetCalls.length, frames * 5,
+        `${fps} FPS preserves lock, center, and three radius projections per selected-target frame`);
+      const inputIdentities = new Set(targetCalls.map((c) => c.src));
+      const outputIdentities = new Set(targetCalls.map((c) => c.dst));
+      assert.equal(inputIdentities.size, 2, `${fps} FPS retains one center and one radius world record`);
+      assert.equal(outputIdentities.size, 2, `${fps} FPS retains one center and one radius screen record`);
+      for (const identity of [...inputIdentities, ...outputIdentities]) {
+        assert.equal(identitiesFromPriorHud.has(identity), false,
+          `${fps} FPS target scratch belongs only to its mounted HUD instance`);
+        identitiesFromPriorHud.add(identity);
+      }
+      assert.deepEqual(targetCalls.slice(-5).map(({ input, output }) => ({ input, output })), [
+        { input: { x: 320, y: 0, z: 40 }, output: { x: 420, y: 240, onScreen: true } },
+        { input: { x: 320, y: 0, z: 40 }, output: { x: 420, y: 240, onScreen: true } },
+        { input: { x: 346, y: 0, z: 40 }, output: { x: 446, y: 240, onScreen: true } },
+        { input: { x: 343, y: 0, z: 40 }, output: { x: 443, y: 240, onScreen: true } },
+        { input: { x: 340, y: 0, z: 40 }, output: { x: 440, y: 240, onScreen: true } },
+      ], `${fps} FPS republishes exact moved/resized center and radius coordinates in shipped order`);
+
+      const lockDiamond = fixture.document.querySelector('.sf-lockdiamond');
+      const targetArcs = fixture.document.querySelector('.sf-target-arcs');
+      const svg = targetArcs.querySelector('svg');
+      assert.equal(lockDiamond.style.transform,
+        'translate3d(420.0px,240.0px,0) translate(-50%,-50%)');
+      assert.equal(targetArcs.style.transform,
+        'translate3d(420.0px,240.0px,0) translate(-50%,-50%)');
+      assert.equal(targetArcs.style.width, '62px');
+      assert.equal(targetArcs.style.height, '62px');
+      assert.equal(svg.getAttribute('viewBox'), '0 0 62 62');
+      assert.deepEqual(
+        ['.sf-arc-shield', '.sf-arc-armor', '.sf-arc-hull']
+          .map((selector) => targetArcs.querySelector(selector).getAttribute('r')),
+        ['26', '23', '20'],
+      );
+    } finally {
+      fixture.restore();
+    }
+  }
+
+  let calls = 0;
+  const fixture = mountHudFixture({
+    worldToScreen(point) {
+      // The threat halo scans hostiles on the overlay cadence through the same helper, and the
+      // crescent's ship-under probe (orrery/hudAdapter.js) projects the hull (x=0 in this
+      // fixture) every frame — count only the selected-target projections (selected wreck at
+      // x=3000 + radius ring; hostile contacts sit at x>=3100).
+      if (point.x >= 2900 && point.x < 3050) calls += 1;
+      return { x: 100 + point.x, y: 200 + point.z, onScreen: true };
+    },
+  });
+  try {
+    fixture.player.vel.x = 0;
+    fixture.player.vel.z = 0;
+    fixture.hud.frame(1 / 60);
+    assert.equal(calls, 5, 'legacy helpers that ignore the output record remain supported');
+    assert.match(fixture.document.querySelector('.sf-lockdiamond').style.transform, /^translate3d\(/);
+    assert.match(fixture.document.querySelector('.sf-target-arcs').style.transform, /^translate3d\(/);
+  } finally {
+    fixture.restore();
+  }
+});
+
+test('moving waypoint marker retains its projection record and exact edge presentation at high refresh', () => {
+  let expectedPresentation = null;
+  const identitiesFromPriorHud = new Set();
+  for (const fps of [60, 144, 240]) {
+    const calls = [];
+    const worldToScreen = (point, out) => {
+      assert.ok(out && typeof out === 'object', `${fps} FPS supplies the retained waypoint projection output`);
+      out.x = 960 + point.x;
+      out.y = 540 + point.z;
+      out.onScreen = point.z >= 0;
+      calls.push({ src: point, dst: out, x: point.x, y: point.y, z: point.z, onScreen: out.onScreen });
+      return out;
+    };
+    const fixture = mountHudFixture({ worldToScreen, targetId: null });
+    try {
+      fixture.player.vel.x = 0;
+      fixture.player.vel.z = 0;
+      fixture.state.nav.waypoint = {
+        kind: 'navigation',
+        label: 'Test Vector',
+        pos: { x: 0, z: 1000 },
+      };
+      const frames = fps;
+      for (let frame = 0; frame < frames; frame += 1) {
+        const progress = (frame + 1) / frames;
+        fixture.state.simTime += 1 / fps;
+        fixture.state.tick += 1;
+        fixture.state.nav.waypoint.pos.z = 1000 - 2000 * progress;
+        fixture.hud.frame(1 / fps);
+      }
+      fixture.hud.forceRefresh();
+      fixture.hud.frame(1 / fps);
+
+      // The objective arrow's own retained record closes each overlay tick (the threat halo's
+      // reservation scan and hostile projections share worldToScreen on the same cadence).
+      const waypointRecord = calls.at(-1) && calls.at(-1).src;
+      const waypointCalls = calls.filter((c) => c.src === waypointRecord);
+      assert.ok(waypointCalls.length >= 29 && waypointCalls.length <= 40,
+        `${fps} FPS waypoint projection remains on the retained overlay-or-slow cadence (got ${waypointCalls.length})`);
+      const inputIdentities = new Set(waypointCalls.map((c) => c.src));
+      const outputIdentities = new Set(waypointCalls.map((c) => c.dst));
+      assert.equal(inputIdentities.size, 1, `${fps} FPS retains one waypoint world record`);
+      assert.equal(outputIdentities.size, 1, `${fps} FPS retains one waypoint screen record`);
+      for (const identity of [...inputIdentities, ...outputIdentities]) {
+        assert.equal(identitiesFromPriorHud.has(identity), false,
+          `${fps} FPS waypoint scratch belongs only to its mounted HUD instance`);
+        identitiesFromPriorHud.add(identity);
+      }
+      assert.deepEqual(waypointCalls.at(-1) && (({ src, dst, ...rest }) => rest)(waypointCalls.at(-1)), { x: 0, y: 0, z: -1000, onScreen: false });
+
+      const arrow = fixture.document.querySelector('.sf-objarrow');
+      const presentation = {
+        transform: arrow.style.transform,
+        edge: arrow.dataset.edge,
+        edgeClass: arrow.classList.contains('sf-objarrow--edge'),
+        onScreenClass: arrow.classList.contains('sf-objarrow--onscreen'),
+        label: arrow.querySelector('.sf-objarrow__label').textContent,
+        aria: arrow.getAttribute('aria-label'),
+      };
+      assert.deepEqual(presentation, {
+        transform: 'translate3d(960px,1046px,0)',
+        edge: 'bottom',
+        edgeClass: true,
+        onScreenClass: false,
+        label: 'GOAL · TEST VECTOR · 1.0k u · ETA —',
+        aria: 'Current objective: TEST VECTOR, 1.0k u, ETA —',
+      });
+      if (expectedPresentation == null) expectedPresentation = presentation;
+      else assert.deepEqual(presentation, expectedPresentation,
+        `${fps} FPS preserves identical final waypoint edge presentation`);
+    } finally {
+      fixture.restore();
+    }
+  }
+});
+
+test('selected offscreen cue survives mesh culling without borrowing an unseen hull or recycled identity', () => {
+  let onscreen = false, behind = false;
+  const worldToScreen = (_point, out = {}) => Object.assign(out, onscreen
+    ? { x: 800, y: 450, onScreen: true, behind: false }
+    : { x: 2600, y: 300, onScreen: false, behind });
+  const fixture = mountHudFixture({ worldToScreen, targetId: 'threat-1' });
+  try {
+    const target = fixture.contacts.find((e) => e.id === 'threat-1');
+    target.occupantGeneration = 101;
+    fixture.state.render = { meshes: new Map() };
+    const dock = fixture.document.querySelector('.sf-rightdock');
+    dock.getBoundingClientRect = () => ({ left: 1700, right: 1920, top: 200, bottom: 900, width: 220, height: 700 });
+    fixture.hud.frame(0.2);
+    const edge = fixture.document.querySelector('.sf-target-edge');
+    const bracket = fixture.document.querySelector('.sf-lockdiamond');
+    assert.equal(edge.style.display, 'block', 'culled selected target keeps its offscreen cue');
+    assert.match(edge.getAttribute('aria-label'), /TARGET.*Threat One/);
+    assert.match(edge.style.transform, /^translate3d\(1682px,/, 'right HUD dock does not cover the cue');
+    assert.equal(bracket.classList.contains('visible'), false, 'no hull bracket without a presented mesh');
+    behind = true;
+    fixture.hud.frame(0.2);
+    assert.equal(edge.dataset.edge, 'left', 'behind-camera projection is corrected before choosing an edge');
+    behind = false;
+    fixture.state.runtime = { features: { massline2: { enabled: true, cloak: true } } };
+    target.data.cloak = { active: true, radius: 100 };
+    fixture.hud.frame(0.2);
+    assert.equal(edge.style.display, 'none', 'concealed selection cannot reveal a live bearing');
+    target.data.cloak.active = false;
+
+    onscreen = true;
+    fixture.hud.frame(0.2);
+    assert.equal(edge.style.display, 'none', 'onscreen missing hull does not become an edge cue');
+    assert.equal(bracket.classList.contains('visible'), false, 'onscreen missing hull is not invented');
+
+    fixture.state.render.meshes.set(target.id, { visible: true, position: { x: 3100, y: 0, z: 0 } });
+    fixture.hud.frame(0.2);
+    assert.equal(bracket.classList.contains('visible'), true, 'a presented hull retains its normal bracket');
+    onscreen = false;
+    target.occupantGeneration = 102;
+    fixture.hud.frame(0.2);
+    assert.equal(edge.style.display, 'none', 'recycled selection cannot inherit the old cue');
+    assert.equal(bracket.classList.contains('visible'), false);
+  } finally { fixture.restore(); }
+});
+
+test('selected bearing clears cached portrait touch controls without changing its direction', () => {
+  const marker = { x: 248, y: 778, edge: 'bottom', angleRad: 1.42 };
+  const touch = [
+    { owner: 'touch-control', left: 182, right: 378, top: 670, bottom: 826 },
+    { owner: 'touch-control', left: 5, right: 175, top: 635, bottom: 805 },
+  ];
+  assert.equal(hud.avoidSelectedTargetTouchControls(marker, 'TARGET · Wasp · 707 u', touch, 844), marker);
+  assert.equal(marker.x, 248);
+  assert.ok(marker.y + 26 <= 635, 'glyph clears both overlapping touch regions');
+  assert.equal(marker.edge, 'bottom');
+  assert.equal(marker.angleRad, 1.42);
+  const unblocked = { x: 600, y: 250, edge: 'right', angleRad: .1 };
+  hud.avoidSelectedTargetTouchControls(unblocked, 'TARGET · Wasp · 707 u', touch, 390);
+  assert.equal(unblocked.y, 250, 'a clear cue is not needlessly moved');
+});
+
+function mountHudFixture({
+  worldToScreen = () => ({ x: 960, y: 540, onScreen: true }),
+  targetId = 'selected',
+} = {}) {
+  const globals = {
+    document: globalThis.document,
+    window: globalThis.window,
+    performance: globalThis.performance,
+    getComputedStyle: globalThis.getComputedStyle,
+  };
+  const document = new HudDocument();
+  const root = document.createElement('div');
+  root.id = 'hud';
+  document.body.appendChild(root);
+  globalThis.document = document;
+  globalThis.window = {
+    innerWidth: 1920,
+    innerHeight: 1080,
+    devicePixelRatio: 1,
+    addEventListener() {},
+    removeEventListener() {},
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+  };
+  globalThis.performance = { now: () => 1000 };
+  globalThis.getComputedStyle = (element) => ({
+    display: element?.style?.display === 'none'
+      ? 'none'
+      : (element?.classList?.contains('sf-overview') ? 'flex' : (element?.style?.display || 'block')),
+    getPropertyValue: () => '',
+  });
+
+  const player = ship('player', 1, 0, 'Player');
+  player.hull = player.hullMax = 140;
+  player.shield = player.shieldMax = 55;
+  player.armorHp = player.armorMax = 30;
+  player.energy = player.energyMax = 80;
+  player.fuel = player.fuelMax = 100;
+  player.maxSpeed = 140;
+  player.data.defId = 'hitch';
+  player.data.weapons = [];
+  const selected = wreck('selected', 3000, 'Selected Wreck');
+  const threat1 = ship('threat-1', 3, 3100, 'Threat One', { forcePlayerTarget: true });
+  const threat2 = ship('threat-2', 3, 3200, 'Threat Two', { forcePlayerTarget: true });
+  const ally = ship('ally', 1, 3300, 'Wing Ally');
+  const otherWreck = wreck('wreck', 3400, 'Other Wreck');
+  const ambient1 = ship('ambient-1', 0, 3500, 'Ambient One');
+  const ambient2 = ship('ambient-2', 0, 3600, 'Ambient Two');
+  const contacts = [selected, threat1, threat2, ally, otherWreck, ambient1, ambient2];
+  const entityList = [player, ...contacts];
+  const state = {
+    mode: 'flight', playerId: player.id, entities: new Map(entityList.map((e) => [e.id, e])), entityList,
+    player: {
+      targetId: targetId === 'selected' ? selected.id : targetId,
+      credits: 0,
+      cargo: { items: {}, usedVolume: 0, capVolume: 40 },
+      weaponRange: 900,
+      heat: 0,
+    },
+    settings: {
+      ui: { overviewOpen: false },
+      accessibility: { colorblindMode: 'none', reducedMotion: true, reducedFlash: true },
+      gameplay: {}, controls: {}, audio: {}, graphics: {},
+    },
+    ui: { radarRange: 4000, trackedMissionId: null },
+    input: { actions: {}, autoFire: false },
+    missions: { active: [] },
+    story: { beatIndex: -1 },
+    nav: {}, world: { currentSectorId: 'helios', scanPings: {} },
+    simTime: 0, tick: 0,
+  };
+  const bus = createBus();
+  const mounted = hud.createHud({
+    state,
+    bus,
+    helpers: { worldToScreen },
+  }, null);
+  return {
+    state, player, bus, hud: mounted, document, contacts,
+    restore() {
+      mounted.destroy();
+      globalThis.document = globals.document;
+      globalThis.window = globals.window;
+      globalThis.performance = globals.performance;
+      globalThis.getComputedStyle = globals.getComputedStyle;
+    },
+  };
+}
+
+function ship(id, team, x, callsign, ai = {}) {
+  return {
+    id, type: 'ship', alive: true, team, factionId: team === 3 ? 'faction_vael' : null,
+    pos: { x, y: 0, z: 0 }, vel: { x: 20, z: 0 }, radius: 12,
+    hull: 100, hullMax: 100, shield: 30, shieldMax: 30, armorHp: 20, armorMax: 20,
+    data: { callsign, ai: { lawful: false, ...ai }, weapons: [] },
+  };
+}
+
+function wreck(id, x, callsign) {
+  return {
+    id, type: 'wreck', alive: true, team: 0,
+    pos: { x, y: 0, z: 0 }, vel: { x: 20, z: 0 }, radius: 10,
+    data: { callsign, scanned: false },
+  };
+}
+
+class HudClassList {
+  constructor(owner) { this.owner = owner; this.values = new Set(); }
+  reset(value) { this.values = new Set(String(value || '').split(/\s+/).filter(Boolean)); }
+  add(...values) { values.forEach((value) => this.values.add(value)); }
+  remove(...values) { values.forEach((value) => this.values.delete(value)); }
+  contains(value) { return this.values.has(value); }
+  toggle(value, force) {
+    const active = force === undefined ? !this.values.has(value) : !!force;
+    if (active) this.values.add(value); else this.values.delete(value);
+    return active;
+  }
+}
+
+class HudStyle {
+  setProperty(name, value) { this[name] = String(value); }
+  removeProperty(name) { delete this[name]; }
+}
+
+class HudText {
+  constructor(text) { this.nodeType = 3; this._text = text; this.parentNode = null; }
+  get textContent() { return this._text; }
+  set textContent(value) { this._text = String(value); }
+}
+
+class HudElement {
+  constructor(document, tagName) {
+    this.ownerDocument = document;
+    this.tagName = String(tagName).toUpperCase();
+    this.nodeType = 1;
+    this.children = [];
+    this.childNodes = this.children;
+    this.parentNode = null;
+    this.style = new HudStyle();
+    this.dataset = {};
+    this.attributes = new Map();
+    this.classList = new HudClassList(this);
+    this._className = '';
+    this._innerHTML = '';
+    this._listeners = new Map();
+    this.id = '';
+    this.hidden = false;
+    this.rebuildCount = 0;
+    this.isConnected = true;
+    this.offsetWidth = 1;
+  }
+  get className() { return this._className; }
+  set className(value) { this._className = String(value || ''); this.classList.reset(this._className); }
+  get innerHTML() { return this._innerHTML; }
+  set innerHTML(value) {
+    this._innerHTML = String(value || '');
+    if (this.classList.contains('sf-overview') && this._innerHTML === '') this.rebuildCount += 1;
+    this.children.length = 0;
+    parseMarkup(this, this._innerHTML);
+  }
+  get textContent() { return this.children.map((child) => child.textContent).join(''); }
+  set textContent(value) {
+    this._innerHTML = '';
+    this.children.length = 0;
+    if (value != null && String(value) !== '') this.appendChild(new HudText(String(value)));
+  }
+  // Fidelity: real appendChild DETACHES first, so appending a live node MOVES it. Without this the
+  // shim duplicates any node a reconciler reorders.
+  appendChild(child) {
+    // A fragment hands over its children (real DOM semantics) and stays empty.
+    if (child && child.isFragment) { for (const kid of [...child.children]) this.appendChild(kid); return child; }
+    if (child.parentNode) child.parentNode.removeChild(child);
+    child.parentNode = this; this.children.push(child); return child;
+  }
+  insertBefore(child, before) {
+    if (child.parentNode) child.parentNode.removeChild(child);
+    const index = this.children.indexOf(before);
+    child.parentNode = this;
+    if (index < 0) this.children.push(child); else this.children.splice(index, 0, child);
+    return child;
+  }
+  replaceChildren(...nodes) {
+    for (const kid of [...this.children]) this.removeChild(kid);
+    nodes.forEach((node) => this.appendChild(node));
+  }
+  append(...children) { children.forEach((child) => this.appendChild(child)); }
+  prepend(child) { child.parentNode = this; this.children.unshift(child); return child; }
+  removeChild(child) {
+    const i = this.children.indexOf(child);
+    if (i >= 0) this.children.splice(i, 1);
+    if (child.parentNode === this) child.parentNode = null;
+    return child;
+  }
+  remove() { if (this.parentNode) this.parentNode.removeChild(this); }
+  setAttribute(name, value) {
+    const text = String(value);
+    this.attributes.set(name, text);
+    if (name === 'id') this.id = text;
+    if (name === 'class') this.className = text;
+    if (name === 'style') parseStyle(this.style, text);
+    if (name.startsWith('data-')) this.dataset[dataKey(name.slice(5))] = text;
+  }
+  getAttribute(name) { return this.attributes.get(name) ?? null; }
+  removeAttribute(name) { this.attributes.delete(name); }
+  addEventListener(type, fn) {
+    if (!this._listeners.has(type)) this._listeners.set(type, []);
+    this._listeners.get(type).push(fn);
+  }
+  removeEventListener(type, fn) {
+    const list = this._listeners.get(type) || [];
+    const i = list.indexOf(fn);
+    if (i >= 0) list.splice(i, 1);
+  }
+  click() { for (const fn of this._listeners.get('click') || []) fn({ type: 'click', currentTarget: this, preventDefault() {} }); }
+  querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
+  querySelectorAll(selector) {
+    const result = [];
+    const token = String(selector).trim().split(/\s+/).at(-1);
+    const visit = (node) => {
+      for (const child of node.children || []) {
+        if (child.nodeType === 1 && matchesSelector(child, token)) result.push(child);
+        if (child.nodeType === 1) visit(child);
+      }
+    };
+    visit(this);
+    return result;
+  }
+  getBoundingClientRect() { return { x: 0, y: 0, top: 0, left: 0, right: 220, bottom: 180, width: 220, height: 180 }; }
+  getTotalLength() { return 2 * Math.PI * 44; }
+  focus() { this.ownerDocument.activeElement = this; }
+  contains(node) { for (let p = node; p; p = p.parentNode) if (p === this) return true; return false; }
+  closest(selector) {
+    for (let node = this; node && node.nodeType === 1; node = node.parentNode) {
+      if (matchesSelector(node, selector)) return node;
+    }
+    return null;
+  }
+  getContext() { return canvasContext(); }
+}
+
+class HudDocument {
+  constructor() {
+    this.head = new HudElement(this, 'head');
+    this.body = new HudElement(this, 'body');
+    this.documentElement = this.body;
+    this.activeElement = this.body;
+  }
+  createElement(tagName) { return new HudElement(this, tagName); }
+  createElementNS(_ns, tagName) { return this.createElement(tagName); }
+  createDocumentFragment() { const fragment = this.createElement('#document-fragment'); fragment.isFragment = true; return fragment; }
+  createTextNode(value) { return new HudText(String(value)); }
+  getElementById(id) { return findElement([this.head, this.body], (node) => node.id === id); }
+  querySelector(selector) { return this.head.querySelector(selector) || this.body.querySelector(selector); }
+  querySelectorAll(selector) { return [...this.head.querySelectorAll(selector), ...this.body.querySelectorAll(selector)]; }
+  addEventListener() {}
+  removeEventListener() {}
+}
+
+function parseMarkup(parent, markup) {
+  if (!markup) return;
+  const stack = [parent];
+  for (const token of markup.match(/<[^>]+>|[^<]+/g) || []) {
+    if (token.startsWith('</')) { if (stack.length > 1) stack.pop(); continue; }
+    if (!token.startsWith('<')) {
+      if (token) stack.at(-1).appendChild(new HudText(token.replace(/&times;/g, '×')));
+      continue;
+    }
+    if (token.startsWith('<!--') || token.startsWith('<!')) continue;
+    const match = token.match(/^<\s*([\w:-]+)/);
+    if (!match) continue;
+    const element = parent.ownerDocument.createElement(match[1]);
+    const attrs = token.slice(match[0].length, token.length - (token.endsWith('/>') ? 2 : 1));
+    for (const attr of attrs.matchAll(/([\w:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g)) {
+      element.setAttribute(attr[1], attr[2] ?? attr[3] ?? attr[4] ?? '');
+    }
+    stack.at(-1).appendChild(element);
+    if (!token.endsWith('/>') && !['BR', 'HR', 'IMG', 'INPUT'].includes(element.tagName)) stack.push(element);
+  }
+}
+
+function parseStyle(style, value) {
+  for (const entry of String(value || '').split(';')) {
+    const i = entry.indexOf(':');
+    if (i > 0) style[entry.slice(0, i).trim()] = entry.slice(i + 1).trim();
+  }
+}
+
+function dataKey(value) { return value.replace(/-([a-z])/g, (_m, c) => c.toUpperCase()); }
+
+function matchesSelector(element, selector) {
+  if (!selector) return false;
+  if (selector.startsWith('.')) return element.classList.contains(selector.slice(1));
+  if (selector.startsWith('#')) return element.id === selector.slice(1);
+  if (selector.startsWith('[')) {
+    const match = selector.match(/^\[([^=\]]+)(?:=([^\]]+))?\]$/);
+    if (!match) return false;
+    const expected = match[2]?.replace(/^['"]|['"]$/g, '');
+    const actual = element.getAttribute(match[1]);
+    return expected === undefined ? actual != null : actual === expected;
+  }
+  return element.tagName.toLowerCase() === selector.toLowerCase();
+}
+
+function findElement(roots, predicate) {
+  const stack = [...roots];
+  while (stack.length) {
+    const node = stack.shift();
+    if (predicate(node)) return node;
+    stack.unshift(...(node.children || []).filter((child) => child.nodeType === 1));
+  }
+  return null;
+}
+
+function canvasContext() {
+  const gradient = () => ({ addColorStop() {} });
+  const target = {
+    measureText: (text) => ({ width: String(text).length * 5 }),
+    createLinearGradient: gradient,
+    createRadialGradient: gradient,
+  };
+  return new Proxy(target, {
+    get(obj, key) { return key in obj ? obj[key] : () => {}; },
+    set(obj, key, value) { obj[key] = value; return true; },
+  });
+}

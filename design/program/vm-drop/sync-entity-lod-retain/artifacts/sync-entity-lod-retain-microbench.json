@@ -1,0 +1,93 @@
+{
+  "scenario": "quiet-mix-36ship+11asteroid+3station × 20k frames (11 isolated pairs)",
+  "medianSpeedup": 4.507,
+  "floorMinSpeedup": 4.293,
+  "beforeUsMedian": 9.463,
+  "afterUsMedian": 2.055,
+  "pairs": [
+    {
+      "beforeUs": 9.431,
+      "afterUs": 2.022,
+      "speedup": 4.663,
+      "beforeCallsPerIter": 50,
+      "afterCallsPerIter": 0
+    },
+    {
+      "beforeUs": 9.804,
+      "afterUs": 2.042,
+      "speedup": 4.8,
+      "beforeCallsPerIter": 50,
+      "afterCallsPerIter": 0
+    },
+    {
+      "beforeUs": 9.881,
+      "afterUs": 2.102,
+      "speedup": 4.702,
+      "beforeCallsPerIter": 50,
+      "afterCallsPerIter": 0
+    },
+    {
+      "beforeUs": 9.7,
+      "afterUs": 2.157,
+      "speedup": 4.498,
+      "beforeCallsPerIter": 50,
+      "afterCallsPerIter": 0
+    },
+    {
+      "beforeUs": 9.725,
+      "afterUs": 2.265,
+      "speedup": 4.293,
+      "beforeCallsPerIter": 50,
+      "afterCallsPerIter": 0
+    },
+    {
+      "beforeUs": 9.477,
+      "afterUs": 2.021,
+      "speedup": 4.689,
+      "beforeCallsPerIter": 50,
+      "afterCallsPerIter": 0
+    },
+    {
+      "beforeUs": 9.26,
+      "afterUs": 2.055,
+      "speedup": 4.507,
+      "beforeCallsPerIter": 50,
+      "afterCallsPerIter": 0
+    },
+    {
+      "beforeUs": 9.463,
+      "afterUs": 2.166,
+      "speedup": 4.369,
+      "beforeCallsPerIter": 50,
+      "afterCallsPerIter": 0
+    },
+    {
+      "beforeUs": 9.243,
+      "afterUs": 2.028,
+      "speedup": 4.558,
+      "beforeCallsPerIter": 50,
+      "afterCallsPerIter": 0
+    },
+    {
+      "beforeUs": 9.27,
+      "afterUs": 2.107,
+      "speedup": 4.4,
+      "beforeCallsPerIter": 50,
+      "afterCallsPerIter": 0
+    },
+    {
+      "beforeUs": 8.976,
+      "afterUs": 2.037,
+      "speedup": 4.405,
+      "beforeCallsPerIter": 50,
+      "afterCallsPerIter": 0
+    }
+  ],
+  "dirtyWake": {
+    "callsQuiet": 0,
+    "callsWake": 5,
+    "woke": true
+  },
+  "pictureContract": "ON — identical LOD band retained; updateLod only on band change",
+  "softGpuFpsClaimed": false
+}

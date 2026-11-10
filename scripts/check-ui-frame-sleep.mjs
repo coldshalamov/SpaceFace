@@ -1,0 +1,313 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+import { createBus } from '../src/core/eventBus.js';
+import { createDamageIndicators } from '../src/ui/damageIndicators.js';
+import { createFloatingText } from '../src/ui/floatingText.js';
+
+class FakeStyle {
+  constructor() {
+    this._props = new Map();
+  }
+
+  setProperty(name, value) {
+    this._props.set(name, String(value));
+  }
+}
+
+class FakeClassList {
+  constructor(el) {
+    this.el = el;
+  }
+
+  add(...names) {
+    const set = new Set(String(this.el.className || '').split(/\s+/).filter(Boolean));
+    for (const name of names) set.add(name);
+    this.el.className = [...set].join(' ');
+  }
+
+  remove(...names) {
+    const remove = new Set(names);
+    this.el.className = String(this.el.className || '').split(/\s+/).filter((name) => !remove.has(name)).join(' ');
+  }
+}
+
+class FakeElement {
+  constructor(tag, ownerDocument) {
+    this.tagName = String(tag || '').toUpperCase();
+    this.ownerDocument = ownerDocument;
+    this.children = [];
+    this.parentNode = null;
+    this.style = new FakeStyle();
+    this.className = '';
+    this.classList = new FakeClassList(this);
+    this.attributes = new Map();
+    this.textContent = '';
+    this.id = '';
+  }
+
+  appendChild(child) {
+    if (!child) return child;
+    child.parentNode = this;
+    this.children.push(child);
+    if (child.id) this.ownerDocument._ids.set(child.id, child);
+    return child;
+  }
+
+  append(...children) {
+    for (const child of children) this.appendChild(child);
+  }
+
+  setAttribute(name, value) {
+    this.attributes.set(name, String(value));
+  }
+}
+
+class FakeDocument {
+  constructor() {
+    this._ids = new Map();
+    this.head = this.createElement('head');
+    this.body = this.createElement('body');
+  }
+
+  createElement(tag) {
+    return new FakeElement(tag, this);
+  }
+
+  getElementById(id) {
+    return this._ids.get(id) || null;
+  }
+
+  mount(id) {
+    const el = this.createElement('div');
+    el.id = id;
+    this._ids.set(id, el);
+    this.body.appendChild(el);
+    return el;
+  }
+}
+
+function installFakeDom() {
+  const document = new FakeDocument();
+  document.mount('hud');
+  document.mount('ui-root');
+  globalThis.document = document;
+  globalThis.window = { innerWidth: 1280, innerHeight: 720 };
+  globalThis.requestAnimationFrame = (fn) => {
+    if (typeof fn === 'function') fn();
+    return 1;
+  };
+  return document;
+}
+
+function checkFloatingTextSleepsWhenInactive() {
+  installFakeDom();
+  const bus = createBus();
+  const state = {
+    settings: { showDamageNumbers: true },
+    entities: new Map([[2, { id: 2, pos: { x: 10, z: 20 } }]]),
+  };
+  let projectionCalls = 0;
+  const ft = createFloatingText({
+    state,
+    bus,
+    helpers: {
+      worldToScreen() {
+        projectionCalls++;
+        return { x: 100, y: 120, onScreen: true };
+      },
+    },
+  });
+
+  ft.update(1 / 60);
+  assert.equal(projectionCalls, 0, 'inactive floating text should not project or scan the DOM pool');
+  assert.equal(ft._activeCount(), 0, 'floating text should start asleep');
+
+  // The fixture pins a NON-player-caused hit (attackerId 99, playerId unset): since FB-019 landed
+
+  // in 183b91a57, a player-caused combat:damage legitimately wakes TWO pool nodes  the layer hit
+
+  // pip (control receipt) plus the damage number. This check owns the sleep contract, not the pip,
+
+  // so one event still means one number here.
+
+  bus.emit('combat:damage', { targetId: 2, amount: 5, attackerId: 99 });
+  assert.equal(ft._activeCount(), 1, 'floating text should wake when a combat number spawns');
+  ft.update(1 / 60);
+  assert.equal(projectionCalls, 1, 'active floating text should still project live numbers');
+
+  ft.update(2);
+  assert.equal(ft._activeCount(), 0, 'floating text should retire expired numbers');
+  projectionCalls = 0;
+  ft.update(1 / 60);
+  assert.equal(projectionCalls, 0, 'retired floating text should go back to sleep');
+}
+
+function checkDamageIndicatorsSleepWhenInactive() {
+  installFakeDom();
+  const indicator = createDamageIndicators().bind(() => {
+    playerReads++;
+    return { id: 1, pos: { x: 0, z: 0 } };
+  }, 1);
+  let playerReads = 0;
+  let projectionCalls = 0;
+  const helpers = {
+    worldToScreen() {
+      projectionCalls++;
+      return { x: 900, y: 300, onScreen: true };
+    },
+  };
+
+  indicator.tick(1 / 60, helpers);
+  assert.equal(playerReads, 0, 'inactive damage indicators should not read the player');
+  assert.equal(projectionCalls, 0, 'inactive damage indicators should not project world points');
+  assert.equal(indicator._activeCount(), 0, 'damage indicators should start asleep');
+
+  indicator.onDamage({ targetId: 1, amount: 8, pos: { x: 50, z: 0 } });
+  assert.equal(indicator._activeCount(), 1, 'damage indicators should wake on player damage');
+  playerReads = 0;
+  projectionCalls = 0;
+  indicator.tick(1 / 60, helpers);
+  assert.equal(playerReads, 1, 'active damage indicators should read player position');
+  assert.equal(projectionCalls, 1, 'active damage indicators should project source direction');
+
+  indicator.tick(2, helpers);
+  assert.equal(indicator._activeCount(), 0, 'damage indicators should retire expired arcs');
+  playerReads = 0;
+  projectionCalls = 0;
+  indicator.tick(1 / 60, helpers);
+  assert.equal(playerReads, 0, 'retired damage indicators should go back to sleep');
+  assert.equal(projectionCalls, 0, 'retired damage indicators should not project source direction');
+}
+
+function checkHudMetaCargoIsEventDriven() {
+  const src = readFileSync(new URL('../src/ui/hudMeta.js', import.meta.url), 'utf8');
+  assert.ok(src.includes("on('cargo:changed', maybeShowManifestGhost)"), 'HUD meta manifest ghost should wake from cargo:changed through its owned subscription');
+  assert.ok(!src.includes('snapshotCargo'), 'HUD meta should not clone cargo every overlay tick');
+  const tickBody = src.match(/function tick\(dt\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  function diffCargo/);
+  assert.ok(tickBody, 'HUD meta tick body should remain parseable by the sleep check');
+  assert.ok(!tickBody[1].includes('diffCargo('), 'HUD meta tick should not diff cargo every overlay tick');
+  assert.ok(!tickBody[1].includes('cargoItems('), 'HUD meta tick should not read cargo every overlay tick');
+}
+
+function checkModalChromeAvoidsFrameDomQueries() {
+  const input = readFileSync(new URL('../src/ui/input.js', import.meta.url), 'utf8');
+  const uiRoot = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+  const comms = readFileSync(new URL('../src/ui/comms.js', import.meta.url), 'utf8');
+  const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+  assert.ok(uiRoot.includes('this.comms.isModalOpen'), 'uiRoot frame should consume comms modal state directly');
+  assert.ok(!uiRoot.includes("document.querySelector('.sf-endgame--c.open')"), 'uiRoot frame should not query endgame modal DOM state');
+  assert.ok(uiRoot.includes('_modalBackdropEl'), 'uiRoot should cache the shared modal backdrop element');
+}
+
+function checkFullscreenCompositorShellsSleep() {
+  const css = readFileSync(new URL('../styles/ui.css', import.meta.url), 'utf8');
+  const screenManager = readFileSync(new URL('../src/ui/screenManager.js', import.meta.url), 'utf8');
+  const loadingPresenter = readFileSync(new URL('../src/ui/loadingPresenter.js', import.meta.url), 'utf8');
+  const uiRoot = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+  const hudStyles = readFileSync(new URL('../src/ui/views/hudStyles.js', import.meta.url), 'utf8');
+  const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+  const modalBackdrop = blockFor(css, '#modal-backdrop');
+  const dockOverlay = blockFor(css, '#sf-dock-overlay');
+  const lockRing = blockFor(hudStyles, '.sf-lockring');
+  const lockRingActive = blockFor(hudStyles, '.sf-lockring.active');
+  const lockDiamond = blockFor(hudStyles, '.sf-lockdiamond');
+  const lockDiamondVisible = blockFor(hudStyles, '.sf-lockdiamond.visible');
+
+  // The backdrop fades (opacity + a delayed visibility flip, 484894552), so its base rule may stay
+  // display:block as long as it is invisible there; the [hidden] rule asserted next is what takes the
+  // closed backdrop out of the compositor tree (screenManager sets hidden whenever no screen is open).
+  assert.ok(/display:\s*none/.test(modalBackdrop) || (/visibility:\s*hidden/.test(modalBackdrop) && /pointer-events:\s*none/.test(modalBackdrop)),
+    'closed modal backdrop must not stay in the compositor tree');
+  assert.match(css, /#modal-backdrop\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i, 'hidden modal backdrop should be display:none');
+  assert.match(css, /body\.ui-modal-open\s+#modal-backdrop\s*\{[^}]*(display:\s*block|visibility:\s*visible)/i, 'modal backdrop should still be wired for open screens');
+  assert.match(loadingPresenter, /overlay\.style\.display\s*=\s*'none'/, 'boot overlay should be removed from display after its fade');
+  assert.match(screenManager, /backdrop\.hidden\s*=\s*!\s*open/, 'screen manager should unmount the shared backdrop when no screen is open');
+  assert.match(dockOverlay, /pointer-events:\s*none/, 'docking overlay should not intercept input while inactive');
+  assert.match(css, /#sf-dock-overlay\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i, 'hidden docking overlay should be display:none in static CSS');
+  assert.match(hudStyles, /\.sf-dock-fade\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i, 'hidden docking overlay should be display:none in injected HUD CSS');
+  assert.match(uiRoot, /dockFade\.hidden\s*=\s*true/, 'docking overlay should return to hidden after the fade');
+  assert.match(uiRoot, /dockFade\.hidden\s*=\s*false/, 'docking overlay should only mount while the transition is active');
+  // Combat marks retain their layout through the grace window and fade before visibility sleeps.
+  // Both hiding mechanisms are valid; opacity alone must not leave an idle mark visible to paint.
+  assert.ok(/display:\s*none/.test(lockRing) || /visibility:\s*hidden/.test(lockRing),
+    'idle lock ring should be hidden after its feedback fade');
+  assert.ok(/display:\s*block/.test(lockRingActive) || /visibility:\s*visible/.test(lockRingActive),
+    'active lock ring should still show lock feedback');
+  assert.ok(/display:\s*none/.test(lockDiamond) || /visibility:\s*hidden/.test(lockDiamond),
+    'idle target diamond should be hidden after its feedback fade');
+  assert.ok(/display:\s*block/.test(lockDiamondVisible) || /visibility:\s*visible/.test(lockDiamondVisible),
+    'visible target diamond should still show selected targets');
+  assert.match(hud, /objWrap\.style\.display\s*=\s*'none'/, 'empty objective tracker should start out of the compositor tree');
+  assert.match(hud, /setDisplay\(objWrap,\s*false\)/, 'legacy multi-objective list should remain out of the compositor tree');
+  assert.match(hud, /missionTracker\.style\.display\s*=\s*'none'/, 'active-objective command surface starts asleep');
+  assert.match(hud, /setDisplay\(missionTracker,\s*true\)/, 'single active-objective command surface remounts when populated');
+  assert.match(hud, /setDisplay\(missionTracker,\s*false\)/, 'single active-objective command surface sleeps when no goal exists');
+}
+
+function blockFor(source, selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = source.match(new RegExp(`${escaped}\\s*\\{([\\s\\S]*?)\\}`, 'm'));
+  assert.ok(match, `${selector} CSS block should be present`);
+  return match[1];
+}
+
+function extractFunctionBody(source, name) {
+  const patterns = [
+    new RegExp(`function\\s+${name}\\s*\\(`),
+    new RegExp(`const\\s+${name}\\s*=\\s*(?:async\\s*)?\\([^)]*\\)\\s*=>\\s*\\{`),
+    new RegExp(`const\\s+${name}\\s*=\\s*(?:async\\s*)?function\\s*\\(`),
+  ];
+  let start = -1;
+  for (const pattern of patterns) {
+    start = source.search(pattern);
+    if (start >= 0) break;
+  }
+  assert.ok(start >= 0, `${name}() should exist for HUD movement contract checks`);
+  const brace = source.indexOf('{', start);
+  assert.ok(brace >= 0, `${name}() body should be parseable`);
+  let depth = 0;
+  for (let i = brace; i < source.length; i++) {
+    const ch = source[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return source.slice(brace, i + 1);
+    }
+  }
+  assert.fail(`${name}() body should close`);
+}
+
+function checkHudMovementUsesTransformOnly() {
+  const uiRoot = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+  const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+  const hotPaths = [
+    ['syncFlightCursor', uiRoot],
+    ['updateCombatHud', hud],
+    ['updateTargetArcs', hud],
+    ['frame', hud],
+  ];
+
+  for (const [name, source] of hotPaths) {
+    const body = extractFunctionBody(source, name);
+    assert.doesNotMatch(body, /\.style\.left\s*=/, `${name}() must not write style.left during gameplay updates`);
+    assert.doesNotMatch(body, /\.style\.top\s*=/, `${name}() must not write style.top during gameplay updates`);
+    assert.doesNotMatch(body, /setStyle\([^,]+,\s*['"]left['"]/, `${name}() must not set left via setStyle during gameplay updates`);
+    assert.doesNotMatch(body, /setStyle\([^,]+,\s*['"]top['"]/, `${name}() must not set top via setStyle during gameplay updates`);
+  }
+
+  assert.match(uiRoot, /translate3d\(/, 'flight reticle should move via translate3d');
+  assert.match(hud, /setHudScreenTransform/, 'HUD overlays should use the shared transform helper');
+  assert.match(hud, /setHudScreenTransform\(lockDiamond/, 'lock diamond should use transform-only positioning');
+  assert.match(hud, /setHudScreenTransform\(leadPip/, 'lead pip should use transform-only positioning');
+  assert.match(hud, /setHudScreenTransform\(targetArcs/, 'target arcs should use transform-only positioning');
+  assert.match(hud, /setHudScreenTransform\(proTick/, 'prograde tick should use transform-only positioning');
+}
+
+checkFloatingTextSleepsWhenInactive();
+checkDamageIndicatorsSleepWhenInactive();
+checkHudMetaCargoIsEventDriven();
+checkModalChromeAvoidsFrameDomQueries();
+checkFullscreenCompositorShellsSleep();
+checkHudMovementUsesTransformOnly();
+console.log('UI frame sleep checks OK');

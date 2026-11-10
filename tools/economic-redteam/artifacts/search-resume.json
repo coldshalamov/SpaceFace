@@ -1,0 +1,371 @@
+{
+  "campaign": "SF-CLOUD-13",
+  "seed": 11,
+  "sequencesRequested": 4,
+  "sequencesCompleted": 4,
+  "cursor": 4,
+  "resumable": false,
+  "reset": "reboot",
+  "walletWrites": 0,
+  "coverage": {
+    "raise_standing": 13,
+    "loan": 1,
+    "buy": 1,
+    "sell": 1,
+    "undock": 1,
+    "loot_stolen": 1,
+    "loot_iron": 0,
+    "step": 1,
+    "dock": 1,
+    "dock_customs": 0,
+    "offline": 0,
+    "bad_qty": 0,
+    "tow": 2,
+    "source_fit": 1,
+    "ship_loss": 3,
+    "save_continue": 2
+  },
+  "familyCoverage": {
+    "zero_spread_trade_cycles": 1,
+    "station_stock_underflow": 0,
+    "custody_duplication": 1,
+    "delivery_and_resale": 1,
+    "abandoned_contract_payout": 0,
+    "time_skip_passive": 0,
+    "sealed_refinery_inputs": 0,
+    "shipping_cancellation": 0,
+    "save_load_first_grant": 0,
+    "negative_price_overflow": 0,
+    "contraband_relabel": 1,
+    "ship_fit_capacity": 0
+  },
+  "findingCount": 2,
+  "mutationCount": 1,
+  "traces": [
+    {
+      "index": 0,
+      "seed": 11,
+      "familyId": "contraband_relabel",
+      "commands": [
+        {
+          "id": "undock"
+        },
+        {
+          "id": "loot_stolen",
+          "qty": 3
+        },
+        {
+          "id": "step",
+          "ticks": 36
+        },
+        {
+          "id": "dock",
+          "stationId": "station_helios"
+        }
+      ],
+      "creditsDelta": 579,
+      "classification": "exploit_contraband_bay"
+    },
+    {
+      "index": 1,
+      "seed": 11,
+      "familyId": "zero_spread_trade_cycles",
+      "commands": [
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "loan"
+        },
+        {
+          "id": "buy",
+          "commodityId": "cmdty_ore_iron",
+          "qty": 5
+        },
+        {
+          "id": "sell",
+          "commodityId": "cmdty_ore_iron",
+          "qty": 5
+        }
+      ],
+      "creditsDelta": 10001,
+      "classification": "exploit_wash"
+    },
+    {
+      "index": 2,
+      "seed": 11,
+      "familyId": "custody_duplication",
+      "commands": [
+        {
+          "id": "save_continue",
+          "slot": "ert-search-2"
+        },
+        {
+          "id": "source_fit"
+        },
+        {
+          "id": "save_continue",
+          "slot": "ert-search-2"
+        }
+      ],
+      "creditsDelta": 0,
+      "classification": "observed"
+    },
+    {
+      "index": 3,
+      "seed": 11,
+      "familyId": "delivery_and_resale",
+      "commands": [
+        {
+          "id": "tow"
+        },
+        {
+          "id": "ship_loss"
+        },
+        {
+          "id": "ship_loss"
+        },
+        {
+          "id": "tow"
+        },
+        {
+          "id": "ship_loss"
+        }
+      ],
+      "creditsDelta": 0,
+      "classification": "observed"
+    }
+  ],
+  "findings": [
+    {
+      "index": 0,
+      "seed": 11,
+      "familyId": "contraband_relabel",
+      "commands": [
+        {
+          "id": "undock"
+        },
+        {
+          "id": "loot_stolen",
+          "qty": 3
+        },
+        {
+          "id": "step",
+          "ticks": 36
+        },
+        {
+          "id": "dock",
+          "stationId": "station_helios"
+        }
+      ],
+      "creditsDelta": 579,
+      "classification": "exploit_contraband_bay"
+    },
+    {
+      "index": 1,
+      "seed": 11,
+      "familyId": "zero_spread_trade_cycles",
+      "commands": [
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "loan"
+        },
+        {
+          "id": "buy",
+          "commodityId": "cmdty_ore_iron",
+          "qty": 5
+        },
+        {
+          "id": "sell",
+          "commodityId": "cmdty_ore_iron",
+          "qty": 5
+        }
+      ],
+      "creditsDelta": 10001,
+      "classification": "exploit_wash"
+    }
+  ],
+  "mutations": [
+    {
+      "index": 1,
+      "before": 16,
+      "after": 15,
+      "commands": [
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "raise_standing",
+          "delta": 15
+        },
+        {
+          "id": "loan"
+        },
+        {
+          "id": "buy",
+          "commodityId": "cmdty_ore_iron",
+          "qty": 5
+        },
+        {
+          "id": "sell",
+          "commodityId": "cmdty_ore_iron",
+          "qty": 5
+        }
+      ],
+      "stillFails": true,
+      "creditsDelta": 10001
+    }
+  ],
+  "rngContinuation": {
+    "seed0": 2654435762,
+    "state": 4158719290,
+    "draws": 104
+  },
+  "stopped": null,
+  "heldOutSeeds": [
+    28,
+    110
+  ],
+  "heldOutRuns": []
+}

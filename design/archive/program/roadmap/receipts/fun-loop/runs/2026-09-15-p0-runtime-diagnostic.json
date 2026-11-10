@@ -1,0 +1,61 @@
+{
+  "schema": "spaceface.package0.runtimeDiagnostic.v1",
+  "status": "diagnostic; not performance acceptance",
+  "capturedWindow": "2026-09-15T04:48:21Z through approximately 2026-09-15T04:49:24Z",
+  "command": "node scripts/probe-runtime-witness.mjs --production-route=warm-dense-combat --no-sample-shots",
+  "sampleMs": 60000,
+  "route": "public Main Menu -> Crucible -> Swarm -> launch -> active cohort; held thrust",
+  "routeLabelNote": "The generic witness heading said New Game; the verified production-route branch and retained production-matrix manifest identify Crucible Swarm.",
+  "seed": 47,
+  "hull": "ship_hornet",
+  "candidateHash": "3c1ef1bd5eef19aa3e4775e47a1cb1a0750f73c1",
+  "sourceDigest": "bae4acd978375179ae5cd7ff2d80a53997ebf5d26b12952d12c0d14e235327da",
+  "harnessDigest": "8aaa5383d288eab05706accbe1b4e02a8305a4bccbbe21bea047380c8509fb66",
+  "sourceArtifact": ".devshots/runtime-witness/production-matrix-warm-dense-combat.json",
+  "hardware": {
+    "cpu": "Intel Core Ultra 7 155U",
+    "logicalCpus": 14,
+    "gpu": "ANGLE Intel Graphics Direct3D11",
+    "hostCpuBusyPercent": 46,
+    "electron": "43.2.0",
+    "resolution": { "width": 1832, "height": 973, "devicePixelRatio": 1.25 },
+    "fov": 50,
+    "qualityPreset": "medium",
+    "shadows": true,
+    "bloom": true
+  },
+  "presentation": { "verdict": "presenting", "lastFrameError": null, "simSecondsAtEnd": 60.5 },
+  "foregroundIntervalsMs": {
+    "samples": 3557,
+    "p50": 16.69999999999709,
+    "p95": 16.80000000000291,
+    "p99": 33.30000000000291,
+    "max": 33.599999999998545,
+    "over33_3ms": 38
+  },
+  "hitchLedger": {
+    "observedFrames": 3563,
+    "hitches": 52,
+    "named": 40,
+    "unknown": 12,
+    "owners": { "compile": 3, "bloom": 7, "externalScheduling": 30, "unknown": 12 },
+    "firstRuns": 50,
+    "echoes": 2,
+    "longestStreak": 2
+  },
+  "gpuTimedWorkPerRenderFrameMs": {
+    "samples": 42,
+    "p50": 10.44807,
+    "p95": 14.048957999999999,
+    "incompleteFrames": 1,
+    "scope": "retained completed GPU query tail grouped by renderFrameId; excludes compositor and untimed work, not the full minute"
+  },
+  "inputToPresentCpuProxyMs": { "samples": 1, "observations": [19], "note": "One observation is not a useful latency percentile distribution." },
+  "physicalInputToPhotonMs": null,
+  "warnings": [
+    "GL_INVALID_VALUE glGetProgramiv warnings were observed.",
+    "No matched pre-change run exists for this route, window, host load and instrumentation.",
+    "Wave-3 performance coverage was not established.",
+    "The shared report.json and report.md were subsequently replaced by another probe; this snapshot retains the per-route summary and recorded console observations."
+  ]
+}

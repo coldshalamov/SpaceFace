@@ -1,0 +1,2291 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.anchor.socket-evidence-manifest",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.797439575195312,
+        9.61086654663086,
+        23.66599464416504,
+        1
+      ],
+      "nodeName": "SOCKET_Evidence_Manifest",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.wreck-liner-boatbay-001",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.797439575195312,
+        9.669626235961914,
+        23.654443740844727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.anchor.socket-salvage-bay",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6237306594848633,
+        0.825351357460022,
+        25.1302490234375,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Bay",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.wreck-liner-boatbay-001",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6237306594848633,
+        0.8841110467910767,
+        25.118698120117188,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-wreck-liner-boatbay-authored-down",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "19b1e1d8c3c5c6b8c8985ef90e4503f85bd8128d7558bc0a88c2df4f0006cccb",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          4.137597983468531,
+          16.35871125315348,
+          9.984432220458984
+        ],
+        "min": [
+          -14.167807524789332,
+          15.631210316670739,
+          -12.087811470031738
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15138e870a73ccd90f8113f9f6c2e42761ee23047278266f3c9a76dd4c15b079",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-glass.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_wreck_liner_boatbay_Material_Glass_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          13.803719825760929,
+          16.24347520098679,
+          25.38226318359375
+        ],
+        "min": [
+          -14.342337913529484,
+          -2.658735039091038,
+          -26.26192283630371
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1246ba39bc0f82147eeb60845f223e0144a34545301c947a0f90d97d96b8a422",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-heat.primitive.0",
+      "indexCount": 2088,
+      "indexed": true,
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_wreck_liner_boatbay_Material_Heat_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-heat",
+      "primitiveIndex": 0,
+      "vertexCount": 1396
+    },
+    {
+      "bounds": {
+        "max": [
+          14.708680399715632,
+          16.369536027519196,
+          26.98004150390625
+        ],
+        "min": [
+          -14.395813235103816,
+          -15.515914544670073,
+          -27.003143310546875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "63b6ff1ed275acdbdacccf0b9628bda23f1309c1328c1325be3418b729f0f29a",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-hull.primitive.0",
+      "indexCount": 29652,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_wreck_liner_boatbay_Material_Hull_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 8990
+    },
+    {
+      "bounds": {
+        "max": [
+          26.335498809814453,
+          15.790775596900852,
+          22.60522840981095
+        ],
+        "min": [
+          -26.335498809814453,
+          -14.458036720558079,
+          -25.38490293984025
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e6906944f1764cf5bd3e1a3870651832d70f3397725527ca3d9f1d86c027f0a7",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-insulation.primitive.0",
+      "indexCount": 504,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_wreck_liner_boatbay_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          16.111500427000912,
+          14.84290320443893,
+          26.87580108642578
+        ],
+        "min": [
+          -15.742312118285094,
+          -16.251529760835414,
+          -23.698570251464844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "83ace392ecb2937a5d26325b06a9d1dddfd8e2cc9ae842e84a227f4f2fc791ef",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-structural.primitive.0",
+      "indexCount": 4308,
+      "indexed": true,
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_wreck_liner_boatbay_Material_Structural_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-structural",
+      "primitiveIndex": 0,
+      "vertexCount": 1492
+    },
+    {
+      "bounds": {
+        "max": [
+          4.13759822188711,
+          16.35871125315348,
+          9.984432220458984
+        ],
+        "min": [
+          -14.167807286370753,
+          15.631210316670739,
+          -12.087811470031738
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c6f048cd3d888e019262d707f010d7ae40808a3a270405f3edc8f77110e573b2",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-glass.primitive.0",
+      "indexCount": 33,
+      "indexed": true,
+      "materialHash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_wreck_liner_boatbay_Material_Glass_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 23
+    },
+    {
+      "bounds": {
+        "max": [
+          13.803719825760929,
+          16.24347520098679,
+          25.38226318359375
+        ],
+        "min": [
+          -14.342337913529484,
+          -2.658735039091038,
+          -26.26192283630371
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0e3d794816914016ea1c95044f81f91c1ddd4a8a92ddb9b2a1fc8049e241d9c5",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-heat.primitive.0",
+      "indexCount": 1002,
+      "indexed": true,
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_wreck_liner_boatbay_Material_Heat_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-heat",
+      "primitiveIndex": 0,
+      "vertexCount": 684
+    },
+    {
+      "bounds": {
+        "max": [
+          14.70831272256972,
+          16.36960491461921,
+          27.002599716186523
+        ],
+        "min": [
+          -14.39515754831435,
+          -15.515984385444403,
+          -27.003143310546875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cfc89e0dfbc048a90e2b6c69c08b4ba988e591c3c350e7ff9dbc5b2723b0bf43",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-hull.primitive.0",
+      "indexCount": 14229,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_wreck_liner_boatbay_Material_Hull_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 6169
+    },
+    {
+      "bounds": {
+        "max": [
+          26.335498809814453,
+          15.790775596900852,
+          22.60522840981095
+        ],
+        "min": [
+          -26.335498809814453,
+          -14.458036720558079,
+          -25.38490293984025
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1da4353cd8c603b48e37f1ea9fa1e587cb1075b957b0e471ae4f49e9d96d961d",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-insulation.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_wreck_liner_boatbay_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 174
+    },
+    {
+      "bounds": {
+        "max": [
+          16.112528886197524,
+          14.842973010302149,
+          26.87906837463379
+        ],
+        "min": [
+          -15.74334153115602,
+          -16.25346876835879,
+          -23.698570251464844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "73c72676cec43bea422ecffdc78996321e7302f3f5ae76a9015f1f9372abff5d",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-structural.primitive.0",
+      "indexCount": 2064,
+      "indexed": true,
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_wreck_liner_boatbay_Material_Structural_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-structural",
+      "primitiveIndex": 0,
+      "vertexCount": 994
+    },
+    {
+      "bounds": {
+        "max": [
+          13.801775446423287,
+          16.24401263184451,
+          24.37192726135254
+        ],
+        "min": [
+          -13.447509279736275,
+          -2.659270801018703,
+          -26.26192283630371
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e1f7df8f30cc63fc8801e8bd8c8deea61958544d243347d60a6770bedbc1d64",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-heat.primitive.0",
+      "indexCount": 417,
+      "indexed": true,
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_wreck_liner_boatbay_Material_Heat_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-heat",
+      "primitiveIndex": 0,
+      "vertexCount": 283
+    },
+    {
+      "bounds": {
+        "max": [
+          14.708315188117753,
+          16.369764909849913,
+          27.003143310546875
+        ],
+        "min": [
+          -14.395448023505937,
+          -15.516145334349424,
+          -27.003143310546875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e4008b4222e0ff14d7fb3639afb6ff7e9125817f380e9723348ec9d6d05b20f9",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-hull.primitive.0",
+      "indexCount": 5928,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_wreck_liner_boatbay_Material_Hull_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 3106
+    },
+    {
+      "bounds": {
+        "max": [
+          26.335498809814453,
+          15.790775596900852,
+          22.60428442908304
+        ],
+        "min": [
+          -26.335498809814453,
+          -14.458036720558079,
+          -18.39026656104105
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5d6b813a8e1b29e3fcdf414591a1fc0de0555c61834f5fbbc8df75e6205025a9",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-insulation.primitive.0",
+      "indexCount": 99,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_wreck_liner_boatbay_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 67
+    },
+    {
+      "bounds": {
+        "max": [
+          16.111500427000912,
+          14.747120861706346,
+          26.87580108642578
+        ],
+        "min": [
+          -15.742312118285094,
+          -16.372007374462694,
+          -23.698570251464844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ffcf1559baa50499c9c5e0ccc943b21086032df0a14c1e5654036fc7fe4b3434",
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-structural.primitive.0",
+      "indexCount": 861,
+      "indexed": true,
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_wreck_liner_boatbay_Material_Structural_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-structural",
+      "primitiveIndex": 0,
+      "vertexCount": 583
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "id": "material:124d57494b8cd5aee7fba823",
+      "name": "Material_Structural",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_structural_alloy_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "id": "material:1ec579f28cf3f8d13c7feca8",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_dead_glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "id": "material:8ef9abc48d34d6bb9186e0d0",
+      "name": "Material_Heat",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_heat_affected_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "id": "material:ac4380c2740998f988624d23",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_painted_hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "id": "material:d405a7105bef6f7b733d5dbb",
+      "name": "Material_Insulation",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_rupture_insulation_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD0_wreck_liner_boatbay",
+      "nodeName": "LOD0_wreck_liner_boatbay",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.wreck-liner-boatbay-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.05875968933105469,
+        -0.0115509033203125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-glass",
+      "localTransform": [
+        11.036121845245361,
+        0,
+        0,
+        0,
+        0,
+        11.036121845245361,
+        0,
+        0,
+        0,
+        0,
+        11.036121845245361,
+        0,
+        -5.0151047706604,
+        15.936201095581055,
+        -1.0401387214660645,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_wreck_liner_boatbay_Material_Glass",
+      "nodeName": "LOD0_wreck_liner_boatbay_Material_Glass",
+      "nodePath": [
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        11.036121845245361,
+        0,
+        0,
+        0,
+        0,
+        11.036121845245361,
+        0,
+        0,
+        0,
+        0,
+        11.036121845245361,
+        0,
+        -5.0151047706604,
+        15.99496078491211,
+        -1.051689624786377,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-heat",
+      "localTransform": [
+        25.82209300994873,
+        0,
+        0,
+        0,
+        0,
+        25.82209300994873,
+        0,
+        0,
+        0,
+        0,
+        25.82209300994873,
+        0,
+        -0.26930904388427734,
+        6.733610391616821,
+        -0.42827892303466797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_wreck_liner_boatbay_Material_Heat",
+      "nodeName": "LOD0_wreck_liner_boatbay_Material_Heat",
+      "nodePath": [
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        25.82209300994873,
+        0,
+        0,
+        0,
+        0,
+        25.82209300994873,
+        0,
+        0,
+        0,
+        0,
+        25.82209300994873,
+        0,
+        -0.26930904388427734,
+        6.792370080947876,
+        -0.43982982635498047,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-hull",
+      "localTransform": [
+        26.991592407226562,
+        0,
+        0,
+        0,
+        0,
+        26.991592407226562,
+        0,
+        0,
+        0,
+        0,
+        26.991592407226562,
+        0,
+        0.1564335823059082,
+        0.36805105209350586,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_wreck_liner_boatbay_Material_Hull",
+      "nodeName": "LOD0_wreck_liner_boatbay_Material_Hull",
+      "nodePath": [
+        0,
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        26.991592407226562,
+        0,
+        0,
+        0,
+        0,
+        26.991592407226562,
+        0,
+        0,
+        0,
+        0,
+        26.991592407226562,
+        0,
+        0.1564335823059082,
+        0.42681074142456055,
+        -0.0115509033203125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-insulation",
+      "localTransform": [
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0.607609748840332,
+        -1.378286361694336,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_wreck_liner_boatbay_Material_Insulation",
+      "nodeName": "LOD0_wreck_liner_boatbay_Material_Insulation",
+      "nodePath": [
+        0,
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0.6663694381713867,
+        -1.3898372650146484,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-structural",
+      "localTransform": [
+        25.287185668945312,
+        0,
+        0,
+        0,
+        0,
+        25.287185668945312,
+        0,
+        0,
+        0,
+        0,
+        25.287185668945312,
+        0,
+        0.18459415435791016,
+        -0.7630729675292969,
+        1.6001663208007812,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_wreck_liner_boatbay_Material_Structural",
+      "nodeName": "LOD0_wreck_liner_boatbay_Material_Structural",
+      "nodePath": [
+        0,
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        25.287185668945312,
+        0,
+        0,
+        0,
+        0,
+        25.287185668945312,
+        0,
+        0,
+        0,
+        0,
+        25.287185668945312,
+        0,
+        0.18459415435791016,
+        -0.7043132781982422,
+        1.5886154174804688,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD1_wreck_liner_boatbay",
+      "nodeName": "LOD1_wreck_liner_boatbay",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.wreck-liner-boatbay-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.05875968933105469,
+        -0.0115509033203125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-glass",
+      "localTransform": [
+        11.036121845245361,
+        0,
+        0,
+        0,
+        0,
+        11.036121845245361,
+        0,
+        0,
+        0,
+        0,
+        11.036121845245361,
+        0,
+        -5.015104532241821,
+        15.936201095581055,
+        -1.0401387214660645,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_wreck_liner_boatbay_Material_Glass",
+      "nodeName": "LOD1_wreck_liner_boatbay_Material_Glass",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        11.036121845245361,
+        0,
+        0,
+        0,
+        0,
+        11.036121845245361,
+        0,
+        0,
+        0,
+        0,
+        11.036121845245361,
+        0,
+        -5.015104532241821,
+        15.99496078491211,
+        -1.051689624786377,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-heat",
+      "localTransform": [
+        25.82209300994873,
+        0,
+        0,
+        0,
+        0,
+        25.82209300994873,
+        0,
+        0,
+        0,
+        0,
+        25.82209300994873,
+        0,
+        -0.26930904388427734,
+        6.733610391616821,
+        -0.42827892303466797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_wreck_liner_boatbay_Material_Heat",
+      "nodeName": "LOD1_wreck_liner_boatbay_Material_Heat",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        25.82209300994873,
+        0,
+        0,
+        0,
+        0,
+        25.82209300994873,
+        0,
+        0,
+        0,
+        0,
+        25.82209300994873,
+        0,
+        -0.26930904388427734,
+        6.792370080947876,
+        -0.43982982635498047,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-hull",
+      "localTransform": [
+        27.0028715133667,
+        0,
+        0,
+        0,
+        0,
+        27.0028715133667,
+        0,
+        0,
+        0,
+        0,
+        27.0028715133667,
+        0,
+        0.15657758712768555,
+        0.36805057525634766,
+        0.011279106140136719,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_wreck_liner_boatbay_Material_Hull",
+      "nodeName": "LOD1_wreck_liner_boatbay_Material_Hull",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        27.0028715133667,
+        0,
+        0,
+        0,
+        0,
+        27.0028715133667,
+        0,
+        0,
+        0,
+        0,
+        27.0028715133667,
+        0,
+        0.15657758712768555,
+        0.42681026458740234,
+        -0.00027179718017578125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-insulation",
+      "localTransform": [
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0.607609748840332,
+        -1.378286361694336,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_wreck_liner_boatbay_Material_Insulation",
+      "nodeName": "LOD1_wreck_liner_boatbay_Material_Insulation",
+      "nodePath": [
+        0,
+        1,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0.6663694381713867,
+        -1.3898372650146484,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-structural",
+      "localTransform": [
+        25.288819313049316,
+        0,
+        0,
+        0,
+        0,
+        25.288819313049316,
+        0,
+        0,
+        0,
+        0,
+        25.288819313049316,
+        0,
+        0.18459367752075195,
+        -0.764007568359375,
+        1.6017999649047852,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_wreck_liner_boatbay_Material_Structural",
+      "nodeName": "LOD1_wreck_liner_boatbay_Material_Structural",
+      "nodePath": [
+        0,
+        1,
+        4
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        25.288819313049316,
+        0,
+        0,
+        0,
+        0,
+        25.288819313049316,
+        0,
+        0,
+        0,
+        0,
+        25.288819313049316,
+        0,
+        0.18459367752075195,
+        -0.7052478790283203,
+        1.5902490615844727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD2_wreck_liner_boatbay",
+      "nodeName": "LOD2_wreck_liner_boatbay",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.wreck-liner-boatbay-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.05875968933105469,
+        -0.0115509033203125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-heat",
+      "localTransform": [
+        25.316925048828125,
+        0,
+        0,
+        0,
+        0,
+        25.316925048828125,
+        0,
+        0,
+        0,
+        0,
+        25.316925048828125,
+        0,
+        0.17713308334350586,
+        6.733611226081848,
+        -0.9334468841552734,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_wreck_liner_boatbay_Material_Heat",
+      "nodeName": "LOD2_wreck_liner_boatbay_Material_Heat",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        25.316925048828125,
+        0,
+        0,
+        0,
+        0,
+        25.316925048828125,
+        0,
+        0,
+        0,
+        0,
+        25.316925048828125,
+        0,
+        0.17713308334350586,
+        6.792370915412903,
+        -0.9449977874755859,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-hull",
+      "localTransform": [
+        27.003143310546875,
+        0,
+        0,
+        0,
+        0,
+        27.003143310546875,
+        0,
+        0,
+        0,
+        0,
+        27.003143310546875,
+        0,
+        0.1564335823059082,
+        0.36805009841918945,
+        0.0115509033203125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_wreck_liner_boatbay_Material_Hull",
+      "nodeName": "LOD2_wreck_liner_boatbay_Material_Hull",
+      "nodePath": [
+        0,
+        2,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        27.003143310546875,
+        0,
+        0,
+        0,
+        0,
+        27.003143310546875,
+        0,
+        0,
+        0,
+        0,
+        27.003143310546875,
+        0,
+        0.1564335823059082,
+        0.42680978775024414,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-insulation",
+      "localTransform": [
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0.607609748840332,
+        2.1185598373413086,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_wreck_liner_boatbay_Material_Insulation",
+      "nodeName": "LOD2_wreck_liner_boatbay_Material_Insulation",
+      "nodePath": [
+        0,
+        2,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0,
+        0,
+        26.335498809814453,
+        0,
+        0,
+        0.6663694381713867,
+        2.107008934020996,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-structural",
+      "localTransform": [
+        25.287185668945312,
+        0,
+        0,
+        0,
+        0,
+        25.287185668945312,
+        0,
+        0,
+        0,
+        0,
+        25.287185668945312,
+        0,
+        0.18459415435791016,
+        -0.8712029457092285,
+        1.6001663208007812,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_wreck_liner_boatbay_Material_Structural",
+      "nodeName": "LOD2_wreck_liner_boatbay_Material_Structural",
+      "nodePath": [
+        0,
+        2,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        25.287185668945312,
+        0,
+        0,
+        0,
+        0,
+        25.287185668945312,
+        0,
+        0,
+        0,
+        0,
+        25.287185668945312,
+        0,
+        0.18459415435791016,
+        -0.8124432563781738,
+        1.5886154174804688,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.socket-evidence-manifest",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.797439575195312,
+        9.61086654663086,
+        23.66599464416504,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Evidence_Manifest",
+      "nodeName": "SOCKET_Evidence_Manifest",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.wreck-liner-boatbay-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.797439575195312,
+        9.669626235961914,
+        23.654443740844727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.socket-salvage-bay",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6237306594848633,
+        0.825351357460022,
+        25.1302490234375,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Salvage_Bay",
+      "nodeName": "SOCKET_Salvage_Bay",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.wreck-liner-boatbay-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6237306594848633,
+        0.8841110467910767,
+        25.118698120117188,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.wreck-liner-boatbay",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "wreck_liner_boatbay",
+      "nodeName": "wreck_liner_boatbay",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.wreck-liner-boatbay-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.05875968933105469,
+        -0.0115509033203125,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "wreck_liner_boatbay.001",
+      "nodeName": "wreck_liner_boatbay.001",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.05875968933105469,
+        -0.0115509033203125,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "3f97c554b88b6504f70294611fae8cfb5513b5f54240714c724df0c3b194daed"
+    },
+    "sourceGlb": {
+      "bytes": 1516540,
+      "sha256": "e284231d646f762a57da4c67efbdbafb57c4a590b959c53a4875a406a297d194",
+      "uri": "place_aftermath_wreck_liner_boatbay_authored_down.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 1504900,
+    "sha256": "c1ab03d46f2a1e65dfc81ff049bda622dde9c67ffd3bd2c8fa7172c1d1636682",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        -0.001121232306390496,
+        0
+      ],
+      "max": [
+        26.335498809814453,
+        16.369764909849913,
+        27.003143310546875
+      ],
+      "min": [
+        -26.335498809814453,
+        -16.372007374462694,
+        -27.003143310546875
+      ],
+      "size": [
+        52.670997619628906,
+        32.7417722843126,
+        54.00628662109375
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10.797439575195312,
+          9.669626235961914,
+          23.654443740844727,
+          1
+        ],
+        "name": "SOCKET_Evidence_Manifest",
+        "planIndex": 19,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Evidence_Manifest",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Evidence_Manifest",
+            "recordIds": [
+              "sf.render.aftermath-wreck-liner-boatbay-authored-down.anchor.socket-evidence-manifest",
+              "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.socket-evidence-manifest"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.6237306594848633,
+          0.8841110467910767,
+          25.118698120117188,
+          1
+        ],
+        "name": "SOCKET_Salvage_Bay",
+        "planIndex": 20,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Bay",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Bay",
+            "recordIds": [
+              "sf.render.aftermath-wreck-liner-boatbay-authored-down.anchor.socket-salvage-bay",
+              "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.socket-salvage-bay"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 9,
+      "glass": 2,
+      "hull": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 22,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          11.036121845245361,
+          0,
+          0,
+          0,
+          0,
+          11.036121845245361,
+          0,
+          0,
+          0,
+          0,
+          11.036121845245361,
+          0,
+          -5.0151047706604,
+          15.99496078491211,
+          -1.051689624786377,
+          1
+        ],
+        "name": "LOD0_wreck_liner_boatbay_Material_Glass",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.82209300994873,
+          0,
+          0,
+          0,
+          0,
+          25.82209300994873,
+          0,
+          0,
+          0,
+          0,
+          25.82209300994873,
+          0,
+          -0.26930904388427734,
+          6.792370080947876,
+          -0.43982982635498047,
+          1
+        ],
+        "name": "LOD0_wreck_liner_boatbay_Material_Heat",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          26.991592407226562,
+          0,
+          0,
+          0,
+          0,
+          26.991592407226562,
+          0,
+          0,
+          0,
+          0,
+          26.991592407226562,
+          0,
+          0.1564335823059082,
+          0.42681074142456055,
+          -0.0115509033203125,
+          1
+        ],
+        "name": "LOD0_wreck_liner_boatbay_Material_Hull",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          26.335498809814453,
+          0,
+          0,
+          0,
+          0,
+          26.335498809814453,
+          0,
+          0,
+          0,
+          0,
+          26.335498809814453,
+          0,
+          0,
+          0.6663694381713867,
+          -1.3898372650146484,
+          1
+        ],
+        "name": "LOD0_wreck_liner_boatbay_Material_Insulation",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.287185668945312,
+          0,
+          0,
+          0,
+          0,
+          25.287185668945312,
+          0,
+          0,
+          0,
+          0,
+          25.287185668945312,
+          0,
+          0.18459415435791016,
+          -0.7043132781982422,
+          1.5886154174804688,
+          1
+        ],
+        "name": "LOD0_wreck_liner_boatbay_Material_Structural",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          11.036121845245361,
+          0,
+          0,
+          0,
+          0,
+          11.036121845245361,
+          0,
+          0,
+          0,
+          0,
+          11.036121845245361,
+          0,
+          -5.015104532241821,
+          15.99496078491211,
+          -1.051689624786377,
+          1
+        ],
+        "name": "LOD1_wreck_liner_boatbay_Material_Glass",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.82209300994873,
+          0,
+          0,
+          0,
+          0,
+          25.82209300994873,
+          0,
+          0,
+          0,
+          0,
+          25.82209300994873,
+          0,
+          -0.26930904388427734,
+          6.792370080947876,
+          -0.43982982635498047,
+          1
+        ],
+        "name": "LOD1_wreck_liner_boatbay_Material_Heat",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          27.0028715133667,
+          0,
+          0,
+          0,
+          0,
+          27.0028715133667,
+          0,
+          0,
+          0,
+          0,
+          27.0028715133667,
+          0,
+          0.15657758712768555,
+          0.42681026458740234,
+          -0.00027179718017578125,
+          1
+        ],
+        "name": "LOD1_wreck_liner_boatbay_Material_Hull",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          26.335498809814453,
+          0,
+          0,
+          0,
+          0,
+          26.335498809814453,
+          0,
+          0,
+          0,
+          0,
+          26.335498809814453,
+          0,
+          0,
+          0.6663694381713867,
+          -1.3898372650146484,
+          1
+        ],
+        "name": "LOD1_wreck_liner_boatbay_Material_Insulation",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.288819313049316,
+          0,
+          0,
+          0,
+          0,
+          25.288819313049316,
+          0,
+          0,
+          0,
+          0,
+          25.288819313049316,
+          0,
+          0.18459367752075195,
+          -0.7052478790283203,
+          1.5902490615844727,
+          1
+        ],
+        "name": "LOD1_wreck_liner_boatbay_Material_Structural",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.316925048828125,
+          0,
+          0,
+          0,
+          0,
+          25.316925048828125,
+          0,
+          0,
+          0,
+          0,
+          25.316925048828125,
+          0,
+          0.17713308334350586,
+          6.792370915412903,
+          -0.9449977874755859,
+          1
+        ],
+        "name": "LOD2_wreck_liner_boatbay_Material_Heat",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          27.003143310546875,
+          0,
+          0,
+          0,
+          0,
+          27.003143310546875,
+          0,
+          0,
+          0,
+          0,
+          27.003143310546875,
+          0,
+          0.1564335823059082,
+          0.42680978775024414,
+          0,
+          1
+        ],
+        "name": "LOD2_wreck_liner_boatbay_Material_Hull",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          26.335498809814453,
+          0,
+          0,
+          0,
+          0,
+          26.335498809814453,
+          0,
+          0,
+          0,
+          0,
+          26.335498809814453,
+          0,
+          0,
+          0.6663694381713867,
+          2.107008934020996,
+          1
+        ],
+        "name": "LOD2_wreck_liner_boatbay_Material_Insulation",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.287185668945312,
+          0,
+          0,
+          0,
+          0,
+          25.287185668945312,
+          0,
+          0,
+          0,
+          0,
+          25.287185668945312,
+          0,
+          0.18459415435791016,
+          -0.8124432563781738,
+          1.5886154174804688,
+          1
+        ],
+        "name": "LOD2_wreck_liner_boatbay_Material_Structural",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_boatbay_authored_down.glb"
+  },
+  "runtimeHash": "b46f63d5123ef5b3082caaa394554b4380b2966b9190e463885151869752ebf5",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          26.335498809814453,
+          16.369764909849913,
+          27.003143310546875
+        ],
+        "min": [
+          -26.335498809814453,
+          -16.372007374462694,
+          -27.003143310546875
+        ]
+      },
+      "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.body",
+      "nodeIds": [
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-glass",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-heat",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-hull",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-insulation",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-structural",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-glass",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-heat",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-hull",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-insulation",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-structural",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-heat",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-hull",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-insulation",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-structural",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.socket-evidence-manifest",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.socket-salvage-bay",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.wreck-liner-boatbay",
+        "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.wreck-liner-boatbay-001"
+      ]
+    }
+  ]
+}

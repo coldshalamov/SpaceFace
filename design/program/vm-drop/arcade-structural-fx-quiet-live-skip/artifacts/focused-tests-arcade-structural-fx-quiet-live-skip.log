@@ -1,0 +1,176 @@
+TAP version 13
+# [impact cost] 160 events, 1549 primitives | peak occupancy: blades 124/128  arcs 48/48  shards 64/64  plates 32/32
+# Subtest: a bullet, a slam, a rock fracture and a capital breakup are different events, not one event at four sizes
+ok 1 - a bullet, a slam, a rock fracture and a capital breakup are different events, not one event at four sizes
+  ---
+  duration_ms: 14.991982
+  ...
+# Subtest: every pair of impact classes differs by order, layout or primitive mix before any colour
+ok 2 - every pair of impact classes differs by order, layout or primitive mix before any colour
+  ---
+  duration_ms: 2.174093
+  ...
+# Subtest: large destruction opens its structure before anything else, and structure outlives the light
+ok 3 - large destruction opens its structure before anything else, and structure outlives the light
+  ---
+  duration_ms: 14.627964
+  ...
+# Subtest: an unsigned collision axis cannot yield a signed outward direction
+ok 4 - an unsigned collision axis cannot yield a signed outward direction
+  ---
+  duration_ms: 0.316761
+  ...
+# Subtest: flipping an unsigned axis draws the identical event; flipping a signed normal does not
+ok 5 - flipping an unsigned axis draws the identical event; flipping a signed normal does not
+  ---
+  duration_ms: 12.368076
+  ...
+# Subtest: a one-sided beat is dropped rather than re-aimed when the axis is unsigned
+ok 6 - a one-sided beat is dropped rather than re-aimed when the axis is unsigned
+  ---
+  duration_ms: 0.44634
+  ...
+# Subtest: the classifier reads the physics of a contact, not its size alone
+ok 7 - the classifier reads the physics of a contact, not its size alone
+  ---
+  duration_ms: 0.51386
+  ...
+# Subtest: the beats of one event arrive in sequence instead of on the contact frame
+ok 8 - the beats of one event arrive in sequence instead of on the contact frame
+  ---
+  duration_ms: 2.59417
+  ...
+# Subtest: a reserved later beat is not cannibalised to draw the next event
+ok 9 - a reserved later beat is not cannibalised to draw the next event
+  ---
+  duration_ms: 1.45759
+  ...
+# Subtest: a worked face cuts and fractures without igniting or celebrating
+ok 10 - a worked face cuts and fractures without igniting or celebrating
+  ---
+  duration_ms: 1.89391
+  ...
+# Subtest: an interior that is not hot is not drawn hot, and a shield throws no matter
+ok 11 - an interior that is not hot is not drawn hot, and a shield throws no matter
+  ---
+  duration_ms: 0.291329
+  ...
+# Subtest: a contact mark takes the failure of the surface it hit, and the default is unchanged
+ok 12 - a contact mark takes the failure of the surface it hit, and the default is unchanged
+  ---
+  duration_ms: 1.283214
+  ...
+# Subtest: one contact composes one recipe: structure first, then gas, then debris, exactly once each
+ok 13 - one contact composes one recipe: structure first, then gas, then debris, exactly once each
+  ---
+  duration_ms: 2.546342
+  ...
+# Subtest: supporting layers bind as resolvers, so build order cannot silently pin them to null
+ok 14 - supporting layers bind as resolvers, so build order cannot silently pin them to null
+  ---
+  duration_ms: 1.863275
+  ...
+# Subtest: the recipe still lands when the gas and debris layers never arrive
+ok 15 - the recipe still lands when the gas and debris layers never arrive
+  ---
+  duration_ms: 2.698175
+  ...
+# Subtest: the record is handed to the supporting layers in world space and unmodified
+ok 16 - the record is handed to the supporting layers in world space and unmodified
+  ---
+  duration_ms: 1.914751
+  ...
+# Subtest: a massacre of small deaths cannot truncate the capital breakup behind it
+ok 17 - a massacre of small deaths cannot truncate the capital breakup behind it
+  ---
+  duration_ms: 1.28447
+  ...
+# Subtest: repeated hits on one surface and dense mixed combat stay inside the fixed pools
+ok 18 - repeated hits on one surface and dense mixed combat stay inside the fixed pools
+  ---
+  duration_ms: 18.976309
+  ...
+# Subtest: the same contact draws the same event every replay, without consuming simulation randomness
+ok 19 - the same contact draws the same event every replay, without consuming simulation randomness
+  ---
+  duration_ms: 3.481035
+  ...
+# Subtest: malformed receipts cannot poison the record or the pools
+ok 20 - malformed receipts cannot poison the record or the pools
+  ---
+  duration_ms: 1.477545
+  ...
+# Subtest: the structural plate is a closed lit sheet, not a card
+ok 21 - the structural plate is a closed lit sheet, not a card
+  ---
+  duration_ms: 0.479077
+  ...
+# Subtest: saturation drive fills every pool to exactly its fixed capacity and no further
+ok 22 - saturation drive fills every pool to exactly its fixed capacity and no further
+  ---
+  duration_ms: 17.668139
+  ...
+# Subtest: blade pool refuses a lower-priority overflow and evicts a higher-priority one
+ok 23 - blade pool refuses a lower-priority overflow and evicts a higher-priority one
+  ---
+  duration_ms: 4.914427
+  ...
+# Subtest: structural pools never grow past the module capacity
+ok 24 - structural pools never grow past the module capacity
+  ---
+  duration_ms: 4.94695
+  ...
+# Subtest: clear zeros live without resetting high-water, and dispose is idempotent
+ok 25 - clear zeros live without resetting high-water, and dispose is idempotent
+  ---
+  duration_ms: 2.482343
+  ...
+# Subtest: the same spawn sequence is deterministic across fresh instances
+ok 26 - the same spawn sequence is deterministic across fresh instances
+  ---
+  duration_ms: 15.555896
+  ...
+# Subtest: transient silhouette carriers occupy world-space depth instead of a camera-facing quad
+ok 27 - transient silhouette carriers occupy world-space depth instead of a camera-facing quad
+  ---
+  duration_ms: 31.34106
+  ...
+# Subtest: event progress and launch heading reach the resident GPU instance, independent of opacity
+ok 28 - event progress and launch heading reach the resident GPU instance, independent of opacity
+  ---
+  duration_ms: 4.381106
+  ...
+# Subtest: field animation and support stay bounded at saturation and invalid numeric inputs
+ok 29 - field animation and support stay bounded at saturation and invalid numeric inputs
+  ---
+  duration_ms: 3.708222
+  ...
+# Subtest: density film is an evolving bounded field, not one static mask with scrolling UVs
+ok 30 - density film is an evolving bounded field, not one static mask with scrolling UVs
+  ---
+  duration_ms: 9.110351
+  ...
+# Subtest: packed 3D film fits the portable WebGL2 dimension floor and retains every voxel
+ok 31 - packed 3D film fits the portable WebGL2 dimension floor and retains every voxel
+  ---
+  duration_ms: 44.345602
+  ...
+# Subtest: live transient pools share one density texture and do not add a back/front transparency pass
+ok 32 - live transient pools share one density texture and do not add a back/front transparency pass
+  ---
+  duration_ms: 3.327605
+  ...
+# Subtest: structural combat sheets have curved depth and independent lifetime animation
+ok 33 - structural combat sheets have curved depth and independent lifetime animation
+  ---
+  duration_ms: 6.998552
+  ...
+1..33
+# tests 33
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 305.008291

@@ -1,0 +1,331 @@
+/* ==========================================================================
+   SpaceFace - Living Aerospace Flight HUD Stylesheet
+   Hardware-accelerated instruments, optical G-lag, electronic disruption,
+   multi-stage missile lock convergence, and G-LOC tunnel vision.
+   ========================================================================== */
+
+/* --- Hardware Acceleration & Compositor Layers ---
+   #hud only transforms during the 180ms .sf-hud--glitch jitter, so the fullscreen layer carries
+   will-change only while that class is on; the small combat marks keep it permanently. */
+#hud.sf-hud--glitch,
+#aim-reticle,
+.sf-lockdiamond,
+.sf-target-arcs,
+.sf-leadpip,
+.sf-lockring,
+.sf-protick {
+  will-change: transform;
+}
+
+#aim-reticle > svg,
+.sf-lockdiamond__inner,
+.sf-leadpip__svg,
+.sf-target-arcs svg,
+.sf-lockring > svg,
+.sf-lockring__brackets {
+  will-change: transform;
+  transform-origin: center center;
+}
+
+/* --- Electronic Disruption (EMP Strike & Shield Collapse) --- */
+@keyframes sf-hud-jitter {
+  0%   { transform: translate3d(0, 0, 0); filter: none; }
+  15%  { transform: translate3d(-3px, 1px, 0); filter: drop-shadow(-2px 0 0 #ff0040) drop-shadow(2px 0 0 #00ffff); }
+  35%  { transform: translate3d(4px, -1px, 0); filter: drop-shadow(2px 0 0 #ff0040) drop-shadow(-2px 0 0 #00ffff); }
+  55%  { transform: translate3d(-2px, 2px, 0); filter: drop-shadow(-3px 0 0 #ff0040) drop-shadow(1px 0 0 #00ffff); }
+  75%  { transform: translate3d(3px, -1px, 0); filter: drop-shadow(1px 0 0 #ff0040) drop-shadow(-1px 0 0 #00ffff); }
+  90%  { transform: translate3d(-1px, 0, 0); filter: drop-shadow(-1px 0 0 #ff0040) drop-shadow(1px 0 0 #00ffff); }
+  100% { transform: translate3d(0, 0, 0); filter: none; }
+}
+
+#hud.sf-hud--glitch {
+  animation: sf-hud-jitter 180ms steps(6, end) 1;
+}
+
+#hud.sf-hud--glitch .sf-caption,
+#hud.sf-hud--glitch .sf-nav-label,
+#hud.sf-hud--glitch .sf-lockring__label,
+#hud.sf-hud--glitch .sf-mt-obj {
+  text-shadow: -2px 0 0 #ff0040, 2px 0 0 #00ffff !important;
+}
+
+/* Raster Scanline Static Overlay */
+.sf-hud-glitch-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+  opacity: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 255, 255, 0.12) 3px,
+    rgba(255, 0, 64, 0.12) 4px
+  );
+  mix-blend-mode: screen;
+}
+
+.sf-hud-glitch-overlay.active {
+  display: block;
+  opacity: 0.85;
+  animation: sf-scanline-flicker 180ms ease-out 1;
+}
+
+@keyframes sf-scanline-flicker {
+  0%   { opacity: 0.9; transform: translateY(0); }
+  30%  { opacity: 0.6; transform: translateY(3px); }
+  60%  { opacity: 0.85; transform: translateY(-2px); }
+  100% { opacity: 0; transform: translateY(0); }
+}
+
+/* --- G-LOC Tunnel Vision Vignette --- */
+.sf-gloc-vignette {
+  /* Sleeps out of the compositor tree until the first fade-in; hud.js drives display block/none. */
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgba(0, 5, 12, 0.4) 72%,
+    rgba(0, 2, 8, 0.85) 92%,
+    rgba(0, 0, 0, 0.98) 100%
+  );
+  transition: opacity 0.12s linear;
+}
+
+/* --- Multi-Stage Missile Lock Convergence (dp-bracket motion: breathe at idle, snap on latch) --- */
+/* Brackets container inside lockRing */
+.sf-lockring__brackets {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: transform 0.08s linear;
+}
+
+.sf-lockring__bracket {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: var(--dp-lamp, #f2b950);
+  border-style: solid;
+  opacity: 0.8;
+  transition: border-color 0.15s var(--dp-ease-lamp, ease), opacity 0.15s var(--dp-ease-lamp, ease);
+}
+
+/* The bracket set BREATHES while the sensor is alive (idle stand-off pulse) and SNAPS once when
+   the stage advances (one overshoot, then still — a mechanical latch, not a glow). */
+@keyframes sf-bracket-breathe {
+  0%, 100% { opacity: .6; }
+  50% { opacity: 1; }
+}
+@keyframes sf-bracket-snap {
+  0% { transform: scale(1.24); opacity: .65; }
+  55% { transform: scale(.96); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.sf-lockring__brackets { animation: sf-bracket-breathe var(--dp-d-breathe, 3.4s) var(--dp-ease-lamp, ease) infinite; }
+.sf-lockring[data-stage] .sf-lockring__brackets { animation: sf-bracket-snap 240ms var(--dp-ease-snap, cubic-bezier(.3,1.6,.4,1)) 1; }
+.sf-lockring[data-stage="acquiring"] .sf-lockring__brackets,
+.sf-lockring[data-stage="tracking"] .sf-lockring__brackets {
+  animation: sf-bracket-snap 240ms var(--dp-ease-snap, cubic-bezier(.3,1.6,.4,1)) 1,
+             sf-bracket-breathe var(--dp-d-breathe, 3.4s) var(--dp-ease-lamp, ease) 240ms infinite;
+}
+
+.sf-lockring__bracket--tl {
+  top: 10px;
+  left: 10px;
+  border-width: 2px 0 0 2px;
+}
+
+.sf-lockring__bracket--tr {
+  top: 10px;
+  right: 10px;
+  border-width: 2px 2px 0 0;
+}
+
+.sf-lockring__bracket--br {
+  bottom: 10px;
+  right: 10px;
+  border-width: 0 2px 2px 0;
+}
+
+.sf-lockring__bracket--bl {
+  bottom: 10px;
+  left: 10px;
+  border-width: 0 0 2px 2px;
+}
+
+/* Stage 1: Acquiring (slow search pulse, the lamp at idle heat) */
+.sf-lockring[data-stage="acquiring"] .sf-lockring__track {
+  stroke-dasharray: 6 6;
+  animation: sf-lockring-spin 3s linear infinite;
+}
+
+.sf-lockring[data-stage="acquiring"] .sf-lockring__bracket {
+  border-color: var(--dp-lamp-dim, #8a6b3a);
+  animation: sf-bracket-pulse-slow 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes sf-lockring-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes sf-bracket-pulse-slow {
+  from { opacity: 0.4; }
+  to   { opacity: 0.9; }
+}
+
+/* Stage 2: Tracking (accelerating pulse, the lamp at full heat, converging inward) */
+.sf-lockring[data-stage="tracking"] .sf-lockring__fill {
+  stroke: var(--dp-lamp, #f2b950);
+}
+
+.sf-lockring[data-stage="tracking"] .sf-lockring__label {
+  color: var(--dp-lamp-hot, #ffd98c);
+}
+
+.sf-lockring[data-stage="tracking"] .sf-lockring__bracket {
+  border-color: var(--dp-lamp, #f2b950);
+  opacity: 0.95;
+  animation: sf-bracket-pulse-fast 0.16s ease-in-out infinite alternate;
+}
+
+@keyframes sf-bracket-pulse-fast {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
+}
+
+/* Stage 3: Locked (snapped shut — the Hand amber, bloom by geometry: the track widens into a
+   translucent halo stroke under the crisp fill; the old drop-shadow filter is gone — filters
+   never run in flight). */
+.sf-lockring[data-stage="locked"] .sf-lockring__fill {
+  stroke: var(--dp-lamp, #f2b950);
+}
+
+.sf-lockring[data-stage="locked"] .sf-lockring__track {
+  stroke: var(--dp-lamp, #f2b950);
+  stroke-opacity: 0.24;
+  stroke-width: 6;
+}
+
+.sf-lockring[data-stage="locked"] .sf-lockring__scale {
+  stroke: var(--dp-lamp, #f2b950);
+  stroke-opacity: 0.45;
+}
+
+.sf-lockring[data-stage="locked"] .sf-lockring__label {
+  color: var(--dp-lamp-hot, #ffd98c);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.sf-lockring[data-stage="locked"] .sf-lockring__bracket {
+  border-color: var(--dp-lamp, #f2b950);
+  opacity: 1;
+  border-width: 2.5px;
+}
+
+/* --- Reduced Motion Accessibility Overrides --- */
+@media (prefers-reduced-motion: reduce) {
+  #hud.sf-hud--glitch {
+    animation: none !important;
+  }
+  .sf-hud-glitch-overlay {
+    display: none !important;
+  }
+  .sf-gloc-vignette {
+    transition: none !important;
+  }
+  .sf-lockring.sf-lockring--latch {
+    animation: none !important;
+  }
+  .sf-lockring[data-stage="acquiring"] .sf-lockring__track {
+    animation: none !important;
+  }
+  .sf-lockring[data-stage="acquiring"] .sf-lockring__bracket {
+    animation: none !important;
+  }
+  .sf-lockring[data-stage="tracking"] .sf-lockring__bracket {
+    animation: none !important;
+  }
+  .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner {
+    animation: none !important;
+  }
+  .sf-lockring__brackets,
+  .sf-lockring[data-stage] .sf-lockring__brackets,
+  .sf-lockring[data-stage="acquiring"] .sf-lockring__brackets,
+  .sf-lockring[data-stage="tracking"] .sf-lockring__brackets {
+    animation: none !important;
+  }
+}
+
+html.sf-reduce-motion .sf-lockring__brackets,
+html.sf-reduce-motion .sf-lockring[data-stage] .sf-lockring__brackets,
+html.sf-reduce-flash .sf-lockring__brackets,
+html.sf-reduce-flash .sf-lockring[data-stage] .sf-lockring__brackets {
+  animation: none !important;
+}
+
+html.sf-reduce-motion #hud.sf-hud--glitch,
+html.sf-reduce-flash #hud.sf-hud--glitch {
+  animation: none !important;
+}
+
+html.sf-reduce-motion .sf-hud-glitch-overlay,
+html.sf-reduce-flash .sf-hud-glitch-overlay {
+  display: none !important;
+}
+
+html.sf-reduce-motion .sf-gloc-vignette,
+html.sf-reduce-flash .sf-gloc-vignette {
+  transition: none !important;
+}
+
+/* RC-GLASS 474 — danger-quiet: at critical hull the non-critical instruments (tape, tracker,
+   context feeds) dim so the vital ring and alerts breathe; releases at the same 30% boundary. */
+#hud.sf-hud--danger-quiet .sf-commtape,
+#hud.sf-hud--danger-quiet .sf-mt-obj,
+#hud.sf-hud--danger-quiet .sf-caption,
+#hud.sf-hud--danger-quiet .sf-nav-label,
+#hud.sf-hud--danger-quiet .sf-receipt {
+  opacity: .32;
+  transition: opacity .25s ease-out;
+}
+#hud .sf-commtape, #hud .sf-mt-obj, #hud .sf-caption, #hud .sf-nav-label, #hud .sf-receipt {
+  transition: opacity .25s ease-in;
+}
+
+/* RC-GLASS 474 — glass presets: the preset dims the instruments it does not name lit.
+   Clean keeps hull+shield; hauler adds cargo/fuel/massline; fighter adds ordnance/speed/target. */
+#hud[data-glass-preset="clean"] .sf-glass-hauler,
+#hud[data-glass-preset="clean"] .sf-glass-fighter,
+#hud[data-glass-preset="hauler"] .sf-glass-fighter {
+  opacity: .45;
+}
+
+/* ── Target panel concision (owner 2026-10-27: the readout above the radar read as a wall of
+   text). Scoped overrides live here so the injected hudStyles base keeps its single writer;
+   the .sf-hudpanel prefix wins the cascade at equal specificity. ── */
+.sf-hudpanel.sf-target { gap: 3px; }
+.sf-hudpanel .sf-target__meta { gap: 9px; }
+.sf-hudpanel .sf-target__name { overflow-wrap: anywhere; }
+.sf-hudpanel .sf-target__idbits { overflow-wrap: anywhere; color: var(--hud-muted); opacity: .85; }
+.sf-hudpanel .sf-target__intent { overflow-wrap: anywhere; }
+.sf-hudpanel .sf-target__object { overflow-wrap: anywhere; }
+.sf-hudpanel .sf-overview-footer { overflow-wrap: anywhere; }
+.sf-hudpanel .sf-target__triangle { flex-wrap: nowrap; gap: 6px; margin-top: 2px; }
+/* De-boxed like .sf-alert: the target readout is a status light over the world, not a plate —
+   the owner called the machined slab "stupid" and "in the way" (2026-10-27). Legibility rides
+   the hudStyles text-shadow; this outranks the #hud .sf-target plate rule by specificity. */
+#hud .sf-hudpanel.sf-target {
+  background-color: transparent;
+  background-image: none;
+  padding: 4px 2px;
+}

@@ -1,0 +1,105 @@
+From 84a0fb98fa962b658f546539e05d9b7605d06aca Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 21:30:58 -0400
+Subject: [PATCH 2/4] feat(perf): time-slice in-flight ship and rock pipeline
+ admission
+
+Backlog #24: after first playable, new ships and promoted rocks compile via
+yieldAfterPresent (same after-present lane loading already uses) instead of
+stacking compileObjectPipelines on the mesh-build drain turn.
+---
+ src/render/renderer.js | 63 ++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 55 insertions(+), 8 deletions(-)
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index 8e77f4e49..ff256d1f2 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -10829,9 +10829,11 @@ export const render = {
+       // the loading shell; leftovers stay off bloom until that stamp exists.
+       const compileFn = this.state.render && this.state.render.compileObjectPipelines;
+       if (!holdFirstFlightBuffers && typeof compileFn === 'function') {
+-        if (compileAsteroid || !linkOnGlass) {
+-          void compileFn(m);
+-        } else {
++        // Backlog #24: time-slice in-flight admission (new ships + promoted rocks) the way
++        // loading already does — after present, not stacked on the mesh-build drain turn.
++        const sliceInFlight = this.state.mode === 'flight'
++          && Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
++        if (sliceInFlight || linkOnGlass) {
+           const data = m.userData || (m.userData = {});
+           data.pipelinesPending = true;
+           const subject = m;
+@@ -10843,6 +10845,8 @@ export const render = {
+             }
+             if (subject && subject.userData) subject.userData.pipelinesPending = false;
+           });
++        } else {
++          void compileFn(m);
+         }
+       }
+       if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
+@@ -12499,12 +12503,55 @@ export const render = {
+             }
+           } else {
+             this._openingMissingHoldSinceMs = null;
++            // Uncaptured extras (already resident) used to force extrasOnly fail-open and leave
++            // the identity gate red (quiet-witness: uncaptured-first-draw-resource). Recapture
++            // once so receipt.before absorbs the live census; prefer an honest ok over fail-open.
++            let stamped = null;
++            if (!this._openingExtrasRecaptured) {
++              this._openingExtrasRecaptured = true;
++              const plan = this.state.render.openingSubmissionPlan;
++              if (plan) {
++                try {
++                  const route = this._selectPostRoute();
++                  let postMaterials = [];
++                  if (route === POST_PROCESS_ROUTE.BLOOM
++                    && this.bloom && typeof this.bloom.openingProgramMaterials === 'function') {
++                    postMaterials = this.bloom.openingProgramMaterials();
++                  } else if (route === POST_PROCESS_ROUTE.GRAPH
++                    && this._renderGraph
++                    && typeof this._renderGraph.openingProgramMaterials === 'function') {
++                    postMaterials = this._renderGraph.openingProgramMaterials();
++                  }
++                  this.state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(
++                    this.renderer,
++                    plan,
++                    {
++                      scene: this.scene,
++                      programMaterials: postMaterials,
++                      shadowProgramKeys: (this._openingShadowAdmission
++                        && this._openingShadowAdmission.programCacheKeys) || [],
++                      shadowProgramBindingFailures: (this._openingShadowAdmission
++                        && this._openingShadowAdmission.programBindingFailures) || [],
++                    },
++                  );
++                  const refreshed = validateOpeningSubmissionReceipt(
++                    this.state.render.openingSubmissionReceipt,
++                    this.renderer,
++                  );
++                  stamped = refreshed.ok
++                    ? refreshed
++                    : { ...refreshed, ok: true, extrasOnly: true };
++                } catch (_) {
++                  stamped = null;
++                }
++              }
++            }
++            this.state.render.openingSubmissionPreSubmitValidation = stamped || {
++              ...preSubmitValidation,
++              ok: true,
++              extrasOnly: true,
++            };
+           }
+-          this.state.render.openingSubmissionPreSubmitValidation = {
+-            ...preSubmitValidation,
+-            ok: true,
+-            extrasOnly: true,
+-          };
+         }
+       }
+       // Bloom owns exact pass timers internally. Graph/native have no nested pass timer owner, so
+-- 
+2.47.3
+

@@ -1,0 +1,2548 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.engine-ion-twin",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "5b2680cf46405eceb87eeb0c7474831e055dfd5a74306a5453be99a66c3e3634",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.9000000953674316,
+          0.5900402984417008,
+          0.015039522254143584
+        ],
+        "min": [
+          0.30000001192092896,
+          0.5099597254001571,
+          -0.015039522254143584
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "086d930facd64d2035fd4f6b978e9f51c7e55d493a9d02a9f88c33cd417d4434",
+      "id": "sf.render.engine-ion-twin.node.det-cyan-nav-stripe.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "efa68ffa159a758a680728407e07093af5209f27b6a143d5f41eba3b080d5858",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.engine-ion-twin.node.det-cyan-nav-stripe",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7000000476837158,
+          -1.0250052913528165,
+          0.3500000238418579
+        ],
+        "min": [
+          1,
+          -1.0749946132797519,
+          -0.3500000238418579
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2b678d8cbab47fb57255c386b4db523c68e0cd89e86078e528391c5819436116",
+      "id": "sf.render.engine-ion-twin.node.det-dock-collar-scuff.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "93ac9a57006327c2073e397f7fae40444577995ab53ead3f9779566d98c0009c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.engine-ion-twin.node.det-dock-collar-scuff",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6100000143051147,
+          0.42000701825184794,
+          -0.5099996750335921
+        ],
+        "min": [
+          0.28999999165534973,
+          0.2799929698272231,
+          -0.5300002868194352
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "303b2a836bbea7d23b237ce7379f6eef682efabeabef883950ab9891a59eb0fb",
+      "id": "sf.render.engine-ion-twin.node.det-inspection-stencil.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "efa68ffa159a758a680728407e07093af5209f27b6a143d5f41eba3b080d5858",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.engine-ion-twin.node.det-inspection-stencil",
+      "primitiveIndex": 0,
+      "vertexCount": 104
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8599998950958252,
+          -0.2199954582887544,
+          0.38999784940125926
+        ],
+        "min": [
+          1.7400000095367432,
+          -0.2800045566124068,
+          0.3700021410619976
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "681a3ab4d8221a49da50c5a282fc191c1d7a197ffae385f93c5836e2798b3270",
+      "id": "sf.render.engine-ion-twin.node.det-maintenance-tick.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "efa68ffa159a758a680728407e07093af5209f27b6a143d5f41eba3b080d5858",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.engine-ion-twin.node.det-maintenance-tick",
+      "primitiveIndex": 0,
+      "vertexCount": 104
+    },
+    {
+      "bounds": {
+        "max": [
+          0.18999145637147047,
+          0.3999679609938761,
+          0.699999988079071
+        ],
+        "min": [
+          0.11000854809887788,
+          -0.09996794162236652,
+          -0.699999988079071
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ed1fc8ca6475f334767bb1e27785acdbd455c435df4eace2e7c03249e6ca0e71",
+      "id": "sf.render.engine-ion-twin.node.det-panel-respray-edge.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "93ac9a57006327c2073e397f7fae40444577995ab53ead3f9779566d98c0009c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.engine-ion-twin.node.det-panel-respray-edge",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          1.625,
+          -0.7899880932307088,
+          0.059990228875954454
+        ],
+        "min": [
+          1.0750000476837158,
+          -0.8500118924641764,
+          -0.059990228875954454
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0c1669589fabf642d5873fa9edc61aa48b7d09876354e8d83cc2d990740ef972",
+      "id": "sf.render.engine-ion-twin.node.det-sync-ring-bridge.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "ef872131b71c1ec979c19e4378e619369b982031b17a75d04f773cdc5a5abf4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.engine-ion-twin.node.det-sync-ring-bridge",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          2.5250000953674316,
+          -0.6949999332427979,
+          0.4450000822544098
+        ],
+        "min": [
+          2.4749999046325684,
+          -0.7450001239776611,
+          0.3949998915195465
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a6aca3f65fc302c8b32aece5fc0e1ebbd7f0405cc698564a44c77ecb7d1f8c70",
+      "id": "sf.render.engine-ion-twin.node.det-torque-witness-001.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "ef872131b71c1ec979c19e4378e619369b982031b17a75d04f773cdc5a5abf4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.engine-ion-twin.node.det-torque-witness-001",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.22500000894069672,
+          -0.695000022649765,
+          -0.39499998092651367
+        ],
+        "min": [
+          0.17499999701976776,
+          -0.745000034570694,
+          -0.4449999928474426
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0550c40550eb15467965cdac1dd6a5f00863e031d78fb2d8e6d2ff5c058668ba",
+      "id": "sf.render.engine-ion-twin.node.det-torque-witness.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "ef872131b71c1ec979c19e4378e619369b982031b17a75d04f773cdc5a5abf4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.engine-ion-twin.node.det-torque-witness",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.04997956112928051,
+          0.3780568838119507,
+          -0.6814040092290199
+        ],
+        "min": [
+          -0.1099795635134663,
+          -0.3780568838119507,
+          -1.4185958954035485
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2cd4a49fe9a0b0f225690184a33409c8ec1e742eb1de934c753df0ee57e34bdb",
+      "id": "sf.render.engine-ion-twin.node.hook-drive-core-p.primitive.0",
+      "indexCount": 672,
+      "indexed": true,
+      "materialHash": "ef872131b71c1ec979c19e4378e619369b982031b17a75d04f773cdc5a5abf4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_CORE_P",
+      "nodeId": "sf.render.engine-ion-twin.node.hook-drive-core-p",
+      "primitiveIndex": 0,
+      "vertexCount": 184
+    },
+    {
+      "bounds": {
+        "max": [
+          0.04997956112928051,
+          0.3780568838119507,
+          1.4185958954035485
+        ],
+        "min": [
+          -0.1099795635134663,
+          -0.3780568838119507,
+          0.6814040092290199
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "653196a5c1787c99b967bea98bad19efed49747af04db12043ccd33391588ca8",
+      "id": "sf.render.engine-ion-twin.node.hook-drive-core-s.primitive.0",
+      "indexCount": 672,
+      "indexed": true,
+      "materialHash": "ef872131b71c1ec979c19e4378e619369b982031b17a75d04f773cdc5a5abf4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_CORE_S",
+      "nodeId": "sf.render.engine-ion-twin.node.hook-drive-core-s",
+      "primitiveIndex": 0,
+      "vertexCount": 184
+    },
+    {
+      "bounds": {
+        "max": [
+          0.29444941240268885,
+          0.48470720648765564,
+          -0.5660027878193938
+        ],
+        "min": [
+          0.025550593483269796,
+          -0.48470720648765564,
+          -1.5339971168131745
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e99121525c5692ab4d7c2a3201645a6670503037a259255526b87ba27b8b5eca",
+      "id": "sf.render.engine-ion-twin.node.hook-drive-fan-p.primitive.0",
+      "indexCount": 1824,
+      "indexed": true,
+      "materialHash": "ef872131b71c1ec979c19e4378e619369b982031b17a75d04f773cdc5a5abf4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_FAN_P",
+      "nodeId": "sf.render.engine-ion-twin.node.hook-drive-fan-p",
+      "primitiveIndex": 0,
+      "vertexCount": 660
+    },
+    {
+      "bounds": {
+        "max": [
+          0.29444941240268885,
+          0.48470720648765564,
+          1.5339971168131745
+        ],
+        "min": [
+          0.025550593483269796,
+          -0.48470720648765564,
+          0.5660027878193938
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9c5eccd4ce3417a6968c8d5f4085b7c0714943d2b0887a6d4fda5e3824e82e3c",
+      "id": "sf.render.engine-ion-twin.node.hook-drive-fan-s.primitive.0",
+      "indexCount": 1824,
+      "indexed": true,
+      "materialHash": "ef872131b71c1ec979c19e4378e619369b982031b17a75d04f773cdc5a5abf4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_FAN_S",
+      "nodeId": "sf.render.engine-ion-twin.node.hook-drive-fan-s",
+      "primitiveIndex": 0,
+      "vertexCount": 665
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.10000704725318116,
+          0.3966483473777771,
+          -0.6533516049385071
+        ],
+        "min": [
+          -0.21999296049542266,
+          -0.3966483473777771,
+          -1.4466482996940613
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "454df76ebdffaebb8b790c5caf8625c53a4c3630f1961a86debe27046f0a23ec",
+      "id": "sf.render.engine-ion-twin.node.hook-drive-plume-p.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "ef872131b71c1ec979c19e4378e619369b982031b17a75d04f773cdc5a5abf4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_PLUME_P",
+      "nodeId": "sf.render.engine-ion-twin.node.hook-drive-plume-p",
+      "primitiveIndex": 0,
+      "vertexCount": 158
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.10000704725318116,
+          0.3966483473777771,
+          1.4466482996940613
+        ],
+        "min": [
+          -0.21999296049542266,
+          -0.3966483473777771,
+          0.6533516049385071
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1976a33789f0925a04b0d0928fca20b0aa5b0b202232e9fb932207de09b27800",
+      "id": "sf.render.engine-ion-twin.node.hook-drive-plume-s.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "ef872131b71c1ec979c19e4378e619369b982031b17a75d04f773cdc5a5abf4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_PLUME_S",
+      "nodeId": "sf.render.engine-ion-twin.node.hook-drive-plume-s",
+      "primitiveIndex": 0,
+      "vertexCount": 158
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7999314462937894,
+          0.3249855128235968,
+          1.7000000476837158
+        ],
+        "min": [
+          -0.09993130175252585,
+          -0.3249855128235968,
+          -1.7000000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a7b7107e69835288a1471c28ccb13f6990ff97bcb8dc69dda1ecd07c69d68473",
+      "id": "sf.render.engine-ion-twin.node.lod0-engine-ion-twin-main.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "93ac9a57006327c2073e397f7fae40444577995ab53ead3f9779566d98c0009c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ENGINE_ION_TWIN_MAIN",
+      "nodeId": "sf.render.engine-ion-twin.node.lod0-engine-ion-twin-main",
+      "primitiveIndex": 0,
+      "vertexCount": 158
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4999345987418935,
+          0.8176156535126646,
+          1.867606282234192
+        ],
+        "min": [
+          0.00006547618591801196,
+          -0.8176156535126646,
+          -1.867606282234192
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d04e40c65f2db7bb9842621303566d4e2d1d08db2287af397b14eed58811f0c2",
+      "id": "sf.render.engine-ion-twin.node.static-hull-merged.primitive.0",
+      "indexCount": 2496,
+      "indexed": true,
+      "materialHash": "93ac9a57006327c2073e397f7fae40444577995ab53ead3f9779566d98c0009c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Static_Hull_Merged",
+      "nodeId": "sf.render.engine-ion-twin.node.static-hull-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 624
+    },
+    {
+      "bounds": {
+        "max": [
+          0.09803600602560686,
+          0.7674091738217059,
+          1.8057950735092163
+        ],
+        "min": [
+          -0.05803600691967653,
+          -0.7674091738217059,
+          -1.8057950735092163
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "39ebaa0522e8389163d764c8e80409f1c0d9f2238fc2bf8128c803249957ce60",
+      "id": "sf.render.engine-ion-twin.node.static-mechanical-merged.primitive.0",
+      "indexCount": 5184,
+      "indexed": true,
+      "materialHash": "ef872131b71c1ec979c19e4378e619369b982031b17a75d04f773cdc5a5abf4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Static_Mechanical_Merged",
+      "nodeId": "sf.render.engine-ion-twin.node.static-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 1201
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "93ac9a57006327c2073e397f7fae40444577995ab53ead3f9779566d98c0009c",
+      "id": "material:93ac9a57006327c2073e397f",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "engine_ion_twin_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "engine_ion_twin_wear_mask_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ef872131b71c1ec979c19e4378e619369b982031b17a75d04f773cdc5a5abf4d",
+      "id": "material:ef872131b71c1ec979c19e43",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "engine_ion_twin_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "engine_ion_twin_wear_mask_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "efa68ffa159a758a680728407e07093af5209f27b6a143d5f41eba3b080d5858",
+      "id": "material:efa68ffa159a758a68072840",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "engine_ion_twin_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "engine_ion_twin_wear_mask_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.engine-ion-twin.node.det-cyan-nav-stripe",
+      "localTransform": [
+        0.8000000417232513,
+        0,
+        0,
+        0,
+        0,
+        0.8000000417232513,
+        0,
+        0,
+        0,
+        0,
+        0.8000000417232513,
+        0,
+        1.1000000536441803,
+        0.550000011920929,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_cyan_nav_stripe",
+      "nodeName": "DET_cyan_nav_stripe",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.8000000417232513,
+        0,
+        0,
+        0,
+        0,
+        0.8000000417232513,
+        0,
+        0,
+        0,
+        0,
+        0.8000000417232513,
+        0,
+        1.1000000536441803,
+        0.550000011920929,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.det-dock-collar-scuff",
+      "localTransform": [
+        0.3500000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.3500000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.3500000238418579,
+        0,
+        1.350000023841858,
+        -1.0499999523162842,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_dock_collar_scuff",
+      "nodeName": "DET_dock_collar_scuff",
+      "nodePath": [
+        7
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.3500000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.3500000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.3500000238418579,
+        0,
+        1.350000023841858,
+        -1.0499999523162842,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.det-inspection-stencil",
+      "localTransform": [
+        0.1600000113248825,
+        0,
+        0,
+        0,
+        0,
+        0.1600000113248825,
+        0,
+        0,
+        0,
+        0,
+        0.1600000113248825,
+        0,
+        0.45000000298023224,
+        0.3499999940395355,
+        -0.5199999809265137,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_inspection_stencil",
+      "nodeName": "DET_inspection_stencil",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.1600000113248825,
+        0,
+        0,
+        0,
+        0,
+        0.1600000113248825,
+        0,
+        0,
+        0,
+        0,
+        0.1600000113248825,
+        0,
+        0.45000000298023224,
+        0.3499999940395355,
+        -0.5199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.det-maintenance-tick",
+      "localTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        1.7999999523162842,
+        -0.2500000074505806,
+        0.3799999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_maintenance_tick",
+      "nodeName": "DET_maintenance_tick",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        1.7999999523162842,
+        -0.2500000074505806,
+        0.3799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.det-panel-respray-edge",
+      "localTransform": [
+        0.699999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        0.15000000223517418,
+        0.15000000968575478,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_panel_respray_edge",
+      "nodeName": "DET_panel_respray_edge",
+      "nodePath": [
+        8
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.699999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        0.15000000223517418,
+        0.15000000968575478,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.det-sync-ring-bridge",
+      "localTransform": [
+        0.2749999761581421,
+        0,
+        0,
+        0,
+        0,
+        0.2749999761581421,
+        0,
+        0,
+        0,
+        0,
+        0.2749999761581421,
+        0,
+        1.350000023841858,
+        -0.8199999928474426,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_sync_ring_bridge",
+      "nodeName": "DET_sync_ring_bridge",
+      "nodePath": [
+        6
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.2749999761581421,
+        0,
+        0,
+        0,
+        0,
+        0.2749999761581421,
+        0,
+        0,
+        0,
+        0,
+        0.2749999761581421,
+        0,
+        1.350000023841858,
+        -0.8199999928474426,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.det-torque-witness",
+      "localTransform": [
+        0.025000005960464478,
+        0,
+        0,
+        0,
+        0,
+        0.025000005960464478,
+        0,
+        0,
+        0,
+        0,
+        0.025000005960464478,
+        0,
+        0.20000000298023224,
+        -0.7200000286102295,
+        -0.41999998688697815,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_torque_witness",
+      "nodeName": "DET_torque_witness",
+      "nodePath": [
+        4
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.025000005960464478,
+        0,
+        0,
+        0,
+        0,
+        0.025000005960464478,
+        0,
+        0,
+        0,
+        0,
+        0.025000005960464478,
+        0,
+        0.20000000298023224,
+        -0.7200000286102295,
+        -0.41999998688697815,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.det-torque-witness-001",
+      "localTransform": [
+        0.02500009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.02500009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.02500009536743164,
+        0,
+        2.5,
+        -0.7200000286102295,
+        0.41999998688697815,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_torque_witness.001",
+      "nodeName": "DET_torque_witness.001",
+      "nodePath": [
+        5
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.02500009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.02500009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.02500009536743164,
+        0,
+        2.5,
+        -0.7200000286102295,
+        0.41999998688697815,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.engine-ion-twin",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_ion_twin",
+      "nodeName": "engine_ion_twin",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.hook-drive-core-p",
+      "localTransform": [
+        0.3780568838119507,
+        0,
+        0,
+        0,
+        0,
+        0.3780568838119507,
+        0,
+        0,
+        0,
+        0,
+        0.3780568838119507,
+        0,
+        -0.030000001192092896,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_CORE_P",
+      "nodeName": "HOOK_DRIVE_CORE_P",
+      "nodePath": [
+        0,
+        4,
+        0
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.twin-nozzle-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.3780568838119507,
+        0,
+        0,
+        0,
+        0,
+        0.3780568838119507,
+        0,
+        0,
+        0,
+        0,
+        0.3780568838119507,
+        0,
+        -0.030000001192092896,
+        0,
+        -1.0499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.hook-drive-core-s",
+      "localTransform": [
+        0.3780568838119507,
+        0,
+        0,
+        0,
+        0,
+        0.3780568838119507,
+        0,
+        0,
+        0,
+        0,
+        0.3780568838119507,
+        0,
+        -0.030000001192092896,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_CORE_S",
+      "nodeName": "HOOK_DRIVE_CORE_S",
+      "nodePath": [
+        0,
+        5,
+        0
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.twin-nozzle-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.3780568838119507,
+        0,
+        0,
+        0,
+        0,
+        0.3780568838119507,
+        0,
+        0,
+        0,
+        0,
+        0.3780568838119507,
+        0,
+        -0.030000001192092896,
+        0,
+        1.0499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.hook-drive-fan-p",
+      "localTransform": [
+        0.48470720648765564,
+        0,
+        0,
+        0,
+        0,
+        0.48470720648765564,
+        0,
+        0,
+        0,
+        0,
+        0.48470720648765564,
+        0,
+        0.16000000294297934,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_FAN_P",
+      "nodeName": "HOOK_DRIVE_FAN_P",
+      "nodePath": [
+        0,
+        4,
+        1
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.twin-nozzle-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.48470720648765564,
+        0,
+        0,
+        0,
+        0,
+        0.48470720648765564,
+        0,
+        0,
+        0,
+        0,
+        0.48470720648765564,
+        0,
+        0.16000000294297934,
+        0,
+        -1.0499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.hook-drive-fan-s",
+      "localTransform": [
+        0.48470720648765564,
+        0,
+        0,
+        0,
+        0,
+        0.48470720648765564,
+        0,
+        0,
+        0,
+        0,
+        0.48470720648765564,
+        0,
+        0.16000000294297934,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_FAN_S",
+      "nodeName": "HOOK_DRIVE_FAN_S",
+      "nodePath": [
+        0,
+        5,
+        1
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.twin-nozzle-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.48470720648765564,
+        0,
+        0,
+        0,
+        0,
+        0.48470720648765564,
+        0,
+        0,
+        0,
+        0,
+        0.48470720648765564,
+        0,
+        0.16000000294297934,
+        0,
+        1.0499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.hook-drive-plume-p",
+      "localTransform": [
+        0.3966483473777771,
+        0,
+        0,
+        0,
+        0,
+        0.3966483473777771,
+        0,
+        0,
+        0,
+        0,
+        0.3966483473777771,
+        0,
+        -0.1600000038743019,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_PLUME_P",
+      "nodeName": "HOOK_DRIVE_PLUME_P",
+      "nodePath": [
+        0,
+        4,
+        2
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.twin-nozzle-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.3966483473777771,
+        0,
+        0,
+        0,
+        0,
+        0.3966483473777771,
+        0,
+        0,
+        0,
+        0,
+        0.3966483473777771,
+        0,
+        -0.1600000038743019,
+        0,
+        -1.0499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.hook-drive-plume-s",
+      "localTransform": [
+        0.3966483473777771,
+        0,
+        0,
+        0,
+        0,
+        0.3966483473777771,
+        0,
+        0,
+        0,
+        0,
+        0.3966483473777771,
+        0,
+        -0.1600000038743019,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_PLUME_S",
+      "nodeName": "HOOK_DRIVE_PLUME_S",
+      "nodePath": [
+        0,
+        5,
+        2
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.twin-nozzle-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        0.3966483473777771,
+        0,
+        0,
+        0,
+        0,
+        0.3966483473777771,
+        0,
+        0,
+        0,
+        0,
+        0.3966483473777771,
+        0,
+        -0.1600000038743019,
+        0,
+        1.0499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.lod0-engine-ion-twin-main",
+      "localTransform": [
+        1.7000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.7000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.7000000476837158,
+        0,
+        1.3500000722706318,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ENGINE_ION_TWIN_MAIN",
+      "nodeName": "LOD0_ENGINE_ION_TWIN_MAIN",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.engine-ion-twin",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        1.7000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.7000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.7000000476837158,
+        0,
+        1.3500000722706318,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.mount-child",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.14000000059604645,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOUNT_Child",
+      "nodeName": "MOUNT_Child",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.engine-ion-twin",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.14000000059604645,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.static-hull-merged",
+      "localTransform": [
+        1.867606282234192,
+        0,
+        0,
+        0,
+        0,
+        1.867606282234192,
+        0,
+        0,
+        0,
+        0,
+        1.867606282234192,
+        0,
+        1.2500000374639058,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Static_Hull_Merged",
+      "nodeName": "Static_Hull_Merged",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.engine-ion-twin",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        1.867606282234192,
+        0,
+        0,
+        0,
+        0,
+        1.867606282234192,
+        0,
+        0,
+        0,
+        0,
+        1.867606282234192,
+        0,
+        1.2500000374639058,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.static-mechanical-merged",
+      "localTransform": [
+        1.8057950735092163,
+        0,
+        0,
+        0,
+        0,
+        1.8057950735092163,
+        0,
+        0,
+        0,
+        0,
+        1.8057950735092163,
+        0,
+        0.019999999552965164,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Static_Mechanical_Merged",
+      "nodeName": "Static_Mechanical_Merged",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.engine-ion-twin",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        1.8057950735092163,
+        0,
+        0,
+        0,
+        0,
+        1.8057950735092163,
+        0,
+        0,
+        0,
+        0,
+        1.8057950735092163,
+        0,
+        0.019999999552965164,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.twin-housing-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Twin_Housing_P",
+      "nodeName": "Twin_Housing_P",
+      "nodePath": [
+        0,
+        4,
+        3
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.twin-nozzle-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1.0499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.twin-housing-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Twin_Housing_S",
+      "nodeName": "Twin_Housing_S",
+      "nodePath": [
+        0,
+        5,
+        3
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.twin-nozzle-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1.0499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.twin-nozzle-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1.0499999523162842,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Twin_Nozzle_P",
+      "nodeName": "Twin_Nozzle_P",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.engine-ion-twin",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1.0499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.twin-nozzle-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1.0499999523162842,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Twin_Nozzle_S",
+      "nodeName": "Twin_Nozzle_S",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.engine-ion-twin",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1.0499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.twin-ring-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.019999999552965164,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Twin_Ring_P",
+      "nodeName": "Twin_Ring_P",
+      "nodePath": [
+        0,
+        4,
+        4
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.twin-nozzle-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.019999999552965164,
+        0,
+        -1.0499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-ion-twin.node.twin-ring-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.019999999552965164,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Twin_Ring_S",
+      "nodeName": "Twin_Ring_S",
+      "nodePath": [
+        0,
+        5,
+        4
+      ],
+      "parentId": "sf.render.engine-ion-twin.node.twin-nozzle-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-ion-twin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.019999999552965164,
+        0,
+        1.0499999523162842,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "d1f6dcd06a1b3eeef8930479d567864a525f5cf1d4affeb152fb3e20419950c0"
+    },
+    "sourceGlb": {
+      "bytes": 157040,
+      "sha256": "35671120a12639a92091b01828384941ee5fbc8e9b453d012319a2a80819dabf",
+      "uri": "engine_ion_twin.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 145976,
+    "sha256": "745a78dba9ceb0b57e1c24433a0c03a772bde878c05acb419c1b3466eaeff6e8",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.2899692428991834,
+        -0.12868947988354362,
+        0
+      ],
+      "max": [
+        2.7999314462937894,
+        0.8176156535126646,
+        1.867606282234192
+      ],
+      "min": [
+        -0.21999296049542266,
+        -1.0749946132797519,
+        -1.867606282234192
+      ],
+      "size": [
+        3.019924406789212,
+        1.8926102667924165,
+        3.735212564468384
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.14000000059604645,
+          0,
+          0,
+          1
+        ],
+        "name": "MOUNT_Child",
+        "planIndex": 3,
+        "tags": {
+          "mountKey": "true",
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "plume"
+        },
+        "userData": {
+          "forward": [
+            -1,
+            0,
+            0
+          ],
+          "name": "MOUNT_Child",
+          "role": "plume",
+          "spacefaceMount": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOUNT_Child",
+            "recordIds": [
+              "sf.render.engine-ion-twin.node.mount-child"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "hull": 4,
+      "mechanical": 10
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 26,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.7000000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.7000000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.7000000476837158,
+          0,
+          1.3500000722706318,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_ENGINE_ION_TWIN_MAIN",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.867606282234192,
+          0,
+          0,
+          0,
+          0,
+          1.867606282234192,
+          0,
+          0,
+          0,
+          0,
+          1.867606282234192,
+          0,
+          1.2500000374639058,
+          0,
+          0,
+          1
+        ],
+        "name": "Static_Hull_Merged",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.8057950735092163,
+          0,
+          0,
+          0,
+          0,
+          1.8057950735092163,
+          0,
+          0,
+          0,
+          0,
+          1.8057950735092163,
+          0,
+          0.019999999552965164,
+          0,
+          0,
+          1
+        ],
+        "name": "Static_Mechanical_Merged",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3780568838119507,
+          0,
+          0,
+          0,
+          0,
+          0.3780568838119507,
+          0,
+          0,
+          0,
+          0,
+          0.3780568838119507,
+          0,
+          -0.030000001192092896,
+          0,
+          -1.0499999523162842,
+          1
+        ],
+        "name": "HOOK_DRIVE_CORE_P",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            0.3780568838119507,
+            0,
+            0,
+            0,
+            0,
+            0.3780568838119507,
+            0,
+            0,
+            0,
+            0,
+            0.3780568838119507,
+            0,
+            -0.030000001192092896,
+            0,
+            -1.0499999523162842,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.48470720648765564,
+          0,
+          0,
+          0,
+          0,
+          0.48470720648765564,
+          0,
+          0,
+          0,
+          0,
+          0.48470720648765564,
+          0,
+          0.16000000294297934,
+          0,
+          -1.0499999523162842,
+          1
+        ],
+        "name": "HOOK_DRIVE_FAN_P",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "drive": "fan",
+          "driveAnchorMatrix": [
+            0.48470720648765564,
+            0,
+            0,
+            0,
+            0,
+            0.48470720648765564,
+            0,
+            0,
+            0,
+            0,
+            0.48470720648765564,
+            0,
+            0.16000000294297934,
+            0,
+            -1.0499999523162842,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3966483473777771,
+          0,
+          0,
+          0,
+          0,
+          0.3966483473777771,
+          0,
+          0,
+          0,
+          0,
+          0.3966483473777771,
+          0,
+          -0.1600000038743019,
+          0,
+          -1.0499999523162842,
+          1
+        ],
+        "name": "HOOK_DRIVE_PLUME_P",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "drive": "plume",
+          "driveAnchorMatrix": [
+            0.3966483473777771,
+            0,
+            0,
+            0,
+            0,
+            0.3966483473777771,
+            0,
+            0,
+            0,
+            0,
+            0.3966483473777771,
+            0,
+            -0.1600000038743019,
+            0,
+            -1.0499999523162842,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3780568838119507,
+          0,
+          0,
+          0,
+          0,
+          0.3780568838119507,
+          0,
+          0,
+          0,
+          0,
+          0.3780568838119507,
+          0,
+          -0.030000001192092896,
+          0,
+          1.0499999523162842,
+          1
+        ],
+        "name": "HOOK_DRIVE_CORE_S",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            0.3780568838119507,
+            0,
+            0,
+            0,
+            0,
+            0.3780568838119507,
+            0,
+            0,
+            0,
+            0,
+            0.3780568838119507,
+            0,
+            -0.030000001192092896,
+            0,
+            1.0499999523162842,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.48470720648765564,
+          0,
+          0,
+          0,
+          0,
+          0.48470720648765564,
+          0,
+          0,
+          0,
+          0,
+          0.48470720648765564,
+          0,
+          0.16000000294297934,
+          0,
+          1.0499999523162842,
+          1
+        ],
+        "name": "HOOK_DRIVE_FAN_S",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "drive": "fan",
+          "driveAnchorMatrix": [
+            0.48470720648765564,
+            0,
+            0,
+            0,
+            0,
+            0.48470720648765564,
+            0,
+            0,
+            0,
+            0,
+            0.48470720648765564,
+            0,
+            0.16000000294297934,
+            0,
+            1.0499999523162842,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3966483473777771,
+          0,
+          0,
+          0,
+          0,
+          0.3966483473777771,
+          0,
+          0,
+          0,
+          0,
+          0.3966483473777771,
+          0,
+          -0.1600000038743019,
+          0,
+          1.0499999523162842,
+          1
+        ],
+        "name": "HOOK_DRIVE_PLUME_S",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "drive": "plume",
+          "driveAnchorMatrix": [
+            0.3966483473777771,
+            0,
+            0,
+            0,
+            0,
+            0.3966483473777771,
+            0,
+            0,
+            0,
+            0,
+            0.3966483473777771,
+            0,
+            -0.1600000038743019,
+            0,
+            1.0499999523162842,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.8000000417232513,
+          0,
+          0,
+          0,
+          0,
+          0.8000000417232513,
+          0,
+          0,
+          0,
+          0,
+          0.8000000417232513,
+          0,
+          1.1000000536441803,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "DET_cyan_nav_stripe",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.1600000113248825,
+          0,
+          0,
+          0,
+          0,
+          0.1600000113248825,
+          0,
+          0,
+          0,
+          0,
+          0.1600000113248825,
+          0,
+          0.45000000298023224,
+          0.3499999940395355,
+          -0.5199999809265137,
+          1
+        ],
+        "name": "DET_inspection_stencil",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          1.7999999523162842,
+          -0.2500000074505806,
+          0.3799999952316284,
+          1
+        ],
+        "name": "DET_maintenance_tick",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.025000005960464478,
+          0,
+          0,
+          0,
+          0,
+          0.025000005960464478,
+          0,
+          0,
+          0,
+          0,
+          0.025000005960464478,
+          0,
+          0.20000000298023224,
+          -0.7200000286102295,
+          -0.41999998688697815,
+          1
+        ],
+        "name": "DET_torque_witness",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.02500009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.02500009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.02500009536743164,
+          0,
+          2.5,
+          -0.7200000286102295,
+          0.41999998688697815,
+          1
+        ],
+        "name": "DET_torque_witness001",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.2749999761581421,
+          0,
+          0,
+          0,
+          0,
+          0.2749999761581421,
+          0,
+          0,
+          0,
+          0,
+          0.2749999761581421,
+          0,
+          1.350000023841858,
+          -0.8199999928474426,
+          0,
+          1
+        ],
+        "name": "DET_sync_ring_bridge",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3500000238418579,
+          0,
+          0,
+          0,
+          0,
+          0.3500000238418579,
+          0,
+          0,
+          0,
+          0,
+          0.3500000238418579,
+          0,
+          1.350000023841858,
+          -1.0499999523162842,
+          0,
+          1
+        ],
+        "name": "DET_dock_collar_scuff",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.699999988079071,
+          0,
+          0,
+          0,
+          0,
+          0.699999988079071,
+          0,
+          0,
+          0,
+          0,
+          0.699999988079071,
+          0,
+          0.15000000223517418,
+          0.15000000968575478,
+          0,
+          1
+        ],
+        "name": "DET_panel_respray_edge",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "engine",
+    "url": "assets/ships/release/parts/engines/engine_ion_twin.glb"
+  },
+  "runtimeHash": "abb40d0fa57535c33fd85c2c130fbe26c38f9d20eb337a3ef7ceeff664016144",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.7999314462937894,
+          0.8176156535126646,
+          1.867606282234192
+        ],
+        "min": [
+          -0.21999296049542266,
+          -1.0749946132797519,
+          -1.867606282234192
+        ]
+      },
+      "id": "sf.render.engine-ion-twin.body",
+      "nodeIds": [
+        "sf.render.engine-ion-twin.node.det-cyan-nav-stripe",
+        "sf.render.engine-ion-twin.node.det-dock-collar-scuff",
+        "sf.render.engine-ion-twin.node.det-inspection-stencil",
+        "sf.render.engine-ion-twin.node.det-maintenance-tick",
+        "sf.render.engine-ion-twin.node.det-panel-respray-edge",
+        "sf.render.engine-ion-twin.node.det-sync-ring-bridge",
+        "sf.render.engine-ion-twin.node.det-torque-witness",
+        "sf.render.engine-ion-twin.node.det-torque-witness-001",
+        "sf.render.engine-ion-twin.node.engine-ion-twin",
+        "sf.render.engine-ion-twin.node.hook-drive-core-p",
+        "sf.render.engine-ion-twin.node.hook-drive-core-s",
+        "sf.render.engine-ion-twin.node.hook-drive-fan-p",
+        "sf.render.engine-ion-twin.node.hook-drive-fan-s",
+        "sf.render.engine-ion-twin.node.hook-drive-plume-p",
+        "sf.render.engine-ion-twin.node.hook-drive-plume-s",
+        "sf.render.engine-ion-twin.node.lod0-engine-ion-twin-main",
+        "sf.render.engine-ion-twin.node.mount-child",
+        "sf.render.engine-ion-twin.node.static-hull-merged",
+        "sf.render.engine-ion-twin.node.static-mechanical-merged",
+        "sf.render.engine-ion-twin.node.twin-housing-p",
+        "sf.render.engine-ion-twin.node.twin-housing-s",
+        "sf.render.engine-ion-twin.node.twin-nozzle-p",
+        "sf.render.engine-ion-twin.node.twin-nozzle-s",
+        "sf.render.engine-ion-twin.node.twin-ring-p",
+        "sf.render.engine-ion-twin.node.twin-ring-s"
+      ]
+    }
+  ]
+}

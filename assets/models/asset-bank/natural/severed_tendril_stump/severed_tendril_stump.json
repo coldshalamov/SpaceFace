@@ -1,0 +1,258 @@
+{
+  "assetId": "severed_tendril_stump",
+  "category": "growth",
+  "description": "severed tendril stump; reusable growth assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_HOST_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.06,
+          -0.0
+        ],
+        "size": [
+          0.864,
+          0.12,
+          0.864
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5,
+          0.65,
+          -0.0
+        ],
+        "size": [
+          0.16,
+          0.9,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.3535533905932738,
+          0.65,
+          -0.35355339059327373
+        ],
+        "size": [
+          0.16,
+          0.9,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          3.061616997868383e-17,
+          0.65,
+          -0.5
+        ],
+        "size": [
+          0.16,
+          0.9,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.35355339059327373,
+          0.65,
+          -0.3535533905932738
+        ],
+        "size": [
+          0.16,
+          0.9,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5,
+          0.65,
+          -6.123233995736766e-17
+        ],
+        "size": [
+          0.16,
+          0.9,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.35355339059327384,
+          0.65,
+          0.35355339059327373
+        ],
+        "size": [
+          0.16,
+          0.9,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -9.184850993605148e-17,
+          0.65,
+          0.5
+        ],
+        "size": [
+          0.16,
+          0.9,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.3535533905932737,
+          0.65,
+          0.35355339059327384
+        ],
+        "size": [
+          0.16,
+          0.9,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "growth",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -0.732416033744812,
+      -0.00032759367604739964,
+      -0.7783918380737305
+    ],
+    "max": [
+      0.7919999957084656,
+      1.4550000429153442,
+      0.7712465524673462
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "severed_tendril_stump_lod0.glb",
+      "triangles": 5132,
+      "draws": 3,
+      "bytes": 230488,
+      "method": "source",
+      "sha256": "9e2194871d5a9558a41d38ac402b46fb42c418b2fb825391d77ef8fff862a0f9"
+    },
+    {
+      "level": 1,
+      "file": "severed_tendril_stump_lod1.glb",
+      "triangles": 2052,
+      "draws": 3,
+      "bytes": 116400,
+      "method": "Forge-decimation",
+      "sha256": "eb49b4edbfca843bfed22fb07be01f668fe9bbe85ef47ad21b81d4be2f512166"
+    },
+    {
+      "level": 2,
+      "file": "severed_tendril_stump_lod2.glb",
+      "triangles": 922,
+      "draws": 3,
+      "bytes": 68660,
+      "method": "Forge-decimation",
+      "sha256": "b717aab2a6609bb471b1c0d10c36713cd72a60cdf776d8bbaff0529386cbcc98"
+    }
+  ]
+}

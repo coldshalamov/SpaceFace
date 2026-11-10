@@ -1,0 +1,674 @@
+// PQ-155.00 — committed hour → verb → cost → gate table for TECH_NODES.
+//
+// Hours are honest, not the §15.1 wish. The follow-on faucet work landed:
+// first-contact RP (story field sample + discovery firsts + honored clauses)
+// plus a recon/salvage retune bring the first upgrade to ~15–25 min. The
+// band below is DERIVED from live data, not written down — see EARLY_RP_POOL
+// and VERB_LADDER_RATES; do not retune the constants to hide a regression.
+// PQ-155.01 owns the ten-hour sim; this file also holds unlock helpers.
+//
+// tech.js stays import-free; this file is the table.
+
+import { NEW_GAME } from './newGameDefaults.js';
+import { TECH_NODES } from './tech.js';
+import { MODULES } from './modules.js';
+
+import { STORY_BEATS } from './missions.js';
+import { RESEARCH_GRANTS } from './researchGrants.js';
+
+/**
+ * One-time early RP the live game pays inside the tutorial window: the B0
+ * field-sample grant plus the first anomaly triangulation and first signal
+ * investigation a scanning pilot collects. Derived from live reward data so
+ * the pool can never drift from the grants it models. `hours` is the honest
+ * collection time (~21 min of B0 settlement + first fieldwork); the pool is
+ * counted once against a node's whole path — it is earned once and spends
+ * toward whatever is researched first.
+ */
+export const EARLY_RP_POOL = Object.freeze({
+  rp: (Number(STORY_BEATS[0] && STORY_BEATS[0].reward && STORY_BEATS[0].reward.rp) || 0)
+    + RESEARCH_GRANTS['anomaly:triangulated'].rp
+    + RESEARCH_GRANTS['signal:investigated'].rp,
+  hours: 0.35,
+});
+
+/** The B0 settlement credit payout — lands at ~9 min, before the faucet matters. */
+export const EARLY_CREDITS_POOL = Object.freeze({
+  credits: Number(STORY_BEATS[0] && STORY_BEATS[0].reward && STORY_BEATS[0].reward.credits) || 0,
+  hours: 0.15,
+});
+
+/**
+ * First-upgrade pacing under the derived economy (ruling 2026-09-19, owner-delegated).
+ *
+ * The PQ-155 authored window (15–25 min) was denominated in the pre-derived economy,
+ * where the wallet gated the entry node (6000 cr against 5000 start + B0 pool).
+ * The derived price scale repriced the entry tier to 1200 cr — start capital now
+ * covers it outright, and the taught arc (B0 settlement ~9 min → first dock → first
+ * haul), not the wallet, gates when the purchase happens. The honest saving question
+ * moves to the first upgrade a captain must actually EARN: firstEarnedRow() names it
+ * (tech_attack_topology at ~13 min under the Foothold characterization, matching the
+ * model's own sim — first unlock 0.13 h). The window brackets that behavior.
+ */
+export const FIRST_UPGRADE_MINUTES = Object.freeze({ min: 10, max: 30, midpoint: 20 });
+export const TARGET_FIRST_UPGRADE_MINUTES = 20;
+
+/**
+ * Characterization rates only, derived from the delivered economy model's Foothold
+ * phase (src/economy/economyModel.js): 6,000 cr/h target net, 12 RP/h assumed.
+ * The retired hunter-cohort floor (62.5 cr/min) characterized the pre-derived
+ * economy and no longer describes what a Foothold pilot earns. The one-time
+ * first-contact pools stay derived from live story-beat rewards. Late nodes still
+ * look slow against Foothold rates; do not invent a late-game rate to hide what is
+ * left of the canyon — later phases earn the later tiers.
+ */
+export const VERB_LADDER_RATES = Object.freeze({
+  startCredits: NEW_GAME.credits,
+  startRp: NEW_GAME.researchPoints || 0,
+  rpPerHour: 12,
+  earlyRpPool: EARLY_RP_POOL.rp,
+  earlyRpPoolHours: EARLY_RP_POOL.hours,
+  earlyCreditsPool: EARLY_CREDITS_POOL.credits,
+  earlyCreditsPoolHours: EARLY_CREDITS_POOL.hours,
+  creditsPerHour: 6000,
+});
+
+/** Already folded before this leaf. No new fold in PQ-155.00. */
+export const FOLDED_TECH_NODES = Object.freeze([
+  Object.freeze({
+    id: 'tech_advanced_navigation',
+    foldedInto: 'tech_long_range_survey',
+    reason: 'Pure jump-range / cooldown stats. Saves keep persisted efficiencyMods.',
+  }),
+]);
+
+/**
+ * FB-053 — unlock keys that are themselves live verbs even though they name no ship or module:
+ * a second drone off one bay (extraDronePerBay), hiring an NPC trader (npcTraderHiring), and
+ * raising a depot/battery on a claimed body (outpostConstruction). A node carrying any of these
+ * is a verb under strict classification. droneTierCap stays a stat — a cap bump alone is not a
+ * thing you can do.
+ */
+export const VERB_UNLOCK_KEYS = Object.freeze([
+  'extraDronePerBay',
+  'npcTraderHiring',
+  'outpostConstruction',
+]);
+
+/** Strict leftover: no ship, no module, and no verb unlock key. Empty as of FB-053. */
+export const STRICT_STAT_ONLY_IDS = Object.freeze([]);
+
+/**
+ * Broad leftover: hull-license-only ships, plus two modules that only enlarge
+ * a verb the player already has (shield / hold).
+ */
+export const BROAD_PASSIVE_IDS = Object.freeze([
+  'tech_hardened_deflectors',
+  'tech_matter_compression',
+]);
+
+export const STAT_ONLY_JUSTIFICATIONS = Object.freeze({
+  tech_industrial_mining:
+    'Hull license only (Ironback). Same mining verb as the starter laser, on a barge. Not folded: ships.js keys the hull to this id (ships.js is out of this write set).',
+  tech_strike_craft:
+    'Hull license only (Hornet). Same guns as combat_basics, on a faster body. Not folded: a T2 interceptor at first upgrade would smash the ladder.',
+  tech_warship_license:
+    'Hull license only (Bastion). A heavier body, not a new shot or line. Not folded: the corvette buy is a distinct save key.',
+  tech_capital_hulls:
+    'Hull license only (Colossus). The siege verbs sit on capital_weapons / flagship. Not folded: merging would skip the hull gate ships.js requires.',
+  tech_hardened_deflectors:
+    'Aegis L plus 5% regen. Same "raise a shield" verb as deflector_theory. Not folded: Aegis is a distinct module id in modules.js (out of this write set).',
+  tech_matter_compression:
+    'Cargo compactor. More hold, not a new carry verb — bulk_logistics already gives the Atlas and an expander. Not folded: module id lives in modules.js.',
+});
+
+const VERBS = Object.freeze({
+  tech_combat_basics: 'Fit a second gun and fly the Wasp',
+  tech_beam_focusing: 'Hold a beam on a hull',
+  tech_kinetic_drivers: 'Throw a rail slug or a concussion shove',
+  tech_guided_ordnance: 'Fire a seeking rack or drop a vector mine',
+  tech_plasma_dynamics: 'EMP a ship or kill its RCS',
+  tech_deflector_theory: 'Raise a capacitor shield, throw chaff, or bait with a decoy buoy',
+  tech_hardened_deflectors: 'Fit a larger Aegis (same shield verb)',
+  tech_strike_craft: 'Fly the Hornet (hull license)',
+  tech_fire_control: 'Sweep, snare, or bridle on the Massline; 6x spool; intercept at point-blank',
+  tech_warship_license: 'Fly the Bastion (hull license)',
+  tech_capital_weapons: 'Fly the Warden; fire a heavy beam or torpedo',
+  tech_capital_hulls: 'Fly the Colossus (hull license)',
+  tech_flagship_command: 'Fly the Leviathan; fire the siege lance',
+  tech_attack_topology: 'Twin or triad mount; pierce or fork a shot',
+  tech_ricochet_ballistics: 'Bank a shot off a hull',
+  tech_payload_conduction: 'Ion, burn, cryo, or gravity-tag a payload',
+  tech_orbit_cryo: 'Lock a target in a cryo orbit',
+  tech_industrial_mining: 'Fly the Ironback barge (hull license)',
+  tech_focused_extraction: 'Cut rock with a medium mining beam',
+  tech_deep_core_mining: 'Pulverize or industrial-extract a rock',
+  tech_bulk_logistics: 'Fly the Atlas; run an industrial spool',
+  tech_matter_compression: 'Compact the hold (same carry verb)',
+  tech_drive_tuning: 'Fit fusion, afterburner, jump, cloak, or swing a dash around a line',
+  tech_impulse_ballistics: 'Throw a vector charge',
+  tech_graviton_drives: 'Mark gravity, sink momentum, shunt inertia, or open a well',
+  tech_long_range_survey: 'Fly the Ranger; open a wormhole',
+  tech_tractor_systems: 'Tow, whip, or couple a body; magnet salvage; flail a tow; fit a collector maw; fly the Hawser tug',
+  tech_drone_control: 'Launch a drone from a bay',
+  tech_drone_swarm: 'Fly a second drone off one bay',
+  tech_autonomous_fleets: 'Hire an NPC trader to fly your routes',
+  tech_nanofabrication: 'Repair with nanobots',
+  tech_outpost_charter: 'Raise a depot or battery on a claimed body',
+});
+
+function list(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+export function nodeUnlocksShipOrModule(node) {
+  const unlocks = node && node.unlocks ? node.unlocks : {};
+  return list(unlocks.ships).length + list(unlocks.modules).length > 0;
+}
+
+/**
+ * FB-053 — a node is a verb when it unlocks a ship/module OR carries a verb unlock key with a
+ * live consumer (see VERB_UNLOCK_KEYS). The three logistics nodes moved here; droneTierCap by
+ * itself still counts for nothing.
+ */
+export function nodeUnlocksVerb(node) {
+  if (nodeUnlocksShipOrModule(node)) return true;
+  const unlocks = node && node.unlocks ? node.unlocks : {};
+  return VERB_UNLOCK_KEYS.some((key) => unlocks[key] != null && unlocks[key] !== false && unlocks[key] !== 0);
+}
+
+export function isHullLicenseOnly(node) {
+  const unlocks = node && node.unlocks ? node.unlocks : {};
+  return list(unlocks.ships).length > 0 && list(unlocks.modules).length === 0;
+}
+
+export function classifyTechNode(node, mode = 'strict') {
+  if (!nodeUnlocksVerb(node)) return 'stat-only';
+  if (mode === 'broad' && (isHullLicenseOnly(node) || BROAD_PASSIVE_IDS.includes(node.id))) {
+    return 'stat-only';
+  }
+  return 'verb';
+}
+
+export function countVerbVsStatOnly(nodes = TECH_NODES, mode = 'strict') {
+  let verb = 0;
+  let statOnly = 0;
+  const statOnlyIds = [];
+  for (const node of nodes) {
+    if (classifyTechNode(node, mode) === 'verb') verb += 1;
+    else {
+      statOnly += 1;
+      statOnlyIds.push(node.id);
+    }
+  }
+  return { verb, statOnly, statOnlyIds, total: nodes.length };
+}
+
+function pathIdsFor(nodeId, byId) {
+  const seen = new Set();
+  const stack = [nodeId];
+  while (stack.length) {
+    const id = stack.pop();
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const node = byId.get(id);
+    if (!node) {
+      throw new Error(`techVerbLadder: unknown tech id ${id}`);
+    }
+    for (const prereq of list(node.prereqs)) stack.push(prereq);
+  }
+  return seen;
+}
+
+export function pathCostFor(nodeId, nodes = TECH_NODES) {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  let credits = 0;
+  let rp = 0;
+  for (const id of pathIdsFor(nodeId, byId)) {
+    const cost = byId.get(id).cost || {};
+    credits += Number(cost.credits) || 0;
+    rp += Number(cost.rp) || 0;
+  }
+  return { credits, rp };
+}
+
+function pooledHours(need, pool, poolHours, perHour) {
+  const boundedPool = Math.max(0, Number(pool) || 0);
+  const boundedPoolHours = Math.max(0, Number(poolHours) || 0);
+  if (!(need > 0)) return 0;
+  if (need <= boundedPool) return boundedPool > 0 ? boundedPoolHours * (need / boundedPool) : 0;
+  return boundedPoolHours + (need - boundedPool) / perHour;
+}
+
+export function honestHoursForCost(cost, rates = VERB_LADDER_RATES) {
+  const creditNeed = Math.max(0, (Number(cost.credits) || 0) - rates.startCredits);
+  const rpNeed = Math.max(0, (Number(cost.rp) || 0) - rates.startRp);
+  // First-contact income is a bounded pool collected over ~poolHours, not a
+  // rate: needs inside the pool land proportionally inside that window, and
+  // anything beyond it accrues at the sustained floor.
+  const creditHours = pooledHours(
+    creditNeed, rates.earlyCreditsPool, rates.earlyCreditsPoolHours, rates.creditsPerHour,
+  );
+  const rpHours = pooledHours(
+    rpNeed, rates.earlyRpPool, rates.earlyRpPoolHours, rates.rpPerHour,
+  );
+  const hour = Math.max(creditHours, rpHours);
+  return {
+    hour,
+    creditHours,
+    rpHours,
+    bottleneck: rpHours >= creditHours ? 'rp' : 'credits',
+  };
+}
+
+function buildLadder(nodes) {
+  const rows = nodes.map((node) => {
+    const pathCost = pathCostFor(node.id, nodes);
+    const timing = honestHoursForCost(pathCost);
+    const kindStrict = classifyTechNode(node, 'strict');
+    const kindBroad = classifyTechNode(node, 'broad');
+    const justification = STAT_ONLY_JUSTIFICATIONS[node.id] || null;
+    return Object.freeze({
+      hour: Number(timing.hour.toFixed(2)),
+      nodeId: node.id,
+      name: node.name,
+      branch: node.branch,
+      verb: VERBS[node.id] || node.name,
+      cost: Object.freeze({
+        credits: Number(node.cost && node.cost.credits) || 0,
+        rp: Number(node.cost && node.cost.rp) || 0,
+      }),
+      gate: Object.freeze({
+        prereqs: Object.freeze(list(node.prereqs).slice()),
+        pathCredits: pathCost.credits,
+        pathRp: pathCost.rp,
+        creditHours: Number(timing.creditHours.toFixed(2)),
+        rpHours: Number(timing.rpHours.toFixed(2)),
+        bottleneck: timing.bottleneck,
+      }),
+      kindStrict,
+      kindBroad,
+      justification,
+    });
+  });
+  rows.sort((a, b) => a.hour - b.hour || a.nodeId.localeCompare(b.nodeId));
+  return Object.freeze(rows);
+}
+
+export const TECH_VERB_LADDER = buildLadder(TECH_NODES);
+
+// The first upgrade is the taught combat arc's entry node, derived by id rather than
+// array order: TECH_NODES ordering is catalog freedom, and under the derived price
+// scale several entry-tier nodes sit at hour 0 (start capital covers them). The
+// honest saving question — "which upgrade must a captain actually earn, and how long
+// is that honestly?" — is answered by firstEarnedRow() below against the same ladder.
+const firstRow = TECH_VERB_LADDER.find((row) => row.nodeId === 'tech_combat_basics')
+  || TECH_VERB_LADDER[0];
+
+export const FIRST_UPGRADE = Object.freeze({
+  nodeId: firstRow.nodeId,
+  hour: firstRow.hour,
+  hourMinutes: FIRST_UPGRADE_MINUTES,
+  targetMinutes: TARGET_FIRST_UPGRADE_MINUTES,
+  meetsTarget: firstRow.hour * 60 <= TARGET_FIRST_UPGRADE_MINUTES,
+  bottleneck: firstRow.gate.bottleneck,
+  startCredits: VERB_LADDER_RATES.startCredits,
+  startRp: VERB_LADDER_RATES.startRp,
+  cost: firstRow.cost,
+  shortfallCredits: Math.max(0, firstRow.cost.credits - VERB_LADDER_RATES.startCredits),
+  shortfallRp: Math.max(0, firstRow.cost.rp - VERB_LADDER_RATES.startRp),
+});
+
+/**
+ * The first ladder row a captain must actually EARN (hour > 0): start capital and
+ * the one-time pools cover the entry tier outright under the derived price scale,
+ * so those rows sit honestly at hour 0. This is the row the honest saving window
+ * (FIRST_UPGRADE_MINUTES) describes. Undefined only if every node were free.
+ */
+export function firstEarnedRow() {
+  return TECH_VERB_LADDER.find((row) => row.hour > 0) || null;
+}
+
+/** Preferred branch order when the ten-hour sim spends on the next affordable node. */
+export const ECONOMY_CURVE_BRANCH_ORDER = Object.freeze({
+  hunter: Object.freeze(['combat', 'drives', 'logistics', 'industry']),
+  trader: Object.freeze(['industry', 'logistics', 'drives', 'combat']),
+  miner: Object.freeze(['industry', 'logistics', 'drives', 'combat']),
+});
+
+/**
+ * Next-verb goals. The curve sim saves for these instead of dumping RP into
+ * whichever cheap combat node is affordable. Off-goal buys are skipped.
+ */
+export const ECONOMY_CURVE_GOALS = Object.freeze({
+  hunter: Object.freeze([
+    'tech_combat_basics',
+    'tech_beam_focusing',
+    'tech_kinetic_drivers',
+    'tech_attack_topology',
+    'tech_guided_ordnance',
+    'tech_deflector_theory',
+  ]),
+  trader: Object.freeze([
+    'tech_tractor_systems',
+    'tech_bulk_logistics',
+    'tech_drive_tuning',
+    'tech_deflector_theory',
+    'tech_matter_compression',
+  ]),
+  miner: Object.freeze([
+    'tech_industrial_mining',
+    'tech_focused_extraction',
+    'tech_bulk_logistics',
+    'tech_tractor_systems',
+    'tech_drive_tuning',
+  ]),
+});
+
+/**
+ * The repeatable RP faucets that pay only once the pilot owns a path's entry node
+ * (RESEARCH_GRANTS rows with `requiresNode`: research:bounty, research:mining). Derived from the
+ * grant table so the ladder can never drift from what missions.js actually pays.
+ */
+export const CAREER_FAUCET_ROWS = Object.freeze(
+  Object.keys(RESEARCH_GRANTS)
+    .filter((key) => RESEARCH_GRANTS[key].repeatable === true && RESEARCH_GRANTS[key].requiresNode)
+    .map((key) => Object.freeze({
+      key,
+      requiresNode: RESEARCH_GRANTS[key].requiresNode,
+      types: RESEARCH_GRANTS[key].types,
+    })),
+);
+
+/** Which curve archetype's goal list must open with a faucet row's entry node. */
+const FAUCET_ARCHETYPE_BY_TYPE = Object.freeze({ bounty_hunt: 'hunter', mining_quota: 'miner' });
+
+export function treePathCost(nodes = TECH_NODES) {
+  let credits = 0;
+  let rp = 0;
+  for (const node of nodes) {
+    const cost = node && node.cost ? node.cost : {};
+    credits += Number(cost.credits) || 0;
+    rp += Number(cost.rp) || 0;
+  }
+  return Object.freeze({ credits, rp, nodes: nodes.length });
+}
+
+export function verbForNodeId(nodeId, ladder = TECH_VERB_LADDER) {
+  const row = ladder.find((entry) => entry.nodeId === nodeId);
+  if (row) return row.verb;
+  return VERBS[nodeId] || nodeId;
+}
+
+export function verbIdsOf(researched, mode = 'strict', nodes = TECH_NODES) {
+  const have = new Set(Array.isArray(researched) ? researched : []);
+  const ids = [];
+  for (const node of nodes) {
+    if (!have.has(node.id)) continue;
+    if (classifyTechNode(node, mode) === 'verb') ids.push(node.id);
+  }
+  return ids;
+}
+
+export function listAffordableTechNodes(wallet, nodes = TECH_NODES) {
+  const have = new Set(wallet && Array.isArray(wallet.researched) ? wallet.researched : []);
+  const credits = Number(wallet && wallet.credits) || 0;
+  const rp = Number(wallet && wallet.rp) || 0;
+  const out = [];
+  for (const node of nodes) {
+    if (have.has(node.id)) continue;
+    const prereqs = list(node.prereqs);
+    let ready = true;
+    for (const id of prereqs) {
+      if (!have.has(id)) { ready = false; break; }
+    }
+    if (!ready) continue;
+    const cost = node.cost || {};
+    if (credits < (Number(cost.credits) || 0)) continue;
+    if (rp < (Number(cost.rp) || 0)) continue;
+    out.push(node);
+  }
+  return out;
+}
+
+export function pickNextTechUnlock(wallet, archetype, nodes = TECH_NODES, ladder = TECH_VERB_LADDER) {
+  const candidates = listAffordableTechNodes(wallet, nodes);
+  if (!candidates.length) return null;
+  const goals = ECONOMY_CURVE_GOALS[archetype] || [];
+  if (goals.length) {
+    const researched = new Set(wallet && Array.isArray(wallet.researched) ? wallet.researched : []);
+    const affordable = new Map(candidates.map((node) => [node.id, node]));
+    for (const id of goals) {
+      if (researched.has(id)) continue;
+      return affordable.get(id) || null;
+    }
+    return null;
+  }
+  const prefs = ECONOMY_CURVE_BRANCH_ORDER[archetype] || [];
+  const hourById = new Map(ladder.map((row) => [row.nodeId, row.hour]));
+  let best = null;
+  let bestPref = 99;
+  let bestHour = Infinity;
+  for (const node of candidates) {
+    const prefIdx = prefs.indexOf(node.branch);
+    const pref = prefIdx === -1 ? 99 : prefIdx;
+    const hour = hourById.has(node.id) ? hourById.get(node.id) : Infinity;
+    if (
+      !best
+      || pref < bestPref
+      || (pref === bestPref && hour < bestHour)
+      || (pref === bestPref && hour === bestHour && node.id.localeCompare(best.id) < 0)
+    ) {
+      best = node;
+      bestPref = pref;
+      bestHour = hour;
+    }
+  }
+  return best;
+}
+
+export function purchaseAffordableTech(wallet, archetype, nodes = TECH_NODES, ladder = TECH_VERB_LADDER) {
+  const bought = [];
+  if (!wallet || typeof wallet !== 'object') return bought;
+  if (!Array.isArray(wallet.researched)) wallet.researched = [];
+  while (true) {
+    const next = pickNextTechUnlock(wallet, archetype, nodes, ladder);
+    if (!next) break;
+    const cost = next.cost || {};
+    wallet.credits = (Number(wallet.credits) || 0) - (Number(cost.credits) || 0);
+    wallet.rp = (Number(wallet.rp) || 0) - (Number(cost.rp) || 0);
+    wallet.researched.push(next.id);
+    bought.push({
+      id: next.id,
+      name: next.name,
+      branch: next.branch,
+      verb: verbForNodeId(next.id, ladder),
+      credits: Number(cost.credits) || 0,
+      rp: Number(cost.rp) || 0,
+    });
+  }
+  return bought;
+}
+
+export function assertCommittedLadder(ladder = TECH_VERB_LADDER) {
+  const errors = [];
+  if (ladder.length !== TECH_NODES.length) {
+    errors.push(`ladder rows ${ladder.length} !== nodes ${TECH_NODES.length}`);
+  }
+  const nodeIds = new Set(TECH_NODES.map((node) => node.id));
+  for (const row of ladder) {
+    if (!nodeIds.has(row.nodeId)) errors.push(`unknown ladder row ${row.nodeId}`);
+    if (!(typeof row.hour === 'number' && row.hour >= 0)) errors.push(`${row.nodeId} missing hour`);
+    if (!(typeof row.verb === 'string' && row.verb.length > 0)) errors.push(`${row.nodeId} missing verb`);
+    if (!row.cost || !Number.isFinite(row.cost.credits) || !Number.isFinite(row.cost.rp)) {
+      errors.push(`${row.nodeId} missing cost`);
+    }
+    if (!row.gate || (row.gate.bottleneck !== 'rp' && row.gate.bottleneck !== 'credits')) {
+      errors.push(`${row.nodeId} missing gate`);
+    }
+    const node = TECH_NODES.find((entry) => entry.id === row.nodeId);
+    if (node) {
+      if (row.cost.credits !== (Number(node.cost && node.cost.credits) || 0)) {
+        errors.push(`${row.nodeId} credit cost drifted from tech.js`);
+      }
+      if (row.cost.rp !== (Number(node.cost && node.cost.rp) || 0)) {
+        errors.push(`${row.nodeId} RP cost drifted from tech.js`);
+      }
+    }
+  }
+  if (FIRST_UPGRADE.nodeId !== 'tech_combat_basics') {
+    errors.push(`first upgrade is ${FIRST_UPGRADE.nodeId}, expected tech_combat_basics`);
+  }
+  // The entry node is start-capital covered under the derived price scale (hour 0 is
+  // honest); the saving window describes the first row that must actually be earned.
+  if (!(FIRST_UPGRADE.cost.credits <= FIRST_UPGRADE.startCredits)) {
+    errors.push(`entry node ${FIRST_UPGRADE.cost.credits} cr exceeds start capital ${FIRST_UPGRADE.startCredits} — the taught arc no longer gates the first purchase`);
+  }
+  const earned = firstEarnedRow();
+  if (!earned) {
+    errors.push('no ladder row requires earned income — the progression canyon is gone');
+  } else {
+    const earnedMinutes = earned.hour * 60;
+    if (earnedMinutes < FIRST_UPGRADE_MINUTES.min - 0.01 || earnedMinutes > FIRST_UPGRADE_MINUTES.max + 0.01) {
+      errors.push(`first earned upgrade ${earned.nodeId} at ${earnedMinutes} min is outside the honest ${FIRST_UPGRADE_MINUTES.min}–${FIRST_UPGRADE_MINUTES.max} band`);
+    }
+  }
+  if (FIRST_UPGRADE.targetMinutes !== TARGET_FIRST_UPGRADE_MINUTES) {
+    errors.push('15-minute wish constant drifted');
+  }
+  // The fighter/miner RP faucets pay only after their entry node is owned. That node must exist,
+  // cost no RP (else the faucet could never start), and head its archetype's goal list so the
+  // ten-hour sim buys it first — the guard and the goal order stay one story.
+  const costByNode = new Map(TECH_NODES.map((node) => [node.id, node]));
+  for (const row of CAREER_FAUCET_ROWS) {
+    const entry = costByNode.get(row.requiresNode);
+    if (!entry) {
+      errors.push(`${row.key} requires unknown node ${row.requiresNode}`);
+      continue;
+    }
+    if (Number(entry.cost && entry.cost.rp) > 0) {
+      errors.push(`${row.key} entry node ${row.requiresNode} costs RP — the faucet could never start`);
+    }
+    if (list(entry.prereqs).length) {
+      errors.push(`${row.key} entry node ${row.requiresNode} has prerequisites — it is not a path entry`);
+    }
+    for (const type of list(row.types)) {
+      const archetype = FAUCET_ARCHETYPE_BY_TYPE[type];
+      if (archetype && ECONOMY_CURVE_GOALS[archetype][0] !== row.requiresNode) {
+        errors.push(`${row.key} entry node ${row.requiresNode} is not the first ${archetype} goal`);
+      }
+    }
+  }
+  return { ok: errors.length === 0, errors, firstUpgrade: FIRST_UPGRADE };
+}
+
+const MODULE_BY_ID = new Map(MODULES.map((mod) => [mod.id, mod]));
+
+/**
+ * LG-VERB-CURVE. Ten verb keys whose first station door opens in that hour of
+ * the authored ladder, and not the hour before. Helios rack offers and modules
+ * with no research gate count as hour 0. Salvage-only hulls are not a door on
+ * this route. Seed 4242 does not reshuffle the table: hours come from costs.
+ * Nothing past hour 10 is printed: the next existing verb door is capital
+ * weapons at 12.31, and no later hour through 15 opens a new one.
+ */
+export const HOUR_VERB_CURVE = Object.freeze([
+  Object.freeze({ hour: 1, nodeId: 'tech_impulse_ballistics', moduleId: 'mod_charge_vector_rack', verbKey: 'bombPropulsion', label: 'Propelled charge' }),
+  Object.freeze({ hour: 2, nodeId: 'tech_fire_control', moduleId: 'mod_pds_servo_s', verbKey: 'pointDefense', label: 'Point defense' }),
+  Object.freeze({ hour: 3, nodeId: 'tech_drone_control', moduleId: 'mod_drone_bay_l', verbKey: 'droneBay', label: 'Launch a drone' }),
+  Object.freeze({ hour: 4, nodeId: 'tech_ricochet_ballistics', moduleId: 'mod_repulsion_trap_s', verbKey: 'repulsionTrap', label: 'Repulsion trap' }),
+  Object.freeze({ hour: 5, nodeId: 'tech_drone_swarm', moduleId: null, verbKey: 'extraDronePerBay', label: 'Second drone' }),
+  Object.freeze({ hour: 6, nodeId: 'tech_heat_lure', moduleId: 'mod_heat_lure_s', verbKey: 'heatLure', label: 'Heat lure' }),
+  Object.freeze({ hour: 7, nodeId: 'tech_autonomous_fleets', moduleId: null, verbKey: 'npcTraderHiring', label: 'Hire a trader' }),
+  Object.freeze({ hour: 8, nodeId: 'tech_containment_seal', moduleId: 'mod_containment_seal_s', verbKey: 'containmentSeal', label: 'Containment seal' }),
+  Object.freeze({ hour: 9, nodeId: 'tech_capture_cradle', moduleId: 'mod_capture_cradle_m', verbKey: 'captureSurvivalMult', label: 'Capture cradle' }),
+  Object.freeze({ hour: 10, nodeId: 'tech_outpost_charter', moduleId: null, verbKey: 'outpostConstruction', label: 'Raise an outpost' }),
+]);
+
+function moduleCarriesVerbKey(mod, verbKey) {
+  if (!mod || !verbKey) return false;
+  if (mod[verbKey] != null) return true;
+  return !!(mod.mods && mod.mods[verbKey] != null);
+}
+
+/** One line the research screen prints under its title. */
+export function hourVerbCurveLine(curve = HOUR_VERB_CURVE) {
+  return curve.map((row) => `${row.hour} ${row.label}`).join(' · ');
+}
+
+/**
+ * Earliest hour a purchasable door grants this verb key on the opening route.
+ * Helios rack offers and ungated modules are hour 0. Infinity when nothing
+ * sellable carries the key.
+ */
+export function verbKeyFirstHour(verbKey, ladder = TECH_VERB_LADDER, nodes = TECH_NODES) {
+  const hourOf = new Map(ladder.map((row) => [row.nodeId, row.hour]));
+  let best = Infinity;
+  for (const mod of MODULES) {
+    if (!mod || mod.purchasable === false || mod.salvageOnly) continue;
+    if (!moduleCarriesVerbKey(mod, verbKey)) continue;
+    let hour = 0;
+    const helios = mod.shopOffers && mod.shopOffers.station_helios;
+    if (!helios && mod.requiresTech) {
+      const gated = hourOf.get(mod.requiresTech);
+      if (typeof gated !== 'number') continue;
+      hour = gated;
+    }
+    if (hour < best) best = hour;
+  }
+  for (const node of nodes) {
+    if (!node || !node.unlocks || node.unlocks[verbKey] == null) continue;
+    const hour = hourOf.get(node.id);
+    if (typeof hour === 'number' && hour < best) best = hour;
+  }
+  return best;
+}
+
+/**
+ * Empty when hours 1–10 each open in that hour on the named node.
+ * A row past hour 10 is a gap: no existing verb door opens in each of 11–15.
+ */
+export function hourVerbCurveGaps(curve = HOUR_VERB_CURVE, ladder = TECH_VERB_LADDER, nodes = TECH_NODES) {
+  const gaps = [];
+  const hours = new Set();
+  const keys = new Set();
+  const byNode = new Map(nodes.map((node) => [node.id, node]));
+  for (const row of curve) {
+    if (hours.has(row.hour)) gaps.push(`hour ${row.hour} repeated`);
+    hours.add(row.hour);
+    if (keys.has(row.verbKey)) gaps.push(`verb ${row.verbKey} repeated`);
+    keys.add(row.verbKey);
+    const node = byNode.get(row.nodeId);
+    if (!node) {
+      gaps.push(`missing node ${row.nodeId}`);
+      continue;
+    }
+    if (row.hour <= 10) {
+      if (row.moduleId) {
+        const modules = node.unlocks && node.unlocks.modules;
+        if (!Array.isArray(modules) || !modules.includes(row.moduleId)) {
+          gaps.push(`${row.nodeId} does not unlock ${row.moduleId}`);
+        }
+        const mod = MODULE_BY_ID.get(row.moduleId);
+        if (!moduleCarriesVerbKey(mod, row.verbKey)) {
+          gaps.push(`${row.moduleId} does not carry ${row.verbKey}`);
+        }
+        if (!mod || mod.requiresTech !== row.nodeId) {
+          gaps.push(`${row.moduleId} is not gated by ${row.nodeId}`);
+        }
+      } else if (!node.unlocks || node.unlocks[row.verbKey] == null) {
+        gaps.push(`${row.nodeId} does not grant ${row.verbKey}`);
+      }
+      const first = verbKeyFirstHour(row.verbKey, ladder, nodes);
+      if (!(first > row.hour - 1 && first <= row.hour)) {
+        gaps.push(`${row.verbKey} first opens at ${first}, not during hour ${row.hour}`);
+      }
+      continue;
+    }
+    gaps.push(`hour ${row.hour} is past the last hour an existing verb door opens in`);
+  }
+  for (let hour = 1; hour <= 10; hour += 1) {
+    if (!hours.has(hour)) gaps.push(`missing hour ${hour}`);
+  }
+  return gaps;
+}

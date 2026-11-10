@@ -1,0 +1,129 @@
+{
+  "schema": "spaceface.funMeasure.v1",
+  "timestamp": "2026-09-05T04:11:51.252Z",
+  "date": "2026-09-05",
+  "quick": false,
+  "harnessDigest": "afd4a3c918bb481f9cacd91d8703b159c34c1a8b25e24d381d12466155df0306",
+  "sourceIdentity": {
+    "gitHead": "57a31390fb1be4bab0a16e6aae4988c593e389c5",
+    "gitTree": "e56d2985d0b2b76e13e1b3c5203e09144188dee7",
+    "productionDirty": true,
+    "productionDiffHash": "57d83eea77da35253266e626fa1c0c253587c8129123f9750f02c84327fd23c4"
+  },
+  "seeds": [
+    4242
+  ],
+  "benches": {
+    "verbs": {
+      "runs": [
+        {
+          "runRef": "verbs feel.rope_swing_release seed 4242",
+          "bench": "verbs",
+          "scenarioId": "feel.rope_swing_release",
+          "seed": 4242,
+          "runHash": "6a78d113aec61b23f80a82b9af4f56f636861002409101d294a82b70a7954b37",
+          "fedByRef": "verbs/feel.rope_swing_release/s4242",
+          "funMetrics": {
+            "verbsPerMinute": null,
+            "verbsUsed": null,
+            "consequencesPerAction": null,
+            "timeToFirstConsequenceS": null,
+            "momentsPerMinute": null,
+            "nothingHappenedSeconds": null,
+            "deathsByCause": null,
+            "knockBudget": null,
+            "gaps": [
+              "verbsPerMinute: run metrics do not report verb usage",
+              "verbsUsed: run metrics do not report verb usage",
+              "consequencesPerAction: verb trace is scenario-specific, no player action count",
+              "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+              "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+              "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+              "deathsByCause: verb scenario records no deaths",
+              "knockBudget: verb scenario does not measure the knock budget"
+            ]
+          },
+          "bars": [
+            {
+              "id": "B1",
+              "key": "feel.earned_speed_kept",
+              "title": "Earned speed is kept",
+              "statement": "After leaving the cap at 2× cruise by ANY means (rope release, shove, well fling, bounce), speed 10 s later is ≥ 99 % of the exit speed with hands off, and ≥ 99 % with forward held. Only the brake spends it.",
+              "target": "≥ 99 % of exit speed 10 s later, hands off and forward held",
+              "reachable": true,
+              "coverage": "partial",
+              "values": [
+                {
+                  "label": "release speed kept 5 s after letting go, hands off (worst of 1 run(s))",
+                  "value": 1.0000590397943299,
+                  "unit": "fraction",
+                  "met": true
+                }
+              ],
+              "met": null,
+              "notes": "only the 5 s release-retention clause (≥ 95 %) was measured; that sentence belongs to the rope-release scenario, and the value row is kept for the receipt. B1's own clauses — ≥ 99 % of exit speed 10 s later, hands off and with forward held — are kernel-level (test/flightV3.spec.mjs §12c) and are not benched headlessly, so this bar cannot read met from this bench.",
+              "fedBy": [
+                "verbs/feel.rope_swing_release/s4242"
+              ]
+            },
+            {
+              "id": "B7",
+              "key": "feel.rope_swing_release",
+              "title": "The rope is a rope",
+              "statement": "Swinging at 1.5× cruise on a 100 WU line around a heavy anchor stretches the line < 10 % and does not break; releasing at the tangent keeps ≥ 95 % of tangential speed 5 s later.",
+              "target": "stretch < 10 %; release keeps ≥ 95 % of tangential speed at 5 s",
+              "reachable": true,
+              "coverage": "partial",
+              "values": [
+                {
+                  "label": "peak line stretch (worst of 1 run(s))",
+                  "value": 0.05010545840636027,
+                  "unit": "fraction",
+                  "met": true
+                },
+                {
+                  "label": "tangential speed kept 5 s after release (worst of 1 run(s))",
+                  "value": 1.0000590397943299,
+                  "unit": "fraction",
+                  "met": true
+                },
+                {
+                  "label": "peak stretch on a 100 WU line at 1.5x cruise",
+                  "value": 0.05010545840636027,
+                  "unit": "fraction",
+                  "met": true,
+                  "note": "authored 100 WU; peak line 105.011 WU"
+                },
+                {
+                  "label": "line held until commanded release",
+                  "value": 1,
+                  "unit": "bool",
+                  "met": true
+                },
+                {
+                  "label": "tangential speed kept 5 s after release",
+                  "value": 1.0000590397943299,
+                  "unit": "fraction",
+                  "met": true,
+                  "note": "before 136.33 WU/s; 5 s 136.33 WU/s"
+                }
+              ],
+              "met": true,
+              "notes": "authored 100 WU; peak line 105.011 WU before 136.33 WU/s; 5 s 136.33 WU/s",
+              "fedBy": [
+                "verbs/feel.rope_swing_release/s4242"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "summary": {
+    "reachable": 11,
+    "met": 1,
+    "partial": 2,
+    "unreachable": 2
+  },
+  "wallMs": 1107
+}

@@ -1,0 +1,175 @@
+{
+  "schema": "spaceface.checkBaseline.v1",
+  "ok": false,
+  "wallMs": 34147,
+  "budgetMs": 90000,
+  "overBudget": false,
+  "headroomMs": 55853,
+  "mode": "parallel:2+1x2",
+  "allowance": 4,
+  "allowanceSource": "availableParallelism",
+  "timedOut": 0,
+  "failed": 4,
+  "results": [
+    {
+      "id": "ui-screen-imports",
+      "command": "node scripts/check-ui-screen-imports.mjs",
+      "ok": true,
+      "code": 0,
+      "durationMs": 1643,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "ui-glyphs",
+      "command": "node scripts/check-ui-glyphs.mjs",
+      "ok": true,
+      "code": 0,
+      "durationMs": 141,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "ui-control-labels",
+      "command": "node scripts/check-ui-control-labels.mjs",
+      "ok": true,
+      "code": 0,
+      "durationMs": 212,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "vfx-techniques",
+      "command": "node scripts/check-vfx-techniques.mjs",
+      "ok": true,
+      "code": 0,
+      "durationMs": 202,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "pq020-ceres-topology",
+      "command": "node scripts/check-pq020-ceres-topology.mjs",
+      "ok": true,
+      "code": 0,
+      "durationMs": 1369,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "save-schema",
+      "command": "node scripts/generate-save-schema.mjs --check",
+      "ok": false,
+      "code": 1,
+      "durationMs": 340,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "opening-mesh-defer",
+      "command": "node --test test/opening-mesh-defer.test.mjs",
+      "ok": true,
+      "code": 0,
+      "durationMs": 1007,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "smooth-flight",
+      "command": "node --test test/presentation-continuity.test.mjs test/presentation-runner.test.mjs test/simulation-runner.test.mjs test/snapshot-fence-span-alpha.test.mjs",
+      "ok": true,
+      "code": 0,
+      "durationMs": 646,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "flight-v3",
+      "command": "node test/flightV3.spec.mjs && node scripts/check-brake-convergence.mjs",
+      "ok": true,
+      "code": 0,
+      "durationMs": 948,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "m1-tether-mass",
+      "command": "node scripts/check-m1-tether-mass-grounding.mjs",
+      "ok": true,
+      "code": 0,
+      "durationMs": 634,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "sim-v3-compare",
+      "command": "node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.expected.json --reload-at 60 --flight-system v3",
+      "ok": true,
+      "code": 0,
+      "durationMs": 2591,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "render-package-plan",
+      "command": "node scripts/check-render-package-instance-plan.mjs",
+      "ok": true,
+      "code": 0,
+      "durationMs": 2722,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "sim-compare",
+      "command": "node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600",
+      "ok": false,
+      "code": 1,
+      "durationMs": 2167,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "sim-v3",
+      "command": "node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.expected.json --hash --repeat 20 --reload-at 60 --flight-system v3",
+      "ok": false,
+      "code": 1,
+      "durationMs": 11358,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "sim",
+      "command": "node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 --reload-at 600",
+      "ok": false,
+      "code": 1,
+      "durationMs": 2233,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 1
+    },
+    {
+      "id": "massline",
+      "command": "node scripts/check-massline-aggregate.mjs",
+      "ok": true,
+      "code": 0,
+      "durationMs": 34147,
+      "timedOut": false,
+      "timeoutMs": null,
+      "jobsGiven": 2
+    }
+  ]
+}

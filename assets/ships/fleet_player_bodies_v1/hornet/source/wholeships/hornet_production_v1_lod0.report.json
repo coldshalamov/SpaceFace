@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "asset": "ship_hornet",
+  "revision": "chase_form_v17",
+  "lod": 0,
+  "source": "/workspace/assets/ships/parts/wholeships/hornet_production_v1.glb",
+  "output": "/workspace/assets/ships/fleet_player_bodies_v1/hornet/source/wholeships/hornet_production_v1_lod0.glb",
+  "canopy": {
+    "tub": true,
+    "windshield": true,
+    "coaming": false
+  },
+  "drive": {
+    "dorsal": true,
+    "aft": true
+  },
+  "radiator": {
+    "dorsal": true,
+    "Port": true,
+    "Stbd": true
+  },
+  "size": [
+    10.875,
+    6.9,
+    2.346
+  ],
+  "boundsMin": [
+    -5.4,
+    -3.45,
+    -0.666
+  ],
+  "boundsMax": [
+    5.475,
+    3.45,
+    1.68
+  ],
+  "triangles": 13306,
+  "hullTriangles": 2844,
+  "objects": [
+    "COLLISION_HULL",
+    "LOD0_Accent_Port",
+    "LOD0_AntennaMast",
+    "LOD0_AntennaTip",
+    "LOD0_Beacon_Aft",
+    "LOD0_Bell",
+    "LOD0_Canard_Port",
+    "LOD0_Canard_Stbd",
+    "LOD0_DirtCanard",
+    "LOD0_DirtTE_Port",
+    "LOD0_Flap_Port",
+    "LOD0_Flap_Stbd",
+    "LOD0_Glass",
+    "LOD0_Hub",
+    "LOD0_Hull",
+    "LOD0_MarkingPlate",
+    "LOD0_RadiatorFin_Dorsal_0",
+    "LOD0_Wing_Port",
+    "LOD0_Wing_Stbd"
+  ],
+  "bytes": 1188568
+}

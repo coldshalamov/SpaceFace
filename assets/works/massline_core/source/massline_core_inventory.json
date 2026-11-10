@@ -1,0 +1,173 @@
+{
+  "assetId": "place_works_massline_core",
+  "identity": "SF_WORKS_MASSLINE_CORE_V1",
+  "combined": "assets/works/massline_core/source/massline_core.glb",
+  "partsSource": "assets/ships/parts/works/place_works_massline_core.glb",
+  "blend": "assets/works/massline_core/blender/massline_core.blend",
+  "lodTriangles": {
+    "lod0": 6724,
+    "lod1": 1280,
+    "lod2": 556
+  },
+  "hooks": [
+    "ring_spin",
+    "lamp"
+  ],
+  "meshNames": [
+    "LOD0_massline_core",
+    "LOD0_massline_core_lamp",
+    "LOD0_massline_core_spin",
+    "LOD1_massline_core",
+    "LOD1_massline_core_lamp",
+    "LOD1_massline_core_spin",
+    "LOD2_massline_core",
+    "LOD2_massline_core_lamp",
+    "LOD2_massline_core_spin"
+  ],
+  "bytes": 3181192,
+  "sha256": "759B7BC5B5BE8499B77ACFDCBB9AE67829B5D999C549C417E2E811318E9203DD",
+  "partsSha256": "76284DC09D1C1B4BA33FB094A37B05FA5EDBE1006A8AB67B767BE32C397CE1EF",
+  "lodReports": [
+    {
+      "lod": 0,
+      "triangles": 6724,
+      "draws": 3,
+      "materials": [
+        "Material_Atlas_LOD0"
+      ],
+      "bbox": {
+        "min": [
+          -1.04,
+          -1.04,
+          0.0
+        ],
+        "max": [
+          1.04,
+          1.04,
+          0.928
+        ],
+        "size": [
+          2.08,
+          2.08,
+          0.928
+        ]
+      },
+      "triBudget": 8000,
+      "triOverBudget": false,
+      "textureSize": 1024,
+      "atlas": [
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod0_basecolor.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod0_orm.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod0_normal.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod0_emissive.png"
+      ],
+      "lampLoc": [
+        -0.54,
+        0.89,
+        0.844
+      ],
+      "meshNames": [
+        "LOD0_massline_core",
+        "LOD0_massline_core_spin",
+        "LOD0_massline_core_lamp"
+      ],
+      "path": "assets/works/massline_core/source/massline_core_lod0.glb",
+      "bytes": 2104720,
+      "sha256": "7BBB94B16F4E34EFDF6B7D1EDC1FD4BFF082D597B6F441BEA5809F94ACFCF3F3"
+    },
+    {
+      "lod": 1,
+      "triangles": 1280,
+      "draws": 3,
+      "materials": [
+        "Material_Atlas_LOD1"
+      ],
+      "bbox": {
+        "min": [
+          -1.04,
+          -1.04,
+          0.0
+        ],
+        "max": [
+          1.04,
+          1.042,
+          0.928
+        ],
+        "size": [
+          2.08,
+          2.082,
+          0.928
+        ]
+      },
+      "triBudget": 2000,
+      "triOverBudget": false,
+      "textureSize": 512,
+      "atlas": [
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod1_basecolor.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod1_orm.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod1_normal.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod1_emissive.png"
+      ],
+      "lampLoc": [
+        -0.54,
+        0.89,
+        0.844
+      ],
+      "meshNames": [
+        "LOD1_massline_core",
+        "LOD1_massline_core_spin",
+        "LOD1_massline_core_lamp"
+      ],
+      "path": "assets/works/massline_core/source/massline_core_lod1.glb",
+      "bytes": 596000,
+      "sha256": "5AA970EF13F97C75904C468BCFAEBAE4A579639527C8FC05070EEAEC2C5D4D20"
+    },
+    {
+      "lod": 2,
+      "triangles": 556,
+      "draws": 3,
+      "materials": [
+        "Material_Atlas_LOD2"
+      ],
+      "bbox": {
+        "min": [
+          -1.04,
+          -1.04,
+          0.0
+        ],
+        "max": [
+          1.04,
+          1.04,
+          0.918
+        ],
+        "size": [
+          2.08,
+          2.08,
+          0.918
+        ]
+      },
+      "triBudget": 600,
+      "triOverBudget": false,
+      "textureSize": 256,
+      "atlas": [
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod2_basecolor.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod2_orm.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod2_normal.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod2_emissive.png"
+      ],
+      "lampLoc": [
+        -0.54,
+        0.89,
+        0.844
+      ],
+      "meshNames": [
+        "LOD2_massline_core",
+        "LOD2_massline_core_spin",
+        "LOD2_massline_core_lamp"
+      ],
+      "path": "assets/works/massline_core/source/massline_core_lod2.glb",
+      "bytes": 203280,
+      "sha256": "34DF32C8C39D3D2DAEEC8D76D0140A82718FDC560EF1F7C417A45DDF9DEE5E1F"
+    }
+  ]
+}

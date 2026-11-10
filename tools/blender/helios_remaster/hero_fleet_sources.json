@@ -1,0 +1,132 @@
+{
+  "ashline_rig": {
+    "sourcePath": "assets/ships/parts/wholeships/ashline_rig.glb",
+    "sourceBlob": "c96e9936ab06247f4ebdfe07af9e2486838cdeb5",
+    "sha256": "f2c60370953e59ef5985676042ad6b211a9462b4293b7112bc01fc65c06e9052"
+  },
+  "bastion_production_v1": {
+    "sourcePath": "assets/ships/parts/wholeships/bastion_production_v1.glb",
+    "sourceBlob": "8e7696c52685ede5b1898f0e912cf0ebc8f47fdc",
+    "sha256": "a1fc922e454d66e1a7201b90464cf96a50ed66f39a5af9301e64a1c9772ff8ee"
+  },
+  "bastion_production_v1_lod1": {
+    "sourcePath": "assets/ships/parts/wholeships/bastion_production_v1_lod1.glb",
+    "sourceBlob": "2dd8bd1873a18a8e2dddd76d5876df56d2804278",
+    "sha256": "6f1b82bf903d37fdce1ec1873baa2e1be14db0c7df7f5e262d1f59b8a7bb917c"
+  },
+  "bastion_production_v1_lod2": {
+    "sourcePath": "assets/ships/parts/wholeships/bastion_production_v1_lod2.glb",
+    "sourceBlob": "ef9f9dd9b3f0a01ff6a2b69dd51b4b945daa7322",
+    "sha256": "19984cef9556339f0795de1f4c922e39f7392ca2ee2cf1af935fc54246a1f5d1"
+  },
+  "drifter_production_v1": {
+    "sourcePath": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sourceBlob": "98e82b8edfcd7443ec50283246005936cb6fff64",
+    "sha256": "7d4b598b7b2f6817db31f1eac40608c2e351777e3a8026c3877d3fbfbbee31b4"
+  },
+  "drifter_production_v1_lod1": {
+    "sourcePath": "assets/ships/parts/wholeships/drifter_production_v1_lod1.glb",
+    "sourceBlob": "02ba87e5a5a32f9fdc3c8207a8c69d92d8f578f6",
+    "sha256": "6e6113a6c1255b48fc64b1e0e3770157ea4565907f6a96ea15c518e1cacf91db"
+  },
+  "drifter_production_v1_lod2": {
+    "sourcePath": "assets/ships/parts/wholeships/drifter_production_v1_lod2.glb",
+    "sourceBlob": "ef10241edab7397eb2b2e0e0e19735d7ea077a10",
+    "sha256": "7c40b075998bacc3ed404c05d8d692889777aaf3f6947ae3e2769b1251b68e45"
+  },
+  "helios_arclight": {
+    "sourcePath": "assets/ships/parts/wholeships/helios_arclight.glb",
+    "sourceBlob": "a8b1ebc5dbb8ffd5fa024496503a171f9cf0a3ba",
+    "sha256": "5344a5a31a6fb6947d763b9a6715ad6ba291772dc737ab163f85bf8bc50082b0"
+  },
+  "helios_cradle": {
+    "sourcePath": "assets/ships/parts/wholeships/helios_cradle.glb",
+    "sourceBlob": "75483588ffcfc59d875001c709fdd2227a69adea",
+    "sha256": "1f10de2d7f2ae083fdac768c735f1e444616ccc59bb19088cc8418f63e88dd72"
+  },
+  "helios_lark": {
+    "sourcePath": "assets/ships/parts/wholeships/helios_lark.glb",
+    "sourceBlob": "9759641ee1e6852e5e4fe117847024ac5efea451",
+    "sha256": "9090e7c21980d0d87d1da422bdb940a7731ceb3b39f4648adc0968df931b708f"
+  },
+  "helios_span": {
+    "sourcePath": "assets/ships/parts/wholeships/helios_span.glb",
+    "sourceBlob": "17c24c7ecdb0ad591396cfd329c0d76f4e581c5a",
+    "sha256": "c4ceaa020861cdd1bc9f7e20172bbc6f00531290aa3753e4757dc6b89b47f2ab"
+  },
+  "hornet_production_v1": {
+    "sourcePath": "assets/ships/parts/wholeships/hornet_production_v1.glb",
+    "sourceBlob": "3d768ed94ce517de83fe4cfa689c63284698534f",
+    "sha256": "acfc43ee7eeecfd427b825b4dd860082ea73fe6771294ed9bbd7b430c5d26a9a"
+  },
+  "hornet_production_v1_lod1": {
+    "sourcePath": "assets/ships/parts/wholeships/hornet_production_v1_lod1.glb",
+    "sourceBlob": "c15dd521881e81a65406f6a830455e7c96b1a422",
+    "sha256": "7ad7bc1749a0dc71a7d31a2d6a6cf8d40a3a2f94e5aa668890e1db71b99eb59d"
+  },
+  "hornet_production_v1_lod2": {
+    "sourcePath": "assets/ships/parts/wholeships/hornet_production_v1_lod2.glb",
+    "sourceBlob": "389a5e1fe1915e2539d1a42f068ea4f44ad609e6",
+    "sha256": "c13ba3760f77b49c9ef7981b5e0df04caa9c40a0b42a2328eba7bd4d90932ec1"
+  },
+  "inspection_cutter": {
+    "sourcePath": "assets/ships/parts/wholeships/inspection_cutter.glb",
+    "sourceBlob": "0207df5e7a0bc1fceae0663c08da3c11344c0e56",
+    "sha256": "7a33be089f64e812d96b3f2b93532348b2dd42f2e3ab5cd38ab58fde41dbb4d8"
+  },
+  "kestrel": {
+    "sourcePath": "assets/ships/parts/wholeships/kestrel.glb",
+    "sourceBlob": "f4202cd11fd2eeb3c51d2941c65c7b66479a74b1",
+    "sha256": "34782dd5694d00fbdd18341a2368c469f9427f7806355b3d345eed5892a96b96"
+  },
+  "kestrel_lod1": {
+    "sourcePath": "assets/ships/parts/wholeships/kestrel_lod1.glb",
+    "sourceBlob": "c38d8d8d4385eba2314c6010d497b410b6330ea3",
+    "sha256": "56b6605ac47fb33fa9ecef5ddd0213916d667de9f3a91087ea5cf70b9fc5e712"
+  },
+  "kestrel_lod2": {
+    "sourcePath": "assets/ships/parts/wholeships/kestrel_lod2.glb",
+    "sourceBlob": "d7307ead503eac8486b96e44ac881f032f0443ee",
+    "sha256": "aa88bf6ac10b82e7f8a6c94e2f3ef5fb22d34e5edb91392da85fcf0d8052b458"
+  },
+  "massline_express_liner_v1": {
+    "sourcePath": "assets/ships/parts/wholeships/massline_express_liner_v1.glb",
+    "sourceBlob": "4a231bd0859afca7184a06d44c72c42750587c98",
+    "sha256": "08557561963b11b874eb987b165c6c5dbaadfa7b249a79316a3a8a6761afc96e"
+  },
+  "massline_express_liner_v1_lod1": {
+    "sourcePath": "assets/ships/parts/wholeships/massline_express_liner_v1_lod1.glb",
+    "sourceBlob": "6a46d767270a68a2fb3ac4ba0cff216e0117e3c1",
+    "sha256": "58d85ca3856ca7380923335bca8c1d84fccf204edcfc8e630db842d6ccb72f60"
+  },
+  "massline_express_liner_v1_lod2": {
+    "sourcePath": "assets/ships/parts/wholeships/massline_express_liner_v1_lod2.glb",
+    "sourceBlob": "f7b1b00fa91643105b0474a87cb7936f3b1bac75",
+    "sha256": "edfc635439df07ea76bc595c5a29ab716a86e3eecc95e5e22d1476e314822970"
+  },
+  "survey_pin": {
+    "sourcePath": "assets/ships/parts/wholeships/survey_pin.glb",
+    "sourceBlob": "bcbf968613084fb8987526994cb9a0b171b2104d",
+    "sha256": "3448340a6168924c8a6ef7f6b007fb01c245fe251946819a467587245e789f6d"
+  },
+  "volatiles_tanker": {
+    "sourcePath": "assets/ships/parts/wholeships/volatiles_tanker.glb",
+    "sourceBlob": "1b3e298897286e3300401828476420815d844865",
+    "sha256": "42cae1e0d9dd65152d97a4ed06d8b10b13c269bcd83829e4d03ae60da30e4ef2"
+  },
+  "wasp_production_v1": {
+    "sourcePath": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+    "sourceBlob": "0921c7953f552917f8e76d4baabec3bd6a74c005",
+    "sha256": "fdfd7c76c793c5be9593e9c095bade0708c36163086f181ff08bddfbe5173e5a"
+  },
+  "wasp_production_v1_lod1": {
+    "sourcePath": "assets/ships/parts/wholeships/wasp_production_v1_lod1.glb",
+    "sourceBlob": "acb5bf173afddab873de2d40d7d841f8fd522647",
+    "sha256": "10e47344eb1974b4428312a9d25673ae64647794e68a13c8a8b87436f1a98dd0"
+  },
+  "wasp_production_v1_lod2": {
+    "sourcePath": "assets/ships/parts/wholeships/wasp_production_v1_lod2.glb",
+    "sourceBlob": "21df76080fb20b066d57afcbeaf45e5ca3f0f745",
+    "sha256": "885028eb6b575ac77d9dd6351fdf248ce2fcf527e61c225a70b296defe576583"
+  }
+}

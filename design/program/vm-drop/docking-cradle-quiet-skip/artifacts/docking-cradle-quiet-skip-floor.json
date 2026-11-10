@@ -1,0 +1,22 @@
+{
+  "name": "docking-cradle-quiet-skip-floor",
+  "runs": [
+    {
+      "median": 2.166623945787477,
+      "minSpeedup": 1.9632473083429804
+    },
+    {
+      "median": 2.153,
+      "minSpeedup": 1.758
+    },
+    {
+      "median": 2.167,
+      "minSpeedup": 1.963
+    }
+  ],
+  "packageFloor": 1.758,
+  "packageMedianMin": 2.153,
+  "dirtyWake": {
+    "ok": true
+  }
+}

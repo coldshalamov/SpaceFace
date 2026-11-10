@@ -1,0 +1,231 @@
+TAP version 13
+# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
+ok 1 - player and on-screen ships stay on the inner band; off-glass runway is middle
+  ---
+  duration_ms: 2.222458
+  ...
+# Subtest: middle-band closures fire once per period, staggered by slot
+ok 2 - middle-band closures fire once per period, staggered by slot
+  ---
+  duration_ms: 0.291362
+  ...
+# Subtest: opaque nearby instances keep casting; far and empty chunks drop out of the shadow map
+ok 3 - opaque nearby instances keep casting; far and empty chunks drop out of the shadow map
+  ---
+  duration_ms: 1.814626
+  ...
+# Subtest: nearest submitted instance uses the instance translation, not the origin mesh
+ok 4 - nearest submitted instance uses the instance translation, not the origin mesh
+  ---
+  duration_ms: 2.109735
+  ...
+# Subtest: apply policy hides empty chunks, enables frustum bounds, and turns off far shadows
+ok 5 - apply policy hides empty chunks, enables frustum bounds, and turns off far shadows
+  ---
+  duration_ms: 2.830126
+  ...
+# Subtest: live instance finalize refreshes bounds when the camera/origin moved
+ok 6 - live instance finalize refreshes bounds when the camera/origin moved
+  ---
+  duration_ms: 19.902914
+  ...
+# Subtest: one traversal retains records, reclaims membership, and detects visibility and LOD changes
+ok 7 - one traversal retains records, reclaims membership, and detects visibility and LOD changes
+  ---
+  duration_ms: 20.551427
+  ...
+# Subtest: authored instance pools consume bounded frame records, clean omissions, and retain fallback sync
+ok 8 - authored instance pools consume bounded frame records, clean omissions, and retain fallback sync
+  ---
+  duration_ms: 21.283176
+  ...
+# Subtest: asteroid pool reuses a static matrix and uploads real instance data after transform and rebase
+ok 9 - asteroid pool reuses a static matrix and uploads real instance data after transform and rebase
+  ---
+  duration_ms: 5.034038
+  ...
+# Subtest: asteroid visibility and normal-shadow camera union preserve only relevant exact bodies
+ok 10 - asteroid visibility and normal-shadow camera union preserve only relevant exact bodies
+  ---
+  duration_ms: 7.004417
+  ...
+# Subtest: asteroid static reuse invalidates for parented camera motion and detached owners
+ok 11 - asteroid static reuse invalidates for parented camera motion and detached owners
+  ---
+  duration_ms: 2.405848
+  ...
+# Subtest: asteroid membership, release, and LOD detail visibility keep source ownership exact
+ok 12 - asteroid membership, release, and LOD detail visibility keep source ownership exact
+  ---
+  duration_ms: 2.309882
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 523.333414
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: component spans retain one bounded union in component indexes
+ok 1 - component spans retain one bounded union in component indexes
+  ---
+  duration_ms: 2.999251
+  ...
+# Subtest: owner registration leaves every attribute untouched when a later attribute is rejected
+ok 2 - owner registration leaves every attribute untouched when a later attribute is rejected
+  ---
+  duration_ms: 1.69759
+  ...
+# Subtest: scene-owned publication forces the initial buffer and restores the prior hook
+ok 3 - scene-owned publication forces the initial buffer and restores the prior hook
+  ---
+  duration_ms: 2.171574
+  ...
+# Subtest: ordinary dirty spans survive skipped draws and publish once on eligibility
+ok 4 - ordinary dirty spans survive skipped draws and publish once on eligibility
+  ---
+  duration_ms: 0.886945
+  ...
+# Subtest: one interleaved backing owns ranged publication, replacement, and context recovery
+ok 5 - one interleaved backing owns ranged publication, replacement, and context recovery
+  ---
+  duration_ms: 9.687197
+  ...
+# Subtest: probe-only full-span control changes requested bytes without changing logical writes
+ok 6 - probe-only full-span control changes requested bytes without changing logical writes
+  ---
+  duration_ms: 0.603715
+  ...
+# Subtest: probe-only full-span control cannot change during an armed renderer epoch
+ok 7 - probe-only full-span control cannot change during an armed renderer epoch
+  ---
+  duration_ms: 0.774193
+  ...
+# Subtest: context loss supersedes an unacknowledged generation and restore forces a full replacement
+ok 8 - context loss supersedes an unacknowledged generation and restore forces a full replacement
+  ---
+  duration_ms: 0.653245
+  ...
+# Subtest: context restoration accepts Three driver re-upload without weakening unsolicited callback detection
+ok 9 - context restoration accepts Three driver re-upload without weakening unsolicited callback detection
+  ---
+  duration_ms: 0.824792
+  ...
+# Subtest: Three first bufferData does not retire the owner or abort later frames
+ok 10 - Three first bufferData does not retire the owner or abort later frames
+  ---
+  duration_ms: 0.547221
+  ...
+# Subtest: an invalid owner can still release its callback and coordinator ownership
+ok 11 - an invalid owner can still release its callback and coordinator ownership
+  ---
+  duration_ms: 0.552574
+  ...
+# Subtest: one owner trap cannot latch the coordinator dead for later frames
+ok 12 - one owner trap cannot latch the coordinator dead for later frames
+  ---
+  duration_ms: 0.703141
+  ...
+# Subtest: a nested scene render during publication does not freeze later frames
+ok 13 - a nested scene render during publication does not freeze later frames
+  ---
+  duration_ms: 0.509937
+  ...
+# Subtest: live sprite and trail owners publish only their packed prefixes after initial residency
+ok 14 - live sprite and trail owners publish only their packed prefixes after initial residency
+  ---
+  duration_ms: 32.670441
+  ...
+# Subtest: dense one-times and five-times fanout stays at 31 ranges and charges packed bytes
+ok 15 - dense one-times and five-times fanout stays at 31 ranges and charges packed bytes
+  ---
+  duration_ms: 17.232702
+  ...
+# Subtest: common-rock matrices publish only the changed compacted slot after residency
+ok 16 - common-rock matrices publish only the changed compacted slot after residency
+  ---
+  duration_ms: 7.291105
+  ...
+# Subtest: ordinary-flight plume layers publish one packed socket prefix per layer
+ok 17 - ordinary-flight plume layers publish one packed socket prefix per layer
+  ---
+  duration_ms: 12.345304
+  ...
+# Subtest: signed RCS layers publish only the live impulse prefix
+ok 18 - signed RCS layers publish only the live impulse prefix
+  ---
+  duration_ms: 5.459912
+  ...
+# Subtest: ordinary-flight shard particles publish only their live prefix and survive quality migration
+ok 19 - ordinary-flight shard particles publish only their live prefix and survive quality migration
+  ---
+  duration_ms: 15.147651
+  ...
+# Subtest: shard particles pack fragmented CPU slots into the live GPU prefix
+ok 20 - shard particles pack fragmented CPU slots into the live GPU prefix
+  ---
+  duration_ms: 1.226589
+  ...
+# Subtest: nearby asteroid seam markers publish only their live matrix and color prefix
+ok 21 - nearby asteroid seam markers publish only their live matrix and color prefix
+  ---
+  duration_ms: 3.7538
+  ...
+# Subtest: active field-device geometry publishes each visible instance prefix
+ok 22 - active field-device geometry publishes each visible instance prefix
+  ---
+  duration_ms: 5.10895
+  ...
+# Subtest: tether topology coordinates stay resident while the rope positions move
+ok 23 - tether topology coordinates stay resident while the rope positions move
+  ---
+  duration_ms: 9.163684
+  ...
+# Subtest: authored instance chunks publish only moved, hidden, released, and reused matrix slots
+ok 24 - authored instance chunks publish only moved, hidden, released, and reused matrix slots
+  ---
+  duration_ms: 5.813387
+  ...
+# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
+ok 25 - player and on-screen ships stay on the inner band; off-glass runway is middle
+  ---
+  duration_ms: 1.449729
+  ...
+# Subtest: middle-band closures fire once per period, staggered by slot
+ok 26 - middle-band closures fire once per period, staggered by slot
+  ---
+  duration_ms: 0.231493
+  ...
+# Subtest: opaque nearby instances keep casting; far and empty chunks drop out of the shadow map
+ok 27 - opaque nearby instances keep casting; far and empty chunks drop out of the shadow map
+  ---
+  duration_ms: 1.266942
+  ...
+# Subtest: nearest submitted instance uses the instance translation, not the origin mesh
+ok 28 - nearest submitted instance uses the instance translation, not the origin mesh
+  ---
+  duration_ms: 1.483154
+  ...
+# Subtest: apply policy hides empty chunks, enables frustum bounds, and turns off far shadows
+ok 29 - apply policy hides empty chunks, enables frustum bounds, and turns off far shadows
+  ---
+  duration_ms: 1.943508
+  ...
+# Subtest: live instance finalize refreshes bounds when the camera/origin moved
+ok 30 - live instance finalize refreshes bounds when the camera/origin moved
+  ---
+  duration_ms: 28.201907
+  ...
+1..30
+# tests 30
+# suites 0
+# pass 30
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 810.595324

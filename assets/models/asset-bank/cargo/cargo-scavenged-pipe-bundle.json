@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-scavenged-pipe-bundle",
+  "category": "cargo",
+  "description": "Unequal hollow salvage pipes with retaining straps",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        0.9099999666213989,
+        0.01849997043609619
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.5180000066757202,
+        0.44749999046325684,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.45,
+          -0.0
+        ],
+        "size": [
+          2.5,
+          0.85,
+          1.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "aftermath",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.5180000066757202,
+      -0.014999985694885254,
+      -0.6080000400543213
+    ],
+    "max": [
+      1.5180000066757202,
+      0.9099999666213989,
+      0.6449999809265137
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-scavenged-pipe-bundle_lod0.glb",
+      "triangles": 6936,
+      "draws": 5,
+      "bytes": 561888,
+      "method": "source",
+      "sha256": "4e56ad500c095cfa4a9d3da1eae347d70fcfb1996b9639ed75d8220e6cdeb388"
+    },
+    {
+      "level": 1,
+      "file": "cargo-scavenged-pipe-bundle_lod1.glb",
+      "triangles": 2476,
+      "draws": 5,
+      "bytes": 369420,
+      "method": "authored-topology",
+      "sha256": "8468fe4f081c2cc07d1870b2dc2a21c587ccd080a3c2b5e36b3b6e97edeff085"
+    },
+    {
+      "level": 2,
+      "file": "cargo-scavenged-pipe-bundle_lod2.glb",
+      "triangles": 1100,
+      "draws": 5,
+      "bytes": 328908,
+      "method": "authored-topology",
+      "sha256": "325786bc71b79b521002712d999152b1de2391a2c33359c82ab27aa443e266df"
+    }
+  ]
+}

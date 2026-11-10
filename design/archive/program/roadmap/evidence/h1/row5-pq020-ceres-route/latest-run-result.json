@@ -1,0 +1,36 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-08-01T07:13:28.542Z",
+  "status": "pass",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 254775,
+  "pidRecord": {
+    "pid": 33212,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq020-ceres-topology.mjs"
+    ],
+    "startedAt": "2026-08-01T07:09:13.767Z",
+    "platform": "win32",
+    "finishedAt": "2026-08-01T07:13:28.542Z",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq020-ceres-topology",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 33212
+  },
+  "fixedSeed": 47,
+  "failureFingerprint": null,
+  "family": null,
+  "routeDigest": "f051d4700aaabf8238a899b441e46c60e3e22e915ac60a2a8e2a123743e8e6fe",
+  "regressionDigest": "6ab860c6edfe7d89d3118fce3f053ab4fba64675859e38413dec2787bc2ba850",
+  "candidateDigest": "c864caec77a6ba911efab9c2dbae1ae3f11bf2a2bbb1bc7fde993830a49f7f46"
+}

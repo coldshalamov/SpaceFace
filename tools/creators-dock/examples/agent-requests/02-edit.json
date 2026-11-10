@@ -1,0 +1,47 @@
+{
+  "schema": "spaceface.creatorsDockRequest.v1",
+  "id": "agent.edit-intercept",
+  "ops": [
+    { "op": "loadExample", "id": "dock.intercept-cargo" },
+    { "op": "clone", "id": "cargo", "newId": "cargo_b" },
+    { "op": "setVelocity", "id": "cargo_b", "velX": -8, "velZ": 6 },
+    { "op": "nudge", "id": "cargo_b", "dx": 10, "dz": 0 },
+    {
+      "op": "setMeta",
+      "meta": {
+        "id": "dock.agent-edited-intercept",
+        "title": "Agent edited intercept",
+        "description": "The intercept example with a second cargo body added through the API.",
+        "composition": "agent-edited-intercept",
+        "seed": 22002
+      }
+    },
+    {
+      "op": "setNotes",
+      "notes": {
+        "composition": "agent-edited-intercept",
+        "expectedObservation": "The edited scene keeps the playerZ oracle and adds cargo_b."
+      }
+    },
+    {
+      "op": "setEncounter",
+      "encounter": {
+        "id": "dock_agent_edited",
+        "order": 1012,
+        "tier": "minor",
+        "deck": "combat",
+        "weight": 1,
+        "zoneTypes": ["trade_lane"],
+        "script": "convoy",
+        "pressureCost": 12,
+        "cooldownS": 480,
+        "proximity": true,
+        "shape": { "situation": "convoy", "place": ["trade_lane"], "twist": "none", "actor": "mule_trader" },
+        "factionId": "faction_mts",
+        "context": "encounter",
+        "squad": { "archetypes": ["mule_trader"] },
+        "title": "Edited intercept"
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+handoff_version: 1
+thread: A
+sprint_id: 2026-07-09-top50-sliceA-hull-starter
+agent: top50-wonder-goal-session
+completed_at: 2026-07-09T16:52:00Z
+assets:
+  - id: hull_starter
+    source_glb: assets/ships/parts/hulls/hull_starter.glb
+    blend_path: assets/ships/parts/blender/hull_starter_authored.blend
+    art_status: full_finish
+    iteration_count: 28
+    weighted_score: 4.73
+    evidence: assets/ships/parts/revamp-evidence/hull_starter/
+    lifecycle: SOURCE_GLB
+    manifest_row: exists
+    runtimeSlots: hull
+    blocked: false
+    notes: >
+      Connected loft body; iter 28 weld (islands=1, 9508 tris) + ritual contrast framing.
+      export_bar_ok true (sil=5, scale=5, weighted 4.73). lit_close auto-gate flaky;
+      full-view set green. Nav heat DET for close accent.
+integrator_actions:
+  - finalize_part.mjs DONE (iter28 weld export)
+  - npm run build:sg04:release-assets (hull already in prior full release; re-run if source changed after)
+  - check:asset-reachability
+thread_c_actions: []
+checks_required:
+  - check:asset-reachability
+screenshots_proven:
+  - assets/ships/parts/revamp-evidence/hull_starter/renders/2026-07-09_hull_starter_iter28_lit_34_full.png
+  - .devshots/slice-A/undock-wide.png
+  - .devshots/slice-A/undock-close.png

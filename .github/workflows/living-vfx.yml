@@ -1,0 +1,79 @@
+name: Living VFX review
+on:
+  push:
+    branches: [codex/living-vfx-overhaul-20261012]
+  pull_request:
+    paths:
+      - 'src/render/vfx/**'
+      - 'src/render/vfx.js'
+      - 'src/render/forceLanguage/**'
+      - 'src/render/weapons/**'
+      - 'src/render/energy/**'
+      - 'src/render/combat/**'
+      - 'src/render/thruster/**'
+      - 'test/living-vfx*'
+      - 'scripts/living-vfx*'
+      - '.github/workflows/living-vfx.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: living-vfx-review-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/*/
+            /src/
+            /scripts/
+            /test/
+            /vendor/
+            /docs/visual-assets/
+            /assets/vfx/
+            /assets/ships/release/render-packages/kestrel/
+            /assets/ships/release/render-packages/helios-rock-a/
+            /assets/ships/release/render-packages/colossus-production-v1/
+            /assets/ships/release/render-packages/ceres-refinery/
+            /assets/ships/release/render-packages/cargo-pod-standard/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated production renderer dependencies
+        run: |
+          DEPS=$(node -e "const p=require('./package.json');console.log(Object.entries(p.dependencies).map(([n,v])=>n+'@'+v).join(' '))")
+          ESBUILD=$(node -p "require('./package.json').devDependencies.esbuild")
+          npm install --prefix .vfx-ci --ignore-scripts --no-audit --no-fund $DEPS "esbuild@$ESBUILD"
+          ln -s .vfx-ci/node_modules node_modules
+      - name: Verify production VFX contracts
+        run: |
+          mkdir -p vfx-artifact
+          git rev-parse HEAD > vfx-artifact/SOURCE_COMMIT.txt
+          set -o pipefail
+          node scripts/living-vfx-verify.mjs | tee vfx-artifact/verification.log
+      - name: Install capture browser
+        if: github.event_name != 'pull_request'
+        run: |
+          python -m pip install playwright pillow
+          python -m playwright install --with-deps chromium
+      - name: Capture released-asset production lab
+        if: github.event_name != 'pull_request'
+        run: |
+          python -m http.server 8769 > vfx-artifact/server.log 2>&1 &
+          sleep 2
+          python scripts/capture-vfx-gameplay-demo.py --scenario well --scenario repulsor --scenario reactor-breakup --width 1280 --height 800 --video --output vfx-artifact/shipping-lab
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: living-vfx-review-${{ github.run_id }}
+          path: vfx-artifact/
+          if-no-files-found: error
+          retention-days: 7

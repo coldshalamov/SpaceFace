@@ -1,0 +1,2665 @@
+// The `ui` system (ARCHITECTURE §5, manifest src/ui/uiRoot.js).
+//
+// init(ctx): mount the HUD into #hud, build the ScreenManager, wire toasts/alerts + the UI key
+// router, register every modal screen, and react to dock / mode events. frame(dt,state) is the
+// per-render-frame cheap HUD path (called by the loop via registry.renderUpdate).
+//
+// UI emits intents only; it never mutates owned sim state (§0.6, §5). The one documented write
+// is ui.docked + dock flow (this system owns ui.* transient fields).
+//
+// Modal screens live in src/ui/screens/* and are registered dynamically so a screen module that
+// is missing or throws on import/register does NOT break the HUD or the other screens.
+
+import { createScreenManager } from './screenManager.js';
+import { commitDockedUiState } from './dockStateCommit.js';
+import { createEntityLinks } from './entityLinks.js';
+import { mountWhyReveal } from './whyReveal.js';
+import { createUiInput } from './input.js';
+import { isConfirmOpen, bindConfirmBus } from './confirm.js';
+import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
+import { resolveActionLabel } from '../systems/input.js';
+import { ensureHudStylesheet } from './views/hudStylesheet.js';
+import { isHostileToPlayer, isWreckLike, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { targetDisplayName } from './targetPanel.js';
+import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
+import { dedupError } from '../core/warnDedup.js';
+import {
+  presentationAllowsPlayerFacingAction,
+  presentationAllowsTargetLock,
+} from '../core/presentationAdmission.js';
+import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
+import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
+import { pointerLockIsLegitimate } from '../systems/autoTargetAssist.js';
+import { isPirateDisengaged } from '../systems/pirateDisengage.js';
+import { createCinematicInputFence } from './cinematicInputFence.js';
+import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
+import { IS_DEV } from '../core/devMode.js';
+import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
+import { completeRacingLaunch, noteRacingNewGame } from './racingLaunch.js';
+import { mountRacingHud } from './racingHud.js';
+import { installPhysicsVenueHooks, mountPhysicsVenueHud } from './physicsVenues.js';
+import { mountSpectrumOverlay } from '../render/spectrum/overlay.js';
+import { createPhysicalJobsPrompt } from './physicalJobsPrompt.js';
+import { createBlackFlagPrompt } from './blackFlag.js';
+import { createLogbookRecap } from './logbookRecap.js';
+import { mountProExperiencesBrowser } from '../features/proExperiencesBrowser.js';
+import { bindSound, bindTemperature } from './kit/index.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { laneInputWrite, laneSetComponentSelection, laneTargetWritePending } from '../core/simLaneCommands.js';
+import { occupantGenerationOf } from '../core/entity.js';
+import { targetIdentityGeneration } from '../ai/perception.js';
+import { concealedFromPlayer, selectionIsRecycled, selectionRetired } from '../combat/targetIdentity.js';
+import { ACQUISITION_PROTOTYPE, createAcquisitionTracker, resetAcquisitionTracker, stepAcquisition } from '../combat/targetAcquisition.js';
+import { flightCursorMode, installNativeFlightCursor } from './flightCursor.js';
+import { saveErrorText, saveSlotLabel, shouldToastSaveError } from './saveFeedback.js';
+import { installWindowTitle, readWindowTitleView } from './windowTitle.js';
+import { installStationExitGate } from './station/stationHubModel.js';
+
+export { saveErrorText };
+
+// Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
+const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
+  <g class="sf-reticle-shape sf-reticle-shape--open" fill="none" stroke="#4f8fdd" stroke-width="2" stroke-linecap="round">
+    <circle cx="50" cy="50" r="30" opacity="0.85"/>
+    <circle cx="50" cy="50" r="40" opacity="0.18"/>
+    <line x1="50" y1="6" x2="50" y2="20"/><line x1="50" y1="80" x2="50" y2="94"/>
+    <line x1="6" y1="50" x2="20" y2="50"/><line x1="80" y1="50" x2="94" y2="50"/>
+  </g>
+  <g class="sf-reticle-shape sf-reticle-shape--bracket" fill="none" stroke="#4f8fdd" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="50" y1="34" x2="50" y2="42"/><line x1="50" y1="58" x2="50" y2="66"/>
+    <line x1="34" y1="50" x2="42" y2="50"/><line x1="58" y1="50" x2="66" y2="50"/>
+    <path d="M26 34h12V22"/><path d="M74 34H62V22"/>
+    <path d="M26 66h12v12"/><path d="M74 66H62v12"/>
+  </g>
+  <circle cx="50" cy="50" r="3" fill="#4f8fdd"/>
+  <g class="sf-reticle-hit-ticks" fill="none" stroke-width="2.5" stroke-linecap="round">
+    <line x1="39" y1="39" x2="31" y2="31"/>
+    <line x1="61" y1="39" x2="69" y2="31"/>
+    <line x1="39" y1="61" x2="31" y2="69"/>
+    <line x1="61" y1="61" x2="69" y2="69"/>
+  </g>
+</svg>`;
+
+// Presentation owns the pointer's location independently of transient gameplay input.
+// Menus, focus release and input fences clear input.pointerScreen.active without moving
+// the mouse, so that flag must never decide whether the player's target cursor exists.
+export function createFlightPointerTracker(win, doc) {
+  const pointer = { x: 0, y: 0, active: false, focused: !doc.hasFocus || doc.hasFocus() };
+  let seen = false;
+  let inside = false;
+  const refresh = () => { pointer.active = seen && inside && pointer.focused; };
+  const move = (event) => {
+    if (event.pointerType === 'touch' || doc.pointerLockElement
+      || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+    pointer.focused = !doc.hasFocus || doc.hasFocus();
+    seen = true;
+    inside = true;
+    refresh();
+  };
+  const blur = () => { pointer.focused = false; refresh(); };
+  const focus = () => { pointer.focused = true; refresh(); };
+  const leave = (event) => {
+    if (event.relatedTarget != null) return;
+    inside = false;
+    refresh();
+  };
+  const bindings = [
+    [win, 'pointermove', move, true], [win, 'mousemove', move, true], [win, 'mousedown', move, true],
+    [win, 'blur', blur, false], [win, 'focus', focus, false], [doc, 'mouseout', leave, false],
+  ];
+  for (const [target, type, listener, capture] of bindings) target.addEventListener(type, listener, capture);
+  return {
+    pointer,
+    destroy() {
+      for (const [target, type, listener, capture] of bindings) target.removeEventListener(type, listener, capture);
+    },
+  };
+}
+
+// Only the explicitly toggled combat stick centers the sight. Ordinary mouse flight
+// follows presentation's real pointer, including while gameplay pointer state is cleared.
+export function flightReticlePosition(state, width, height, visualPointer) {
+  const input = state && state.input;
+  if (input && input.autoFire) return { x: width * 0.5, y: height * 0.5 };
+  const pointer = visualPointer || (input && input.pointerScreen);
+  if (!pointer || !pointer.active || !Number.isFinite(pointer.x) || !Number.isFinite(pointer.y)
+    || pointer.x < 0 || pointer.y < 0 || pointer.x > width || pointer.y > height) return null;
+  return { x: pointer.x, y: pointer.y };
+}
+// (Removed PILOT_AVATAR_SVG — the helmet/visor pilot circle violated the standing no-visor/no-
+//  cockpit HUD rule (00_MASTER_TASTE §3). The splash now uses a clean non-diegetic signal slate.)
+import { createHud } from './hud.js';
+import { createBandHud } from './bandHud.js';
+import { createWorldObjectInteraction } from './worldObjectInteraction.js';
+import { createAftermathChoicePrompt } from './aftermathChoicePrompt.js';
+import { createLongBerthPrompt } from './longBerthPrompt.js';
+import { createCrewPrompt } from './crewPrompt.js';
+import { createEncounterChoicePrompt } from './encounterChoicePrompt.js';
+import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
+import { createPromptDeck } from './promptDeck.js';
+import { createCommandBar } from './commandBar.js';
+import { createToasts } from './toasts.js';
+import { createWatchlistHud } from './watchlistHud.js';
+import { createGlobalFind } from './globalFind.js';
+import { createDiscoveryPlate } from './discoveryPlate.js';
+import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
+import { createAlerts } from './alerts.js';
+import { createComms } from './comms.js';
+import { mountNemesisComms } from './nemesisComms.js';
+import { createWingmanRadial } from './wingmanRadial.js';
+import { firstBootScreenId, shouldAskMotionPreference } from './accessibility.js';
+import { restoredDefeatIntent } from './sim/restoredDefeatIntent.js';
+
+// id-of-export → { load, export }. Order matters only for nicer console logs.
+// Use literal dynamic-import call sites, not import(path): esbuild can rewrite these to bundled
+// chunks. A runtime string import works in the raw dev server but becomes /screens/*.js 404s in
+// build/web, which strands packaged players in an empty HUD before the menu registers.
+const SCREEN_MODULES = [
+  // REVAMP 2.1 — one zoomable galaxy map (supersedes starmap+localmap once BP-03 parity passes). Lives in src/ui/, not screens/.
+  { path: './galaxyMap.js', load: () => import('./galaxyMap.js'), name: 'galaxyMapScreen' },
+  { path: './screens/range.js', load: () => import('./screens/range.js'), name: 'rangeScreen' },
+  // THE FOOTPRINT (frontend program §11.12 J10 / SCREENS_C §2): the board you trace (F3).
+  { path: './screens/footprint.js', load: () => import('./screens/footprint.js'), name: 'footprintScreen' },
+  { path: './screens/starmap.js', load: () => import('./screens/starmap.js'), name: 'starmapScreen' },
+  { path: './screens/localmap.js', load: () => import('./screens/localmap.js'), name: 'localmapScreen' },
+  { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },
+  { path: './screens/automationPanel.js', load: () => import('./screens/automationPanel.js'), name: 'automationScreen' },
+  { path: './screens/base.js', load: () => import('./screens/base.js'), name: 'baseScreen' },
+  { path: './screens/mainMenu.js', load: () => import('./screens/mainMenu.js'), name: 'mainMenuScreen' },
+  { path: './screens/motionAsk.js', load: () => import('./screens/motionAsk.js'), name: 'motionAskScreen' },
+  { path: './screens/newGame.js', load: () => import('./screens/newGame.js'), name: 'newGameScreen' },
+  { path: './screens/pause.js', load: () => import('./screens/pause.js'), name: 'pauseScreen' },
+  { path: './screens/gameOver.js', load: () => import('./screens/gameOver.js'), name: 'gameOverScreen' },
+  // CRUCIBLE (PQ-133 §12): the Survival door, its seeded rearm draft, and the ten-wave refit.
+  // Both draft surfaces live in one module, so two entries load the same chunk by export name.
+  { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleDraftScreen' },
+  { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleRefitScreen' },
+  { path: './swarmFortifyPanel.js', load: () => import('./swarmFortifyPanel.js'), name: 'crucibleFortifyScreen' },
+  { path: './screens/crucible.js', load: () => import('./screens/crucible.js'), name: 'crucibleScreen' },
+  { path: './screens/crucible.js', load: () => import('./screens/crucible.js'), name: 'crucibleResultsScreen' },
+  { path: './screens/settings.js', load: () => import('./screens/settings.js'), name: 'settingsScreen' },
+  { path: './screens/saveLoad.js', load: () => import('./screens/saveLoad.js'), name: 'saveLoadScreen' },
+  { path: './screens/help.js', load: () => import('./screens/help.js'), name: 'helpScreen' },
+  // CREDITS (Frontend Task B §1.6): who made SpaceFace and what it is built on; the third-party
+  // notices from PQ-033.00. Reached from the title's fine line.
+  { path: './screens/credits.js', load: () => import('./screens/credits.js'), name: 'creditsScreen' },
+  // ACHIEVEMENTS (PQ-033.03): the local achievement ledger, reached from the title's fine line and
+  // from Pause. Reads the same ledger the Steam mirror sends from.
+  { path: './screens/achievements.js', load: () => import('./screens/achievements.js'), name: 'achievementsScreen' },
+  { path: './screens/statistics.js', load: () => import('./screens/statistics.js'), name: 'statisticsScreen' },
+  { path: './screens/manifest.js', load: () => import('./screens/manifest.js'), name: 'manifestScreen' },
+  { path: './screens/codex.js', load: () => import('./screens/codex.js'), name: 'codexScreen' },
+  { path: './screens/missionLog.js', load: () => import('./screens/missionLog.js'), name: 'missionLogScreen' },
+  // Wave B11 — Physics lab / Sandbox toy on front door.
+  { path: './screens/sandbox.js', load: () => import('./screens/sandbox.js'), name: 'sandboxScreen' },
+  { path: './screens/raceBoard.js', load: () => import('./screens/raceBoard.js'), name: 'raceBoardScreen' },
+  { path: './screens/physicsVenues.js', load: () => import('./screens/physicsVenues.js'), name: 'physicsVenuesScreen' },
+];
+
+// The station hub is requested only after a committed dock or Continue-docked restore. Keep its
+// literal dynamic import for bundled output, but outside the automatic registration waves so its
+// screen-only closure is fetched when the ordinary dock route actually needs it.
+// Its adapter re-exports installStationExitGate; the shared helpers remain in src/ui/station/.
+const STATION_SCREEN_MODULE = {
+  path: './station/stationScreen.js',
+  load: () => import('./station/stationScreen.js'),
+  name: 'stationScreen',
+};
+const DRILL_SCREEN_MODULE = {
+  path: './asteroid/asteroidScreen.js',
+  load: () => import('./asteroid/asteroidScreen.js'),
+  name: 'asteroidScreen',
+};
+// THE SHIP keeps one shared screen instance for both F2 and the dock destination. Its large
+// screen-only closure is requested only by a live F2 intent; the literal import remains visible
+// to esbuild so packaged builds resolve the same chunk as the development server.
+const SHIP_SCREEN_MODULE = {
+  path: './ship/shipScreen.js',
+  load: () => import('./ship/shipScreen.js'),
+  name: 'shipScreen',
+};
+
+// Title / pause / death must win the first parse wave. Galaxy map and shipworks are huge modules;
+// starting them in the same microtask as mainMenu freezes the loading terminal. They register in
+// the deferred wave below. The station hub is loaded separately on its first committed dock.
+const BOOT_SCREEN_EXPORTS = new Set([
+  'mainMenuScreen', 'motionAskScreen', 'newGameScreen', 'pauseScreen', 'gameOverScreen',
+  'settingsScreen', 'saveLoadScreen', 'helpScreen', 'creditsScreen',
+  'crucibleScreen', 'crucibleResultsScreen',
+]);
+
+// Screens whose mounts stay deferred even during menu dwell: 'station' is a whole app whose
+// open is already masked by the dock ceremony, and 'ship' mounts the shared stage (the second
+// GL context) which is itself shared with the dock shipworks host. 'achievements' mounts eager
+// medal-art fetches that page-error preflight checks when generated art is absent.
+const SCREEN_PREWARM_DEFER = new Set(['station', 'ship', 'achievements']);
+
+function yieldPresentationFrame() {
+  if (typeof requestAnimationFrame === 'function') {
+    // A hidden or occluded tab never fires rAF; without a timeout the deferred registration waves
+    // stall forever there, and a dock in that window soft-locks (station never mounts).
+    // The rAF resolve dispatches through a bounded background post: resolving inline lands the
+    // awaiting prewarm/paintWarm leg as a microtask inside this frame's task — pre-present.
+    return new Promise((resolve) => {
+      const timer = setTimeout(resolve, 250);
+      requestAnimationFrame(() => {
+        clearTimeout(timer);
+        postTaskAtBackgroundPriorityBounded(resolve);
+      });
+    });
+  }
+  return Promise.resolve();
+}
+
+
+export function beginScreenRegistrationCycle(owner, screenManager) {
+  const generation = (Number(owner && owner._screenRegistrationGeneration) || 0) + 1;
+  if (owner) {
+    owner._screenRegistrationGeneration = generation;
+    owner._screenRegistrationSettledGeneration = null;
+  }
+  return { owner, screenManager, generation };
+}
+
+export function invalidateScreenRegistrationCycle(owner) {
+  if (!owner) return 0;
+  const generation = (Number(owner._screenRegistrationGeneration) || 0) + 1;
+  owner._screenRegistrationGeneration = generation;
+  return generation;
+}
+
+export function isScreenRegistrationCycleCurrent(cycle) {
+  return !!(cycle
+    && cycle.owner
+    && cycle.screenManager
+    && cycle.owner._screenRegistrationGeneration === cycle.generation
+    && cycle.owner.screenManager === cycle.screenManager);
+}
+
+export function isScreenRegistrationCycleSettled(owner) {
+  return !!(owner
+    && Number.isFinite(owner._screenRegistrationGeneration)
+    && owner._screenRegistrationSettledGeneration === owner._screenRegistrationGeneration);
+}
+
+function hasStationId(stationId) {
+  return stationId != null
+    && (typeof stationId !== 'string' || stationId.trim().length > 0);
+}
+
+export function isDockedStationState(state) {
+  const uiState = state && state.ui;
+  return !!(uiState && uiState.docked === true && hasStationId(uiState.dockedStationId));
+}
+
+export function invalidateDockedStationPresentation(owner) {
+  if (!owner) return 0;
+  const pending = owner._pendingDockedStationPresentation;
+  if (pending && pending.timerId != null) clearTimeout(pending.timerId);
+  pending?.finish?.();
+  owner._pendingDockedStationPresentation = null;
+  owner._dockPresentationIntent = null;
+  if (owner._pendingScreenRetry && owner._pendingScreenRetry.id === 'station') {
+    owner._cancelPendingScreenRetry?.();
+  }
+  const token = (Number(owner._dockedStationPresentationToken) || 0) + 1;
+  owner._dockedStationPresentationToken = token;
+  return token;
+}
+
+export function isCurrentDockedStationPresentation(owner, token, stationId) {
+  const uiState = owner && owner.state && owner.state.ui;
+  return !!(owner
+    && owner._dockedStationPresentationToken === token
+    && owner.state
+    && owner.state.mode !== 'menu'
+    && owner.state.mode !== 'loading'
+    && uiState
+    && uiState.docked === true
+    && uiState.dockedStationId === stationId
+    && hasStationId(stationId));
+}
+
+function isWorkerDockPresentationWaitingForMirror(owner, token, stationId) {
+  const uiState = owner && owner.state && owner.state.ui;
+  return !!(owner
+    && owner.ctx
+    && owner.ctx.simLane === 'worker'
+    && hasStationId(stationId)
+    && owner._dockPresentationIntent
+    && owner._dockPresentationIntent.token === token
+    && owner._dockPresentationIntent.stationId === stationId
+    && owner.state
+    && owner.state.mode !== 'menu'
+    && owner.state.mode !== 'loading'
+    && uiState
+    && (uiState.docked !== true || uiState.dockedStationId !== stationId));
+}
+
+export function scheduleDockedStationPresentation(owner, stationId, present, releaseFade) {
+  if (!owner) return 0;
+  const token = invalidateDockedStationPresentation(owner);
+  // Keep this record through the phase-3 hold so a lifecycle transition can release the
+  // phase-1 lease even after the 400ms screen-swap callback has started.
+  const pending = {
+    token,
+    timerId: null,
+    stationId,
+    releaseFade,
+    finished: false,
+    finish: null,
+  };
+  pending.finish = () => {
+    if (pending.finished) return;
+    pending.finished = true;
+    if (typeof pending.releaseFade === 'function') pending.releaseFade();
+    if (owner._pendingDockedStationPresentation === pending) {
+      owner._pendingDockedStationPresentation = null;
+    }
+  };
+  pending.timerId = setTimeout(() => {
+    pending.timerId = null;
+    if (!isCurrentDockedStationPresentation(owner, token, stationId)) {
+      if (isWorkerDockPresentationWaitingForMirror(owner, token, stationId)) {
+        owner._dockPresentationIntent.ready = true;
+        setTimeout(() => pending.finish(), 50);
+        return;
+      }
+      pending.finish();
+      return;
+    }
+    let presented = false;
+    try {
+      if (typeof present === 'function') present(pending.finish);
+      presented = true;
+    } finally {
+      if (!presented || typeof pending.releaseFade !== 'function') pending.finish();
+    }
+  }, 400);
+  owner._pendingDockedStationPresentation = pending;
+  // The worker command that commits ui.docked may reach the main mirror after this presentation
+  // timer. Keep the accepted dock intent live for the deferred screen retry until an explicit
+  // undock/menu/load invalidates it.
+  owner._dockPresentationIntent = { token, stationId, ready: false };
+  return token;
+}
+
+export function reconcileDockedStationPresentation(owner) {
+  const intent = owner && owner._dockPresentationIntent;
+  const state = owner && owner.state;
+  const uiState = state && state.ui;
+  if (!owner || !intent || intent.ready !== true
+    || intent.token !== owner._dockedStationPresentationToken
+    || !state || state.mode === 'menu' || state.mode === 'loading'
+    || !hasStationId(intent.stationId)
+    || !uiState || uiState.docked !== true
+    || uiState.dockedStationId !== intent.stationId) return false;
+  owner._dockPresentationIntent = null;
+  if (owner.screenManager?.top?.() === 'station') {
+    owner.screenManager.syncVisibility?.();
+    return true;
+  }
+  owner._pushScreenWhenRegistered?.('station', 200);
+  return true;
+}
+
+export function reconcileGameStartedScreens(owner) {
+  if (!owner) return false;
+  invalidateDockedStationPresentation(owner);
+  owner._cancelPendingScreenRetry?.();
+  const screenManager = owner.screenManager;
+  screenManager?.closeAll?.();
+  // Launch leaves the menu route for good, but closeAll only hides: the screens stay cached
+  // with every WebGL context their mount built. The New Game / Load stage hulls each hold a
+  // THREE.WebGLRenderer, its context and its hangar GLB — release them at this boundary.
+  screenManager?.releaseScreen?.('newGame');
+  screenManager?.releaseScreen?.('saveLoad');
+  screenManager?.syncVisibility?.();
+  if (!isDockedStationState(owner.state)) return false;
+  owner._pushScreenWhenRegistered?.('station', 200);
+  return true;
+}
+
+function screenPushRequestIsLive(owner, id) {
+  switch (id) {
+    case 'station':
+      return !!(owner && owner.state && owner.state.mode !== 'menu'
+        && owner.state.mode !== 'loading'
+        && isDockedStationState(owner.state));
+    case 'drill':
+      return !!(owner && owner.state && owner.state.ui
+        && owner.state.ui.pendingDrillAsteroidId != null);
+    case 'gameOver':
+      return !!(owner && owner._gameOverShown === true
+        && !(typeof owner._survivalRunLive === 'function' && owner._survivalRunLive()));
+    case 'crucibleResults':
+      return !!(owner && owner._crucibleResultsShown === true);
+    default:
+      return true;
+  }
+}
+
+function isCurrentScreenPushRequest(owner, request) {
+  if (!owner || !request || request.cancelled
+    || owner._pendingScreenRetry !== request
+    || owner._screenRetryToken !== request.token
+    || owner._screenRegistrationCycle !== request.registrationCycle
+    || owner.screenManager !== request.screenManager
+    || !isScreenRegistrationCycleCurrent(request.registrationCycle)) {
+    return false;
+  }
+  try {
+    return request.isLive(owner);
+  } catch (_) {
+    return false;
+  }
+}
+
+export function destroyMarketNewsOwner(owner) {
+  if (!owner) return;
+  const current = owner.marketNews;
+  owner.marketNews = null;
+  if (current && typeof current.destroy === 'function') current.destroy();
+}
+
+export function replaceMarketNewsOwner(owner, ctx) {
+  if (!owner) return null;
+  destroyMarketNewsOwner(owner);
+  const next = createMarketNews(ctx);
+  owner.marketNews = next;
+  return next;
+}
+
+export function destroyCommsOwner(owner) {
+  if (!owner) return;
+  const current = owner.comms;
+  owner.comms = null;
+  if (current && typeof current.destroy === 'function') current.destroy();
+}
+
+export function replaceCommsOwner(owner, ctx, factory = createComms) {
+  if (!owner) return null;
+  destroyCommsOwner(owner);
+  const next = factory(ctx);
+  owner.comms = next;
+  return next;
+}
+
+export function createFadeLeaseController(dockFade, {
+  requestFrame = (fn) => requestAnimationFrame(fn),
+  setDelay = (fn, ms) => setTimeout(fn, ms),
+  clearDelay = (id) => clearTimeout(id),
+  hideDelayMs = 420,
+} = {}) {
+  const reasons = new Map();
+  let hideTimer = null;
+  let destroyed = false;
+
+  const sync = () => {
+    if (destroyed) return;
+    clearDelay(hideTimer);
+    dockFade.classList.toggle('sf-administrative-blackout', reasons.has('fulfillment'));
+    if (reasons.size > 0) {
+      dockFade.hidden = false;
+      dockFade.setAttribute('aria-hidden', 'false');
+      dockFade.style.pointerEvents = 'auto';
+      requestFrame(() => {
+        if (reasons.size > 0 && !dockFade.hidden) dockFade.classList.add('active');
+      });
+      return;
+    }
+    dockFade.classList.remove('active');
+    // Release every input modality together. The visual can finish fading, but the transparent
+    // overlay must not keep swallowing pointer/touch after keyboard and gamepad controls resume.
+    dockFade.style.pointerEvents = 'none';
+    hideTimer = setDelay(() => {
+      if (reasons.size > 0 || dockFade.classList.contains('active')) return;
+      dockFade.setAttribute('aria-hidden', 'true');
+      dockFade.hidden = true;
+    }, hideDelayMs);
+  };
+
+  return {
+    acquire(reason = 'dock') {
+      reasons.set(reason, (reasons.get(reason) || 0) + 1);
+      sync();
+    },
+    release(reason = 'dock') {
+      const count = reasons.get(reason) || 0;
+      if (count <= 1) reasons.delete(reason);
+      else reasons.set(reason, count - 1);
+      sync();
+    },
+    set(reason, active) {
+      if (active) reasons.set(reason, 1);
+      else reasons.delete(reason);
+      sync();
+    },
+    has(reason) {
+      return reasons.has(reason);
+    },
+    destroy() {
+      destroyed = true;
+      reasons.clear();
+      clearDelay(hideTimer);
+      dockFade.classList.remove('active', 'sf-administrative-blackout');
+      dockFade.style.pointerEvents = 'none';
+      dockFade.setAttribute('aria-hidden', 'true');
+      dockFade.hidden = true;
+    },
+  };
+}
+
+const FULFILLMENT_BLACKOUT_PHASES = new Set(['blackout', 'transit', 'wake_pending']);
+
+export function createBoardingPhaseFence(state, bus, onChange = () => {}) {
+  let active = false;
+  let destroyed = false;
+  const sync = (payload = {}) => {
+    if (destroyed) return;
+    const phase = payload && typeof payload.phase === 'string' ? payload.phase : null;
+    const wasActive = active;
+    active = FULFILLMENT_BLACKOUT_PHASES.has(phase);
+    if (!state.ui) state.ui = {};
+    state.ui.fulfillmentBlackoutActive = active;
+    onChange({ active, wasActive, phase, payload });
+  };
+  const unsubscribe = bus.on('factionPresence:boardingPhase', sync);
+  return {
+    sync,
+    isActive: () => active,
+    destroy() {
+      if (destroyed) return;
+      try { unsubscribe(); } catch (_) {}
+      sync({ phase: 'cancelled' });
+      destroyed = true;
+    },
+  };
+}
+
+const saveFeedbackWired = new WeakSet();
+function wireSaveFeedback(bus, isTitleMenuActive = null) {
+  if (!bus || !bus.on || saveFeedbackWired.has(bus)) return;
+  saveFeedbackWired.add(bus);
+  // No 'Saving …' receipt: the write lands in milliseconds and 'Saved …' follows, so two toasts
+  // for one press only crowded the lane.
+  bus.on('save:completed', ({ slot } = {}) => {
+    bus.emit('toast', {
+      text: (slot === 'auto' || slot === 'autosave') ? 'Autosaved' : 'Saved ' + saveSlotLabel(slot),
+      kind: 'good',
+      ttl: (slot === 'auto' || slot === 'autosave') ? 1400 : 2200,
+    });
+  });
+  bus.on('save:loaded', ({ slot, visualGatePending, recovered, skippedNewer } = {}) => {
+    if (recovered) return;
+    // INF-091: when Continue resolves past a dead newer slot, the receipt says so out loud.
+    const skip = skippedNewer && skippedNewer.slot
+      ? `. Newest save (${saveSlotLabel(skippedNewer.slot)}) was damaged — loaded the newest playable instead.`
+      : '';
+    bus.emit('toast', {
+      text: (visualGatePending ? 'Restoring ' : 'Loaded ') + saveSlotLabel(slot) + skip,
+      kind: visualGatePending ? 'info' : 'good',
+      ttl: skip ? 3600 : (visualGatePending ? 2200 : 2400),
+    });
+  });
+  bus.on('save:recovered', ({ slot } = {}) => {
+    bus.emit('toast', {
+      text: 'Recovered previous save for ' + saveSlotLabel(slot),
+      kind: 'warn',
+      ttl: 3600,
+    });
+  });
+  bus.on('save:error', (payload = {}) => {
+    const titleMenuActive = typeof isTitleMenuActive === 'function' && isTitleMenuActive() === true;
+    if (!shouldToastSaveError(payload, titleMenuActive)) return;
+    // SFQ-B228: a load failure receipt that names its cause also states the way out — give
+    // that sentence time to be read (it is the recovery surface), unlike short write noise.
+    const loadFailureDetail = payload && payload.reason === 'load_failed'
+      && ((typeof payload.error === 'string' && payload.error) || (typeof payload.region === 'string' && payload.region));
+    bus.emit('toast', { text: saveErrorText(payload), kind: 'warn', ttl: loadFailureDetail ? 6000 : 3200 });
+  });
+}
+
+export const ui = {
+  name: 'ui',
+
+  init(ctx) {
+    this.proExperiences?.destroy();
+    this.proExperiences = null;
+    invalidateDockedStationPresentation(this);
+    this._cancelPendingScreenRetry();
+    this._cancelShipScreenOpenRequest({ cue: false });
+    this._shipModeOff?.();
+    this._shipModeOff = null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = null;
+    this._shipScreenRegistration = null;
+    if (this._destroyFlightCursor) this._destroyFlightCursor();
+    this.windowTitle?.stop();
+    this.windowTitle = null;
+    invalidateScreenRegistrationCycle(this);
+    this._screenRegistrationCycle = null;
+    this.toasts?.destroy?.();
+    this.toasts = null;
+    if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
+    this.hud = null;
+    if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
+    this.bandHud = null;
+    if (this.promptDeck && typeof this.promptDeck.destroy === 'function') this.promptDeck.destroy();
+    this.promptDeck = null;
+    if (this.aftermathChoicePrompt && typeof this.aftermathChoicePrompt.destroy === 'function') {
+      this.aftermathChoicePrompt.destroy();
+    }
+    this.aftermathChoicePrompt = null;
+    if (this.longBerthPrompt && typeof this.longBerthPrompt.destroy === 'function') {
+      this.longBerthPrompt.destroy();
+    }
+    this.longBerthPrompt = null;
+    if (this.crewPrompt && typeof this.crewPrompt.destroy === 'function') {
+      this.crewPrompt.destroy();
+    }
+    this.crewPrompt = null;
+    destroyCommsOwner(this);
+    if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
+    this.input = null;
+    if (this.worldObject && typeof this.worldObject.destroy === 'function') this.worldObject.destroy();
+    this.worldObject = null;
+    if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
+    this._fulfillmentBlackoutTeardown = null;
+    if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
+    this._cinematicTeardown = null;
+    if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
+    this.entityLinks = null;
+    if (this.whyReveal && typeof this.whyReveal.destroy === 'function') this.whyReveal.destroy();
+    this.whyReveal = null;
+    if (this.watchlistHud && typeof this.watchlistHud.destroy === 'function') this.watchlistHud.destroy();
+    this.watchlistHud = null;
+    if (this.globalFind && typeof this.globalFind.destroy === 'function') this.globalFind.destroy();
+    this.globalFind = null;
+    if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
+    this.screenManager = null;
+    this.manager = null;
+    this._cinematicInputFence = null;
+    this._titleFlowDisposed = false;
+    this.ctx = ctx;
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    // Keep undock interception live while the screen-only station app is still loading. The
+    // shared model module is already in the flight UI dependency graph; this does not import
+    // stationScreen/stationApp or their screen-only closure.
+    try { installStationExitGate(ctx); } catch (e) { console.error('[ui] station exit gate', e); }
+    this.helpers = ctx.helpers;
+
+    ensureHudStylesheet();
+    // The frontend kit (design/frontend/direction/KIT_SPEC.md §5, §8, §11.1): one sound binding
+    // onto the existing audio:cue bus and one temperature binding that sets html[data-k-temp]
+    // from the game's state. A screen never sets either itself.
+    if (typeof this._kitSoundDispose === 'function') { try { this._kitSoundDispose(); } catch (_) {} }
+    if (this._kitTemperature && typeof this._kitTemperature.dispose === 'function') { try { this._kitTemperature.dispose(); } catch (_) {} }
+    try { this._kitSoundDispose = bindSound(ctx.bus); } catch (e) { console.warn('[ui] kit sound bind failed', e); }
+    try { this._kitTemperature = bindTemperature(ctx.bus, ctx.state); } catch (e) { console.warn('[ui] kit temperature bind failed', e); }
+    // The shared confirm modal lives outside the screen stack: a prompt pending across
+    // death / game over / exit-to-menu must be released or its top-layer focus trap blocks
+    // the after-action sheet underneath (F-START-04). Re-init replaces the binding.
+    if (typeof this._confirmBusOff === 'function') { try { this._confirmBusOff(); } catch (_) {} }
+    this._confirmBusOff = bindConfirmBus(this.bus);
+
+    // toasts + alerts (transient UI feedback)
+    this.toasts = createToasts(ctx);
+    // PQ-183.01 the watch list: pinned readings render inside the receipts lane (#toasts), above
+    // the transient cards. It mounts after toasts exist and reads only state.ui.watchlist.
+    this.watchlistHud = createWatchlistHud(ctx);
+    // Feature 20: first-discovery glass plate (POI / unique wreck / flagship ace receipts).
+    this.discoveryPlate = createDiscoveryPlate(ctx);
+    replaceMarketNewsOwner(this, ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
+    this.alerts = createAlerts(ctx);
+    wireSaveFeedback(this.bus, () => !!(this.screenManager
+      && typeof this.screenManager.top === 'function'
+      && this.screenManager.top() === 'mainMenu'));
+    // INF-092: the mirror status is truthful — pending stays pending, a failed mirror says
+    // which store is durable, and a later landed write clears the warning. Toasts only; no
+    // duplicate save and no transition rides on this path. Re-init replaces the handler
+    // instead of stacking a second one onto the same bus.
+    if (typeof this._storeSyncedOff === 'function') { try { this._storeSyncedOff(); } catch (_) {} }
+    this._storeSyncedOff = this.bus.on('save:store-synced', (payload = {}) => {
+      if (this.screenManager && typeof this.screenManager.refreshTop === 'function') {
+        try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
+      }
+      if (payload.mirrorRecovered) {
+        this.bus.emit('toast', { text: 'Save sync restored.', kind: 'good', ttl: 2600 });
+      } else if (payload.ok === false && payload.mirror === 'shared') {
+        this.bus.emit('toast', { text: 'Save sync unavailable. Saves stay on this device.', kind: 'warn', ttl: 3600 });
+      }
+    });
+
+    // screen manager — expose on ctx + on this system so screens can reach it (§ screens
+    // resolve ctx.screenManager / registry.get('ui').screenManager / .manager).
+    this.screenManager = createScreenManager(ctx);
+    this.manager = this.screenManager;
+    ctx.screenManager = this.screenManager;
+    ctx.screens = this.screenManager;
+    this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
+    this._screenPrewarmQueue = [];
+    this._stationScreenRegistration = null;
+    this._drillScreenRegistration = null;
+
+    // J5 "everything is a link": ONE delegated handler on #screens turns every [data-entity] into a
+    // door onto that entity's dossier. Mounted after the screen manager because it reads which
+    // screen owns the stack, and because its listener must sit on the same node as the manager's
+    // pointer shield — a document-level delegate never fires (that shield stopPropagations).
+    if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
+    this.entityLinks = createEntityLinks(ctx);
+    ctx.entityLinks = this.entityLinks;
+
+    // PQ-183.02 global find: the `/` palette. Its rows are plain data-entity doors, so it mounts
+    // after the delegate exists and borrows the drawer for everything past the result list.
+    if (this.globalFind && typeof this.globalFind.destroy === 'function') this.globalFind.destroy();
+    this.globalFind = createGlobalFind(ctx);
+    ctx.globalFind = this.globalFind;
+
+    // Tier 2 "why" (INSTRUMENT_GRAMMAR §7): ONE delegated capture reveal for every `[data-why]`
+    // carrier — causeLedger's market tooltip generalised (whyReveal.js). Hover AND keyboard focus,
+    // never a click. Mounted at document level so station workspace and modal screens share it.
+    if (this.whyReveal && typeof this.whyReveal.destroy === 'function') this.whyReveal.destroy();
+    this.whyReveal = mountWhyReveal();
+
+    // No sound on mouse hover (frontend direction sheet §7 / Task D §4.1): the kit's `move` cue
+    // fires on keyboard focus movement only. The `sfx_ui_hover` recipe stays — commsRadial and the
+    // audio system's kill-confirm chirp still play it.
+
+    // DEV: arm the sandbox game:started hook (no-op unless a sandbox launch is pending). Resolved via
+    // a thunk because ctx continues to be enriched after init(); the hook reads ctx at fire time.
+    if (IS_DEV) {
+      installSandboxGameStartedHook(this.bus, () => this.ctx);
+    }
+    this._physicsVenueHooks?.();
+    this._physicsVenueHooks = installPhysicsVenueHooks(this.bus, () => this.ctx);
+    this.physicalJobsPrompt?.dispose();
+    this.physicalJobsPrompt = createPhysicalJobsPrompt(this.ctx);
+    this.blackFlagPrompt?.dispose();
+    this.blackFlagPrompt = createBlackFlagPrompt(this.ctx);
+    this.logbookRecap?.dispose();
+    this.logbookRecap = createLogbookRecap(this.ctx);
+    if (typeof this._racingArmOff === 'function') {
+      try { this._racingArmOff(); } catch (_) { /* previous init */ }
+    }
+    const offRacingNew = this.bus.on('game:new', (opts) => noteRacingNewGame(opts));
+    const offRacingArm = this.bus.on('game:started', () => {
+      const result = completeRacingLaunch(this.ctx);
+      // Worker lane resolves the arm on the rpc ack — same menu-reopen rule applies there.
+      const reopenMenuOnFailure = (resolved) => {
+        if (resolved && resolved.ok !== true) {
+          // Later game:started listeners close the launch screens. Reopen the menu after
+          // that synchronous fan-out, unless another public transition already took over.
+          queueMicrotask(() => {
+            if (this.state.mode === 'menu') this._showMainMenuWhenReady?.();
+          });
+        }
+      };
+      if (result && typeof result.then === 'function') result.then(reopenMenuOnFailure);
+      else reopenMenuOnFailure(result);
+    });
+    this._racingArmOff = () => {
+      if (typeof offRacingNew === 'function') offRacingNew();
+      if (typeof offRacingArm === 'function') offRacingArm();
+    };
+
+    // Register the administrative-blackout capture fence before any interactive comms/HUD module.
+    // Document capture listeners on the same target run in registration order, so constructing the
+    // input router after a prompt would let that earlier prompt act before the fence could stop it.
+    this.input = createUiInput(ctx, this.screenManager, {
+      isShipScreenRequestPending: () => !!this._shipScreenOpenRequest,
+      toggleShipScreenRequest: () => this._toggleShipScreenOpenRequest(),
+      cancelShipScreenRequest: () => this._cancelShipScreenOpenRequest(),
+    });
+    this._bindShipScreenRequestInvalidation();
+
+    // comms / graffiti / endgame narrative overlay (story system drives it via events)
+    replaceCommsOwner(this, ctx);
+    // Nemesis packet (Counterexample): optional edge comms panel + surrender button, mounted into
+    // the flight UI layer like the comms backlog button. Fail-safe: a missing #ui-root (headless
+    // boot, test harness) or a mount error is contained and leaves the sim untouched.
+    if (this.nemesisComms && typeof this.nemesisComms.dispose === 'function') this.nemesisComms.dispose();
+    this.nemesisComms = null;
+    try {
+      this.nemesisComms = mountNemesisComms({
+        root: document.getElementById('ui-root'),
+        bus: this.bus,
+        state: this.state,
+        claimInput: (panel) => {
+          // Production input gate, documented: flight keys ignore any target inside #ui-root
+          // (systems/input.js isUiCommandTarget), and flight mouse buttons bind to the canvas
+          // element only (systems/input.js mousedown `e.target !== this._canvas` bail), so a
+          // panel inside #ui-root can never emit firing/steering input — the same exclusion the
+          // comms backlog button relies on. Pointer lock (auto-target assist) is released so the
+          // surrender button stays physically clickable. The gate is structural, so there is
+          // nothing to unregister, but the contract requires the exact unregister function.
+          if (!panel || typeof panel.closest !== 'function' || !panel.closest('#ui-root')) {
+            throw new Error('nemesis comms panel must mount inside #ui-root to fence flight input');
+          }
+          if (document.pointerLockElement && typeof document.exitPointerLock === 'function') {
+            try { document.exitPointerLock(); } catch (_) { /* best effort */ }
+          }
+          return () => {};
+        },
+      });
+      this.bus.on('game:newGame', () => {
+        if (this.nemesisComms && typeof this.nemesisComms.refresh === 'function') {
+          this.nemesisComms.refresh();
+        }
+      });
+    } catch (e) { console.warn('[ui] nemesis comms mount failed', e); }
+    // Packet 09 (Three Capitals): authored attack-warning overlay. Renderer-only: the exact
+    // world-space shapes the score evaluates, projected by the gameplay camera. Fail-safe like
+    // every DOM mount here — a missing #ui-root (headless boot) or mount error leaves the sim
+    // untouched. Voice/toast handling lives in the score system itself (helpers.voice.say with a
+    // toast fallback), not in this overlay.
+    if (this.capitalBossOverlay && typeof this.capitalBossOverlay.destroy === 'function') {
+      this.capitalBossOverlay.destroy();
+    }
+    this.capitalBossOverlay = null;
+    // Boot repair 2026-09-20: the static import of './capitalBossOverlayMount.js' landed while
+    // the module itself is still an uncommitted worktree file of the capital-boss lane, so every
+    // clean checkout 404'd the whole uiRoot module and the default route never booted. The
+    // guarded dynamic import below restores boot immediately and lights the overlay back up with
+    // no re-wiring the moment that lane commits its packet.
+    try {
+      import('./capitalBossOverlayMount.js').then(
+        (m) => {
+          this.capitalBossOverlay = m.mountCapitalBossOverlay({
+            root: document.getElementById('ui-root'),
+            bus: this.bus,
+            state: this.state,
+            helpers: this.helpers,
+          });
+        },
+        (e) => { console.warn('[ui] capital boss overlay module unavailable', e); },
+      );
+    } catch (e) { console.warn('[ui] capital boss overlay mount failed', e); }
+    // ONE decision surface for the whole flight layer (promptDeck): the encounter/inspection/
+    // parley/signal/recovery/customs adapters below subscribe to their events and render INTO it.
+    this.promptDeck = createPromptDeck(ctx);
+    this.encounterChoicePrompt = createEncounterChoicePrompt(ctx);
+    this.aftermathChoicePrompt = createAftermathChoicePrompt(ctx);
+    this.longBerthPrompt = createLongBerthPrompt(ctx);
+    this.crewPrompt = createCrewPrompt(ctx);
+    this.lawfulInspectionPrompt = createLawfulInspectionPrompt(ctx);
+    this.proExperiences = mountProExperiencesBrowser({
+      ...ctx,
+      root: typeof document !== 'undefined' ? document.getElementById('ui-root') : null,
+    });
+
+    // Wingman command radial (Micro-Loops) — a quick fleet-command wheel on the Z key.
+    this.wingmanRadial = createWingmanRadial(ctx);
+
+    // the always-mounted flight HUD
+    this.hud = createHud(ctx, this.alerts);
+    this.bandHud = createBandHud(ctx);
+    // Remount: same teardown destroy() uses — a failed re-mount below leaves nulls, not zombies.
+    this.disposeHudOverlays();
+    try {
+      const uiRootEl = typeof document !== 'undefined' ? document.getElementById('ui-root') : null;
+      this.racingHud = mountRacingHud({
+        root: uiRootEl,
+        bus: this.bus,
+        state: this.state,
+        screens: this.screenManager,
+      });
+      this.physicsVenueHud = mountPhysicsVenueHud({ root: uiRootEl, bus: this.bus, state: this.state, screens: this.screenManager });
+      this.spectrumOverlay = mountSpectrumOverlay({ root: uiRootEl, state: this.state, helpers: this.helpers, screens: this.screenManager });
+    } catch (e) { console.warn('[ui] racing tape mount failed', e); }
+
+    this.worldObject = createWorldObjectInteraction(ctx, this.screenManager);
+
+    // Command Bar — a persistent top-center resource strip (hull/shield/energy/heat/cargo/credits/
+    // role/sector). It is a FOURTH permanent anchor that duplicates the bottom-left schematic vitals
+    // and the bottom-center cargo/credits/role chips, and it competes with the one-voice channel.
+    // HUD three-anchor law (SPEC3-36, Option A — design/revamp/HUD_THREE_ANCHOR.md): retire it in
+    // flight; its data already lives in the anchors + contextual chips. Kept imported + flag-gated
+    // (NOT deleted) as the ready skeleton for the deferred SPEC3-36 shared screen-header (Option B) —
+    // that header belongs in the #screens layer (screenManager), not #ui-root. Flip to true only
+    // when that screen-layer header work lands. (Not in featureFlags.js: that registry is combat/
+    // determinism-scoped and orchestrator-owned; this is a UI-layout toggle.)
+    const COMMAND_BAR_IN_FLIGHT = false;
+    this.commandBar = COMMAND_BAR_IN_FLIGHT ? createCommandBar(ctx) : null;
+    this.windowTitle = installWindowTitle(document, { bus: this.bus, read: () => readWindowTitleView(this.state) });
+
+    // === UI: aiming reticle ===
+    // (The pilot-helmet avatar was removed — it read as a first-person-visor motif that doesn't fit
+    // this third-person chase-cam game, and it sat on every screen as an unexplained symbol.)
+    // The native target cursor owns ordinary mouse flight. This independent DOM marker
+    // carries hit feedback and the centered combat-stick sight, outside HUD effects.
+    const reticle = document.createElement('div');
+    reticle.id = 'aim-reticle';
+    reticle.dataset.mode = 'manual';
+    reticle.innerHTML = RETICLE_SVG;
+    reticle.setAttribute('aria-hidden', 'true');
+    const reticleModeLabel = document.createElement('span');
+    reticleModeLabel.className = 'sf-reticle-mode-label';
+    reticle.appendChild(reticleModeLabel);
+    const hudRoot = document.getElementById('hud');
+    document.getElementById('ui-root').appendChild(reticle);
+    const flightPointer = createFlightPointerTracker(window, document);
+    const nativeCursor = installNativeFlightCursor(document);
+
+    let hitTickTimeout = null;
+    this._destroyFlightCursor = () => {
+      if (hitTickTimeout) clearTimeout(hitTickTimeout);
+      flightPointer.destroy();
+      nativeCursor.destroy();
+      document.body.classList.remove('sf-flight-cursor', 'sf-flight-pointer');
+      reticle.remove();
+      this._syncFlightCursor = null;
+      this._destroyFlightCursor = null;
+    };
+    const triggerHitTick = (kind) => {
+      const el = document.getElementById('aim-reticle') || reticle;
+      if (!el) return;
+      el.dataset.hit = kind;
+      if (hitTickTimeout) clearTimeout(hitTickTimeout);
+      const durationMs = kind === 'kill' ? 240 : 130;
+      hitTickTimeout = setTimeout(() => {
+        delete el.dataset.hit;
+      }, durationMs);
+    };
+
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('combat:damage', (payload) => {
+        if (!payload || payload.attackerId !== this.state?.playerId) return;
+        if (payload.targetId === this.state?.playerId) return;
+        const isShield = !!(payload.shieldHit && payload.shieldDamage > 0);
+        triggerHitTick(isShield ? 'shield' : 'hull');
+      }, { presentation: true });
+
+      this.bus.on('entity:killed', (payload) => {
+        if (!payload || payload.killerId !== this.state?.playerId) return;
+        if (payload.id === this.state?.playerId) return;
+        triggerHitTick('kill');
+      }, { presentation: true });
+
+      // INF-053: when the LOCKED target dies, say DESTROYED in the lock's own voice, whatever
+      // else the kill pays. Any killer counts — the lock's subject is a corpse either way.
+      this.bus.on('entity:killed', (payload) => {
+        const toast = destroyedLockToast(this.state, payload);
+        if (toast) this.bus.emit('toast', toast);
+      }, { presentation: true });
+    }
+    const autoTargetFlightStick = document.createElement('div');
+    autoTargetFlightStick.id = 'auto-target-flight-stick';
+    autoTargetFlightStick.setAttribute('aria-hidden', 'true');
+    autoTargetFlightStick.innerHTML = '<div class="sf-combat-stick__base"><span class="sf-combat-stick__crosshair"></span><span class="sf-combat-stick__knob"></span></div>';
+    hudRoot.appendChild(autoTargetFlightStick);
+    const autoTargetStickKnob = autoTargetFlightStick.querySelector('.sf-combat-stick__knob');
+    let lastStickDisplay = null;
+    let lastStickTransform = null;
+    let lastStickActive = null;
+
+    const autoTargetFlightPath = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    autoTargetFlightPath.id = 'auto-target-flight-path';
+    autoTargetFlightPath.setAttribute('aria-hidden', 'true');
+    autoTargetFlightPath.innerHTML = '<polyline class="sf-flight-path__route" points=""></polyline><circle class="sf-flight-path__endpoint-ring" r="11"></circle><circle class="sf-flight-path__endpoint" r="3.5"></circle>';
+    hudRoot.appendChild(autoTargetFlightPath);
+    const autoTargetRouteLine = autoTargetFlightPath.querySelector('.sf-flight-path__route');
+    const autoTargetEndpointRing = autoTargetFlightPath.querySelector('.sf-flight-path__endpoint-ring');
+    const autoTargetEndpoint = autoTargetFlightPath.querySelector('.sf-flight-path__endpoint');
+    let lastReticleX = NaN;
+    let lastReticleY = NaN;
+    let lastFlightPathPoints = '';
+    let lastReticleDisplay = null;
+    let lastReticleMode = null;
+    let lastFlightPathDisplay = null;
+    let lastFlightPathOpacity = null;
+    let lastEndpointCx = null;
+    let lastEndpointCy = null;
+    let lastFlightPathDrawing = null;
+
+    // Bind-sheet copy lives in Help / Settings. The flight windshield no longer mounts a key laundry.
+    setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
+      && this.state.settings.gameplay.controlScheme);
+    setPromptBindings(this.state);
+    const refreshReticleModeLabel = () => {
+      reticleModeLabel.textContent = `Combat stick · ${resolveActionLabel(this.state, 'autoFire')} to exit`;
+    };
+    refreshReticleModeLabel();
+    this.bus.on('settings:changed', () => {
+      setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
+        && this.state.settings.gameplay.controlScheme);
+      setPromptBindings(this.state);
+      refreshReticleModeLabel();
+      // Read the applied palette after the settings listeners update accessibility classes.
+      queueMicrotask(() => nativeCursor.refresh());
+    });
+
+    const syncFlightCursor = (visible, reticleAlive = visible) => {
+      const st = this.state;
+      const autoTarget = !!(visible && st && st.input && st.input.autoFire);
+      const position = flightReticlePosition(st,
+        typeof innerWidth === 'number' ? innerWidth : 0,
+        typeof innerHeight === 'number' ? innerHeight : 0, flightPointer.pointer);
+      const flightPath = st && st.input && st.input.autoTargetPath;
+      const flightStick = st && st.input && st.input.autoTargetVector;
+      const pathActive = !!(autoTarget && flightPath && flightPath.active
+        && Array.isArray(flightPath.points) && flightPath.points.length >= 2);
+      // Tick-independent pointer-lock watchdog: the sim-side reconcile stops while a menu
+      // freezes ticks, so a lock held — or granted late — outside pure-flight+G-mode would
+      // otherwise strand the player with no OS cursor (hidden by the lock) and no reticle
+      // (hidden with the HUD). This sync runs every render frame in every UI state, so the
+      // invariant cannot stick; the mode itself is untouched and re-acquires on the next
+      // canvas mousedown.
+      if (typeof document !== 'undefined' && document.pointerLockElement
+        && !pointerLockIsLegitimate(st, visible)
+        && typeof document.exitPointerLock === 'function') {
+        try { document.exitPointerLock(); } catch (_) { /* best effort: the next frame retries */ }
+      }
+      // `reticle` created above is the only element with id 'aim-reticle': the old
+      // getElementById could only ever resolve to it (or nothing) — skip the per-frame lookup.
+      const reticleEl = reticle;
+      // Only combat-stick mode hides the native pointer for a centered sight. Ordinary
+      // flight always selects the native target image, even before the first mouse event
+      // or after a transient focus/input reset. Windows/browser owns its actual position.
+      const targetCursorVisible = !!(reticleAlive && position && flightPointer.pointer.focused
+        && reticleEl.isConnected);
+      const cursorMode = flightCursorMode(st, visible, targetCursorVisible);
+      document.body.classList.toggle('sf-flight-pointer', cursorMode === 'mouse');
+      document.body.classList.toggle('sf-flight-cursor', cursorMode === 'stick');
+      const nextReticleDisplay = targetCursorVisible ? 'block' : 'none';
+      if (lastReticleDisplay !== nextReticleDisplay) {
+        lastReticleDisplay = nextReticleDisplay;
+        reticleEl.style.display = nextReticleDisplay;
+      }
+      const nextReticleMode = st && st.input && st.input.autoFire ? 'auto' : 'manual';
+      if (lastReticleMode !== nextReticleMode) {
+        lastReticleMode = nextReticleMode;
+        reticleEl.dataset.mode = nextReticleMode;
+      }
+      const nextStickDisplay = autoTarget ? 'block' : 'none';
+      if (lastStickDisplay !== nextStickDisplay) {
+        lastStickDisplay = nextStickDisplay;
+        autoTargetFlightStick.style.display = nextStickDisplay;
+      }
+      if (autoTarget) {
+        const stickX = Number.isFinite(flightStick?.screenX) ? flightStick.screenX : 0;
+        const stickY = Number.isFinite(flightStick?.screenY) ? flightStick.screenY : 0;
+        const knobTravelPx = 38;
+        const nextStickTransform = `translate3d(${(stickX * knobTravelPx).toFixed(1)}px,${(stickY * knobTravelPx).toFixed(1)}px,0)`;
+        if (lastStickTransform !== nextStickTransform) {
+          lastStickTransform = nextStickTransform;
+          autoTargetStickKnob.style.transform = nextStickTransform;
+        }
+        const stickActive = flightStick?.active === true;
+        if (lastStickActive !== stickActive) {
+          lastStickActive = stickActive;
+          autoTargetFlightStick.classList.toggle('is-active', stickActive);
+        }
+      }
+      const nextFlightPathDisplay = autoTarget ? 'block' : 'none';
+      if (lastFlightPathDisplay !== nextFlightPathDisplay) {
+        lastFlightPathDisplay = nextFlightPathDisplay;
+        autoTargetFlightPath.style.display = nextFlightPathDisplay;
+      }
+      const nextFlightPathOpacity = pathActive ? '1' : '0';
+      if (lastFlightPathOpacity !== nextFlightPathOpacity) {
+        lastFlightPathOpacity = nextFlightPathOpacity;
+        autoTargetFlightPath.style.opacity = nextFlightPathOpacity;
+      }
+      const x = position && position.x;
+      const y = position && position.y;
+      if (position && (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1
+        || !Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1)) {
+        const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
+        if (reticleEl._sfHudTransform !== next) {
+          reticleEl._sfHudTransform = next;
+          reticleEl.style.transform = next;
+        }
+        lastReticleX = x;
+        lastReticleY = y;
+      }
+      if (!visible) return;
+      if (autoTarget) {
+        if (!pathActive || !this.helpers || typeof this.helpers.worldToScreen !== 'function') return;
+        const projectedPoints = [];
+        const player = st.entities && st.entities.get ? st.entities.get(st.playerId) : null;
+        if (player && player.pos) projectedPoints.push(player.pos);
+        const startIndex = Math.max(1, Number.isFinite(flightPath.pointIndex)
+          ? Math.floor(flightPath.pointIndex)
+          : 1);
+        for (let i = startIndex; i < flightPath.points.length; i++) {
+          projectedPoints.push(flightPath.points[i]);
+        }
+        // MACH-05 — one reused in/out pair for the whole polyline: per-point literal + result
+        // objects allocated two records for every path point on this overlay refresh.
+        const fpIn = this._flightPathProjIn || (this._flightPathProjIn = { x: 0, y: 0, z: 0 });
+        const fpOut = this._flightPathProjOut || (this._flightPathProjOut = { x: 0, y: 0, onScreen: false });
+        const screenPoints = [];
+        for (const point of projectedPoints) {
+          fpIn.x = point.x; fpIn.y = 0; fpIn.z = point.z;
+          const projected = this.helpers.worldToScreen(fpIn, fpOut);
+          if (projected && Number.isFinite(projected.x) && Number.isFinite(projected.y)) {
+            screenPoints.push(`${projected.x.toFixed(1)},${projected.y.toFixed(1)}`);
+          }
+        }
+        const pointsValue = screenPoints.join(' ');
+        if (pointsValue !== lastFlightPathPoints) {
+          autoTargetRouteLine.setAttribute('points', pointsValue);
+          lastFlightPathPoints = pointsValue;
+        }
+        const endpoint = screenPoints.length ? screenPoints[screenPoints.length - 1].split(',') : null;
+        if (endpoint) {
+          const x = endpoint[0];
+          const y = endpoint[1];
+          if (lastEndpointCx !== x || lastEndpointCy !== y) {
+            lastEndpointCx = x;
+            lastEndpointCy = y;
+            autoTargetEndpointRing.setAttribute('cx', x);
+            autoTargetEndpointRing.setAttribute('cy', y);
+            autoTargetEndpoint.setAttribute('cx', x);
+            autoTargetEndpoint.setAttribute('cy', y);
+          }
+        }
+        const drawing = !!flightPath.drawing;
+        if (lastFlightPathDrawing !== drawing) {
+          lastFlightPathDrawing = drawing;
+          autoTargetFlightPath.classList.toggle('is-drawing', drawing);
+        }
+        return;
+      }
+    };
+    this._syncFlightCursor = syncFlightCursor;
+    const setFlightUI = (visible) => {
+      syncFlightCursor(visible);
+    };
+    const refreshFlightUI = () => {
+      const modalOpen = this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen();
+      const docked = this.state && this.state.ui && this.state.ui.docked === true;
+      setFlightUI(this.state && this.state.mode === 'flight' && !modalOpen && !docked);
+    };
+    this.bus.on('mode:changed', refreshFlightUI);
+    // initial
+    setTimeout(refreshFlightUI, 50);
+
+    // === Cinematic title splash (styles/intro.css owns look + reveal choreography) ===
+    // Full-bleed C-INTRO still with a slow approach drift, film-title lockup, and the
+    // Contract 47-A signal readout. Click/any key to proceed to menu. First load per
+    // session only, so returning players land straight on the menu.
+    const CINEMATIC_SEEN_KEY = 'sf.cinematicSeen';
+    this._cinematicActive = false;
+    this._pendingMainMenu = false;
+    this._registeredScreens = new Set();
+    const showMainMenuWhenReady = () => {
+      if (this._titleFlowDisposed) {
+        this._pendingMainMenu = false;
+        return;
+      }
+      // Do not build/focus the menu underneath the cinematic. Besides being inaccessible, that lets
+      // the dismissal key's native activation land on the newly focused New Game button.
+      if (this._cinematicActive) {
+        this._pendingMainMenu = true;
+        return;
+      }
+      if (!this.state || this.state.mode !== 'menu') {
+        this._pendingMainMenu = false;
+        return;
+      }
+      const askMotion = shouldAskMotionPreference(this.state.settings);
+      const menuReady = this._registeredScreens &&
+        this._registeredScreens.has('mainMenu') &&
+        this._registeredScreens.has('newGame') &&
+        (!askMotion || this._registeredScreens.has('motionAsk'));
+      if (this.screenManager && menuReady) {
+        if (!this.screenManager.top()) this.screenManager.pushScreen(firstBootScreenId(this.state.settings));
+        this._pendingMainMenu = false;
+      } else {
+        this._pendingMainMenu = true;
+      }
+    };
+    this._showMainMenuWhenReady = showMainMenuWhenReady;
+
+    let shouldShowCinematic = false;
+    try { shouldShowCinematic = !sessionStorage.getItem(CINEMATIC_SEEN_KEY); } catch (e) { shouldShowCinematic = true; }
+    if (shouldShowCinematic) {
+      this._cinematicActive = true;
+      const cinematic = document.createElement('div');
+      cinematic.id = 'cinematic-splash';
+      cinematic.tabIndex = -1;
+      cinematic.setAttribute('role', 'dialog');
+      cinematic.setAttribute('aria-modal', 'true');
+      cinematic.setAttribute('aria-labelledby', 'cinematic-title');
+      cinematic.setAttribute('aria-describedby', 'cinematic-summary');
+      // Styling + reveal choreography live in styles/intro.css. Every layer starts
+      // invisible and animates in, so the boot console crossfades into "optics
+      // online" instead of snapping. IDs are behavior hooks — other scripts and
+      // the a11y wiring key off #cinematic-title / #cinematic-summary / #cinematic-signal.
+      cinematic.innerHTML = `
+        <div class="cine-bg"><video class="cine-video" muted loop playsinline preload="auto" poster="assets/cinematics/intro-visualizer.jpg" aria-hidden="true"><source src="assets/cinematics/intro-visualizer.mp4" type="video/mp4" /></video></div>
+        <div class="cine-scrim"></div>
+        <div class="cine-grain"></div>
+        <div class="cine-tag">Helios System · Frontier Sector</div>
+        <div class="cine-lockup">
+          <div class="cine-eyebrow">Deep Space Flight Systems</div>
+          <div class="cine-title" id="cinematic-title">SPACEFACE</div>
+          <div class="cine-rule"></div>
+          <div class="cine-contract" id="cinematic-summary">Space Flight &amp; Exploration</div>
+          <div class="cine-begin">${window.matchMedia?.('(pointer: coarse)').matches ? 'Tap to begin' : 'Click or press any key to begin'}</div>
+        </div>
+        <div class="cine-signal" id="cinematic-signal">
+          <div class="cine-signal__k">Beacon signal</div>
+          <div class="cine-signal__t">HELIOS TRANSIT</div>
+          <div class="cine-signal__s">All channels open</div>
+        </div>
+      `;
+      // The baked clip is a bonus layer over the .cine-bg still: drop the
+      // element on any failure and the Ken-Burns still simply remains.
+      const cineVideo = cinematic.querySelector('.cine-video');
+      // Hoisted beside cineVideo: mountCinematic's play() fallback calls this, and a nested
+      // declaration here left it out of scope there (ReferenceError on every autoplay
+      // rejection, which also stranded the clip and its fetch pipeline).
+      const dropVideo = () => { try { if (cineVideo) cineVideo.remove(); } catch (_) {} };
+      if (cineVideo) {
+        cineVideo.addEventListener('error', dropVideo);
+        const cineSource = cineVideo.querySelector('source');
+        if (cineSource) cineSource.addEventListener('error', dropVideo);
+        const motionReduced = (document.documentElement
+            && document.documentElement.classList.contains('sf-reduce-motion'))
+          || (typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        if (motionReduced) dropVideo();
+        // play() stays inside mountCinematic: calling it here spun up a second fetch+decoder
+        // pipeline on the same 28.8 MB clip inside the registry-init crunch (the boot intro
+        // video already plays the file), competing with init + contract fetch + authored
+        // preload for decode threads every launch.
+      }
+
+      let dismissed = false;
+      let autoDismissTimer = null;
+      let fadeRemovalTimer = null;
+      let inputFence = null;
+      let bootOverlayWatcher = null;
+      const finalizeCinematic = () => {
+        if (dismissed) return;
+        dismissed = true;
+        this._cinematicActive = false;
+        this._cinematicInputFence = null;
+        cinematic.removeEventListener('click', requestPointerDismissal);
+        if (autoDismissTimer) clearTimeout(autoDismissTimer);
+        cinematic.classList.add('is-closing'); // intro.css: .65s opacity settle
+        fadeRemovalTimer = setTimeout(() => {
+          if (cinematic.parentNode) cinematic.parentNode.removeChild(cinematic);
+          if (this._cinematicTeardown === teardownCinematic) this._cinematicTeardown = null;
+        }, 700);
+        try { sessionStorage.setItem(CINEMATIC_SEEN_KEY, '1'); } catch (e) {}
+        showMainMenuWhenReady();
+      };
+      const requestPointerDismissal = () => inputFence && inputFence.requestDismiss('pointer');
+      const teardownCinematic = () => {
+        const wasActive = !dismissed;
+        dismissed = true;
+        this._cinematicActive = false;
+        if (bootOverlayWatcher) { bootOverlayWatcher.disconnect(); bootOverlayWatcher = null; }
+        if (inputFence) inputFence.teardown();
+        cinematic.removeEventListener('click', requestPointerDismissal);
+        if (autoDismissTimer) clearTimeout(autoDismissTimer);
+        if (fadeRemovalTimer) clearTimeout(fadeRemovalTimer);
+        if (cinematic.parentNode) cinematic.parentNode.removeChild(cinematic);
+        if (wasActive) this._pendingMainMenu = false;
+        this._cinematicInputFence = null;
+        if (this._cinematicTeardown === teardownCinematic) this._cinematicTeardown = null;
+        return wasActive;
+      };
+
+      // Mount the splash only once the loading shell has handed off. Mounting it during boot put
+      // a "press any key" surface over a still-running loader: dismissing it early stepped the
+      // player BACK to the loading screen, which is what read as the keypress doing nothing.
+      const mountCinematic = () => {
+        if (dismissed || cinematic.isConnected) return;
+        const host = document.getElementById('ui-root');
+        // No mount point means there is no surface to gate — release the menu instead of
+        // sitting between it and the player forever.
+        if (!host) { this._cinematicActive = false; showMainMenuWhenReady(); return; }
+        host.appendChild(cinematic);
+        // First paint-worthy moment for the clip: start the decoder only now that the layer
+        // can actually be seen (the .cine-bg still + poster covered the wait).
+        if (cineVideo && cineVideo.isConnected) {
+          try {
+            const p = cineVideo.play();
+            if (p && typeof p.catch === 'function') p.catch(dropVideo);
+          } catch (_) { dropVideo(); }
+        }
+        inputFence = createCinematicInputFence({
+          keyboardTarget: window,
+          visibilityTarget: document,
+          focusOwner: () => {
+            // A live modal owns focus outright (its focusin trap answers any steal with its own
+            // focus() — a synchronous ping-pong, seen as RangeError stacks on the live title).
+            if (
+              !dismissed && cinematic.isConnected && document.activeElement !== cinematic
+              && !(document.body && document.body.classList.contains('ui-modal-open'))
+            ) {
+              try { cinematic.focus({ preventScroll: true }); } catch (_) { cinematic.focus(); }
+            }
+          },
+          onFinalize: finalizeCinematic,
+        });
+        this._cinematicInputFence = inputFence;
+        cinematic.addEventListener('click', requestPointerDismissal);
+        // Auto-dismiss safety after long time. A held keyboard chord defers this request until the
+        // release fence is complete; blur/visibility loss cancels that incomplete gesture safely.
+        autoDismissTimer = setTimeout(() => {
+          if (cinematic.parentNode && inputFence) inputFence.requestDismiss('timer');
+        }, 18000);
+      };
+      this._cinematicTeardown = teardownCinematic;
+
+      const bootOverlay = document.getElementById('boot-overlay');
+      const bootOverlayGone = () => {
+        const o = document.getElementById('boot-overlay');
+        return !o || o.classList.contains('hidden') || o.style.display === 'none';
+      };
+      if (bootOverlayGone() || !bootOverlay || typeof MutationObserver !== 'function') {
+        mountCinematic();
+      } else {
+        bootOverlayWatcher = new MutationObserver(() => {
+          if (!bootOverlayGone()) return;
+          if (bootOverlayWatcher) { bootOverlayWatcher.disconnect(); bootOverlayWatcher = null; }
+          mountCinematic();
+        });
+        bootOverlayWatcher.observe(bootOverlay, { attributes: true });
+      }
+    } else {
+      // If already seen this session, ensure we land on the menu
+      setTimeout(() => {
+        showMainMenuWhenReady();
+      }, 80);
+    }
+
+    // Expose a simple professional video player for the generated C-INTRO clips (cool factor, uses the 6s videos we created).
+    this.playCinematic = (videoPath = 'assets/cinematics/C-INTRO-01_6s.mp4', title = 'Intro') => {
+      const ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;z-index:5000;background:rgba(3,5,10,0.92);display:flex;align-items:center;justify-content:center;';
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'max-width:92vw;max-height:92vh;position:relative;';
+      const vid = document.createElement('video');
+      vid.src = videoPath;
+      vid.autoplay = true;
+      vid.controls = true;
+      vid.playsInline = true;
+      vid.style.cssText = 'max-width:100%;max-height:82vh;border:1px solid #3d4754;box-shadow:0 14px 44px rgba(0,0,0,.6);';
+      const hint = document.createElement('div');
+      hint.style.cssText = 'text-align:center;margin-top:8px;color:#d3e6ff;font-family:var(--mono);letter-spacing:2px;opacity:0.7;';
+      hint.textContent = `${title} — click backdrop to close`;
+      wrap.append(vid, hint);
+      ov.appendChild(wrap);
+      ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+      vid.addEventListener('ended', () => setTimeout(() => ov.remove(), 400));
+      document.getElementById('ui-root').appendChild(ov);
+    };
+    window.playSpaceFaceCinematic = this.playCinematic; // handy for console or future buttons
+
+    // navigation fallback events (screens may emit these if they can't reach the manager)
+    this.bus.on('ui:pushScreen', (payload = {}) => {
+      const id = payload && payload.id;
+      if (!id) return;
+      // Map authority: any localmap/starmap/galaxyMap push becomes galaxyMap + focus intent.
+      if (isMapScreenId(id)) {
+        openGalaxyMap({
+          state: this.state,
+          bus: this.bus,
+          screenManager: this.screenManager,
+        }, {
+          screenId: id,
+          focus: payload.focus,
+          sectorId: payload.sectorId,
+          missionId: payload.missionId,
+          stationId: payload.stationId,
+          pos: payload.pos,
+          label: payload.label,
+          source: payload.source || 'ui:pushScreen',
+        });
+        return;
+      }
+      this.screenManager.pushScreen(id);
+    });
+    this.bus.on('ui:popScreen', () => this.screenManager.popScreen());
+    // Close ONE named screen, and only if it is the one on top. An owner that opened a surface
+    // (the Crucible draft / refit) needs to close its own without popping whatever a player
+    // stacked above it (PQ-133 CRU-016).
+    this.bus.on('ui:closeScreen', (payload = {}) => {
+      const id = payload && payload.id;
+      if (!id) return;
+      if (this.screenManager.top() === id) this.screenManager.popScreen();
+    });
+    this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
+    this.bus.on('ui:closeAll', () => {
+      this._cancelPendingScreenRetry();
+      this.screenManager.closeAll();
+    });
+    this.bus.on('ui:cycleTarget', ({ dir } = {}) => cycleTarget(this.state, dir || 1, this.bus));
+    this.bus.on('ui:clearTarget', () => clearCombatTarget(this.state, this.bus));
+    // PQ-015 component sub-selection: cycle a component (subsystem / salvage weak-point) on the
+    // current target. Reachable via the target panel component chip (DOM); a keyboard binding is a
+    // pending input.js shared-change request (see REPORT). Selection is transient on state.ui.
+    this.bus.on('ui:cycleComponent', ({ dir } = {}) => cycleTargetComponent(this.state, dir || 1, this.bus));
+    this.bus.on('ui:targetNearestHostileToPlayer', ({ quiet } = {}) => targetNearestHostileToPlayer(this.state, this.bus, { quiet }));
+
+    // Dock transition overlay
+    const dockFade = document.createElement('div');
+    dockFade.className = 'sf-dock-fade';
+    dockFade.id = 'sf-dock-overlay';
+    dockFade.hidden = true;
+    dockFade.setAttribute('aria-hidden', 'true');
+    if (typeof document !== 'undefined' && document.head && !document.getElementById('sf-dock-blackout-style')) {
+      const blackoutStyle = document.createElement('style');
+      blackoutStyle.id = 'sf-dock-blackout-style';
+      blackoutStyle.textContent = '#sf-dock-overlay.sf-administrative-blackout { background:#05070d; }';
+      document.head.appendChild(blackoutStyle);
+    }
+    const blackoutStatus = document.createElement('div');
+    blackoutStatus.className = 'sr-only';
+    blackoutStatus.setAttribute('role', 'status');
+    blackoutStatus.setAttribute('aria-live', 'assertive');
+    blackoutStatus.setAttribute('aria-atomic', 'true');
+    blackoutStatus.tabIndex = -1;
+    dockFade.appendChild(blackoutStatus);
+    document.getElementById('ui-root').appendChild(dockFade);
+    const dockFadeLeases = createFadeLeaseController(dockFade);
+    const showDockFade = (reason = 'dock') => dockFadeLeases.acquire(reason);
+    const hideDockFade = (reason = 'dock') => dockFadeLeases.release(reason);
+    const boardingAnnouncement = {
+      blackout: 'Fulfillment administrative boarding. Flight and interface controls are locked.',
+      transit: 'Fulfillment administrative transit in progress.',
+      wake_pending: 'Fulfillment routing complete. Restoring ship controls.',
+      complete: 'Routing complete. Variance resolved. Ship controls restored.',
+      cancelled: 'Fulfillment administrative transit cancelled. Ship controls restored.',
+    };
+    let blackoutPreviousFocus = null;
+    const applyFulfillmentBlackout = ({ active, wasActive, phase }) => {
+      if (active && !wasActive) {
+        // Snapshot before body modal/HUD inert mutations can blur a focused HUD control.
+        blackoutPreviousFocus = document.activeElement && document.activeElement !== document.body
+          ? document.activeElement
+          : null;
+      }
+      this._fulfillmentBlackoutActive = active;
+      // Phase transitions can repeat after save rehydration; this lease is absolute/idempotent,
+      // unlike dock/drill transitions, whose same-reason overlaps are reference-counted.
+      dockFadeLeases.set('fulfillment', active);
+      blackoutStatus.textContent = boardingAnnouncement[phase] || '';
+
+      // Keep the normal modal/input and accessibility contracts authoritative while the simulation
+      // and deterministic boarding FSM continue advancing underneath the presentation fence.
+      const screenOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
+      const externalOpen = active || isConfirmOpen()
+        || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
+      // During a blackout isLiveOverlay() is false by definition, so live screens collapse into the
+      // full modal treatment here. The plain two-input reconciliation is the pinned K1 lifecycle
+      // landmark; only a live overlay takes the softened third input.
+      const liveOverlay = !!(this.screenManager && this.screenManager.isLiveOverlay
+        && this.screenManager.isLiveOverlay());
+      if (liveOverlay) syncModalChrome(screenOpen, externalOpen, liveOverlay);
+      else syncModalChrome(screenOpen, externalOpen);
+      const docked = !!(this.state.ui && this.state.ui.docked === true);
+      if (this.screenManager && typeof this.screenManager.syncHudAccessibility === 'function') {
+        this.screenManager.syncHudAccessibility(screenOpen || externalOpen || docked || this.state.mode !== 'flight');
+      }
+
+      if (active && !wasActive) {
+        requestAnimationFrame(() => {
+          if (!this._fulfillmentBlackoutActive || dockFade.hidden) return;
+          try { blackoutStatus.focus({ preventScroll: true }); } catch (_) { blackoutStatus.focus(); }
+        });
+      } else if (!active && wasActive) {
+        const restore = blackoutPreviousFocus;
+        blackoutPreviousFocus = null;
+        if (restore && restore.isConnected && !restore.inert && typeof restore.focus === 'function') {
+          try { restore.focus({ preventScroll: true }); } catch (_) { restore.focus(); }
+        }
+      }
+    };
+    this._fulfillmentBlackoutActive = false;
+    if (!this.state.ui) this.state.ui = {};
+    this.state.ui.fulfillmentBlackoutActive = false;
+    const boardingFence = createBoardingPhaseFence(this.state, this.bus, applyFulfillmentBlackout);
+    let blackoutTornDown = false;
+    const teardownFulfillmentBlackout = () => {
+      if (blackoutTornDown) return;
+      blackoutTornDown = true;
+      boardingFence.destroy();
+      dockFadeLeases.destroy();
+      if (dockFade.parentNode) dockFade.parentNode.removeChild(dockFade);
+      if (this._fulfillmentBlackoutTeardown === teardownFulfillmentBlackout) {
+        this._fulfillmentBlackoutTeardown = null;
+      }
+    };
+    this._fulfillmentBlackoutTeardown = teardownFulfillmentBlackout;
+    // Re-init may happen between save:loaded and the next phase event. Rehydrate immediately from
+    // the semantic incident so no render/input frame exposes controls during transit or wake-up.
+    boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
+
+    this.bus.on('dock:docked', (payload = {}) => {
+      if (!commitDockedUiState(this.state, payload, this.bus)) return;
+      const { stationId } = payload;
+      this.screenManager.syncVisibility();
+
+      // Release an older transition before acquiring this same named fade lease.
+      invalidateDockedStationPresentation(this);
+      // Phase 1: fade to dark
+      showDockFade('dock');
+
+      // The station hub mounts under the veil: build + one style/layout pass now so the
+      // Phase-2 swap flips visibility instead of paying a whole-app mount inside it.
+      if (this._registeredScreens && this._registeredScreens.has('station')) {
+        try { this._warmScreen('station'); } catch (e) { console.error(e); }
+      }
+
+      // Dock fly-in: drive a scripted push-zoom via the camera controller instead of the old
+      // hard-set on state.camera.zoom (which fought the dynamic-zoom damping and snapped). The
+      // pushZoom widens the view ~25% over the fade so the approach reads as a committed fly-in,
+      // then eases back on its own. The dock sound is the audio system's own on dock:docked
+      // (audioSystem._onDocked: the re-tuned sfx_dock_clunk swell, then a low confirm); no UI cue
+      // here, or the chime plays twice (Frontend Task C §1.2).
+      const camCtrl = this.state.render && this.state.render.cameraCtrl;
+      if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(0.25, 0.9);
+
+      scheduleDockedStationPresentation(this, stationId, (finish) => {
+        // Phase 2: at peak darkness, do the screen swap. The station screen is a deferred-wave
+        // import — if it has not registered yet, wait for it instead of dropping the push (a
+        // dropped push while docked leaves the player staring at the fade with dead controls).
+        if (this.screenManager.top() !== 'station') this._pushScreenWhenRegistered('station', 200);
+        else this.screenManager.syncVisibility();
+
+        // Phase 3: fade back in
+        setTimeout(() => {
+          finish();
+        }, 50); // brief hold at full dark before fading back
+      }, () => hideDockFade('dock')); // matches the CSS transition duration
+      // Start the screen-only module load under the dock veil. Phase 2 still owns the public open;
+      // its retry preserves the first dock intent if the import is slower than the ceremony.
+      if (screenPushRequestIsLive(this, 'station')) this._ensureStationScreenRegistered();
+    });
+    // Docked undock transition. Bare dock:undocked while docked is gated by installStationExitGate
+    // (stationHub) into station:exitRequest; only committed undocks reach combat/save/this handler.
+    this.bus.on('dock:undocked', (payload = {}) => {
+      // Defense in depth: if a bare undock slips through before the gate is installed, re-route.
+      if (this.state.ui && this.state.ui.docked === true && !(payload && payload.committed)) {
+        this.bus.emit('station:exitRequest', {
+          intent: payload.intent === 'explicit' ? 'explicit' : 'implicit',
+          source: (payload && payload.source) || 'dock:undocked',
+          opener: payload && payload.opener,
+          held: !!(payload && payload.held),
+        });
+        return;
+      }
+
+      invalidateDockedStationPresentation(this);
+
+      // Phase 1: fade to dark
+      showDockFade('dock');
+
+      // Launch reveal: a brief push-zoom on undock so emerging from the station reads as momentum.
+      const camCtrl = this.state.render && this.state.render.cameraCtrl;
+      if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(0.18, 0.7);
+
+      setTimeout(() => {
+        // Phase 2: at peak darkness, do the screen swap
+        laneInputWrite(this.state, 'ui.docked', false);
+        laneInputWrite(this.state, 'ui.dockedStationId', null);
+        if (this.screenManager.top() === 'station') this.screenManager.popScreen();
+        this.screenManager.syncVisibility();
+
+        // Phase 3: fade back in
+        setTimeout(() => {
+          hideDockFade('dock');
+        }, 50);
+      }, 400);
+    });
+
+    let activeDrillApproach = null;
+    const sameDrillApproach = (payload) => !!(activeDrillApproach && payload
+      && payload.asteroidId === activeDrillApproach.asteroidId
+      && payload.attachmentId === activeDrillApproach.attachmentId);
+
+    this.bus.on('drill:approachStarted', ({ asteroidId, attachmentId }) => {
+      if (asteroidId == null || attachmentId == null) return;
+      if (this._pendingScreenRetry?.id === 'drill') this._cancelPendingScreenRetry();
+      activeDrillApproach = { asteroidId, attachmentId };
+      laneInputWrite(this.state, 'input.blocked', true);
+      showDockFade('drill');
+      this._ensureDrillScreenRegistered().catch(() => {});
+
+      const camCtrl = this.state.render && this.state.render.cameraCtrl;
+      if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(-0.45, 1.2);
+      this.bus.emit('audio:cue', { id: 'ui_confirm' });
+    });
+
+    this.bus.on('drill:approachCompleted', (payload) => {
+      if (!sameDrillApproach(payload)) return;
+      activeDrillApproach = null;
+      if (!this.state.ui) this.state.ui = {};
+      this.state.ui.pendingDrillAsteroidId = payload.asteroidId;
+      const settle = (opened) => {
+        if (!opened && this.state.ui?.pendingDrillAsteroidId === payload.asteroidId) {
+          this.state.ui.pendingDrillAsteroidId = null;
+          this.bus.emit('toast', { text: 'Drill controls unavailable. Try again.', kind: 'warn', ttl: 4 });
+        }
+        laneInputWrite(this.state, 'input.blocked', false);
+        hideDockFade('drill');
+      };
+      this._pushScreenWhenRegistered('drill', 200, { onSettled: settle });
+    });
+
+    this.bus.on('drill:approachCancelled', (payload) => {
+      if (!sameDrillApproach(payload)) return;
+      activeDrillApproach = null;
+      laneInputWrite(this.state, 'input.blocked', false);
+      hideDockFade('drill');
+    });
+
+    // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).
+    this.bus.on('game:started', () => {
+      reconcileGameStartedScreens(this);
+      boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
+      refreshFlightUI();
+    });
+    // Ironman permadeath: combat.kill() emits game:over instead of respawning. Open the game-over
+    // screen over the wreck. The screen loads via dynamic import (registerScreens path), so retry
+    // briefly until the 'gameOver' screen is registered, then push it (idempotent — only push once).
+    this.bus.on('game:over', () => {
+      boardingFence.sync({ phase: 'cancelled' });
+      // A Crucible death is the end of a scored run, not a ship loss with a recovery berth. The
+      // run's own results surface opens from run:resultsReady below; the after-action screen with
+      // its "continue from the recovery dock" offer would be nonsense in an arena.
+      if (this._survivalRunLive()) return;
+      if (this._gameOverShown) return;
+      this._gameOverShown = true;
+      this._pushScreenWhenRegistered('gameOver', 60);
+    });
+    // Reset the one-shot gate when a new game starts or a save loads (a loaded save is alive again).
+    // CRUCIBLE (PQ-133 CRU-018): results open for BOTH endings — a death (run:ended) and a
+    // victory (a terminal phase transition, which emits no run:ended).
+    this.bus.on('run:resultsReady', (payload) => {
+      // A direct Main Menu abort still leaves immediately. Explicit End run waits for this
+      // authoritative debrief, as does a wave-build failure that needs a visible explanation.
+      if (payload && payload.outcome === 'aborted'
+        && !['wave_plan_failed', 'player_retired'].includes(payload.stopReason)) return;
+      if (this._crucibleResultsShown) return;
+      this._crucibleResultsShown = true;
+      this._pushScreenWhenRegistered('crucibleResults', 60);
+    });
+    this.bus.on('run:started', () => {
+      this._cancelPendingScreenRetry();
+      this._crucibleResultsShown = false;
+    });
+    this.bus.on('game:started', () => { this._crucibleResultsShown = false; });
+    this.bus.on('game:over:dismissed', () => {
+      this._cancelPendingScreenRetry();
+      this._gameOverShown = false;
+    });
+    this.bus.on('game:exitToMenu', () => {
+      invalidateDockedStationPresentation(this);
+      this._cancelPendingScreenRetry();
+    });
+    this.bus.on('game:new', () => { invalidateDockedStationPresentation(this); });
+    this.bus.on('game:started', () => { this._gameOverShown = false; });
+    this.bus.on('save:restoring', () => { invalidateDockedStationPresentation(this); });
+    this.bus.on('save:loaded', () => {
+      invalidateDockedStationPresentation(this);
+      this._cancelPendingScreenRetry();
+      // clear any stale modal restored from a save; HUD returns
+      laneInputWrite(this.state, 'ui.docked', false);
+      laneInputWrite(this.state, 'ui.dockedStationId', null);
+      this.screenManager.closeAll();
+      // closeAll does not emit game:over:dismissed, so the one-shot latch must reset here — a stale
+      // 'already shown' would otherwise swallow the next death's after-action surface.
+      this._gameOverShown = false;
+      // Same release as game:started — the Load screen's stage hull is the other Launch-path leak.
+      this.screenManager.releaseScreen('newGame');
+      this.screenManager.releaseScreen('saveLoad');
+      this.screenManager.syncVisibility();
+      boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
+      refreshFlightUI();
+      // SF-285: a save written mid-defeat restores the wreck with its durable defeat intact — the
+      // after-action surface is the only recovery affordance for that hull. Re-present it AFTER
+      // closeAll so the same boundary cannot immediately unmount it.
+      if (restoredDefeatIntent(this.state) && !this._survivalRunLive()) {
+        this._gameOverShown = true;
+        this._pushScreenWhenRegistered('gameOver', 60);
+      }
+    });
+
+    // register all modal screens (dynamic + per-screen guarded). The Main Menu is shown by the
+    // registerScreens() resolution path IF state.mode is still 'menu' when it loads — this avoids
+    // a race: main.js flips mode→'flight' synchronously after registry.init(), before the screen
+    // import promises resolve, so on a normal flight boot the menu is (correctly) not shown.
+    this.registerScreens();
+    this.screenManager.syncVisibility();
+  },
+
+  /** True while a Survival run is live — used to route death to the Crucible results surface. */
+  _survivalRunLive() {
+    const run = this.state && this.state.run;
+    return !!(run && run.kind === 'survival' && run.phase !== 'inactive');
+  },
+
+  // Dynamically import + register the automatic screen waves; station is demand-loaded at dock.
+  registerScreens() {
+    const registrationCycle = this._screenRegistrationCycle;
+    const registerOne = ({ path, load, name }) => load()
+      .then((mod) => {
+        if (!isScreenRegistrationCycleCurrent(registrationCycle)) return;
+        const def = mod && (mod[name] || mod.default);
+        if (!def || !def.id) { console.warn(`[ui] screen "${name}" missing valid export`); return; }
+        try { this.screenManager.register(def); }
+        catch (err) { console.error(`[ui] register("${def.id}") failed:`, err); return; }
+        if (!this._registeredScreens) this._registeredScreens = new Set();
+        this._registeredScreens.add(def.id);
+        // Mount + paint-warm on the serialized drain — one screen per yielded frame, in
+        // menu dwell AND on flight-idle slices (a fast embark used to strand the whole
+        // rest-wave behind the mode==='menu' gate). station (a whole app — it warms under
+        // the dock veil instead) and ship (the shared stage owns the second GL context)
+        // keep their owner-scheduled mounts.
+        if (!SCREEN_PREWARM_DEFER.has(def.id)) {
+          (this._screenPrewarmQueue || (this._screenPrewarmQueue = [])).push(def.id);
+          this._drainScreenPrewarmQueue(registrationCycle);
+        }
+        if (this.state.mode === 'menu' && this.screenManager.top && this.screenManager.top() === 'mainMenu') {
+          try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
+        }
+        // If we are in menu mode and the title flow just became usable, show it. The title screen
+        // waits for its primary New Game target so players never click a half-registered menu.
+        if ((def.id === 'mainMenu' || def.id === 'newGame' || def.id === 'motionAsk') &&
+          this.state.mode === 'menu' && (this._pendingMainMenu || !this.screenManager.isOpen())) {
+          try { if (this._showMainMenuWhenReady) this._showMainMenuWhenReady(); }
+          catch (e) { console.error(e); }
+        }
+        // A docked arrival may have requested this module while the dock veil was running. Warm
+        // its owner-scheduled mount before the deferred first open; the pending screen retry still
+        // owns the public action and survives a slower import.
+        if (def.id === 'station' && isDockedStationState(this.state)
+          && this.state.mode !== 'menu' && this.state.mode !== 'loading'
+          && this.screenManager.top() !== 'station') {
+          try { this._warmScreen('station'); } catch (e) { console.error(e); }
+          try { this.screenManager.pushScreen('station'); } catch (e) { console.error(e); }
+        }
+      })
+      .catch((err) => { console.warn(`[ui] screen module "${path}" unavailable:`, err && err.message ? err.message : err); });
+    this._registerScreenEntry = registerOne;
+
+    const boot = [];
+    const rest = [];
+    for (const entry of SCREEN_MODULES) {
+      (BOOT_SCREEN_EXPORTS.has(entry.name) ? boot : rest).push(entry);
+    }
+    const REST_BATCH = 3;
+    this._screenRegistrationPromise = Promise.allSettled(boot.map(registerOne)).then(async () => {
+      if (!isScreenRegistrationCycleCurrent(registrationCycle)) return;
+      await yieldPresentationFrame();
+      for (let i = 0; i < rest.length; i += REST_BATCH) {
+        if (!isScreenRegistrationCycleCurrent(registrationCycle)) return;
+        await Promise.allSettled(rest.slice(i, i + REST_BATCH).map(registerOne));
+        await yieldPresentationFrame();
+      }
+    }).then(() => {
+      if (isScreenRegistrationCycleCurrent(registrationCycle)) {
+        this._screenRegistrationSettledGeneration = registrationCycle.generation;
+      }
+    });
+    return this._screenRegistrationPromise;
+  },
+
+  _warmScreen(id) {
+    if (this.screenManager && typeof this.screenManager.prewarm === 'function') {
+      this.screenManager.prewarm(id);
+    }
+    if (this.screenManager && typeof this.screenManager.paintWarm === 'function') {
+      this.screenManager.paintWarm(id);
+    }
+  },
+
+  // One queued screen mount+paint-warm per yielded frame. New Game owns its form dwell:
+  // unrelated hidden layouts must not contend with its opening or embark preparation.
+  // Keep the queue intact until Back/Launch; a new registration cycle re-fills it.
+  _drainScreenPrewarmQueue(registrationCycle) {
+    if (this._screenPrewarmDraining) return;
+    const queue = this._screenPrewarmQueue;
+    if (!queue || !queue.length) return;
+    this._screenPrewarmDraining = true;
+    (async () => {
+      try {
+        while (queue.length) {
+          if (this.state?.mode !== 'loading' && this.screenManager?.top?.() === 'newGame') {
+            await yieldPresentationFrame();
+            if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+            continue;
+          }
+          const id = queue.shift();
+          try {
+            const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
+            try { this.screenManager.prewarm(id); }
+            catch (e) { dedupError('ui.screen-prewarm', `[ui] prewarm("${id}")`, e); }
+            // A mount that already ate the slice (multi-bank template parse, lazy GL) gets
+            // its own frame before the hidden layout pass — the two costs never share a
+            // flight-idle frame even when the mount alone exceeds the budget.
+            const mountedMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() - t0 : 0;
+            if (mountedMs > 6) {
+              await yieldPresentationFrame();
+              if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+              // The form may have opened while a costly mount yielded. Its cached mount
+              // stays ready, but defer the still-unpaid layout along with the other warms.
+              if (this.state?.mode !== 'loading' && this.screenManager?.top?.() === 'newGame') {
+                queue.unshift(id);
+                continue;
+              }
+            }
+            const tp = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
+            try { this.screenManager.paintWarm(id); }
+            catch (e) { dedupError('ui.screen-paintwarm', `[ui] paintWarm("${id}")`, e); }
+            // paintWarm's forced style+layout (void el.offsetHeight) runs untimed — a big screen
+            // can land ~14ms in one flight-idle slice. The trailing yield below is unconditional,
+            // but gate the NEXT warm on the paint's own cost so two heavy screens never chain.
+            const paintMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() - tp : 0;
+            if (paintMs > 6) {
+              await yieldPresentationFrame();
+              if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+            }
+          }
+          catch (e) { dedupError('ui.screen-warm-cycle', `[ui] prewarm("${id}")`, e); }
+          await yieldPresentationFrame();
+          if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+        }
+      } finally {
+        this._screenPrewarmDraining = false;
+        if (queue.length && (!registrationCycle || isScreenRegistrationCycleCurrent(registrationCycle))) {
+          this._drainScreenPrewarmQueue(registrationCycle);
+        }
+      }
+    })();
+  },
+
+  // Push a screen that may still be in a deferred registration wave: retry until it registers or
+  // give up with a warning. Use for pushes issued from outside the screens themselves (dock,
+  // game-over) so an early lifecycle event never becomes a dead press.
+  _cancelPendingScreenRetry() {
+    const pending = this._pendingScreenRetry;
+    this._screenRetryToken = (Number(this._screenRetryToken) || 0) + 1;
+    if (!pending) return false;
+    pending.cancelled = true;
+    if (pending.timerId != null) clearTimeout(pending.timerId);
+    pending.timerId = null;
+    if (this._pendingScreenRetry === pending) this._pendingScreenRetry = null;
+    pending.onSettled?.(false);
+    return true;
+  },
+
+  _pushScreenWhenRegistered(id, maxAttempts = 60, options = {}) {
+    this._cancelPendingScreenRetry();
+    const registrationCycle = this._screenRegistrationCycle;
+    const screenManager = this.screenManager;
+    const request = {
+      id,
+      maxAttempts,
+      registrationCycle,
+      screenManager,
+      token: (Number(this._screenRetryToken) || 0) + 1,
+      isLive: (owner) => screenPushRequestIsLive(owner, id),
+      timerId: null,
+      cancelled: false,
+      onSettled: options.onSettled,
+    };
+    this._screenRetryToken = request.token;
+    this._pendingScreenRetry = request;
+    const finish = (opened) => {
+      request.timerId = null;
+      if (this._pendingScreenRetry === request) this._pendingScreenRetry = null;
+      request.onSettled?.(opened);
+    };
+    const tryOpen = (attempts) => {
+      if (!isCurrentScreenPushRequest(this, request)) {
+        request.cancelled = true;
+        if (this._pendingScreenRetry === request) this._pendingScreenRetry = null;
+        request.onSettled?.(false);
+        return;
+      }
+      if (this._registeredScreens && this._registeredScreens.has(id)) {
+        try {
+          if (!(screenManager && typeof screenManager.top === 'function' && screenManager.top() === id)) screenManager.pushScreen(id);
+          finish(typeof screenManager.top !== 'function' || screenManager.top() === id);
+        } catch (e) { console.error(`[ui] open ${id}`, e); finish(false); }
+        return;
+      }
+      if (id === 'station' && typeof this._ensureStationScreenRegistered === 'function') {
+        this._ensureStationScreenRegistered();
+      }
+      if (attempts > maxAttempts) { finish(false); console.warn(`[ui] ${id} screen never registered`); return; }
+      request.timerId = setTimeout(() => {
+        request.timerId = null;
+        tryOpen(attempts + 1);
+      }, 50);
+    };
+    tryOpen(0);
+    return request.token;
+  },
+
+  _cancelShipScreenOpenRequest({ cue = true } = {}) {
+    const request = this._shipScreenOpenRequest;
+    if (!request) return false;
+    request.cancelled = true;
+    this._shipScreenOpenRequest = null;
+    if (cue) this.bus?.emit?.('audio:cue', { id: 'ui_back' });
+    return true;
+  },
+
+  _bindShipScreenRequestInvalidation() {
+    this._shipModeOff?.();
+    this._shipModeOff = this.bus?.on?.('mode:changed', ({ mode } = {}) => {
+      if ((mode && mode !== 'flight') || this.state?.mode !== 'flight') {
+        this._cancelShipScreenOpenRequest({ cue: false });
+      }
+    }) || null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = this.bus?.on?.('ui:screenTop', ({ id } = {}) => {
+      const request = this._shipScreenOpenRequest;
+      if (request && id !== 'ship' && id !== request.initiatingTop) {
+        this._cancelShipScreenOpenRequest({ cue: false });
+      }
+    }) || null;
+  },
+
+  _isCurrentShipScreenOpenRequest(request) {
+    const currentStack = Array.isArray(this.state?.ui?.screenStack) ? this.state.ui.screenStack : null;
+    const sameStack = request?.stackSnapshot == null || (currentStack != null
+      && currentStack.length === request.stackSnapshot.length
+      && currentStack.every((id, index) => id === request.stackSnapshot[index]));
+    const currentTop = this.screenManager?.top?.() ?? null;
+    return !!(request
+      && this._shipScreenOpenRequest === request
+      && !request.cancelled
+      && request.registrationCycle === this._screenRegistrationCycle
+      && request.screenManager === this.screenManager
+      && isScreenRegistrationCycleCurrent(request.registrationCycle)
+      && sameStack
+      && currentTop === request.initiatingTop
+      && this.state?.mode === 'flight');
+  },
+
+  _toggleShipScreenOpenRequest() {
+    if (this._shipScreenOpenRequest) {
+      this._cancelShipScreenOpenRequest();
+      return 'cancelled';
+    }
+    if (this.state?.mode !== 'flight' || !this.screenManager) return 'ignored';
+    if (this._registeredScreens?.has('ship')) {
+      try {
+        if (this.screenManager.top?.() !== 'ship') this.screenManager.pushScreen('ship');
+        if (this.screenManager.top?.() === 'ship') {
+          this.bus?.emit?.('audio:cue', { id: 'ui_open' });
+          return 'opened';
+        }
+      } catch (error) {
+        console.error('[ui] open ship', error);
+      }
+      this.bus?.emit?.('toast', { text: 'Shipworks could not open. Press F2 to retry.', kind: 'warn', ttl: 4200 });
+      return 'failed';
+    }
+
+    const request = {
+      registrationCycle: this._screenRegistrationCycle,
+      screenManager: this.screenManager,
+      initiatingTop: this.screenManager.top?.() ?? null,
+      stackSnapshot: Array.isArray(this.state?.ui?.screenStack) ? [...this.state.ui.screenStack] : null,
+      cancelled: false,
+    };
+    this._shipScreenOpenRequest = request;
+    this.bus?.emit?.('audio:cue', { id: 'ui_open' });
+    this._ensureShipScreenRegistered().then(() => {
+      if (!this._isCurrentShipScreenOpenRequest(request)) return;
+      if (!this._registeredScreens?.has('ship')) throw new Error('Shipworks module did not register');
+      this.screenManager.pushScreen('ship');
+      if (this.screenManager.top?.() !== 'ship') throw new Error('Shipworks screen did not open');
+      this._shipScreenOpenRequest = null;
+    }).catch((error) => {
+      if (!this._isCurrentShipScreenOpenRequest(request)) return;
+      this._shipScreenOpenRequest = null;
+      console.warn('[ui] Shipworks request failed', error);
+      this.bus?.emit?.('toast', { text: 'Shipworks could not open. Press F2 to retry.', kind: 'warn', ttl: 4200 });
+    });
+    return 'requested';
+  },
+
+  _ensureShipScreenRegistered() {
+    const registrationCycle = this._screenRegistrationCycle;
+    if (this._registeredScreens?.has('ship')) return Promise.resolve(true);
+    if (!isScreenRegistrationCycleCurrent(registrationCycle)
+      || typeof this._registerScreenEntry !== 'function') return Promise.resolve(false);
+    const generation = registrationCycle.generation;
+    const existing = this._shipScreenRegistration;
+    if (existing?.generation === generation) return existing.promise;
+    const record = { generation, promise: null };
+    const clearFailedRegistration = () => {
+      if (this._shipScreenRegistration === record && !this._registeredScreens?.has('ship')) {
+        this._shipScreenRegistration = null;
+      }
+    };
+    record.promise = Promise.resolve()
+      .then(() => this._registerScreenEntry(SHIP_SCREEN_MODULE))
+      .then((value) => {
+        if (!isScreenRegistrationCycleCurrent(registrationCycle)) return false;
+        if (!this._registeredScreens?.has('ship')) {
+          clearFailedRegistration();
+          throw new Error('Shipworks module failed to register');
+        }
+        return value;
+      }, (error) => {
+        clearFailedRegistration();
+        throw error;
+      });
+    this._shipScreenRegistration = record;
+    return record.promise;
+  },
+
+  _ensureStationScreenRegistered() {
+    const registrationCycle = this._screenRegistrationCycle;
+    if (this._registeredScreens && this._registeredScreens.has('station')) return Promise.resolve(true);
+    if (!isScreenRegistrationCycleCurrent(registrationCycle)
+      || typeof this._registerScreenEntry !== 'function') return Promise.resolve(false);
+    const generation = registrationCycle.generation;
+    const existing = this._stationScreenRegistration;
+    if (existing && existing.generation === generation) return existing.promise;
+    const record = { generation, promise: null };
+    const clearFailedRegistration = () => {
+      if (this._stationScreenRegistration !== record
+        || this._screenRegistrationCycle !== registrationCycle
+        || !isScreenRegistrationCycleCurrent(registrationCycle)
+        || registrationCycle.generation !== generation
+        || (this._registeredScreens && this._registeredScreens.has('station'))) return;
+      this._stationScreenRegistration = null;
+    };
+    record.promise = Promise.resolve()
+      .then(() => this._registerScreenEntry(STATION_SCREEN_MODULE))
+      .then((value) => {
+        clearFailedRegistration();
+        return value;
+      }, (error) => {
+        clearFailedRegistration();
+        throw error;
+      });
+    this._stationScreenRegistration = record;
+    return record.promise;
+  },
+
+  _ensureDrillScreenRegistered() {
+    const registrationCycle = this._screenRegistrationCycle;
+    if (this._registeredScreens?.has('drill')) return Promise.resolve(true);
+    if (!isScreenRegistrationCycleCurrent(registrationCycle)
+      || typeof this._registerScreenEntry !== 'function') return Promise.resolve(false);
+    const generation = registrationCycle.generation;
+    const existing = this._drillScreenRegistration;
+    if (existing?.generation === generation) return existing.promise;
+    const record = { generation, promise: null };
+    const clearFailedRegistration = () => {
+      if (this._drillScreenRegistration === record && this._screenRegistrationCycle === registrationCycle
+        && isScreenRegistrationCycleCurrent(registrationCycle) && !this._registeredScreens?.has('drill')) {
+        this._drillScreenRegistration = null;
+      }
+    };
+    record.promise = Promise.resolve().then(() => this._registerScreenEntry(DRILL_SCREEN_MODULE))
+      .then(value => { clearFailedRegistration(); return value; }, error => { clearFailedRegistration(); throw error; });
+    this._drillScreenRegistration = record;
+    return record.promise;
+  },
+
+  // Per-render-frame cheap HUD path (§5.5). The expensive HUD paint/update path only runs when
+  // the flight HUD is visible; hidden modal/docked states keep toasts and safety alerts alive.
+  frame(dt, state) {
+    try {
+      // Gamepad UI navigation / global button intents are processed every render frame so menus
+      // work even when the sim is paused and input.update is not being stepped.
+      if (this.input && this.input.tick) this.input.tick(dt);
+      if (this.worldObject && this.worldObject.tick) this.worldObject.tick(dt);
+
+      const st = state || this.state;
+      reconcileDockedStationPresentation(this);
+      const modalOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
+      const externalModalOpen = !!this._fulfillmentBlackoutActive || isConfirmOpen()
+        || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
+      // Live (non-pausing) overlays keep the HUD ticking visibly under a light dim instead of the
+      // full modal blackout (FRONTEND_DIRECTION §3.5): no ui-modal-open, hud stays live.
+      const liveOverlay = !!(this.screenManager && this.screenManager.isLiveOverlay
+        && this.screenManager.isLiveOverlay());
+      const modalChromeOpen = syncModalChrome(modalOpen, externalModalOpen, liveOverlay);
+      const docked = !!(st && st.ui && st.ui.docked === true);
+      if (this.screenManager && typeof this.screenManager.syncHudAccessibility === 'function') {
+        this.screenManager.syncHudAccessibility(modalChromeOpen || liveOverlay || docked || !st || st.mode !== 'flight');
+      }
+      const hudVisible = !!(st && st.mode === 'flight' && !modalChromeOpen && !docked);
+      // The independent target cursor owns the pointer in flight. Screens restore their
+      // native pointer; the aim marker stays alive under live overlays (second arg).
+      if (this._syncFlightCursor) this._syncFlightCursor(hudVisible && !modalOpen, hudVisible);
+      if (this.hud) {
+        if (hudVisible) {
+          if (!this._hudVisibleLast && this.hud.forceRefresh) {
+            this.hud.forceRefresh();
+            // Moment 3 (Task B §2.3): the HUD arrives on undock — only when the HUD was hidden by
+            // the dock, not by a pause screen or a menu.
+            if (this._hudHiddenByDock && typeof this.hud.arrive === 'function') this.hud.arrive();
+          }
+          this._hudHiddenByDock = false;
+          this.hud.frame(dt, true);
+        } else {
+          this._hudHiddenByDock = docked;
+          if (this.hud.tickHidden) this.hud.tickHidden(dt);
+        }
+        this._hudVisibleLast = hudVisible;
+      }
+      if (hudVisible && this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
+      if (this.racingHud && typeof this.racingHud.frame === 'function') this.racingHud.frame(st);
+      this.physicsVenueHud?.frame(st);
+      this.spectrumOverlay?.frame(st);
+      this.physicalJobsPrompt?.frame();
+      this.blackFlagPrompt?.frame();
+      this.logbookRecap?.frame();
+      this.proExperiences?.frame(dt, st, hudVisible);
+      // Authored capital warnings draw over the flight picture and hold still while the sim is
+      // frozen; the mount clears its canvas outside flight so menus never inherit a stale warning.
+      if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function') {
+        this.capitalBossOverlay.draw(st);
+      }
+      if (this.promptDeck && typeof this.promptDeck.tick === 'function') this.promptDeck.tick();
+      if (this.toasts && this.toasts.tick) this.toasts.tick();
+      if (this.discoveryPlate && this.discoveryPlate.tick) this.discoveryPlate.tick();
+      // Comms fade is a flight overlay. Toasts/prompts stay alive on menus.
+      if (hudVisible && this.comms && this.comms.tick) this.comms.tick();
+      // Coalesce this paint's receipt, prompt, alert and caption mutations after their owners tick.
+      if (hudVisible) this.hud?.flushReceiptLane?.();
+      // refresh the active modal screen at a low cadence (event-driven screens also self-update)
+      this._rt = (this._rt || 0) + 1;
+      if ((this._rt % 18) === 0 && this.screenManager && this.screenManager.isOpen()) {
+        const def = this.screenManager.getActiveScreenDef && this.screenManager.getActiveScreenDef();
+        if (def && def.refresh) def.refresh(this.ctx, { periodic: true });
+      }
+    } catch (err) {
+      this._fe = (this._fe || 0) + 1;
+      if (this._fe <= 10) console.error('[ui] frame error:', err);
+    }
+  },
+
+  destroy() {
+    this.proExperiences?.destroy();
+    this.proExperiences = null;
+    this.blackFlagPrompt?.dispose();
+    this.blackFlagPrompt = null;
+    this.logbookRecap?.dispose();
+    this.logbookRecap = null;
+    this._cancelShipScreenOpenRequest({ cue: false });
+    this._shipModeOff?.();
+    this._shipModeOff = null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = null;
+    invalidateDockedStationPresentation(this);
+    this._cancelPendingScreenRetry();
+    if (this._destroyFlightCursor) this._destroyFlightCursor();
+    this.windowTitle?.stop();
+    this.windowTitle = null;
+    // The rest of the UI is process-lifetime today, but the first-session cinematic has temporary
+    // global capture listeners and timers. Re-init/destroy must remove them without marking the
+    // cinematic seen or opening a menu behind the caller.
+    this._titleFlowDisposed = true;
+    invalidateScreenRegistrationCycle(this);
+    this._screenRegistrationCycle = null;
+    this._screenRegistrationSettledGeneration = null;
+    this._stationScreenRegistration = null;
+    this._drillScreenRegistration = null;
+    this._shipScreenRegistration = null;
+    this._registerScreenEntry = null;
+    if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
+    this.input = null;
+    if (this.worldObject && typeof this.worldObject.destroy === 'function') this.worldObject.destroy();
+    this.worldObject = null;
+    this.toasts?.destroy?.();
+    this.toasts = null;
+    if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
+    this.hud = null;
+    if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
+    this.bandHud = null;
+    if (this.promptDeck && typeof this.promptDeck.destroy === 'function') this.promptDeck.destroy();
+    this.promptDeck = null;
+    if (this.aftermathChoicePrompt && typeof this.aftermathChoicePrompt.destroy === 'function') {
+      this.aftermathChoicePrompt.destroy();
+    }
+    this.aftermathChoicePrompt = null;
+    if (this.longBerthPrompt && typeof this.longBerthPrompt.destroy === 'function') {
+      this.longBerthPrompt.destroy();
+    }
+    this.longBerthPrompt = null;
+    if (this.crewPrompt && typeof this.crewPrompt.destroy === 'function') {
+      this.crewPrompt.destroy();
+    }
+    this.crewPrompt = null;
+    destroyCommsOwner(this);
+    destroyMarketNewsOwner(this);
+    if (this.nemesisComms && typeof this.nemesisComms.dispose === 'function') this.nemesisComms.dispose();
+    this.nemesisComms = null;
+    if (this.capitalBossOverlay && typeof this.capitalBossOverlay.destroy === 'function') this.capitalBossOverlay.destroy();
+    this.capitalBossOverlay = null;
+    if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
+    this._fulfillmentBlackoutTeardown = null;
+    if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
+    this._cinematicTeardown = null;
+    if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
+    this.entityLinks = null;
+    if (this.whyReveal && typeof this.whyReveal.destroy === 'function') this.whyReveal.destroy();
+    this.whyReveal = null;
+    if (this.watchlistHud && typeof this.watchlistHud.destroy === 'function') this.watchlistHud.destroy();
+    this.watchlistHud = null;
+    if (this.globalFind && typeof this.globalFind.destroy === 'function') this.globalFind.destroy();
+    this.globalFind = null;
+    if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
+    this.screenManager = null;
+    this.manager = null;
+    if (typeof this._confirmBusOff === 'function') { try { this._confirmBusOff(); } catch (_) {} }
+    this._confirmBusOff = null;
+    this._cinematicInputFence = null;
+    this._cinematicActive = false;
+    this._pendingMainMenu = false;
+    this.disposeHudOverlays();
+  },
+  disposeHudOverlays() {
+    if (this.racingHud && typeof this.racingHud.dispose === 'function') { try { this.racingHud.dispose(); } catch (_) {} }
+    this.racingHud = null;
+    this.physicsVenueHud?.dispose?.();
+    this.physicsVenueHud = null;
+    this.spectrumOverlay?.dispose?.();
+    this.spectrumOverlay = null;
+  },
+};
+
+function cycleTarget(state, dir, bus) {
+  if (!state || !state.entities || typeof state.entities.get !== 'function') return;
+  const player = state.entities.get(state.playerId);
+  if (!player || !player.pos) return;
+  if (!state.player) state.player = {};
+  const contacts = [];
+  const consider = (e) => {
+    if (!e || e.alive === false || e === player || !e.pos) return;
+    const explicitWorldSiteTarget = !!(e.data && e.data.worldSiteTargetable === true);
+    if (explicitWorldSiteTarget && !presentationAllowsPlayerFacingAction(e, state)) return;
+    if (!explicitWorldSiteTarget && !verbAcceptsType('target', e.type)) return; // PQ-015 membership + explicit site exception
+    if (!explicitWorldSiteTarget && !isHostileToPlayer(e, player.team, state)) return;
+    if (!presentationAllowsTargetLock(e, state)) return;
+    const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d > SCANNER_CONTACT_RANGE) return;
+    contacts.push({ e, d });
+  };
+  const index = state.entityIndex;
+  const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.shipLike));
+  if (indexed) {
+    for (const e of indexedShipLikeScan(state)) consider(e);
+    for (const e of indexedTypeScan(state, 'wrecks')) {
+      if (e && e.data && e.data.worldSiteTargetable === true) consider(e);
+    }
+    for (const e of indexedTypeScan(state, 'payloads')) {
+      if (e && e.data && e.data.worldSiteTargetable === true) consider(e);
+    }
+  } else {
+    for (const e of state.entityList || []) consider(e);
+  }
+  contacts.sort((a, b) => a.d - b.d || String(a.e.id).localeCompare(String(b.e.id)));
+  if (!contacts.length) {
+    laneInputWrite(state, 'player.targetId', null);
+    if (bus) bus.emit('toast', { text: 'No contacts in scanner range', kind: 'info', ttl: 2 });
+    return;
+  }
+  const ids = contacts.map((c) => c.e.id);
+  const idx = ids.indexOf(state.player.targetId);
+  // Free aim is an explicit slot after the last contact. It must stay off until the next Tab;
+  // otherwise the automatic nearest-hostile refresh would immediately undo the release.
+  if (idx >= 0 && ((dir > 0 && idx === ids.length - 1) || (dir < 0 && idx === 0))) {
+    clearCombatTarget(state, bus);
+    return;
+  }
+  const nextIdx = idx < 0 ? (dir < 0 ? ids.length - 1 : 0) : idx + (dir < 0 ? -1 : 1);
+  const target = contacts[nextIdx].e;
+  laneInputWrite(state, 'player.targetId', target.id);
+  laneInputWrite(state, 'ui.objectSelection', null);
+  laneInputWrite(state, 'input.targetAssistDisabled', false);
+  if (bus) bus.emit('toast', { text: 'Target: ' + targetLabel(target), kind: 'info', ttl: 2 });
+}
+
+function clearCombatTarget(state, bus) {
+  if (!state?.player) return;
+  laneInputWrite(state, 'player.targetId', null);
+  laneInputWrite(state, 'ui.objectSelection', null);
+  laneInputWrite(state, 'input.targetAssistDisabled', true);
+  // Unconditional lane write — end state is null either way (was a truthy guard).
+  laneInputWrite(state, 'input.autoAim', null);
+  if (bus) bus.emit('toast', { text: 'Free aim · Tab to lock', kind: 'info', ttl: 2 });
+}
+
+// PQ-015: sub-select one component (combat subsystem / salvage weak-point) on the current target and
+// publish it TRANSIENTLY on state.ui.componentSelection (never serialized — verified by
+// check:save-schema). The pure cycle/enumeration lives in interactionDescriptors; this handler owns
+// the state write, target-change rebind, and player feedback. A null/absent selection leaves every
+// verb resolving exactly as before, so this is inert until the player opts in.
+export function cycleTargetComponent(state, dir, bus) {
+  const targetId = state.player && state.player.targetId;
+  const target = targetId != null && state.entities && state.entities.get ? state.entities.get(targetId) : null;
+  if (!target || target.alive === false) {
+    setComponentSelection(state, null, null);
+    if (bus) bus.emit('toast', { text: 'No target for component select', kind: 'info', ttl: 2 });
+    return;
+  }
+  const components = listSelectableComponents(state, target);
+  if (!components.length) {
+    setComponentSelection(state, null, null);
+    if (bus) bus.emit('toast', { text: targetLabel(target) + ': no targetable components', kind: 'info', ttl: 2 });
+    return;
+  }
+  const prior = state.ui && state.ui.componentSelection;
+  const currentId = prior && prior.targetId === target.id ? prior.componentId : null;
+  const next = nextComponentSelection(components, currentId, dir);
+  setComponentSelection(state, target, next);
+  const label = (components.find((c) => c.componentId === (next && next.componentId)) || {}).label || next.componentId;
+  if (bus) bus.emit('toast', { text: 'Component: ' + label, kind: 'info', ttl: 2 });
+}
+
+function setComponentSelection(state, target, next) {
+  laneSetComponentSelection(state, target, next);
+}
+
+function isScannerHostileLock(player, state, entity) {
+  if (!player || !entity || entity.alive === false || !entity.pos) return false;
+  if (!verbAcceptsType('target', entity.type)) return false; // PQ-015: shared target membership
+  if (!isHostileToPlayer(entity, player.team, state)) return false;
+  if (!presentationAllowsTargetLock(entity, state)) return false;
+  if (isPirateDisengaged(entity)) return false;
+  // Packet 02: a hull the player's sensors cannot see (cloak) is not a legal lock, and a recycled
+  // id is not the body the player picked — neither may keep (or inherit) a lock.
+  if (concealedFromPlayer(state, entity)) return false;
+  if (selectionIsRecycled(state, entity)) return false;
+  const dx = entity.pos.x - player.pos.x;
+  const dz = entity.pos.z - player.pos.z;
+  return (dx * dx + dz * dz) <= SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE;
+}
+
+function explicitObjectSelectionAlive(state, targetId) {
+  const sel = state.ui && state.ui.objectSelection;
+  if (!sel || sel.targetId !== targetId) return false;
+  const subject = resolveWorldPresentationEntity(state, targetId);
+  if (!subject || subject.alive === false) return false;
+  // A recorded pick token that no longer matches the resolved occupant is a recycled id: the
+  // selection named the dead body, not the heir holding its number.
+  const generation = occupantGenerationOf(subject);
+  if (sel.occupantGeneration != null && generation != null && generation !== sel.occupantGeneration) {
+    return false;
+  }
+  return true;
+}
+
+// The hostile the Massline is physically holding, if it is a legal scanner lock. Whenever this
+// function is the one CHOOSING (rather than preserving a pick the player made), the ship on the end
+// of your own line beats the ship that merely happens to be nearest — that near-miss is what had you
+// orbiting your catch while the target panel and the lead pip described a third ship.
+function tetheredHostileLock(player, state) {
+  const tether = state.player && state.player.tether;
+  if (!tether || !tether.active || tether.targetId == null) return null;
+  const target = state.entities.get(tether.targetId);
+  if (!isScannerHostileLock(player, state, target)) return null;
+  return target;
+}
+
+// A live selection that the nearest-hostile scan could not have produced by itself: a freighter, a
+// station, a rock — something the player clicked in the contact overview (`src/ui/hud.js:3180`)
+// rather than something auto-target acquired for them. Hostiles are deliberately NOT covered here:
+// a hostile lock that has died or left scanner range must still be replaced, and re-acquiring it is
+// the entire job of the quiet refresh.
+function isDeliberateNonHostilePick(player, state, entity) {
+  if (!player || !entity || entity.alive === false || !entity.pos) return false;
+  // A deliberate pick bound to an occupant token the live body no longer carries is a recycled
+  // id — the player selected the dead body, and the heir does not inherit the pick.
+  const sel = state.ui && state.ui.objectSelection;
+  const generation = occupantGenerationOf(entity);
+  if (sel && sel.targetId === entity.id && sel.occupantGeneration != null && generation != null
+      && generation !== sel.occupantGeneration) return false;
+  return !isHostileToPlayer(entity, player.team, state);
+}
+
+// SF-2b #8: automatic lock acquisition picks the hostile the player is pointing at. With a live
+// mouse cursor (pointer on the canvas, not G stick mode, not pad aim) the pick minimises
+//   |hostile - cursor| + LOCK_PICK_RANGE_WEIGHT * |hostile - player|
+// so the contact under the cursor wins and range only breaks ties. Without a cursor it is the
+// nearest hostile, as before. Lab bench (pinned packs, cursor on a seeded contact, up to 60 wu off):
+// nearest-only locked the intended contact 18-52% of the time; this locks it 100%.
+export const LOCK_PICK_RANGE_WEIGHT = ACQUISITION_PROTOTYPE.rangeWeight; // 0.25 — one number, owned by the picker
+// After a lock is lost (kill, out of range) with a live cursor, the quiet refresh waits this long
+// before picking again, so the cursor can travel to the next contact first. The refresh runs every
+// AUTO_TARGET_REFRESH_S (0.12 s), so the measured gap is ~0.23 s; it covers a ~0.25 s reaction.
+export const LOCK_REACQUIRE_GRACE_S = 0.15;
+const lockMemoByState = new WeakMap(); // state -> { id: last lock seen by the refresh, lostAt, tracker }
+
+/** The world point under the player's live mouse cursor, or null (no pointer, G mode, pad aim). */
+function lockCursorPoint(state) {
+  const inp = state && state.input;
+  if (!inp || inp.aimIntentActive !== true || inp.autoFire === true || inp.aimFromStick === true) return null;
+  const aim = inp.aimWorld;
+  return aim && Number.isFinite(aim.x) && Number.isFinite(aim.z) ? aim : null;
+}
+
+function rememberLock(state, id) {
+  // The acquisition tracker (combat/targetAcquisition.js) survives the memo reset: it is what makes
+  // a contact that briefly drops out of legality (scanner edge, cloak ring) the preferred
+  // re-acquisition instead of whichever contact happens to be cheapest this refresh.
+  const prior = lockMemoByState.get(state);
+  const tracker = prior && prior.tracker ? prior.tracker : createAcquisitionTracker();
+  // The held lock IS the picker's incumbent, whoever chose it (Tab, a click, the line, the refresh).
+  const held = state.entities && state.entities.get ? state.entities.get(id) : null;
+  tracker.id = id; tracker.gen = held ? (targetIdentityGeneration(held) || 0) : 0;
+  tracker.challengerId = null; tracker.challengerGen = 0; tracker.since = 0;
+  lockMemoByState.set(state, { id, lostAt: null, tracker });
+}
+
+// Reused per call: the quiet refresh runs at 8 Hz forever and must not allocate.
+const _acqCandidates = [];
+const _acqPool = [];
+const _acqIntent = { px: 0, pz: 0, hasCursor: false, cx: 0, cz: 0, aimAngle: NaN, heading: 0 };
+
+function acquisitionTrackerFor(state) {
+  let memo = lockMemoByState.get(state);
+  if (!memo) { memo = { id: null, lostAt: null, tracker: null }; lockMemoByState.set(state, memo); }
+  if (!memo.tracker) memo.tracker = createAcquisitionTracker();
+  return memo.tracker;
+}
+
+/**
+ * The legal automatic-lock candidates (hostile, observed, in scanner range, presentable), in the
+ * shape combat/targetAcquisition.js scores. Allocation-free after warm-up.
+ */
+function collectAcquisitionCandidates(state, player) {
+  let n = 0;
+  const rangeSq = SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE;
+  for (const e of indexedShipLikeScan(state)) {
+    if (!e || e.alive === false || e === player || !e.pos) continue;
+    if (e.type !== 'ship' && e.type !== 'drone') continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
+    if (!presentationAllowsTargetLock(e, state)) continue;
+    if (isPirateDisengaged(e)) continue;
+    if (concealedFromPlayer(state, e)) continue;
+    const dx = e.pos.x - player.pos.x;
+    const dz = e.pos.z - player.pos.z;
+    if (dx * dx + dz * dz > rangeSq) continue;
+    const rec = _acqPool[n] || (_acqPool[n] = { id: null, gen: 0, x: 0, z: 0, radius: 0 });
+    rec.id = e.id; rec.gen = targetIdentityGeneration(e) || 0;
+    rec.x = e.pos.x; rec.z = e.pos.z; rec.radius = Number.isFinite(e.radius) ? e.radius : 0;
+    _acqCandidates[n] = rec;
+    n += 1;
+  }
+  _acqCandidates.length = n;
+  return _acqCandidates;
+}
+
+function targetNearestHostileToPlayer(state, bus, options = {}) {
+  if (state.input?.targetAssistDisabled === true) return;
+  if (options.quiet && laneTargetWritePending(state)) return;
+  const player = state.entities.get(state.playerId);
+  if (!player) return;
+  const quiet = !!options.quiet;
+  // Packet 02: the selection is a NUMBER; if that number now names a different occupant the picked
+  // body is gone. Retire it (free aim) rather than let the heir inherit the lock and the assist.
+  if (state.player && state.player.targetId != null && selectionRetired(state)) {
+    laneInputWrite(state, 'player.targetId', null);
+    laneInputWrite(state, 'ui.objectSelection', null);
+  }
+  const curId = state.player && state.player.targetId;
+  if (curId != null) {
+    const cur = state.entities.get(curId);
+    if (isScannerHostileLock(player, state, cur)) {
+      rememberLock(state, curId);
+      if (quiet) return;
+    } else if (quiet && explicitObjectSelectionAlive(state, curId)) {
+      return;
+    } else if (quiet && isDeliberateNonHostilePick(player, state, cur)) {
+      // A deliberate selection can seed the NEXT latch's transient releaseTarget. Once a line is
+      // latched, selection churn and this 0.12s housekeeping refresh no longer steer the armed
+      // throw; only explicit per-tick aim intent may repaint that captured destination. Preserve
+      // the pick anyway because it remains player-owned selection truth for the panel, hails,
+      // orders, self-sling aim, and future latches. Gun/tether reconciliation is unaffected —
+      // `resolvePlayerGunTarget()` derives the gun target from the tether without this variable.
+      return;
+    } else if (quiet && cur && cur.alive !== false) {
+      // INF-053: alive but no longer a legal lock — it left scanner range or dropped hostile
+      // intent. That is a LOST TRACK, never a kill, and it gets the info voice. Death is announced
+      // only by entity:killed (destroyedLockToast); a dead or despawned lock falls through here
+      // silently because its story was already told.
+      if (bus) bus.emit('toast', { text: 'LOCK LOST · ' + targetLabel(cur), kind: 'info', ttl: 2 });
+    }
+  } else if (quiet) {
+    // No lock yet — quiet refresh may acquire the nearest hostile.
+  }
+  const cursor = lockCursorPoint(state);
+  if (quiet && cursor) {
+    // A lock just went away: give the cursor LOCK_REACQUIRE_GRACE_S to reach the next contact.
+    const memo = lockMemoByState.get(state);
+    if (memo && memo.id != null) {
+      const now = Number(state.simTime) || 0;
+      if (memo.lostAt == null) memo.lostAt = now;
+      if (now - memo.lostAt < LOCK_REACQUIRE_GRACE_S) return;
+    }
+  }
+  // Past the quiet early-out, so a Tab/radar pick is never stomped by the 0.12s refresh.
+  laneInputWrite(state, 'ui.objectSelection', null);
+  const tethered = tetheredHostileLock(player, state);
+  if (tethered) {
+  laneInputWrite(state, 'player.targetId', tethered.id);
+  rememberLock(state, tethered.id);
+    if (bus && !quiet) {
+      bus.emit('toast', { text: 'Target: ' + targetLabel(tethered) + ' (on the line)', kind: 'info', ttl: 2 });
+    }
+    return;
+  }
+  // Packet 02 acquisition: intent (the cursor, else the aim ray), never the nearest hostile behind
+  // the player, a stable id tie-break, and the contact that just dropped out of legality is the
+  // preferred re-acquisition (combat/targetAcquisition.js). Candidates are legal automatic locks.
+  const candidates = collectAcquisitionCandidates(state, player);
+  // Reaching this point means NO legal lock is held, so there is no incumbent to defend: a fresh
+  // acquisition (the sticky-lock contract — only Tab, a click, or losing the lock changes a lock —
+  // is the early return above). Dwell/margin hysteresis lives in the picker for soft retargeting.
+  const tracker = resetAcquisitionTracker(acquisitionTrackerFor(state));
+  const inp = state.input;
+  _acqIntent.px = player.pos.x; _acqIntent.pz = player.pos.z;
+  _acqIntent.hasCursor = !!cursor;
+  _acqIntent.cx = cursor ? cursor.x : 0; _acqIntent.cz = cursor ? cursor.z : 0;
+  _acqIntent.aimAngle = inp && Number.isFinite(inp.aimAngle) ? inp.aimAngle : NaN;
+  _acqIntent.heading = Number.isFinite(player.rot) ? player.rot : 0;
+  const picked = stepAcquisition(tracker, candidates, _acqIntent, Number(state.simTime) || 0,
+    { zoom: state.camera && state.camera.zoom });
+  let best = null;
+  if (picked.id != null) best = state.entities.get(picked.id) || null;
+  // A deliberate press (not the quiet refresh) always gets a target if any hostile is in range:
+  // the player asked for one. Nearest, because there is no intent left to read.
+  if (!best && !quiet) {
+    let bestD2 = Infinity;
+    for (let i = 0; i < candidates.length; i += 1) {
+      const c = candidates[i];
+      const d2 = (c.x - player.pos.x) ** 2 + (c.z - player.pos.z) ** 2;
+      if (d2 < bestD2 || (d2 === bestD2 && best && String(c.id) < String(best.id))) {
+        bestD2 = d2; best = state.entities.get(c.id) || null;
+      }
+    }
+  }
+  if (!best) {
+    laneInputWrite(state, 'player.targetId', null);
+    if (bus && !quiet) bus.emit('toast', { text: 'No hostile in range', kind: 'info', ttl: 2 });
+    return;
+  }
+  laneInputWrite(state, 'player.targetId', best.id);
+  rememberLock(state, best.id);
+  if (bus && !quiet) bus.emit('toast', { text: 'Target: ' + targetLabel(best), kind: 'info', ttl: 2 });
+}
+
+/**
+ * INF-053: the toast for the LOCKED target's death, or null when this kill is not the lock's
+ * subject. Pure and DOM-free. Only the real entity:killed event reaches it, so a track that
+ * merely left scanner range (LOCK LOST, in targetNearestHostileToPlayer), a despawned wreck,
+ * or a sector hop can never print DESTROYED — leaving sensors is never celebrated as a kill.
+ */
+export function destroyedLockToast(state, payload) {
+  if (!payload || payload.id == null) return null;
+  const targetId = state && state.player && state.player.targetId;
+  if (targetId == null || payload.id !== targetId) return null;
+  const entity = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(targetId)
+    : null;
+  return { text: 'TARGET DESTROYED · ' + targetLabel(entity), kind: 'good', ttl: 2.5 };
+}
+
+export { cycleTarget, clearCombatTarget, targetNearestHostileToPlayer };
+
+function targetLabel(e) {
+  if (!e) return 'Contact';
+  // Same presenter as the roster/panel: an unscanned wreck-like keeps its broadcast callsign but
+  // reads 'Derelict' here too — never its scan label or private name. isWreckLike also catches
+  // fx/prop wreck-likes, not only type:'wreck'.
+  if (isWreckLike(e)) return targetDisplayName(e);
+  if (e.type === 'station') {
+    if (e.data && e.data.isGate) return e.data.name || 'Jump Gate';
+    // A raw stationId is an internal key, not a name — never print it.
+    return (e.data && (e.data.name || e.data.stationName)) || 'Station';
+  }
+  if (e.type === 'asteroid') return 'Asteroid';
+  if (e.type === 'wreck') return 'Wreck';
+  if (e.type === 'ship') return (e.data && e.data.name) || 'Ship';
+  if (e.type === 'drone') return 'Drone';
+  return e.type || 'Contact';
+}
+
+// J07: the bracket recipe is shared with comms.js / sectorLawPresenter.js / onboarding.js.
+// See src/ui/hudBrackets.js for why it is a string and not a class.
+
+function syncModalChrome(screenOpen, externalModalOpen = false, liveOverlay = false) {
+  // liveOverlay: screens are open but non-pausing over a running sim — no modal chrome, the body
+  // class is `ui-live-screen` (owned by screenManager); only the shared backdrop still shows.
+  const modalOpen = !!((screenOpen && !liveOverlay) || externalModalOpen);
+  if (_lastModalOpen !== modalOpen || document.body.classList.contains('ui-modal-open') !== modalOpen) {
+    document.body.classList.toggle('ui-modal-open', modalOpen);
+    _lastModalOpen = modalOpen;
+  }
+
+  if (!_modalBackdropEl || !_modalBackdropEl.isConnected) _modalBackdropEl = document.getElementById('modal-backdrop');
+  const backdrop = _modalBackdropEl;
+  if (backdrop) {
+    // Only screen-manager modals use the shared backdrop for interaction. Confirm/endgame mount
+    // their own higher-z overlays; a stale body class must not leave an invisible click shield.
+    const pointerEvents = screenOpen ? 'auto' : 'none';
+    if (_lastBackdropPointerEvents !== pointerEvents || backdrop.style.pointerEvents !== pointerEvents) {
+      backdrop.style.pointerEvents = pointerEvents;
+      _lastBackdropPointerEvents = pointerEvents;
+    }
+  }
+  return modalOpen;
+}
+
+let _lastModalOpen = null;
+let _lastBackdropPointerEvents = null;
+let _modalBackdropEl = null;

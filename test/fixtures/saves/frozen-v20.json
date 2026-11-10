@@ -1,0 +1,2907 @@
+{
+ "fmt": "spaceface-save",
+ "version": 20,
+ "savedAt": "2026-10-23T00:00:00.000Z",
+ "playtimeS": 1,
+ "slot": "frozen",
+ "checksum": "755857d5",
+ "data": {
+  "meta": {
+   "version": 20,
+   "seed": 4747,
+   "playtimeS": 1,
+   "createdAt": "",
+   "lastSavedAt": "2026-10-23T15:46:01.918Z"
+  },
+  "player": {
+   "credits": 7300,
+   "debt": 0,
+   "bounty": 0,
+   "heat": 0,
+   "heatZone": {
+    "active": false,
+    "center": {
+     "x": 0,
+     "z": 0
+    },
+    "radius": 0,
+    "level": 0,
+    "outsideS": 0,
+    "clearAfterS": 0,
+    "sectorId": null
+   },
+   "ownedShips": [],
+   "activeShipIndex": 0,
+   "moduleInventory": [],
+   "researchedNodes": [],
+   "droneTierCap": 1,
+   "efficiencyMods": {
+    "miningYieldMult": 1,
+    "shieldRegenMult": 1,
+    "energyRegenMult": 1,
+    "cargoCapMult": 1,
+    "tradeFeeMult": 1
+   },
+   "researchPoints": 0,
+   "salvageRights": 0,
+   "targetId": null,
+   "fireGroups": {
+    "1": [],
+    "2": []
+   },
+   "boostActive": false,
+   "insurance": {
+    "rate": 0.6,
+    "deductibleCr": 500,
+    "insuredModules": false,
+    "lastStationId": null
+   },
+   "magnetRange": 250,
+   "miningBeam": {
+    "tierId": "beam_mk1",
+    "range": 220,
+    "dps": 18,
+    "directToCargo": true
+   },
+   "miningTargetId": null,
+   "stats": {
+    "lifetimeProfit": 0,
+    "tradesCount": 0,
+    "biggestSingleProfit": 0,
+    "smuggledValue": 0,
+    "kills": 0,
+    "missionsDone": 0,
+    "totalPassiveEarnedLifetime": 0,
+    "creditsEarned": 0
+   },
+   "hints": {
+    "firstFlight": false,
+    "firstCombat": false,
+    "firstShieldDrop": false,
+    "firstStation": false,
+    "firstGate": false,
+    "firstCargoFull": false
+   },
+   "massSeed": {
+    "cooldownUntil": 0
+   },
+   "marketMemory": {},
+   "tradeLedger": [],
+   "tradeLots": {},
+   "tradeMargins": {},
+   "sessionSinks": [],
+   "sessionSinkSeq": 0,
+   "wantedTier": "none"
+  },
+  "cargo": {
+   "items": {
+    "cmdty_refined_metals": 4,
+    "cmdty_scrap_metal": 3
+   },
+   "capVolume": 40,
+   "capMass": 60
+  },
+  "morrow": {},
+  "vesper": {},
+  "bracket": {},
+  "ravel": {},
+  "solstice": {},
+  "rubric": {},
+  "ruckus": {},
+  "ruud": {},
+  "salvage": {
+   "schema": "spaceface.salvageSourceLedger.v1",
+   "sources": {}
+  },
+  "survivorPod": {},
+  "economy": {
+   "balanceVersion": 1,
+   "resourceWork": {},
+   "pulse": {
+    "version": 1,
+    "observedFromS": 0,
+    "lastCashInAt": null,
+    "bins": [
+     {
+      "index": 0,
+      "cashInCr": 0,
+      "cashOutCr": 0,
+      "buyCr": 0,
+      "saleCr": 0,
+      "offers": 0,
+      "accepts": 1,
+      "resourceWorkS": 0,
+      "publishedUnits": 0,
+      "depletedRequests": 0
+     }
+    ]
+   },
+   "markets": {
+    "station_helios": [
+     [
+      "cmdty_ore_iron",
+      32.76,
+      32.76,
+      364,
+      2,
+      [],
+      null,
+      35,
+      36,
+      34
+     ],
+     [
+      "cmdty_silicate",
+      168.511616,
+      168.511616,
+      364,
+      2,
+      [],
+      null,
+      8,
+      8,
+      7
+     ],
+     [
+      "cmdty_ice_water",
+      119.439552,
+      119.439552,
+      258,
+      2,
+      [],
+      null,
+      19,
+      20,
+      18
+     ],
+     [
+      "cmdty_gas_hydrogen",
+      63.886272000000005,
+      63.886272000000005,
+      138,
+      2,
+      [],
+      null,
+      42,
+      44,
+      40
+     ],
+     [
+      "cmdty_refined_metals",
+      620,
+      620,
+      620,
+      0,
+      [],
+      null,
+      90,
+      94,
+      86
+     ],
+     [
+      "cmdty_fuel_cells",
+      168.511616,
+      168.511616,
+      364,
+      2,
+      [],
+      null,
+      131,
+      136,
+      126
+     ],
+     [
+      "cmdty_regocrete",
+      418.698876,
+      418.698876,
+      244,
+      1,
+      [],
+      null,
+      77,
+      80,
+      74
+     ],
+     [
+      "cmdty_control_unit",
+      789.35034,
+      789.35034,
+      460,
+      1,
+      [],
+      null,
+      172,
+      179,
+      165
+     ],
+     [
+      "cmdty_consumer_goods",
+      624.616356,
+      624.616356,
+      364,
+      1,
+      [],
+      null,
+      69,
+      72,
+      66
+     ],
+     [
+      "cmdty_textiles",
+      168.511616,
+      168.511616,
+      364,
+      2,
+      [],
+      null,
+      98,
+      102,
+      94
+     ],
+     [
+      "cmdty_luxury_goods",
+      789.35034,
+      789.35034,
+      460,
+      1,
+      [],
+      null,
+      209,
+      217,
+      201
+     ],
+     [
+      "cmdty_food",
+      624.616356,
+      624.616356,
+      364,
+      1,
+      [],
+      null,
+      60,
+      62,
+      58
+     ],
+     [
+      "cmdty_scrap_metal",
+      364,
+      364,
+      364,
+      0,
+      [],
+      null,
+      10,
+      10,
+      9
+     ],
+     [
+      "cmdty_impulse_charge",
+      308,
+      308,
+      308,
+      0,
+      [],
+      null,
+      325,
+      338,
+      312
+     ]
+    ],
+    "station_coalition": [
+     [
+      "cmdty_ore_iron",
+      182,
+      182,
+      182,
+      0,
+      [],
+      null,
+      15,
+      16,
+      14
+     ],
+     [
+      "cmdty_silicate",
+      182,
+      182,
+      182,
+      0,
+      [],
+      null,
+      7,
+      7,
+      6
+     ],
+     [
+      "cmdty_ice_water",
+      59.719776,
+      59.719776,
+      129,
+      2,
+      [],
+      null,
+      17,
+      18,
+      16
+     ],
+     [
+      "cmdty_gas_hydrogen",
+      69,
+      69,
+      69,
+      0,
+      [],
+      null,
+      33,
+      34,
+      32
+     ],
+     [
+      "cmdty_refined_metals",
+      143.51264,
+      143.51264,
+      310,
+      2,
+      [],
+      null,
+      131,
+      136,
+      126
+     ],
+     [
+      "cmdty_fuel_cells",
+      84.255808,
+      84.255808,
+      182,
+      2,
+      [],
+      null,
+      126,
+      131,
+      121
+     ],
+     [
+      "cmdty_consumer_goods",
+      182,
+      182,
+      182,
+      0,
+      [],
+      null,
+      87,
+      90,
+      84
+     ],
+     [
+      "cmdty_textiles",
+      182,
+      182,
+      182,
+      0,
+      [],
+      null,
+      74,
+      77,
+      71
+     ],
+     [
+      "cmdty_food",
+      84.255808,
+      84.255808,
+      182,
+      2,
+      [],
+      null,
+      96,
+      100,
+      92
+     ],
+     [
+      "cmdty_scrap_metal",
+      182,
+      182,
+      182,
+      0,
+      [],
+      null,
+      10,
+      10,
+      9
+     ]
+    ]
+   },
+   "cycles": {
+    "station_helios": [
+     [
+      "cmdty_ore_iron",
+      "sine",
+      "sine",
+      5.918740124106291,
+      0.007706740020275581,
+      0.30612244897959184,
+      -0.004898412516340614,
+      0,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.013101458034468487,
+      3.008037971598355,
+      0,
+      0.02003752405271651,
+      1.1912076097097681,
+      -1064.3801537971012,
+      3495.947142848745
+     ],
+     [
+      "cmdty_silicate",
+      "rising",
+      "rising",
+      2.9277751935429106,
+      0.0072108515939159155,
+      0.42857142857142855,
+      0.04460789333097637,
+      0.000049286879469640555,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.012258447709657056,
+      4.732018535131579,
+      0,
+      0.01874821414418138,
+      3.715844999379276,
+      -1008.4716915758327,
+      1823.4682990796864
+     ],
+     [
+      "cmdty_ice_water",
+      "sqrt",
+      "sqrt",
+      3.6918175456936715,
+      0.007759010418084088,
+      0.15306122448979592,
+      -0.015032540573738516,
+      0,
+      0,
+      0,
+      0.09519255149527453,
+      0.5,
+      0,
+      0.01319031771074295,
+      3.9968711966769774,
+      0,
+      0.02017342708701863,
+      6.027084995687936,
+      -1208.2841904717498,
+      1271.4580047992058
+     ],
+     [
+      "cmdty_gas_hydrogen",
+      "sqrt",
+      "sqrt",
+      1.0497616418488844,
+      0.008570326159715976,
+      0.06696428571428571,
+      0.019774736026301983,
+      0,
+      0,
+      0,
+      0.09562371402326972,
+      0.5,
+      0,
+      0.014569554471517159,
+      2.5687859649091602,
+      0,
+      0.02228284801526154,
+      3.8474314289622433,
+      -1148.7520906166174,
+      1638.343177215429
+     ],
+     [
+      "cmdty_refined_metals",
+      "log",
+      "log",
+      3.750774089333217,
+      0.004607972005461395,
+      0.024152617541607465,
+      0.00460270826239139,
+      0,
+      2.7991810579551384,
+      0,
+      -0.054933447173486145,
+      0.5,
+      0,
+      0.007833552409284373,
+      4.666986124053481,
+      0,
+      0.011980727214199629,
+      0.8644604021198966,
+      -1115.8200104744174,
+      778.5855752276257
+     ],
+     [
+      "cmdty_fuel_cells",
+      "rising",
+      "rising",
+      6.231100293103971,
+      0.0066911892753896175,
+      0.030927835051546393,
+      0.04191912926267832,
+      0.000046512312149629005,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.011375021768162349,
+      2.934014117830578,
+      0,
+      0.017397092116013008,
+      3.3646424726014845,
+      -1029.1496759746224,
+      3551.1692674364895
+     ],
+     [
+      "cmdty_regocrete",
+      "sine",
+      "sine",
+      0.8777528561468186,
+      0.006387499608208266,
+      0.08193692735850346,
+      -0.010127684413455428,
+      0,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.010858749333954053,
+      0.24482919917029533,
+      0,
+      0.016607498981341492,
+      5.425617206597428,
+      -1137.1287668240257,
+      3442.0313080830965
+     ],
+     [
+      "cmdty_control_unit",
+      "stable",
+      "stable",
+      0.7925263136620899,
+      0.006181650466811636,
+      0.0357474286209585,
+      0.00853404083289206,
+      0,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.01050880579357978,
+      1.0358854103624309,
+      0,
+      0.016072291213710253,
+      6.041448150679565,
+      -1078.7861442379653,
+      3053.074071543524
+     ],
+     [
+      "cmdty_consumer_goods",
+      "stable",
+      "stable",
+      2.9960884397952485,
+      0.007472770835323295,
+      0.0504201680672269,
+      -0.013650752529501915,
+      0,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.012703710420049601,
+      2.626001555573884,
+      0,
+      0.019429204171840568,
+      3.7240740072019105,
+      -1175.2247078111395,
+      2268.2985211140476
+     ],
+     [
+      "cmdty_textiles",
+      "sqrt",
+      "sqrt",
+      1.692650573896257,
+      0.005003665817112021,
+      0.02935420743639922,
+      0.011729771252721545,
+      0,
+      0,
+      0,
+      0.1224012729730457,
+      0.5,
+      0,
+      0.008506231889090436,
+      5.790399931684989,
+      0,
+      0.013009531124491255,
+      3.7953303520461183,
+      -1127.8310909983702,
+      4006.6079071490094
+     ],
+     [
+      "cmdty_luxury_goods",
+      "sqrt",
+      "sqrt",
+      3.1586580274711142,
+      0.004899105086036199,
+      0.017801626056639683,
+      -0.004092236976139248,
+      0,
+      0,
+      0,
+      -0.08274109277470658,
+      0.5,
+      0,
+      0.008328478646261538,
+      5.843714720048496,
+      0,
+      0.012737673223694118,
+      0.017410572808813314,
+      -1188.2635965943336,
+      2346.6064424836077
+     ],
+     [
+      "cmdty_food",
+      "stable",
+      "stable",
+      5.72366580602079,
+      0.005300678090273037,
+      0.05870841487279844,
+      0.011313453661277891,
+      0,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.009011152753464162,
+      4.130734359815036,
+      0,
+      0.013781763034709897,
+      1.5748098030465778,
+      -1083.7129110773094,
+      1092.9980160074774
+     ],
+     [
+      "cmdty_scrap_metal",
+      "log",
+      "log",
+      5.373820659486191,
+      0.00448761933355451,
+      0.21428571428571427,
+      0.011327389483340083,
+      0,
+      5.306592554785311,
+      0,
+      0.10899642780795694,
+      0.5,
+      0,
+      0.007628952867042667,
+      4.09737799603431,
+      0,
+      0.011667810267241728,
+      3.0638253372860613,
+      -1051.645052935928,
+      1318.88069213368
+     ],
+     [
+      "cmdty_impulse_charge",
+      "cubic",
+      "cubic",
+      2.335721381770916,
+      0.004902899676619558,
+      0.022462297739461064,
+      0.002097822576761249,
+      0,
+      0.03350315812230109,
+      -0.005509793384828504,
+      0.16342697547169194,
+      0.5,
+      0,
+      0.008334929450253247,
+      1.8358813998293577,
+      0,
+      0.01274753915921085,
+      2.8620938524857023,
+      -1099.3801259924658,
+      3601.277340911329
+     ]
+    ],
+    "station_coalition": [
+     [
+      "cmdty_ore_iron",
+      "rising",
+      "rising",
+      1.907983090422752,
+      0.012206352468525401,
+      0.21428571428571427,
+      0.054698224617168306,
+      0.00007486807999759912,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.02075079919649318,
+      5.956220601707198,
+      0,
+      0.03173651641816604,
+      3.1156046219639624,
+      -1098.7806501472369,
+      3502.2279195464216
+     ],
+     [
+      "cmdty_silicate",
+      "quadratic",
+      "quadratic",
+      1.69760299047,
+      0.006299250737751609,
+      0.30612244897959184,
+      0.011914005223661664,
+      0,
+      0.13401619578665125,
+      -0.007096723300404845,
+      0,
+      0.29257083660922945,
+      0,
+      0.010708726254177734,
+      3.516021409913273,
+      0,
+      0.016378051918154186,
+      1.2278688341683501,
+      -1174.7651294572279,
+      2286.7699555994477
+     ],
+     [
+      "cmdty_ice_water",
+      "falling",
+      "falling",
+      0.6374790931744403,
+      0.0049356240873591715,
+      0.21428571428571427,
+      -0.051552255516871814,
+      -0.00008362513082195074,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.008390560948510591,
+      3.2216707470152386,
+      0,
+      0.012832622627133847,
+      2.890008699365408,
+      -1106.6665481007658,
+      1172.9421526612714
+     ],
+     [
+      "cmdty_gas_hydrogen",
+      "quadratic",
+      "quadratic",
+      2.3760564660490777,
+      0.010799184854297735,
+      0.06696428571428571,
+      0.03524138033390046,
+      0,
+      -0.11466350175160915,
+      0.0516015133112669,
+      0,
+      0.4563295973930508,
+      0,
+      0.01835861425230615,
+      5.673384347573363,
+      0,
+      0.02807788062117411,
+      0.2841528189626153,
+      -1045.5418141605332,
+      2504.6961241064128
+     ],
+     [
+      "cmdty_refined_metals",
+      "rising",
+      "rising",
+      2.172619452835186,
+      0.00493424475917635,
+      0.05053422367319257,
+      0.0700272830761969,
+      0.000060648917979526296,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.008388216090599795,
+      5.084686583982818,
+      0,
+      0.01282903637385851,
+      4.528183157621358,
+      -1099.735696397256,
+      3719.39505185117
+     ],
+     [
+      "cmdty_fuel_cells",
+      "stable",
+      "stable",
+      4.224457126738758,
+      0.007068842381647682,
+      0.04446124854683877,
+      0.01975289567373693,
+      0,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.012017032048801059,
+      3.677734166470112,
+      0,
+      0.018378990192283975,
+      2.354026404637165,
+      -1061.7618212476373,
+      1880.7191296597011
+     ],
+     [
+      "cmdty_consumer_goods",
+      "log",
+      "log",
+      4.140165014399654,
+      0.00969299493109543,
+      0.02521008403361345,
+      0.005039085675962271,
+      0,
+      6.119793398305774,
+      0,
+      0.0830970035623759,
+      0.5,
+      0,
+      0.016478091382862232,
+      5.776628601665245,
+      0,
+      0.02520178682084812,
+      1.755737875929899,
+      -1088.4056934015825,
+      4416.35822780896
+     ],
+     [
+      "cmdty_textiles",
+      "turbulent",
+      "turbulent",
+      1.400222075635524,
+      0.004815822104777194,
+      0.06831125005055219,
+      -0.055037399372085925,
+      0,
+      0,
+      0,
+      0,
+      0.5,
+      0.03360434982273728,
+      0.015937722576719018,
+      1.1782110308643778,
+      0.02618836770951748,
+      0.023021361989229796,
+      0.9406081364472526,
+      -1151.8542410829104,
+      1247.3336276749615
+     ],
+     [
+      "cmdty_food",
+      "sine",
+      "sine",
+      6.145192390672151,
+      0.005972381757560282,
+      0.05870841487279844,
+      0.027907191971316934,
+      0,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.01015304898785248,
+      2.1821345631434372,
+      0,
+      0.015528192569656735,
+      5.268198840210606,
+      -1049.1915969690308,
+      3725.1006476185285
+     ],
+     [
+      "cmdty_scrap_metal",
+      "stable",
+      "stable",
+      1.672745689189341,
+      0.007022358971625319,
+      0.42857142857142855,
+      -0.010852207615971566,
+      0,
+      0,
+      0,
+      0,
+      0.5,
+      0,
+      0.011938010251763042,
+      5.601321522324581,
+      0,
+      0.01825813332622583,
+      5.07200687173048,
+      -1056.9122220017016,
+      1772.3411225911696
+     ]
+    ]
+   },
+   "econEvents": [],
+   "econClock": {
+    "accumulator": 1.0000000000000013,
+    "lastTickT": 0,
+    "ticksElapsed": 0
+   },
+   "marketIntel": {},
+   "rngSeed": 865378648,
+   "nextEventId": 1,
+   "eventAccumulator": 1.0000000000000013
+  },
+  "economyContracts": {},
+  "factions": {
+   "factions": {},
+   "conflicts": {}
+  },
+  "environmentMaterials": {
+   "reactions": [],
+   "blasts": []
+  },
+  "reactiveMatter": null,
+  "spectrum": null,
+  "orbitalGalleryLedger": null,
+  "kineticLeague": null,
+  "mercyService": null,
+  "wreckCourt": null,
+  "world": {
+   "currentSectorId": "sector_helios_prime",
+   "discovery": {
+    "sector_helios_prime": {
+     "discovered": true,
+     "visitedCount": 1,
+     "pois": {
+      "poi_tutorial": {
+       "discovered": true,
+       "identified": false
+      },
+      "poi_vesper_rehearsal": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_memorial": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_helios_yard": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_helios_lane_pin": {
+       "discovered": true,
+       "identified": true,
+       "type": "beacon",
+       "name": "Corridor Pin 44-C",
+       "identifiedAt": 0.03333333333333333
+      },
+      "poi_helios_tally": {
+       "discovered": true,
+       "identified": false
+      },
+      "poi_helios_claim_mark": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_helios_locker": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_helios_bay7": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_helios_ash_pin": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_helios_whistle": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_helios_pit_line": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_helios_picket": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_helios_smear_pin": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_helios_choir_tender": {
+       "discovered": false,
+       "identified": false
+      }
+     },
+     "fieldsDepleted": {},
+     "source": "charted"
+    },
+    "sector_ceres_belt": {
+     "discovered": true,
+     "visitedCount": 0,
+     "pois": {
+      "poi_driller": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_survey": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_ceres_flare_rack": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_ceres_weigh_pin": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_ceres_throughline": {
+       "discovered": false,
+       "identified": false
+      },
+      "world_site_wreck_cathedral": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_ruckus_work_yard": {
+       "discovered": false,
+       "identified": false
+      },
+      "world_site_ceres_second_measure": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_kettle_hopper": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_kettle_ribs": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_kettle_stern": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_ceres_closed_refinery": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_solstice_lantern": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_claim_rookery": {
+       "discovered": false,
+       "identified": false
+      }
+     },
+     "fieldsDepleted": {},
+     "source": "charted"
+    },
+    "sector_tethys_junction": {
+     "discovered": true,
+     "visitedCount": 0,
+     "pois": {
+      "poi_blackmkt": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_tethys_weigh": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_tethys_customs_log": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_tethys_split_station": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_tethys_tally_queue_head": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_tethys_tally_queue_inner": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_tethys_tally_gate_red": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_tethys_tally_gate_green": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_tethys_tally_post": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_tethys_tally_rack": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_tethys_tally_pod": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_tethys_tally_light": {
+       "discovered": false,
+       "identified": false
+      },
+      "poi_rubric_marking_line": {
+       "discovered": false,
+       "identified": false
+      },
+      "heist_launcher": {
+       "discovered": false,
+       "identified": false
+      },
+      "lawful_catcher": {
+       "discovered": false,
+       "identified": false
+      },
+      "fence_receiver": {
+       "discovered": false,
+       "identified": false
+      }
+     },
+     "fieldsDepleted": {},
+     "source": "charted"
+    },
+    "sector_vesta_forge": {
+     "discovered": true,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {},
+     "source": "charted"
+    },
+    "sector_pallas_drift": {
+     "discovered": true,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {},
+     "source": "charted"
+    },
+    "sector_io_reach": {
+     "discovered": true,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {},
+     "source": "charted"
+    },
+    "sector_charon_expanse": {
+     "discovered": true,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {},
+     "source": "charted"
+    },
+    "sector_sker_haven": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_veil_nebula": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_ashfall_reach": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_nyx_march": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_hyperion_cut": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_kepler_scar": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_orcus_shadow": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_rhea_cinder": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_haumea_rift": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_eris_margin": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_phoebe_echo": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_nereid_shoal": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_proteus_well": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_triton_wake": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_eunomia_gulf": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_sedna_dark": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    },
+    "sector_dione_lane": {
+     "discovered": true,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {},
+     "source": "charted"
+    },
+    "sector_the_bolus": {
+     "discovered": false,
+     "visitedCount": 0,
+     "pois": {},
+     "fieldsDepleted": {}
+    }
+   },
+   "wreckCourtRulings": {},
+   "scanPings": {},
+   "pendingSpawns": {},
+   "frontierRumors": {
+    "schemaVersion": 1,
+    "byId": {},
+    "receipts": []
+   },
+   "vestaOreCache": {
+    "schemaVersion": 1,
+    "recordId": "vesta-ore-cache:shift-end:v1",
+    "phase": "unfound",
+    "evidence": null,
+    "search": null,
+    "cache": null,
+    "choiceId": null,
+    "resolvedAt": null,
+    "receipt": null,
+    "cargoLot": null
+   },
+   "pallasHiddenCache": {
+    "schemaVersion": 1,
+    "recordId": "pallas-hidden-weapons-cache:black-wake:v1",
+    "phase": "unfound",
+    "evidence": null,
+    "search": null,
+    "cache": null,
+    "choiceId": null,
+    "resolvedAt": null,
+    "receipt": null,
+    "cargoLot": null
+   },
+   "resourceWork": {
+    "seq": 0,
+    "deniedUntilBySector": {},
+    "ledger": []
+   },
+   "arrangementVersion": 1,
+   "records": {
+    "schemaId": "spaceface.worldRecords.v1",
+    "schemaVersion": 3,
+    "byId": {
+     "wr_wreck_6a4d6d35": {
+      "recordId": "wr_wreck_6a4d6d35",
+      "kind": "wreck",
+      "sectorId": "sector_helios_prime",
+      "homeSectorId": "sector_helios_prime",
+      "pos": {
+       "x": 1040,
+       "z": -300
+      },
+      "vel": {
+       "x": 0,
+       "z": 0
+      },
+      "rot": 1.3,
+      "angVel": 0.12,
+      "type": "wreck",
+      "enemyTypeId": null,
+      "shipDefId": null,
+      "factionId": null,
+      "team": 0,
+      "level": 1,
+      "hull": 1000,
+      "hullMax": 1000,
+      "shield": 0,
+      "shieldMax": 0,
+      "armorHp": 0,
+      "armorMax": 0,
+      "alive": true,
+      "outcome": "active",
+      "missionId": null,
+      "missionTag": null,
+      "jobId": null,
+      "playerOwned": false,
+      "playerCreated": false,
+      "named": true,
+      "name": "The Spare Keg — a bulk container set down mid-hop",
+      "retentionClass": "permanent",
+      "trafficRole": null,
+      "trafficLabel": null,
+      "itinerary": null,
+      "cargoManifest": null,
+      "freightDockSeq": null,
+      "wreckClass": "yard_tug",
+      "markerId": null,
+      "victimClass": null,
+      "ai": null,
+      "isBoss": false,
+      "bossPoiId": null,
+      "bossSectorId": null,
+      "epoch": 0,
+      "createdTick": 60,
+      "lastSeenTick": 60,
+      "durableReason": "serialize",
+      "identityKey": "worldOneOff:oneoff_spare_keg",
+      "recordSource": null,
+      "recipeKey": null,
+      "lastExactT": 1.0000000000000013,
+      "lastObservedT": 1.0000000000000013,
+      "abstractTier": "S0_EXACT",
+      "intent": null,
+      "nextEventAtT": null,
+      "scheduledEventIds": [],
+      "regeneration": {
+       "hullRate": 0,
+       "shieldRate": 0,
+       "repairAtT": null
+      },
+      "deactivation": {
+       "reason": null,
+       "exactSnapshotHash": null,
+       "generation": 0
+      },
+      "extra": {}
+     },
+     "wr_wreck_c1c4d069": {
+      "recordId": "wr_wreck_c1c4d069",
+      "kind": "wreck",
+      "sectorId": "sector_helios_prime",
+      "homeSectorId": "sector_helios_prime",
+      "pos": {
+       "x": -220,
+       "z": 560
+      },
+      "vel": {
+       "x": 0,
+       "z": 0
+      },
+      "rot": 0.4,
+      "angVel": 0,
+      "type": "wreck",
+      "enemyTypeId": null,
+      "shipDefId": null,
+      "factionId": null,
+      "team": 0,
+      "level": 1,
+      "hull": 1000,
+      "hullMax": 1000,
+      "shield": 0,
+      "shieldMax": 0,
+      "armorHp": 0,
+      "armorMax": 0,
+      "alive": true,
+      "outcome": "active",
+      "missionId": null,
+      "missionTag": null,
+      "jobId": null,
+      "playerOwned": false,
+      "playerCreated": false,
+      "named": true,
+      "name": "Mass of Another Age — a very large derelict bulk tanker",
+      "retentionClass": "permanent",
+      "trafficRole": null,
+      "trafficLabel": null,
+      "itinerary": null,
+      "cargoManifest": null,
+      "freightDockSeq": null,
+      "wreckClass": "yard_tug",
+      "markerId": null,
+      "victimClass": null,
+      "ai": null,
+      "isBoss": false,
+      "bossPoiId": null,
+      "bossSectorId": null,
+      "epoch": 0,
+      "createdTick": 60,
+      "lastSeenTick": 60,
+      "durableReason": "serialize",
+      "identityKey": "worldOneOff:oneoff_great_tanker",
+      "recordSource": null,
+      "recipeKey": null,
+      "lastExactT": 1.0000000000000013,
+      "lastObservedT": 1.0000000000000013,
+      "abstractTier": "S0_EXACT",
+      "intent": null,
+      "nextEventAtT": null,
+      "scheduledEventIds": [],
+      "regeneration": {
+       "hullRate": 0,
+       "shieldRate": 0,
+       "repairAtT": null
+      },
+      "deactivation": {
+       "reason": null,
+       "exactSnapshotHash": null,
+       "generation": 0
+      },
+      "extra": {}
+     }
+    },
+    "hullLosses": []
+   },
+   "resourceBodies": {
+    "schemaId": "spaceface.resourceBodyRecords.v2",
+    "schemaVersion": 2,
+    "byId": {}
+   },
+   "farActors": null,
+   "embodiment": {
+    "schemaId": "spaceface.worldEmbodimentCache.v1",
+    "schemaVersion": 1,
+    "bySector": {}
+   },
+   "coordinateSchema": "global_v1",
+   "opticSpent": {},
+   "alienEcology": {
+    "schema": "spaceface.alienEcology.v1",
+    "revelation": 0,
+    "machineProtocol": "unknown",
+    "taxonomy": {
+     "scannedSpecies": {}
+    },
+    "sites": {},
+    "exposure": 0,
+    "machineAccess": {},
+    "mapKnowledge": {},
+    "sectorFlags": {},
+    "wrenRecognized": false,
+    "factionConsequences": {},
+    "echoLog": [],
+    "heatTrial": {
+     "cold": null,
+     "hot": null,
+     "note": null,
+     "scans": 0,
+     "spoken": false
+    },
+    "chartFindings": {},
+    "machineSites": {
+     "helios_unanswered_survey": {
+      "seen": true,
+      "beats": {},
+      "directiveIssued": false,
+      "playerInRange": true
+     }
+    },
+    "evidence": {},
+    "setpieces": {},
+    "uniqueGrants": {}
+   },
+   "sectorOwners": {},
+   "jump": {
+    "state": "IDLE",
+    "targetSectorId": null,
+    "via": null,
+    "chargeT": 0,
+    "chargeNeeded": 0,
+    "cooldownT": 0
+   },
+   "fuel": {
+    "current": 100,
+    "max": 100
+   }
+  },
+  "entities": {
+   "player": {
+    "id": 482,
+    "type": "ship",
+    "alive": true,
+    "factionId": null,
+    "pos": {
+     "x": 120,
+     "z": -80
+    },
+    "vel": {
+     "x": 10,
+     "z": 0
+    },
+    "rot": 0,
+    "angVel": 0,
+    "prevBank": 0,
+    "pitch": 0,
+    "prevPitch": 0,
+    "radius": 6,
+    "mass": 1,
+    "hull": 140,
+    "hullMax": 140,
+    "armorHp": 0,
+    "armorMax": 0,
+    "armorFlat": 0,
+    "shield": 0,
+    "shieldMax": 0,
+    "shieldRegenRate": 0,
+    "shieldRegenDelay": 3,
+    "lastDamageT": -1000000000,
+    "cap": 0,
+    "capMax": 0,
+    "capRegen": 0,
+    "thrust": 0,
+    "turnRate": 0,
+    "maxSpeed": 0,
+    "drag": 0,
+    "collides": true,
+    "collisionMask": 31,
+    "team": 0,
+    "ownerId": null,
+    "flags": {
+     "boosting": false
+    },
+    "data": null,
+    "presentationAdmission": "pending",
+    "activity": {
+     "simTier": "S0_EXACT",
+     "presentationTier": "R0_GLASS",
+     "nextEventAtT": -1,
+     "pins": [
+      "PLAYER",
+      "VISIBLE_ON_GLASS"
+     ],
+     "pinnedExact": true,
+     "lastExactT": 0.5166666666666666,
+     "lastObservedT": 0.5166666666666666,
+     "graceUntilT": -1
+    },
+    "_isPlayer": true
+   },
+   "persistent": [],
+   "ceresWorkfleetRefs": [],
+   "simTime": 1.0000000000000013,
+   "tick": 60,
+   "freeIds": [],
+   "nextEntityId": 483,
+   "nextOccupantGeneration": 43
+  },
+  "combat": {
+   "schemaVersion": 1,
+   "combatSchemaVersion": 1,
+   "statusNextPendingSeq": 1,
+   "entities": [],
+   "actions": {
+    "nextRequestSeq": 1,
+    "nextInstanceSeq": 1,
+    "requests": [],
+    "active": [],
+    "cooldowns": []
+   },
+   "attachments": {
+    "nextId": 1,
+    "byId": {}
+   },
+   "lastPlayerDefeat": null
+  },
+  "physics": null,
+  "bombs": {},
+  "snares": null,
+  "charges": null,
+  "stunts": null,
+  "fields": null,
+  "missions": {
+   "boards": {
+    "station_helios": {
+     "refreshEpoch": 0,
+     "slots": [
+      {
+       "id": "mo_station_helios_0_0",
+       "type": "bounty_hunt",
+       "stationId": "station_helios",
+       "factionId": "faction_scn",
+       "reward_cr": 919,
+       "time_limit_s": 442,
+       "duration_s": 442,
+       "collateral_cr": 0,
+       "riskTier": 2,
+       "economyTerms": {
+        "version": 1,
+        "tier": 1,
+        "type": "bounty_hunt",
+        "riskTier": 1,
+        "expectedDurationS": 184,
+        "deadlineS": 442,
+        "rewardCr": 919,
+        "collateralCr": 0,
+        "targetNetCr": 562.2222222222223,
+        "operatingCr": 127.77777777777779,
+        "suppliedInputsCr": 0,
+        "otherRevenueCr": 0,
+        "failureLossCr": 0,
+        "successProbability": 0.94,
+        "expectedNetCr": 736.0822222222221,
+        "expectedNetCrPerHour": 14401.608695652172,
+        "headMoneyMult": 1.25
+       },
+       "riskNote": "Tethys Junction is patrol-thin — the premium pays for the crossing",
+       "destStationId": "station_tethys",
+       "destSectorId": "sector_tethys_junction",
+       "distance": 2943.608329051593,
+       "params": {
+        "clearCount": 1,
+        "killCount": 0,
+        "targetStrength": 2.2232727129012346,
+        "fValue": 2.2232727129012346,
+        "taskTime": 60,
+        "markName": "Dim Tarlo",
+        "markPlace": "Weigh-Slip Buoy"
+       },
+       "title": "Eliminate Dim Tarlo — Weigh-Slip Buoy",
+       "brief": "Tethys Trade Hub posted a writ on Dim Tarlo, holding Weigh-Slip Buoy. Pay on hull, not...",
+       "expiresAtEpoch": 1,
+       "storyTag": null,
+       "storyTarget": {
+        "id": "mark:mo_station_helios_0_0",
+        "name": "Dim Tarlo",
+        "label": "DIM TARLO — WARRANT",
+        "role": "board_writ",
+        "archetype": "reaver_pirate",
+        "factionId": "faction_quiet",
+        "anchorId": "poi_tethys_weigh",
+        "anchorRadius": 200
+       }
+      },
+      {
+       "id": "mo_station_helios_0_1",
+       "type": "rescue_under_fire",
+       "stationId": "station_helios",
+       "factionId": "faction_scn",
+       "reward_cr": 3278,
+       "time_limit_s": 922,
+       "duration_s": 922,
+       "collateral_cr": 0,
+       "riskTier": 2,
+       "economyTerms": {
+        "version": 1,
+        "tier": 2,
+        "type": "rescue_under_fire",
+        "riskTier": 2,
+        "expectedDurationS": 384,
+        "deadlineS": 922,
+        "rewardCr": 3278,
+        "collateralCr": 0,
+        "targetNetCr": 2342.4,
+        "operatingCr": 541.5384615384615,
+        "suppliedInputsCr": 0,
+        "otherRevenueCr": 0,
+        "failureLossCr": 0,
+        "successProbability": 0.88,
+        "expectedNetCr": 2343.1015384615384,
+        "expectedNetCrPerHour": 21966.576923076922
+       },
+       "riskNote": "Vesta Forge is patrol-thin — the premium pays for the crossing",
+       "destStationId": "station_depot3",
+       "destSectorId": "sector_vesta_forge",
+       "distance": 3200,
+       "params": {
+        "podCount": 2,
+        "escortCount": 3,
+        "escortsDown": 0,
+        "podsLost": 0,
+        "targetStrength": 1.7007196935825049,
+        "fValue": 1.7007196935825049,
+        "taskTime": 70,
+        "physicalVerb": "pull",
+        "completionMethods": [
+         "stage_tow",
+         "corridor_pull"
+        ],
+        "variant": "pocket_pull",
+        "podSpreadWu": 90
+       },
+       "title": "Pull the pods out of the pocket near Refuel Depot",
+       "brief": "Pods bunched in the pocket near Refuel Depot, heavier cover on top. Pull one out. Arrive under 25 wu/s.",
+       "expiresAtEpoch": 1,
+       "storyTag": null,
+       "clauses": [
+        {
+         "id": "soft_berth",
+         "conditionId": "soft_berth",
+         "kind": "require",
+         "event": null,
+         "label": "Come alongside",
+         "prose": "Match the berth before you hand over: inside 700 wu of the destination and under 25 wu/s.",
+         "rewardMult": 1.15
+        }
+       ]
+      },
+      {
+       "id": "mo_station_helios_0_2",
+       "type": "tow_recovery",
+       "stationId": "station_helios",
+       "factionId": "faction_scn",
+       "reward_cr": 2508,
+       "time_limit_s": 862,
+       "duration_s": 862,
+       "collateral_cr": 0,
+       "riskTier": 1,
+       "economyTerms": {
+        "version": 1,
+        "tier": 1,
+        "type": "tow_recovery",
+        "riskTier": 1,
+        "expectedDurationS": 359,
+        "deadlineS": 862,
+        "rewardCr": 1433,
+        "collateralCr": 0,
+        "targetNetCr": 1096.9444444444446,
+        "operatingCr": 249.30555555555557,
+        "suppliedInputsCr": 0,
+        "otherRevenueCr": 0,
+        "failureLossCr": 0,
+        "successProbability": 0.94,
+        "expectedNetCr": 1097.7144444444443,
+        "expectedNetCrPerHour": 11007.721448467966
+       },
+       "riskNote": null,
+       "destStationId": "station_ceres",
+       "destSectorId": "sector_ceres_belt",
+       "distance": 2943.608329051593,
+       "params": {
+        "massU": 39,
+        "cargoValue": 858,
+        "fValue": 1.10725,
+        "taskTime": 40,
+        "physicalVerb": "tow",
+        "completionMethods": [
+         "tow_in",
+         "sling_in"
+        ],
+        "variant": "slag_core",
+        "scanLabel": "SLAG CORE"
+       },
+       "title": "Tow the 39 t slag core to Ceres Refinery",
+       "brief": "Tow the slag core into Ceres Refinery, or sling it in on a clean release.",
+       "expiresAtEpoch": 1,
+       "storyTag": null,
+       "featured": {
+        "dayKey": "sim-day:0",
+        "rewardMult": 1.75,
+        "repBonus": 3,
+        "baseRewardCr": 1433
+       }
+      },
+      {
+       "id": "mo_station_helios_0_3",
+       "type": "demolition",
+       "stationId": "station_helios",
+       "factionId": "faction_scn",
+       "reward_cr": 1313,
+       "time_limit_s": 790,
+       "duration_s": 790,
+       "collateral_cr": 0,
+       "riskTier": 1,
+       "economyTerms": {
+        "version": 1,
+        "tier": 1,
+        "type": "demolition",
+        "riskTier": 1,
+        "expectedDurationS": 329,
+        "deadlineS": 790,
+        "rewardCr": 1313,
+        "collateralCr": 0,
+        "targetNetCr": 1005.2777777777779,
+        "operatingCr": 228.47222222222223,
+        "suppliedInputsCr": 0,
+        "otherRevenueCr": 0,
+        "failureLossCr": 0,
+        "successProbability": 0.94,
+        "expectedNetCr": 1005.7477777777779,
+        "expectedNetCrPerHour": 11005.142857142859
+       },
+       "riskNote": null,
+       "destStationId": "station_ceres",
+       "destSectorId": "sector_ceres_belt",
+       "distance": 2943.608329051593,
+       "params": {
+        "targetStrength": 1.7111265107057991,
+        "fValue": 1.7111265107057991,
+        "taskTime": 50,
+        "physicalVerb": "knock_down",
+        "completionMethods": [
+         "wrecking_ball",
+         "cut_down"
+        ],
+        "variant": "guarded_tower",
+        "escortCount": 2
+       },
+       "title": "Knock down the picketed tower near Ceres Refinery",
+       "brief": "The tower near Ceres Refinery has a crew sitting on it. Knock it down anyway. Land one solid mass strike.",
+       "expiresAtEpoch": 1,
+       "storyTag": null,
+       "clauses": [
+        {
+         "id": "mass_on_target",
+         "conditionId": "mass_on_target",
+         "kind": "require",
+         "event": "tether:whipImpact",
+         "label": "Put mass on them",
+         "prose": "Land one solid mass strike on this job — a rock, a wreck, anything with weight behind it.",
+         "rewardMult": 1.4
+        }
+       ]
+      },
+      {
+       "id": "mo_station_helios_0_4",
+       "type": "escort",
+       "stationId": "station_helios",
+       "factionId": "faction_scn",
+       "reward_cr": 2578,
+       "time_limit_s": 725,
+       "duration_s": 725,
+       "collateral_cr": 0,
+       "riskTier": 2,
+       "economyTerms": {
+        "version": 1,
+        "tier": 2,
+        "type": "escort",
+        "riskTier": 2,
+        "expectedDurationS": 302,
+        "deadlineS": 725,
+        "rewardCr": 2578,
+        "collateralCr": 0,
+        "targetNetCr": 1842.2,
+        "operatingCr": 425.89743589743586,
+        "suppliedInputsCr": 0,
+        "otherRevenueCr": 0,
+        "failureLossCr": 0,
+        "successProbability": 0.88,
+        "expectedNetCr": 1842.742564102564,
+        "expectedNetCrPerHour": 21966.467651553747
+       },
+       "riskNote": "Vesta Forge is patrol-thin — the premium pays for the crossing",
+       "destStationId": "station_vesta_outlying_yard",
+       "destSectorId": "sector_vesta_forge",
+       "distance": 3200,
+       "params": {
+        "targetStrength": 1.823481446201913,
+        "convoySize": 3,
+        "ambushSize": 4,
+        "fValue": 1.823481446201913,
+        "taskTime": 90
+       },
+       "title": "Escort a convoy to Forge Outlying Yard",
+       "brief": "Convoy into Forge Outlying Yard on the final leg. Raiders work this lane — paid on arri... Land one solid mass strike.",
+       "expiresAtEpoch": 1,
+       "storyTag": null,
+       "clauses": [
+        {
+         "id": "mass_on_target",
+         "conditionId": "mass_on_target",
+         "kind": "require",
+         "event": "tether:whipImpact",
+         "label": "Put mass on them",
+         "prose": "Land one solid mass strike on this job — a rock, a wreck, anything with weight behind it.",
+         "rewardMult": 1.4
+        }
+       ]
+      },
+      {
+       "id": "warm_cargo_station_helios",
+       "source": "warmCargoContract",
+       "type": "cargo_delivery",
+       "stationId": "station_helios",
+       "factionId": "faction_scn",
+       "destStationId": "station_ceres",
+       "destSectorId": "sector_ceres_belt",
+       "distance": 8900,
+       "reward_cr": 1000,
+       "collateral_cr": 0,
+       "riskTier": 0,
+       "minRep": 0,
+       "time_limit_s": 1200,
+       "duration_s": 1200,
+       "preloadedCargo": true,
+       "params": {
+        "cmdtyId": "cmdty_volatiles",
+        "qty": 10,
+        "handlingLimit": 18,
+        "cargoValue": 10,
+        "fValue": 1,
+        "taskTime": 20,
+        "passengers": 0
+       },
+       "title": "Ice Volatiles for Ceres Refinery. Handling limit 18: a harder knock spoils units off the manifest. What arrives intact pays the posted price.",
+       "brief": "Ice Volatiles for Ceres Refinery. Handling limit 18: a harder knock spoils units off the manifest. What arrives intact pays the posted price.",
+       "summary": "Ice Volatiles for Ceres Refinery. Handling limit 18: a harder knock spoils units off the manifest. What arrives intact pays the posted price.",
+       "cause": {
+        "tag": "volatile_lot",
+        "axis": "handling",
+        "line": "Ice Volatiles for Ceres Refinery. Handling limit 18: a harder knock spoils units off the manifest. What arrives intact pays the posted price."
+       },
+       "expiresAtEpoch": 1,
+       "storyTag": null
+      },
+      {
+       "id": "offer_speed_helios_cut",
+       "source": "adventureSpeed",
+       "type": "race",
+       "stationId": "station_helios",
+       "destStationId": "station_helios",
+       "destSectorId": "sector_helios_prime",
+       "title": "Outrun the Cut",
+       "brief": "Helios is closing the belt for a demolition sweep. Cross the start marker to open your escape window. Each safe gate extends it; stopping too long closes the route.",
+       "summary": "Belt escape. Clear each gate before the escape margin runs out. The clock starts at the first gate.",
+       "reward_cr": 1600,
+       "time_limit_s": 900,
+       "duration_s": 900,
+       "collateral_cr": 0,
+       "riskTier": 0,
+       "preloadedCargo": false,
+       "distance": 7932,
+       "params": {
+        "adventureSpeedId": "speed_helios_cut",
+        "adventureSpeed": {
+         "kind": "escape",
+         "initialWindowS": 14,
+         "maxBankS": 20,
+         "legBudgetsS": [
+          0,
+          4.13,
+          3.55,
+          3.65,
+          3.87,
+          4.68,
+          3.02,
+          3.29,
+          5.05,
+          4.49,
+          6.6,
+          4.1,
+          4.65,
+          2.77
+         ],
+         "gateDeadlinesS": [
+          0,
+          18.13,
+          21.68,
+          25.33,
+          29.2,
+          33.88,
+          36.9,
+          40.19,
+          45.24,
+          49.73,
+          56.33,
+          60.43,
+          65.08,
+          67.85
+         ],
+         "totalWindowS": 67.85,
+         "finishSpeedLimit": 0,
+         "failureReason": "speed_sweep_caught",
+         "failureText": "The demolition exclusion window caught your route. Return to Helios for another run."
+        },
+        "adventureSpeedHint": "Reach the start marker. The pressure clock begins when you cross it.",
+        "racingContractId": "speed_helios_cut",
+        "racingKind": "adventure",
+        "levelId": "level_textile_outbound",
+        "terrain": "Helios starter belt and the outer metallic field",
+        "courseId": "adventure_speed_helios_cut",
+        "courseName": "Outrun the Cut",
+        "courseKind": "sprint",
+        "courseRevision": 1,
+        "courseSectorId": "sector_helios_prime",
+        "closedCircuit": false,
+        "laps": 1,
+        "gates": [
+         {
+          "x": 1640,
+          "z": 180
+         },
+         {
+          "x": 1040,
+          "z": 80
+         },
+         {
+          "x": 720,
+          "z": -260
+         },
+         {
+          "x": 280,
+          "z": -40
+         },
+         {
+          "x": -160,
+          "z": 280
+         },
+         {
+          "x": -900,
+          "z": 300
+         },
+         {
+          "x": -900,
+          "z": 640
+         },
+         {
+          "x": -1240,
+          "z": 860
+         },
+         {
+          "x": -420,
+          "z": 980
+         },
+         {
+          "x": 40,
+          "z": 460
+         },
+         {
+          "x": 520,
+          "z": -640
+         },
+         {
+          "x": 1120,
+          "z": -640
+         },
+         {
+          "x": 1850,
+          "z": -580
+         },
+         {
+          "x": 1840,
+          "z": -300
+         }
+        ],
+        "gateRadiusWU": 90,
+        "courseLengthWU": 7932.22,
+        "recordS": 22,
+        "bandCapsS": [
+         44,
+         68
+        ],
+        "nextGate": 0,
+        "gridHoldS": 0,
+        "raceLease": true,
+        "gridLine": "Fly to the start marker. Crossing it begins the timed passage."
+       },
+       "storyTag": "speed:speed_helios_cut",
+       "cause": {
+        "tag": "race",
+        "fingerprint": "speed:speed_helios_cut",
+        "levelId": "level_textile_outbound",
+        "terrain": "Helios starter belt and the outer metallic field"
+       }
+      },
+      {
+       "id": "offer_speed_helios_cold_chain",
+       "source": "adventureSpeed",
+       "type": "race",
+       "stationId": "station_helios",
+       "destStationId": "station_helios",
+       "destSectorId": "sector_helios_prime",
+       "title": "The Cold Chain",
+       "brief": "Carry eight sealed medical packs through the belt. Radiation arrives from the west: shelter on the east side of rocks, wrecks or stations to cool the load. Boost and travel burn heat it faster. Heat above 75 damages quality and spoils real packs; deliver what survives before the corridor closes.",
+       "summary": "Medical delivery. Trade a fast exposed burn for cooling behind solid cover; temperature and pack quality are shown in flight.",
+       "reward_cr": 2400,
+       "time_limit_s": 900,
+       "duration_s": 900,
+       "collateral_cr": 0,
+       "riskTier": 0,
+       "preloadedCargo": true,
+       "distance": 3596,
+       "params": {
+        "adventureSpeedId": "speed_helios_cold_chain",
+        "adventureSpeed": {
+         "kind": "thermal",
+         "initialWindowS": 20,
+         "maxBankS": 0,
+         "legBudgetsS": [
+          0,
+          10.08,
+          8.67,
+          8.92,
+          9.44,
+          11.4,
+          7.4,
+          8.05
+         ],
+         "gateDeadlinesS": [
+          0,
+          30.08,
+          38.75,
+          47.67,
+          57.11,
+          68.51,
+          75.91,
+          83.96
+         ],
+         "totalWindowS": 83.96,
+         "finishSpeedLimit": 0,
+         "failureReason": "speed_cold_chain_expired",
+         "failureText": "The medical corridor closed. The sealed load has been recalled; Helios can issue a fresh delivery.",
+         "thermal": {
+          "units": 8,
+          "startTemperature": 20,
+          "safeTemperature": 75,
+          "exposedHeatPerS": 1.5,
+          "burnHeatPerS": 5,
+          "coolingPerS": 12,
+          "qualityLossPerS": 4,
+          "shelterReachWU": 180,
+          "radiationDirection": {
+           "x": 1,
+           "z": 0
+          }
+         }
+        },
+        "adventureSpeedHint": "Eight sealed medical packs aboard. Reach the start; east sides of solid cover cool the load.",
+        "racingContractId": "speed_helios_cold_chain",
+        "racingKind": "adventure",
+        "levelId": "level_textile_outbound",
+        "terrain": "Helios starter belt and the outer metallic field",
+        "courseId": "adventure_speed_helios_cold_chain",
+        "courseName": "The Cold Chain",
+        "courseKind": "sprint",
+        "courseRevision": 1,
+        "courseSectorId": "sector_helios_prime",
+        "closedCircuit": false,
+        "laps": 1,
+        "gates": [
+         {
+          "x": 1640,
+          "z": 180
+         },
+         {
+          "x": 1040,
+          "z": 80
+         },
+         {
+          "x": 720,
+          "z": -260
+         },
+         {
+          "x": 280,
+          "z": -40
+         },
+         {
+          "x": -160,
+          "z": 280
+         },
+         {
+          "x": -900,
+          "z": 300
+         },
+         {
+          "x": -900,
+          "z": 640
+         },
+         {
+          "x": -1240,
+          "z": 860
+         }
+        ],
+        "gateRadiusWU": 90,
+        "courseLengthWU": 3596.41,
+        "recordS": 12,
+        "bandCapsS": [
+         55,
+         84
+        ],
+        "nextGate": 0,
+        "gridHoldS": 0,
+        "raceLease": false,
+        "gridLine": "Fly to the start marker. Crossing it begins the timed passage.",
+        "cmdtyId": "cmdty_medical",
+        "qty": 8
+       },
+       "storyTag": "speed:speed_helios_cold_chain",
+       "cause": {
+        "tag": "race",
+        "fingerprint": "speed:speed_helios_cold_chain",
+        "levelId": "level_textile_outbound",
+        "terrain": "Helios starter belt and the outer metallic field"
+       }
+      },
+      {
+       "id": "mo_station_helios_0_rank",
+       "type": "escort",
+       "stationId": "station_helios",
+       "factionId": "faction_scn",
+       "reward_cr": 2356,
+       "time_limit_s": 663,
+       "duration_s": 663,
+       "collateral_cr": 0,
+       "riskTier": 2,
+       "economyTerms": {
+        "version": 1,
+        "tier": 2,
+        "type": "escort",
+        "riskTier": 2,
+        "expectedDurationS": 276,
+        "deadlineS": 663,
+        "rewardCr": 2356,
+        "collateralCr": 0,
+        "targetNetCr": 1683.6,
+        "operatingCr": 389.2307692307692,
+        "suppliedInputsCr": 0,
+        "otherRevenueCr": 0,
+        "failureLossCr": 0,
+        "successProbability": 0.88,
+        "expectedNetCr": 1684.049230769231,
+        "expectedNetCrPerHour": 21965.859531772578
+       },
+       "riskNote": null,
+       "destStationId": "station_coalition",
+       "destSectorId": "sector_helios_prime",
+       "distance": 600,
+       "params": {
+        "targetStrength": 2.2668548873160033,
+        "convoySize": 3,
+        "ambushSize": 4,
+        "fValue": 2.2668548873160033,
+        "taskTime": 90,
+        "rankContractId": "rank_contract_faction_scn"
+       },
+       "title": "Concord cleared escort",
+       "brief": "Convoy into Coalition HQ on the final leg. Raiders work this lane — paid on arrivals.",
+       "expiresAtEpoch": 1,
+       "storyTag": null,
+       "source": "rankContract",
+       "rankGated": true,
+       "minRep": -29,
+       "minRankStep": 1
+      }
+     ]
+    }
+   },
+   "active": [
+    {
+     "id": "m_1",
+     "type": "recon_scan",
+     "stationId": "station_helios",
+     "factionId": "faction_choir",
+     "params": {
+      "scanTargets": 1,
+      "setPieceObjective": "choir_first_light",
+      "bearingFixed": false,
+      "rumorPurchased": false,
+      "wreckId": "wreck_choir_tender",
+      "wreckName": "Relief-Freighter Choir-Tender",
+      "sourceRef": "news.tragedy_at_helios",
+      "channelId": "mission",
+      "complicationKinds": [
+       "reactor",
+       "report_or_loot"
+      ],
+      "hasReactorComplication": true,
+      "hasHazardComplication": false
+     },
+     "objectiveProgress": 0,
+     "objectiveTarget": 1,
+     "acceptedAt_s": 1.0000000000000013,
+     "deadline_s": 1801,
+     "reward_cr": 720,
+     "collateral_cr": 0,
+     "riskTier": 1,
+     "destStationId": null,
+     "destSectorId": "sector_helios_prime",
+     "distance": 900,
+     "needsTargets": false,
+     "status": "active",
+     "storyTag": null,
+     "storyContractId": null,
+     "campaign47aBeat": null,
+     "storyTarget": null,
+     "preloadedCargo": false,
+     "storyBranch": null,
+     "storyStake": null,
+     "storyOperation": null,
+     "title": "First Light at the Wreck",
+     "brief": "The Helios loss report names a bearing ring. Fly it and pulse the wreck into a fixed site.",
+     "stageId": "first_light",
+     "stepBriefs": {
+      "first_light": "The Helios loss report names a bearing ring. Fly it and pulse the wreck into a fixed site."
+     },
+     "summary": "The Helios loss report names a bearing ring. Fly it and pulse the wreck into a fixed site.",
+     "description": null,
+     "authorization": null,
+     "adminField": null,
+     "source": "setPieceMission",
+     "sourceRef": "news.tragedy_at_helios",
+     "wreckId": "wreck_choir_tender",
+     "channelId": "mission",
+     "upfrontCostCr": 0,
+     "sourceOfferId": "offer_sp1_choir_vigil_0_109ozfe_0_common_attempt_0",
+     "giverId": null,
+     "clientId": null,
+     "cause": {
+      "tag": "sp1-set-piece",
+      "chainId": "sp1_choir_vigil_0_109ozfe",
+      "archetypeId": "choir_vigil",
+      "startEpoch": 0,
+      "stageIndex": 0,
+      "stageId": "first_light",
+      "branchId": null,
+      "branchLabel": null,
+      "attempt": 0,
+      "stageFingerprint": "sp1_choir_vigil_0_109ozfe:0:common",
+      "fingerprint": "sp1_choir_vigil_0_109ozfe:0:common:attempt:0",
+      "house": "The Choir Vigil",
+      "instructionRef": "mission.sp1.choir_vigil.first_light.instruction",
+      "successRef": "mission.sp1.choir_vigil.first_light.success",
+      "failureRef": "mission.sp1.choir_vigil.first_light.failure",
+      "recoveryRef": "mission.sp1.choir_vigil.first_light.recovery",
+      "travelRef": null,
+      "travelText": null,
+      "witnessId": null,
+      "witnessName": null,
+      "wreckId": "wreck_choir_tender",
+      "wreckName": "Relief-Freighter Choir-Tender",
+      "sourceRef": "news.tragedy_at_helios",
+      "channelId": "mission"
+     },
+     "chainNextSeed": null,
+     "targetEntityIds": []
+    }
+   ],
+   "completedLog": [],
+   "receipts": [],
+   "nextId": 2,
+   "config": {
+    "BASE": {
+     "cargo_delivery": 411,
+     "bulk_trade": 453,
+     "bounty_hunt": 303,
+     "mining_quota": 677,
+     "salvage_retrieval": 614,
+     "escort": 598,
+     "patrol_clear": 656,
+     "smuggling_run": 494,
+     "passenger_transport": 453,
+     "recon_scan": 552,
+     "tow_recovery": 697,
+     "demolition": 635,
+     "rescue_under_fire": 739,
+     "race": 370,
+     "authored_set_piece": 863,
+     "capital_boss": 1237
+    },
+    "RISK_MULT": [
+     1,
+     1.146809,
+     1.358636,
+     1.6905,
+     2.24
+    ],
+    "BASE_REP": {
+     "cargo_delivery": 3,
+     "bulk_trade": 3,
+     "bounty_hunt": 5,
+     "mining_quota": 2,
+     "salvage_retrieval": 3,
+     "escort": 4,
+     "patrol_clear": 5,
+     "smuggling_run": 4,
+     "passenger_transport": 2,
+     "recon_scan": 4,
+     "tow_recovery": 3,
+     "demolition": 4,
+     "rescue_under_fire": 5,
+     "authored_set_piece": 5,
+     "capital_boss": 6,
+     "race": 3
+    },
+    "distDivisor": 2000,
+    "valueDivisor": 8000,
+    "faction": {
+     "friendlyThreshold": 25,
+     "loyaltyBonus": 1.15
+    },
+    "rush": {
+     "fTime": 1.35,
+     "slackMult": 0.5
+    },
+    "cruiseSpeedRef": 140,
+    "slackDefault": 2.2,
+    "collateralPct": 0.25,
+    "refreshSec": 300,
+    "maxActive": 8,
+    "featured": {
+     "rewardMult": 1.75,
+     "repBonus": 3
+    }
+   },
+   "story": {
+    "beatIndex": 0,
+    "branch": null,
+    "flags": {},
+    "chainProgress": 0,
+    "phase": 1,
+    "seenComms": {},
+    "ambientQueue": [],
+    "ambientTimerS": 0,
+    "graffitiShown": {},
+    "endgameChoice": null,
+    "endgameOffered": false,
+    "endgameDeclined": [],
+    "persistentCargo": [],
+    "campaign47a": {
+     "schemaVersion": 2,
+     "campaignId": "campaign.47a.v1",
+     "beatStatus": "idle",
+     "observedBeatIndex": null,
+     "stepProgress": {},
+     "outpostSpecializationId": null,
+     "outpostsOwned": [],
+     "flags": {},
+     "sandboxMode": null,
+     "attempt": 0,
+     "failureCount": 0,
+     "failuresByBeat": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0
+     },
+     "lastFailedBeat": null,
+     "failedAtS": null,
+     "recoveredAtS": null,
+     "lastEventAtS": null,
+     "activeContract": null,
+     "receipts": [],
+     "choiceLog": [],
+     "history": [],
+     "rngSeed": 0
+    },
+    "depthProgramPoiVisits": {
+     "poi_tutorial": {
+      "firstSeenAt": 0.03333333333333333,
+      "firstSeenTick": 2,
+      "sectorId": "sector_helios_prime"
+     },
+     "poi_helios_lane_pin": {
+      "firstSeenAt": 0.03333333333333333,
+      "firstSeenTick": 2,
+      "sectorId": "sector_helios_prime"
+     },
+     "poi_helios_tally": {
+      "firstSeenAt": 0.03333333333333333,
+      "firstSeenTick": 2,
+      "sectorId": "sector_helios_prime"
+     }
+    }
+   }
+  },
+  "capitalBoss": null,
+  "careerOrigins": {},
+  "careerLadders": {},
+  "scenario": {
+   "schemaVersion": 1,
+   "active": null,
+   "facts": {},
+   "actorBindings": {},
+   "unresolvedActorIds": [],
+   "enteredBeatIds": []
+  },
+  "automation": {
+   "drones": [],
+   "traders": [],
+   "outposts": [],
+   "fleet": [],
+   "fleetCap": 0,
+   "balance": {
+    "activeRefByTier": [
+     250,
+     600,
+     1400,
+     3200,
+     7000
+    ],
+    "passiveCapFrac": 0.45,
+    "overflowEff": 0.25,
+    "offlineEff": 0.6,
+    "offlineCapSec": 14400,
+    "distressGraceSec": 120
+   },
+   "accumulators": {
+    "creditBuffer": 0,
+    "upkeepDebt": 0
+   },
+   "meta": {
+    "lastTickTime": 0,
+    "totalPassiveEarnedLifetime": 0,
+    "lostAssetsLog": [],
+    "rngSeed": 0
+   }
+  },
+  "crafting": {
+   "queues": {}
+  },
+  "sectorSim": {},
+  "worldPressure": {},
+  "lineProgression": {},
+  "npcJobs": {},
+  "traffic": {},
+  "claims": {
+   "bodies": []
+  },
+  "crew": {},
+  "longBerth": {},
+  "sites": {},
+  "formations": {},
+  "aceMemory": {},
+  "nemesis": null,
+  "nemesisDeployment": null,
+  "enemyMind": null,
+  "latchNine": null,
+  "scissorwake": null,
+  "lastShift": null,
+  "redKite": null,
+  "sableVenn": null,
+  "ilexArk": null,
+  "kilnback": null,
+  "mothlight": null,
+  "palletJack": null,
+  "secondRinse": null,
+  "towlineTable": null,
+  "borrowedVoice": null,
+  "lossLedger": {},
+  "provenance": {},
+  "factionPresence": {},
+  "bandRadio": {},
+  "v2Flavor": {},
+  "aftermathWrecks": {
+   "schemaVersion": 3,
+   "bySector": {},
+   "causes": {},
+   "ecology": {},
+   "seed": 4747,
+   "runToken": 0
+  },
+  "lawSecurity": {},
+  "fieldDepletion": {
+   "schemaVersion": 2,
+   "fields": {},
+   "opportunities": {},
+   "opportunitiesOpen": 0,
+   "nextFields": {},
+   "receipts": []
+  },
+  "livingPoiBehaviors": {},
+  "signalInvestigation": {},
+  "recoveryEncounters": {},
+  "chronicler": {},
+  "tensionDirector": null,
+  "regionalEcology": {
+   "schemaVersion": 1,
+   "activeSectorId": null,
+   "sectors": {
+    "sector_helios_prime": {
+     "trafficDelta": 0,
+     "resourceDelta": 0,
+     "lawDelta": 0,
+     "dangerDelta": 0,
+     "lastDay": 0
+    },
+    "sector_ceres_belt": {
+     "trafficDelta": 0,
+     "resourceDelta": 0,
+     "lawDelta": 0,
+     "dangerDelta": 0,
+     "lastDay": 0
+    },
+    "sector_tethys_junction": {
+     "trafficDelta": 0,
+     "resourceDelta": 0,
+     "lawDelta": 0,
+     "dangerDelta": 0,
+     "lastDay": 0
+    }
+   },
+   "causes": {},
+   "settled": {},
+   "receipts": []
+  },
+  "stationServices": {},
+  "mail": {},
+  "calendar": {},
+  "onboarding": null,
+  "encounterDirector": {
+   "named": {
+    "cap_sable_iask": {
+     "alive": true,
+     "tier": 0,
+     "escapes": 0,
+     "kills": 0,
+     "lastSeenSector": null
+    },
+    "cap_redcut_sorrel": {
+     "alive": true,
+     "tier": 0,
+     "escapes": 0,
+     "kills": 0,
+     "lastSeenSector": null
+    },
+    "cap_vane_ash": {
+     "alive": true,
+     "tier": 0,
+     "escapes": 0,
+     "kills": 0,
+     "lastSeenSector": null
+    }
+   },
+   "receipts": [],
+   "cooldowns": {},
+   "stats": {
+    "fired": 0,
+    "resolved": 0,
+    "fizzled": 0,
+    "appliedFreightLossIds": [],
+    "openFreightCustodies": [],
+    "recentFingerprints": [],
+    "recentVarietyKeys": []
+   }
+  },
+  "worldNews": null,
+  "flight": {
+   "mode": "manual",
+   "previousMode": "manual",
+   "modeReason": "save",
+   "modeChangedTick": 0
+  },
+  "nav": {
+   "route": null,
+   "autoTravel": false,
+   "waypoint": {
+    "kind": "mission",
+    "missionId": "m_1",
+    "missionType": "recon_scan",
+    "sectorId": "sector_helios_prime",
+    "sectorName": "Helios Prime",
+    "label": "Helios Prime",
+    "reason": "Scan sites in Helios Prime"
+   },
+   "autopilot": {
+    "active": false,
+    "target": null,
+    "targetEntityId": null,
+    "label": "",
+    "status": "idle",
+    "arrivalRadius": 36
+   }
+  },
+  "settings": {
+   "uiScale": 1,
+   "showDamageNumbers": true,
+   "glassPreset": "clean",
+   "audio": {
+    "master": 0.55,
+    "sfx": 0.7,
+    "music": 0.32,
+    "muted": false,
+    "muteOnFocusLoss": false,
+    "mono": false,
+    "nightMode": false,
+    "voice": 1,
+    "engine": 0.7,
+    "ambient": 0.7,
+    "combat": 0.7,
+    "ui": 0.7,
+    "comms": 0.7,
+    "defaultMuteVersion": 2
+   },
+   "video": {
+    "renderScale": 1,
+    "bloom": true,
+    "bloomStrength": 0.52,
+    "bloomThreshold": 1,
+    "vsync": true,
+    "fov": 50,
+    "particleQuality": "medium",
+    "engineTrails": true,
+    "pixelRatioCap": 2,
+    "motionReduce": false,
+    "shadows": false,
+    "shadowsDefaultVersion": 1,
+    "energyMaterials": true,
+    "renderGraph": false,
+    "dynamicResolution": false,
+    "chaseClose": false,
+    "qualityPreset": "medium",
+    "frameCap": 0,
+    "bloomLevels": 2,
+    "postFx": true,
+    "sharpen": false,
+    "screenShake": 100,
+    "hudScale": 1,
+    "hudOpacity": 1,
+    "arcadeEffects": "full"
+   },
+   "gameplay": {
+    "autosaveIntervalS": 120,
+    "tutorialHints": true,
+    "difficulty": "standard",
+    "pauseOnFocusLoss": true,
+    "physicsBackend": "rapier-dynamic",
+    "aiBackend": "sg06-tactical",
+    "flightBackend": "v3",
+    "controlScheme": "pilot",
+    "controlSchemeV2": true,
+    "orbitAssistStrength": "standard",
+    "pursuitSlotAssist": false,
+    "targetAssistStrength": "full",
+    "masslineReleaseAssist": "snap",
+    "stuntMoments": "cinematic",
+    "gameSpeed": 1,
+    "hitPips": true,
+    "ironmanChoiceLocked": true
+   },
+   "controls": {
+    "bindings": null,
+    "masslineBindingProfile": "space-v1",
+    "flightMode": "assisted",
+    "gamepad": {
+     "enabled": true,
+     "deadzone": 0.12,
+     "invertY": false,
+     "scheme": "drive",
+     "schemeSuggested": false,
+     "curve": "linear",
+     "deadzoneRight": 0.12,
+     "sensitivityAim": 1,
+     "sensitivityFly": 1,
+     "glyphSet": "xb"
+    },
+    "mouse": {
+     "sensitivity": 1,
+     "invertY": false
+    }
+   },
+   "accessibility": {
+    "colorblindMode": "none",
+    "highContrast": false,
+    "flashReduce": false,
+    "dyslexiaFont": false,
+    "motionPreference": "full",
+    "motionAsked": false,
+    "motionPrompted": false,
+    "motionDefaultVersion": 1,
+    "captions": false,
+    "audioCues": true,
+    "captionSize": "medium",
+    "captionBackground": true,
+    "haptics": "full",
+    "holdToToggle": {}
+   }
+  },
+  "uiScreenMemory": {
+   "v": 1,
+   "bags": {}
+  },
+  "uiWatchlist": [],
+  "entropy": {
+   "schema": "spaceface.entropyContinuation.v1",
+   "covered": [
+    "core.seed+state+draws",
+    "weapons.seed0+draws",
+    "traffic.rngSeed"
+   ],
+   "uncovered": [
+    "automation.meta.rngSeed",
+    "claims.meta.rngSeed",
+    "sectorSim.meta.rngSeed",
+    "interventionMeta.rngSeed",
+    "other-system-private-streams"
+   ],
+   "core": {
+    "seed0": 4747,
+    "state": 4747,
+    "draws": 0
+   },
+   "weapons": null,
+   "trafficRngSeed": null
+  }
+ }
+}

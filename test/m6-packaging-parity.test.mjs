@@ -1,0 +1,582 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+import {
+  acquireReleaseBuildLock,
+  copyReleaseRuntimeTrees,
+  createReleaseBuildReceipt,
+  createReleaseCopyPlans,
+  RELEASE_BUILD_RECEIPT,
+  RELEASE_COPY_MAPPINGS,
+  RENDER_PACKAGE_SOURCE_PROJECTION,
+  validateReleaseBuildReceipt,
+} from '../scripts/lib/releasePackaging.mjs';
+import { RENDER_PACKAGE_PILOTS } from '../src/render/renderPackageManifest.js';
+import { SAMPLE_MANIFEST } from '../src/audio/sampleLibrary.js';
+import { BLIND_REGISTER_CLIPS, enumerateDeliveredBarkWavs } from '../src/audio/barkVoice.js';
+import { computeRenderPackageContentHash, computeRenderPackageRuntimeHash } from '../src/contracts/renderPackage.js';
+import { externalizeRenderPackageKtx2 } from '../scripts/lib/renderPackageStorage.mjs';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+test('individual JSON runtime assets copy exactly and remain covered by the release receipt', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-copy-json-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const web = join(root, 'build', 'web');
+  const path = 'src/data/measurements.json';
+  await mkdir(join(root, 'src', 'data'), { recursive: true });
+  await writeFile(join(root, path), '{"ship":{"radius":19.25,"offset":[1,2,3]}}\n');
+  const mappings = [{ source: path, destination: path }];
+  await copyReleaseRuntimeTrees({ root, webRoot: web, mappings });
+  assert.equal(await readFile(join(web, path), 'utf8'), await readFile(join(root, path), 'utf8'));
+  const receipt = await createReleaseBuildReceipt({ root, webRoot: web, mappings });
+  assert.equal(receipt.copies[0].exact, true);
+  assert.equal(receipt.copies[0].fileCount, 1);
+  assert.equal((await validateReleaseBuildReceipt({ root, webRoot: web, mappings, receipt })).pass, true);
+  await writeFile(join(web, path), '{"ship":{"radius":1}}');
+  assert.equal((await validateReleaseBuildReceipt({ root, webRoot: web, mappings, receipt })).pass, false,
+    'a changed measurement payload cannot retain a passing release receipt');
+});
+
+test('release copy map includes only the live thruster texture runtime subtree', () => {
+  assert.ok(
+    RELEASE_COPY_MAPPINGS.some(({ source, destination }) =>
+      source === 'assets/fx/thruster' && destination === 'assets/fx/thruster'),
+    'the dynamically loaded thruster masks and their manifest must ship in web and Electron releases',
+  );
+  assert.equal(
+    RELEASE_COPY_MAPPINGS.some(({ source }) => source === 'assets/fx'),
+    false,
+    'authoring-only FX contact sheets must remain outside the retail bundle',
+  );
+});
+
+test('release copy map ships the authored audio tree used by the sample manifest', () => {
+  assert.ok(
+    RELEASE_COPY_MAPPINGS.some(({ source, destination }) =>
+      source === 'assets/audio' && destination === 'assets/audio'),
+    'SAMPLE_MANIFEST wavs are fetched from assets/audio/** at runtime; a package without them falls back to synth-only audio',
+  );
+  // Every manifest entry must resolve under the copied root — a stray prefix silently 404s in retail.
+  assert.ok(SAMPLE_MANIFEST.size > 0);
+  for (const entry of SAMPLE_MANIFEST.values()) {
+    assert.ok(
+      entry.file.startsWith('assets/audio/'),
+      `sample ${entry.file} must live under the shipped assets/audio root`,
+    );
+  }
+});
+
+test('audio copy exclusions omit exactly the acceptance corpus — never a runtime-fetched file', async () => {
+  // The stale-prefix guard only fires on under-matching; an over-matching exclude (e.g.
+  // 'voice/') would silently strip shipped bark_* clips while the receipt stays valid.
+  // Pin the omission set to exactly the delivered corpus + blind fixtures.
+  const plans = await createReleaseCopyPlans({ root: ROOT });
+  const audio = plans.find((p) => p.mapping.source === 'assets/audio');
+  assert.ok(audio, 'assets/audio copy plan missing');
+  const expected = new Set([
+    ...enumerateDeliveredBarkWavs().map((r) => r.file.replace('assets/audio/', '')),
+    ...BLIND_REGISTER_CLIPS.map((c) => c.file.replace('assets/audio/', '')),
+  ]);
+  const omitted = new Set(audio.omissions.map((o) => o.path));
+  assert.deepEqual(omitted, expected);
+  for (const o of audio.omissions) assert.equal(o.reason, 'exclude', `${o.path} omission is untagged`);
+  for (const entry of SAMPLE_MANIFEST.values()) {
+    assert.ok(
+      !omitted.has(entry.file.replace('assets/audio/', '')),
+      `runtime-fetched sample ${entry.file} is excluded from the retail bundle`,
+    );
+  }
+});
+
+test('copy exclude drops the prefixed files, ships siblings, and fails loud on bad rules', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-copy-exclude-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const web = join(root, 'build', 'web');
+  const source = join(root, 'media');
+  await mkdir(join(source, 'drop'), { recursive: true });
+  await writeFile(join(source, 'keep.wav'), 'keep');
+  await writeFile(join(source, 'drop', 'omit.wav'), 'omit');
+  await writeFile(join(source, 'line_0000_x.wav'), 'tail');
+
+  const mappings = [{ source: 'media', destination: 'media', exclude: ['drop/', 'line_'] }];
+  const plans = await createReleaseCopyPlans({ root, mappings });
+  assert.equal(plans.length, 1);
+  assert.equal(plans[0].omissions.length, 2);
+  for (const o of plans[0].omissions) assert.equal(o.reason, 'exclude', `${o.path} untagged`);
+
+  await copyReleaseRuntimeTrees({ root, webRoot: web, mappings });
+  assert.ok(existsSync(join(web, 'media', 'keep.wav')), 'sibling file must ship');
+  assert.equal(existsSync(join(web, 'media', 'drop', 'omit.wav')), false, 'dir-prefix file must not ship');
+  assert.equal(existsSync(join(web, 'media', 'line_0000_x.wav')), false, 'raw-prefix file must not ship');
+  assert.equal(existsSync(join(web, 'media', 'drop')), false, 'a fully-excluded dir must not materialize empty');
+
+  const receipt = await createReleaseBuildReceipt({ root, webRoot: web, mappings });
+  const copy = receipt.copies.find((c) => c.source === 'media');
+  assert.equal(copy.exact, true, 'excluded files must be attributed, not diffed');
+  assert.equal(copy.omittedFileCount, 2);
+
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: 'x' }] }),
+    /must be a non-empty array/,
+    'a non-array exclude is an authoring error, not a silent no-op',
+  );
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: [] }] }),
+    /must be a non-empty array/,
+    'an empty exclude is an authoring error, not a silent no-op',
+  );
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: ['nomatch/'] }] }),
+    /matches nothing under media/,
+    'a stale exclude must fail rather than silently pin nothing',
+  );
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings: [{ source: 'media', destination: 'media', exclude: [42] }] }),
+    /non-empty strings/,
+    'a non-string entry must not silently become a "42" prefix',
+  );
+  await assert.rejects(
+    createReleaseCopyPlans({
+      root,
+      mappings: [{ source: 'media', destination: 'media', projection: RENDER_PACKAGE_SOURCE_PROJECTION, exclude: ['drop/'] }],
+      pilots: [],
+    }),
+    /cannot combine projection with exclude/,
+    'projection+exclude is fail-loud, not live-but-untested semantics',
+  );
+});
+
+test('runtime copy omits Python cache contents and bytecode while retaining authored assets', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-runtime-python-cache-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const web = join(root, 'build', 'web');
+  const ui = join(root, 'assets', 'ui');
+  const cache = join(ui, 'kit', 'tools', '__pycache__');
+  const motions = join(root, 'assets', 'ships', 'motions');
+  const release = join(root, 'assets', 'ships', 'release');
+  await mkdir(cache, { recursive: true });
+  await mkdir(join(ui, 'kit', 'icons'), { recursive: true });
+  await mkdir(join(motions, 'ships'), { recursive: true });
+  await mkdir(join(release, 'test'), { recursive: true });
+  await writeFile(join(cache, 'builder.cpython-313.pyc'), 'compiled cache');
+  await writeFile(join(cache, 'metadata.txt'), 'cache-local metadata');
+  await writeFile(join(ui, 'kit', 'tools', 'runtime.js'), 'authored runtime helper');
+  await writeFile(join(ui, 'kit', 'icons', 'ship.svg'), '<svg/>');
+  await writeFile(join(ui, 'loose.pyc'), 'loose compiled cache');
+  await writeFile(join(motions, 'ships', 'wing-sweep.json'), '{"channels":[]}');
+  await writeFile(join(release, 'test', 'hull.ktx2'), 'authored KTX2 texture');
+
+  const mappings = [
+    { source: 'assets/ui', destination: 'assets/ui' },
+    { source: 'assets/ships/motions', destination: 'assets/ships/motions' },
+    {
+      source: 'assets/ships/release',
+      destination: 'assets/ships/release',
+      projection: RENDER_PACKAGE_SOURCE_PROJECTION,
+    },
+  ];
+  const plans = await createReleaseCopyPlans({ root, mappings, pilots: [] });
+  const uiPlan = plans.find((plan) => plan.mapping.source === 'assets/ui');
+  assert.deepEqual(
+    uiPlan.omissions.map((entry) => entry.path),
+    ['kit/tools/__pycache__/builder.cpython-313.pyc', 'kit/tools/__pycache__/metadata.txt', 'loose.pyc'],
+  );
+  for (const entry of uiPlan.omissions) assert.equal(entry.reason, 'runtime-tool-cache');
+
+  await copyReleaseRuntimeTrees({ root, webRoot: web, mappings, pilots: [] });
+  assert.equal(existsSync(join(web, 'assets', 'ui', 'kit', 'tools', '__pycache__')), false,
+    'a cache-only directory must not materialize in the runtime tree');
+  assert.equal(existsSync(join(web, 'assets', 'ui', 'loose.pyc')), false,
+    'standalone Python bytecode must not ship');
+  assert.equal(await readFile(join(web, 'assets', 'ui', 'kit', 'tools', 'runtime.js'), 'utf8'), 'authored runtime helper');
+  assert.equal(await readFile(join(web, 'assets', 'ui', 'kit', 'icons', 'ship.svg'), 'utf8'), '<svg/>');
+  assert.equal(await readFile(join(web, 'assets', 'ships', 'motions', 'ships', 'wing-sweep.json'), 'utf8'), '{"channels":[]}');
+  assert.equal(await readFile(join(web, 'assets', 'ships', 'release', 'test', 'hull.ktx2'), 'utf8'), 'authored KTX2 texture');
+
+  const receipt = await createReleaseBuildReceipt({ root, webRoot: web, mappings, pilots: [] });
+  const uiCopy = receipt.copies.find((copy) => copy.source === 'assets/ui');
+  assert.equal(uiCopy.exact, true, 'cache omissions must be attributed in the release receipt');
+  assert.equal(uiCopy.omittedFileCount, 3);
+});
+
+test('release build lock serializes candidates and recovers only dead owners', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-release-lock-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const buildRoot = join(root, 'build');
+  const first = await acquireReleaseBuildLock({ projectRoot: root, buildRoot });
+  await assert.rejects(
+    acquireReleaseBuildLock({ projectRoot: root, buildRoot }),
+    /already active/,
+    'a concurrent build must fail before touching the shared staging tree',
+  );
+  await first.release();
+
+  const stale = await acquireReleaseBuildLock({ projectRoot: root, buildRoot, pid: 987654321 });
+  const recovered = await acquireReleaseBuildLock({ projectRoot: root, buildRoot, isProcessAlive: () => false });
+  await recovered.release();
+  await assert.rejects(
+    stale.release(),
+    /ENOENT|ownership changed/,
+    'a stale owner may not remove the successor lock after recovery',
+  );
+
+  const externalLock = join(root, 'external-lock');
+  const lockPath = join(buildRoot, 'web.__build.lock');
+  await mkdir(externalLock, { recursive: true });
+  await symlink(externalLock, lockPath, 'junction');
+  await assert.rejects(
+    acquireReleaseBuildLock({ projectRoot: root, buildRoot }),
+    /may not traverse symbolic link/,
+    'a redirected lock directory must not be inspected, renamed, or removed',
+  );
+  await rm(lockPath, { recursive: true, force: true });
+
+  const externalBuild = join(root, 'external-build');
+  await rm(buildRoot, { recursive: true, force: true });
+  await mkdir(externalBuild, { recursive: true });
+  try {
+    await symlink(externalBuild, buildRoot, 'junction');
+  } catch (error) {
+    if (error?.code === 'EPERM' || error?.code === 'EACCES') {
+      t.diagnostic('build-parent junction creation unavailable on this Windows host');
+      return;
+    }
+    throw error;
+  }
+  await assert.rejects(
+    acquireReleaseBuildLock({ projectRoot: root, buildRoot }),
+    /may not traverse symbolic link/,
+    'a repo-local build junction must fail before any recursive cleanup or publication',
+  );
+});
+
+test('release receipt is deterministic and fails closed on omission or retail-only artifacts', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-release-package-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const web = join(root, 'build', 'web');
+  const source = join(root, 'runtime');
+  const destination = join(web, 'runtime');
+  await mkdir(source, { recursive: true });
+  await mkdir(destination, { recursive: true });
+  await writeFile(join(source, 'model.glb'), 'authored-runtime-bytes');
+  await writeFile(join(destination, 'model.glb'), 'authored-runtime-bytes');
+  await writeFile(join(web, 'index.html'), '<script type="module" src="./main.js"></script>');
+  await writeFile(join(web, 'main.js'), 'console.log("release")');
+
+  const mappings = [{ source: 'runtime', destination: 'runtime' }];
+  const first = await createReleaseBuildReceipt({ root, webRoot: web, mappings });
+  const second = await createReleaseBuildReceipt({ root, webRoot: web, mappings });
+  assert.equal(first.schema, RELEASE_BUILD_RECEIPT);
+  assert.deepEqual(second, first, 'identical inputs must produce a byte-stable receipt without wall-clock fields');
+  assert.equal(first.desktopOrigin, 'http://127.0.0.1:41788');
+  assert.equal(first.playerRoute, '/');
+  assert.equal(first.runtimeAssetMode, 'release-authored');
+  assert.equal(first.productionDebug, false);
+  assert.equal(first.copies[0].exact, true);
+
+  const green = await validateReleaseBuildReceipt({ root, webRoot: web, receipt: first, mappings });
+  assert.equal(green.pass, true, green.failures.join('; '));
+
+  const backendTampered = structuredClone(first);
+  backendTampered.gameplayBackends.ai = 'legacy';
+  const wrongBackend = await validateReleaseBuildReceipt({
+    root,
+    webRoot: web,
+    receipt: backendTampered,
+    mappings,
+  });
+  assert.equal(wrongBackend.pass, false);
+  assert.ok(wrongBackend.failures.some((failure) => /gameplayBackends/));
+
+  await writeFile(join(destination, 'model.glb'), 'truncated');
+  const tampered = await validateReleaseBuildReceipt({ root, webRoot: web, receipt: first, mappings });
+  assert.equal(tampered.pass, false);
+  assert.ok(tampered.failures.some((failure) => /copied runtime roots|bundle output|byte-identical/i.test(failure)));
+
+  await writeFile(join(destination, 'model.glb'), 'authored-runtime-bytes');
+  await writeFile(join(web, 'source.blend'), 'authoring-source-must-not-ship');
+  const leaked = await validateReleaseBuildReceipt({ root, webRoot: web, receipt: first, mappings });
+  assert.equal(leaked.pass, false);
+  assert.ok(leaked.failures.some((failure) => /authoring\/debug artifact/i.test(failure)));
+});
+
+test('release copier rejects path escapes and symbolic-link inputs', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-release-boundary-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const web = join(root, 'build', 'web');
+  await mkdir(join(root, 'runtime'), { recursive: true });
+  await writeFile(join(root, 'runtime', 'model.glb'), 'runtime');
+
+  await assert.rejects(
+    copyReleaseRuntimeTrees({
+      root,
+      webRoot: web,
+      mappings: [{ source: '../outside', destination: 'runtime' }],
+      pilots: [],
+    }),
+    /contained relative path/,
+  );
+  await assert.rejects(
+    copyReleaseRuntimeTrees({
+      root,
+      webRoot: web,
+      mappings: [{ source: 'runtime', destination: '../outside' }],
+      pilots: [],
+    }),
+    /contained relative path/,
+  );
+
+  let linkPath = join(root, 'runtime', 'linked.glb');
+  try {
+    await symlink(join(root, 'runtime', 'model.glb'), linkPath, 'file');
+  } catch (error) {
+    if (error?.code === 'EPERM' || error?.code === 'EACCES') {
+      const targetDir = join(root, 'link-target');
+      linkPath = join(root, 'runtime', 'linked-dir');
+      await mkdir(targetDir, { recursive: true });
+      await writeFile(join(targetDir, 'external.glb'), 'external');
+      try {
+        await symlink(targetDir, linkPath, 'junction');
+      } catch (junctionError) {
+        if (junctionError?.code === 'EPERM' || junctionError?.code === 'EACCES') {
+          t.diagnostic('symbolic-link and junction creation unavailable on this Windows host');
+          return;
+        }
+        throw junctionError;
+      }
+    } else {
+      throw error;
+    }
+  }
+  await assert.rejects(
+    copyReleaseRuntimeTrees({
+      root,
+      webRoot: web,
+      mappings: [{ source: 'runtime', destination: 'runtime' }],
+      pilots: [],
+    }),
+    /refuses symbolic link/,
+  );
+
+  const mappedTarget = join(root, 'mapped-target');
+  const mappedRoot = join(root, 'mapped-root');
+  await mkdir(join(mappedTarget, 'nested'), { recursive: true });
+  await writeFile(join(mappedTarget, 'outside.glb'), 'outside');
+  await writeFile(join(mappedTarget, 'nested', 'outside.glb'), 'outside-nested');
+  try {
+    await symlink(mappedTarget, mappedRoot, 'junction');
+  } catch (error) {
+    if (error?.code === 'EPERM' || error?.code === 'EACCES') {
+      t.diagnostic('mapping-root junction creation unavailable on this Windows host');
+      return;
+    }
+    throw error;
+  }
+  await assert.rejects(
+    copyReleaseRuntimeTrees({
+      root,
+      webRoot: web,
+      mappings: [{ source: 'mapped-root', destination: 'mapped-root' }],
+      pilots: [],
+    }),
+    /may not traverse symbolic link/,
+  );
+  await assert.rejects(
+    copyReleaseRuntimeTrees({
+      root,
+      webRoot: web,
+      mappings: [{ source: 'mapped-root/nested', destination: 'mapped-root' }],
+      pilots: [],
+    }),
+    /may not traverse symbolic link/,
+    'an ancestor junction below the project root must not redirect a mapped source',
+  );
+
+  const cleanSource = join(root, 'clean-runtime');
+  const redirectedWeb = join(root, 'redirected-web');
+  const redirectedTarget = join(root, 'redirected-target');
+  await mkdir(cleanSource, { recursive: true });
+  await mkdir(redirectedTarget, { recursive: true });
+  await writeFile(join(cleanSource, 'clean.glb'), 'clean');
+  await symlink(redirectedTarget, redirectedWeb, 'junction');
+  await assert.rejects(
+    copyReleaseRuntimeTrees({
+      root,
+      webRoot: redirectedWeb,
+      mappings: [{ source: 'clean-runtime', destination: 'runtime' }],
+      pilots: [],
+    }),
+    /may not traverse symbolic link/,
+    'a destination-root junction must fail before any external write',
+  );
+});
+
+test('retail projection replaces only manifest-proven source GLBs with their render packages', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-render-package-projection-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const web = join(root, 'build', 'web');
+  const release = join(root, 'assets', 'ships', 'release');
+  const pilot = RENDER_PACKAGE_PILOTS.find((entry) => entry.key === 'cockpit-dome');
+  assert.ok(pilot, 'shipping cockpit-dome package fixture must exist');
+  const sourceRel = pilot.sourceUrl.replace(/^assets\/ships\/release\//, '');
+  const uncoveredRel = 'parts/wholeships/uncovered.glb';
+  const metadataRel = pilot.metadataUrl.replace(/^assets\/ships\/release\//, '');
+  const metadataBytes = await readFile(join(ROOT, ...pilot.metadataUrl.split('/')));
+  const metadata = JSON.parse(metadataBytes.toString('utf8'));
+  const renderRel = metadataRel.replace(/\/[^/]+$/, `/${metadata.render.uri}`);
+  const sourceBytes = await readFile(join(ROOT, ...pilot.sourceUrl.split('/')));
+  const renderBytes = await readFile(join(ROOT, 'assets', 'ships', 'release', ...renderRel.split('/')));
+  await mkdir(dirname(join(release, ...sourceRel.split('/'))), { recursive: true });
+  await mkdir(dirname(join(release, ...uncoveredRel.split('/'))), { recursive: true });
+  await mkdir(dirname(join(release, ...metadataRel.split('/'))), { recursive: true });
+  await writeFile(join(release, ...sourceRel.split('/')), sourceBytes);
+  await writeFile(join(release, ...uncoveredRel.split('/')), 'uncovered-runtime-source');
+  await writeFile(join(release, ...renderRel.split('/')), renderBytes);
+  await writeFile(join(release, ...metadataRel.split('/')), metadataBytes);
+
+  const mappings = [{
+    source: 'assets/ships/release',
+    destination: 'assets/ships/release',
+    projection: RENDER_PACKAGE_SOURCE_PROJECTION,
+  }];
+  const plans = await createReleaseCopyPlans({ root, mappings, pilots: [pilot] });
+  assert.equal(plans.length, 1);
+  assert.deepEqual(plans[0].omissions.map(({ path }) => path), [sourceRel]);
+  assert.equal(plans[0].omissions[0].bytes, sourceBytes.length);
+  assert.equal(plans[0].omissions[0].replacement.renderPath, renderRel);
+
+  await copyReleaseRuntimeTrees({ root, webRoot: web, mappings, pilots: [pilot] });
+  const bundledRelease = join(web, 'assets', 'ships', 'release');
+  assert.equal(existsSync(join(bundledRelease, ...sourceRel.split('/'))), false,
+    'a source URL intercepted by the shipping package manifest must not duplicate its package in retail');
+  assert.equal(existsSync(join(bundledRelease, ...uncoveredRel.split('/'))), true,
+    'an uncovered source GLB must remain available to the ordinary loader');
+  assert.equal(existsSync(join(bundledRelease, ...metadataRel.split('/'))), true);
+  assert.equal(existsSync(join(bundledRelease, ...renderRel.split('/'))), true);
+
+  await writeFile(join(web, 'index.html'), '<script type="module" src="./main.js"></script>');
+  await writeFile(join(web, 'main.js'), 'console.log("projected release")');
+  const receipt = await createReleaseBuildReceipt({
+    root,
+    webRoot: web,
+    mappings,
+    pilots: [pilot],
+  });
+  assert.equal(receipt.copies[0].projection, RENDER_PACKAGE_SOURCE_PROJECTION);
+  assert.equal(receipt.copies[0].omittedFileCount, 1);
+  assert.equal(receipt.copies[0].omittedBytes, sourceBytes.length);
+  assert.equal(receipt.copies[0].exact, true);
+  const valid = await validateReleaseBuildReceipt({ root, webRoot: web, receipt, mappings, pilots: [pilot] });
+  assert.equal(valid.pass, true, valid.failures.join('; '));
+
+  await writeFile(join(release, ...sourceRel.split('/')), 'changed-source');
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings, pilots: [pilot] }),
+    /does not match its package provenance and shipping manifest/,
+    'a stale package may never authorize omission of changed source bytes',
+  );
+  await writeFile(join(release, ...sourceRel.split('/')), sourceBytes);
+
+  await writeFile(join(release, ...renderRel.split('/')), 'changed-package');
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings, pilots: [pilot] }),
+    /render payload does not match/,
+    'a missing or stale replacement payload must fail before copy',
+  );
+  await writeFile(join(release, ...renderRel.split('/')), renderBytes);
+
+  const contentTampered = structuredClone(metadata);
+  contentTampered.kind = metadata.kind === 'prop' ? 'part' : 'prop';
+  await writeFile(join(release, ...metadataRel.split('/')), `${JSON.stringify(contentTampered)}\n`);
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings, pilots: [pilot] }),
+    /computed content hash does not match/,
+    'metadata claims must be recomputed rather than trusted as self-attested hashes',
+  );
+
+  const semanticRuntimeTampered = structuredClone(metadata);
+  semanticRuntimeTampered.runtime.primitives[0].matrix[12] += 1;
+  await writeFile(join(release, ...metadataRel.split('/')), `${JSON.stringify(semanticRuntimeTampered)}\n`);
+  await assert.rejects(
+    createReleaseCopyPlans({ root, mappings, pilots: [pilot] }),
+    /runtime table does not match its compiled render\.glb/,
+    'runtime transform/tag/profile semantics outside contentHash must still be derived and verified',
+  );
+
+  const runtimeTampered = structuredClone(metadata);
+  const firstRuntimeRecord = runtimeTampered.runtime.primitives[0] || runtimeTampered.runtime.markers[0];
+  assert.ok(firstRuntimeRecord, 'real shipping fixture must carry runtime records');
+  firstRuntimeRecord.planIndex = 999999;
+  await writeFile(join(release, ...metadataRel.split('/')), `${JSON.stringify(runtimeTampered)}\n`);
+  const runtimeGate = spawnSync(process.execPath, [
+    join(ROOT, 'scripts', 'check-render-package-instance-plan.mjs'),
+    '--package-dir', join(release, 'render-packages'),
+  ], { cwd: ROOT, encoding: 'utf8' });
+  assert.notEqual(runtimeGate.status, 0,
+    'the exact package gate run by build-bundle must reject a tampered runtime table');
+  assert.match(`${runtimeGate.stdout}\n${runtimeGate.stderr}`, /FAIL cockpit-dome|planIndex|runtime/i);
+});
+
+test('release projection validates and copies hash-bound shared KTX2 sidecars', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-render-package-sidecar-projection-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const web = join(root, 'build', 'web');
+  const release = join(root, 'assets', 'ships', 'release');
+  const basePilot = RENDER_PACKAGE_PILOTS.find((entry) => entry.key === 'pod-cargo-container');
+  assert.ok(basePilot);
+  const metadata = JSON.parse(await readFile(join(ROOT, ...basePilot.metadataUrl.split('/')), 'utf8'));
+  const renderRel = basePilot.metadataUrl.replace(/^assets\/ships\/release\//, '').replace(/\/[^/]+$/, `/${metadata.render.uri}`);
+  const originalRender = await readFile(join(ROOT, 'assets', 'ships', 'release', ...renderRel.split('/')));
+  const externalized = externalizeRenderPackageKtx2(originalRender);
+  assert.ok(externalized.resources.length > 0, 'fixture package carries externalizable KTX2 images');
+  metadata.render = {
+    ...metadata.render,
+    sha256: createHash('sha256').update(externalized.bytes).digest('hex'),
+    bytes: externalized.bytes.length,
+    resources: externalized.resources.map(({ uri, mimeType, sha256, bytes }) => ({ uri, mimeType, sha256, bytes: bytes.length })),
+  };
+  metadata.contentHash = await computeRenderPackageContentHash(metadata);
+  if (metadata.runtimeHash) metadata.runtimeHash = await computeRenderPackageRuntimeHash(metadata);
+  const candidatePilot = { ...basePilot, expectedContentHash: metadata.contentHash };
+  const sourceRel = basePilot.sourceUrl.replace(/^assets\/ships\/release\//, '');
+  const metadataRel = basePilot.metadataUrl.replace(/^assets\/ships\/release\//, '');
+  const sourcePath = join(release, ...sourceRel.split('/'));
+  await mkdir(dirname(sourcePath), { recursive: true });
+  await mkdir(dirname(join(release, ...metadataRel.split('/'))), { recursive: true });
+  await mkdir(dirname(join(release, ...renderRel.split('/'))), { recursive: true });
+  await writeFile(sourcePath, await readFile(join(ROOT, ...basePilot.sourceUrl.split('/'))));
+  if (metadata.runtime?.motionBank?.uri) {
+    const motionPath = join(root, ...metadata.runtime.motionBank.uri.split('/'));
+    await mkdir(dirname(motionPath), { recursive: true });
+    await writeFile(motionPath, await readFile(join(ROOT, ...metadata.runtime.motionBank.uri.split('/'))));
+  }
+  await writeFile(join(release, ...metadataRel.split('/')), `${JSON.stringify(metadata)}\n`);
+  await writeFile(join(release, ...renderRel.split('/')), externalized.bytes);
+  for (const resource of externalized.resources) {
+    const packagePath = dirname(join(release, ...metadataRel.split('/')));
+    const resourcePath = resolve(packagePath, resource.uri);
+    await mkdir(dirname(resourcePath), { recursive: true });
+    await writeFile(resourcePath, resource.bytes);
+  }
+  const mappings = [{ source: 'assets/ships/release', destination: 'assets/ships/release', projection: RENDER_PACKAGE_SOURCE_PROJECTION }];
+  const plans = await createReleaseCopyPlans({ root, mappings, pilots: [candidatePilot] });
+  assert.ok(plans[0].omissions.some((entry) => entry.path === sourceRel));
+  await copyReleaseRuntimeTrees({ root, webRoot: web, mappings, pilots: [candidatePilot] });
+  for (const resource of externalized.resources) {
+    const packagePath = dirname(join(release, ...metadataRel.split('/')));
+    const resourcePath = resolve(packagePath, resource.uri);
+    const bundledPath = resolve(web, ...['assets', 'ships', 'release', ...metadataRel.split('/')].slice(0, -1), resource.uri);
+    assert.deepEqual(await readFile(bundledPath), resource.bytes, 'the runtime sidecar is copied by the normal release projection');
+    await writeFile(resourcePath, Buffer.from('stale sidecar'));
+    await assert.rejects(createReleaseCopyPlans({ root, mappings, pilots: [candidatePilot] }), /shared render resource.*does not match/);
+    await writeFile(resourcePath, resource.bytes);
+  }
+});

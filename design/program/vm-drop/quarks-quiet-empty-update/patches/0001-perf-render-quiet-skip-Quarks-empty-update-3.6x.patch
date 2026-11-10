@@ -1,0 +1,115 @@
+From b72bc418c5821e3bf7b79c266182e4d65b30e096 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 07:08:23 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-skip=20Quarks=20BatchedPa?=
+ =?UTF-8?q?rticleRenderer=20when=20empty=20(~3.6=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still walked all 11 three.quarks families through
+BatchedParticleRenderer.update every frame after the last burst died.
+Trust particleNum / _quietEmpty after the first empty observe; spawn
+paths clear the latch. Soft-GPU fps not claimed. Picture unchanged.
+---
+ src/render/vfx/quarksSystem.js | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/src/render/vfx/quarksSystem.js b/src/render/vfx/quarksSystem.js
+index 520c898cd..46711e270 100644
+--- a/src/render/vfx/quarksSystem.js
++++ b/src/render/vfx/quarksSystem.js
+@@ -512,6 +512,9 @@ export class QuarksVfxSystem {
+       this.root.add(sys.emitter);
+       this.renderer.addSystem(sys);
+     }
++    // Retained system list for the quiet update gate (particleNum === 0 skip).
++    this._systems = allSystems;
++    this._quietEmpty = false;
+ 
+     // The batch renderer generates its own ShaderMaterial from each donor (default toneMapped),
+     // which would crush the HDR gradient stops before bloom ever sees them. Opt the additive
+@@ -593,6 +596,7 @@ export class QuarksVfxSystem {
+     if (cap != null) n = Math.min(n, Math.max(0, cap - sys.particleNum));
+     if (n <= 0) return 0;
+     sys.spawn(n, sys.emissionState, matrix);
++    this._quietEmpty = false;
+     return n;
+   }
+ 
+@@ -650,10 +654,24 @@ export class QuarksVfxSystem {
+     scene.add(this.root);
+   }
+ 
++  _anyParticleLive() {
++    const systems = this._systems;
++    if (!systems) return false;
++    for (let i = 0; i < systems.length; i++) {
++      if (systems[i].particleNum > 0) return true;
++    }
++    return false;
++  }
++
+   update(dt) {
+     if (!this.scene) return;
++    // Quiet settled flight: BatchedParticleRenderer.update walked all 11 empty
++    // families every frame after the last burst died. Trust particleNum and skip
++    // once already observed empty; spawn/_spawnCapped clear _quietEmpty.
++    if (!this._anyParticleLive() && this._quietEmpty) return;
+     const clampedDt = Math.min(0.05, Math.max(0.001, dt));
+     this.renderer.update(clampedDt);
++    this._quietEmpty = !this._anyParticleLive();
+   }
+ 
+   /**
+@@ -673,6 +691,7 @@ export class QuarksVfxSystem {
+       const count = variant === 2 ? 16 : (variant === 3 ? 20 : 10);
+       this.impactSpall.spawn(count, this.impactSpall.emissionState, this._scratchMatrix);
+     }
++    this._quietEmpty = false;
+   }
+ 
+   /**
+@@ -696,6 +715,7 @@ export class QuarksVfxSystem {
+       this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
+       this.casingEjection.spawn(1, this.casingEjection.emissionState, this._scratchMatrix);
+     }
++    this._quietEmpty = false;
+   }
+ 
+   /**
+@@ -711,6 +731,7 @@ export class QuarksVfxSystem {
+ 
+     const count = Math.max(2, Math.min(8, Math.round(intensity * 6)));
+     this.retroVenting.spawn(count, this.retroVenting.emissionState, this._scratchMatrix);
++    this._quietEmpty = false;
+   }
+ 
+   /**
+@@ -764,6 +785,7 @@ export class QuarksVfxSystem {
+     this._scratchQuat.setFromUnitVectors(_vForward, this._scratchDir);
+     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
+     this.damageVenting.spawn(count, this.damageVenting.emissionState, this._scratchMatrix);
++    this._quietEmpty = false;
+   }
+ 
+   /**
+@@ -775,6 +797,7 @@ export class QuarksVfxSystem {
+     this._scratchQuat.identity();
+     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
+     this.shieldShards.spawn(count, this.shieldShards.emissionState, this._scratchMatrix);
++    this._quietEmpty = false;
+   }
+ 
+   /**
+@@ -857,6 +880,7 @@ export class QuarksVfxSystem {
+     this.shrapnel.particleNum = 0;
+     this.iceSpall.particleNum = 0;
+     this.cargoDebris.particleNum = 0;
++    this._quietEmpty = true;
+   }
+ 
+   dispose() {
+-- 
+2.47.3
+

@@ -1,0 +1,601 @@
+{
+  "title": "Veil-Ray Nursery physical shelter qualification and existing-owner habitat goals",
+  "date": "2026-10-24",
+  "scope": "Original SF20-15; five files; no renderer, asset, population, reward, new clock, branch or ref changes.",
+  "base": {
+    "ecologyBlob": "a42b56ef2985aeeacf9d394a60ab6d7128045f8f",
+    "nurseryFeedbackHead": "29d5c57bd14e6701a37669fa1b17971ea8239143",
+    "nurseryBlob": "00d013d0cf444b7ae4dadbaf653e245163ea9647",
+    "existingTestBlob": "d1d0dbce6fc61d386817514798a45ff85c32804e"
+  },
+  "verificationBoundary": {
+    "execution": "Node24 RAM-only module overlay: exact selected public source plus candidate replacements, remaining dependencies from an existing read-only working tree. Not a complete current-public graph checkout.",
+    "publicOverlays": [
+      "src/systems/alienEcology.js",
+      "src/data/alienFauna.js",
+      "src/data/discoveryPresentation.js",
+      "src/systems/discoverySound.js",
+      "src/data/discoveryAudio.js",
+      "src/render/faunaVisuals.js",
+      "src/render/veilRayNurseryVisuals.js",
+      "test/m24-move-the-nursery.test.mjs"
+    ],
+    "simulation": "Existing createSimulation, tickAlienEcology and native body/Massline fixtures; calls are fixture-driven, not UI interaction.",
+    "visual": "Measured actual Three geometry vertices and transforms without WebGL or screenshots. No top/chase/close runtime acceptance.",
+    "save": "Existing ecology serialization and world.serialize/deserialize fixtures only. No full Save.loadEnvelope or browser acceptance."
+  },
+  "baseline": {
+    "scenario": "seed1 epoch0: materialize, quiet12.1s, scanner pulse, tick8s, tick18s, tick60s.",
+    "positions": [
+      {
+        "label": "spawn",
+        "simTime": 0,
+        "nursery": {
+          "mode": "QUIET",
+          "disturbedRemaining": 0,
+          "recoverRemaining": 0,
+          "thrustSeconds": 0,
+          "watchSeconds": 0,
+          "surveyed": false,
+          "disturbanceNoted": false,
+          "recoveryNoted": false
+        },
+        "adults": [
+          {
+            "key": "veil_ray_nursery:veil_ray:0",
+            "x": -117.0980753018739,
+            "z": -77.28528886337881,
+            "d": 140.30315432697597,
+            "rot": 4.364883487511771,
+            "anchor": {
+              "x": -117.0980753018739,
+              "z": -77.28528886337881
+            },
+            "drive": "drift"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:1",
+            "x": -14.156821268192289,
+            "z": -160.45160045417288,
+            "d": 161.07492566108814,
+            "rot": 1.7473671815654508,
+            "anchor": {
+              "x": -14.156821268192289,
+              "z": -160.45160045417288
+            },
+            "drive": "drift"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:2",
+            "x": -102.49943699083997,
+            "z": -16.139551472842868,
+            "d": 103.76232314854806,
+            "rot": 2.5506454164596457,
+            "anchor": {
+              "x": -102.49943699083997,
+              "z": -16.139551472842868
+            },
+            "drive": "drift"
+          }
+        ]
+      },
+      {
+        "label": "quiet12",
+        "simTime": 12.1,
+        "nursery": {
+          "mode": "QUIET",
+          "disturbedRemaining": 0,
+          "recoverRemaining": 0,
+          "thrustSeconds": 0,
+          "watchSeconds": 12,
+          "surveyed": true,
+          "disturbanceNoted": false,
+          "recoveryNoted": false
+        },
+        "adults": [
+          {
+            "key": "veil_ray_nursery:veil_ray:0",
+            "x": -59.0366214476544,
+            "z": -186.40368241967735,
+            "d": 195.52916787929513,
+            "rot": 13.391075148020118,
+            "anchor": {
+              "x": -117.0980753018739,
+              "z": -77.28528886337881
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:1",
+            "x": -119.02996606839224,
+            "z": -95.03310356152724,
+            "d": 152.31356996268772,
+            "rot": 10.773558842073465,
+            "anchor": {
+              "x": -14.156821268192289,
+              "z": -160.45160045417288
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:2",
+            "x": -222.3957608078108,
+            "z": -46.186644030232856,
+            "d": 227.14110264780444,
+            "rot": 11.576837076967744,
+            "anchor": {
+              "x": -102.49943699083997,
+              "z": -16.139551472842868
+            },
+            "drive": "forage"
+          }
+        ]
+      },
+      {
+        "label": "recovering",
+        "simTime": 20.1,
+        "nursery": {
+          "mode": "RECOVERING",
+          "disturbedRemaining": 0,
+          "recoverRemaining": 18,
+          "thrustSeconds": 0,
+          "watchSeconds": 0,
+          "surveyed": true,
+          "disturbanceNoted": true,
+          "recoveryNoted": false,
+          "from": {
+            "x": 10432,
+            "z": 27452
+          },
+          "lastCause": "scan"
+        },
+        "adults": [
+          {
+            "key": "veil_ray_nursery:veil_ray:0",
+            "x": -551.4087654475552,
+            "z": -183.4372168749178,
+            "d": 581.1203310392888,
+            "rot": 15.986909220625344,
+            "anchor": {
+              "x": -117.0980753018739,
+              "z": -77.28528886337881
+            },
+            "drive": "return"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:1",
+            "x": -589.6228773440198,
+            "z": -377.8009273362877,
+            "d": 700.2775722408935,
+            "rot": 9.908336337203892,
+            "anchor": {
+              "x": -14.156821268192289,
+              "z": -160.45160045417288
+            },
+            "drive": "return"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:2",
+            "x": -671.1142582773828,
+            "z": -311.1489128257417,
+            "d": 739.7350834020532,
+            "rot": 9.716692676737656,
+            "anchor": {
+              "x": -102.49943699083997,
+              "z": -16.139551472842868
+            },
+            "drive": "return"
+          }
+        ]
+      },
+      {
+        "label": "recoveryEnd",
+        "simTime": 38.1,
+        "nursery": {
+          "mode": "QUIET",
+          "disturbedRemaining": 0,
+          "recoverRemaining": 0,
+          "thrustSeconds": 0,
+          "watchSeconds": 0.016666666666666666,
+          "surveyed": true,
+          "disturbanceNoted": true,
+          "recoveryNoted": false,
+          "from": null,
+          "lastCause": "scan"
+        },
+        "adults": [
+          {
+            "key": "veil_ray_nursery:veil_ray:0",
+            "x": -385.46089458570714,
+            "z": -167.40043888507716,
+            "d": 420.24160692835983,
+            "rot": 19.086623954976176,
+            "anchor": {
+              "x": -117.0980753018739,
+              "z": -77.28528886337881
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:1",
+            "x": -430.5213019326129,
+            "z": -327.3434487858394,
+            "d": 540.8348406683499,
+            "rot": 12.98677546166667,
+            "anchor": {
+              "x": -14.156821268192289,
+              "z": -160.45160045417288
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:2",
+            "x": -530.9328874304665,
+            "z": -219.50268115931613,
+            "d": 574.5181963971035,
+            "rot": 6.718519943227289,
+            "anchor": {
+              "x": -102.49943699083997,
+              "z": -16.139551472842868
+            },
+            "drive": "forage"
+          }
+        ]
+      },
+      {
+        "label": "quiet60",
+        "simTime": 98.1,
+        "nursery": {
+          "mode": "QUIET",
+          "disturbedRemaining": 0,
+          "recoverRemaining": 0,
+          "thrustSeconds": 0,
+          "watchSeconds": 12,
+          "surveyed": true,
+          "disturbanceNoted": true,
+          "recoveryNoted": false,
+          "from": null,
+          "lastCause": "scan"
+        },
+        "adults": [
+          {
+            "key": "veil_ray_nursery:veil_ray:0",
+            "x": -8.113060686928293,
+            "z": -139.8548476592623,
+            "d": 140.0899716878594,
+            "rot": 32.60786500726802,
+            "anchor": {
+              "x": -117.0980753018739,
+              "z": -77.28528886337881
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:1",
+            "x": -132.81957517981937,
+            "z": -148.17833250977128,
+            "d": 198.9921048090201,
+            "rot": 22.720423712792694,
+            "anchor": {
+              "x": -14.156821268192289,
+              "z": -160.45160045417288
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:2",
+            "x": -194.69169751078334,
+            "z": -100.76106174259257,
+            "d": 219.2205479491485,
+            "rot": 17.770318260198405,
+            "anchor": {
+              "x": -102.49943699083997,
+              "z": -16.139551472842868
+            },
+            "drive": "forage"
+          }
+        ]
+      }
+    ],
+    "finding": "Survey was already recorded at12.1s while all three adults were outside radius60; later recovery goals remain anchored outside shelter."
+  },
+  "candidate": {
+    "positions": [
+      {
+        "label": "spawn",
+        "simTime": 0,
+        "nursery": {
+          "mode": "QUIET",
+          "disturbedRemaining": 0,
+          "recoverRemaining": 0,
+          "thrustSeconds": 0,
+          "watchSeconds": 0,
+          "surveyed": false,
+          "disturbanceNoted": false,
+          "recoveryNoted": false
+        },
+        "adults": [
+          {
+            "key": "veil_ray_nursery:veil_ray:0",
+            "x": -29.510830206660103,
+            "z": -1.4103377254978113,
+            "d": 29.54451136820991,
+            "rot": 4.364883487511771,
+            "anchor": {
+              "x": -29.510830206660103,
+              "z": -1.4103377254978113
+            },
+            "drive": "drift"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:1",
+            "x": 14.236517823212125,
+            "z": -23.638058971540886,
+            "d": 27.594134733176197,
+            "rot": 1.7473671815654508,
+            "anchor": {
+              "x": 14.236517823212125,
+              "z": -23.638058971540886
+            },
+            "drive": "drift"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:2",
+            "x": 13.254380049136671,
+            "z": 25.950458516337676,
+            "d": 29.139404381268932,
+            "rot": 2.5506454164596457,
+            "anchor": {
+              "x": 13.254380049136671,
+              "z": 25.950458516337676
+            },
+            "drive": "drift"
+          }
+        ]
+      },
+      {
+        "label": "quiet12",
+        "simTime": 12.1,
+        "nursery": {
+          "mode": "QUIET",
+          "disturbedRemaining": 0,
+          "recoverRemaining": 0,
+          "thrustSeconds": 0,
+          "watchSeconds": 12,
+          "surveyed": true,
+          "disturbanceNoted": false,
+          "recoveryNoted": false
+        },
+        "adults": [
+          {
+            "key": "veil_ray_nursery:veil_ray:0",
+            "x": -28.294102861678766,
+            "z": -1.3287508051507757,
+            "d": 28.325286149471598,
+            "rot": 6.769337488416131,
+            "anchor": {
+              "x": -29.510830206660103,
+              "z": -1.4103377254978113
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:1",
+            "x": 13.223918889623747,
+            "z": -24.317562656084192,
+            "d": 27.680604840428042,
+            "rot": 4.151821182468024,
+            "anchor": {
+              "x": 14.236517823212125,
+              "z": -23.638058971540886
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:2",
+            "x": 13.04027610472258,
+            "z": 24.74994139502087,
+            "d": 27.975138962020658,
+            "rot": 4.955099417371714,
+            "anchor": {
+              "x": 13.254380049136671,
+              "z": 25.950458516337676
+            },
+            "drive": "forage"
+          }
+        ]
+      },
+      {
+        "label": "recovering",
+        "simTime": 20.1,
+        "nursery": {
+          "mode": "RECOVERING",
+          "disturbedRemaining": 0,
+          "recoverRemaining": 18,
+          "thrustSeconds": 0,
+          "watchSeconds": 0,
+          "surveyed": true,
+          "disturbanceNoted": true,
+          "recoveryNoted": false,
+          "from": {
+            "x": 10432,
+            "z": 27452
+          },
+          "lastCause": "scan"
+        },
+        "adults": [
+          {
+            "key": "veil_ray_nursery:veil_ray:0",
+            "x": -434.6720681070401,
+            "z": 303.7421301925024,
+            "d": 530.2820838443728,
+            "rot": 9.033858941029477,
+            "anchor": {
+              "x": -29.510830206660103,
+              "z": -1.4103377254978113
+            },
+            "drive": "return"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:1",
+            "x": -498.34191370823646,
+            "z": -235.71979389596163,
+            "d": 551.2789531559699,
+            "rot": 3.4128170444830235,
+            "anchor": {
+              "x": 14.236517823212125,
+              "z": -23.638058971540886
+            },
+            "drive": "return"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:2",
+            "x": -470.2459509901764,
+            "z": -201.7395898697614,
+            "d": 511.6933813754825,
+            "rot": 3.38145204207651,
+            "anchor": {
+              "x": 13.254380049136671,
+              "z": 25.950458516337676
+            },
+            "drive": "return"
+          }
+        ]
+      },
+      {
+        "label": "recoveryEnd",
+        "simTime": 38.1,
+        "nursery": {
+          "mode": "QUIET",
+          "disturbedRemaining": 0,
+          "recoverRemaining": 0,
+          "thrustSeconds": 0,
+          "watchSeconds": 0,
+          "surveyed": true,
+          "disturbanceNoted": true,
+          "recoveryNoted": true,
+          "from": null,
+          "lastCause": "scan"
+        },
+        "adults": [
+          {
+            "key": "veil_ray_nursery:veil_ray:0",
+            "x": -308.9641008063936,
+            "z": 192.39371865649446,
+            "d": 363.96999679311165,
+            "rot": 11.968668916571788,
+            "anchor": {
+              "x": -29.510830206660103,
+              "z": -1.4103377254978113
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:1",
+            "x": -350.00846922556957,
+            "z": -159.01085847652575,
+            "d": 384.4351462120343,
+            "rot": 0.3484218774827171,
+            "anchor": {
+              "x": 14.236517823212125,
+              "z": -23.638058971540886
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:2",
+            "x": -325.02527885078416,
+            "z": -118.13915813246786,
+            "d": 345.82986073541747,
+            "rot": 0.3955335052393516,
+            "anchor": {
+              "x": 13.254380049136671,
+              "z": 25.950458516337676
+            },
+            "drive": "forage"
+          }
+        ]
+      },
+      {
+        "label": "quiet60",
+        "simTime": 98.1,
+        "nursery": {
+          "mode": "QUIET",
+          "disturbedRemaining": 0,
+          "recoverRemaining": 0,
+          "thrustSeconds": 0,
+          "watchSeconds": 12,
+          "surveyed": true,
+          "disturbanceNoted": true,
+          "recoveryNoted": true,
+          "from": null,
+          "lastCause": "scan"
+        },
+        "adults": [
+          {
+            "key": "veil_ray_nursery:veil_ray:0",
+            "x": -27.6697017511342,
+            "z": -0.7023141911013226,
+            "d": 27.67861340854598,
+            "rot": 13.650753312953134,
+            "anchor": {
+              "x": -29.510830206660103,
+              "z": -1.4103377254978113
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:1",
+            "x": 12.996798183723513,
+            "z": -25.17238179799824,
+            "d": 28.329588214667577,
+            "rot": 4.750051570108487,
+            "anchor": {
+              "x": 14.236517823212125,
+              "z": -23.638058971540886
+            },
+            "drive": "forage"
+          },
+          {
+            "key": "veil_ray_nursery:veil_ray:2",
+            "x": 13.49773333135272,
+            "z": 23.992952309065004,
+            "d": 27.52908581099957,
+            "rot": 5.55332989505268,
+            "anchor": {
+              "x": 13.254380049136671,
+              "z": 25.950458516337676
+            },
+            "drive": "forage"
+          }
+        ]
+      }
+    ],
+    "quietMeasurement": "For seeds1,1515,4242 over120s, maximum all-yaw body envelope54.01430671<57 rib inner edge; minimum center separation47.19243822>47.02 conservative body diameter.",
+    "immediateScanTiming": {
+      "firstPhysicallyQualifiedAtSeconds": 46.9,
+      "surveyAtSeconds": 58.9,
+      "requiredContinuousObservationSeconds": 12
+    },
+    "movement": "Existing fauna kinematic owner advances positions; only intent target/speed are refined. Disturbance and effective flee stay with existing owner; active/non-rehomed relocation stays with existing owner; legacy anchors unchanged.",
+    "survey": "Same watchSeconds counter and survey/reward writer; all actual positive-hull adult envelopes must fit inside56 WU, excluding active movement/tow/scatter. Wording changes unsupported 'behind' to 'with'.",
+    "result": "32/32 passed twice after fix; final includes exact diagnostic values.",
+    "output": "✔ seed1 planner counterexample remains unchanged for the global cast; Nursery uses a bounded initial habitat (26.390968ms)\n✔ real procedural tail and articulated membrane bounds clear real mineral ribs in settled layout (27.492823ms)\nℹ {\"measuredAdultPlanarRadius\":23.5,\"conservativeRadius\":23.51}\n✔ ordinary quiet steering remains sheltered over120 seconds with unchanged identities and no teleport (1556.451486ms)\nℹ {\"seed\":1,\"seconds\":120,\"maxEnvelope\":54.01430670940839,\"minSeparation\":47.32346310382099}\nℹ {\"seed\":1515,\"seconds\":120,\"maxEnvelope\":54.01430668902711,\"minSeparation\":47.192438221558646}\nℹ {\"seed\":4242,\"seconds\":120,\"maxEnvelope\":54.01430670467144,\"minSeparation\":47.80033161361818}\n✔ legacy off-shelter adult positions converge through the actual owner without anchor migration (421.808523ms)\n✔ scan escape and recovery require twelve physically qualified quiet seconds, not the mode timer (261.867984ms)\nℹ {\"firstQualified\":46.9,\"surveyedAt\":58.9}\n✔ goal gates retain effective panic/capture and persistent relocation outcomes; other biomes are unchanged (4.546555ms)\n✔ death, active recovery and scattered ecology restore preserve outcomes rather than reset into formation (777.099829ms)\n✔ survey predicate counts actual positive-hull survivors and resets when one leaves the shelter (15.83822ms)\n✔ taxonomy gates a bounded satellite; rematerialization preserves three adult identities and one visual flock (5.730109ms)\n✔ actual scan and weapons disturb, quiet recovery and passive survey are finite and once across ecology restore (176.846383ms)\n✔ nursery loss remains dead after reload and re-entry; a juvenile flock never replenishes adults (335.010932ms)\n✔ mineral ribs are seven actual native solids and retain their open mouth (76.590274ms)\n✔ nursery membranes articulate from ecology and one juvenile render batch respects motion/lifetime (2.76067ms)\n✔ actual nursery stimulus and recovery explain one episode across repeats and Continue (222.672548ms)\n✔ nursery feedback requires present revealed adults and the nearby living player (5.597194ms)\n✔ loss feedback never blames the player and relocation keeps its existing sole cue (102.167218ms)\n✔ quiet passive observation stays quiet until the existing single survey reward (71.377778ms)\n✔ native consumed drive flare explains itself; stale force and requested input do not (43.623267ms)\n✔ biology fitting reveal and text receipts work with silent audio and reduced motion (6.197431ms)\n✔ leaving the sector freezes the existing episode rather than running a feedback clock (3.309642ms)\n✔ episode latch precedes synchronous repeat-pulse subscribers (0.844687ms)\n✔ disturbance Save/Continue subscribers retain the latch before repeating a pulse (1.083192ms)\n✔ recovery Save/Continue subscribers retain the latch and retire the old tick record (1.970006ms)\n✔ nursery receipts respect the existing quiet-HUD versus fight/hurt admission boundary (4.347339ms)\n✔ drive receipt Save/Continue cannot carry the consumed burn or mutate its retired record (33.305391ms)\n✔ recovery waits for proximity and fitting reveal to return within the existing recovery window (1.742184ms)\n✔ recovery retains the latest actual cause after a combat-suppressed disturbance receipt (5.498185ms)\n✔ seed 4242: staged gentle substrate moves let the same animals re-home without towing them (1168.385915ms)\n✔ seed 4242: a violent move scatters living animals and quiet time plus save/reload cannot undo it (342.538012ms)\n✔ seed 4242: world save/reload preserves in-flight substrate travel and the completed new home (228.716104ms)\n✔ seed 4242: fast short moves and rushed stages scatter; invalid or duplicate requests do not move anything (37.090622ms)\n✔ FIX2 M24 seed 4242: ordinary Massline input tows the substrate gently or scatters it when rushed (457.882884ms)\nℹ tests 32\nℹ suites 0\nℹ pass 32\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 6446.346186\n"
+  },
+  "retainedTrials": [
+    {
+      "result": "7/8; fixture-only prototype comparison failure",
+      "explanation": "Plain copied positions compared against SimVector3 objects. Compare copied coordinates on both sides; no production adjustment.",
+      "sourceDifference": "assert.deepEqual(restored.adults().map(e => e.pos), before) replaced with copied positions.",
+      "output": "✔ seed1 planner counterexample remains unchanged for the global cast; Nursery uses a bounded initial habitat (37.600977ms)\n✔ real procedural tail and articulated membrane bounds clear real mineral ribs in settled layout (80.797813ms)\n✔ ordinary quiet steering remains sheltered over120 seconds with unchanged identities and no teleport (1427.778761ms)\n✔ legacy off-shelter adult positions converge through the actual owner without anchor migration (601.170021ms)\n✔ scan escape and recovery require twelve physically qualified quiet seconds, not the mode timer (345.342407ms)\n✔ goal gates retain effective panic/capture and persistent relocation outcomes; other biomes are unchanged (3.119444ms)\n✖ death, active recovery and scattered ecology restore preserve outcomes rather than reset into formation (54.046153ms)\n✔ survey predicate counts actual positive-hull survivors and resets when one leaves the shelter (41.052402ms)\nℹ tests 8\nℹ suites 0\nℹ pass 7\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 2601.972179\n\n✖ failing tests:\n\ntest at test/veil-ray-nursery-formation.test.mjs:170:1\n✖ death, active recovery and scattered ecology restore preserve outcomes rather than reset into formation (54.046153ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n  +   SimVector3 {\n  -   {\n        x: 10094.901924698126,\n        y: 0,\n        z: 27374.71471113662\n      },\n  +   SimVector3 {\n  -   {\n        x: 10197.843178731808,\n        y: 0,\n        z: 27291.548399545827\n      },\n  +   SimVector3 {\n  -   {\n        x: 10109.50056300916,\n        y: 0,\n        z: 27435.860448527157\n      }\n    ]\n  \n      at TestContext.<anonymous> (repository/test/veil-ray-nursery-formation.test.mjs:179:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)\n      at Test.postRun (node:internal/test_runner/test:1522:19)\n      at Test.run (node:internal/test_runner/test:1447:12)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [Array],\n    expected: [Array],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+    },
+    {
+      "result": "31/32; real relocation regression",
+      "explanation": "Habitat goals during legacy relocation settling pulled restored animals away from the anchors used by the existing relocation owner. Preserve its movement until it independently records rehomed; do not rewrite anchors or weaken assertions.",
+      "failedHabitatSource": "// Nursery habitat goals use the existing fauna movement owner, never root motion.\n// Bounds from veilRayNurseryVisuals: adult tail radius <23.51 WU;\n// mineral inner radial edge 57 WU. A 29 + 1.5 WU center envelope leaves clearance.\nexport const NURSERY_HABITAT_RADIUS = 29;\nexport const NURSERY_HABITAT_DRIFT = 1.5;\nconst SITE_ID = 'veil_ray_nursery';\nconst TAU = Math.PI * 2;\n\nexport function nurseryHabitatOffset(faunaKey, now = 0, phase = 0) {\n  const match = /^veil_ray_nursery:veil_ray:([0-2])$/.exec(faunaKey || '');\n  if (!match) return null;\n  const slot = Number(match[1]);\n  const a = Math.PI + slot * TAU / 3;\n  const drift = (Number.isFinite(now) ? now : 0) * .08 + (Number.isFinite(phase) ? phase : 0);\n  return { x: Math.cos(a) * NURSERY_HABITAT_RADIUS + Math.cos(drift) * NURSERY_HABITAT_DRIFT,\n    z: Math.sin(a) * NURSERY_HABITAT_RADIUS + Math.sin(drift) * NURSERY_HABITAT_DRIFT };\n}\n\n// Only a newly materialized undisturbed habitat may start in its shelter.\n// Existing live entities are skipped by the ecology owner before this is called.\nexport function nurseryInitialHabitatOffset(site, rec, member, now) {\n  if (site?.siteId !== SITE_ID || member?.speciesId !== 'veil_ray'\n      || rec?.nursery?.relocation || ![undefined, 'QUIET'].includes(rec?.nursery?.mode)) return null;\n  return nurseryHabitatOffset(member.faunaKey, now, member.phase);\n}\n\nexport function nurseryHabitatGoal(site, rec, entity, center, now) {\n  const eco = entity?.data?.ecology, n = rec?.nursery;\n  if (site?.siteId !== SITE_ID || eco?.siteId !== SITE_ID || eco?.speciesId !== 'veil_ray'\n      || eco.aggregate || !n || !['QUIET', 'RECOVERING'].includes(n.mode)\n      || !['forage', 'return'].includes(eco.driveState)\n      || n.relocation?.scattered || n.relocation?.move || n.relocation?.tow\n      || !Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return null;\n  const offset = nurseryHabitatOffset(eco.faunaKey, now, eco.phase);\n  if (!offset) return null;\n  return { x: center.x + offset.x, z: center.z + offset.z };\n}\n\n// Conservative all-yaw envelope includes the long tail, not only semantic radius18.\n// Goal coordinates never qualify a survey: read the living bodies themselves.\nexport const NURSERY_ADULT_PLANAR_RADIUS = 23.51;\nexport const NURSERY_SHELTER_RADIUS = 56;\nexport function nurseryShelterQualified(adults, center, nursery) {\n  if (!Number.isFinite(center?.x) || !Number.isFinite(center?.z)\n      || nursery?.relocation?.scattered || nursery?.relocation?.move || nursery?.relocation?.tow) return false;\n  const living = adults.filter(e => e.alive !== false && e.hull > 0);\n  return living.length > 0 && living.every(e => Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z)\n    && Math.hypot(e.pos.x - center.x, e.pos.z - center.z) + NURSERY_ADULT_PLANAR_RADIUS <= NURSERY_SHELTER_RADIUS);\n}\n",
+      "output": "✔ seed1 planner counterexample remains unchanged for the global cast; Nursery uses a bounded initial habitat (255.972466ms)\n✔ real procedural tail and articulated membrane bounds clear real mineral ribs in settled layout (229.30818ms)\n✔ ordinary quiet steering remains sheltered over120 seconds with unchanged identities and no teleport (7066.953698ms)\n✔ legacy off-shelter adult positions converge through the actual owner without anchor migration (3145.984865ms)\n✔ scan escape and recovery require twelve physically qualified quiet seconds, not the mode timer (1915.07654ms)\n✔ goal gates retain effective panic/capture and persistent relocation outcomes; other biomes are unchanged (81.288233ms)\n✔ death, active recovery and scattered ecology restore preserve outcomes rather than reset into formation (2279.203015ms)\n✔ survey predicate counts actual positive-hull survivors and resets when one leaves the shelter (28.329287ms)\n✔ taxonomy gates a bounded satellite; rematerialization preserves three adult identities and one visual flock (6.694731ms)\n✔ actual scan and weapons disturb, quiet recovery and passive survey are finite and once across ecology restore (238.572567ms)\n✔ nursery loss remains dead after reload and re-entry; a juvenile flock never replenishes adults (358.676613ms)\n✔ mineral ribs are seven actual native solids and retain their open mouth (94.157439ms)\n✔ nursery membranes articulate from ecology and one juvenile render batch respects motion/lifetime (5.120712ms)\n✔ actual nursery stimulus and recovery explain one episode across repeats and Continue (157.938962ms)\n✔ nursery feedback requires present revealed adults and the nearby living player (9.179319ms)\n✔ loss feedback never blames the player and relocation keeps its existing sole cue (106.739471ms)\n✔ quiet passive observation stays quiet until the existing single survey reward (67.030516ms)\n✔ native consumed drive flare explains itself; stale force and requested input do not (83.400148ms)\n✔ biology fitting reveal and text receipts work with silent audio and reduced motion (3.407765ms)\n✔ leaving the sector freezes the existing episode rather than running a feedback clock (4.302777ms)\n✔ episode latch precedes synchronous repeat-pulse subscribers (1.466115ms)\n✔ disturbance Save/Continue subscribers retain the latch before repeating a pulse (1.85092ms)\n✔ recovery Save/Continue subscribers retain the latch and retire the old tick record (1.02593ms)\n✔ nursery receipts respect the existing quiet-HUD versus fight/hurt admission boundary (5.305148ms)\n✔ drive receipt Save/Continue cannot carry the consumed burn or mutate its retired record (34.586522ms)\n✔ recovery waits for proximity and fitting reveal to return within the existing recovery window (2.897139ms)\n✔ recovery retains the latest actual cause after a combat-suppressed disturbance receipt (3.116466ms)\n✔ seed 4242: staged gentle substrate moves let the same animals re-home without towing them (1131.68713ms)\n✔ seed 4242: a violent move scatters living animals and quiet time plus save/reload cannot undo it (390.463115ms)\n✖ seed 4242: world save/reload preserves in-flight substrate travel and the completed new home (229.940481ms)\n✔ seed 4242: fast short moves and rushed stages scatter; invalid or duplicate requests do not move anything (55.230083ms)\n✔ FIX2 M24 seed 4242: ordinary Massline input tows the substrate gently or scatters it when rushed (611.24018ms)\nℹ tests 32\nℹ suites 0\nℹ pass 31\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 18756.287931\n\n✖ failing tests:\n\ntest at test/m24-move-the-nursery.test.mjs:127:1\n✖ seed 4242: world save/reload preserves in-flight substrate travel and the completed new home (229.940481ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  + actual - expected\n  \n  + 'settling'\n  - 'rehomed'\n  \n      at TestContext.<anonymous> (repository/test/m24-move-the-nursery.test.mjs:136:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)\n      at Test.postRun (node:internal/test_runner/test:1522:19)\n      at Test.run (node:internal/test_runner/test:1447:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 'settling',\n    expected: 'rehomed',\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n"
+    }
+  ],
+  "reproductionProbe": "import { createSimulation } from '../src/core/sim.js';\nimport { world } from '../src/systems/world.js';\nimport { spawnBudget } from '../src/systems/spawnBudget.js';\nimport { physics } from '../src/core/physics.js';\nimport { makeShipEntitySpec } from '../src/systems/ships.js';\nimport { ALIEN_SITES } from '../src/data/alienEcology.js';\nimport { materializeAlienEcology, tickAlienEcology, handleAlienEcologyEvent, setRevelation } from '../src/systems/alienEcology.js';\nimport { veilNurseryMemory } from '../src/world/veilRayNursery.js';\nconst site=ALIEN_SITES.veil_ray_nursery;\nconst sim=createSimulation({seed:1,systems:[spawnBudget,world,physics]});\nconst state=sim.state,owner=sim.registry.get('world'); state.mode='flight';state.world.currentSectorId=site.sectorId;state.world.activeSector={dressing:[],pois:[]};setRevelation(state,2);\nconst center=owner._toGlobal(site.center,site.sectorId);\nconst player=sim.spawn(makeShipEntitySpec('ship_hornet',{isPlayer:true,player:state.player,pos:{x:center.x+220,z:center.z},fittings:[]}));state.playerId=player.id;\nmaterializeAlienEcology(owner,{id:site.sectorId},state.world.activeSector,[site]);\nconst adults=()=>state.entityList.filter(e=>e.alive!==false&&e.data?.ecology?.siteId===site.siteId&&!e.data.ecology.aggregate);\nfunction sample(label){console.log(JSON.stringify({label,simTime:state.simTime,nursery:veilNurseryMemory(state),adults:adults().map(e=>({key:e.data.ecology.faunaKey,x:e.pos.x-center.x,z:e.pos.z-center.z,d:Math.hypot(e.pos.x-center.x,e.pos.z-center.z),rot:e.rot,anchor:{x:e.data.ecology.anchor.x-center.x,z:e.data.ecology.anchor.z-center.z},drive:e.data.ecology.driveState}))}));}\nfunction tick(s){for(let i=0;i<Math.round(s*60);i++){state.tick++;state.simTime=state.tick/60;tickAlienEcology(owner,1/60);}}\nsample('spawn');tick(12.1);sample('quiet12');handleAlienEcologyEvent(owner,'scan:pulse',{source:'player-scanner',scannerId:player.id,pos:player.pos,radius:700});tick(8);sample('recovering');tick(18);sample('recoveryEnd');tick(60);sample('quiet60');sim.dispose();\n",
+  "remaining": "Independent review and publisher-dependent successor delivery pending. Existing relocation success semantics remain unchanged, not redefined as visual formation. Current-public integration and visual acceptance unclaimed."
+}

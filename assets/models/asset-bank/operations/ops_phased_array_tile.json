@@ -1,0 +1,299 @@
+{
+  "assetId": "ops_phased_array_tile",
+  "category": "service",
+  "description": "phased array tile",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "rf",
+      "position": [
+        0.0,
+        0.02,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "boresight",
+      "position": [
+        0.0,
+        0.4,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.16,
+          -0.0
+        ],
+        "size": [
+          1.6,
+          0.32,
+          1.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.66,
+          0.3725,
+          0.66
+        ],
+        "size": [
+          0.0784,
+          0.025000000000000022,
+          0.0784
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.66,
+          0.405,
+          0.66
+        ],
+        "size": [
+          0.056,
+          0.03999999999999998,
+          0.056
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.66,
+          0.3725,
+          -0.66
+        ],
+        "size": [
+          0.0784,
+          0.025000000000000022,
+          0.0784
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.66,
+          0.405,
+          -0.66
+        ],
+        "size": [
+          0.056,
+          0.03999999999999998,
+          0.056
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.66,
+          0.3725,
+          0.66
+        ],
+        "size": [
+          0.0784,
+          0.025000000000000022,
+          0.0784
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.66,
+          0.405,
+          0.66
+        ],
+        "size": [
+          0.056,
+          0.03999999999999998,
+          0.056
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.66,
+          0.3725,
+          -0.66
+        ],
+        "size": [
+          0.0784,
+          0.025000000000000022,
+          0.0784
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.66,
+          0.405,
+          -0.66
+        ],
+        "size": [
+          0.056,
+          0.03999999999999998,
+          0.056
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "operations",
+    "service",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.800000011920929,
+      0.0,
+      -0.800000011920929
+    ],
+    "max": [
+      0.800000011920929,
+      0.42500001192092896,
+      0.800000011920929
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_phased_array_tile_lod0.glb",
+      "triangles": 9192,
+      "draws": 5,
+      "bytes": 711668,
+      "method": "source",
+      "sha256": "20bd991d6c32784c9a56f9f5ff877902ca3f145e3f235f45054930f1ba6415de"
+    },
+    {
+      "level": 1,
+      "file": "ops_phased_array_tile_lod1.glb",
+      "triangles": 2256,
+      "draws": 3,
+      "bytes": 365264,
+      "method": "Forge-decimation",
+      "sha256": "f0bda9810c43abd2f307519d651d15414a76ddc8bdb230f9d5e8eae212a1f109"
+    },
+    {
+      "level": 2,
+      "file": "ops_phased_array_tile_lod2.glb",
+      "triangles": 1014,
+      "draws": 3,
+      "bytes": 302364,
+      "method": "Forge-decimation",
+      "sha256": "94282f4b32fa8afbf68ec1b069218fa8ab4939a8ffe53504a54850810bfcfe62"
+    }
+  ]
+}

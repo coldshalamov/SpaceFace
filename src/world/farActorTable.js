@@ -1,0 +1,1273 @@
+import { isTallyCourier, tallyPauseId } from '../data/tethysTallyPassage.js';
+import {claimsTallyAssessor,canPromoteTallyAssessor,decorateTallyAssessorSpec} from './tallyThreeIdentity.js';
+// LAST_ARGUMENT_INTEGRATION_V1
+
+import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
+import { MORROW } from '../data/morrow.js';
+import { BORROWED_SUN } from '../data/borrowedSun.js';
+import { WORLD_SITE_MANIFESTS } from '../data/worldSiteManifests.js';
+import { PLANET_SITE } from '../data/planets.js';
+import { makeShipEntitySpec } from '../systems/ships.js';
+// Far ships and wrecks beyond the combat table. They stay as compact records and
+// rematerialize when the player approaches, or when a projectile's flight reaches
+// them. They are not GameState combat entities while shelved.
+
+import { clearEntityRuntime } from '../core/entity.js';
+import { syncEntitySectorMembership } from '../core/coreSystem.js';
+import { authoredPrefetchRadius, farLedgerScanRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
+import { SIM_TIER, NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
+import { ensureActivityClassified, physicsReachWuFromState } from './activityRuntime.js';
+import { entityIndexLaneVersion } from './livingWorldViews.js';
+import { getAsteroidFieldRock } from './asteroidField.js';
+import { getDressingRow } from './dressingTable.js';
+import { advanceWorldRecordInto, itineraryPositionInto, normalizeIntent } from './worldCatchup.js';
+import { normalizeRecord, recordShouldRematerialize, RECORD_KIND } from './worldRecords.js';
+import { resolveFarEncounters } from './farEncounterOutcomes.js';
+import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
+import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+
+export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
+export const FAR_ACTOR_CELL = 400;
+
+// Static source anatomy has no lean actor recipe. Its canonical site owner alone may
+// re-create a body after admission/stage changes; a generic wreck would lose the compound,
+// fixed-body mode and source mass. Validate stable identity even for an old stripped row.
+const staticSiteAnatomy = new Map(WORLD_SITE_MANIFESTS.flatMap(manifest => [
+  ...manifest.components.filter(component => !manifest.payloads.some(payload =>
+    payload.structural && payload.componentId === component.id)).map(component =>
+    [`${manifest.worldObjectId}/component/${component.id}`, {siteId:manifest.id, role:'world_site_component'}]),
+  ...(manifest.collisionProxies || []).map(proxy =>
+    [`${manifest.worldObjectId}/collision/${proxy.id}`, {siteId:manifest.id, role:'world_site_collision'}]),
+]));
+export function isWorldSiteStaticAnatomy(entity) {
+  const data=entity?.data, identity=staticSiteAnatomy.get(data?.worldRecordId);
+  return !!identity && entity?.type==='wreck' && data?.persistenceOwner==='asteroidSites'
+    && identity?.siteId===data.worldSiteId && identity?.role===data.role;
+}
+
+export function discardWorldSiteStaticFarRows(state, siteId) {
+  if (!state?.world?.farActors?.rows) return 0;
+  const table=ensureFarActorTable(state);
+  let removed=0;
+  for (const row of table.rows.slice()) if (row.data?.worldSiteId===siteId && isWorldSiteStaticAnatomy(row)) {
+    removeFarRecord(table,row); removed++;
+  }
+  return removed;
+}
+
+// D189: pre-fix Morrow bodies shelved without authoredCharacter (the 026e628e5 custody
+// marker), so old saves carry anonymous far rows that promote as markerless twins beside the
+// deterministically re-minted owner. A row is provably such a shell by immutable spec alone —
+// type drone, Morrow's mass/radius, Morrow's home sector when the row carries one — never by
+// position. No ambient spawner builds that tuple (ambient drones are single-digit mass and
+// radius), and rows carrying any identity (authoredCharacter, morrow, mission pins) are never
+// eligible, so unrelated actors are untouched by construction.
+export function isAnonymousMorrowTwin(candidate) {
+  if (!candidate || typeof candidate !== 'object') return false;
+  if (candidate.type !== 'drone') return false;
+  if (candidate.mass !== MORROW.mass || candidate.radius !== MORROW.radius) return false;
+  const data = candidate.data && typeof candidate.data === 'object' ? candidate.data : {};
+  if (data.authoredCharacter || data.morrow === true || data.missionId || data.missionPinned) return false;
+  const home = candidate.homeSectorId ?? data.homeSectorId ?? data.sectorId ?? null;
+  if (home != null && home !== MORROW.sectorId) return false;
+  return true;
+}
+
+// Same heal class for the player-hull echo: pre-fix echo wrecks shelved without
+// hullEchoLossId (the lean row drops it), so old saves carry one anonymous wreck row per
+// shelve tick — thousands of identical-position clones of the single bound echo.
+// materializePlayerHullEcho re-mints the real body deterministically, so the rows are
+// spent copies. The signature is exclusive: playerHullEcho.js is the only 'alienEcology'
+// wreck spawner, and post-fix echoes never reach the table.
+export function isStrippedHullEchoTwin(candidate) {
+  if (!candidate || typeof candidate !== 'object') return false;
+  if (candidate.type !== 'wreck') return false;
+  const data = candidate.data && typeof candidate.data === 'object' ? candidate.data : {};
+  return data.persistenceOwner === 'alienEcology' && data.hullEchoLossId == null;
+}
+
+/** Bench A/B: production default ON. Quiet latch skips shelve-candidate walk when far empty. */
+let FAR_EMPTY_QUIET_LATCH = true;
+export function setFarEmptyQuietLatchForBench(enabled) {
+  FAR_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getFarEmptyQuietLatchForBench() {
+  return FAR_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const FAR_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+const _sweepPos = { x: 0, z: 0 };
+
+function entityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+/** Membership lanes for the empty-quiet latch — far-row candidates virtualize from
+ * ships and wrecks only, so projectile/pickup/asteroid churn can't wake it. */
+const FAR_EMPTY_QUIET_LANES = ['shipLike', 'wrecks'];
+
+function farQuietMembershipVersion(state) {
+  const lane = entityIndexLaneVersion(state, FAR_EMPTY_QUIET_LANES);
+  return lane === -1 ? entityIndexVersion(state) : lane;
+}
+
+function farRowCount(state) {
+  const table = state && state.world && state.world.farActors;
+  return table && Array.isArray(table.rows) ? table.rows.length : 0;
+}
+
+function publishFarQuiet(state, latched) {
+  const world = state.world || (state.world = {});
+  const rt = world.farActorsRuntime || (world.farActorsRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+
+function finite(n, fallback = 0) {
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function isExactTier(tier) {
+  return tier === SIM_TIER.S0_EXACT || tier === SIM_TIER.S1_NEAR;
+}
+
+export function ensureFarActorTable(state) {
+  if (!state || typeof state !== 'object') return null;
+  const world = state.world || (state.world = {});
+  let table = world.farActors;
+  if (table && table.schema === FAR_ACTOR_SCHEMA && Array.isArray(table.rows)) {
+    if (!(table.byId instanceof Map)) table.byId = new Map(table.rows.map((row) => [row.id, row]));
+    if (!(table.grid instanceof Map)) rebuildGrid(table);
+    return table;
+  }
+  table = {
+    schema: FAR_ACTOR_SCHEMA,
+    version: 0,
+    rows: [],
+    byId: new Map(),
+    grid: new Map(),
+  };
+  world.farActors = table;
+  return table;
+}
+
+export function resetFarActors(state) {
+  const table = state && state.world && state.world.farActors;
+  if (table && Array.isArray(table.rows)) {
+    for (let i = 0; i < table.rows.length; i++) clearEntityRuntime(table.rows[i]);
+  }
+  if (state && state.world) state.world.farActors = null;
+}
+
+function cloneTree(value) {
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(cloneTree);
+  const out = {};
+  for (const k in value) out[k] = cloneTree(value[k]);
+  return out;
+}
+
+function snapshotPhysicsBodyDescriptor(entity) {
+  const authored = entity?.physicsBody;
+  if (!authored || typeof authored !== 'object' || Array.isArray(authored)) return null;
+  const resolved = resolvePhysicsBodySpec(entity);
+  if (!resolved) return null;
+  const descriptor = cloneTree(resolved);
+  const normalized = entity.physicsBody;
+  if (Array.isArray(normalized.thrusters)) descriptor.thrusters = cloneTree(normalized.thrusters);
+  // The physics resolver returns only its collision-facing projection. Keep the two authored
+  // metadata fields that affect measured collision geometry and skin selection alongside it.
+  for (const key of ['collisionProxyManifest', 'useMeasuredSkin']) {
+    if (Object.hasOwn(normalized, key)) descriptor[key] = cloneTree(normalized[key]);
+  }
+  return descriptor;
+}
+
+// Shelved actors are part of the save. Without the rows, a save taken while an actor is
+// virtualized loses the shelve marker: on load the durable record rematerializes a live entity,
+// and the next serialize captures a fat record where the pre-save snapshot held a thin one
+// (save/reload hash equivalence). `rows` is plain data; byId/grid are rebuilt from it by
+// ensureFarActorTable on first touch.
+// Shelved rows double as presentation entities: resolveWorldPresentationEntity returns the row
+// itself, so the mesh loop stamps live runtime references onto it (`e.mesh = m`,
+// `e.view = { root: m }`, `_noMesh`, grid `_cell`). Those are live Object3D graphs — a recursive
+// clone walks the whole children/matrix tree and can stack-overflow, and none of it could ever
+// round-trip through the save's JSON anyway. Same contract worldRecords.js applies to
+// liveEntityId: runtime-only fields are never serialized.
+const FAR_ROW_RUNTIME_KEYS = new Set(['mesh', 'view', 'liveEntityId', 'rematerializedTick']);
+
+function isRuntimeRenderResource(value) {
+  return !!(value && typeof value === 'object'
+    && (value.isObject3D === true || value.isTexture === true
+      || value.isBufferGeometry === true || value.isMaterial === true));
+}
+
+export function serializeFarActorTable(table) {
+  if (!table || table.schema !== FAR_ACTOR_SCHEMA || !Array.isArray(table.rows)) return null;
+  const rows = [];
+  for (const row of table.rows) {
+    if (!row || row.alive === false) continue;
+    const copy = {};
+    for (const k in row) {
+      if (k.charCodeAt(0) === 0x5f) continue; // '_' — _cell, _noMesh, other private runtime stamps
+      if (FAR_ROW_RUNTIME_KEYS.has(k)) continue;
+      const v = row[k];
+      if (isRuntimeRenderResource(v)) continue;
+      copy[k] = cloneTree(v);
+    }
+    rows.push(copy);
+  }
+  if (!rows.length) return null;
+  return { schema: FAR_ACTOR_SCHEMA, version: table.version | 0, rows };
+}
+
+export function restoreFarActorTable(state, data) {
+  if (!state || typeof state !== 'object') return null;
+  const world = state.world || (state.world = {});
+  if (!data || data.schema !== FAR_ACTOR_SCHEMA || !Array.isArray(data.rows) || !data.rows.length) {
+    resetFarActors(state);
+    return null;
+  }
+  resetFarActors(state);
+  // D189: drop pre-fix anonymous Morrow shells at restore (see isAnonymousMorrowTwin). The
+  // morrow system deterministically re-mints exactly one canonical body on save:loaded from
+  // state.morrow memory, so keeping these rows would promote markerless twins beside it.
+  // Idempotent: a healed save no longer carries them, and unrelated rows never match.
+  world.farActors = {
+    schema: FAR_ACTOR_SCHEMA,
+    version: Number.isSafeInteger(data.version) ? data.version : 0,
+    rows: data.rows.filter((row) => row && row.alive !== false && Number.isSafeInteger(row.id)
+      && !isWorldSiteStaticAnatomy(row) && !isAnonymousMorrowTwin(row)
+      && !isStrippedHullEchoTwin(row)
+      // These transient parts re-derive from their owner's bounded book. A legacy lean row
+      // has lost its sail/collector/glass identity and cannot rejoin that cohort on promotion.
+      && row.data?.persistenceOwner !== BORROWED_SUN.owner),
+  };
+  // Shelved ids stay reserved through allocateEntityId's ledger check — no counter bump needed
+  // here (bumping nextEntityId would shift the post-load spawn order and break save hash parity).
+  return ensureFarActorTable(state);
+}
+
+// True when a durable record's live state is carried by a shelved far-actor row. The record
+// must not rematerialize a second live entity on sector entry/restore.
+export function farActorHoldsWorldRecord(state, recordId) {
+  if (!recordId) return false;
+  const table = state && state.world && state.world.farActors;
+  const rows = table && table.rows;
+  if (!rows) return false;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row && row.alive !== false && row.data && row.data.worldRecordId === recordId) return true;
+  }
+  return false;
+}
+
+// Numeric grid keys (same encoding asteroidField uses). queryFarActors walks every
+// overlapped cell per call — the per-tick decode-runway disc is thousands of WU wide,
+// so a `${cx}:${cz}` string per cell per tick was pure GC churn. Bijective for
+// |cell| < 1,048,576 — far past the authored map edge (~±45k WU).
+const CELL_KEY_OFFSET = 1048576;
+const CELL_KEY_STRIDE = 2097152; // 2 * CELL_KEY_OFFSET
+
+function cellKey(x, z) {
+  return (Math.floor(x / FAR_ACTOR_CELL) + CELL_KEY_OFFSET) * CELL_KEY_STRIDE
+    + (Math.floor(z / FAR_ACTOR_CELL) + CELL_KEY_OFFSET);
+}
+
+function gridAdd(table, rec) {
+  const key = cellKey(finite(rec.pos && rec.pos.x), finite(rec.pos && rec.pos.z));
+  rec._cell = key;
+  let bucket = table.grid.get(key);
+  if (!bucket) {
+    bucket = [];
+    table.grid.set(key, bucket);
+  }
+  bucket.push(rec);
+}
+
+function gridRemove(table, rec) {
+  const key = rec && rec._cell;
+  // Numeric keys: cell (-CELL_KEY_OFFSET, -CELL_KEY_OFFSET) encodes to 0 — test
+  // for absence, not truthiness.
+  if (key == null || !table.grid) return;
+  const bucket = table.grid.get(key);
+  if (!bucket) return;
+  const idx = bucket.indexOf(rec);
+  if (idx >= 0) bucket.splice(idx, 1);
+  if (bucket.length === 0) table.grid.delete(key);
+}
+
+function rebuildGrid(table) {
+  table.grid = new Map();
+  for (let i = 0; i < table.rows.length; i++) gridAdd(table, table.rows[i]);
+}
+
+export function farActorCensus(state) {
+  const table = state && state.world && state.world.farActors;
+  const far = table && Array.isArray(table.rows) ? table.rows.length : 0;
+  let liveShips = 0;
+  let liveWrecks = 0;
+  for (const e of state && state.entityList || []) {
+    if (!e || e.alive === false) continue;
+    if (e.type === 'ship' || e.type === 'drone') liveShips++;
+    else if (e.type === 'wreck') liveWrecks++;
+  }
+  return { farActors: far, liveShips, liveWrecks };
+}
+
+export function getFarActor(state, id) {
+  const table = state && state.world && state.world.farActors;
+  if (!table || !table.byId) return null;
+  return table.byId.get(id) || null;
+}
+
+function matchesFarActorTargetIdentity(holder, identity) {
+  const data = holder?.data || {};
+  if (!holder || !identity) return false;
+  if (identity.kind === 'worldRecord') return typeof identity.worldRecordId === 'string'
+    && identity.worldRecordId.length > 0 && data.worldRecordId === identity.worldRecordId;
+  if (identity.kind === 'marker') return typeof identity.markerId === 'string'
+    && identity.markerId.length > 0 && data.markerId === identity.markerId;
+  if (identity.kind === 'salvagePoint') return data.salvagePointId === identity.salvagePointId
+    && typeof identity.salvagePointId === 'string' && identity.salvagePointId.length > 0
+    && typeof identity.sourceKey === 'string' && identity.sourceKey.length > 0
+    && data.salvageSourceKey === identity.sourceKey;
+  if (identity.kind === 'salvorTarget') return typeof identity.key === 'string'
+    && identity.key.length > 0 && data.salvorTargetKey === identity.key;
+  return false;
+}
+
+/** Exact live shelf lookup for a job-owned physical target; ambiguous identities fail closed. */
+export function findFarActorForTargetIdentity(state, identity, { type = null, sectorId = null } = {}) {
+  const rows = state?.world?.farActors?.rows;
+  if (!Array.isArray(rows) || !identity) return null;
+  let found = null;
+  for (const row of rows) {
+    if (!row || row.alive === false || !matchesFarActorTargetIdentity(row, identity)) continue;
+    if (type && row.type !== type) continue;
+    const rowSector = row.homeSectorId || row.data?.homeSectorId || row.data?.sectorId || null;
+    if (sectorId && rowSector && rowSector !== sectorId) continue;
+    if (found) return null;
+    found = row;
+  }
+  return found;
+}
+
+/** Promote one exact stable target identity; never trust a recycled numeric far-row slot. */
+export function promoteFarActorForTargetIdentity(state, identity, { type = null, sectorId = null } = {}, helpers = null) {
+  const row = findFarActorForTargetIdentity(state, identity, { type, sectorId });
+  if (!row) return null;
+  const worldRecordId = row.data?.worldRecordId;
+  const durable = worldRecordId != null ? state.world?.records?.byId?.[worldRecordId] : null;
+  if (durable && !recordShouldRematerialize(durable, 'FULL')) return null;
+
+  let live = null;
+  for (const entity of state.entities?.values?.() || []) {
+    if (!entity || entity.alive === false || entity.type !== row.type
+      || !matchesFarActorTargetIdentity(entity, identity)) continue;
+    if (live) return null;
+    live = entity;
+  }
+  if (live) {
+    if (getFarActor(state, row.id) === row) removeFarRecord(state.world.farActors, row);
+    return live;
+  }
+  return promoteFarActor(state, row.id, helpers, identity);
+}
+
+function survivalHold(state) {
+  const run = state && state.run;
+  if (!run) return false;
+  const kind = run.kind || run.mode;
+  return kind === 'survival' || kind === 'swarm' || run.ruleset === 'swarm';
+}
+
+export function shouldVirtualizeFarActor(entity, state) {
+  // Exactly one encounter-local siege ark is retained until its capital owner retires it.
+  // Never pin its wreck or create a second far-ledger copy while its score is active.
+  if (entity?.type === 'ship' && entity.alive !== false
+      && entity.data?.lootTableId === 'last_argument' && entity.data?.lastArgumentKey) return false;
+  if (!entity || entity.alive === false) return false;
+  if (entity.isPlayer === true || entity.id === state.playerId) return false;
+  if (survivalHold(state)) return false;
+  const type = entity.type;
+  if (type !== 'ship' && type !== 'drone' && type !== 'wreck') return false;
+  const flags = entity.flags || {};
+  const data = entity.data || {};
+  // Only the two current shift ships doing actual work need native flight
+  // beyond the player's local table. Their existing owner releases the pin
+  // when work is interrupted or the sector changes.
+  if (state.mode === 'flight' && state.world?.currentSectorId === PLANET_SITE.sectorId
+    && data.anvilWorkLiveness === true && data.transitCritical === true && isAnvilWorker(entity)) return false;
+  // The carrier owns a bounded physical cohort and reprints a missing part. The lean NPC row
+  // drops those part tags, so shelving four reflectors created four new durable rows every tick.
+  // Keep the parts resident under their owner; distant activity/physics tiers still sleep them.
+  if (data.persistenceOwner === BORROWED_SUN.owner) return false;
+  if (isWorldSiteStaticAnatomy(entity)) return false;
+  if (flags.persistent || flags.missionPinned || data.missionPinned || data.missionId) return false;
+  if (data.isBoss || data.namedAceId || data.uniqueWreckId || data.uniqueWreck) return false;
+  // A hand-built story character (Solstice, Ravel, Vesper, Bracket) is owned by its system's own
+  // census, which adopts bodies by a part stamp and mints any missing one every second. The lean far
+  // row drops that stamp, so shelving a body made the owner mint a replacement beside the shell, and
+  // approaching promoted an anonymous twin: a pilot arriving from a gate saw the character vanish
+  // within two ticks. Each is one small cohort in one sector, so it stays resident (the activity
+  // tiers still put it to sleep while the pilot is far).
+  if (data.authoredCharacter) return false;
+  // Onboarding's staged bodies (the rescue cast, the Claim Jumper raid wing/raider/hauler,
+  // missingThree, the claimed beat) are owner-keyed the same way: the lean far row drops
+  // data.onboarding/onboardingRaidWing/raidRole/rescueRole — and weapons/maxSpeed never ride
+  // the row — so a shelved-and-promoted shell returns anonymous, inert, and invisible to
+  // _raidActor/_rescueActor while raid.ids still points at it. X-02 round-5: a wing that
+  // walked out past the exit radius promoted as a flagless husk the latch could never
+  // re-arm. The tutorial cast is a handful of short-lived bodies; it stays resident.
+  if (data.onboarding === true) return false;
+  // A marker-bound wreck's body belongs to the aftermath marker (state.aftermathWrecks), which
+  // respawns the full hulk on sector entry. The lean far row drops markerId, so a shelved wreck
+  // would promote as an unbindable shell duplicating the marker's own respawn (D89).
+  if (data.markerId) return false;
+  // The player-hull echo (M11) is owner-keyed the same way: tickPlayerHullEcho re-mints a
+  // missing echo every tick, while the lean row drops hullEchoLossId/siteId/scanLabel — so a
+  // shelved echo minted one anonymous durable twin per tick, piling thousands of identical
+  // wreck rows on the site anchor. A single approach promotes the whole coincident heap
+  // inside the coincident-spawn ladder's cap and the solver detonates (Package D class).
+  // One small body in one sector; it stays resident.
+  if (data.hullEchoLossId != null) return false;
+  // A physical world one-off's body belongs to the dressing materializer the same way:
+  // _spawnWorldOneOffs re-mints/re-decorates by recordId on every sector materialize. The lean
+  // row drops worldOneOff/oneOffId/name/masslineTetherable, so shelving both degrades the
+  // promoted shell and hides the shelved copy from the materializer's live-entity dedup —
+  // every load minted a twin anchored to the same permanent record (D141).
+  if (data.worldOneOff === true) return false;
+  // A berth-consign hulk belongs to _spawnFactionBerths the same way (CR-BERTH-1): it
+  // re-mints/re-decorates by recordId on every materialize, and the lean row drops
+  // berthConsign/berthId/name/masslineTetherable — shelving degrades the promoted shell and
+  // mints a twin parked on the strip-line.
+  if (data.berthConsign) return false;
+  // The authored-field ecology (scavenger/squatter slots) stays live: the roster references the
+  // hull by id and the lean row drops wreckFieldId, so a shelved resident comes back unbound and
+  // the jobs runtime's scavenger adoption can never claim it (D143). Only `salvage:`-keyed
+  // authored fields pin — aftermath-marker ecology stays virtualizable by design. Salvage wrecks
+  // themselves shelf: salvagePointId travels on the lean row and promotes back onto the point.
+  if (typeof data.wreckFieldId === 'string' && data.wreckFieldId.startsWith('salvage:')) return false;
+  // P03's three finite matched masses retain site-owned coupling, source-origin geometry and
+  // yaw/integrity. The lean far-actor row cannot reconstruct that contract; normal activity
+  // tiers still gate their physics, while asteroidSites remains their persistence owner.
+  if (data.worldSiteStructural === true || ceresWorkfleetRoleForEntity(entity)) return false;
+  if (data.activityActorSlotId || data.wingman || data.role === 'wingman') return false;
+  if (flags.tethered || data.tethered) return false;
+  if (state.player && state.player.tether && state.player.tether.targetId === entity.id) return false;
+  // A live encounter owns its cast: the lean far row drops the binding stamps
+  // (nestEncounterId/nestSlot/roles), the visit's own snapshot can never adopt a
+  // shelved hull back, and the encounter aborts 'unresolved_*' — orphaning the
+  // authored visit mid-conflict (run126: the nest carrier, both blast doors,
+  // and the wasps virtualized while the player was still in-sector, and the
+  // Book 2 visit sat in 'active' forever after).
+  const _farDir = state.encounterDirector;
+  if (_farDir && _farDir.squadMembership && _farDir.squadMembership[entity.id] != null) return false;
+  if (data.nestEncounterId != null) return false;
+  const activity = entity.activity;
+  if (!activity || !activity.simTier) return false;
+  if (activity.pinnedExact || isExactTier(activity.simTier)) return false;
+  return activity.simTier === SIM_TIER.S2_ABSTRACT
+    || activity.simTier === SIM_TIER.S3_DORMANT
+    || activity.simTier === SIM_TIER.S4_AGGREGATE;
+}
+
+function pickHullDefId(data) {
+  if (!data || typeof data !== 'object') return null;
+  return data.hullDefId || data.shipDefId || data.defId || data.typeId || null;
+}
+
+function isAnvilWorker(entity) {
+  const d = entity?.data, route = d?.itinerary;
+  return entity?.type === 'ship' && pickHullDefId(d) === 'ship_mule' && !!d.worldRecordId
+    && (entity.homeSectorId || d.homeSectorId || d.sectorId) === PLANET_SITE.sectorId
+    && route?.kind === 'anvil_work' && (route.role === 'collector' || route.role === 'receiver');
+}
+
+function hydrateLegacyAnvilData(state, row, data) {
+  if (data.itinerary != null && data.cargoManifest != null) return;
+  const route = row.route;
+  if (!isAnvilWorker({ ...row, data: { ...data, itinerary: route } })) return;
+  if (data.itinerary != null && (data.itinerary.kind !== route.kind || data.itinerary.role !== route.role)) return;
+  const byId = state.world?.records?.byId;
+  let candidate = null;
+  for (const key in byId) {
+    const record = byId[key];
+    if (key !== data.worldRecordId && record?.recordId !== data.worldRecordId) continue;
+    // Never guess between duplicate/mis-keyed identities, including an otherwise valid twin.
+    if (candidate || key !== data.worldRecordId || record?.recordId !== key) return;
+    candidate = record;
+  }
+  const record = normalizeRecord(candidate);
+  if (!record || !recordShouldRematerialize(record, 'FULL') || !(record.hull > 0)
+    || record.kind !== RECORD_KIND.CONVOY || record.type !== 'ship' || record.shipDefId !== 'ship_mule'
+    || record.sectorId !== PLANET_SITE.sectorId || record.homeSectorId !== PLANET_SITE.sectorId
+    || record.itinerary?.kind !== route.kind || record.itinerary.role !== route.role
+    || !Number.isFinite(record.itinerary.center?.x) || !Number.isFinite(record.itinerary.center?.z)) return;
+  // Apply the traffic owner's finite-load contract before copying either missing field.
+  const manifest = record.cargoManifest, capacity = route.role === 'collector' ? 12 : 48;
+  if (!manifest || !Number.isSafeInteger(manifest.totalQty) || manifest.totalQty < 0
+    || manifest.totalQty > capacity || !Array.isArray(manifest.lines)) return;
+  let total = 0;
+  for (const line of manifest.lines) {
+    if (!line || typeof line !== 'object' || Array.isArray(line)
+      || line.commodityId !== PLANET_SITE.harvest.commodityShallow
+      || !Number.isSafeInteger(line.qty) || line.qty <= 0) return;
+    total += line.qty;
+  }
+  if (total !== manifest.totalQty) return;
+  // Continue restores the shelf before records. Hydrate only this spawn's data, once both
+  // owners are available, so a refused spawn or a newer shelf never rewrites saved custody.
+  if (data.itinerary == null) data.itinerary = record.itinerary;
+  if (data.cargoManifest == null) data.cargoManifest = manifest;
+}
+
+function leanIdentityData(entity) {
+  const d = entity && entity.data && typeof entity.data === 'object' ? entity.data : {};
+  const out = {};
+  const hullDefId = pickHullDefId(d);
+  if (hullDefId) {
+    out.hullDefId = hullDefId;
+    if (d.shipDefId) out.shipDefId = d.shipDefId;
+    if (d.defId) out.defId = d.defId;
+  }
+  if (d.jobId != null) out.jobId = d.jobId;
+  if (d.trafficRole != null) out.trafficRole = d.trafficRole;
+  if (d.wreckClass != null) out.wreckClass = d.wreckClass;
+  // Aftermath wreck-field ecology inhabitants (scavenger/squatter/trap) stay virtualizable by
+  // design, but the roster owner re-mints a missing body every tick — the row must carry the
+  // ecology identity, or the promoted shell reads as a stranger: the slot unbinds it and mints
+  // a twin at ~1/tick while the shelved rows accumulate (D-churn, run 104/106: ~14k ships).
+  if (d.wreckFieldId != null) {
+    out.wreckFieldId = d.wreckFieldId;
+    if (d.wreckEcologyRole != null) out.wreckEcologyRole = d.wreckEcologyRole;
+    if (d.wreckEcology && typeof d.wreckEcology === 'object') out.wreckEcology = { ...d.wreckEcology };
+    if (d.scavengerWork && typeof d.scavengerWork === 'object') out.scavengerWork = { ...d.scavengerWork };
+  }
+  if (d.homeSectorId != null) out.homeSectorId = d.homeSectorId;
+  if (d.sectorId != null) out.sectorId = d.sectorId;
+  if (d.worldSiteId != null) out.worldSiteId = d.worldSiteId;
+  if (d.worldRecordId != null) out.worldRecordId = d.worldRecordId;
+  if (d.worldSiteComponentId != null) out.worldSiteComponentId = d.worldSiteComponentId;
+  if (d.worldObjectId != null) out.worldObjectId = d.worldObjectId;
+  if (d.kind != null) out.kind = d.kind;
+  if (d.role != null) out.role = d.role;
+  if (d.persistenceOwner != null) out.persistenceOwner = d.persistenceOwner;
+  // Dormant salvage wrecks shelf with the point binding the live body was resolved
+  // by. Dropping it made promotion an unbound shell, so quiet-sector wrecks had to
+  // stay on the combat list. Ships do not carry salvagePointId; their pools stay lean.
+  if (d.salvagePointId != null) {
+    out.salvagePointId = d.salvagePointId;
+    if (d.salvageSourceKey != null) out.salvageSourceKey = d.salvageSourceKey;
+    if (d.parentType != null) out.parentType = d.parentType;
+    if (d.sortPocketId != null) out.sortPocketId = d.sortPocketId;
+    if (d.authoredScanLabel != null) out.authoredScanLabel = d.authoredScanLabel;
+    if (d.authoredSalvagePool && typeof d.authoredSalvagePool === 'object') {
+      out.authoredSalvagePool = { ...d.authoredSalvagePool };
+    }
+    if (d.salvagePool && typeof d.salvagePool === 'object') out.salvagePool = { ...d.salvagePool };
+  }
+  // The faction-presence marker is the hull's authored identity: activityRuntime's
+  // authoredPresence combat rule, traffic, lossLedger, barkDirector, hails, and the presence
+  // owner's own re-adoption all key on it. A shelved hull that drops it promotes stripped
+  // and unmatchable — its owner then mints a twin beside it (D141).
+  if (d.factionPresence != null) out.factionPresence = d.factionPresence;
+  if (d.nextEventAtT != null) out.nextEventAtT = d.nextEventAtT;
+  // The durable AI descriptor (archetype/doctrine) must survive shelve→promote: captureEntityRecord
+  // reads it, and entitySpecFromRecord only default-fills when the record carries none — dropping it
+  // here makes the post-reload record differ from the pre-save one (save/reload hash equivalence).
+  const ai = d.ai && typeof d.ai === 'object' ? d.ai
+    : (entity && entity.ai && typeof entity.ai === 'object' ? entity.ai : null);
+  if (ai) out.ai = ai;
+  // A promoted worker must rejoin the same finite shift, with its manifest still owned by
+  // traffic. Losing these fields also overwrites the durable world record on its next capture.
+  if (entity.type === 'ship' && d.trafficRole === 'salvor' && !d.activityActorSlotId && !d.ceresActivityCast) {
+    for (const key of ['cargoManifest', 'generalSalvor', 'salvageSource', 'salvagePointId',
+      'homeStationId', 'jobKind', 'jobPhase', 'jobProgress']) {
+      if (Object.hasOwn(d, key)) out[key] = cloneTree(d[key]);
+    }
+  }
+  // A commissioned ordinary wreck has no authored source ledger. Preserve its finite pool and
+  // traffic-owned identity through the existing far-row projection, never from its recycled id.
+  if ((entity.type === 'wreck' || entity.type === 'payload') && typeof d.salvorTargetKey === 'string') {
+    for (const key of ['salvorTargetKey', 'salvorClaimedBy', 'salvagePool', 'salvageTimeLeft',
+      '_salvaged', 'parentType', 'payloadType', 'salvorNoticeAt']) {
+      if (Object.hasOwn(d, key)) out[key] = cloneTree(d[key]);
+    }
+  }
+  // Kess retains the same finite service, manifest and count-lane memory on promotion.
+  if (isTallyCourier(entity)) {
+    for (const key of ['itinerary', 'cargoManifest', 'freightDockSeq', 'namedLaneContactId',
+      'name', 'callsign', 'named', 'durable', 'trafficLabel', 'scanLabel', 'priorityCourierState',
+      'abstractIntent', 'jobKind', 'jobPhase', 'jobProgress']) {
+      if (Object.hasOwn(d, key)) out[key] = cloneTree(d[key]);
+    }
+  }
+  if (isAnvilWorker(entity)) {
+    for (const key of ['itinerary', 'cargoManifest', 'freightDockSeq', 'anvilSlingWitness',
+      'name', 'named', 'durable', 'propulsionRuntime']) {
+      if (Object.hasOwn(d, key)) out[key] = cloneTree(d[key]);
+    }
+  }
+  if(claimsTallyAssessor(entity))for(const key of ['placeId','archetypeGlb','placeScale','callsign','name','transientSector','tallyThree','cargoManifest','route','itinerary','carrying','cargoDumped','freightDockSeq'])if(Object.hasOwn(d,key))out[key]=cloneTree(d[key]);
+  return out;
+}
+
+function snapshotActor(entity, simTime) {
+  const data = entity.data || {};
+  const activity = entity.activity || {};
+  const lastExactT = Number.isFinite(activity.lastExactT) ? activity.lastExactT : simTime;
+  const nextEventAtT = Number.isFinite(activity.nextEventAtT)
+    ? activity.nextEventAtT
+    : (Number.isFinite(data.nextEventAtT) ? data.nextEventAtT : -1);
+  const intent = normalizeIntent(data.intent || entity.intent);
+  const route = data.route && typeof data.route === 'object' ? data.route : (data.itinerary || null);
+  const rec = {
+    id: entity.id,
+    type: entity.type,
+    alive: true,
+    farResident: true,
+    pos: { x: finite(entity.pos && entity.pos.x), z: finite(entity.pos && entity.pos.z) },
+    vel: { x: finite(entity.vel && entity.vel.x), z: finite(entity.vel && entity.vel.z) },
+    rot: finite(entity.rot),
+    angVel: finite(entity.angVel),
+    radius: Math.max(0.5, finite(entity.radius, 8)),
+    mass: finite(entity.mass, 20),
+    hull: finite(entity.hull, data.hull),
+    hullMax: finite(entity.hullMax, data.hullMax),
+    shield: finite(entity.shield),
+    shieldMax: finite(entity.shieldMax),
+    team: entity.team,
+    factionId: entity.factionId || data.factionId || null,
+    homeSectorId: entity.homeSectorId || data.homeSectorId || data.sectorId || null,
+    hullDefId: pickHullDefId(data),
+    intent,
+    route,
+    lastExactT,
+    nextEventAtT,
+    collides: entity.collides !== false && entity.type !== 'wreck' ? true : !!entity.collides,
+    data: leanIdentityData(entity),
+    jobId: data.jobId || null,
+    trafficRole: data.trafficRole || null,
+    virtualizedAt: simTime,
+  };
+  const physicsBody = isAnvilWorker(entity) || claimsTallyAssessor(entity)
+    ? null : snapshotPhysicsBodyDescriptor(entity);
+  if (physicsBody) rec.physicsBody = physicsBody;
+  return rec;
+}
+
+export function catchUpFarRecord(rec, simTime, table = null) {
+  if (!rec || typeof rec !== 'object') return rec;
+  const toT = Number.isFinite(simTime) ? simTime : 0;
+  const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : toT;
+  if (!(toT > fromT)) {
+    rec.lastExactT = toT;
+    markAuxRowDirty(table, rec.id);
+    return rec;
+  }
+  // In-place advance: the per-tick sweep only needs the record's fields to land —
+  // advanceWorldRecordInto skips the {...record} spread + pos/vel/drift literals the
+  // allocating variant pays per row per tick. Field values are identical.
+  // The presentation collect memoizes its walk on table.version, which only a re-key
+  // bumps — a row advanced within one cell across the walked disc's rim would stay
+  // absent from the memoized scratch until its own next cell-cross. Capture the pre-step
+  // position so the disc-rim crossing below can stamp the bump the re-key path gives.
+  const prevX = rec.pos ? finite(rec.pos.x) : NaN;
+  const prevZ = rec.pos ? finite(rec.pos.z) : NaN;
+  const advanced = advanceWorldRecordInto(rec, fromT, toT);
+  if (!advanced) {
+    rec.lastExactT = toT;
+    markAuxRowDirty(table, rec.id);
+    return rec;
+  }
+  rec.lastExactT = toT;
+  rec.lastObservedT = toT;
+  markAuxRowDirty(table, rec.id);
+  // A moved row must re-key the spatial grid — otherwise query discs centred on the
+  // stale cell keep returning it beside ghosts while its true cell never sees it.
+  if (table && rec.pos) {
+    const key = cellKey(finite(rec.pos.x), finite(rec.pos.z));
+    if (key !== rec._cell) {
+      gridRemove(table, rec);
+      gridAdd(table, rec);
+      // The presentation collect memoizes its grid walk on table.version — a silent
+      // re-key would let a memoized disc keep returning a row at its old cell.
+      table.version++;
+    } else {
+      // Same cell: no re-key, so the memoized collect keeps its scratch — unless the
+      // advance just carried the row across the recorded disc's rim (outside → in).
+      const disc = table.collectDisc;
+      if (disc && disc.r > 0 && Number.isFinite(prevX)) {
+        const nx = finite(rec.pos.x) - disc.x;
+        const nz = finite(rec.pos.z) - disc.z;
+        if (nx * nx + nz * nz <= disc.r * disc.r
+          && (prevX - disc.x) * (prevX - disc.x) + (prevZ - disc.z) * (prevZ - disc.z) > disc.r * disc.r) {
+          table.version++;
+        }
+      }
+    }
+  }
+  return rec;
+}
+
+export function insertFarActor(state, entity, simTime = 0, helpers = null) {
+  const table = ensureFarActorTable(state);
+  const rec = snapshotActor(entity, simTime);
+  // Physics has exported the current pose before residency shelves this hull. Anchor the
+  // owned pause to that snapshot, not last tick's producer position or the station chord.
+  const pauseId = tallyPauseId(entity);
+  if (pauseId && entity.data.abstractIntent?.routeId === pauseId
+    && Number.isFinite(entity.pos?.x) && Number.isFinite(entity.pos?.z)) {
+    rec.intent = { kind: 'travel', routeId: pauseId, startT: simTime, endT: simTime + 1,
+      parameters: { from: { ...rec.pos }, to: { ...rec.pos } } };
+    rec.data.abstractIntent = cloneTree(rec.intent);
+  }
+
+  if (isAnvilWorker(entity)) {
+    rec.physicsBody = cloneTree(entity.physicsBody);
+    for (const key of ['armorHp', 'armorMax', 'armorFlat', 'cap', 'capMax', 'lastDamageT']) {
+      if (Number.isFinite(entity[key])) rec[key] = entity[key];
+    }
+  }
+  if(claimsTallyAssessor(entity))rec.physicsBody=cloneTree(entity.physicsBody);
+  if (!rec.intent) {
+    // The entity's live control intent ({moveX,moveZ,...}) carries no itinerary kind, so
+    // snapshotActor normalizes it to null — resume the durable record's canonical intent
+    // instead: the shelved row then advances along its route at cruise rather than
+    // drifting ballistically along its velocity tangent, and the row's promote position
+    // tracks the same window the parallel record advertises. Degenerate windows
+    // (endT <= startT — a parked or unspeeded body) stay ballistic: honoring one would
+    // park the row at `to` on its first advance.
+    const recordId = rec.data && rec.data.worldRecordId;
+    const record = recordId != null && state && state.world
+      && state.world.records && state.world.records.byId
+      ? state.world.records.byId[recordId] : null;
+    const seeded = record && normalizeIntent(record.intent);
+    if (seeded && seeded.endT > seeded.startT) rec.intent = seeded;
+  }
+  // A shelved body's entity:destroyed releases its spawn-budget slot. Remember who owned it so
+  // promotion re-acquires a slot instead of returning an uncounted live entity (D70).
+  const budget = helpers && helpers.spawnBudget;
+  if (budget && typeof budget.ownerForEntity === 'function') {
+    const requester = budget.ownerForEntity(entity.id);
+    if (requester != null) rec.budgetRequester = requester;
+  }
+  if (table.byId.has(rec.id)) {
+    const existing = table.byId.get(rec.id);
+    const idx = table.rows.indexOf(existing);
+    if (idx >= 0) table.rows.splice(idx, 1);
+    gridRemove(table, existing);
+    clearEntityRuntime(existing);
+  }
+  table.rows.push(rec);
+  table.byId.set(rec.id, rec);
+  gridAdd(table, rec);
+  table.version++;
+  markAuxRowDirty(table, rec.id);
+  return rec;
+}
+
+// A parked or short-loop session (the release soak's dock/trade route, a station camper)
+// shelves every actor that wanders past the exit radius and never promotes it back, and
+// dropFarActorSector only fires on a sector leave that route never takes. Live traffic is
+// bounded by the spawn budget, but its SHELVED rows were not: rows accumulated in the save
+// forever — the one unbounded save-growth source left after the convoy-cap fix
+// (PQ-033.02 attribution: ~0.2-0.6 KB/cycle, every other grower plateaued).
+export const FAR_ROW_BUDGET = 128;
+
+// An unanchored id-carrying row is only SPENT after it has anchored nothing for a full
+// recent-memory window. A freshly shelved hull's record can land moments after the shelve
+// (the world capture pass walks live entities on its own cadence), so an immediate sweep
+// eats legitimate transients. Mirrors RECENT_MEMORY_WINDOW_S without importing the world
+// records module into the far table.
+export const FAR_ROW_ORPHAN_GRACE_S = 180;
+
+function rowCarriesAnchorIds(rec, data) {
+  const jobId = rec.jobId != null ? rec.jobId : (data.jobId != null ? data.jobId : null);
+  const recordId = rec.worldRecordId != null ? rec.worldRecordId
+    : (data.worldRecordId != null ? data.worldRecordId : null);
+  return { jobId, recordId };
+}
+
+// A row is durable while it anchors something that still exists: the npcJobs bag relinks
+// jobs by worldRecordId against rematerialized hulls, and a live world record carries the
+// rematerialization contract — evicting those rows would orphan the job (the exact
+// phantom-job growth the convoy-cap fix closed).
+//
+// Authored/owned bodies are durable BEFORE any bag lookup: a hull whose persistence belongs
+// to another owner (world-site components stamp persistenceOwner:'asteroidSites',
+// worldSiteRuntime.js entitySpec) carries a component id in data.worldRecordId that
+// captureEntityRecord REFUSES by design (worldRecords.js skips every owner but
+// 'worldRecords') — it can never be a records-bag key, so "unresolvable" for it does not
+// mean "spent". The first PQ-033.02 sweep missed this and deleted authored Ceres site
+// wrecks (check:pq020:ceres-topology went red: materializedEntities 1 vs 15).
+//
+// When an owner bag is absent entirely (focused harnesses without that system), the anchor
+// cannot be verified and the conservative 9/19 exemption holds.
+function farRowIsDurable(rec, state) {
+  if (!rec) return false;
+  const data = rec.data && typeof rec.data === 'object' ? rec.data : {};
+  if (data.persistenceOwner != null && data.persistenceOwner !== 'worldRecords') return true;
+  if (data.worldSiteId != null || data.worldSiteComponentId != null) return true;
+  const { jobId, recordId } = rowCarriesAnchorIds(rec, data);
+  if (jobId == null && recordId == null) return false;
+  const jobs = state && state.npcJobs && state.npcJobs.byId;
+  const records = state && state.world && state.world.records && state.world.records.byId;
+  if (jobId != null) {
+    if (!jobs) return true; // unverifiable: keep the exemption
+    if (Object.prototype.hasOwnProperty.call(jobs, jobId)) return true;
+  }
+  if (recordId != null) {
+    if (!records) return true; // unverifiable: keep the exemption
+    if (Object.prototype.hasOwnProperty.call(records, recordId)) return true;
+  }
+  return false; // verifiably anchored to nothing
+}
+
+/** True only for an unanchored id-carrying row whose grace window has fully elapsed. */
+function farRowIsSpentOrphan(rec, state, now) {
+  const data = rec.data && typeof rec.data === 'object' ? rec.data : {};
+  if (farRowIsDurable(rec, state)) return false;
+  const { jobId, recordId } = rowCarriesAnchorIds(rec, data);
+  if (jobId == null && recordId == null) return false; // plain row: the budget walk decides
+  const shelfT = Number(rec.virtualizedAt);
+  if (!Number.isFinite(shelfT) || !(now - shelfT > FAR_ROW_ORPHAN_GRACE_S)) return false;
+  return true;
+}
+
+/** Oldest-first, deterministic (rows is insertion-ordered and restore preserves the order). */
+export function enforceFarRowBudget(state) {
+  const table = state && state.world && state.world.farActors;
+  if (!table || !Array.isArray(table.rows) || !table.rows.length) return 0;
+  const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  let evicted = 0;
+  // Spent orphans die on every pass, budget or not: their rematerialization contracts are
+  // provably void AND their grace window has closed, and a slow shelving session that never
+  // crosses FAR_ROW_BUDGET would otherwise accumulate them under the ceiling. Allocation-free
+  // walk, insertion order.
+  for (let i = table.rows.length - 1; i >= 0; i--) {
+    const rec = table.rows[i];
+    if (!farRowIsSpentOrphan(rec, state, now)) continue;
+    removeFarRecord(table, rec);
+    evicted += 1;
+  }
+  if (table.rows.length <= FAR_ROW_BUDGET) return evicted;
+  let i = 0;
+  while (table.rows.length > FAR_ROW_BUDGET && i < table.rows.length) {
+    const rec = table.rows[i];
+    if (farRowIsDurable(rec, state)) {
+      i += 1;
+      continue;
+    }
+    removeFarRecord(table, rec);
+    evicted += 1;
+  }
+  return evicted;
+}
+
+export function removeFarRecord(table, rec) {
+  if (!table || !rec) return false;
+  const idx = table.rows.indexOf(rec);
+  if (idx >= 0) table.rows.splice(idx, 1);
+  table.byId.delete(rec.id);
+  gridRemove(table, rec);
+  table.version++;
+  rec.alive = false;
+  markAuxRowRemoved(table, rec.id);
+  clearEntityRuntime(rec);
+  return true;
+}
+
+export function dropFarActorSector(state, sectorId) {
+  const table = state && state.world && state.world.farActors;
+  if (!table || !sectorId) return 0;
+  let dropped = 0;
+  for (let i = table.rows.length - 1; i >= 0; i--) {
+    const rec = table.rows[i];
+    const home = rec && (rec.homeSectorId || (rec.data && rec.data.homeSectorId));
+    if (home !== sectorId) continue;
+    removeFarRecord(table, rec);
+    dropped++;
+  }
+  return dropped;
+}
+
+function pushFarInRadius(out, rec, x, z, r2) {
+  if (!rec || rec.alive === false || !rec.pos) return;
+  const dx = rec.pos.x - x;
+  const dz = rec.pos.z - z;
+  if (dx * dx + dz * dz <= r2) out.push(rec);
+}
+
+// Chunked twin: yields per grid column (cell path) or per `batchRows` rows
+// (linear-scan path) so a corridor-wide disc refill can ride a slice clock
+// across presented frames. `out` accumulates across suspensions — the caller
+// commits the memo key only when the walk completes, so a suspended refill
+// never serves a half-filled scratch as a stamped disc. Row order (therefore
+// `out` contents) is identical to the sync drain.
+export function* queryFarActorsSteps(state, pos, radius, out = [], batchRows = 1024) {
+  out.length = 0;
+  const table = state && state.world && state.world.farActors;
+  if (!table || !pos || !Number.isFinite(radius) || !(radius > 0)) return out;
+  const rows = table.rows;
+  const grid = table.grid;
+  if (!Array.isArray(rows) || rows.length === 0 || !grid || grid.size === 0) return out;
+  const x = finite(pos.x);
+  const z = finite(pos.z);
+  const r = radius;
+  const r2 = r * r;
+  const minC = Math.floor((x - r) / FAR_ACTOR_CELL);
+  const maxC = Math.floor((x + r) / FAR_ACTOR_CELL);
+  const minR = Math.floor((z - r) / FAR_ACTOR_CELL);
+  const maxR = Math.floor((z + r) / FAR_ACTOR_CELL);
+  const cellSpan = (maxC - minC + 1) * (maxR - minR + 1);
+  const safeRange = Number.isSafeInteger(minC) && Number.isSafeInteger(maxC)
+    && Number.isSafeInteger(minR) && Number.isSafeInteger(maxR)
+    && Number.isFinite(cellSpan);
+  const batch = Number.isFinite(batchRows) ? Math.max(1, batchRows | 0) : Infinity;
+  // Prefetch / enter discs are often thousands of WU while the far table stays ≤ FAR_ROW_BUDGET.
+  // Walking empty grid cells then dominates; a linear row scan is correct and cheaper whenever
+  // the disc covers more cells than live rows (typical quiet Ceres + decode runway).
+  if (!safeRange || cellSpan > rows.length) {
+    for (let i = 0; i < rows.length; i++) {
+      pushFarInRadius(out, rows[i], x, z, r2);
+      if ((i + 1) % batch === 0) yield;
+    }
+    return out;
+  }
+  for (let cx = minC; cx <= maxC; cx++) {
+    const rowBase = (cx + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + CELL_KEY_OFFSET;
+    for (let cz = minR; cz <= maxR; cz++) {
+      const bucket = grid.get(rowBase + cz);
+      if (!bucket) continue;
+      for (let i = 0; i < bucket.length; i++) pushFarInRadius(out, bucket[i], x, z, r2);
+    }
+    yield;
+  }
+  return out;
+}
+
+export function queryFarActors(state, pos, radius, out = []) {
+  const iterator = queryFarActorsSteps(state, pos, radius, out, Infinity);
+  for (;;) {
+    if (iterator.next().done) break;
+  }
+  return out;
+}
+
+export function promoteFarActor(state, id, helpers, expectedIdentity = null) {
+  if (!state || id == null) return null;
+  const live = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(id)
+    : null;
+  if (live && live.alive !== false && !expectedIdentity) {
+    // Core no longer recycles a shelved id, but an explicit-id spawn can still land on one. The
+    // live entity wins; evict the stale row now so it cannot remain an alias in the world ledger.
+    const table = state.world && state.world.farActors;
+    const stale = table && table.byId && table.byId.get(id);
+    if (stale) removeFarRecord(table, stale);
+    return live;
+  }
+  if (live && live.alive !== false && expectedIdentity
+    && matchesFarActorTargetIdentity(live, expectedIdentity)) {
+    const table = state.world && state.world.farActors;
+    const stale = table && table.byId && table.byId.get(id);
+    if (stale && matchesFarActorTargetIdentity(stale, expectedIdentity)) removeFarRecord(table, stale);
+    return live;
+  }
+  const rec = getFarActor(state, id);
+  if (!rec || rec.alive === false) return live;
+  if (expectedIdentity && !matchesFarActorTargetIdentity(rec, expectedIdentity)) return null;
+  // A legacy shelf row can arrive before the site owner's restore/sync. Do not admit even
+  // one native frame of generic geometry; that owner will discard the row and reauthor it.
+  if (isWorldSiteStaticAnatomy(rec)) return null;
+  if(claimsTallyAssessor(rec)&&!canPromoteTallyAssessor(state,rec)){rec.restoreRefusal='tally_assessor_identity';return null;}
+  const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
+  if (!spawn) return null;
+  // Re-acquire the slot this body released when it was shelved. A saturated cap defers the
+  // promotion — the row stays shelved and a later pass retries — rather than let a promoted
+  // body return live but uncounted (D70).
+  const budget = helpers && helpers.spawnBudget;
+  const requester = rec.budgetRequester != null ? rec.budgetRequester : null;
+  let granted = false;
+  if (requester != null) {
+    if (!budget || typeof budget.request !== 'function'
+      || budget.request(1, requester) <= 0) return null;
+    granted = true;
+  }
+  const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
+  catchUpFarRecord(rec, simTime, state.world && state.world.farActors);
+  // The renderer resolves an id to one presentation row, so never raise a body onto an id a
+  // dressing prop or field rock holds; take a fresh one instead.
+  const reserved = Number.isSafeInteger(rec.id) && rec.id > 0
+    && !(state.entities && state.entities.has(rec.id))
+    && !getDressingRow(state, rec.id)
+    && !getAsteroidFieldRock(state, rec.id)
+    ? rec.id
+    : 0;
+  const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};
+  if (rec.hullDefId && data.hullDefId == null) data.hullDefId = rec.hullDefId;
+  // leanIdentityData can shelve a hull whose only identity was shipDefId/typeId; promotion must
+  // re-canonicalize it onto defId or the ship returns without a whole-ship selector (D29).
+  if (rec.type === 'ship' && data.defId == null && data.hullDefId) data.defId = data.hullDefId;
+  if (rec.intent) data.intent = rec.intent;
+  if (rec.route) data.route = rec.route;
+  if (rec.jobId != null) data.jobId = rec.jobId;
+  if (rec.trafficRole != null) data.trafficRole = rec.trafficRole;
+  if (Number.isFinite(rec.nextEventAtT)) data.nextEventAtT = rec.nextEventAtT;
+  if (rec.homeSectorId) data.homeSectorId = rec.homeSectorId;
+  hydrateLegacyAnvilData(state, rec, data);
+  const spec = {
+    id: reserved || undefined,
+    type: rec.type,
+    pos: { x: rec.pos.x, z: rec.pos.z },
+    vel: { x: rec.vel.x, z: rec.vel.z },
+    rot: rec.rot,
+    angVel: rec.angVel,
+    radius: rec.radius,
+    mass: rec.mass,
+    hull: rec.hull,
+    hullMax: rec.hullMax,
+    shield: rec.shield,
+    shieldMax: rec.shieldMax,
+    team: rec.team,
+    factionId: rec.factionId,
+    collides: rec.collides,
+    data,
+  };
+  if (rec.physicsBody != null) spec.physicsBody = cloneTree(rec.physicsBody);
+  if (isAnvilWorker({ ...rec, data })) {
+    const hardware = makeShipEntitySpec('ship_mule', {
+      team: spec.team, factionId: spec.factionId, pos: spec.pos, rot: spec.rot,
+    });
+    // The lean shell's saved motion and damage override fresh hardware. The canonical
+    // drive/fittings keep this promotion equivalent to the worker's world-record restore.
+    const saved = {};
+    for (const key of ['armorHp', 'armorMax', 'armorFlat', 'cap', 'capMax', 'lastDamageT']) {
+      if (Number.isFinite(rec[key])) saved[key] = rec[key];
+    }
+    if (rec.physicsBody != null) saved.physicsBody = cloneTree(rec.physicsBody);
+    Object.assign(spec, { ...hardware, ...spec, ...saved, data: { ...hardware.data, ...data } });
+  }
+  if(claimsTallyAssessor(rec)){decorateTallyAssessorSpec(spec);spec.physicsBody=cloneTree(rec.physicsBody);}
+  const ent = spawn(spec);
+  if (!ent) {
+    if (granted) budget.releaseSome(requester, 1);
+    return null;
+  }
+  if (granted && !budget.bindEntity(ent.id, requester)) {
+    // Defensive: a fresh spawn cannot collide with a foreign binding — but never leave the
+    // grant unbound or the body live but uncounted.
+    const remove = typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
+    if (remove) remove(ent.id, { immediate: true, reason: 'virtualize' });
+    else ent.alive = false;
+    budget.releaseSome(requester, 1);
+    return null;
+  }
+  if (rec.homeSectorId) {
+    ent.homeSectorId = rec.homeSectorId;
+    if (ent.data) ent.data.homeSectorId = rec.homeSectorId;
+  }
+  syncEntitySectorMembership(state && state.entityIndex, ent);
+  if (ent.activity) ent.activity.lastExactT = simTime;
+  removeFarRecord(ensureFarActorTable(state), rec);
+  return ent;
+}
+
+function tableRadii(state, player) {
+  const reach = physicsReachWuFromState(state, player);
+  const decodeR = authoredPrefetchRadius(tableTravelSpeed(state));
+  const enter = Math.max(reach + NEAR_ENTER_PAD_WU, decodeR);
+  const exit = Math.max(
+    reach + NEAR_EXIT_PAD_WU,
+    decodeR + (NEAR_EXIT_PAD_WU - NEAR_ENTER_PAD_WU),
+  );
+  return { enter, exit };
+}
+
+function dist2(a, b) {
+  const dx = finite(a && a.x) - finite(b && b.x);
+  const dz = finite(a && a.z) - finite(b && b.z);
+  return dx * dx + dz * dz;
+}
+
+function pushAliveIds(list, out) {
+  if (!list) return;
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false || entity.id == null) continue;
+    out.push(entity.id);
+  }
+}
+
+/**
+ * Leftover S2/S3/S4 keep their stamp but drop off this-tick abstract/dormant
+ * buckets under production incremental classify. Shelving must still see them.
+ */
+function collectFarActorCandidateIds(state, out) {
+  out.length = 0;
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1) {
+    pushAliveIds(index.shipLike, out);
+    pushAliveIds(index.wrecks, out);
+    return out;
+  }
+  const list = (state && state.entityList) || [];
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false || entity.id == null) continue;
+    const type = entity.type;
+    if (type === 'ship' || type === 'drone' || type === 'wreck') out.push(entity.id);
+  }
+  return out;
+}
+
+export function tickFarActors(state, helpers, bus, shouldRetain = null) {
+  if (!state || state.mode !== 'flight' || survivalHold(state)) return { shelved: 0, restored: 0 };
+  const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (!player || !player.pos) return { shelved: 0, restored: 0 };
+
+  // Quiet settled flight: empty far table still paid ensureActivityClassified + shipLike/wreck
+  // shelve-candidate walk every tick when no S2/S3/S4 virt candidates existed. Latch when far
+  // rows are empty AND a probe found no virt candidates; wake on entity-index membership or a
+  // 0.5 s rescan. ALWAYS run the restore path when far rows exist (never skip promote-on-approach).
+  const farCount = farRowCount(state);
+  if (farCount > 0) {
+    // Rows present → full path (restore must stay live). Clear any empty latch.
+    tickFarActors._quiet = null;
+    publishFarQuiet(state, false);
+  } else if (FAR_EMPTY_QUIET_LATCH !== false) {
+    const membership = farQuietMembershipVersion(state);
+    if (membership != null) {
+      const tick = state.tick | 0;
+      const quiet = tickFarActors._quiet;
+      if (quiet
+        && quiet.membership === membership
+        && ((tick - (quiet.armedTick | 0)) < FAR_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishFarQuiet(state, true);
+        return { shelved: 0, restored: 0 };
+      }
+    } else if (tickFarActors._quiet) {
+      tickFarActors._quiet = null;
+    }
+  } else if (tickFarActors._quiet) {
+    tickFarActors._quiet = null;
+  }
+
+  ensureActivityClassified(state);
+  const radii = tableRadii(state, player);
+  const exit2 = radii.exit * radii.exit;
+  const enter2 = radii.enter * radii.enter;
+  const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
+  let shelved = 0;
+  let restored = 0;
+  let virtSeen = 0;
+
+  const farIds = tickFarActors._idScratch || (tickFarActors._idScratch = []);
+  collectFarActorCandidateIds(state, farIds);
+  const entities = state.entities;
+  for (let i = farIds.length - 1; i >= 0; i--) {
+    const entity = entities && typeof entities.get === 'function'
+      ? entities.get(farIds[i])
+      : null;
+    if (entity && typeof shouldRetain === 'function' && shouldRetain(entity, state)) continue;
+    if (!shouldVirtualizeFarActor(entity, state)) continue;
+    virtSeen++;
+    if (dist2(entity.pos, player.pos) <= exit2) continue;
+    const rec = insertFarActor(state, entity, simTime, helpers);
+    const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
+    if (remove) remove(entity.id, { immediate: true, reason: 'virtualize' });
+    else entity.alive = false;
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('world:farActorShelved', {
+        id: rec.id,
+        type: rec.type,
+        jobId: rec.jobId,
+        trafficRole: rec.trafficRole,
+        homeSectorId: rec.homeSectorId,
+      });
+    }
+    shelved++;
+  }
+
+  // Freshness sweep BEFORE the promote query: shelved rows keep moving, so a row whose
+  // frozen shelf pos sits outside `enter` can have drifted inside it — and every row the
+  // presentation collect can draw reads rec.pos directly. Advance any row whose ballistic
+  // projection lands inside the collect scan disc so promote checks and the draw both see
+  // the true position (catch-up also re-keys the grid). Rows outside the scan stay shelved
+  // and untouched — the sim side keeps them weightless until they matter.
+  const table = ensureFarActorTable(state);
+  if (table && Array.isArray(table.rows) && table.rows.length) {
+    const scanR = farLedgerScanRadius(state);
+    const scan2 = scanR * scanR;
+    for (let i = 0; i < table.rows.length; i++) {
+      const rec = table.rows[i];
+      if (!rec || rec.alive === false || !rec.pos) continue;
+      const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : simTime;
+      const drift = simTime - fromT;
+      if (!(drift > 0)) continue;
+      // Itinerary intents hold the authoritative position (accelerating/decelerating
+      // routes diverge from pure ballistic), so mirror advanceWorldRecord's predictor.
+      // rec.intent is already normalized at insert — the memoized into-variant drops the
+      // triple re-normalization + {x,z} literal this test paid per row per tick.
+      const along = rec.intent ? itineraryPositionInto(rec.intent, simTime, _sweepPos) : null;
+      const px = along ? finite(along.x)
+        : rec.pos.x + finite(rec.vel && rec.vel.x) * drift;
+      const pz = along ? finite(along.z)
+        : rec.pos.z + finite(rec.vel && rec.vel.z) * drift;
+      const dx = px - player.pos.x;
+      const dz = pz - player.pos.z;
+      if (dx * dx + dz * dz <= scan2) catchUpFarRecord(rec, simTime, table);
+    }
+  }
+
+  // Restore ALWAYS when rows may exist — query is cheap when empty; never gate this behind latch.
+  const hits = queryFarActors(state, player.pos, radii.enter, tickFarActors._scratch || (tickFarActors._scratch = []));
+  for (let i = 0; i < hits.length; i++) {
+    const rec = hits[i];
+    if (!rec || dist2(rec.pos, player.pos) > enter2) continue;
+    const recId = rec.id;
+    const jobId = rec.jobId;
+    const trafficRole = rec.trafficRole;
+    const ent = promoteFarActor(state, recId, helpers);
+    if (!ent) continue;
+    restored++;
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('world:farActorRestored', {
+        id: ent.id,
+        type: ent.type,
+        jobId: ent.data?.jobId ?? rec.jobId ?? null,
+        trafficRole,
+        entity: ent,
+      });
+    }
+  }
+  resolveFarEncounters(state, simTime);
+  enforceFarRowBudget(state);
+
+  // Arm empty+no-virt latch only when far stayed empty and probe saw no virt candidates.
+  const farAfter = farRowCount(state);
+  if (FAR_EMPTY_QUIET_LATCH !== false && farAfter === 0 && virtSeen === 0) {
+    const membership = farQuietMembershipVersion(state);
+    if (membership != null) {
+      tickFarActors._quiet = { membership, armedTick: state.tick | 0 };
+      publishFarQuiet(state, true);
+      return { shelved, restored };
+    }
+  }
+  tickFarActors._quiet = null;
+  publishFarQuiet(state, false);
+  return { shelved, restored };
+}
+
+export function farActorTableRadius(state) {
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  return tableRadii(state, player);
+}

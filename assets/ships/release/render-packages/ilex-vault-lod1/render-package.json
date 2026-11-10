@@ -1,0 +1,1177 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.ilex-vault-lod1.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentNodeId": "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ilex-vault-lod1.anchor.socket-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.399999976158142,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Massline",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentNodeId": "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.399999976158142,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.ilex-vault-lod1",
+  "collisions": [
+    {
+      "id": "sf.render.ilex-vault-lod1.node.collision-ilex-vault-vault.collision",
+      "nodeId": "sf.render.ilex-vault-lod1.node.collision-ilex-vault-vault",
+      "reference": "COLLISION_ILEX_VAULT_VAULT"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "4bd4f19149038be6e47d37462160157ad48e7fa593a1fd1ea9ba55d369611d83",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          4.500800609588623,
+          1.8998074680152954,
+          2.500233140831286
+        ],
+        "min": [
+          -4.500972747802734,
+          -1.5443660169426026,
+          -2.500233140831286
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "06dc4221c81ec8a66a82f682f51b868a90b45961365b4e3ecb9417dedce6bf2d",
+      "id": "sf.render.ilex-vault-lod1.node.collision-ilex-vault-vault.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_ILEX_VAULT_VAULT",
+      "nodeId": "sf.render.ilex-vault-lod1.node.collision-ilex-vault-vault",
+      "primitiveIndex": 0,
+      "vertexCount": 825
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0517685413360596,
+          1.9793234815180463,
+          1.279263628025016
+        ],
+        "min": [
+          -2.0517685413360596,
+          1.9006766329228717,
+          -1.279263628025016
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "887487492fb0d07ba3aa2ca0d9cfe6e23602eba0535e40832241d7945ead05b0",
+      "id": "sf.render.ilex-vault-lod1.node.lod1-armor.primitive.0",
+      "indexCount": 1272,
+      "indexed": true,
+      "materialHash": "4287d042a4cd6321d2e8adbbeb95dc41d664aefaeba7b05b4aa1417ecaa4114c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.ilex-vault-lod1.node.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 488
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9002833366394043,
+          1.919733494564754,
+          1.3196302458557962
+        ],
+        "min": [
+          -2.9002833366394043,
+          1.855296522334355,
+          -1.3196302458557962
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e937653cad16664fb2de7c839d757aca167fffa8816d806ba471df3fb36100a9",
+      "id": "sf.render.ilex-vault-lod1.node.lod1-canopy.primitive.0",
+      "indexCount": 480,
+      "indexed": true,
+      "materialHash": "19dce9a2caef3ad2474b08727987110a038825d0f0d044866b2b9d61650e9b3d",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_CANOPY",
+      "nodeId": "sf.render.ilex-vault-lod1.node.lod1-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          4.5000152587890625,
+          1.900180736435967,
+          2.5002981389878953
+        ],
+        "min": [
+          -4.500014305114746,
+          -1.2796447667017752,
+          -2.5002981389878953
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b768109f40cd9193f20a297b3d1eab292cb6e97841b58e648573faaad8c78119",
+      "id": "sf.render.ilex-vault-lod1.node.lod1-hull.primitive.0",
+      "indexCount": 1494,
+      "indexed": true,
+      "materialHash": "0343aaac5043db28c78b561ec4b84e454b3fa5e8291c2b701ae60869499956e6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.ilex-vault-lod1.node.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 430
+    },
+    {
+      "bounds": {
+        "max": [
+          2.2496488094329834,
+          1.9470881894160355,
+          1.1722313233515047
+        ],
+        "min": [
+          -2.2496488094329834,
+          1.9130348488758957,
+          -1.1722313233515047
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "64a015f24fee06667d7c9800a1476a495f6f79e7540fb2534e63fed90c1e92df",
+      "id": "sf.render.ilex-vault-lod1.node.lod1-lights-warm.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "2928a9466f7a70b3794ba9e4a77af25f1f9e311fd8622356f797b0144a73c3e1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Warm",
+      "nodeId": "sf.render.ilex-vault-lod1.node.lod1-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 102
+    },
+    {
+      "bounds": {
+        "max": [
+          4.489978790283203,
+          1.9444835546339245,
+          2.3204230120137868
+        ],
+        "min": [
+          -4.489978790283203,
+          -1.547250187667677,
+          -2.3204230120137868
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72ebbfb868a5b8b09ca42cf06d84cd4f552d49637554d9dc46db388f91f44400",
+      "id": "sf.render.ilex-vault-lod1.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 3444,
+      "indexed": true,
+      "materialHash": "e34c5389cdaa62a62425ec38367d20fbd0630fc0d7b8ca9706dbabb2f72dd927",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.ilex-vault-lod1.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1219
+    }
+  ],
+  "hlods": [],
+  "kind": "prop",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0343aaac5043db28c78b561ec4b84e454b3fa5e8291c2b701ae60869499956e6",
+      "id": "material:0343aaac5043db28c78b561e",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "19dce9a2caef3ad2474b08727987110a038825d0f0d044866b2b9d61650e9b3d",
+      "id": "material:19dce9a2caef3ad2474b0872",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "2928a9466f7a70b3794ba9e4a77af25f1f9e311fd8622356f797b0144a73c3e1",
+      "id": "material:2928a9466f7a70b3794ba9e4",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "4287d042a4cd6321d2e8adbbeb95dc41d664aefaeba7b05b4aa1417ecaa4114c",
+      "id": "material:4287d042a4cd6321d2e8adbb",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e34c5389cdaa62a62425ec38367d20fbd0630fc0d7b8ca9706dbabb2f72dd927",
+      "id": "material:e34c5389cdaa62a62425ec38",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.ilex-vault-lod1.node.collision-ilex-vault-vault",
+      "localTransform": [
+        4.500886678695679,
+        0,
+        0,
+        0,
+        0,
+        4.500886678695679,
+        0,
+        0,
+        0,
+        0,
+        4.500886678695679,
+        0,
+        -0.00008606910705566406,
+        0.17772072553634644,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_ILEX_VAULT_VAULT",
+      "nodeName": "COLLISION_ILEX_VAULT_VAULT",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ilex-vault-lod1.body",
+      "worldTransform": [
+        4.500886678695679,
+        0,
+        0,
+        0,
+        0,
+        4.500886678695679,
+        0,
+        0,
+        0,
+        0,
+        4.500886678695679,
+        0,
+        -0.00008606910705566406,
+        0.17772072553634644,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ilex-vault-lod1.node.lod1-armor",
+      "localTransform": [
+        2.0517685413360596,
+        0,
+        0,
+        0,
+        0,
+        2.0517685413360596,
+        0,
+        0,
+        0,
+        0,
+        2.0517685413360596,
+        0,
+        0,
+        1.940000057220459,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ilex-vault-lod1.body",
+      "worldTransform": [
+        2.0517685413360596,
+        0,
+        0,
+        0,
+        0,
+        2.0517685413360596,
+        0,
+        0,
+        0,
+        0,
+        2.0517685413360596,
+        0,
+        0,
+        1.940000057220459,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ilex-vault-lod1.node.lod1-canopy",
+      "localTransform": [
+        2.9002833366394043,
+        0,
+        0,
+        0,
+        0,
+        2.9002833366394043,
+        0,
+        0,
+        0,
+        0,
+        2.9002833366394043,
+        0,
+        0,
+        1.8875150084495544,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_CANOPY",
+      "nodeName": "LOD1_CANOPY",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ilex-vault-lod1.body",
+      "worldTransform": [
+        2.9002833366394043,
+        0,
+        0,
+        0,
+        0,
+        2.9002833366394043,
+        0,
+        0,
+        0,
+        0,
+        2.9002833366394043,
+        0,
+        0,
+        1.8875150084495544,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ilex-vault-lod1.node.lod1-hull",
+      "localTransform": [
+        4.500014781951904,
+        0,
+        0,
+        0,
+        0,
+        4.500014781951904,
+        0,
+        0,
+        0,
+        0,
+        4.500014781951904,
+        0,
+        4.76837158203125e-7,
+        0.31026798486709595,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ilex-vault-lod1.body",
+      "worldTransform": [
+        4.500014781951904,
+        0,
+        0,
+        0,
+        0,
+        4.500014781951904,
+        0,
+        0,
+        0,
+        0,
+        4.500014781951904,
+        0,
+        4.76837158203125e-7,
+        0.31026798486709595,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ilex-vault-lod1.node.lod1-lights-warm",
+      "localTransform": [
+        2.2496488094329834,
+        0,
+        0,
+        0,
+        0,
+        2.2496488094329834,
+        0,
+        0,
+        0,
+        0,
+        2.2496488094329834,
+        0,
+        0,
+        1.9300615191459656,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Warm",
+      "nodeName": "LOD1_Lights_Warm",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ilex-vault-lod1.body",
+      "worldTransform": [
+        2.2496488094329834,
+        0,
+        0,
+        0,
+        0,
+        2.2496488094329834,
+        0,
+        0,
+        0,
+        0,
+        2.2496488094329834,
+        0,
+        0,
+        1.9300615191459656,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ilex-vault-lod1.node.lod1-mechanicaldark",
+      "localTransform": [
+        4.489978790283203,
+        0,
+        0,
+        0,
+        0,
+        4.489978790283203,
+        0,
+        0,
+        0,
+        0,
+        4.489978790283203,
+        0,
+        0,
+        0.19861668348312378,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ilex-vault-lod1.body",
+      "worldTransform": [
+        4.489978790283203,
+        0,
+        0,
+        0,
+        0,
+        4.489978790283203,
+        0,
+        0,
+        0,
+        0,
+        4.489978790283203,
+        0,
+        0,
+        0.19861668348312378,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PROP_ILEX_VAULT_ROOT",
+      "nodeName": "SF_PROP_ILEX_VAULT_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ilex-vault-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ilex-vault-lod1.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ilex-vault-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ilex-vault-lod1.node.socket-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.399999976158142,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Massline",
+      "nodeName": "SOCKET_Massline",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ilex-vault-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.399999976158142,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "e24064df27537175348f264bb91c4390c1567fa87f7bad9b36ba5b40ce7f3a21"
+    },
+    "sourceGlb": {
+      "bytes": 354612,
+      "sha256": "d7909db3806e1a860936cf774e5e5f8dc2c46652ad1a9873a4318e9c3014b994",
+      "uri": "ilex_vault_lod1.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 356248,
+    "sha256": "96d672b1629a4d9ea58e7b7ce40eabf03b55e0b8359ae6672fdbea9aa6bbafea",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.00008606910705566406,
+        0.21603664692518465,
+        0
+      ],
+      "max": [
+        4.500800609588623,
+        1.9793234815180463,
+        2.5002981389878953
+      ],
+      "min": [
+        -4.500972747802734,
+        -1.547250187667677,
+        -2.5002981389878953
+      ],
+      "size": [
+        9.001773357391357,
+        3.5265736691857232,
+        5.000596277975791
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.699999988079071,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 8,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.ilex-vault-lod1.anchor.socket-camera-focus",
+              "sf.render.ilex-vault-lod1.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -1.399999976158142,
+          0,
+          1
+        ],
+        "name": "SOCKET_Massline",
+        "planIndex": 9,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Massline",
+            "recordIds": [
+              "sf.render.ilex-vault-lod1.anchor.socket-massline",
+              "sf.render.ilex-vault-lod1.node.socket-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "glass": 1,
+      "hull": 2,
+      "mechanical": 1,
+      "signal": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 10,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          2.0517685413360596,
+          0,
+          0,
+          0,
+          0,
+          2.0517685413360596,
+          0,
+          0,
+          0,
+          0,
+          2.0517685413360596,
+          0,
+          0,
+          1.940000057220459,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          2.9002833366394043,
+          0,
+          0,
+          0,
+          0,
+          2.9002833366394043,
+          0,
+          0,
+          0,
+          0,
+          2.9002833366394043,
+          0,
+          0,
+          1.8875150084495544,
+          0,
+          1
+        ],
+        "name": "LOD1_CANOPY",
+        "planIndex": 4,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.500014781951904,
+          0,
+          0,
+          0,
+          0,
+          4.500014781951904,
+          0,
+          0,
+          0,
+          0,
+          4.500014781951904,
+          0,
+          4.76837158203125e-7,
+          0.31026798486709595,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.2496488094329834,
+          0,
+          0,
+          0,
+          0,
+          2.2496488094329834,
+          0,
+          0,
+          0,
+          0,
+          2.2496488094329834,
+          0,
+          0,
+          1.9300615191459656,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Warm",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.489978790283203,
+          0,
+          0,
+          0,
+          0,
+          4.489978790283203,
+          0,
+          0,
+          0,
+          0,
+          4.489978790283203,
+          0,
+          0,
+          0.19861668348312378,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "pod",
+    "url": "assets/ships/release/parts/wholeships/ilex_vault_lod1.glb"
+  },
+  "runtimeHash": "83f1f163052420d4d9c4e3198f009cf78e9c8f20951e98e7a75e78beffde42e8",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          4.500800609588623,
+          1.9793234815180463,
+          2.5002981389878953
+        ],
+        "min": [
+          -4.500972747802734,
+          -1.547250187667677,
+          -2.5002981389878953
+        ]
+      },
+      "id": "sf.render.ilex-vault-lod1.body",
+      "nodeIds": [
+        "sf.render.ilex-vault-lod1.node.collision-ilex-vault-vault",
+        "sf.render.ilex-vault-lod1.node.lod1-armor",
+        "sf.render.ilex-vault-lod1.node.lod1-canopy",
+        "sf.render.ilex-vault-lod1.node.lod1-hull",
+        "sf.render.ilex-vault-lod1.node.lod1-lights-warm",
+        "sf.render.ilex-vault-lod1.node.lod1-mechanicaldark",
+        "sf.render.ilex-vault-lod1.node.sf-prop-ilex-vault-root",
+        "sf.render.ilex-vault-lod1.node.socket-camera-focus",
+        "sf.render.ilex-vault-lod1.node.socket-massline"
+      ]
+    }
+  ]
+}

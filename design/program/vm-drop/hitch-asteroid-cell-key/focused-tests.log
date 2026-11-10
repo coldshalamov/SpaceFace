@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: packAsteroidFieldCellKey is stable and bijective for nearby cells
+ok 1 - packAsteroidFieldCellKey is stable and bijective for nearby cells
+  ---
+  duration_ms: 7.96745
+  ...
+# Subtest: queryAsteroidField uses integer grid keys (no string buckets)
+ok 2 - queryAsteroidField uses integer grid keys (no string buckets)
+  ---
+  duration_ms: 0.802458
+  ...
+# Subtest: ensureAsteroidField rebuilds legacy string-keyed grids
+ok 3 - ensureAsteroidField rebuilds legacy string-keyed grids
+  ---
+  duration_ms: 0.265359
+  ...
+# Subtest: queryAsteroidField does not allocate string keys under repeated probes
+ok 4 - queryAsteroidField does not allocate string keys under repeated probes
+  ---
+  duration_ms: 7.469065
+  ...
+# Subtest: dormant rocks stay off the combat list until promoted
+ok 5 - dormant rocks stay off the combat list until promoted
+  ---
+  duration_ms: 7.514643
+  ...
+# Subtest: reserved presentation ids advance the allocator and stay unique
+ok 6 - reserved presentation ids advance the allocator and stay unique
+  ---
+  duration_ms: 1.727662
+  ...
+# Subtest: reserved dressing ids also stay unique with automatic row allocation
+ok 7 - reserved dressing ids also stay unique with automatic row allocation
+  ---
+  duration_ms: 0.727065
+  ...
+# Subtest: activity and geology rocks stay live entities
+ok 8 - activity and geology rocks stay live entities
+  ---
+  duration_ms: 0.187137
+  ...
+# Subtest: dressing rows are presentation sources, not combat entities
+ok 9 - dressing rows are presentation sources, not combat entities
+  ---
+  duration_ms: 1.638348
+  ...
+# Subtest: quiet Ceres combat list drops the dormant belt and dressing
+ok 10 - quiet Ceres combat list drops the dormant belt and dressing
+  ---
+  duration_ms: 35.977505
+  ...
+# Subtest: promote a field rock applies catch-up before it is live
+ok 11 - promote a field rock applies catch-up before it is live
+  ---
+  duration_ms: 1.563838
+  ...
+# Subtest: ram overlap promotes a field rock onto the combat list
+ok 12 - ram overlap promotes a field rock onto the combat list
+  ---
+  duration_ms: 1.123004
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 379.781866

@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/design/program/vm-drop/colossus-chase/colossus_c1_lod0.glb",
+  "ship": "colossus",
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "runtimeScale": 2.3734368691648875,
+  "authoredX": 23.1899995803833,
+  "targetWU": 55.04,
+  "size": [
+    55.04,
+    15.2243,
+    11.4075
+  ],
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/colossus-chase/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/colossus-chase/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/colossus-chase/play_chase_close.png"
+  },
+  "clay": "/workspace/spaceface/design/program/vm-drop/colossus-chase/clay_play_chase.png",
+  "clayAbeam": "/workspace/spaceface/design/program/vm-drop/colossus-chase/clay_play_chase_abeam.png",
+  "clayClose": "/workspace/spaceface/design/program/vm-drop/colossus-chase/clay_play_chase_close.png"
+}

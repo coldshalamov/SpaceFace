@@ -1,0 +1,869 @@
+// marketNews.js — surface the already-deep-but-invisible economy as a 1-line NEWS TICKER plus
+// dock "event cards". READ-ONLY over the economy: this module NEVER mutates prices, stock, or any
+// economy state. It listens to economy events and stable encounter freight-loss intents for
+// generated headlines, to leftover `pirateRumor:headline` for lane rumors, and to
+// `news:publish` for already-authored literal copy, then emits
+// presentation signals (voice on the "news" channel, else a "toast").
+//
+// Split of concerns:
+//   • generateHeadline(...) / buildEventCard(...) — PURE, deterministic given (inputs + seed). No DOM,
+//     no bus, no clock. Template + variant selection is seeded from state.meta.seed + an event key via
+//     core/rng.js hash32 (NO Math.random in the generator). Unit-testable headless.
+//   • createMarketNews(ctx) — the wired UI system: subscribes to economy events, routes surfaced
+//     headlines through ctx.helpers.voice?.say('news', ...) if present else emits 'toast', maintains a
+//     rolling headline log on state.ui.marketNews, and (only when a DOM document exists) mounts a
+//     small ticker strip. All DOM usage is guarded behind `typeof document`.
+//
+// Determinism note: this is a UI/presentation system (SYSTEMS only, NOT UPDATE_ORDER). The pure
+// generator is deterministic so tests + any deterministic replay of surfaced headlines are stable;
+// the DOM ticker itself is cosmetic and may use timers/rAF freely (guarded by typeof window).
+
+import { COMMODITIES } from '../data/commodities.js';
+import { commodityDisplayName } from './commodityNames.js';
+import { SECTORS } from '../data/sectors.js';
+import { hash32 } from '../core/rng.js';
+import { deedsFor, markNoted, wasNoted } from '../systems/deedRecord.js';
+import { deedLine } from '../data/deedPhrases.js';
+import {
+  HEADLINE_TEMPLATES, REGIME_TEMPLATES, CARD_TEMPLATES, COMMODITY_FLAVOR,
+  normalizeKind, fillTemplate,
+} from '../data/newsTemplates.js';
+import { isSurvivalRunLive } from '../combat/adventureAttackReaders.js';
+import { playerCallsign } from './playerIdentity.js';
+import { claimDeliveryNote, claimLegFirstSeen, ensureWorldNews, registerWorldBeats } from './worldNewsBeats.js';
+
+// A headline names the place, not its id. An id that does not resolve is printed as given.
+function sectorDisplayName(id) {
+  const sector = SECTORS.find((row) => row && row.id === id);
+  return (sector && sector.name) || String(id);
+}
+
+const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const STATION_NAME_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    if (station && station.id && station.name) STATION_NAME_BY_ID.set(station.id, station.name);
+  }
+}
+const MAX_LOG = 12;            // rolling headlines kept on state.ui.marketNews.log
+const MAX_TICKER_ITEMS = 8;
+const TICKER_LEGIBLE_PX = 140;    // DOM ticker cap
+
+// A scheduled wreck complication gets minutes of dread on the ticker before it fires. The lines
+// name the wreck, never the kind — the player heard the bearing rumour; this is what follows it.
+const WRECK_COMPLICATION_RUMORS = [
+  'Watch chatter is already circling the {name}.',
+  'Insurance desks quietly repriced anything touching the {name}.',
+  'A clean-hands outfit started asking who has been near the {name}.',
+  'Salvage crews say the {name} will not stay unclaimed for long.',
+];
+
+// ---- token building (pure) -----------------------------------------------------------------
+
+/** Human display name for a commodity id (falls back to a de-prefixed id). */
+export function commodityName(commodityId, catalog) {
+  if (commodityId === '*' || !commodityId) return 'the market';
+  const def = (catalog && catalog.get && catalog.get(commodityId)) || CMDTY_BY_ID.get(commodityId);
+  if (def && def.name) return def.name;
+  return commodityDisplayName(String(commodityId));
+}
+
+/** Lowercased prose noun for a commodity, preferring bespoke atmospheric flavor. */
+function commodityNoun(commodityId, catalog) {
+  const fl = COMMODITY_FLAVOR[commodityId];
+  if (fl && fl.noun) return fl.noun;
+  return commodityName(commodityId, catalog).toLowerCase();
+}
+
+/** Friendly station label from a station id (or a passed-in name). */
+export function stationLabel(stationId, stationName) {
+  if (stationName) return stationName;
+  if (!stationId) return 'the station';
+  const named = STATION_NAME_BY_ID.get(stationId);
+  if (named) return named;
+  return String(stationId).replace(/^station_/, '').replace(/_/g, ' ');
+}
+
+function tokensFor(ev, catalog) {
+  return {
+    name: commodityName(ev.commodityId, catalog),
+    noun: commodityNoun(ev.commodityId, catalog),
+    station: stationLabel(ev.stationId, ev.stationName),
+  };
+}
+
+// ---- deterministic variant selection -------------------------------------------------------
+
+/** Stable event key: identifies "this event" independent of wall-clock, for seeded variant pick. */
+export function eventKey(ev) {
+  return [ev.kind || ev.type || 'event', ev.stationId || '-', ev.commodityId || '-', ev.eventId || ev.id || ''].join(':');
+}
+
+/**
+ * Pick one variant from `variants` deterministically from (seed + key).
+ * hash32 over (seed, key) → index. No Math.random. Returns '' if the list is empty.
+ */
+export function pickVariant(variants, seed, key) {
+  if (!Array.isArray(variants) || variants.length === 0) return '';
+  const h = hash32(seed >>> 0 || 0, String(key || ''));
+  return variants[h % variants.length];
+}
+
+// ---- PURE headline generator ---------------------------------------------------------------
+
+/**
+ * generateHeadline(ev, opts) -> string
+ *   ev: { type|kind, stationId, commodityId, stationName?, eventId?, regime? }
+ *   opts: { seed, catalog? }  (catalog = optional Map<id,def>; defaults to the static catalog)
+ * Deterministic: same (ev, seed) always yields the same non-empty headline.
+ */
+export function generateHeadline(ev, opts = {}) {
+  if (!ev) return '';
+  const seed = (opts.seed >>> 0) || 0;
+  const catalog = opts.catalog || CMDTY_BY_ID;
+  const kind = ev.kind || normalizeKind(ev.type);
+  const isRegime = ev.type === 'regime' || ev.kind === 'regime';
+  const variants = isRegime
+    ? (REGIME_TEMPLATES[ev.regime] || REGIME_TEMPLATES.stable)
+    : (HEADLINE_TEMPLATES[kind] || HEADLINE_TEMPLATES.event);
+  const key = eventKey({ ...ev, kind: isRegime ? ('regime:' + (ev.regime || 'stable')) : kind });
+  const tpl = pickVariant(variants, seed, key);
+  const line = fillTemplate(tpl, tokensFor(ev, catalog)).replace(/\s+/g, ' ').trim();
+  return line;
+}
+
+/**
+ * Citation from a ticker/log record (or raw event) back to the sim event that produced it.
+ * Economy lines use eventId; freight uses intentId; authored publish uses sourceRef.
+ * Returns null when the line cannot be traced — those lines must not stay on the ticker.
+ */
+export function tickerEventRef(rec) {
+  if (!rec || typeof rec !== 'object') return null;
+  const eventId = rec.eventId || rec.id || rec.intentId || rec.sourceRef || rec.receiptId || null;
+  if (!eventId) return null;
+  const source = rec.source
+    || (rec.intentId && rec.encounterId ? 'freight_causality' : null)
+    || (rec.sourceRef || rec.receiptId ? 'news:publish' : null)
+    || 'economy:eventStarted';
+  return {
+    source,
+    eventId: String(eventId),
+    intentId: rec.intentId ? String(rec.intentId) : null,
+    encounterId: rec.encounterId ? String(rec.encounterId) : null,
+    sourceRef: rec.sourceRef ? String(rec.sourceRef) : rec.receiptId ? String(rec.receiptId) : null,
+  };
+}
+
+function stampTickerProvenance(rec, ev) {
+  if (!rec) return rec;
+  const src = ev || {};
+  if (rec.eventId == null && (src.eventId || src.id)) rec.eventId = src.eventId || src.id;
+  if (rec.intentId == null && src.intentId) rec.intentId = src.intentId;
+  if (rec.encounterId == null && src.encounterId) rec.encounterId = src.encounterId;
+  if (rec.sourceRef == null && src.sourceRef) rec.sourceRef = src.sourceRef;
+  if (rec.source == null && src.source) rec.source = src.source;
+  const ref = tickerEventRef(rec);
+  if (!ref) return rec;
+  if (rec.eventId == null) rec.eventId = ref.eventId;
+  if (rec.source == null) rec.source = ref.source;
+  return rec;
+}
+
+/**
+ * buildEventCard(ev, opts) -> { badge, tone, title, body, headline, kind, eventId } | null
+ * A dock event card for shortage/boom/etc, shown on arrival. PURE + deterministic.
+ */
+export function buildEventCard(ev, opts = {}) {
+  if (!ev) return null;
+  const seed = (opts.seed >>> 0) || 0;
+  const catalog = opts.catalog || CMDTY_BY_ID;
+  const kind = ev.kind || normalizeKind(ev.type);
+  const card = CARD_TEMPLATES[kind] || CARD_TEMPLATES.event;
+  const tokens = tokensFor(ev, catalog);
+  const eventId = ev.eventId || ev.id || ev.intentId || ev.sourceRef || null;
+  return {
+    kind,
+    badge: card.badge,
+    tone: card.tone,
+    title: fillTemplate(card.title, tokens),
+    body: fillTemplate(card.body, tokens),
+    headline: generateHeadline({ ...ev, kind }, { seed, catalog }),
+    stationId: ev.stationId || null,
+    commodityId: ev.commodityId || null,
+    eventId,
+    source: ev.source || (eventId ? 'economy' : null),
+  };
+}
+
+/**
+ * Cards for a docked station, derived READ-ONLY from live econEvents. Deterministic ordering +
+ * variant. Degrades to [] if the economy is absent.
+ */
+export function cardsForStation(state, stationId, opts = {}) {
+  const seed = (opts.seed >>> 0) || ((state && state.meta && (hash32(state.meta.seed) >>> 0)) || 0);
+  const econ = state && state.economy;
+  const events = (econ && econ.econEvents) || [];
+  const out = [];
+  for (const ev of events) {
+    if (ev.stationId !== stationId) continue;
+    const card = buildEventCard(
+      { type: ev.type, kind: normalizeKind(ev.type), stationId: ev.stationId, commodityId: ev.commodityId, eventId: ev.id },
+      { seed },
+    );
+    if (card) out.push(card);
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
+// ---- wired UI system -----------------------------------------------------------------------
+
+export function createMarketNews(ctx) {
+  const bus = ctx && ctx.bus;
+  const state = ctx && ctx.state;
+  const helpers = (ctx && ctx.helpers) || {};
+  if (!state) return { name: 'marketNews', destroy() {} };
+
+  // rolling headline log lives on state.ui (additive; never required by other systems)
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (!state.ui.marketNews || typeof state.ui.marketNews !== 'object') {
+    state.ui.marketNews = { log: [], lastCard: null };
+  }
+  const model = state.ui.marketNews;
+  if (!Array.isArray(model.log)) model.log = [];
+  // Presentation-only guard for synchronous replay/re-entry within the current loaded timeline.
+  // The encounter director's durable applied-intent ledger remains authoritative across process
+  // reloads; save:loaded clears this transient set so a rewind may legitimately settle again.
+  const surfacedFreightLossIds = new Set();
+  // The arrival twin's guards: one headline per intent (same replay rule as above) and one per
+  // station per cooldown window, so a busy lane's docking rhythm cannot wallpaper the wire.
+  const surfacedFreightArrivalIds = new Set();
+  const freightArrivalHeardAt = new Map();
+  const FREIGHT_ARRIVAL_COOLDOWN_S = 240;
+  // ECON-08 — lossIds whose player-caused shipment already made the wire. The ledger dedupes
+  // the price-side emit; this set + the log check below dedupe the presentation side, so one
+  // loss can never print twice even if the intent replays.
+  // Stunt wire (U8): each witnessed episode makes the wire at most once per process. Rewinding
+  // a save may legitimately re-settle it, so this clears on save:loaded like the set above.
+  const surfacedStuntEpisodes = new Set();
+  const surfacedPirateKills = new Set();
+
+  function seedOf() {
+    return (state.meta && (hash32(state.meta.seed) >>> 0)) || 0;
+  }
+
+  // The opening tutorial owns the pilot's attention: news still records history, but it does not
+  // speak or paint over the one lesson until the rail releases the voice.
+  function tutorialOwnsAttention() {
+    const ob = state.onboarding;
+    return !!(ob && ob.active === true && ob.finished !== true);
+  }
+
+  // Commit a resolved headline to the rolling log, one-voice floor, ticker, and downstream event.
+  // `metadata` is supplied by authored `news:publish` and causal freight-loss paths; generic
+  // economy emissions retain their original compact payload shapes.
+  function commitHeadline(headline, ev, { quiet = false, metadata = null } = {}) {
+    if (!headline) return null;
+    // Adventure news (economy, rumors, authored copy) never reaches the Crucible flight glass.
+    if (isSurvivalRunLive(state.run)) return null;
+    const kind = ev.kind || normalizeKind(ev.type);
+    const stationId = ev.stationId || null;
+    const rec = metadata
+      ? { ...metadata, text: headline, kind, t: (state.simTime || 0), stationId }
+      : { text: headline, kind, t: (state.simTime || 0), stationId };
+    stampTickerProvenance(rec, ev);
+    if (!tickerEventRef(rec)) return null;
+    model.log.unshift(rec);
+    if (model.log.length > MAX_LOG) model.log.length = MAX_LOG;
+
+    // History and news:headline are information other owners consume; only presentation waits.
+    if (!quiet && bus && !tutorialOwnsAttention()) {
+      const voiceMetadata = metadata ? { ...metadata } : null;
+      if (voiceMetadata) delete voiceMetadata.channel;
+      const said = helpers.voice && typeof helpers.voice.say === 'function'
+        ? helpers.voice.say({ channel: 'news', ...(voiceMetadata || {}), text: headline, kind: rec.kind })
+        : false;
+      if (!said) bus.emit('toast', {
+        ...(voiceMetadata || {}),
+        text: headline,
+        kind: toastKind(rec.kind),
+        newsKind: rec.kind,
+        ttl: 4,
+      });
+    }
+    tickerIndex = 0;
+    renderTicker();
+    if (bus) bus.emit('news:headline', metadata
+      ? { ...metadata, headline, kind: rec.kind, stationId: rec.stationId }
+      : { headline, kind: rec.kind, stationId: rec.stationId });
+    return rec;
+  }
+
+  // Economy events still use deterministic templates.
+  function surface(ev, { channel = 'news', quiet = false } = {}) {
+    const headline = generateHeadline(ev, { seed: seedOf() });
+    return commitHeadline(headline, ev, { quiet });
+  }
+
+  // Authored narrative copy must arrive verbatim. Do not pass it through generateHeadline: doing so
+  // would replace the authored line with a commodity template and discard provenance metadata.
+  function surfacePublished(ev) {
+    if (!ev || typeof ev.text !== 'string' || !ev.text.trim()) return null;
+    if (ev.source === 'chronicler') {
+      if (ev.kind === 'chronicler-legend') {
+        const bag = ensureWorldNews(state);
+        const day = Math.floor((state.simTime || 0) / 600);
+        if (bag.legendDay === day) return null;
+        bag.legendDay = day;
+      } else {
+        const evidence = Array.isArray(ev.evidence) ? ev.evidence : [];
+        if (evidence.length === 0 && ev.witnessed !== true) return null;
+      }
+    }
+    return commitHeadline(ev.text, ev, { metadata: ev });
+  }
+
+  function surfaceFreightLoss(ev) {
+    // Traffic still owns a legacy direct news relay. Restrict this seam to stable encounter
+    // consequences until that producer migrates, otherwise ordinary traffic losses would produce
+    // two news:headline events. Encounter provenance is also required by this presentation contract.
+    if (!ev || !ev.encounterId || !ev.intentId) return null;
+    const intentId = String(ev.intentId);
+    if (surfacedFreightLossIds.has(intentId)) return null;
+
+    const nested = ev.news && typeof ev.news === 'object' ? ev.news : {};
+    const stationId = ev.stationId || nested.stationId || null;
+    const commodityId = ev.primaryCommodityId
+      || nested.commodityId
+      || (Array.isArray(ev.pressures) && ev.pressures[0]
+        && (ev.pressures[0].commodityId || ev.pressures[0].good))
+      || null;
+    if (!stationId || !commodityId) return null;
+    const stations = state.world && state.world.activeSector && state.world.activeSector.stations;
+    const station = Array.isArray(stations)
+      ? stations.find((candidate) => candidate && (candidate.id === stationId || candidate.stationId === stationId))
+      : null;
+    const newsEvent = {
+      type: 'freight_loss',
+      kind: 'freight_loss',
+      cause: ev.cause || nested.cause || 'freight_loss',
+      intentId,
+      eventId: intentId,
+      encounterId: String(ev.encounterId),
+      stationId: String(stationId),
+      stationName: station && station.name ? String(station.name) : undefined,
+      commodityId: String(commodityId),
+      sectorId: ev.sectorId || nested.sectorId || null,
+      manifestId: ev.manifestId || null,
+      freighterKey: ev.freighterKey || nested.freighterKey || null,
+      source: nested.source || ev.source || 'freight_causality',
+    };
+
+    // Reserve before voice/headline emissions because the bus is synchronous and downstream
+    // presentation listeners may re-enter with the same consequence.
+    surfacedFreightLossIds.add(intentId);
+    while (surfacedFreightLossIds.size > 64) {
+      surfacedFreightLossIds.delete(surfacedFreightLossIds.values().next().value);
+    }
+    const headline = generateHeadline(newsEvent, { seed: seedOf() });
+    const committed = commitHeadline(headline, newsEvent, { metadata: newsEvent });
+    if (!committed) surfacedFreightLossIds.delete(intentId);
+    return committed;
+  }
+
+  // The arrival twin. Five freight_arrival headlines, an ARRIVAL dock card and its ticker
+  // styling were authored for exactly this event, and the only listener was the visual
+  // fanfare — a station taking delivery, the thing that softens the price you are about to
+  // sell into, never printed a word. Arrivals are ordinary trade rhythm, not encounter
+  // consequences, so this seam keys on the causal intent (the loss twin's encounterId rule
+  // belongs to its legacy direct-relay guard) and a per-station cooldown keeps a busy lane's
+  // docking cadence off the wire: the arrival is news when the station has been quiet, not
+  // every time a hull docks.
+  function surfaceFreightArrival(ev) {
+    if (!ev || !ev.intentId || (ev.kind !== 'freight_arrival' && ev.cause !== 'freight_arrival')) return null;
+    const intentId = String(ev.intentId);
+    if (surfacedFreightArrivalIds.has(intentId)) return null;
+
+    const stationId = ev.stationId != null ? String(ev.stationId) : null;
+    const trades = Array.isArray(ev.trades) ? ev.trades : [];
+    const primaryLine = trades
+      .filter((line) => line && line.commodityId && (line.qty | 0) > 0)
+      .sort((a, b) => (b.qty | 0) - (a.qty | 0))[0] || null;
+    const commodityId = (primaryLine && primaryLine.commodityId) || ev.primaryCommodityId || null;
+    if (!stationId || !commodityId) return null;
+    const heardAt = freightArrivalHeardAt.get(stationId);
+    const now = Number(state.simTime) || 0;
+    if (heardAt != null && now - heardAt < FREIGHT_ARRIVAL_COOLDOWN_S) return null;
+
+    const stations = state.world && state.world.activeSector && state.world.activeSector.stations;
+    const station = Array.isArray(stations)
+      ? stations.find((candidate) => candidate && (candidate.id === stationId || candidate.stationId === stationId))
+      : null;
+    const newsEvent = {
+      type: 'freight_arrival',
+      kind: 'freight_arrival',
+      cause: ev.cause || 'freight_arrival',
+      intentId,
+      eventId: intentId,
+      stationId,
+      stationName: station && station.name ? String(station.name) : undefined,
+      commodityId: String(commodityId),
+      sectorId: ev.sectorId || null,
+      manifestId: ev.manifestId || null,
+      freighterKey: ev.freighterKey || null,
+      source: 'freight_causality',
+    };
+
+    surfacedFreightArrivalIds.add(intentId);
+    while (surfacedFreightArrivalIds.size > 64) {
+      surfacedFreightArrivalIds.delete(surfacedFreightArrivalIds.values().next().value);
+    }
+    const headline = generateHeadline(newsEvent, { seed: seedOf() });
+    const committed = commitHeadline(headline, newsEvent, { metadata: newsEvent });
+    if (committed) freightArrivalHeardAt.set(stationId, now);
+    else surfacedFreightArrivalIds.delete(intentId);
+    return committed;
+  }
+
+  const surfacedLossPriceIds = new Set();
+  // ECON-08 — a loss you caused moves the price and the news names the cause. lossLedger emits
+  // one structured lossLedger:priceMove per player-caused shipped-commodity loss; this seam
+  // authors the single cited headline naming that cause. Uncited publishing is forbidden: the
+  // commit carries eventId + sourceRef = the lossId, so tickerEventRef always resolves — a line
+  // that cannot trace back to its loss never reaches the ticker.
+  function surfaceLossPriceMove(ev) {
+    if (!ev || ev.cause !== 'player_kill' || !ev.lossId || !ev.commodityId || !ev.destStationId) return null;
+    const lossId = String(ev.lossId);
+    if (surfacedLossPriceIds.has(lossId)) return null;
+    if (model.log.some((rec) => rec && (rec.eventId === lossId || rec.sourceRef === lossId))) return null;
+    const commodity = commodityName(ev.commodityId);
+    const station = stationLabel(ev.destStationId);
+    const text = `Your attack destroyed a ${commodity} shipment bound for ${station} — expect tighter prices there.`;
+    surfacedLossPriceIds.add(lossId);
+    while (surfacedLossPriceIds.size > 64) {
+      surfacedLossPriceIds.delete(surfacedLossPriceIds.values().next().value);
+    }
+    const newsEvent = {
+      type: 'loss_price',
+      kind: 'freight_loss',
+      cause: 'player_kill',
+      eventId: lossId,
+      sourceRef: lossId,
+      source: 'lossLedger:priceMove',
+      stationId: String(ev.destStationId),
+      commodityId: String(ev.commodityId),
+      sectorId: ev.sectorId || null,
+      lossId,
+    };
+    const committed = commitHeadline(text, newsEvent, { metadata: newsEvent });
+    if (!committed) surfacedLossPriceIds.delete(lossId);
+    return committed;
+  }
+
+  // Leftover pirateRumor:headline (not news:headline — commitHeadline re-emits that).
+  function surfacePirateRumor(ev) {
+    if (!ev) return null;
+    const headline = String(ev.headline || ev.text || '').replace(/\s+/g, ' ').trim();
+    if (!headline) return null;
+    const sectorId = ev.sectorId || null;
+    const zoneId = ev.zoneId || null;
+    const eventId = ev.eventId || (sectorId && zoneId ? `pirateRumor:${sectorId}:${zoneId}` : null);
+    if (!eventId) return null;
+    if (model.log.some((rec) => rec && rec.eventId === eventId && rec.text === headline)) {
+      return model.log.find((rec) => rec && rec.eventId === eventId && rec.text === headline) || null;
+    }
+    return commitHeadline(headline, ev, {
+      metadata: {
+        kind: ev.kind || 'piracy',
+        eventId,
+        source: 'pirateRumor:headline',
+        sourceRef: eventId,
+        sectorId,
+        zoneId,
+        zoneName: ev.zoneName || null,
+      },
+    });
+  }
+
+  // uniqueWrecks schedules a complication the moment a bearing is recorded — the emit used to be
+  // audit-only. Cite the scheduled timer once per (wreck, timer) so the foreshadow lands before
+  // the fire and a replayed emit cannot stack a second line.
+  function surfaceWreckComplicationRumor(ev) {
+    if (!ev || !ev.wreckId || !ev.timerId) return null;
+    const eventId = `uniqueWreck:complication:${ev.wreckId}:${ev.timerId}`;
+    const existing = model.log.find((rec) => rec && rec.eventId === eventId);
+    if (existing) return existing;
+    const name = ev.wreckName || ev.wreckId;
+    const headline = fillTemplate(
+      pickVariant(WRECK_COMPLICATION_RUMORS, seedOf(), eventId),
+      { name },
+    ).replace(/\s+/g, ' ').trim();
+    return commitHeadline(headline, { ...ev, kind: 'wreck_complication' }, {
+      metadata: {
+        kind: 'wreck_complication',
+        complicationKind: ev.kind || null,
+        eventId,
+        source: 'uniqueWreck:complicationScheduled',
+        sourceRef: eventId,
+        wreckId: ev.wreckId,
+        wreckName: ev.wreckName || null,
+        sectorId: ev.sectorId || null,
+      },
+    });
+  }
+
+  // ---- economy subscriptions (READ-ONLY) ---------------------------------------------------
+  const subs = [];
+  function on(evt, fn) { if (bus && bus.on) { bus.on(evt, fn); subs.push([evt, fn]); } }
+
+  on('news:publish', surfacePublished);
+  on('law:killedAdjudicated', (p) => {
+    if (!p || p.outcome !== 'lawful' || p.witnessed !== true || p.evidenceClass !== 'direct'
+      || !(p.witnessCount > 0) || p.pirate !== true || !p.savedHull || !p.savedHull.name
+      || !Array.isArray(p.witnessStableIds) || p.witnessStableIds.length === 0
+      || !p.victimStableId || !p.sectorId) return null;
+    const eventId = `pirate-kill:${p.sectorId}:${p.victimStableId}:${p.tick}`;
+    if (surfacedPirateKills.has(eventId) || model.log.some((rec) => rec && rec.eventId === eventId)) return null;
+    const metadata = {
+      eventId, sourceRef: eventId, source: 'law:killedAdjudicated', kind: 'pirate_rescue',
+      sectorId: p.sectorId, savedHull: p.savedHull, witnessStableIds: p.witnessStableIds.slice(),
+    };
+    const text = `Raider destroyed at ${sectorDisplayName(p.sectorId)}; ${p.savedHull.name} saved. Source: ${p.witnessCount} eyewitness report${p.witnessCount === 1 ? '' : 's'}.`;
+    const committed = commitHeadline(text, metadata, { metadata });
+    if (committed) {
+      surfacedPirateKills.add(eventId);
+      if (surfacedPirateKills.size > 64) surfacedPirateKills.delete(surfacedPirateKills.values().next().value);
+    }
+    return committed;
+  });
+  registerWorldBeats((evt, fn) => {
+    on(evt, (payload) => {
+      const headline = fn(payload);
+      if (!headline || !headline.text || !headline.sourceRef) return null;
+      return surfacePublished({
+        text: headline.text,
+        kind: headline.kind,
+        source: 'world-beat',
+        sourceRef: headline.sourceRef,
+        eventId: headline.sourceRef,
+        stationId: headline.stationId || null,
+      });
+    });
+  }, state);
+  // A claim depot's supply run landing in the pilot's own sector is a flight receipt; the dock-card
+  // twin for runs that land while the pilot is away lives in worldNewsBeats.
+  on('claim:freightDelivered', (p) => {
+    const note = claimDeliveryNote(state, p);
+    if (!note || !note.inSector || !claimLegFirstSeen(state, 'receipt', note.legKey)) return null;
+    if (bus && typeof bus.emit === 'function') bus.emit('toast', { text: note.text, kind: 'good', ttl: 4 });
+    return null;
+  });
+  // FB-049 — a stale note escalating to bounty is a cited headline, not a silent ledger move.
+  on('economy:debtEscalated', (p) => {
+    if (!p || !(Number(p.levyCr) > 0)) return null;
+    return surfacePublished({
+      text: `A stale note went to the board: ${Math.round(p.debtCr || 0)} cr owed, +${Math.round(p.levyCr)} cr bounty posted.`,
+      kind: 'debt_escalated',
+      sourceRef: `economy:debtEscalated:${Math.round(Number(p.daysOverdue) || 0)}:${Math.round(Number(p.bountyCr) || 0)}`,
+    });
+  });
+  on('freight:loss', surfaceFreightLoss);
+  on('freight:arrival', surfaceFreightArrival);
+  on('lossLedger:priceMove', surfaceLossPriceMove);
+  on('pirateRumor:headline', surfacePirateRumor);
+  on('uniqueWreck:complicationScheduled', surfaceWreckComplicationRumor);
+  function citeTrafficHeadline(p, kind) {
+    if (!p) return null;
+    const eventId = p.receiptId || p.id || `${kind}:${p.worldRecordId || p.linerId || p.sectorId || 'lane'}:${Number(p.t) || state.simTime || 0}`;
+    const name = p.linerName || p.name || 'A passenger liner';
+    const text = kind === 'passenger_suspended'
+      ? `${name} is suspended. The berth is holding the sailing.`
+      : `${name} filed its receipt${p.outcome ? `: ${p.outcome}` : ''}.`;
+    return commitHeadline(text, {
+      kind,
+      sectorId: p.sectorId || null,
+      eventId,
+      source: kind === 'passenger_suspended' ? 'traffic:passengerLinerSuspended' : 'traffic:passengerLinerReceipt',
+      sourceRef: String(eventId),
+    }, {
+      metadata: {
+        eventId: String(eventId),
+        source: kind === 'passenger_suspended' ? 'traffic:passengerLinerSuspended' : 'traffic:passengerLinerReceipt',
+        sourceRef: String(eventId),
+        sectorId: p.sectorId || null,
+      },
+    });
+  }
+
+  on('traffic:passengerLinerReceipt', (p) => citeTrafficHeadline(p, 'passenger_receipt'));
+  on('traffic:passengerLinerSuspended', (p) => citeTrafficHeadline(p, 'passenger_suspended'));
+  // U8 — THE MARGIN RUNS IT: a rare or legendary physics stunt is witnessed news. Named,
+  // cited, once per episode; ordinary tricks stay receipts, Crucible has its own scoring.
+  on('stunt:trickDetected', (p) => {
+    if (!p || !p.name) return;
+    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    const rarity = String(p.rarity || '');
+    const collateral = Math.max(1, Number(p.modifiers && p.modifiers.collateralCount) || 1);
+    const legendary = rarity === 'legendary';
+    const rare = rarity === 'rare' && collateral >= 2;
+    if (!legendary && !rare) return;
+    const episodeId = String(p.episodeId || '');
+    if (!episodeId || surfacedStuntEpisodes.has(episodeId)) return;
+    surfacedStuntEpisodes.add(episodeId);
+    if (surfacedStuntEpisodes.size > 24) surfacedStuntEpisodes.delete(surfacedStuntEpisodes.values().next().value);
+    const text = legendary
+      ? `WITNESSED: ${p.name} — the whole pocket saw it, and everyone knows whose ship it was.`
+      : `WITNESSED: ${p.name}, ${collateral} hulls caught in it. The witnesses all point at the same pilot.`;
+    surfacePublished({
+      text,
+      kind: 'incidents',
+      source: 'witness-relay',
+      sourceRef: `stunt:${episodeId}`,
+      eventId: `stunt:${episodeId}`,
+    });
+  });
+  on('frontierRumor:resolved', (p) => {
+    if (!p || !p.rumorId || p.type !== 'resolved') return;
+    const eventId = `frontier-resolved:${p.rumorId}`;
+    const payoff = p.kind || p.reason || 'the lead';
+    commitHeadline(`Frontier rumour paid off: ${payoff}.`, {
+      kind: 'frontier_resolved',
+      sectorId: p.sectorId || null,
+      eventId,
+      source: 'frontierRumor:resolved',
+      sourceRef: eventId,
+    }, {
+      metadata: {
+        eventId,
+        source: 'frontierRumor:resolved',
+        sourceRef: eventId,
+        sectorId: p.sectorId || null,
+        payoff,
+      },
+    });
+  });
+  on('npcjobs:minerRelocated', (p) => {
+    if (!p || !p.sectorId) return;
+    const here = state.world && state.world.currentSectorId;
+    if (here && p.sectorId !== here) return;
+    const eventId = `miner-relocated:${p.sectorId}:${Number(p.simTime) || state.simTime || 0}`;
+    commitHeadline(`Miners in ${sectorDisplayName(p.sectorId)} moved to a new seam.`, {
+      kind: 'miner_relocated',
+      sectorId: p.sectorId,
+      eventId,
+      source: 'npcjobs:minerRelocated',
+      sourceRef: eventId,
+    }, {
+      metadata: {
+        eventId,
+        source: 'npcjobs:minerRelocated',
+        sourceRef: eventId,
+        sectorId: p.sectorId,
+      },
+    });
+  });
+  on('economy:eventStarted', (p) => {
+    if (!p) return;
+    surface({ type: p.type, stationId: p.stationId, commodityId: p.commodityId, eventId: p.eventId });
+  });
+  // When docking, stash a dock card for the most relevant local event (shown by the dock screen).
+  on('dock:docked', (p) => {
+    if (!p || !p.stationId) return;
+    const cards = cardsForStation(state, p.stationId, { seed: seedOf() });
+    model.lastCard = cards[0] || null;
+  });
+  // THE WORLD REMEMBERS (U-E): a loud deed (weight >= 3) nobody has repeated yet makes the wire,
+  // once, in the newsreader's neutral voice. News is not a speaker — the deed stays untold until a
+  // person says it. Polled on dock and arrival; the id `deed:news:<deedId>` is the dedupe key.
+  const deedNewsIds = new Set();
+  function surfaceDeedNews() {
+    for (const deed of deedsFor(state, { untoldOnly: true })) {
+      if (!(deed.weight >= 3)) continue;
+      // The saved stamp is the durable dedupe: a load must not re-run a headline already aired.
+      if (wasNoted(deed, 'news')) continue;
+      const eventId = `deed:news:${deed.id}`;
+      if (deedNewsIds.has(eventId) || model.log.some((rec) => rec && rec.eventId === eventId)) continue;
+      const body = deedLine(deed, { voice: 'neutral' });
+      if (!body) continue;
+      // PULSE-SIGNS (row 433): feat headlines name the player. The deed body is third-person,
+      // so the wire runs it under the pilot's callsign the way the berth poster does.
+      const text = `${playerCallsign(state)} — ${body}`;
+      const committed = surfacePublished({
+        id: eventId, eventId, sourceRef: eventId, source: 'deedRecord', kind: 'deed', text,
+        sectorId: deed.sectorId || null, stationId: deed.stationId || null,
+      });
+      if (committed) {
+        deedNewsIds.add(eventId);
+        markNoted(state, deed.id, 'news');
+      }
+      return committed;
+    }
+    return null;
+  }
+  on('dock:docked', surfaceDeedNews);
+  on('jump:arrive', surfaceDeedNews);
+  // Reset the log on a fresh game / load so stale headlines don't leak across sessions.
+  on('save:loaded', () => {
+    // A load can rewind to a point before this stable loss happened. The director's restored
+    // durable ledger decides whether the consequence may settle again; presentation must not carry
+    // a later timeline's transient suppression across that rewind.
+    surfacedFreightLossIds.clear();
+    surfacedPirateKills.clear();
+    surfacedFreightArrivalIds.clear();
+    surfacedLossPriceIds.clear();
+    freightArrivalHeardAt.clear();
+    deedNewsIds.clear();
+    model.log = [];
+    model.lastCard = null;
+    renderTicker();
+  });
+  on('game:newGame', () => {
+    surfacedFreightLossIds.clear();
+    surfacedPirateKills.clear();
+    surfacedFreightArrivalIds.clear();
+    surfacedLossPriceIds.clear();
+    freightArrivalHeardAt.clear();
+    deedNewsIds.clear();
+    model.log = [];
+    model.lastCard = null;
+    renderTicker();
+  });
+
+  // ---- DOM ticker (cosmetic; fully guarded) -----------------------------------------------
+  let tickerEl = null;
+  let tickerHost = null;
+  let tickerIndex = 0;
+  let tickerTimer = null;
+
+  function setTickerHostVisible(visible) {
+    if (!tickerHost) return;
+    tickerHost.hidden = !visible;
+    const tape = tickerHost.closest && tickerHost.closest('.sf-commtape');
+    if (!tape) return;
+    if (visible) {
+      tape.hidden = false;
+      return;
+    }
+    const slots = tape.querySelector && tape.querySelector('.sf-commtape__slots');
+    if (!slots || !slots.childElementCount) tape.hidden = true;
+  }
+
+  function clearTickerTimer() {
+    if (tickerTimer == null || typeof window === 'undefined') return;
+    window.clearTimeout(tickerTimer);
+    tickerTimer = null;
+  }
+
+  function scheduleTicker(items) {
+    clearTickerTimer();
+    if (items.length < 2 || typeof window === 'undefined' || typeof window.setTimeout !== 'function') return;
+    tickerTimer = window.setTimeout(() => {
+      tickerTimer = null;
+      tickerIndex = (tickerIndex + 1) % items.length;
+      renderTicker();
+    }, 7000);
+  }
+
+  function ensureTicker() {
+    if (typeof document === 'undefined') return null;
+    if (tickerEl && tickerEl.isConnected) return tickerEl;
+    // Flight already surfaces news through the one-voice alert floor. A scrolling multi-headline
+    // ticker is only allowed on screens that deliberately provide this host.
+    const host = document.getElementById('news-ticker');
+    if (!host) return null;
+    tickerHost = host;
+    let el = document.getElementById('sf-news-ticker');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'sf-news-ticker';
+      el.className = 'sf-news-ticker';
+      el.setAttribute('role', 'status');
+      // The one-voice alert floor announces a new event. This durable history tape must not
+      // re-announce every rotation to assistive technology.
+      el.setAttribute('aria-live', 'off');
+      el.setAttribute('aria-label', 'Market news feed');
+      host.appendChild(el);
+    }
+    tickerEl = el;
+    return el;
+  }
+
+  function renderTicker() {
+    if (typeof document === 'undefined') return;
+    const el = ensureTicker();
+    if (!el) return;
+    clearTickerTimer();
+    // The opening tutorial owns the floor: keep the recorded history, paint none of it, and
+    // schedule no rotation until the rail says it is finished.
+    if (tutorialOwnsAttention()) {
+      el.textContent = '';
+      setTickerHostVisible(false);
+      return;
+    }
+    const items = model.log.slice(0, MAX_TICKER_ITEMS);
+    el.textContent = '';
+    if (!items.length) {
+      tickerIndex = 0;
+      setTickerHostVisible(false);
+      return;
+    }
+    tickerIndex %= items.length;
+    const item = items[tickerIndex];
+    const span = document.createElement('span');
+    span.className = 'sf-news-ticker__item sf-news-ticker__item--' + (item.kind || 'event');
+    span.textContent = item.text;
+    el.appendChild(span);
+    setTickerHostVisible(true);
+    // Legibility floor: the flight tape is narrow, and after the BAND / COMMS / HAIL chrome a
+    // headline can be squeezed to a couple of characters ("TR…"), which reads as broken text.
+    // Flight already surfaces news through the one-voice alert floor, so below a readable width
+    // the tape stays chrome-only instead of showing a truncated stub.
+    // 64 px still passed "TRAGE…" (seen live 2026-09-23): a stub is broken below about a dozen
+    // characters, so the floor is a readable headline width, not a couple of glyphs.
+    if (el.clientWidth > 0 && el.clientWidth < TICKER_LEGIBLE_PX) setTickerHostVisible(false);
+    scheduleTicker(items);
+  }
+
+  // initial paint (no-op headless)
+  renderTicker();
+  // HUD construction can replace its BAND tape after this UI system initialized. Repaint the
+  // existing cited log into the new host instead of waiting for the next market event.
+  on('news:render', renderTicker);
+  // The tutorial's own voice gates the tape: hide it on the first line, then restore the retained
+  // history when the rail finishes, without waiting for another economy event.
+  on('tutorial:say', renderTicker);
+  on('tutorial:finished', renderTicker);
+
+  return {
+    name: 'marketNews',
+    // expose the pure API + model for the dock screen / tests
+    surface,
+    generateHeadline: (ev) => generateHeadline(ev, { seed: seedOf() }),
+    buildEventCard: (ev) => buildEventCard(ev, { seed: seedOf() }),
+    cardsForStation: (stationId) => cardsForStation(state, stationId, { seed: seedOf() }),
+    getLog: () => model.log.slice(),
+    getLastCard: () => model.lastCard,
+    render: renderTicker,
+    destroy() {
+      for (const [evt, fn] of subs) { if (bus && bus.off) bus.off(evt, fn); }
+      subs.length = 0;
+      clearTickerTimer();
+      if (tickerEl && tickerEl.parentNode) tickerEl.parentNode.removeChild(tickerEl);
+      tickerEl = null;
+      tickerHost = null;
+    },
+  };
+}
+
+/** Map a news kind to a toast kind for the fallback path. */
+function toastKind(kind) {
+  switch (kind) {
+    case 'shortage': return 'warn';
+    case 'boom': return 'good';
+    case 'blockade': return 'danger';
+    case 'piracy': return 'danger';
+    default: return 'info';
+  }
+}
+
+export default createMarketNews;

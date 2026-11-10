@@ -1,0 +1,23 @@
+{
+  "name": "pending-detonations-quiet-empty-latch",
+  "iters": 400000,
+  "pairs": 13,
+  "medianSpeedup": 2.752,
+  "minSpeedup": 2.526,
+  "maxSpeedup": 3.172,
+  "all": [
+    2.526,
+    2.594,
+    2.695,
+    2.697,
+    2.735,
+    2.747,
+    2.752,
+    2.76,
+    2.773,
+    2.803,
+    2.81,
+    2.815,
+    3.172
+  ]
+}

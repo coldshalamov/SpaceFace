@@ -1,0 +1,110 @@
+.devshots/
+node_modules/
+build/*
+!build/min-spec.json
+# PQ-033.03 SteamPipe templates, Auto-Cloud notes and the generated achievement paste list are source;
+# rendered VDFs with a real app id and SteamPipe logs are per-machine output.
+!build/steam/
+build/steam/output/
+dist/
+/nul
+.campaign/
+
+# Root-local agent scratch, transcripts, diagnostics, and temporary comparison trees.
+# Durable conclusions belong in maintained docs/evidence records; prior tracked copies remain in Git history.
+/.tmp*
+/.dev/
+/.grok-scratch/
+/terminals/
+/agent-tools/
+/advisor-artifacts/
+/scratch/
+/check-assets-live.log
+/tools/agy-*
+/tools/antigravity-state*.jpg
+
+# Local agent/tool scratch artifacts (never production source)
+/-
+/.zcode/
+/.vscode/
+/%TEMP%*.json
+# Per-machine agent backup trees (safety copies before risky edits; never repo content)
+/.*-backup*/
+/scripts/_*.mjs
+/scripts/lib/_*.mjs
+/scripts/check-test-temp.mjs
+*.bak
+*.locked
+*.prev
+*.repair
+*.pre_repair_bak
+*.rewrite
+
+# Reproducible Blender/export intermediates and pre-promotion backups
+*.blend1
+**/*_export_tmp.glb
+tools/art/blender/batch_*.log
+tools/blender/_patch_*.py
+**/__pycache__/
+/assets/ships/m4_helios_hub/evidence/pre_promote_backups/
+
+# Local worktree recovery / triage (do not commit bulky exports)
+_recovery/
+/.worktrees/
+
+# Cursor editor hook state — per-machine mutable bookkeeping (session ids, timestamps).
+.cursor/
+
+# Fun-loop frame strips are capture evidence (hundreds of MB of PNG); they live in .devshots/fun-loop/ like every other capture.
+design/program/roadmap/receipts/fun-loop/strips/
+
+# Agent iteration evidence: capture media are disposable (owner ruling 2026-09-08);
+# verdict reports (.md/.json) in evidence/ dirs stay trackable.
+assets/**/evidence/*.png
+assets/**/evidence/*.jpg
+assets/**/evidence/*.jpeg
+assets/**/evidence/*.webm
+assets/**/evidence/*.mp4
+assets/**/evidence/*.gif
+
+# User content ("mods") dropped for the PQ-172 loader — player-installed, never shipped source.
+user-content/
+
+# Oversize bench dumps (100MB+; GitHub rejects them): keep the small .md verdicts tracked.
+design/program/roadmap/receipts/fun-loop/runs/2026-09-12-fun-bench-summary.json
+design/program/roadmap/receipts/fun-loop/runs/2026-09-14-fun-bench-summary.json
+
+# Cinematic bake intermediates — hundreds of PNG frames, re-derivable via tools/cinematic/render-intro.mjs
+assets/cinematics/.intro-frames/
+tools/cinematic/.boot-video-check.png
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+bower_components/
+jspm_packages/
+__pycache__/
+site-packages/
+venv/
+coverage/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.egg-info/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）

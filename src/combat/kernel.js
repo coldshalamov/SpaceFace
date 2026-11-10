@@ -1,0 +1,832 @@
+import { createActionService } from './actions.js';
+import { attachmentBindsOccupant, createAttachmentService } from './attachments.js';
+import { createDamageRouter } from './damage.js';
+import { createCombatCatalog, ensureCombatant, ensureCombatState, entityKey, removeCombatantRuntime, resolveCombatProfile, syncCombatantBounds } from './runtime.js';
+import { occupantGenerationOf } from '../core/entity.js';
+import { createStatusService } from './statuses.js';
+import { applyMomentumSink } from './momentumSink.js';
+import { MOMENTUM_SINK_STATUS_ID, SHIPJACK_SHUTDOWN_STATUS_ID, SHIPJACK_SHUTDOWN_STATUS_DEF } from '../data/combatDefs.js';
+import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSubsystem, damageSubsystem, stepFieldRepair } from './subsystems.js';
+import { isBlackFlagAdventure } from '../shipjack/model.js';
+import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
+import { assertValidCombatCatalog } from './validate.js';
+import { isDynamicPhysicsBodyEntity, writePhysicsBodyResponse } from '../core/physicsAuthority.js';
+import { entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
+
+const KERNELS = new WeakMap();
+
+// Quiet open flight: every living combatant still paid ensureCombatant + status/
+// pending/cool/sync under prePhysics even when heat/statuses/actions were idle.
+// Latch skips the entity walk; wakes on spawn/destroy, action, status schedule,
+// damage, repair, scaled physics response / sink, or 0.5 s rescan.
+let COMBAT_PREPHYSICS_QUIET_LATCH = true;
+export function setCombatPrePhysicsQuietLatchForBench(enabled) {
+  COMBAT_PREPHYSICS_QUIET_LATCH = enabled !== false;
+}
+export function getCombatPrePhysicsQuietLatchForBench() {
+  return COMBAT_PREPHYSICS_QUIET_LATCH !== false;
+}
+
+// Quiet residual after #154 prePhysics latch: postPhysics still walked every
+// living combatant for ensureCombatant + syncCombatantBounds even though
+// attachments already empty-early-out and vitals clamp at mutation sites.
+// Skip that walk while the prePhysics quiet latch is armed; same wake set.
+let COMBAT_POSTPHYSICS_QUIET_SKIP = true;
+export function setCombatPostPhysicsQuietSkipForBench(enabled) {
+  COMBAT_POSTPHYSICS_QUIET_SKIP = enabled !== false;
+}
+export function getCombatPostPhysicsQuietSkipForBench() {
+  return COMBAT_POSTPHYSICS_QUIET_SKIP !== false;
+}
+
+const COMBAT_PREPHYSICS_QUIET_RESCAN_S = 0.5;
+
+function publishCombatPrePhysicsQuiet(state, latched) {
+  const rt = state.combatRuntime || (state.combatRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+function publishCombatPostPhysicsQuiet(state, skipped) {
+  const rt = state.combatRuntime || (state.combatRuntime = {});
+  rt.postPhysicsQuietSkipped = !!skipped;
+}
+
+function combatRuntimeBusy(runtime) {
+  if (!runtime) return false;
+  if (runtime.heat > 0) return true;
+  if (runtime.statusModifiersDirty === true) return true;
+  const pending = runtime.pendingStatuses;
+  if (pending && pending.length) return true;
+  const statuses = runtime.statuses;
+  if (statuses) {
+    for (const _ in statuses) return true;
+  }
+  const response = runtime.physicsResponse;
+  if (response && (response.massScale !== 1 || response.inertiaScale !== 1)) return true;
+  const subs = runtime.subsystems;
+  if (subs) {
+    for (const id in subs) {
+      if (subs[id] && subs[id].pendingTransition) return true;
+    }
+  }
+  return false;
+}
+
+function hasActiveActionKeys(active) {
+  if (!active) return false;
+  for (const _ in active) return true;
+  return false;
+}
+
+export function getCombatKernel(ctx, options = {}) {
+  if (!ctx || !ctx.state) throw new TypeError('Combat kernel requires ctx.state');
+  let kernel = KERNELS.get(ctx.state);
+  if (!kernel) {
+    kernel = createCombatKernel(ctx, options);
+    KERNELS.set(ctx.state, kernel);
+  } else if (typeof options.onKill === 'function') {
+    kernel.setKillHandler(options.onKill);
+  }
+  return kernel;
+}
+
+export function createCombatKernel(ctx, options = {}) {
+  const state = ctx.state;
+  const bus = ctx.bus;
+  const helpers = ctx.helpers || (ctx.helpers = {});
+  const catalog = options.catalog || createCombatCatalog(options.catalogOverrides || {});
+  assertValidCombatCatalog(catalog, options.validation || {});
+  ensureCombatState(state);
+  const admitShipjackStatus = () => {
+    if (catalog.statuses.has(SHIPJACK_SHUTDOWN_STATUS_ID)) return;
+    assertValidCombatCatalog({ ...catalog, statusDefs: [...catalog.statusDefs, SHIPJACK_SHUTDOWN_STATUS_DEF] });
+    catalog.statuses.set(SHIPJACK_SHUTDOWN_STATUS_ID, SHIPJACK_SHUTDOWN_STATUS_DEF);
+  };
+  const admitRestoredShipjackStatus = () => {
+    if (Object.values(state.combat.entities || {}).some(runtime => runtime.statuses?.[SHIPJACK_SHUTDOWN_STATUS_ID]
+      || runtime.pendingStatuses?.some(status => status.id === SHIPJACK_SHUTDOWN_STATUS_ID))) admitShipjackStatus();
+  };
+  admitRestoredShipjackStatus();
+
+  const hooks = { onKill: typeof options.onKill === 'function' ? options.onKill : null };
+  const context = { state, bus, helpers, registry: ctx.registry || null, catalog, currentAttackerId: null };
+  const attachments = createAttachmentService(context);
+  const attachmentContext = { ...context, attachments };
+  const statusesRaw = createStatusService(context);
+  // Wake wrappers: action/status services freeze their method tables, so rebind via
+  // thin facades rather than mutating the frozen exports.
+  const statuses = {
+    schedule(targetEntity, runtime, application, source) {
+      if (application?.id === SHIPJACK_SHUTDOWN_STATUS_ID) admitShipjackStatus();
+      noteCombatPrePhysicsWake();
+      return statusesRaw.schedule(targetEntity, runtime, application, source);
+    },
+    advance(targetEntity, runtime, routeDamageArg) {
+      return statusesRaw.advance(targetEntity, runtime, routeDamageArg);
+    },
+    clear(targetEntity, runtime, statusId) {
+      noteCombatPrePhysicsWake();
+      return statusesRaw.clear(targetEntity, runtime, statusId);
+    },
+  };
+  const routeDamageRaw = createDamageRouter(context, statuses, {
+    onKill: (target, killerId, lethal) => {
+      if (hooks.onKill) hooks.onKill(target, killerId, lethal);
+      else {
+        target.alive = false;
+        // Same law-relevant shape as combat.kill's emit: the collision partner is the impactor
+        // law must never let occlude the kill it caused.
+        if (bus) bus.emit('entity:killed', { id: target.id, killerId, type: target.type, pos: { x: target.pos.x, z: target.pos.z },
+          impactorId: lethal?.packet?.source?.collisionPresentation?.otherId ?? null });
+      }
+    },
+  });
+  const routeDamage = (payload) => {
+    noteCombatPrePhysicsWake();
+    return routeDamageRaw(payload);
+  };
+  const actionsRaw = createActionService(context, attachments, routeDamage);
+  const actions = {
+    requestAction(request) {
+      noteCombatPrePhysicsWake();
+      return actionsRaw.requestAction(request);
+    },
+    advance() { return actionsRaw.advance(); },
+    inspect(actorId) { return actionsRaw.inspect(actorId); },
+    cancelActive(actorId, reason) { return actionsRaw.cancelActive(actorId, reason); },
+    phaseAt(actionId, tick) { return actionsRaw.phaseAt(actionId, tick); },
+  };
+  const subscriptions = [];
+  let sortedCacheTick = -1;
+  let sortedCacheRevision = 0;
+  let sortedCacheSeenRevision = -1;
+  let sortedCacheIndexVersion = -2;
+  let sortedCacheLength = -1;
+  let sortedCache = null;
+  const momentumSinkImpulse = { x: 0, y: 0, z: 0 };
+  // Retained source scratch: sortedEntitiesFromSource always copies (slice or sorted spread), so
+  // the kernel-owned fill array never escapes to callers. Saves a fresh array per tick per pass.
+  const sourceScratch = [];
+  const pushSourceEntity = (entity) => { sourceScratch.push(entity); };
+  let quietLatch = null;
+
+  function noteCombatPrePhysicsWake() {
+    if (!quietLatch) {
+      publishCombatPrePhysicsQuiet(state, false);
+      publishCombatPostPhysicsQuiet(state, false);
+      return;
+    }
+    quietLatch = null;
+    publishCombatPrePhysicsQuiet(state, false);
+    publishCombatPostPhysicsQuiet(state, false);
+  }
+
+  for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
+  if (bus && typeof bus.on === 'function') {
+    subscriptions.push(bus.on('entity:spawned', (payload) => {
+      // The sorted roster only holds living-world actors — a projectile volley or pickup
+      // drop changes none of its membership, so the revision survives their churn.
+      const type = payload && (payload.type || (payload.entity && payload.entity.type));
+      // Untyped payloads invalidate anyway — an unknown spawn might still join the roster.
+      if (!type || type === 'ship' || type === 'drone' || type === 'station' || type === 'wreck') {
+        invalidateSortedCache();
+      }
+      const entity = payload && (payload.entity || getEntity(payload.id));
+      if (entity) initializeEntity(entity);
+    }));
+    subscriptions.push(bus.on('entity:destroyed', (payload) => {
+      const type = payload && (payload.type || (payload.entity && payload.entity.type));
+      if (!type || type === 'ship' || type === 'drone' || type === 'station' || type === 'wreck') {
+        invalidateSortedCache();
+      }
+      onEntityGone(payload);
+    }));
+    subscriptions.push(bus.on('combat:requestAction', (payload) => actions.requestAction(payload || {})));
+    subscriptions.push(bus.on('save:loaded', admitRestoredShipjackStatus));
+    subscriptions.push(bus.on('combat:routeDamage', (payload) => routeDamage(payload || {})));
+    subscriptions.push(bus.on('combat:repairSubsystem', (payload) => {
+      if (payload) repair(payload.entityId, payload.subsystemId, payload.amount, payload.reason);
+    }));
+  }
+
+  Object.assign(helpers, {
+    requestCombatAction: (request) => actions.requestAction(request || {}),
+    routeCombatDamage: (request) => routeDamage(request || {}),
+    inspectCombat: (request) => inspect(request || {}),
+    repairCombatSubsystem: (request) => repair(request && request.entityId, request && request.subsystemId, request && request.amount, request && request.reason),
+    repairCombatHulls: (repairs, source) => repairHulls(repairs, source),
+    prepareRepairCombatHulls: (repairs, source) => prepareRepairHulls(repairs, source),
+    getCombatCapabilities: (entityId) => capabilities(entityId),
+    reconcileCombatPhysicsAttachments: () => reconcilePhysicsAttachments(),
+    describeCombatPhysicsAttachment: (attachmentId) => attachments.physicsContract(attachmentId),
+    requestShipjackPulse,
+    requestShipjackShutdown,
+    disableShipjackSubsystem,
+    restoreShipjackSubsystems,
+  });
+
+  const kernel = Object.freeze({
+    schemaVersion: 1,
+    catalog,
+    actions,
+    attachments,
+    statuses,
+    routeDamage,
+    stepPlayerFieldRepair,
+    prePhysics,
+    postPhysics,
+    reconcilePhysicsAttachments,
+    inspect,
+    repair,
+    repairHulls,
+    prepareRepairHulls,
+    pulseSubsystem,
+    capabilities,
+    capRegenMultiplier,
+    setKillHandler(handler) { hooks.onKill = typeof handler === 'function' ? handler : null; },
+    dispose,
+  });
+  appendCombatTrace(state.combat, state.tick, 'combat.kernelReady', {
+    actionDefs: catalog.actions.size,
+    statusDefs: catalog.statuses.size,
+    subsystemDefs: catalog.subsystems.size,
+    attachmentDefs: catalog.attachments.size,
+  });
+  return kernel;
+
+  function prePhysics(dt) {
+    const indexVersion = combatTickIndexVersion(state);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (
+      COMBAT_PREPHYSICS_QUIET_LATCH !== false
+      && quietLatch
+      && quietLatch.membership === indexVersion
+      && quietLatch.cacheRevision === sortedCacheRevision
+      && now < quietLatch.rescanAt
+    ) {
+      // Keep postPhysics from re-walking when the roster is unchanged this tick.
+      if (sortedCache) {
+        sortedCacheTick = state.tick;
+        sortedCacheSeenRevision = sortedCacheRevision;
+        sortedCacheIndexVersion = indexVersion;
+      }
+      actions.advance();
+      publishCombatPrePhysicsQuiet(state, true);
+      return;
+    }
+
+    let sawBusy = false;
+    for (const entity of sortedEntitiesForTick()) {
+      if (!entity.alive || !participatesInCombat(state, entity)) continue;
+      const runtime = ensureCombatant(state, entity, catalog);
+      applyPendingSubsystemTransitions(attachmentContext, entity, runtime);
+      const statusChanged = statuses.advance(entity, runtime, routeDamage);
+      if (statusChanged) recomputeCombatantModifiers(context, entity, runtime, attachments);
+      const response = runtime.physicsResponse;
+      const scaledResponse = !!(response
+        && (response.massScale !== 1 || response.inertiaScale !== 1));
+      const sinkActive = !!(runtime.statuses && runtime.statuses[MOMENTUM_SINK_STATUS_ID]);
+      // Quiet fleets keep identity mass/inertia and no momentum-sink status — skip the
+      // isDynamicPhysicsBodyEntity walk (authoredPhysicsBody) and sink miss entirely.
+      if (scaledResponse || sinkActive) {
+        if (isDynamicPhysicsBodyEntity(entity)) {
+          if (scaledResponse) {
+            sawBusy = true;
+            writePhysicsBodyResponse(entity, response);
+          }
+          if (sinkActive) applyMomentumSink(state, entity, runtime, dt, momentumSinkImpulse);
+        }
+      }
+      coolCombatHeat(entity, runtime, dt);
+      // ensureCombatant already clamped vitals/heat; cool only lowers heat (Math.max 0).
+      // Re-sync only when statuses may have rewritten vitals this tick. Profile is on runtime.
+      if (statusChanged) syncCombatantBounds(entity, runtime);
+      if (!sawBusy && (statusChanged || combatRuntimeBusy(runtime))) sawBusy = true;
+    }
+    actions.advance();
+    const combatActions = state.combat && state.combat.actions;
+    if (
+      (combatActions && combatActions.requests && combatActions.requests.length)
+      || hasActiveActionKeys(combatActions && combatActions.activeByActor)
+    ) {
+      sawBusy = true;
+    }
+
+    if (COMBAT_PREPHYSICS_QUIET_LATCH !== false && !sawBusy) {
+      quietLatch = {
+        membership: combatTickIndexVersion(state),
+        cacheRevision: sortedCacheRevision,
+        rescanAt: now + COMBAT_PREPHYSICS_QUIET_RESCAN_S,
+        armedTick: state.tick | 0,
+      };
+      publishCombatPrePhysicsQuiet(state, true);
+    } else {
+      quietLatch = null;
+      publishCombatPrePhysicsQuiet(state, false);
+    }
+  }
+
+  function postPhysics() {
+    reconcilePhysicsAttachments();
+    attachments.updateTelemetryAndBreak();
+    const indexVersion = combatTickIndexVersion(state);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (
+      COMBAT_POSTPHYSICS_QUIET_SKIP !== false
+      && COMBAT_PREPHYSICS_QUIET_LATCH !== false
+      && quietLatch
+      && quietLatch.membership === indexVersion
+      && quietLatch.cacheRevision === sortedCacheRevision
+      && now < quietLatch.rescanAt
+    ) {
+      // PrePhysics already armed quiet latch this cadence — bounds synced on the
+      // preceding busy walk / mutation sites; attachment pair already early-out.
+      publishCombatPostPhysicsQuiet(state, true);
+      return;
+    }
+    // Quiet postPhysics: prePhysics already ensured every living combatant on this tick's
+    // roster. Physics does not mutate vitals/heat. Skip the first-seen ensure walk when the
+    // sorted cache is still valid for this tick (no spawn/destroy invalidate mid-step).
+    // A mid-tick roster change bumps sortedCacheRevision / index version and falls through.
+    if (
+      COMBAT_POSTPHYSICS_QUIET_SKIP !== false
+      && sortedCache
+      && sortedCacheTick === state.tick
+      && sortedCacheSeenRevision === sortedCacheRevision
+      && sortedCacheIndexVersion === indexVersion
+    ) {
+      publishCombatPostPhysicsQuiet(state, true);
+      return;
+    }
+    // Quiet postPhysics re-ensured every combatant (resolve profile + sync bounds) after
+    // prePhysics already did both. Physics does not mutate vitals/heat; first-seen combatants
+    // still get ensureCombatant.
+    const table = state.combat && state.combat.entities;
+    for (const entity of sortedEntitiesForTick()) {
+      if (!entity.alive || !isCombatantType(entity.type)) continue;
+      if (table && table[entityKey(entity.id)]) continue;
+      ensureCombatant(state, entity, catalog);
+    }
+    publishCombatPostPhysicsQuiet(state, false);
+  }
+
+  function reconcilePhysicsAttachments() {
+    return attachments.reconcilePhysics();
+  }
+
+  function initializeEntity(entity) {
+    if (!entity || !entity.alive || !isCombatantType(entity.type)) return null;
+    const runtime = ensureCombatant(state, entity, catalog);
+    recomputeCombatantModifiers(context, entity, runtime, attachments, false);
+    appendCombatTrace(state.combat, state.tick, 'combat.entityInitialized', {
+      targetId: entity.id,
+      profileId: runtime.profileId,
+      subsystems: Object.keys(runtime.subsystems).sort(),
+    });
+    return runtime;
+  }
+
+  function onEntityGone(payload) {
+    const entityId = payload && payload.id;
+    if (entityId == null) return;
+    if (payload && payload.reason === 'save_restore') return;
+    // entity:destroyed is queue-flushed after removal and ids recycle immediately: when a new
+    // occupant already holds the id the receipt is stale *for the id*, but the dead body's own
+    // lines still have to break — an early return would leave them welded to the replacement.
+    // Generation stamps separate records bound to the corpse from lines the replacement
+    // legitimately created after taking the id; only the runtime wipe stays skipped.
+    const occupant = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(entityId) : null;
+    const identityTaken = !!(payload && payload.entity && occupant && occupant !== payload.entity);
+    const deadGeneration = payload && payload.entity ? occupantGenerationOf(payload.entity) : null;
+    const brokenIds = new Set();
+    for (const attachment of attachments.listForEntity(entityId, true)) {
+      if (identityTaken && !attachmentBindsOccupant(attachment, entityId, deadGeneration)) continue;
+      attachments.breakAttachment(attachment, 'entity_destroyed', entityId);
+      brokenIds.add(attachment.id);
+    }
+    // Controller-only lines (caught snares, twin bridle) are invisible to listForEntity;
+    // a dead controller must release them too, not wait for the orphan sweep.
+    if (typeof attachments.listControlledBy === 'function') {
+      for (const attachment of attachments.listControlledBy(entityId, true)) {
+        if (brokenIds.has(attachment.id)) continue;
+        if (identityTaken && !attachmentBindsOccupant(attachment, entityId, deadGeneration)) continue;
+        attachments.breakAttachment(attachment, 'entity_destroyed', entityId);
+      }
+    }
+    // The replacement owns this id's combat runtime and trace slot now — they were never the
+    // dead occupant's to wipe.
+    if (identityTaken) return;
+    removeCombatantRuntime(state, entityId);
+    appendCombatTrace(state.combat, state.tick, 'combat.entityRemoved', { targetId: entityId });
+  }
+
+  function stepPlayerFieldRepair() {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player) return null;
+    const book = state.combat && state.combat.entities;
+    const runtime = book && book[String(player.id)];
+    if (!runtime) return null;
+    return stepFieldRepair(attachmentContext, player, runtime);
+  }
+
+  function repair(entityId, subsystemId, amount, reason = 'repair') {
+    noteCombatPrePhysicsWake();
+    const entity = getEntity(entityId);
+    if (!entity || !entity.alive) return { ok: false, reason: 'entity_missing' };
+    const runtime = ensureCombatant(state, entity, catalog);
+    const result = repairSubsystem(context, entity, runtime, subsystemId, Math.max(0, Number(amount) || 0), reason);
+    return { ok: result.applied > 0, ...result };
+  }
+
+  function repairHulls(repairs, source = 'repair') {
+    const prepared = prepareRepairHulls(repairs, source);
+    if (!prepared.ok) return prepared;
+    const committed = prepared.commit();
+    if (!committed.ok) return committed;
+    return prepared.finalize();
+  }
+
+  function prepareRepairHulls(repairs, source = 'repair') {
+    if (!Array.isArray(repairs) || repairs.length === 0) return { ok: false, reason: 'invalid_repairs', results: [] };
+    const prepared = [];
+    const seen = new Set();
+    for (const row of repairs) {
+      const entityId = row && row.entityId;
+      const amount = Number(row && row.amount);
+      if (entityId == null || !Number.isFinite(amount) || amount <= 0 || seen.has(entityKey(entityId))) {
+        return { ok: false, reason: 'invalid_repair', results: [] };
+      }
+      seen.add(entityKey(entityId));
+      const entity = getEntity(entityId);
+      const hull = Number(entity && entity.hull);
+      const hullMax = Number(entity && entity.hullMax);
+      if (!entity || entity.alive === false || !Number.isFinite(hull) || hull <= 0
+        || !Number.isFinite(hullMax) || hullMax <= 0) {
+        return { ok: false, reason: 'entity_unavailable', results: [] };
+      }
+      prepared.push({ entityId, entity, amount, hull, hullMax });
+    }
+    const results = prepared.map(({ entityId, amount, hull, hullMax }) => {
+      const after = Math.min(hullMax, hull + amount);
+      return { entityId, before: hull, after, applied: Math.max(0, after - hull) };
+    });
+    if (!results.some((row) => row.applied > 0)) return { ok: false, reason: 'hull_full', results };
+    const attribution = typeof source === 'string' ? source : (source && typeof source === 'object' ? { ...source } : 'repair');
+    let status = 'prepared';
+    let receipt = null;
+    return Object.freeze({
+      ok: true,
+      repairs: results,
+      commit() {
+        if (status !== 'prepared') return { ok: false, reason: 'repair_not_prepared' };
+        for (const row of prepared) {
+          if (getEntity(row.entityId) !== row.entity || row.entity.alive === false
+            || row.entity.hull !== row.hull || row.entity.hullMax !== row.hullMax) {
+            return { ok: false, reason: 'repair_target_changed' };
+          }
+        }
+        noteCombatPrePhysicsWake();
+        for (const row of results) {
+          const target = prepared.find((entry) => entityKey(entry.entityId) === entityKey(row.entityId)).entity;
+          target.hull = row.after;
+        }
+        status = 'committed';
+        return { ok: true, source: attribution, repairs: results };
+      },
+      rollback() {
+        if (status !== 'committed') return false;
+        for (const row of prepared) {
+          if (getEntity(row.entityId) !== row.entity) return false;
+        }
+        // Subtract only this transaction's applied amount so a synchronous later hit is preserved.
+        for (let i = 0; i < results.length; i++) {
+          const target = prepared[i].entity;
+          target.hull = Math.max(0, Math.min(prepared[i].hullMax, target.hull - results[i].applied));
+        }
+        status = 'rolled_back';
+        return true;
+      },
+      finalize() {
+        if (status === 'finalized') return receipt;
+        if (status !== 'committed') return { ok: false, reason: 'repair_not_committed' };
+        receipt = { ok: true, source: attribution, repairs: results };
+        status = 'finalized';
+        if (bus && typeof bus.emit === 'function') bus.emit('combat:hullRepair', receipt);
+        appendCombatTrace(state.combat, state.tick, 'combat.hullRepaired', receipt);
+        return receipt;
+      },
+    });
+  }
+
+  function pulseSubsystem(entityId, subsystemId, pulse = 1, source = {}) {
+    const entity = getEntity(entityId);
+    if (!entity || entity.alive === false) return { ok: false, reason: 'entity_missing' };
+    const rawPulse = Number(pulse);
+    const amount = Number.isFinite(rawPulse) ? Math.max(0, Math.min(1, rawPulse)) : 0;
+    if (!(amount > 0)) return { ok: false, reason: 'invalid_pulse' };
+    // Authored reaction data uses the concise "drive" name; combat runtimes and traces use
+    // the catalog's stable subsystem_drive key.
+    const key = subsystemId === 'drive' ? 'subsystem_drive' : String(subsystemId || '');
+    const runtime = ensureCombatant(state, entity, catalog);
+    if (!runtime || !runtime.subsystems[key]) return { ok: false, reason: 'subsystem_missing' };
+    noteCombatPrePhysicsWake();
+    const previousAttackerId = context.currentAttackerId;
+    context.currentAttackerId = (source && (source.attackerId ?? source.sourceId)) ?? null;
+    try {
+      // Pulse is post-armor subsystem health units, bounded to one per call. Keep it on the
+      // ordinary subsystem damage owner so health, transition scheduling, and trace stay canonical.
+      const result = damageSubsystem(context, entity, runtime, key, amount, { thermal: 1 }, 1);
+      return { ok: result.applied > 0, ...result };
+    } finally {
+      context.currentAttackerId = previousAttackerId;
+    }
+  }
+
+  function shipjackActors(request, range) {
+    if (state.mode !== 'flight' || !isBlackFlagAdventure(state)
+      || (state.run?.kind && state.run.kind !== 'adventure')) return { ok: false, reason: 'adventure_only' };
+    const actor = getEntity(request.actorId), target = getEntity(request.targetId);
+    if (!actor || actor.id !== state.playerId || actor.alive === false || !(actor.hull > 0)
+      || !target || target.type !== 'ship' || target === actor || target.alive === false || !(target.hull > 0)) return { ok: false, reason: 'body_unavailable' };
+    if (state.ui?.docked || actor.flags?.docked || target.flags?.docked || target.flags?.invuln) return { ok: false, reason: 'protected_body' };
+    if (request.generation != null && request.generation !== (target.data?.shipjackGeneration ?? target.occupantGeneration)) return { ok: false, reason: 'stale_target' };
+    if (!actor.pos || !target.pos || Math.hypot(target.pos.x - actor.pos.x, target.pos.z - actor.pos.z) > range) return { ok: false, reason: 'out_of_range' };
+    if ((target.shield || 0) > 1) return { ok: false, reason: 'shield_denies_access' };
+    return { ok: true, actor, target };
+  }
+
+  function shipjackCooldown(actor, key, cost, commit = false) {
+    const table = state.combat.actions.cooldownReadyTickByActor;
+    const cooldowns = table[entityKey(actor.id)] || {};
+    if (Number(cooldowns[key]) > state.tick) return { ok: false, reason: 'tool_recharging' };
+    if (!Number.isFinite(actor.cap) || actor.cap < cost) return { ok: false, reason: 'capacitor_low' };
+    if (commit) {
+      actor.cap -= cost;
+      table[entityKey(actor.id)] = cooldowns;
+      cooldowns[key] = state.tick + 480;
+    }
+    return { ok: true };
+  }
+
+  function requestShipjackPulse(request = {}) {
+    const pair = shipjackActors(request, 180);
+    if (!pair.ok) return pair;
+    const { actor, target } = pair;
+    const ready = shipjackCooldown(actor, 'black_flag_pulse', 18);
+    if (!ready.ok) return ready;
+    const actorRuntime = ensureCombatant(state, actor, catalog);
+    if (actorRuntime.capabilities.weapon === false || actorRuntime.capabilities.power === false) return { ok: false, reason: 'tool_power_isolated' };
+    // The existing EMP damage packet is an actual targeted hit, with attribution, armor,
+    // subsystem overflow and lawful assault evidence. It is never a hull-health capture tag.
+    const result = routeDamage({ attackerId: actor.id, targetId: target.id,
+      origin: { kind: 'weapon', id: 'wpn_emp_disruptor_m', weaponId: 'wpn_emp_disruptor_m' },
+      packet: { channels: { kinetic: 0, thermal: 0, ion: 45, plasma: 0, phase: 0 },
+        penetration: 0, shieldBypass: 1, subsystemShare: 1, heat: 0,
+        source: { kind: 'weapon', weaponId: 'wpn_emp_disruptor_m' }, hit: { subsystemId: 'subsystem_drive' },
+        statuses: [{ id: 'status_ionized', stacks: 1 }] } });
+    if (!result.ok) return result;
+    shipjackCooldown(actor, 'black_flag_pulse', 18, true);
+    bus?.emit('combat:shipjackPulse', { attackerId: actor.id, targetId: target.id, capacitorCost: 18, rebootReadyTick: state.tick + 480 });
+    return { ok: true, subsystemId: 'subsystem_drive', capacitorCost: 18 };
+  }
+
+  function requestShipjackShutdown(request = {}) {
+    const pair = shipjackActors(request, 115);
+    if (!pair.ok) return pair;
+    const { actor, target } = pair;
+    const ready = shipjackCooldown(actor, 'black_flag_shutdown', 12);
+    if (!ready.ok) return ready;
+    const runtime = ensureCombatant(state, target, catalog);
+    const durationTicks = Math.max(1, Math.min(360, Math.floor(Number(request.durationTicks) || 360)));
+    const result = statuses.schedule(target, runtime, { id: SHIPJACK_SHUTDOWN_STATUS_ID, durationTicks }, { attackerId: actor.id });
+    if (!result.ok) return result;
+    shipjackCooldown(actor, 'black_flag_shutdown', 12, true);
+    bus?.emit('combat:shipjackShutdown', { attackerId: actor.id, targetId: target.id, applyTick: state.tick + 1, rebootTick: state.tick + 1 + durationTicks });
+    return { ok: true, durationTicks, rebootTick: state.tick + 1 + durationTicks };
+  }
+
+  function disableShipjackSubsystem({ entityId, subsystemId } = {}) {
+    if (!isBlackFlagAdventure(state) || (state.run?.kind && state.run.kind !== 'adventure')) return { ok: false, reason: 'adventure_only' };
+    const entity = getEntity(entityId);
+    if (!entity || entity.type !== 'ship' || entity.alive === false) return { ok: false, reason: 'body_unavailable' };
+    const runtime = ensureCombatant(state, entity, catalog);
+    if (!runtime.subsystems[subsystemId]) return { ok: false, reason: 'subsystem_missing' };
+    noteCombatPrePhysicsWake();
+    damageSubsystem(context, entity, runtime, subsystemId, 1e6, { ion: 1 }, 1);
+    return { ok: true, subsystemId };
+  }
+
+  function restoreShipjackSubsystems({ entityId, subsystems } = {}) {
+    if (!isBlackFlagAdventure(state) || !subsystems || typeof subsystems !== 'object') return { ok: false, reason: 'invalid_snapshot' };
+    const entity = getEntity(entityId);
+    if (!entity || entity.alive === false) return { ok: false, reason: 'body_unavailable' };
+    const runtime = ensureCombatant(state, entity, catalog);
+    for (const [id, subsystem] of Object.entries(runtime.subsystems)) {
+      const saved = subsystems[id];
+      if (!saved || !Number.isFinite(saved.health) || !(saved.maxHealth > 0)) continue;
+      subsystem.health = subsystem.maxHealth * Math.max(0, Math.min(1, saved.health / saved.maxHealth));
+      subsystem.destroyed = subsystem.health <= 0;
+      subsystem.pendingTransition = null;
+    }
+    runtime.pendingSubsystemTransitionCount = 0;
+    runtime.pendingStatuses = [];
+    runtime.statuses = {};
+    noteCombatPrePhysicsWake();
+    recomputeCombatantModifiers(context, entity, runtime, attachments);
+    return { ok: true };
+  }
+
+  function capabilities(entityId) {
+    const entity = getEntity(entityId);
+    if (!entity) return null;
+    const runtime = ensureCombatant(state, entity, catalog);
+    return canonicalize({
+      capabilities: runtime.capabilities,
+      multipliers: runtime.multipliers,
+      blockedActionTags: runtime.blockedActionTags,
+    });
+  }
+
+  function capRegenMultiplier(entityId) {
+    const entity = getEntity(entityId);
+    if (!entity) return 1;
+    const runtime = ensureCombatant(state, entity, catalog);
+    const value = runtime.multipliers && runtime.multipliers.capRegen;
+    return Number.isFinite(value) ? Math.max(0, value) : 1;
+  }
+
+  function inspect(request = {}) {
+    const entityId = request.entityId;
+    const entity = entityId == null ? null : getEntity(entityId);
+    const runtime = entity ? ensureCombatant(state, entity, catalog) : null;
+    return canonicalize({
+      schemaVersion: 1,
+      tick: state.tick,
+      traceDigest: state.combat.trace && state.combat.trace.digest,
+      entity: entity && runtime ? {
+        id: entity.id,
+        alive: entity.alive,
+        vitals: { hull: entity.hull, hullMax: entity.hullMax, armor: entity.armorHp, armorMax: entity.armorMax, shield: entity.shield, shieldMax: entity.shieldMax, capacitor: entity.cap, capacitorMax: entity.capMax },
+        combat: runtime,
+        actions: actions.inspect(entity.id),
+        attachments: attachments.listForEntity(entity.id, false),
+      } : null,
+      activeActions: entityId == null ? state.combat.actions.activeByActor : undefined,
+      attachments: entityId == null ? state.combat.attachments.byId : undefined,
+      trace: readCombatTrace(state.combat, {
+        sinceSeq: request.sinceSeq,
+        kinds: request.kinds,
+        actorId: request.actorId,
+        targetId: request.targetId,
+        limit: request.limit,
+      }),
+    });
+  }
+
+  function coolCombatHeat(entity, runtime, dt) {
+    // Quiet combatants sit at heat 0 — skip dissipation arithmetic until heat is applied.
+    if (!(runtime.heat > 0)) return;
+    // Dissipation is stashed on the runtime at ensureCombatant (profile is tick-stable).
+    const basePerTick = Number.isFinite(runtime.heatDissipationPerTick)
+      ? runtime.heatDissipationPerTick
+      : 0;
+    const normalizedTicks = Number.isFinite(dt) && dt > 0 ? dt * 60 : 1;
+    const multiplier = runtime.multipliers && Number.isFinite(runtime.multipliers.heatDissipation) ? runtime.multipliers.heatDissipation : 1;
+    runtime.heat = Math.max(0, runtime.heat - basePerTick * multiplier * normalizedTicks);
+  }
+
+  function getEntity(id) {
+    return state.entities && state.entities.get ? state.entities.get(id) || null : null;
+  }
+
+  function sortedEntitiesForTick() {
+    const indexVersion = combatTickIndexVersion(state);
+    // With the V1 index live, the tick + revision + version triple already pins the living
+    // set — every membership mutation bumps index.version and spawn/destroy emits bump the
+    // revision — so a hit can return before the O(living actors) walk that only feeds the
+    // length check and the sort input.
+    if (
+      indexVersion >= 0 &&
+      sortedCache &&
+      sortedCacheTick === state.tick &&
+      sortedCacheSeenRevision === sortedCacheRevision &&
+      sortedCacheIndexVersion === indexVersion
+    ) {
+      return sortedCache;
+    }
+    sourceScratch.length = 0;
+    forEachLivingWorldActor(state, pushSourceEntity);
+    appendMarkedEnvironment(state, sourceScratch);
+    const source = sourceScratch;
+    const length = source.length;
+    if (
+      sortedCache &&
+      sortedCacheTick === state.tick &&
+      sortedCacheSeenRevision === sortedCacheRevision &&
+      sortedCacheIndexVersion === indexVersion &&
+      sortedCacheLength === length
+    ) {
+      return sortedCache;
+    }
+    sortedCache = sortedEntitiesFromSource(source);
+    sortedCacheTick = state.tick;
+    sortedCacheSeenRevision = sortedCacheRevision;
+    sortedCacheIndexVersion = indexVersion;
+    sortedCacheLength = length;
+    return sortedCache;
+  }
+
+  function invalidateSortedCache() {
+    sortedCacheRevision++;
+    sortedCacheTick = -1;
+    sortedCache = null;
+    noteCombatPrePhysicsWake();
+  }
+
+  function dispose() {
+    for (const unsubscribe of subscriptions) if (typeof unsubscribe === 'function') unsubscribe();
+    KERNELS.delete(state);
+  }
+}
+
+// The tick roster walks shipLike + stations + wrecks, so its latches only need those lane
+// versions — projectile/pickup/fx churn outside them no longer starves the sorted cache.
+const ROSTER_LANES = ['shipLike', 'stations', 'wrecks'];
+
+function combatTickIndexVersion(state) {
+  // -1 reports the index unusable (mid-rebuild, unready, or lane counters absent) — readers
+  // then skip the index-version leg rather than scan a partial domain entityList covers.
+  return entityIndexLaneVersion(state, ROSTER_LANES);
+}
+
+/**
+ * Combat pre/post physics candidates: living-world actors (ship/drone/station/wreck) via
+ * entityIndex when present. Never asteroids or dressing FX.
+ */
+export function combatTickEntitySource(state) {
+  const out = [];
+  forEachLivingWorldActor(state, (entity) => {
+    out.push(entity);
+  });
+  appendMarkedEnvironment(state, out);
+  return out;
+}
+
+function appendMarkedEnvironment(state, out) {
+  // Only bodies that have earned a combat status participate; no whole-belt scan. The
+  // damage router registers non-damageable Gravity Mark targets, so this walks a handful
+  // of ids — nothing at all when no environment has been marked.
+  const marked = state.combat && state.combat.markedEnvironment;
+  if (!marked || !marked.length || !state.entities) return;
+  const table = state.combat.entities;
+  let have = null;
+  for (let i = marked.length - 1; i >= 0; i--) {
+    const runtime = table && table[marked[i]];
+    let live = !!(runtime && runtime.pendingStatuses && runtime.pendingStatuses.length);
+    if (!live && runtime && runtime.statuses) {
+      for (const key in runtime.statuses) { live = true; break; }
+    }
+    const entity = live ? state.entities.get(marked[i]) : null;
+    if (!entity || entity.alive === false) { marked.splice(i, 1); continue; }
+    if (!have) have = new Set(out.map(entity => entity.id));
+    if (!have.has(entity.id)) out.push(entity);
+  }
+}
+
+export function combatTickEntitySourceKind(state) {
+  if (!state) return 'none';
+  if (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1) return 'index';
+  if (Array.isArray(state.entityList) || (state.entities && typeof state.entities.values === 'function')) {
+    return 'filter';
+  }
+  return 'none';
+}
+
+function sortedEntitiesFromSource(list) {
+  if (!Array.isArray(list) || !list.length) return [];
+  for (let i = 1; i < list.length; i++) {
+    if (compareIds(list[i - 1] && list[i - 1].id, list[i] && list[i].id) > 0) {
+      return [...list].sort((a, b) => compareIds(a && a.id, b && b.id));
+    }
+  }
+  return list.slice();
+}
+
+function compareIds(a, b) {
+  if (Number.isFinite(a) && Number.isFinite(b)) return a - b;
+  const aa = String(a), bb = String(b);
+  return aa < bb ? -1 : aa > bb ? 1 : 0;
+}
+
+function isCombatantType(type) {
+  return type === 'ship' || type === 'station' || type === 'drone';
+}
+
+function participatesInCombat(state, entity) {
+  if (isCombatantType(entity && entity.type)) return true;
+  return !!(state && state.combat && state.combat.entities
+    && state.combat.entities[entityKey(entity && entity.id)]);
+}

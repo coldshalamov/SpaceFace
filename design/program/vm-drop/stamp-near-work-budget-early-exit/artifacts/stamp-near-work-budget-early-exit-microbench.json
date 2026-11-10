@@ -1,0 +1,55 @@
+{
+  "label": "stamp-near-work-budget-early-exit",
+  "primary": "quiet-80shipLike-#61-shape",
+  "pairs": [
+    {
+      "beforeMs": 99.466,
+      "afterMs": 53.245,
+      "speedup": 1.868
+    },
+    {
+      "beforeMs": 95.366,
+      "afterMs": 51.748,
+      "speedup": 1.843
+    },
+    {
+      "beforeMs": 102.275,
+      "afterMs": 56.037,
+      "speedup": 1.825
+    },
+    {
+      "beforeMs": 97.794,
+      "afterMs": 54.519,
+      "speedup": 1.794
+    },
+    {
+      "beforeMs": 98.558,
+      "afterMs": 54.687,
+      "speedup": 1.802
+    },
+    {
+      "beforeMs": 97.617,
+      "afterMs": 53.78,
+      "speedup": 1.815
+    },
+    {
+      "beforeMs": 105.628,
+      "afterMs": 58.115,
+      "speedup": 1.818
+    },
+    {
+      "beforeMs": 106.084,
+      "afterMs": 69.932,
+      "speedup": 1.517
+    },
+    {
+      "beforeMs": 104.235,
+      "afterMs": 63.644,
+      "speedup": 1.638
+    }
+  ],
+  "medianSpeedup": 1.815,
+  "minSpeedup": 1.517,
+  "maxSpeedup": 1.868,
+  "note": "Before=always-awake Set.insert + full shipLike scan. After=skip awake inserts + early-exit at budget. Soft-GPU fps not claimed."
+}

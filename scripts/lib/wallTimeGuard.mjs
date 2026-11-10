@@ -1,0 +1,123 @@
+// FB-095 — wall-clock determinism guard (shared library).
+//
+// performance.now()/Date.now() are the same determinism failure class as a Math.random draw:
+// a host-dependent value. Simulation-owner directories must not invoke them directly.
+// Diagnostics that genuinely need wall time read it through perfNow() in
+// src/core/perfRuntime.js — the single classified instrumentation seam.
+// ALLOWED_WALL_TIME_FILES carries each exception's classification rationale beside its path.
+//
+// This module is the shared engine: scripts/check-phase0-slice-contract.mjs asserts the real
+// tree is clean; test/fb-determinism-wall-time-guard.test.mjs proves a planted Date.now() in a
+// sim-owner directory is flagged.
+
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
+
+// The invocation (`performance.now(` / `Date.now(`) is the act. A bare reference or a mention
+// inside a stripped comment is not a read — matching the call keeps this guard from
+// false-positiving on its own classification prose.
+export const WALL_TIME_INVOCATION = /(?:performance\.now|Date\.now)\s*\(/;
+
+export const WALL_TIME_SCAN_DIRS = Object.freeze([
+  'src/systems',
+  'src/core',
+  'src/ai',
+  'src/combat',
+  'src/world',
+]);
+
+export const ALLOWED_WALL_TIME_FILES = new Map([
+  ['src/core/bootShellPacing.js', 'boot-overlay compositor scheduling only; never read by simulation'],
+  ['src/core/errorBoundary.js', 'presentation error-ring timestamps and toast cooldown; no gameplay clock'],
+  ['src/core/startupJournal.js', 'retail startup diagnostics persisted to sessionStorage; no gameplay writes'],
+  // Instrumentation seam: the exported wall clock for diagnostics. physics.js / flightV3.js /
+  // flight.js call perfNow() for _diag.tickMs instead of touching wall time themselves.
+  ['src/core/perfRuntime.js', 'perf instrumentation clock; perfNow() is the sanctioned diagnostic seam'],
+  // E10 recorder: frame deltas, reply ages and wall-epoch correlation are measurement columns.
+  // It reads no sim outcome and never writes gameplay state.
+  ['src/core/frameTruth.js', 'frame-truth recorder: measurement timestamps only; no gameplay state'],
+  // E2 profiler: per-system wall time and heap sampling are diagnostics, not sim inputs.
+  ['src/core/simStepProfiler.js', 'per-system step profiler: measurement clock only; no gameplay state'],
+  ['src/core/loop.js', 'frame driver: wall/elapsed stamps only feed the fixed-step accumulator'],
+  // Worker transport owns its fixed-step timer just as loop.js owns the main-thread driver.
+  // localNowMs measures timer deadlines/elapsed input; gameplay still advances by fixed dt
+  // through the authoritative host, and its systems continue to use state.simTime.
+  ['src/core/wholeSimBrowserWorker.js', 'worker frame driver: local wall stamps feed fixed-step scheduling and deadlines'],
+  // Delivery-deadline clock: flush(maxMs) bounds how long a listener drain may hold the frame.
+  // The stamps set a wall budget for queued emit slices — the same frame-pacing class as the
+  // loop accumulator — and never name a sim outcome. The bus stays dependency-free, which is
+  // why it does not route through perfNow().
+  ['src/core/eventBus.js', 'emit-slice delivery deadline; wall stamps bound frame time, not sim state'],
+  // Deferred materialization budget: the chunked enter drain stops when the millisecond work
+  // budget runs out — a wall bound on per-tick work, not a sim clock (entries pin their own
+  // sim stamps separately via _deferredEnterClock).
+  ['src/core/sectorEnterDefer.js', 'deferred enter materialization work budget; wall stamps bound frame time'],
+  ['src/core/presentationRunner.js', 'presentation runner pacing/diagnostics; owns no sim outcomes'],
+  ['src/core/runtimeWitness.js', '1 Hz flight-recorder instrumentation; wall stamps label human-facing reports'],
+  ['src/core/renderUpdatePhase.js', 'render-phase timing instrumentation'],
+  ['src/core/bootScheduler.js', 'boot scheduling instrumentation; no sim ownership'],
+  // Boot-seed draw moved here from src/main.js by the worker-lane extraction: Date.now() only
+  // XORs into the fallback seed when opts.seed is not finite, and the drawn value becomes the
+  // run's explicit seed — the wall stamp never reaches a sim stream.
+  ['src/core/newGameBoot.js', 'boot-seed XOR source only (fallback seed becomes the explicit run seed)'],
+  // Lane transport watchdog: sentMs/nowMs() stamps only measure rpc-ack delivery latency for the
+  // stall detector — a wall bound on transport waits, never a sim clock (same class as eventBus).
+  ['src/core/simLaneMain.js', 'lane rpc stall watchdog; wall stamps bound transport wait, not sim state'],
+  // Wire-id mint: Date.now() only makes nextLaneToken ids unique across same-ms calls; sim never
+  // reads the timestamp portion — same class as telemetry's local session id.
+  ['src/core/simLaneCommands.js', 'lane wire-id mint; wall stamp for token uniqueness only'],
+  // Input-device adapters: real hardware event timing is inherently wall-clock, and these
+  // stamps are diagnostic-only — input.js keeps the wall stamp off serialized state;
+  // gamepad.js/touch.js mark lastActiveMs "diagnostic only"; gamepad's self-benchmark
+  // measures its own tick cost.
+  ['src/systems/input.js', 'input->photon latency stamp; measurement-only, never serialized or read by gameplay'],
+  ['src/systems/gamepad.js', 'gamepad device diagnostic stamp + idle-skip self-benchmark'],
+  ['src/systems/touch.js', 'touch device diagnostic stamp (ev.timeStamp preferred; wall is fallback)'],
+  ['src/systems/telemetry.js', 'local telemetry session id and human-readable duration listing'],
+]);
+
+/**
+ * Scan relDir (relative to root) for active wall-clock invocations.
+ * Returns [{ rel, line }] with POSIX-style rel paths.
+ */
+export function scanWallTimeSites(root, relDir) {
+  const out = [];
+  const abs = resolve(root, relDir);
+  try {
+    walk(abs, (file) => {
+      if (!/\.(js|mjs)$/.test(file)) return;
+      const rel = relative(root, file).replace(/\\/g, '/');
+      const lines = readFileSync(file, 'utf8').split(/\r?\n/);
+      for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*')) continue;
+        const code = lines[i].replace(/\/\/.*$/, '');
+        if (WALL_TIME_INVOCATION.test(code)) out.push({ rel, line: i + 1 });
+      }
+    });
+  } catch (err) {
+    if (err && err.code === 'ENOENT') return out; // missing scan dir (e.g. src/ai in a fixture root)
+    throw err;
+  }
+  return out;
+}
+
+/** Every wall-clock site across the scan dirs that carries no classification. */
+export function unclassifiedWallTimeSites(root, dirs = WALL_TIME_SCAN_DIRS) {
+  const out = [];
+  for (const dir of dirs) {
+    for (const site of scanWallTimeSites(root, dir)) {
+      if (!ALLOWED_WALL_TIME_FILES.has(site.rel)) out.push(site);
+    }
+  }
+  return out;
+}
+
+function walk(dir, visit) {
+  for (const ent of readdirSync(dir)) {
+    const abs = join(dir, ent);
+    const st = statSync(abs);
+    if (st.isDirectory()) walk(abs, visit);
+    else visit(abs);
+  }
+}

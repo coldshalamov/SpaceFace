@@ -1,0 +1,90 @@
+  fat event payloads:
+    bufferFullUpload@1182.sourceData 0 KB
+    bufferFullUpload@1182.sourceData 3 KB
+    bufferFullUpload@1182.sourceData 1 KB
+    bufferFullUpload@1182.sourceData 0 KB
+    bufferFullUpload@1182.sourceData 0 KB
+    bufferFullUpload@1187.sourceData 1 KB
+    bufferFullUpload@1187.sourceData 1 KB
+    bufferFullUpload@1187.sourceData 1 KB
+    bufferFullUpload@1187.sourceData 1 KB
+    bufferFullUpload@1187.sourceData 2 KB
+    bufferFullUpload@1187.sourceData 0 KB
+    bufferFullUpload@1187.sourceData 1 KB
+    bufferFullUpload@1187.sourceData 0 KB
+    bufferFullUpload@1187.sourceData 1 KB
+    bufferFullUpload@1187.sourceData 1 KB
+    bufferFullUpload@1187.sourceData 1 KB
+    bufferFullUpload@1187.sourceData 1 KB
+    bufferFullUpload@1187.sourceData 1 KB
+    bufferFullUpload@1187.sourceData 1 KB
+    bufferFullUpload@1187.sourceData 2 KB
+
+SMOOTH-FLIGHT WITNESS
+  GPU                         ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)
+  whole-machine CPU busy      31 % of 14 logical cores during the sample (the game alone is ~10-15 %)
+  route                       open flight, new game; at end: 22 other ships, 0 projectiles (peak 0), 178 entities, 0 draw calls, 0k triangles
+  launch to flight            31.4 s
+  sample                      after 25 s of flight: 20 s, 1150 frames, 58.7 fps mean
+  frame time p50/p95/p99      16.7 / 17.0 / 33.3 ms; worst 83 ms
+  frames over 33 / 50 / 100   2 (0.2 %) / 1 (0.1 %) / 0
+  typical frame costs (ms)    callback 7.4  sim 0.0  present 7.2  render 5.6  vfx 0.8  ui 0.7  feel 0.1  admission 0.0
+  before a LONG frame (ms)    callback 31.4  sim 0.0  present 26.3  render 19.9  vfx 3.5  ui 1.5  feel 1.3  admission 0.0
+  long frames paid in JS      1 of 2 (the rest: GPU, compositor or GC outside the game's callback)
+  worst freezes (ms): interval <- callback = sim + present(render, vfx, ui) ...
+    # 642    83 <- callback   57  sim    0  present   47  (render 36, vfx 6, ui 2)  admission 0  — no wave event within 2s
+  wave events (s into sample)   none captured
+  every frame >50 ms: +s into sample, interval ms, owner, callback breakdown, nearest wave
+     +10.9s # 642     83  render                   cb   57 (sim 0 ren 36 vfx 6 ui 2 adm 0 untr 10) gap 23 disp 21  — no wave event within 2s
+  hitch classifier (in-game)    hitches 26 of 1181 frames, named 21 (coverage 81 %) — externalScheduling 18 | unknown 5 | bloom 1 | present 1 | vfx 1  (scheduling split: gap-dominant 17, dispatch-dominant 1, extGap 309 ms, dispLag 95 ms)
+  last hitch verdicts: +s into sample, frame ms, owner, nearest wave
+     +10.4s     33  vfx  — no wave event within 2s
+     +10.4s     33  externalScheduling  — no wave event within 2s
+     +10.5s     33  externalScheduling  — no wave event within 2s
+     +10.8s     33  unknown  — no wave event within 2s
+     +11.4s     33  externalScheduling  — no wave event within 2s
+     +11.4s     33  externalScheduling  — no wave event within 2s
+     +11.5s     83  bloom  — no wave event within 2s
+     +11.7s     33  externalScheduling  — no wave event within 2s
+     +11.9s     33  externalScheduling  — no wave event within 2s
+     +12.1s     33  externalScheduling  — no wave event within 2s
+     +14.0s     33  externalScheduling  — no wave event within 2s
+     +14.6s     33  unknown  — no wave event within 2s
+     +15.0s     34  externalScheduling  — no wave event within 2s
+     +18.5s     33  unknown  — no wave event within 2s
+     +19.3s     33  unknown  — no wave event within 2s
+     +19.5s     33  externalScheduling  — no wave event within 2s
+  long tasks ≥100 ms between callbacks (largest first)
+    none
+  wave arrival in window      NOT COVERED — no wave materialized in this window. The link/upload counts below say nothing about wave-arrival cost, and must not be compared against a run that was covered.
+  kills in sample             n/a (run with --with-kill to force live kills)
+  program links / buffer uploads shaderLinks +1, bufferFullUploads +8, bufferPartialUploads +21252
+  link placement                1 frame(s) paid a draw-time link; 0 link(s) landed off-frame (async compile); novelty: 1 NOVEL, 0 RELINK, 0 unkeyed
+  admissions queued at flight   pipelines 0, residency 0
+  roster prewarm at flight      1 roots, 1560 unready materials — opening-species-warm(5889m,1560/5897,null)
+  crucible warm at flight     {"profile":"opening","records":40,"instantiated":40,"packageInstances":40,"paletteSubjects":326,"chunkPromotions":0,"shipKicks":0,"shipStates":""}
+  ship pools at flight        0 chunks, 0 slot owners, 0 pending candidates
+  cook ledger                 live.rocksAndLeftoverMeshes 4ms resolved (firstFlightEntities=48) | live.meshBuilds2 23ms resolved (queued=10,passes=2,built=0,buildMs=0,yields=2,left=0) | cook.programs 0ms resolved (method=first-flight-hulls) | cook.touchCompile 936ms resolved (issued=569,unlinked=0,yields=15) | cook.touch 932ms resolved (subjects=569,firstPicture=94,touched=569,notReady=0,noProgram=0,switched=2,touchMs=340,maxTouchMs=6,yields=50) | cook.buffers 2254ms resolved (roots=95,textures=194,yields=24) | cook.layers 115ms resolved (roots=174,yields=30) | cook.crucibleWarm 263ms resolved (progress={"profile":"opening","records":40,"instantiated":40,"packageInstances":40,"paletteSubjects":326,"chunkPromotions":0,"shi) | cook.rockPools 6522ms resolved (roots=54,units=1825,issued=1825,issueDedupeSkips=1719,touched=1825,hiddenTouchSkips=1744,yields=14,issueMs=2689,drainMs=1679,touchMs=2084) | live.cook 11420ms resolved | live.leftoverUpgradeIdle 0ms resolved (pending=0,inFlight=0,compiling=false) | live.materialSettle 2018ms resolved (unbound=449,names=Physical racing wakes/Next checkpoint/Draft pace beacon/Massline anchors and crossing refuges/L6_comet/L0-L2_deep-field-composite/L3_stars/L4_) | live.postOpeningPipelines 436ms resolved | live.parkWarmRoots 115ms resolved (roots=1,nodes=129,stampedGeometries=586) | live.firstFramePoolCensus 648ms resolved | live.finalPipelineSeal 0ms resolved (queuedPipelines=0) | wait.prepareLiveSectorBeforeFlight 14681ms resolved | opening.compositionTail 1ms resolved
+  opening tail settle         {"skipped":false,"waitedMs":1,"polls":1,"kicked":0,"kickedIds":[],"settled":true,"pending":0,"inFlight":0,"compiling":false,"residency":0,"budget":20000}
+    +0.2s  [NOVEL] ?  (94,95,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,false,false,0,,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,8388609,0,srgb,onBeforeCompile( /* shaderobject, renderer */ ) {})  via Group:wreck  drew SF_WeaponDistortion:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+  boundary census at flight   authored×4
+  mesh builds in sample:
+    +8.1s  build wreck:461
+    +19.0s  build wreck:442
+  buffer uploads in sample:
+    +0s  ×2    bufferData 48B  via Group:wreck
+    +0s  ×1    bufferData 32B  via Group:wreck
+    +0s  ×1    bufferData 768B  via Group:wreck
+    +0s  ×2    bufferData 256B  via Group:wreck
+    +0s  ×1    bufferData 4096B  via Group:wreck
+    +0s  ×1    bufferData 12B  via Group:wreck
+  SHIP LOST ITS PLACE         0 presents redrew an already-drawn moment (must be 0)
+  hitch callbacks             0 of 1181 (world resumed two ticks on)
+  frames that shed sim time   34
+  game speed vs real time     97.1 % (hit-stop and hitches are the only things allowed to lower it)
+  OS says reduce motion       false
+  game motion setting         full -> effects FULL
+  rock batches                0/0  0/0  0/0  0/0  0/0
+  player speed at end         195 WU/s
+  console errors              0
+

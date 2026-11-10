@@ -1,0 +1,375 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.io-reach-wreck",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "163338bd604c12eae3f05d6aff8bd560ee2fde7cd401ffb7caf22a43a30aae5f",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.24001892962710636,
+          0.5600177114372102,
+          0.4000000059604645
+        ],
+        "min": [
+          -0.24001892962710636,
+          -0.00001770905302439507,
+          -1.3200000524520874
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8ea181ebbce7785ca71a5b900a6f404175c0c43420b9aefa4f8ce8ce390e5bf2",
+      "id": "sf.render.io-reach-wreck.mesh.brokennave.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "13e8c6d9f3f115b82d3ce6dcf30dab57d24992b786610d0d4ef13f764449c0ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "BrokenNave",
+      "nodeId": "sf.render.io-reach-wreck.mesh.brokennave",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6000000238418579,
+          0.24998321591528527,
+          0.21996490515125722
+        ],
+        "min": [
+          -0.7599999904632568,
+          0.07001678438273795,
+          -0.279964907535443
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "91f9345f88ab04e7f32c3ed877b4738a0efc7b310c320d60460c5286d1ba375d",
+      "id": "sf.render.io-reach-wreck.mesh.unequaltransepts.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "63e3cbab0505b220cb0e46e136eeed868020605def1e04b643215013d0f65e7b",
+      "materialPipelineKey": "opaque",
+      "meshName": "UnequalTransepts",
+      "nodeId": "sf.render.io-reach-wreck.mesh.unequaltransepts",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "13e8c6d9f3f115b82d3ce6dcf30dab57d24992b786610d0d4ef13f764449c0ae",
+      "id": "material:13e8c6d9f3f115b82d3ce6dc",
+      "name": "NaveHull",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "63e3cbab0505b220cb0e46e136eeed868020605def1e04b643215013d0f65e7b",
+      "id": "material:63e3cbab0505b220cb0e46e1",
+      "name": "TranseptStub",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.io-reach-wreck.mesh.brokennave",
+      "localTransform": [
+        0.8600000292062759,
+        0,
+        0,
+        0,
+        0,
+        0.8600000292062759,
+        0,
+        0,
+        0,
+        0,
+        0.8600000292062759,
+        0,
+        0,
+        0.2800000011920929,
+        -0.46000002324581146,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "BrokenNave",
+      "nodeName": "BrokenNave",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.io-reach-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.io-reach-wreck.body",
+      "worldTransform": [
+        0.8600000292062759,
+        0,
+        0,
+        0,
+        0,
+        0.8600000292062759,
+        0,
+        0,
+        0,
+        0,
+        0.8600000292062759,
+        0,
+        0,
+        0.2800000011920929,
+        -0.46000002324581146,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.io-reach-wreck.mesh.unequaltransepts",
+      "localTransform": [
+        0.6800000071525574,
+        0,
+        0,
+        0,
+        0,
+        0.6800000071525574,
+        0,
+        0,
+        0,
+        0,
+        0.6800000071525574,
+        0,
+        -0.07999998331069946,
+        0.1600000001490116,
+        -0.030000001192092896,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "UnequalTransepts",
+      "nodeName": "UnequalTransepts",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.io-reach-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.io-reach-wreck.body",
+      "worldTransform": [
+        0.6800000071525574,
+        0,
+        0,
+        0,
+        0,
+        0.6800000071525574,
+        0,
+        0,
+        0,
+        0,
+        0.6800000071525574,
+        0,
+        -0.07999998331069946,
+        0.1600000001490116,
+        -0.030000001192092896,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.io-reach-wreck.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_io_reach_wreck",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.io-reach-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "266846a0dd14772ec5326e3c89a6447135d58228b3e667d89485856730ff94d8"
+    },
+    "sourceGlb": {
+      "bytes": 6880,
+      "sha256": "125b29b8e68ed16edc94f4c752200d34cd6b8d1ac5d0a49737aba9f9600b19e7",
+      "uri": "place_io_reach_wreck.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 4672,
+    "sha256": "470ac9d48064d09dc74e9d88341a8b33a7c7c980dcbd5b0e4ddd86b1e76fc51b",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.07999998331069946,
+        0.2800000011920929,
+        -0.46000002324581146
+      ],
+      "max": [
+        0.6000000238418579,
+        0.5600177114372102,
+        0.4000000059604645
+      ],
+      "min": [
+        -0.7599999904632568,
+        -0.00001770905302439507,
+        -1.3200000524520874
+      ],
+      "size": [
+        1.3600000143051147,
+        0.5600354204902347,
+        1.7200000584125519
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 4,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.8600000292062759,
+          0,
+          0,
+          0,
+          0,
+          0.8600000292062759,
+          0,
+          0,
+          0,
+          0,
+          0.8600000292062759,
+          0,
+          0,
+          0.2800000011920929,
+          -0.46000002324581146,
+          1
+        ],
+        "name": "BrokenNave",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6800000071525574,
+          0,
+          0,
+          0,
+          0,
+          0.6800000071525574,
+          0,
+          0,
+          0,
+          0,
+          0.6800000071525574,
+          0,
+          -0.07999998331069946,
+          0.1600000001490116,
+          -0.030000001192092896,
+          1
+        ],
+        "name": "UnequalTransepts",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_io_reach_wreck.glb"
+  },
+  "runtimeHash": "ccb4360d022927789895540711ea273113f58115f1a27203f4593b7bb84ad2fb",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          0.6000000238418579,
+          0.5600177114372102,
+          0.4000000059604645
+        ],
+        "min": [
+          -0.7599999904632568,
+          -0.00001770905302439507,
+          -1.3200000524520874
+        ]
+      },
+      "id": "sf.render.io-reach-wreck.body",
+      "nodeIds": [
+        "sf.render.io-reach-wreck.mesh.brokennave",
+        "sf.render.io-reach-wreck.mesh.unequaltransepts",
+        "sf.render.io-reach-wreck.root"
+      ]
+    }
+  ]
+}

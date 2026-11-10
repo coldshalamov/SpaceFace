@@ -1,0 +1,253 @@
+WAVE 3 FLIGHT HUD RE-SCORE — CRITIC REPORT R1 (3 surfaces)
+Stills: .devshots/ui-review/view/w3c-{orrery-flight,flight,power-rail}-{1920,1280}.png
+Crops: .devshots/ui-review/crops/w3c-hud1-*.png (27 crops) + samplers .devshots/w3c-hud1-sample{,2,3,4}.cjs
+Method: all 6 stills opened; 27 crops read; ~120 sharp .raw() row/column/block samples.
+L = sRGB relative luminance x255; ratios (hi+12.75)/(lo+12.75). Coords in still px; "1920" = 1920x1080
+space, "1280" = 1280x720 space. Bench artefacts excluded (frozen motion, CYCLE clock, backdrops).
+EVIDENCE CORRECTION (parent dispatch, in-session): w3c-flight-1920.png is a STALE pre-fix 720p
+capture mis-archived under a 1920 name (copy error — the 1920 run never wrote; verified by mtime
++ dimensions). Per the correction, NO flight item is scored from that file: flight is judged on
+w3c-flight-1280.png (fresh, true 720p) and w3c-power-rail-1920.png (fresh, true 1920, identical
+staging to flight). Full-frame 1920 composition is verified via the power-rail twin, so no item
+below needs the UNVERIFIED-RESHOOT mark; the stale file appears only as labeled old-state
+contrast (F1/F2) and as a re-shoot owed.
+
+STILL INTEGRITY NOTE (read first): w3c-flight-1920.png is NOT a 1920 still — it is 1280x720 and
+shows the PRE-build-round state (amber TAKING FIRE dot #c49440, "Beacon 419 WU", bone dock text,
+no tape, unleaded FLYBY). w3c-power-rail-1920.png is true 1920x1080 and shows the NEW state, as
+does w3c-flight-1280.png. Parent dispatch confirms the 1920 run never wrote and the copy picked
+up last night's audit file (mtime + dimensions verified). Every F-item below is judged on the
+fresh 1280 + power-rail-1920 stills; the stale file is evidence of nothing except a re-shoot
+owed, and no score is deflated for it.
+
+PERF GATE (all surfaces): every fix below is static (position/fill/text/SVG attrs, zero/frame)
+unless flagged; none proposes backdrop-filter, blur filters, or per-frame repaints over flight.
+Leader endpoints move on the 10 Hz slow clock only. Nothing below risks the 0.8 ms budget.
+
+================================================================================
+SURFACE 1 — orrery-flight (ORRERY Phase 0a flight HUD preview)
+================================================================================
+1. VERDICT: NOT PASSED, overall 7.8 (previous 1.2).
+2. AXES (score / previous / note):
+   Composition 8.0 / 1.0 : cluster + crescent + tape + radar compose a real HUD; center left
+     empty for the fight; 1280 holds. The key-on-tape collision is surface 2's, not here.
+   Hierarchy 7.5 / 1.0 : 100px numeral (L214) leads, tape second, crescent third; at 1280 the
+     threat arc crossing the radar rim slightly muddles rank.
+   Legibility 8.0 / 1.0 : hero readings crisp (numeral 15:1, tape distance ~9:1); small tags
+     (RANGE, group digits) clear; dim states readable.
+   ORRERY fidelity 8.5 / 1.0 : Hand + bead + spine + tape + lock leader + red threat channel
+     all speak the law; the radar ring's missing bloom twin is the one gap.
+   Craft/detail 7.5 / 2.0 : hull art, segmented arcs, sweep, bead; ring L/R asymmetry (L45 vs
+     L23) and the absent bloom band keep it from expensive.
+   Interaction clarity 7.5 / 1.0 : verb keys + lock leaders + edge tell all reachable; press
+     feedback unseen (frozen motion, not scored).
+3. PREVIOUS LIST (O1-O5 + F3-r126 ring):
+   O1 DONE — bench root transform fixed: the preview paints fully at both sizes (cluster,
+     tape, crescent, radar, lock, threat all on pixels; was 0x0 clipped).
+   O2 DONE — cluster acceptance: hull art + ring stack + speed numeral on frame. Numeral
+     spans y~560-660 (~100px, pk L214, col x=70/110); hull + shield/armor arcs + ENERGY /
+     HEAT rails all painted, bottom-left, nothing clipped.
+   O3 DONE — tape + place acceptance: tape spans x600-1320 (720px incl. margins) with
+     contract line (y~38), compass scale (y~60), amber marker diamond (x1050-1065, y92-124,
+     pk L138) and "4.1K WU ETA 38S" counter (y~145); place block "Helios Prime" at (40,34)
+     on frame. Nothing cut off.
+   O4 DONE — verbs acceptance: all nine keys + group nodes x<650. Proof: rows y680-980
+     step 20, x650-800, all L<25 — zero verb light past x650, inside the 700 limit.
+   O5 DONE (trusted, staging holds) — code-level hardening is not pixel-verifiable, but both
+     sizes paint through the same mount path with no collapse, which is its observable.
+   F3-r126 HALF — rest tone raised (right crossing x1875-76 pk L45 over bg L3-4 = 3.5:1;
+     up from the audit's L7-16), but the ring is still ONLY its 2px core: neighbours sit
+     at bg (L3-6), i.e. no 4-5px geometric bloom twin exists. Left arc dimmer still
+     (x~1615, pk L23-25 = 2.3:1). The brief's body bar (lum-~70 band) is not met.
+4. RANKED FIXES:
+   R1. Radar outer ring bloom twin (ring r~130, crossings (1615,905)/(1875,905) 1920). Core
+     only, no band. Add the §3.1 twin: same path, 5px, 20% bone, under the core. PERF:
+     static SVG attrs, zero/frame.
+   R2. Ring L/R asymmetry (left pk L23 vs right pk L45). Unify rest alpha (raise the dim
+     arc to the bright one; check sweep-light coupling as the cause). PERF: static.
+   R3. Signal Toasts lack decay arcs (toasts at (1500,150)-(1920,330): dots + labels only).
+     18px bone decay arc beside each dot. PERF: stepped 4Hz dash updates, never per-frame.
+   R4. Threat ring paints OVER the radar rim at 1280 (red arc crosses radar left edge
+     x~880-900/1280). Paint the world-space threat ring below the HUD furniture layer.
+     PERF: z-order only, zero/frame.
+   R5. Threat arc lower half dim (upper arc L50-55 at y560-600; L<25 below y608 though the
+     arc visibly continues). Unify arc weight along its length. PERF: static.
+   R6. Speed numeral has no scale (100px "149" + "REF 180" text only; §6 wants the numeral
+     on a curved Scale with the reference tick). Short tick arc under the numeral with the
+     REF tick picked out. PERF: static.
+   R7. Lock Ring lead pip unseen (lock at (830,330)-(1250,490): ring + leader + label
+     present). Confirm the §6 lead pip exists against moving targets. PERF: n/a.
+5. MEMORABLE LINE: It nearly does it — threat arriving as a red arc bending round your own
+   hull is the kill-shot the audit asked for. What nothing here attempts yet: the tape's
+   marker and the threat arc talking to each other — the bearing marker flaring red as the
+   arc closes on it.
+7. OWNER CRITERIA: (a) BORDERLINE PASS — the screen reads as a produced instrument (hull
+   art, 100px numeral, tape, beads, threat light), not wireframe; but ONE element fails the
+   measured bar and is named: the radar outer ring (2px core, L23-45, no bloom band — R1).
+   (b) PASS — signature = flying the Cluster as one instrument while threat bends round
+   your hull and the tape holds the objective; distinct per-screen and memorable. Screen
+   NOT PASSED on numbers (7.8 < 8.0).
+
+================================================================================
+SURFACE 2 — flight (live flight HUD; judged on 1280 + power-rail-1920 stills)
+================================================================================
+1. VERDICT: NOT PASSED, overall 7.0 (previous 6.7).
+2. AXES:
+   Composition 6.5 / 7.0 : the tape completes the top band — but the Lamp Key sits ON it
+     (key y30-76 covers the tape label + scale centre), the worst collision in the batch.
+   Hierarchy 6.5 / 6.5 : two amber leads (tape marker, Lamp Key) + red tell with no rank;
+     the key wins by area while the tape is the hero.
+   Legibility 8.0 / 7.5 : lock labels crisp, RANGE now ~7.8:1, big readings excellent.
+   ORRERY fidelity 7.0 / 6.0 : tape + lamp + leaders + red threat = the law; radar still
+     wires and centre stack still knotted hold it down.
+   Craft/detail 7.0 / 7.0 : up in parts (bead, labels, bars), down on the overlap.
+   Interaction clarity 7.0 / 6.0 : one verb system + labeled locks; FLYBY leader endpoint
+     unreadable.
+3. PREVIOUS LIST (F1-F10 item by item):
+   F1 DONE — threat dot is now pure red: #ff5038 flat across (594-601, 8-13)/1280 (exact
+     var(--dp-danger)); the stale file shows amber #c49440 at the same spot. One-line law.
+   F2 DONE — "Beacon" + live "457 WU · ETA 13s" in both new stills (1280 waypoint crop);
+     the "419" is gone from the name. (The stale mislabeled file still shows "Beacon 419
+     WU" — capture age, not code.)
+   F3 NOT — live radar rings still wires: row y545/1280 shows NO outer-arc pixels L>8 on
+     either side (only centre blob x1119-1130 pk195 + tick x1228-30 pk29); column x1155:
+     top L27, bottom L18. The OF-preview radar got the raise (pk45); the live radar did
+     not. Handed to the radar.js owner; absent on these pixels.
+   F4 DONE — both diamonds labeled with leaders: "BEACON / 457 WU" leader to the filled
+     diamond; "RELIEF-FREIGHTER CHOIR-TENDER / 152 WU" under the hollow one (f1280-lock).
+   F5 DONE — §6 tape mounted: scale (300 NW NE 060), centre chevron, "OBJECTIVE · Beacon"
+     label, amber marker + "457 WU ETA 13S" counter. It exists and reads — but see fix T1:
+     the Lamp Key covers its middle. DONE as an instrument, wounded by placement.
+   F6 DONE — drive bars now 3px: column x640/1280 shows bands y587-589 + y595-597 (L70-71
+     over floor L22); "CAP" amber, "DISRUPTED V-MAX 320" distinct. Ghost delta not visible
+     in-still (minor; fix T7).
+   F7 HALF — a red leader exists (x~535/1280, bright y390-444, dimmer continuation down
+     past the drive block to ~y650), but its endpoint is unmarked and it dives through the
+     drive text; and the tell itself still collides: "Break the beam" (x628-712, y398-410)
+     passes behind the amber lock diamond. Leader without a readable target.
+   F8 DONE — dock prompt is now the Lamp Key: amber field (640,40)=(200,153,66), dark ink
+     (640,52)=(47,40,26), 45° cut on the right edge, one verb system. DONE as an object;
+     placement is fix T1.
+   F9 NOT — skipped for radar.js ownership and still knotted: centre run x1119-1130/1280
+     (12px wide, pk195) = glyph + brackets + crosshair merged; no 10px bracket pushout.
+   F10 DONE (contrast-alt, as scoped) — RANGE glyphs pk L95-127 over bg L3 (~7.8:1, was
+     4.5:1 with no margin); still curved (10px sag across x1077-1170 — the uncurved
+     variant was explicitly handed to the radar owner, so curvature does not fail this).
+   F2-radar-foot NOT — handed to the radar owner, not landed: the footer in the NEW 1920
+     still reads "OBJ 457 WU · BEACON 419 WU" — stale 419 live on screen next to live 457.
+   DO THE SKIPS BLOCK APPROVAL? YES. F3 (radar still wires — an owner-(a) failure on a
+     hero instrument) and F2-foot (a second stale number live beside the fixed one) are
+     visible defects in the current stills, and F9 rides with F3 as one radar unit. Only
+     the F10 uncurved variant does not block (contrast-alt suffices).
+4. RANKED FIXES:
+   T1. Lamp Key off the tape (key (460-810, 30-76)/1280 covers tape label + scale centre;
+     tape amber L133-155 under it). THE FIX — and to the brief's question: the TAPE MUST
+     NOT yield; the key is transient, the tape is the persistent hero. Dock the key BELOW
+     the tape cluster (top edge y≥150/1280, i.e. under the distance counter), tape
+     untouched. PERF: static position, zero/frame. (Builder's known adjacency VERIFIED.)
+   T2. Stale "BEACON 419 WU" radar footer (new 1920 still, bottom-right). Live-update the
+     number with the waypoint binding or drop it from the footer. PERF: text already
+     rewrites; zero marginal cost. Blocks approval with T3.
+   T3. Live radar range rings (arcs L<8-27). Land F3: rest tone to 65% + 4px 20%
+     geometric twin. PERF: static SVG attrs — explicitly not a blur filter. Blocks (a).
+   T4. Radar centre stack (12px blob pk195 at (1119-1130, ~540)/1280). Land F9: lock
+     brackets 10px out, mute crosshair dashes inside r20. PERF: static.
+   T5. FLYBY tell / diamond collision ("Break the beam" x628-712/1280 behind the amber
+     diamond). Nudge the tell 14px down-left via the label solver; keep cap 3. PERF:
+     reposition on target change / 10 Hz, never per-frame.
+   T6. FLYBY leader endpoint (red line x~535 runs y390-650 into the drive block). Terminate
+     at the hostile's projected pip with an end dot; never cross drive text. PERF: move
+     endpoints on the 10 Hz clock only.
+   T7. Drive bars lack the ghost delta (both 3px bars read solid). Ghost segment on the
+     disrupted bar per §3.1. PERF: one static segment; animate scaleX only if live.
+5. MEMORABLE LINE: The tape + red tell + Lamp Key could be the best top band in the game —
+   once they stop standing on each other. What nothing here attempts yet: the tape marker
+   leaning red toward the bearing the threat is coming from.
+7. OWNER CRITERIA: (a) FAIL — the live radar's range rings (arcs L<8-27, side arcs
+   invisible) read as thin wirework with no light; they need the F3 treatment (T3). The
+   Cluster bands and 3px drive bars pass. (b) BORDERLINE PASS — signature = Cluster +
+   tape flight with Hand-armed verbs; present and stronger with the tape, but the
+   key-on-tape collision (T1) and the unreadable FLYBY leader (T6) keep it from memorable.
+   Screen NOT PASSED.
+
+================================================================================
+SURFACE 3 — power-rail (the ordnance crescent alone; same staging as flight)
+================================================================================
+1. VERDICT: NOT PASSED, overall 7.6 (previous 7.1).
+2. AXES:
+   Composition 8.0 / 7.5 : spine + bead complete the arc; labels outside, clean flank.
+   Hierarchy 7.5 / 7.0 : armed LINE 3 (tag L214) leads; dim CHARGE recedes; digits now a
+     second voice.
+   Legibility 7.0 / 6.5 : armed/ready crisp; dim CHARGE body still ~2:1, under the floor.
+   ORRERY fidelity 8.0 / 7.5 : arc + Hand + bead + spine + open-ring groups = verbatim law.
+   Craft/detail 7.5 / 7.0 : bead, spine, digit gaps land; pools still ellipse-ish, no bloom.
+   Interaction clarity 7.5 / 7.0 : one verb per key; press ripple unseen (frozen).
+3. PREVIOUS LIST (P1-P10):
+   P1 HALF — dim floor improved at one stem only: row y649/1920 shows a single glyph stem
+     x509-511 at L137-174 over pool bg L10-16 (5.8:1), but columns x540/x570 through the
+     tag body are smooth halo gradient (L71→39, zero glyph spikes) — the "HARGE" body sits
+     ~L50-70 over pool L30-50, ≈2:1, still under the 4.5 floor. Peak raised, body not.
+   P2 HALF — core widened (LINE 3 node left arc x497-500/1920, 4px at L142-195) but the
+     bloom twin is absent: neighbours x494-496/501-503 sit at bg L1-2. Core DONE, twin NOT.
+   P3 HALF — ready icons present and legible (BLAST arrow, LINE icon bright in armed
+     node); full 1.0 opacity + 22px size on the READY (non-armed) icon is not proven on
+     pixels — BLAST's arrow reads ≈70% visually. Unverified, not failed.
+   P4 HALF — gaps DONE ("FIELDWORK" x555-574, digits x585-600: clean break, no longer one
+     run) but digit-dimming NOT: digits pk L~100 vs name pk L~106 — same voice, not 70%.
+     The name does not lead by tone, only by position.
+   P5 DONE — amber bead on the Hand at the armed node: row y752 x480-482/1920 L83-114,
+     confirmed visually riding the arm into LINE 3's edge.
+   P6 DONE — continuous spine through the node centres, visible full crescent length in
+     both 1920 crops.
+   P7 HALF — pools softer (row y742: L29 near tag → L41 floor, gentle 1.4:1 gradient, no
+     hard edge) but still read as dark ellipses behind the tags on the bright floor, and
+     the pool spans 80px+ — the inset shrink is not evident. Softer, not hugging.
+   P8 DONE — two voices as prescribed: "LINE" name glyphs L71-116 vs digit "3" x566-571
+     pk L187-214. Digit in the bright numeral voice, name in the label voice.
+   P9 DONE — groups (FIELDWORK/RIG/BAY) are open rings; key nodes carry filled centres /
+     icons. Distinguishable at a glance in both crops.
+   P10 HALF — tags end x~410/1280, still past the wingman disc's x~390 line, and the
+     overlay is closed in this staging so the <1400px shift is unprovable either way. No
+     collision visible (nothing to collide with); no shift proven. Needs one overlay-open
+     still to close.
+4. RANKED FIXES:
+   C1. CHARGE dim body to the 4.5 floor (tag body L50-70 over pool L30-50 ≈2:1). Raise dim
+     ink (ink-dim 85% per audit) rather than touching the pool — the pool is already near
+     black. PERF: static text fill.
+   C2. Node bloom twins (r20 keys / r14 groups; neighbours at bg L1-2). 5px 20% geometric
+     twin under each core. PERF: static SVG — never a blur filter over flight.
+   C3. Halo pool inset (pool spans 80px+ behind LINE 3). Shrink to hug the tag (-6/-10px
+     per audit) so it reads as glow, not ellipse. PERF: static gradient stops.
+   C4. Group digits to 70% (digits L~95-100 vs names L~81-106). Drop digit fill so the
+     NAME leads by tone as well as position. PERF: static.
+   C5. Ready icon full-bright (BLAST arrow ≈70% visually). Verify 1.0 opacity + 22px box
+     on ready-but-not-armed icons. PERF: static.
+   C6. Sub-1400px crescent shift (tags end x~410/1280 vs disc line x~390). Land the media
+     query (-10px + shortened halos) and close with one overlay-open still. PERF: static.
+5. MEMORABLE LINE: The audit's line still stands and is still unbuilt — verbs that feel
+   LOADED: the armed key breathing, firing visibly spending its light down the arm. The
+   bead (P5) is the socket it plugs into; add a slow transform-only breath on the armed
+   node and the crescent becomes unforgettable. PERF: opacity/scale on the compositor.
+7. OWNER CRITERIA: (a) PASS (borderline) — nodes carry icon + tag + halo + Hand weight;
+   cores are 4px at L195; dim states recede by design. C2 (bloom twins) would seal it.
+   (b) PASS — verbs on a crescent with the Hand swinging between them, bead landing on the
+   armed key: distinct per-screen. The breath (memorable line) would make it unforgettable.
+   Screen NOT PASSED on numbers alone (7.6 < 8.0; legibility 7.0).
+
+================================================================================
+CROSS-SURFACE NOTES
+================================================================================
+- The build round is real: O1/O5 staging fix holds at both sizes, F1/F2/F4/F5/F6/F8/F10
+  and P5/P6/P8/P9 are pixel-proven. The remaining work is weight (bloom twins in three
+  places: S1 ring, S3 nodes, S2 live rings), one placement bug (T1), and the radar.js
+  owner unit (F3-live, F9, F2-foot, F10-variant).
+- Colour discipline is now clean: exactly one red channel (threat: #ff5038 dot, #db4632
+  arcs) and one amber channel (Hand, tape marker L138, Lamp Key (200,153,66)) with no
+  misuses found on any surface.
+- Number hygiene is not: live 457 vs stale footer 419 (T2) is the same smell the audit
+  flagged in the waypoint; "ARRIVAL 421 WU" in the drive block is a third nearby number
+  whose quantity should be confirmed distinct (stop point vs beacon) or unified.
+- Scores: S1 7.8 (was 1.2) / S2 7.0 (was 6.7) / S3 7.6 (was 7.1). All three NOT PASSED:
+  S1 on the 8.0 bar alone (axes all ≥7, (a) borderline, (b) pass); S2 on numbers + two
+  axes + (a); S3 on numbers alone. The single highest-value change in the batch is T1
+  (Lamp Key below the tape); the single highest-value unit is the radar.js owner handoff.

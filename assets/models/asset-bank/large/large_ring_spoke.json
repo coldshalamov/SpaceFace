@@ -1,0 +1,411 @@
+{
+  "assetId": "large_ring_spoke",
+  "category": "large",
+  "description": "ring spoke",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_large.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Join_A",
+      "position": [
+        -32.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Join_B",
+      "position": [
+        32.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Service",
+      "position": [
+        0.0,
+        2.85,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -2.0,
+          3.5
+        ],
+        "size": [
+          64.0,
+          1.2,
+          1.2
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -2.0,
+          -3.5
+        ],
+        "size": [
+          64.0,
+          1.2,
+          1.2
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          64,
+          4,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -28.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          8.0,
+          0.5,
+          0.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -20.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          8.0,
+          0.5,
+          0.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -12.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          8.0,
+          0.5,
+          0.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -4.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          8.0,
+          0.5,
+          0.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          4.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          8.0,
+          0.5,
+          0.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          12.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          8.0,
+          0.5,
+          0.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          20.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          8.0,
+          0.5,
+          0.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          28.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          8.0,
+          0.5,
+          0.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          2.6,
+          -0.0
+        ],
+        "size": [
+          5,
+          0.5,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          2.1,
+          -0.0
+        ],
+        "size": [
+          4,
+          0.5,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "large",
+    "reusable",
+    "Forge",
+    "metre-scale"
+  ],
+  "bounds": {
+    "min": [
+      -32.19052505493164,
+      -2.5999999046325684,
+      -5.300000190734863
+    ],
+    "max": [
+      32.19052505493164,
+      3.040525436401367,
+      5.300000190734863
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "large_ring_spoke_lod0.glb",
+      "triangles": 11212,
+      "draws": 3,
+      "bytes": 829640,
+      "method": "source",
+      "sha256": "89109998bc60ef168fa6de9f09c47b9727d7bfb206b4406b5cbc1a8ecd1a2a3c"
+    },
+    {
+      "level": 1,
+      "file": "large_ring_spoke_lod1.glb",
+      "triangles": 6668,
+      "draws": 3,
+      "bytes": 610388,
+      "method": "authored-topology",
+      "sha256": "39a03907ad4763401d2b991be8fb2db461a856e6363729a66edaea959fd2f03a"
+    },
+    {
+      "level": 2,
+      "file": "large_ring_spoke_lod2.glb",
+      "triangles": 4268,
+      "draws": 3,
+      "bytes": 496908,
+      "method": "authored-topology",
+      "sha256": "133ba9c9fbb21b3b57bd613873e01d96229e6d9608ea07e6865976e504c3b8c5"
+    }
+  ],
+  "materialSlots": [
+    {
+      "name": "Material_Armor",
+      "finish": "paint2",
+      "role": "hull"
+    },
+    {
+      "name": "Material_BrushedMetal",
+      "finish": "bare",
+      "role": "mechanical"
+    },
+    {
+      "name": "Material_Mechanical",
+      "finish": "gunmetal",
+      "role": "mechanical"
+    }
+  ],
+  "pivot": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "space": "glTF asset-local metres",
+    "normalization": "none"
+  },
+  "stateCapability": {
+    "type": "static",
+    "motion": "none; assembly visibility states belong to recipe",
+    "damage": "none; no invented destruction rig"
+  },
+  "provenance": {
+    "source": "tools/blender/forge/asset_bank_large.py",
+    "method": "original Forge procedural authored construction; no external model sources",
+    "sourceSHA256": "138252af96a36049fa91ac4f4c39dfcc96f493373757d8cbd5d687c29ba62fcf"
+  }
+}

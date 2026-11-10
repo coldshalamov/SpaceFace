@@ -1,0 +1,74 @@
+{
+  "schema": "spaceface.sourcePreview.v1",
+  "title": "Hundred-Hand original matched source comparison",
+  "image": {
+    "file": "hundred-hand-original-source-preview.webp",
+    "bytes": 24872,
+    "sha256": "4101b4fdae23ff71c2350695f62036e4addd8aef84afbcfd5159a2869d8478d6",
+    "gitBlob": "a3d99110ecc3d8823f6363c9aaa8a4db3ea59d68",
+    "width": 1024,
+    "height": 690
+  },
+  "renderer": "hundred_hand_source_preview.py",
+  "sourceGeneration": "hundred-hand-mile-source-v4-native-prisms",
+  "sources": [
+    {
+      "role": "mile",
+      "path": "assets/ships/parts/places/place_hundred_hand_mile.glb",
+      "bytes": 1493892,
+      "sha256": "ae840f241fb98f2d965d58000690babbda01b1b00fcd90c24caf717521d5b8a0",
+      "visibleTriangles": 22496
+    },
+    {
+      "role": "power",
+      "path": "assets/ships/parts/places/place_hundred_hand_power.glb",
+      "bytes": 429884,
+      "sha256": "5f7e0e9f31bd83132219864de591b443f496cde75c963e61bd373c1e185bf425",
+      "visibleTriangles": 3844
+    },
+    {
+      "role": "guide",
+      "path": "assets/ships/parts/places/place_hundred_hand_guide.glb",
+      "bytes": 318296,
+      "sha256": "ef9cfc383f7c413ff14bb6cc451f79809c55621417d58a7b5b38a60ac0eff3ea",
+      "physicalSourceSha256": "9e5086e4fe85891831d45c8eaf159aad4419283815084f083fd4f51c5433d5ca",
+      "derivation": "guide_visual_paint2 material-only successor",
+      "visibleTriangles": 1692
+    },
+    {
+      "role": "cargo",
+      "path": "assets/ships/parts/places/place_hundred_hand_cargo.glb",
+      "bytes": 363116,
+      "sha256": "194aae7a6985bfb37a905848e176e735f166ea345219d33b9276ec8326bcd82b",
+      "visibleTriangles": 2632
+    }
+  ],
+  "method": {
+    "geometry": "Actual GLB indexed triangles with hierarchical matrix/TRS transforms; collision/nonRender helpers excluded.",
+    "axes": "glTF +X forward, +Y up, +Z starboard",
+    "camera": "Orthographic view normalize([0.38,0.65,0.66]); four independently fitted panels, not a shared scene or scale comparison.",
+    "materials": "Base-color factors multiplied by centroid-sampled embedded PNG textures; approximate gamma 2.2; flat two-sided absolute-normal light plus emissive factor.",
+    "rendering": "CPU triangle-depth painter sorting, 2x supersampling and Lanczos downsample; WebP quality 80 method 6."
+  },
+  "reproduction": {
+    "requirements": [
+      "Python 3",
+      "NumPy",
+      "Pillow with WebP support",
+      "DejaVuSans.ttf font"
+    ],
+    "command": "python tools/review/hundred_hand_source_preview.py --root . --output hundred-hand-original-source-preview.webp",
+    "scope": "Portable source reconstructs the original preview method against the hash-pinned restored parts GLBs. Syntax checked without executing or rerendering. Encoding and font rasterization can vary by dependency version; byte-identical reproduction is not claimed. Exact reviewed image is pinned separately."
+  },
+  "review": {
+    "status": "Source-comparison preview only",
+    "observations": "Readable panels show the paired-pylon spine, twin-cylinder power skid, elbow guide, and twin-box cargo rack. Guide remains plain/block-like in this flat preview.",
+    "limitations": [
+      "Not live-game evidence or native camera acceptance.",
+      "Not PBR shading, texture-detail acceptance, or final visual-quality acceptance.",
+      "Not the later receiver-visual-finish successor.",
+      "Painter sorting and centroid texture sampling are simplified and may omit or misorder fine details.",
+      "No invented geometry or gameplay placement."
+    ]
+  }
+}

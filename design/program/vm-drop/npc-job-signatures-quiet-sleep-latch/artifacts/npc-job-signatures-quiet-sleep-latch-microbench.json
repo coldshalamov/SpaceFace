@@ -1,0 +1,103 @@
+{
+  "name": "npc-job-signatures-quiet-sleep-latch",
+  "primary": "quiet-npc-job-signatures-relevant-sleep-composite",
+  "iterations": 400000,
+  "runs": 13,
+  "capacity": 12,
+  "pairs": [
+    {
+      "beforeMs": 8.28560800000001,
+      "afterMs": 3.3383910000000014,
+      "speedup": 2.4819165879610887,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 9.245371999999989,
+      "afterMs": 3.140841000000009,
+      "speedup": 2.943597590581619,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 8.690466999999998,
+      "afterMs": 3.4022839999999945,
+      "speedup": 2.554303814731519,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 8.591707999999997,
+      "afterMs": 3.428428000000004,
+      "speedup": 2.5060196684894613,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 8.852658000000005,
+      "afterMs": 3.5928969999999936,
+      "speedup": 2.4639331436442573,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 8.863769999999988,
+      "afterMs": 3.631205999999999,
+      "speedup": 2.440998940847749,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 8.701772000000005,
+      "afterMs": 4.200389999999999,
+      "speedup": 2.071658107937598,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 11.658293999999998,
+      "afterMs": 3.9139140000000054,
+      "speedup": 2.9786791431799426,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 9.356900999999993,
+      "afterMs": 3.421638999999999,
+      "speedup": 2.7346254236639216,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 8.475509000000002,
+      "afterMs": 3.749884999999992,
+      "speedup": 2.2602050462880916,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 8.838864000000001,
+      "afterMs": 3.660983999999999,
+      "speedup": 2.4143410624028956,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 8.79343,
+      "afterMs": 3.180370999999994,
+      "speedup": 2.7649069872665857,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    },
+    {
+      "beforeMs": 8.496973999999994,
+      "afterMs": 3.261009999999999,
+      "speedup": 2.6056264776863602,
+      "beforeSleeps": 400000,
+      "afterSkips": 400000
+    }
+  ],
+  "medianSpeedup": 2.5060196684894613,
+  "minSpeedup": 2.071658107937598,
+  "maxSpeedup": 2.9786791431799426
+}

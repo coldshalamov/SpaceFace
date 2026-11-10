@@ -1,0 +1,433 @@
+// 357 — THE HANDOFF (CR-HOLLOW braid: ships that should not be together, holding off the lane).
+// A Quiet runner and an MTS mule hold off the lane in a lawless pocket — eighty world-units
+// of empty deck between them, contraband pods drifting the gap one slow crawl at a time.
+// The pods ARE the deal: stolen goods riding an unlogged manifest from seller to buyer.
+// Nothing is scripted to complete — pods physically drift onto the buyer's hull, get
+// restamped paid, and stack there. Come in hot and both crews scatter and the freight
+// is free for whoever takes it; walk up slow and the seller will deal with you too —
+// a Quiet contact is worth more than one stolen pod.
+import { deepFreeze, defineEncounter } from './catalog.js';
+import { setEntityDoctrine } from '../../ai/doctrine.js';
+import { queuePhysicsImpulse, resolvePhysicsBodySpec } from '../../core/physicsAuthority.js';
+
+export const encounterOrder = 357;
+export const trigger = deepFreeze({
+  id: 'off_book_handoff',
+  tier: 'minor',
+  deck: 'civilian',
+  weight: 1.0,
+  // Deals like this happen where law is thin: outlaw pockets, fog, dead fields, the lanes
+  // between them. maxSecurity keeps it out of policed cores; the zoneTypes keep it in the
+  // pockets that are already hollow.
+  zoneTypes: ['outlaw_zone', 'nebula_fog', 'derelict_field', 'ambush_lane'],
+  script: 'selfRegistered',
+  fallbackScript: 'whisper',
+  pressureCost: 10,
+  cooldownS: 800,
+  proximity: true,
+  gates: {
+    maxSecurity: 0.75,
+    minSectorTier: 1,
+    storyBeatMin: 1,
+  },
+});
+
+const DEAL_GAP_WU = 80;             // holding nearby: enough room for the original freight to clear both hulls
+const POD_COUNT = 4;
+// The actual mule skin fits radius 18; pods have radius 3. Keep 1 WU hull and
+// 2 WU pod-to-pod clearance at spawn, without moving any adopted native body.
+const POD_START_WU = 22;
+const POD_SPACING_WU = 8;
+const POD_LATERAL_JITTER_WU = 2;
+const POD_SPEED = 3.2;              // the conveyor crawl — a real drift, not a teleported stack
+const DELIVER_REACH_WU = 26;        // a pod this close to the buyer counts as received
+const PARLEY_WU = 210;              // walking up slow inside this ring opens the quiet offer
+const PARLEY_S = 6;
+const PARLEY_RELATIVE_SPEED = POD_SPEED * 2; // match the seller, not the world's origin
+const PARLEY_SAMPLE_GAP_S = 2; // the existing director observes this scene at about 1 Hz
+const DEAL_DEADLINE_S = 110;
+const SELLER_COMMODITY = 'cmdty_stolen_goods';
+const BUYER_COMMODITY = 'cmdty_narcotics';
+
+function releaseCast(live) {
+  if (!live) return;
+  if (Array.isArray(live.ids)) live.ids.length = 0;
+  if (live.roles && typeof live.roles === 'object') {
+    for (const id of Object.keys(live.roles)) delete live.roles[id];
+  }
+}
+
+function scatter(entity) {
+  if (!entity || entity.alive === false) return;
+  const d = entity.data || (entity.data = {});
+  const ai = d.ai || (d.ai = {});
+  ai.forceFlee = true;
+  ai.moraleImmune = false;
+}
+
+function resetParley(d, live) {
+  live.data.parleySince = null;
+  live.data.parleyLastAt = null;
+  if (live.data.termsSpoken && !live.data.withdrawNoted && !live.data.custodyCommit?.settled) {
+    live.data.withdrawNoted = true;
+    d.emit('comms:log', {
+      from: 'QUIET RUNNER',
+      text: 'Not holding? Fine — nothing signed. Match our drift, keep your guns quiet and hold six seconds if you want back in.',
+      kind: 'encounter',
+    });
+  }
+}
+
+function holdingAlongside(state, player, seller) {
+  if (!player || player.alive === false || player.hull <= 0 || player.disabled
+    || player.flags?.docked || (state.mode && state.mode !== 'flight')
+    || state.input?.fire) return false;
+  const pv = player.vel, sv = seller.vel;
+  if (!pv || !sv || ![pv.x, pv.z, sv.x, sv.z].every(Number.isFinite)) return false;
+  return Math.hypot(pv.x - sv.x, pv.z - sv.z) <= PARLEY_RELATIVE_SPEED;
+}
+
+// Native bodies own their velocity after adoption. Match the transfer actor's drift
+// with one mass-scaled impulse; only the legacy integrator accepts a velocity write.
+function transferVelocity(state, pod, velocity, kind) {
+  if (state.settings?.gameplay?.physicsBackend === 'rapier-dynamic') {
+    const mass = resolvePhysicsBodySpec(pod).mass;
+    return queuePhysicsImpulse(pod, {
+      x: (velocity.x - (pod.vel?.x || 0)) * mass, y: 0,
+      z: (velocity.z - (pod.vel?.z || 0)) * mass,
+    }, { provenance: 'encounter:off_book_handoff', tick: state.tick | 0, kind });
+  }
+  pod.vel = velocity;
+  return true;
+}
+
+export const runtime = Object.freeze({
+  fire(d, live, state) {
+    live.deadlineAt = d.now() + (live.shape.deadlineS || DEAL_DEADLINE_S);
+    const anchor = live.plan && live.plan.zoneCenter;
+    if (!anchor || !Number.isFinite(anchor.x)) return d.abort(live, 'no_zone_anchor');
+
+    const ships = live.plan.ships || [];
+    const sellerSpec = ships.find((sh) => sh && sh.role === 'hauler');
+    const buyerSpec = ships.find((sh) => sh && sh.role === 'raider');
+    if (!sellerSpec || !buyerSpec) return d.abort(live, 'no_cast');
+
+    // The pair sits on one seeded bearing; pods string the gap between the two bows.
+    const rng = d.stream(live, 'handoff_layout');
+    const ang = rng() * Math.PI * 2;
+    const axis = { x: Math.cos(ang), z: Math.sin(ang) };
+    sellerSpec.pos.x = anchor.x - axis.x * DEAL_GAP_WU * 0.5;
+    sellerSpec.pos.z = anchor.z - axis.z * DEAL_GAP_WU * 0.5;
+    buyerSpec.pos.x = anchor.x + axis.x * DEAL_GAP_WU * 0.5;
+    buyerSpec.pos.z = anchor.z + axis.z * DEAL_GAP_WU * 0.5;
+
+    const ids = d.spawnShips(live, ships);
+    if (!ids.length || d.aliveCount(live, 'hauler') < 1 || d.aliveCount(live, 'raider') < 1) {
+      return d.abort(live, 'no_budget');
+    }
+
+    const seller = d.entsOf(live, 'hauler')[0];
+    const buyer = d.entsOf(live, 'raider')[0];
+    for (const [ship, label] of [[seller, 'QUIET RUNNER — SELLING'], [buyer, 'MTS MULE — BUYING']]) {
+      ship.vel = { x: 0, z: 0 };
+      const sd = ship.data || (ship.data = {});
+      sd.scanLabel = label;
+      setEntityDoctrine(ship, {
+        activity: {
+          kind: 'loiter',
+          anchor: { x: ship.pos.x, z: ship.pos.z },
+          preferredRange: 22,
+          reason: 'off_book_handoff:parked',
+          encounterId: live.id || null,
+        },
+        roe: 'hold_fire',
+      });
+    }
+
+    // The manifest mid-transfer: contraband pods crawling the gap toward the buyer.
+    // Alternating commodities so the line reads as two manifests, not one spill.
+    live.data.pods = [];
+    for (let i = 0; i < POD_COUNT; i++) {
+      // Four original pods occupy a clear, finite lane: 22/30/38/46 WU from seller.
+      // Perpendicular jitter cannot shrink the 8 WU longitudinal separation. The
+      // last pod starts at least 34 WU from buyer, outside the 26 WU receipt ring.
+      const along = POD_START_WU + i * POD_SPACING_WU;
+      const lateral = (rng() * 2 - 1) * POD_LATERAL_JITTER_WU;
+      const pod = d.spawnCargoPod(live, {
+        commodityId: i % 2 === 0 ? SELLER_COMMODITY : BUYER_COMMODITY,
+        amount: 2,
+        pos: {
+          x: seller.pos.x + axis.x * along - axis.z * lateral,
+          z: seller.pos.z + axis.z * along + axis.x * lateral,
+        },
+        vel: { x: axis.x * POD_SPEED, z: axis.z * POD_SPEED },
+        ownerId: seller.id,
+        ownerName: 'QUIET MANIFEST',
+        factionId: 'faction_quiet',
+      });
+      if (pod && pod.id != null) live.data.pods.push(pod.id);
+    }
+
+    // Transient identities prevent recycled IDs from inheriting this manifest or cast.
+    // Unfinished encounters retain the director's existing abandonment policy on load.
+    Object.defineProperty(live, '_handoffBodies', { configurable: true, value: new Map(
+      [seller, buyer, ...live.data.pods.map(id => state.entities.get(id))]
+        .filter(Boolean).map(entity => [entity.id, entity]),
+    ) });
+
+    live.data.sellerId = seller.id;
+    live.data.buyerId = buyer.id;
+    live.data.axis = axis;
+    live.data.parleySince = null;
+    live.data.parleyLastAt = null;
+    live.data.parleyOffered = false;
+    live.data.termsSpoken = false;
+    live.data.withdrawNoted = false;
+    live.data.custodyCommit = null;
+    live.data.delivered = 0;
+    live.phase = 'offer';
+    d.say(live, 'alert',
+      'LANE WATCH: two hulls holding off the lane — cargo crawling the gap.',
+      null, { primary: true, literal: true });
+  },
+
+  tick(d, live, state, now) {
+    if (live.phase === 'done' || live.data.terminalPending) return;
+    const sellerBody = state.entities.get(live.data.sellerId);
+    const seller = sellerBody === live._handoffBodies?.get(live.data.sellerId) ? sellerBody : null;
+    const buyerBody = state.entities.get(live.data.buyerId);
+    const buyer = buyerBody === live._handoffBodies?.get(live.data.buyerId) ? buyerBody : null;
+    const sellerAlive = seller && seller.alive !== false && !(seller.hull <= 0);
+    const buyerAlive = buyer && buyer.alive !== false && !(buyer.hull <= 0);
+
+    // A dead party ends the deal: the survivor scatters with the manifest.
+    if (!sellerAlive || !buyerAlive) {
+      live.data.terminalPending = true;
+      if (sellerAlive) { scatter(seller); live.data.survivorId = seller.id; }
+      if (buyerAlive) { scatter(buyer); live.data.survivorId = buyer.id; }
+      releaseCast(live);
+      return d.resolve(live, 'deal_burned', { speak: true });
+    }
+
+    // Pods physically arrive: close to the buyer, they are restamped paid and park.
+    const podIds = new Set(live.data.pods || []);
+    let stolen = false, destroyed = false;
+    // Receipt is final even if the buyer's paid body later leaves through cargo-cap
+    // cleanup. Only original, still-unreceived freight can interrupt this manifest.
+    const found = new Set([...podIds].filter(id => live._handoffBodies?.get(id)?.data?.deliveredBy === live.id));
+    for (const e of state.entityList || []) {
+      if (!e || !podIds.has(e.id) || found.has(e.id)
+        || state.entities.get(e.id) !== e || live._handoffBodies?.get(e.id) !== e) continue;
+      found.add(e.id);
+      if (e.alive === false) { destroyed = true; continue; }
+      const expectedOwner = e.data?.deliveredBy === live.id ? buyer.id : seller.id;
+      if (e.data?.ownerId !== expectedOwner) { stolen = true; continue; }
+      if (!e.pos) continue;
+      const dx = e.pos.x - buyer.pos.x, dz = e.pos.z - buyer.pos.z;
+      if (dx * dx + dz * dz <= DELIVER_REACH_WU * DELIVER_REACH_WU) {
+        if (!e.data || e.data.deliveredBy !== live.id) {
+          e.data = e.data || {};
+          e.data.deliveredBy = live.id;
+          e.data.ownerId = buyer.id;
+          e.data.ownerName = 'BOUGHT — OFF-BOOK MANIFEST';
+          transferVelocity(state, e, { x: buyer.vel?.x || 0, z: buyer.vel?.z || 0 }, 'buyer_receipt');
+          live.data.delivered++;
+        }
+      }
+    }
+    const missing = podIds.size - found.size;
+    if (missing > 0) stolen = true; // a pod that vanishes without delivery was taken
+
+    // Taking freight mid-line is a robbery; burning one is louder.
+    if (destroyed || stolen) {
+      live.data.terminalPending = true;
+      scatter(seller); scatter(buyer);
+      d.rep('faction_quiet', -2, 'handoff_robbed');
+      d.emit('comms:log', {
+        from: 'QUIET RUNNER',
+        text: destroyed
+          ? 'You just shot paid freight. We are done here.'
+          : 'Freight is missing from the manifest. This deal is off.',
+        kind: 'encounter',
+      });
+      releaseCast(live);
+      return d.resolve(live, destroyed ? 'take_burned' : 'take_taken', { speak: true });
+    }
+
+    // Every pod delivered: the deal completes, both crews ease off the pocket.
+    if (live.data.delivered >= podIds.size && podIds.size > 0) {
+      live.data.terminalPending = true;
+      scatter(seller); scatter(buyer);
+      d.emit('comms:log', {
+        from: 'MTS MULE',
+        text: 'Manifest moved. No record, no lag \u2014 good doing nothing with you.',
+        kind: 'encounter',
+      });
+      releaseCast(live);
+      return d.resolve(live, live.data.custodyCommit?.settled ? 'contact_made' : 'deal_done', { speak: true });
+    }
+
+    // Complete actual buyer delivery first, but never accept a new bond after closing time.
+    if (now >= live.deadlineAt) {
+      live.data.terminalPending = true;
+      resetParley(d, live);
+      scatter(seller); scatter(buyer);
+      releaseCast(live);
+      return d.resolve(live, 'deal_lapsed', { speak: true });
+    }
+
+    // Bonded freight is already settled. Only the remaining NPC manifest is live now.
+    if (live.data.custodyCommit?.settled) return;
+
+    // The join read is a real commitment boundary (NXB-040): inside the ring the seller
+    // speaks the exact terms once (inspection) — that alone moves no freight and pays
+    // nothing. Stepping out before the window closes is the one honest withdraw: the
+    // manifest stays the seller's and the deal plays on without you. Still holding
+    // station when the window closes is acceptance — one pod is cut off the conveyor,
+    // restamped to the player's hull and shoved toward it. That stamp on a persistent
+    // body is the actual custody transfer; it settles once and no late cancel reverses it.
+    const player = d.player();
+    if (player && player.pos && !live.data.parleyOffered) {
+      const pdx = player.pos.x - seller.pos.x, pdz = player.pos.z - seller.pos.z;
+      const inRing = pdx * pdx + pdz * pdz <= PARLEY_WU * PARLEY_WU;
+      const holding = inRing && holdingAlongside(state, player, seller);
+      if (inRing && !holding && !live.data.approachNoted) {
+        live.data.approachNoted = true;
+        d.emit('comms:log', {
+          from: 'QUIET RUNNER',
+          text: 'Passing through buys nothing. Match our drift and hold alongside with quiet guns if you want terms.',
+          kind: 'encounter',
+        });
+      }
+      if (holding) {
+        const last = live.data.parleyLastAt;
+        if (!Number.isFinite(last) || now < last || now - last > PARLEY_SAMPLE_GAP_S) {
+          live.data.parleySince = null;
+        }
+        live.data.parleyLastAt = now;
+        if (live.data.parleySince == null) {
+          live.data.parleySince = now;
+          if (!live.data.termsSpoken) {
+            live.data.termsSpoken = true;
+            d.emit('comms:log', {
+              from: 'QUIET RUNNER',
+              text: 'Terms, since you parked quiet: one pod off the line takes your name on the manifest, plus a cut for carrying it. Match our drift and hold six seconds with quiet guns to take it — drift off and we never met.',
+              kind: 'encounter',
+            });
+          }
+        } else if (now - live.data.parleySince >= PARLEY_S) {
+          live.data.parleyOffered = true;
+          // Acceptance = holding station through the inspection window. The custody
+          // transfer is physical, not a dialogue: the tail pod (furthest from the
+          // buyer, least committed to its deal) leaves the line under the player's name.
+          let escrow = null, escrowDist2 = -1;
+          for (const pid of live.data.pods || []) {
+            const pod = state.entities.get(pid);
+            if (!pod || pod.alive === false || !pod.pos) continue;
+            if (pod.data && pod.data.deliveredBy === live.id) continue; // already the buyer's
+            const bdx = pod.pos.x - buyer.pos.x, bdz = pod.pos.z - buyer.pos.z;
+            const bd2 = bdx * bdx + bdz * bdz;
+            if (bd2 > escrowDist2) { escrowDist2 = bd2; escrow = pod; }
+          }
+          if (escrow) {
+            const idx = live.data.pods.indexOf(escrow.id);
+            if (idx >= 0) live.data.pods.splice(idx, 1);
+            escrow.data = escrow.data || {};
+            escrow.data.ownerId = player.id;
+            escrow.data.ownerName = 'BONDED — OFF-BOOK MANIFEST';
+            escrow.data.bondedBy = live.id;
+            escrow.data.committedTo = player.id;
+            // A shove toward the player at the conveyor's crawl relative to their drift; a
+            // dumb body on a real trajectory; wherever it ends up, the name stays on it.
+            const ddx = player.pos.x - escrow.pos.x, ddz = player.pos.z - escrow.pos.z;
+            const dl = Math.hypot(ddx, ddz) || 1;
+            transferVelocity(state, escrow, {
+              x: (player.vel?.x || 0) + (ddx / dl) * POD_SPEED,
+              z: (player.vel?.z || 0) + (ddz / dl) * POD_SPEED,
+            }, 'bonded_shove');
+            live.data.custodyCommit = {
+              podId: escrow.id, playerId: player.id, acceptedAt: now, settled: false,
+            };
+            if (!live.data.custodyCommit.settled) {
+              live.data.custodyCommit.settled = true;
+              d.rep('faction_quiet', 2, 'handoff_contact');
+              d.grant(60, 'handoff:quiet_lay');
+              d.emit('comms:log', {
+                from: 'QUIET RUNNER',
+                text: 'Done. One pod wears your name now \u2014 bonded freight, and the Den pays the careful. Walk it wherever you like; there\u2019s no handing it back.',
+                kind: 'encounter',
+              });
+            }
+          }
+          // Keep the original cast and remaining manifest live until physical receipt or
+          // the existing failure/deadline boundary. Acceptance never means NPC delivery.
+          return;
+        }
+      } else {
+        resetParley(d, live);
+      }
+    } else {
+      resetParley(d, live);
+    }
+  },
+
+  event(d, live, state, name, payload) {
+    if (!live || live.phase === 'done' || live.data.terminalPending || name !== 'playerHitSquad') return;
+    if (payload && (payload.targetId === live.data.sellerId || payload.targetId === live.data.buyerId)) {
+      resetParley(d, live);
+    }
+  },
+});
+
+export default defineEncounter(trigger, {
+  // Jettisoned cargo pods resolve places/place_cargo_pod_standard.glb at spawn — declare it so the
+  // pending-item decode runway warms the pod body before telegraph resolves (the menu
+  // crucible cohort only covers sessions that ran it).
+  warmAssets: ['places/place_cargo_pod_standard.glb'],
+  shape: {
+    situation: 'trade',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_quiet',
+  },
+  motive: 'off_book_manifest',
+  engagementTrigger: 'authorized_hostile_spawn',
+  factionId: 'faction_mts',
+  context: 'civilian',
+  title: 'THE HANDOFF',
+  primaryLine: 'LANE WATCH: two hulls holding off the lane — cargo crawling the gap.',
+  squad: {
+    // The buyer: an MTS mule where an MTS mule should not be — passive, parked, on the
+    // civilian team; the squad block is only the second-half casting slot.
+    archetypes: ['mule_trader'],
+    size: [1, 1],
+    doctrine: 'scavenger',
+    formation: 'loose',
+    passive: true,
+    team: 2,
+  },
+  civilian: {
+    // The seller: a Quiet runner parked on the manifest.
+    archetypes: ['mule_trader'],
+    size: [1, 1],
+    factionId: 'faction_quiet',
+    context: 'civilian',
+    team: 2,
+    passive: true,
+  },
+  bark: null,
+  telegraph: 'Two hulls hold off the lane in the dark — a manifest crawling between them.',
+  deadlineS: DEAL_DEADLINE_S,
+  aftermath: {
+    flee: 'The pair scatter off the pocket. Whatever pods remain are finders\u2019 freight.',
+    kill: 'The deal ends the loud way. The Quiet keep better ledgers than grudges.',
+  },
+  receipts: {
+    deal_lapsed: 'DEAL LAPSED — the crews broke off. Unreceived pods are still on the line. Any pod already bonded to you stays yours.',
+    deal_done: 'DEAL DONE — manifest paid, no record. The original pods remain beside the buyer.',
+    deal_burned: 'DEAL BURNED — a body dropped; the survivor ran with the record.',
+    take_taken: 'MANIFEST INTERRUPTED — freight left the deal. Any pod already bonded to you stays yours.',
+    take_burned: 'BURNED — shot freight buys nothing but a story.',
+    contact_made: 'A QUIET CONTACT — your bond stands, and the buyer received the remaining manifest.',
+  },
+});

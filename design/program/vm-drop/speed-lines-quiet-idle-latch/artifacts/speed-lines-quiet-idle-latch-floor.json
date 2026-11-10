@@ -1,0 +1,21 @@
+{
+  "name": "speed-lines-quiet-idle-latch",
+  "primaryMedianSpeedup": 2.400578817258976,
+  "primaryMinSpeedup": 2.124363892578128,
+  "packageRuns": 4,
+  "medians": [
+    2.3757799956537045,
+    2.556554601566142,
+    2.6069504829724974,
+    2.400578817258976
+  ],
+  "mins": [
+    1.7479349799053308,
+    2.159335215644386,
+    2.310926805270742,
+    2.124363892578128
+  ],
+  "floorMinSpeedup": 1.7479349799053308,
+  "dirtyWakeOk": true,
+  "focusedTests": "32/32"
+}

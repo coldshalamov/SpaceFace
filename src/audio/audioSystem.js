@@ -1,0 +1,10229 @@
+// src/audio/audioSystem.js — the `audio` system. Web Audio synthesis (no three) layered with the
+// PQ-158.00 designed sample library (assets/audio/, residency-gated in sampleLibrary.js) so bound
+// recipes play as sample+synth hybrids. Builds master -> limiter -> { sfxBus, musicBus }, synthesizes
+// SFX from RECIPES on gameplay
+// events with 2D distance attenuation + stereo pan relative to the player ship, runs low-shield /
+// low-hull alarm loops, and an adaptive 4-state music bed (calm/tense/combat/docked) driven by a
+// derived threat level. Honors settings.audio.{master,sfx,music,muted} and settings:changed.
+//
+// IMPORTANT: the registry never calls audio.update() (audio is init-only; it is not in
+// UPDATE_ORDER and not invoked in renderUpdate). So runtime audio work is driven by a self-owned
+// requestAnimationFrame loop that starts once the AudioContext exists. Audible scheduling and voice
+// GC still run every frame; analysis-style music threat scans and loop-position automation are
+// cadence-limited inside that loop. update(dt,state) is implemented too (harmless if ever wired in).
+//
+// Robustness: nothing throws if there is no AudioContext yet (suspended/autoplay-blocked).
+// Early events before the first user gesture are dropped (one-shots) or remembered as desired
+// loop/alarm state and (re)started once audio resumes.
+
+import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
+import { WEAPONS } from '../data/weapons.js';
+import { classifyWeaponFamily } from '../data/vfxProfiles.js';
+import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
+import {
+  classifyImpactAudioEvent,
+  impactMaterialForTarget,
+  resolveImpactAudioCue,
+} from '../presentation/causalVfxGrammar.js';
+import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
+import { installWorldFeelSeams } from './worldFeelSeams.js';
+import { AFTERMATH_HUSH, admitAftermathHush, cloakBurnCue, distressCallCue, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
+import { bindMinimalActionAudio } from './minimalActionAudio.js';
+import {
+  bindBombAudio,
+  isBombFieldLoopCue,
+  isBombStatusLoopCue,
+  startBombFieldLoop,
+  BOMB_FIELD_LOOP_PREFIX,
+  BOMB_STATUS_LOOP_PREFIX,
+} from './bombAudio.js';
+import { bindFieldAudio, isFieldLoopKey } from './fieldAudio.js';
+import { bindCommissionCues } from './commissionCues.js';
+import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
+import { tetherBreakCueForReason } from '../systems/presentationOrchestrator.js';
+import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
+import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+import { ceresActivityActorWorldRecordId } from '../data/trafficPresentationReads.js';
+import { isRunSealed } from '../core/runSeal.js';
+import { isSwarmGlass } from '../ui/swarmGlass.js';
+
+/** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array
+ * per run (ship|drone|freighter members). */
+const REMOTE_CANDIDATE_LANES = ['shipLike', 'freighters'];
+import {
+  buildElementaryVoiceGraph,
+  legacyContinuousGain,
+  readPublishedThrottle,
+  readTetherLoad,
+  readDriveSpeed01,
+  stepElementaryVoices,
+} from './elementaryVoices.js';
+import {
+  resolveThemeMatrix,
+  scoreStemWeights,
+  STEM_KEYS,
+  swarmChainLift,
+  wantedMotifRate,
+  TRAVEL_MOTIF,
+  COMBAT_MOTIF,
+  STATION_MOTIF,
+  WANTED_MOTIF,
+  BOSS_MOTIF,
+  MOTIF_STEPS_PER_BAR,
+  motifPhraseBars,
+  THEME_STEM_WEIGHTS,
+  sectorBedToBandIntent,
+} from './themeMatrix.js';
+import { scoreNoteHz, PHASE_QUANTIZE_BARS } from './scoreDirector.js';
+import { stuntBankTier, stuntGridTime, stuntLinkRate, stuntScoreBpm } from './stuntScore.js';
+import { cachedBarkBuffer, barkPlaybackRate } from './barkPcmCache.js';
+import { applyOutputMix, heatScoreLift, stationIdentNotes } from './outputMix.js';
+import { createThreatEar } from './threatEar.js';
+import { bindTrailerScore } from './trailerScore.js';
+import { bindIronKrakenAudio } from './ironKrakenAudio.js';
+import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
+import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding, withRadioBand } from './barkVoice.js';
+
+// A recorder may tap this already gesture-started graph. It never unlocks or connects audio.
+export function getReplayAudioSource() {
+  const rt = audio.rt;
+  if (!rt?.ctx || rt.ctx.state !== 'running' || !rt.masterGain) return null;
+  return { context: rt.ctx, node: rt.masterGain, tick: audio.state?.tick || 0, simTime: audio.state?.simTime || 0 };
+}
+import { leftoverMechanicLines } from '../story/mechanicVoice.js';
+import { resolveAccessibilityCue, fieldDeployCaption } from '../ui/captions.js';
+import { clockFromPanPosition } from '../ui/captions.js';
+import { emitAdmittedRecipeCaption, localizedCaptionText } from './recipeCaptions.js';
+import { fuelReserveWarning, FUEL_LOW_FRACTION } from '../ui/fuelReserveWarning.js';
+import { pointInsideWantedSearch, readWantedSearchVolume, stepWantedSearchEdge } from '../presentation/wantedSearchVolume.js';
+import {
+  createEnvironmentMixRuntime,
+  resolveEnvironmentClass,
+  environmentOcclusion,
+  weightDuckEnvelope,
+  weightDuckGainForTarget,
+  resolveVisualEventCue,
+  visualEventAudioAllowed,
+  VISUAL_EVENT_BUS,
+  ENVIRONMENT_CLASSES,
+} from './environmentMix.js';
+import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
+import { cueVariantFor } from './cueVariants.js';
+import {
+  admitLayerVoice,
+  damageLayer,
+  dopplerFactor,
+  layerRecipeId,
+  pickRemoteEngines,
+  REMOTE_ENGINE_CAP,
+  remoteEnginePlaybackRate,
+} from './hitVoice.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { isOpticEnergyBolt, isOpticOrdnance, opticMaterialOf } from '../combat/opticField.js';
+import { pickupHoldIsFull, successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { CombatDoctrineId } from '../ai/combatDoctrine.js';
+import { massline2Flag } from '../data/featureFlags.js';
+import { createBandBedRuntime } from './bandBeds.js';
+import {
+  createCuePriorityBus,
+  isPriorityCue,
+  isPriorityDuckTarget,
+  PRIORITY_DUCK_THRESHOLD,
+} from './cuePriorityBus.js';
+import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPolicy.js';
+import { entityNeedsExactAudio } from './audioActiveSet.js';
+import { bindOutputDeviceFollow, planDeviceChange, planSinkRebind } from './outputDeviceFollow.js';
+import { heatLevelFor } from '../systems/heat.js';
+import { CERES_CAUSAL_CHAIN_EVENT } from '../contracts/trafficEvents.js';
+import { hash32 } from '../core/rng.js';
+import { dyingFuseS } from '../combat/lifecycle.js';
+import { createWreckCoolingMemory, planWreckCooling } from './wreckCoolingVoice.js';
+import { GATE_THROAT_PEAK, admitGateThroatCaption, planGateThroat } from './gateThroatVoice.js';
+import {
+  createSampleRuntime,
+  resolveSampleBinding,
+  resolveLadderBinding,
+  attachSampleLayer,
+} from './sampleLibrary.js';
+
+// Sync-read options for the 0.1 s / 0.05 s cadence loops — entityNeedsExactAudio reads
+// fields synchronously, so one shared options object serves every call site.
+const _exactAudioOpts = { playerId: null };
+
+// FB-010 — where a mass-seed event sits in the world: the payload's own coordinates when the
+// emitter carries them, else the live seed body's position. A missing body resolves to null so
+// a retired seed plays unpanned rather than inventing a point.
+function seedPosition(state, pos, seedId) {
+  if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) return { x: pos.x, z: pos.z };
+  const seed = seedId != null && state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(seedId)
+    : null;
+  if (seed && seed.pos && Number.isFinite(seed.pos.x) && Number.isFinite(seed.pos.z)) {
+    return { x: seed.pos.x, z: seed.pos.z };
+  }
+  return null;
+}
+
+// --- positional model (ARCHITECTURE / spec) ---
+const D_NEAR = 40;     // wu — full volume within this
+const D_FAR = TABLE_HEARING_FAR_WU;     // wu — silent / culled beyond the table
+// Undocked station approach bed (WF-13): the swell reaches the player inside this radius and
+// peaks well under the docked hum — you hear the place before you reach the ring.
+const APPROACH_HUM_FAR_WU = 620;
+const APPROACH_HUM_PEAK = 0.028;
+// Whose place it is, at hum scale: the room-tone layer colors the sector pedal by faction
+// ("Concord rests on a fifth, Reach leans a half-step, Choir hangs a raised fourth") — the
+// approach bed leans the same directions at a few percent, enough that the ear reads a
+// different place before the ring. Unlisted houses keep the rest rate.
+const APPROACH_HUM_FACTION_RATE = Object.freeze({
+  faction_scn: 1.0,
+  faction_reach: 0.94,
+  faction_choir: 1.06,
+});
+// Pocket beat wake (WF-13): a staged causal-chain beat is heard from its actor out to this
+// radius — inside the tabletop distance model's own far cull, so position carries the rest.
+// One wake per POCKET_BEAT_MIN_GAP_S keeps two same-tick starts (the chain cap allows two live
+// links) from stacking, and the rate varies inside authored bounds so a repeated watch never
+// loops the same chirp. The stream is derived from stable identities, never the shared state
+// rng — a cosmetic voice must not move the replay hash (stationBroadcast's law).
+const POCKET_BEAT_HEARING_WU = 900;
+const POCKET_BEAT_MIN_GAP_S = 6;
+const POCKET_BEAT_GAIN = 0.45;
+const POCKET_BEAT_RATE_LO = 0.92;
+const POCKET_BEAT_RATE_HI = 1.08;
+// Wreck cooling voice (inf-wreck-cooling-voice): aftermath only — the same "combat owns the
+// mix" line the place accents hold, so a hulk's ticking waits out the fight that made it.
+const WRECK_COOL_THREAT_HOLD = 0.35;
+const PAN_SPAN = TABLE_HEARING_PAN_WU;  // wu — half-pan distance
+
+// --- music ---
+const XFADE_S = 2.5;
+const XFADE_COMBAT_S = 1.0;
+const STATE_HOLD_S = 1.5;       // hysteresis
+const IN_COMBAT_WINDOW = 6;     // s since last damage counts as "in combat"
+const MUSIC_RECOMPUTE_S = 0.1;  // analysis cadence; state changes still have 1.5s hysteresis
+const LOOP_POSITION_UPDATE_S = 0.05; // AudioParam smoothing already runs over this window
+const LOOP_HEARING_RELEASE_S = 0.5;  // grace before a culled loop releases its node graph
+export const BULLET_TIME_AUDIO = Object.freeze({
+  cutoffHz: 1100,
+  openHz: 20000,
+  enterS: 0.12,
+  exitS: 0.15,
+  loopRate: 0.85,
+  musicMult: 0.630957, // -4 dB
+});
+// Combat choreography: the mix builds with threat instead of sitting flat. `rt.threat`
+// (recomputed at MUSIC_RECOMPUTE_S) leans the combat fader in and the music fader out, and a
+// continuous pressure bed rides the combat bus so escalation is audible between shots.
+// Everything is bounded — the limiter still owns the ceiling.
+export const PRESSURE_MIX = Object.freeze({
+  combatLift: 0.14,     // combat bus fader lift at full threat (~+1.2 dB)
+  musicDuck: 0.30,      // music bus fader dip at full threat (~-3 dB)
+  bedBaseGain: 0.004,   // floor once engaged — pressure never quite zero under threat
+  bedGain: 0.075,       // bandpassed noise layer peak at full threat
+  bedBaseHz: 180,
+  bedSpanHz: 1500,
+  bedQ: 0.9,
+  subHz: 38,
+  subGain: 0.05,
+  subAt: 0.55,          // sub-osc growl opens above this threat
+  ledgerS: 0.25,        // bus-meter sample cadence
+  ledgerCap: 240,       // 60 s of meter history, preallocated ring
+});
+// A critical comms cue owns the ear: the world mix bows for the phrase. The comms bus itself
+// is never ducked — the voice must stay on top.
+export const COMMS_DUCK = Object.freeze({
+  gain: 0.58,
+  defaultS: 1.5,
+  releasePadS: 0.45,
+});
+// target stem weights per music state. PQ-158.03: the adaptive matrix owns these.
+const STEM_WEIGHTS = {
+  calm:   THEME_STEM_WEIGHTS.travel,
+  tense:  THEME_STEM_WEIGHTS.wanted,
+  combat: THEME_STEM_WEIGHTS.combat,
+  docked: THEME_STEM_WEIGHTS.station,
+  travel: THEME_STEM_WEIGHTS.travel,
+  wanted: THEME_STEM_WEIGHTS.wanted,
+  station: THEME_STEM_WEIGHTS.station,
+  boss:   THEME_STEM_WEIGHTS.boss,
+};
+
+/**
+ * X4 P0 — one sequencer per stem key. The dispatch used to list A–D only while STEM_KEYS carried
+ * E, so a boss fight raised a gain node no oscillator fed. This map is the contract: every key in
+ * STEM_KEYS must name a real `_seq*` method, and the focused test proves each one starts voices.
+ */
+export const STEM_SEQUENCER_BY_KEY = Object.freeze({
+  A: '_seqCalm',
+  B: '_seqTense',
+  C: '_seqCombat',
+  D: '_seqDocked',
+  E: '_seqBoss',
+});
+
+export function stemSequencerName(key) {
+  return Object.prototype.hasOwnProperty.call(STEM_SEQUENCER_BY_KEY, key)
+    ? STEM_SEQUENCER_BY_KEY[key]
+    : null;
+}
+
+/**
+ * Is this entity a boss BODY (the thing that owns the boss music)? Mirrors the boss marks in
+ * `src/data/enemies.js` isEliteCombatant and adds the arena dressing + capital mission tag. No
+ * mutation; the spawn/kill listeners and the save-restore seed both read it.
+ */
+export function isBossBody(entity) {
+  const d = entity && entity.data;
+  if (!d || typeof d !== 'object') return false;
+  return d.isBoss === true
+    || d.encounterBoss != null
+    || d.missionBoss != null
+    || d.bossDressing != null
+    || d.missionTag === 'capital_boss';
+}
+
+export const MAX_AUDIO_VOICES = 12;
+// Sustained-beam voices (INST-34). _onFire routes these to a per-owner loop drone instead of a
+// one-shot per fire tick, and _startBeam/_frame resume honour the owner's own voice.
+const DEFAULT_BEAM_RECIPE_ID = 'sfx_wpn_beam_laser';
+export const SUSTAINED_BEAM_RECIPE_IDS = Object.freeze(new Set([
+  'sfx_wpn_beam_laser',
+  'sfx_wpn_heavy_beam',
+]));
+
+const SILENT_LISTENER_POS = Object.freeze({ x: 0, z: 0 });
+
+// Propulsion is a gameplay contract, but its *voice* is presentation-only. Each family keeps the
+// spec's tier fundamentals (55/78/110/65 Hz) while changing harmonic weight, air and sub response.
+// That makes a gravimetric interceptor, a pulse-plate barge and a torch capital identifiable even
+// before their silhouette is read. The values stay inside the existing engine-bus budget.
+export const ENGINE_FAMILY_AUDIO = Object.freeze({
+  [DRIVE_FAMILIES.REACTION]: Object.freeze({
+    family: DRIVE_FAMILIES.REACTION, osc1: 'sawtooth', osc2: 'sine', harmonic: 1,
+    detune: 6, noiseMult: 1, noiseHzMult: 1, subMult: 1, humMult: 1,
+  }),
+  [DRIVE_FAMILIES.GRAVIMETRIC]: Object.freeze({
+    family: DRIVE_FAMILIES.GRAVIMETRIC, osc1: 'triangle', osc2: 'sine', harmonic: 2,
+    detune: -7, noiseMult: 0.18, noiseHzMult: 1.9, subMult: 0.55, humMult: 0.82,
+  }),
+  [DRIVE_FAMILIES.PULSE_PLATE]: Object.freeze({
+    family: DRIVE_FAMILIES.PULSE_PLATE, osc1: 'square', osc2: 'triangle', harmonic: 0.5,
+    detune: 3, noiseMult: 0.65, noiseHzMult: 0.72, subMult: 1.65, humMult: 0.74,
+  }),
+  [DRIVE_FAMILIES.TORCH]: Object.freeze({
+    family: DRIVE_FAMILIES.TORCH, osc1: 'sawtooth', osc2: 'sawtooth', harmonic: 0.5,
+    detune: 11, noiseMult: 1.8, noiseHzMult: 0.78, subMult: 1.9, humMult: 0.88,
+  }),
+  [DRIVE_FAMILIES.SAIL]: Object.freeze({
+    family: DRIVE_FAMILIES.SAIL, osc1: 'triangle', osc2: 'sine', harmonic: 1.5,
+    detune: 0, noiseMult: 0.1, noiseHzMult: 2.2, subMult: 0.35, humMult: 0.62,
+  }),
+});
+
+export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
+  [CombatDoctrineId.INTERCEPTOR_FLYBY]: Object.freeze({
+    recipeId: 'sfx_doctrine_flyby', fireRate: 1.16, fireGain: 0.78, fireDetune: 7,
+  }),
+  [CombatDoctrineId.PACK_PURSUIT]: Object.freeze({
+    recipeId: 'sfx_doctrine_flyby', fireRate: 1.32, fireGain: 0.66, fireDetune: 3,
+  }),
+  [CombatDoctrineId.SWARM_PACK]: Object.freeze({
+    // Tight pass rhythm, not a siege: the fastest, lightest flyby voice so a swarm reads as a
+    // school of strikes instead of one heavier interceptor (combat-variety vertical 2026-09-18).
+    recipeId: 'sfx_doctrine_flyby', fireRate: 1.24, fireGain: 0.7, fireDetune: 12,
+  }),
+  [CombatDoctrineId.BRAWLER_COMMIT]: Object.freeze({
+    // Heavy hull pressure recipe (not a retuned flyby pass).
+    recipeId: 'sfx_doctrine_brawler_commit', fireRate: 0.78, fireGain: 1.0, fireDetune: -18,
+  }),
+  [CombatDoctrineId.TETHER_CONTROL_RAIDER]: Object.freeze({
+    recipeId: 'sfx_doctrine_tether_spool', fireRate: 0.86, fireGain: 0.92, fireDetune: -9,
+  }),
+  [CombatDoctrineId.SCISSORWAKE]: Object.freeze({
+    // Two crossing wake lines: a brittle double-pass shear, a half-step sharper and lighter than
+    // the interceptor's flyby so the scissor reads as a cut, not a pass (the doctrine shipped
+    // without a voice and fell back to the generic weapon sound).
+    recipeId: 'sfx_doctrine_flyby', fireRate: 1.08, fireGain: 0.74, fireDetune: 15,
+  }),
+  [CombatDoctrineId.MINE_LAYER_WAKE]: Object.freeze({
+    // The wake belongs to the winch: a slow mechanical churn under the drop line, distinct
+    // from the raider's higher spool.
+    recipeId: 'sfx_doctrine_tether_spool', fireRate: 0.74, fireGain: 0.82, fireDetune: -6,
+  }),
+  [CombatDoctrineId.RANGED_DISENGAGER]: Object.freeze({
+    recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.94, fireGain: 0.84, fireDetune: -2,
+  }),
+  [CombatDoctrineId.RANGED_STALKER]: Object.freeze({
+    // The stalker's charge reads patient: slower and lower than the disengager's kiter voice,
+    // a watcher settling onto a new bearing rather than a kite backing off.
+    recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.82, fireGain: 0.8, fireDetune: -14,
+  }),
+  [CombatDoctrineId.SHIELD_BREAKER]: Object.freeze({
+    // The lance telegraph is a charge-up into an ion burst: brighter and faster than the
+    // kiter's standoff charge, so the peel window is heard.
+    recipeId: 'sfx_doctrine_ranged_charge', fireRate: 1.08, fireGain: 0.9, fireDetune: 22,
+  }),
+  [CombatDoctrineId.DETONATOR_RUN]: Object.freeze({
+    // A fuse, not a gun charge: the fastest, hottest induction voice on the roster so the run
+    // reads as a burning countdown instead of another spooling weapon.
+    recipeId: 'sfx_doctrine_ranged_charge', fireRate: 1.42, fireGain: 0.95, fireDetune: 30,
+  }),
+  [CombatDoctrineId.FIELD_ANCHOR_CONTROLLER]: Object.freeze({
+    // Hold-the-ring language: lower charge than ranged, distinct from brawler growl.
+    recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.7, fireGain: 0.88, fireDetune: -22,
+  }),
+  [CombatDoctrineId.CAPITAL_BROADSIDE]: Object.freeze({
+    recipeId: 'sfx_doctrine_capital_broadside', fireRate: 0.62, fireGain: 1.08, fireDetune: -30,
+  }),
+  [CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN]: Object.freeze({
+    // The Tollman act tolls slower and heavier than the stock broadside.
+    recipeId: 'sfx_doctrine_capital_broadside', fireRate: 0.56, fireGain: 1.12, fireDetune: -14,
+  }),
+  [CombatDoctrineId.CAPITAL_BROADSIDE_ALA]: Object.freeze({
+    // The ALA act is the sharpest capital voice: higher and tighter as the grave pull opens.
+    recipeId: 'sfx_doctrine_capital_broadside', fireRate: 0.68, fireGain: 1.04, fireDetune: -44,
+  }),
+  [CombatDoctrineId.ESCORT_SCREEN]: Object.freeze({
+    // Even, unhurried defensive fire — a guard's cadence, not a hunter's.
+    recipeId: 'sfx_doctrine_escort_screen', fireRate: 0.88, fireGain: 0.86, fireDetune: -4,
+  }),
+});
+
+// The first-hour ear-training contract. These five foreground receipts deliberately occupy
+// different registers and priority levels. Continuous low-frequency ambience is intentionally not
+// part of the contract: the procedural stack stays quiet until a player action earns a cue.
+// The policy lives beside the live router so it cannot drift into an unwired design-only table.
+export const FIRST_HOUR_AUDIO_SIGNATURES = Object.freeze({
+  masslineLatch: Object.freeze({
+    sourceEvent: 'tether:attached', semanticId: 'presentation.tether.attach',
+    recipeId: 'sfx.tetherLatch', priority: 0.78, cooldownS: 0.08, register: 'mechanical-mid',
+  }),
+  masslineStrain: Object.freeze({
+    sourceEvent: 'tether:nearBreak', semanticId: 'presentation.tether.near_break',
+    recipeId: 'sfx_tether_strain_creak', priority: 0.88, cooldownS: 0.65,
+    register: 'strained-mid', warning: true,
+  }),
+  masslineBreak: Object.freeze({
+    sourceEvent: 'tether:broken', semanticId: 'presentation.tether.break',
+    recipeId: 'sfx.tetherSnap', priority: 0.95, cooldownS: 0.12,
+    register: 'mechanical-wide', warning: true,
+  }),
+  shieldBreak: Object.freeze({
+    sourceEvent: 'shieldDown', semanticId: 'presentation.shield.collapse',
+    recipeId: 'sfx.shieldBreak', priority: 0.94, cooldownS: 0,
+    register: 'crystalline-high', warning: true,
+  }),
+  enemyKill: Object.freeze({
+    sourceEvent: 'entity:killed[killerId=playerId]', semanticId: 'presentation.combat.player_kill',
+    recipeId: 'sfx.killConfirmed', priority: 0.82, cooldownS: 0,
+    register: 'sub-plus-rising-confirm',
+  }),
+});
+
+const FIRST_HOUR_SIGNATURE_BY_SEMANTIC_ID = Object.freeze(Object.fromEntries(
+  Object.values(FIRST_HOUR_AUDIO_SIGNATURES)
+    .filter((signature) => signature.semanticId)
+    .map((signature) => [signature.semanticId, signature]),
+));
+const FIRST_HOUR_SIGNATURE_BY_PRESENTATION_CUE_ID = Object.freeze({
+  'tether.attach': FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch,
+  'tether.near_break': FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain,
+  'tether.break': FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak,
+  'shield.collapse': FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak,
+  'combat.player.kill': FIRST_HOUR_AUDIO_SIGNATURES.enemyKill,
+});
+
+export function resolveFirstHourAudioSignature(cueId) {
+  return FIRST_HOUR_SIGNATURE_BY_SEMANTIC_ID[String(cueId || '')] || null;
+}
+
+function linearGain(v) { const c = v < 0 ? 0 : v > 1 ? 1 : v; return c * c; }
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+/**
+ * SWARM-06 — kill-confirm pitch ladder. Each chain step raises the confirm ~1.2%, saturating at
+ * +36% around chain 30: the run's climb reads in the reward voice without touching timing or gain.
+ * Non-swarm runs never emit swarm:chain, so this reads exactly 1 outside the arcade.
+ */
+function swarmKillPitch(chain) {
+  const c = Math.max(0, Number(chain) || 0);
+  return Math.round((1 + Math.min(0.36, c * 0.012)) * 1000) / 1000;
+}
+function isPhysicalAudioBus(name) { return name === 'engine' || name === 'ambient' || name === 'combat'; }
+
+/**
+ * `_applySettings` owns master/engine/ambient/combat/ui/comms/music bus gain and used to rewrite
+ * all seven every rendered frame. `rt._busGainCache` records the last tuple actually written per
+ * bus so an unchanged frame can skip the write; see `_applySettings` for why that is signal-exact.
+ *
+ * `musicBus.gain` is the one settings-owned param with foreign writers (pause, bullet time, music
+ * duck + duck recovery). Each of them drops the cache entry here so the next `_applySettings`
+ * re-asserts the settings target exactly as it does today — including stomping the duck.
+ */
+function invalidateBusGainCache(rt, key) {
+  const cache = rt && rt._busGainCache;
+  if (cache) delete cache[key];
+}
+
+/** Event-driven slow-time mix over pooled graph nodes. UI/comms never enter `filters`. */
+export function applyBulletTimeAudioTreatment(rt, requestedActive, muted = false) {
+  if (!rt) return;
+  rt._bulletTimeAudioActive = !!requestedActive;
+  const active = !!requestedActive && !muted;
+  rt._bulletTimePitch = active ? BULLET_TIME_AUDIO.loopRate : 1;
+  rt._bulletTimeMusicMult = active ? BULLET_TIME_AUDIO.musicMult : 1;
+  const ctx = rt.ctx;
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const duration = active ? BULLET_TIME_AUDIO.enterS : BULLET_TIME_AUDIO.exitS;
+  const cutoff = active ? BULLET_TIME_AUDIO.cutoffHz : BULLET_TIME_AUDIO.openHz;
+  for (const filter of rt._bulletTimeFilters || []) {
+    const param = filter && filter.frequency;
+    if (!param) continue;
+    try {
+      param.cancelScheduledValues(now);
+      param.setValueAtTime(Math.max(20, Number(param.value) || BULLET_TIME_AUDIO.openHz), now);
+      param.linearRampToValueAtTime(cutoff, now + duration);
+    } catch (_) { try { param.value = cutoff; } catch (__) {} }
+  }
+  const setRate = (source) => {
+    const param = source && source.playbackRate;
+    if (!param) return;
+    try { param.setTargetAtTime(rt._bulletTimePitch, now, duration / 3); }
+    catch (_) { try { param.value = rt._bulletTimePitch; } catch (__) {} }
+  };
+  setRate(rt.engineNoise);
+  setRate(rt.brakeNoise);
+  for (const key in rt.loops || {}) {
+    const voice = rt.loops[key];
+    if (!voice || !isPhysicalAudioBus(voice.busName)) continue;
+    for (const source of voice && voice.sources || []) setRate(source);
+  }
+  if (rt.musicBus && rt.musicBus.gain) {
+    const target = Math.max(0.0001, (rt._musicBase || 0.0001) * rt._bulletTimeMusicMult);
+    try {
+      rt.musicBus.gain.cancelScheduledValues(now);
+      rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), now);
+      rt.musicBus.gain.linearRampToValueAtTime(target, now + duration);
+    } catch (_) { try { rt.musicBus.gain.value = target; } catch (__) {} }
+    invalidateBusGainCache(rt, 'music');
+  }
+}
+
+export function resolveEngineAudioIdentity(entity) {
+  let profile = null;
+  try { profile = resolvePropulsionProfile(entity); } catch (_) { profile = null; }
+  const family = profile && ENGINE_FAMILY_AUDIO[profile.family]
+    ? profile.family
+    : DRIVE_FAMILIES.REACTION;
+  const voice = ENGINE_FAMILY_AUDIO[family];
+  const derived = entity && entity.data && entity.data.derived;
+  const mass = Math.max(1, Number(entity && entity.mass) || Number(derived && derived.mass) || 1);
+  const massClass = mass >= 110 ? 'heavy' : mass <= 32 ? 'light' : 'medium';
+  const massNorm = clamp(mass / 120, 0.55, 1.8);
+  return { family, driveId: profile && profile.id || null, mass, massClass, massNorm, voice };
+}
+
+function doctrineIdForOwner(state, payload) {
+  if (payload && DOCTRINE_AUDIO_SIGNATURES[payload.doctrineId]) return payload.doctrineId;
+  const owner = state && state.entities && payload && payload.ownerId != null
+    ? state.entities.get(payload.ownerId)
+    : null;
+  const ai = owner && owner.data && owner.data.ai;
+  return ai && DOCTRINE_AUDIO_SIGNATURES[ai.combatDoctrineId] ? ai.combatDoctrineId : null;
+}
+
+export function resolveWeaponAudioSignature(payload, state) {
+  const recipeId = recipeForWeapon(payload && payload.weaponId);
+  const doctrineId = doctrineIdForOwner(state, payload);
+  const doctrine = doctrineId && DOCTRINE_AUDIO_SIGNATURES[doctrineId];
+  return {
+    recipeId,
+    doctrineId,
+    rate: doctrine ? doctrine.fireRate : 1,
+    gain: 0.85 * (doctrine ? doctrine.fireGain : 1),
+    detune: doctrine ? doctrine.fireDetune : 0,
+  };
+}
+
+/**
+ * Resolve a player-hit receipt in ship-local coordinates. World-X panning made direction change as
+ * the ship turned; this keeps left/right stable relative to the player's nose. Front/rear also get
+ * a restrained pitch distinction, while urgency scales only the one-shot receipt (never an alarm).
+ */
+export function resolvePlayerDamageAudioSignature(payload, state) {
+  const player = state && state.entities && state.entities.get(state.playerId);
+  const attacker = state && state.entities && payload && payload.attackerId != null
+    ? state.entities.get(payload.attackerId)
+    : null;
+  const origin = attacker && attacker.pos || payload && (payload.hitPoint || payload.pos) || null;
+  let pan = 0, forward = 0;
+  if (player && player.pos && origin) {
+    const dx = origin.x - player.pos.x;
+    const dz = origin.z - player.pos.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const rot = Number(player.rot) || 0;
+    forward = (dx * Math.cos(rot) + dz * Math.sin(rot)) / len;
+    pan = clamp((dx * -Math.sin(rot) + dz * Math.cos(rot)) / len, -0.85, 0.85);
+  }
+  const after = payload && payload.after || {};
+  const hullMax = Math.max(1, Number(player && player.hullMax) || Number(after.hullMax) || 1);
+  const hullPct = clamp(Number(after.hull != null ? after.hull : player && player.hull) / hullMax, 0, 1);
+  const layer = (payload && payload.dominantLayer)
+    || (Number(payload && payload.shieldDamage) > 0 ? 'shield'
+      : Number(payload && payload.armorDamage) > 0 ? 'armor' : 'hull');
+  const urgency = hullPct < 0.2 ? 1 : hullPct < 0.45 ? 0.62 : 0.3;
+  return {
+    layer,
+    pan,
+    bearing: forward < -0.45 ? 'rear' : forward > 0.45 ? 'front' : pan < -0.2 ? 'left' : pan > 0.2 ? 'right' : 'center',
+    rate: forward < -0.45 ? 0.88 : forward > 0.45 ? 1.08 : 0.98,
+    detune: Math.round(pan * 9),
+    gain: 0.56 + urgency * 0.24,
+    position: origin,
+    urgency,
+  };
+}
+
+export function isPlayerInAudioCalmZone(state, player) {
+  if (!state || !player) return false;
+  if ((player.flags && player.flags.docked) || (state.ui && state.ui.docked)) return true;
+  const sectorId = state.world && state.world.currentSectorId;
+  const sector = sectorId && state.world && state.world.sectors && state.world.sectors[sectorId];
+  if (sector && (sector.tier === 0 || (sector.security >= 0.9 && sector.enemyDensity === 0))) return true;
+  const stations = state.world && state.world.activeSector && state.world.activeSector.stations || [];
+  for (const station of stations) {
+    if (!station || !station.pos) continue;
+    const dx = station.pos.x - player.pos.x;
+    const dz = station.pos.z - player.pos.z;
+    if (dx * dx + dz * dz <= 1100 * 1100) return true;
+  }
+  return false;
+}
+
+// SF-297: how many live hostile hulls are COMMITTED to the player right now — their combat brain
+// targets or locks the player's hull — regardless of the beam-range scan the near count uses. The
+// same two fields the camera's threat framing reads (cameraDirector requiredThreatContextZoom's
+// `combat.targetId === player.id || combat.lockTarget === player.id`), so the picture and the mix
+// key off one truth: a hull that is still hunting you is not calm, however far out it sits.
+export const AUDIO_COMMITTED_THREAT_RANGE_WU = 2400;
+
+export function audioCommittedHostileCount(state, player, range = AUDIO_COMMITTED_THREAT_RANGE_WU, scratch = [], maxCount = Infinity) {
+  if (!state || !player || !player.pos) return 0;
+  const fallback = (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 && state.entityIndex.ships) || state.entityList || [];
+  const candidates = queryNearbyEntities(state, player.pos, range, scratch, fallback);
+  const myTeam = player.team;
+  const px = player.pos.x;
+  const pz = player.pos.z;
+  const r2 = range * range;
+  let count = 0;
+  for (const e of candidates) {
+    if (!e || !e.alive || e.type !== 'ship' || e.id === player.id) continue;
+    if (e.team === myTeam) continue;
+    const combat = e.data && e.data.combat;
+    if (!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))) continue;
+    const dx = e.pos.x - px;
+    const dz = e.pos.z - pz;
+    if (dx * dx + dz * dz <= r2) {
+      count++;
+      if (count >= maxCount) break;
+    }
+  }
+  return count;
+}
+
+export function resolveAudioThreatContext(state, player, rt) {
+  const simTime = Number(state && state.simTime) || 0;
+  const lastDamageT = rt && Number.isFinite(rt._lastDamageT) ? rt._lastDamageT : -1e9;
+  const recentDamage = simTime - lastDamageT < IN_COMBAT_WINDOW;
+  const activeEncounter = !!(rt && rt._activeCombatEncounters && rt._activeCombatEncounters.size);
+  const doctrineThreat = simTime < Number(rt && rt._doctrineThreatUntil || -1e9);
+  const committedHostiles = audioCommittedHostileCount(
+    state, player, AUDIO_COMMITTED_THREAT_RANGE_WU, rt && rt._musicCommitScratch || [], 3,
+  );
+  const engaged = recentDamage || activeEncounter || doctrineThreat || committedHostiles > 0;
+  const calmZone = isPlayerInAudioCalmZone(state, player);
+  const nearbyHostiles = calmZone && !engaged
+    ? 0
+    : audioNearbyHostileCount(state, player, 1200, rt && rt._musicThreatScratch || [], 3);
+  const shieldPct = player && player.shieldMax > 0 ? clamp(player.shield / player.shieldMax, 0, 1) : 1;
+  let threat = clamp(0.5 * Math.min(nearbyHostiles, 3) / 3 + 0.5 * (1 - shieldPct) * (recentDamage ? 1 : 0), 0, 1);
+  if (engaged) threat = Math.max(threat, activeEncounter || doctrineThreat ? 0.45 : 0.3);
+  // Commitment floor (SF-297): one committed hunter holds the mix at the tense band — 1-2 near
+  // hostiles used to decay into 'calm' the moment the damage window and encounter latch expired,
+  // silencing the mix while the camera still framed a combat pair. The mix relaxes only when the
+  // last commitment dies; incoming-fire warnings are separate lanes and stay untouched.
+  if (committedHostiles > 0) threat = Math.max(threat, 0.45);
+  return {
+    threat, nearbyHostiles, shieldPct, calmZone, engaged, committedHostiles,
+    activeEncounter, doctrineThreat, recentDamage,
+  };
+}
+
+/**
+ * A working pocket is heard where the crews are, not where their lanes run. `jobPhase` is the
+ * runtime stamp (npcJobsRuntime owns it — audio reads, never writes): only the at-face phases
+ * count. Transit, return, and patrols are traffic, not din; a hauler gliding by in the lane
+ * does not make the place sound like work.
+ */
+export const AUDIO_WORK_RADIUS_WU = 600;
+export const AUDIO_WORK_SATURATION = 3;
+const AUDIO_WORK_PHASES = new Set(['work', 'load', 'unload']);
+
+export function resolveAudioWorkPresence(state, player, scratch = []) {
+  if (!state || !player || !player.pos) {
+    return Object.freeze({ working: false, actors: 0, presence: 0 });
+  }
+  const fallback = (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 && state.entityIndex.ships) || state.entityList || [];
+  const candidates = queryNearbyEntities(state, player.pos, AUDIO_WORK_RADIUS_WU, scratch, fallback);
+  const px = player.pos.x;
+  const pz = player.pos.z;
+  const r2 = AUDIO_WORK_RADIUS_WU * AUDIO_WORK_RADIUS_WU;
+  let actors = 0;
+  for (const e of candidates) {
+    if (!e || !e.alive || e.type !== 'ship' || e.id === player.id || !e.pos) continue;
+    const d = e.data || {};
+    if (!d.jobKind || d.jobKind === 'patrol' || !AUDIO_WORK_PHASES.has(d.jobPhase)) continue;
+    const dx = e.pos.x - px;
+    const dz = e.pos.z - pz;
+    if (dx * dx + dz * dz > r2) continue;
+    actors++;
+    if (actors >= AUDIO_WORK_SATURATION) break;
+  }
+  return Object.freeze({ working: actors > 0, actors, presence: clamp(actors / AUDIO_WORK_SATURATION, 0, 1) });
+}
+
+/** Silence floor for the combat pressure bed once nothing is still threatening. */
+export const QUIET_BED_GAIN = 0.0001;
+
+/**
+ * The crowded bed follows live threats. A recent-damage tail, with no hostile,
+ * encounter, or doctrine still in the picture, does not keep the growl.
+ * Docked flight is quiet even if the damage window has not expired.
+ */
+export function combatPressureThreat(context, docked) {
+  if (docked || !context) return 0;
+  if ((context.committedHostiles || 0) > 0
+    || context.activeEncounter || context.doctrineThreat
+    || (context.nearbyHostiles || 0) > 0) {
+    return clamp(Number(context.threat) || 0, 0, 1);
+  }
+  return 0;
+}
+
+export function pressureBedGainForThreat(threat) {
+  const t = clamp(Number(threat) || 0, 0, 1);
+  if (t <= 0.02) return QUIET_BED_GAIN;
+  return PRESSURE_MIX.bedBaseGain + Math.pow(t, 1.6) * PRESSURE_MIX.bedGain;
+}
+
+/** Player verb, refusal, and immediate warning stay readable under the crowded families. */
+export function mixCueStaysReadable(recipeId, opts) {
+  if (opts && (opts.primary || opts.refusalSource || opts.warning)) return true;
+  const id = String(recipeId || '');
+  if (id === 'sfx_massline_deny' || id === 'sfx_refusal_empty' || id === 'sfx_refusal_target') return true;
+  if (id.includes('alert') || id.includes('_hull') || id === 'sfx_hull_stress_groan') return true;
+  return false;
+}
+
+export const KILL_ADMIT_MS = 40;
+// The projectile chip (`_onHit`, inline) and the material layer voice (`_onDamage`, presentation-
+// deferred) can be separated by a catch-up frame or two. Keep the cross-owner claim long enough to
+// cover that drain, and let position disambiguate a recycled target id.
+export const IMPACT_VOICE_WINDOW_MS = 150;
+export const STUNT_HUSH_GAP_MS = 6000;
+export const ENCOUNTER_ARC_HOLD_S = 1.5;
+export const FUEL_THIN_GAIN = 0.62;
+export const ORIGIN_SHIFT_PAN = PAN_SPAN;
+
+const IMMEDIATE_COMMS = new Set(['warn', 'attack', 'demand-cargo', 'distress', 'flee']);
+const CHATTER_COMMS = new Set(['scan', 'patrol-greeting', 'taunt', 'reinforce']);
+const WORK_RUNNING = new Set(['running', 'building', 'staged']);
+const WORK_JAMMED = new Set(['no-power', 'starved', 'backlogged', 'no-pods', 'throttled', 'no-geology', 'no-network']);
+
+/** FB-078 — mass picks the kill body. Capital hushes; a light hull does not. */
+export function resolveKillMassVoice(input = {}) {
+  const victimClass = input.victimClass;
+  const type = input.type;
+  const capital = victimClass === 'capital' || victimClass === 'large' || type === 'station';
+  const killedByPlayer = input.killedByPlayer === true;
+  if (capital) {
+    return Object.freeze({
+      play: true,
+      hush: 'capital',
+      recipeId: 'sfx.killCapital',
+      confirmRecipeId: killedByPlayer ? 'sfx_kill_confirm' : null,
+      rate: 1,
+      gain: 1,
+      band: 'capital',
+      admitMs: KILL_ADMIT_MS,
+    });
+  }
+  const mass = Number.isFinite(input.mass) ? input.mass : 48;
+  const collision = resolveCollisionCue({
+    massA: mass, typeA: 'ship', massB: 16, typeB: 'ship', dp: 800,
+  });
+  let recipeId = 'sfx.killSmall';
+  let band = 'medium';
+  if (mass <= 24) { recipeId = 'sfx_kill_sine'; band = 'light'; }
+  else if (mass >= 160) { recipeId = 'sfx_kill_noise'; band = 'heavy'; }
+  return Object.freeze({
+    play: true,
+    hush: null,
+    recipeId,
+    confirmRecipeId: killedByPlayer ? 'sfx_kill_confirm' : null,
+    rate: collision.rate,
+    gain: killedByPlayer ? 0.9 : 0.72,
+    band,
+    admitMs: KILL_ADMIT_MS,
+  });
+}
+
+export function killVoiceAdmitted(book, targetId, nowMs) {
+  if (targetId == null) return true;
+  const key = String(targetId);
+  const now = Number(nowMs) || 0;
+  const last = book && book[key];
+  if (Number.isFinite(last) && now - last < KILL_ADMIT_MS) return false;
+  if (book) book[key] = now;
+  return true;
+}
+
+/** SF-232 — the machine's phase is the rhythm. Idle is silence. */
+export function resolveMachineWorkCycle(stateName) {
+  const state = String(stateName || 'idle');
+  if (WORK_RUNNING.has(state)) {
+    return Object.freeze({
+      play: true, phase: 'running', recipeId: 'sfx_work_motor',
+      rate: 1, gain: 0.42, transfer: true, caption: 'Machine working.',
+    });
+  }
+  if (WORK_JAMMED.has(state)) {
+    return Object.freeze({
+      play: true, phase: 'jam', recipeId: 'sfx_work_jam',
+      rate: 0.7, gain: 0.3, transfer: false, caption: 'Machine jammed.',
+    });
+  }
+  return Object.freeze({
+    play: false, phase: 'idle', recipeId: null, rate: 1, gain: 0, transfer: false, caption: null,
+  });
+}
+
+/** Yard loop sits on the rock the site is built into. The status event has no position. */
+export function machineWorkPosition(state, payload) {
+  const given = payload && payload.pos;
+  if (given && Number.isFinite(given.x) && Number.isFinite(given.z)) {
+    return { x: given.x, z: given.z };
+  }
+  const sites = state && state.sites && state.sites.byId;
+  const site = sites && payload && payload.siteId != null ? sites[payload.siteId] : null;
+  const asteroidId = site && site.asteroidId;
+  const entities = state && state.entities;
+  const ent = asteroidId != null && entities && typeof entities.get === 'function'
+    ? entities.get(asteroidId)
+    : null;
+  const pos = ent && ent.alive !== false && ent.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+  return { x: pos.x, z: pos.z };
+}
+
+/** A living relay is not a motor. Machinery keeps sfx_work_motor. */
+export function relayPulseCue(payload) {
+  const ids = payload && Array.isArray(payload.siteIds) ? payload.siteIds : null;
+  if (!ids || ids.length === 0) return null;
+  return { recipeId: 'sfx_anomaly_swell', caption: 'Relay pulse.', gain: 0.36 };
+}
+
+export function playRelayPulse(host, payload) {
+  const cue = relayPulseCue(payload);
+  if (!cue || !host || typeof host.play !== 'function') return null;
+  const played = host.play(cue.recipeId, { id: cue.recipeId, gain: cue.gain, captionOwned: typeof host._emitPresentationCaption === 'function' });
+  if (played && typeof host._emitPresentationCaption === 'function') {
+    host._emitPresentationCaption(cue.caption, { channel: 'cue' });
+  }
+  return played;
+}
+
+/** SF-233 — a swell is evidence, not a timer on the anomaly palette. */
+export function resolveAnomalyEvidenceCue(input = {}) {
+  const type = String(input.type || input.poiType || input.kind || '').toLowerCase();
+  const anomaly = type === 'anomaly' || input.anomaly === true;
+  const evidence = input.scanned === true || input.perceived === true;
+  if (!anomaly || !evidence || input.hostile === true && !evidence) {
+    return Object.freeze({ play: false, recipeId: null, caption: null });
+  }
+  if (!anomaly || !evidence) return Object.freeze({ play: false, recipeId: null, caption: null });
+  return Object.freeze({
+    play: true,
+    recipeId: 'sfx_anomaly_swell',
+    gain: 0.22,
+    caption: 'Anomaly evidence.',
+  });
+}
+
+/**
+ * SF-234 — travel, telegraph, fight, release. Neutrals are not a fight.
+ * A flicker inside the hold does not restart the phrase. Recovery is not combat.
+ */
+export function resolveEncounterArc(input = {}) {
+  const holdS = Number.isFinite(input.holdS) ? input.holdS : ENCOUNTER_ARC_HOLD_S;
+  const now = Number(input.nowS) || 0;
+  const context = input.context || {};
+  const committed = (context.committedHostiles || 0) > 0;
+  const fighting = committed || context.recentDamage === true || context.activeEncounter === true || context.doctrineThreat === true;
+  const telegraph = !fighting && (input.telegraph === true || (context.nearbyHostiles || 0) > 0);
+  let phase = 'travel';
+  if (input.neutrals === true && !fighting) phase = 'travel';
+  else if (fighting) phase = 'combat';
+  else if (telegraph) phase = 'tense';
+  else if (input.docked) phase = 'docked';
+  const prev = input.previousPhase || null;
+  let committedPhase = phase;
+  let pendingPhase = null;
+  let pendingSince = null;
+  let restart = false;
+  if (prev && prev !== phase && phase !== 'docked' && prev !== 'docked') {
+    const pending = input.pendingPhase;
+    const since = Number(input.pendingSince);
+    if (pending !== phase || !Number.isFinite(since)) {
+      committedPhase = prev;
+      pendingPhase = phase;
+      pendingSince = now;
+    } else if (now - since < holdS) {
+      committedPhase = prev;
+      pendingPhase = phase;
+      pendingSince = since;
+    } else {
+      committedPhase = phase;
+      restart = false;
+    }
+  } else if (prev && prev !== phase) {
+    restart = phase === 'docked' || prev === 'docked';
+  }
+  const inCombat = committedPhase === 'combat';
+  const desired = committedPhase === 'docked' ? 'docked'
+    : committedPhase === 'combat' ? 'combat'
+      : committedPhase === 'tense' ? 'tense'
+        : 'travel';
+  return Object.freeze({
+    phase: committedPhase,
+    desired,
+    inCombat,
+    restart,
+    pendingPhase,
+    pendingSince,
+    recovery: input.recovery === true && !inCombat,
+  });
+}
+
+/** FB-082 — razor release and the slingshot apex hush. A clean let-go does not. */
+export function admitStuntHush(input = {}) {
+  const klass = String(input.classification || '').toLowerCase();
+  const apex = input.apex === true || input.cueId === 'massline.slingshotApex';
+  const razor = klass === 'razor';
+  if (!razor && !apex) return Object.freeze({ play: false, kind: null });
+  const now = Number(input.nowMs) || 0;
+  const last = Number(input.lastMs);
+  if (Number.isFinite(last) && now - last < STUNT_HUSH_GAP_MS) {
+    return Object.freeze({ play: false, kind: 'stunt', reason: 'gap' });
+  }
+  return Object.freeze({ play: true, kind: 'stunt', gapMs: STUNT_HUSH_GAP_MS });
+}
+
+export function originShiftReset(prevSeq, nextSeq) {
+  const next = Number(nextSeq);
+  if (!Number.isFinite(next) || !Number.isFinite(Number(prevSeq))) return false;
+  return next !== Number(prevSeq);
+}
+
+export function voiceInheritsOwner(voice, entity) {
+  if (!voice || voice._trackEntity == null) return true;
+  return entity != null && voice._trackEntity === entity;
+}
+
+/** SF-237 — player verb, warning, and refusal stay. A distant redundant loop goes first. */
+export function rankVoiceForBudget(voice) {
+  if (!voice) return 0;
+  if (voice.primary || voice.critical || voice.warning || voice.refusalSource) return 1000;
+  const dist = Number(voice.dist);
+  if (voice.loop && Number.isFinite(dist) && dist > 800) return 1;
+  if (voice.loop) return 40;
+  return 10;
+}
+
+export function voiceBudgetDisposable(voice) {
+  if (!voice) return false;
+  if (voice.primary || voice.critical || voice.warning || voice.refusalSource) return false;
+  if (voice.loop) return Number(voice.dist) > 800;
+  return true;
+}
+
+/** FB-079 — cruise is a loop that ends on the drop, not a fade standing in for the end. */
+export function resolveCruiseLoopEdge(input = {}) {
+  if (input.dropped === true || input.snared === true) {
+    return Object.freeze({ active: false, stop: true, recipeId: 'sfx.cruiseEngaged' });
+  }
+  if (input.engaged === true) {
+    return Object.freeze({ active: true, stop: false, recipeId: 'sfx.cruiseEngaged' });
+  }
+  return Object.freeze({
+    active: input.held === true, stop: false, recipeId: 'sfx.cruiseEngaged',
+  });
+}
+
+/** SF-231 — an immediate problem owns the ear. Chatter waits. A context change drops the stale line. */
+export function arbitrateCommsLine(input = {}) {
+  const situation = String(input.situation || '');
+  const importance = Number(input.importance) || 0;
+  const immediate = IMMEDIATE_COMMS.has(situation) || importance >= 0.8 || input.mechanic === true;
+  const chatter = !immediate && (CHATTER_COMMS.has(situation) || input.chatter === true);
+  if (input.lineContext && input.context && input.lineContext !== input.context) {
+    return Object.freeze({ play: false, caption: false, reason: 'stale', yield: true, immediate: false });
+  }
+  if (chatter && (input.immediateHeld === true || input.criticalEar === true)) {
+    return Object.freeze({ play: false, caption: false, reason: 'yield', yield: true, immediate: false });
+  }
+  return Object.freeze({
+    play: true,
+    caption: true,
+    reason: immediate ? 'immediate' : 'line',
+    yield: false,
+    immediate,
+  });
+}
+
+/**
+ * SF-240 — one family, heard while the work is live, quiet when the room is quiet,
+ * gone when the operation stops, and never loud enough to cover a critical voice.
+ */
+/** FB-081 — income rings the register. A purchase stays the quiet confirm. A trade sell is not both. */
+export function incomeVoices(event, payload) {
+  if (event === 'credits:changed') {
+    if (!payload || !(Number(payload.delta) > 0)) return [];
+    // The commission owners forward these accepted receipts through audio:cue
+    // so worker and main use the same one cash voice, not two on main.
+    const reason = String(payload.reason || '');
+    if (reason.startsWith('counterweight:first-completion:')
+      || (reason.startsWith('cinderglass:cg:') && reason.endsWith(':settlement'))) return [];
+    if (String(payload.reason || '').startsWith('trade')) return [];
+    return ['sfx_cash_register'];
+  }
+  if (event === 'economy:tradeCompleted') {
+    if (payload && payload.side === 'sell') return [];
+    return ['sfx_ui_confirm'];
+  }
+  return [];
+}
+
+export function sellRegisterVoice(payload) {
+  if (!payload || payload.side !== 'sell') return null;
+  const profitable = Number(payload.profit) > 0;
+  return Object.freeze({
+    id: 'sfx_cash_register',
+    gain: profitable ? 0.85 : 0.6,
+    rate: profitable ? 1.06 : 0.96,
+  });
+}
+
+/** A settled sale says the credits landed. Buys stay quiet — the confirm click is enough. */
+export function saleCaption(payload) {
+  return sellRegisterVoice(payload) ? 'Credits received.' : null;
+}
+
+/**
+ * The four payoff stingers name their own payoff. A shared "Progress." line is the
+ * failure this exists to avoid. A ship or deed name is used only when the receipt
+ * already carries one.
+ */
+export function payoffCaption(event, payload) {
+  const name = payload && typeof payload.name === 'string' ? payload.name.trim() : '';
+  if (event === 'tech:researched') return 'Research complete.';
+  if (event === 'ship:purchased') return name ? `Ship purchased: ${name}.` : 'Ship purchased.';
+  if (event === 'achievement:unlocked') return name ? `Achievement: ${name}.` : 'Achievement unlocked.';
+  if (event === 'career:ladder:completed') return 'Rank attained.';
+  return null;
+}
+
+export const DEATH_CAPTION = 'Ship lost.';
+export const RESPAWN_CAPTION = 'Back in the fight.';
+
+export function missionMomentCaption(event) {
+  if (event === 'mission:accepted') return 'Mission accepted.';
+  if (event === 'mission:completed') return 'Mission complete.';
+  return null;
+}
+
+/** Enemy anchor snare only. A player well keeps fields:deployed and must not double here. */
+export function anchorSnareCaption(payload) {
+  return payload && payload.kind === 'anchorSnare' ? 'Anchor snare.' : null;
+}
+
+export const FIELD_LIFE_CAPTIONS = Object.freeze({
+  'massline:snareArmed': Object.freeze({ text: 'Snare armed.', assertive: false }),
+  'massline:snareCut': Object.freeze({ text: 'Snare cut.', assertive: false }),
+  'massSeed:deployed': Object.freeze({ text: 'Mass seed deployed.', assertive: false }),
+  'massSeed:locking': Object.freeze({ text: 'Seed locking.', assertive: false }),
+  'massSeed:locked': Object.freeze({ text: 'Seed locked.', assertive: false }),
+  'massSeed:warning': Object.freeze({ text: 'Seed unstable.', assertive: true }),
+  'massSeed:collapsing': Object.freeze({ text: 'Seed collapses.', assertive: false }),
+});
+
+export function fieldLifeCaption(event) {
+  return FIELD_LIFE_CAPTIONS[event] || null;
+}
+
+/**
+ * Shift an interval ladder into the sector key without changing the steps between rungs.
+ * `homeHz` is the ladder's written root (A4). Two keys therefore differ; tier N / tier 0 does not.
+ */
+export function keyedIntervalRate(intervalRate, keyHz, homeHz = 440) {
+  const interval = Number.isFinite(intervalRate) && intervalRate > 0 ? intervalRate : 1;
+  const home = Number.isFinite(homeHz) && homeHz > 0 ? homeHz : 440;
+  const key = Number.isFinite(keyHz) && keyHz > 0 ? keyHz : home;
+  return interval * (key / home);
+}
+
+/** Root, major third, fifth, each on a score-grid sixteenth, pitched in the sector key. */
+export function discoveryMotifVoices(noteHz, gridTime, sixteenth, baseFreq = 523) {
+  const steps = [
+    ['C', 5, 0.7, 0],
+    ['E', 5, 0.62, 1],
+    ['G', 5, 0.55, 2],
+  ];
+  const base = baseFreq > 0 ? baseFreq : 523;
+  const grid = Number.isFinite(gridTime) ? gridTime : 0;
+  const step = Number.isFinite(sixteenth) && sixteenth > 0 ? sixteenth : 0.12;
+  return steps.map(([note, oct, gain, n]) => Object.freeze({
+    recipeId: 'sfx_discovery_plate_note',
+    gain,
+    rate: noteHz(note, oct) / base,
+    startTime: grid + n * step,
+    lockRate: true,
+    critical: true,
+  }));
+}
+
+export function acceptAudioFamily(input = {}) {
+  const voices = Array.isArray(input.voices) ? input.voices : [];
+  const cap = Number.isFinite(input.cap) ? input.cap : 12;
+  const live = voices.filter((v) => v && v.play !== false && Number(v.gain) > 0.001);
+  const critical = live.some((v) => v.critical);
+  const masking = live.some((v) => !v.critical && Number(v.gain) > 0.85 && critical);
+  const bounded = voices.length <= cap;
+  const quiet = input.quiet === true || input.muted === true;
+  const stopped = input.operationStopped === true;
+  const audible = live.length > 0 && !quiet && !stopped;
+  const silent = live.length === 0;
+  const ok = bounded && !masking && ((quiet || stopped) ? silent : audible || voices.length === 0);
+  return Object.freeze({
+    ok, audible, bounded, maskingCritical: masking, silentWhenQuiet: quiet ? silent : true, stopped: stopped ? silent : true,
+  });
+}
+
+// Build a fast id->recipe lookup over the data array. Prototype-less on purpose: `{}` inherits
+// Object.prototype, so a cue id of "toString" or "constructor" resolved to a FUNCTION through
+// AUDIO_RECIPE_BY_ID and the audit gates (`assert(AUDIO_RECIPE_BY_ID[rid])`) passed on it — a
+// missing recipe read as a present one.
+const recipeById = Object.create(null);
+for (const r of RECIPES) recipeById[r.id] = r;
+export const AUDIO_RECIPE_BY_ID = Object.freeze(recipeById);
+
+// --- collision cues: sound tells weight ---
+// A scout kissing a rock and a freighter broadsiding a station are not the same event. Pitch is a
+// decreasing function of the heavier participant's acoustic mass (immovable stations/asteroids map
+// to nominal masses so they read as heavy, not weightless); loudness is an increasing function of
+// the exchanged momentum (dp, falling back to impulse); the recipe ladder picks an existing recipe
+// per tier. Pure and node-testable: no Math.random, no Date.now, no DOM, no `this`.
+export const COLLISION_CUE = Object.freeze({
+  ACOUSTIC_MASS_STATION: 400,
+  ACOUSTIC_MASS_ASTEROID: 120,
+  ACOUSTIC_MASS_UNKNOWN: 48,
+  MASS_LIGHT: 16,
+  MASS_HEAVY: 400,
+  RATE_LIGHT: 1.6,
+  RATE_HEAVY: 0.5,
+  RATE_CURVE: 2.2,
+  RATE_MIN: 0.45,
+  RATE_MAX: 1.8,
+  GAIN_MIN: 0.05,
+  GAIN_MAX: 0.95,
+  DP_FULL: 24000,
+  TIER_KISS_DP: 400,
+  TIER_SLAM_DP: 4000,
+  TIER_HEAVY_MASS: 200,
+  // Build-map §22 B5: how HARD it was also bends the pitch. The solver caps the receipt's dp near
+  // mass·40 WU/s, so the force axis reads the pre-solve closing speed the receipt carries — the
+  // same 8→150 WU/s ramp the feel hit-stop reads (`resolveCollisionFeel`) — and falls back to the
+  // dp tier axis when a receipt does not carry one. The bend only ever darkens: a kiss keeps the
+  // mass-law rate exactly, a slam lands more than an octave under it.
+  SPEED_TOUCH: 8,        // WU/s — at or below a touch the mass-law rate stands untouched
+  SPEED_SLAM: 150,       // WU/s — the reference slam; the bend saturates here
+  RATE_FORCE_MIN: 0.45,  // ×rate at full force — ~1.15 octaves under the same bodies' kiss
+  // Matches TERRAIN_CRUMPLE_LAW.threshold: at or under this closing speed a rock or station
+  // contact has not started to crumple the hull, so it is a scrape rather than an impact.
+  SCRAPE_SPEED: 30,
+});
+
+// Cargo scoop combo ladder — consecutive pickups climb a pentatonic-ish rise so a chain of scoops
+// plays an ascending melody rather than the same note eight times.
+const SCOOP_CHIME_RATES = Object.freeze([1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.888, 2.0]);
+
+// Stunt chain ladder (CV-EAR) — each player trick in the active combo plucks one step higher.
+// The step reads stuntCombo's own acts.length (the real link count, already bumped before the
+// event lands), so a combo reset drops the pitch back to the bottom for free.
+
+const COLLISION_TIER_RECIPES = Object.freeze({
+  kiss: 'sfx_dock_clunk',
+  knock: 'sfx_mining_impact',
+  slam: 'sfx_explosion_small',
+  broadside: 'sfx_explosion_large',
+});
+
+// Optic lattice contacts (build_map §24 "the picture and the sound"): one voice per response
+// kind so the player can hear which answer the field gave — stone and darkened prisms eat the
+// bolt (thud), metal throws it back (ping), a live diamond cracks into its splinter ring.
+// `absorb` covers every refusal (`reason` stone/spent/generation/family): the bolt died on the
+// surface either way, so all of them land as the same dull thud.
+export const OPTIC_CONTACT_RECIPES = Object.freeze({
+  absorb: 'sfx_optic_absorb',
+  reflect: 'sfx_optic_reflect',
+  prism: 'sfx_optic_split',
+});
+// A healed prism gets a soft shimmer under the contact family — a recovery whisper, not a hit.
+export const OPTIC_REKINDLE_RECIPE = 'sfx_optic_rekindle';
+
+// Contact-cue admission (see _admitCollisionCue): ~100 ms between the same pair's voices —
+// the VFX contact-spark cadence — with an escalation escape so a real slam inside the window
+// still plays over the grind it interrupted.
+export const COLLISION_CUE_COOLDOWN_TICKS = 6;
+export const COLLISION_CUE_UPGRADE_RATIO = 1.5;
+const COLLISION_CUE_PAIR_CAP = 128;
+
+function collisionAcousticMass(mass, type) {
+  if (type === 'station') return COLLISION_CUE.ACOUSTIC_MASS_STATION;
+  if (type === 'asteroid') return COLLISION_CUE.ACOUSTIC_MASS_ASTEROID;
+  return Number.isFinite(mass) && mass > 0 ? mass : COLLISION_CUE.ACOUSTIC_MASS_UNKNOWN;
+}
+
+// Contact-admission scratches — _onCollision fills these per admitted contact and every
+// callee (resolveCollisionCue, play, _applyWeightDuck) only reads fields synchronously, so
+// the literals never escape.
+const _collisionCueArg = {
+  dp: 0,
+  impulse: 0,
+  massA: null,
+  massB: null,
+  typeA: undefined,
+  typeB: undefined,
+  closingSpeed: undefined,
+  hullDamage: undefined,
+};
+const _collisionPlayOpts = {
+  position: null,
+  gain: 1,
+  rate: 1,
+  ladderId: undefined,
+};
+const _collisionDuckArg = {
+  mass: 0,
+  dp: 0,
+  importance: 0,
+};
+
+export function resolveCollisionCue(input) {
+  const src = input || {};
+  const acousticMass = Math.max(
+    collisionAcousticMass(src.massA, src.typeA),
+    collisionAcousticMass(src.massB, src.typeB),
+  );
+  const massNorm = clamp(
+    Math.log(Math.max(acousticMass, COLLISION_CUE.MASS_LIGHT) / COLLISION_CUE.MASS_LIGHT)
+      / Math.log(COLLISION_CUE.MASS_HEAVY / COLLISION_CUE.MASS_LIGHT),
+    0,
+    1,
+  );
+  const dp = Number.isFinite(src.dp) ? src.dp : Number.isFinite(src.impulse) ? src.impulse : 0;
+  // Force axis for the pitch bend. Pre-solve closing speed is the receipt's true "how hard" —
+  // dp is capped by the per-tick solver clamp, so a 150 WU/s ram can otherwise read as a 40 WU/s
+  // nudge. Receipts without a speed field fall back to the dp
+  // tier axis. sqrt shaping matches the feel ramp so a scrape is a tick and a slam is a beat.
+  const forceU = Number.isFinite(src.closingSpeed) && src.closingSpeed > 0
+    ? Math.sqrt(clamp(
+      (src.closingSpeed - COLLISION_CUE.SPEED_TOUCH)
+        / (COLLISION_CUE.SPEED_SLAM - COLLISION_CUE.SPEED_TOUCH),
+      0,
+      1,
+    ))
+    : dp > COLLISION_CUE.TIER_KISS_DP
+      ? Math.sqrt(clamp(
+        Math.log(dp / COLLISION_CUE.TIER_KISS_DP)
+          / Math.log(COLLISION_CUE.TIER_SLAM_DP / COLLISION_CUE.TIER_KISS_DP),
+        0,
+        1,
+      ))
+      : 0;
+  const rate = clamp(
+    COLLISION_CUE.RATE_LIGHT
+      * Math.pow(
+        COLLISION_CUE.RATE_HEAVY / COLLISION_CUE.RATE_LIGHT,
+        Math.pow(massNorm, COLLISION_CUE.RATE_CURVE),
+      )
+      * Math.pow(COLLISION_CUE.RATE_FORCE_MIN, forceU),
+    COLLISION_CUE.RATE_MIN,
+    COLLISION_CUE.RATE_MAX,
+  );
+  // Loudness rides exchanged momentum; §22 B5 adds the same pre-solve energy axis the pitch bend
+  // reads — the solver caps dp near mass·40, so a 150 WU/s slam and a 40 WU/s nudge carried the
+  // same loudNorm before. Only receipts that actually carry a closing speed earn the blend:
+  // a legacy dp-only receipt keeps the untouched loudness law.
+  // forceU is sqrt-shaped like the pitch bend; loudness squares it back to the linear speed
+  // axis so the slam sits a real gain step above the nudge, not a rounding error.
+  const energyNorm = Number.isFinite(src.closingSpeed) && src.closingSpeed > 0 ? forceU * forceU : 0;
+  const loudNorm = Math.max(Math.sqrt(clamp(dp / COLLISION_CUE.DP_FULL, 0, 1)), energyNorm);
+  const gain = clamp(
+    COLLISION_CUE.GAIN_MIN + (COLLISION_CUE.GAIN_MAX - COLLISION_CUE.GAIN_MIN) * loudNorm,
+    COLLISION_CUE.GAIN_MIN,
+    COLLISION_CUE.GAIN_MAX,
+  );
+  const heavy = acousticMass >= COLLISION_CUE.TIER_HEAVY_MASS;
+  const slammed = dp >= COLLISION_CUE.TIER_SLAM_DP;
+  // The kiss test comes FIRST and outranks mass. Touching a station is a clunk, not a whisper-quiet
+  // explosion: how HARD it was picks the recipe, how HEAVY it was picks the pitch. Letting `heavy`
+  // reach 'slam' at dp 40 gave a docking nudge an explosion sample played at gain 0.087.
+  const tier = dp <= COLLISION_CUE.TIER_KISS_DP
+    ? 'kiss'
+    : slammed && heavy
+      ? 'broadside'
+      : slammed || heavy
+        ? 'slam'
+        : 'knock';
+  // PQ-158.01 impact ladder (additive — the tier/recipe/rate/gain law above is untouched): the
+  // MATERIAL says which designed sample family plays, the FORCE band says which rung. Force rides
+  // the same dp boundaries the tier law already established; material is the heavier participant's
+  // surface class, stations outranking rocks outranking bare hulls.
+  const material = src.typeA === 'station' || src.typeB === 'station'
+    ? 'station'
+    : src.typeA === 'asteroid' || src.typeB === 'asteroid'
+      ? 'rock'
+      : 'hull';
+  const weight = dp <= COLLISION_CUE.TIER_KISS_DP
+    ? 'light'
+    : dp <= COLLISION_CUE.TIER_SLAM_DP
+      ? 'medium'
+      : 'heavy';
+  const ladderId = `ladder_${material}_${weight}`;
+  const terrainGlance = (material === 'rock' || material === 'station')
+    && !(Number(src.hullDamage) > 0)
+    && Number.isFinite(src.closingSpeed)
+    && src.closingSpeed >= 0
+    && src.closingSpeed <= COLLISION_CUE.SCRAPE_SPEED;
+  const resolvedTier = terrainGlance ? 'scrape' : tier;
+  return Object.freeze({
+    recipeId: terrainGlance ? 'sfx_hull_scrape' : COLLISION_TIER_RECIPES[tier],
+    rate,
+    gain,
+    acousticMass,
+    tier: resolvedTier,
+    material,
+    weight,
+    ladderId: terrainGlance ? null : ladderId,
+    forceU,
+  });
+}
+
+/**
+ * The one voice an accepted damage receipt speaks. The damage layer stays the admission key
+ * (shield / armor / hull, 40 ms per target in `admitLayerVoice`); the struck body's material
+ * picks WHICH authored impact id answers, and a decisive event class outranks the material.
+ * Pure. A missing entity and an unknown surface both fall back through `impactMaterialForTarget`
+ * and `resolveImpactAudioCue`, so the caller always gets a resolvable recipe.
+ */
+export function resolveImpactDamageVoice(payload, target) {
+  const layer = damageLayer(payload);
+  if (!layer) return null;
+  const materialId = impactMaterialForTarget(target, layer);
+  // Severity is the damage that actually reached THIS layer, not the packet total: a shot that
+  // strips armor and then dents hull must not read as a heavier hull contact than it was.
+  const layerDamage = layer === 'shield'
+    ? payload && payload.shieldDamage
+    : layer === 'armor'
+      ? payload && payload.armorDamage
+      : payload && payload.hullDamage;
+  const amount = Number.isFinite(layerDamage)
+    ? layerDamage
+    : (Number.isFinite(payload && payload.amount)
+      ? payload.amount
+      : (Number.isFinite(payload && payload.applied) ? payload.applied : 0));
+  const maxLayer = layer === 'shield'
+    ? (Number(target && target.shieldMax) || Number(target && target.shield))
+    : layer === 'armor'
+      ? (Number(target && target.armorMax) || Number(target && target.armorHp))
+      : (Number(target && target.hullMax) || Number(target && target.hull));
+  const severity = clamp(amount / Math.max(1, maxLayer || 100), 0, 1);
+  const eventClass = classifyImpactAudioEvent({
+    eventClass: payload && (payload.eventClass || payload.impactClass || payload.impactEventClass),
+    materialId,
+    severity,
+    axisSigned: !(payload && payload.axisSigned === false),
+  });
+  const cue = resolveImpactAudioCue({ eventClass, materialId });
+  const recipeId = resolveAudioCueRecipeId(cue.cueId) || layerRecipeId(layer);
+  return Object.freeze({ ...cue, layer, recipeId, severity });
+}
+
+export function audioNearbyHostileCount(state, player, range = 1200, scratch = [], maxCount = Infinity) {
+  if (!state || !player || !player.pos) return 0;
+  const fallback = (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 && state.entityIndex.ships) || state.entityList || [];
+  const candidates = queryNearbyEntities(state, player.pos, range, scratch, fallback);
+  const myTeam = player.team;
+  const px = player.pos.x;
+  const pz = player.pos.z;
+  const r2 = range * range;
+  let count = 0;
+  for (const e of candidates) {
+    if (!e || !e.alive || e.type !== 'ship' || e.id === player.id) continue;
+    if (e.team === myTeam) continue;
+    if (entityNeedsExactAudio(e, { playerId: player.id }) !== true
+      && !(e.data && e.data.ai && e.data.ai.combatant === true)) continue;
+    const dx = e.pos.x - px;
+    const dz = e.pos.z - pz;
+    if (dx * dx + dz * dz <= r2) {
+      count++;
+      if (count >= maxCount) break;
+    }
+  }
+  return count;
+}
+
+// =========================================================================
+// Psychoacoustic drama layer — pure resolvers (no nodes, no sim writes)
+// =========================================================================
+
+/** Near-miss whip-crack shaping. `distance` is the projectile's closest approach to the player. */
+export const NEAR_MISS_CRACK = Object.freeze({
+  // Physics emits the receipt inside hitRadius + ~22 wu; treat ~36 wu as the far edge of "inches".
+  maxDistanceWu: 36,
+  // Receipts already emit once per projectile; this gap only collapses back-to-back events
+  // (a crossing volley) so two frames of fire read as two cracks, not a machine-gun rattle.
+  minGapMs: 110,
+  minGain: 0.4,
+  maxGain: 0.95,
+  minRate: 0.9,
+  maxRate: 1.35,
+  // Relative-speed reference: a heavy slug at ~220 WU/s. Pace only bends the proximity read —
+  // a slow lob at the same distance thumps, a railgun cracks — and unknown speed is exactly
+  // neutral so legacy receipts keep their authored levels.
+  refSpeedWu: 220,
+});
+
+export function resolveNearMissCrack(input = {}) {
+  const distance = Number(input.distance);
+  const closeness = Number.isFinite(distance)
+    ? clamp(1 - distance / NEAR_MISS_CRACK.maxDistanceWu, 0, 1)
+    : 1;
+  const speed = Number(input.speed);
+  const pace = Number.isFinite(speed) ? clamp(speed / NEAR_MISS_CRACK.refSpeedWu, 0, 1) : 0.5;
+  return {
+    closeness,
+    pace,
+    gain: Math.min(
+      NEAR_MISS_CRACK.maxGain,
+      (NEAR_MISS_CRACK.minGain + (NEAR_MISS_CRACK.maxGain - NEAR_MISS_CRACK.minGain) * closeness)
+        * (0.9 + 0.2 * pace),
+    ),
+    rate: Math.min(
+      NEAR_MISS_CRACK.maxRate,
+      (NEAR_MISS_CRACK.minRate + (NEAR_MISS_CRACK.maxRate - NEAR_MISS_CRACK.minRate) * closeness)
+        * (0.95 + 0.1 * pace),
+    ),
+  };
+}
+
+/**
+ * "Breathless moment" — the world ducks under a massive event so the roar that follows reads as
+ * colossal. Implemented as a gain envelope multiplied into every bus target inside _applySettings
+ * (ui/comms at partial depth so a critical alert still ghosts through). Pure wallclock math; the
+ * bus gains are written by the existing 50 ms ramp, so the shape is click-free.
+ */
+export const HUSH = Object.freeze({
+  capital:   Object.freeze({ depth: 0.07, attackS: 0.035, holdS: 0.40, releaseS: 1.10 }),
+  structure: Object.freeze({ depth: 0.16, attackS: 0.05,  holdS: 0.28, releaseS: 0.85 }),
+  // Player death drains the world out slowly — the death explosion plays THROUGH the sink,
+  // then the silence holds while the wreck tumbles.
+  death:     Object.freeze({ depth: 0.05, attackS: 0.55,  holdS: 1.40, releaseS: 2.40 }),
+  // FB-082 — the best moment. Same floor as a capital kill, a slower open, a steep return.
+  stunt:     Object.freeze({ depth: 0.07, attackS: 0.35,  holdS: 0.28, releaseS: 0.45 }),
+  // Post-combat breath. The bark director already stops flavor chatter; this is
+  // the room dropping so that silence is something you hear. Shallower than a
+  // capital kill, so a reactor hush is not replaced by it.
+  aftermath: AFTERMATH_HUSH,
+  fullWu: 420,   // inside this the hush is full strength
+  farWu: 0,      // 0 -> fall back to D_FAR (world-hearing edge)
+});
+
+export function resolveHushEnvelope(input = {}, nowMs = 0) {
+  const spec = HUSH[input.kind] || HUSH.structure;
+  const distance = Number(input.distance);
+  let scale = 1;
+  if (Number.isFinite(distance) && distance > HUSH.fullWu) {
+    const farWu = HUSH.farWu > 0 ? HUSH.farWu : D_FAR;
+    scale = clamp(1 - (distance - HUSH.fullWu) / Math.max(1, farWu - HUSH.fullWu), 0, 1);
+    if (scale <= 0.02) return null; // a kill on the far side of the table doesn't steal the room
+  }
+  const startMs = Number.isFinite(nowMs) ? nowMs : 0;
+  return Object.freeze({
+    schema: 'spaceface.audioHush.v1',
+    kind: input.kind || 'structure',
+    // Distant events keep the shape but shallow: depth lerps toward 1, hold shrinks.
+    depth: 1 - (1 - spec.depth) * (0.35 + 0.65 * scale),
+    attackMs: spec.attackS * 1000,
+    holdMs: spec.holdS * 1000 * (0.7 + 0.3 * scale),
+    releaseMs: spec.releaseS * 1000,
+    startMs,
+    endMs: startMs + (spec.attackS + spec.holdS + spec.releaseS) * 1000,
+  });
+}
+
+/**
+ * Envelope gain 0..1 at nowMs. `done` means the record can be dropped. Release uses a steep
+ * power curve — the world rushes back early in the tail, which is what sells the scale.
+ */
+export function hushGainAt(envelope, nowMs, out = {}) {
+  out.done = false;
+  if (!envelope) { out.gain = 1; return out; }
+  const t = (Number(nowMs) || 0) - envelope.startMs;
+  if (t < 0) { out.gain = 1; return out; }
+  if (t < envelope.attackMs) {
+    const x = envelope.attackMs > 0 ? t / envelope.attackMs : 1;
+    out.gain = 1 - (1 - envelope.depth) * x;
+    return out;
+  }
+  const releaseStart = envelope.attackMs + envelope.holdMs;
+  if (t < releaseStart) { out.gain = envelope.depth; return out; }
+  const x = (t - releaseStart) / Math.max(1, envelope.releaseMs);
+  if (x >= 1) { out.gain = 1; out.done = true; return out; }
+  out.gain = 1 - (1 - envelope.depth) * Math.pow(1 - x, 2.4);
+  return out;
+}
+
+/**
+ * Hull-breach acoustics. Below `engageBelow` hull the cabin is venting: the physical buses run
+ * through a low-pass (external roar conducts through the seat rather than the air), a conduction
+ * bed opens under everything, and the frame groans. Hysteresis keeps the state from chattering
+ * on the threshold; ui/comms stay open — the cockpit speaker and radio are inside the pressure.
+ */
+export const HULL_BREACH_MIX = Object.freeze({
+  engageBelow: 0.34,     // hull fraction where the cabin starts venting
+  releaseAbove: 0.46,    // hysteresis: pressure is treated as restored above this
+  openHz: 20000,
+  minCutHz: 620,         // deepest muffle — hollow and dead, not silent; the seat still talks
+  filterTauS: 0.18,
+  intensityTauS: 0.35,   // approach time toward the hull-driven target
+  bedPeak: 0.16,         // conducted-rumble gain at zero hull
+  subPeak: 0.055,
+  groanMinS: 2.4,
+  groanVarS: 2.8,
+});
+
+/**
+ * Resolve breach on/off + muffle intensity from player hull state. Pure — the caller owns
+ * hysteresis state (`active` is the previous latch), smoothing, and node writes.
+ * @returns {{active:boolean, intensity:number, edge:'enter'|'exit'|null, exitSilent:boolean}}
+ */
+export function resolveBreachState(input = {}, out = {}) {
+  const hullPct = Number.isFinite(input.hullPct) ? clamp(input.hullPct, 0, 1) : 1;
+  const alive = input.alive !== false;
+  const docked = input.docked === true;
+  const was = input.active === true;
+  const enter = !was && alive && !docked && hullPct <= HULL_BREACH_MIX.engageBelow;
+  const exit = was && (!alive || docked || hullPct >= HULL_BREACH_MIX.releaseAbove);
+  out.active = enter || (was && !exit);
+  // Intensity rides the engage threshold so the muffle eases in, then deepens toward zero hull.
+  out.intensity = out.active ? clamp(1 - hullPct / HULL_BREACH_MIX.engageBelow, 0, 1) : 0;
+  out.edge = enter ? 'enter' : exit ? 'exit' : null;
+  // Dying mid-breach: pressure is gone for good — no repressurize hiss over a corpse.
+  out.exitSilent = exit && !alive;
+  return out;
+}
+
+/**
+ * Capacitor anticipation for heavy mounts. combat:fire is a post-shot receipt, so the whine is
+ * scheduled to crest as the mount's capacitor finishes recharging — the spool is heard BEFORE the
+ * trigger can go live again, then a tiny "topped off" tick marks ready. Same anticipation the
+ * player would get from a pre-fire charge event the sim does not emit.
+ */
+export const CHARGE_WHINE = Object.freeze({
+  minCooldownS: 0.55,   // mounts cycling faster never whine — pulse/autocannon stay snappy
+  maxCooldownS: 3.0,    // a 4 s torpedo tube is not a capacitor
+  whineDurS: 0.62,
+  whineLeadS: 0.54,     // whine starts this far before ready so its crest lands on-ready
+  whineGain: 0.32,
+  readyGain: 0.2,
+});
+
+/** Heavy-mount check: a spinal mount class, or an explicit rail/lance/siege defId. */
+export function isChargeWeapon(weaponId, mountClass) {
+  if (mountClass === 'spinal') return true;
+  const id = String(weaponId || '').toLowerCase();
+  return id.includes('rail') || id.includes('siege') || id.includes('lance');
+}
+
+/**
+ * @returns {null|{whineAtS:number, readyAtS:number, cooldownS:number}} ctx.currentTime-domain times.
+ */
+export function resolveChargeWhine(input = {}) {
+  if (!isChargeWeapon(input.weaponId, input.mountClass)) return null;
+  const cooldownS = Number(input.cooldownS);
+  if (!Number.isFinite(cooldownS) || cooldownS < CHARGE_WHINE.minCooldownS || cooldownS > CHARGE_WHINE.maxCooldownS) return null;
+  const nowS = Number.isFinite(input.nowS) ? input.nowS : 0;
+  const readyAtS = nowS + cooldownS;
+  return Object.freeze({
+    whineAtS: Math.max(nowS + 0.03, readyAtS - CHARGE_WHINE.whineLeadS),
+    readyAtS,
+    cooldownS,
+  });
+}
+
+/**
+ * Dead-trigger detection — a pure read of the same mount records weapons.js services. A press
+ * that cannot produce any shot (every mount cooling down, capacitor dry, overheated, venting, or
+ * unarmed) earns one solenoid clack on the press edge. "Cycling soon" (a mount inside the ready
+ * window) stays silent: the trigger works, it just isn't time.
+ */
+export const DRY_FIRE = Object.freeze({
+  readyWindowS: 0.3,
+  gain: 0.42,
+});
+
+export function resolveDryFireReadiness(player, state) {
+  const mounts = player && player.data && Array.isArray(player.data.weapons) ? player.data.weapons : [];
+  if (!mounts.length) return { clack: true, reason: 'unarmed' };
+  const cap = player && (Number.isFinite(player.cap) ? player.cap
+    : (player.data && player.data.derived && Number.isFinite(player.data.derived.cap)
+      ? player.data.derived.cap : null));
+  const simT = state && Number.isFinite(state.simTime) ? state.simTime : 0;
+  const ventUntil = player.data && Number.isFinite(player.data.weaponVentUntil) ? player.data.weaponVentUntil : -Infinity;
+  const venting = simT < ventUntil;
+  const combat = player.data && player.data.combat;
+  const locked = !!(combat && combat.lockTarget != null && Number(combat.lockProgress) >= 1);
+  let soonestReadyS = Infinity;
+  let anyBlocked = false;
+  for (const w of mounts) {
+    if (!w || typeof w !== 'object') continue;
+    const energyCost = Number.isFinite(w.energyCost) ? w.energyCost : 0;
+    // Continuous beams sip per-tick energy — any meaningful capacitor charge keeps them live.
+    const costNow = w.continuous ? energyCost / 60 : energyCost;
+    const heatPerShot = Number.isFinite(w.heat) && w.heat > 0 ? w.heat : 0;
+    const heatMax = heatPerShot > 0 && Number.isFinite(w.heatMax) && w.heatMax > 0 ? w.heatMax : Infinity;
+    const heat = Number.isFinite(w._heat) ? w._heat : 0;
+    // Homing tubes only release with a lock; an unlocked tube counts as blocked-by-lock.
+    const lockBlocked = w.tracking === 'homing' && !locked;
+    const blocked = venting || lockBlocked
+      || (cap != null && cap < costNow)
+      || heat >= heatMax;
+    if (blocked) { anyBlocked = true; continue; }
+    const readyIn = Math.max(0, Number.isFinite(w._cooldown) ? w._cooldown : 0);
+    if (readyIn < soonestReadyS) soonestReadyS = readyIn;
+  }
+  if (soonestReadyS === Infinity) return { clack: true, reason: anyBlocked ? 'blocked' : 'unarmed' };
+  return soonestReadyS > DRY_FIRE.readyWindowS
+    ? { clack: true, reason: 'cycling' }
+    : { clack: false, reason: 'armed' };
+}
+
+/** INST-11 — a capital's pre-detonation ticks are a combat charge, never a menu hover. */
+export const CAPITAL_PREDET_RECIPE = 'sfx_doctrine_ranged_charge';
+
+/** Deterministic left/right offset from the victim id. No Math.random in the kill path. */
+export function capitalPredetonationOffset(id, index) {
+  const n = Math.imul(Number(id) || 0, 17) + (Number(index) || 0) * 5;
+  const unit = ((n % 1000) + 1000) % 1000 / 1000;
+  return unit - 0.5;
+}
+
+/** Radio punctuation timings: key-in click leads the voice, squelch tail follows it. */
+export const BARK_PUNCT = Object.freeze({
+  keyLeadS: 0.09,
+  tailPadS: 0.03,
+  keyGain: 0.5,
+  tailGain: 0.42,
+  popupTailDelayS: 0.12,
+});
+
+/**
+ * One ear, one voice: chatter waits out the open mic; deep pileups drop rather than lag badly.
+ * deferCapS must cover one max-length utterance (a slow register runs ~6.8 s heard plus pads)
+ * so a single deferred line always airs; only genuinely stacked hails spill off the channel.
+ */
+export const BARK_CHATTER = Object.freeze({
+  deferCapS: 8.0,
+  gapS: 0.18,
+});
+
+/** Same instructor line inside this window keys the mic once (a retried beat re-emits the text). */
+export const INSTRUCTOR_REPEAT_WINDOW_S = 8;
+
+// Weapon-id / kind -> SFX recipe id. Player & NPC weapon defIds are 'wpn_*'; the combat:fire
+// payload carries weaponId. FB-071: the classification is SHARED with the render layer —
+// `classifyWeaponFamily` (src/data/vfxProfiles.js) resolves the same presentation family the
+// picture uses, branching on impulseProvenance BEFORE damage type, so a mount can never look
+// like one family while sounding like another. This table is the one place a family becomes a
+// voice; id substrings survive only for ids outside the catalog. A mount whose id carries no
+// known family must NEVER borrow the starter pulse's voice: two different guns would become
+// indistinguishable, and an unknown weapon would masquerade as the player's first one. Those
+// fall to the authored generic combat discharge (`sfx_wpn_unclassified`) instead.
+const WEAPON_DEF_BY_ID = new Map(WEAPONS.map((d) => [d.id, d]));
+// INST-34: a sustained beam whose per-hit momentum reaches this reads as a CAPITAL beam:
+// the heavy beam (30) and the lighthouse heavy beam (38) sit above it; the M beam laser (10), the
+// veil cutter (12) and the thermal cooker (8) sit below. Threshold, not a name match, so a future
+// L-slot emitter classifies by what it does to a hull rather than by what it is called.
+export const HEAVY_BEAM_IMPULSE_MIN = 24;
+
+// Variant voices — pins ABOVE the family map for variants that own a distinct recipe:
+// the starter pulse keeps its energy-bolt voice (never lent to a non-pulse mount), and the
+// flak/PD turret keeps its own muzzle (INST-33).
+export const WEAPON_VARIANT_RECIPE = Object.freeze({
+  'pulse-bolt': 'sfx_wpn_pulse_laser',
+  flak: 'sfx_wpn_flak',
+});
+
+// THE family -> recipe table — the single seam where a presentation family becomes a voice
+// (exported so a test can prove render and ear agree family-for-family).
+export const WEAPON_FAMILY_RECIPE = Object.freeze({
+  beam: 'sfx_wpn_beam_laser',
+  missile: 'sfx_wpn_missile',
+  emp: 'sfx_wpn_disruptor',
+  rail: 'sfx_wpn_railgun',
+  plasma: 'sfx_wpn_plasma',
+  kinetic: 'sfx_wpn_autocannon',
+  concussion: 'sfx_wpn_concussion',
+  mine: 'sfx_wpn_charge',
+  web: 'sfx_wpn_disruptor',
+  gravitic: 'sfx_wpn_gravitic',
+  latch: 'sfx_wpn_gravitic',
+  well: 'sfx_wpn_gravitic',
+  ram: 'sfx_wpn_gravitic',
+  sticky: 'sfx_wpn_charge',
+  primer: 'sfx_wpn_disruptor',
+  cooker: 'sfx_wpn_beam_laser',
+  driver: 'sfx_wpn_railgun',
+});
+
+export function recipeForWeapon(weaponId) {
+  const id = (weaponId || '').toLowerCase();
+  const def = WEAPON_DEF_BY_ID.get(weaponId);
+  if (def) {
+    // One classification for render and ear: the shared classifier resolves the family (and its
+    // variant), then the tables above turn it into a voice.
+    const presentation = classifyWeaponFamily(weaponId, def);
+    // INST-34: a sustained beam whose per-hit momentum is capital-scale reads the heavy register.
+    if (presentation.family === 'beam' && (def.impulsePerHit || 0) >= HEAVY_BEAM_IMPULSE_MIN) {
+      return 'sfx_wpn_heavy_beam';
+    }
+    return WEAPON_VARIANT_RECIPE[presentation.variant]
+      || WEAPON_FAMILY_RECIPE[presentation.family]
+      || 'sfx_wpn_unclassified';
+  }
+  // Unknown id — substring families, then the authored generic combat discharge.
+  // INST-33/34: flak and the capital heavy beam keep their own substrings, so an uncatalogued
+  // mount named for what it is still lands on its family voice instead of a near neighbour.
+  if (id.includes('flak') || id.includes('pointdefen') || id.includes('point_defen')) return 'sfx_wpn_flak';
+  if (id.includes('beam')) return id.includes('heavy') ? 'sfx_wpn_heavy_beam' : 'sfx_wpn_beam_laser';
+  if (id.includes('rail') || id.includes('lance') || id.includes('driver')) return 'sfx_wpn_railgun';
+  if (id.includes('concussion') || id.includes('seismic')) return 'sfx_wpn_concussion';
+  if (id.includes('plasma')) return 'sfx_wpn_plasma';
+  if (id.includes('gravity') || id.includes('grav') || id.includes('inertial')
+    || id.includes('momentum') || id.includes('polarity') || id.includes('viscosity')
+    || id.includes('quantum') || id.includes('anchor')) return 'sfx_wpn_gravitic';
+  if (id.includes('disruptor') || id.includes('emp') || id.includes('hijack')
+    || id.includes('primer') || id.includes('snarl')) return 'sfx_wpn_disruptor';
+  if (id.includes('mine') || id.includes('detonator') || id.includes('sticky')
+    || id.includes('charge')) return 'sfx_wpn_charge';
+  if (id.includes('missile') || id.includes('rocket') || id.includes('torp')) return 'sfx_wpn_missile';
+  if (id.includes('cannon') || id.includes('gatling') || id.includes('auto') || id.includes('stream')) return 'sfx_wpn_autocannon';
+  if (id.includes('pulse') || id.includes('laser') || id.includes('blaster')) return 'sfx_wpn_pulse_laser';
+  // No recognized family — a named generic combat voice, never the starter pulse.
+  return 'sfx_wpn_unclassified';
+}
+
+// INST-27. A bastion raid warning uses the wanted-alert recipe under the heat-flip voice.
+// Fixed so a test can pin the attenuation; the handler must not duck music.
+export const CLAIM_RAID_WARNING_GAIN = 0.35;
+
+// INST-28. Leave the search ring on the falling clear sting; re-enter on the alert voice.
+export const WANTED_SEARCH_EDGE_CUES = Object.freeze({
+  enter: 'sfx_wanted_alert',
+  leave: 'sfx_wanted_clear',
+});
+
+// INST-29. Berth work uses the dock voices already authored for that place.
+// INST-29. Berth work uses the dock voices already authored for that place. The family covers
+// the whole lifecycle: the yard takes the paid order (queued — the same clunk stamped deeper and
+// quieter than the welders arriving), work starts, a paid abort releases, and the finished hull
+// or tank is handed back.
+export const SERVICE_BERTH_CUES = Object.freeze({
+  queued: 'sfx_dock_clunk',
+  started: 'sfx_dock_clunk',
+  aborted: 'sfx_undock_release',
+  // The work finished: the dock's own confirm chime, once, when the yard hands the hull or tank
+  // back. Berth work only — see serviceCompletedCue for which receipts count.
+  completed: 'sfx_ui_confirm',
+});
+// One recipe, registers — never a second recipe for one event (the plunge-voice law): 'queued'
+// is the stamp that takes the order; 'started' is the yard floor answering it.
+export const SERVICE_BERTH_REGISTERS = Object.freeze({
+  queued: Object.freeze({ gain: 0.26, rate: 0.82 }),
+  started: Object.freeze({ gain: 0.4, rate: 1 }),
+  aborted: Object.freeze({ gain: 0.35, rate: 1 }),
+});
+
+// The self-serve decant is the pilot's own pump: fuel moving cell by cell is a pressure
+// release, not a dock clunk — the same hiss idiom the thrusters use, held lower and slower.
+// A receipt that moved no cells stays silent (a pour that never happened must not sound).
+export const SERVICE_DECANT_CUE = Object.freeze({ id: 'sfx_rcs_hiss', gain: 0.3 });
+
+/** Pure. The decant pour for one `service:decanted` receipt, or null (silence). More cells
+ *  read as a longer, lower release; the register is the pour, not a second recipe. */
+export function serviceDecantCue(payload) {
+  const cells = Number(payload && payload.cells);
+  if (!Number.isFinite(cells) || cells <= 0) return null;
+  const rate = clamp(1.05 - cells * 0.04, 0.85, 1.0);
+  return Object.freeze({ id: SERVICE_DECANT_CUE.id, gain: SERVICE_DECANT_CUE.gain, rate });
+}
+
+/** Pure. The caption for one berth lifecycle receipt, or null. These moments have no toast of
+ *  their own — the caption names the sound the yard just made. */
+export function serviceMomentCaption(event) {
+  if (event === 'service:queued') return 'The yard takes your job.';
+  if (event === 'service:decanted') return 'Fuel cells decant into the tank.';
+  return null;
+}
+
+// service:completed is also the receipt for loans, notes, rights and policies. Those are
+// bookkeeping with their own success toast (a click); only physical berth work earns the chime.
+// 'emergency_fuel' is deliberately absent: the dockless reserve grant is a debt WARNING that
+// already sounds its own alert (key 'fuel:reserve'), and a confirm chime after it would contradict it.
+const SERVICE_WORK_TYPES = Object.freeze(['repair', 'refuel', 'hull_wash']);
+
+/** Pure. The completed-work chime for one `service:completed` receipt, or null (silence).
+ * Gain follows how much of the hull/tank the job actually returned; a receipt that moved
+ * nothing and cost nothing is silent. `fuelMax` is the tank size when the caller knows it. */
+export function serviceCompletedCue(payload, fuelMax) {
+  if (!payload || !SERVICE_WORK_TYPES.includes(payload.type)) return null;
+  const positive = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : 0);
+  const cost = positive(payload.cost);
+  const debt = positive(payload.debtCr);
+  const restored = positive(payload.restoredHull) + positive(payload.restoredArmor);
+  const units = positive(payload.units);
+  if (cost <= 0 && debt <= 0 && restored <= 0 && units <= 0) return null;
+  let share = 0.5;
+  if (restored > 0) {
+    const capacity = positive(payload.hullMax) + positive(payload.armorMax);
+    share = capacity > 0 ? clamp(restored / capacity, 0, 1) : 1;
+  } else if (units > 0 && positive(fuelMax) > 0) {
+    share = clamp(units / positive(fuelMax), 0, 1);
+  }
+  return Object.freeze({ id: SERVICE_BERTH_CUES.completed, gain: 0.28 + 0.14 * share });
+}
+
+// A faction naming you a new rank is the standing moment the comms log and the news already
+// carry in words. Up is the career chord; down is the refusal tick. One cue per window so a
+// burst of kills that drags two ranks does not stutter. Going hostile is NOT voiced here: the
+// same event raises heat (heat.js `faction:aggro`) and the wanted-escalation alert owns it.
+export const FACTION_STANDING_CUES = Object.freeze({
+  rankUp: Object.freeze({ id: 'sfx_promotion_chord', gain: 0.55 }),
+  rankDown: Object.freeze({ id: 'sfx_ui_error', gain: 0.5 }),
+});
+export const FACTION_STANDING_WINDOW_S = 2;
+
+/** Pure. The standing cue for one `faction:repChanged` payload, or null. Only `applyRep`
+ * stamps `rankChanged`; spillover and direct writes carry tier-only payloads and stay silent. */
+export function factionStandingCue(payload) {
+  if (!payload || payload.rankChanged !== true) return null;
+  const delta = Number(payload.delta);
+  if (!Number.isFinite(delta) || delta === 0) return null;
+  return delta > 0 ? FACTION_STANDING_CUES.rankUp : FACTION_STANDING_CUES.rankDown;
+}
+
+// INST-31. Three distinct existing recipes. Not the field-deploy accessibility voices.
+export const UNIQUE_LOOT_CUES = Object.freeze({
+  'uniqueLoot:choirBellPulse': 'sfx_eighth_bell_strike',
+  'uniqueLoot:nestbreakerSplit': 'sfx_mining_fracture_break',
+  'uniqueLoot:paleCoilBlink': 'sfx_scan_pulse',
+});
+
+// INST-32. A revealed build is the scan-resolve voice, once per target.
+export const BUILD_IDENTITY_REVEAL_CUE = 'sfx_scan_pulse';
+
+// FIGHT-07: Mine cap refusal voice (combat refusal, distinct from UI error blip)
+export const MINE_CAP_REFUSAL_RECIPE = 'sfx_massline_deny';
+
+// FB-142 — the planet verbs have voices. One route per event: the collector mouth (on and off
+// registers), the settled deposit (the shared mining yield — the same cargo idiom), a refused
+// deposit on the capacity-refusal voice, the plunge ring's stage ladder, and the recovery burn.
+export const PLANET_EVENT_AUDIO = Object.freeze({
+  'planet:collector': { recipeId: 'sfx_planet_collector', gain: 0.55 },
+  'planet:harvest': { recipeId: 'sfx_mining_yield', gain: 0.6 },
+  'planet:harvestDenied': { recipeId: MINE_CAP_REFUSAL_RECIPE, gain: 0.65 },
+  'planet:plungeStage': { recipeId: 'sfx_planet_plunge', gain: 0.7 },
+  'planet:recoveryBurn': { recipeId: 'sfx_planet_recovery_burn', gain: 0.75 },
+});
+
+// The plunge ring's one recipe climbs a stage ladder: hotter stages speak louder and higher,
+// 'clear' reads as quiet relief, 'aftermath' lands as the terminal thud. One recipe, six
+// registers — never five recipes for one event.
+export const PLANET_PLUNGE_VOICE = Object.freeze({
+  skim: { gain: 0.4, rate: 1.0 },
+  commit: { gain: 0.85, rate: 1.18 },
+  breakup: { gain: 0.9, rate: 1.32 },
+  descent: { gain: 0.9, rate: 0.82 },
+  aftermath: { gain: 0.8, rate: 0.68 },
+  clear: { gain: 0.32, rate: 0.78 },
+});
+
+// Semantic cue ids (audio:cue / toast / ui:*) -> recipe id.
+export const AUDIO_CUE_TO_RECIPE = Object.freeze({
+  'mines:capReached': MINE_CAP_REFUSAL_RECIPE,
+  'moment.stinger': 'sfx_moment_stinger',
+  // Swarm moments (swarmJuice.js SWARM_MOMENT_CUES, swarmChain.js SWARM_CHAIN_WARN_CUE). Each
+  // beat has its own id so the reward cues and the one warning never resolve to the same recipe.
+  'swarm.slamThud': 'sfx_swarm_slam_thud',
+  'swarm.slamStinger': 'sfx_moment_stinger',
+  'swarm.tallyTick': 'sfx_ui_confirm',
+  'swarm.clearResolve': 'sfx_promotion_chord',
+  'swarm.chainTier': 'sfx_promotion_chord',
+  'swarm.chainShatter': 'sfx_swarm_chain_shatter',
+  'swarm.chainWarn': 'sfx_swarm_alert_tick',
+  click: 'sfx_ui_click', ui_click: 'sfx_ui_click', uiClick: 'sfx_ui_click',
+  hover: 'sfx_ui_hover', ui_hover: 'sfx_ui_hover', uiHover: 'sfx_ui_hover',
+  confirm: 'sfx_ui_confirm', ui_confirm: 'sfx_ui_confirm', buy: 'sfx_ui_confirm', sell: 'sfx_ui_confirm',
+  deny: 'sfx_ui_error', error: 'sfx_ui_error', alert: 'sfx_ui_alert', warning: 'sfx_ui_alert',
+  pickup: 'sfx_loot_collect', cash: 'sfx_ui_confirm',
+  lock_acquired: 'sfx_lock_acquired', lock: 'sfx_lock_acquired',
+  // UI navigation + feedback cues emitted with the ui_* prefix (hud.js, input.js, stationHub.js).
+  // Without these they collapse to the generic sfx_ui_click; each now maps to its own SPEC2/07 recipe.
+  ui_open: 'sfx_ui_open', ui_back: 'sfx_ui_back', ui_tab: 'sfx_ui_tab', ui_tick: 'sfx_ui_tab',
+  ui_deny: 'sfx_ui_error', ui_alert: 'sfx_ui_alert', ui_dock: 'sfx_dock_clunk',
+  // Authored encounter receipts use the same docking and capital-warning voices as
+  // their physical counterparts; these cue names are not standalone recipe ids.
+  sfx_station_dock: 'sfx_dock_clunk',
+  sfx_capital_predetonation: CAPITAL_PREDET_RECIPE,
+  // A refused self-serve decant (sealed cells, or tank room a paid pump already owns) is a
+  // capacity refusal — it rides the capacity-refusal recipe, never a toast tone. The warn
+  // toast keeps the words with audio:false so the two never stack.
+  'service.decantRefused': MINE_CAP_REFUSAL_RECIPE,
+  // Station hub / mission-log navigation cues (must not collapse to generic click).
+  ui_accept: 'sfx_ui_confirm', ui_undock: 'sfx_undock_release',
+  ui_charge_start: 'sfx_jump_charge', ui_charge_abort: 'sfx_ui_back',
+  // Salvage scan resolve — soft Focus-adjacent ping, distinct from lock_acquired.
+  scan_resolve: 'sfx_scan_pulse',
+  // Gameplay cues with dedicated recipes (drill.js loot/hazard, countermeasures.js, combat shield break).
+  loot_collect: 'sfx_loot_collect', mining_core_fizzle: 'sfx_mining_core_fizzle',
+  shield_break: 'sfx.shieldBreak', cm_chaff: 'sfx_cm_chaff', cm_ecm: 'sfx_cm_ecm',
+  // WANTED heat escalation/clear — gameplay warning voices, not menu feedback. They ride the ui
+  // bus like every established warning: the alarm cuts through squelch as a priority voice
+  // ('alert' substring in _isPriorityVoice); the clear sting survives via its critical importance.
+  wanted_escalate: 'sfx_wanted_alert', wanted_clear: 'sfx_wanted_clear',
+  [FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.recipeId,
+  [FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.recipeId,
+  [FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak.recipeId,
+  'presentation.tether.whip_impact': 'sfx.tetherSnap',
+  // Massline Physics Identity (Wave M2): throw/sling/tumble/bullet-time/cloak semantic cues.
+  'massline.throw': 'sfx_massline_throw',
+  'massline.solutionLock': 'sfx_massline_solution',
+  'massline.sling': 'sfx_massline_sling',
+  // Apex crest release (tetherGameplay.rateRelease releasedAtApex): the "you nailed that" whoosh.
+  'massline.slingshotApex': 'sfx_massline_apex',
+  'massline.tumble': 'sfx_massline_tumble',
+  'massline.bulletTimeIn': 'sfx_massline_bt_in',
+  'massline.bulletTimeOut': 'sfx_massline_bt_out',
+  'massline.cloakOn': 'sfx_massline_cloak_on',
+  'massline.cloakOff': 'sfx_massline_cloak_off',
+  // FB-073: 'massline.jettisonKick' (jettisonImpulse's physics-adjacent emit) deliberately has NO
+  // row — the unguarded cargo:jettisoned handler is the single jettison voice (sfx_cargo_jettison),
+  // and a mapped row would stack a second hit on flag-on routes.
+  'massline.bombDrop': 'sfx_massline_bomb_drop',
+  'massline.reel': 'sfx_massline_reel_whine',
+  'massline.release': 'sfx_massline_release',
+  'massline.bridle': 'sfx_massline_bridle_chord',
+  // Gyre Snare (held-verb katamari lash): wake shimmer, snag latch, per-absorb glass tick,
+  // strain tension, launch bowl, lash release, beam power-down, ball-death grave shatter.
+  gyre_snare_beam: 'sfx_gyre_beam', gyre_snare_snag: 'sfx_gyre_snag',
+  gyre_snare_riser: 'sfx_gyre_riser',
+  gyre_snare_catch: 'sfx_gyre_catch',
+  gyre_snare_absorb: 'sfx_gyre_absorb', gyre_snare_launch: 'sfx_gyre_launch',
+  gyre_snare_strain: 'sfx_gyre_strain', gyre_snare_ball_death: 'sfx_gyre_ball_death',
+  gyre_snare_drop: 'sfx_gyre_drop', gyre_snare_off: 'sfx_gyre_off',
+  gyre_snare_tear: 'sfx_gyre_tear',
+  gyre_snare_full: 'sfx_gyre_full',
+  gyre_snare_fuse_low: 'sfx_gyre_fuse_low', gyre_snare_windup: 'sfx_gyre_windup',
+  // The flight whoosh emits beside the launch stack (not in it) — the tail's
+  // shape grades by payload alone, and a layer shares the parent's single rate.
+  gyre_snare_whoosh: 'sfx_gyre_ball_whoosh',
+  // Rung-10 threat warning (massline.threat / massline.counter_tether.* presentation cues): the
+  // low growl authored beside the other massline recipes — a live line under load, not a break.
+  'presentation.massline.threat': 'sfx_massline_threat',
+  'presentation.tether.reel': 'sfx_massline_reel_whine',
+  'presentation.tether.release': 'sfx_massline_release',
+  'presentation.tether.bridle': 'sfx_massline_bridle_chord',
+  'presentation.travel.cruise_charge': 'sfx.cruiseCharging',
+  'presentation.travel.lane_lock': 'sfx_travel_motif',
+  'presentation.travel.cancel': 'sfx_travel_cancel',
+  'presentation.travel.fail': 'sfx_travel_fail',
+  'presentation.travel.gate_approach': 'sfx_travel_gate_approach',
+  'presentation.travel.gate_align': 'sfx_travel_gate_align',
+  'presentation.travel.commit_window': 'sfx_travel_commit_window',
+  'presentation.travel.commit': 'sfx_travel_commit',
+  'presentation.travel.transit': 'sfx_travel_transit',
+  'presentation.travel.arrival': 'sfx_travel_arrival',
+  'presentation.travel.sector_identity': 'sfx_travel_sector_identity',
+  'presentation.travel.discovery': 'sfx_scan_pulse',
+  'presentation.travel.interdiction': 'sfx_travel_interdiction',
+  'presentation.travel.recovery': 'sfx_travel_recovery',
+  'presentation.travel.settle': 'sfx_travel_settle',
+  'presentation.travel.contested': 'sfx_travel_interdiction',
+  'presentation.mining.scan_pulse': 'sfx_mining_scan_pulse',
+  'presentation.mining.scan_return': 'sfx_mining_scan_return',
+  'presentation.mining.scan_classified': 'sfx_mining_scan_classified',
+  'presentation.mining.scan_tracked': 'sfx_mining_scan_tracked',
+  'presentation.mining.scan_investigated': 'sfx_mining_scan_investigated',
+  // FB-131 — the scanner speaks. Bearing/revealed reuse existing scan voices; the pitch step
+  // per counted bearing arrives via the cue's rate. Escape is the family's one new tone (falling).
+  'presentation.mining.scan_escaped': 'sfx_mining_scan_escaped',
+  'presentation.mining.scan_bearing': 'sfx_mining_scan_tracked',
+  'presentation.mining.scan_revealed': 'sfx_mining_scan_classified',
+  'presentation.mining.cutter_lock': 'sfx_mining_cutter_lock',
+  'presentation.mining.hardness': 'sfx_mining_hardness',
+  'presentation.mining.seam_reward': 'sfx_mining_seam_reward',
+  'presentation.mining.fracture_warning': 'sfx_mining_fracture_warning',
+  'presentation.mining.fracture_break': 'sfx_mining_fracture_break',
+  'presentation.mining.core_exposed': 'sfx_mining_core_exposed',
+  'presentation.mining.core_charge': 'sfx_mining_core_charge',
+  'presentation.mining.core_reward': 'sfx_mining_core_reward',
+  'presentation.mining.core_fizzle': 'sfx_mining_core_fizzle',
+  'presentation.mining.mass_required': 'sfx_mining_mass_required',
+  'presentation.mining.mass_engaged': 'sfx_mining_mass_engaged',
+  'presentation.mining.cargo_settle': 'sfx_mining_cargo_settle',
+  'presentation.mining.cargo_full': 'sfx_mining_cargo_full',
+  'presentation.mining.field_settle': 'sfx_mining_field_settle',
+  'presentation.mining.heat_warning': 'sfx_mining_heat_warning',
+  'world.foghorn': 'sfx_hauler_foghorn',
+  // The rescue delivery (survivorPod station handoff): the berth takes someone in — its own
+  // receiving chime, never the player hull's dock clunk and never a UI confirm blip.
+  'rescue.delivery': 'sfx_rescue_delivery_chime',
+  'presentation.mining.vent_ready': 'sfx_vent_chime',
+  'presentation.mining.yield': 'sfx_mining_yield',
+  'presentation.mining.seismic_pulse': 'sfx_mining_seismic_pulse',
+  'presentation.mining.drill_contact': 'sfx_mining_drill_contact',
+  'presentation.mining.drill_break': 'sfx_mining_drill_break',
+  'presentation.mining.drill_yield': 'sfx_mining_drill_yield',
+  'presentation.mining.gas_hazard': 'sfx_mining_gas_hazard',
+  'presentation.mining.drill_abort': 'sfx_mining_drill_abort',
+  'presentation.mining.drill_retry': 'sfx_mining_drill_retry',
+  // Docking cradle: the magnetic guide takes hold inside the capture lane (feature 14).
+  'presentation.dock.capture': 'sfx_dock_capture',
+  'presentation.combat.doctrine_setup': 'sfx_doctrine_tether_spool',
+  'presentation.combat.doctrine_telegraph': 'sfx_doctrine_ranged_charge',
+  'presentation.combat.doctrine_commit': 'sfx_doctrine_brawler_commit',
+  'presentation.combat.doctrine_aftermath': 'sfx_doctrine_withdraw',
+  'presentation.combat.doctrine_break': 'sfx_doctrine_break',
+  'presentation.combat.doctrine_withdraw': 'sfx_doctrine_withdraw',
+  'presentation.combat.interceptor_flyby.setup': 'sfx_doctrine_flyby',
+  'presentation.combat.interceptor_flyby.break': 'sfx_doctrine_flyby_break',
+  'presentation.combat.interceptor_flyby.withdraw': 'sfx_doctrine_flyby_withdraw',
+  'presentation.combat.brawler_commit.setup': 'sfx_doctrine_brawler_commit',
+  'presentation.combat.brawler_commit.break': 'sfx_doctrine_brawler_break',
+  'presentation.combat.brawler_commit.withdraw': 'sfx_doctrine_brawler_withdraw',
+  'presentation.combat.tether_control_raider.setup': 'sfx_doctrine_tether_spool',
+  'presentation.combat.tether_control_raider.break': 'sfx_doctrine_tether_break',
+  'presentation.combat.tether_control_raider.withdraw': 'sfx_doctrine_tether_withdraw',
+  'presentation.combat.ranged_disengager.setup': 'sfx_doctrine_ranged_charge',
+  'presentation.combat.ranged_disengager.break': 'sfx_doctrine_ranged_break',
+  'presentation.combat.ranged_disengager.withdraw': 'sfx_doctrine_ranged_withdraw',
+  // The warden shares the house break/withdraw voices; its own setup phrase is the guard cadence.
+  'presentation.combat.escort_screen.setup': 'sfx_doctrine_escort_screen',
+  'presentation.combat.escort_screen.break': 'sfx_doctrine_break',
+  'presentation.combat.escort_screen.withdraw': 'sfx_doctrine_withdraw',
+  'presentation.combat.damage_applied': 'sfx.hullHit',
+  // The rated cluster moment gets the authored layered boom — distinct from the per-link
+  // sfx_explosion_small the sympathetic cook-offs already play.
+  'presentation.fields.cluster_detonate': 'sfx_explosion_large',
+  'presentation.combat.near_miss': 'sfx_combat_near_miss',
+  'presentation.combat.player_hit': 'sfx.playerDamage',
+  // Drift-bomb bay (PQ-205.01). Semantic ids from src/data/bombs.js — dedicated recipes, never
+  // the UI click and never one shared boom for eight verbs.
+  'bombs.frag.burst': 'sfx_bomb_frag_burst',
+  'bombs.concussion.shove': 'sfx_bomb_concussion_shove',
+  'bombs.slug.inhale': 'sfx_bomb_slug_inhale',
+  'bombs.slug.collapse': 'sfx_bomb_slug_collapse',
+  'bombs.goo.burst': 'sfx_bomb_goo_burst',
+  'bombs.emp.pulse': 'sfx_bomb_emp_pulse',
+  'bombs.thermite.ignite': 'sfx_bomb_thermite_ignite',
+  'bombs.scrambler.spin': 'sfx_bomb_scrambler_spin',
+  'bombs.anchor.settle': 'sfx_bomb_anchor_settle',
+  'combat.status.burning': 'sfx_bomb_thermite_burn',
+  'combat.status.goo': 'sfx_bomb_goo_residue',
+  [FIRST_HOUR_AUDIO_SIGNATURES.enemyKill.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.enemyKill.recipeId,
+  [FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak.recipeId,
+  'presentation.subsystem.disabled': 'sfx_subsystem_disabled',
+  // Iron Maw's bow-plate tear (tacticalAI _prowWindowOpen) emits combat.* directly, not through
+  // the presentation lane — the prow takes out both RCS thrusters, so it gets the authored
+  // propulsion-wind-down voice. The generic sfx_subsystem_disabled pop stays reserved for the
+  // player's own subsystem death via the presentation lane above.
+  'combat.subsystem.disabled': 'sfx_subsystem_drive_disabled',
+  'presentation.subsystem.drive_disabled': 'sfx_subsystem_drive_disabled',
+  'presentation.subsystem.sensor_disabled': 'sfx_subsystem_sensor_disabled',
+  'presentation.subsystem.weapon_disabled': 'sfx_subsystem_weapon_disabled',
+  // PQ-133.04 R4 — the ricochet continuation's voice. `sfx.armorHit` is the authored recipe whose
+  // PQ-158 sample binding IS `impact_armor` (src/data/audioRecipes.js SAMPLE_BINDINGS) — the
+  // designed armor impact, no new asset. The hull-hit voice stays plain damage's own.
+  'presentation.combat.bounce': 'sfx.armorHit',
+  'presentation.scenario.signal': 'sfx_scenario_signal',
+  'presentation.comms.kessler': 'sfx_comms_kessler',
+  'presentation.comms.denial': 'sfx_comms_denial',
+  'presentation.comms.priority': 'sfx_ui_alert',
+  'presentation.objective.split': 'sfx_objective_priority_split',
+  'presentation.branch.resolved': 'sfx_branch_resolved',
+  // Causal grammar family voices (causalVfxGrammar.audioCue). field/reaction are the
+  // currently-unvoiced families and actually play; the rest ride the bus for observability
+  // behind playbackOwnedByRaw while their raw receipts keep ownership.
+  'combat.causal.direct': 'sfx.hullHit',
+  'combat.causal.bank': 'sfx.armorHit',
+  'combat.causal.chain': 'sfx.hullHit',
+  'combat.causal.collision': 'sfx_hull_scrape',
+  'combat.causal.terrain': 'sfx_mining_impact',
+  'combat.causal.tether': 'sfx.tetherSnap',
+  'combat.causal.field': 'sfx_mining_field_settle',
+  'combat.causal.reaction': 'sfx_reactor_overload_shudder',
+  // The contact layer's authored material/event ids (causalVfxGrammar IMPACT_MATERIAL_GRAMMAR /
+  // IMPACT_EVENT_GRAMMAR). One row per authored id, each an EXISTING synthesized recipe: a
+  // damaged surface answers with its own matter, while a decisive structural event answers with
+  // its own shape. `resolveImpactDamageVoice` picks exactly one of these rows per contact; no
+  // material hit stacks a generic impact layer underneath it.
+  'combat.impact.hull': 'sfx.hullHit',
+  'combat.impact.armor': 'sfx.armorHit',
+  'combat.impact.rock': 'sfx_mining_impact',
+  'combat.impact.ice': 'sfx_optic_reflect',
+  'combat.impact.ceramic': 'sfx_optic_split',
+  'combat.impact.composite': 'sfx_salvage_plate',
+  'combat.impact.shield': 'sfx.shieldHit',
+  'combat.impact.generic': 'sfx_hull_scrape',
+  'combat.impact.graze': 'sfx_hull_scrape',
+  'combat.impact.pinprick': 'sfx_mining_cutter_lock',
+  'combat.impact.cut': 'sfx_mining_drill_contact',
+  'combat.impact.slam': 'sfx_swarm_slam_thud',
+  'combat.impact.breach': 'sfx_hull_decompress',
+  'combat.impact.fracture': 'sfx_mining_fracture_break',
+  'combat.impact.detonation': 'sfx.chargeDetonate',
+  'combat.impact.breakup': 'sfx_explosion_large',
+  // Field deploy voices (INST-24): primary cue table mapping
+  'fields:deployed:well': 'sfx_field_deploy_well',
+  'fields:deployed:repulsor': 'sfx_field_deploy_repulsor',
+  'fields:deployed:cone': 'sfx_field_deploy_cone',
+  'fields:deployed:skim': 'sfx_field_deploy_skim',
+  'fields:deployed:seed': 'sfx_field_deploy_seed',
+  'fields.deployed.well': 'sfx_field_deploy_well',
+  'fields.deployed.repulsor': 'sfx_field_deploy_repulsor',
+  'fields.deployed.cone': 'sfx_field_deploy_cone',
+  'fields.deployed.skim': 'sfx_field_deploy_skim',
+  'fields.deployed.seed': 'sfx_field_deploy_seed',
+  'field.deploy.well': 'sfx_field_deploy_well',
+  'field.deploy.repulsor': 'sfx_field_deploy_repulsor',
+  'field.deploy.cone': 'sfx_field_deploy_cone',
+  'field.deploy.skim': 'sfx_field_deploy_skim',
+  'field.deploy.seed': 'sfx_field_deploy_seed',
+  well: 'sfx_field_deploy_well',
+  repulsor: 'sfx_field_deploy_repulsor',
+  cone: 'sfx_field_deploy_cone',
+  skim: 'sfx_field_deploy_skim',
+  seed: 'sfx_field_deploy_seed',
+  'bombs:cycle': 'sfx_bomb_rack_cycle',
+  'bombs:rackChanged': 'sfx_bomb_rack_change',
+});
+
+// Moment gates. The stinger swell rings about half a second, so two stinger-class cues inside
+// that window would smear into one muddy chord: the boss-down stinger, a round-slam stinger, a
+// chain-tier chord and the clear resolve share the 'stinger' family. A cue is dropped while a
+// same-or-higher-ranked family member is still ringing; a higher-ranked cue always plays (the
+// boss-down stinger and anything carrying `duck` rank 3 and win). `recordOnly` rows join the
+// family without ever being dropped, so the shared stinger other systems fire keeps its rule.
+// `cooldownS` is a per-id floor. The tally tick has no row on purpose: it repeats every 0.16 s
+// by design and must never be thinned.
+export const MOMENT_CUE_GATES = Object.freeze({
+  'moment.stinger': Object.freeze({ family: 'stinger', rank: 3, recordOnly: true }),
+  'swarm.slamStinger': Object.freeze({ family: 'stinger', rank: 1, cooldownS: 0.5 }),
+  'swarm.clearResolve': Object.freeze({ family: 'stinger', rank: 2, cooldownS: 0.5 }),
+  'swarm.chainTier': Object.freeze({ family: 'stinger', rank: 1, cooldownS: 0.25 }),
+  'swarm.slamThud': Object.freeze({ cooldownS: 0.5 }),
+  'swarm.chainShatter': Object.freeze({ cooldownS: 0.4 }),
+});
+export const MOMENT_FAMILY_WINDOW_S = 0.6;
+
+export function momentCueMemory() {
+  return { at: Object.create(null), familyAt: Object.create(null), familyRank: Object.create(null) };
+}
+
+/** Pure: may this cue play now? A clock that ran backwards (new run, headless reset) is stale, not "recent". */
+export function momentCueAllowed(mem, id, rank, nowS) {
+  if (!Object.hasOwn(MOMENT_CUE_GATES, id)) return true;
+  const gate = MOMENT_CUE_GATES[id];
+  if (gate.recordOnly) return true;
+  if (gate.cooldownS > 0 && Number.isFinite(mem.at[id])) {
+    const since = nowS - mem.at[id];
+    if (since >= 0 && since < gate.cooldownS) return false;
+  }
+  if (gate.family && Number.isFinite(mem.familyAt[gate.family])) {
+    const since = nowS - mem.familyAt[gate.family];
+    if (since >= 0 && since < MOMENT_FAMILY_WINDOW_S && (mem.familyRank[gate.family] || 0) >= rank) return false;
+  }
+  return true;
+}
+
+export function momentCueRecord(mem, id, rank, nowS) {
+  if (!Object.hasOwn(MOMENT_CUE_GATES, id)) return;
+  const gate = MOMENT_CUE_GATES[id];
+  mem.at[id] = nowS;
+  if (gate.family) {
+    mem.familyAt[gate.family] = nowS;
+    mem.familyRank[gate.family] = rank;
+  }
+}
+
+export function resolveAudioCueRecipeId(cueId) {
+  // Own-property lookups only (see AUDIO_RECIPE_BY_ID): a plain `AUDIO_CUE_TO_RECIPE[cueId]` read
+  // answered "toString"/"constructor"/"valueOf" with an inherited function, which then flowed into
+  // this.play() as a recipe id and satisfied `AUDIO_RECIPE_BY_ID[rid]` truthiness gates.
+  if (Object.hasOwn(AUDIO_CUE_TO_RECIPE, cueId)) return AUDIO_CUE_TO_RECIPE[cueId];
+  if (Object.hasOwn(AUDIO_RECIPE_BY_ID, cueId)) return cueId;
+  return null;
+}
+
+export function fieldDeployRecipe(kind) {
+  return resolveAudioCueRecipeId(`fields:deployed:${kind}`) || resolveAudioCueRecipeId(kind);
+}
+
+export function alertCueOwnsAudio(payload) {
+  if (payload && payload.audioOwnedByPresentation) return false;
+  const key = payload && (payload.key || payload.id);
+  // FB-135 — the gauge's fuel lamp stays visual. The reserve bed and the empty sting own the ear.
+  if (key === 'fuel-low' || key === 'fuel' || key === 'fuel-empty') return false;
+  // Presentation emits both a semantic audio lane and a visual `alert` for these receipts. The
+  // alert remains visible, but its generic beep must not double or blur the authored signature.
+  return !(payload && FIRST_HOUR_SIGNATURE_BY_PRESENTATION_CUE_ID[payload.cueId]);
+}
+
+export function getBusForRecipe(recipe, recipeId) {
+  const id = recipeId || (recipe ? recipe.id : '');
+  if (id.startsWith('sfx_ui_') || id.startsWith('sfx.ui') || (recipe && recipe.category === 'ui')) {
+    if (id.includes('comms') || id.includes('squelch')) {
+      return 'comms';
+    }
+    return 'ui';
+  }
+  if ((recipe && recipe.category === 'comms') || id.includes('comms') || id.includes('squelch') || id.includes('bark')) {
+    return 'comms';
+  }
+  if ((recipe && recipe.category === 'engine') || id.includes('engine') || id.includes('boost') || id.includes('dash') || id.includes('cruise') || id.includes('brake')) {
+    return 'engine';
+  }
+  if ((recipe && recipe.category === 'mining') || id.includes('mining') || id.includes('ambient') || id.includes('station_hum') || id.includes('room_tone') || id.includes('fringe') || id.includes('anomaly') || id.includes('traffic') || id.includes('machinery') || id.includes('pad')) {
+    return 'ambient';
+  }
+  if ((recipe && recipe.category === 'weapon') || (recipe && recipe.category === 'explosion') || id.includes('wpn') || id.includes('explosion') || id.includes('shield') || id.includes('armor') || id.includes('hull') || id.includes('kill') || id.includes('tether') || id.includes('detonate') || id.includes('hit')) {
+    return 'combat';
+  }
+  return 'combat';
+}
+
+export function getPaletteClassName(sector) {
+  if (!sector) return 'core';
+  if (sector.palette) {
+    if (sector.palette === SECTOR_PALETTE_CLASSES.belt) return 'belt';
+    if (sector.palette === SECTOR_PALETTE_CLASSES.fringe) return 'fringe';
+    if (sector.palette === SECTOR_PALETTE_CLASSES.anomaly) return 'anomaly';
+    if (sector.palette === SECTOR_PALETTE_CLASSES.viscera) return 'anomaly';
+  }
+  const id = sector.id || '';
+  if (id.includes('belt') || id.includes('forge') || id.includes('drift')) return 'belt';
+  if (id.includes('fringe') || id.includes('reach') || id.includes('expanse')) return 'fringe';
+  if (id.includes('anomaly') || id.includes('choir') || id.includes('vael')) return 'anomaly';
+  return 'core';
+}
+
+export function audioRecipeBasePeak(recipe) {
+  switch (recipe && recipe.category) {
+    case 'explosion': return 0.85;
+    case 'weapon': return 0.3;
+    case 'mining': return 0.3;
+    case 'ui': return 0.16;
+    case 'engine': return 0.25;
+    default: return 0.4;
+  }
+}
+
+export const DRILL_GRIND_LOOP_ID = 'sfx_mining_drill_grind';
+
+// Pure mix target for the drill bed. Heat raises RPM/brightness while a depleted capacitor sags;
+// hardness adds load without spawning another voice. This remains presentation-only.
+export function drillGrindMix(drillState, out = {}) {
+  const active = !!(drillState && drillState.active && drillState.avatar && drillState.avatar.isDrilling);
+  const heat = clamp((Number(drillState && drillState.drillTemp) || 0) / 100, 0, 1);
+  const energy = clamp((Number(drillState && drillState.drillEnergy) || 0) / 100, 0, 1);
+  const target = drillState && drillState.avatar && drillState.avatar.drillTarget;
+  const tile = target && drillState.field && drillState.field[target.col] && drillState.field[target.col][target.row];
+  const hardness = clamp((Number(tile && tile.hardness) || 1) / 2.4, 0, 1);
+  const energyStrain = 1 - energy;
+  out.active = active;
+  out.gain = 0.58 + hardness * 0.18 + heat * 0.08;
+  out.rate = clamp(0.92 + heat * 0.28 + hardness * 0.06 - energyStrain * 0.12, 0.78, 1.26);
+  out.filterHz = clamp(480 + heat * 420 + hardness * 220 - energyStrain * 100, 360, 1120);
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// The mine's voice — PQ-130.08 / ASTEROID_WORKS_DESIGN_LAW.md §5, §8, §11.9
+// ---------------------------------------------------------------------------
+// What was actually wrong (measured 2026-08-21, not inherited from the 2026-08-07 note):
+//   • `_onPause(true)` zeroes ONLY the music bus. `ambientBus`, `sfxBus`, `uiBus` and `combatBus`
+//     stay live, `_onCue` is not pause-gated, and `_updateDrillGrind()` runs outside the
+//     `if (!rt._paused)` block in `_frame()`. So one-shots and the grind loop were never muted.
+//   • A silent music bus inside the rock is not the bug — it is the law: §8 says "the flight score
+//     does not continue inside". Nothing below un-zeroes it.
+//   • The real hole is that nothing was ever authored to take the score's place, and several §5
+//     rows had no reachable cue at all. §11.9's live invariant ("the music/AMBIENCE bus gain is
+//     > 0 while screen `drill` is active") is satisfied by the bed below, on the ambient bus.
+export const MINE_SCREEN_ID = 'drill';
+
+/** 'front' = the mine owns the glass; 'behind' = a pause/settings screen sits on top of it. */
+export function mineScreenPresence(screenStack) {
+  if (!Array.isArray(screenStack) || screenStack.length === 0) return 'none';
+  if (screenStack[screenStack.length - 1] === MINE_SCREEN_ID) return 'front';
+  return screenStack.includes(MINE_SCREEN_ID) ? 'behind' : 'none';
+}
+
+// A pause menu opened over the mine ducks the bed rather than killing it: you are still in the
+// rock, the room tone just steps back so the menu reads.
+export const MINE_BED_DUCK_BEHIND = 0.3;
+
+// Law §8/§9 envelope: fade in on enter (<= 600 ms), fade out on retract.
+export const MINE_BED_FADE_IN_S = 0.55;
+export const MINE_BED_FADE_OUT_S = 0.45;
+export const MINE_BUS_PEAK = 1;
+// Sub-fader peaks under the mine bus, referred to the AMBIENT bus input so they can be compared
+// against what already ships there: the station hum enters at 0.038–0.045 and a `sfx_mining_*`
+// one-shot at audioRecipeBasePeak('mining') 0.3 x the 0.8 cue gain = 0.24.
+//   • bed: two unity room oscillators x roomGain 0.5, plus air at 0.20 => 1.2 into this fader, so
+//     0.10 lands the room tone at ~0.12 — about 3x the station hum. Present, not a hangar.
+//   • grind: a unity noise layer plus its oscillator bed (<= 1.42) x the mix gain (<= 0.76), so
+//     0.22 lands the loudest possible bore at ~0.24 — level with a foreground mining one-shot,
+//     which is right for the primary action sound of the screen and no hotter.
+// test/asteroid-sound-routing.test.mjs §7 MEASURES both off the live graph rather than trusting
+// this arithmetic, and pins them against those two shipped references.
+export const MINE_BED_PEAK = 0.10;
+export const MINE_GRIND_PEAK = 0.22;
+
+/**
+ * The whole pause-path decision for the mine, as one pure function of (screen stack, paused,
+ * muted). `_onPause` and `_applySettings` both call it so the rule cannot drift between them,
+ * and test/asteroid-sound-routing.test.mjs enumerates the real PAUSING_SCREENS set against it.
+ *
+ * For every pausing screen that is NOT `drill` this returns exactly the legacy behaviour:
+ * bed off, and `musicSilenced === paused`.
+ */
+export function resolveMineAudioIntent(input = {}, out = {}) {
+  const presence = mineScreenPresence(input.screenStack);
+  const paused = !!input.paused;
+  const muted = !!input.muted;
+  const mineActive = presence !== 'none' && !muted;
+  out.presence = presence;
+  out.mineActive = mineActive;
+  out.bedActive = mineActive;
+  out.bedDuck = mineActive ? (presence === 'front' ? 1 : MINE_BED_DUCK_BEHIND) : 0;
+  // Legacy rule (`muted || paused`) plus the §8 clause: the score never plays inside the rock.
+  out.musicSilenced = muted || paused || mineActive;
+  // While the mine owns the ear it also owns the drill cue voices, so the flight-mix recipes
+  // routed through presentation do not double the synthesized mine cue.
+  out.cuesOwnedByMine = mineActive;
+  return out;
+}
+
+// ---- grind: three hardness layers, crossfaded by the target cell's material ----
+export const MINE_GRIND_LAYERS = Object.freeze(['matrix', 'basalt', 'locked']);
+
+// Centres in `materialHardness()` units (src/systems/drill.js): regolith/dirt sits at 0.75, plain
+// and deep rock climb 1.15 -> 2.0 (the generator's hardest plain rock is 1.15 + 0.85), and the
+// locked centre is deliberately parked ABOVE that ceiling so no ungated cell is ever mistaken for
+// a locked one — the tier gate, not the hardness, is what selects the metallic skate. The test
+// pins these against the live materialHardness() so the two tables cannot drift apart.
+export const MINE_GRIND_CENTRES = Object.freeze({ matrix: 0.75, basalt: 1.5, locked: 2.6 });
+
+/** Local mirror of drill.js `materialHardness` — audio must not import the sim. */
+export function mineTileHardness(tile) {
+  if (!tile || tile.type === 'empty') return 0;
+  if (Number.isFinite(tile.hardness)) return Math.max(0.35, tile.hardness);
+  if (tile.type === 'gas') return 0.5;
+  if (tile.type === 'dirt') return 0.75;
+  if (tile.type === 'vein') return 1.15;
+  return 1.45;
+}
+
+/**
+ * Pure mix target for the three-layer grind. Selection is a function of the TARGET CELL only
+ * (type, hardness, tier gate); bore progress and heat drive intensity, never layer choice.
+ * `boring: false` returns a silent, layer-less result — the law's "silent when not boring".
+ */
+export function mineGrindLayers(tile, opts = {}, out = null) {
+  const c = MINE_GRIND_CENTRES;
+  const hardness = mineTileHardness(tile);
+  const gated = Math.max(1, Math.trunc(Number(tile && tile.tierReq) || 1)) > 1
+    || String((tile && tile.type) || '') === 'exotic';
+  const bore = clamp(Number(opts.bore) || 0, 0, 1);
+  const heat = clamp(Number(opts.heat) || 0, 0, 1);
+  const energy = clamp(opts.energy == null ? 1 : Number(opts.energy), 0, 1);
+  const weights = (out && out.weights) || { matrix: 0, basalt: 0, locked: 0 };
+  weights.matrix = 0; weights.basalt = 0; weights.locked = 0;
+  if (gated) {
+    // A cell the bit is not rated for reads as the locked layer no matter how soft the stone is:
+    // that metallic skate IS the information.
+    weights.locked = 1;
+    weights.basalt = clamp((hardness - c.matrix) / (c.locked - c.matrix), 0, 1) * 0.35;
+  } else if (hardness <= c.matrix) {
+    weights.matrix = 1;
+  } else if (hardness >= c.locked) {
+    weights.locked = 1;
+  } else if (hardness <= c.basalt) {
+    const t = (hardness - c.matrix) / (c.basalt - c.matrix);
+    weights.matrix = 1 - t; weights.basalt = t;
+  } else {
+    const t = (hardness - c.basalt) / (c.locked - c.basalt);
+    weights.basalt = 1 - t; weights.locked = t;
+  }
+  const sum = weights.matrix + weights.basalt + weights.locked || 1;
+  weights.matrix /= sum; weights.basalt /= sum; weights.locked /= sum;
+  let layer = 'matrix';
+  if (weights.basalt > weights[layer]) layer = 'basalt';
+  if (weights.locked > weights[layer]) layer = 'locked';
+  const active = !!opts.boring && hardness > 0;
+  const res = out || {};
+  res.active = active;
+  res.layer = active ? layer : null;
+  res.hardness = hardness;
+  res.gated = gated;
+  res.bore = bore;
+  res.weights = weights;
+  // Rises with bore progress (law §5 "Bore progress"), sags on a flat capacitor.
+  res.gain = active ? clamp(0.34 + bore * 0.34 + heat * 0.08 - (1 - energy) * 0.10, 0, 1) : 0;
+  res.rate = clamp(0.92 + heat * 0.24 - (1 - energy) * 0.12, 0.78, 1.24);
+  res.filterHz = clamp(1180 - hardness * 300 + bore * 220 + heat * 180, 240, 1500);
+  return res;
+}
+
+// ---- cue table: one row per law §5 "what you hear" column ----
+// Mix priority is a rank, not a volume: hazard > payoff > machine state > ambience.
+export const MINE_CUE_CLASS_RANK = Object.freeze({ ambience: 0, machine: 1, payoff: 2, hazard: 3 });
+export const MINE_PRIORITY_DUCK = 0.45;       // a lower-rank voice under a live alert
+export const MINE_BED_ALERT_DUCK = 0.35;      // the room tone under a live alert
+export const MINE_GRIND_ALERT_DUCK = 0.5;     // the grind under a live alert
+export const MINE_REFUSAL_SUPPRESS_MS = 5000; // law §5: identical refusals within 5s do not replay
+
+// ECON-03 — the station's refusal word per `economy:tradeFailed` reason. The toast owns the
+// sentence; the comms voice names the reason in one word the player can hear and read.
+export const TRADE_REFUSAL_WORD = Object.freeze({
+  not_docked: 'not docked',
+  credits: 'insufficient credits',
+  cargo_full: 'hold full',
+  no_cargo: 'nothing aboard to sell',
+  mission_cargo_locked: 'sealed contract cargo',
+  black_market_locked: 'the den is not open to you',
+  no_stock: 'out of stock',
+  price_changed: 'the price moved',
+  contamination_refusal: 'the lot is contaminated',
+});
+
+function mineCue(klass, priority, extra = {}) {
+  return Object.freeze({
+    klass,
+    priority,
+    minGapMs: extra.minGapMs || 0,
+    repeatSuppressMs: extra.repeatSuppressMs || 0,
+    peak: extra.peak == null ? 0.3 : extra.peak,
+    alert: !!extra.alert,
+    holdMs: extra.holdMs || 0,
+  });
+}
+
+// Peaks are referred to the AMBIENT bus input, where a shipped `sfx_mining_*` one-shot enters at
+// 0.24. Each branch in `_synthMineCue` layers 1-3 partials, so the SUM is the voice, not the row —
+// the routing test measures those sums off the live graph and holds them in that window, with the
+// gas breach the one cue allowed to dominate the room.
+export const MINE_CUES = Object.freeze({
+  // payoff
+  oreTick: mineCue('payoff', 0.62, { minGapMs: 55, peak: 0.20 }),
+  courierLaunch: mineCue('payoff', 0.60, { minGapMs: 250, peak: 0.26 }),
+  // hazard (alert class — one voice at a time)
+  gasBreach: mineCue('hazard', 0.98, { minGapMs: 260, peak: 0.38, alert: true, holdMs: 900 }),
+  heatCritical: mineCue('hazard', 0.88, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.30, alert: true, holdMs: 700 }),
+  chargeBlast: mineCue('hazard', 0.92, { minGapMs: 280, peak: 0.22, alert: true, holdMs: 800 }),
+  caveIn: mineCue('hazard', 0.90, { minGapMs: 600, peak: 0.21, alert: true, holdMs: 900 }),
+  // machine state
+  boreBite: mineCue('machine', 0.38, { minGapMs: 70, peak: 0.18 }),
+  rockBreak: mineCue('machine', 0.46, { minGapMs: 60, peak: 0.20 }),
+  lockRefusal: mineCue('machine', 0.55, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.24 }),
+  rigStall: mineCue('machine', 0.56, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.22 }),
+  hopperFull: mineCue('machine', 0.60, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.24 }),
+  rockDepleted: mineCue('machine', 0.52, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.20 }),
+  ventRelief: mineCue('machine', 0.58, { minGapMs: 400, peak: 0.22 }),
+  machinePlaced: mineCue('machine', 0.55, { minGapMs: 120, peak: 0.26 }),
+  machineStarved: mineCue('machine', 0.50, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.18 }),
+  chargeSet: mineCue('machine', 0.52, { minGapMs: 140, peak: 0.24 }),
+  rockCreak: mineCue('machine', 0.42, { minGapMs: 900, peak: 0.16 }),
+  chargeTick: mineCue('machine', 0.30, { minGapMs: 120, peak: 0.24 }),
+  // ambience
+  assayPing: mineCue('ambience', 0.30, { minGapMs: 500, peak: 0.15 }),
+});
+
+// Sim event (or derived edge) -> cue key. `drill:warn` splits on its `reason` field, because the
+// text-matching classifier in presentation/miningChoreography.js never matches the deep drill's
+// live strings (verified: 'DRILL OVERHEATED!', 'Drill system cooled.' and 'Cargo holds are full!'
+// appear nowhere in src/).
+export const MINE_EVENT_CUE_MAP = Object.freeze({
+  'drill:yield': 'oreTick',
+  'drill:spark': 'boreBite',
+  'drill:break': 'rockBreak',
+  'drill:gasHit': 'gasBreach',
+  'drill:cargoFull': 'hopperFull',
+  'drill:rockDepleted': 'rockDepleted',
+  'drill:scanPulse': 'assayPing',
+  'drill:warn/tier': 'lockRefusal',
+  'drill:warn/structure': 'lockRefusal',
+  'drill:warn/cargoFull': 'hopperFull',
+  'drill:warn/depleted': 'rockDepleted',
+  'drill:warn/overheat': 'rigStall',
+  'drill:warn/capacitor': 'rigStall',
+  'drill:warn/resume': 'assayPing',
+  'drill:warn/charge': 'lockRefusal',
+  'drill:chargePlanted': 'chargeSet',
+  'drill:chargeTick': 'chargeTick',
+  'drill:chargeBlast': 'chargeBlast',
+  'drill:rockCreak': 'rockCreak',
+  'drill:caveIn': 'caveIn',
+  'drill:gasVent': 'ventRelief',
+  'heat:critical': 'heatCritical',
+  'heat:vented': 'ventRelief',
+  'site:machineInstalled': 'machinePlaced',
+  'site:machineStatus': 'machineStarved',
+  'site:courierLaunched': 'courierLaunch',
+});
+
+// The law §5 table, transcribed, so the test can assert coverage row by row instead of trusting
+// that the map above happens to be complete.
+export const MINE_LAW_EVENT_ROWS = Object.freeze([
+  Object.freeze({ row: 'Ore extracted', heard: 'soft mineral tick, pitch up with value', cue: 'oreTick', source: 'drill:yield' }),
+  Object.freeze({ row: 'Bore progress (bite)', heard: 'a bite is a heavier strike', cue: 'boreBite', source: 'drill:spark' }),
+  Object.freeze({ row: 'Bore progress (grind)', heard: 'grind loop, 3 layers crossfaded by hardness', cue: null, source: 'state.drill (continuous bed)' }),
+  Object.freeze({ row: 'Gas pocket breached', heard: 'sharp hiss-boom, then fading hiss', cue: 'gasBreach', source: 'drill:gasHit' }),
+  Object.freeze({ row: 'Locked material (MK gate)', heard: 'dull clank', cue: 'lockRefusal', source: 'drill:warn/tier' }),
+  Object.freeze({ row: 'Hopper full', heard: 'wooden thock', cue: 'hopperFull', source: 'drill:cargoFull' }),
+  Object.freeze({ row: 'Heat critical', heard: 'rising whine', cue: 'heatCritical', source: 'state.drill.drillTemp' }),
+  Object.freeze({ row: 'Heat relief on vent', heard: 'relief hiss', cue: 'ventRelief', source: 'state.drill.drillTemp' }),
+  Object.freeze({ row: 'Machine placed', heard: 'firm mechanical seat', cue: 'machinePlaced', source: 'site:machineInstalled' }),
+  Object.freeze({ row: 'Machine starved/unpowered', heard: 'single soft chime, once', cue: 'machineStarved', source: 'site:machineStatus' }),
+  Object.freeze({ row: 'Courier launch', heard: 'soft launch thump', cue: 'courierLaunch', source: 'site:courierLaunched' }),
+  Object.freeze({ row: 'Survey / assay ping', heard: 'quiet sonar blip', cue: 'assayPing', source: 'drill:scanPulse' }),
+  Object.freeze({ row: 'Bore refused (rig stalled)', heard: 'strained stall whine', cue: 'rigStall', source: 'drill:warn/overheat' }),
+  // Bore charges extend the vocabulary under the same rule — every sim event gets a sound.
+  Object.freeze({ row: 'Charge seated', heard: 'puck clunk, rising arm chirp', cue: 'chargeSet', source: 'drill:chargePlanted' }),
+  Object.freeze({ row: 'Charge fuse running', heard: 'dry tick each beat', cue: 'chargeTick', source: 'drill:chargeTick' }),
+  Object.freeze({ row: 'Charge blast', heard: 'deep boom, the whole cut at once', cue: 'chargeBlast', source: 'drill:chargeBlast' }),
+  // Roof mechanics under the same rule — a cracking beam warns before a drop answers.
+  Object.freeze({ row: 'Roof span cracking', heard: 'low stone groan, once', cue: 'rockCreak', source: 'drill:rockCreak' }),
+  Object.freeze({ row: 'Cave-in', heard: 'roof drop, rubble landing', cue: 'caveIn', source: 'drill:caveIn' }),
+  Object.freeze({ row: 'Pocket vented open', heard: 'relief hiss, no fire', cue: 'ventRelief', source: 'drill:gasVent' }),
+]);
+
+// Presentation cue ids whose physical voice the mine takes over while screen `drill` is up. The
+// semantic bus keeps emitting them (captions, floaters, `.07`'s board expressions); only the
+// flight-mix recipe playback is skipped, so nothing double-hits.
+export const MINE_OWNED_PRESENTATION_CUES = Object.freeze(new Set([
+  'mining.drill.contact',
+  'mining.drill.break',
+  'mining.drill.yield',
+  'mining.drill.gas_hazard',
+  'mining.drill.seismic_pulse',
+  'mining.cargo.full',
+  'mining.heat.overheated',
+  'mining.vent.ready',
+  'mining.field.aftermath',
+  // Deliberately NOT here: `mining.drill.aborted` and `mining.drill.retry`. Those two bracket the
+  // session rather than happen inside it — an abort fires as you leave and a retry as you come
+  // back — so they keep the shipped flight-mix recipe that the rest of the game answers with. Add
+  // them only if the mine ever grows its own enter/leave stingers.
+]));
+
+/**
+ * One-voice arbiter for the mine, modelled on the flight HUD's voiceArbiter idea but local and
+ * pure so the test can drive it without Web Audio. Rules:
+ *   • repeat suppression (5 s for refusals) and per-cue minimum gap;
+ *   • ALERT-class cues hold the ear: while one is holding, another alert of equal or lower rank
+ *     is refused outright (law §8 "one voice at a time for alert-class sounds");
+ *   • non-alert cues are never refused by a hold, they duck under it.
+ */
+export function createMineVoiceArbiter(table = MINE_CUES) {
+  const lastAt = Object.create(null);
+  let hold = null;
+  const duckOut = { bed: 1, grind: 1, heldBy: null };
+  const liveHold = (t) => (hold && t < hold.untilMs ? hold : null);
+  return {
+    admit(key, nowMs) {
+      const spec = table[key];
+      if (!spec) return { ok: false, reason: 'unknown_cue', key };
+      const t = Number(nowMs) || 0;
+      const prev = lastAt[key];
+      if (Number.isFinite(prev)) {
+        if (spec.repeatSuppressMs > 0 && t - prev < spec.repeatSuppressMs) {
+          return { ok: false, reason: 'repeat_suppressed', key, retryInMs: spec.repeatSuppressMs - (t - prev) };
+        }
+        if (spec.minGapMs > 0 && t - prev < spec.minGapMs) {
+          return { ok: false, reason: 'rate_limited', key };
+        }
+      }
+      const rank = MINE_CUE_CLASS_RANK[spec.klass];
+      const held = liveHold(t);
+      // Class rank first, then the cue's own priority as the intra-class tie-break: a gas breach
+      // (0.98) cuts through a heat whine (0.88), never the other way round.
+      const outranks = rank > held?.rank || (rank === held?.rank && spec.priority > held?.priority);
+      if (held && held.key !== key && spec.alert && !outranks) {
+        return { ok: false, reason: 'alert_voice_busy', key, heldBy: held.key };
+      }
+      lastAt[key] = t;
+      const duck = held && held.key !== key && !outranks && rank < held.rank ? MINE_PRIORITY_DUCK : 1;
+      if (spec.alert) hold = { key, rank, priority: spec.priority, untilMs: t + spec.holdMs };
+      return { ok: true, key, klass: spec.klass, rank, spec, duck, gain: spec.peak * duck };
+    },
+    /** Bed/grind duck while an alert owns the ear. Reuses one record — read it, do not keep it. */
+    ambienceDuck(nowMs) {
+      const held = liveHold(Number(nowMs) || 0);
+      duckOut.bed = held ? MINE_BED_ALERT_DUCK : 1;
+      duckOut.grind = held ? MINE_GRIND_ALERT_DUCK : 1;
+      duckOut.heldBy = held ? held.key : null;
+      return duckOut;
+    },
+    heldBy(nowMs) { const h = liveHold(Number(nowMs) || 0); return h ? h.key : null; },
+    reset() { hold = null; for (const k of Object.keys(lastAt)) delete lastAt[k]; },
+  };
+}
+
+// Heat thresholds for the derived critical/vent edges (drill.js clamps drillTemp to 0..100 and
+// latches `overheated` at 100).
+export const MINE_HEAT_CRITICAL = 78;
+export const MINE_HEAT_RELIEF = 46;
+
+/** Value -> pitch for the ore tick: richer units read higher. Pure so the test can pin it. */
+export function mineOreTickRate(qty, commodityId) {
+  const q = Math.max(1, Math.trunc(Number(qty) || 1));
+  const id = String(commodityId || '');
+  let tier = 0;
+  if (id.includes('gem_') || id.includes('exotic')) tier = 3;
+  else if (id.includes('einsteinium') || id.includes('platinium') || id.includes('goldium')) tier = 2;
+  else if (id.includes('silverium') || id.includes('copper') || id.includes('bronzium')) tier = 1;
+  return clamp(1 + tier * 0.16 + Math.min(6, q - 1) * 0.045, 0.85, 1.9);
+}
+
+const CERES_JOB_ACTION_RECEIPT_EVENT = 'traffic:jobActionReceipt';
+const CERES_JOB_ACTION_RECEIPT_SCHEMA = 'spaceface.trafficJobActionReceipt.v1';
+const CERES_JOB_ACTION_SECTOR_ID = 'sector_ceres_belt';
+const CERES_WORK_AUDIO_PROFILES = Object.freeze({
+  ceres_refinery_hauler: Object.freeze({ jobKind: 'hauler', action: 'unload', recipeId: 'sfx_mining_cargo_settle', gain: 0.6, rates: Object.freeze([0.94, 1, 1.06]), preferTarget: true }),
+  ceres_seam_miner: Object.freeze({ jobKind: 'miner', action: 'work', recipeId: 'sfx_mining_drill_contact', gain: 0.58, rates: Object.freeze([0.92, 1, 1.08]), preferTarget: true }),
+  ceres_seam_surveyor: Object.freeze({ jobKind: 'surveyor', action: 'work', recipeId: 'sfx_mining_scan_return', gain: 0.46, rates: Object.freeze([0.96, 1, 1.04]), preferTarget: false }),
+  ceres_ambush_loaded_hauler: Object.freeze({ jobKind: 'hauler', action: 'unload', recipeId: 'sfx_mining_cargo_settle', gain: 0.52, rates: Object.freeze([0.94, 1, 1.06]), preferTarget: false }),
+  ceres_cathedral_salvor: Object.freeze({ jobKind: 'salvor', action: 'work', recipeId: 'sfx_mining_drill_break', gain: 0.54, rates: Object.freeze([0.9, 0.98, 1.06]), preferTarget: true }),
+});
+
+export function resolveCeresWorkAudioCue(receipt, state) {
+  if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) return null;
+  if (receipt.schema !== CERES_JOB_ACTION_RECEIPT_SCHEMA
+    || receipt.sectorId !== CERES_JOB_ACTION_SECTOR_ID) return null;
+  if (typeof receipt.actorSlotId !== 'string'
+    || !Object.hasOwn(CERES_WORK_AUDIO_PROFILES, receipt.actorSlotId)) return null;
+  const profile = CERES_WORK_AUDIO_PROFILES[receipt.actorSlotId];
+  if (receipt.jobKind !== profile.jobKind || receipt.action !== profile.action) return null;
+  const entities = state && state.entities;
+  if (!entities || typeof entities.get !== 'function') return null;
+  const actor = entities.get(receipt.actorId);
+  const actorPos = actor && actor.pos;
+  if (!actor || actor.alive === false || !actorPos
+    || !Number.isFinite(actorPos.x) || !Number.isFinite(actorPos.z)
+    || !actor.data || actor.data.activityActorSlotId !== receipt.actorSlotId) return null;
+  let position = actorPos;
+  if (profile.preferTarget && receipt.targetId != null) {
+    const target = entities.get(receipt.targetId);
+    const targetPos = target && target.pos;
+    if (target && target.alive !== false && targetPos
+      && Number.isFinite(targetPos.x) && Number.isFinite(targetPos.z)) {
+      position = targetPos;
+    }
+  }
+  const sequence = Number.isSafeInteger(receipt.sequence) ? receipt.sequence : 0;
+  const index = ((sequence % profile.rates.length) + profile.rates.length) % profile.rates.length;
+  return {
+    recipeId: profile.recipeId,
+    position: { x: position.x, z: position.z },
+    gain: profile.gain,
+    rate: profile.rates[index],
+  };
+}
+
+export const audio = {
+  name: 'audio',
+
+  init(ctx) {
+    this.rt?._commissionCueDispose?.();
+    this.rt?._ironKrakenAudioDispose?.();
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers;
+
+    // Runtime container (transient, never serialized — ARCHITECTURE §3.14).
+    const rt = this.state.audioRuntime = this.state.audioRuntime || {};
+    rt.ctx = null;
+    rt.masterGain = null; rt.limiter = null; rt.sfxBus = null; rt.musicBus = null;
+    rt.voices = [];               // active SFX voices (pooled, cap MAX_AUDIO_VOICES)
+    rt.loops = {};                // keyed sustained voices: beam/mining/per-owner weapon beams
+    rt.stems = { A: null, B: null, C: null, D: null, E: null };
+    rt.stemGains = { A: null, B: null, C: null, D: null, E: null };
+    rt.musicState = 'calm';
+    rt.threat = 0;
+    rt.alarms = { lowShield: false, lowHull: false };
+    rt._caches = {};              // noise buffer + distortion curves
+    // A re-init replaces the sample runtime wholesale; dispose the old one first so in-flight
+    // fetch/decode work from the previous generation cannot populate a dead store.
+    if (rt._samples && typeof rt._samples.dispose === 'function') rt._samples.dispose();
+    if (rt._barkPcmCache) rt._barkPcmCache.clear();
+    if (rt._threatEar) rt._threatEar.destroy();
+    rt._threatEar = null;
+    rt._samples = createSampleRuntime(); // PQ-158.00 sample library (promise-driven, never per-frame)
+    rt._nextVoiceId = 1;
+    rt._lastDamageT = -1e9;       // sim-time of last player damage (for inCombatRecent)
+    rt._stateSince = 0;          // wallclock when current music state started
+    rt._pendingState = null; rt._pendingSince = 0;
+    rt._musicStarted = false;
+    rt._duckUntil = 0;            // wallclock until which musicBus is ducked
+    rt._paused = false;           // set by sim:pause, cleared by sim:resume (gate sim-driven audio)
+    rt._alarmNext = { lowShield: 0, lowHull: 0 }; // next scheduled beep time (ctx.currentTime)
+    rt._alarmFlip = { lowShield: false };
+    rt._rafId = 0;
+    rt._lifecycleSuspended = false;
+    rt._lifecycleReason = null;
+    rt._resumeAfterLifecycle = false;
+    rt._lifecycleSuspendPromise = null;
+    rt._resumePromise = null;
+    rt._contextEverRan = false;
+    rt._contextStateChangeHandler = null;
+    rt._lastWallTime = undefined;
+    rt._wantBeam = {};            // owners desiring a beam loop (started on resume)
+    rt._wantMining = null;        // { minerId, targetId } desired mining loop
+    rt._pickupHoldFull = pickupHoldIsFull(this.state.player && this.state.player.cargo);
+    rt._pickupHoldRefusedUnit = 0;
+    rt._wantDrillGrind = false;   // state-derived deep-drill bed (survives AudioContext resume)
+    rt._docked = false;           // station-interior latch (set by dock:docked; reconciled at boundaries)
+    rt._dockStationId = null;
+    // Wall-clock cue offsets (dock/respawn/vent chimes, hum teardown) ride _defer() so a session
+    // boundary or destroy() can cancel a delay that would otherwise fire into the wrong run.
+    rt._timers = new Set();       // outstanding _defer() timeout ids
+    rt._timerGen = (rt._timerGen || 0) + 1; // bumped at every boundary — stale deferrals no-op
+    rt._destroyed = false;        // hard stop for late deferrals; set by destroy(), cleared by init
+    rt._drillGrindMix = { active: false, gain: 0, rate: 1, filterHz: 560 };
+    // --- the mine's voice (PQ-130.08) — desired state survives an AudioContext resume ---
+    rt._mineIntent = resolveMineAudioIntent({ screenStack: null, paused: false, muted: true });
+    rt._mineIntentInput = null;   // reusable input record for the per-frame intent recompute
+    rt._mineGrindOpts = null;     // reusable opts record for the per-frame grind mix
+    rt._wantMineBed = false;      // room tone + settling creaks while screen `drill` is up
+    rt._mineBus = null; rt._mineBedGain = null; rt._mineGrindGain = null; rt._mineCueGain = null;
+    rt._mineBed = null;           // { nodes, gain, sources, creakAt, rngState }
+    rt._mineGrind = null;         // { layers: { matrix, basalt, locked }, nodes, ... }
+    rt._mineGrindMix = { active: false, layer: null, weights: { matrix: 0, basalt: 0, locked: 0 }, gain: 0, rate: 1, filterHz: 700 };
+    rt._mineArbiter = createMineVoiceArbiter();
+    rt._mineHeatCritical = false; // latched so the whine/relief fire once per transition
+    rt._mineMachineState = Object.create(null); // machineId -> last starved-ness (once per transition)
+    rt._mineVoices = [];          // synthesized mine one-shots awaiting GC
+    rt._musicDirty = true;
+    rt._nextMusicScan = 0;
+    rt._loopPositionDirty = true;
+    rt._nextLoopPositionUpdate = 0;
+    rt._musicThreatScratch = [];
+    rt._musicWorkScratch = [];
+    // SF-297 committed-threat ledger: the last observed hostile commitment to the player, so the
+    // committed-clear release fires only after a poll actually saw a commitment (fresh loads,
+    // quiet sectors, and sector changes never exhale).
+    rt._musicCommitScratch = [];
+    rt._committedHostiles = 0;
+    rt._committedArmed = false;
+    // First-hour identity + mix hierarchy (cosmetic audio only — never mutates gameplay).
+    rt._priorityBus = createCuePriorityBus();
+    rt._priorityEngineProbe = { role: 'engineLoop', loop: true };
+    rt._priorityWeaponProbe = { role: 'weaponLoop', loop: true };
+    rt._priorityDuckEngine = 1;
+    rt._priorityDuckWeapon = 1;
+    rt._criticalSquelchUntilMs = 0;
+    rt._engineTier = 'idle';
+    rt._engineTierSince = 0;
+    rt._engineIdentityEntity = null;
+    rt._engineIdentityDriveId = null;
+    rt._engineIdentityMass = NaN;
+    rt._engineIdentityFlightClass = null;
+    rt._engineIdentity = null;
+    rt._engineTelemetry = {
+      tier: 'idle',
+      f1: 55,
+      f2: 55,
+      noiseG: 0.0001,
+      humG: 0.48,
+      massNorm: 1,
+      family: DRIVE_FAMILIES.REACTION,
+      massClass: 'medium',
+      duck: 1,
+    };
+    rt._activeCombatEncounters = new Set();
+    rt._doctrineThreatUntil = -1e9;
+    rt._lastDoctrineCueAt = -1e9;
+    rt._lastAccelTransitionMs = 0;
+    rt._lastTrafficBlipAt = 0;
+    rt._lastMachineryAt = 0;
+    rt._signatureLastAt = Object.create(null);
+    rt._lastSquelchEndTime = 0;
+    rt._themeSectorId = null;
+    rt._themeFactionId = null;
+    rt._themeMatrix = null;
+    rt._weightDuckEnvelope = null;
+    rt._masslineReelLastTick = -1e9;
+    rt._environmentClass = 'void';
+    // Hull occlusion stub: one shared lowpass per physical bus; `_syncEnvironmentMix` owns the
+    // cutoff. Voices route through it only when positional AND the listener is interior.
+    rt._occlusionFilters = null;
+    rt._occlusionCutHz = 19000;
+    // Critical comms own the ear: world buses bow for the phrase (audio-clock envelope).
+    rt._commsDuckUntilS = 0;
+    rt._commsDuckGain = COMMS_DUCK.gain;
+    rt._commsDuckLive = 1;
+    rt._commsPhrases = [];
+    // Pressure layer + spool strand — continuous beds built once with the other flight beds.
+    rt._pressureNoise = null; rt._pressureFilter = null; rt._pressureGain = null;
+    rt._pressureSub = null; rt._pressureSubGain = null;
+    rt._tetherSpoolOsc = null; rt._tetherSpoolGain = null;
+    // Bus-meter surface: applied fader targets (per _applySettings) + per-bus feed estimates,
+    // sampled into a preallocated ring at PRESSURE_MIX.ledgerS.
+    rt._musicFeed = 0;
+    rt._busLevels = null;
+    rt._busFeed = { engine: 0, ambient: 0, combat: 0, ui: 0, comms: 0, music: 0, sfx: 0 };
+    rt._mixLedger = { cap: PRESSURE_MIX.ledgerCap, head: 0, n: 0, nextAt: 0, entries: null };
+    rt._heardAudioTick = -1;
+    rt._heardRecipes = new Set();
+    rt._impactVoiceMarks = new Map();
+    rt.sidechainDuck = 1;
+    rt._busGainCache = null;      // last settings-derived bus gain written per bus
+    rt._bedTargetCache = null;    // last brake/tether bed target written per param
+    rt._bulletTimeAudioActive = false;
+    rt._bulletTimePitch = 1;
+    rt._bulletTimeMusicMult = 1;
+    rt._bulletTimeFilters = [];
+    // --- psychoacoustic drama layer ---
+    rt._hush = null;               // active breathless-moment envelope (see HUSH / hushGainAt)
+    rt._lastWhipMs = -1e9;         // wallclock of last near-miss whip-crack (min-gap collapse)
+    rt._breachActive = false;      // hysteresis latch for resolveBreachState
+    rt._breachIntensity = 0;       // smoothed 0..1 muffle depth
+    rt._breachCutHz = HULL_BREACH_MIX.openHz; // last low-pass target written (skip rewrites)
+    rt._breachNextGroanS = 0;      // ctx.currentTime of next scheduled stress groan
+    rt._breachFilters = [];        // per-bus low-pass nodes, built with the graph
+    rt._breachBed = null;          // {noise, noiseGain, sub, subGain} conduction bed
+    rt._chargeWhineUntilS = 0;     // ctx.currentTime: one heavy spool at a time
+    rt._fireHeldPrev = false;      // input.fire edge detect for the dead-trigger clack
+    if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();
+    rt.bandBed = null;
+    rt._bandBedIntent = { active: false, reason: 'not-tuned' };
+    this.rt = rt;
+
+    const bus = this.bus;
+    rt._commissionCueDispose?.();
+    rt._commissionCueDispose = bindCommissionCues(this, bus);
+    bus.on('scan:shipRevealed', (p) => this._noteAnomalyCandidate(p));
+    bus.on('scan:wreckRevealed', (p) => this._noteAnomalyCandidate(p));
+
+    // --- lazy AudioContext on first user gesture (autoplay policy) ---
+    this._gestureHandler = () => {
+      if (!this._isMuted()) this._ensureContext();
+    };
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener('pointerdown', this._gestureHandler, { once: false });
+      window.addEventListener('keydown', this._gestureHandler, { once: false });
+    }
+    // Row 301: a headset plugged in or a speaker going away is not a gesture and not a settings change.
+    this._bindOutputDeviceFollow();
+
+    // --- event subscriptions (ARCHITECTURE §4.4 names + payloads) ---
+    bus.on('combat:fire', (p) => this._onFire(p));
+    bus.on('combat:beamStop', (p) => {
+      if (!p || p.ownerStillFiring !== true) this._stopBeam(p && p.ownerId);
+    });
+    bus.on('projectile:hit', (p) => this._onHit(p, false));
+    // A hostile round crossed the player's near-miss tube without hitting — physics already
+    // dedupes per projectile; audio owns the supersonic crack that makes "inches" felt.
+    bus.on('projectile:nearMiss', (p) => this._onNearMissAudio(p));
+    // The servo kills the shot at range — the snap belongs at the missile's point, not on the
+    // owner hull. One authored chaff crack per confirmed receipt; a receipt without a finite
+    // point fabricates nothing.
+    bus.on('pds:intercept', (p) => {
+      const pos = p && p.pos;
+      if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+      this.play('sfx_cm_chaff', { position: { x: pos.x, z: pos.z }, gain: 0.45 });
+    });
+    bus.on('combat:damage', (p) => this._onDamage(p), { presentation: true });
+    // Contact sound rides the physics authority's receipt: `physics:impact` is the single
+    // emit per contact on every backend (the legacy `collision` twin was retired — its
+    // fields were a strict subset of the pooled payload's, and the pair+tick dedupe window
+    // already collapsed the double-emit into one voice).
+    bus.on('physics:impact', (p) => this._onCollision(p), { presentation: true });
+    // Optic lattice contacts: weapons settles bolt-vs-prism and publishes the response here.
+    // Each response kind owns one cue, and a ring can light a whole lattice neighborhood in a
+    // single tick — the handlers collapse the burst through the shared `_heardRecipes` window,
+    // the same per-tick admission the visual-event lane runs on simultaneous cues.
+    bus.on('optic:contact', (p) => this._onOpticContact(p));
+    bus.on('optic:rekindled', (p) => this._onOpticRekindled(p));
+    bus.on('shieldDown', (p) => {
+      // Shield break: a sharp energy crackle at the target's position.
+      const pos = p && p.pos;
+      const target = p && p.combatantId ? this.state.entities.get(p.combatantId) : null;
+      const isPlayer = !!(
+        (p && p.combatantId === this.state.playerId) ||
+        (target && target.isPlayer)
+      );
+      const position = pos || (target ? { x: target.pos.x, z: target.pos.z } : null);
+      const signature = FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak;
+      this._applyPriorityCue({ id: 'shield.collapse', importance: signature.priority, playerRelevance: isPlayer ? 1 : 0.4 });
+      // A shield collapse sounds like a shield collapse whoever owns it — the crystalline
+      // signature is the register the ear learns, so it plays under every break. The
+      // player's own failure stacks the personal layer on top: distinct electrical pop +
+      // audible alarm cue. The alarm reserves the ear (INF-048): the world mix bows for
+      // its phrase so the terse failure reads through combat, then returns on the duck
+      // envelope.
+      this.play(signature.recipeId, { position, gain: 0.64, critical: true });
+      if (isPlayer) {
+        // The personal layer is the bare discharge: the pop recipe already carries
+        // sfx_shield_break_crack, which the universal signature above just played —
+        // one collapse, one crack.
+        this.play('sfx_shield_blowout_discharge', { position, gain: 0.9, critical: true });
+        this.play('sfx_shield_blowout_alarm', { gain: 0.8, critical: true, duck: true });
+      }
+    });
+    bus.on('shieldRestored', (p) => {
+      // Shield back online after depletion: soft rising shimmer. NPC restores stay positional at
+      // low gain — play() culls anything past world-hearing range.
+      const pos = p && p.pos;
+      const target = p && p.combatantId ? this.state.entities.get(p.combatantId) : null;
+      const isPlayer = !!(
+        (p && p.combatantId === this.state.playerId) ||
+        (target && target.isPlayer)
+      );
+      const position = pos || (target ? { x: target.pos.x, z: target.pos.z } : null);
+      this.play('sfx_shield_restore', { position, gain: isPlayer ? 0.8 : 0.4 });
+    });
+    bus.on('entity:killed', (p) => this._onKilled(p), { presentation: true });
+    bus.on('entity:destroyed', (p) => this._onDestroyed(p), { presentation: true });
+    // X4 boss read: a boss body's spawn/end is the music's own event, not a per-frame scan.
+    // A capital boss or an arena boss (bossDressing) enters the boss stem; its death releases it.
+    // The marks are the canonical boss flags the elite-intent vocabulary already reads
+    // (`data/enemies.js` isEliteCombatant): isBoss / encounterBoss / missionBoss, plus the arena
+    // dressing and the capital-boss mission tag. Aces, nemeses and rare specialists deliberately
+    // stay out — they are elite, not a boss piece.
+    const noteBossSpawn = (p) => {
+      const e = p && p.entity;
+      if (!isBossBody(e)) return;
+      const rt = this.rt;
+      rt._bossIds = rt._bossIds instanceof Set ? rt._bossIds : new Set();
+      rt._bossIds.add(e.id);
+      rt._bossActive = true;
+      this._markMusicDirty();
+    };
+    const noteBossEnd = (p) => {
+      const rt = this.rt;
+      if (!rt || !(rt._bossIds instanceof Set) || p == null || p.id == null) return;
+      if (rt._bossIds.delete(p.id)) {
+        rt._bossActive = rt._bossIds.size > 0;
+        this._markMusicDirty();
+      }
+    };
+    bus.on('entity:spawned', noteBossSpawn, { presentation: true });
+    bus.on('entity:killed', noteBossEnd, { presentation: true });
+    bus.on('entity:destroyed', noteBossEnd, { presentation: true });
+    // A capital fight ends by its own event, not always by the boss body's death packet.
+    bus.on('capitalBoss:ended', () => {
+      const rt = this.rt;
+      if (!rt || !(rt._bossIds instanceof Set)) return;
+      rt._bossIds.clear();
+      rt._bossActive = false;
+      this._markMusicDirty();
+    }, { presentation: true });
+    bus.on('player:death', (p) => this._onPlayerDeath(p));
+    bus.on('player:respawn', (p) => this._onPlayerRespawn(p));
+    bus.on('mining:start', (p) => this._onMiningStart(p));
+    bus.on('mining:stop', (p) => this._onMiningStop(p));
+    bus.on('mining:tick', (p) => this._onMiningTick(p));
+    bus.on('asteroid:destroyed', (p) => this.play('sfx_asteroid_depleted', { position: p && p.pos, gain: 0.7 }));
+    // The body splitting alive is a different voice from the body ending: the brittle split at
+    // the split's position, one per parent per tick (a break spawns several chunks at once),
+    // graded a touch louder the more pieces the parent came apart into.
+    bus.on('asteroid:chunked', (p) => {
+      if (!p || p.parentId == null) return;
+      const book = this.rt._chunkVoiceBook || (this.rt._chunkVoiceBook = Object.create(null));
+      const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0;
+      const key = String(p.parentId);
+      if (book[key] === tick) return;
+      book[key] = tick;
+      const count = Math.max(1, Math.floor(Number(p.count) || 1));
+      this.play('sfx_mining_fracture_break', {
+        position: p.pos, gain: Math.min(0.7, 0.35 + count * 0.06),
+      });
+    });
+    bus.on('cloak:faded', () => this.play(combatVerbRecipe('cloak:faded'), { gain: 0.32 }));
+    bus.on('cloak:dropped', () => this.play(combatVerbRecipe('cloak:dropped'), { gain: 0.45 }));
+    // cloak:burned already toasts the player. The fade is that burn, pitched
+    // down, and only for the player's own cloak — a scan that lights an NPC
+    // must not chorus. Admission keeps one pulse from machine-gunning it.
+    // Burn does not also play cloak:dropped; dropping the cloak is a different act.
+    bus.on('cloak:burned', (p) => {
+      const playerId = this.state && this.state.playerId;
+      if (!p || playerId == null || p.entityId !== playerId) return;
+      playAdmittedEarCue(
+        this,
+        cloakBurnCue(p),
+        this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+      );
+    });
+    // distress:call had emitters and zero listeners. The comms log only opens when the
+    // player is inside the radius; the sting is the wanted-alert, not a menu click, once.
+    bus.on('distress:call', (p) => playAdmittedEarCue(
+      this,
+      distressCallCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // mines:detonated had no listener. The blast is the ear; hull damage stays
+    // the hit the damage packet already plays.
+    bus.on('mines:detonated', (p) => playAdmittedEarCue(
+      this,
+      mineDetonationCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // weapons:mineArmed had a picture and no sound. The arming click is the
+    // mine's own recipe, quieter than the blast that comes later.
+    const playMineArmedCue = (p) => {
+      const mine = p?.mineId != null ? this.state?.entities?.get?.(p.mineId) : null;
+      playAdmittedEarCue(this, mineArmedCue(p ? { ...p, pos: p.pos || mine?.pos } : p),
+        Number.isFinite(this.state?.tick) ? this.state.tick : 0);
+    };
+    // Canonical and player-action receipts share the existing per-mine admission key.
+    bus.on('mines:armed', playMineArmedCue);
+    bus.on('weapons:mineArmed', playMineArmedCue);
+    // combat:warded had no listener. The hull hit on the same tick is the damage
+    // voice; this is the catch — a shield hit, not the collapse pop, and one
+    // per escort so a beam cannot machine-gun it.
+    bus.on('combat:warded', (p) => playAdmittedEarCue(
+      this,
+      wardedShotCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // danger:miningNoise fired on the threshold crossing and nothing played it.
+    // One darker alert, ducked, so the beam does not bury "they can hear you".
+    bus.on('danger:miningNoise', (p) => playAdmittedEarCue(
+      this,
+      miningNoiseDangerCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // barkDirector:silence had zero listeners. One breath per silence window —
+    // a second kill inside it does not restart the drop.
+    bus.on('barkDirector:silence', (p) => {
+      const rt = this.rt;
+      if (!rt || !p) return;
+      const now = Number(this.state && this.state.simTime) || 0;
+      const book = rt._aftermathHush || (rt._aftermathHush = {});
+      if (!admitAftermathHush(book, p.until, now)) return;
+      this._triggerHush({ kind: 'aftermath' });
+    });
+    // scan:wreckInvestigated named the loss and nobody said it. One comms line
+    // per loss id, so a second read replaces the sentence instead of stacking it.
+    bus.on('scan:wreckInvestigated', (p) => {
+      const line = wreckMemorialLine(p);
+      if (line) this.bus.emit('voice:say', line);
+    });
+    bus.on('massline:releaseCancelled', () => this.play(combatVerbRecipe('massline:releaseCancelled'), { gain: 0.28 }));
+    bus.on('weapons:momentumSinkPlanted', () => this.play(combatVerbRecipe('weapons:momentumSinkPlanted'), { gain: 0.4 }));
+    bus.on('weapons:momentumSinkReleased', () => this.play(combatVerbRecipe('weapons:momentumSinkReleased'), { gain: 0.35 }));
+    // Ceres living-work stamps already carry the calving on lamp/text channels; audio joins for
+    // the rock's two own beats only (groan before the split, the split itself). The receipt has no
+    // position — the bound actor is resolved read-only from the live cast, and play() culls
+    // anything past world-hearing range, so a pocket the player left stays silent.
+    bus.on('traffic:ceresCausalChain', (p) => this._onCeresCausalChain(p));
+    bus.on(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresWorkAction(p));
+    bus.on('pickup:collected', (p) => this._onPickupCollected(p));
+    bus.on('cargo:changed', () => this._onPickupHoldChanged());
+    bus.on('cargo:full', (p) => this._onPickupHoldChanged(p));
+    bus.on('loot:overflowConverted', (p) => this._onOverflowConverted(p));
+    bus.on('loot:magnetCaptured', (p) => this._onMagnetCaptured(p));
+    // Stunt chain voices (CV-EAR slice 3): player links pluck up a pentatonic ladder, the
+    // bank lands a rising interval. Bridges stay silent — the near-miss bark already speaks.
+    bus.on('stunt:trickDetected', (p) => this._onStuntTrickDetected(p));
+    bus.on('stunt:styleBanked', (p) => this._onStuntStyleBanked(p));
+    // SWARM-06 — the run's kill chain is the music's third hand. swarmChain.js owns the count;
+    // the audio side only keeps the latest figure so the next theme resolve can lift the stems
+    // and the next kill confirm can climb the pitch. A break or any run boundary floors it.
+    bus.on('swarm:chain', (p) => {
+      if (this.rt && Number.isFinite(p && p.chain)) this.rt._swarmChain = p.chain;
+    });
+    bus.on('swarm:chainBroken', () => { if (this.rt) this.rt._swarmChain = 0; });
+    bus.on('run:started', () => { if (this.rt) this.rt._swarmChain = 0; });
+    bus.on('run:ended', () => { if (this.rt) this.rt._swarmChain = 0; });
+    // Salvage plate unlock: hydraulic release hiss + the freed panel's clunk. The spark shower is
+    // vfx-owned (salvage:cutComplete subscription there); this is its sound.
+    bus.on('salvage:cutComplete', (p) => {
+      const ent = p && p.payloadId != null && this.state && this.state.entities
+        ? this.state.entities.get(p.payloadId) : null;
+      this.play('sfx_salvage_plate', { position: ent && ent.pos ? ent.pos : (p && p.pos), gain: 0.85 });
+    });
+    bus.on('credits:changed', (p) => {
+      for (const id of incomeVoices('credits:changed', p)) this.play(id, { gain: 0.72 });
+    });
+    bus.on('economy:tradeCompleted', (p) => {
+      for (const id of incomeVoices('economy:tradeCompleted', p)) this.play(id, { gain: 0.6 });
+    });
+    // ECON-03 — a refused trade answers in the station's voice: one comms line naming the
+    // reason, captioned by the voice pipeline. Deliberately not ui_deny — the menu blip is
+    // the wrong register for a counter that declines you.
+    bus.on('economy:tradeFailed', (p) => this._onTradeFailed(p || {}));
+    bus.on('mines:capReached', (p) => this._onMineCapReached(p));
+    // Cargo jettison (HUD cargo panel "JETTISON" → cargo.js dump): previously TOTAL silence for an
+    // audible world act — pods shoved out an airlock. FB-073: this handler is the single jettison
+    // voice on every route; the event has no position, so play() resolves the player ship locally
+    // and the dump reads at the hull.
+    bus.on('cargo:jettisoned', (p) => this._onCargoJettisoned(p));
+    // FB-142 — the planet verbs' voices: intake, deposit, refusal, the stage ring, the burn.
+    bus.on('planet:collector', (p) => this._onPlanetVerb('planet:collector', p));
+    bus.on('planet:harvest', (p) => this._onPlanetVerb('planet:harvest', p));
+    bus.on('planet:harvestDenied', (p) => this._onPlanetVerb('planet:harvestDenied', p));
+    bus.on('planet:plungeStage', (p) => this._onPlanetVerb('planet:plungeStage', p));
+    bus.on('planet:recoveryBurn', (p) => this._onPlanetVerb('planet:recoveryBurn', p));
+    // Mission accept/complete: previously TOTAL silence on the core progression loop. Accept gets a
+    // bright rising stinger; complete gets a triumphant two-note chord + a brief music duck so the
+    // payoff lands above the bed.
+    bus.on('mission:accepted', () => {
+      this.play('sfx_mission_accept', { gain: 0.7, captionOwned: true });
+      this._emitNamedCaption(missionMomentCaption('mission:accepted'));
+    });
+    bus.on('mission:completed', () => {
+      this._duckMusic();
+      this.play('sfx_mission_complete', { gain: 0.8, captionOwned: true });
+      this._emitNamedCaption(missionMomentCaption('mission:completed'));
+    });
+    // Mission failure/expiry: previously silent on the negative outcome (only accept/complete had
+    // sound). A short low deny cue signals the setback without celebration.
+    bus.on('mission:failed', () => this._onCue('deny'));
+    bus.on('mission:expired', () => this._onCue('deny'));
+    // INST-27: a bastion's raid warning uses the wanted-alert voice quietly.
+    // One play per event. It does not duck the bed — urgency without a menu beep.
+    bus.on('claim:raidWarning', (p) => this._onClaimRaidWarning(p));
+    bus.on('service:queued', () => {
+      this._onServiceBerthCue('queued');
+      this._emitNamedCaption(serviceMomentCaption('service:queued'));
+    });
+    bus.on('service:started', () => this._onServiceBerthCue('started'));
+    bus.on('service:aborted', () => this._onServiceBerthCue('aborted'));
+    bus.on('service:completed', (p) => this._onServiceCompleted(p));
+    bus.on('service:decanted', (p) => this._onServiceDecanted(p));
+    for (const eventName of Object.keys(UNIQUE_LOOT_CUES)) {
+      bus.on(eventName, () => this._onUniqueLootCue(eventName));
+    }
+    bus.on('buildIdentity:revealed', (p) => this._onBuildIdentityRevealed(p));
+    bus.on('discovery:plateUnlocked', (p) => this._onDiscoveryUnlocked(p));
+    bus.on('uniqueWreck:bearingFixed', (p) => this._onUniqueWreckBearingFixed(p));
+    bus.on('poi:discovered', (p) => this._onPoiDiscovered(p));
+    bus.on('dock:docked', (p) => this._onDocked(p));
+    bus.on('combat:shove', (p) => {
+      const id = combatVerbRecipe('shove');
+      if (id) this.play(id, { position: p && p.pos, gain: 0.8 });
+    });
+    bus.on('dock:undocked', () => this._onUndocked());
+    // Existing encounter/doctrine seams drive presentation pressure only; audio never writes AI.
+    bus.on('ai:telegraph', (p) => this._onDoctrineTelegraphAudio(p));
+    bus.on('encounter:telegraph', (p) => this._onEncounterTelegraphAudio(p));
+    bus.on('encounter:resolved', (p) => this._onEncounterResolvedAudio(p));
+    // Jump/cruise one-shots are owned by the normalized presentation lane below. Do not subscribe
+    // to their raw events here: doing so stacks a direct voice with the semantic journey voice.
+    // INST-17 arms a flag only. The arrival chord plays sfx_jump_arrive once underneath;
+    // the raw jump:arrive row stays SILENT.
+    bus.on('jump:start', () => { if (this.rt) this.rt._jumpArrivalWhoosh = true; });
+    bus.on('jump:chargeAbort', () => { if (this.rt) this.rt._jumpArrivalWhoosh = false; });
+    // Mining rewards and seam reads are normalized by presentation. The beam loop remains here,
+    // but raw one-shot subscriptions would double the semantic reward floor.
+    bus.on('weapons:vent', (p) => {
+      if (p && p.ownerId === this.state.playerId && p.phase === 'end') this._onVentBonus(p);
+    });
+    bus.on('charge:detonated', (p) => {
+      const hits = p && Array.isArray(p.hits) ? p.hits.length : 0;
+      this.play('sfx.chargeDetonate', {
+        position: p && p.pos,
+        gain: clamp(0.55 + hits * 0.08, 0.55, 1),
+      });
+      // A charge that lands on several hulls is a massive event — let the world hold its breath
+      // under it so the detonation reads as colossal instead of merely loud.
+      if (hits >= 4) this._triggerHush({ kind: 'structure', pos: p && p.pos });
+    });
+    // Low-fuel alarm: fuel:empty fired with no sound (no warning before you're stranded). A short
+    // alert cue surfaces the emergency. (The continuous low-health alarm is a separate poller.)
+    bus.on('fuel:empty', () => this._onFuelEmpty());
+    // WANTED heat escalation: heat:changed drove VFX/telemetry but was silent — the player could
+    // become hunted with no sound. The authoritative packet keys the whole family (see handler).
+    bus.on('heat:changed', (p) => this._onHeatChanged(p));
+    // Tech research + ship purchase: the two biggest credit sinks get their own voices (they had
+    // been reusing the mission-complete jingle). The ship buy ducks the bed briefly so the low
+    // hull swell reads over whatever was playing.
+    bus.on('tech:researched', (p) => {
+      this.play('sfx_tech_researched', { gain: 0.6, captionOwned: true });
+      this._emitNamedCaption(payoffCaption('tech:researched', p));
+    });
+    bus.on('ship:purchased', (p) => {
+      this._duckMusic();
+      this.play('sfx_ship_purchased', { gain: 0.7, captionOwned: true });
+      this._emitNamedCaption(payoffCaption('ship:purchased', p));
+    });
+    // Achievements and career promotions: previously silent or text-only. An unlocked deed gets
+    // the fanfare (and ducks the bed, like a mission resolve); a rank-up gets the warm chord.
+    bus.on('achievement:unlocked', (p) => {
+      this._duckMusic();
+      this.play('sfx_achievement_fanfare', { gain: 0.75, captionOwned: true });
+      this._emitNamedCaption(payoffCaption('achievement:unlocked', p));
+    });
+    bus.on('career:ladder:completed', (p) => {
+      this.play('sfx_promotion_chord', { gain: 0.7, captionOwned: true });
+      this._emitNamedCaption(payoffCaption('career:ladder:completed', p));
+    });
+    // A faction naming you a new rank (or taking one back) — the comms log and news already say it.
+    bus.on('faction:repChanged', (p) => this._onFactionRepChanged(p));
+    // Feature 16 — the ka-ching. Settled sales ring the register; buys stay a quiet confirm.
+    // A profitable lot rings a shade brighter so the good deal is audible, not just green.
+    bus.on('economy:tradeCompleted', (p) => {
+      const voice = sellRegisterVoice(p);
+      if (!voice) return;
+      this.play(voice.id, { gain: voice.gain, rate: voice.rate, captionOwned: true });
+      this._emitNamedCaption(saleCaption(p));
+    });
+    bus.on('sector:enter', (p) => {
+      rt._activeCombatEncounters.clear();
+      rt._doctrineThreatUntil = -1e9;
+      this._sessionBoundaryReset();
+      this._applyThemeMatrix(p && p.sectorId);
+      this._markMusicDirty();
+    });
+    bus.on('ship:boostStart', (p) => {
+      // Boost activation: a dedicated breathy whoosh, distinct from explosions.
+      // Player-only (NPCs spam this).
+      if (p && p.shipId === this.state.playerId) this.play('sfx_boost_whoosh', { gain: 0.35 });
+    });
+    bus.on('ship:boostStop', (p) => {});
+    // Route handoff commits the autopilot brake once per leg approach (routeFollower).
+    bus.on('nav:routeBrake', (p) => this._onRouteBrake(p));
+    bus.on('ship:dash', (p) => {
+      // Dash: layered whoosh+thump (juice recipe), player-only. A swing-drive dash is the
+      // same recipe slowed, so the pendulum press is audible without a second verb owner.
+      if (p && p.shipId === this.state.playerId) {
+        this.play('sfx.shipDash', p.swung ? { gain: 0.85, rate: 0.78 } : { gain: 0.7 });
+      }
+    });
+    // Sustained cruise is still the engine-hum 'cruise' tier (65 Hz fifth). Presentation owns
+    // finite charge/lock accents so a second continuous oscillator can never leak into the pool.
+    bus.on('cruise:engaged', () => {
+      if (this.rt) this.rt._wantCruise = true;
+      this._syncCruiseLoop();
+    });
+    bus.on('cruise:dropped', () => {
+      if (this.rt) this.rt._wantCruise = false;
+      this._stopCruiseLoop();
+    });
+    bus.on('cruise:snared', () => {
+      if (this.rt) this.rt._wantCruise = false;
+      this._stopCruiseLoop();
+      this._applyPriorityCue({ id: 'cruise.snared', importance: 0.88, playerRelevance: 1 });
+      this.play('sfx.cruiseSnared', { gain: 0.75, critical: true });
+    });
+    // Scanner one-shots are presentation-owned so pulse, return and classification form one family.
+    // One-voice comms squelch (never overlaps; queue by gate).
+    bus.on('comms:popup', (p) => this._onCommsPopup(p));
+    // Live priority duck from presentation importance (Destiny hierarchy).
+    bus.on('presentation:cue', (p) => {
+      if (p && isPriorityCue(p)) this._applyPriorityCue(p);
+    });
+    bus.on('toast', (p) => {
+      if (p && (p.silent === true || p.audio === false || p.audioOwnedByVerb === true)) return;
+      this._onCue((p && (p.kind === 'error' ? 'error' : 'click')));
+    });
+    bus.on('alert', (p) => {
+      if (!alertCueOwnsAudio(p)) return;
+      this._onCue({
+        id: 'alert',
+        importance: (p && (p.sev === 'danger' || p.sev === 'warn')) ? 0.9 : 0.75,
+        duck: !!(p && (p.sev === 'danger' || p.sev === 'warn')),
+      });
+    });
+    bus.on('audio:cue', (p) => this._onCue(p));
+    rt._trailerScoreDispose = bindTrailerScore(this);
+    rt._ironKrakenAudioDispose = bindIronKrakenAudio(this);
+    bus.on('tether:reel', (p) => this._onMasslineInstrument('reel', p));
+    bus.on('tether:releaseRated', (p) => this._onMasslineInstrument('release', p));
+    bus.on('tether:broken', (p) => {
+      const reason = String((p && p.reason) || '').toLowerCase();
+      // A chosen cut stamps the release window so a later releaseRated does not snap.
+      // Presentation's quiet set (sector changes, accepted handoff, flight exit) is the
+      // same silence: those are the line being left behind, not a cable that failed.
+      // 'cut' and 'release' stay quiet here even though presentation still names a generic
+      // break for them — they are the player's let-go, and the stamp depends on them.
+      const deliberate = reason === 'tether_cut' || reason === 'cut' || reason === 'release';
+      if (deliberate && this.rt) this.rt._masslinePlayerCutTick = Number(this.state && this.state.tick);
+      if (deliberate || !tetherBreakCueForReason(reason)) return;
+      this._onMasslineInstrument('break', p);
+    });
+    bus.on('tether:attached', (p) => {
+      this._onMasslineInstrument('attach', p);
+      const head = p && (p.headId || p.attachmentDefId || p.defId || p.masslineHeadId);
+      if (head && String(head).toLowerCase().includes('bridle')) this._onMasslineInstrument('bridle', p);
+    });
+    bus.on('tether:strain', (p) => {
+      const tether = this.state && this.state.player && this.state.player.tether;
+      const load = Number(tether && tether.load);
+      const phase = tether && tether.phase;
+      if (phase !== 'loaded' && phase !== 'overload' && !(load >= 0.55)) return;
+      this._onMasslineInstrument('strain', p);
+    });
+    bus.on('tether:nearBreak', (p) => this._onMasslineInstrument('strain', p));
+    // Rope one-shots with no instrument owner use the verb table.
+    // Yield and seam reward stay off this route: presentation already plays them.
+    bus.on('tether:latched', (p) => {
+      const id = combatVerbRecipe('tether:latched');
+      if (!id) return;
+      // The attachment service emits tether:attached first on this same tick, and the
+      // instrument's layered signature (sfx.tetherLatch) already contains the lock recipe
+      // as a layer — a second play stacks the latch's own transient on itself. A bare
+      // tether:latched with no same-tick attach still earns the verb voice.
+      const spokeTick = this.rt && this.rt._masslineAttachSpokeTick;
+      const nowTick = Number(this.state && this.state.tick);
+      if (Number.isFinite(nowTick) && spokeTick === nowTick) return;
+      this.play(id, { gain: 0.65 });
+    });
+    bus.on('tether:broke', (p) => {
+      const id = combatVerbRecipe('tether:broke');
+      if (!id) return;
+      // tether:broken is the line-death authority: its instrument snap already carries this
+      // crack as a layer, and its quiet law is this receipt's silence too — an accepted
+      // handoff, a chosen cut, or the line left behind (dock, flight exit, sector) is not a
+      // failure crack. A bare tether:broke whose break never snapped still earns the voice.
+      const reason = String((p && p.reason) || '').toLowerCase();
+      const deliberate = reason === 'tether_cut' || reason === 'cut' || reason === 'release';
+      if (deliberate || (reason && !tetherBreakCueForReason(reason))) return;
+      // Reconcile can surface a break a tick or two after the attachment authority spoke —
+      // the same lag the cut stamp covers on the release side.
+      const nowTick = Number(this.state && this.state.tick);
+      const spokeTick = this.rt && this.rt._masslineBreakSpokeTick;
+      if (Number.isFinite(nowTick) && Number.isFinite(spokeTick)
+          && nowTick - spokeTick >= 0 && nowTick - spokeTick <= 4) return;
+      this.play(id, { gain: 0.8 });
+    });
+    bus.on('tether:cut', (p) => {
+      const id = combatVerbRecipe('tether:cut');
+      if (id) this.play(id, { gain: 0.55 });
+    });
+    bus.on('tether:snagged', (p) => {
+      const id = combatVerbRecipe('tether:snagged');
+      if (!id) return;
+      const position = p && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
+      this.play(id, { position, gain: 0.7 });
+    });
+    // One twang per tether:rebound. Strain (nearBreak / loaded phase) stays on the instrument.
+    bus.on('tether:rebound', (p) => {
+      const id = combatVerbRecipe('tether:rebound');
+      if (!id) return;
+      const position = p && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
+      this.play(id, { position, gain: 0.7 });
+    });
+    // FB-010 — the transverse snare and the mass seed have voices: authored synth recipes on the
+    // events the deployables already emit, replacing the seed's generic menu-register blips
+    // (confirm/lock_acquired/alert) with the family the verb deserves. Silence is authored too:
+    // snareDeployed (the arm tick + telegraph own the deploy moment), snareEnded (the line going
+    // slack is the absence), massSeed:collapsed (the drop already spoke; the despawn 0.45 s later
+    // is bookkeeping) and massSeed:cleared (cleanup) stay quiet by design.
+    bus.on('massline:snareArmed', () => {
+      this.play('sfx_snare_arm_tick', { gain: 0.5, captionOwned: true });
+      this._captionFieldLife('massline:snareArmed');
+    });
+    bus.on('massline:snareCut', () => {
+      this.play('sfx_snare_cut', { gain: 0.7, captionOwned: true });
+      this._captionFieldLife('massline:snareCut');
+    });
+    bus.on('massSeed:deployed', (p) => {
+      this.play('sfx_massseed_deploy', { gain: 0.55, position: seedPosition(this.state, p && p.spawnPos), captionOwned: true });
+      this._captionFieldLife('massSeed:deployed');
+    });
+    bus.on('massSeed:locking', (p) => {
+      this.play('sfx_massseed_lock_rise', { gain: 0.4, position: seedPosition(this.state, p && p.pos), captionOwned: true });
+      this._captionFieldLife('massSeed:locking');
+    });
+    bus.on('massSeed:locked', (p) => {
+      this.play('sfx_massseed_lock_chord', { gain: 0.55, position: seedPosition(this.state, p && p.pos), captionOwned: true });
+      this._captionFieldLife('massSeed:locked');
+    });
+    bus.on('massSeed:warning', (p) => {
+      this.play('sfx_massseed_warning', { gain: 0.6, position: seedPosition(this.state, null, p && p.seedId), captionOwned: true });
+      this._captionFieldLife('massSeed:warning');
+    });
+    bus.on('massSeed:collapsing', (p) => {
+      this.play('sfx_massseed_collapse', { gain: 0.75, position: seedPosition(this.state, null, p && p.seedId), captionOwned: true });
+      this._captionFieldLife('massSeed:collapsing');
+    });
+    // The player's rope snapped off the seed: the ordinary tether cut voice, not a new one.
+    bus.on('massSeed:tetherCut', () => {
+      const id = combatVerbRecipe('tether:cut');
+      if (id) this.play(id, { gain: 0.6 });
+    });
+    // WF-13 pocket beat: the living-world chain receipts are the one staged "someone's day"
+    // emitter that stayed silent. A beat STARTING within earshot gets one wake voice, positioned
+    // on its primary hull. Phase ticks and cycle bookkeeping stay silent — one wake per beat.
+    bus.on(CERES_CAUSAL_CHAIN_EVENT, (p) => this._onPocketChainBeat(p));
+    bus.on('barkDirector:voice', (p) => this._onBarkVoice(p));
+    // The arbiter is the floor authority: an arbiter-bound bark (payload.voiceId) holds its
+    // resolved voice until the line actually surfaces, so a queued bark never plays early and a
+    // dropped one never plays at all. Receipts without a voiceId (mechanic, direct emits) play
+    // at once, exactly as before.
+    bus.on('voice:surface', (p) => this._onVoiceSurfaceForBarks(p));
+    // The first-hour instructor speaks every tutorial line through the same radio treatment the
+    // barks get — key click, one distinct register, squelch tail — on a single mic, so a beat
+    // that emits two lines in one tick is heard in order. Text surfaces keep their own contracts;
+    // this is the audible delivery, including for lines whose visual floor is suppressed.
+    bus.on('tutorial:say', (p) => this._onInstructorVoice(p));
+    // The route's proof moments (first attach, the swing payoff, the momentum kill, the wanted
+    // beat, its resolution) get the authored moment stinger — the payoff is heard, not just read.
+    bus.on('firsthour:milestone', () => {
+      this._onCue({ id: 'moment.stinger', importance: 0.9, duck: true });
+    });
+    // The curtain-raiser opens the first hour audibly: one low swell under the mood line.
+    bus.on('ui:firstRunSplash:active', () => {
+      this.play('sfx_firsthour_coldopen', { gain: 0.7, critical: true });
+    });
+    bus.on('fields:anchorRegistered', (p) => this._onAnchorSnare(p));
+    bus.on('fields:deployed', (p) => {
+      // INST-24: every field power carries its own deploy voice through the primary
+      // cue table, independent of accessibility settings.
+      // (_playAccessibilityCue('well') legacy audit anchor)
+      const kind = p && p.kind;
+      if (!kind) return;
+      const settings = this.state && this.state.settings;
+      const cap = fieldDeployCaption(kind, settings);
+      const recipeId = fieldDeployRecipe(kind);
+      if (recipeId) {
+        this.play(recipeId, {
+          gain: 0.55,
+          captionOwned: !!(cap && cap.text),
+          position: p && p.center,
+        });
+      }
+      if (cap && cap.text) {
+        this._emitPresentationCaption(cap.text, {
+          channel: 'cue',
+          kind: cap.kind,
+          position: p && p.center,
+        });
+      }
+    });
+    bus.on(VISUAL_EVENT_BUS, (p) => this._onVisualEventAudio(p));
+    bus.on('bulletTime:start', () => {
+      if (massline2Flag('bulletTime')) this._setBulletTimeAudio(true);
+    });
+    bus.on('bulletTime:end', () => this._setBulletTimeAudio(false));
+    bus.on('band:bed', (intent = {}) => {
+      rt._bandBedIntent = { ...intent };
+      if (rt.bandBed) rt.bandBed.setIntent(rt._paused ? { active: false, reason: 'pause' } : rt._bandBedIntent);
+    });
+    bus.on('settings:changed', (p) => {
+      if (!p || p.section === 'audio' || p.section == null) {
+        if (!this._isMuted() && !rt.ctx) {
+          this._ensureContext();
+          return;
+        }
+        this._applySettings();
+        this._setBulletTimeAudio(!!rt._bulletTimeAudioActive);
+      }
+    });
+
+    // Pause respect (V2 §17 anti-pattern: "audio playing behind the pause menu"). When the sim
+    // freezes (pause menu, save-load swap, main menu), duck music + continuous flight beds, stop
+    // alarm scheduling, and skip threat/music recomputation. On resume restore music and re-seed
+    // alarms. UI cues still play so menus feel responsive — but AudioContext unlock itself must
+    // not emit a free "boop" just because the player clicked New Game.
+    bus.on('sim:pause', () => this._onPause(true));
+    bus.on('sim:resume', () => this._onPause(false));
+
+    // ---- the mine's voice (PQ-130.08, law §5/§8) ----
+    // Every row of the law's §5 table, wired to the sim event that actually fires. All of these
+    // are gated on the mine owning the ear (`_mineOwnsEar()`), so nothing leaks into flight.
+    bus.on('drill:yield', (p) => this._onMineCue('oreTick', p, {
+      rate: mineOreTickRate(p && p.qty, p && p.commodityId),
+    }));
+    bus.on('drill:spark', (p) => { if (p && p.bite) this._onMineCue('boreBite', p); });
+    bus.on('drill:break', (p) => this._onMineCue('rockBreak', p));
+    bus.on('drill:gasHit', (p) => this._onMineCue('gasBreach', p));
+    bus.on('drill:cargoFull', (p) => this._onMineCue('hopperFull', p));
+    bus.on('drill:rockDepleted', (p) => this._onMineCue('rockDepleted', p));
+    bus.on('drill:chargePlanted', (p) => this._onMineCue('chargeSet', p));
+    bus.on('drill:chargeBlast', (p) => this._onMineCue('chargeBlast', p));
+    bus.on('drill:chargeTick', (p) => this._onMineCue('chargeTick', p));
+    bus.on('drill:rockCreak', (p) => this._onMineCue('rockCreak', p));
+    bus.on('drill:caveIn', (p) => this._onMineCue('caveIn', p));
+    bus.on('drill:gasVent', (p) => this._onMineCue('ventRelief', p));
+    bus.on('drill:scanPulse', (p) => this._onMineCue('assayPing', p));
+    bus.on('drill:warn', (p) => {
+      const key = MINE_EVENT_CUE_MAP[`drill:warn/${(p && p.reason) || ''}`];
+      if (key) this._onMineCue(key, p);
+    });
+    bus.on('drill:start', () => { this._resetMineRuntime(); });
+    bus.on('drill:end', () => { this._resetMineRuntime(); });
+    bus.on('site:machineInstalled', (p) => this._onMineCue('machinePlaced', p));
+    bus.on('site:courierLaunched', (p) => this._onMineCue('courierLaunch', p));
+    // GAP (documented in the .08 report): no sim owner emits a per-machine status transition.
+    // asteroidSites.js keeps `status.state` in a private `_rt` Map and publishes it only through
+    // `projection()`. The contract below is wired and tested; the emit belongs to `.10`'s owner.
+    bus.on('site:machineStatus', (p) => {
+      if (!p || !p.machineId) return;
+      const starved = p.state === 'no-power' || p.state === 'no-geology'
+        || p.state === 'no-network' || p.state === 'starved';
+      const prev = rt._mineMachineState[p.machineId];
+      rt._mineMachineState[p.machineId] = starved;
+      if (starved && prev !== true) this._onMineCue('machineStarved', p); // once per transition
+      this._syncMachineWork(p);
+    });
+    bus.on('ecology:relayPulse', (p) => playRelayPulse(this, p));
+
+    // UI namespaced cue events (DOM UI may emit these directly).
+    // ui:confirm is the only ui:* semantic event with a producer (src/ui/input.js);
+    // every other UI sound arrives as an audio:cue with a concrete id.
+    bus.on('ui:confirm', () => this._onCue('confirm'));
+
+    // Rebuild graph on load (transient runtime is wiped on load). The save restore clears the
+    // dock flags itself without a dock:undocked emit, so the docked latch and desired loops
+    // must be reconciled from the restored state or the station hum follows the player into
+    // open space for the rest of the session.
+    bus.on('save:loaded', () => {
+      rt._activeCombatEncounters.clear();
+      rt._doctrineThreatUntil = -1e9;
+      this._sessionBoundaryReset();
+      // A save restored mid-boss has no spawn event to replay: seed the latch from the live
+      // entities once, so the boss stem follows the fight across the load.
+      this._seedBossLatchFromState();
+      this._applySettings();
+      this._markMusicDirty();
+    });
+    // A fresh run can never begin docked; these fire while the previous session's (possibly
+    // docked) state is still live, so force the latch open rather than reconcile from state.
+    bus.on('game:new', () => this._sessionBoundaryReset({ forceUndock: true }));
+    bus.on('game:newGame', () => this._sessionBoundaryReset({ forceUndock: true }));
+    // Quit-to-menu leaves state.ui.docked stale (nothing emits dock:undocked and nothing clears
+    // it until the next run) — force the latch open so the station hum cannot follow the player
+    // onto the main menu.
+    bus.on('game:exitToMenu', () => this._sessionBoundaryReset({ forceUndock: true }));
+    bus.on('game:started', () => { /* context already (or soon) created on gesture */ });
+    bindMinimalActionAudio(this, bus);
+    bindBombAudio(this, bus);
+    bindFieldAudio(this, bus);
+    installCombatVerbCueDispatch(this, bus);
+    installWorldFeelSeams(this, bus);
+
+    // If a context already exists (hot reload), wire immediately.
+    if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
+      // do not auto-create — wait for gesture; but be ready.
+    }
+  },
+
+  // Implemented for completeness; the rAF loop is the real per-frame driver since the
+  // registry does not call audio.update().
+  update(dt, state) { /* no-op: driven by _frame() */ },
+
+  destroy() {
+    this._instructorLastText = '';
+    this._instructorLastAtS = -Infinity;
+    this._instructorClearAt = -Infinity;
+    const rt = this.rt;
+    if (!rt) return;
+    rt._lifecycleSuspended = true;
+    // Hard-stop generation: queued _defer() cues die here and nothing defers into a dead runtime.
+    rt._destroyed = true;
+    this._clearDeferred();
+    this._stopFrameLoop();
+    this._stopMusicSchedulers();
+    this._unbindContextState();
+    if (typeof window !== 'undefined' && window.removeEventListener && this._gestureHandler) {
+      window.removeEventListener('pointerdown', this._gestureHandler);
+      window.removeEventListener('keydown', this._gestureHandler);
+    }
+    this._gestureHandler = null;
+    rt._trailerScoreDispose?.();
+    rt._ironKrakenAudioDispose?.();
+    rt._ironKrakenAudioDispose = null;
+    rt._commissionCueDispose?.();
+    rt._commissionCueDispose = null;
+    this._unbindOutputDeviceFollow();
+    this._teardownMine();
+    if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();
+    rt.bandBed = null;
+    if (rt._environmentMix && typeof rt._environmentMix.destroy === 'function') rt._environmentMix.destroy();
+    rt._environmentMix = null;
+    // Decoded buffers + in-flight fetch/decode work must not survive the runtime — dispose()
+    // drops the resident store and makes late decode completions no-op on the dead generation.
+    if (rt._samples && typeof rt._samples.dispose === 'function') rt._samples.dispose();
+    if (rt.ctx && rt.ctx.state !== 'closed' && typeof rt.ctx.close === 'function') {
+      try {
+        const closing = rt.ctx.close();
+        if (closing && typeof closing.catch === 'function') closing.catch(() => {});
+      } catch (_) {}
+    }
+  },
+
+  _bindOutputDeviceFollow() {
+    this._unbindOutputDeviceFollow();
+    const rt = this.rt;
+    if (!rt) return;
+    rt._unbindOutputDeviceFollow = bindOutputDeviceFollow({ onChange: () => this._onOutputDeviceChange() });
+  },
+
+  _unbindOutputDeviceFollow() {
+    const rt = this.rt;
+    if (rt && typeof rt._unbindOutputDeviceFollow === 'function') rt._unbindOutputDeviceFollow();
+    if (rt) rt._unbindOutputDeviceFollow = null;
+  },
+
+  /**
+   * AUDIO-DEVICE-FOLLOW (board row 301). An output-device change must carry the mix to the new device
+   * without a silent launch (an unlocked-never context stays locked until a gesture) and without doubled
+   * loops (the context is resumed, never rebuilt: the schedulers and frame loop that paused when the
+   * context stopped are restarted by the one resume owner). When the context can retarget, the same
+   * graph is pointed at the OS default output with setSinkId('') — a running context does not stay
+   * on a headset that just left.
+   */
+  _onOutputDeviceChange() {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    if (!rt || !ctx || rt._destroyed || ctx.state === 'closed') return 'none';
+    const everRan = rt._contextEverRan === true;
+    const lifecycleSuspended = rt._lifecycleSuspended === true;
+    const muted = this._isMuted();
+    const sink = planSinkRebind({
+      ctxState: ctx.state,
+      lifecycleSuspended,
+      everRan,
+      muted,
+      setSinkIdAvailable: typeof ctx.setSinkId === 'function',
+    });
+    if (sink === 'rebind-default') {
+      // Same context, default sink. A removed headset then stops being the render target
+      // even when the browser left the context running.
+      try {
+        const pending = ctx.setSinkId('');
+        if (pending && typeof pending.catch === 'function') pending.catch(() => {});
+      } catch (_) { /* a missing device must not take the frame loop down */ }
+    }
+    const action = planDeviceChange({
+      ctxState: ctx.state,
+      lifecycleSuspended,
+      everRan,
+      muted,
+    });
+    if (action === 'resume') {
+      // The sink that stopped the context is gone: the resume is the lifecycle owner's own path.
+      rt._resumeAfterLifecycle = true;
+      this._resumeAudioContext(false);
+    }
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('audio:outputDeviceChanged', { action, sink, state: ctx.state });
+    }
+    return action;
+  },
+
+  _markMusicDirty() {
+    if (this.rt) this.rt._musicDirty = true;
+  },
+
+  _markLoopPositionDirty() {
+    if (this.rt) this.rt._loopPositionDirty = true;
+  },
+
+  _setBulletTimeAudio(active) {
+    applyBulletTimeAudioTreatment(this.rt, active, this._isMuted());
+  },
+
+  // ---- context lifecycle ----
+  suspendForLifecycle(reason = 'lifecycle') {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._lifecycleSuspended = true;
+    rt._lifecycleReason = reason;
+    rt._lastWallTime = undefined;
+    this._stopFrameLoop();
+    this._pauseMusicSchedulers();
+    this._suspendRunningContext();
+  },
+
+  resumeFromLifecycle(reason = 'lifecycle') {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._lifecycleSuspended = false;
+    rt._lifecycleReason = reason;
+    rt._lastWallTime = undefined;
+    if (rt._lifecycleSuspendPromise) {
+      const ctx = rt.ctx;
+      rt._lifecycleSuspendPromise.then(() => {
+        if (this.rt !== rt || rt._destroyed || rt.ctx !== ctx) return;
+        if (!rt._lifecycleSuspended) this._resumeAudioContext(false);
+      });
+      return;
+    }
+    this._resumeAudioContext(false);
+  },
+
+  _pauseMusicSchedulers() {
+    const stems = this.rt && this.rt.stems;
+    if (!stems) return;
+    for (const key of STEM_KEYS) {
+      const stem = stems[key];
+      if (stem && typeof stem.pauseScheduler === 'function') stem.pauseScheduler();
+    }
+  },
+
+  _resumeMusicSchedulers() {
+    const stems = this.rt && this.rt.stems;
+    if (!stems) return;
+    for (const key of STEM_KEYS) {
+      const stem = stems[key];
+      if (this.rt._stemIdle && this.rt._stemIdle[key]) continue;
+      if (stem && typeof stem.resumeScheduler === 'function') stem.resumeScheduler();
+    }
+  },
+
+  // THE EAR: land stem faders on the incoming stem's musical grid and keep inaudible stems from
+  // scheduling voices. `quantizeBars` 0 applies now (continuous intensity riding).
+  _applyStemTargets(w, timeConstant, quantizeBars) {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || !w) return;
+    const t = ctx.currentTime;
+    let lead = 'A';
+    for (const key of ['B', 'C', 'D', 'E']) if ((w[key] || 0) > (w[lead] || 0)) lead = key;
+    const leadStem = rt.stems && rt.stems[lead];
+    let at = t;
+    if (quantizeBars > 0 && leadStem && typeof leadStem.nextBoundary === 'function') {
+      const boundary = leadStem.nextBoundary(quantizeBars);
+      if (Number.isFinite(boundary) && boundary >= t && boundary - t <= 4) at = boundary;
+      rt._stemLandAt = at;
+    } else if (rt._stemLandAt > t) {
+      // Intensity riding never cancels a phrase-quantised change still waiting on its downbeat.
+      at = rt._stemLandAt;
+    }
+    rt._stemTargets = rt._stemTargets || {};
+    rt._stemIdle = rt._stemIdle || {};
+    rt._stemQuietSince = rt._stemQuietSince || {};
+    for (const key of STEM_KEYS) {
+      const g = rt.stemGains[key]; if (!g) continue;
+      const target = Math.max(0.0001, w[key] || 0);
+      rt._stemTargets[key] = target;
+      const stem = rt.stems && rt.stems[key];
+      if (target > 0.002) {
+        rt._stemQuietSince[key] = null;
+        if (rt._stemIdle[key]) {
+          rt._stemIdle[key] = false;
+          if (!rt._paused && stem && typeof stem.resumeScheduler === 'function') stem.resumeScheduler();
+        }
+      } else if (rt._stemQuietSince[key] == null) {
+        rt._stemQuietSince[key] = at;
+      }
+      try {
+        g.gain.cancelScheduledValues(at);
+        g.gain.setTargetAtTime(target, at, timeConstant);
+      } catch (_) { try { g.gain.value = target; } catch (__) {} }
+    }
+  },
+
+  _idleQuietStems() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || !rt._stemQuietSince) return;
+    for (const key of STEM_KEYS) {
+      const since = rt._stemQuietSince[key];
+      if (since == null || rt._stemIdle[key] || ctx.currentTime - since < XFADE_S * 2) continue;
+      const stem = rt.stems && rt.stems[key];
+      if (stem && typeof stem.pauseScheduler === 'function') stem.pauseScheduler();
+      rt._stemIdle[key] = true;
+    }
+  },
+
+  _stopMusicSchedulers() {
+    const rt = this.rt;
+    const stems = rt && rt.stems;
+    if (!stems) return;
+    for (const key of STEM_KEYS) {
+      const stem = stems[key];
+      if (stem && typeof stem.stop === 'function') stem.stop();
+      stems[key] = null;
+    }
+  },
+
+  _bindContextState(ctx) {
+    const rt = this.rt;
+    if (!rt || !ctx || typeof ctx.addEventListener !== 'function') return;
+    this._unbindContextState();
+    const onStateChange = () => {
+      if (!this.rt || this.rt.ctx !== ctx) return;
+      if (ctx.state === 'running') {
+        rt._contextEverRan = true;
+        if (rt._lifecycleSuspended) {
+          rt._resumeAfterLifecycle = true;
+          this._stopFrameLoop();
+          this._pauseMusicSchedulers();
+          this._suspendRunningContext();
+          return;
+        }
+        // Promise fulfillment owns the first post-resume transfer. A statechange can arrive before
+        // device acquisition has actually settled, especially on interrupted mobile contexts.
+        if (rt._resumePromise) return;
+        rt._resumeAfterLifecycle = false;
+        rt._lastWallTime = undefined;
+        this._resumeMusicSchedulers();
+        this._startFrameLoop();
+        return;
+      }
+      this._stopFrameLoop();
+      this._pauseMusicSchedulers();
+    };
+    rt._contextStateChangeHandler = onStateChange;
+    ctx.addEventListener('statechange', onStateChange);
+    if (ctx.state === 'running') rt._contextEverRan = true;
+  },
+
+  _unbindContextState() {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    const handler = rt && rt._contextStateChangeHandler;
+    if (ctx && handler && typeof ctx.removeEventListener === 'function') {
+      try { ctx.removeEventListener('statechange', handler); } catch (_) {}
+    }
+    if (rt) rt._contextStateChangeHandler = null;
+  },
+
+  _suspendRunningContext() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || ctx.state === 'closed') return;
+    if (ctx.state === 'running') rt._contextEverRan = true;
+    if (rt._contextEverRan) rt._resumeAfterLifecycle = true;
+    if (ctx.state !== 'running' || typeof ctx.suspend !== 'function') return;
+    if (rt._lifecycleSuspendPromise) return;
+    let result;
+    try { result = ctx.suspend(); } catch (_) { return; }
+    const pending = Promise.resolve(result)
+      .catch(() => {})
+      .then(() => {
+        if (this.rt !== rt || rt._destroyed || rt.ctx !== ctx) return;
+        if (!rt._lifecycleSuspended && rt._resumeAfterLifecycle) {
+          this._resumeAudioContext(false);
+        }
+      })
+      .finally(() => {
+        if (rt._lifecycleSuspendPromise === pending) rt._lifecycleSuspendPromise = null;
+      });
+    rt._lifecycleSuspendPromise = pending;
+  },
+
+  _resumeAudioContext(allowAutoplayResume) {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || rt._destroyed || rt._lifecycleSuspended || ctx.state === 'closed') return null;
+    if (rt._resumePromise) return rt._resumePromise;
+    if (ctx.state === 'running') {
+      rt._contextEverRan = true;
+      rt._resumeAfterLifecycle = false;
+      rt._lastWallTime = undefined;
+      this._resumeMusicSchedulers();
+      this._startFrameLoop();
+      return null;
+    }
+    const resumable = ctx.state === 'suspended' || ctx.state === 'interrupted';
+    if (!resumable || (!allowAutoplayResume && !rt._resumeAfterLifecycle)
+      || typeof ctx.resume !== 'function') return null;
+
+    // Install a guard before invoking resume(): some implementations expose `running` or dispatch
+    // statechange synchronously while device acquisition is still pending.
+    const placeholder = Promise.resolve();
+    rt._resumePromise = placeholder;
+    let result;
+    try {
+      result = ctx.resume();
+    } catch (_) {
+      if (rt._resumePromise === placeholder) rt._resumePromise = null;
+      return null;
+    }
+    const pending = Promise.resolve(result)
+      .then(() => {
+        if (this.rt !== rt || rt._destroyed || rt.ctx !== ctx) return;
+        if (rt._lifecycleSuspended) {
+          this._suspendRunningContext();
+          return;
+        }
+        if (ctx.state === 'running') {
+          rt._contextEverRan = true;
+          rt._resumeAfterLifecycle = false;
+          rt._lastWallTime = undefined;
+          this._resumeMusicSchedulers();
+          this._startFrameLoop();
+        }
+      }, () => {
+        // Preserve lifecycle-owned resume intent. A later gesture or context statechange can retry
+        // without mistaking a failed device acquisition for a completed resume.
+      })
+      .finally(() => {
+        if (rt._resumePromise === pending) rt._resumePromise = null;
+      });
+    rt._resumePromise = pending;
+    return pending;
+  },
+
+  _ensureContext() {
+    const rt = this.rt;
+    if (!rt || rt._lifecycleSuspended || this._isMuted()) return null;
+    if (rt.ctx) {
+      if (!rt._contextStateChangeHandler) this._bindContextState(rt.ctx);
+      this._resumeAudioContext(true);
+      return rt.ctx;
+    }
+    const AC = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
+    if (!AC) return null;
+    let ctx;
+    try { ctx = new AC(); } catch (_) { return null; }
+    rt.ctx = ctx;
+
+    // master -> limiter -> destination
+    // Start the graph silent: createGain() defaults to 1.0, and the first gesture often lands on
+    // the main menu. Ramping down from full volume after oscillators start is the classic "boop".
+    const master = ctx.createGain();
+    master.gain.value = 0.0001;
+    const limiter = ctx.createDynamicsCompressor();
+    try {
+      limiter.threshold.value = -6; limiter.knee.value = 6; limiter.ratio.value = 12;
+      limiter.attack.value = 0.003; limiter.release.value = 0.25;
+    } catch (_) {}
+    const sfxBus = ctx.createGain();
+    const musicBus = ctx.createGain();
+    musicBus.gain.value = 0.0001;
+    const engineBus = ctx.createGain();
+    const ambientBus = ctx.createGain();
+    const combatBus = ctx.createGain();
+    const uiBus = ctx.createGain();
+    const commsBus = ctx.createGain();
+    // Slow-time treatment lives on pooled filters for physical buses only. UI/comms remain crisp.
+    const engineSlowFilter = ctx.createBiquadFilter();
+    const ambientSlowFilter = ctx.createBiquadFilter();
+    const combatSlowFilter = ctx.createBiquadFilter();
+    for (const filter of [engineSlowFilter, ambientSlowFilter, combatSlowFilter]) {
+      filter.type = 'lowpass';
+      filter.frequency.value = BULLET_TIME_AUDIO.openHz;
+      filter.Q.value = 0.55;
+      filter.connect(sfxBus);
+    }
+    // Hull-breach depressurization: one low-pass per world-facing bus (engine/ambient/combat
+    // ahead of the slow-time stage, music straight into master). Wide open at boot — the
+    // `_updateHullBreach` poller pulls the cutoffs down while the cabin is venting. UI/comms
+    // bypass it on purpose: cockpit speakers and the radio live inside the pressure hull.
+    const engineBreach = ctx.createBiquadFilter();
+    const ambientBreach = ctx.createBiquadFilter();
+    const combatBreach = ctx.createBiquadFilter();
+    const musicBreach = ctx.createBiquadFilter();
+    for (const filter of [engineBreach, ambientBreach, combatBreach, musicBreach]) {
+      filter.type = 'lowpass';
+      filter.frequency.value = HULL_BREACH_MIX.openHz;
+      filter.Q.value = 0.5;
+    }
+    engineBreach.connect(engineSlowFilter);
+    ambientBreach.connect(ambientSlowFilter);
+    combatBreach.connect(combatSlowFilter);
+    musicBreach.connect(master);
+    rt._breachFilters = [engineBreach, ambientBreach, combatBreach, musicBreach];
+    rt._breachCutHz = HULL_BREACH_MIX.openHz;
+    rt._breachBed = null;
+    engineBus.connect(engineBreach);
+    ambientBus.connect(ambientBreach);
+    combatBus.connect(combatBreach);
+    // Occlusion stubs: positional voices on the physical buses route through one shared
+    // lowpass per bus while the listener sits inside a pressurized space — the world outside
+    // the hull muffles. Interior voices (non-positional, UI, comms) never touch these.
+    rt._occlusionFilters = {};
+    for (const [occlBusName, occlBus] of [['engine', engineBus], ['ambient', ambientBus], ['combat', combatBus]]) {
+      const f = ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = rt._occlusionCutHz;
+      f.Q.value = 0.7;
+      f.connect(occlBus);
+      rt._occlusionFilters[occlBusName] = f;
+    }
+    uiBus.connect(sfxBus);
+    commsBus.connect(sfxBus);
+    sfxBus.connect(master);
+    musicBus.connect(musicBreach);
+    // PQ-158.05: one convolver per environment class, wet-tapped from the two mix buses.
+    if (rt._environmentMix && typeof rt._environmentMix.destroy === 'function') rt._environmentMix.destroy();
+    rt._environmentMix = createEnvironmentMixRuntime(ctx, master);
+    try {
+      sfxBus.connect(rt._environmentMix.send);
+      musicBus.connect(rt._environmentMix.send);
+    } catch (_) {}
+    master.connect(limiter);
+    limiter.connect(ctx.destination);
+    rt.masterGain = master; rt.limiter = limiter; rt.sfxBus = sfxBus; rt.musicBus = musicBus;
+    rt.engineBus = engineBus; rt.ambientBus = ambientBus; rt.combatBus = combatBus;
+    rt.uiBus = uiBus; rt.commsBus = commsBus;
+    // The mine hangs off the AMBIENT bus on purpose: ambient is the one bus the pause path never
+    // touches (see `_onPause` / `_silenceContinuousSources`), it already carries the sfx+ambient
+    // sliders and the sidechain, and `getBusForRecipe` already routes every mining recipe there.
+    // One `mineBus` fader lets the whole soundscape fade in on enter and out on retract (§9).
+    const mineBus = ctx.createGain();
+    mineBus.gain.value = 0.0001;
+    const mineBedGain = ctx.createGain();
+    const mineGrindGain = ctx.createGain();
+    const mineCueGain = ctx.createGain();
+    mineBedGain.gain.value = 0.0001;
+    mineGrindGain.gain.value = 0.0001;
+    mineCueGain.gain.value = 1;
+    mineBedGain.connect(mineBus);
+    mineGrindGain.connect(mineBus);
+    mineCueGain.connect(mineBus);
+    mineBus.connect(ambientBus);
+    rt._mineBus = mineBus; rt._mineBedGain = mineBedGain;
+    rt._mineGrindGain = mineGrindGain; rt._mineCueGain = mineCueGain;
+    rt._mineBed = null; rt._mineGrind = null; rt._mineVoices = [];
+    // Fresh graph: every cached "already written" target belongs to nodes that no longer exist.
+    rt._busGainCache = null;
+    rt._bedTargetCache = null;
+    rt._bulletTimeFilters = [engineSlowFilter, ambientSlowFilter, combatSlowFilter];
+    if (rt.bandBed) rt.bandBed.destroy();
+    rt.bandBed = createBandBedRuntime(ctx, ambientBus);
+    rt.bandBed.setIntent(rt._paused ? { active: false, reason: 'pause' } : rt._bandBedIntent);
+
+    getNoiseBuffer(ctx, rt._caches); // pre-build the shared noise buffer
+
+    // PQ-158.00: the graph exists — warm the core sample tier. Fetch+decode are promise-driven
+    // (decodeAudioData runs off the main thread); nothing here polls on a frame.
+    if (rt._samples) {
+      rt._samples.setContext(ctx);
+      rt._samples.prefetchTier(0);
+      // Action tier too — menu dwell is the warm window; the first combat cue otherwise
+      // falls back to full-synth while its designed layer fetches. The LRU budget keeps
+      // the whole library resident anyway, so this only moves the decode earlier.
+      rt._samples.prefetchTier(1);
+      // X4 #3: the five 16 s authored stems are tier 2 and are NOT force-acquired here. Each one
+      // is fetched+decoded the first time its state is actually heard (`_setMusicState`), so a
+      // menu dwell no longer pays ~10 MB of decoded music for a state the player has not reached.
+    }
+
+    this._applySettings();
+    this._setBulletTimeAudio(!!rt._bulletTimeAudioActive);
+
+    // Continuous flight layers belong in flight. Starting them on the first menu click hard-starts
+    // oscillators into a live graph and produces a one-shot "boop" with no gameplay reason.
+    // Build the music graph so pause/resume can own it, but re-apply pause silence afterward —
+    // sim:pause may have fired before AudioContext existed (main menu at boot).
+    if (!rt._paused) this._ensureContinuousSources();
+    this._buildMusic();
+    this._bindContextState(ctx);
+    if (ctx.state !== 'running') this._pauseMusicSchedulers();
+    if (rt._paused) this._onPause(true);
+    this._resumeAudioContext(true);
+    return ctx;
+  },
+
+  /** Start continuous engine / brake / tether graphs once AudioContext is live. */
+  _ensureContinuousSources() {
+    this._ensureEngineHum();
+    this._ensureBrakeHiss();
+    this._ensureTetherHum();
+    this._ensurePressureBed();
+  },
+
+  /**
+   * The pressure layer: a continuous threat-scaled growl riding the combat bus so escalation
+   * is audible between shots. Built once with the other flight beds; parameter writes are
+   * change-gated through `_bedTargetCache` like the tether hum.
+   */
+  _ensurePressureBed() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || !rt.combatBus || rt._pressureGain) return;
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, rt._caches);
+    noise.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = PRESSURE_MIX.bedBaseHz;
+    filter.Q.value = PRESSURE_MIX.bedQ;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+    gain.gainValue = 0.0001;
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.value = PRESSURE_MIX.subHz;
+    const subGain = ctx.createGain();
+    subGain.gain.value = 0.0001;
+    subGain.gainValue = 0.0001;
+    noise.connect(filter);
+    filter.connect(gain);
+    sub.connect(subGain);
+    subGain.connect(gain);
+    gain.connect(rt.combatBus);
+    try { noise.start(ctx.currentTime); sub.start(ctx.currentTime); } catch (_) {}
+    rt._pressureNoise = noise;
+    rt._pressureFilter = filter;
+    rt._pressureGain = gain;
+    rt._pressureSub = sub;
+    rt._pressureSubGain = subGain;
+  },
+
+  _updatePressureLayer() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || rt._paused || !rt._pressureGain) return;
+    const docked = !!(rt._docked || (this.state && this.state.ui && this.state.ui.docked));
+    const threat = combatPressureThreat(rt.threatContext, docked);
+    const now = ctx.currentTime;
+    const gain = pressureBedGainForThreat(threat);
+    const freq = PRESSURE_MIX.bedBaseHz + threat * PRESSURE_MIX.bedSpanHz;
+    const sub = Math.max(0.0001,
+      Math.pow(clamp((threat - PRESSURE_MIX.subAt) / (1 - PRESSURE_MIX.subAt), 0, 1), 2) * PRESSURE_MIX.subGain);
+    const cache = rt._bedTargetCache || (rt._bedTargetCache = Object.create(null));
+    if (cache.pressureGainNode !== rt._pressureGain || cache.pressureGain !== gain) {
+      cache.pressureGainNode = rt._pressureGain;
+      cache.pressureGain = gain;
+      rt._pressureGain.gain.setTargetAtTime(gain, now, 0.12);
+    }
+    rt._pressureGain.gainValue = gain;
+    if (cache.pressureFilterNode !== rt._pressureFilter || cache.pressureFreq !== freq) {
+      cache.pressureFilterNode = rt._pressureFilter;
+      cache.pressureFreq = freq;
+      rt._pressureFilter.frequency.setTargetAtTime(freq, now, 0.15);
+    }
+    if (cache.pressureSubNode !== rt._pressureSubGain || cache.pressureSub !== sub) {
+      cache.pressureSubNode = rt._pressureSubGain;
+      cache.pressureSub = sub;
+      rt._pressureSubGain.gain.setTargetAtTime(sub, now, 0.18);
+    }
+    rt._pressureSubGain.gainValue = sub;
+  },
+
+  /**
+   * Bus-meter ledger: what a console meter bridge would show — applied fader targets times a
+   * bounded per-bus feed estimate (active voice peaks + continuous bed levels). Entries are
+   * preallocated once and mutated in place; the frame path never allocates here.
+   */
+  _writeMixLedger(now) {
+    const rt = this.rt, led = rt && rt._mixLedger;
+    if (!led || now < led.nextAt) return;
+    led.nextAt = now + PRESSURE_MIX.ledgerS;
+    if (!led.entries) {
+      led.entries = new Array(led.cap);
+      for (let i = 0; i < led.cap; i++) {
+        led.entries[i] = {
+          t: 0, simT: 0, threat: 0, pressure: 0, commsDuck: 1, env: 0,
+          engine: 0, ambient: 0, combat: 0, music: 0, ui: 0, comms: 0, sfx: 0, master: 0,
+          combatFader: 0, musicFader: 0, ambientFader: 0, engineFader: 0,
+        };
+      }
+    }
+    const feed = rt._busFeed;
+    for (const k in feed) feed[k] = 0;
+    const voices = rt.voices;
+    for (let i = 0; i < voices.length; i++) {
+      const v = voices[i];
+      if (v && !v._stopped) feed[v.busName || 'sfx'] += Math.min(1, Number(v.callGain) || 0);
+    }
+    const loops = rt.loops;
+    for (const key in loops) {
+      const v = loops[key];
+      if (v && !v._stopped) feed[v.busName || 'sfx'] += Math.min(1, Number(v.callGain) || 0);
+    }
+    if (rt._pressureGain) feed.combat += rt._pressureGain.gainValue || 0;
+    if (rt._pressureSubGain) feed.combat += rt._pressureSubGain.gainValue || 0;
+    if (rt.tetherHum) feed.combat += rt.tetherHum.gainValue || 0;
+    if (rt.tetherOverloadGain) feed.combat += rt.tetherOverloadGain.gainValue || 0;
+    if (rt._tetherSpoolGain) feed.combat += rt._tetherSpoolGain.gainValue || 0;
+    if (rt._engineTelemetry) feed.engine += Math.max(rt._engineTelemetry.humG || 0, rt._engineTelemetry.noiseG || 0);
+    if (rt.bandBed && rt.bandBed.activeGraph && rt.bandBed.activeGraph.output) {
+      feed.ambient += Math.min(1, rt.bandBed.activeGraph.output.gain.value || 0);
+    }
+    feed.music += rt._musicFeed || 0;
+    const lvl = rt._busLevels || {};
+    const e = led.entries[led.head];
+    led.head = (led.head + 1) % led.cap;
+    led.n = Math.min(led.n + 1, led.cap);
+    e.t = now;
+    e.simT = Number(this.state && this.state.simTime) || 0;
+    e.threat = Number(rt.threat) || 0;
+    e.pressure = rt._pressureGain ? (rt._pressureGain.gainValue || 0) : 0;
+    e.commsDuck = rt._commsDuckLive != null ? rt._commsDuckLive : 1;
+    e.env = Math.max(0, ENVIRONMENT_CLASSES.indexOf(rt._environmentClass));
+    e.engine = (lvl.engine || 0) * Math.min(feed.engine, 4);
+    e.ambient = (lvl.ambient || 0) * Math.min(feed.ambient, 4);
+    e.combat = (lvl.combat || 0) * Math.min(feed.combat, 4);
+    e.music = (lvl.music || 0) * Math.min(feed.music, 4);
+    e.ui = (lvl.ui || 0) * Math.min(feed.ui, 4);
+    e.comms = (lvl.comms || 0) * Math.min(feed.comms, 4);
+    e.sfx = lvl.sfx != null ? lvl.sfx : 1;
+    e.master = lvl.master || 0;
+    e.combatFader = lvl.combat || 0;
+    e.musicFader = lvl.music || 0;
+    e.ambientFader = lvl.ambient || 0;
+    e.engineFader = lvl.engine || 0;
+  },
+
+  /** Ordered bus-meter samples, oldest -> newest. Telemetry/test surface. */
+  mixLedger() {
+    const led = this.rt && this.rt._mixLedger;
+    if (!led || !led.entries || !led.n) return [];
+    const out = new Array(led.n);
+    for (let i = 0; i < led.n; i++) {
+      out[i] = led.entries[(led.head - led.n + i + led.cap) % led.cap];
+    }
+    return out;
+  },
+
+  _wallClockMs() {
+    return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  },
+
+  _motionReduced() {
+    const s = this.state && this.state.settings;
+    return !!(s && s.video && s.video.motionReduce);
+  },
+
+  /**
+   * Apply cue-priority duck envelope to weaponLoop / engineLoop targets.
+   * Critical speech / objective / warning also opens a short squelch window so UI & weapon
+   * one-shots do not stack over the important cue (Destiny mix hierarchy).
+   */
+  _applyPriorityCue(cue) {
+    const rt = this.rt;
+    if (!rt || !rt._priorityBus) return null;
+    const nowMs = this._wallClockMs();
+    const envelope = rt._priorityBus.applyCue(cue, nowMs);
+    if (!envelope) return null;
+    rt._criticalSquelchUntilMs = Math.max(rt._criticalSquelchUntilMs || 0, envelope.endMs);
+    return envelope;
+  },
+
+  _isCriticalSquelchActive() {
+    const rt = this.rt;
+    if (!rt) return false;
+    return this._wallClockMs() < (rt._criticalSquelchUntilMs || 0);
+  },
+
+  /** True when a recipe/id should cut through the squelch window (speech/objective/critical). */
+  _isPriorityVoice(recipeId, opts) {
+    if (opts && (opts.critical || opts.priorityCue)) return true;
+    const id = String(recipeId || '');
+    if (id.includes('squelch') || id.includes('alert') || id.includes('mission') || id.includes('lock_acquired')) return true;
+    if (id.includes('shieldBreak') || id.includes('cruiseSnared') || id.includes('player_death')) return true;
+    if (id.includes('tetherLatch') || id.includes('tetherSnap') || id.includes('vent_chime')
+      || id.includes('tether_strain') || id.includes('boost_whoosh')) return true;
+    if (id.startsWith('presentation.') || id.includes('objective') || id.includes('comms')) return true;
+    const cat = (AUDIO_RECIPE_BY_ID[recipeId] && AUDIO_RECIPE_BY_ID[recipeId].category) || '';
+    return cat === 'comms';
+  },
+
+  // Pause/resume handler. Ducks music + continuous flight beds so the pause/main menu is quiet;
+  // SFX one-shots and UI cues keep working (menus need feedback). Idempotent.
+  _onPause(paused) {
+    const rt = this.rt;
+    rt._paused = !!paused;
+    if (paused) {
+      if (rt._threatEar) rt._threatEar.update(this.state, null, false);
+      // Sustained combat/work loops ride buses the pause path does not duck — end them and drop
+      // the desire flags so _frame cannot resurrect them under the menu. A beam still firing
+      // re-arms through combat:fire on the first resumed tick; drillGrind re-derives from state.
+      this._endDesiredLoops();
+    }
+    if (rt.bandBed) {
+      rt.bandBed.setIntent(paused ? { active: false, reason: 'pause' } : rt._bandBedIntent);
+    }
+    // Screen `drill` reaches here as an ordinary pausing screen. Nothing below changes for it —
+    // the music bus SHOULD go to zero inside the rock (law §8) — but the mine's own bed lives on
+    // `ambientBus`, which neither branch touches, so it plays straight through the pause.
+    const mine = this._refreshMineIntent();
+    const ctx = rt.ctx;
+    if (!ctx) return;
+    if (paused) {
+      // Instant silence on pause/menu — no audible ramp-out blip when the first gesture unlocks audio.
+      try {
+        const t = ctx.currentTime;
+        if (rt.musicBus) {
+          invalidateBusGainCache(rt, 'music');
+          rt.musicBus.gain.cancelScheduledValues(t);
+          rt.musicBus.gain.setValueAtTime(0, t);
+        }
+      } catch (_) {}
+      this._silenceContinuousSources();
+    } else {
+      // restore to the configured music base — unless the mine still owns the ear, in which case
+      // the score stays out of the rock (law §8) and `_applySettings` keeps the bus at zero.
+      try {
+        const t = ctx.currentTime;
+        invalidateBusGainCache(rt, 'music');
+        rt.musicBus.gain.cancelScheduledValues(t);
+        rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), t);
+        rt.musicBus.gain.linearRampToValueAtTime(
+          mine.musicSilenced ? 0.0001 : Math.max(0.0001, (rt._musicBase || 0.5) * (rt._bulletTimeMusicMult || 1)),
+          t + 0.4);
+      } catch (_) {}
+      // Flight beds may not exist yet if the first unlock was on the main menu.
+      this._ensureContinuousSources();
+      // re-seed alarm timers so they don't dump a backlog burst on resume
+      rt._alarmNext.lowShield = ctx.currentTime;
+      rt._alarmNext.lowHull = ctx.currentTime;
+      this._markMusicDirty();
+      this._markLoopPositionDirty();
+    }
+  },
+
+  /** Hard-silence continuous flight beds (engine/brake/tether). Used on pause and graph boot. */
+  _silenceContinuousSources() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const silence = (gainNode) => {
+      if (!gainNode || !gainNode.gain) return;
+      try {
+        gainNode.gain.cancelScheduledValues(t);
+        gainNode.gain.setValueAtTime(0.0001, t);
+      } catch (_) { try { gainNode.gain.value = 0.0001; } catch (__) {} }
+    };
+    silence(rt.engineHumGain);
+    silence(rt.engineNoiseGain);
+    silence(rt.engineSubGain);
+    silence(rt.brakeGain);
+    silence(rt.tetherHum);
+    silence(rt.tetherOverloadGain);
+    silence(rt._tetherSpoolGain);
+    if (rt._breachBed) {
+      silence(rt._breachBed.noiseGain);
+      silence(rt._breachBed.subGain);
+      // Track the hard-written values so the next breach update re-asserts the live targets.
+      rt._breachBedGainW = 0.0001;
+      rt._breachSubGainW = 0.0001;
+    }
+    // These params were just hard-written behind the bed updaters' backs. Drop their cached
+    // targets so resume re-asserts the live value even when it happens to equal the cached one
+    // (e.g. still braking across a pause, where a skip would leave the hiss silenced forever).
+    rt._bedTargetCache = null;
+  },
+
+  _isMuted() {
+    // Playwright exposes this standard browser signal even in older probes that bypass the shared
+    // launcher wrapper. Automation never owns the host audio device, regardless of saved settings.
+    // An explicit capture flag opts a headed proof in (PQ-158.06 fight tape), and only then.
+    const allowCaptureAudio = typeof window !== 'undefined' && window.__SF_CAPTURE_AUDIO === true;
+    if (!allowCaptureAudio && typeof window !== 'undefined'
+      && window.navigator
+      && window.navigator.webdriver === true) return true;
+    const a = this.state && this.state.settings && this.state.settings.audio;
+    return !a || a.muted !== false;
+  },
+
+  _applySettings() {
+    const rt = this.rt; if (!rt.ctx) return;
+    const a = (this.state.settings && this.state.settings.audio) || {};
+    applyOutputMix(rt, a);
+    const muted = this._isMuted();
+    const t = rt.ctx.currentTime;
+    const cache = rt._busGainCache || (rt._busGainCache = Object.create(null));
+    // Unlike setTargetAtTime, the 50 ms linear glide below is NOT memoryless: it re-reads
+    // `param.value` and re-anchors, so skipping it mid-glide would change the trajectory. The gate
+    // therefore only stands down once the glide window opened by the last genuine change has
+    // elapsed — at that point the param is sitting on `safe`, and cancel + setValueAtTime(safe) +
+    // linearRamp(safe -> safe) is provably a no-op on the audible signal. Inside the window every
+    // frame still re-applies, so the transient shape is bit-for-bit what it was before.
+    // The cache key is (param identity, target, snap) — `snap` matters on its own because muting
+    // leaves engine/ambient/combat/ui/comms targets untouched and only flips the ramp to a snap.
+    const levels = rt._busLevels || (rt._busLevels = Object.create(null));
+    const ramp = (key, param, target, instant) => {
+      const safe = target <= 0 ? 0 : Math.max(0.0001, target);
+      levels[key] = safe;
+      // Mute / silence targets snap immediately so unlock + mute never leak a 50ms ramp blip.
+      const snap = !!(instant || muted || safe <= 0.0001);
+      const prev = cache[key];
+      const unchanged = !!prev && prev.param === param && prev.target === safe && prev.snap === snap;
+      if (unchanged && t >= prev.settleAt) return;
+      try {
+        param.cancelScheduledValues(t);
+        if (snap) {
+          param.setValueAtTime(safe, t);
+        } else {
+          param.setValueAtTime(Math.max(0.0001, param.value), t);
+          param.linearRampToValueAtTime(safe, t + 0.05);
+        }
+      } catch (_) { try { param.value = safe; } catch (__) {} }
+      // Anchor the settle deadline to the frame the target changed, never to the re-applications
+      // inside the window, or the window would be pushed forward forever and never close.
+      if (!unchanged) cache[key] = { param, target: safe, snap, settleAt: snap ? t : t + 0.05 };
+    };
+
+    const masterVal = a.master == null ? 0.55 : a.master;
+    const focusMuted = !!(this.state && this.state.render && this.state.render.focusLossMuted);
+    const masterTarget = (muted || focusMuted) ? 0 : linearGain(masterVal) * 0.501187;
+    ramp('master', rt.masterGain.gain, masterTarget, true);
+
+    const sfxVal = a.sfx == null ? 0.7 : a.sfx;
+
+    const nowMs = this._wallClockMs();
+    // Breathless-moment envelope: the world ducks under a massive event so the roar that follows
+    // reads as colossal. Master is left alone (it's the user's knob); the interior ui/comms buses
+    // take a softened cut so a critical alert can still ghost through the silence.
+    const hush = this._hushGainFor(nowMs);
+    const hushSoft = 1 - (1 - hush) * 0.55;
+
+    // Choreography: threat leans combat in and music out; a critical comms phrase bows the
+    // whole world mix. All bounded multipliers on the existing faders.
+    const pressure = clamp(Number(rt.threat) || 0, 0, 1);
+    const combatPressure = 1 + PRESSURE_MIX.combatLift * pressure;
+    const musicPressure = 1 - PRESSURE_MIX.musicDuck * pressure;
+    const commsDuck = this._activeCommsDuck(t);
+    rt._commsDuckLive = commsDuck;
+
+    const engineVal = a.engine == null ? 0.7 : a.engine;
+    const engineTarget = linearGain(sfxVal) * linearGain(engineVal) * 0.12589 * hush * commsDuck;
+    ramp('engine', rt.engineBus.gain, engineTarget);
+
+    const sidechain = rt.sidechainDuck || 1.0;
+    const ambientVal = a.ambient == null ? 0.7 : a.ambient;
+    const ambientDuck = rt._weightDuckEnvelope
+      ? weightDuckGainForTarget('ambient', rt._weightDuckEnvelope, nowMs)
+      : 1;
+    const fuelThin = rt._fuelThin == null ? 1 : rt._fuelThin;
+    const ambientTarget = linearGain(sfxVal) * linearGain(ambientVal) * 0.06309 * sidechain * ambientDuck * hush * commsDuck * fuelThin;
+    ramp('ambient', rt.ambientBus.gain, ambientTarget);
+
+    const combatVal = a.combat == null ? 0.7 : a.combat;
+    const combatTarget = linearGain(sfxVal) * linearGain(combatVal) * 0.25119 * hush * combatPressure * commsDuck;
+    ramp('combat', rt.combatBus.gain, combatTarget);
+
+    const uiVal = a.ui == null ? 0.7 : a.ui;
+    const uiTarget = linearGain(sfxVal) * linearGain(uiVal) * 0.1 * hushSoft;
+    ramp('ui', rt.uiBus.gain, uiTarget);
+
+    const commsVal = a.comms == null ? 0.7 : a.comms;
+    const commsTarget = linearGain(sfxVal) * linearGain(commsVal) * 0.15849 * hushSoft;
+    ramp('comms', rt.commsBus.gain, commsTarget);
+
+    // The Voice slider gates stunt-bark delivery upstream but never scaled the heard voices —
+    // barks, the instructor and named contacts ride the comms bus on their own body gain.
+    rt._barkVoiceScale = linearGain(a.voice == null ? 1 : a.voice);
+
+    const musicVal = a.music == null ? 0.32 : a.music;
+    rt._musicBase = linearGain(musicVal) * 0.05012 * sidechain;
+    // Pause/main-menu must keep music bus silent even though _frame re-applies settings every tick.
+    // The mine adds one clause on top of that legacy rule (law §8: the flight score does not
+    // continue inside the rock) — `resolveMineAudioIntent` owns both so they cannot drift.
+    const mine = this._refreshMineIntent();
+    const musicSilenced = mine.musicSilenced;
+    const weightDuck = rt._weightDuckEnvelope
+      ? weightDuckGainForTarget('music', rt._weightDuckEnvelope, nowMs)
+      : 1;
+    const musicTarget = musicSilenced ? 0 : rt._musicBase * (rt._bulletTimeMusicMult || 1) * weightDuck * hush * musicPressure * commsDuck * fuelThin;
+    ramp('music', rt.musicBus.gain, musicTarget, musicSilenced);
+    // The mine bus is NOT ramped here: its envelope is the law's enter/retract fade (§9, ≤600 ms
+    // in), owned by `_updateMine`. It still inherits master + sfx/ambient sliders through
+    // `ambientBus`, so a muted or slider-zeroed game silences it exactly like everything else.
+  },
+
+  /**
+   * Critical comms duck the world mix for the phrase. Audio-clock envelope evaluated in
+   * `_applySettings`; the comms bus itself never bows.
+   */
+  _commsDuck(seconds, gain) {
+    const rt = this.rt;
+    if (!rt) return;
+    const now = rt.ctx ? rt.ctx.currentTime : 0;
+    const dur = Math.max(0.2, Number.isFinite(seconds) ? seconds : COMMS_DUCK.defaultS);
+    const duckGain = Number.isFinite(gain) ? gain : COMMS_DUCK.gain;
+    const endS = now + dur;
+    const phrases = rt._commsPhrases || (rt._commsPhrases = []);
+    phrases.push({ endS, endWall: this._wallClockMs() + dur * 1000, gain: duckGain });
+    if (phrases.length > 8) phrases.shift();
+    rt._commsDuckUntilS = Math.max(rt._commsDuckUntilS || 0, endS);
+    rt._commsDuckGain = duckGain;
+    invalidateBusGainCache(rt, 'engine');
+    invalidateBusGainCache(rt, 'ambient');
+    invalidateBusGainCache(rt, 'combat');
+    invalidateBusGainCache(rt, 'music');
+  },
+
+  /**
+   * Live comms duck. Each phrase releases once, on the audio clock or the wall clock
+   * (a suspended context must not hold the bow after the phrase is over). A later
+   * phrase keeps the bow when an earlier one ends.
+   */
+  _activeCommsDuck(nowS) {
+    const rt = this.rt;
+    if (!rt) return 1;
+    const wall = this._wallClockMs();
+    const phrases = rt._commsPhrases;
+    if (!phrases || phrases.length === 0) {
+      return nowS < (rt._commsDuckUntilS || 0) ? (rt._commsDuckGain || COMMS_DUCK.gain) : 1;
+    }
+    let gain = 1;
+    let live = false;
+    let maxEnd = 0;
+    for (let i = phrases.length - 1; i >= 0; i--) {
+      const phrase = phrases[i];
+      if (nowS >= phrase.endS || wall >= phrase.endWall) {
+        phrases.splice(i, 1);
+        continue;
+      }
+      live = true;
+      if (phrase.endS >= maxEnd) {
+        maxEnd = phrase.endS;
+        gain = phrase.gain;
+      }
+    }
+    rt._commsDuckUntilS = live ? maxEnd : 0;
+    if (!live) rt._commsDuckGain = COMMS_DUCK.gain;
+    return live ? gain : 1;
+  },
+
+  // ---- one-shot SFX API ----
+  play(recipeId, opts) {
+    const rt = this.rt;
+    const ctx = rt.ctx;
+    if (rt._lifecycleSuspended || !ctx || ctx.state !== 'running') return null;
+    if (this._isMuted()) return null; // mute is hard silence — no unlock-ramp leak
+    const recipe = AUDIO_RECIPE_BY_ID[recipeId];
+    if (!recipe) return null;
+    opts = opts || {};
+
+    const busName = getBusForRecipe(recipe, recipeId);
+    if (opts.entity && busName !== 'ui' && busName !== 'combat'
+      && entityNeedsExactAudio(opts.entity, { playerId: this.state && this.state.playerId }) !== true) {
+      return null;
+    }
+    // Strict hierarchy: while speech / objective / critical warning owns the ear,
+    // do not stack weapon fire or routine UI noise on top of it. The player's own
+    // verb, a refusal, and an immediate warning stay readable through that window.
+    if (this._isCriticalSquelchActive() && !this._isPriorityVoice(recipeId, opts)
+      && !mixCueStaysReadable(recipeId, opts)) {
+      if (busName === 'ui' || busName === 'combat') return null;
+    }
+    // A critical comms cue owns the ear — the world mix bows for its phrase.
+    if (busName === 'comms' && (opts.critical || opts.duck)) {
+      this._commsDuck(Number.isFinite(opts.duckSeconds) ? opts.duckSeconds : COMMS_DUCK.defaultS);
+    }
+    // INF-048 — one critical gameplay cue can reserve the same gain position explicitly:
+    // the world mix bows at the published duck levels for its phrase, then returns on the
+    // audio-clock envelope. Explicit opt-in only — critical alone still just cuts the
+    // squelch, and the comms bus itself never bows.
+    if (opts.duck && busName !== 'comms') {
+      this._commsDuck(Number.isFinite(opts.duckSeconds) ? opts.duckSeconds : COMMS_DUCK.defaultS);
+    }
+
+    let att = 1, pan = 0, rate = opts.rate || 1;
+    let lockRate = opts.lockRate === true;
+    let occluded = false;
+    let heardDist = 0;
+    if (opts.position) {
+      if (!Number.isFinite(opts.position.x) || !Number.isFinite(opts.position.z)) return null;
+      const p = this._playerPos();
+      const d = Math.hypot(opts.position.x - p.x, opts.position.z - p.z);
+      heardDist = d;
+      if (d > D_FAR) return null; // cull distant sounds
+      att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
+      pan = clamp((opts.position.x - p.x) / PAN_SPAN, -1, 1);
+      // Interior occlusion: a positional voice heard through the hull is muffled and quieter.
+      const occl = environmentOcclusion(rt._environmentClass);
+      if (occl.gain < 1 && rt._occlusionFilters && rt._occlusionFilters[busName]) {
+        att *= occl.gain;
+        occluded = true;
+      }
+    }
+    // Player damage supplies ship-local panning. Explicit pan intentionally overrides the
+    // world-X positional fallback; all other positional sounds keep the established behavior.
+    if (Number.isFinite(opts.pan)) pan = clamp(opts.pan, -1, 1);
+    if (recipe.dopplerEnabled && opts.position && opts.entityId !== (this.state && this.state.playerId)) {
+      const player = this.state && this.state.entities && this.state.playerId != null
+        ? this.state.entities.get(this.state.playerId)
+        : null;
+      const sourceVel = opts.velocity || (opts.entity && opts.entity.vel) || null;
+      const factor = dopplerFactor(this._playerPos(), player && player.vel, opts.position, sourceVel);
+      const base = opts.rate != null && opts.rate !== 1 ? opts.rate : 1;
+      rate = base * factor;
+      lockRate = true;
+    }
+    let callGain = (opts.gain == null ? 1 : opts.gain);
+    // X4 #4: the rotation for cues a player actually hears. Three form takes per body, advanced
+    // per cue id, so a long fight does not replay one sample identically.
+    const variant = cueVariantFor(rt, recipeId, opts);
+    if (variant) {
+      rate *= variant.rate;
+      callGain *= variant.gain;
+    }
+    if (this._motionReduced() && (busName === 'ambient' || recipeId.includes('traffic') || recipeId.includes('machinery'))) {
+      callGain *= 0.35;
+    }
+    const recipeAmp = (recipe.gainEnvelope && recipe.gainEnvelope.peak) || this._ampFor(recipe);
+    const peak = Math.min(1, recipeAmp * callGain * att);
+    if (peak < 0.0008) return null;
+
+    // PQ-158.00 hybrid: a resident designed sample carries the cue body at `share` of the peak
+    // while the live synth layer keeps the remainder. A not-yet-resident sample degrades to the
+    // full synth voice (no gap, no pop) and schedules the decode that makes the next cue hybrid.
+    // PQ-158.01: a collision cue carrying a ladder cell swaps the generic recipe sample for the
+    // designed material/force sample; the recipe and its synth law stay exactly as they were.
+    const sampleBinding = opts.barkPcmBuffer ? { share: 1, gain: 1, rate: 1 } : rt._samples
+      ? (opts.ladderId ? resolveLadderBinding(opts.ladderId) : null)
+        || (opts.barkSampleId ? resolveBarkSampleBinding(opts.barkSampleId) : null)
+        || resolveSampleBinding(recipeId)
+      : null;
+    const useSample = !!(sampleBinding && sampleBinding.share > 0);
+    const sampleBuffer = opts.barkPcmBuffer || (useSample ? rt._samples.acquire(sampleBinding.sampleId) : null);
+    const synthPeak = sampleBuffer ? peak * (1 - sampleBinding.share) : peak;
+
+    let targetBus = rt.sfxBus;
+    if (busName === 'engine') targetBus = rt.engineBus;
+    else if (busName === 'ambient') targetBus = rt.ambientBus;
+    else if (busName === 'combat') targetBus = rt.combatBus;
+    else if (busName === 'ui') targetBus = rt.uiBus;
+    else if (busName === 'comms') targetBus = rt.commsBus;
+    // Occluded positional voices ride the shared lowpass that feeds their bus.
+    if (occluded) targetBus = rt._occlusionFilters[busName];
+
+    let dest = targetBus;
+    let panner = null;
+    if (pan !== 0 && ctx.createStereoPanner) {
+      panner = ctx.createStereoPanner();
+      panner.pan.value = pan;
+      panner.connect(targetBus);
+      dest = panner;
+    }
+
+    this._noteRecipeHeard(recipeId);
+    if (!this._reserveVoiceSlot(mixCueStaysReadable(recipeId, opts) || this._isPriorityVoice(recipeId, opts))) {
+      return null;
+    }
+    const voice = playRecipe(ctx, recipe, dest, {
+      peakGain: synthPeak, detune: opts.detune || 0, rate, lockRate,
+      id: rt._nextVoiceId++, trackId: opts.trackId || null,
+      startTime: opts.startTime,
+    }, rt._caches);
+    voice.busName = busName;
+    voice.recipeId = recipeId;
+    voice.dist = heardDist;
+    voice.primary = !!opts.primary;
+    voice.critical = !!opts.critical;
+    voice.warning = !!opts.warning;
+    voice.refusalSource = opts.refusalSource || null;
+    voice._panner = panner;
+    voice.loop = !!recipe.loop || (recipe.type && String(recipe.type).startsWith('continuous'));
+    voice.role = busName === 'engine' ? 'engineLoop' : (recipe.category === 'weapon' && voice.loop ? 'weaponLoop' : busName);
+    // Authored reverb sends (recipe.reverbMix): an extra wet tap into the shared environment
+    // send so this voice's tail rides the active room beyond the bus-level mix.
+    if (rt._environmentMix && Number.isFinite(recipe.reverbMix) && recipe.reverbMix > 0) {
+      try {
+        const wet = ctx.createGain();
+        wet.gain.value = Math.min(1, recipe.reverbMix) * 0.9;
+        voice.gain.connect(wet);
+        wet.connect(rt._environmentMix.send);
+        voice._reverbSend = wet;
+        if (voice.nodes) voice.nodes.push(wet);
+      } catch (_) {}
+    }
+    if (sampleBuffer) {
+      attachSampleLayer(ctx, sampleBuffer, sampleBinding, voice,
+        opts.startTime !== undefined ? opts.startTime : ctx.currentTime, {
+          rate, detune: opts.detune || 0,
+          peak: peak * sampleBinding.share,
+          loop: voice.loop,
+        });
+    }
+    rt.voices.push(voice);
+    emitAdmittedRecipeCaption(this, recipeId, recipe, opts, busName);
+    return voice;
+  },
+
+  _ampFor(recipe) {
+    return audioRecipeBasePeak(recipe);
+  },
+
+  _dropVoiceAt(idx) {
+    const rt = this.rt;
+    const v = rt.voices[idx];
+    if (!v) return;
+    try { releaseVoice(rt.ctx, v); } catch (_) {}
+    disposeVoice(v);
+    if (v._panner) { try { v._panner.disconnect(); } catch (_) {} }
+    rt.voices.splice(idx, 1);
+    if (rt.loops) {
+      for (const key in rt.loops) if (rt.loops[key] === v) delete rt.loops[key];
+    }
+  },
+
+  /**
+   * Keep the voice count inside MAX_AUDIO_VOICES. A readable cue may displace a
+   * bomb-field loop; anything else waits rather than stacking past the budget.
+   */
+  _reserveVoiceSlot(protect) {
+    const rt = this.rt;
+    if (!rt || !rt.voices) return false;
+    const oldestDisposable = () => {
+      const now = rt.ctx ? rt.ctx.currentTime : 0;
+      let worstIdx = -1;
+      let worstRank = Infinity;
+      let maxAge = -Infinity;
+      for (let i = 0; i < rt.voices.length; i++) {
+        const v = rt.voices[i];
+        if (!voiceBudgetDisposable(v)) continue;
+        const rank = rankVoiceForBudget(v);
+        const age = now - (v.startedAt || 0);
+        if (rank < worstRank || (rank === worstRank && age > maxAge)) {
+          worstRank = rank;
+          maxAge = age;
+          worstIdx = i;
+        }
+      }
+      return worstIdx;
+    };
+    while (rt.voices.length >= MAX_AUDIO_VOICES) {
+      const idx = oldestDisposable();
+      if (idx < 0) break;
+      this._dropVoiceAt(idx);
+    }
+    if (rt.voices.length < MAX_AUDIO_VOICES) return true;
+    if (protect && rt.loops) {
+      for (const key of Object.keys(rt.loops)) {
+        if (!key.startsWith(BOMB_FIELD_LOOP_PREFIX) && !key.startsWith(BOMB_STATUS_LOOP_PREFIX)) continue;
+        const voice = rt.loops[key];
+        const idx = rt.voices.indexOf(voice);
+        if (idx >= 0) this._dropVoiceAt(idx);
+        else {
+          this._endLoopVoice(voice);
+          delete rt.loops[key];
+        }
+        if (rt.voices.length < MAX_AUDIO_VOICES) return true;
+      }
+    }
+    return rt.voices.length < MAX_AUDIO_VOICES;
+  },
+
+  _evictIfFull() {
+    this._reserveVoiceSlot(false);
+  },
+
+  _playerPos() {
+    const st = this.state;
+    const entities = st && st.entities;
+    const e = entities && typeof entities.get === 'function' && st.playerId != null
+      ? entities.get(st.playerId)
+      : null;
+    const pos = e && e.pos;
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) return pos;
+    return SILENT_LISTENER_POS;
+  },
+
+  // ---- event handlers ----
+  _onFire(p) {
+    if (!p) return;
+    const signature = resolveWeaponAudioSignature(p, this.state);
+    const owner = p.ownerId != null && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(p.ownerId)
+      : null;
+    // Sustained hitscan emitters drone as a loop keyed by owner (stopped on combat:beamStop)
+    // instead of re-striking a one-shot every fire tick. INST-34 added the heavy-beam voice, so
+    // this gates on the RECIPE being a sustained beam rather than on one hardcoded id — a
+    // capital beam that fell through here would machine-gun its drone at the weapon's rof.
+    if (SUSTAINED_BEAM_RECIPE_IDS.has(signature.recipeId)) {
+      this._startBeam(p.ownerId, p.origin, owner, signature.recipeId);
+      return;
+    }
+    this.play(signature.recipeId, {
+      position: p.origin,
+      gain: signature.gain,
+      rate: signature.rate,
+      detune: signature.detune,
+      entity: owner,
+      primary: p.ownerId != null && p.ownerId === this.state.playerId,
+    });
+    // Heavy mounts earn their capacitor spool on the recharge tail (see _maybeChargeWhine).
+    this._maybeChargeWhine(p, owner);
+  },
+
+  // `recipeId` is the owner's own sustained-beam voice (INST-34 added a second one). It is stored
+  // on the want-flag so the _frame resume path re-arms the SAME voice after a context unlock or a
+  // menu veil — resuming a capital beam into the M beam laser's drone was a wrong-voice restart.
+  _startBeam(ownerId, pos, owner = null, recipeId = DEFAULT_BEAM_RECIPE_ID) {
+    const rt = this.rt;
+    if (ownerId == null) return;
+    const beamRecipe = SUSTAINED_BEAM_RECIPE_IDS.has(recipeId) ? recipeId : DEFAULT_BEAM_RECIPE_ID;
+    rt._wantBeam[ownerId] = beamRecipe;
+    const ctx = rt.ctx;
+    // Never start the drone under a pause/menu veil — the want flag survives and _frame
+    // resurrects it on resume if the beam is genuinely still firing.
+    if (!ctx || ctx.state !== 'running' || rt._paused) return;
+    if (rt.loops['beam_' + ownerId]) return;
+    const entity = owner || (this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(ownerId) : null);
+    // Ghost owner (entity despawned across a load/sector/menu boundary): with no positional
+    // anchor the loop would drone at full gain outside live flight. Drop the stale desire —
+    // a beam that is still firing re-arms through the next combat:fire tick.
+    if (!entity && (!this.state || this.state.mode !== 'flight')) {
+      delete rt._wantBeam[ownerId];
+      return;
+    }
+    const position = pos || (entity && entity.pos) || null;
+    const v = this._startLoopVoice(beamRecipe, position, 0.85, { entity });
+    if (v) {
+      v.trackId = ownerId;
+      v.role = 'weaponLoop';
+      v.loop = true;
+      v.busName = 'combat';
+      v._baseGain = v.callGain != null ? v.callGain : 0.85;
+      rt.loops['beam_' + ownerId] = v;
+      this._markLoopPositionDirty();
+    }
+  },
+
+  _stopBeam(ownerId) {
+    const rt = this.rt;
+    if (ownerId == null) return;
+    delete rt._wantBeam[ownerId];
+    const key = 'beam_' + ownerId;
+    const v = rt.loops[key];
+    if (v) { this._endLoopVoice(v); delete rt.loops[key]; }
+  },
+
+  _onHit(p) {
+    if (!p) return;
+    // Ships wait for combat:damage, which knows the layer. A rock has no damage layer, so the
+    // contact chip stays here as the fallback owner. When the same projectile also routed damage
+    // this tick, `_onDamage` has already claimed the one voice and this handler stays silent.
+    const entities = this.state && this.state.entities;
+    const target = p.targetId != null && entities && typeof entities.get === 'function'
+      ? entities.get(p.targetId)
+      : null;
+    const type = target && target.type || p.type;
+    if (type !== 'asteroid') return;
+    // An optic lattice cell answers a bolt or missile through `optic:contact` — the response
+    // cue (thud / ping / split) IS the hit voice, so the generic rock chip would only blur
+    // which answer the field gave. Kinetic rounds keep the chip: no optic response claimed
+    // them. The predicate mirrors planOpticContact's own domain exactly.
+    if (target && opticMaterialOf(target) && p.projectileId != null
+      && typeof entities.get === 'function') {
+      const projectile = entities.get(p.projectileId);
+      if (projectile && (isOpticEnergyBolt(projectile) || isOpticOrdnance(projectile))) return;
+    }
+    if (!this._claimImpactVoice(
+      target && target.id != null ? target.id : p.targetId,
+      this._wallClockMs(),
+      p.pos,
+      'hit',
+    )) return;
+    // A receipt with no live body still knows it struck a rock; do not let a missing entity turn
+    // the chip into the unknown-surface scrape.
+    const materialId = impactMaterialForTarget(target || { type: 'asteroid' }, 'hull');
+    const cue = resolveImpactAudioCue({ eventClass: 'pinprick', materialId });
+    this.play(resolveAudioCueRecipeId(cue.cueId) || 'sfx_mining_impact', {
+      position: p.pos,
+      gain: 0.5,
+      rate: 1.4,
+      entity: target,
+      velocity: target && target.vel,
+    });
+  },
+
+  _onDamage(p) {
+    if (!p) return;
+    const rt = this.rt;
+    if (p.isPlayer) { rt._lastDamageT = this.state.simTime; this._markMusicDirty(); }
+
+    const layer = damageLayer(p);
+    if (!layer) return;
+    const entities = this.state && this.state.entities;
+    const target = p.targetId != null && entities && typeof entities.get === 'function'
+      ? entities.get(p.targetId)
+      : null;
+    const impact = resolveImpactDamageVoice(p, target);
+    const recipeId = impact && impact.recipeId || layerRecipeId(layer);
+    if (!recipeId) return;
+    const nowMs = this._wallClockMs();
+    if (!rt._layerVoiceBook) rt._layerVoiceBook = Object.create(null);
+    if (!admitLayerVoice(rt._layerVoiceBook, p.targetId, layer, nowMs)) return;
+    // One contact, one voice across both raw owners: the projectile chip (`_onHit`) and this
+    // layer voice can see the same asteroid hit in one tick. Ships only reach this handler (and
+    // `_onHit` returns for them), so only the asteroid chip needs the cross-owner claim; two
+    // distinct layer contacts on a ship in one tick keep their own 40 ms gate and both speak.
+    // The rock may already be gone by the time the presentation drain runs. The `_onHit` mark
+    // still names the same target and contact point, so a destroyed asteroid keeps its chip voice
+    // instead of falling through to a second generic layer voice.
+    const onAsteroid = (!!target && target.type === 'asteroid')
+      || this._impactVoiceWasRock(p.targetId, nowMs, p.pos);
+    if (onAsteroid && !this._claimImpactVoice(p.targetId, nowMs, p.pos, 'damage')) return;
+
+    const playerSignature = p.isPlayer ? resolvePlayerDamageAudioSignature(p, this.state) : null;
+    const hitPosition = playerSignature && playerSignature.position || p.pos || p.hitPoint;
+    const gain = playerSignature
+      ? playerSignature.gain
+      : onAsteroid ? 0.5 : (layer === 'armor' ? 0.8 : layer === 'shield' ? 0.7 : 0.9);
+    const attacker = p.attackerId != null && entities && typeof entities.get === 'function'
+      ? entities.get(p.attackerId)
+      : null;
+    this.play(recipeId, {
+      position: hitPosition,
+      gain,
+      rate: playerSignature ? playerSignature.rate : (onAsteroid ? 1.4 : 1),
+      detune: playerSignature ? playerSignature.detune : 0,
+      pan: playerSignature ? playerSignature.pan : undefined,
+      lockRate: !!playerSignature,
+      entity: attacker,
+      velocity: attacker && attacker.vel,
+    });
+  },
+
+  _onDoctrineTelegraphAudio(p) {
+    if (!p || !DOCTRINE_AUDIO_SIGNATURES[p.doctrineId]) return;
+    if (p.targetId != null && p.targetId !== this.state.playerId) return;
+    const now = Number(this.state.simTime) || 0;
+    this.rt._doctrineThreatUntil = Math.max(this.rt._doctrineThreatUntil || -1e9, now + 6);
+    this._markMusicDirty();
+    // Presentation owns the audible setup/phase family. This raw seam only keeps adaptive music
+    // pressure truthful; playing here would stack a second doctrine voice under the semantic cue.
+  },
+
+  _onEncounterTelegraphAudio(p) {
+    if (!p || !p.encounterId || p.deck !== 'combat') return;
+    this.rt._activeCombatEncounters.add(p.encounterId);
+    this._markMusicDirty();
+    // A single restrained escalation cue marks an authored encounter. Routine nearby contacts do
+    // not trigger it, which keeps safe stations calm and makes intentional danger legible.
+    this._playAccessibilityCue('telegraph', { position: p.pos, gain: 0.5 });
+  },
+
+  _onEncounterResolvedAudio(p) {
+    if (!p || !p.encounterId) return;
+    this.rt._activeCombatEncounters.delete(p.encounterId);
+    this._markMusicDirty();
+  },
+
+  // SF-297: the committed-clear exhale. One soft authored settle (the descending filtered sine
+  // already in the recipe book — no new sample, no banner, no toast): the release of pressure is
+  // audible breathing room, and the settle path deliberately ducks nothing. Incoming-fire alarms
+  // and priority cues keep their lanes, so a genuine clear never silences a live warning.
+  _onCommittedClearRelease() {
+    this.play('sfx_travel_settle', { gain: 0.5 });
+  },
+
+  _onDiscoveryUnlocked(p) {
+    if (!p || !p.sectorId || !p.poiId) return;
+    this._duckMusic(1.1);
+    const rt = this.rt;
+    const now = rt && rt.ctx ? rt.ctx.currentTime : Math.max(0, Number(this.state && this.state.simTime) || 0);
+    const grid = rt ? this._stuntGridTime(now) : now;
+    const sixteenth = 60 / stuntScoreBpm(rt && rt.musicState) / 4;
+    const recipe = AUDIO_RECIPE_BY_ID.sfx_discovery_plate_note;
+    const base = recipe && recipe.baseFreq > 0 ? recipe.baseFreq : 523;
+    const voices = discoveryMotifVoices((note, oct) => this._noteFreq(note, oct), grid, sixteenth, base);
+    for (const voice of voices) this.play(voice.recipeId, voice);
+  },
+
+  // The historic-wreck bearing fix is the discovery loop's payoff beat — the rumor bought, the
+  // ring swept, the position fixed — and its HISTORIC WRECK LOCATED plate was silent while the
+  // same plate's POI path answered with the motif. The wreck fix is that plate, so it speaks
+  // with the same voice: reuse the plate motif rather than a second discovery fanfare. Same
+  // never-repeat discipline as _onPoiDiscovered: the emitter gates on the record phase, this
+  // Set keeps a re-emitted row from re-ringing.
+  _onUniqueWreckBearingFixed(p) {
+    const rt = this.rt;
+    if (!rt || !p || !p.wreckId) return;
+    const heard = rt._wreckBearingHeard || (rt._wreckBearingHeard = new Set());
+    if (heard.has(p.wreckId)) return;
+    heard.add(p.wreckId);
+    this._onDiscoveryUnlocked({ sectorId: p.sectorId, poiId: `uniqueWreck:${p.wreckId}` });
+  },
+
+  // INST-18: a point of interest resolving on the scope is the authored wonder beat — the
+  // fifth-sweep recipe was bound and never once played. Emitters already gate once-per-POI on
+  // the persisted discovery record; this Set is the listener's own never-repeat so a re-emitted
+  // row cannot re-ring. One reveal per tick coalesces a survey sweep into a single find. A POI
+  // whose record already shows an identification or investigation belongs to the bigger plate
+  // motif (world.js sets those flags before it emits), so the reveal yields rather than stacks.
+  _onPoiDiscovered(p) {
+    const rt = this.rt;
+    if (!rt || !p || p.poiId == null) return;
+    const heard = rt._poiRevealHeard || (rt._poiRevealHeard = new Set());
+    const key = `${p.sectorId || ''}:${p.poiId}`;
+    if (heard.has(key)) return;
+    heard.add(key);
+    const state = this.state;
+    const sectorId = p.sectorId || (state && state.world && state.world.currentSectorId);
+    const disc = sectorId && state.world && state.world.discovery && state.world.discovery[sectorId];
+    const rec = disc && disc.pois && disc.pois[p.poiId];
+    if (rec && (rec.identified || rec.investigated)) return;
+    const tick = (state && state.tick) | 0;
+    if (rt._wonderTick === tick) return;
+    rt._wonderTick = tick;
+    this.play('sfx_discovery_reveal', { gain: 0.7 });
+  },
+
+  /**
+   * One asteroid-contact chip per target across `_onHit` and `_onDamage`. The projectile chip is
+   * inline; the material layer voice is presentation-deferred, so under a catch-up frame the same
+   * rock contact can arrive after `state.tick` advanced — or after the rock was destroyed and
+   * removed. The claim therefore keys on TARGET + contact position + (same tick, or a short
+   * wall-clock window for a deferred drain), never on a live `entity.type`. Same tick is always
+   * the same contact, so scheduler delay cannot split one dispatch into two voices. Whichever
+   * owner speaks first claims the target; the other yields. Ships never call this: their 40 ms
+   * layer gate in `_onDamage` stays the only floor, so two different layer contacts on one hull
+   * in a tick still each speak.
+   */
+  _claimImpactVoice(targetId, nowMs, pos, owner) {
+    const rt = this.rt;
+    if (!rt || targetId == null) return true;
+    const now = Number.isFinite(nowMs) ? nowMs : this._wallClockMs();
+    const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1;
+    let marks = rt._impactVoiceMarks;
+    if (!marks) marks = rt._impactVoiceMarks = new Map();
+    const mark = marks.get(targetId);
+    const sameContact = !!mark
+      && (mark.tick === tick || now - mark.at < IMPACT_VOICE_WINDOW_MS)
+      && this._impactVoiceSameContact(mark, pos);
+    if (sameContact) {
+      if (mark.owner !== owner) {
+        // The other raw owner already spoke for this contact; this receipt closes the episode so
+        // a genuinely new contact after it can speak again.
+        marks.delete(targetId);
+        return false;
+      }
+      // Same owner, same tick: one chip per rock per tick. A later tick is a new contact.
+      if (mark.tick === tick) return false;
+    }
+    marks.set(targetId, {
+      at: now,
+      tick,
+      owner,
+      x: Number(pos && pos.x),
+      z: Number(pos && pos.z),
+    });
+    if (marks.size > 64) {
+      for (const [id, entry] of marks) {
+        if (now - entry.at >= IMPACT_VOICE_WINDOW_MS) marks.delete(id);
+      }
+      if (marks.size > 64) marks.delete(marks.keys().next().value);
+    }
+    return true;
+  },
+
+  // Did `_onHit` already speak for this target and contact point? Used by the deferred damage
+  // handler when the asteroid is no longer in `state.entities` (destroyed by the same shot).
+  _impactVoiceWasRock(targetId, nowMs, pos) {
+    const marks = this.rt && this.rt._impactVoiceMarks;
+    if (!marks || targetId == null) return false;
+    const mark = marks.get(targetId);
+    if (!mark || nowMs - mark.at >= IMPACT_VOICE_WINDOW_MS) return false;
+    return this._impactVoiceSameContact(mark, pos);
+  },
+
+  // The same physical contact reports the same point. A distant point on a recycled id is a
+  // different contact. Missing coordinates fail open (assume same) so a stripped receipt still
+  // keeps the one-voice law.
+  _impactVoiceSameContact(mark, pos) {
+    const fx = Number(pos && pos.x);
+    const fz = Number(pos && pos.z);
+    if (!Number.isFinite(mark.x) || !Number.isFinite(mark.z)
+      || !Number.isFinite(fx) || !Number.isFinite(fz)) return true;
+    return Math.hypot(fx - mark.x, fz - mark.z) <= 60;
+  },
+
+  // One voice per contact.
+  // The pair+tick window collapses a sustained grind's repeat receipts: the same pair can
+  // re-contact every tick while pinned, and re-arms only after the cooldown, unless the new
+  // contact is meaningfully harder (the same escalation law the feel hit-stop uses).
+  _admitCollisionCue(p) {
+    if (!this._collisionCueContacts) this._collisionCueContacts = new Map();
+    const tick = Number.isFinite(p && p.tick)
+      ? Math.max(0, Math.trunc(p.tick))
+      : Math.max(0, Math.trunc(this.state && this.state.tick || 0));
+    if (Number.isFinite(this._collisionCueTick) && tick < this._collisionCueTick) {
+      // A load or sim restart moved the tick backwards: old pair entries belong to the old epoch.
+      this._collisionCueContacts.clear();
+    }
+    this._collisionCueTick = tick;
+    if (p.aId == null || p.bId == null) return true;  // unidentifiable contacts stay audible
+    // physics:impact carries the pre-joined pair key (same min\0max law); the collision
+    // twin and any older emitter may not, so keep the local build as the fallback. The
+    // self-contact check answers without stringizing when the key is already present.
+    let key = typeof p.pairKey === 'string' ? p.pairKey : null;
+    if (key == null) {
+      const a = String(p.aId);
+      const b = String(p.bId);
+      if (a === b) return true;
+      key = a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
+    } else if (p.aId === p.bId) return true;
+    const dp = Number.isFinite(p.dp) ? p.dp : Number.isFinite(p.impulse) ? p.impulse : 0;
+    const prev = this._collisionCueContacts.get(key);
+    if (prev && tick - prev.tick < COLLISION_CUE_COOLDOWN_TICKS
+      && !(dp > prev.dp * COLLISION_CUE_UPGRADE_RATIO)) {
+      return false;
+    }
+    if (prev) {
+      prev.tick = tick;
+      prev.dp = dp;
+      return true;
+    }
+    if (this._collisionCueContacts.size >= COLLISION_CUE_PAIR_CAP) {
+      const oldest = this._collisionCueContacts.keys().next();
+      if (!oldest.done) this._collisionCueContacts.delete(oldest.value);
+    }
+    this._collisionCueContacts.set(key, { tick, dp });
+    return true;
+  },
+
+  _onCollision(p) {
+    if (!p) return;
+    if (!this._admitCollisionCue(p)) return;
+    const entities = this.state && this.state.entities;
+    const a = !entities ? null
+      : (typeof entities.get === 'function' ? entities.get(p.aId) : entities[p.aId]) || null;
+    const b = !entities ? null
+      : (typeof entities.get === 'function' ? entities.get(p.bId) : entities[p.bId]) || null;
+    const cueArg = _collisionCueArg;
+    cueArg.dp = p.dp;
+    cueArg.impulse = p.impulse;
+    cueArg.massA = a && Number.isFinite(a.mass) ? a.mass : null;
+    cueArg.massB = b && Number.isFinite(b.mass) ? b.mass : null;
+    cueArg.typeA = a ? a.type : undefined;
+    cueArg.typeB = b ? b.type : undefined;
+    // The slam-vs-kiss pitch bend reads the pre-solve closing speed; the solver's per-tick dp
+    // clamp must not flatten a 150 WU/s ram into a 40 WU/s answer.
+    cueArg.closingSpeed = p.preSolveClosingSpeed;
+    cueArg.hullDamage = Number.isFinite(p.hullDamage) ? p.hullDamage : undefined;
+    const cue = resolveCollisionCue(cueArg);
+    const playOpts = _collisionPlayOpts;
+    playOpts.position = p.pos;
+    playOpts.gain = cue.gain;
+    playOpts.rate = cue.rate;
+    playOpts.ladderId = cue.ladderId || undefined;
+    const voice = this.play(cue.recipeId, playOpts);
+    const aMass = a && Number.isFinite(a.mass) ? a.mass : 16;
+    const bMass = b && Number.isFinite(b.mass) ? b.mass : 16;
+    // The duck follows audibility: a contact beyond hearing range is culled inside play() and
+    // must not bow the player's music for a sound nobody heard.
+    if (voice) {
+      const duck = _collisionDuckArg;
+      duck.mass = Math.max(aMass, bMass);
+      duck.dp = Number.isFinite(p.dp) ? p.dp : p.impulse;
+      duck.importance = cue.tier === 'broadside' ? 0.9 : cue.tier === 'slam' ? 0.7 : 0.35;
+      this._applyWeightDuck(duck);
+    }
+  },
+
+  _onOpticContact(p) {
+    if (!p) return;
+    const recipeId = OPTIC_CONTACT_RECIPES[p.kind];
+    // Burst collapse rides the shared `_heardRecipes` window (`_onVisualEventAudio` gates the
+    // same way): a prism ring can light a whole lattice neighborhood in one tick, so the first
+    // admitted voice of each kind speaks for the tick. `_noteRecipeHeard` runs here — before
+    // `play()`'s own bookkeeping — so a muted/blocked cue still collapses the rest of the burst.
+    if (!recipeId || this._recipeHeardThisTick(recipeId)) return;
+    this._noteRecipeHeard(recipeId);
+    const rays = Number.isFinite(p.rays) ? p.rays : 0;
+    this.play(recipeId, {
+      position: p.pos || null,
+      // A bigger ring lands a little louder; absorb/reflect keep fixed voices.
+      gain: p.kind === 'prism' ? clamp(0.72 + rays * 0.02, 0.72, 0.92) : p.kind === 'reflect' ? 0.7 : 0.8,
+    });
+  },
+
+  _onOpticRekindled(p) {
+    // A lattice healing back is a whisper under the contact family — one soft shimmer per tick
+    // no matter how many cells came up, so a shelved field never announces itself as a volley.
+    if (!p || this._recipeHeardThisTick(OPTIC_REKINDLE_RECIPE)) return;
+    this._noteRecipeHeard(OPTIC_REKINDLE_RECIPE);
+    this.play(OPTIC_REKINDLE_RECIPE, { position: p.pos || null, gain: 0.32 });
+  },
+
+  _onKilled(p) {
+    if (!p) return;
+    const rt = this.rt, ctx = rt.ctx;
+    // player:death owns the player's defeat sound. entity:killed is also emitted for NPC-vs-NPC
+    // combat, which should remain physically audible but must never masquerade as player reward.
+    if (p.id === this.state.playerId) return;
+    const nowMs = (Number(this.state && this.state.simTime) || 0) * 1000;
+    if (rt && !killVoiceAdmitted(rt._killAdmit || (rt._killAdmit = Object.create(null)), p.id, nowMs)) return;
+    const killedByPlayer = p.killerId === this.state.playerId;
+    const signature = FIRST_HOUR_AUDIO_SIGNATURES.enemyKill;
+    if (killedByPlayer) {
+      this._applyPriorityCue({
+        id: 'combat.player.kill',
+        audioId: signature.recipeId,
+        importance: signature.priority,
+        playerRelevance: 1,
+      });
+    }
+    const isCapital = p.victimClass === 'capital' || p.victimClass === 'large' || p.type === 'station';
+    // Feature 13 — the reactor-overload tell. Every hull death opens a ~0.4 s runaway whine while
+    // the blast waits behind it; capitals already held their boom for 400 ms, small hulls now
+    // land on the same beat so the whine always resolves INTO the explosion.
+    // Packet 08: a decisive kill's successor hull fails for a mass-shaped window before it ruptures;
+    // the boom lands on that rupture (lifecycle.dyingFuseS), never on the fixed fuse.
+    const overloadDelayS = dyingFuseS(this.state, p.id, 0.40);
+    if (ctx) {
+      this.play('sfx_reactor_overload', {
+        position: p.pos,
+        startTime: ctx.currentTime + 0.02,
+        gain: isCapital ? 1.0 : 0.62,
+        critical: killedByPlayer,
+      });
+    }
+    if (isCapital && ctx) {
+      this._duckMusic();
+      // Breathless beat: the world goes quiet under the delayed explosion so its roar returns
+      // against silence — scale reads through the contrast, not the loudness.
+      this._triggerHush({ kind: 'capital', pos: p.pos });
+      if (p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)) {
+        const radius = p.victimRadius || p.radius || 120;
+        const span = radius * 0.7;
+        const pos1 = {
+          x: p.pos.x + capitalPredetonationOffset(p.id, 0) * span,
+          z: p.pos.z + capitalPredetonationOffset(p.id, 1) * span,
+        };
+        const pos2 = {
+          x: p.pos.x + capitalPredetonationOffset(p.id, 2) * span,
+          z: p.pos.z + capitalPredetonationOffset(p.id, 3) * span,
+        };
+        // Two short combat ticks, then the blast. Not menu hovers.
+        this.play(CAPITAL_PREDET_RECIPE, { position: pos1, startTime: ctx.currentTime + 0.05, gain: 0.55, rate: 1, critical: killedByPlayer });
+        this.play(CAPITAL_PREDET_RECIPE, { position: pos2, startTime: ctx.currentTime + 0.20, gain: 0.55, rate: 1.08, critical: killedByPlayer });
+      }
+      // Play the main capital explosion in 400ms
+      this.play('sfx.killCapital', { position: p.pos, startTime: ctx.currentTime + overloadDelayS, gain: 1.0, critical: killedByPlayer });
+      if (killedByPlayer) {
+        this.play('sfx_kill_confirm', {
+          position: p.pos, startTime: ctx.currentTime + overloadDelayS + 0.02, gain: 0.72, critical: true,
+          // SWARM-06: the kill chain lifts the confirm's pitch a step at a time — the run's
+          // climb is audible in the reward voice itself. Zero chain reads exactly 1.
+          rate: swarmKillPitch(rt && rt._swarmChain),
+        });
+      }
+    } else {
+      const entities = this.state && this.state.entities;
+      const victim = entities && typeof entities.get === 'function' ? entities.get(p.id) : null;
+      const mass = Number.isFinite(p.mass) ? p.mass
+        : Number.isFinite(p.victimMass) ? p.victimMass
+          : victim && Number(victim.mass);
+      const body = resolveKillMassVoice({
+        mass, type: p.type, victimClass: p.victimClass, killedByPlayer,
+      });
+      // The mid-band player kill is exactly the first-hour signature: sfx.killConfirmed's
+      // layers ARE sfx.killSmall's blended body plus the rising confirm. Schedule it as
+      // the single authored composite — at its authored tuning, lifted only by the swarm
+      // chain ladder — instead of two coincident recipes. Light and heavy bodies keep the
+      // graded split (the composite's fixed sine+noise body would mis-voice their mass),
+      // and capital keeps its own delayed beat above.
+      const signatureBundle = killedByPlayer && body.recipeId === 'sfx.killSmall';
+      this.play(signatureBundle ? signature.recipeId : body.recipeId, {
+        position: p.pos,
+        startTime: ctx ? ctx.currentTime + overloadDelayS : undefined,
+        gain: body.gain,
+        rate: signatureBundle ? swarmKillPitch(rt && rt._swarmChain) : body.rate,
+        critical: killedByPlayer,
+        primary: killedByPlayer,
+      });
+      if (body.confirmRecipeId && !signatureBundle) {
+        this.play(body.confirmRecipeId, {
+          position: p.pos,
+          startTime: ctx ? ctx.currentTime + overloadDelayS + 0.02 : undefined,
+          gain: 0.72,
+          critical: true,
+          primary: true,
+          rate: swarmKillPitch(rt && rt._swarmChain),
+        });
+      }
+    }
+  },
+
+  _onDestroyed(p) {
+    if (!p) return;
+    // Roster clears (prepareRun / discardPreparedNewGameScene) emit one destroyed per entity for
+    // teardown bookkeeping — they are not deaths: skip the explosion voices + station hush that
+    // would otherwise burst behind the loading veil against the old player position.
+    if (p.reason === 'run_reset') return;
+    // Only ships/drones/wrecks get an explosion here; asteroids handled via asteroid:destroyed,
+    // projectiles/pickups/fx are silent. entity:killed already covered combat kills, so keep this
+    // to non-ship physical destructions to avoid doubling.
+    if (p.type === 'drone' || p.type === 'wreck' || p.type === 'station') {
+      this.play(p.type === 'station' ? 'sfx_explosion_large' : 'sfx_explosion_small', { position: p.pos, gain: 0.8 });
+      if (p.type === 'station') this._triggerHush({ kind: 'structure', pos: p.pos });
+    }
+  },
+
+  // =========================================================================
+  // Psychoacoustic drama layer — runtime
+  // =========================================================================
+
+  /**
+   * Hostile round crossed the player's near-miss tube. Physics already dedupes per projectile and
+   * gates by target/team; audio owns the supersonic whip-crack layered over the wide presentation
+   * whoosh. Positioned at the crossing point so the crack lands on the correct ear.
+   */
+  _onNearMissAudio(p) {
+    if (!p || p.targetId !== this.state.playerId) return;
+    const rt = this.rt;
+    if (!rt || !rt.ctx || rt._paused) return;
+    const nowMs = this._wallClockMs();
+    if (nowMs - rt._lastWhipMs < NEAR_MISS_CRACK.minGapMs) return;
+    rt._lastWhipMs = nowMs;
+    const crack = resolveNearMissCrack({ distance: p.distance, speed: p.speed });
+    this.play('sfx_wpn_whip_crack', {
+      position: p.pos || null,
+      gain: crack.gain,
+      rate: crack.rate,
+    });
+  },
+
+  /**
+   * Start a breathless-moment envelope. A live hush keeps its floor: a new envelope replaces it
+   * only when it digs deeper than the world currently sits, or extends the moment at depth.
+   */
+  _triggerHush(input = {}) {
+    const rt = this.rt;
+    if (!rt) return;
+    const listener = this._playerPos();
+    const pos = input.pos;
+    const distance = pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) && listener
+      ? Math.hypot(pos.x - listener.x, pos.z - listener.z)
+      : null;
+    const nowMs = this._wallClockMs();
+    const env = resolveHushEnvelope({ kind: input.kind, distance }, nowMs);
+    if (!env) return;
+    const cur = rt._hush;
+    if (cur) {
+      const curState = hushGainAt(cur, nowMs);
+      if (!curState.done) {
+        const deeper = env.depth < curState.gain - 0.001;
+        const extendsAtDepth = env.depth <= cur.depth + 0.001 && env.endMs > (cur.endMs || 0);
+        if (!deeper && !extendsAtDepth) return;
+      }
+    }
+    rt._hush = env;
+  },
+
+  /** Current hush multiplier (1 = world open). Evaluated per frame inside _applySettings. */
+  _hushGainFor(nowMs) {
+    const rt = this.rt;
+    const env = rt && rt._hush;
+    if (!env) return 1;
+    const scratch = rt._hushScratch || (rt._hushScratch = {});
+    const r = hushGainAt(env, nowMs, scratch);
+    if (r.done) rt._hush = null;
+    return r.gain;
+  },
+
+  /**
+   * Capacitor anticipation: combat:fire is a post-shot receipt, so the heavy mount's spool is
+   * scheduled against its fresh cooldown — the whine crests as the capacitor tops off, then a
+   * small ready tick marks the trigger live again. NPC heavies get the same treatment at
+   * distance. One spool at a time: a battery of heavies shares the anticipation.
+   */
+  _maybeChargeWhine(p, owner) {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || ctx.state !== 'running' || rt._paused) return;
+    const mounts = owner && owner.data && Array.isArray(owner.data.weapons) ? owner.data.weapons : null;
+    let mount = null;
+    if (mounts) {
+      for (const w of mounts) {
+        if (w && p.hardpointIdx != null && w.slotIndex === p.hardpointIdx) { mount = w; break; }
+      }
+      if (!mount) {
+        for (const w of mounts) {
+          if (w && w.defId === p.weaponId) { mount = w; break; }
+        }
+      }
+    }
+    const plan = resolveChargeWhine({
+      weaponId: p.weaponId,
+      mountClass: mount && mount.mountClass,
+      // A heavy defId with no runtime mount record (e.g. an NPC capital) still spools — the
+      // weapon-id gate inside resolveChargeWhine keeps light mounts silent either way.
+      cooldownS: mount && Number.isFinite(mount._cooldown) ? mount._cooldown : 1.1,
+      nowS: ctx.currentTime,
+    });
+    if (!plan) return;
+    if (ctx.currentTime < rt._chargeWhineUntilS) return;
+    rt._chargeWhineUntilS = plan.readyAtS;
+    const isPlayer = owner && owner.id === this.state.playerId;
+    const positional = isPlayer ? null : { position: p.origin || (owner && owner.pos) || null, entity: owner };
+    this.play('sfx_wpn_capacitor_charge', {
+      gain: CHARGE_WHINE.whineGain,
+      startTime: plan.whineAtS,
+      ...(positional || {}),
+    });
+    this.play('sfx_wpn_capacitor_ready', {
+      gain: CHARGE_WHINE.readyGain,
+      startTime: plan.readyAtS + 0.01,
+      ...(positional || {}),
+    });
+  },
+
+  /**
+   * Per-frame hull-breach acoustics. Reads the player hull each frame (pure read), keeps the
+   * engage/release hysteresis, smooths the muffle intensity, and writes at most one
+   * setTargetAtTime per bus filter when the target has moved ~2%. No per-frame allocation —
+   * the bed nodes and the filter list are built once with the graph.
+   */
+  _updateHullBreach(now, dt) {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const player = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    const hullPct = player && player.hullMax > 0 ? clamp(player.hull / player.hullMax, 0, 1) : 1;
+    const alive = !!(player && player.alive);
+    const docked = !!((player && player.flags && player.flags.docked)
+      || rt._docked
+      || (this.state && this.state.ui && this.state.ui.docked));
+    const input = rt._breachInput || (rt._breachInput = {});
+    input.hullPct = hullPct; input.alive = alive; input.docked = docked; input.active = rt._breachActive;
+    const st = resolveBreachState(input, rt._breachScratch || (rt._breachScratch = {}));
+    rt._breachActive = st.active;
+    if (st.edge === 'enter') {
+      this._ensureBreachBed();
+      this.play('sfx_hull_decompress', { gain: 0.75 });
+      rt._breachNextGroanS = now + 1.4;
+    } else if (st.edge === 'exit' && !st.exitSilent) {
+      this.play('sfx_hull_repressurize', { gain: 0.5 });
+    }
+    // A rebuilt AudioContext drops the bed without a new enter edge — rebuild while breached.
+    if (st.active && !rt._breachBed) this._ensureBreachBed();
+
+    const k = 1 - Math.exp(-(Number.isFinite(dt) && dt > 0 ? dt : 0.016) / HULL_BREACH_MIX.intensityTauS);
+    rt._breachIntensity += (st.intensity - rt._breachIntensity) * k;
+    if (!st.active && rt._breachIntensity < 0.005) rt._breachIntensity = 0;
+    const intensity = rt._breachIntensity;
+
+    // Pull the world buses into a hollow low-pass while breached.
+    const cutHz = HULL_BREACH_MIX.openHz * Math.pow(HULL_BREACH_MIX.minCutHz / HULL_BREACH_MIX.openHz, intensity);
+    if (Math.abs(cutHz - rt._breachCutHz) / Math.max(1, rt._breachCutHz) > 0.02) {
+      for (const f of rt._breachFilters) {
+        try { f.frequency.setTargetAtTime(cutHz, now, HULL_BREACH_MIX.filterTauS); } catch (_) {}
+      }
+      rt._breachCutHz = cutHz;
+    }
+
+    // Conduction bed — the ship's rumble arriving through the seat instead of the air.
+    const bed = rt._breachBed;
+    if (bed) {
+      const bedTarget = intensity * HULL_BREACH_MIX.bedPeak;
+      const subTarget = Math.pow(intensity, 1.6) * HULL_BREACH_MIX.subPeak;
+      if (Math.abs(bedTarget - (rt._breachBedGainW || 0)) > 0.0008) {
+        try { bed.noiseGain.gain.setTargetAtTime(Math.max(0.0001, bedTarget), now, 0.12); } catch (_) {}
+        rt._breachBedGainW = bedTarget;
+      }
+      if (Math.abs(subTarget - (rt._breachSubGainW || 0)) > 0.0008) {
+        try { bed.subGain.gain.setTargetAtTime(Math.max(0.0001, subTarget), now, 0.12); } catch (_) {}
+        rt._breachSubGainW = subTarget;
+      }
+    }
+
+    // The frame arguing with the vacuum — randomized spacing is cosmetic only.
+    if (st.active && now >= rt._breachNextGroanS) {
+      this.play('sfx_hull_stress_groan', { gain: 0.28 + 0.3 * intensity });
+      rt._breachNextGroanS = now + HULL_BREACH_MIX.groanMinS + Math.random() * HULL_BREACH_MIX.groanVarS;
+    }
+  },
+
+  /** Lazily build the conducted-rumble bed (slowed noise through a deep low-pass + a 34 Hz sub). */
+  _ensureBreachBed() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || rt._breachBed || !rt.sfxBus) return;
+    try {
+      const noise = ctx.createBufferSource();
+      noise.buffer = getNoiseBuffer(ctx, rt._caches);
+      noise.loop = true;
+      try { noise.playbackRate.value = 0.5; } catch (_) {}
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = 'lowpass';
+      noiseFilter.frequency.value = 240;
+      noiseFilter.Q.value = 0.6;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.value = 0.0001;
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      // sfxBus is downstream of the breach low-pass stage — the bed is conducted, not airborne,
+      // so it stays present while the world outside muffles away.
+      noiseGain.connect(rt.sfxBus);
+      const sub = ctx.createOscillator();
+      sub.type = 'sine';
+      sub.frequency.value = 34;
+      const subGain = ctx.createGain();
+      subGain.gain.value = 0.0001;
+      sub.connect(subGain);
+      subGain.connect(rt.sfxBus);
+      noise.start();
+      sub.start();
+      rt._breachBed = { noise, noiseFilter, noiseGain, sub, subGain };
+      rt._breachBedGainW = 0.0001;
+      rt._breachSubGainW = 0.0001;
+    } catch (_) {}
+  },
+
+  /**
+   * Dead trigger: a fire press that cannot produce a shot (every mount cooling down, capacitor
+   * dry, overheated, venting, unarmed, or docked) gets one solenoid clack on the press edge.
+   * Held fire does not repeat it — the edge is the complaint.
+   */
+  _updateDryFire() {
+    const rt = this.rt;
+    const input = this.state && this.state.input;
+    const held = !!(input && input.fire);
+    const was = rt._fireHeldPrev;
+    rt._fireHeldPrev = held;
+    if (!held || was) return;
+    const player = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    if (!player || player.alive === false) return;
+    if ((player.flags && player.flags.docked) || rt._docked
+      || (this.state.ui && this.state.ui.docked)) return;
+    const readiness = resolveDryFireReadiness(player, this.state);
+    if (readiness.clack) this.play('sfx_wpn_dry_fire', { gain: DRY_FIRE.gain });
+  },
+
+  // Hull-burst overhaul slice A (combat.arcadeLoot): combat ore a full hold refuses pays credits
+  // instead of floating. It has no accepted pickup:collected to chime on, so it rides the SAME
+  // ladder: refused-ore payouts in a row climb the scoop chime exactly like accepted pickups do.
+  _onOverflowConverted(p) {
+    if (!p || !(p.credits > 0)) return;
+    this._onPickupCollected({
+      collectorId: this.state && this.state.playerId,
+      acceptedAmount: p.credits,
+      amount: p.credits,
+      pos: p.pos,
+    });
+  },
+
+  // A fractional gap can refuse a whole unit before exact fill. Remember that footprint
+  // until a cargo change frees enough room; refusal receipts and cue aliases share one latch.
+  _onPickupHoldChanged(refusal = null) {
+    if (!this.rt) return;
+    const cargo = this.state?.player?.cargo;
+    const valid = cargo && Number.isFinite(cargo.capVolume) && cargo.capVolume > 0
+      && Number.isFinite(cargo.usedVolume);
+    const free = valid ? cargo.capVolume - cargo.usedVolume : Infinity;
+    let unit = this.rt._pickupHoldRefusedUnit || 0;
+    if (free >= unit) unit = 0;
+    if (refusal?.commodityId && valid) {
+      const registry = this.state.content?.commodities;
+      const def = (Array.isArray(registry) ? registry.find(c => c.id === refusal.commodityId)
+        : registry?.[refusal.commodityId]) || COMMODITIES.find(c => c.id === refusal.commodityId);
+      const refusedUnit = def?.volPerU > 0 ? def.volPerU : 1;
+      if (free < refusedUnit) unit = Math.max(unit, refusedUnit);
+    }
+    this.rt._pickupHoldRefusedUnit = unit;
+    const full = pickupHoldIsFull(cargo) || unit > 0;
+    const crossed = full && !this.rt._pickupHoldFull;
+    this.rt._pickupHoldFull = full;
+    if (crossed && !this._mineOwnsEar()) this.play('sfx_mining_cargo_full', { gain: 0.3 });
+  },
+
+  // Cargo scoop magnet-latch: every collected pickup seats with a thunk-whir, and pickups caught
+  // in a row climb a stepped chime ladder (bloop… bleep… ting). The ladder lives on rt so tab
+  // switches cannot wedge a stale high note; it resets after a short quiet, not on a wall clock.
+  _onPickupCollected(p) {
+    if (successfulPickupAmount(p) <= 0) return;
+    const isPlayer = !p || p.collectorId == null
+      || (this.state && p.collectorId === this.state.playerId);
+    const nowS = this.rt && this.rt.ctx
+      ? this.rt.ctx.currentTime
+      : Math.max(0, Number(this.state && this.state.simTime) || 0);
+    const combo = this.rt && (this.rt._scoopCombo || (this.rt._scoopCombo = { count: 0, lastAt: -Infinity }));
+    if (combo && nowS - combo.lastAt <= 2.4) combo.count += 1;
+    else if (combo) combo.count = 0;
+    if (combo) combo.lastAt = nowS;
+    this.play('sfx_cargo_seat', { position: p && p.pos, gain: 0.8 });
+    if (isPlayer && combo) {
+      const step = Math.min(combo.count, SCOOP_CHIME_RATES.length - 1);
+      this.play('sfx_pickup_chime', {
+        position: p && p.pos,
+        gain: 0.55,
+        rate: SCOOP_CHIME_RATES[step],
+      });
+    }
+  },
+
+  // Loot magnet (mod_loot_magnet_s): a pod drifting into the ring gets one soft catch ping —
+  // deliberately OFF the scoop ladder; pickup:collected still owns the seat sound when the pod
+  // is actually claimed. Emitted once per pod id per sector window, so this can never ladder.
+  _onMagnetCaptured(p) {
+    if (!p || p.podId == null) return;
+    if (p.playerId != null && this.state && p.playerId !== this.state.playerId) return;
+    const pod = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(p.podId) : null;
+    const pos = pod && pod.pos;
+    const position = pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+      ? { x: pos.x, z: pos.z } : null;
+    this.play('sfx_vent_chime', { position, gain: 0.35, rate: 0.9 });
+  },
+
+  // Stunt chain: each player trick plucks one in-mode step up the
+  // diatonic ladder, read from the combo's own link count (state.stunts.combo.acts — the act
+  // is committed before stunt:trickDetected lands). trickAmended upgrades the same link and
+  // never reaches this handler; stunt:bridge plays nothing (the near-miss bark already speaks).
+  _onStuntTrickDetected(trick) {
+    if (!trick) return;
+    // Same player gate the callout owner uses (src/ui/stuntCallout.js): only a foreign actor
+    // silences the link; the detector itself is already player-scoped.
+    const playerId = this.state && this.state.playerId;
+    if (playerId != null && trick.actorId != null && trick.actorId !== playerId) return;
+    const combo = this.state && this.state.stunts && this.state.stunts.combo;
+    const acts = combo && Array.isArray(combo.acts) ? combo.acts.length : 0;
+    this.rt._stuntLift = swarmChainLift(acts);
+    this.rt._stuntLiftUntil = 0;
+    this.rt._musicDirty = true;
+    this.play('sfx_stunt_link', {
+      gain: 0.45, rate: stuntLinkRate(acts, this.rt._scoreIdentity), lockRate: true,
+    });
+  },
+
+  _onStuntStyleBanked(bank) {
+    if (!bank) return;
+    const rt = this.rt;
+    const now = rt.ctx ? rt.ctx.currentTime : 0;
+    const tier = stuntBankTier(bank);
+    rt._stuntLiftUntil = now + 1.2;
+    rt._stuntFuseKey = null;
+    rt._musicDirty = true;
+    const t = this._stuntGridTime(now);
+    this.play('sfx_stunt_bank', {
+      gain: [0.45, 0.65, 0.85][tier], rate: this._noteFreq('A', 3 + tier) / 660,
+      startTime: t + tier * 60 / stuntScoreBpm(rt.musicState) / 4, lockRate: true,
+    });
+    // Small bank: a single resolution. Solid: dominant→tonic. Big: the full rising cadence.
+    for (let i = 0; i < tier; i++) this.play('sfx_stunt_link', {
+      gain: 0.3, rate: this._noteFreq(i ? 'G' : 'E', 4 + tier - 1) / 880,
+      startTime: t + i * 60 / stuntScoreBpm(rt.musicState) / 4, lockRate: true,
+    });
+  },
+
+  _stuntGridTime(now, stride = 1) {
+    const rt = this.rt;
+    const bpm = stuntScoreBpm(rt.musicState);
+    const key = rt.musicState === 'combat' ? 'C' : rt.musicState === 'tense' ? 'B' : rt.musicState === 'docked' ? 'D' : 'A';
+    const stem = rt.stems && rt.stems[key];
+    const anchor = stem && typeof stem.nextBoundary === 'function' ? stem.nextBoundary(1) : 0;
+    return stuntGridTime(now, anchor, bpm, stride);
+  },
+
+  _stuntScoreLift() {
+    const rt = this.rt;
+    const combo = this.state && this.state.stunts && this.state.stunts.combo;
+    const active = combo && Array.isArray(combo.acts) ? combo.acts.length : 0;
+    const now = rt.ctx ? rt.ctx.currentTime : 0;
+    const tail = rt._stuntLiftUntil > now ? (rt._stuntLift || 0) * Math.min(1, (rt._stuntLiftUntil - now) / 1.2) : 0;
+    const heatLevel = Number.isFinite(rt._scoreHeatLevel) ? rt._scoreHeatLevel : heatLevelFor(this.state?.player?.heat || 0);
+    return Math.max(swarmChainLift(rt._swarmChain), swarmChainLift(active), tail, heatScoreLift(heatLevel));
+  },
+
+  _tickStuntFuse() {
+    const rt = this.rt;
+    const combo = this.state && this.state.stunts && this.state.stunts.combo;
+    const remaining = combo ? (combo.deadlineTick - this.state.tick) / 60 : -1;
+    if (!combo || !combo.activeCount || remaining <= 0 || remaining > 1) {
+      rt._stuntFuseKey = null;
+      return;
+    }
+    const now = rt.ctx.currentTime;
+    const t = this._stuntGridTime(now, remaining > 0.6 ? 4 : remaining > 0.25 ? 2 : 1);
+    if (t - now >= remaining) return;
+    const key = `${combo.deadlineTick}:${Math.round(t * 10000)}`;
+    if (rt._stuntFuseKey === key) return;
+    rt._stuntFuseKey = key;
+    this.play('sfx_stunt_link', {
+      gain: 0.12 + (1 - remaining) * 0.08, rate: this._noteFreq('E', 5) / 880,
+      startTime: t, lockRate: true,
+    });
+  },
+
+  // Cargo jettison (HUD cargo panel → cargo.dumpCargo): pods leaving the hold are a world act
+  // with their own authored voice. FB-073: sfx_cargo_jettison shares the massline kick's
+  // dash_punch sample binding at rate 0.8 — the old sfx_massline_jettison borrow and its flag
+  // double-guard are gone; this handler is the single voice on every route. jettisonImpulse's
+  // audio:cue stays physics-adjacent and unmapped (AUDIO_CUE_TO_RECIPE has no jettisonKick row),
+  // so the kick cue resolves to silence rather than stacking a second hit on flag-on routes.
+  // The receipt carries no position — a dump always happens at the dumping ship's hull, and
+  // non-positional play() already reads as ship-local.
+  _onCargoJettisoned(p) {
+    if (!p || !(p.amount > 0)) return;
+    this.play('sfx_cargo_jettison', { gain: 0.7 });
+  },
+
+  // FB-142 — the planet verbs' voices (PLANET_EVENT_AUDIO). Off-transitions speak in the same
+  // voice closing down (rate/gain dropped), the plunge ring climbs its stage ladder, and a
+  // foreign ship's plunge answers positionally at its hull — never the player's local alarm.
+  // Denial rides the capacity-refusal recipe; it never borrows a toast tone.
+  _onPlanetVerb(name, p) {
+    const row = PLANET_EVENT_AUDIO[name];
+    if (!row) return;
+    let gain = row.gain, rate = 1;
+    const on = !p || p.on !== false;
+    if ((name === 'planet:collector' || name === 'planet:recoveryBurn') && !on) {
+      gain *= 0.55;
+      rate = 0.78;
+    }
+    let position = null;
+    if (name === 'planet:plungeStage') {
+      const voice = PLANET_PLUNGE_VOICE[p && p.stage] || null;
+      if (voice) { gain = voice.gain; rate = voice.rate; }
+      if (p && p.isPlayer === false && this.state && this.state.entities
+        && typeof this.state.entities.get === 'function') {
+        const ent = this.state.entities.get(p.id);
+        const pos = ent && ent.pos;
+        if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
+          position = { x: pos.x, z: pos.z };
+          gain *= 0.5;
+        }
+      }
+    }
+    this.play(row.recipeId, { position, gain, rate });
+  },
+
+  // ECON-03 — `economy:tradeFailed` (economy.js handleTrade) is the one refusal event the counter
+  // speaks. A stable id per reason means rapid re-presses REPLACE the line on the voice floor
+  // instead of stacking refusals.
+  _onTradeFailed(p) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const reason = typeof p.reason === 'string' && p.reason ? p.reason : 'invalid';
+    const word = TRADE_REFUSAL_WORD[reason] || 'cannot complete';
+    this.bus.emit('voice:say', {
+      channel: 'comms',
+      id: `economy:tradeFailed:${reason}`,
+      text: `Refused — ${word}.`,
+      ttl: 3,
+    });
+  },
+
+  // The rock calving's two audible beats, keyed off the chain's own receipts. One family: groan
+  // (the seam flexing before the split) and calve (the split). The chain announces phase 0 through
+  // the event_start receipt and later phases through phase transitions, so both kinds map here.
+  // Everything else the chain emits stays on the lamp/text channels.
+  _onCeresCausalChain(p) {
+    if (!p || p.schema !== 'spaceface.ceresCausalChain.v1') return;
+    if (p.kind !== 'event_start' && p.kind !== 'phase') return;
+    if (p.eventId !== 'ev_rock_calving') return;
+    const recipeId = p.phase === 'groan' ? 'sfx_ambient_rock_groan'
+      : p.phase === 'calve' ? 'sfx_ambient_rock_calve'
+        : null;
+    if (!recipeId) return;
+    const position = this._ceresCausalActorPosition(p.actorSlotIds);
+    if (!position) return;
+    this.play(recipeId, { position, gain: p.phase === 'calve' ? 1 : 0.8 });
+  },
+
+  _ceresCausalActorPosition(actorSlotIds) {
+    const slotId = Array.isArray(actorSlotIds) ? actorSlotIds[0] : null;
+    if (typeof slotId !== 'string' || !slotId) return null;
+    const state = this.state;
+    // Activity slots bind 1:1 — the freighter ledger and the cast's durable world-record
+    // cover every actor traffic spawns, so the O(entityList) walk only remains for a
+    // stamped entity outside both (activity-adopted strays). Same resolution order as
+    // traffic's _ceresCausalActorBySlot.
+    const freighters = state && state.traffic && state.traffic.freighters;
+    if (Array.isArray(freighters)) {
+      for (let i = 0; i < freighters.length; i++) {
+        const rec = freighters[i];
+        if (!rec || rec.activityActorSlotId !== slotId) continue;
+        const candidate = state.entities && state.entities.get && state.entities.get(rec.id);
+        if (candidate && candidate.alive !== false && candidate.data
+          && candidate.data.activityActorSlotId === slotId && candidate.pos) {
+          return { x: candidate.pos.x, z: candidate.pos.z };
+        }
+      }
+    }
+    const worldRecordId = ceresActivityActorWorldRecordId(state, slotId);
+    const bound = worldRecordId && indexedWorldRecordEntity(state, worldRecordId);
+    if (bound && bound.alive !== false && bound.data
+      && bound.data.activityActorSlotId === slotId && bound.pos) {
+      return { x: bound.pos.x, z: bound.pos.z };
+    }
+    const entityList = state && state.entityList;
+    if (Array.isArray(entityList)) {
+      for (let i = 0; i < entityList.length; i++) {
+        const candidate = entityList[i];
+        if (candidate && candidate.alive !== false && candidate.data
+          && candidate.data.activityActorSlotId === slotId && candidate.pos) {
+          return { x: candidate.pos.x, z: candidate.pos.z };
+        }
+      }
+    }
+    return null;
+  },
+
+  _onCeresWorkAction(p) {
+    const cue = resolveCeresWorkAudioCue(p, this.state);
+    if (!cue) return;
+    this.play(cue.recipeId, { position: cue.position, gain: cue.gain, rate: cue.rate });
+  },
+
+  _onPlayerDeath(p) {
+    // Big dramatic explosion at the player's location — use the dedicated heavy recipe, no position
+    // (player is always at center, full volume). Duck the music so it hits hard. The death hush
+    // drains the world out SLOWLY around the blast, then holds the silence while the wreck tumbles.
+    this._duckMusic(2.0);
+    this._triggerHush({ kind: 'death' });
+    this.play('sfx_player_death', { gain: 1.0, captionOwned: true });
+    this._emitNamedCaption(DEATH_CAPTION, { assertive: true });
+  },
+
+  _onPlayerRespawn(p) {
+    // Ascending respawn chime — bright, hopeful, tells the player they're back in the fight.
+    // Slight delay so the respawn visual has a beat before the audio lands. Both offsets ride
+    // _defer so a session boundary mid-sequence cancels the tail instead of echoing into it.
+    // One caption rides the whole answer; the fifth-up tail does not speak a second time.
+    this._emitNamedCaption(RESPAWN_CAPTION);
+    this._defer(() => {
+      this.play('sfx_respawn_chime', { gain: 0.7, captionOwned: true });
+      // Second chime a perfect fifth up for a triumphant feel
+      this._defer(() => this.play('sfx_respawn_chime', { gain: 0.5, rate: 1.5, captionOwned: true }), 180);
+    }, 250);
+  },
+
+  _emitNamedCaption(text, opts = {}) {
+    if (!text) return;
+    this._emitPresentationCaption(text, { channel: 'cue', ...opts });
+  },
+
+  _captionFieldLife(event) {
+    const cap = fieldLifeCaption(event);
+    if (!cap) return;
+    this._emitNamedCaption(cap.text, { assertive: cap.assertive });
+  },
+
+  _onAnchorSnare(p) {
+    const text = anchorSnareCaption(p);
+    if (!text) return;
+    const recipeId = fieldDeployRecipe('well');
+    const entities = this.state && this.state.entities;
+    const ent = entities && typeof entities.get === 'function' ? entities.get(p.sourceId) : null;
+    const position = ent && ent.pos && Number.isFinite(ent.pos.x) && Number.isFinite(ent.pos.z)
+      ? { x: ent.pos.x, z: ent.pos.z }
+      : null;
+    if (recipeId) this.play(recipeId, { gain: 0.55, position, captionOwned: true });
+    this._emitNamedCaption(text, { position });
+  },
+
+  // =========================================================================
+  // The mine's voice — runtime (PQ-130.08, law §5/§8/§9/§11.9)
+  // =========================================================================
+
+  /** Recompute + cache the pause/bed decision. One call site for the whole rule. */
+  _refreshMineIntent() {
+    const rt = this.rt;
+    const ui = this.state && this.state.ui;
+    const scratch = rt && (rt._mineIntentInput || (rt._mineIntentInput = {}));
+    const input = scratch || {};
+    input.screenStack = ui && ui.screenStack;
+    input.paused = !!(rt && rt._paused);
+    input.muted = this._isMuted();
+    const intent = resolveMineAudioIntent(input, rt ? rt._mineIntent : undefined);
+    if (rt) { rt._mineIntent = intent; rt._wantMineBed = intent.bedActive; }
+    return intent;
+  },
+
+  /** True while screen `drill` owns the soundscape (front or behind a menu). */
+  _mineOwnsEar() {
+    const rt = this.rt;
+    if (!rt) return false;
+    return this._refreshMineIntent().mineActive;
+  },
+
+  _resetMineRuntime() {
+    const rt = this.rt;
+    if (!rt) return;
+    if (rt._mineArbiter) rt._mineArbiter.reset();
+    rt._mineHeatCritical = false;
+    rt._mineMachineState = Object.create(null);
+  },
+
+  /**
+   * Per-frame driver. Runs OUTSIDE the paused gate in `_frame` because the mine screen pauses the
+   * world sim and its soundscape is precisely what must survive that pause.
+   */
+  _updateMine(dt, now) {
+    const rt = this.rt;
+    if (!rt) return;
+    const intent = this._refreshMineIntent();
+    const ctx = rt.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const t = now == null ? ctx.currentTime : now;
+
+    if (!intent.bedActive) {
+      if (rt._mineBed || rt._mineGrind) this._stopMine(t);
+      this._gcMineVoices(t);
+      return;
+    }
+
+    this._ensureMineBed(t);
+    this._ensureMineGrind();
+
+    const duck = rt._mineArbiter ? rt._mineArbiter.ambienceDuck(this._wallClockMs()) : { bed: 1, grind: 1 };
+
+    // --- mine bus envelope: the enter fade (<= 600 ms) and the live duck ---
+    const busTarget = MINE_BUS_PEAK * intent.bedDuck;
+    const bed = rt._mineBed;
+    if (bed && !bed.faded) {
+      bed.faded = true;
+      try {
+        rt._mineBus.gain.cancelScheduledValues(t);
+        rt._mineBus.gain.setValueAtTime(0.0001, t);
+        rt._mineBus.gain.linearRampToValueAtTime(Math.max(0.0001, busTarget), t + MINE_BED_FADE_IN_S);
+        rt._mineBus.gain._mineLast = Math.max(0.0001, busTarget);
+      } catch (_) {}
+    } else if (rt._mineBus) {
+      this._mineParam(rt._mineBus.gain, Math.max(0.0001, busTarget), t, 0.12);
+    }
+    if (rt._mineBedGain) {
+      this._mineParam(rt._mineBedGain.gain, Math.max(0.0001, MINE_BED_PEAK * duck.bed), t, 0.09);
+    }
+
+    // --- distant settling creaks ---
+    if (bed && t >= bed.creakAt) {
+      this._mineCreak(t);
+      bed.creakAt = t + 5.5 + this._mineRand() * 8.5;
+    }
+
+    // --- three-layer grind, crossfaded by the target cell's material ---
+    const d = this.state && this.state.drill;
+    const avatar = d && d.avatar;
+    const target = avatar && avatar.drillTarget;
+    const tile = target && d.field && d.field[target.col] && d.field[target.col][target.row];
+    const gopts = rt._mineGrindOpts || (rt._mineGrindOpts = {});
+    gopts.boring = !!(d && d.active && avatar && avatar.isDrilling && !avatar.drillBlocked);
+    gopts.bore = tile && tile.maxHp > 0 ? 1 - (Number(tile.hp) || 0) / tile.maxHp : 0;
+    gopts.heat = clamp((Number(d && d.drillTemp) || 0) / 100, 0, 1);
+    gopts.energy = clamp((Number(d && d.drillEnergy) || 0) / 100, 0, 1);
+    const mix = mineGrindLayers(tile, gopts, rt._mineGrindMix);
+    rt._mineGrindMix = mix;
+    this._applyMineGrind(mix, duck.grind, t);
+
+    // --- derived heat edges: the whine on the way up, the relief hiss on the vent ---
+    this._updateMineHeat(d);
+    this._gcMineVoices(t);
+  },
+
+  /**
+   * Write a mine AudioParam only when its target actually moved. `setTargetAtTime` is memoryless —
+   * it is an exponential approach to a target, not a re-anchored ramp — so skipping an identical
+   * re-issue is provably a no-op on the audible signal (unlike the linear glide in `_applySettings`,
+   * which has to re-apply inside its window). Without this the bed + grind would insert nine
+   * automation events per frame for the whole time the player is in the rock.
+   */
+  _mineParam(param, target, t, tc) {
+    if (!param) return;
+    const last = param._mineLast;
+    if (last !== undefined && Math.abs(last - target) < 1e-4) return;
+    param._mineLast = target;
+    try { param.setTargetAtTime(target, t, tc); } catch (_) {}
+  },
+
+  /**
+   * Same write-on-change gate as `_mineParam`, for the non-mine continuous beds
+   * (engine hum, slipstream, grind, ducking). `setTargetAtTime` is memoryless, so
+   * skipping a re-issue of an unchanged target is provably a no-op on the signal;
+   * without the gate these paths insert ~10 automation events every rAF frame.
+   */
+  _setParam(param, target, t, tc) {
+    if (!param) return;
+    const last = param._sfParamLast;
+    if (last !== undefined && Math.abs(last - target) < 1e-4) return;
+    param._sfParamLast = target;
+    try { param.setTargetAtTime(target, t, tc); } catch (_) {}
+  },
+
+  /** Deterministic-enough presentation RNG (LCG). Never touches sim state. */
+  _mineRand() {
+    const rt = this.rt;
+    const bed = rt && rt._mineBed;
+    if (!bed) return 0.5;
+    bed.rngState = (bed.rngState * 1664525 + 1013904223) >>> 0;
+    return bed.rngState / 4294967296;
+  },
+
+  _ensureMineBed(t) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (rt._mineBed || !ctx || !rt._mineBedGain) return;
+    // Low interior room tone: two detuned sub voices through a heavy lowpass, plus a slow band of
+    // moving air. Muffled and close — you are inside a rock, not in a hangar.
+    const roomA = ctx.createOscillator();
+    roomA.type = 'triangle';
+    roomA.frequency.value = 41;
+    const roomB = ctx.createOscillator();
+    roomB.type = 'sine';
+    roomB.frequency.value = 61.5;
+    const roomLp = ctx.createBiquadFilter();
+    roomLp.type = 'lowpass';
+    roomLp.frequency.value = 168;
+    roomLp.Q.value = 0.8;
+    const roomGain = ctx.createGain();
+    roomGain.gain.value = 0.5;
+    roomA.connect(roomLp); roomB.connect(roomLp);
+    roomLp.connect(roomGain); roomGain.connect(rt._mineBedGain);
+
+    const airSrc = ctx.createBufferSource();
+    airSrc.buffer = getNoiseBuffer(ctx, rt._caches);
+    airSrc.loop = true;
+    airSrc.playbackRate.value = 0.62;
+    const airLp = ctx.createBiquadFilter();
+    airLp.type = 'lowpass';
+    airLp.frequency.value = 296;
+    airLp.Q.value = 0.4;
+    const airGain = ctx.createGain();
+    airGain.gain.value = 0.20;
+    airSrc.connect(airLp); airLp.connect(airGain); airGain.connect(rt._mineBedGain);
+
+    try { roomA.start(t); roomB.start(t); airSrc.start(t); } catch (_) {}
+    let seed = 0x9e3779b9;
+    const rockId = String((this.state && this.state.drill && this.state.drill.asteroidId) || 'rock');
+    for (let i = 0; i < rockId.length; i++) seed = ((seed * 31) + rockId.charCodeAt(i)) >>> 0;
+    rt._mineBed = {
+      nodes: [roomA, roomB, airSrc, roomLp, roomGain, airLp, airGain],
+      sources: [roomA, roomB, airSrc],
+      creakAt: t + 2.4,
+      rngState: seed || 1,
+      faded: false,
+    };
+    try {
+      rt._mineBedGain.gain.cancelScheduledValues(t);
+      rt._mineBedGain.gain.setValueAtTime(0.0001, t);
+      rt._mineBedGain.gain.linearRampToValueAtTime(MINE_BED_PEAK, t + MINE_BED_FADE_IN_S);
+    } catch (_) {}
+  },
+
+  /** One distant settling creak: a resonant band swept downward through the rock. */
+  _mineCreak(t) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || !rt._mineBedGain) return;
+    const dur = 0.7 + this._mineRand() * 0.8;
+    const top = 190 + this._mineRand() * 90;
+    const src = ctx.createBufferSource();
+    src.buffer = getNoiseBuffer(ctx, rt._caches);
+    src.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 7.5;
+    const g = ctx.createGain();
+    try {
+      bp.frequency.setValueAtTime(top, t);
+      bp.frequency.exponentialRampToValueAtTime(Math.max(60, top * 0.62), t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.09, t + dur * 0.28);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    } catch (_) {}
+    src.connect(bp); bp.connect(g); g.connect(rt._mineBedGain);
+    try { src.start(t); src.stop(t + dur + 0.05); } catch (_) {}
+    rt._mineVoices.push({ nodes: [src, bp, g], stopAt: t + dur + 0.15 });
+  },
+
+  _ensureMineGrind() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (rt._mineGrind || !ctx || !rt._mineGrindGain) return;
+    const layer = (build) => {
+      const g = ctx.createGain();
+      g.gain.value = 0.0001;
+      g.connect(rt._mineGrindGain);
+      return build(g);
+    };
+    const noiseSrc = (rate) => {
+      const s = ctx.createBufferSource();
+      s.buffer = getNoiseBuffer(ctx, rt._caches);
+      s.loop = true;
+      s.playbackRate.value = rate;
+      return s;
+    };
+    // matrix — soft regolith: granular mid noise over a light rumble.
+    const matrix = layer((g) => {
+      const n = noiseSrc(1);
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 760; bp.Q.value = 0.75;
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 72;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 190;
+      const og = ctx.createGain(); og.gain.value = 0.35;
+      n.connect(bp); bp.connect(g); o.connect(lp); lp.connect(og); og.connect(g);
+      return { gain: g, sources: [n, o], rateNodes: [n], filter: bp, nodes: [n, bp, o, lp, og, g] };
+    });
+    // basalt — dense stone: heavy low churn, the mid scooped out.
+    const basalt = layer((g) => {
+      const n = noiseSrc(0.72);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 360; lp.Q.value = 1.1;
+      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 46;
+      const olp = ctx.createBiquadFilter(); olp.type = 'lowpass'; olp.frequency.value = 130;
+      const og = ctx.createGain(); og.gain.value = 0.42;
+      n.connect(lp); lp.connect(g); o.connect(olp); olp.connect(og); og.connect(g);
+      return { gain: g, sources: [n, o], rateNodes: [n], filter: lp, nodes: [n, lp, o, olp, og, g] };
+    });
+    // locked / exotic — the bit skating: bright metallic ring, no bite.
+    const locked = layer((g) => {
+      const n = noiseSrc(1.35);
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1750; hp.Q.value = 0.7;
+      const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 322;
+      const o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = 478;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2100; bp.Q.value = 5.5;
+      const og = ctx.createGain(); og.gain.value = 0.22;
+      n.connect(hp); hp.connect(g);
+      o1.connect(bp); o2.connect(bp); bp.connect(og); og.connect(g);
+      return { gain: g, sources: [n, o1, o2], rateNodes: [n], filter: hp, nodes: [n, hp, o1, o2, bp, og, g] };
+    });
+    const t = ctx.currentTime;
+    for (const l of [matrix, basalt, locked]) for (const s of l.sources) { try { s.start(t); } catch (_) {} }
+    rt._mineGrind = { matrix, basalt, locked };
+    try {
+      rt._mineGrindGain.gain.cancelScheduledValues(t);
+      rt._mineGrindGain.gain.setValueAtTime(MINE_GRIND_PEAK, t);
+    } catch (_) {}
+  },
+
+  _applyMineGrind(mix, grindDuck, t) {
+    const rt = this.rt;
+    const grind = rt._mineGrind;
+    if (!grind) return;
+    const duck = grindDuck == null ? 1 : grindDuck;
+    for (const name of MINE_GRIND_LAYERS) {
+      const l = grind[name];
+      if (!l) continue;
+      const target = mix.active ? Math.max(0.0001, mix.gain * mix.weights[name] * duck) : 0.0001;
+      this._mineParam(l.gain.gain, target, t, 0.055);
+      if (l.filter) this._mineParam(l.filter.frequency, mix.filterHz, t, 0.05);
+      for (const s of l.rateNodes || []) {
+        if (!s.playbackRate) continue;
+        this._mineParam(s.playbackRate, mix.rate, t, 0.06);
+      }
+    }
+  },
+
+  /**
+   * Heat is continuous, not an event: drill.js emits no "critical" receipt and the text-matching
+   * warn classifier never matches its live strings. Derive the two edges the law names.
+   */
+  _updateMineHeat(d) {
+    const rt = this.rt;
+    if (!d) { rt._mineHeatCritical = false; return; }
+    const temp = Number(d.drillTemp) || 0;
+    if (!rt._mineHeatCritical && (temp >= MINE_HEAT_CRITICAL || d.overheated)) {
+      rt._mineHeatCritical = true;
+      this._onMineCue('heatCritical', { temp });
+    } else if (rt._mineHeatCritical && !d.overheated && temp <= MINE_HEAT_RELIEF) {
+      rt._mineHeatCritical = false;
+      this._onMineCue('ventRelief', { temp });
+    }
+  },
+
+  /** Cue entry point: arbitration first, then one synthesized voice. */
+  _onMineCue(key, payload, opts) {
+    const rt = this.rt;
+    if (!rt || !rt._mineArbiter) return null;
+    if (!this._mineOwnsEar()) return null;
+    // Arbitrate only once the graph can actually speak, or a refusal raised while audio is still
+    // locked would burn its 5 s window and silence the first one the player could have heard.
+    const ctx = rt.ctx;
+    if (!ctx || ctx.state !== 'running' || !rt._mineCueGain) return null;
+    const verdict = rt._mineArbiter.admit(key, this._wallClockMs());
+    if (!verdict.ok) return verdict;
+    const t = ctx.currentTime;
+    this._synthMineCue(key, t, verdict.gain, { ...(opts || {}), payload: payload || {} });
+    return verdict;
+  },
+
+  // --- synthesis helpers (all voices land on rt._mineCueGain -> mineBus -> ambientBus) ---
+  _mineTone(t0, spec) {
+    const rt = this.rt, ctx = rt.ctx;
+    const o = ctx.createOscillator();
+    o.type = spec.type || 'sine';
+    const g = ctx.createGain();
+    const dur = spec.dur || 0.2;
+    const attack = spec.attack == null ? 0.006 : spec.attack;
+    const dest = rt._mineCueGain;
+    const nodes = [o, g];
+    if (spec.filter) {
+      const f = ctx.createBiquadFilter();
+      f.type = spec.filter;
+      f.frequency.value = spec.filterHz || 800;
+      f.Q.value = spec.filterQ == null ? 1 : spec.filterQ;
+      g.connect(f); f.connect(dest); nodes.push(f);
+    } else {
+      g.connect(rt._mineCueGain);
+    }
+    o.connect(g);
+    try {
+      o.frequency.setValueAtTime(spec.f0, t0);
+      if (spec.f1 && spec.f1 !== spec.f0) o.frequency.exponentialRampToValueAtTime(Math.max(12, spec.f1), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(Math.max(0.0002, spec.peak), t0 + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    } catch (_) {}
+    try { o.start(t0); o.stop(t0 + dur + 0.02); } catch (_) {}
+    rt._mineVoices.push({ nodes, stopAt: t0 + dur + 0.08 });
+  },
+
+  _mineNoise(t0, spec) {
+    const rt = this.rt, ctx = rt.ctx;
+    const s = ctx.createBufferSource();
+    s.buffer = getNoiseBuffer(ctx, rt._caches);
+    s.loop = true;
+    if (spec.rate) s.playbackRate.value = spec.rate;
+    const f = ctx.createBiquadFilter();
+    f.type = spec.filter || 'bandpass';
+    f.Q.value = spec.Q == null ? 1 : spec.Q;
+    const g = ctx.createGain();
+    const dur = spec.dur || 0.2;
+    const attack = spec.attack == null ? 0.005 : spec.attack;
+    s.connect(f); f.connect(g); g.connect(rt._mineCueGain);
+    try {
+      f.frequency.setValueAtTime(spec.f0, t0);
+      if (spec.f1 && spec.f1 !== spec.f0) f.frequency.exponentialRampToValueAtTime(Math.max(40, spec.f1), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(Math.max(0.0002, spec.peak), t0 + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    } catch (_) {}
+    try { s.start(t0); s.stop(t0 + dur + 0.02); } catch (_) {}
+    rt._mineVoices.push({ nodes: [s, f, g], stopAt: t0 + dur + 0.08 });
+  },
+
+  /**
+   * One branch per law §5 "what you hear" phrase. Everything is procedural: no sample files, no
+   * manifest entry, no licensing. Peaks are the cue table's, already ducked by the arbiter, and
+   * they land on the ambient bus, so they sit in the same window as the shipped mining recipes.
+   */
+  _synthMineCue(key, t, gain, opts) {
+    const p = (opts && opts.payload) || {};
+    const rate = Number(opts && opts.rate) || 1;
+    switch (key) {
+      case 'oreTick': // soft mineral tick, pitch up with value
+        this._mineTone(t, { type: 'sine', f0: 1180 * rate, dur: 0.10, peak: gain, attack: 0.004 });
+        this._mineTone(t + 0.004, { type: 'sine', f0: 1772 * rate, dur: 0.07, peak: gain * 0.42, attack: 0.003 });
+        this._mineNoise(t, { filter: 'bandpass', f0: 2700 * rate, Q: 4, dur: 0.045, peak: gain * 0.3 });
+        break;
+      case 'boreBite': // a bite is a heavier strike than the grind
+        this._mineTone(t, { type: 'triangle', f0: 118, f1: 58, dur: 0.16, peak: gain, attack: 0.003 });
+        this._mineNoise(t, { filter: 'bandpass', f0: 940, f1: 380, Q: 1.2, dur: 0.085, peak: gain * 0.7 });
+        break;
+      case 'rockBreak': // the cell gives way
+        this._mineNoise(t, { filter: 'lowpass', f0: 900, f1: 220, Q: 0.8, dur: 0.34, peak: gain });
+        this._mineTone(t, { type: 'sine', f0: 74, f1: 44, dur: 0.28, peak: gain * 0.8, attack: 0.004 });
+        break;
+      case 'gasBreach': // sharp hiss-boom, then fading hiss
+        this._mineNoise(t, { filter: 'highpass', f0: 1250, Q: 0.7, dur: 0.19, peak: gain, attack: 0.004 });
+        this._mineTone(t + 0.02, { type: 'sine', f0: 62, f1: 33, dur: 0.46, peak: gain * 0.95, attack: 0.006 });
+        this._mineNoise(t + 0.14, { filter: 'bandpass', f0: 2300, f1: 900, Q: 1.4, dur: 1.7, peak: gain * 0.42, attack: 0.05 });
+        break;
+      case 'lockRefusal': // dull clank — damped, no ring
+        this._mineTone(t, { type: 'square', f0: 188, f1: 168, dur: 0.24, peak: gain, attack: 0.004, filter: 'lowpass', filterHz: 520, filterQ: 0.9 });
+        this._mineNoise(t, { filter: 'bandpass', f0: 620, Q: 2.2, dur: 0.07, peak: gain * 0.55 });
+        break;
+      case 'rigStall': { // strained stall whine — the bore refuses, not the law
+        const dry = p && p.reason === 'capacitor';
+        this._mineTone(t, {
+          type: 'sawtooth', f0: dry ? 240 : 380, f1: dry ? 190 : 500,
+          dur: 0.42, peak: gain, attack: 0.02,
+          filter: 'bandpass', filterHz: dry ? 700 : 1100, filterQ: 3.4,
+        });
+        this._mineNoise(t + 0.05, { filter: 'bandpass', f0: dry ? 900 : 1600, Q: 2.6, dur: 0.12, peak: gain * 0.4 });
+        break;
+      }
+      case 'hopperFull': // wooden thock
+        this._mineTone(t, { type: 'triangle', f0: 226, f1: 196, dur: 0.17, peak: gain, attack: 0.002, filter: 'bandpass', filterHz: 400, filterQ: 3 });
+        this._mineNoise(t, { filter: 'bandpass', f0: 1150, Q: 3, dur: 0.035, peak: gain * 0.45 });
+        break;
+      case 'heatCritical': // rising whine
+        this._mineTone(t, { type: 'sawtooth', f0: 610, f1: 1460, dur: 0.95, peak: gain, attack: 0.16, filter: 'bandpass', filterHz: 1500, filterQ: 4.5 });
+        break;
+      case 'ventRelief': // relief hiss
+        this._mineNoise(t, { filter: 'bandpass', f0: 3000, f1: 720, Q: 1.1, dur: 0.95, peak: gain, attack: 0.02 });
+        break;
+      case 'machinePlaced': // firm mechanical seat
+        this._mineTone(t, { type: 'triangle', f0: 132, f1: 96, dur: 0.16, peak: gain, attack: 0.003 });
+        this._mineNoise(t + 0.075, { filter: 'bandpass', f0: 1650, Q: 4.5, dur: 0.075, peak: gain * 0.6 });
+        break;
+      case 'chargeSet': // the puck clamps on — seat clunk, then the short rising arm chirp
+        this._mineTone(t, { type: 'triangle', f0: 164, f1: 118, dur: 0.13, peak: gain, attack: 0.003 });
+        this._mineNoise(t + 0.02, { filter: 'bandpass', f0: 1500, Q: 3.5, dur: 0.055, peak: gain * 0.5 });
+        this._mineTone(t + 0.1, { type: 'sine', f0: 820, f1: 1140, dur: 0.11, peak: gain * 0.42, attack: 0.012 });
+        break;
+      case 'chargeBlast': // deeper than rockBreak, meaner than gasBreach — the cut arriving at once
+        this._mineNoise(t, { filter: 'lowpass', f0: 1350, f1: 170, Q: 0.6, dur: 0.5, peak: gain, attack: 0.004 });
+        this._mineTone(t, { type: 'sine', f0: 56, f1: 29, dur: 0.62, peak: gain * 0.6, attack: 0.005 });
+        this._mineNoise(t + 0.07, { filter: 'bandpass', f0: 430, f1: 150, Q: 0.9, dur: 0.65, peak: gain * 0.35, attack: 0.02 });
+        break;
+      case 'chargeTick': // fuse clock — a dry click, quiet enough to layer under the strobe lamp
+        this._mineNoise(t, { filter: 'bandpass', f0: 2400, Q: 6, dur: 0.03, peak: gain });
+        break;
+      case 'rockCreak': // the roof beam groaning under a widening span — once, low
+        this._mineTone(t, { type: 'sawtooth', f0: 96, f1: 62, dur: 0.9, peak: gain, attack: 0.12, filter: 'lowpass', filterHz: 320, filterQ: 1.1 });
+        this._mineNoise(t + 0.15, { filter: 'bandpass', f0: 380, f1: 190, Q: 1.6, dur: 0.7, peak: gain * 0.5, attack: 0.08 });
+        break;
+      case 'caveIn': // the drop: low slam, then rubble settling
+        this._mineTone(t, { type: 'sine', f0: 68, f1: 38, dur: 0.5, peak: gain, attack: 0.004 });
+        this._mineNoise(t + 0.03, { filter: 'lowpass', f0: 700, f1: 160, Q: 0.7, dur: 0.55, peak: gain * 0.8 });
+        this._mineNoise(t + 0.3, { filter: 'bandpass', f0: 300, f1: 140, Q: 0.9, dur: 0.7, peak: gain * 0.4, attack: 0.06 });
+        break;
+      case 'machineStarved': // single soft chime, once per transition
+        this._mineTone(t, { type: 'sine', f0: 662, dur: 0.72, peak: gain, attack: 0.022 });
+        this._mineTone(t + 0.012, { type: 'sine', f0: 992, dur: 0.5, peak: gain * 0.36, attack: 0.02 });
+        break;
+      case 'courierLaunch': // soft launch thump
+        this._mineTone(t, { type: 'sine', f0: 46, f1: 92, dur: 0.3, peak: gain, attack: 0.012 });
+        this._mineNoise(t + 0.03, { filter: 'bandpass', f0: 320, f1: 1450, Q: 0.9, dur: 0.55, peak: gain * 0.45, attack: 0.06 });
+        break;
+      case 'assayPing': // quiet sonar blip
+        this._mineTone(t, { type: 'sine', f0: 1324, dur: 0.28, peak: gain, attack: 0.005 });
+        this._mineTone(t + 0.006, { type: 'sine', f0: 1986, dur: 0.16, peak: gain * 0.36, attack: 0.004 });
+        break;
+      case 'rockDepleted': // two dull descending thuds — this rock is done paying
+        this._mineTone(t, { type: 'sine', f0: 152, f1: 128, dur: 0.2, peak: gain, attack: 0.005, filter: 'lowpass', filterHz: 400 });
+        this._mineTone(t + 0.16, { type: 'sine', f0: 112, f1: 92, dur: 0.26, peak: gain * 0.7, attack: 0.005, filter: 'lowpass', filterHz: 340 });
+        break;
+      default:
+        // Unknown key: stay silent rather than guess. The routing test enumerates every law row
+        // against this switch, so a missing branch is a red check, never a mystery beep.
+        return false;
+    }
+    if (p && p.critical) this._applyPriorityCue({ id: `mine.${key}`, importance: 0.9, playerRelevance: 1 });
+    return true;
+  },
+
+  _gcMineVoices(now) {
+    const rt = this.rt;
+    const list = rt._mineVoices;
+    if (!list || list.length === 0) return;
+    let w = 0;
+    for (let i = 0; i < list.length; i++) {
+      const v = list[i];
+      if (v.stopAt > now) { list[w++] = v; continue; }
+      for (const n of v.nodes) { try { n.disconnect(); } catch (_) {} }
+    }
+    list.length = w;
+  },
+
+  /** Retract: fade the whole soundscape out (law §9) and drop the graph. */
+  _stopMine(t) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx) { this._teardownMine(); return; }
+    const at = t == null ? ctx.currentTime : t;
+    if (rt._mineBus) {
+      try {
+        rt._mineBus.gain.cancelScheduledValues(at);
+        rt._mineBus.gain.setValueAtTime(Math.max(0.0001, rt._mineBus.gain.value), at);
+        rt._mineBus.gain.exponentialRampToValueAtTime(0.0001, at + MINE_BED_FADE_OUT_S);
+      } catch (_) {}
+    }
+    const bed = rt._mineBed;
+    const grind = rt._mineGrind;
+    // Forget the cached param targets while the layer nodes are still reachable, so a re-entered
+    // mine re-asserts its whole mix instead of skipping writes that "already match".
+    this._forgetMineParamCache();
+    rt._mineBed = null;
+    rt._mineGrind = null;
+    const stopAt = at + MINE_BED_FADE_OUT_S + 0.05;
+    const collect = [];
+    if (bed) { for (const s of bed.sources) { try { s.stop(stopAt); } catch (_) {} } collect.push(...bed.nodes); }
+    if (grind) {
+      for (const name of MINE_GRIND_LAYERS) {
+        const l = grind[name];
+        if (!l) continue;
+        for (const s of l.sources) { try { s.stop(stopAt); } catch (_) {} }
+        collect.push(...l.nodes);
+      }
+    }
+    if (collect.length) rt._mineVoices.push({ nodes: collect, stopAt: stopAt + 0.1 });
+    this._resetMineRuntime();
+  },
+
+  /** Forget every cached param target so a re-entered mine re-asserts its whole mix. */
+  _forgetMineParamCache() {
+    const rt = this.rt;
+    if (!rt) return;
+    const forget = (n) => { if (n && n.gain) delete n.gain._mineLast; };
+    forget(rt._mineBus); forget(rt._mineBedGain); forget(rt._mineGrindGain); forget(rt._mineCueGain);
+    if (rt._mineGrind) {
+      for (const name of MINE_GRIND_LAYERS) {
+        const l = rt._mineGrind[name];
+        if (!l) continue;
+        forget(l.gain);
+        if (l.filter && l.filter.frequency) delete l.filter.frequency._mineLast;
+        for (const s of l.rateNodes || []) { if (s.playbackRate) delete s.playbackRate._mineLast; }
+      }
+    }
+  },
+
+  _teardownMine() {
+    const rt = this.rt;
+    if (!rt) return;
+    const drop = (nodes) => { for (const n of nodes || []) { try { n.stop(); } catch (_) {} try { n.disconnect(); } catch (_) {} } };
+    if (rt._mineBed) drop(rt._mineBed.nodes);
+    if (rt._mineGrind) for (const name of MINE_GRIND_LAYERS) drop(rt._mineGrind[name] && rt._mineGrind[name].nodes);
+    for (const v of rt._mineVoices || []) drop(v.nodes);
+    rt._mineBed = null; rt._mineGrind = null; rt._mineVoices = [];
+    rt._wantMineBed = false;
+    this._resetMineRuntime();
+  },
+
+  _onMiningStart(p) {
+    const rt = this.rt;
+    if (!p) return;
+    rt._wantMining = { minerId: p.minerId, targetId: p.targetId };
+    const ctx = rt.ctx;
+    // Paused sessions keep the desire but never start the drone — _frame resurrects on resume.
+    if (!ctx || ctx.state !== 'running' || rt._paused) return;
+    if (rt.loops.mining) return;
+    const entity = p.targetId != null && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(p.targetId) : null;
+    const v = this._startLoopVoice('sfx_mining_beam', p.position, 0.6, { entity });
+    if (v) { v.trackId = p.targetId; rt.loops.mining = v; this._markLoopPositionDirty(); }
+  },
+
+  _onMiningStop(p) {
+    const rt = this.rt;
+    rt._wantMining = null;
+    if (rt.loops.mining) { this._endLoopVoice(rt.loops.mining); delete rt.loops.mining; }
+    this._markLoopPositionDirty();
+  },
+
+  _onMiningTick(p) {
+    // Keep hardness/contact inside the existing continuous cutter voice. Spawning a one-shot every
+    // 80 ms masked seam rewards and inflated the voice floor; the semantic lane owns transitions.
+    const rt = this.rt;
+    const voice = rt.loops.mining;
+    const filter = voice && voice.filter;
+    const ctx = rt.ctx;
+    if (!filter || !ctx) return;
+    const targetHz = p && p.seamHit ? 1520 : 940;
+    try { filter.frequency.setTargetAtTime(targetHz, ctx.currentTime, 0.045); } catch (_) {}
+  },
+
+  _updateDrillGrind() {
+    const rt = this.rt;
+    const mix = drillGrindMix(this.state && this.state.drill, rt._drillGrindMix);
+    // PQ-130.08: inside the mine the three-layer grind bed (`_updateMine`) owns this voice. This
+    // single-recipe loop stands down there so the two can never stack. It stays the grind for any
+    // future non-mine deep-drill session.
+    if (mix.active && typeof this._mineOwnsEar === 'function' && this._mineOwnsEar()) mix.active = false;
+    // The pause menu must be quiet — the bed stands down while paused and re-derives on resume.
+    if (rt._paused) mix.active = false;
+    rt._wantDrillGrind = mix.active;
+
+    if (!mix.active) {
+      const current = rt.loops.drillGrind;
+      if (current) {
+        this._endLoopVoice(current);
+        delete rt.loops.drillGrind;
+      }
+      return;
+    }
+
+    const ctx = rt.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    let voice = rt.loops.drillGrind;
+    if (!voice) {
+      voice = this._startLoopVoice(DRILL_GRIND_LOOP_ID, null, 0.4);
+      if (!voice) return;
+      voice.role = 'ambient';
+      voice.busName = 'ambient';
+      rt.loops.drillGrind = voice;
+    }
+
+    const now = ctx.currentTime;
+    this._setParam(voice.gain.gain, mix.gain, now, 0.045);
+    if (voice.filter) {
+      this._setParam(voice.filter.frequency, mix.filterHz, now, 0.04);
+    }
+    for (const source of voice.sources || []) {
+      if (!source.playbackRate) continue;
+      this._setParam(source.playbackRate, mix.rate, now, 0.05);
+    }
+  },
+
+  _startLoopVoice(recipeId, position, gain, options = {}) {
+    const rt = this.rt, ctx = rt.ctx;
+    // rt._paused: no sustained world loop may start under a pause/menu veil — every caller's
+    // desire flag survives and the sim owner re-arms the loop on resume.
+    if (rt._lifecycleSuspended || rt._paused || !ctx || ctx.state !== 'running') return null;
+    if (rt.voices && rt.voices.length >= MAX_AUDIO_VOICES) return null;
+    const recipe = AUDIO_RECIPE_BY_ID[recipeId];
+    if (!recipe) return null;
+    const entity = options.entity || null;
+    const follow = options.follow === true || options.trackId != null;
+    // A sustained loop normally belongs to its recipe's bus. A caller may override when the same
+    // recipe is used in a different room (INST-13: the station bed is ambient, not the flight engine).
+    const busName = options.busName || getBusForRecipe(recipe, recipeId);
+    // UI/combat voices are intentionally not hidden by residency: a player-facing warning or a
+    // nearby combat receipt must remain audible. Continuous remote engine/ambient loops, however,
+    // must not keep scheduling AudioParam work once their owner leaves the active audio set.
+    if (entity && busName !== 'ui' && busName !== 'combat'
+      && entityNeedsExactAudio(entity, { playerId: this.state && this.state.playerId }) !== true) {
+      return null;
+    }
+    let att = 1, pan = 0;
+    if (position) {
+      if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) return null;
+      const pp = this._playerPos();
+      const d = Math.hypot(position.x - pp.x, position.z - pp.z);
+      // A positioned loop past hearing attenuates to the silent floor on every mix term — the
+      // node graph would render silence. Same cull law play() already applies to one-shots.
+      if (d > D_FAR) return null;
+      att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
+      pan = clamp((position.x - pp.x) / PAN_SPAN, -1, 1);
+    }
+    // Shared-bus reconciliation: loops must hit the same per-bus gains as one-shots
+    // (combat slider, ambient sidechain duck, engine bus, etc.). Never bypass onto sfxBus.
+    let targetBus = rt.sfxBus;
+    if (busName === 'engine') targetBus = rt.engineBus || rt.sfxBus;
+    else if (busName === 'ambient') targetBus = rt.ambientBus || rt.sfxBus;
+    else if (busName === 'combat') targetBus = rt.combatBus || rt.sfxBus;
+    else if (busName === 'ui') targetBus = rt.uiBus || rt.sfxBus;
+    else if (busName === 'comms') targetBus = rt.commsBus || rt.sfxBus;
+
+    let dest = targetBus;
+    let panner = null;
+    if ((pan !== 0 || follow) && ctx.createStereoPanner) {
+      panner = ctx.createStereoPanner();
+      panner.pan.value = pan;
+      panner.connect(targetBus);
+      dest = panner;
+    }
+    // Mining tracks its target throughout the hold. Its recipe already receives the authored
+    // level here; the outer voice gain must carry distance only, or position updates multiply
+    // that level a second time and make the cutter almost inaudible.
+    const miningBeam = recipeId === 'sfx_mining_beam';
+    const peak = Math.min(1, this._ampFor(recipe) * (gain == null ? 1 : gain) * (miningBeam ? 1 : att));
+    // PQ-158.00 hybrid loop: resident sample body + live synth layer, released together.
+    const sampleBinding = rt._samples ? resolveSampleBinding(recipeId) : null;
+    const sampleBuffer = sampleBinding ? rt._samples.acquire(sampleBinding.sampleId) : null;
+    const loopSynthPeak = Math.max(0.02, sampleBuffer ? peak * (1 - sampleBinding.share) : peak);
+    const loopRate = (options.rate || 1) * (isPhysicalAudioBus(busName) ? (rt._bulletTimePitch || 1) : 1);
+    const v = playRecipe(ctx, recipe, dest, {
+      peakGain: loopSynthPeak,
+      rate: loopRate,
+      lockRate: options.lockRate === true,
+      id: rt._nextVoiceId++,
+    }, rt._caches);
+    v._panner = panner;
+    v._baseGain = miningBeam ? 1 : this._ampFor(recipe) * (gain == null ? 1 : gain);
+    if (miningBeam) v.gain.gain.value = att;
+    v.busName = busName;
+    v.recipeId = recipeId;
+    v.loop = true;
+    if (entity) v._trackEntity = entity;
+    if (position) v.dist = Math.hypot(position.x - this._playerPos().x, position.z - this._playerPos().z);
+    if (options.trackId != null) v.trackId = options.trackId;
+    v.role = busName === 'engine'
+      ? 'engineLoop'
+      : ((recipe.category === 'weapon' || String(recipeId).includes('wpn')) ? 'weaponLoop' : busName);
+    if (sampleBuffer) {
+      attachSampleLayer(ctx, sampleBuffer, sampleBinding, v, ctx.currentTime, {
+        rate: loopRate,
+        peak: peak * sampleBinding.share,
+        loop: true,
+      });
+    }
+    rt.voices.push(v);
+    return v;
+  },
+
+  _endLoopVoice(v) {
+    const rt = this.rt;
+    try { releaseVoice(rt.ctx, v); } catch (_) {}
+    // GC happens in _frame() once stopAt passes; mark panner for cleanup there
+  },
+
+  // ---- session-boundary hygiene -----------------------------------------------------------
+  // The docked latch and the desired-loop flags are written by transient events (dock:docked,
+  // combat:fire, mining:start) whose matching stop signal cannot always arrive: save restore
+  // clears the dock flags without a dock:undocked emit, weapons.update early-returns outside
+  // mode 'flight', and a sector/new-game teardown drops the owning entities wholesale. The
+  // boundary therefore reconciles them from live state instead of trusting the latch.
+
+  /**
+   * Wall-clock delay that dies with the session. Tracked in rt._timers and stamped with the
+   * boundary generation so a cue queued just before save:loaded / game:new / sector:enter /
+   * destroy() can never fire into the next run or a dead runtime.
+   */
+  _defer(fn, ms) {
+    const rt = this.rt;
+    if (!rt || rt._destroyed || rt._lifecycleSuspended) return 0;
+    const gen = rt._timerGen || 0;
+    const timers = rt._timers || (rt._timers = new Set());
+    const id = setTimeout(() => {
+      timers.delete(id);
+      if (this.rt !== rt || rt._destroyed || (rt._timerGen || 0) !== gen) return;
+      try { fn(); } catch (_) {}
+    }, ms);
+    timers.add(id);
+    return id;
+  },
+
+  /** Cancel every pending _defer() and stamp a new generation so stragglers also no-op. */
+  _clearDeferred() {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._timerGen = (rt._timerGen || 0) + 1;
+    const timers = rt._timers;
+    if (!timers) return;
+    for (const id of timers) { try { clearTimeout(id); } catch (_) {} }
+    timers.clear();
+  },
+
+  /**
+   * End every desired sustained loop (beam_, mining, drillGrind keys) and drop the want flags
+   * so _frame cannot resurrect them. Live beams re-arm through combat:fire on the next flight
+   * tick; drillGrind re-derives from state.drill in _updateDrillGrind.
+   */
+  _endDesiredLoops() {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._wantBeam = {};
+    rt._wantMining = null;
+    rt._wantDrillGrind = false;
+    const loops = rt.loops;
+    if (!loops) return;
+    for (const key of Object.keys(loops)) {
+      if (key === 'mining' || key === 'drillGrind' || key.startsWith('beam_')) {
+        this._endLoopVoice(loops[key]);
+        delete loops[key];
+      }
+    }
+  },
+
+  /**
+   * State-derived docked reconcile for boundaries where no dock:undocked event can arrive.
+   * `forceUndock` covers game:new/newGame, which fire while the previous session's (possibly
+   * docked) state is still live — a fresh run can never begin docked.
+   */
+  _reconcileDockedState(forceUndock = false) {
+    const rt = this.rt, state = this.state;
+    if (!rt) return;
+    const entities = state && state.entities;
+    const player = entities && typeof entities.get === 'function' && state.playerId != null
+      ? entities.get(state.playerId) : null;
+    const docked = forceUndock === true ? false : !!(
+      (state && state.ui && state.ui.docked)
+      || (player && player.flags && player.flags.docked));
+    const changed = docked !== !!rt._docked;
+    rt._docked = docked;
+    rt._dockStationId = docked
+      ? ((state && state.ui && state.ui.dockedStationId) || rt._dockStationId || null)
+      : null;
+    // The hum follows the reconciled latch, not the event edge: a docked restore ensures it
+    // (no-op while running), an undocked restore releases it. No clunk/chime one-shots — the
+    // dock itself was heard in its own session.
+    if (docked) this._startStationHum({ stationId: rt._dockStationId });
+    else this._stopStationHum();
+    if (changed) {
+      this._syncEnvironmentMix(docked);
+      this._markMusicDirty();
+    }
+  },
+
+  _sessionBoundaryReset({ forceUndock = false } = {}) {
+    const rt = this.rt;
+    if (!rt) return;
+    // These cooldowns use the outgoing simulation clock and entity IDs. Neither survives
+    // New Game or a save restore: the next run must be able to speak from tick zero.
+    rt._combatFeedbackAdmit = null;
+    rt._aftermathHush = null;
+    // Wreck cooling clocks are keyed by the outgoing session's entity ids.
+    rt._wreckCooling = null;
+    // So is the gate throat's once-per-visit caption memory.
+    rt._gateThroatCaption = null;
+    this._clearDeferred();
+    this._endDesiredLoops();
+    this._releaseDockedFieldLoops();
+    if (rt._commsPhrases) rt._commsPhrases.length = 0;
+    rt._commsDuckUntilS = 0;
+    rt._commsDuckGain = COMMS_DUCK.gain;
+    rt._commsDuckLive = 1;
+    this._reconcileDockedState(forceUndock);
+    // X4 P0: the boss latch is entity-ID state from the outgoing session. A mid-boss quit must not
+    // leave the next run in the boss stem (nothing would ever release those IDs).
+    rt._bossIds = rt._bossIds instanceof Set ? rt._bossIds : new Set();
+    rt._bossIds.clear();
+    rt._bossActive = false;
+    rt._bossMixLatch = false;
+    // A new run starts the cue rotation from take 0, so two runs of the same fight sound alike.
+    rt._cueVariants = null;
+    rt._wantedSearchInside = null;
+    if (rt._buildIdentityHeard) rt._buildIdentityHeard.clear();
+    rt._standingCueAt = null;
+    rt._pickupHoldFull = pickupHoldIsFull(this.state && this.state.player && this.state.player.cargo);
+    rt._pickupHoldRefusedUnit = 0;
+    // THE EAR: the next run's score opens fresh — no inherited fight, aftermath or phrase anchor.
+    if (rt.bandBed && typeof rt.bandBed.resetScore === 'function') rt.bandBed.resetScore();
+    rt._scoreTransitionsSeen = null;
+  },
+
+  /**
+   * X4 P0 — re-derive the boss latch from the live entity list. Only a save restore needs it
+   * (spawn/kill events own the running case), but it is a pure read of `state.entities`, so it
+   * cannot double-count: the set is cleared first.
+   */
+  _seedBossLatchFromState() {
+    const rt = this.rt;
+    if (!rt) return 0;
+    const entities = this.state && this.state.entities;
+    rt._bossIds = rt._bossIds instanceof Set ? rt._bossIds : new Set();
+    rt._bossIds.clear();
+    if (entities && typeof entities.values === 'function') {
+      for (const e of entities.values()) if (isBossBody(e)) rt._bossIds.add(e.id);
+    } else if (entities && typeof entities.forEach === 'function') {
+      entities.forEach((e) => { if (isBossBody(e)) rt._bossIds.add(e.id); });
+    }
+    rt._bossActive = rt._bossIds.size > 0;
+    rt._bossMixLatch = false;
+    return rt._bossIds.size;
+  },
+
+  _onDocked(p) {
+    // Docking sequence: metallic clunk impact + confirmation chime + place mood
+    this.play('sfx_dock_clunk', { gain: 0.9 });
+    // input.js emits audio:cue ui_dock on the same dispatch right after dock:docked, and that
+    // cue maps to this same clunk recipe — stamp the tick so _onCue drops the echo instead of
+    // stacking a second clunk on top of this one.
+    this.rt._dockClunkTick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1;
+    // Slight delay on the confirmation chime so it feels like clunk-then-lock — deferred through
+    // the tracked helper so a boundary between clunk and chime cancels the chime.
+    this._defer(() => this.play('sfx_ui_confirm', { gain: 0.6, rate: 0.7 }), 180);
+    this.rt._docked = true;
+    this.rt._dockStationId = p && p.stationId ? p.stationId : null;
+    const identNow = this.rt.ctx ? this.rt.ctx.currentTime : 0;
+    stationIdentNotes(this.rt._dockStationId).forEach((note, i) => this.play('sfx_stunt_link', {
+      gain: 0.19, rate: this._noteFreq(note, 5) / 880, lockRate: true, startTime: identNow + 0.22 + i * 0.14,
+    }));
+    this._syncEnvironmentMix(true);
+    this._markMusicDirty();
+    // Start ambient station hum loop (faction-tinted when possible)
+    this._startStationHum(p);
+    const hullLines = leftoverMechanicLines(this.state);
+    // A stock graze is a lie when this hull has nothing filed. Silence beats an invented scar —
+    // and a verbatim rerun reads as a broken radio, so the mechanic speaks the first line he
+    // hasn't said this session (the berth card still lists the full set).
+    const said = this.rt._mechanicDockSaid instanceof Set
+      ? this.rt._mechanicDockSaid : (this.rt._mechanicDockSaid = new Set());
+    const mechanicLine = hullLines && hullLines.find((line) => line && !said.has(line));
+    if (mechanicLine) {
+      said.add(mechanicLine);
+      this._onBarkVoice({ mechanic: true, kind: 'mechanic', text: mechanicLine, line: mechanicLine });
+    }
+  },
+
+  _onUndocked() {
+    this.rt._docked = false;
+    this.rt._dockStationId = null;
+    this._syncEnvironmentMix(false);
+    this._markMusicDirty();
+    // Soft release whoosh then stop station hum — undock is decompress, not another clunk.
+    this.play('sfx_undock_release', { gain: 0.55 });
+    const idle = engineIdleCue({ undockIdle: true, throttle: 0 });
+    if (idle.play) this.play(idle.recipe, { gain: Math.pow(10, idle.db / 20) });
+    this._stopStationHum();
+  },
+
+  // A claim raid warning borrows the wanted-alert recipe at a fixed low gain.
+  // Below the heat-flip voice, and it never ducks music.
+  _onClaimRaidWarning(payload) {
+    if (!payload) return;
+    this.play('sfx_wanted_alert', { gain: CLAIM_RAID_WARNING_GAIN });
+  },
+
+  // WF-13 pocket beat: the living world's staged beats were the one family of world moments
+  // with no voice — the surveyor could lay a probe line beside you in total silence. A beat
+  // STARTING within earshot gets one low work-bell wake positioned on its primary hull; phase
+  // ticks and cycle bookkeeping stay silent. Reads as "the pocket's work just woke over there",
+  // never as an alarm and never as chatter.
+  _onPocketChainBeat(payload) {
+    if (!payload || payload.kind !== 'event_start') return;
+    const slotIds = payload.actorSlotIds;
+    if (!Array.isArray(slotIds) || !slotIds.length) return;
+    const state = this.state;
+    if (!state || state.mode !== 'flight') return;
+    const player = state.entities && state.playerId != null && state.entities.get
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player || !player.pos) return;
+    let actor = null;
+    const entities = state.entityList;
+    if (Array.isArray(entities)) {
+      for (let i = 0; i < entities.length; i++) {
+        const e = entities[i];
+        if (e && e.alive !== false && e.pos && e.data
+          && e.data.activityActorSlotId === slotIds[0]) { actor = e; break; }
+      }
+    }
+    if (!actor) return;
+    const dx = actor.pos.x - player.pos.x;
+    const dz = actor.pos.z - player.pos.z;
+    const distance = Math.hypot(dx, dz);
+    if (!Number.isFinite(distance) || distance > POCKET_BEAT_HEARING_WU) return;
+    const rt = this.rt || (this.rt = {});
+    const now = Number(state.simTime) || 0;
+    // A restored save or new run can rewind sim time while the audio runtime survives. Treat
+    // that boundary as a fresh watch; otherwise a later old-timeline stamp silences beats until
+    // the new clock catches up to it.
+    if (Number.isFinite(rt._pocketBeatAt) && now < rt._pocketBeatAt) rt._pocketBeatAt = -Infinity;
+    if (now - (rt._pocketBeatAt != null ? rt._pocketBeatAt : -Infinity) < POCKET_BEAT_MIN_GAP_S) return;
+    rt._pocketBeatAt = now;
+    const roll = (hash32(String(payload.sectorId || ''), String(payload.eventId || ''),
+      payload.cycle | 0) >>> 0) / 4294967296;
+    const rate = POCKET_BEAT_RATE_LO + roll * (POCKET_BEAT_RATE_HI - POCKET_BEAT_RATE_LO);
+    this.play('sfx_pocket_beat_wake', {
+      gain: POCKET_BEAT_GAIN,
+      rate,
+      position: { x: actor.pos.x, z: actor.pos.z },
+    });
+  },
+
+  _stepWantedSearchAudio() {
+    const state = this.state;
+    if (!state) return;
+    const rt = this.rt || (this.rt = {});
+    const volume = readWantedSearchVolume(state,
+      rt._wantedVolume || (rt._wantedVolume = {}));
+    const player = state.entities && state.playerId != null && state.entities.get
+      ? state.entities.get(state.playerId)
+      : null;
+    const inside = !!(volume && player && player.pos
+      && pointInsideWantedSearch(volume, player.pos.x, player.pos.z));
+    const step = stepWantedSearchEdge(rt._wantedSearchInside, inside,
+      rt._wantedEdge || (rt._wantedEdge = {}));
+    rt._wantedSearchInside = step.inside;
+    if (step.edge === 'leave') this.play(WANTED_SEARCH_EDGE_CUES.leave, { gain: 0.45 });
+    else if (step.edge === 'enter') this.play(WANTED_SEARCH_EDGE_CUES.enter, { gain: 0.4 });
+  },
+
+  _onServiceBerthCue(which) {
+    const id = SERVICE_BERTH_CUES[which];
+    if (!id) return;
+    const register = SERVICE_BERTH_REGISTERS[which] || {};
+    this.play(id, { gain: register.gain != null ? register.gain : 0.35, rate: register.rate || 1 });
+  },
+
+  // The self-serve decant: the pilot's own pump moves fuel cell by cell (docked, so like the
+  // berth chime this is not gated on pause). An empty receipt is a receipt, not a pour.
+  _onServiceDecanted(payload) {
+    const cue = serviceDecantCue(payload);
+    if (!cue) return;
+    this.play(cue.id, { gain: cue.gain, rate: cue.rate });
+    this._emitNamedCaption(serviceMomentCaption('service:decanted'));
+  },
+
+  // The yard hands the hull or tank back. Not gated on pause: docking IS a pause (screenManager
+  // sends sim:pause for any docked state) and every berth job finishes at the dock.
+  _onServiceCompleted(payload) {
+    const cue = serviceCompletedCue(payload, this.state && this.state.fuel && this.state.fuel.max);
+    if (!cue) return;
+    this.play(cue.id, { gain: cue.gain });
+  },
+
+  // Rank change on the standing ladder. Same pause rule as the berth: a rank-up from a mission
+  // turn-in lands while docked, which is a pause, so only the title/loading screens and a sealed
+  // Crucible run (which never moves standing) are quiet. One cue per window, on the audio clock
+  // (sim time freezes at the dock, so it cannot meter a dock visit).
+  _onFactionRepChanged(payload) {
+    const cue = factionStandingCue(payload);
+    if (!cue) return;
+    const state = this.state;
+    const mode = state && state.mode;
+    if (mode === 'menu' || mode === 'loading' || isRunSealed(state)) return;
+    const rt = this.rt;
+    if (!rt) return;
+    const now = rt.ctx && Number.isFinite(rt.ctx.currentTime)
+      ? rt.ctx.currentTime
+      : Math.max(0, Number(state && state.simTime) || 0);
+    const last = rt._standingCueAt;
+    // A clock that went backwards (restore, new run on a fresh context) is a new window.
+    if (Number.isFinite(last) && now >= last && now - last < FACTION_STANDING_WINDOW_S) return;
+    rt._standingCueAt = now;
+    this.play(cue.id, { gain: cue.gain });
+  },
+
+  _onUniqueLootCue(eventName) {
+    const id = UNIQUE_LOOT_CUES[eventName];
+    if (!id) return;
+    this.play(id, { gain: 0.5 });
+  },
+
+  _onBuildIdentityRevealed(payload) {
+    if (!payload || payload.entityId == null) return;
+    const rt = this.rt || (this.rt = {});
+    const heard = rt._buildIdentityHeard || (rt._buildIdentityHeard = new Set());
+    const key = String(payload.entityId);
+    if (heard.has(key)) return;
+    heard.add(key);
+    this.play(BUILD_IDENTITY_REVEAL_CUE, { gain: 0.45 });
+  },
+
+  _onMineCapReached(payload) {
+    this.play(MINE_CAP_REFUSAL_RECIPE, { gain: 0.65, captionOwned: true });
+    const cap = payload && Number.isFinite(payload.cap) ? payload.cap : 6;
+    this._emitPresentationCaption(`Mine Cap Reached (${cap})`, {
+      assertive: true,
+      shape: 'arc',
+      channel: 'refusal',
+      cap,
+    });
+  },
+
+  // WANTED heat family, keyed on the authoritative heat:changed packet (heat.js is the single
+  // writer). Fully packet-driven: every emit carries previousValue, so each verdict derives from
+  // the packet itself and no cross-run or post-load transient can stale it. Only edges speak:
+  // the WANTED flip and band climbs play the rising alarm (pitched up per band); dropping clean
+  // plays the clear sting; chips inside a band and decay-without-clear stay silent.
+  _onHeatChanged(p) {
+    if (!p) return;
+    const level = Number.isFinite(p.level) ? p.level : 0;
+    if (this.rt) {
+      this.rt._scoreHeatLevel = p.wanted === false ? 0 : level;
+      this.rt._musicDirty = true;
+    }
+    if (p.wantedCrossed && !p.wanted) {
+      // importance 0.8 = critical voice: the relief sting survives a combat squelch window,
+      // mirroring the escalation alarm's immunity.
+      this._onCue({ id: 'wanted_clear', gain: 0.7, importance: 0.8 });
+      return;
+    }
+    // The producer now carries previousLevel on the packet (non-enumerable). Read it when present;
+    // only legacy/synthetic packets without it fall back to re-deriving the band from the scalar.
+    const prevLevel = Number.isFinite(p.previousLevel)
+      ? p.previousLevel
+      : (Number.isFinite(p.previousValue) ? heatLevelFor(p.previousValue) : null);
+    const escalated = level > 0
+      && ((p.wantedCrossed && p.wanted) || (prevLevel != null && level > prevLevel));
+    if (!escalated) return;
+    // Band scale mirrors HEAT_LEVEL_COUNT in src/systems/heat.js; bands 1..5. The per-band rate
+    // step (0.12 ≈ 2 semitones) keeps the escalation ladder audible; gain steps add on top.
+    const band = Math.max(1, Math.min(5, level));
+    this._onCue({
+      id: 'wanted_escalate',
+      gain: clamp(0.55 + band * 0.06, 0.55, 0.9),
+      rate: clamp(wantedMotifRate(band), 1, 1.6),
+      // The flip owns the ear (duck, like fuel:empty). Climbs speak at 0.75 — and either way the
+      // recipe's 'alert' id already grants squelch immunity (see _isPriorityVoice).
+      importance: p.wantedCrossed ? 0.9 : 0.75,
+      duck: !!p.wantedCrossed,
+    });
+  },
+
+  _startStationHum(p) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || ctx.state !== 'running' || !rt.loops) return;
+    if (rt.loops.stationHum) return;
+    // Docking into a saturated mix must not mute the room for the whole stay: the hum
+    // only starts on the dock edge and the boundary reconcile, so claim the worst
+    // disposable slot (the same admission play() gets) rather than letting a crowd of
+    // finished one-shot tails silence the station.
+    if (rt.voices && rt.voices.length >= MAX_AUDIO_VOICES && !this._reserveVoiceSlot(false)) return;
+    // INST-13: the authored room tone (`station_hum_loop`, bound to `sfx_station_hum`) is the body
+    // of the docked bed. `_startLoopVoice` plays that resident sample plus the recipe's live synth
+    // layer, routes the pair onto the ambient bus, and releases both together — no bespoke build.
+    // Place identity: Helios / SCN trade hubs sit a touch fuller; others thinner.
+    // Read-only station/sector ids — never mutates gameplay state.
+    const stationId = (p && p.stationId) || rt._dockStationId || '';
+    const sectorId = (this.state.world && this.state.world.currentSectorId) || '';
+    const isHelios = String(stationId).includes('helios') || String(sectorId).includes('helios');
+    // The authored ambient-bus-input peak for the docked hum — the level §7 of
+    // asteroid-sound-routing measures the mine bed against. `_startLoopVoice` multiplies its
+    // gain argument by the recipe amp, so divide the authored peak back out to land it exactly.
+    const humPeak = isHelios ? 0.045 : 0.038;
+    const humAmp = this._ampFor(AUDIO_RECIPE_BY_ID.sfx_station_hum) || 1;
+    const voice = this._startLoopVoice('sfx_station_hum', null, humPeak / humAmp, { busName: 'ambient' });
+    if (!voice) return;
+    rt.loops.stationHum = voice;
+  },
+
+  _stopStationHum() {
+    const rt = this.rt;
+    if (!rt.loops || !rt.loops.stationHum) return;
+    // Release the sample body and its synth layer on the audio clock; _frame() GCs the nodes after
+    // the recipe's 1.5 s release tail. No wall-clock timer can strand a running source.
+    this._endLoopVoice(rt.loops.stationHum);
+    delete rt.loops.stationHum;
+  },
+
+  /**
+   * THE PLACE ANSWERS WF-13 — undocked, the nearest dockable station's hum answers proximity.
+   * One unpositioned ambient loop (the docked bed's own recipe) whose gain is the distance falloff
+   * the positioned voices use; the docked hum owns the berth, so this stays silent while docked.
+   * Read-only over state; the loop is a resident sample body, so a station sounds like a place
+   * before the player ever reaches the ring.
+   */
+  _updateApproachHum(now) {
+    const rt = this.rt;
+    if (!rt || !rt.loops) return;
+    const stop = () => {
+      if (!rt.loops.approachHum) return;
+      this._endLoopVoice(rt.loops.approachHum);
+      delete rt.loops.approachHum;
+    };
+    if (rt._docked || rt._paused || rt._lifecycleSuspended || !this.state) { stop(); return; }
+    const station = this._nearestDockableStation();
+    const pp = station ? this._playerPos() : null;
+    const target = station && pp
+      ? this._approachHumGain(Math.hypot(station.pos.x - pp.x, station.pos.z - pp.z))
+      : 0;
+    if (target <= 0.0004) { stop(); return; }
+    // The hum speaks for the station's house: a faction change re-voices the bed (next tick).
+    const factionId = (station.data && station.data.factionId) || null;
+    let voice = rt.loops.approachHum;
+    if (voice && voice._approachFaction !== factionId) { stop(); return; }
+    if (!voice) {
+      if (rt.voices && rt.voices.length >= MAX_AUDIO_VOICES && !this._reserveVoiceSlot(false)) return;
+      const amp = this._ampFor(AUDIO_RECIPE_BY_ID.sfx_station_hum) || 1;
+      voice = this._startLoopVoice('sfx_station_hum', null, APPROACH_HUM_PEAK / amp,
+        { busName: 'ambient', rate: APPROACH_HUM_FACTION_RATE[factionId] || 1 });
+      if (!voice) return;
+      voice._approachFaction = factionId;
+      rt.loops.approachHum = voice;
+    }
+    // Smooth seconds-scale ramp: the approach is a swell, not a fader snap.
+    try { voice.gain.gain.setTargetAtTime(target, rt.ctx.currentTime, 0.35); } catch (_) {}
+  },
+
+  _approachHumGain(distanceWu) {
+    const frac = clamp(1 - (distanceWu - D_NEAR) / (APPROACH_HUM_FAR_WU - D_NEAR), 0, 1);
+    return frac * frac * APPROACH_HUM_PEAK;
+  },
+
+  /** Nearest live dockable station body (read-only; dockless platforms and gates run no hum). */
+  _nearestDockableStation() {
+    const state = this.state;
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos) return null;
+    const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
+    let best = null;
+    let bestD2 = Infinity;
+    for (const e of list) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      if (e.data && e.data.dockless === true) continue;
+      // Gates spawn as station bodies (data.isGate, wormholes included) but are no berth: they
+      // sing their own throat (_updateGateThroat) instead of a docking station's bed.
+      if (e.data && (e.data.isGate === true || e.data.isWormhole === true)) continue;
+      const d2 = (e.pos.x - player.pos.x) * (e.pos.x - player.pos.x)
+        + (e.pos.z - player.pos.z) * (e.pos.z - player.pos.z);
+      if (d2 < bestD2) { bestD2 = d2; best = e; }
+    }
+    return best;
+  },
+
+  /**
+   * inf-gate-throat-voice (WF-13) — a jump gate sounds like a gate. The nearest live gate inside
+   * hearing sings its own throat (ring-hum for a jump gate, a sagging moan for a wormhole): one
+   * ambient loop panned on the gate's bearing, swelling with distance, detuned across the same
+   * 400 wu spin-up radius the picture's swirl winds up on. Silent docked, paused, suspended or
+   * off flight; bows under a live fight and the critical-cue duck; re-voices on a new gate; one
+   * authored caption per gate visit. Read-only over state; the planner owns the decision.
+   */
+  _updateGateThroat() {
+    const rt = this.rt;
+    if (!rt || !rt.loops) return;
+    const stop = () => {
+      const held = rt.loops.gateThroat;
+      if (!held) return;
+      this._endLoopVoice(held);
+      delete rt.loops.gateThroat;
+    };
+    const state = this.state;
+    if (!state || rt._docked || rt._paused || rt._lifecycleSuspended
+      || (state.mode != null && state.mode !== 'flight')) { stop(); return; }
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) { stop(); return; }
+    const gates = state.entityIndex && state.entityIndex.gates;
+    const plan = planGateThroat(gates, player.pos, rt.threat,
+      rt._gateThroatPlan || (rt._gateThroatPlan = {}));
+    if (!plan) { stop(); return; }
+    let voice = rt.loops.gateThroat;
+    // A different gate (or a recycled id that is now a wormhole) re-voices on the next tick.
+    if (voice && (voice._gateId !== plan.gateId || voice.recipeId !== plan.recipeId)) { stop(); return; }
+    if (!voice) {
+      if (rt.voices && rt.voices.length >= MAX_AUDIO_VOICES && !this._reserveVoiceSlot(false)) return;
+      const recipe = AUDIO_RECIPE_BY_ID[plan.recipeId];
+      const amp = this._ampFor(recipe) || 1;
+      voice = this._startLoopVoice(plan.recipeId, null, GATE_THROAT_PEAK / amp,
+        { busName: 'ambient', rate: plan.rate, follow: true });
+      if (!voice) return;
+      voice._gateId = plan.gateId;
+      rt.loops.gateThroat = voice;
+      const nowS = rt.ctx && Number.isFinite(rt.ctx.currentTime) ? rt.ctx.currentTime : 0;
+      if (admitGateThroatCaption(rt._gateThroatCaption || (rt._gateThroatCaption = {}), plan.gateId, nowS)) {
+        emitAdmittedRecipeCaption(this, plan.recipeId, recipe, { position: { x: plan.x, z: plan.z } }, 'ambient');
+      }
+    }
+    const t = rt.ctx ? rt.ctx.currentTime : 0;
+    const duck = Number.isFinite(rt._priorityDuckWeapon) ? rt._priorityDuckWeapon : 1;
+    // The duck pass composes _baseGain with the critical-cue duck; keep it on the distance read.
+    voice._baseGain = plan.gain;
+    this._setParam(voice.gain && voice.gain.gain, plan.gain * duck, t, 0.35);
+    if (voice._panner && voice._panner.pan) {
+      this._setParam(voice._panner.pan, clamp((plan.x - player.pos.x) / PAN_SPAN, -1, 1), t, 0.25);
+    }
+    this._detuneGateThroat(voice, plan.spinCents, t);
+  },
+
+  /** Glide every source of the throat voice to `cents` (the spin-up rides detune, not rate). */
+  _detuneGateThroat(voice, cents, t) {
+    if (!voice || voice._spinCents === cents) return;
+    voice._spinCents = cents;
+    const apply = (sources) => {
+      if (!sources) return;
+      for (let i = 0; i < sources.length; i++) {
+        const detune = sources[i] && sources[i].detune;
+        if (detune && typeof detune.setTargetAtTime === 'function') {
+          try { detune.setTargetAtTime(cents, t, 0.6); } catch (_) {}
+        }
+      }
+    };
+    apply(voice.sources);
+    if (voice.subVoices) {
+      for (let i = 0; i < voice.subVoices.length; i++) apply(voice.subVoices[i] && voice.subVoices[i].sources);
+    }
+  },
+
+  /**
+   * inf-wreck-cooling-voice (WF-13) — the hulks you just made sound their cooling. A sim-stamped
+   * fresh wreck ticks and groans on the same clock its fire and smoke read (wreckAftermathState),
+   * positioned on the hulk, densest just after the flame gutters, silent once cold; unstamped
+   * set dressing never speaks. Aftermath only: held while combat owns the mix, silent docked,
+   * paused or off the flight mode. Read-only over state; the planner owns the bounded clocks.
+   */
+  _updateWreckCooling() {
+    const rt = this.rt;
+    const state = this.state;
+    if (!rt || !state || rt._docked || rt._paused || rt._lifecycleSuspended) return 0;
+    if (state.mode != null && state.mode !== 'flight') return 0;
+    if (rt.threat != null && rt.threat >= WRECK_COOL_THREAT_HOLD) return 0;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) return 0;
+    const memory = rt._wreckCooling || (rt._wreckCooling = createWreckCoolingMemory());
+    const rows = rt._wreckCoolingRows || (rt._wreckCoolingRows = []);
+    const wrecks = (state.entityIndex && state.entityIndex.wrecks) || state.entityList || null;
+    const count = planWreckCooling(wrecks, player.pos, Number(state.simTime) || 0, memory, rows);
+    for (let i = 0; i < count; i++) {
+      const row = rows[i];
+      // The first voice a hulk speaks carries its authored caption (bearing included); the rest
+      // of its cooling stays caption-owned so a ticking wreck never floods the caption floor.
+      this.play(row.recipeId, {
+        gain: row.gain,
+        rate: row.rate,
+        position: row.position,
+        captionOwned: !row.first,
+      });
+    }
+    return count;
+  },
+
+  _emitPresentationCaption(text, opts = {}) {
+    if (!text || !this.bus || typeof this.bus.emit !== 'function') return;
+    const player = this.state?.entities?.get?.(this.state.playerId);
+    const clock = opts.clock || clockFromPanPosition(opts.position,
+      player?.pos ? { ...player.pos, rot: player.rot } : null);
+    this.bus.emit('presentation:caption', {
+      text: localizedCaptionText(text, clock),
+      assertive: !!opts.assertive,
+      shape: opts.shape || 'arc',
+      physical: opts.physical === true,
+      showVisible: opts.showVisible !== false,
+      channel: opts.channel || 'cue',
+      ...opts,
+    });
+  },
+
+  _playAccessibilityCue(kind, opts = {}) {
+    const settings = this.state && this.state.settings;
+    const cue = resolveAccessibilityCue(kind, settings);
+    if (!cue) return null;
+    return this.play(cue.recipeId, {
+      gain: opts.gain == null ? 0.55 : opts.gain,
+      position: opts.position || null,
+    });
+  },
+
+  _maybeStuntHush(input = {}) {
+    const rt = this.rt;
+    if (!rt) return null;
+    const nowMs = (Number(this.state && this.state.simTime) || 0) * 1000;
+    const verdict = admitStuntHush({ ...input, nowMs, lastMs: rt._stuntHushMs });
+    if (!verdict.play) return verdict;
+    rt._stuntHushMs = nowMs;
+    this._triggerHush({ kind: 'stunt' });
+    // FB-082 — the same admission mails the camera its beat through the shared camera record,
+    // so the hush and the room land on the same tick. camera.js consumes it once per stamp;
+    // the hold is the hush's own envelope so the frame stays as long as the silence does.
+    const cameraState = this.state && this.state.camera;
+    if (cameraState && typeof cameraState === 'object') {
+      const spec = HUSH.stunt;
+      cameraState.stuntHushBeat = {
+        kind: 'stunt',
+        tick: Math.max(0, Math.trunc(Number(this.state && this.state.tick) || 0)),
+        holdS: spec.attackS + spec.holdS + spec.releaseS,
+      };
+    }
+    return verdict;
+  },
+
+  _syncCruiseLoop() {
+    const rt = this.rt;
+    if (!rt || !rt.loops || !rt._wantCruise || rt.loops.cruise) return;
+    const edge = resolveCruiseLoopEdge({ engaged: true });
+    const voice = this._startLoopVoice(edge.recipeId, null, 0.35);
+    if (!voice) return;
+    rt.loops.cruise = voice;
+    rt._cruiseGain = voice._baseGain || 0.35;
+  },
+
+  _stopCruiseLoop() {
+    const rt = this.rt;
+    const voice = rt && rt.loops && rt.loops.cruise;
+    if (!voice) return;
+    this._endLoopVoice(voice);
+    delete rt.loops.cruise;
+    rt._cruiseGain = 0;
+  },
+
+  _updateCruiseLoop(dt) {
+    const rt = this.rt;
+    const voice = rt && rt.loops && rt.loops.cruise;
+    if (!voice || !voice.gain || !rt.ctx) return;
+    const entities = this.state && this.state.entities;
+    const player = entities && typeof entities.get === 'function' ? entities.get(this.state.playerId) : null;
+    const input = (this.state && this.state.input) || {};
+    const throttle = readPublishedThrottle({
+      frame: player && player._flightFrame,
+      moveZ: input.moveZ,
+      moveX: input.moveX,
+    });
+    const stepped = stepCueGain(rt._cruiseGain == null ? 0 : rt._cruiseGain, throttle, dt);
+    rt._cruiseGain = stepped.gain;
+    const loud = CUE_GAIN.loud || 1;
+    const scale = loud > 0 ? stepped.gain / loud : 0;
+    const base = voice._baseGain != null ? voice._baseGain : 0.35;
+    this._setParam(voice.gain.gain, Math.max(0.0001, base * scale), rt.ctx.currentTime, 0.05);
+  },
+
+  _onFuelEmpty() {
+    const rt = this.rt;
+    if (!rt || rt._fuelEmptyStung) return;
+    rt._fuelEmptyStung = true;
+    rt._fuelThin = FUEL_THIN_GAIN;
+    const voice = this.play('sfx_fuel_empty', { gain: 0.8, critical: true, warning: true, captionOwned: true });
+    if (voice) this._emitPresentationCaption('Fuel empty.', { assertive: true, channel: 'fuel' });
+  },
+
+  _updateFuelVoice() {
+    const rt = this.rt;
+    const fuel = this.state && this.state.fuel;
+    if (!rt || !fuel) return;
+    const max = Number(fuel.max) || 0;
+    const current = Number(fuel.current);
+    const fraction = max > 0 && Number.isFinite(current) ? current / max : 1;
+    const armed = rt._fuelVoiceArmed === true;
+    const edge = fuelReserveWarning(rt._fuelPrevWarn, fraction, armed);
+    rt._fuelPrevWarn = edge;
+    rt._fuelVoiceArmed = true;
+    if (edge.speak) this._startFuelReserve();
+    if (edge.clear || (rt._fuelThin != null && rt._fuelThin < 1 && fraction >= FUEL_LOW_FRACTION)) {
+      this._stopFuelReserve();
+      rt._fuelThin = 1;
+      rt._fuelEmptyStung = false;
+    }
+  },
+
+  _startFuelReserve() {
+    const rt = this.rt;
+    if (!rt || !rt.loops || rt.loops.fuelReserve) return;
+    const voice = this._startLoopVoice('sfx_fuel_reserve', null, 0.4);
+    if (!voice) return;
+    rt.loops.fuelReserve = voice;
+    this._emitPresentationCaption('Fuel reserve.', { channel: 'fuel' });
+  },
+
+  _stopFuelReserve() {
+    const rt = this.rt;
+    const voice = rt && rt.loops && rt.loops.fuelReserve;
+    if (!voice) return;
+    this._endLoopVoice(voice);
+    delete rt.loops.fuelReserve;
+  },
+
+  _syncMachineWork(p) {
+    const rt = this.rt;
+    if (!rt || !rt.loops || !p || p.machineId == null) return;
+    const voice = resolveMachineWorkCycle(p.state);
+    const key = `work:${p.machineId}`;
+    const current = rt.loops[key];
+    if (!voice.play) {
+      if (current) {
+        this._endLoopVoice(current);
+        delete rt.loops[key];
+      }
+      return;
+    }
+    if (current && current.recipeId === voice.recipeId) return;
+    if (current) {
+      this._endLoopVoice(current);
+      delete rt.loops[key];
+    }
+    const started = this._startLoopVoice(voice.recipeId, machineWorkPosition(this.state, p), voice.gain, { rate: voice.rate });
+    if (!started) return;
+    rt.loops[key] = started;
+  },
+
+  _noteAnomalyCandidate(payload) {
+    const id = payload && payload.entityId;
+    if (id == null || !this.rt) return;
+    const ring = this.rt._anomalyCandidates || (this.rt._anomalyCandidates = []);
+    if (ring.indexOf(id) !== -1) return;
+    ring.push(id);
+    if (ring.length > 8) ring.shift();
+  },
+
+  _updateAnomalyEvidence() {
+    const state = this.state;
+    const entities = state && state.entities;
+    if (!entities || typeof entities.get !== 'function') return;
+    const rt = this.rt;
+    const simTime = Number(state.simTime) || 0;
+    const book = rt._anomalyHeard || (rt._anomalyHeard = Object.create(null));
+    const heardIds = Object.keys(book);
+    for (let i = 0; i < heardIds.length; i++) {
+      const key = heardIds[i];
+      const numeric = Number(key);
+      const ent = entities.get(key) || (Number.isFinite(numeric) ? entities.get(numeric) : null);
+      if (!ent || ent.alive === false) delete book[key];
+    }
+    const ring = rt._anomalyCandidates;
+    if (!ring || ring.length === 0) return;
+    let played = false;
+    for (let i = 0; i < ring.length; i++) {
+      if (played) break;
+      const ent = entities.get(ring[i]);
+      if (!ent || ent.alive === false) continue;
+      const data = ent.data || {};
+      const cue = resolveAnomalyEvidenceCue({
+        type: ent.type,
+        poiType: data.poiType,
+        scanned: data.scanned === true,
+        perceived: data.perceived === true || data.contacted === true,
+        hostile: !!(data.ai && data.ai.combatant) && data.scanned !== true && data.perceived !== true,
+      });
+      if (!cue.play) continue;
+      const id = ent.id;
+      const last = Number(book[id]) || 0;
+      if (simTime - last < 12) continue;
+      book[id] = simTime;
+      const voice = this.play(cue.recipeId, { gain: cue.gain, position: ent.pos || null, captionOwned: true });
+      if (voice) this._emitPresentationCaption(cue.caption, { channel: 'cue' });
+      played = true;
+    }
+  },
+
+  _onMasslineInstrument(event, payload) {
+    // The release voice is the chosen let-go. A break or a lost target still emits the rated
+    // receipt for the grade readout with deliberate:false — the break snap already owns that
+    // ear, so a failed line must not also sing the successful-release whoosh, hush the world
+    // as a stunt, or caption "release".
+    if (event === 'release' && !(payload && payload.deliberate === true)) return;
+    const tether = this.state && this.state.player && this.state.player.tether;
+    const voice = resolveMasslineInstrument({
+      event,
+      payload,
+      tension: tether && Number(tether.load),
+      strain: tether && Number(tether.strain),
+      classification: payload && payload.classification,
+      headId: payload && (payload.headId || payload.attachmentDefId || payload.defId),
+      before: payload && payload.before,
+      after: payload && payload.after,
+    });
+    if (!voice) return;
+    if (event === 'reel') {
+      const tick = Number(this.state && this.state.tick);
+      const last = this.rt && this.rt._masslineReelLastTick;
+      if (Number.isFinite(tick) && Number.isFinite(last) && tick - last < 12) return;
+      if (this.rt && Number.isFinite(tick)) this.rt._masslineReelLastTick = tick;
+    }
+    if (event === 'release') {
+      this._maybeStuntHush({ classification: payload && payload.classification });
+    }
+    if (voice.play) {
+      // Strain fatigue guard: real near-break receipts can arrive every upstream dedupe
+      // window. The warning keeps the first-hour signature's authored cadence so a held
+      // overload cannot machine-gun the creak; the stamp lands only when a voice starts,
+      // so a squelched play never spends the slot.
+      let strainNowS = NaN;
+      if (event === 'strain' && this.rt) {
+        strainNowS = this.rt.ctx && Number.isFinite(this.rt.ctx.currentTime)
+          ? this.rt.ctx.currentTime
+          : Math.max(0, Number(this.state && this.state.simTime) || 0);
+        const lastStrainS = this.rt._masslineStrainLastS;
+        if (Number.isFinite(lastStrainS)
+            && strainNowS - lastStrainS < FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.cooldownS) {
+          return;
+        }
+      }
+      const started = this.play(voice.recipeId, {
+        gain: voice.gain,
+        captionOwned: !!voice.caption,
+        rate: voice.rate,
+        critical: voice.critical,
+        position: payload && payload.pos,
+      });
+      // Latch dedupe: the player's tether:latched receipt lands the same tick as this
+      // attach, and its verb-table lock (sfx_tether_latch_lock) is already a layer inside
+      // sfx.tetherLatch. Record the tick the signature actually spoke so the verb voice
+      // stands down instead of doubling its own layer. A blocked play leaves no stamp,
+      // so the verb voice can still try its own gate.
+      if (started && event === 'attach' && this.rt) {
+        const spokeTick = Number(this.state && this.state.tick);
+        if (Number.isFinite(spokeTick)) this.rt._masslineAttachSpokeTick = spokeTick;
+      }
+      // Break dedupe, same shape as the latch stamp: gameplay emits tether:broke on the same
+      // tick as this snap (or a tick or two later on the reconcile path), and sfx.tetherSnap
+      // already carries the crack layer — the verb voice stands down on the stamp instead of
+      // doubling its own transient. A blocked play leaves no stamp, so the verb voice can
+      // still try its own gate.
+      if (started && event === 'break' && this.rt) {
+        const spokeTick = Number(this.state && this.state.tick);
+        if (Number.isFinite(spokeTick)) this.rt._masslineBreakSpokeTick = spokeTick;
+      }
+      if (started && event === 'strain' && this.rt && Number.isFinite(strainNowS)) {
+        this.rt._masslineStrainLastS = strainNowS;
+      }
+    }
+    if (voice.caption) {
+      this._emitPresentationCaption(voice.caption, { assertive: voice.warning, shape: 'arc', position: payload && payload.pos });
+    }
+  },
+
+  _onBarkVoice(payload) {
+    if (!payload) return;
+    // Swarm glass (design/program/finish/swarm S2): a live Swarm round mutes NPC radio barks.
+    // Boss voice does not ride this channel (its callouts are the juice/name-card lanes), and
+    // the mechanic keeps shop speech — his lines are purchase feedback, not chatter.
+    if (isSwarmGlass(this.state) && !(payload.mechanic || payload.kind === 'mechanic')) return;
+    const rt0 = this.rt;
+    const sectorId = (this.state && this.state.world && this.state.world.currentSectorId) || '';
+    const combat = rt0 && (rt0.musicState === 'combat' || (rt0._encounterArc && rt0._encounterArc.inCombat));
+    const context = `${sectorId}|${combat ? 'combat' : 'flight'}`;
+    const nowS = rt0 && rt0.ctx ? rt0.ctx.currentTime : (Number(this.state && this.state.simTime) || 0);
+    const verdict = arbitrateCommsLine({
+      situation: payload.situation,
+      importance: payload.importance,
+      mechanic: payload.mechanic || payload.kind === 'mechanic',
+      context,
+      lineContext: payload.context || null,
+      immediateHeld: !!(rt0 && Number.isFinite(rt0._commsImmediateUntilS) && nowS < rt0._commsImmediateUntilS),
+      criticalEar: typeof this._isCriticalSquelchActive === 'function' && this._isCriticalSquelchActive(),
+    });
+    if (!verdict.play) return;
+    const resolved = resolveBarkVoice({
+      factionId: payload.factionId,
+      situation: payload.situation,
+      line: payload.text || payload.line,
+      mechanic: payload.mechanic || payload.kind === 'mechanic',
+    });
+    const rate = barkPlaybackRate(resolved);
+    const speechDur = resolved.speech && Number.isFinite(resolved.speech.durationS)
+      ? resolved.speech.durationS : 0.9;
+    // The PCM buffer plays `rate`× faster than the authored seconds — the tail, duck, holds and
+    // captions all schedule on the heard duration (a slow register used to chirp mid-word).
+    const heardDur = speechDur / (rate > 0 ? rate : 1);
+    const spec = {
+      payload, resolved, verdict, context, heardDur, rate,
+      enqueuedWallS: typeof performance !== 'undefined' ? performance.now() / 1000 : 0,
+    };
+    // Arbiter-bound receipts wait for the real `voice:surface` — a queued bark must not sound
+    // before its floor, and a dropped one must not sound at all. A same-id in-place resurface can
+    // fire synchronously inside say() before this receipt lands, so a fresh surface marker also
+    // releases the voice. Everything without a voiceId plays now, as it always did.
+    if (payload.voiceId != null) {
+      const rt = this.rt || (this.rt = {});
+      const recent = rt._recentVoiceSurfaces || (rt._recentVoiceSurfaces = new Map());
+      if (recent.has(payload.voiceId)) {
+        recent.delete(payload.voiceId);
+        this._scheduleBarkVoice(spec);
+        return;
+      }
+      const pending = rt._pendingBarkVoices || (rt._pendingBarkVoices = new Map());
+      if (pending.size >= 12) pending.delete(pending.keys().next().value); // FIFO drop, never play stale
+      pending.set(payload.voiceId, spec);
+      return;
+    }
+    this._scheduleBarkVoice(spec);
+  },
+
+  _onVoiceSurfaceForBarks(payload) {
+    if (!payload || payload.id == null) return;
+    const rt = this.rt;
+    if (!rt) return;
+    const pending = rt._pendingBarkVoices;
+    const spec = pending && pending.get(payload.id);
+    if (spec) {
+      pending.delete(payload.id);
+      this._scheduleBarkVoice(spec);
+      return;
+    }
+    // A surface with no pending receipt is remembered briefly: the same-id in-place path inside
+    // say() can surface before the barkDirector:voice receipt lands a few microtasks later.
+    const recent = rt._recentVoiceSurfaces || (rt._recentVoiceSurfaces = new Map());
+    const nowWall = typeof performance !== 'undefined' ? performance.now() / 1000 : 0;
+    if (recent.size >= 16) recent.delete(recent.keys().next().value);
+    recent.set(payload.id, nowWall);
+  },
+
+  _scheduleBarkVoice(spec) {
+    const { payload, resolved, verdict, context, heardDur, rate } = spec;
+    const rt0 = this.rt;
+    const nowS = rt0 && rt0.ctx ? rt0.ctx.currentTime : (Number(this.state && this.state.simTime) || 0);
+    const rt = this.rt, ctx = rt && rt.ctx;
+    let t0 = ctx ? ctx.currentTime : 0;
+    // One ear, one voice: chatter waits out the open mic instead of overlapping a playing bark.
+    // A line that would wait past the cap drops — the text floor still surfaces it.
+    if (ctx && !verdict.immediate) {
+      const busyUntil = rt && Number.isFinite(rt._commsChatterUntilS) ? rt._commsChatterUntilS : 0;
+      if (busyUntil - t0 > BARK_CHATTER.deferCapS) return;
+      t0 = Math.max(t0, busyUntil);
+    }
+    const speakerPos = (() => {
+      const e = payload.entityId != null && this.state && this.state.entities
+        && typeof this.state.entities.get === 'function'
+        ? this.state.entities.get(payload.entityId) : null;
+      return e && e.pos && Number.isFinite(e.pos.x) && Number.isFinite(e.pos.z) ? e.pos : null;
+    })();
+    const player = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId) : null;
+    // Bearing pan only — radio carries the distance; gain stays flat (unlike world position,
+    // which would cull and attenuate a far hail the receiver still hears clearly). The distance
+    // rides the channel itself instead: a far hail is narrower, hissier, more driven (barkVoice's
+    // three bands), so the ear can hear how far away the speaker is without the words fading.
+    const speakerDistanceWu = speakerPos && player && player.pos
+      ? Math.hypot(speakerPos.x - player.pos.x, speakerPos.z - player.pos.z) : null;
+    const voiced = withRadioBand(resolved, speakerDistanceWu);
+    const pan = speakerPos && player && player.pos
+      ? Math.max(-1, Math.min(1, (speakerPos.x - player.pos.x) / PAN_SPAN)) : 0;
+    // Industrial punctuation: the mic solenoid keys open, the voice rides the carrier, then the
+    // squelch tail collapses it. Scheduled starts keep the gap tight and sample-accurate.
+    this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain, startTime: t0, captionOwned: true });
+    const body = this.play(resolved.recipeId, {
+      captionOwned: true,
+      gain: resolved.gain * (rt && Number.isFinite(rt._barkVoiceScale) ? rt._barkVoiceScale : 1),
+      rate,
+      barkPcmBuffer: ctx && ctx.state === 'running' && !this._isMuted()
+        ? cachedBarkBuffer(ctx, rt._barkPcmCache || (rt._barkPcmCache = new Map()), voiced) : null,
+      barkSampleId: resolved.sampleId,
+      critical: true,
+      pan,
+      duckSeconds: BARK_PUNCT.keyLeadS + heardDur + BARK_PUNCT.tailPadS + COMMS_DUCK.releasePadS,
+      startTime: t0 + BARK_PUNCT.keyLeadS,
+    });
+    // A dying hull does not get a tidy squelch — the channel dies with it.
+    this.play(payload.situation === 'distress' ? 'sfx_squelch_danger' : 'sfx_comms_squelch_tail', {
+      captionOwned: true,
+      gain: BARK_PUNCT.tailGain,
+      startTime: t0 + BARK_PUNCT.keyLeadS + heardDur + BARK_PUNCT.tailPadS,
+    });
+    if (rt0) {
+      rt0._commsContext = context;
+      if (verdict.immediate) rt0._commsImmediateUntilS = nowS + heardDur + 0.35;
+      else if (ctx) rt0._commsChatterUntilS = t0 + BARK_PUNCT.keyLeadS + heardDur + BARK_PUNCT.tailPadS + BARK_CHATTER.gapS;
+    }
+    if (body) {
+      const captionOpts = {
+        assertive: resolved.assertive,
+        shape: 'radio',
+        durationMs: Math.ceil((BARK_PUNCT.keyLeadS + heardDur + BARK_PUNCT.tailPadS + 0.3) * 1000),
+      };
+      // The caption lands when the voice body starts, not when the floor surfaced — but only a
+      // genuinely deferred start waits; a line keying the mic now captions now (the 90 ms key lead
+      // is beneath notice), so queue-free hosts still see the caption at admit time.
+      const captionAt = t0 + BARK_PUNCT.keyLeadS;
+      if (ctx && t0 - ctx.currentTime > 0.05) {
+        const queue = rt._pendingBarkCaptions || (rt._pendingBarkCaptions = []);
+        if (queue.length >= 6) queue.shift(); // drop the oldest, never the newest
+        queue.push({ at: captionAt, text: resolved.caption, opts: captionOpts });
+        queue.sort((a, b) => a.at - b.at);
+      } else {
+        this._emitPresentationCaption(resolved.caption, captionOpts);
+      }
+    }
+    if (resolved.factionId) {
+      this.rt._themeFactionId = resolved.factionId;
+      const theme = resolveThemeMatrix({
+        docked: !!(this.rt && this.rt._docked),
+        wanted: false,
+        sectorId: this.rt && this.rt._themeSectorId,
+        factionId: resolved.factionId,
+      });
+      this._applyFactionSting(theme.sting);
+    }
+  },
+
+  // The first-hour instructor (tutorial:say). Same industrial punctuation as the barks — key
+  // click, register body, squelch tail — on its own calm register, under bark gain, with no
+  // faction theme sting and no caption (the text surfaces already own the words; for the
+  // visual-suppressed contract lines this voice IS the delivery). Repeats inside the window
+  // collapse so a retried beat never double-keys the mic. A second different line that arrives
+  // while the mic is still open (the thrust premise, the burst weapon hint) waits until the
+  // squelch has decayed, then keys. One voice, in the order the beat emitted them.
+  _onInstructorVoice(payload) {
+    if (!payload) return;
+    const text = typeof payload.text === 'string' ? payload.text.trim() : '';
+    if (!text) return;
+    const rt = this.rt, ctx = rt && rt.ctx;
+    // No live context (muted since boot, webdriver): play() would gate these anyway, so do not
+    // touch the queue — a frozen currentTime would otherwise accumulate clear-at backlog and
+    // dump every line as a burst the moment the context comes up.
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    if (text === this._instructorLastText && now - (Number.isFinite(this._instructorLastAtS) ? this._instructorLastAtS : -Infinity) < INSTRUCTOR_REPEAT_WINDOW_S) return;
+    const resolved = resolveInstructorVoice(text);
+    const speechDur = resolved.speech && Number.isFinite(resolved.speech.durationS)
+      ? resolved.speech.durationS : 0.9;
+    // Tail recipe release is 0.07s; a short breath keeps the next key click off that decay.
+    const SQUELCH_RELEASE_S = 0.07;
+    const BREATH_S = 0.12;
+    const span = BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS + SQUELCH_RELEASE_S + BREATH_S;
+    const t0 = Number.isFinite(this._instructorClearAt) && this._instructorClearAt > now
+      ? this._instructorClearAt
+      : now;
+    this._instructorLastText = text;
+    this._instructorLastAtS = now;
+    this._instructorClearAt = t0 + span;
+    this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain * 0.8, startTime: t0, captionOwned: true });
+    this.play(resolved.recipeId, {
+      captionOwned: true,
+      gain: resolved.gain,
+      rate: barkPlaybackRate(resolved),
+      barkPcmBuffer: ctx && ctx.state === 'running' && !this._isMuted()
+        ? cachedBarkBuffer(ctx, rt._barkPcmCache || (rt._barkPcmCache = new Map()), resolved) : null,
+      barkSampleId: resolved.sampleId,
+      critical: true,
+      duckSeconds: span + COMMS_DUCK.releasePadS,
+      startTime: t0 + BARK_PUNCT.keyLeadS,
+    });
+    this.play('sfx_comms_squelch_tail', {
+      captionOwned: true,
+      gain: BARK_PUNCT.tailGain * 0.8,
+      startTime: t0 + BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS,
+    });
+  },
+
+  _onVisualEventAudio(payload) {
+    const eventId = payload && typeof payload === 'object'
+      ? (payload.id || payload.eventId || payload.kind || payload.lane)
+      : payload;
+    const cue = resolveVisualEventCue(eventId);
+    if (!cue) return;
+    const accessibility = this.state && this.state.settings && this.state.settings.accessibility;
+    const captionsOn = !accessibility || accessibility.captions !== false;
+    // combat:damage already spoke the layer. The juice alias must not play it again.
+    const layerAlreadySpoke = typeof eventId === 'string' && eventId.startsWith('combat.damage.');
+    if (!layerAlreadySpoke && visualEventAudioAllowed(this.state && this.state.settings) && !this._recipeHeardThisTick(cue.recipeId)) {
+      this.play(cue.recipeId, {
+        gain: 0.55 + cue.importance * 0.3,
+        critical: cue.importance >= 0.8,
+        captionOwned: captionsOn && !!cue.caption,
+        position: (payload && (payload.position || payload.pos)) || null,
+      });
+    }
+    if (captionsOn) {
+      const video = this.state && this.state.settings && this.state.settings.video;
+      const physical = cue.recipeId === 'sfx.shieldHit'
+        || cue.recipeId === 'sfx.armorHit'
+        || cue.recipeId === 'sfx.hullHit'
+        || cue.recipeId === 'sfx.shieldBreak'
+        || cue.recipeId === 'sfx_explosion_small'
+        || cue.recipeId === 'sfx.killConfirmed';
+      const pictureHeld = !!(video && (video.motionReduce || video.flashReduce))
+        || !!(accessibility && accessibility.flashReduce);
+      this._emitPresentationCaption(cue.caption, {
+        assertive: cue.importance >= 0.8,
+        shape: 'flash',
+        physical,
+        showVisible: !physical || pictureHeld,
+        position: (payload && (payload.position || payload.pos)) || null,
+      });
+    }
+  },
+
+  _applyWeightDuck(input) {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._weightDuckEnvelope = weightDuckEnvelope(input, this._wallClockMs());
+    invalidateBusGainCache(rt, 'music');
+    invalidateBusGainCache(rt, 'ambient');
+  },
+
+  _recipeHeardThisTick(recipeId) {
+    const rt = this.rt;
+    if (!rt || !rt._heardRecipes) return false;
+    const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1;
+    if (rt._heardAudioTick !== tick) return false;
+    return rt._heardRecipes.has(recipeId);
+  },
+
+  _noteRecipeHeard(recipeId) {
+    const rt = this.rt;
+    if (!rt) return;
+    const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1;
+    if (rt._heardAudioTick !== tick) {
+      rt._heardAudioTick = tick;
+      rt._heardRecipes = new Set();
+    }
+    rt._heardRecipes.add(recipeId);
+  },
+
+  _syncEnvironmentMix(docked) {
+    const rt = this.rt;
+    if (!rt || !rt._environmentMix) return;
+    const screen = this.state && this.state.ui && this.state.ui.screen;
+    const classId = resolveEnvironmentClass({
+      docked: !!docked,
+      hangar: screen === 'shipworks' || screen === 'hangar',
+      berth: screen === 'berth',
+      station: !!docked,
+      screen,
+    });
+    rt._environmentClass = rt._environmentMix.setClass(classId);
+    // Occlusion follows the room: interiors lowpass the positional world heard through the hull.
+    const occl = environmentOcclusion(classId);
+    if (rt._occlusionFilters && rt._occlusionCutHz !== occl.cutoffHz) {
+      rt._occlusionCutHz = occl.cutoffHz;
+      const now = rt.ctx ? rt.ctx.currentTime : 0;
+      for (const busName in rt._occlusionFilters) {
+        const f = rt._occlusionFilters[busName];
+        try { f.frequency.setTargetAtTime(occl.cutoffHz, now, 0.14); }
+        catch (_) { try { f.frequency.value = occl.cutoffHz; } catch (__) {} }
+      }
+    }
+  },
+
+  _applyThemeMatrix(sectorId) {
+    const rt = this.rt;
+    if (!rt) return;
+    if (sectorId) rt._themeSectorId = sectorId;
+    const player = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+    const docked = !!(rt._docked || (player && player.flags && player.flags.docked));
+    const wanted = !!(player && player.flags && player.flags.wanted);
+    const theme = resolveThemeMatrix({
+      docked,
+      wanted,
+      sectorId: rt._themeSectorId,
+      factionId: rt._themeFactionId,
+      swarmLift: this._stuntScoreLift(),
+    });
+    rt._themeMatrix = theme;
+    // THE EAR: the sector's key and mode move with the sector, never mid-sector.
+    if (sectorId) rt._scoreIdentity = theme.score || null;
+    this._applySectorBed(theme);
+    this._syncEnvironmentMix(docked);
+  },
+
+  _applySectorBed(theme) {
+    const rt = this.rt;
+    if (!rt || !theme || !theme.bed) return;
+    rt._bandBedIntent = sectorBedToBandIntent(theme.bed);
+    if (rt.bandBed) rt.bandBed.setIntent(rt._paused ? { active: false, reason: 'pause' } : rt._bandBedIntent);
+  },
+
+  _applyFactionSting(sting) {
+    if (!sting) return;
+    this.play('sfx_squelch_story', { gain: 0.45, rate: Math.max(0.6, sting.hz / 220), critical: true });
+  },
+
+  _onCue(cue) {
+    const id = typeof cue === 'string' ? cue : cue && cue.id;
+    if (!id) return;
+    if (id === 'massline.slingshotApex') this._maybeStuntHush({ apex: true, cueId: id });
+    // Juice emits presentation:vfxCue then audio:cue with the same id. Unmapped juice ids used
+    // to collapse to a UI click on top of the visual-event recipe; the visual-event path owns them.
+    if (resolveVisualEventCue(id) && !Object.hasOwn(AUDIO_CUE_TO_RECIPE, id) && !Object.hasOwn(AUDIO_RECIPE_BY_ID, id)) return;
+    const rid = resolveAudioCueRecipeId(id);
+    if (!rid) return;
+    const opts = (cue && typeof cue === 'object') ? cue : {};
+    // While the mine owns the ear its own synthesized voice replaces the flight-mix recipe for
+    // these receipts. The semantic cue still travels the bus (captions, `.07` board expressions);
+    // only the second, wrong-room playback is dropped.
+    if (opts.cueId && MINE_OWNED_PRESENTATION_CUES.has(opts.cueId) && this._mineOwnsEar()) return null;
+    // Mining's refusal cue keeps its visual/caption receipt, but the hold edge above owns its
+    // physical voice. Repeated rejected rocks cannot re-voice that crossing through this alias.
+    if (rid === 'sfx_mining_cargo_full') return this._onPickupHoldChanged();
+    const signature = resolveFirstHourAudioSignature(id);
+    const nowS = this.rt && this.rt.ctx
+      ? this.rt.ctx.currentTime
+      : Math.max(0, Number(this.state && this.state.simTime) || 0);
+    if (signature && signature.cooldownS > 0) {
+      const lastAt = this.rt._signatureLastAt && this.rt._signatureLastAt[id];
+      if (Number.isFinite(lastAt) && nowS - lastAt < signature.cooldownS) return null;
+    }
+    // Some presentation receipts must remain visible on the semantic bus even though an earlier
+    // raw event owns their physical sound. Do not turn that observability contract into a double hit.
+    if (opts.playbackOwnedByRaw) return;
+    // Dock ownership: _onDocked already played this tick's clunk (plus the deferred confirm
+    // chime). The ui_dock echo from the same dispatch (pinned by rep-gated-docking) is the same
+    // recipe, so drop it; a cue on any other tick is a real voice and still plays.
+    if (id === 'ui_dock' && this.rt && this.rt._dockClunkTick
+        === (this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1)) return;
+    // Moment gates (MOMENT_CUE_GATES): cooldowns and one-stinger-at-a-time. A cue dropped here
+    // does not duck the music or the loops either — it never happened.
+    const momentGated = Object.hasOwn(MOMENT_CUE_GATES, id) && !!this.rt;
+    const momentRank = momentGated
+      ? Math.max(MOMENT_CUE_GATES[id].rank || 0, opts.duck ? 3 : 0)
+      : 0;
+    if (momentGated) {
+      const mem = this.rt._momentCues || (this.rt._momentCues = momentCueMemory());
+      if (!momentCueAllowed(mem, id, momentRank, nowS)) return null;
+    }
+    // PQ-158.02 owns attach/strain/release/break on the instrument. Juice still emits the
+    // semantic cue; do not play the same latch/creak/snap/release a second time. The cue keeps
+    // its priority duck — a near_break warning must still cut through the mix — so the early
+    // out lands after the duck, on the duplicated voice only.
+    const instrumentOwned = id === 'presentation.tether.attach'
+      || id === 'presentation.tether.near_break'
+      || id === 'presentation.tether.release'
+      || id === 'presentation.tether.break';
+    const suppliedImportance = Number.isFinite(opts.importance)
+      ? opts.importance
+      : (opts.duck ? Math.max(PRIORITY_DUCK_THRESHOLD, 0.85) : 0);
+    const importance = Math.max(suppliedImportance, signature ? signature.priority : 0);
+    // Priority duck for high-importance presentation / objective / warning cues.
+    if (opts.duck || importance >= PRIORITY_DUCK_THRESHOLD) {
+      this._applyPriorityCue({
+        id: opts.cueId || id,
+        audioId: id,
+        importance: Math.max(importance, PRIORITY_DUCK_THRESHOLD),
+        playerRelevance: Number.isFinite(opts.playerRelevance) ? opts.playerRelevance : 1,
+      });
+    }
+    if (opts.duck) this._duckMusic(opts.duckSeconds || 0.8);
+    if (instrumentOwned) return;
+    if (isBombFieldLoopCue(id)) {
+      startBombFieldLoop(this, opts);
+      return;
+    }
+    // Continuous status cues are owned by the tracked status loops (syncBombAudioLoops); a
+    // one-shot here would be an untracked continuous voice with no stop path.
+    if (isBombStatusLoopCue(id)) {
+      if (typeof this._syncBombAudio === 'function') this._syncBombAudio();
+      return;
+    }
+    const isCritical = importance >= PRIORITY_DUCK_THRESHOLD || !!opts.duck || !!(signature && signature.warning);
+    const ratedMoment = id === 'moment.stinger';
+    const clearCadence = id === 'swarm.clearResolve';
+    // Slam and chain-tier climb land on the same grid as the resolve, transposed into
+    // the sector key. The authored interval (heavy 0.8, climb ladder) stays the shape.
+    const keyedClimb = id === 'swarm.slamStinger' || id === 'swarm.chainTier';
+    const onGrid = ratedMoment || clearCadence || keyedClimb;
+    const voice = this.play(rid, {
+      gain: opts.gain == null ? 0.8 : opts.gain,
+      position: opts.position || null,
+      rate: ratedMoment ? this._noteFreq('A', 2) / 110
+        : clearCadence ? this._noteFreq('A', 4) / (AUDIO_RECIPE_BY_ID[rid].baseFreq || 440)
+        : keyedClimb ? keyedIntervalRate(opts.rate || 1, this._noteFreq('A', 4), 440)
+        : (opts.rate || 1),
+      startTime: onGrid ? this._stuntGridTime(nowS) : undefined,
+      lockRate: onGrid,
+      critical: isCritical,
+      captionOwned: opts.captionOwned === true,
+    });
+    if (clearCadence) this.play('sfx_stunt_link', {
+      gain: 0.3, rate: this._noteFreq('E', 5) / 880, lockRate: true,
+      startTime: this._stuntGridTime(nowS) + 60 / stuntScoreBpm(this.rt.musicState) / 4,
+    });
+    if (rid === 'sfx_travel_arrival') this._playJumpArrivalLayer(opts, isCritical);
+    else if (rid === 'sfx_travel_settle' || rid === 'sfx_travel_interdiction') {
+      // Arrived without the chord (suppressed or no sector enter). Drop a stale arm
+      // so the next corridor crossing does not wear the jump whoosh.
+      if (this.rt && this.rt._jumpArrivalWhoosh) this.rt._jumpArrivalWhoosh = false;
+    }
+    if (voice && signature && signature.cooldownS > 0) {
+      this.rt._signatureLastAt[id] = nowS;
+    }
+    if (voice && momentGated) momentCueRecord(this.rt._momentCues, id, momentRank, nowS);
+    return voice;
+  },
+
+  // Under the arrival chord, once per committed jump. Quiet enough to sit beneath
+  // the tone and the bass; its own play is what attaches the jump_arrive sample.
+  _playJumpArrivalLayer(opts, critical) {
+    const rt = this.rt;
+    if (!rt || !rt._jumpArrivalWhoosh) return;
+    rt._jumpArrivalWhoosh = false;
+    const gain = opts && Number.isFinite(opts.gain) ? opts.gain : 0.8;
+    this.play('sfx_jump_arrive', {
+      gain: gain * 0.7,
+      position: opts && opts.position || null,
+      rate: opts && opts.rate || 1,
+      critical: !!critical,
+    });
+  },
+
+  _duckMusic(seconds) {
+    const rt = this.rt; if (!rt.ctx) return;
+    rt._duckUntil = rt.ctx.currentTime + (seconds || 0.8);
+    const t = rt.ctx.currentTime;
+    invalidateBusGainCache(rt, 'music');
+    try {
+      rt.musicBus.gain.cancelScheduledValues(t);
+      rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), t);
+      rt.musicBus.gain.linearRampToValueAtTime(
+        Math.max(0.0001, (rt._musicBase || 0.5) * (rt._bulletTimeMusicMult || 1) * 0.5), t + 0.08);
+    } catch (_) {}
+  },
+
+  // ---- adaptive music bed ----
+  _buildMusic() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || rt._musicStarted) return;
+    rt._musicStarted = true;
+    // X4: every authored row is a stem. A=travel, B=tension, C=combat, D=station, E=boss.
+    const stemKeys = STEM_KEYS;
+    for (let i = 0; i < stemKeys.length; i++) {
+      const key = stemKeys[i];
+      const def = MUSIC_STEMS[i] || MUSIC_STEMS[MUSIC_STEMS.length - 1];
+      const g = ctx.createGain();
+      g.gain.value = 0.0001;
+      g.connect(rt.musicBus);
+      rt.stemGains[key] = g;
+      rt.stems[key] = this._buildStemVoices(ctx, def, g, key);
+    }
+    rt._stateSince = ctx.currentTime;
+    this._setMusicState('calm', true);
+  },
+
+  // ---- Musical composition engine ----
+  // Each stem is a self-scheduling sequencer that plays arpeggiated patterns, bass lines,
+  // pad chords, and rhythmic elements using short-lived oscillator voices (< 6 simultaneous).
+  // The old approach used always-on drone oscillators through a lowpass — musical but static.
+  // This new system creates actual melodies, rhythms, and harmonic movement.
+
+  // ---- Musical composition engine (Progressive House & Dynamic Electro) ----
+  // Inspired by deadmau5, Daft Punk, and cinematic space electronic music.
+  // Procedural rules govern 8-bar extended chord progressions (Am9, Fmaj9, Cmaj9, Gsus4),
+  // a pumping kick-drum sidechain gain bus, rolling 16th-note basslines, hypnotic
+  // space-delay arpeggios, and multi-bar macro phase morphing (Atmosphere -> Arp Build
+  // -> Drop / 4-on-the-floor Groove -> Climax Melodic Hook).
+
+  _noteFreq(note, octave) {
+    const identity = this.rt && this.rt._scoreIdentity;
+    return identity ? scoreNoteHz(note, octave, identity) : noteToHz(note, octave);
+  },
+
+  _playThemeMotif(motif, ctx, t, bar, beat, sixteenth, busNode, delayNode, vel, wave) {
+    if (!motif || !Array.isArray(motif.steps)) return false;
+    // X4 final review — `bar` is a bar COUNTER and `beat` is the sixteenth inside the current bar.
+    // A multi-bar motif plays EVERY bar: gating on `bar % phraseBars` skipped bar 1, so the boss's
+    // F#3 answer never sounded and the heard phrase was only A2/D2. One-bar motifs keep the
+    // long-standing every-four-bars hook so the Adventure stems do not turn into a jingle.
+    const phraseBars = motifPhraseBars(motif);
+    if (phraseBars <= 1 && bar % 4 !== 0) return false;
+    const stepInPhrase = ((bar % phraseBars) * MOTIF_STEPS_PER_BAR) + beat;
+    const stepRow = motif.steps.find((row) => ((Number(row.bar) || 0) * MOTIF_STEPS_PER_BAR + (Number(row.beat) || 0)) === stepInPhrase);
+    if (!stepRow) return false;
+    this._playNote(ctx, this._noteFreq(stepRow.note, stepRow.oct), stepRow.dur * sixteenth, vel, wave, busNode, delayNode, t, {
+      detune: 7,
+      pluckFilter: true,
+      delayGain: 0.35,
+    });
+    return true;
+  },
+
+  // Play a rich multi-oscillator synth voice with unison detune, analog envelope,
+  // and optional dynamic resonant pluck filtering.
+  _playNote(ctx, freq, durS, maxGain, wave, filterNode, delayNode, t0, options = {}) {
+    if (!(freq > 10) || !(durS > 0)) return null;
+    const detuneCents = options.detune != null ? options.detune : (wave === 'sawtooth' ? 8 : wave === 'square' ? 6 : 4);
+    const useUnison = options.unison !== false && detuneCents > 0;
+
+    // Primary oscillator
+    const o1 = ctx.createOscillator();
+    o1.type = wave || 'triangle';
+    o1.frequency.setValueAtTime(freq, t0);
+    if (useUnison) o1.detune.setValueAtTime(-detuneCents, t0);
+
+    // Secondary unison oscillator for stereo/chorus width
+    let o2 = null;
+    if (useUnison) {
+      o2 = ctx.createOscillator();
+      o2.type = wave || 'triangle';
+      o2.frequency.setValueAtTime(freq, t0);
+      o2.detune.setValueAtTime(detuneCents, t0);
+    }
+
+    const g = ctx.createGain();
+    const attack = options.attack != null ? options.attack : Math.min(durS * 0.15, 0.035);
+    const release = options.release != null ? options.release : Math.min(durS * 0.45, 0.18);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(maxGain, t0 + attack);
+    g.gain.setValueAtTime(maxGain, t0 + Math.max(attack, durS - release));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + durS);
+
+    o1.connect(g);
+    if (o2) o2.connect(g);
+
+    let targetBus = filterNode;
+    let pf = null;
+    if (options.pluckFilter) {
+      pf = ctx.createBiquadFilter();
+      pf.type = 'lowpass';
+      pf.frequency.setValueAtTime(Math.min(10000, freq * 4.5), t0);
+      pf.frequency.exponentialRampToValueAtTime(Math.max(150, freq * 1.1), t0 + durS);
+      pf.Q.setValueAtTime(options.pluckQ || 1.8, t0);
+      g.connect(pf);
+      targetBus = pf;
+    }
+
+    if (delayNode) {
+      const dg = ctx.createGain();
+      dg.gain.value = options.delayGain != null ? options.delayGain : 0.32;
+      (targetBus === filterNode ? g : targetBus).connect(dg);
+      dg.connect(delayNode);
+    }
+    (targetBus === filterNode ? g : targetBus).connect(filterNode);
+
+    try {
+      o1.start(t0);
+      o1.stop(t0 + durS + 0.05);
+      if (o2) { o2.start(t0); o2.stop(t0 + durS + 0.05); }
+    } catch (_) {}
+
+    o1.onended = () => {
+      try {
+        o1.disconnect();
+        if (o2) o2.disconnect();
+        g.disconnect();
+        if (pf) pf.disconnect();
+      } catch (_) {}
+    };
+    return o1;
+  },
+
+  // 909-style electronic kick with 160Hz -> 42Hz pitch drop + click transient
+  _playKick(ctx, t, parentBus, velocity = 0.16) {
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(155, t);
+    o.frequency.exponentialRampToValueAtTime(42, t + 0.075);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(velocity, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.20);
+
+    const click = ctx.createOscillator();
+    click.type = 'triangle';
+    click.frequency.setValueAtTime(320, t);
+    click.frequency.exponentialRampToValueAtTime(80, t + 0.015);
+    const clickG = ctx.createGain();
+    clickG.gain.setValueAtTime(velocity * 0.35, t);
+    clickG.gain.exponentialRampToValueAtTime(0.0001, t + 0.015);
+
+    o.connect(g);
+    click.connect(clickG);
+    g.connect(parentBus);
+    clickG.connect(parentBus);
+
+    try {
+      o.start(t); o.stop(t + 0.24);
+      click.start(t); click.stop(t + 0.03);
+    } catch (_) {}
+    o.onended = () => {
+      try {
+        o.disconnect(); g.disconnect(); click.disconnect(); clickG.disconnect();
+      } catch (_) {}
+    };
+  },
+
+  // French house / progressive hi-hat (closed 16th tick or off-beat open sizzle)
+  _playHiHat(ctx, t, parentBus, velocity = 0.045, open = false) {
+    const rt = this.rt;
+    const caches = (rt && rt._caches) || (this._fallbackCaches || (this._fallbackCaches = {}));
+    const buf = getNoiseBuffer(ctx, caches);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const hf = ctx.createBiquadFilter();
+    hf.type = 'highpass';
+    hf.frequency.value = open ? 6500 : 8500;
+    const hg = ctx.createGain();
+    const dur = open ? 0.14 : 0.04;
+    hg.gain.setValueAtTime(0.0001, t);
+    hg.gain.linearRampToValueAtTime(velocity, t + 0.002);
+    hg.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(hf);
+    hf.connect(hg);
+    hg.connect(parentBus);
+    try { src.start(t); src.stop(t + dur + 0.02); } catch (_) {}
+    src.onended = () => { try { src.disconnect(); hf.disconnect(); hg.disconnect(); } catch (_) {} };
+  },
+
+  // Crisp backbeat clap/snare (beats 4 & 12)
+  _playClap(ctx, t, parentBus, velocity = 0.08) {
+    const rt = this.rt;
+    const caches = (rt && rt._caches) || (this._fallbackCaches || (this._fallbackCaches = {}));
+    const buf = getNoiseBuffer(ctx, caches);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const bpf = ctx.createBiquadFilter();
+    bpf.type = 'bandpass';
+    bpf.frequency.value = 1900;
+    bpf.Q.value = 1.0;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(velocity, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+
+    const o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = 180;
+    const og = ctx.createGain();
+    og.gain.setValueAtTime(velocity * 0.4, t);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+
+    src.connect(bpf); bpf.connect(g); g.connect(parentBus);
+    o.connect(og); og.connect(parentBus);
+    try { src.start(t); src.stop(t + 0.18); o.start(t); o.stop(t + 0.08); } catch (_) {}
+    src.onended = () => {
+      try { src.disconnect(); bpf.disconnect(); g.disconnect(); o.disconnect(); og.disconnect(); } catch (_) {}
+    };
+  },
+
+  // Rolling progressive house bass (punchy saw + sub-sine through resonant lowpass)
+  _playBass(ctx, freq, durS, velocity, t, parentBus, wave = 'sawtooth') {
+    const o1 = ctx.createOscillator();
+    o1.type = wave;
+    o1.frequency.setValueAtTime(freq, t);
+    const o2 = ctx.createOscillator();
+    o2.type = 'sine';
+    o2.frequency.setValueAtTime(freq, t);
+
+    const bpf = ctx.createBiquadFilter();
+    bpf.type = 'lowpass';
+    bpf.frequency.setValueAtTime(Math.min(650, freq * 3.5), t);
+    bpf.Q.value = 2.0;
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(velocity, t + 0.006);
+    g.gain.setValueAtTime(velocity * 0.85, t + durS * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + durS);
+
+    o1.connect(bpf);
+    o2.connect(bpf);
+    bpf.connect(g);
+    g.connect(parentBus);
+
+    try {
+      o1.start(t); o1.stop(t + durS + 0.04);
+      o2.start(t); o2.stop(t + durS + 0.04);
+    } catch (_) {}
+    o1.onended = () => {
+      try { o1.disconnect(); o2.disconnect(); bpf.disconnect(); g.disconnect(); } catch (_) {}
+    };
+  },
+
+  // Build the audio graph infrastructure for a stem (filter, delay, sidechain pump) and start
+  // the scheduling loop. Returns { nodes, lp, delay, delayFb, sidechainPump, stop() }.
+  _buildStemVoices(ctx, def, parentGain, key) {
+    const nodes = [];
+
+    // Shared filter for all notes in this stem
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = key === 'C' ? 2400 : key === 'D' ? 1600 : key === 'B' ? 1500 : key === 'E' ? 900 : 1300;
+    lp.Q.value = key === 'C' ? 1.6 : 0.8;
+    lp.connect(parentGain);
+
+    // Progressive house / French house sidechain pump bus:
+    // Chords, arps, and bass connect here; kick ducks it on impact!
+    const sidechainPump = ctx.createGain();
+    sidechainPump.gain.value = 1.0;
+    sidechainPump.connect(lp);
+
+    // BPM and timing: the ARRANGEMENT grid (see scoreDirector.STEM_BPM). The boss is the one stem
+    // whose authored tempo is also its arrangement tempo — `_seqBoss` must breathe at the same 100
+    // BPM the WAV and the Warden motif are written in.
+    const bossRow = MUSIC_STEMS.find((row) => row && row.id === 'stem_e');
+    const BPM = key === 'C' ? 128 : key === 'B' ? 124 : key === 'D' ? 116
+      : key === 'E' ? Math.max(40, Number(bossRow && bossRow.bpm) || 100) : 122;
+    const beatS = 60 / BPM;
+    const sixteenthS = beatS / 4;
+
+    // Delay line for spacey echoes with filtered feedback loop
+    let delay = null, delayFb = null;
+    delay = ctx.createDelay(1.2);
+    delayFb = ctx.createGain();
+    delay.delayTime.value = key === 'C' ? beatS * 0.5 : beatS * 0.75; // dotted-eighth
+    delayFb.gain.value = key === 'C' ? 0.20 : key === 'A' ? 0.38 : key === 'D' ? 0.42 : key === 'E' ? 0.30 : 0.28;
+    const delayLp = ctx.createBiquadFilter();
+    delayLp.type = 'lowpass';
+    delayLp.frequency.value = 2400;
+    delay.connect(delayLp);
+    delayLp.connect(delayFb);
+    delayFb.connect(delay);
+    delay.connect(sidechainPump);
+
+    // Slow filter sweep LFO for breathing movement
+    const filterLfo = ctx.createOscillator();
+    const filterLfoGain = ctx.createGain();
+    filterLfo.frequency.value = key === 'C' ? 0.25 : key === 'B' ? 0.12 : key === 'E' ? 0.04 : 0.05;
+    filterLfoGain.gain.value = key === 'C' ? 600 : key === 'D' ? 300 : key === 'B' ? 300 : key === 'E' ? 180 : 350;
+    filterLfo.connect(filterLfoGain);
+    filterLfoGain.connect(lp.frequency);
+    try { filterLfo.start(ctx.currentTime); } catch (_) {}
+    nodes.push(filterLfo, filterLfoGain);
+
+    // Sequencer state
+    const seq = {
+      active: true,
+      destroyed: false,
+      timerId: 0,
+      step: 0,
+      macroBar: 0,
+      nextNoteTime: ctx.currentTime + 0.1,
+    };
+
+    const self = this;
+
+    function scheduleNotes() {
+      seq.timerId = 0;
+      if (!seq.active || seq.destroyed) return;
+      while (seq.nextNoteTime < ctx.currentTime + 0.12) {
+        const t = seq.nextNoteTime;
+        const step = seq.step;
+
+        const sequencer = stemSequencerName(key);
+        if (sequencer && typeof self[sequencer] === 'function') {
+          self[sequencer](ctx, t, step, seq, sixteenthS, beatS, sidechainPump, delay, parentGain);
+        }
+
+        seq.step = (seq.step + 1) % 64;
+        if (seq.step === 0) seq.macroBar++;
+        seq.nextNoteTime += sixteenthS;
+      }
+      seq.timerId = setTimeout(scheduleNotes, 40);
+    }
+
+    seq.nextNoteTime = ctx.currentTime + 0.2;
+    scheduleNotes();
+
+    const stemObj = {
+      nodes, lp, delay, delayFb, sidechainPump,
+      pauseScheduler() {
+        if (seq.destroyed || !seq.active) return;
+        seq.active = false;
+        if (seq.timerId) clearTimeout(seq.timerId);
+        seq.timerId = 0;
+      },
+      // THE EAR: the next bar (or fraction/multiple of bars) on this stem's own grid.
+      nextBoundary(bars = 1) {
+        const span = Math.max(1, Math.round(16 * bars));
+        return seq.nextNoteTime + ((span - (seq.step % span)) % span) * sixteenthS;
+      },
+      get schedulerActive() { return seq.active && !seq.destroyed; },
+      resumeScheduler() {
+        if (seq.destroyed || seq.active) return;
+        seq.active = true;
+        seq.nextNoteTime = Math.max(seq.nextNoteTime, ctx.currentTime + 0.1);
+        scheduleNotes();
+      },
+      stop() {
+        if (seq.destroyed) return;
+        seq.destroyed = true;
+        seq.active = false;
+        if (seq.timerId) clearTimeout(seq.timerId);
+        seq.timerId = 0;
+        for (const n of nodes) { try { n.stop(); } catch (_) {} try { n.disconnect(); } catch (_) {} }
+        if (delay) { try { delay.disconnect(); } catch (_) {} }
+        if (delayFb) { try { delayFb.disconnect(); } catch (_) {} }
+        if (sidechainPump) { try { sidechainPump.disconnect(); } catch (_) {} }
+      },
+    };
+    return stemObj;
+  },
+
+  // ---- Calm (Exploration): Progressive House (deadmau5 / Strobe / Faxing Berlin feel) ----
+  // Slowly evolving 8-bar extended chords in Am9/Cmaj9, 4-on-the-floor kick with sidechain pumping,
+  // rolling 16th pluck arpeggio through space delay, and 4-phase macro evolution.
+  _seqCalm(ctx, t, step, seq, sixteenth, beatS, sidechainPump, delayNode, parentBus) {
+    const N = (n, o) => this._noteFreq(n, o);
+
+    // 8-bar extended progression in A minor / C major
+    const chords = [
+      // 0: Am9
+      { root: N('A', 1), bass: N('A', 2), tones: [N('A', 2), N('E', 3), N('G', 3), N('B', 3), N('C', 4), N('E', 4)] },
+      // 1: Fmaj9
+      { root: N('F', 1), bass: N('F', 2), tones: [N('F', 2), N('C', 3), N('E', 3), N('G', 3), N('A', 3), N('C', 4)] },
+      // 2: Cmaj9
+      { root: N('C', 1), bass: N('C', 2), tones: [N('C', 2), N('G', 2), N('B', 2), N('D', 3), N('E', 3), N('G', 3)] },
+      // 3: Gsus4 / Em7
+      { root: N('G', 1), bass: N('G', 2), tones: [N('G', 2), N('D', 3), N('F', 3), N('A', 3), N('B', 3), N('D', 4)] },
+      // 4: Dm9
+      { root: N('D', 1), bass: N('D', 2), tones: [N('D', 2), N('A', 2), N('C', 3), N('E', 3), N('F', 3), N('A', 3)] },
+      // 5: G7sus4
+      { root: N('G', 1), bass: N('G', 2), tones: [N('G', 2), N('D', 3), N('F', 3), N('C', 4), N('D', 4), N('G', 4)] },
+      // 6: Cmaj7
+      { root: N('C', 1), bass: N('C', 2), tones: [N('C', 2), N('G', 2), N('B', 2), N('E', 3), N('G', 3), N('C', 4)] },
+      // 7: Em7
+      { root: N('E', 1), bass: N('E', 2), tones: [N('E', 2), N('B', 2), N('D', 3), N('G', 3), N('B', 3), N('E', 4)] },
+    ];
+
+    const bar = Math.floor(step / 16);
+    const beat = step % 16;
+    const totalBar = (seq.macroBar || 0) * 4 + bar;
+    const chord = chords[totalBar % chords.length];
+
+    // Macro evolution: 4 distinct evolving phases (each lasting 8 bars)
+    // Phase 0: Ambient intro / floating space (pads + sub pulse + space plucks, no kick)
+    // Phase 1: Arp rise & rhythm building (16th plucks + shakers + rolling sub)
+    // Phase 2: Full Drop & Groove (4-on-the-floor kick + sidechain pump + rolling bass + open hat + clap)
+    // Phase 3: Climax (Filter wide open + uplifting Travel Motif hook + high sparkle)
+    const macroPhase = Math.floor(totalBar / 8) % 4;
+
+    // ---- 1. DRUMS & SIDECHAIN PUMPING ----
+    const isQuarterBeat = beat % 4 === 0;
+    if (isQuarterBeat) {
+      if (macroPhase >= 2 || (macroPhase === 1 && bar % 2 === 1)) {
+        // 4-on-the-floor punchy kick
+        this._playKick(ctx, t, parentBus, 0.16);
+        // Sidechain ducking on the harmonic/bass bus
+        sidechainPump.gain.cancelScheduledValues(t);
+        sidechainPump.gain.setValueAtTime(0.20, t);
+        sidechainPump.gain.exponentialRampToValueAtTime(1.0, t + beatS * 0.72);
+      } else if (beat === 0) {
+        // Phase 0 / early Phase 1: gentle sub kick on bar downbeat
+        this._playKick(ctx, t, parentBus, 0.08);
+      }
+    }
+
+    // Off-beat open hi-hat on the "&" of the beat (steps 2, 6, 10, 14)
+    if (macroPhase >= 2 && beat % 4 === 2) {
+      this._playHiHat(ctx, t, parentBus, 0.045, true);
+    }
+
+    // 16th-note shaker / closed hats (steps 1, 3, 5, 7, 9, 11, 13, 15)
+    if (macroPhase >= 1 && beat % 2 === 1) {
+      this._playHiHat(ctx, t, parentBus, 0.02, false);
+    }
+
+    // Backbeat clap on beats 4 and 12
+    if (macroPhase >= 2 && (beat === 4 || beat === 12)) {
+      this._playClap(ctx, t, parentBus, 0.08);
+    }
+
+    // ---- 2. ROLLING BASSLINE ----
+    if (macroPhase >= 2) {
+      // Rolling progressive bass on off-beat 16ths (steps 2, 5, 8, 10, 14)
+      if (beat === 2 || beat === 5 || beat === 8 || beat === 10 || beat === 14) {
+        this._playBass(ctx, chord.bass, sixteenth * 1.8, 0.11, t, sidechainPump, 'sawtooth');
+      }
+    } else {
+      // Ambient sub pulse on bar downbeat
+      if (beat === 0) {
+        this._playBass(ctx, chord.root, beatS * 3.6, 0.08, t, sidechainPump, 'sine');
+      }
+    }
+
+    // ---- 3. WARM PAD CHORDS ----
+    if (beat === 0) {
+      // Sustained lush pad chord tones with gentle chorus detune
+      this._playNote(ctx, chord.tones[1], beatS * 3.9, 0.055, 'triangle', sidechainPump, delayNode, t, { detune: 8, attack: 0.16, release: 0.4 });
+      this._playNote(ctx, chord.tones[3], beatS * 3.9, 0.045, 'sine', sidechainPump, delayNode, t, { detune: 6, attack: 0.16, release: 0.4 });
+      this._playNote(ctx, chord.tones[4], beatS * 3.9, 0.038, 'triangle', sidechainPump, delayNode, t, { detune: 9, attack: 0.2, release: 0.4 });
+    }
+
+    // ---- 4. PROGRESSIVE PLUCK ARPEGGIO ----
+    // 16th-note arpeggiator cycling through chord tones (deadmau5 Strobe style)
+    const arpPattern = [0, 2, 4, 3, 1, 3, 4, 2, 1, 4, 3, 2, 0, 3, 4, 1];
+    const arpTone = chord.tones[arpPattern[beat] % chord.tones.length];
+
+    // Priority to Travel Motif hook on designated bars (bar % 4 === 0)
+    let motifPlayed = false;
+    if (totalBar % 4 === 0) {
+      motifPlayed = this._playThemeMotif(TRAVEL_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, delayNode, 0.15, 'triangle');
+    }
+
+    if (!motifPlayed) {
+      if (macroPhase >= 1) {
+        // Pluck runs continuously on 16ths through space delay
+        this._playNote(ctx, arpTone, sixteenth * 1.5, 0.05, 'triangle', sidechainPump, delayNode, t, {
+          detune: 7,
+          pluckFilter: true,
+          delayGain: 0.38,
+        });
+      } else if (beat % 4 === 2) {
+        // Phase 0: sparse, gentle delay plucks on off-beats
+        this._playNote(ctx, arpTone, sixteenth * 2.0, 0.035, 'sine', sidechainPump, delayNode, t, {
+          detune: 5,
+          delayGain: 0.42,
+        });
+      }
+    }
+
+    // High sparkling octave accent on off-beats
+    if (macroPhase === 3 && (beat === 2 || beat === 10)) {
+      this._playNote(ctx, chord.tones[chord.tones.length - 1] * 2, sixteenth * 1.8, 0.03, 'sine', sidechainPump, delayNode, t, {
+        detune: 4,
+        delayGain: 0.45,
+      });
+    }
+  },
+
+  // ---- Tense (Wanted / Threat approaching): Dark Progressive / Minimal Techno ----
+  // Minor key urgency, dark Phrygian chord substitutions, driving syncopated 16th bass,
+  // ticking percussive clock, and the Wanted motif (A Bb A E).
+  _seqTense(ctx, t, step, seq, sixteenth, beatS, sidechainPump, delayNode, parentBus) {
+    const N = (n, o) => this._noteFreq(n, o);
+
+    // Dark Phrygian progression: Am9 -> Dm9 -> Bbmaj7 -> E7(b9)
+    const chords = [
+      { root: N('A', 1), bass: N('A', 2), tones: [N('A', 2), N('C', 3), N('E', 3), N('G', 3), N('B', 3)] },
+      { root: N('D', 1), bass: N('D', 2), tones: [N('D', 2), N('F', 2), N('A', 2), N('C', 3), N('F', 3)] },
+      { root: N('Bb', 1), bass: N('Bb', 2), tones: [N('Bb', 2), N('D', 3), N('F', 3), N('A', 3), N('D', 4)] },
+      { root: N('E', 1), bass: N('E', 2), tones: [N('E', 2), N('G#', 2), N('B', 2), N('D', 3), N('F', 3)] },
+    ];
+
+    const bar = Math.floor(step / 16);
+    const beat = step % 16;
+    const totalBar = (seq.macroBar || 0) * 4 + bar;
+    const chord = chords[totalBar % chords.length];
+
+    // Driving kick on beats 0, 4, 8, 12
+    if (beat % 4 === 0) {
+      this._playKick(ctx, t, parentBus, 0.17);
+      sidechainPump.gain.cancelScheduledValues(t);
+      sidechainPump.gain.setValueAtTime(0.22, t);
+      sidechainPump.gain.exponentialRampToValueAtTime(1.0, t + beatS * 0.70);
+    }
+
+    // Ticking hi-hat on every 16th (clock ticking tension)
+    if (beat % 2 === 1) {
+      this._playHiHat(ctx, t, parentBus, beat % 4 === 2 ? 0.04 : 0.02, beat % 4 === 2);
+    }
+
+    // Syncopated dark bassline (steps 0, 3, 6, 8, 11, 14)
+    if (beat === 0 || beat === 3 || beat === 6 || beat === 8 || beat === 11 || beat === 14) {
+      this._playBass(ctx, chord.bass, sixteenth * 1.6, 0.12, t, sidechainPump, 'sawtooth');
+    }
+
+    // Wanted motif hook on designated bars. THE EAR: a chase rides this stem too, but the law's
+    // mark is for the law — an unwanted pilot under a hunter hears the tension, not the warrant.
+    const chase = !!(this.rt && this.rt._themeMatrix && this.rt._themeMatrix.pursuit);
+    const motifPlayed = !chase && this._playThemeMotif(WANTED_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, delayNode, 0.15, 'sawtooth');
+
+    // Dissonant tension pad cluster
+    if (beat === 0) {
+      this._playNote(ctx, chord.tones[1], beatS * 3.8, 0.045, 'sawtooth', sidechainPump, delayNode, t, { detune: 9, attack: 0.1, release: 0.3 });
+      this._playNote(ctx, chord.tones[2], beatS * 3.8, 0.038, 'sawtooth', sidechainPump, delayNode, t, { detune: -9, attack: 0.1, release: 0.3 });
+    }
+
+    // Urgent synth plucks on offbeats
+    if (!motifPlayed && (beat === 2 || beat === 7 || beat === 10 || beat === 15)) {
+      this._playNote(ctx, chord.tones[3] * 2, sixteenth * 1.5, 0.05, 'triangle', sidechainPump, delayNode, t, {
+        detune: 7,
+        pluckFilter: true,
+        delayGain: 0.35,
+      });
+    }
+  },
+
+  // ---- Combat: French House / Electro (Daft Punk / Justice / Alive 2007 feel) ----
+  // Driving 4-on-the-floor kick, heavy sidechain pump, chunky octave electro-saw bass,
+  // off-beat supersaw stabs, crisp backbeat clap, and aggressive Combat motif (A E A C).
+  _seqCombat(ctx, t, step, seq, sixteenth, beatS, sidechainPump, delayNode, parentBus) {
+    const N = (n, o) => this._noteFreq(n, o);
+
+    // High-energy progression: Am -> F -> Dm -> E
+    const chords = [
+      { root: N('A', 1), bass: N('A', 2), oct: N('A', 3), stab: [N('A', 3), N('C', 4), N('E', 4)] },
+      { root: N('F', 1), bass: N('F', 2), oct: N('F', 3), stab: [N('F', 3), N('A', 3), N('C', 4)] },
+      { root: N('D', 1), bass: N('D', 2), oct: N('D', 3), stab: [N('D', 3), N('F', 3), N('A', 3)] },
+      { root: N('E', 1), bass: N('E', 2), oct: N('E', 3), stab: [N('E', 3), N('G#', 3), N('B', 3)] },
+    ];
+
+    const bar = Math.floor(step / 16);
+    const beat = step % 16;
+    const totalBar = (seq.macroBar || 0) * 4 + bar;
+    const chord = chords[totalBar % chords.length];
+
+    // Heavy four-on-the-floor kick
+    if (beat % 4 === 0) {
+      this._playKick(ctx, t, parentBus, 0.20);
+      sidechainPump.gain.cancelScheduledValues(t);
+      sidechainPump.gain.setValueAtTime(0.15, t);
+      sidechainPump.gain.exponentialRampToValueAtTime(1.0, t + beatS * 0.65);
+    }
+
+    // Driving off-beat open hi-hat + 16th ticks
+    if (beat % 4 === 2) {
+      this._playHiHat(ctx, t, parentBus, 0.055, true);
+    } else if (beat % 2 === 1) {
+      this._playHiHat(ctx, t, parentBus, 0.03, false);
+    }
+
+    // Snappy backbeat clap on beats 4 and 12
+    if (beat === 4 || beat === 12) {
+      this._playClap(ctx, t, parentBus, 0.11);
+    }
+
+    // Chunky octave electro bassline running on 16ths
+    const bassTone = (beat % 2 === 0) ? chord.bass : chord.oct;
+    this._playBass(ctx, bassTone, sixteenth * 1.4, (beat % 4 === 0) ? 0.07 : 0.12, t, sidechainPump, 'sawtooth');
+
+    // Combat motif hook on bar 0
+    const motifPlayed = this._playThemeMotif(COMBAT_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, null, 0.16, 'sawtooth');
+
+    // Off-beat supersaw stabs on steps 2, 6, 10, 14
+    if (!motifPlayed && (beat === 2 || beat === 6 || beat === 10 || beat === 14)) {
+      this._playNote(ctx, chord.stab[0], sixteenth * 1.8, 0.08, 'sawtooth', sidechainPump, delayNode, t, { detune: 10, attack: 0.01, release: 0.08 });
+      this._playNote(ctx, chord.stab[1], sixteenth * 1.8, 0.07, 'square', sidechainPump, delayNode, t, { detune: 8, attack: 0.01, release: 0.08 });
+      this._playNote(ctx, chord.stab[2], sixteenth * 1.8, 0.07, 'sawtooth', sidechainPump, delayNode, t, { detune: -10, attack: 0.01, release: 0.08 });
+    }
+  },
+
+  // ---- Docked: Warm Deep House / Ambient Lounge (Daft Punk / deadmau5 chill feel) ----
+  // Safe harbor after space: warm Rhodes-like electric piano chords, gentle shaker,
+  // soft muted kick, space delay bell chimes, and the Station motif (C E G B).
+  _seqDocked(ctx, t, step, seq, sixteenth, beatS, sidechainPump, delayNode, parentBus) {
+    const N = (n, o) => this._noteFreq(n, o);
+
+    // Warm, lush jazz-house progression: Cmaj9 -> Am9 -> Fmaj7 -> G13
+    const chords = [
+      { root: N('C', 1), bass: N('C', 2), tones: [N('C', 3), N('E', 3), N('G', 3), N('B', 3), N('D', 4)] },
+      { root: N('A', 1), bass: N('A', 2), tones: [N('A', 2), N('C', 3), N('E', 3), N('G', 3), N('B', 3)] },
+      { root: N('F', 1), bass: N('F', 2), tones: [N('F', 2), N('A', 2), N('C', 3), N('E', 3), N('A', 3)] },
+      { root: N('G', 1), bass: N('G', 2), tones: [N('G', 2), N('B', 2), N('F', 3), N('A', 3), N('E', 4)] },
+    ];
+
+    const bar = Math.floor(step / 16);
+    const beat = step % 16;
+    const totalBar = (seq.macroBar || 0) * 4 + bar;
+    const chord = chords[totalBar % chords.length];
+
+    // Soft muted kick on beats 0 & 8 (half-note laid back pulse)
+    if (beat === 0 || beat === 8) {
+      this._playKick(ctx, t, parentBus, 0.11);
+      sidechainPump.gain.cancelScheduledValues(t);
+      sidechainPump.gain.setValueAtTime(0.35, t);
+      sidechainPump.gain.exponentialRampToValueAtTime(1.0, t + beatS * 0.85);
+    }
+
+    // Soft shaker on off-beats
+    if (beat % 2 === 1) {
+      this._playHiHat(ctx, t, parentBus, 0.018, false);
+    }
+
+    // Warm sub bass on beats 0 and 8
+    if (beat === 0 || beat === 8) {
+      this._playBass(ctx, chord.root, beatS * 3.5, 0.08, t, sidechainPump, 'sine');
+    }
+
+    // Warm electric piano chord tones refreshed every bar
+    if (beat === 0) {
+      this._playNote(ctx, chord.tones[1], beatS * 3.8, 0.05, 'sine', sidechainPump, delayNode, t, { detune: 5, attack: 0.1, release: 0.4 });
+      this._playNote(ctx, chord.tones[2], beatS * 3.8, 0.04, 'triangle', sidechainPump, delayNode, t, { detune: 7, attack: 0.1, release: 0.4 });
+      this._playNote(ctx, chord.tones[3], beatS * 3.8, 0.035, 'sine', sidechainPump, delayNode, t, { detune: -5, attack: 0.1, release: 0.4 });
+    }
+
+    // Station motif hook
+    const motifPlayed = this._playThemeMotif(STATION_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, delayNode, 0.13, 'sine');
+
+    // Delicate bell chime plucks through space delay
+    const bellPattern = [null, null, 2, null, null, null, 3, null, null, 1, null, null, null, null, null, 4];
+    const bellIdx = bellPattern[beat];
+    if (!motifPlayed && bellIdx != null) {
+      this._playNote(ctx, chord.tones[bellIdx % chord.tones.length] * 2, sixteenth * 3.5, 0.045, 'sine', sidechainPump, delayNode, t, {
+        detune: 4,
+        pluckFilter: true,
+        delayGain: 0.45,
+      });
+    }
+  },
+
+  // ---- Boss: the Warden's walk (X4 P0) ----
+  // A different piece, not the combat loop louder: 100 BPM against the fight's 130, half-time
+  // weight, a two-bar A-minor / D-minor phrase with real rests, and the choir/brass/strings
+  // weight `stem_e.layers` advertises. The boss fader fed a silent gain node before this method
+  // existed, so a boss fight got quieter and lost the combat lead.
+  _seqBoss(ctx, t, step, seq, sixteenth, beatS, sidechainPump, delayNode, parentBus) {
+    const N = (n, o) => this._noteFreq(n, o);
+
+    // Two-bar harmonic floor: Am, then Dm. Slow enough that one chord is a place, not a bar.
+    const chords = [
+      { root: N('A', 1), bass: N('A', 2), choir: [N('A', 2), N('E', 3), N('A', 3)] },
+      { root: N('D', 1), bass: N('D', 2), choir: [N('D', 3), N('A', 3), N('D', 4)] },
+    ];
+    const bar = Math.floor(step / 16);
+    const beat = step % 16;
+    const totalBar = (seq.macroBar || 0) * 4 + bar;
+    const chord = chords[Math.floor(totalBar / 2) % chords.length];
+
+    // Drums: one weight per bar, a shallow duck so the choir keeps its body.
+    if (beat === 0 || beat === 8) {
+      this._playKick(ctx, t, parentBus, 0.22);
+      sidechainPump.gain.cancelScheduledValues(t);
+      sidechainPump.gain.setValueAtTime(0.55, t);
+      sidechainPump.gain.exponentialRampToValueAtTime(1.0, t + beatS * 1.1);
+    }
+    if (beat === 4 || beat === 12) this._playHiHat(ctx, t, parentBus, 0.018, false);
+
+    // Bass: a long low root, twice a bar and never a rolling 16th line.
+    if (beat === 0 || beat === 10) {
+      this._playBass(ctx, chord.bass, beatS * 2.6, 0.14, t, sidechainPump, 'sawtooth');
+    }
+
+    // Choir: the layer the fight does not have. Slow attack, close voicing, well under the lead.
+    if (beat === 0) {
+      for (let i = 0; i < chord.choir.length; i++) {
+        this._playNote(ctx, chord.choir[i], beatS * 3.4, 0.055 - i * 0.008, 'triangle', sidechainPump, delayNode, t, {
+          detune: 6, attack: 0.35, release: 0.6,
+        });
+      }
+    }
+
+    // Brass: the answer on the second half of the bar. Short and filtered, never a siren.
+    if (beat === 12) {
+      this._playNote(ctx, chord.choir[1], sixteenth * 3, 0.08, 'sawtooth', sidechainPump, null, t, {
+        detune: 9, attack: 0.02, release: 0.12, pluckFilter: true,
+      });
+      this._playNote(ctx, chord.choir[2], sixteenth * 3, 0.06, 'square', sidechainPump, null, t, {
+        detune: 7, attack: 0.02, release: 0.12, pluckFilter: true,
+      });
+    }
+
+    // Strings: a low pedal under every other bar.
+    if (beat === 0 && totalBar % 2 === 0) {
+      this._playNote(ctx, chord.root, beatS * 7.4, 0.045, 'sine', sidechainPump, null, t, {
+        detune: 4, attack: 0.5, release: 0.8,
+      });
+    }
+
+    // The Warden motif (A D A F#) on its own two-bar phrase. The rests are in the written steps.
+    this._playThemeMotif(BOSS_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, delayNode, 0.2, 'sawtooth');
+  },
+
+  _setMusicState(stateName, instant) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx) return;
+    rt.musicState = stateName;
+    // X4 final review: the heard score is synthesized by the `_seq*` sequencers, so the lazy
+    // authored-stem fetch had no consumer and pulled a ~1 MB loop on first state use. Removed
+    // until a real listening mode asks for `theme_stem` residency.
+    const frame = rt.bandBed && rt.bandBed.scoreFrame;
+    const w = (!instant && scoreStemWeights(frame, rt._themeMatrix))
+      || (rt._themeMatrix && (rt._themeMatrix.audibleStemWeights || rt._themeMatrix.stemWeights))
+      || STEM_WEIGHTS[stateName]
+      || STEM_WEIGHTS.calm;
+    rt._musicFeed = STEM_KEYS.reduce((sum, key) => sum + (w[key] || 0), 0);
+    const xf = stateName === 'combat' ? XFADE_COMBAT_S : XFADE_S;
+    const t = ctx.currentTime;
+    if (!instant) {
+      this._applyStemTargets(w, xf / 3, frame ? (PHASE_QUANTIZE_BARS[frame.phase] || 1) : 1);
+      return;
+    }
+    for (const key of STEM_KEYS) {
+      const g = rt.stemGains[key]; if (!g) continue;
+      const target = Math.max(0.0001, w[key]);
+      try {
+        if (instant) { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(target, t); }
+        else { g.gain.setTargetAtTime(target, t, xf / 3); }
+      } catch (_) { try { g.gain.value = target; } catch (__) {} }
+    }
+  },
+
+  // Derive nearby-hostile count + shield% -> threat -> music state with hysteresis.
+  _recomputeMusic(nowWall) {
+    const rt = this.rt, state = this.state;
+    const player = state.entities.get(state.playerId);
+    let docked = !!(rt._docked || (player && player.flags && player.flags.docked) || state.ui.docked);
+    const context = resolveAudioThreatContext(state, player, rt);
+    if (rt.ctx && typeof rt.ctx.createOscillator === 'function') {
+      if (!rt._threatEar) rt._threatEar = createThreatEar(rt.ctx, rt.combatBus);
+      rt._threatEar.update(state, player, !rt._paused && !docked && !this._isMuted());
+    }
+    const threat = context.threat;
+    rt.threat = threat;
+    rt.threatContext = context;
+
+    const wanted = !!(player && player.flags && player.flags.wanted)
+      || !!(state.player && state.player.wanted)
+      || !!(state.heat && state.heat.wanted);
+    if (!rt._themeSectorId && state.world && state.world.currentSectorId) {
+      rt._themeSectorId = state.world.currentSectorId;
+    }
+    const arc = resolveEncounterArc({
+      context,
+      docked,
+      telegraph: context.doctrineThreat === true && !context.engaged,
+      neutrals: (context.committedHostiles || 0) === 0 && (context.nearbyHostiles || 0) === 0 && !context.engaged,
+      nowS: Number(state.simTime) || 0,
+      previousPhase: rt._encounterPhase || null,
+      pendingPhase: rt._encounterPending || null,
+      pendingSince: rt._encounterPendingSince,
+      holdS: STATE_HOLD_S,
+      recovery: rt._committedArmed === true && (context.committedHostiles || 0) === 0,
+    });
+    rt._encounterArc = arc;
+    rt._encounterPhase = arc.phase;
+    rt._encounterPending = arc.pendingPhase;
+    rt._encounterPendingSince = arc.pendingSince;
+    // Crews working a face near the player feed the score's authored work register: a pocket
+    // of miners, a salvor on a wreck, a hauler loading. Threat, law, and docking still outrank
+    // it inside the director, so the read can never muffle a fight.
+    const work = resolveAudioWorkPresence(state, player, rt._musicWorkScratch || []);
+    const theme = resolveThemeMatrix({
+      docked,
+      wanted,
+      bossActive: rt._bossActive === true,
+      inCombat: threat >= 0.6,
+      threat,
+      // THE EAR: the score director reads live hostiles only (the pressure bed's read).
+      scoreThreat: combatPressureThreat(context, docked),
+      sectorId: rt._themeSectorId,
+      factionId: rt._themeFactionId,
+      // SWARM-06: the kill chain's lift — the same theme row, mixed hotter as the run climbs.
+      swarmLift: this._stuntScoreLift(),
+      working: work.working,
+      workPresence: work.presence,
+    });
+    rt._themeMatrix = theme;
+    this._applySectorBed(theme);
+    this._syncEnvironmentMix(docked);
+    let desired = theme.musicState || theme.state
+      || (docked ? 'docked' : (threat >= 0.6 ? 'combat' : threat >= 0.2 ? 'tense' : 'calm'));
+    if (theme.state === 'station') desired = 'docked';
+
+    // SF-297 breathing room: the release reads the live commitment ledger, not the encounter
+    // latch. When the last hostile committed to the player dies while the pilot is flying free,
+    // the ear exhales NOW — one soft authored settle and the calmer music state lands this tick
+    // instead of after the standard hold. A committed survivor keeps the floor and never fires
+    // the cue; defeat and docking clear the ledger silently so recovery never inherits a stale
+    // release. Debris/aftermath already carries the scene (aftermathWrecks), and incoming-fire
+    // warnings ride their own alarm lanes — untouched here.
+    if ((context.committedHostiles || 0) > 0) {
+      rt._committedHostiles = context.committedHostiles;
+      rt._committedArmed = true;
+    } else if (rt._committedArmed === true) {
+      const alive = !!(player && player.alive !== false && !(player.flags && player.flags.defeated));
+      rt._committedHostiles = 0;
+      rt._committedArmed = false;
+      if (alive && !docked) {
+        this._onCommittedClearRelease();
+        if (desired !== rt.musicState) {
+          // Earned clear lands the settle immediately rather than holding the 1.5 s hysteresis.
+          rt._pendingState = desired;
+          rt._pendingSince = nowWall - STATE_HOLD_S;
+        }
+      }
+    }
+
+    if (desired === rt.musicState) {
+      rt._pendingState = null;
+      // THE EAR: inside a state the faders ride the director's intensity, not a fixed row.
+      // A director phase change inside one host state (arrival, threat, aftermath, departure)
+      // lands on that phase's phrase grid; plain intensity drift rides now.
+      const frame = rt.bandBed && rt.bandBed.scoreFrame;
+      const bossNow = theme.state === 'boss';
+      const bossMoved = bossNow !== (rt._bossMixLatch === true);
+      // X4 #1 — a boss arriving MID-FIGHT cannot change `desired`: the boss maps to the combat
+      // music state, so this branch is the only place its authored row can land. `scoreStemWeights`
+      // returns null for a boss frame by design, so the authored row is used instead. When the
+      // boss dies, the same branch must put the fight mix back.
+      const w = (bossNow || bossMoved)
+        ? (theme.audibleStemWeights || theme.stemWeights)
+        : scoreStemWeights(frame, theme);
+      rt._bossMixLatch = bossNow;
+      const last = rt._stemTargets;
+      const phaseMoved = !!frame && rt._scoreTransitionsSeen !== frame.transitions;
+      if (frame) rt._scoreTransitionsSeen = frame.transitions;
+      if (w && (phaseMoved || bossMoved || !last || ['A', 'B', 'C', 'D', 'E'].some((k) => Math.abs((w[k] || 0) - (last[k] || 0)) > 0.04))) {
+        rt._musicFeed = STEM_KEYS.reduce((sum, key) => sum + (w[key] || 0), 0);
+        this._applyStemTargets(w, (phaseMoved || bossMoved) ? XFADE_S / 3 : 1.2, phaseMoved ? (PHASE_QUANTIZE_BARS[frame.phase] || 1) : 0);
+      }
+      this._idleQuietStems();
+      return;
+    }
+    // hysteresis: hold the change for STATE_HOLD_S before switching (docked is immediate)
+    if (desired === 'docked' || rt.musicState === 'docked') {
+      this._setMusicState(desired);
+      rt._stateSince = nowWall; rt._pendingState = null;
+      return;
+    }
+    if (rt._pendingState !== desired) { rt._pendingState = desired; rt._pendingSince = nowWall; return; }
+    if (nowWall - rt._pendingSince >= STATE_HOLD_S) {
+      this._setMusicState(desired);
+      rt._stateSince = nowWall; rt._pendingState = null;
+    }
+  },
+
+  _combatMixDocked() {
+    const rt = this.rt;
+    const state = this.state;
+    const player = state && state.entities && state.playerId != null && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    return !!(rt && rt._docked)
+      || !!(state && state.ui && state.ui.docked)
+      || !!(player && player.flags && player.flags.docked);
+  },
+
+  /** Drop bomb field and status loops. The next undocked sync restarts a field that is still live. */
+  _releaseDockedFieldLoops() {
+    const rt = this.rt;
+    if (!rt || !rt.loops) return;
+    for (const key of Object.keys(rt.loops)) {
+      if (!key.startsWith(BOMB_FIELD_LOOP_PREFIX) && !key.startsWith(BOMB_STATUS_LOOP_PREFIX)
+        && !isFieldLoopKey(key)) continue;
+      const voice = rt.loops[key];
+      if (voice) this._endLoopVoice(voice);
+      delete rt.loops[key];
+    }
+  },
+
+  // ---- alarm scheduler (lookahead, ctx.currentTime based, no setInterval drift) ----
+  _tickAlarms() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx) return;
+    if (rt._paused) return; // pause menu must be quiet — no beeps
+    const player = this.state.entities.get(this.state.playerId);
+    let shieldPct = 1, hullPct = 1;
+    if (player) {
+      shieldPct = player.shieldMax > 0 ? clamp(player.shield / player.shieldMax, 0, 1) : 1;
+      hullPct = player.hullMax > 0 ? clamp(player.hull / player.hullMax, 0, 1) : 1;
+    }
+    const alive = player && player.alive;
+    const dockedQuiet = this._combatMixDocked();
+    rt.alarms.lowShield = !!(alive && !dockedQuiet && shieldPct < 0.18);
+    rt.alarms.lowHull = !!(alive && !dockedQuiet && hullPct < 0.20);
+
+    if (ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    const horizon = now + 0.15;
+
+    // low-shield: soft alternating 587/440 triangle chirp, brief, with a long gap so it informs
+    // without screaming (was a near-continuous 880/660 square siren — the main "scream").
+    if (rt.alarms.lowShield) {
+      while (rt._alarmNext.lowShield < horizon) {
+        const t = Math.max(rt._alarmNext.lowShield, now);
+        this._beep(rt._alarmFlip.lowShield ? 440 : 587, t, 0.10, 0.05, 'triangle');
+        rt._alarmFlip.lowShield = !rt._alarmFlip.lowShield;
+        rt._alarmNext.lowShield = t + 0.10 + 0.42;
+      }
+    } else { rt._alarmNext.lowShield = now; }
+
+    // low-hull: gentle 330 sine pulse 0.22s on / 0.6s off (was a louder 440 pulse)
+    if (rt.alarms.lowHull) {
+      while (rt._alarmNext.lowHull < horizon) {
+        const t = Math.max(rt._alarmNext.lowHull, now);
+        this._beep(330, t, 0.22, 0.085, 'sine');
+        rt._alarmNext.lowHull = t + 0.22 + 0.6;
+      }
+    } else { rt._alarmNext.lowHull = now; }
+  },
+
+  _beep(freq, t0, dur, gain, wave) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const o = ctx.createOscillator();
+    o.type = wave || 'square';
+    o.frequency.value = freq;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+    g.gain.setValueAtTime(gain, t0 + dur - 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(rt.sfxBus);
+    try { o.start(t0); o.stop(t0 + dur + 0.02); } catch (_) {}
+    o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (_) {} };
+  },
+
+  // ---- per-frame driver (self-owned rAF; registry does not call audio.update) ----
+  _startFrameLoop() {
+    const rt = this.rt;
+    if (!rt || rt._rafId || rt._lifecycleSuspended || !rt.ctx
+      || rt.ctx.state !== 'running' || typeof requestAnimationFrame === 'undefined') return;
+    const tick = () => {
+      rt._rafId = 0;
+      if (rt._lifecycleSuspended || !rt.ctx || rt.ctx.state !== 'running') return;
+      // The ~25-call body rides a bounded background post instead of running
+      // inside the rAF task — the last unbudgeted per-frame work in the
+      // presented frame. _frame() re-guards suspended/context state itself.
+      postTaskAtBackgroundPriorityBounded(() => { this._frame(); });
+      if (!rt._lifecycleSuspended && rt.ctx && rt.ctx.state === 'running') {
+        rt._rafId = requestAnimationFrame(tick);
+      }
+    };
+    rt._rafId = requestAnimationFrame(tick);
+  },
+
+  _stopFrameLoop() {
+    const rt = this.rt;
+    if (!rt || !rt._rafId) return;
+    const frameId = rt._rafId;
+    rt._rafId = 0;
+    if (typeof cancelAnimationFrame !== 'undefined') {
+      try { cancelAnimationFrame(frameId); } catch (_) {}
+    }
+  },
+
+  // Bark voice plumbing: captions release at the voice-body start (they were queued while the
+  // mic was still open), and arbiter-bound receipts that never surfaced are dropped — a bark
+  // the floor refused is never heard. `now` is the audio clock; `nowWall` is wall seconds.
+  _drainBarkPlumbing(now, nowWall) {
+    const rt = this.rt;
+    if (!rt) return;
+    const barkCaptions = rt._pendingBarkCaptions;
+    if (barkCaptions && barkCaptions.length) {
+      while (barkCaptions.length && barkCaptions[0].at <= now) {
+        const cap = barkCaptions.shift();
+        this._emitPresentationCaption(cap.text, cap.opts);
+      }
+    }
+    const pendingVoices = rt._pendingBarkVoices;
+    if (pendingVoices && pendingVoices.size) {
+      for (const [id, spec] of pendingVoices) {
+        if (nowWall - spec.enqueuedWallS > 12) pendingVoices.delete(id); // arbiter dropped it — stay silent
+      }
+    }
+    const recentSurfaces = rt._recentVoiceSurfaces;
+    if (recentSurfaces && recentSurfaces.size) {
+      for (const [id, atWall] of recentSurfaces) {
+        if (nowWall - atWall > 2) recentSurfaces.delete(id);
+      }
+    }
+  },
+
+  _frame() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || rt._lifecycleSuspended || ctx.state !== 'running') return;
+    this._stepWantedSearchAudio();
+    const nowWall = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
+    const now = ctx.currentTime;
+
+    const dt = rt._lastWallTime !== undefined ? (nowWall - rt._lastWallTime) : 0.016;
+    rt._lastWallTime = nowWall;
+
+    this._drainBarkPlumbing(now, nowWall);
+
+    // (re)start any desired loop voices that were requested while suspended — never while
+    // paused: _onPause ended them deliberately and a resurrected loop would drone over the menu.
+    if (!rt._paused) {
+      for (const ownerId in rt._wantBeam) {
+        if (!rt.loops['beam_' + ownerId]) this._startBeam(Number(ownerId), null, null, rt._wantBeam[ownerId]);
+      }
+      if (rt._wantMining && !rt.loops.mining) this._onMiningStart({ minerId: rt._wantMining.minerId, targetId: rt._wantMining.targetId });
+      if (rt._wantCruise && !rt.loops.cruise) this._syncCruiseLoop();
+      this._updateCruiseLoop(dt);
+      this._updateFuelVoice();
+    }
+
+    // Sidechaining logic (spec §1): combat ducks ambient & music buses by 6 dB (120ms attack / 900ms release)
+    let hasCombat = false;
+    for (const v of rt.voices) {
+      if (v.busName === 'combat' && !v._stopped) {
+        hasCombat = true;
+        break;
+      }
+    }
+    const targetDuck = hasCombat ? 0.501187 : 1.0;
+    const tc = targetDuck < rt.sidechainDuck ? 0.12 : 0.90;
+    const factor = Math.exp(-dt / tc);
+    rt.sidechainDuck = targetDuck + (rt.sidechainDuck - targetDuck) * factor;
+
+    // Apply setting gains with current sidechain factor
+    this._applySettings();
+
+    // Priority duck continuous loops before engine/weapon gain writes
+    this._updatePriorityDuckGains();
+
+    // Ensure continuous graphs once context is running in an unpaused flight session.
+    // Do not start engine/brake/tether beds on the main-menu gesture unlock — that is the boop.
+    if (ctx.state === 'running' && !rt._paused && !rt.engineOsc1) this._ensureContinuousSources();
+
+    // CV-EAR-1: rope and engine, one Elementary voice each, on this same context.
+    this._pushElementaryVoices(dt);
+
+    // Update continuous procedural sources
+    this._updateEngineHum();
+    this._syncRemoteEngines(now);
+    this._updateBrakeHiss(dt);
+    this._updateSlipstreamHiss();
+    this._updateTetherHum();
+    this._updateDrillGrind();
+    // Outside the `if (!rt._paused)` block below on purpose: the mine screen pauses the world sim,
+    // and its soundscape is exactly what must keep running through that pause (law §8).
+    this._updateMine(dt, now);
+    this._updateSectorCues(now);
+    this._updateStationMurmur(now);
+    this._updatePlaceContext(now);
+    this._updateApproachHum(now);
+    this._updateGateThroat();
+    this._updateWreckCooling();
+    this._updatePressureLayer();
+    this._writeMixLedger(now);
+
+    // recover music gain after a duck (skip while paused — _onPause manages the bus)
+    if (!rt._paused && rt._duckUntil && now >= rt._duckUntil && rt.musicBus) {
+      rt._duckUntil = 0;
+      invalidateBusGainCache(rt, 'music');
+      try {
+        rt.musicBus.gain.cancelScheduledValues(now);
+        rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), now);
+        rt.musicBus.gain.linearRampToValueAtTime(
+          Math.max(0.0001, (rt._musicBase || 0.5) * (rt._bulletTimeMusicMult || 1)), now + 0.8);
+      } catch (_) {}
+    }
+
+    // Skip the sim-driven work (threat/music recompute, alarms) while paused — the pause menu must
+    // be quiet. Voice GC still runs so one-shots finish cleanly; context-resume still runs above.
+    if (!rt._paused) {
+      if (rt._musicDirty || nowWall >= (rt._nextMusicScan || 0)) {
+        this._recomputeMusic(nowWall);
+        rt._nextMusicScan = nowWall + MUSIC_RECOMPUTE_S;
+        rt._musicDirty = false;
+      }
+      this._tickAlarms();
+      this._tickStuntFuse();
+      // Psychoacoustic drama pollers — hull depressurization muffle + the dead-trigger clack.
+      // Both are pure sim reads and parameter smoothing; no allocation on this path.
+      this._updateHullBreach(now, dt);
+      this._updateDryFire();
+    }
+    if (rt._loopPositionDirty || now >= (rt._nextLoopPositionUpdate || 0)) {
+      if (!rt._paused && typeof this._syncBombAudio === 'function') {
+        // Docked quiet releases field loops; undock reconciles any field that is still live.
+        // A dead field drops on this same pass even when no new one-shot arrives.
+        if (this._combatMixDocked()) this._releaseDockedFieldLoops();
+        else {
+          this._syncBombAudio();
+          if (typeof this._syncFieldAudio === 'function') this._syncFieldAudio();
+        }
+      }
+      this._updateLoopPositions(now);
+      rt._nextLoopPositionUpdate = now + LOOP_POSITION_UPDATE_S;
+      rt._loopPositionDirty = false;
+    }
+    this._gcVoices(now);
+  },
+
+  _setVoiceRate(voice, rate) {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    if (!voice || !ctx || !Number.isFinite(rate)) return;
+    const apply = (sources) => {
+      if (!sources) return;
+      for (let i = 0; i < sources.length; i++) {
+        const source = sources[i];
+        if (!source || !source.playbackRate) continue;
+        try { source.playbackRate.setTargetAtTime(rate, ctx.currentTime, 0.08); } catch (_) {}
+      }
+    };
+    apply(voice.sources);
+    const subs = voice.subVoices;
+    if (subs) {
+      for (let i = 0; i < subs.length; i++) apply(subs[i] && subs[i].sources);
+    }
+  },
+
+  /**
+   * Glass-tier ships other than the player get one engine loop. Cap is six, nearest first.
+   * Throttle under the floor, or leaving the set, ramps out and the voice is kept half a second
+   * so a flicker of thrust does not restart the buffer.
+   */
+  _syncRemoteEngines(now) {
+    const rt = this.rt;
+    if (!rt || !rt.ctx || rt.ctx.state !== 'running') return;
+    const loops = rt.loops;
+    if (!loops) return;
+    const silenceAll = rt._paused || !this.state || this.state.mode !== 'flight';
+    if (silenceAll) {
+      for (const key in loops) {
+        if (!key.startsWith('eng_')) continue;
+        const voice = loops[key];
+        if (voice) voice._baseGain = 0.0001;
+      }
+      return;
+    }
+    if (now < (rt._nextRemoteEngineS || 0)) return;
+    rt._nextRemoteEngineS = now + 0.1;
+
+    const player = this._playerPos();
+    const playerId = this.state.playerId;
+    const rows = rt._remoteRows || (rt._remoteRows = []);
+    rows.length = 0;
+    if (player) {
+      // Candidate membership is version-latched: engine-capable types live in the index's
+      // shipLike and radarContacts buckets (freighters only in the latter), so the 10 Hz run
+      // walks those ~small lists instead of the whole entityList. Interned id/loop keys ride a
+      // WeakMap so nothing allocates a String(entity.id) per ship per run.
+      const index = this.state.entityIndex;
+      // Members are ship|drone|freighter — shipLike carries ships+drones, the counter-only
+      // 'freighters' lane tracks the radarContacts-only type, so churn on the rest of
+      // radarContacts (stations/asteroids) can't rebuild the candidate list. -1 (index
+      // unready) plays the old null role: no latch.
+      const laneVersion = entityIndexLaneVersion(this.state, REMOTE_CANDIDATE_LANES);
+      const indexVersion = laneVersion === -1 ? null : laneVersion;
+      const buckets = (index && index.shipLike && index.radarContacts) ? index : null;
+      if (indexVersion == null || rt._remoteCandVersion !== indexVersion || !buckets) {
+        rt._remoteCandVersion = indexVersion;
+        const candidates = rt._remoteCandidates || (rt._remoteCandidates = []);
+        candidates.length = 0;
+        const candSet = rt._remoteCandSet || (rt._remoteCandSet = new Set());
+        candSet.clear();
+        const take = (entity) => {
+          if (!entity || candSet.has(entity)) return;
+          if (entity.type !== 'ship' && entity.type !== 'freighter' && entity.type !== 'drone') return;
+          candSet.add(entity);
+          candidates.push(entity);
+        };
+        if (buckets) {
+          for (let i = 0; i < index.shipLike.length; i++) take(index.shipLike[i]);
+          for (let i = 0; i < index.radarContacts.length; i++) take(index.radarContacts[i]);
+        } else {
+          const list = this.state.entityList;
+          if (Array.isArray(list)) for (let i = 0; i < list.length; i++) take(list[i]);
+        }
+      }
+      const keys = rt._remoteKeys || (rt._remoteKeys = new WeakMap());
+      // Row records pool across 0.1 s cadence runs: the loop stays one positional
+      // index into a stable backing array instead of a fresh {id,dist,…} per ship.
+      const rowPool = rt._remoteRowPool || (rt._remoteRowPool = []);
+      _exactAudioOpts.playerId = playerId;
+      const candidates = rt._remoteCandidates;
+      for (let i = 0; i < candidates.length; i++) {
+        const entity = candidates[i];
+        if (!entity || entity.alive === false || entity.id === playerId || !entity.pos) continue;
+        const frame = entity._flightFrame;
+        let throttle = 0;
+        if (frame && Number.isFinite(frame.throttle)) throttle = Math.max(0, frame.throttle);
+        else if (frame && Number.isFinite(frame.commandedThrottle)) throttle = Math.max(0, frame.commandedThrottle);
+        const exact = entityNeedsExactAudio(entity, _exactAudioOpts) === true;
+        let row = rowPool[rows.length];
+        if (!row) {
+          row = { id: null, idKey: '', engKey: '', dist: 0, throttle: 0, exact: false, entity: null };
+          rowPool[rows.length] = row;
+        }
+        let interned = keys.get(entity);
+        if (!interned) {
+          interned = { idKey: String(entity.id) };
+          interned.engKey = 'eng_' + interned.idKey;
+          keys.set(entity, interned);
+        }
+        row.id = entity.id;
+        row.idKey = interned.idKey;
+        row.engKey = interned.engKey;
+        row.dist = Math.hypot(entity.pos.x - player.x, entity.pos.z - player.z);
+        row.throttle = throttle;
+        row.exact = exact;
+        row.entity = entity;
+        rows.push(row);
+      }
+    }
+    const chosen = pickRemoteEngines(
+      rows,
+      REMOTE_ENGINE_CAP,
+      rt._remoteChosen || (rt._remoteChosen = []),
+      rt._remotePickPool || (rt._remotePickPool = []),
+    );
+    const want = rt._remoteWant || (rt._remoteWant = Object.create(null));
+    for (const key in want) want[key] = false;
+    for (let i = 0; i < chosen.length; i++) {
+      const row = chosen[i];
+      want[row.idKey] = true;
+      const loopKey = row.engKey;
+      const rate = remoteEnginePlaybackRate(row.id, row.entity.mass);
+      let voice = loops[loopKey];
+      if (!voice) {
+        voice = this._startLoopVoice('sfx_engine_thrust', row.entity.pos, 0.02, {
+          entity: row.entity,
+          trackId: row.id,
+          follow: true,
+          busName: 'engine',
+          rate,
+          lockRate: true,
+        });
+        if (voice) {
+          voice._remoteEngine = true;
+          voice._baseGain = 0.0001;
+          loops[loopKey] = voice;
+        }
+      }
+      if (!voice) continue;
+      voice._remoteQuietSince = 0;
+      voice._remoteRate = rate;
+      voice._baseGain = Math.max(0.0001, 0.45 * Math.min(1, row.throttle));
+      this._setVoiceRate(voice, rate);
+    }
+    for (const key in loops) {
+      if (!key.startsWith('eng_')) continue;
+      const idKey = key.slice(4);
+      if (want[idKey]) continue;
+      const voice = loops[key];
+      if (!voice) continue;
+      if (!voice._remoteQuietSince) voice._remoteQuietSince = now;
+      voice._baseGain = 0.0001;
+      if (now - voice._remoteQuietSince >= 0.5) {
+        this._endLoopVoice(voice);
+        delete loops[key];
+      }
+    }
+  },
+
+  // Track positional loop voices (beam/mining) toward their target's current position.
+  _updateLoopPositions(now) {
+    const rt = this.rt;
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.get !== 'function') return;
+    const seq = this.state.world && this.state.world.frameOriginSeq;
+    if (originShiftReset(rt._audioOriginSeq, seq)) {
+      for (const k in rt.loops) {
+        const shifted = rt.loops[k];
+        if (!shifted) continue;
+        shifted._audioGainTarget = undefined;
+        shifted._audioPanTarget = undefined;
+      }
+    }
+    if (Number.isFinite(Number(seq))) rt._audioOriginSeq = Number(seq);
+    const pp = this._playerPos();
+    _exactAudioOpts.playerId = this.state && this.state.playerId;
+    for (const k in rt.loops) this._applyLoopPosition(rt.loops[k], rt, entities, pp, now);
+  },
+
+  _applyLoopPosition(v, rt, entities, pp, now) {
+      if (!v || v.trackId == null) return;
+      const e = entities.get(v.trackId);
+      if (e && !voiceInheritsOwner(v, e)) {
+        for (const k in rt.loops) {
+          if (rt.loops[k] !== v) continue;
+          this._endLoopVoice(v);
+          delete rt.loops[k];
+        }
+        return;
+      }
+      if (e && v._trackEntity == null) v._trackEntity = e;
+      if (!e || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) {
+        // The tracked entity is gone (destroyed or despawned across a boundary): a positional
+        // loop that can never be re-anchored would drone at its frozen gain forever. Release it,
+        // drop the map entry, and clear any stale desire flag so _frame cannot resurrect it.
+        for (const k in rt.loops) {
+          if (rt.loops[k] !== v) continue;
+          if (k.startsWith('beam_') && rt._wantBeam) delete rt._wantBeam[k.slice(5)];
+          else if (k === 'mining') rt._wantMining = null;
+          this._endLoopVoice(v);
+          delete rt.loops[k];
+        }
+        return;
+      }
+      const d = Math.hypot(e.pos.x - pp.x, e.pos.z - pp.z);
+      const exact = entityNeedsExactAudio(e, _exactAudioOpts);
+      const preserveRemote = v.busName === 'ui' || v.busName === 'combat';
+      if (!preserveRemote && exact !== true) {
+        if (v._audioResidencyActive !== false) {
+          try { v.gain.gain.setTargetAtTime(0.0001, now, 0.05); } catch (_) {}
+          v._audioResidencyActive = false;
+          v._audioGainTarget = 0.0001;
+        }
+        return;
+      }
+      if (!preserveRemote && d > D_FAR) {
+        if (v._audioResidencyActive !== false) {
+          try { v.gain.gain.setTargetAtTime(0.0001, now, 0.05); } catch (_) {}
+          v._audioResidencyActive = false;
+          v._audioGainTarget = 0.0001;
+        }
+        return;
+      }
+      if (preserveRemote && d > D_FAR) {
+        // Combat/UI loops skip the residency mute, so a beam carried past hearing would hold
+        // its node graph at the gain floor forever. Hold the floor briefly, then release it —
+        // want flags survive, and _frame re-arms through _startLoopVoice (a cheap no-op while
+        // still out of range) the moment the source crosses back inside hearing.
+        if (v._audioCulledSince == null) {
+          v._audioCulledSince = now;
+        } else if (now - v._audioCulledSince >= LOOP_HEARING_RELEASE_S) {
+          for (const k in rt.loops) {
+            if (rt.loops[k] !== v) continue;
+            this._endLoopVoice(v);
+            delete rt.loops[k];
+          }
+          return;
+        }
+        if (v._audioResidencyActive !== false) {
+          try { v.gain.gain.setTargetAtTime(0.0001, now, 0.05); } catch (_) {}
+          v._audioResidencyActive = false;
+          v._audioGainTarget = 0.0001;
+        }
+        return;
+      }
+      v._audioCulledSince = null;
+      v._audioResidencyActive = true;
+      let att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
+      const pan = clamp((e.pos.x - pp.x) / PAN_SPAN, -1, 1);
+      const t = now == null ? rt.ctx.currentTime : now;
+      const isWeaponLoop = v.role === 'weaponLoop'
+        || (v.busName === 'combat' && v.loop);
+      const priorityDuck = isWeaponLoop
+        ? (rt._priorityDuckWeapon == null ? 1 : rt._priorityDuckWeapon)
+        : 1;
+      const envelope = Number.isFinite(v._fieldEnvelope) ? v._fieldEnvelope : 1;
+      const statusScale = Number.isFinite(v._statusScale) ? v._statusScale : 1;
+      const gainTarget = Math.max(0.0001, (v._baseGain || 0.3) * att * priorityDuck * envelope * statusScale);
+      if (!Number.isFinite(v._audioGainTarget) || Math.abs(v._audioGainTarget - gainTarget) > 1e-5) {
+        try { v.gain.gain.setTargetAtTime(gainTarget, t, 0.05); } catch (_) {}
+        v._audioGainTarget = gainTarget;
+      }
+      if (v._panner && (!Number.isFinite(v._audioPanTarget) || Math.abs(v._audioPanTarget - pan) > 1e-5)) {
+        try { v._panner.pan.setTargetAtTime(pan, t, 0.05); } catch (_) {}
+        v._audioPanTarget = pan;
+      }
+      if (v._remoteEngine) {
+        const playerEnt = this.state && this.state.playerId != null ? entities.get(this.state.playerId) : null;
+        const factor = dopplerFactor(pp, playerEnt && playerEnt.vel, e.pos, e.vel);
+        const base = Number.isFinite(v._remoteRate) ? v._remoteRate : 1;
+        this._setVoiceRate(v, base * factor);
+      }
+  },
+
+
+  _gcVoices(now) {
+    const rt = this.rt;
+    for (let i = rt.voices.length - 1; i >= 0; i--) {
+      const v = rt.voices[i];
+      if (v.loop && !v._stopped) continue; // sustaining
+      if (v.stopAt !== Infinity && now >= v.stopAt) {
+        disposeVoice(v);
+        if (v._panner) { try { v._panner.disconnect(); } catch (_) {} }
+        rt.voices.splice(i, 1);
+        // also clear from loops map if present
+        for (const k in rt.loops) if (rt.loops[k] === v) delete rt.loops[k];
+      }
+    }
+  },
+
+  _onVentBonus(p) {
+    this.play('sfx_vent_chime', { gain: 0.7, rate: 1.0 });
+    this._defer(() => {
+      this.play('sfx_vent_chime', { gain: 0.65, rate: 1.25 });
+    }, 90);
+  },
+
+  _onCommsPopup(p) {
+    if (!p) return;
+    const category = p.category || 'ambient';
+    const rt = this.rt, ctx = rt.ctx;
+    if (rt._lifecycleSuspended || !ctx || ctx.state !== 'running') return;
+
+    const now = ctx.currentTime;
+    const urgent = ['story', 'priority', 'danger', 'warning', 'alert'].includes(category);
+    // A burst of world chatter must not reserve seconds of future carrier noise or
+    // put an immediate danger warning at the tail of that backlog.
+    const startTime = urgent ? now : Math.max(now, rt._lastSquelchEndTime || 0);
+    if (!urgent && startTime > now + 0.24) return;
+    rt._lastSquelchEndTime = startTime + 0.12;
+
+    this._playSquelch(category, startTime);
+  },
+
+  _playSquelch(category, startTime) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx) return;
+
+    let recipeId = 'sfx_squelch_ambient';
+    let critical = false;
+    if (category === 'story' || category === 'priority') {
+      recipeId = 'sfx_squelch_story';
+      critical = true;
+      this._applyPriorityCue({
+        id: `comms.${category}`,
+        importance: 0.9,
+        playerRelevance: 1,
+      });
+    } else if (category === 'danger' || category === 'warning' || category === 'alert') {
+      recipeId = 'sfx_squelch_danger';
+      critical = true;
+      // Danger/story comms own the ear briefly so weapon/UI one-shots cannot stack.
+      this._applyPriorityCue({
+        id: `comms.${category}`,
+        importance: 0.9,
+        playerRelevance: 1,
+      });
+    }
+
+    this.play(recipeId, { gain: 0.8, startTime, critical });
+    // The carrier lets go a beat after the squelch opens — the key-off tail sells the release.
+    this.play('sfx_comms_squelch_tail', {
+      gain: BARK_PUNCT.tailGain,
+      startTime: startTime + BARK_PUNCT.popupTailDelayS,
+      critical,
+    });
+  },
+
+  _ensureEngineHum() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || rt.engineOsc1) return;
+
+    // Layered propulsion bus: osc1 saw + osc2 sine (detune 6 ct) + sub sine + noise air.
+    // Gain master for priority duck; voice peak lives on engineBus budgets.
+    // Soft-start at near-silence — _updateEngineHum ramps to the live idle/thrust target.
+    // Starting at 0.8 produced a hard one-shot click on first unlock.
+    const humGain = ctx.createGain();
+    humGain.gain.value = 0;
+
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.frequency.value = 55;
+
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.value = 55;
+    osc2.detune.value = 6;
+
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.value = 27.5;
+    const subGain = ctx.createGain();
+    subGain.gain.value = 0;
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, rt._caches);
+    noise.loop = true;
+
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.value = 300;
+    noiseFilter.Q.value = 1.0;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.value = 0;
+
+    osc1.connect(humGain);
+    osc2.connect(humGain);
+    sub.connect(subGain);
+    subGain.connect(humGain);
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(humGain);
+
+    humGain.connect(rt.engineBus);
+
+    try {
+      osc1.start(ctx.currentTime);
+      osc2.start(ctx.currentTime);
+      sub.start(ctx.currentTime);
+      noise.start(ctx.currentTime);
+    } catch (_) {}
+
+    rt.engineHumGain = humGain;
+    rt.engineOsc1 = osc1;
+    rt.engineOsc2 = osc2;
+    rt.engineSub = sub;
+    rt.engineSubGain = subGain;
+    rt.engineNoise = noise;
+    rt.engineNoiseGain = noiseGain;
+    rt.engineNoiseFilter = noiseFilter;
+    rt._engineTier = 'idle';
+  },
+
+  /**
+   * Resolve thrust tier from live flight state (read-only).
+   * Spec2/07: idle 55 / thrust 78 / boost 110+noise / cruise 65 clean fifth.
+   */
+  _resolveEngineTier(player) {
+    const cruise = this.state.player && this.state.player.cruise;
+    if (cruise && cruise.phase === 'cruising') return 'cruise';
+    if (player && player.flags && player.flags.boosting) return 'boost';
+    const input = this.state.input;
+    const thrusting = !!(input && (
+      Math.abs(Number(input.moveZ) || 0) > 0.02 ||
+      Math.abs(Number(input.moveX) || 0) > 0.02
+    ));
+    return thrusting ? 'thrust' : 'idle';
+  },
+
+  _engineTierRank(tier) {
+    if (tier === 'idle') return 0;
+    if (tier === 'thrust') return 1;
+    if (tier === 'boost') return 2;
+    if (tier === 'cruise') return 3;
+    return 0;
+  },
+
+  _cachedEngineAudioIdentity(player) {
+    const rt = this.rt;
+    const data = player && player.data;
+    const derived = data && data.derived;
+    const driveId = player && player.driveId || derived && derived.driveId || data && data.driveId || null;
+    const mass = Math.max(1, Number(player && player.mass) || Number(derived && derived.mass) || 1);
+    const flightClass = player && player.flightClass || derived && derived.flightClass || null;
+    if (rt._engineIdentity && rt._engineIdentityEntity === player
+      && rt._engineIdentityDriveId === driveId && rt._engineIdentityMass === mass
+      && rt._engineIdentityFlightClass === flightClass) {
+      return rt._engineIdentity;
+    }
+    rt._engineIdentityEntity = player;
+    rt._engineIdentityDriveId = driveId;
+    rt._engineIdentityMass = mass;
+    rt._engineIdentityFlightClass = flightClass;
+    rt._engineIdentity = resolveEngineAudioIdentity(player);
+    return rt._engineIdentity;
+  },
+
+  _loadElementaryRenderer() {
+    return import('@elemaudio/web-renderer');
+  },
+
+  _retireElementaryMount() {
+    const rt = this.rt;
+    if (!rt) return;
+    try { if (rt._elemNode && rt._elemNode.disconnect) rt._elemNode.disconnect(); } catch (_) {}
+    try { if (rt._elemSplit && rt._elemSplit.disconnect) rt._elemSplit.disconnect(); } catch (_) {}
+    try { if (rt._elemToEngine && rt._elemToEngine.disconnect) rt._elemToEngine.disconnect(); } catch (_) {}
+    try { if (rt._elemToRope && rt._elemToRope.disconnect) rt._elemToRope.disconnect(); } catch (_) {}
+    rt._elemNode = null;
+    rt._elemCore = null;
+    rt._elemSplit = null;
+    rt._elemToEngine = null;
+    rt._elemToRope = null;
+    rt._elemStarting = false;
+    rt._elemToken = null;
+    rt._elemSig = '';
+    rt._elemCtx = null;
+  },
+
+  _failElementaryVoices() {
+    const rt = this.rt;
+    const ctx = rt && rt._elemCtx;
+    this._retireElementaryMount();
+    if (!rt) return;
+    rt._elemFailed = true;
+    rt._elemCtx = ctx;
+  },
+
+  _holdLegacyContinuousSilent() {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    if (!ctx || legacyContinuousGain(true) !== 0) return;
+    const t = ctx.currentTime;
+    const gains = [
+      rt.engineHumGain, rt.engineSubGain, rt.engineNoiseGain,
+      rt.tetherHum, rt.tetherOverloadGain, rt._tetherSpoolGain,
+    ];
+    for (let i = 0; i < gains.length; i += 1) {
+      const node = gains[i];
+      if (node && node.gain) this._setParam(node.gain, 0, t, 0.02);
+    }
+  },
+
+  _elementaryHeardVoice(voice) {
+    const source = voice || {};
+    return {
+      engineHz: source.engineHz,
+      engineGain: source.engineGain,
+      ropeHz: source.ropeHz,
+      ropeGain: source.ropeGain,
+      duck: source.duck,
+    };
+  },
+
+  _elementarySilentVoice(voice) {
+    const source = voice || {};
+    return {
+      engineHz: source.engineHz,
+      engineGain: 0,
+      ropeHz: source.ropeHz,
+      ropeGain: 0,
+      duck: 0,
+    };
+  },
+
+  _startElementaryVoices() {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    if (!ctx || rt._elemStarting || rt._elemNode || rt._elemFailed) return;
+    rt._elemStarting = true;
+    rt._elemCtx = ctx;
+    const token = {};
+    rt._elemToken = token;
+    this._loadElementaryRenderer().then((mod) => {
+      if (rt._elemToken !== token || rt.ctx !== ctx) return null;
+      const WebRenderer = mod.default || mod.WebRenderer || mod;
+      const core = new WebRenderer();
+      rt._elemCore = core;
+      return core.initialize(ctx, {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+      });
+    }).then((node) => {
+      if (!node || rt._elemToken !== token || rt.ctx !== ctx) {
+        try { if (node && node.disconnect) node.disconnect(); } catch (_) {}
+        if (rt._elemToken === token) {
+          rt._elemStarting = false;
+          rt._elemCore = null;
+          // A resolved empty node on this same context will not start working next frame.
+          if (!node && rt.ctx === ctx) rt._elemFailed = true;
+          if (rt.ctx !== ctx) rt._elemFailed = false;
+        }
+        return;
+      }
+      const splitter = ctx.createChannelSplitter(2);
+      const toEngine = ctx.createGain();
+      const toRope = ctx.createGain();
+      toEngine.gain.value = 1;
+      toRope.gain.value = 1;
+      node.connect(splitter);
+      splitter.connect(toEngine, 0);
+      splitter.connect(toRope, 1);
+      if (rt.engineBus) toEngine.connect(rt.engineBus);
+      if (rt.combatBus) toRope.connect(rt.combatBus);
+      rt._elemNode = node;
+      rt._elemSplit = splitter;
+      rt._elemToEngine = toEngine;
+      rt._elemToRope = toRope;
+      rt._elemStarting = false;
+      rt._elemSig = '';
+      this._holdLegacyContinuousSilent();
+      const inFlight = !!(this.state && this.state.mode === 'flight' && !rt._paused);
+      const voice = rt._elemVoice;
+      this._renderElementaryGraph(
+        inFlight ? this._elementaryHeardVoice(voice) : this._elementarySilentVoice(voice),
+        true,
+      );
+    }).catch(() => {
+      const seen = rt._elemCtx;
+      this._retireElementaryMount();
+      rt._elemFailed = true;
+      rt._elemCtx = seen;
+    });
+  },
+
+  _renderElementaryGraph(voice, force) {
+    const rt = this.rt;
+    if (!rt || !rt._elemCore || !voice) return;
+    const sig = [voice.engineHz, voice.engineGain, voice.ropeHz, voice.ropeGain, voice.duck].join('|');
+    if (!force && sig === rt._elemSig) return;
+    try {
+      const graph = buildElementaryVoiceGraph(voice);
+      rt._elemCore.render(graph.left, graph.right);
+      rt._elemSig = sig;
+    } catch (_) {
+      this._failElementaryVoices();
+    }
+  },
+
+  // FB-079: the tow's mass. The mirror carries no mass field, so the body is read
+  // read-only through tether.targetId — the same lookup flightV3 uses for its anchor.
+  // A missing body or non-finite mass degrades to "no lift", identical to a bare line.
+  // Shared by the Elementary rope voice and the legacy hum so both backends lift off
+  // the same number on the same frame.
+  _tetherTowMass(tether) {
+    const entities = this.state && this.state.entities;
+    const towed = tether && tether.targetId != null && entities && typeof entities.get === 'function'
+      ? entities.get(tether.targetId)
+      : null;
+    return towed && Number.isFinite(towed.mass) ? towed.mass : undefined;
+  },
+
+  _pushElementaryVoices(dt) {
+    const rt = this.rt;
+    if (!rt || !rt.ctx) return;
+    if (rt._elemCtx && rt._elemCtx !== rt.ctx) {
+      this._retireElementaryMount();
+      rt._elemFailed = false;
+    }
+    if (rt._elemFailed) return;
+    const inFlight = !!(this.state && this.state.mode === 'flight');
+    const paused = !!rt._paused;
+    if (inFlight && !paused && !rt._elemNode && !rt._elemStarting) this._startElementaryVoices();
+    const entities = this.state && this.state.entities;
+    const player = entities && typeof entities.get === 'function'
+      ? entities.get(this.state.playerId)
+      : null;
+    const input = (this.state && this.state.input) || {};
+    const tetherState = this.state && this.state.player && this.state.player.tether;
+    const tether = readTetherLoad(tetherState, this._tetherTowMass(tetherState));
+    const prev = rt._elemVoice || (rt._elemVoice = { engineGain: 0, ropeGain: 0 });
+    const stepDt = (inFlight && !paused) ? Math.min(Math.max(0, Number(dt) || 0), 0.25) : 0;
+    const next = stepElementaryVoices(prev, {
+      throttle: readPublishedThrottle({
+        frame: player && player._flightFrame,
+        moveZ: input.moveZ,
+        moveX: input.moveX,
+      }),
+      load: tether.load,
+      playing: tether.playing,
+      sidechainDuck: rt.sidechainDuck,
+      priorityDuck: rt._priorityDuckEngine,
+      motionReduce: this._motionReduced(),
+      tier: this.state ? this._resolveEngineTier(player) : 'idle',
+      speed01: readDriveSpeed01(player),
+      braking: !!(input.brake || (input.actions && input.actions.brake)),
+      dt: stepDt,
+      paused,
+      flight: inFlight,
+    });
+    rt._elemVoice = next;
+    if (!rt._elemNode || !rt._elemCore) return;
+    const audible = inFlight && !paused;
+    this._renderElementaryGraph(
+      audible ? this._elementaryHeardVoice(next) : this._elementarySilentVoice(next),
+      false,
+    );
+    this._holdLegacyContinuousSilent();
+  },
+
+  _updateEngineHum() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || !rt.engineOsc1 || rt._paused) return;
+
+    // Ensure continuous graph if context was rebuilt mid-session.
+    if (!rt.engineHumGain) this._ensureEngineHum();
+
+    const player = this.state.entities.get(this.state.playerId);
+    const tier = this._resolveEngineTier(player);
+    const prev = rt._engineTier || 'idle';
+    const nowMs = this._wallClockMs();
+
+    // Acceleration transition motif when stepping energy UP (idle→thrust, thrust→boost).
+    // Throttled; skipped under motion-reduce (accessibility).
+    if (tier !== prev) {
+      const steppedUp = this._engineTierRank(tier) > this._engineTierRank(prev)
+        && (prev === 'idle' || prev === 'thrust')
+        && (tier === 'thrust' || tier === 'boost');
+      if (steppedUp && !this._motionReduced() && (nowMs - (rt._lastAccelTransitionMs || 0)) > 280) {
+        rt._lastAccelTransitionMs = nowMs;
+        this.play('sfx_accel_transition', { gain: tier === 'boost' ? 0.4 : 0.28 });
+      }
+      rt._engineTier = tier;
+      rt._engineTierSince = nowMs;
+    }
+
+    // Elementary owns the continuous engine voice. Hold the old oscillators down every
+    // frame so their cue ramp cannot turn them back up beside it.
+    if (rt._elemNode) {
+      this._holdLegacyContinuousSilent();
+      return;
+    }
+
+    // Read-only identity: ships/flight still own mass and propulsion. Audio maps those authored
+    // facts to a stable family timbre and never feeds values back into the simulation.
+    const identity = this._cachedEngineAudioIdentity(player);
+    const massNorm = identity.massNorm;
+    const familyVoice = identity.voice;
+
+    // Spec frequencies are exact; place identity lives in the station/palette layers.
+    // Idle stays silent (no unearned 55 Hz floor). Thrust, boost, and cruise keep their
+    // authored propulsion identities so sustained flight still has engine feedback.
+    let f1 = 55, f2 = 55, d2 = 6, noiseG = 0.0001, noiseHz = 300, subG = 0.08 * massNorm, humG = 0.55;
+    if (tier === 'cruise') {
+      f1 = 65;
+      f2 = 65 * 1.5; // clean fifth
+      d2 = 0;
+      noiseG = 0.008;
+      noiseHz = 220;
+      subG = 0.1 * massNorm;
+      humG = 0.62;
+    } else if (tier === 'boost') {
+      f1 = 110;
+      f2 = 110;
+      d2 = 4;
+      noiseG = 0.06;
+      noiseHz = 480;
+      subG = 0.16 * massNorm;
+      humG = 0.85;
+    } else if (tier === 'thrust') {
+      f1 = 78;
+      f2 = 78;
+      d2 = 6;
+      noiseG = 0.02;
+      noiseHz = 340;
+      subG = 0.12 * massNorm;
+      humG = 0.72;
+    } else {
+      humG = 0;
+      subG = 0;
+      noiseG = 0;
+    }
+
+    // Preserve the tier fundamental while giving each drive a different overtone/noise/sub shape.
+    // Cruise keeps its universal clean fifth: travel grammar should remain recognizable across hulls.
+    if (tier !== 'cruise') f2 = f1 * familyVoice.harmonic;
+    d2 = tier === 'cruise' ? 0 : familyVoice.detune;
+    noiseG *= familyVoice.noiseMult;
+    noiseHz *= familyVoice.noiseHzMult;
+    subG *= familyVoice.subMult;
+    humG *= familyVoice.humMult;
+
+    // Priority duck mult on continuous engine loop (weapon loops handled separately).
+    const duck = rt._priorityDuckEngine == null ? 1 : rt._priorityDuckEngine;
+    humG *= duck;
+
+    // Pitch still glides. Cue gain follows the G10 windows: loud inside 120 ms, silent inside 250 ms.
+    const tc = 0.1;
+    const t = ctx.currentTime;
+    const slowPitch = rt._bulletTimePitch || 1;
+    const rising = humG > (rt._engineHumCmd || 0);
+    const gainTc = rising ? CUE_GAIN.riseTau : CUE_GAIN.fallTau;
+    rt._engineHumCmd = humG;
+    try {
+      if (rt.engineOsc1.type !== familyVoice.osc1) rt.engineOsc1.type = familyVoice.osc1;
+      if (rt.engineOsc2.type !== familyVoice.osc2) rt.engineOsc2.type = familyVoice.osc2;
+    } catch (_) {}
+    this._setParam(rt.engineOsc1.frequency, f1 * slowPitch, t, tc);
+    this._setParam(rt.engineOsc2.frequency, f2 * slowPitch, t, tc);
+    this._setParam(rt.engineOsc2.detune, d2, t, tc);
+    if (rt.engineSub) this._setParam(rt.engineSub.frequency, f1 * 0.5 * slowPitch, t, tc);
+    if (rt.engineSubGain) this._setParam(rt.engineSubGain.gain, subG, t, 0.12);
+    this._setParam(rt.engineNoiseGain.gain, noiseG * duck, t, 0.15);
+    if (rt.engineNoiseFilter) this._setParam(rt.engineNoiseFilter.frequency, noiseHz, t, 0.12);
+    if (rt.engineHumGain) this._setParam(rt.engineHumGain.gain, Math.max(0, humG), t, gainTc);
+
+    // Mutate a stable telemetry object for harness/evidence traces (no per-frame allocation).
+    const telemetry = rt._engineTelemetry;
+    telemetry.tier = tier;
+    telemetry.f1 = f1;
+    telemetry.f2 = f2;
+    telemetry.noiseG = noiseG;
+    telemetry.humG = humG;
+    telemetry.massNorm = massNorm;
+    telemetry.family = identity.family;
+    telemetry.massClass = identity.massClass;
+    telemetry.driveId = identity.driveId;
+    telemetry.duck = duck;
+  },
+
+  _ensureBrakeHiss() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || rt.brakeGain) return;
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, rt._caches);
+    noise.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1600;
+    filter.Q.value = 0.8;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(rt.engineBus);
+
+    try { noise.start(ctx.currentTime); } catch (_) {}
+
+    rt.brakeGain = gain;
+    rt.brakeNoise = noise;
+  },
+
+  _updateSlipstreamHiss() {
+    const rt = this.rt;
+    if (!rt || !rt.loops) return;
+    const slip = this.state && this.state.render && this.state.render.slipstream;
+    const active = !!(slip && slip.active) && !rt._paused;
+    if (!active) {
+      const current = rt.loops.slipstream;
+      if (current) {
+        this._endLoopVoice(current);
+        delete rt.loops.slipstream;
+      }
+      return;
+    }
+    const ctx = rt.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    let voice = rt.loops.slipstream;
+    if (!voice) {
+      voice = this._startLoopVoice('sfx_rcs_hiss', null, 0.12);
+      if (!voice) return;
+      voice.role = 'engineLoop';
+      voice.busName = 'engine';
+      rt.loops.slipstream = voice;
+    }
+    const intensity = Math.max(0, Math.min(1, Number(slip.intensity) || 0));
+    const targetGain = 0.03 + 0.1 * intensity;
+    if (voice.gain && voice.gain.gain) {
+      this._setParam(voice.gain.gain, targetGain, ctx.currentTime, 0.06);
+    }
+  },
+
+  // nav:routeBrake marks the handoff commit — the same authored onset the input edge plays.
+  // Pre-setting _brakeWasHeld keeps _updateBrakeHiss from stacking a second identical bite a
+  // tick later when syncAutopilotInput raises actions.brake in the same window; the flag
+  // rewrites to the live input every frame, so a follow-on onset still bites if the autopilot
+  // waits. An already-held brake already sounded — nothing to add.
+  _onRouteBrake(p) {
+    const rt = this.rt;
+    if (!p || !rt || rt._brakeWasHeld) return;
+    rt._brakeWasHeld = true;
+    this.play('sfx_brake_bite', { gain: 0.7 });
+  },
+
+  _updateBrakeHiss(dt) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || rt._paused) return;
+    if (!rt.brakeGain) this._ensureBrakeHiss();
+    if (!rt.brakeGain) return;
+
+    const player = this.state.entities.get(this.state.playerId);
+    const speed = player && player.vel ? Math.hypot(player.vel.x, player.vel.z) : 0;
+    const actions = this.state.input && this.state.input.actions;
+    const braking = !!(actions && actions.brake) || !!(this.state.input && this.state.input.brake);
+    // U7: the brake's rising edge gets a one-shot bite — the bed below is the sustain, this is
+    // the onset. Exactly one cue per press.
+    if (braking && !rt._brakeWasHeld) {
+      this.play('sfx_brake_bite', { gain: 0.7 });
+    }
+    rt._brakeWasHeld = braking;
+
+    let decel = 0;
+    if (rt._prevSpeed !== undefined) {
+      decel = Math.max(0, rt._prevSpeed - speed) / Math.max(0.001, dt);
+    }
+    rt._prevSpeed = speed;
+
+    let targetGain = 0.0001;
+    if (braking && speed > 20) {
+      targetGain = Math.min(0.25, Math.max(0.04, decel * 0.04));
+    }
+
+    // setTargetAtTime is memoryless: re-issuing the same (target, timeConstant) from the curve's
+    // own current value reproduces the identical exponential, so a frame whose targets are
+    // unchanged may skip the write with no effect at all on the audible signal. Everything above
+    // — including `rt._prevSpeed` — still runs every frame, and a changed target is written on the
+    // very frame it appears, so a brake onset is never delayed, dropped or re-levelled.
+    const now = ctx.currentTime;
+    const rate = rt._bulletTimePitch || 1;
+    const cache = rt._bedTargetCache || (rt._bedTargetCache = Object.create(null));
+    if (rt.brakeNoise && rt.brakeNoise.playbackRate
+      && (cache.brakeNoiseNode !== rt.brakeNoise || cache.brakeRate !== rate)) {
+      cache.brakeNoiseNode = rt.brakeNoise;
+      cache.brakeRate = rate;
+      rt.brakeNoise.playbackRate.setTargetAtTime(rate, now, 0.05);
+    }
+    if (cache.brakeGainNode !== rt.brakeGain || cache.brakeGain !== targetGain) {
+      cache.brakeGainNode = rt.brakeGain;
+      cache.brakeGain = targetGain;
+      rt.brakeGain.gain.setTargetAtTime(targetGain, now, 0.05);
+    }
+  },
+
+  _ensureTetherHum() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || rt.tetherOsc) return;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = 90;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+    gain.gainValue = 0.0001;
+
+    // A second, initially silent strand introduces a slow beat only above overload. This is a
+    // continuous physical read of the line, not another repeating alarm.
+    const overloadOsc = ctx.createOscillator();
+    overloadOsc.type = 'triangle';
+    overloadOsc.frequency.value = 97;
+    const overloadGain = ctx.createGain();
+    overloadGain.gain.value = 0.0001;
+
+    // Third strand: the winch spool — a metallic whine that lives only while the line actually
+    // moves (reeling / payingOut on the physics mirror), separate from the strain hum.
+    const spoolOsc = ctx.createOscillator();
+    spoolOsc.type = 'sawtooth';
+    spoolOsc.frequency.value = 260;
+    const spoolGain = ctx.createGain();
+    spoolGain.gain.value = 0.0001;
+    spoolGain.gainValue = 0.0001;
+    spoolOsc.connect(spoolGain);
+    spoolGain.connect(rt.combatBus);
+
+    osc.connect(gain);
+    overloadOsc.connect(overloadGain);
+    gain.connect(rt.combatBus);
+    overloadGain.connect(rt.combatBus);
+
+    try { osc.start(ctx.currentTime); overloadOsc.start(ctx.currentTime); spoolOsc.start(ctx.currentTime); } catch (_) {}
+
+    rt.tetherOsc = osc;
+    rt.tetherHum = gain;
+    rt.tetherOverloadOsc = overloadOsc;
+    rt.tetherOverloadGain = overloadGain;
+    rt._tetherSpoolOsc = spoolOsc;
+    rt._tetherSpoolGain = spoolGain;
+  },
+
+  _updateTetherHum() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || rt._paused) return;
+    if (!rt.tetherOsc) this._ensureTetherHum();
+    if (!rt.tetherOsc) return;
+
+    const tether = this.state.player && this.state.player.tether;
+    const taut = !!(tether && (tether.phase === 'capture' || tether.phase === 'loaded' || tether.phase === 'overload'));
+    if (taut && !rt._tetherWasTaut) this._playAccessibilityCue('taut');
+    rt._tetherWasTaut = taut;
+    if (rt._elemNode) {
+      this._holdLegacyContinuousSilent();
+      return;
+    }
+    // F2: pitch and loudness follow the published tether.load (phase floors included) through one
+    // voice. The sidechain duck factor rides along so the tone ducks under weapons with the world;
+    // reduced motion quiets the tone, never silences it — it is information, not ornament.
+    // FB-079: the tow's own mass feeds resolveTetherTone's towMass channel — a heavy tow
+    // creaks even before its strain climbs; the lift only applies while the line is taut,
+    // so a slack line stays silent. _tetherTowMass does the read-only targetId lookup the
+    // Elementary rope voice uses too, so both backends lift off the same number.
+    const strain = clamp(Number(tether && tether.strain) || 0, 0, 1.25);
+    const motionReduce = !!(this.state.settings && this.state.settings.video
+      && this.state.settings.video.motionReduce);
+    const tone = resolveTetherTone({
+      tether,
+      towMass: this._tetherTowMass(tether),
+      motionReduce,
+      duck: rt.sidechainDuck,
+    });
+    const targetFreq = tone.hz;
+    const priorityDuck = rt._priorityDuckWeapon == null ? 1 : rt._priorityDuckWeapon;
+    const targetGain = tone.gain * priorityDuck;
+    const rampS = tone.rampS;
+
+    const slowPitch = rt._bulletTimePitch || 1;
+    const now = ctx.currentTime;
+    const humFreq = targetFreq * slowPitch;
+    // Same memoryless-setTargetAtTime argument as _updateBrakeHiss: an idle tether re-asserts the
+    // exact curve it is already on, so skipping it is inaudible, while the frame a line engages
+    // changes the targets and writes immediately. The `gainValue` mirrors stay unconditional.
+    const cache = rt._bedTargetCache || (rt._bedTargetCache = Object.create(null));
+    if (cache.tetherOscNode !== rt.tetherOsc || cache.tetherFreq !== humFreq) {
+      cache.tetherOscNode = rt.tetherOsc;
+      cache.tetherFreq = humFreq;
+      rt.tetherOsc.frequency.setTargetAtTime(humFreq, now, 0.05);
+    }
+    if (cache.tetherHumNode !== rt.tetherHum || cache.tetherGain !== targetGain
+      || cache.tetherGainRamp !== rampS) {
+      cache.tetherHumNode = rt.tetherHum;
+      cache.tetherGain = targetGain;
+      cache.tetherGainRamp = rampS;
+      rt.tetherHum.gain.setTargetAtTime(targetGain, now, rampS);
+    }
+    rt.tetherHum.gainValue = targetGain;
+    if (rt.tetherOverloadOsc && rt.tetherOverloadGain) {
+      const overload = clamp((strain - 0.72) / 0.28, 0, 1);
+      const overloadFreq = (targetFreq + 7 + overload * 9) * slowPitch;
+      const overloadGain = Math.max(0.0001, overload * 0.055);
+      if (cache.tetherOverloadOscNode !== rt.tetherOverloadOsc || cache.tetherOverloadFreq !== overloadFreq) {
+        cache.tetherOverloadOscNode = rt.tetherOverloadOsc;
+        cache.tetherOverloadFreq = overloadFreq;
+        rt.tetherOverloadOsc.frequency.setTargetAtTime(overloadFreq, now, 0.05);
+      }
+      if (cache.tetherOverloadGainNode !== rt.tetherOverloadGain || cache.tetherOverloadGain !== overloadGain) {
+        cache.tetherOverloadGainNode = rt.tetherOverloadGain;
+        cache.tetherOverloadGain = overloadGain;
+        rt.tetherOverloadGain.gain.setTargetAtTime(overloadGain, now, 0.05);
+      }
+      rt.tetherOverloadGain.gainValue = overloadGain;
+    }
+    // Spool strand: real winch state — lineLengthRate signs direction, reelStrength is the
+    // physics mirror's smoothed effort. Silences the frame the line stops moving.
+    if (rt._tetherSpoolOsc && rt._tetherSpoolGain) {
+      const reelRate = tone.playing && tether.lineControl ? Math.abs(Number(tether.lineLengthRate) || 0) : 0;
+      const reelStrength = tone.playing ? clamp(Number(tether.reelStrength) || 0, 0, 1) : 0;
+      const spooling = reelRate > 0.02 && !!(tether.reeling || tether.payingOut);
+      const spoolGain = spooling ? clamp(0.006 + reelStrength * 0.05 + reelRate * 0.012, 0.006, 0.075) : 0.0001;
+      const spoolFreq = (260 + reelRate * 220 + reelStrength * 170) * slowPitch;
+      if (cache.spoolOscNode !== rt._tetherSpoolOsc || cache.spoolFreq !== spoolFreq) {
+        cache.spoolOscNode = rt._tetherSpoolOsc;
+        cache.spoolFreq = spoolFreq;
+        rt._tetherSpoolOsc.frequency.setTargetAtTime(spoolFreq, now, 0.06);
+      }
+      if (cache.spoolGainNode !== rt._tetherSpoolGain || cache.spoolGain !== spoolGain) {
+        cache.spoolGainNode = rt._tetherSpoolGain;
+        cache.spoolGain = spoolGain;
+        rt._tetherSpoolGain.gain.setTargetAtTime(spoolGain, now, 0.06);
+      }
+      rt._tetherSpoolGain.gainValue = spoolGain;
+    }
+  },
+
+  /** Apply cue-priority envelope gains to continuous engine + weapon loops each frame. */
+  _updatePriorityDuckGains() {
+    const rt = this.rt;
+    if (!rt || !rt._priorityBus) return;
+    const nowMs = this._wallClockMs();
+    rt._priorityDuckEngine = rt._priorityBus.gainFor(rt._priorityEngineProbe, nowMs);
+    rt._priorityDuckWeapon = rt._priorityBus.gainFor(rt._priorityWeaponProbe, nowMs);
+
+    // Scale active beam/weapon loops without touching music/critical one-shots.
+    const wDuck = rt._priorityDuckWeapon;
+    if (rt.loops) {
+      for (const key in rt.loops) {
+        const v = rt.loops[key];
+        if (!v || !v.gain || !v.gain.gain) continue;
+        const isWeaponLoop = key.startsWith('beam_') || v.role === 'weaponLoop'
+          || (v.busName === 'combat' && v.loop);
+        // Tracked loops belong to _updateLoopPositions, which already composes
+        // _priorityDuckWeapon with the distance attenuation — a second writer on the same
+        // AudioParam would push the un-attenuated product and re-boost culled loops.
+        if (!isWeaponLoop || v.trackId != null) continue;
+        const base = v._baseGain != null ? v._baseGain : (v.callGain != null ? v.callGain : 0.5);
+        this._setParam(v.gain.gain, Math.max(0.0001, base * wDuck), rt.ctx.currentTime, 0.04);
+      }
+      for (const key in rt.loops) {
+        const v = rt.loops[key];
+        if (!v || !v.gain || !v.gain.gain || v.trackId != null || v.critical) continue;
+        const isWeaponLoop = key.startsWith('beam_') || v.role === 'weaponLoop'
+          || (v.busName === 'combat' && v.loop);
+        if (isWeaponLoop) continue;
+        if (!isPriorityDuckTarget({
+          busName: v.busName, role: v.role, loop: true, category: v.category, critical: v.critical,
+        })) continue;
+        const base = v._baseGain != null ? v._baseGain : (v.callGain != null ? v.callGain : 0.5);
+        this._setParam(v.gain.gain, Math.max(0.0001, base * wDuck), rt.ctx.currentTime, 0.04);
+      }
+    }
+  },
+
+  _updateSectorCues(now) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || this._isMuted()) return;
+
+    const currentSectorId = this.state.world && this.state.world.currentSectorId;
+    const sector = this.state.world && this.state.world.sectors && this.state.world.sectors[currentSectorId];
+    const targetClass = getPaletteClassName(sector);
+    
+    const docked = !!(rt._docked || (this.state.ui && this.state.ui.docked));
+
+    // Sound-only place accents opt out of generic captions; semantic anomaly evidence below
+    // keeps its authored caption. The same policy applies to machinery/traffic in _updatePlaceContext.
+    // Sector identity keeps its sparse bells/ticks/swells. The old always-on four-oscillator pad
+    // duplicated the adaptive music graph and was the audible startup drone, so it has no runtime
+    // route here.
+    if (!docked && !rt._paused) {
+      if (targetClass === 'core') {
+        if (ctx.currentTime - (rt._lastBellTime || 0) >= 45) {
+          rt._lastBellTime = ctx.currentTime;
+          this.play('sfx_core_bell', { gain: 0.25, captionOwned: true });
+        }
+      } else if (targetClass === 'fringe') {
+        const nextTickDelay = rt._nextRadioTickTime || 0;
+        if (ctx.currentTime >= nextTickDelay) {
+          rt._nextRadioTickTime = ctx.currentTime + 2.0 + Math.random() * 4.0;
+          this.play('sfx_fringe_tick', { gain: 0.15, captionOwned: true });
+        }
+      }
+      this._updateAnomalyEvidence();
+    }
+  },
+
+  _updateStationMurmur(now) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || !rt._docked || rt._paused) return;
+    if (this._motionReduced()) return;
+
+    if (now - (rt._lastMurmurTime || 0) >= 8 + Math.random() * 10) {
+      rt._lastMurmurTime = now;
+      this._playPAMurmur();
+    }
+  },
+
+  /**
+   * Restrained place accents: sparse station machinery when docked and quiet Helios traffic blips
+   * in calm undocked flight. Silence discipline keeps both accents rare and finite.
+   */
+  _updatePlaceContext(now) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || rt._paused || this._motionReduced()) return;
+    if (rt.threat != null && rt.threat >= 0.35) return; // combat owns the mix
+
+    if (rt._docked) {
+      if (now - (rt._lastMachineryAt || 0) >= 6 + Math.random() * 8) {
+        rt._lastMachineryAt = now;
+        this.play('sfx_station_machinery', { gain: 0.12, captionOwned: true });
+      }
+      return;
+    }
+
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    const isHelios = sectorId && String(sectorId).includes('helios');
+    if (!isHelios) return;
+    if (rt.musicState === 'combat' || rt.musicState === 'tense') return;
+
+    if (now - (rt._lastTrafficBlipAt || 0) >= 14 + Math.random() * 18) {
+      rt._lastTrafficBlipAt = now;
+      this.play('sfx_traffic_blip', { gain: 0.08, rate: 0.9 + Math.random() * 0.25, captionOwned: true });
+    }
+  },
+
+  _playPAMurmur() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx) return;
+
+    const syllables = 4 + Math.floor(Math.random() * 5);
+    let time = ctx.currentTime;
+    // Helios PA sits slightly brighter (still unintelligible).
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    const isHelios = sectorId && String(sectorId).includes('helios');
+    const base = isHelios ? 390 : 350;
+    const peak = isHelios ? 0.012 : 0.015;
+
+    for (let i = 0; i < syllables; i++) {
+      const freq = base + Math.random() * 250;
+      const dur = 0.08 + Math.random() * 0.12;
+      
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = freq;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = isHelios ? 700 : 600;
+      filter.Q.value = 2.0;
+
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, time);
+      g.gain.linearRampToValueAtTime(peak, time + 0.01);
+      g.gain.setValueAtTime(peak, time + dur - 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+
+      o.connect(filter);
+      filter.connect(g);
+      g.connect(rt.ambientBus);
+
+      try {
+        o.start(time);
+        o.stop(time + dur + 0.02);
+      } catch (_) {}
+
+      o.onended = () => {
+        try {
+          o.disconnect();
+          filter.disconnect();
+          g.disconnect();
+        } catch (_) {}
+      };
+
+      time += dur + 0.03;
+    }
+  },
+};

@@ -1,0 +1,119 @@
+{
+  "fmt": "spaceface-save",
+  "version": 5,
+  "savedAt": "2026-01-15T10:00:00.000Z",
+  "playtimeS": 3600,
+  "slot": "1",
+  "data": {
+    "meta": {
+      "seed": 4242,
+      "playtimeS": 3600,
+      "createdAt": "2026-01-15T09:00:00.000Z",
+      "lastSavedAt": "2026-01-15T10:00:00.000Z"
+    },
+    "player": {
+      "credits": 4200,
+      "activeShipIndex": 0,
+      "ownedShips": [
+        {
+          "defId": "ship_kestrel",
+          "fittings": []
+        }
+      ]
+    },
+    "cargo": {
+      "items": {},
+      "capVolume": 40,
+      "capMass": 40
+    },
+    "economy": {},
+    "factions": {},
+    "world": {
+      "currentSectorId": "sector_ceres_belt",
+      "sectors": {
+        "sector_ceres_belt": {
+          "id": "sector_ceres_belt",
+          "name": "Ceres Belt"
+        }
+      },
+      "entryPoint": {
+        "x": 64,
+        "z": 128
+      },
+      "scanPings": {
+        "sector_vesta_forge": [
+          {
+            "id": "ping-1",
+            "pos": {
+              "x": 100,
+              "z": 100
+            }
+          }
+        ]
+      }
+    },
+    "entities": {
+      "player": {
+        "id": "player",
+        "type": "ship",
+        "pos": {
+          "x": 512,
+          "z": -256
+        },
+        "vel": {
+          "x": 0,
+          "z": 0
+        },
+        "rot": 0,
+        "flags": {},
+        "data": {
+          "defId": "ship_kestrel"
+        },
+        "angVel": 0.25
+      },
+      "persistent": [
+        {
+          "id": "wreck-1",
+          "type": "wreck",
+          "pos": {
+            "x": 10,
+            "z": 10
+          },
+          "flags": {},
+          "data": {}
+        }
+      ],
+      "simTime": 3600,
+      "tick": 216000
+    },
+    "missions": {
+      "active": [],
+      "completed": []
+    },
+    "settings": {},
+    "crafting": {
+      "queues": {}
+    },
+    "sectorSim": {
+      "sectors": {},
+      "meta": {}
+    },
+    "combat": {
+      "schemaVersion": 1,
+      "combatSchemaVersion": 1,
+      "statusNextPendingSeq": 1,
+      "entities": [],
+      "actions": {
+        "nextRequestSeq": 1,
+        "nextInstanceSeq": 1,
+        "requests": [],
+        "active": [],
+        "cooldowns": []
+      },
+      "attachments": {
+        "nextId": 1,
+        "byId": {}
+      }
+    }
+  }
+}

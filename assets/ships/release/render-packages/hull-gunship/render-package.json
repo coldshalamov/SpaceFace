@@ -1,0 +1,1770 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.hull-gunship.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.71999979019165,
+        0.03999999910593033,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.hull-gunship.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.71999979019165,
+        0.03999999910593033,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.71999979019165,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.hull-gunship.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.71999979019165,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.hull-gunship",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "4a8825ec41fe280d45b3e03f42946022cdf8aff3295741e80d26d9b561ae17d2",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -0.17500019073486328,
+          1.410079604098601,
+          1.1000015259254738
+        ],
+        "min": [
+          -2.6750001907348633,
+          1.2300203981902174,
+          -1.1000015259254738
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "93db20815aec3008a30be83846c0548d9b5d751147a3528fe66529b88ee2e222",
+      "id": "sf.render.hull-gunship.mesh.lod0-det-armor-plate.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.hull-gunship.mesh.lod0-det-armor-plate",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          2.174999713897705,
+          0.9950583488445794,
+          -1.819920981574634
+        ],
+        "min": [
+          -1.0250002145767212,
+          0.44504157595820076,
+          -1.8800790661090818
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "88d8de30c5f9f4731797e6a6f523757642e06890fcf611e06e3756d46de15416",
+      "id": "sf.render.hull-gunship.mesh.lod0-det-battle-scar.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.hull-gunship.mesh.lod0-det-battle-scar",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.9249359752041384,
+          0.7300158078963113,
+          1.600000023841858
+        ],
+        "min": [
+          -4.925064167847009,
+          0.41008416459018465,
+          -1.600000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1caac2b71d876e1cae2cb89e8165879e0b4a051a95576a1dfb3de190c88a1313",
+      "id": "sf.render.hull-gunship.mesh.lod0-det-exhaust-soot.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "39654fe12c78c0cf04c29edc10ce759391465d3b268ab69a1ae8bdd447e5a897",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.hull-gunship.mesh.lod0-det-exhaust-soot",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.5750001668930054,
+          1.19506598930045,
+          -1.5650075044521943
+        ],
+        "min": [
+          -2.2750000953674316,
+          0.6450340010674395,
+          -1.6349925432315215
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "49d5628b67ea10055a9591b57cc4fd5d13bb66431678fb1c97f2f4af393b7def",
+      "id": "sf.render.hull-gunship.mesh.lod0-det-fracture-patch.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.hull-gunship.mesh.lod0-det-fracture-patch",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.02500021457672119,
+          1.345055341457729,
+          2.0250375039570137
+        ],
+        "min": [
+          -1.4250001907348633,
+          0.5950446727520182,
+          1.9749627344615657
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8f8fcf47af01eb4e640357091bbeb3bc99e8a021180c04bf9d769acd6470b6b7",
+      "id": "sf.render.hull-gunship.mesh.lod0-det-military-stencil.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "b79091af382802d9abdfe356b91b3f96b71f5bfd782ee6c906cbcb75c1279cdd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.hull-gunship.mesh.lod0-det-military-stencil",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7849998474121094,
+          1.2600585240762139,
+          0.3100000396370888
+        ],
+        "min": [
+          3.364999771118164,
+          0.9800413828451727,
+          -0.11000003665685654
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "444d1865bf3778738200671309624c5b8162fc177d2e07de475f01bfde288e47",
+      "id": "sf.render.hull-gunship.mesh.lod0-det-sensor-dome.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "39654fe12c78c0cf04c29edc10ce759391465d3b268ab69a1ae8bdd447e5a897",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.hull-gunship.mesh.lod0-det-sensor-dome",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5249998569488525,
+          1.8450370119025623,
+          0.45000001788139343
+        ],
+        "min": [
+          0.6249998211860657,
+          1.5950629427025402,
+          -0.45000001788139343
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e4647ff9daf87713aa27cbd593e84904843631fabdfd8a4f11df7acb0e32df8a",
+      "id": "sf.render.hull-gunship.mesh.lod0-det-turret-mount.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "39654fe12c78c0cf04c29edc10ce759391465d3b268ab69a1ae8bdd447e5a897",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.hull-gunship.mesh.lod0-det-turret-mount",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          2.5499999821186066,
+          1.130034938586054,
+          1.3250000476837158
+        ],
+        "min": [
+          1.999999850988388,
+          0.9100650994655513,
+          0.7749999165534973
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "551500215243c75b3c0264cdd02f686a77a9af0a422f36bb3db0e46a8426850a",
+      "id": "sf.render.hull-gunship.mesh.lod0-det-weapon-hardpoint.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "39654fe12c78c0cf04c29edc10ce759391465d3b268ab69a1ae8bdd447e5a897",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.hull-gunship.mesh.lod0-det-weapon-hardpoint",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          5.949999809265137,
+          2.439930461575166,
+          2.7498664815210425
+        ],
+        "min": [
+          -5.800000190734863,
+          -1.299830578495637,
+          -2.7498664815210425
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e887848a0c4341ac93e2334356dd79f85919f2bb414686de6df29a57383633f9",
+      "id": "sf.render.hull-gunship.mesh.lod0-hull-gunship-main.primitive.0",
+      "indexCount": 7272,
+      "indexed": true,
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_GUNSHIP",
+      "nodeId": "sf.render.hull-gunship.mesh.lod0-hull-gunship-main",
+      "primitiveIndex": 0,
+      "vertexCount": 6116
+    },
+    {
+      "bounds": {
+        "max": [
+          5.949999809265137,
+          2.4399306403891003,
+          2.7498664815210425
+        ],
+        "min": [
+          -5.800000190734863,
+          -1.2998303996817027,
+          -2.7498664815210425
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "63d41d59a29c872dda839c0732895614c3f7dfb7e307c05f2e055fc0da4c4600",
+      "id": "sf.render.hull-gunship.mesh.lod1-hull-gunship-silhouette.primitive.0",
+      "indexCount": 3999,
+      "indexed": true,
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_GUNSHIP.001",
+      "nodeId": "sf.render.hull-gunship.mesh.lod1-hull-gunship-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 3101
+    },
+    {
+      "bounds": {
+        "max": [
+          6.01824951171875,
+          2.4606130094615803,
+          2.763352963883443
+        ],
+        "min": [
+          -5.787623405456543,
+          -1.2998135061351643,
+          -2.7740615343637898
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cbf87f9ba984f1b98b9d5819699db4316a24846e9603351eedf2144f82bddcc8",
+      "id": "sf.render.hull-gunship.mesh.lod2-hull-gunship-silhouette.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_GUNSHIP.002",
+      "nodeId": "sf.render.hull-gunship.mesh.lod2-hull-gunship-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 148
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
+      "id": "material:3112a962920fdac067054947",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_gunship_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_hull_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_hull_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "39654fe12c78c0cf04c29edc10ce759391465d3b268ab69a1ae8bdd447e5a897",
+      "id": "material:39654fe12c78c0cf04c29edc",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_gunship_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_mechanical_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_mechanical_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b79091af382802d9abdfe356b91b3f96b71f5bfd782ee6c906cbcb75c1279cdd",
+      "id": "material:b79091af382802d9abdfe356",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_gunship_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_accent_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_accent_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.hull-gunship.mesh.lod0-det-armor-plate",
+      "localTransform": [
+        1.25,
+        0,
+        0,
+        0,
+        0,
+        1.25,
+        0,
+        0,
+        0,
+        0,
+        1.25,
+        0,
+        -1.4250001907348633,
+        1.3200500011444092,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_armor_plate",
+      "nodeName": "LOD0_DET_armor_plate",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.hull-gunship.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        1.25,
+        0,
+        0,
+        0,
+        0,
+        1.25,
+        0,
+        0,
+        0,
+        0,
+        1.25,
+        0,
+        -1.4250001907348633,
+        1.3200500011444092,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.mesh.lod0-det-battle-scar",
+      "localTransform": [
+        1.5999999642372131,
+        0,
+        0,
+        0,
+        0,
+        1.5999999642372131,
+        0,
+        0,
+        0,
+        0,
+        1.5999999642372131,
+        0,
+        0.5749997496604919,
+        0.7200499624013901,
+        -1.850000023841858,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_battle_scar",
+      "nodeName": "LOD0_DET_battle_scar",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.hull-gunship.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        1.5999999642372131,
+        0,
+        0,
+        0,
+        0,
+        1.5999999642372131,
+        0,
+        0,
+        0,
+        0,
+        1.5999999642372131,
+        0,
+        0.5749997496604919,
+        0.7200499624013901,
+        -1.850000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.mesh.lod0-det-exhaust-soot",
+      "localTransform": [
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        -4.425000071525574,
+        0.570049986243248,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_exhaust_soot",
+      "nodeName": "LOD0_DET_exhaust_soot",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.hull-gunship.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        -4.425000071525574,
+        0.570049986243248,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.mesh.lod0-det-fracture-patch",
+      "localTransform": [
+        0.34999996423721313,
+        0,
+        0,
+        0,
+        0,
+        0.34999996423721313,
+        0,
+        0,
+        0,
+        0,
+        0.34999996423721313,
+        0,
+        -1.9250001311302185,
+        0.9200499951839447,
+        -1.600000023841858,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_fracture_patch",
+      "nodeName": "LOD0_DET_fracture_patch",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.hull-gunship.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        0.34999996423721313,
+        0,
+        0,
+        0,
+        0,
+        0.34999996423721313,
+        0,
+        0,
+        0,
+        0,
+        0.34999996423721313,
+        0,
+        -1.9250001311302185,
+        0.9200499951839447,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.mesh.lod0-det-military-stencil",
+      "localTransform": [
+        0.699999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        -0.7250002026557922,
+        0.9700500071048737,
+        2.0000001192092896,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_military_stencil",
+      "nodeName": "LOD0_DET_military_stencil",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.hull-gunship.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        0.699999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        0,
+        0,
+        0,
+        0.699999988079071,
+        0,
+        -0.7250002026557922,
+        0.9700500071048737,
+        2.0000001192092896,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.mesh.lod0-det-sensor-dome",
+      "localTransform": [
+        0.21000003814697266,
+        0,
+        0,
+        0,
+        0,
+        0.21000003814697266,
+        0,
+        0,
+        0,
+        0,
+        0.21000003814697266,
+        0,
+        3.5749998092651367,
+        1.1200499534606934,
+        0.10000000149011612,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_sensor_dome",
+      "nodeName": "LOD0_DET_sensor_dome",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.hull-gunship.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        0.21000003814697266,
+        0,
+        0,
+        0,
+        0,
+        0.21000003814697266,
+        0,
+        0,
+        0,
+        0,
+        0.21000003814697266,
+        0,
+        3.5749998092651367,
+        1.1200499534606934,
+        0.10000000149011612,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.mesh.lod0-det-turret-mount",
+      "localTransform": [
+        0.45000001788139343,
+        0,
+        0,
+        0,
+        0,
+        0.45000001788139343,
+        0,
+        0,
+        0,
+        0,
+        0.45000001788139343,
+        0,
+        1.074999839067459,
+        1.7200499773025513,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_turret_mount",
+      "nodeName": "LOD0_DET_turret_mount",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.hull-gunship.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        0.45000001788139343,
+        0,
+        0,
+        0,
+        0,
+        0.45000001788139343,
+        0,
+        0,
+        0,
+        0,
+        0.45000001788139343,
+        0,
+        1.074999839067459,
+        1.7200499773025513,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.mesh.lod0-det-weapon-hardpoint",
+      "localTransform": [
+        0.27500006556510925,
+        0,
+        0,
+        0,
+        0,
+        0.27500006556510925,
+        0,
+        0,
+        0,
+        0,
+        0.27500006556510925,
+        0,
+        2.2749999165534973,
+        1.0200500190258026,
+        1.0499999821186066,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_weapon_hardpoint",
+      "nodeName": "LOD0_DET_weapon_hardpoint",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.hull-gunship.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        0.27500006556510925,
+        0,
+        0,
+        0,
+        0,
+        0.27500006556510925,
+        0,
+        0,
+        0,
+        0,
+        0.27500006556510925,
+        0,
+        2.2749999165534973,
+        1.0200500190258026,
+        1.0499999821186066,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.mesh.lod0-hull-gunship-main",
+      "localTransform": [
+        5.875,
+        0,
+        0,
+        0,
+        0,
+        5.875,
+        0,
+        0,
+        0,
+        0,
+        5.875,
+        0,
+        0.07499980926513672,
+        0.5700499415397644,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HULL_GUNSHIP_MAIN",
+      "nodeName": "LOD0_HULL_GUNSHIP_MAIN",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.hull-gunship.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        5.875,
+        0,
+        0,
+        0,
+        0,
+        5.875,
+        0,
+        0,
+        0,
+        0,
+        5.875,
+        0,
+        0.07499980926513672,
+        0.5700499415397644,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.mesh.lod1-hull-gunship-silhouette",
+      "localTransform": [
+        5.875,
+        0,
+        0,
+        0,
+        0,
+        5.875,
+        0,
+        0,
+        0,
+        0,
+        5.875,
+        0,
+        0.07499980926513672,
+        0.5700501203536987,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HULL_GUNSHIP_SILHOUETTE",
+      "nodeName": "LOD1_HULL_GUNSHIP_SILHOUETTE",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.hull-gunship.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        5.875,
+        0,
+        0,
+        0,
+        0,
+        5.875,
+        0,
+        0,
+        0,
+        0,
+        5.875,
+        0,
+        0.07499980926513672,
+        0.5700501203536987,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.mesh.lod2-hull-gunship-silhouette",
+      "localTransform": [
+        5.9029364585876465,
+        0,
+        0,
+        0,
+        0,
+        5.9029364585876465,
+        0,
+        0,
+        0,
+        0,
+        5.9029364585876465,
+        0,
+        0.11531305313110352,
+        0.580399751663208,
+        -0.00535428524017334,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HULL_GUNSHIP_SILHOUETTE",
+      "nodeName": "LOD2_HULL_GUNSHIP_SILHOUETTE",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.hull-gunship.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        5.9029364585876465,
+        0,
+        0,
+        0,
+        0,
+        5.9029364585876465,
+        0,
+        0,
+        0,
+        0,
+        5.9029364585876465,
+        0,
+        0.11531305313110352,
+        0.580399751663208,
+        -0.00535428524017334,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-gunship.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "HULL_GUNSHIP_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-gunship.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "955890b548ec822eb0c74bc62205ffe02e9caf98004af40435c5fad7bee43681"
+    },
+    "sourceGlb": {
+      "bytes": 700340,
+      "sha256": "d9a5365efd1e367bd021bc7cc8d5841417296d1044a3878d572a58a3e00f1f8f",
+      "uri": "hull_gunship.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 696288,
+    "sha256": "955026fd21098bbbdde6c65d8b99f3996b27773d435bfeedcfc6f894ff913f56",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.10912466049194336,
+        0.5803912154829717,
+        -0.00535428524017334
+      ],
+      "max": [
+        6.01824951171875,
+        2.4606130094615803,
+        2.763352963883443
+      ],
+      "min": [
+        -5.800000190734863,
+        -1.299830578495637,
+        -2.7740615343637898
+      ],
+      "size": [
+        11.818249702453613,
+        3.7604435879572176,
+        5.537414498247233
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.7599999904632568,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "MOUNT_COCKPIT",
+        "planIndex": 13,
+        "tags": {
+          "chamfered": true,
+          "mount": "cockpit",
+          "mountKey": "cockpit",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "MOUNT_COCKPIT"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.059999942779541,
+          0.05999999865889549,
+          -0.8840000033378601,
+          1
+        ],
+        "name": "MOUNT_ENGINE_L",
+        "planIndex": 14,
+        "tags": {
+          "chamfered": true,
+          "mount": "engine",
+          "mountKey": "engine_l",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "MOUNT_ENGINE_L"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.059999942779541,
+          0.05999999865889549,
+          0.8840000033378601,
+          1
+        ],
+        "name": "MOUNT_ENGINE_R",
+        "planIndex": 15,
+        "tags": {
+          "chamfered": true,
+          "mount": "engine",
+          "mountKey": "engine_r",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "MOUNT_ENGINE_R"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.8799999952316284,
+          0.03999999910593033,
+          -2.3919999599456787,
+          1
+        ],
+        "name": "MOUNT_FIN_L",
+        "planIndex": 16,
+        "tags": {
+          "chamfered": true,
+          "mount": "fin",
+          "mountKey": "fin_l",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "MOUNT_FIN_L"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.8799999952316284,
+          0.03999999910593033,
+          2.3919999599456787,
+          1
+        ],
+        "name": "MOUNT_FIN_R",
+        "planIndex": 17,
+        "tags": {
+          "chamfered": true,
+          "mount": "fin",
+          "mountKey": "fin_r",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "MOUNT_FIN_R"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.71999979019165,
+          0.03999999910593033,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 18,
+        "tags": {
+          "chamfered": true,
+          "socket": true,
+          "socketRole": "vfx",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.hull-gunship.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.71999979019165,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 19,
+        "tags": {
+          "chamfered": true,
+          "socket": true,
+          "socketRole": "weapon",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.hull-gunship.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 6,
+      "mechanical": 4
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 20,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.25,
+          0,
+          0,
+          0,
+          0,
+          1.25,
+          0,
+          0,
+          0,
+          0,
+          1.25,
+          0,
+          -1.4250001907348633,
+          1.3200500011444092,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_armor_plate",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5999999642372131,
+          0,
+          0,
+          0,
+          0,
+          1.5999999642372131,
+          0,
+          0,
+          0,
+          0,
+          1.5999999642372131,
+          0,
+          0.5749997496604919,
+          0.7200499624013901,
+          -1.850000023841858,
+          1
+        ],
+        "name": "LOD0_DET_battle_scar",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.600000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.600000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.600000023841858,
+          0,
+          -4.425000071525574,
+          0.570049986243248,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_exhaust_soot",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.34999996423721313,
+          0,
+          0,
+          0,
+          0,
+          0.34999996423721313,
+          0,
+          0,
+          0,
+          0,
+          0.34999996423721313,
+          0,
+          -1.9250001311302185,
+          0.9200499951839447,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD0_DET_fracture_patch",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.699999988079071,
+          0,
+          0,
+          0,
+          0,
+          0.699999988079071,
+          0,
+          0,
+          0,
+          0,
+          0.699999988079071,
+          0,
+          -0.7250002026557922,
+          0.9700500071048737,
+          2.0000001192092896,
+          1
+        ],
+        "name": "LOD0_DET_military_stencil",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.21000003814697266,
+          0,
+          0,
+          0,
+          0,
+          0.21000003814697266,
+          0,
+          0,
+          0,
+          0,
+          0.21000003814697266,
+          0,
+          3.5749998092651367,
+          1.1200499534606934,
+          0.10000000149011612,
+          1
+        ],
+        "name": "LOD0_DET_sensor_dome",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.45000001788139343,
+          0,
+          0,
+          0,
+          0,
+          0.45000001788139343,
+          0,
+          0,
+          0,
+          0,
+          0.45000001788139343,
+          0,
+          1.074999839067459,
+          1.7200499773025513,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_turret_mount",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.27500006556510925,
+          0,
+          0,
+          0,
+          0,
+          0.27500006556510925,
+          0,
+          0,
+          0,
+          0,
+          0.27500006556510925,
+          0,
+          2.2749999165534973,
+          1.0200500190258026,
+          1.0499999821186066,
+          1
+        ],
+        "name": "LOD0_DET_weapon_hardpoint",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.875,
+          0,
+          0,
+          0,
+          0,
+          5.875,
+          0,
+          0,
+          0,
+          0,
+          5.875,
+          0,
+          0.07499980926513672,
+          0.5700499415397644,
+          0,
+          1
+        ],
+        "name": "LOD0_HULL_GUNSHIP_MAIN",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.875,
+          0,
+          0,
+          0,
+          0,
+          5.875,
+          0,
+          0,
+          0,
+          0,
+          5.875,
+          0,
+          0.07499980926513672,
+          0.5700501203536987,
+          0,
+          1
+        ],
+        "name": "LOD1_HULL_GUNSHIP_SILHOUETTE",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.9029364585876465,
+          0,
+          0,
+          0,
+          0,
+          5.9029364585876465,
+          0,
+          0,
+          0,
+          0,
+          5.9029364585876465,
+          0,
+          0.11531305313110352,
+          0.580399751663208,
+          -0.00535428524017334,
+          1
+        ],
+        "name": "LOD2_HULL_GUNSHIP_SILHOUETTE",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/hulls/hull_gunship.glb"
+  },
+  "runtimeHash": "67834a606d5cffc10e083d6b434f75d14956a7bd22f6b2ce1739ec754304acb8",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          6.01824951171875,
+          2.4606130094615803,
+          2.763352963883443
+        ],
+        "min": [
+          -5.800000190734863,
+          -1.299830578495637,
+          -2.7740615343637898
+        ]
+      },
+      "id": "sf.render.hull-gunship.body",
+      "nodeIds": [
+        "sf.render.hull-gunship.mesh.lod0-det-armor-plate",
+        "sf.render.hull-gunship.mesh.lod0-det-battle-scar",
+        "sf.render.hull-gunship.mesh.lod0-det-exhaust-soot",
+        "sf.render.hull-gunship.mesh.lod0-det-fracture-patch",
+        "sf.render.hull-gunship.mesh.lod0-det-military-stencil",
+        "sf.render.hull-gunship.mesh.lod0-det-sensor-dome",
+        "sf.render.hull-gunship.mesh.lod0-det-turret-mount",
+        "sf.render.hull-gunship.mesh.lod0-det-weapon-hardpoint",
+        "sf.render.hull-gunship.mesh.lod0-hull-gunship-main",
+        "sf.render.hull-gunship.mesh.lod1-hull-gunship-silhouette",
+        "sf.render.hull-gunship.mesh.lod2-hull-gunship-silhouette",
+        "sf.render.hull-gunship.root"
+      ]
+    }
+  ]
+}

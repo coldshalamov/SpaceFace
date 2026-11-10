@@ -1,0 +1,81 @@
+# ui-budgets-remint — re-mint the UI budget baseline on a clean runner.
+#
+# check:ui:budgets goes red with `baseline:stale` every time a UI-touching commit lands after
+# the last mint. The named fix (check-ui-budgets.mjs) is a re-run of capture:ui-matrix
+# --budgets-out, but the mint must be HEADED (uiBudgets.mjs: headless SwiftShader numbers are
+# not performance evidence) and this repo's headless captures also deadlocked on this writer's
+# machine (browser.close() never settled). This workflow does the mint the way draw-flight.yml
+# already proves works here: headed Chromium under xvfb on a runner.
+#
+# Self-verifying by design: it runs check:ui:budgets against the fresh baseline BEFORE opening
+# a PR, so the PR can only carry a baseline that judges green in the same environment class the
+# check matrix runs in. If the mint or the judge fails, nothing is opened.
+#
+# The mint takes hours. Master routinely moves during it, which would make the minted digest
+# stale on arrival — so before opening the PR the workflow re-platforms the fresh baseline onto
+# the CURRENT master tip and re-judges it there. If master's UI source moved in ways the new
+# source digest refuses, the verify fails, nothing is opened, and the workflow is re-dispatched.
+#
+# Run it from the Actions tab (workflow_dispatch) on the branch that needs the re-mint, then
+# merge the PR it opens.
+
+name: UI budgets re-mint
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ui-budgets-remint
+  cancel-in-progress: false
+
+jobs:
+  remint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 420
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Mint the budget baseline (headed Chromium under xvfb)
+        run: |
+          sudo apt-get install -y xvfb
+          xvfb-run -a node scripts/capture-ui-matrix.mjs --headed --budgets-out=test/ui-frame-references/budgets.json
+
+      - name: Verify the fresh baseline judges green
+        run: SPACEFACE_PLAYER_STORE_DIR='' node scripts/check-ui-budgets.mjs
+
+      - name: Open the re-mint PR on the current master tip
+        run: |
+          BRANCH=ci/ui-budgets-remint
+          cp test/ui-frame-references/budgets.json "$RUNNER_TEMP/minted-budgets.json"
+          git fetch origin master
+          git checkout -B "$BRANCH" origin/master
+          cp "$RUNNER_TEMP/minted-budgets.json" test/ui-frame-references/budgets.json
+          SPACEFACE_PLAYER_STORE_DIR='' node scripts/check-ui-budgets.mjs
+          git config user.name "ui-budgets-remint bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -- test/ui-frame-references/budgets.json
+          git commit -m "ci: re-mint UI budget baseline (minted at ${{ github.sha }})" -- test/ui-frame-references/budgets.json
+          git push origin "$BRANCH"
+          gh pr create --head "$BRANCH" --base master --title "ci: re-mint UI budget baseline" \
+            --body "Baseline minted by the ui-budgets-remint workflow (headed Chromium under xvfb on the runner), re-platformed onto the current master tip and verified green by check:ui:budgets there in the same run. Clears the \`baseline:stale\` red on master."
+        env:
+          GH_TOKEN: ${{ github.token }}

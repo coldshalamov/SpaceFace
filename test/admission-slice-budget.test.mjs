@@ -1,0 +1,173 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  ADMISSION_SLICE_MIN_ITEMS,
+  ADMISSION_SLICE_TARGET_MS,
+  admissionSliceOverHardLimit,
+  shouldContinueAdmissionSlice,
+  shouldRedrawAfterLatePresent,
+  shouldStartHeavyAdmission,
+  shouldStartHeavyAdmissionEventually,
+  HEAVY_ADMISSION_EVENTUAL_SKIP,
+  shouldStartWorkAfterLatePresent,
+} from '../src/render/admissionSliceBudget.js';
+
+test('always admits the first item, then stops once the target milliseconds are spent', () => {
+  assert.equal(ADMISSION_SLICE_MIN_ITEMS, 1);
+  assert.equal(shouldContinueAdmissionSlice({
+    startedAtMs: 0,
+    nowMs: 10,
+    itemsDone: 0,
+    targetMs: ADMISSION_SLICE_TARGET_MS,
+  }), true);
+  assert.equal(shouldContinueAdmissionSlice({
+    startedAtMs: 0,
+    nowMs: ADMISSION_SLICE_TARGET_MS + 0.5,
+    itemsDone: 1,
+    targetMs: ADMISSION_SLICE_TARGET_MS,
+  }), false);
+  assert.equal(shouldContinueAdmissionSlice({
+    startedAtMs: 0,
+    nowMs: 1,
+    itemsDone: 1,
+    targetMs: ADMISSION_SLICE_TARGET_MS,
+  }), true);
+});
+
+test('loading Infinity budget never time-slices', () => {
+  assert.equal(shouldContinueAdmissionSlice({
+    unlimited: true,
+    startedAtMs: 0,
+    nowMs: 50,
+    itemsDone: 8,
+  }), true);
+  assert.equal(shouldContinueAdmissionSlice({
+    buildBudget: Infinity,
+    startedAtMs: 0,
+    nowMs: 50,
+    itemsDone: 8,
+  }), true);
+});
+
+test('finite loading drain is clocked so New Game can leave gpu-resources', () => {
+  assert.equal(shouldContinueAdmissionSlice({
+    buildBudget: 6,
+    startedAtMs: 0,
+    nowMs: 50,
+    itemsDone: 8,
+    targetMs: ADMISSION_SLICE_TARGET_MS,
+  }), false);
+});
+
+test('live-sector cook drains meshes in yielded slices, not an Infinity block', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(renderer, /drainMeshBuildsBehindShell/);
+  assert.match(renderer, /await drainMeshBuildsBehindShell\(\)/);
+  assert.match(renderer, /_drainMeshBuildQueue\(1\)/);
+  assert.match(renderer, /PREPARE_BUDGET_MS = survivalRunHoldsArena\(state\) \? 60000 : 20000/);
+  assert.match(renderer, /deadlineMs: Math.min\(6000, remainingMs\(\)\)/);
+  assert.match(renderer, /holdLeftoverFx: true/);
+  assert.match(renderer, /if \(cookOverBudget\(\)\) break;/);
+  assert.match(renderer, /\.\.\.openingRoots,/);
+  assert.match(renderer, /deadlineMs: 8000/);
+  assert.match(renderer, /reason: 'loading-budget'/);
+  assert.match(renderer, /console\.info\(\s*`\[render\] opening submission post-submit validation failed/);
+  const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /waitForOpeningFirstPicture\(state, budgetMs, \{ isActive \}\)/);
+  // startupPacing (2026-10-23) device-scales the adventure leg of this budget; the pin guards
+  // that it stays the bounded fail-closed expression rather than an unbounded wait.
+  assert.match(main, /budgetMs = state\.run\?\.kind === 'survival'\s*\?\s*INITIAL_AUTHORED_VISUAL_TIMEOUT_MS\s*:\s*openingGateBudgetMs\(\)/);
+  assert.doesNotMatch(main, /void waitForRenderPipelineWarmup|void cook\.catch/);
+  assert.match(renderer, /beginOpeningLoadingAdmission/);
+
+});
+
+test('late presents do not start another heavy admission', () => {
+  assert.equal(shouldStartHeavyAdmission(16.7), true);
+  assert.equal(shouldStartHeavyAdmission(21), true);
+  assert.equal(shouldStartHeavyAdmission(33.3), false);
+  assert.equal(shouldStartHeavyAdmission(undefined), true);
+});
+
+test('overlay recovery may force the next frame; heavy mesh builds must not', () => {
+  assert.equal(shouldStartWorkAfterLatePresent(33.3, false), false);
+  assert.equal(shouldStartWorkAfterLatePresent(33.3, true), true);
+  assert.equal(shouldStartHeavyAdmission(33.3), false);
+});
+
+test('sustained late presents still start one heavy item after several skips', () => {
+  let skipped = 0;
+  for (let i = 0; i < HEAVY_ADMISSION_EVENTUAL_SKIP - 1; i++) {
+    const gate = shouldStartHeavyAdmissionEventually(33.3, skipped);
+    assert.equal(gate.start, false);
+    skipped = gate.skippedCount;
+  }
+  const released = shouldStartHeavyAdmissionEventually(33.3, skipped);
+  assert.equal(released.start, true);
+  assert.equal(released.skippedCount, 0);
+  const recovered = shouldStartHeavyAdmissionEventually(16.7, 2);
+  assert.equal(recovered.start, true);
+  assert.equal(recovered.skippedCount, 0);
+});
+
+test('live drain and upgrade consult the late-present gate', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const parts = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  assert.match(renderer, /shouldStartHeavyAdmissionEventually\(/);
+  assert.match(renderer, /_meshBuildLateSkips/);
+  assert.match(parts, /shouldStartHeavyAdmissionEventually\(/);
+  assert.match(parts, /lateSkips/);
+});
+
+test('the loading-shell mesh-build drain bypasses the late-present gate', async () => {
+  // The gate protects frames the player watches; under the shell every "present" is the
+  // spinner on a contended host, so it read >22 ms and refused 56 consecutive drain passes —
+  // live.meshBuilds1 logged 4.4 s / 0 built on the Crucible launch while the queue sat
+  // unbuildable anyway. Loading mode must skip the gate entirely.
+  const { readFile } = await import('node:fs/promises');
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const drainDef = renderer.indexOf('_drainMeshBuildQueue(buildBudget) {');
+  assert.ok(drainDef > 0, 'the method definition, not a call site');
+  const drainEnd = renderer.indexOf('_drainPendingMeshBuilds', drainDef);
+  const block = renderer.slice(drainDef, drainEnd > drainDef ? drainEnd : drainDef + 6000);
+  assert.match(block, /mode\) === 'loading'/,
+    'the gate checks for loading mode');
+  assert.match(block, /!loadingDrain/,
+    'the late-present gate is bypassed while the shell owns the picture');
+  // The flight path keeps the gate: the predicate still gates non-loading drains.
+  assert.match(block, /shouldStartHeavyAdmissionEventually\(/);
+});
+
+test('hard-limit helper flags slices that already blew the hitch ceiling', () => {
+  assert.equal(admissionSliceOverHardLimit({
+    startedAtMs: 0,
+    nowMs: 7,
+    hardMs: 8,
+  }), false);
+  assert.equal(admissionSliceOverHardLimit({
+    startedAtMs: 0,
+    nowMs: 9,
+    hardMs: 8,
+  }), true);
+});
+
+test('a late present keeps last overlay pixels one frame, then must redraw', () => {
+  assert.equal(shouldRedrawAfterLatePresent(16.7, false), true);
+  assert.equal(shouldRedrawAfterLatePresent(33.3, false), false);
+  assert.equal(shouldRedrawAfterLatePresent(33.3, true), true);
+});
+
+test('live speed-line overlay consults the late-present redraw gate', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/render/feel.js', import.meta.url), 'utf8');
+  assert.match(source, /shouldRedrawAfterLatePresent/);
+});
+
+test('a steady slow host is not late against its own baseline, a spike still is', () => {
+  assert.equal(shouldStartHeavyAdmission(60, 22, 55), true);
+  assert.equal(shouldStartHeavyAdmission(150, 22, 55), false);
+  assert.equal(shouldStartHeavyAdmission(30, 22, null), false);
+});

@@ -1,0 +1,406 @@
+{
+  "assetId": "ops_rail_carriage",
+  "category": "mechanisms",
+  "description": "rail carriage",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "payload",
+      "position": [
+        0.0,
+        0.78,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion",
+      "motionGroup": "carriage_translation"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.4,
+          -0.0
+        ],
+        "size": [
+          1.7,
+          0.35,
+          1.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.68,
+          -0.0
+        ],
+        "size": [
+          1.5,
+          0.2,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.6,
+          0.25,
+          0.65
+        ],
+        "size": [
+          0.48,
+          0.48,
+          0.19999999999999996
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.6,
+          0.25,
+          -0.65
+        ],
+        "size": [
+          0.48,
+          0.48,
+          0.19999999999999996
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.6,
+          0.25,
+          0.65
+        ],
+        "size": [
+          0.48,
+          0.48,
+          0.19999999999999996
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.6,
+          0.25,
+          -0.65
+        ],
+        "size": [
+          0.48,
+          0.48,
+          0.19999999999999996
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.525,
+          0.8474999999999999,
+          0.30999999999999994
+        ],
+        "size": [
+          0.0896,
+          0.025000000000000022,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.525,
+          0.8799999999999999,
+          0.30999999999999994
+        ],
+        "size": [
+          0.064,
+          0.039999999999999925,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.525,
+          0.8474999999999999,
+          -0.30999999999999994
+        ],
+        "size": [
+          0.0896,
+          0.025000000000000022,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.525,
+          0.8799999999999999,
+          -0.30999999999999994
+        ],
+        "size": [
+          0.064,
+          0.039999999999999925,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.525,
+          0.8474999999999999,
+          0.30999999999999994
+        ],
+        "size": [
+          0.0896,
+          0.025000000000000022,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.525,
+          0.8799999999999999,
+          0.30999999999999994
+        ],
+        "size": [
+          0.064,
+          0.039999999999999925,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.525,
+          0.8474999999999999,
+          -0.30999999999999994
+        ],
+        "size": [
+          0.0896,
+          0.025000000000000022,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.525,
+          0.8799999999999999,
+          -0.30999999999999994
+        ],
+        "size": [
+          0.064,
+          0.039999999999999925,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "carriage_translation",
+      "pivot": [
+        0.0,
+        0.30000001192092896,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "carriage",
+        "deck",
+        "roller",
+        "roller.001",
+        "roller.002",
+        "roller.003",
+        "payload_plate_gasket",
+        "payload_plate_lid",
+        "bolt_washer",
+        "captive_fastener",
+        "bolt_washer.001",
+        "captive_fastener.001",
+        "bolt_washer.002",
+        "captive_fastener.002",
+        "bolt_washer.003",
+        "captive_fastener.003",
+        "end_buffer",
+        "end_buffer.001"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "mechanisms",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.8500000238418579,
+      0.01000000536441803,
+      -0.75
+    ],
+    "max": [
+      0.8500000238418579,
+      0.8999999761581421,
+      0.75
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_rail_carriage_lod0.glb",
+      "triangles": 6456,
+      "draws": 4,
+      "bytes": 561828,
+      "method": "source",
+      "sha256": "8907b7a4ffa19fb221d59feb8a712c5fdbb7e72af571b1296097cf76f24f1b67"
+    },
+    {
+      "level": 1,
+      "file": "ops_rail_carriage_lod1.glb",
+      "triangles": 1160,
+      "draws": 4,
+      "bytes": 294756,
+      "method": "Forge-decimation",
+      "sha256": "2bc7a501d75a01b2d0fbc7803ab2668967dc4f39fd1813cf60afe577898955bf"
+    },
+    {
+      "level": 2,
+      "file": "ops_rail_carriage_lod2.glb",
+      "triangles": 522,
+      "draws": 4,
+      "bytes": 266716,
+      "method": "Forge-decimation",
+      "sha256": "f77b5cf0b266b71c264c607bbecc7cbb9320f3615ca3ce8b35454065032f16f1"
+    }
+  ]
+}

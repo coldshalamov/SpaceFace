@@ -1,0 +1,380 @@
+TAP version 13
+# Subtest: still-player latch engages with nearby non-touching rocks
+ok 1 - still-player latch engages with nearby non-touching rocks
+  ---
+  duration_ms: 5.785835
+  ...
+# Subtest: asteroidField.version bump wakes still-player latch
+ok 2 - asteroidField.version bump wakes still-player latch
+  ---
+  duration_ms: 0.830564
+  ...
+# Subtest: player move beyond wake radius re-probes
+ok 3 - player move beyond wake radius re-probes
+  ---
+  duration_ms: 0.729005
+  ...
+# Subtest: player unpark (speed) clears latch and re-queries
+ok 4 - player unpark (speed) clears latch and re-queries
+  ---
+  duration_ms: 0.835282
+  ...
+# Subtest: touching rock promotes on first probe before latch
+ok 5 - touching rock promotes on first probe before latch
+  ---
+  duration_ms: 1.54147
+  ...
+# Subtest: bench toggle off restores always-query (no latch)
+ok 6 - bench toggle off restores always-query (no latch)
+  ---
+  duration_ms: 0.524715
+  ...
+# Subtest: quiet latch engages when typed bombs bucket is empty
+ok 7 - quiet latch engages when typed bombs bucket is empty
+  ---
+  duration_ms: 2.223472
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 8 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 0.407851
+  ...
+# Subtest: dropBomb edge refuses latch and consumes edge
+ok 9 - dropBomb edge refuses latch and consumes edge
+  ---
+  duration_ms: 0.570434
+  ...
+# Subtest: live bomb in bucket refuses latch
+ok 10 - live bomb in bucket refuses latch
+  ---
+  duration_ms: 0.569166
+  ...
+# Subtest: bench toggle OFF keeps quietLatched false on empty
+ok 11 - bench toggle OFF keeps quietLatched false on empty
+  ---
+  duration_ms: 0.2305
+  ...
+# Subtest: without ready bombs bucket latch refuses
+ok 12 - without ready bombs bucket latch refuses
+  ---
+  duration_ms: 0.322627
+  ...
+# Subtest: quiet latch engages when far table empty
+ok 13 - quiet latch engages when far table empty
+  ---
+  duration_ms: 6.255818
+  ...
+# Subtest: farActors.version bump wakes empty quiet latch
+ok 14 - farActors.version bump wakes empty quiet latch
+  ---
+  duration_ms: 0.673808
+  ...
+# Subtest: player move beyond wake radius re-probes
+ok 15 - player move beyond wake radius re-probes
+  ---
+  duration_ms: 0.499398
+  ...
+# Subtest: far rows present refuse empty latch and still query
+ok 16 - far rows present refuse empty latch and still query
+  ---
+  duration_ms: 2.159466
+  ...
+# Subtest: bench toggle off restores always-walk (no latch)
+ok 17 - bench toggle off restores always-walk (no latch)
+  ---
+  duration_ms: 0.458841
+  ...
+# Subtest: queryFarActors empty early-return matches empty grid result
+ok 18 - queryFarActors empty early-return matches empty grid result
+  ---
+  duration_ms: 0.363877
+  ...
+# Subtest: far quiet latch engages beyond approach band
+ok 19 - far quiet latch engages beyond approach band
+  ---
+  duration_ms: 5.433475
+  ...
+# Subtest: near station prevents latch
+ok 20 - near station prevents latch
+  ---
+  duration_ms: 1.243238
+  ...
+# Subtest: dirty-wake on player move beyond wake disc
+ok 21 - dirty-wake on player move beyond wake disc
+  ---
+  duration_ms: 2.009854
+  ...
+# Subtest: dirty-wake on membership bump
+ok 22 - dirty-wake on membership bump
+  ---
+  duration_ms: 1.42162
+  ...
+# Subtest: bench toggle off forces full walk
+ok 23 - bench toggle off forces full walk
+  ---
+  duration_ms: 1.052308
+  ...
+# Subtest: capture/approach inside band never latches
+ok 24 - capture/approach inside band never latches
+  ---
+  duration_ms: 0.865139
+  ...
+# Subtest: quiet latch engages when far empty and no virt candidates
+ok 25 - quiet latch engages when far empty and no virt candidates
+  ---
+  duration_ms: 7.660201
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 26 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 0.957107
+  ...
+# Subtest: bench toggle off refuses latch
+ok 27 - bench toggle off refuses latch
+  ---
+  duration_ms: 0.665341
+  ...
+# Subtest: far rows present never skip restore path
+ok 28 - far rows present never skip restore path
+  ---
+  duration_ms: 2.583989
+  ...
+# Subtest: dormant far ship still shelves when latch off-window
+ok 29 - dormant far ship still shelves when latch off-window
+  ---
+  duration_ms: 0.934498
+  ...
+# Subtest: rescan clears latch after window
+ok 30 - rescan clears latch after window
+  ---
+  duration_ms: 0.826799
+  ...
+# Subtest: quiet latch engages on idle flight with no field interest
+ok 31 - quiet latch engages on idle flight with no field interest
+  ---
+  duration_ms: 5.554223
+  ...
+# Subtest: membership bump wakes idle quiet latch
+ok 32 - membership bump wakes idle quiet latch
+  ---
+  duration_ms: 4.388045
+  ...
+# Subtest: player cone deploy leaves idle and clears latch
+ok 33 - player cone deploy leaves idle and clears latch
+  ---
+  duration_ms: 1.147398
+  ...
+# Subtest: bench toggle restores always-walk idle path
+ok 34 - bench toggle restores always-walk idle path
+  ---
+  duration_ms: 0.58929
+  ...
+# Subtest: latched idle skips discover until rescan window
+ok 35 - latched idle skips discover until rescan window
+  ---
+  duration_ms: 0.662665
+  ...
+# Subtest: quiet latch engages when no optic interest nearby
+ok 36 - quiet latch engages when no optic interest nearby
+  ---
+  duration_ms: 5.108536
+  ...
+# Subtest: field.version bump wakes optic quiet latch
+ok 37 - field.version bump wakes optic quiet latch
+  ---
+  duration_ms: 0.711636
+  ...
+# Subtest: membership bump wakes optic quiet latch
+ok 38 - membership bump wakes optic quiet latch
+  ---
+  duration_ms: 0.48315
+  ...
+# Subtest: player move beyond wake radius clears optic quiet latch path
+ok 39 - player move beyond wake radius clears optic quiet latch path
+  ---
+  duration_ms: 0.509037
+  ...
+# Subtest: nearby optic field rock prevents latch and promotes on approach
+ok 40 - nearby optic field rock prevents latch and promotes on approach
+  ---
+  duration_ms: 1.423052
+  ...
+# Subtest: bench toggle off restores always-walk
+ok 41 - bench toggle off restores always-walk
+  ---
+  duration_ms: 0.41799
+  ...
+# Subtest: all-identified quiet latch engages
+ok 42 - all-identified quiet latch engages
+  ---
+  duration_ms: 6.19614
+  ...
+# Subtest: unidentified POI prevents latch
+ok 43 - unidentified POI prevents latch
+  ---
+  duration_ms: 1.124148
+  ...
+# Subtest: dirty-wake on pois.length
+ok 44 - dirty-wake on pois.length
+  ---
+  duration_ms: 0.902818
+  ...
+# Subtest: dirty-wake on sector change
+ok 45 - dirty-wake on sector change
+  ---
+  duration_ms: 0.719639
+  ...
+# Subtest: proximity identify still works when unlatched
+ok 46 - proximity identify still works when unlatched
+  ---
+  duration_ms: 1.106972
+  ...
+# Subtest: bench toggle off disables latch
+ok 47 - bench toggle off disables latch
+  ---
+  duration_ms: 0.695973
+  ...
+# Subtest: corridor volume: inside the mouth lane classifies corridor, outside does not
+ok 48 - corridor volume: inside the mouth lane classifies corridor, outside does not
+  ---
+  duration_ms: 3.942343
+  ...
+# Subtest: capture volume: the lane and the berth hug classify capture
+ok 49 - capture volume: the lane and the berth hug classify capture
+  ---
+  duration_ms: 0.457741
+  ...
+# Subtest: default station autopilot finishes inside the manifest berth gate, not the legacy center ring
+ok 50 - default station autopilot finishes inside the manifest berth gate, not the legacy center ring
+  ---
+  duration_ms: 1.565372
+  ...
+# Subtest: default station autopilot stages an outside-gap approach through the authored corridor mouth
+ok 51 - default station autopilot stages an outside-gap approach through the authored corridor mouth
+  ---
+  duration_ms: 0.667594
+  ...
+# Subtest: a hull knocked off the lane keeps the mouth aim, and lane lock only arms inside the lane
+ok 52 - a hull knocked off the lane keeps the mouth aim, and lane lock only arms inside the lane
+  ---
+  duration_ms: 0.347543
+  ...
+# Subtest: lane-locked berth guidance paces traffic squarely ahead instead of ramming it
+ok 53 - lane-locked berth guidance paces traffic squarely ahead instead of ramming it
+  ---
+  duration_ms: 0.765277
+  ...
+# Subtest: speed gates: corridor admits ≤55, capture admits ≤26, berth admits ≤12
+ok 54 - speed gates: corridor admits ≤55, capture admits ≤26, berth admits ≤12
+  ---
+  duration_ms: 0.203052
+  ...
+# Subtest: live PQ-024 contact floor still emits dock range before the compound proxy can expel the ship
+ok 55 - live PQ-024 contact floor still emits dock range before the compound proxy can expel the ship
+  ---
+  duration_ms: 0.621304
+  ...
+# Subtest: heading gate: outbound and tangential motion are rejected, near-stationary is always ok
+ok 56 - heading gate: outbound and tangential motion are rejected, near-stationary is always ok
+  ---
+  duration_ms: 0.623414
+  ...
+# Subtest: assist is bounded by maxAccel across the whole capture lane
+ok 57 - assist is bounded by maxAccel across the whole capture lane
+  ---
+  duration_ms: 0.732526
+  ...
+# Subtest: assist force → 0 at the berth and points at the berth elsewhere
+ok 58 - assist force → 0 at the berth and points at the berth elsewhere
+  ---
+  duration_ms: 0.333689
+  ...
+# Subtest: no assist outside the capture volume or past a failed gate
+ok 59 - no assist outside the capture volume or past a failed gate
+  ---
+  duration_ms: 0.220538
+  ...
+# Subtest: player-input blend: assist fades by inputMag × inputBlend and is never negative
+ok 60 - player-input blend: assist fades by inputMag × inputBlend and is never negative
+  ---
+  duration_ms: 0.248299
+  ...
+# Subtest: capture trajectory is deterministic, bounded, and converges onto the berth
+ok 61 - capture trajectory is deterministic, bounded, and converges onto the berth
+  ---
+  duration_ms: 19.166351
+  ...
+# Subtest: system update publishes the capture readout and queues an additive membrane impulse
+ok 62 - system update publishes the capture readout and queues an additive membrane impulse
+  ---
+  duration_ms: 1.994941
+  ...
+# Subtest: system update preserves the input blend through the membrane
+ok 63 - system update preserves the input blend through the membrane
+  ---
+  duration_ms: 0.559557
+  ...
+# Subtest: system update owes nothing outside the corridor, when docked, or for legacy stations
+ok 64 - system update owes nothing outside the corridor, when docked, or for legacy stations
+  ---
+  duration_ms: 0.513921
+  ...
+# Subtest: the nearest manifest station wins when several are in range
+ok 65 - the nearest manifest station wins when several are in range
+  ---
+  duration_ms: 0.409963
+  ...
+# Subtest: proxy diagnostics publish frozen world geometry on the physicsRuntime surface (debug seam)
+ok 66 - proxy diagnostics publish frozen world geometry on the physicsRuntime surface (debug seam)
+  ---
+  duration_ms: 0.426619
+  ...
+# Subtest: system update is deterministic across identical fresh states
+ok 67 - system update is deterministic across identical fresh states
+  ---
+  duration_ms: 0.511736
+  ...
+# Subtest: real authority: capture settles at the berth with bounded per-tick velocity change
+ok 68 - real authority: capture settles at the berth with bounded per-tick velocity change
+  ---
+  duration_ms: 153.89942
+  ...
+# Subtest: real authority: identical timeline produces an identical trajectory hash, twice
+ok 69 - real authority: identical timeline produces an identical trajectory hash, twice
+  ---
+  duration_ms: 71.924676
+  ...
+# Subtest: real authority: an off-lane knock inside the silhouette recovers through the mouth aim
+ok 70 - real authority: an off-lane knock inside the silhouette recovers through the mouth aim
+  ---
+  duration_ms: 6.296578
+  ...
+# Subtest: real authority: a tangential burn-speed approach sheds the burn and berths
+ok 71 - real authority: a tangential burn-speed approach sheds the burn and berths
+  ---
+  duration_ms: 511.061008
+  ...
+# Subtest: real authority: an outbound burn-speed expulsion brakes, turns back, and berths
+ok 72 - real authority: an outbound burn-speed expulsion brakes, turns back, and berths
+  ---
+  duration_ms: 358.805276
+  ...
+# Subtest: real authority: an inbound burn-speed approach berths promptly
+ok 73 - real authority: an inbound burn-speed approach berths promptly
+  ---
+  duration_ms: 76.794692
+  ...
+# Subtest: real authority: a latched hull at the soak drift state re-opens the stop plan
+ok 74 - real authority: a latched hull at the soak drift state re-opens the stop plan
+  ---
+  duration_ms: 55.200971
+  ...
+1..74
+# tests 74
+# suites 0
+# pass 74
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1725.263882

@@ -1,0 +1,3906 @@
+{
+  "schema": "spaceface.nocturne.content-evidence.v1",
+  "createdAt": "2026-10-23T16:52:23.883Z",
+  "verdict": "PASS — focused content, physical illumination and shader validation",
+  "gameplayAcceptance": false,
+  "hardwareAcceptance": false,
+  "evidenceClass": "Synthetic industrial, derelict and alien authoring rigs; combat target is the exact pinned Kestrel release GLB. No running simulation. Production lighting/material modules at the documented gameplay camera.",
+  "performanceCaveat": "CPU submit timing only, with the same fixed-light shader on both sides; no target GPU budget, baseline renderer comparison or frame-pacing acceptance.",
+  "source": {
+    "parentCommit": "d5f5c74533efcfdeaa5872cd66676b21ad8e2bcf",
+    "workingTreeContentPinnedBySha256": true,
+    "hashes": {
+      "scripts/nocturne-content-check.mjs": "2ba1b976599ea2d6a2d1779781672f0c15819d7037bab5260315189ea27d23a9",
+      "src/data/nocturneLighting.js": "45046a2e62cfa23446be493a71ae86fd8b5176097fafa9e93d2c249561b66085",
+      "src/render/nocturne/content.js": "56d0554caca3a0b9e06c17cb56497a383bf1a01538b7c6e10ee26da89fd9085b",
+      "src/render/nocturne/probes.js": "d099a3da60b9bf807f61a7ff6750df5cd1069692b3b9afdfc853a0863b465864",
+      "src/render/nocturne/registry.js": "797ed8ac9bf315845625942865c477ad227687a9c0f373a8d2341f9ffc26a867",
+      "src/render/nocturne/director.js": "94d5a205b485a1132f1b25375550d39437ce42c2c36ae3a5140f0d9f700b8568",
+      "src/render/nocturne/headlightSources.js": "dd2c742063e450f9df4b03204a8267fcf3791e4e3087c22f634e1a237e1e579f",
+      "src/render/nocturne/atmosphere.js": "e1d909c6751eefbc6abb8aef5d851c378b420f4988edaa741100dbebf7b00bd2",
+      "src/render/illustratedSurface.js": "353f20f21be74e3b3acda222b65f6a0de3501d2727a35109bf0c76a47fd09674",
+      "src/render/authoredMaterialProfiles.js": "e3ae4e081bc24727783d77ac902ead049613c5f006575dcfb6c095e05610a03b",
+      "src/render/look.js": "28f86ea887a67300ec0828ffad16e9e15fe5b2d2dde2cb1baafc4ee3690cd868",
+      "src/data/lookMoods.js": "f05a7b41957f4afc7350f8359b8a7a64d3558c0afd148cf47d775c0a9a1f98d8",
+      "src/render/camera.js": "cea1f1d4aafe62d8a49966520621a27ac53a9ba463c2307ae2d890bc7c154fe0",
+      "src/render/bloom.js": "c1fc6760e7bedb36eea39022c43dba57129d00587dd3d303387111865eaf5b2f",
+      "vendor/three.module.js": "e8d706266e418b6c00266d214c64c4d6eb79c06d2bd989a98f763c2d68e257a5",
+      "vendor/three.core.js": "368dc78835287709a48939e8eb9a7a61d0732098bdf916e56840d458aae9ccf3"
+    }
+  },
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "node": "v24.19.0"
+  },
+  "browser": {
+    "version": "134.0.6998.35",
+    "softwareRequested": true
+  },
+  "identity": {
+    "threeRevision": "184",
+    "illustratedSurfaceKey": "spaceface-illustrated-surface-v19-nocturne",
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "vendor": "Google Inc. (Google)",
+    "webgl2": true,
+    "viewport": {
+      "width": 960,
+      "height": 540
+    },
+    "camera": {
+      "fov": 50,
+      "distance": 144,
+      "tilt": 60,
+      "position": [
+        0,
+        124.70765814495915,
+        -72.00000000000001
+      ],
+      "near": 1,
+      "far": 14000
+    },
+    "directBudget": {
+      "points": 8,
+      "spots": 3,
+      "shadows": 1,
+      "shadowResolution": 512,
+      "directionals": 1
+    },
+    "geometry": "Synthetic industrial, derelict and alien authoring rigs; combat target is the exact pinned Kestrel release GLB. No running simulation."
+  },
+  "authoredAsset": {
+    "path": "assets/ships/release/render-packages/kestrel/render.glb",
+    "gitBlobSha1": "761698bdd8482225b179066a45827c0685366960",
+    "bytes": 1568848,
+    "materialPipeline": "Vendored GLTFLoader/KTX2/Meshopt, configureAuthoredMaterialProfiles, illustratedSurface; direct GLB geometry, not the game render-package draw plan."
+  },
+  "cells": {
+    "industrial": {
+      "authoring": {
+        "name": "industrial",
+        "description": "Elevated amber gantry, lateral furnace aperture and isolated cyan workbench."
+      },
+      "modes": {
+        "off": {
+          "composition": "industrial",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 6
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 0,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 2,
+            "replacements": 3,
+            "selections": 12,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 0,
+          "media": [
+            {
+              "id": "nocturne-medium:industrial-foundry",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                90.75,
+                38.5,
+                71.5
+              ],
+              "density": 0.0018
+            }
+          ],
+          "exposure": 0.9,
+          "exposureRange": [
+            0.72,
+            1
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:industrial-foundry:gantry",
+              "type": "spot",
+              "position": [
+                -39,
+                26,
+                14
+              ],
+              "target": [
+                24.75,
+                -2.75,
+                13.75
+              ],
+              "intensity": 6400,
+              "color": [
+                1,
+                0.45641102317066595,
+                0.11193242782769693
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:process",
+              "type": "area",
+              "position": [
+                29,
+                8,
+                18
+              ],
+              "target": [
+                -11,
+                0,
+                5.5
+              ],
+              "intensity": 8500,
+              "color": [
+                1,
+                0.16202937562896222,
+                0.024157632443547246
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:work",
+              "type": "point",
+              "position": [
+                -30,
+                10,
+                -25
+              ],
+              "target": [
+                -30,
+                9,
+                -25
+              ],
+              "intensity": 2100,
+              "color": [
+                0.17788841597328695,
+                0.5775804404214573,
+                1
+              ]
+            }
+          ],
+          "programs": 5,
+          "calls": 29,
+          "triangles": 818,
+          "geometries": 30,
+          "textures": 12,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 0,
+            "lights": 0,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 3,
+            "historyReason": "enabled-change",
+            "generation": 3,
+            "renderedFrames": 0,
+            "vacuumFrames": 0,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "direct": {
+          "composition": "industrial",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 8
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 3,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 3,
+            "replacements": 3,
+            "selections": 15,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": true
+          },
+          "probes": 0,
+          "media": [
+            {
+              "id": "nocturne-medium:industrial-foundry",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                90.75,
+                38.5,
+                71.5
+              ],
+              "density": 0.0018
+            }
+          ],
+          "exposure": 0.9,
+          "exposureRange": [
+            0.72,
+            1
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:industrial-foundry:gantry",
+              "type": "spot",
+              "position": [
+                -39,
+                26,
+                14
+              ],
+              "target": [
+                24.75,
+                -2.75,
+                13.75
+              ],
+              "intensity": 6400,
+              "color": [
+                1,
+                0.45641102317066595,
+                0.11193242782769693
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:process",
+              "type": "area",
+              "position": [
+                29,
+                8,
+                18
+              ],
+              "target": [
+                -11,
+                0,
+                5.5
+              ],
+              "intensity": 8500,
+              "color": [
+                1,
+                0.16202937562896222,
+                0.024157632443547246
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:work",
+              "type": "point",
+              "position": [
+                -30,
+                10,
+                -25
+              ],
+              "target": [
+                -30,
+                9,
+                -25
+              ],
+              "intensity": 2100,
+              "color": [
+                0.17788841597328695,
+                0.5775804404214573,
+                1
+              ]
+            }
+          ],
+          "programs": 5,
+          "calls": 29,
+          "triangles": 818,
+          "geometries": 30,
+          "textures": 12,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 0,
+            "lights": 0,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 3,
+            "historyReason": "enabled-change",
+            "generation": 3,
+            "renderedFrames": 0,
+            "vacuumFrames": 0,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "on": {
+          "composition": "industrial",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 9
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 3,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 3,
+            "replacements": 3,
+            "selections": 18,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 1,
+          "media": [
+            {
+              "id": "nocturne-medium:industrial-foundry",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                90.75,
+                38.5,
+                71.5
+              ],
+              "density": 0.0018
+            }
+          ],
+          "exposure": 0.9,
+          "exposureRange": [
+            0.72,
+            1
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:industrial-foundry:gantry",
+              "type": "spot",
+              "position": [
+                -39,
+                26,
+                14
+              ],
+              "target": [
+                24.75,
+                -2.75,
+                13.75
+              ],
+              "intensity": 6400,
+              "color": [
+                1,
+                0.45641102317066595,
+                0.11193242782769693
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:process",
+              "type": "area",
+              "position": [
+                29,
+                8,
+                18
+              ],
+              "target": [
+                -11,
+                0,
+                5.5
+              ],
+              "intensity": 8500,
+              "color": [
+                1,
+                0.16202937562896222,
+                0.024157632443547246
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:work",
+              "type": "point",
+              "position": [
+                -30,
+                10,
+                -25
+              ],
+              "target": [
+                -30,
+                9,
+                -25
+              ],
+              "intensity": 2100,
+              "color": [
+                0.17788841597328695,
+                0.5775804404214573,
+                1
+              ]
+            }
+          ],
+          "programs": 5,
+          "calls": 29,
+          "triangles": 818,
+          "geometries": 30,
+          "textures": 12,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 0,
+            "lights": 0,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 3,
+            "historyReason": "enabled-change",
+            "generation": 3,
+            "renderedFrames": 0,
+            "vacuumFrames": 0,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "probe": {
+          "composition": "industrial",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 11
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 0,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 3,
+            "replacements": 3,
+            "selections": 21,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0.09999999403953552,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 1,
+          "media": [
+            {
+              "id": "nocturne-medium:industrial-foundry",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                90.75,
+                38.5,
+                71.5
+              ],
+              "density": 0.0018
+            }
+          ],
+          "exposure": 0.9,
+          "exposureRange": [
+            0.72,
+            1
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:industrial-foundry:gantry",
+              "type": "spot",
+              "position": [
+                -39,
+                26,
+                14
+              ],
+              "target": [
+                24.75,
+                -2.75,
+                13.75
+              ],
+              "intensity": 6400,
+              "color": [
+                1,
+                0.45641102317066595,
+                0.11193242782769693
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:process",
+              "type": "area",
+              "position": [
+                29,
+                8,
+                18
+              ],
+              "target": [
+                -11,
+                0,
+                5.5
+              ],
+              "intensity": 8500,
+              "color": [
+                1,
+                0.16202937562896222,
+                0.024157632443547246
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:work",
+              "type": "point",
+              "position": [
+                -30,
+                10,
+                -25
+              ],
+              "target": [
+                -30,
+                9,
+                -25
+              ],
+              "intensity": 2100,
+              "color": [
+                0.17788841597328695,
+                0.5775804404214573,
+                1
+              ]
+            }
+          ],
+          "programs": 5,
+          "calls": 29,
+          "triangles": 818,
+          "geometries": 30,
+          "textures": 12,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 0,
+            "lights": 0,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 3,
+            "historyReason": "enabled-change",
+            "generation": 3,
+            "renderedFrames": 0,
+            "vacuumFrames": 0,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "composed": {
+          "composition": "industrial",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 12
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 3,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 4,
+            "replacements": 3,
+            "selections": 24,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": true
+          },
+          "probes": 1,
+          "media": [
+            {
+              "id": "nocturne-medium:industrial-foundry",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                90.75,
+                38.5,
+                71.5
+              ],
+              "density": 0.0018
+            }
+          ],
+          "exposure": 0.9,
+          "exposureRange": [
+            0.72,
+            1
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:industrial-foundry:gantry",
+              "type": "spot",
+              "position": [
+                -39,
+                26,
+                14
+              ],
+              "target": [
+                24.75,
+                -2.75,
+                13.75
+              ],
+              "intensity": 6400,
+              "color": [
+                1,
+                0.45641102317066595,
+                0.11193242782769693
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:process",
+              "type": "area",
+              "position": [
+                29,
+                8,
+                18
+              ],
+              "target": [
+                -11,
+                0,
+                5.5
+              ],
+              "intensity": 8500,
+              "color": [
+                1,
+                0.16202937562896222,
+                0.024157632443547246
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:work",
+              "type": "point",
+              "position": [
+                -30,
+                10,
+                -25
+              ],
+              "target": [
+                -30,
+                9,
+                -25
+              ],
+              "intensity": 2100,
+              "color": [
+                0.17788841597328695,
+                0.5775804404214573,
+                1
+              ]
+            }
+          ],
+          "programs": 6,
+          "calls": 34,
+          "triangles": 828,
+          "geometries": 30,
+          "textures": 16,
+          "atmosphere": {
+            "enabled": true,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": true,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 1,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": true,
+            "historyRejects": 5,
+            "historyReason": "sources-changed",
+            "generation": 5,
+            "renderedFrames": 12,
+            "vacuumFrames": 0,
+            "shadowedLightId": 32,
+            "shadowMode": "one-selected-spot-pcf",
+            "shadowEncoding": "native-depth-comparison",
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        }
+      },
+      "directVsOff": {
+        "surfacePixels": 152507,
+        "changedSurfacePixels": 120201,
+        "nonzeroSurfacePixels": 143580,
+        "meanAbsoluteRgbByteDelta": 32.59950253649559,
+        "meanSignedRgbByteDelta": [
+          26.951549764928824,
+          30.963595113666912,
+          39.79612739087386
+        ],
+        "maximumByteDelta": 255,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "onVsOff": {
+        "surfacePixels": 152507,
+        "changedSurfacePixels": 131646,
+        "nonzeroSurfacePixels": 151761,
+        "meanAbsoluteRgbByteDelta": 34.92459362521065,
+        "meanSignedRgbByteDelta": [
+          29.88346108703207,
+          32.78536722904522,
+          42.00659641852505
+        ],
+        "maximumByteDelta": 255,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "probeVsOff": {
+        "surfacePixels": 152507,
+        "changedSurfacePixels": 90513,
+        "nonzeroSurfacePixels": 145369,
+        "meanAbsoluteRgbByteDelta": 2.1591883214103835,
+        "meanSignedRgbByteDelta": [
+          2.611971909486122,
+          1.6802966421213452,
+          2.159763158412401
+        ],
+        "maximumByteDelta": 44,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "programsStableAcrossToggle": true,
+      "brightComparison": {
+        "mood": "arcade",
+        "sunIntensity": 1.3,
+        "ambientIntensity": 0.035,
+        "off": {
+          "composition": "industrial",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 14
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 0,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 4,
+            "replacements": 3,
+            "selections": 27,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 0,
+          "media": [
+            {
+              "id": "nocturne-medium:industrial-foundry",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                90.75,
+                38.5,
+                71.5
+              ],
+              "density": 0.0018
+            }
+          ],
+          "exposure": 0.9,
+          "exposureRange": [
+            0.72,
+            1
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:industrial-foundry:gantry",
+              "type": "spot",
+              "position": [
+                -39,
+                26,
+                14
+              ],
+              "target": [
+                24.75,
+                -2.75,
+                13.75
+              ],
+              "intensity": 6400,
+              "color": [
+                1,
+                0.45641102317066595,
+                0.11193242782769693
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:process",
+              "type": "area",
+              "position": [
+                29,
+                8,
+                18
+              ],
+              "target": [
+                -11,
+                0,
+                5.5
+              ],
+              "intensity": 8500,
+              "color": [
+                1,
+                0.16202937562896222,
+                0.024157632443547246
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:work",
+              "type": "point",
+              "position": [
+                -30,
+                10,
+                -25
+              ],
+              "target": [
+                -30,
+                9,
+                -25
+              ],
+              "intensity": 2100,
+              "color": [
+                0.17788841597328695,
+                0.5775804404214573,
+                1
+              ]
+            }
+          ],
+          "programs": 6,
+          "calls": 29,
+          "triangles": 818,
+          "geometries": 30,
+          "textures": 12,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 6,
+            "historyReason": "enabled-change",
+            "generation": 6,
+            "renderedFrames": 12,
+            "vacuumFrames": 0,
+            "shadowedLightId": 32,
+            "shadowMode": "one-selected-spot-pcf",
+            "shadowEncoding": "native-depth-comparison",
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "direct": {
+          "composition": "industrial",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 15
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 3,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 5,
+            "replacements": 3,
+            "selections": 30,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": true
+          },
+          "probes": 0,
+          "media": [
+            {
+              "id": "nocturne-medium:industrial-foundry",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                90.75,
+                38.5,
+                71.5
+              ],
+              "density": 0.0018
+            }
+          ],
+          "exposure": 0.9,
+          "exposureRange": [
+            0.72,
+            1
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:industrial-foundry:gantry",
+              "type": "spot",
+              "position": [
+                -39,
+                26,
+                14
+              ],
+              "target": [
+                24.75,
+                -2.75,
+                13.75
+              ],
+              "intensity": 6400,
+              "color": [
+                1,
+                0.45641102317066595,
+                0.11193242782769693
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:process",
+              "type": "area",
+              "position": [
+                29,
+                8,
+                18
+              ],
+              "target": [
+                -11,
+                0,
+                5.5
+              ],
+              "intensity": 8500,
+              "color": [
+                1,
+                0.16202937562896222,
+                0.024157632443547246
+              ]
+            },
+            {
+              "id": "nocturne:entity:industrial-foundry:work",
+              "type": "point",
+              "position": [
+                -30,
+                10,
+                -25
+              ],
+              "target": [
+                -30,
+                9,
+                -25
+              ],
+              "intensity": 2100,
+              "color": [
+                0.17788841597328695,
+                0.5775804404214573,
+                1
+              ]
+            }
+          ],
+          "programs": 6,
+          "calls": 29,
+          "triangles": 818,
+          "geometries": 30,
+          "textures": 12,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 6,
+            "historyReason": "enabled-change",
+            "generation": 6,
+            "renderedFrames": 12,
+            "vacuumFrames": 0,
+            "shadowedLightId": 32,
+            "shadowMode": "one-selected-spot-pcf",
+            "shadowEncoding": "native-depth-comparison",
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "directVsOff": {
+          "surfacePixels": 152507,
+          "changedSurfacePixels": 122916,
+          "nonzeroSurfacePixels": 144600,
+          "meanAbsoluteRgbByteDelta": 25.959217172545085,
+          "meanSignedRgbByteDelta": [
+            22.001416328430825,
+            24.50677018104087,
+            31.338135298707602
+          ],
+          "maximumByteDelta": 247,
+          "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+        }
+      },
+      "submitTiming": {
+        "samplesPerMode": 8,
+        "offMedianMs": 0.8999999985098839,
+        "onMedianMs": 1,
+        "raw": {
+          "off": [
+            0.6000000014901161,
+            0.8999999985098839,
+            0.6000000014901161,
+            0.8999999985098839,
+            0.8999999985098839,
+            0.6000000014901161,
+            0.9000000059604645,
+            1
+          ],
+          "on": [
+            1,
+            0.7999999970197678,
+            1,
+            1,
+            0.8999999985098839,
+            0.8999999985098839,
+            1.3000000044703484,
+            0.8000000044703484
+          ]
+        },
+        "incrementalMedianMs": 0.10000000149011612
+      }
+    },
+    "derelict": {
+      "authoring": {
+        "name": "derelict",
+        "description": "Broken compartments, separated emergency batteries and a low leaking core."
+      },
+      "modes": {
+        "off": {
+          "composition": "derelict",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 44
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 0,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 10,
+            "replacements": 9,
+            "selections": 87,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 0,
+          "media": [
+            {
+              "id": "nocturne-medium:derelict-pressure-hull",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                82.5,
+                27.5,
+                44
+              ],
+              "density": 0.0022
+            }
+          ],
+          "exposure": 0.82,
+          "exposureRange": [
+            0.68,
+            0.9
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:warning_fore",
+              "type": "point",
+              "position": [
+                41,
+                8,
+                -24
+              ],
+              "target": [
+                41,
+                7,
+                -24
+              ],
+              "intensity": 1800,
+              "color": [
+                1,
+                0.033104766565152086,
+                0.06662593863608139
+              ]
+            },
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:warning_aft",
+              "type": "point",
+              "position": [
+                -43,
+                5,
+                21
+              ],
+              "target": [
+                -43,
+                4,
+                21
+              ],
+              "intensity": 1800,
+              "color": [
+                1,
+                0.033104766565152086,
+                0.06662593863608139
+              ]
+            },
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:core",
+              "type": "point",
+              "position": [
+                -6,
+                3,
+                -2
+              ],
+              "target": [
+                -6,
+                2,
+                -2
+              ],
+              "intensity": 3900,
+              "color": [
+                0.16202937562896222,
+                0.775822218312646,
+                1
+              ]
+            }
+          ],
+          "programs": 6,
+          "calls": 21,
+          "triangles": 482,
+          "geometries": 50,
+          "textures": 12,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 6,
+            "historyReason": "enabled-change",
+            "generation": 6,
+            "renderedFrames": 12,
+            "vacuumFrames": 0,
+            "shadowedLightId": 32,
+            "shadowMode": "one-selected-spot-pcf",
+            "shadowEncoding": "native-depth-comparison",
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "direct": {
+          "composition": "derelict",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 46
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 3,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 10,
+            "replacements": 9,
+            "selections": 90,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 0,
+          "media": [
+            {
+              "id": "nocturne-medium:derelict-pressure-hull",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                82.5,
+                27.5,
+                44
+              ],
+              "density": 0.0022
+            }
+          ],
+          "exposure": 0.82,
+          "exposureRange": [
+            0.68,
+            0.9
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:warning_fore",
+              "type": "point",
+              "position": [
+                41,
+                8,
+                -24
+              ],
+              "target": [
+                41,
+                7,
+                -24
+              ],
+              "intensity": 1800,
+              "color": [
+                1,
+                0.033104766565152086,
+                0.06662593863608139
+              ]
+            },
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:warning_aft",
+              "type": "point",
+              "position": [
+                -43,
+                5,
+                21
+              ],
+              "target": [
+                -43,
+                4,
+                21
+              ],
+              "intensity": 1800,
+              "color": [
+                1,
+                0.033104766565152086,
+                0.06662593863608139
+              ]
+            },
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:core",
+              "type": "point",
+              "position": [
+                -6,
+                3,
+                -2
+              ],
+              "target": [
+                -6,
+                2,
+                -2
+              ],
+              "intensity": 3900,
+              "color": [
+                0.16202937562896222,
+                0.775822218312646,
+                1
+              ]
+            }
+          ],
+          "programs": 6,
+          "calls": 21,
+          "triangles": 482,
+          "geometries": 50,
+          "textures": 12,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 6,
+            "historyReason": "enabled-change",
+            "generation": 6,
+            "renderedFrames": 12,
+            "vacuumFrames": 0,
+            "shadowedLightId": 32,
+            "shadowMode": "one-selected-spot-pcf",
+            "shadowEncoding": "native-depth-comparison",
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "on": {
+          "composition": "derelict",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 47
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 3,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 10,
+            "replacements": 9,
+            "selections": 93,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 1,
+          "media": [
+            {
+              "id": "nocturne-medium:derelict-pressure-hull",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                82.5,
+                27.5,
+                44
+              ],
+              "density": 0.0022
+            }
+          ],
+          "exposure": 0.82,
+          "exposureRange": [
+            0.68,
+            0.9
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:warning_fore",
+              "type": "point",
+              "position": [
+                41,
+                8,
+                -24
+              ],
+              "target": [
+                41,
+                7,
+                -24
+              ],
+              "intensity": 1800,
+              "color": [
+                1,
+                0.033104766565152086,
+                0.06662593863608139
+              ]
+            },
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:warning_aft",
+              "type": "point",
+              "position": [
+                -43,
+                5,
+                21
+              ],
+              "target": [
+                -43,
+                4,
+                21
+              ],
+              "intensity": 1800,
+              "color": [
+                1,
+                0.033104766565152086,
+                0.06662593863608139
+              ]
+            },
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:core",
+              "type": "point",
+              "position": [
+                -6,
+                3,
+                -2
+              ],
+              "target": [
+                -6,
+                2,
+                -2
+              ],
+              "intensity": 3900,
+              "color": [
+                0.16202937562896222,
+                0.775822218312646,
+                1
+              ]
+            }
+          ],
+          "programs": 6,
+          "calls": 21,
+          "triangles": 482,
+          "geometries": 50,
+          "textures": 12,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 6,
+            "historyReason": "enabled-change",
+            "generation": 6,
+            "renderedFrames": 12,
+            "vacuumFrames": 0,
+            "shadowedLightId": 32,
+            "shadowMode": "one-selected-spot-pcf",
+            "shadowEncoding": "native-depth-comparison",
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "probe": {
+          "composition": "derelict",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 49
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 0,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 10,
+            "replacements": 9,
+            "selections": 96,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 1,
+          "media": [
+            {
+              "id": "nocturne-medium:derelict-pressure-hull",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                82.5,
+                27.5,
+                44
+              ],
+              "density": 0.0022
+            }
+          ],
+          "exposure": 0.82,
+          "exposureRange": [
+            0.68,
+            0.9
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:warning_fore",
+              "type": "point",
+              "position": [
+                41,
+                8,
+                -24
+              ],
+              "target": [
+                41,
+                7,
+                -24
+              ],
+              "intensity": 1800,
+              "color": [
+                1,
+                0.033104766565152086,
+                0.06662593863608139
+              ]
+            },
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:warning_aft",
+              "type": "point",
+              "position": [
+                -43,
+                5,
+                21
+              ],
+              "target": [
+                -43,
+                4,
+                21
+              ],
+              "intensity": 1800,
+              "color": [
+                1,
+                0.033104766565152086,
+                0.06662593863608139
+              ]
+            },
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:core",
+              "type": "point",
+              "position": [
+                -6,
+                3,
+                -2
+              ],
+              "target": [
+                -6,
+                2,
+                -2
+              ],
+              "intensity": 3900,
+              "color": [
+                0.16202937562896222,
+                0.775822218312646,
+                1
+              ]
+            }
+          ],
+          "programs": 6,
+          "calls": 21,
+          "triangles": 482,
+          "geometries": 50,
+          "textures": 12,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 6,
+            "historyReason": "enabled-change",
+            "generation": 6,
+            "renderedFrames": 12,
+            "vacuumFrames": 0,
+            "shadowedLightId": 32,
+            "shadowMode": "one-selected-spot-pcf",
+            "shadowEncoding": "native-depth-comparison",
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "composed": {
+          "composition": "derelict",
+          "content": {
+            "owners": 1,
+            "sources": 3,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 50
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 5,
+            "candidates": 3,
+            "active": 3,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 10,
+            "replacements": 9,
+            "selections": 99,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 1,
+          "media": [
+            {
+              "id": "nocturne-medium:derelict-pressure-hull",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                82.5,
+                27.5,
+                44
+              ],
+              "density": 0.0022
+            }
+          ],
+          "exposure": 0.82,
+          "exposureRange": [
+            0.68,
+            0.9
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:warning_fore",
+              "type": "point",
+              "position": [
+                41,
+                8,
+                -24
+              ],
+              "target": [
+                41,
+                7,
+                -24
+              ],
+              "intensity": 1800,
+              "color": [
+                1,
+                0.033104766565152086,
+                0.06662593863608139
+              ]
+            },
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:warning_aft",
+              "type": "point",
+              "position": [
+                -43,
+                5,
+                21
+              ],
+              "target": [
+                -43,
+                4,
+                21
+              ],
+              "intensity": 1800,
+              "color": [
+                1,
+                0.033104766565152086,
+                0.06662593863608139
+              ]
+            },
+            {
+              "id": "nocturne:entity:derelict-pressure-hull:core",
+              "type": "point",
+              "position": [
+                -6,
+                3,
+                -2
+              ],
+              "target": [
+                -6,
+                2,
+                -2
+              ],
+              "intensity": 3900,
+              "color": [
+                0.16202937562896222,
+                0.775822218312646,
+                1
+              ]
+            }
+          ],
+          "programs": 6,
+          "calls": 26,
+          "triangles": 492,
+          "geometries": 50,
+          "textures": 16,
+          "atmosphere": {
+            "enabled": true,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": true,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 1,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": true,
+            "historyRejects": 8,
+            "historyReason": "sources-changed",
+            "generation": 8,
+            "renderedFrames": 24,
+            "vacuumFrames": 0,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        }
+      },
+      "directVsOff": {
+        "surfacePixels": 97906,
+        "changedSurfacePixels": 73047,
+        "nonzeroSurfacePixels": 78696,
+        "meanAbsoluteRgbByteDelta": 25.036432905031358,
+        "meanSignedRgbByteDelta": [
+          22.653861867505565,
+          21.15083855943456,
+          31.270054950666967
+        ],
+        "maximumByteDelta": 254,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "onVsOff": {
+        "surfacePixels": 97906,
+        "changedSurfacePixels": 73342,
+        "nonzeroSurfacePixels": 82821,
+        "meanAbsoluteRgbByteDelta": 25.11728256354735,
+        "meanSignedRgbByteDelta": [
+          22.794476334443242,
+          21.17457561334341,
+          31.34915122668682
+        ],
+        "maximumByteDelta": 254,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "probeVsOff": {
+        "surfacePixels": 97906,
+        "changedSurfacePixels": 3,
+        "nonzeroSurfacePixels": 12444,
+        "meanAbsoluteRgbByteDelta": 0.04970413798269088,
+        "meanSignedRgbByteDelta": [
+          0.069178599881519,
+          0.012001307376463138,
+          0.06748309603088677
+        ],
+        "maximumByteDelta": 6,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "programsStableAcrossToggle": true,
+      "submitTiming": {
+        "samplesPerMode": 8,
+        "offMedianMs": 0.7999999970197678,
+        "onMedianMs": 0.7999999970197678,
+        "raw": {
+          "off": [
+            1.1999999955296516,
+            1.1000000014901161,
+            0.7000000029802322,
+            0.7000000029802322,
+            0.5999999940395355,
+            1.1000000014901161,
+            0.6999999955296516,
+            0.7999999970197678
+          ],
+          "on": [
+            0.5,
+            0.8000000044703484,
+            0.7000000029802322,
+            1,
+            0.6999999955296516,
+            0.7999999970197678,
+            0.6999999955296516,
+            1.2000000029802322
+          ]
+        },
+        "incrementalMedianMs": 0
+      }
+    },
+    "combat": {
+      "authoring": {
+        "name": "combat",
+        "description": "Moving bow searchlight, aft drive pools and small navigation sources in clear vacuum. The illuminated target is the exact HEAD Kestrel release GLB with authored textures/material profiles (normalized to a 30 WU hull)."
+      },
+      "modes": {
+        "off": {
+          "composition": "combat",
+          "content": {
+            "owners": 2,
+            "sources": 6,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 77
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 8,
+            "candidates": 7,
+            "active": 0,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 10,
+            "replacements": 12,
+            "selections": 153,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 0,
+          "media": [],
+          "exposure": 0.94,
+          "exposureRange": [
+            0.8,
+            1.04
+          ],
+          "sources": [
+            {
+              "id": "headlight:0",
+              "type": "spot",
+              "position": [
+                -25,
+                7,
+                -10
+              ],
+              "target": [
+                78.97267960232692,
+                -7.652027037644835,
+                -10
+              ],
+              "intensity": 25200,
+              "color": [
+                1,
+                0.7912979403281551,
+                0.55201140150344
+              ]
+            },
+            {
+              "id": "headlight:1",
+              "type": "spot",
+              "position": [
+                33.178797718045146,
+                20,
+                3.0849888023044176
+              ],
+              "target": [
+                135.4137691936095,
+                0,
+                -20.852651168890368
+              ],
+              "intensity": 19656,
+              "color": [
+                1,
+                0.7912979403281551,
+                0.55201140150344
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-player:port",
+              "type": "point",
+              "position": [
+                -34,
+                1,
+                -21
+              ],
+              "target": [
+                -34,
+                0,
+                -21
+              ],
+              "intensity": 180,
+              "color": [
+                1,
+                0.05126945836711539,
+                0.09530746662221588
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-player:starboard",
+              "type": "point",
+              "position": [
+                -34,
+                1,
+                1
+              ],
+              "target": [
+                -34,
+                0,
+                1
+              ],
+              "intensity": 180,
+              "color": [
+                0.09530746662221588,
+                1,
+                0.4178850708380236
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:drive",
+              "type": "point",
+              "position": [
+                11.03715640110123,
+                -0.39104278117355495,
+                8.269307148233793
+              ],
+              "target": [
+                11.03715640110123,
+                -1.3910427811735548,
+                8.269307148233793
+              ],
+              "intensity": 1080.0000000000002,
+              "color": [
+                0.21223075687885284,
+                0.68668532371521,
+                1
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:port",
+              "type": "point",
+              "position": [
+                16.639763936248,
+                1.853779203833728,
+                4.021344320954377
+              ],
+              "target": [
+                16.639763936248,
+                0.853779203833728,
+                4.021344320954377
+              ],
+              "intensity": 180,
+              "color": [
+                1,
+                0.0423114113509655,
+                0.023153366521000862
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:starboard",
+              "type": "point",
+              "position": [
+                17.182828157409986,
+                0.4265444428616997,
+                13.88381524915857
+              ],
+              "target": [
+                17.182828157409986,
+                -0.5734555571383003,
+                13.88381524915857
+              ],
+              "intensity": 180,
+              "color": [
+                0.04666508734226227,
+                1,
+                0.1946178376674652
+              ]
+            }
+          ],
+          "programs": 10,
+          "calls": 50,
+          "triangles": 39636,
+          "geometries": 99,
+          "textures": 18,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 9,
+            "historyReason": "enabled-change",
+            "generation": 9,
+            "renderedFrames": 24,
+            "vacuumFrames": 0,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "direct": {
+          "composition": "combat",
+          "content": {
+            "owners": 2,
+            "sources": 6,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 79
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 8,
+            "candidates": 7,
+            "active": 7,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 11,
+            "replacements": 12,
+            "selections": 156,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": true
+          },
+          "probes": 0,
+          "media": [],
+          "exposure": 0.94,
+          "exposureRange": [
+            0.8,
+            1.04
+          ],
+          "sources": [
+            {
+              "id": "headlight:0",
+              "type": "spot",
+              "position": [
+                -25,
+                7,
+                -10
+              ],
+              "target": [
+                78.97267960232692,
+                -7.652027037644835,
+                -10
+              ],
+              "intensity": 25200,
+              "color": [
+                1,
+                0.7912979403281551,
+                0.55201140150344
+              ]
+            },
+            {
+              "id": "headlight:1",
+              "type": "spot",
+              "position": [
+                33.178797718045146,
+                20,
+                3.0849888023044176
+              ],
+              "target": [
+                135.4137691936095,
+                0,
+                -20.852651168890368
+              ],
+              "intensity": 19656,
+              "color": [
+                1,
+                0.7912979403281551,
+                0.55201140150344
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-player:port",
+              "type": "point",
+              "position": [
+                -34,
+                1,
+                -21
+              ],
+              "target": [
+                -34,
+                0,
+                -21
+              ],
+              "intensity": 180,
+              "color": [
+                1,
+                0.05126945836711539,
+                0.09530746662221588
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-player:starboard",
+              "type": "point",
+              "position": [
+                -34,
+                1,
+                1
+              ],
+              "target": [
+                -34,
+                0,
+                1
+              ],
+              "intensity": 180,
+              "color": [
+                0.09530746662221588,
+                1,
+                0.4178850708380236
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:drive",
+              "type": "point",
+              "position": [
+                11.03715640110123,
+                -0.39104278117355495,
+                8.269307148233793
+              ],
+              "target": [
+                11.03715640110123,
+                -1.3910427811735548,
+                8.269307148233793
+              ],
+              "intensity": 1080.0000000000002,
+              "color": [
+                0.21223075687885284,
+                0.68668532371521,
+                1
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:port",
+              "type": "point",
+              "position": [
+                16.639763936248,
+                1.853779203833728,
+                4.021344320954377
+              ],
+              "target": [
+                16.639763936248,
+                0.853779203833728,
+                4.021344320954377
+              ],
+              "intensity": 180,
+              "color": [
+                1,
+                0.0423114113509655,
+                0.023153366521000862
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:starboard",
+              "type": "point",
+              "position": [
+                17.182828157409986,
+                0.4265444428616997,
+                13.88381524915857
+              ],
+              "target": [
+                17.182828157409986,
+                -0.5734555571383003,
+                13.88381524915857
+              ],
+              "intensity": 180,
+              "color": [
+                0.04666508734226227,
+                1,
+                0.1946178376674652
+              ]
+            }
+          ],
+          "programs": 10,
+          "calls": 50,
+          "triangles": 39636,
+          "geometries": 99,
+          "textures": 18,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 9,
+            "historyReason": "enabled-change",
+            "generation": 9,
+            "renderedFrames": 24,
+            "vacuumFrames": 0,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "on": {
+          "composition": "combat",
+          "content": {
+            "owners": 2,
+            "sources": 6,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 80
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 8,
+            "candidates": 7,
+            "active": 7,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 12,
+            "replacements": 12,
+            "selections": 159,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": true
+          },
+          "probes": 0,
+          "media": [],
+          "exposure": 0.94,
+          "exposureRange": [
+            0.8,
+            1.04
+          ],
+          "sources": [
+            {
+              "id": "headlight:0",
+              "type": "spot",
+              "position": [
+                -25,
+                7,
+                -10
+              ],
+              "target": [
+                78.97267960232692,
+                -7.652027037644835,
+                -10
+              ],
+              "intensity": 25200,
+              "color": [
+                1,
+                0.7912979403281551,
+                0.55201140150344
+              ]
+            },
+            {
+              "id": "headlight:1",
+              "type": "spot",
+              "position": [
+                33.178797718045146,
+                20,
+                3.0849888023044176
+              ],
+              "target": [
+                135.4137691936095,
+                0,
+                -20.852651168890368
+              ],
+              "intensity": 19656,
+              "color": [
+                1,
+                0.7912979403281551,
+                0.55201140150344
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-player:port",
+              "type": "point",
+              "position": [
+                -34,
+                1,
+                -21
+              ],
+              "target": [
+                -34,
+                0,
+                -21
+              ],
+              "intensity": 180,
+              "color": [
+                1,
+                0.05126945836711539,
+                0.09530746662221588
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-player:starboard",
+              "type": "point",
+              "position": [
+                -34,
+                1,
+                1
+              ],
+              "target": [
+                -34,
+                0,
+                1
+              ],
+              "intensity": 180,
+              "color": [
+                0.09530746662221588,
+                1,
+                0.4178850708380236
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:drive",
+              "type": "point",
+              "position": [
+                11.03715640110123,
+                -0.39104278117355495,
+                8.269307148233793
+              ],
+              "target": [
+                11.03715640110123,
+                -1.3910427811735548,
+                8.269307148233793
+              ],
+              "intensity": 1080.0000000000002,
+              "color": [
+                0.21223075687885284,
+                0.68668532371521,
+                1
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:port",
+              "type": "point",
+              "position": [
+                16.639763936248,
+                1.853779203833728,
+                4.021344320954377
+              ],
+              "target": [
+                16.639763936248,
+                0.853779203833728,
+                4.021344320954377
+              ],
+              "intensity": 180,
+              "color": [
+                1,
+                0.0423114113509655,
+                0.023153366521000862
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:starboard",
+              "type": "point",
+              "position": [
+                17.182828157409986,
+                0.4265444428616997,
+                13.88381524915857
+              ],
+              "target": [
+                17.182828157409986,
+                -0.5734555571383003,
+                13.88381524915857
+              ],
+              "intensity": 180,
+              "color": [
+                0.04666508734226227,
+                1,
+                0.1946178376674652
+              ]
+            }
+          ],
+          "programs": 10,
+          "calls": 50,
+          "triangles": 39636,
+          "geometries": 99,
+          "textures": 18,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 9,
+            "historyReason": "enabled-change",
+            "generation": 9,
+            "renderedFrames": 24,
+            "vacuumFrames": 0,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "probe": {
+          "composition": "combat",
+          "content": {
+            "owners": 2,
+            "sources": 6,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 82
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 8,
+            "candidates": 7,
+            "active": 0,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 12,
+            "replacements": 12,
+            "selections": 162,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 0,
+          "media": [],
+          "exposure": 0.94,
+          "exposureRange": [
+            0.8,
+            1.04
+          ],
+          "sources": [
+            {
+              "id": "headlight:0",
+              "type": "spot",
+              "position": [
+                -25,
+                7,
+                -10
+              ],
+              "target": [
+                78.97267960232692,
+                -7.652027037644835,
+                -10
+              ],
+              "intensity": 25200,
+              "color": [
+                1,
+                0.7912979403281551,
+                0.55201140150344
+              ]
+            },
+            {
+              "id": "headlight:1",
+              "type": "spot",
+              "position": [
+                33.178797718045146,
+                20,
+                3.0849888023044176
+              ],
+              "target": [
+                135.4137691936095,
+                0,
+                -20.852651168890368
+              ],
+              "intensity": 19656,
+              "color": [
+                1,
+                0.7912979403281551,
+                0.55201140150344
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-player:port",
+              "type": "point",
+              "position": [
+                -34,
+                1,
+                -21
+              ],
+              "target": [
+                -34,
+                0,
+                -21
+              ],
+              "intensity": 180,
+              "color": [
+                1,
+                0.05126945836711539,
+                0.09530746662221588
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-player:starboard",
+              "type": "point",
+              "position": [
+                -34,
+                1,
+                1
+              ],
+              "target": [
+                -34,
+                0,
+                1
+              ],
+              "intensity": 180,
+              "color": [
+                0.09530746662221588,
+                1,
+                0.4178850708380236
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:drive",
+              "type": "point",
+              "position": [
+                11.03715640110123,
+                -0.39104278117355495,
+                8.269307148233793
+              ],
+              "target": [
+                11.03715640110123,
+                -1.3910427811735548,
+                8.269307148233793
+              ],
+              "intensity": 1080.0000000000002,
+              "color": [
+                0.21223075687885284,
+                0.68668532371521,
+                1
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:port",
+              "type": "point",
+              "position": [
+                16.639763936248,
+                1.853779203833728,
+                4.021344320954377
+              ],
+              "target": [
+                16.639763936248,
+                0.853779203833728,
+                4.021344320954377
+              ],
+              "intensity": 180,
+              "color": [
+                1,
+                0.0423114113509655,
+                0.023153366521000862
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:starboard",
+              "type": "point",
+              "position": [
+                17.182828157409986,
+                0.4265444428616997,
+                13.88381524915857
+              ],
+              "target": [
+                17.182828157409986,
+                -0.5734555571383003,
+                13.88381524915857
+              ],
+              "intensity": 180,
+              "color": [
+                0.04666508734226227,
+                1,
+                0.1946178376674652
+              ]
+            }
+          ],
+          "programs": 10,
+          "calls": 50,
+          "triangles": 39636,
+          "geometries": 99,
+          "textures": 18,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 9,
+            "historyReason": "enabled-change",
+            "generation": 9,
+            "renderedFrames": 24,
+            "vacuumFrames": 0,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "composed": {
+          "composition": "combat",
+          "content": {
+            "owners": 2,
+            "sources": 6,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 83
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 8,
+            "candidates": 7,
+            "active": 7,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 13,
+            "replacements": 12,
+            "selections": 165,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": true
+          },
+          "probes": 0,
+          "media": [],
+          "exposure": 0.94,
+          "exposureRange": [
+            0.8,
+            1.04
+          ],
+          "sources": [
+            {
+              "id": "headlight:0",
+              "type": "spot",
+              "position": [
+                -25,
+                7,
+                -10
+              ],
+              "target": [
+                78.97267960232692,
+                -7.652027037644835,
+                -10
+              ],
+              "intensity": 25200,
+              "color": [
+                1,
+                0.7912979403281551,
+                0.55201140150344
+              ]
+            },
+            {
+              "id": "headlight:1",
+              "type": "spot",
+              "position": [
+                33.178797718045146,
+                20,
+                3.0849888023044176
+              ],
+              "target": [
+                135.4137691936095,
+                0,
+                -20.852651168890368
+              ],
+              "intensity": 19656,
+              "color": [
+                1,
+                0.7912979403281551,
+                0.55201140150344
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-player:port",
+              "type": "point",
+              "position": [
+                -34,
+                1,
+                -21
+              ],
+              "target": [
+                -34,
+                0,
+                -21
+              ],
+              "intensity": 180,
+              "color": [
+                1,
+                0.05126945836711539,
+                0.09530746662221588
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-player:starboard",
+              "type": "point",
+              "position": [
+                -34,
+                1,
+                1
+              ],
+              "target": [
+                -34,
+                0,
+                1
+              ],
+              "intensity": 180,
+              "color": [
+                0.09530746662221588,
+                1,
+                0.4178850708380236
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:drive",
+              "type": "point",
+              "position": [
+                11.03715640110123,
+                -0.39104278117355495,
+                8.269307148233793
+              ],
+              "target": [
+                11.03715640110123,
+                -1.3910427811735548,
+                8.269307148233793
+              ],
+              "intensity": 1080.0000000000002,
+              "color": [
+                0.21223075687885284,
+                0.68668532371521,
+                1
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:port",
+              "type": "point",
+              "position": [
+                16.639763936248,
+                1.853779203833728,
+                4.021344320954377
+              ],
+              "target": [
+                16.639763936248,
+                0.853779203833728,
+                4.021344320954377
+              ],
+              "intensity": 180,
+              "color": [
+                1,
+                0.0423114113509655,
+                0.023153366521000862
+              ]
+            },
+            {
+              "id": "nocturne:entity:combat-target:starboard",
+              "type": "point",
+              "position": [
+                17.182828157409986,
+                0.4265444428616997,
+                13.88381524915857
+              ],
+              "target": [
+                17.182828157409986,
+                -0.5734555571383003,
+                13.88381524915857
+              ],
+              "intensity": 180,
+              "color": [
+                0.04666508734226227,
+                1,
+                0.1946178376674652
+              ]
+            }
+          ],
+          "programs": 10,
+          "calls": 54,
+          "triangles": 39644,
+          "geometries": 99,
+          "textures": 22,
+          "atmosphere": {
+            "enabled": true,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 0,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 10,
+            "historyReason": "vacuum",
+            "generation": 10,
+            "renderedFrames": 24,
+            "vacuumFrames": 12,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        }
+      },
+      "directVsOff": {
+        "surfacePixels": 12669,
+        "changedSurfacePixels": 4540,
+        "nonzeroSurfacePixels": 5011,
+        "meanAbsoluteRgbByteDelta": 8.930775909700845,
+        "meanSignedRgbByteDelta": [
+          8.739363801405004,
+          9.402952087773304,
+          8.343278869681901
+        ],
+        "maximumByteDelta": 231,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "onVsOff": {
+        "surfacePixels": 12669,
+        "changedSurfacePixels": 4540,
+        "nonzeroSurfacePixels": 5011,
+        "meanAbsoluteRgbByteDelta": 8.930775909700845,
+        "meanSignedRgbByteDelta": [
+          8.739363801405004,
+          9.402952087773304,
+          8.343278869681901
+        ],
+        "maximumByteDelta": 231,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "probeVsOff": {
+        "surfacePixels": 12669,
+        "changedSurfacePixels": 0,
+        "nonzeroSurfacePixels": 0,
+        "meanAbsoluteRgbByteDelta": 0,
+        "meanSignedRgbByteDelta": [
+          0,
+          0,
+          0
+        ],
+        "maximumByteDelta": 0,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "programsStableAcrossToggle": true,
+      "submitTiming": {
+        "samplesPerMode": 8,
+        "offMedianMs": 1.7999999970197678,
+        "onMedianMs": 1.7000000029802322,
+        "raw": {
+          "off": [
+            1,
+            1.6999999955296516,
+            2.1999999955296516,
+            2,
+            1.5,
+            1.7999999970197678,
+            3.5,
+            1.2000000029802322
+          ],
+          "on": [
+            1.7000000029802322,
+            1.6000000014901161,
+            2.7999999970197678,
+            2.3000000044703484,
+            1.6000000014901161,
+            1.5999999940395355,
+            1.5,
+            1.7000000029802322
+          ]
+        },
+        "incrementalMedianMs": -0.09999999403953552
+      }
+    },
+    "alien": {
+      "authoring": {
+        "name": "alien",
+        "description": "Low green biological pool, elevated violet crown, particulate spores and translated instanced metal debris."
+      },
+      "modes": {
+        "off": {
+          "composition": "alien",
+          "content": {
+            "owners": 1,
+            "sources": 2,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 110
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 4,
+            "candidates": 2,
+            "active": 0,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 21,
+            "replacements": 19,
+            "selections": 219,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 0,
+          "media": [
+            {
+              "id": "nocturne-medium:alien-spore-organism",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                81.60000000000001,
+                56.1,
+                81.60000000000001
+              ],
+              "density": 0.001425
+            }
+          ],
+          "exposure": 0.88,
+          "exposureRange": [
+            0.72,
+            0.96
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:alien-spore-organism:root",
+              "type": "point",
+              "position": [
+                9,
+                5,
+                5
+              ],
+              "target": [
+                9,
+                4,
+                5
+              ],
+              "intensity": 2244,
+              "color": [
+                0.34670405634441115,
+                1,
+                0.08650046202808521
+              ]
+            },
+            {
+              "id": "nocturne:entity:alien-spore-organism:crown",
+              "type": "point",
+              "position": [
+                -20,
+                15,
+                -12
+              ],
+              "target": [
+                -20,
+                14,
+                -12
+              ],
+              "intensity": 1309,
+              "color": [
+                0.4396571738310091,
+                0.16202937562896222,
+                1
+              ]
+            }
+          ],
+          "programs": 10,
+          "calls": 16,
+          "triangles": 1314,
+          "geometries": 115,
+          "textures": 18,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 0,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 11,
+            "historyReason": "enabled-change",
+            "generation": 11,
+            "renderedFrames": 24,
+            "vacuumFrames": 12,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "direct": {
+          "composition": "alien",
+          "content": {
+            "owners": 1,
+            "sources": 2,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 112
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 4,
+            "candidates": 2,
+            "active": 2,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 21,
+            "replacements": 19,
+            "selections": 222,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 0,
+          "media": [
+            {
+              "id": "nocturne-medium:alien-spore-organism",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                81.60000000000001,
+                56.1,
+                81.60000000000001
+              ],
+              "density": 0.001425
+            }
+          ],
+          "exposure": 0.88,
+          "exposureRange": [
+            0.72,
+            0.96
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:alien-spore-organism:root",
+              "type": "point",
+              "position": [
+                9,
+                5,
+                5
+              ],
+              "target": [
+                9,
+                4,
+                5
+              ],
+              "intensity": 2244,
+              "color": [
+                0.34670405634441115,
+                1,
+                0.08650046202808521
+              ]
+            },
+            {
+              "id": "nocturne:entity:alien-spore-organism:crown",
+              "type": "point",
+              "position": [
+                -20,
+                15,
+                -12
+              ],
+              "target": [
+                -20,
+                14,
+                -12
+              ],
+              "intensity": 1309,
+              "color": [
+                0.4396571738310091,
+                0.16202937562896222,
+                1
+              ]
+            }
+          ],
+          "programs": 10,
+          "calls": 16,
+          "triangles": 1314,
+          "geometries": 115,
+          "textures": 18,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 0,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 11,
+            "historyReason": "enabled-change",
+            "generation": 11,
+            "renderedFrames": 24,
+            "vacuumFrames": 12,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "on": {
+          "composition": "alien",
+          "content": {
+            "owners": 1,
+            "sources": 2,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 113
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 4,
+            "candidates": 2,
+            "active": 2,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 21,
+            "replacements": 19,
+            "selections": 225,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0.09999999403953552,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 1,
+          "media": [
+            {
+              "id": "nocturne-medium:alien-spore-organism",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                81.60000000000001,
+                56.1,
+                81.60000000000001
+              ],
+              "density": 0.001425
+            }
+          ],
+          "exposure": 0.88,
+          "exposureRange": [
+            0.72,
+            0.96
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:alien-spore-organism:root",
+              "type": "point",
+              "position": [
+                9,
+                5,
+                5
+              ],
+              "target": [
+                9,
+                4,
+                5
+              ],
+              "intensity": 2244,
+              "color": [
+                0.34670405634441115,
+                1,
+                0.08650046202808521
+              ]
+            },
+            {
+              "id": "nocturne:entity:alien-spore-organism:crown",
+              "type": "point",
+              "position": [
+                -20,
+                15,
+                -12
+              ],
+              "target": [
+                -20,
+                14,
+                -12
+              ],
+              "intensity": 1309,
+              "color": [
+                0.4396571738310091,
+                0.16202937562896222,
+                1
+              ]
+            }
+          ],
+          "programs": 10,
+          "calls": 16,
+          "triangles": 1314,
+          "geometries": 115,
+          "textures": 18,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 0,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 11,
+            "historyReason": "enabled-change",
+            "generation": 11,
+            "renderedFrames": 24,
+            "vacuumFrames": 12,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "probe": {
+          "composition": "alien",
+          "content": {
+            "owners": 1,
+            "sources": 2,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 115
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 4,
+            "candidates": 2,
+            "active": 0,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 21,
+            "replacements": 19,
+            "selections": 228,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 1,
+          "media": [
+            {
+              "id": "nocturne-medium:alien-spore-organism",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                81.60000000000001,
+                56.1,
+                81.60000000000001
+              ],
+              "density": 0.001425
+            }
+          ],
+          "exposure": 0.88,
+          "exposureRange": [
+            0.72,
+            0.96
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:alien-spore-organism:root",
+              "type": "point",
+              "position": [
+                9,
+                5,
+                5
+              ],
+              "target": [
+                9,
+                4,
+                5
+              ],
+              "intensity": 2244,
+              "color": [
+                0.34670405634441115,
+                1,
+                0.08650046202808521
+              ]
+            },
+            {
+              "id": "nocturne:entity:alien-spore-organism:crown",
+              "type": "point",
+              "position": [
+                -20,
+                15,
+                -12
+              ],
+              "target": [
+                -20,
+                14,
+                -12
+              ],
+              "intensity": 1309,
+              "color": [
+                0.4396571738310091,
+                0.16202937562896222,
+                1
+              ]
+            }
+          ],
+          "programs": 10,
+          "calls": 16,
+          "triangles": 1314,
+          "geometries": 115,
+          "textures": 18,
+          "atmosphere": {
+            "enabled": false,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": false,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 0,
+            "lights": 3,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 0,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": false,
+            "historyRejects": 11,
+            "historyReason": "enabled-change",
+            "generation": 11,
+            "renderedFrames": 24,
+            "vacuumFrames": 12,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        },
+        "composed": {
+          "composition": "alien",
+          "content": {
+            "owners": 1,
+            "sources": 2,
+            "invalidDescriptors": 0,
+            "missingEmitters": 0,
+            "rejectedCapacity": 0,
+            "census": 116
+          },
+          "director": {
+            "backend": "bounded-forward",
+            "logical": 4,
+            "candidates": 2,
+            "active": 2,
+            "points": 8,
+            "spots": 3,
+            "directionals": 0,
+            "shadowMaps": 1,
+            "shadowUpdates": 21,
+            "replacements": 19,
+            "selections": 231,
+            "rejected": 0,
+            "areaApproximation": "wide-spot",
+            "selectionCpuMs": 0,
+            "updateCpuMs": 0,
+            "shadowMapsAllocated": 1,
+            "shadowTexels": 262144,
+            "shadowUpdateRequested": false
+          },
+          "probes": 1,
+          "media": [
+            {
+              "id": "nocturne-medium:alien-spore-organism",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radii": [
+                81.60000000000001,
+                56.1,
+                81.60000000000001
+              ],
+              "density": 0.001425
+            }
+          ],
+          "exposure": 0.88,
+          "exposureRange": [
+            0.72,
+            0.96
+          ],
+          "sources": [
+            {
+              "id": "nocturne:entity:alien-spore-organism:root",
+              "type": "point",
+              "position": [
+                9,
+                5,
+                5
+              ],
+              "target": [
+                9,
+                4,
+                5
+              ],
+              "intensity": 2244,
+              "color": [
+                0.34670405634441115,
+                1,
+                0.08650046202808521
+              ]
+            },
+            {
+              "id": "nocturne:entity:alien-spore-organism:crown",
+              "type": "point",
+              "position": [
+                -20,
+                15,
+                -12
+              ],
+              "target": [
+                -20,
+                14,
+                -12
+              ],
+              "intensity": 1309,
+              "color": [
+                0.4396571738310091,
+                0.16202937562896222,
+                1
+              ]
+            }
+          ],
+          "programs": 10,
+          "calls": 21,
+          "triangles": 1324,
+          "geometries": 115,
+          "textures": 22,
+          "atmosphere": {
+            "enabled": true,
+            "supported": true,
+            "unsupportedReason": null,
+            "active": true,
+            "quality": "integrated",
+            "width": 240,
+            "height": 135,
+            "steps": 12,
+            "media": 1,
+            "lights": 2,
+            "mediaCap": 4,
+            "lightCap": 6,
+            "passes": 1,
+            "targets": 2,
+            "textures": 4,
+            "estimatedTargetBytes": 1036800,
+            "historyValid": true,
+            "historyRejects": 13,
+            "historyReason": "sources-changed",
+            "generation": 13,
+            "renderedFrames": 36,
+            "vacuumFrames": 12,
+            "shadowedLightId": null,
+            "shadowMode": "unshadowed",
+            "shadowEncoding": null,
+            "model": "single-scattering-beer-lambert-local-ellipsoids",
+            "gpuAcceptance": "unmeasured"
+          }
+        }
+      },
+      "directVsOff": {
+        "surfacePixels": 40813,
+        "changedSurfacePixels": 23109,
+        "nonzeroSurfacePixels": 26378,
+        "meanAbsoluteRgbByteDelta": 18.88869559535769,
+        "meanSignedRgbByteDelta": [
+          14.587337367995492,
+          22.858549971822704,
+          19.079508979981867
+        ],
+        "maximumByteDelta": 244,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "onVsOff": {
+        "surfacePixels": 40813,
+        "changedSurfacePixels": 23443,
+        "nonzeroSurfacePixels": 33360,
+        "meanAbsoluteRgbByteDelta": 19.197796453744314,
+        "meanSignedRgbByteDelta": [
+          14.767182025335066,
+          23.416362433538332,
+          19.27591698723446
+        ],
+        "maximumByteDelta": 244,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "probeVsOff": {
+        "surfacePixels": 40813,
+        "changedSurfacePixels": 96,
+        "nonzeroSurfacePixels": 19884,
+        "meanAbsoluteRgbByteDelta": 0.31775006329682537,
+        "meanSignedRgbByteDelta": [
+          0.14468429176977923,
+          0.6126724328032734,
+          0.17585083184279518
+        ],
+        "maximumByteDelta": 25,
+        "excluded": "Header, all background, projected emitter bounding boxes plus a four pixel margin."
+      },
+      "programsStableAcrossToggle": true,
+      "submitTiming": {
+        "samplesPerMode": 8,
+        "offMedianMs": 0.8000000044703484,
+        "onMedianMs": 0.7999999970197678,
+        "raw": {
+          "off": [
+            0.5,
+            0.8000000044703484,
+            1,
+            1,
+            0.5,
+            0.6999999955296516,
+            0.7999999970197678,
+            1.1000000014901161
+          ],
+          "on": [
+            1.1999999955296516,
+            0.5999999940395355,
+            0.6000000014901161,
+            0.7999999970197678,
+            0.6000000014901161,
+            0.8999999985098839,
+            0.8000000044703484,
+            0.7999999970197678
+          ]
+        },
+        "incrementalMedianMs": -7.450580596923828e-9
+      }
+    }
+  },
+  "errors": []
+}

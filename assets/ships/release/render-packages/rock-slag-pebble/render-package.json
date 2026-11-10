@@ -1,0 +1,2842 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3109915256500244,
+        -0.27467572689056396,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3109915256500244,
+        -0.27467572689056396,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15935707092285156,
+        -3.5048537254333496,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15935707092285156,
+        -3.5048537254333496,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.899035692214966,
+        -0.27467572689056396,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.899035692214966,
+        -0.27467572689056396,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.2803215980529785,
+        -0.42467573285102844,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.2803215980529785,
+        -0.42467573285102844,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15935707092285156,
+        -0.27467572689056396,
+        -1.9135103225708008,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15935707092285156,
+        -0.27467572689056396,
+        -1.9135103225708008,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15935707092285156,
+        -0.27467572689056396,
+        1.9135103225708008,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15935707092285156,
+        -0.27467572689056396,
+        1.9135103225708008,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.4528156518936157,
+        1.502751111984253,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.4528156518936157,
+        1.502751111984253,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.19903564453125,
+        -0.27467572689056396,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.19903564453125,
+        -0.27467572689056396,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.19903564453125,
+        -0.27467572689056396,
+        -0.7972959876060486,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.19903564453125,
+        -0.27467572689056396,
+        -0.7972959876060486,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.19903564453125,
+        -0.27467572689056396,
+        0.7972959876060486,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.19903564453125,
+        -0.27467572689056396,
+        0.7972959876060486,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15935707092285156,
+        2.9555022716522217,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15935707092285156,
+        2.9555022716522217,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.380321502685547,
+        -0.27467572689056396,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentNodeId": "sf.render.rock-slag-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.380321502685547,
+        -0.27467572689056396,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.rock-slag-pebble",
+  "collisions": [
+    {
+      "id": "sf.render.rock-slag-pebble.collision",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "a644c34b9922b327fa3d8a5c90546b2427730a1200174d8a1761039412f6fe4e",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod0-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod0-hook-nav-port"
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod1-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod1-hook-nav-port"
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod2-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod2-hook-nav-port"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.7803834407451147,
+          2.4853177473972696,
+          3.111812114715576
+        ],
+        "min": [
+          -3.099097582590818,
+          -3.5549235747288126,
+          -3.1891839504241943
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d2ca9d142f5094e4b1450256968e0bce1d3b149bd7c7bf017418f773c1b417f4",
+      "id": "sf.render.rock-slag-pebble.mesh.collision-hull.primitive.0",
+      "indexCount": 894,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 852
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4081600931222873,
+          2.4023525734738236,
+          1.7901424169540405
+        ],
+        "min": [
+          -1.9450638320978122,
+          -1.225247861941231,
+          -1.9558972120285034
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "286e1aed1efa437a1dbf5997b60bac4494f96d4efe9ae151904948e1ee917277",
+      "id": "sf.render.rock-slag-pebble.mesh.lod0-beacon-amber.primitive.0",
+      "indexCount": 2256,
+      "indexed": true,
+      "materialHash": "9f17bb929091644c86b69d2fef0d4f9c33f345863be3ba917d4b741d174d7eaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 698
+    },
+    {
+      "bounds": {
+        "max": [
+          2.263451855994742,
+          1.4807134866714478,
+          1.2880161824818153
+        ],
+        "min": [
+          1.2228281084522794,
+          -1.6715577840805054,
+          -0.14088134199338131
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8038e032bd3ee429e89d189acd387d3081382a229e05f2ca85b1986e0daf7c94",
+      "id": "sf.render.rock-slag-pebble.mesh.lod0-hook-nav-port.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "21c910bad6692e16fc570fdf4b2a5d81e38c5ef51b6c36bddd174c9b24e0d96e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod0-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4209744017034023,
+          -0.8869785585290879,
+          2.9655351638793945
+        ],
+        "min": [
+          -2.9447955171971767,
+          -1.7657301507108718,
+          -2.8774139881134033
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3ee60b49cfa21c59406c0a4ca1d04ad3f2921981530f8f5e2d26f38f3c57b1cd",
+      "id": "sf.render.rock-slag-pebble.mesh.lod0-stone-strata.primitive.0",
+      "indexCount": 786,
+      "indexed": true,
+      "materialHash": "ba8365c90045d923d3226edaebb13bb0f450697fea78ef75a1d43cbcbaec39ed",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone_strata",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod0-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 479
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7803834407451147,
+          2.4853177473972696,
+          3.111812114715576
+        ],
+        "min": [
+          -3.099097582590818,
+          -3.5549235747288126,
+          -3.1891839504241943
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "79ed7dead16356509a755f45e4cd14ad5537125441c32bacb62374a35556f281",
+      "id": "sf.render.rock-slag-pebble.mesh.lod0-stone.primitive.0",
+      "indexCount": 4110,
+      "indexed": true,
+      "materialHash": "57683bfe75095e562a90bbbc976ced73b8dfb5e8e5520f080225b409a589fae5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod0-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 2813
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4071347747832217,
+          2.4022739246657245,
+          1.7897698879241943
+        ],
+        "min": [
+          -1.9457289014845767,
+          -1.2226505592635026,
+          -1.9558672904968262
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c6181bf4e5eede9dd52d542e32e8cedb7931b5404749bf54872bc8ff5699a386",
+      "id": "sf.render.rock-slag-pebble.mesh.lod1-beacon-amber.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "9f17bb929091644c86b69d2fef0d4f9c33f345863be3ba917d4b741d174d7eaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          2.263281502509265,
+          1.4471136331558228,
+          1.2880382188121318
+        ],
+        "min": [
+          1.2229984619377565,
+          -1.6379578113555908,
+          -0.14090337832369781
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "19c4ee5ddce4ac197680e65f6347b1802fbf7bc423140cc16999d1c36f12f66c",
+      "id": "sf.render.rock-slag-pebble.mesh.lod1-hook-nav-port.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": "21c910bad6692e16fc570fdf4b2a5d81e38c5ef51b6c36bddd174c9b24e0d96e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod1-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 16
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3916629861023777,
+          -0.7394082620196497,
+          3.0521883964538574
+        ],
+        "min": [
+          -3.0104645798828953,
+          -2.0477290079541053,
+          -2.839750289916992
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6e62c87add7d0ea39b2561f5d44e2b8cf5d78486a1f4b2645c43fd6b47a663e6",
+      "id": "sf.render.rock-slag-pebble.mesh.lod1-stone-strata.primitive.0",
+      "indexCount": 201,
+      "indexed": true,
+      "materialHash": "ba8365c90045d923d3226edaebb13bb0f450697fea78ef75a1d43cbcbaec39ed",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone_strata",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod1-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 142
+    },
+    {
+      "bounds": {
+        "max": [
+          2.781139490907599,
+          2.507061859931763,
+          3.111812114715576
+        ],
+        "min": [
+          -3.0991107204608217,
+          -3.554716727104004,
+          -3.1891839504241943
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "36223c62a122e71faaf63b99dc03b93ff9977f53f540c68c7e707e2a911a2c3b",
+      "id": "sf.render.rock-slag-pebble.mesh.lod1-stone.primitive.0",
+      "indexCount": 2517,
+      "indexed": true,
+      "materialHash": "57683bfe75095e562a90bbbc976ced73b8dfb5e8e5520f080225b409a589fae5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 1816
+    },
+    {
+      "bounds": {
+        "max": [
+          1.445171093611124,
+          2.420219458742625,
+          1.741229772567749
+        ],
+        "min": [
+          -1.8878537174743442,
+          -1.2475175039010113,
+          -1.9540239572525024
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c34e774e737bf13280c3cf7a7b38b8c918d864047711b64071e0b6d4d0745e34",
+      "id": "sf.render.rock-slag-pebble.mesh.lod2-beacon-amber.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "9f17bb929091644c86b69d2fef0d4f9c33f345863be3ba917d4b741d174d7eaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          2.263281502509265,
+          1.4471136331558228,
+          1.2880382188121318
+        ],
+        "min": [
+          1.2229984619377565,
+          -1.6379578113555908,
+          -0.14090337832369781
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9daedb2bc9ac12cbbb7e2088fc3e6c3d45501a1a5e851cbcb00e911664bae65c",
+      "id": "sf.render.rock-slag-pebble.mesh.lod2-hook-nav-port.primitive.0",
+      "indexCount": 6,
+      "indexed": true,
+      "materialHash": "21c910bad6692e16fc570fdf4b2a5d81e38c5ef51b6c36bddd174c9b24e0d96e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_PORT",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod2-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 6
+    },
+    {
+      "bounds": {
+        "max": [
+          2.342127188250264,
+          -0.5380088291037023,
+          3.10270357131958
+        ],
+        "min": [
+          -3.158549650713643,
+          -2.0979955592286648,
+          -2.9215846061706543
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8e8b937126d767d8b6fd699b2107f8546259740f201a102e1361108e1cf5e482",
+      "id": "sf.render.rock-slag-pebble.mesh.lod2-stone-strata.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "ba8365c90045d923d3226edaebb13bb0f450697fea78ef75a1d43cbcbaec39ed",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone_strata",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod2-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 86
+    },
+    {
+      "bounds": {
+        "max": [
+          2.798804753688991,
+          2.5233448304520842,
+          3.10270357131958
+        ],
+        "min": [
+          -3.158769601253688,
+          -3.513646201072812,
+          -3.093120813369751
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0784aadf3ff5e32437a3263c889625167214519062e3eaae0bf03b1081cb63e7",
+      "id": "sf.render.rock-slag-pebble.mesh.lod2-stone.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "57683bfe75095e562a90bbbc976ced73b8dfb5e8e5520f080225b409a589fae5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone",
+      "nodeId": "sf.render.rock-slag-pebble.mesh.lod2-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 831
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "21c910bad6692e16fc570fdf4b2a5d81e38c5ef51b6c36bddd174c9b24e0d96e",
+      "id": "material:21c910bad6692e16fc570fdf",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "57683bfe75095e562a90bbbc976ced73b8dfb5e8e5520f080225b409a589fae5",
+      "id": "material:57683bfe75095e562a90bbbc",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9f17bb929091644c86b69d2fef0d4f9c33f345863be3ba917d4b741d174d7eaa",
+      "id": "material:9f17bb929091644c86b69d2f",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "ba8365c90045d923d3226edaebb13bb0f450697fea78ef75a1d43cbcbaec39ed",
+      "id": "material:ba8365c90045d923d3226eda",
+      "name": "Material_Stone_strata",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.collision-hull",
+      "localTransform": [
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        -0.15935707092285156,
+        -0.5348029136657715,
+        -0.03868591785430908,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        -0.15935707092285156,
+        -0.5348029136657715,
+        -0.03868591785430908,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod0-beacon-amber",
+      "localTransform": [
+        1.873019814491272,
+        0,
+        0,
+        0,
+        0,
+        1.873019814491272,
+        0,
+        0,
+        0,
+        0,
+        1.873019814491272,
+        0,
+        -0.26845186948776245,
+        0.5885523557662964,
+        -0.08287739753723145,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        1.873019814491272,
+        0,
+        0,
+        0,
+        0,
+        1.873019814491272,
+        0,
+        0,
+        0,
+        0,
+        1.873019814491272,
+        0,
+        -0.26845186948776245,
+        0.5885523557662964,
+        -0.08287739753723145,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod0-hook-nav-port",
+      "localTransform": [
+        1.5761356353759766,
+        0,
+        0,
+        0,
+        0,
+        1.5761356353759766,
+        0,
+        0,
+        0,
+        0,
+        1.5761356353759766,
+        0,
+        1.7431399822235107,
+        -0.09542214870452881,
+        0.5735674202442169,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        1.5761356353759766,
+        0,
+        0,
+        0,
+        0,
+        1.5761356353759766,
+        0,
+        0,
+        0,
+        0,
+        1.5761356353759766,
+        0,
+        1.7431399822235107,
+        -0.09542214870452881,
+        0.5735674202442169,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod0-stone",
+      "localTransform": [
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        -0.15935707092285156,
+        -0.5348029136657715,
+        -0.03868591785430908,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone",
+      "nodeName": "LOD0_Stone",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        -0.15935707092285156,
+        -0.5348029136657715,
+        -0.03868591785430908,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod0-stone-strata",
+      "localTransform": [
+        2.921474575996399,
+        0,
+        0,
+        0,
+        0,
+        2.921474575996399,
+        0,
+        0,
+        0,
+        0,
+        2.921474575996399,
+        0,
+        -0.2619105577468872,
+        -1.3263543546199799,
+        0.044060587882995605,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone_strata",
+      "nodeName": "LOD0_Stone_strata",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        2.921474575996399,
+        0,
+        0,
+        0,
+        0,
+        2.921474575996399,
+        0,
+        0,
+        0,
+        0,
+        2.921474575996399,
+        0,
+        -0.2619105577468872,
+        -1.3263543546199799,
+        0.044060587882995605,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod1-beacon-amber",
+      "localTransform": [
+        1.8728185892105103,
+        0,
+        0,
+        0,
+        0,
+        1.8728185892105103,
+        0,
+        0,
+        0,
+        0,
+        1.8728185892105103,
+        0,
+        -0.2692970633506775,
+        0.5898116827011108,
+        -0.08304870128631592,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        1.8728185892105103,
+        0,
+        0,
+        0,
+        0,
+        1.8728185892105103,
+        0,
+        0,
+        0,
+        0,
+        1.8728185892105103,
+        0,
+        -0.2692970633506775,
+        0.5898116827011108,
+        -0.08304870128631592,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod1-hook-nav-port",
+      "localTransform": [
+        1.5425357222557068,
+        0,
+        0,
+        0,
+        0,
+        1.5425357222557068,
+        0,
+        0,
+        0,
+        0,
+        1.5425357222557068,
+        0,
+        1.7431399822235107,
+        -0.09542208909988403,
+        0.5735674202442169,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        1.5425357222557068,
+        0,
+        0,
+        0,
+        0,
+        1.5425357222557068,
+        0,
+        0,
+        0,
+        0,
+        1.5425357222557068,
+        0,
+        1.7431399822235107,
+        -0.09542208909988403,
+        0.5735674202442169,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod1-stone",
+      "localTransform": [
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        -0.15898561477661133,
+        -0.5238274335861206,
+        -0.03868591785430908,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone",
+      "nodeName": "LOD1_Stone",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        0,
+        0,
+        0,
+        3.1504980325698853,
+        0,
+        -0.15898561477661133,
+        -0.5238274335861206,
+        -0.03868591785430908,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod1-stone-strata",
+      "localTransform": [
+        2.945969343185425,
+        0,
+        0,
+        0,
+        0,
+        2.945969343185425,
+        0,
+        0,
+        0,
+        0,
+        2.945969343185425,
+        0,
+        -0.3094007968902588,
+        -1.3935686349868774,
+        0.10621905326843262,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone_strata",
+      "nodeName": "LOD1_Stone_strata",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        2.945969343185425,
+        0,
+        0,
+        0,
+        0,
+        2.945969343185425,
+        0,
+        0,
+        0,
+        0,
+        2.945969343185425,
+        0,
+        -0.3094007968902588,
+        -1.3935686349868774,
+        0.10621905326843262,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod2-beacon-amber",
+      "localTransform": [
+        1.8476268649101257,
+        0,
+        0,
+        0,
+        0,
+        1.8476268649101257,
+        0,
+        0,
+        0,
+        0,
+        1.8476268649101257,
+        0,
+        -0.2213413119316101,
+        0.5863509774208069,
+        -0.10639709234237671,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        1.8476268649101257,
+        0,
+        0,
+        0,
+        0,
+        1.8476268649101257,
+        0,
+        0,
+        0,
+        0,
+        1.8476268649101257,
+        0,
+        -0.2213413119316101,
+        0.5863509774208069,
+        -0.10639709234237671,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod2-hook-nav-port",
+      "localTransform": [
+        1.5425357222557068,
+        0,
+        0,
+        0,
+        0,
+        1.5425357222557068,
+        0,
+        0,
+        0,
+        0,
+        1.5425357222557068,
+        0,
+        1.7431399822235107,
+        -0.09542208909988403,
+        0.5735674202442169,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+      "nodeName": "LOD2_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        1.5425357222557068,
+        0,
+        0,
+        0,
+        0,
+        1.5425357222557068,
+        0,
+        0,
+        0,
+        0,
+        1.5425357222557068,
+        0,
+        1.7431399822235107,
+        -0.09542208909988403,
+        0.5735674202442169,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod2-stone",
+      "localTransform": [
+        3.0979121923446655,
+        0,
+        0,
+        0,
+        0,
+        3.0979121923446655,
+        0,
+        0,
+        0,
+        0,
+        3.0979121923446655,
+        0,
+        -0.17998242378234863,
+        -0.49515068531036377,
+        0.004791378974914551,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone",
+      "nodeName": "LOD2_Stone",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        3.0979121923446655,
+        0,
+        0,
+        0,
+        0,
+        3.0979121923446655,
+        0,
+        0,
+        0,
+        0,
+        3.0979121923446655,
+        0,
+        -0.17998242378234863,
+        -0.49515068531036377,
+        0.004791378974914551,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.mesh.lod2-stone-strata",
+      "localTransform": [
+        3.012144088745117,
+        0,
+        0,
+        0,
+        0,
+        3.012144088745117,
+        0,
+        0,
+        0,
+        0,
+        3.012144088745117,
+        0,
+        -0.40821123123168945,
+        -1.3180021941661835,
+        0.09055948257446289,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone_strata",
+      "nodeName": "LOD2_Stone_strata",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.rock-slag-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        3.012144088745117,
+        0,
+        0,
+        0,
+        0,
+        3.012144088745117,
+        0,
+        0,
+        0,
+        0,
+        3.012144088745117,
+        0,
+        -0.40821123123168945,
+        -1.3180021941661835,
+        0.09055948257446289,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-slag-pebble.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_ROCK_SLAG_PEBBLE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-slag-pebble.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "de12ec7b5e4e410c484f2261dd4bcbddca58df16f7d9d6f824f26750d93ecd68"
+    },
+    "sourceGlb": {
+      "bytes": 155036,
+      "sha256": "078a7d76348c3fb80f9d51fe27be3253d9b8dced7c40a5129ed175e3022c149b",
+      "uri": "place_rock_slag_pebble.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 159664,
+    "sha256": "b700096765f5ce0cc38e1760090660fcea5541922fd8dfdd6a923c858de5c293",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.17998242378234863,
+        -0.5157893721383642,
+        -0.03868591785430908
+      ],
+      "max": [
+        2.798804753688991,
+        2.5233448304520842,
+        3.111812114715576
+      ],
+      "min": [
+        -3.158769601253688,
+        -3.5549235747288126,
+        -3.1891839504241943
+      ],
+      "size": [
+        5.957574354942679,
+        6.078268405180896,
+        6.3009960651397705
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1.5761356353759766,
+          0,
+          0,
+          0,
+          0,
+          1.5761356353759766,
+          0,
+          0,
+          0,
+          0,
+          1.5761356353759766,
+          0,
+          1.7431399822235107,
+          -0.09542214870452881,
+          0.5735674202442169,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 4,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.mesh.lod0-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.5425357222557068,
+          0,
+          0,
+          0,
+          0,
+          1.5425357222557068,
+          0,
+          0,
+          0,
+          0,
+          1.5425357222557068,
+          0,
+          1.7431399822235107,
+          -0.09542208909988403,
+          0.5735674202442169,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 9,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.mesh.lod1-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.5425357222557068,
+          0,
+          0,
+          0,
+          0,
+          1.5425357222557068,
+          0,
+          0,
+          0,
+          0,
+          1.5425357222557068,
+          0,
+          1.7431399822235107,
+          -0.09542208909988403,
+          0.5735674202442169,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 14,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.mesh.lod2-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.3109915256500244,
+          -0.27467572689056396,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.15935707092285156,
+          -3.5048537254333496,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.899035692214966,
+          -0.27467572689056396,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.2803215980529785,
+          -0.42467573285102844,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.15935707092285156,
+          -0.27467572689056396,
+          -1.9135103225708008,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.15935707092285156,
+          -0.27467572689056396,
+          1.9135103225708008,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.4528156518936157,
+          1.502751111984253,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.19903564453125,
+          -0.27467572689056396,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.19903564453125,
+          -0.27467572689056396,
+          -0.7972959876060486,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.19903564453125,
+          -0.27467572689056396,
+          0.7972959876060486,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 27,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.15935707092285156,
+          2.9555022716522217,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 28,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.380321502685547,
+          -0.27467572689056396,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 29,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.rock-slag-pebble.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 7,
+      "signal": 6
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 30,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.873019814491272,
+          0,
+          0,
+          0,
+          0,
+          1.873019814491272,
+          0,
+          0,
+          0,
+          0,
+          1.873019814491272,
+          0,
+          -0.26845186948776245,
+          0.5885523557662964,
+          -0.08287739753723145,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5761356353759766,
+          0,
+          0,
+          0,
+          0,
+          1.5761356353759766,
+          0,
+          0,
+          0,
+          0,
+          1.5761356353759766,
+          0,
+          1.7431399822235107,
+          -0.09542214870452881,
+          0.5735674202442169,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT_1",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.1504980325698853,
+          0,
+          0,
+          0,
+          0,
+          3.1504980325698853,
+          0,
+          0,
+          0,
+          0,
+          3.1504980325698853,
+          0,
+          -0.15935707092285156,
+          -0.5348029136657715,
+          -0.03868591785430908,
+          1
+        ],
+        "name": "LOD0_Stone",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.921474575996399,
+          0,
+          0,
+          0,
+          0,
+          2.921474575996399,
+          0,
+          0,
+          0,
+          0,
+          2.921474575996399,
+          0,
+          -0.2619105577468872,
+          -1.3263543546199799,
+          0.044060587882995605,
+          1
+        ],
+        "name": "LOD0_Stone_strata",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.8728185892105103,
+          0,
+          0,
+          0,
+          0,
+          1.8728185892105103,
+          0,
+          0,
+          0,
+          0,
+          1.8728185892105103,
+          0,
+          -0.2692970633506775,
+          0.5898116827011108,
+          -0.08304870128631592,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5425357222557068,
+          0,
+          0,
+          0,
+          0,
+          1.5425357222557068,
+          0,
+          0,
+          0,
+          0,
+          1.5425357222557068,
+          0,
+          1.7431399822235107,
+          -0.09542208909988403,
+          0.5735674202442169,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT_1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.1504980325698853,
+          0,
+          0,
+          0,
+          0,
+          3.1504980325698853,
+          0,
+          0,
+          0,
+          0,
+          3.1504980325698853,
+          0,
+          -0.15898561477661133,
+          -0.5238274335861206,
+          -0.03868591785430908,
+          1
+        ],
+        "name": "LOD1_Stone",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.945969343185425,
+          0,
+          0,
+          0,
+          0,
+          2.945969343185425,
+          0,
+          0,
+          0,
+          0,
+          2.945969343185425,
+          0,
+          -0.3094007968902588,
+          -1.3935686349868774,
+          0.10621905326843262,
+          1
+        ],
+        "name": "LOD1_Stone_strata",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.8476268649101257,
+          0,
+          0,
+          0,
+          0,
+          1.8476268649101257,
+          0,
+          0,
+          0,
+          0,
+          1.8476268649101257,
+          0,
+          -0.2213413119316101,
+          0.5863509774208069,
+          -0.10639709234237671,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5425357222557068,
+          0,
+          0,
+          0,
+          0,
+          1.5425357222557068,
+          0,
+          0,
+          0,
+          0,
+          1.5425357222557068,
+          0,
+          1.7431399822235107,
+          -0.09542208909988403,
+          0.5735674202442169,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT_1",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.0979121923446655,
+          0,
+          0,
+          0,
+          0,
+          3.0979121923446655,
+          0,
+          0,
+          0,
+          0,
+          3.0979121923446655,
+          0,
+          -0.17998242378234863,
+          -0.49515068531036377,
+          0.004791378974914551,
+          1
+        ],
+        "name": "LOD2_Stone",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.012144088745117,
+          0,
+          0,
+          0,
+          0,
+          3.012144088745117,
+          0,
+          0,
+          0,
+          0,
+          3.012144088745117,
+          0,
+          -0.40821123123168945,
+          -1.3180021941661835,
+          0.09055948257446289,
+          1
+        ],
+        "name": "LOD2_Stone_strata",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_rock_slag_pebble.glb"
+  },
+  "runtimeHash": "f34e7a06cc2df9ee38cdb7a7298f8c2c382343496450ee64f4144a69739857ea",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.798804753688991,
+          2.5233448304520842,
+          3.111812114715576
+        ],
+        "min": [
+          -3.158769601253688,
+          -3.5549235747288126,
+          -3.1891839504241943
+        ]
+      },
+      "id": "sf.render.rock-slag-pebble.body",
+      "nodeIds": [
+        "sf.render.rock-slag-pebble.mesh.collision-hull",
+        "sf.render.rock-slag-pebble.mesh.lod0-beacon-amber",
+        "sf.render.rock-slag-pebble.mesh.lod0-hook-nav-port",
+        "sf.render.rock-slag-pebble.mesh.lod0-stone",
+        "sf.render.rock-slag-pebble.mesh.lod0-stone-strata",
+        "sf.render.rock-slag-pebble.mesh.lod1-beacon-amber",
+        "sf.render.rock-slag-pebble.mesh.lod1-hook-nav-port",
+        "sf.render.rock-slag-pebble.mesh.lod1-stone",
+        "sf.render.rock-slag-pebble.mesh.lod1-stone-strata",
+        "sf.render.rock-slag-pebble.mesh.lod2-beacon-amber",
+        "sf.render.rock-slag-pebble.mesh.lod2-hook-nav-port",
+        "sf.render.rock-slag-pebble.mesh.lod2-stone",
+        "sf.render.rock-slag-pebble.mesh.lod2-stone-strata",
+        "sf.render.rock-slag-pebble.root"
+      ]
+    }
+  ]
+}

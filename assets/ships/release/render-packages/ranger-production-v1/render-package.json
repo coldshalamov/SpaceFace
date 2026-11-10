@@ -1,0 +1,4725 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.9634000062942505,
+        1.046576738357544,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.9634000062942505,
+        1.046576738357544,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        -0.5999999642372131,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        -0.5999999642372131,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.050000190734863,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.050000190734863,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        1.046576738357544,
+        -2.262239933013916,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        1.046576738357544,
+        -2.262239933013916,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        1.046576738357544,
+        2.262239933013916,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        1.046576738357544,
+        2.262239933013916,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.355599880218506,
+        1.3715766668319702,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.355599880218506,
+        1.3715766668319702,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        -0.9426000118255615,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        -0.9426000118255615,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        0.9426000118255615,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        0.9426000118255615,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        2.6931533813476562,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        2.6931533813476562,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.400000095367432,
+        -0.05000000074505806,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.400000095367432,
+        -0.05000000074505806,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.ranger-production-v1",
+  "collisions": [
+    {
+      "id": "sf.render.ranger-production-v1.collision",
+      "nodeId": "sf.render.ranger-production-v1.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "727f457a3ac5b4283e5fd3411699565388af868683604e115677071a1437db2e",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-drive-core.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-drive-core"
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-port"
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-armor"
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-hull.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-hull"
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanical.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanical"
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanicaldark.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanicaldark"
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-armor"
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-lights-cyan.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-lights-cyan"
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-mechanical.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-mechanical"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          9.410038948059082,
+          2.7464526294434073,
+          3.770680450114703
+        ],
+        "min": [
+          -8.320137977600098,
+          -0.6494820116722584,
+          -3.770610355052447
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7509bf32129c50e31df94bfa9919e0c027e820c1f1325473e57a6ef9a66977b5",
+      "id": "sf.render.ranger-production-v1.node.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.ranger-production-v1.node.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 824
+    },
+    {
+      "bounds": {
+        "max": [
+          9.347023010253906,
+          1.044188958454835,
+          3.670294751289159
+        ],
+        "min": [
+          -7.599999904632568,
+          -0.65015129451822,
+          -3.670294751289159
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "08bfe085bf55d843b55fda76482193fa2f38dbb66f878291c575e3ace63cf163",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-armor.primitive.0",
+      "indexCount": 25464,
+      "indexed": true,
+      "materialHash": "2eb1bbc7cc458318dc1ac87e206f0ce240d9971d924e89c14041df87fd704ca0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 7690
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.029999732971191,
+          0.7490024581730272,
+          0.07000017166137695
+        ],
+        "min": [
+          -6.170000076293945,
+          0.6509975179851148,
+          -0.07000017166137695
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2fdce7998b676fd64e7cb0e6b541eb23f10f209a193b167100afc05d1b1573f6",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.300000190734863,
+          1.097588752767632,
+          0.49825895297558964
+        ],
+        "min": [
+          2.200000047683716,
+          0.7199771055964732,
+          -0.49825895297558964
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "28720a31e15948fd7eb632a25c6c5eb49a151caa451d7157dfa8637518a82422",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-canopy.primitive.0",
+      "indexCount": 1428,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 332
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.97986788926797,
+          0.31008756540228644,
+          3.359999895095825
+        ],
+        "min": [
+          -7.962632225172948,
+          -0.3100875914793185,
+          -3.359999895095825
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "782cd6703222416b651f0ba90ecefcd1fba0d16da16e6e60a9598bc6547f608c",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
+      "indexCount": 270,
+      "indexed": true,
+      "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.920000076293945,
+          0.10600263482821416,
+          -3.5900001525878906
+        ],
+        "min": [
+          -5.079999923706055,
+          -0.006002629612807744,
+          -3.75
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3be192d1304be87f699af01f635a8f0069969a9269a09b7ebd14c4188010c6d8",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.920000076293945,
+          0.10600263482821416,
+          3.75
+        ],
+        "min": [
+          -5.079999923706055,
+          -0.006002629612807744,
+          3.5900001525878906
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "27d0d7ba7dbc9117846ed60e3e39075e1888ab2b02d4d1b500e68977d4f070b7",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.4500079495238802,
+          0.6700000464916229,
+          -0.7799999713897705
+        ],
+        "min": [
+          -3.7499920981598356,
+          -0.27000001072883606,
+          -1.7200000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cc9a085b641429f33f6600fa5c46db7831114457e2e9924060f6ebcd6e82c69e",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-armor.primitive.0",
+      "indexCount": 1524,
+      "indexed": true,
+      "materialHash": "2eb1bbc7cc458318dc1ac87e206f0ce240d9971d924e89c14041df87fd704ca0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Armor",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 472
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.307499885559082,
+          0.6399320220418924,
+          -0.8100680032900817
+        ],
+        "min": [
+          -4.892499923706055,
+          -0.23993203098258908,
+          -1.689932056314563
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1961f13aa3170d777c6acb8cec6e2a9ee8219f7757a9e757d3a1ee8255358ece",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-hull.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "bd02b45bd762825bfe41575ad41090d5ddd1175c3318279d1e3864b2b7867bfb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Hull",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.1884464025497437,
+          0.614781412742658,
+          -0.8352185753364131
+        ],
+        "min": [
+          -5.199999809265137,
+          -0.21478143658451587,
+          -1.664781424663587
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "656a820e528a6c31b94cf2bd4e468f82f5b192e95dbe96965c40107155819c51",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanical.primitive.0",
+      "indexCount": 3084,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Mechanical",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 976
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.299999952316284,
+          0.6520066347486948,
+          -0.7979933831326986
+        ],
+        "min": [
+          -4.900000095367432,
+          -0.2520065989859079,
+          -1.7020066168673014
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "edc81d486bce4ebfbefda4fdff52ceb195f8ebc91f993f15ba6e93131ad8ab44",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanicaldark.primitive.0",
+      "indexCount": 1536,
+      "indexed": true,
+      "materialHash": "858e4533af0816bea07a104a09894d0528ccd66c465da64269ce46ef07243afa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_MechanicalDark",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 520
+    },
+    {
+      "bounds": {
+        "max": [
+          0.24431102337495814,
+          2.6417064295444597,
+          1.5
+        ],
+        "min": [
+          -2.479557502886219,
+          1.37851480382346,
+          -1.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9915b22755d337d60c2a24f81f4543917915df0bfbda9f77992556d032ffed5b",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-armor.primitive.0",
+      "indexCount": 1800,
+      "indexed": true,
+      "materialHash": "2eb1bbc7cc458318dc1ac87e206f0ce240d9971d924e89c14041df87fd704ca0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Armor",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 409
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.3619167804718018,
+          2.74315569551186,
+          0.0700000524520874
+        ],
+        "min": [
+          -1.5019168853759766,
+          2.6451509222249565,
+          -0.0700000524520874
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fbedcea627e492e6c6dc47379bb83715e95a01baa2aac2df0c93707aeac15069",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.27362694207260674,
+          2.7156849279374438,
+          1.5
+        ],
+        "min": [
+          -2.479539353285528,
+          0.8499663696318314,
+          -1.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "57484306c3e5c63ea938067ab18058c944c1787d2472acdd8b202aea8a1c76ef",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-mechanical.primitive.0",
+      "indexCount": 6588,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 2594
+    },
+    {
+      "bounds": {
+        "max": [
+          5.750113010406494,
+          1.1198776736057403,
+          3.6875009892548354
+        ],
+        "min": [
+          -6.699999809265137,
+          -0.637052215555966,
+          -3.6875009892548354
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8c855f3610d3a87c41e6c8f511f1217fc80f4ca03447801cf43e681f0b2b81af",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hull.primitive.0",
+      "indexCount": 24030,
+      "indexed": true,
+      "materialHash": "bd02b45bd762825bfe41575ad41090d5ddd1175c3318279d1e3864b2b7867bfb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 7179
+    },
+    {
+      "bounds": {
+        "max": [
+          9.40999984741211,
+          1.724249244229683,
+          3.114686618577566
+        ],
+        "min": [
+          -6.104013442993164,
+          -0.43474915673006453,
+          -3.114686618577566
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b6e5a02d6e196c363c3c56f5c18d3c0c5dc158837f816fd54b5a31e7838e3817",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-lights-cyan.primitive.0",
+      "indexCount": 1884,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 739
+    },
+    {
+      "bounds": {
+        "max": [
+          3.731405258178711,
+          0.916659727387914,
+          1.00492329493351
+        ],
+        "min": [
+          0.6833332777023315,
+          0.3700588497586161,
+          -1.00492329493351
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "61cdb139ab78ca73e0782edb75877000661046586e363efaeb7374ea6a297f91",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-lights-warm.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          8.399999618530273,
+          1.6998938181864374,
+          3.747674030485918
+        ],
+        "min": [
+          -8.319999694824219,
+          -0.6248938301073663,
+          -3.747674030485918
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "047d742efcad78ab9ff62e0512e0f6c10b68cc1a75cb0a74e73c7192b68de032",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
+      "indexCount": 14514,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 5580
+    },
+    {
+      "bounds": {
+        "max": [
+          6.5,
+          0.9592846658589126,
+          3.770694218443846
+        ],
+        "min": [
+          -8.319999694824219,
+          -0.6309469368817092,
+          -3.770694218443846
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c27c85b6d8cb44337d0dcaf2b0d7bf5560f0c1d574d77bbf3e618bb1456c57aa",
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
+      "indexCount": 15180,
+      "indexed": true,
+      "materialHash": "858e4533af0816bea07a104a09894d0528ccd66c465da64269ce46ef07243afa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodeId": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 6793
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "2eb1bbc7cc458318dc1ac87e206f0ce240d9971d924e89c14041df87fd704ca0",
+      "id": "material:2eb1bbc7cc458318dc1ac87e",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "858e4533af0816bea07a104a09894d0528ccd66c465da64269ce46ef07243afa",
+      "id": "material:858e4533af0816bea07a104a",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "id": "material:85add90c89b799ae69ad3e2f",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "bd02b45bd762825bfe41575ad41090d5ddd1175c3318279d1e3864b2b7867bfb",
+      "id": "material:bd02b45bd762825bfe41575a",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "id": "material:f64dcbc7e999cc81995955b9",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.ranger-production-v1.node.collision-hull",
+      "localTransform": [
+        8.86508846282959,
+        0,
+        0,
+        0,
+        0,
+        8.86508846282959,
+        0,
+        0,
+        0,
+        0,
+        8.86508846282959,
+        0,
+        0.5449504852294922,
+        1.0484853088855743,
+        0.00003504753112792969,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        8.86508846282959,
+        0,
+        0,
+        0,
+        0,
+        8.86508846282959,
+        0,
+        0,
+        0,
+        0,
+        8.86508846282959,
+        0,
+        0.5449504852294922,
+        1.0484853088855743,
+        0.00003504753112792969,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-armor",
+      "localTransform": [
+        8.473511457443237,
+        0,
+        0,
+        0,
+        0,
+        8.473511457443237,
+        0,
+        0,
+        0,
+        0,
+        8.473511457443237,
+        0,
+        0.873511552810669,
+        0.1970188319683075,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        8.473511457443237,
+        0,
+        0,
+        0,
+        0,
+        8.473511457443237,
+        0,
+        0,
+        0,
+        0,
+        8.473511457443237,
+        0,
+        0.873511552810669,
+        0.1970188319683075,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
+      "localTransform": [
+        0.07000017166137695,
+        0,
+        0,
+        0,
+        0,
+        0.07000017166137695,
+        0,
+        0,
+        0,
+        0,
+        0.07000017166137695,
+        0,
+        -6.099999904632568,
+        0.699999988079071,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        0.07000017166137695,
+        0,
+        0,
+        0,
+        0,
+        0.07000017166137695,
+        0,
+        0,
+        0,
+        0,
+        0.07000017166137695,
+        0,
+        -6.099999904632568,
+        0.699999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-canopy",
+      "localTransform": [
+        1.0500000715255737,
+        0,
+        0,
+        0,
+        0,
+        1.0500000715255737,
+        0,
+        0,
+        0,
+        0,
+        1.0500000715255737,
+        0,
+        3.2500001192092896,
+        0.9087829291820526,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodeName": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1.0500000715255737,
+        0,
+        0,
+        0,
+        0,
+        1.0500000715255737,
+        0,
+        0,
+        0,
+        0,
+        1.0500000715255737,
+        0,
+        3.2500001192092896,
+        0.9087829291820526,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-drive-core",
+      "localTransform": [
+        3.359999895095825,
+        0,
+        0,
+        0,
+        0,
+        3.359999895095825,
+        0,
+        0,
+        0,
+        0,
+        3.359999895095825,
+        0,
+        -7.471250057220459,
+        -1.30385160446167e-8,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        1,
+        3
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        3.359999895095825,
+        0,
+        0,
+        0,
+        0,
+        3.359999895095825,
+        0,
+        0,
+        0,
+        0,
+        3.359999895095825,
+        0,
+        -7.471250057220459,
+        -1.30385160446167e-8,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-port",
+      "localTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -5,
+        0.05000000260770321,
+        -3.6700000762939453,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        1,
+        4
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -5,
+        0.05000000260770321,
+        -3.6700000762939453,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-starboard",
+      "localTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -5,
+        0.05000000260770321,
+        3.6700000762939453,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        1,
+        5
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -5,
+        0.05000000260770321,
+        3.6700000762939453,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-armor",
+      "localTransform": [
+        0.4700000286102295,
+        0,
+        0,
+        0,
+        0,
+        0.4700000286102295,
+        0,
+        0,
+        0,
+        0,
+        0.4700000286102295,
+        0,
+        -3.600000023841858,
+        0.20000001788139343,
+        -1.25,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Armor",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Armor",
+      "nodePath": [
+        0,
+        1,
+        6
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        0.4700000286102295,
+        0,
+        0,
+        0,
+        0,
+        0.4700000286102295,
+        0,
+        0,
+        0,
+        0,
+        0.4700000286102295,
+        0,
+        -3.600000023841858,
+        0.20000001788139343,
+        -1.25,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-hull",
+      "localTransform": [
+        1.2925000190734863,
+        0,
+        0,
+        0,
+        0,
+        1.2925000190734863,
+        0,
+        0,
+        0,
+        0,
+        1.2925000190734863,
+        0,
+        -3.5999999046325684,
+        0.19999999552965164,
+        -1.2500000298023224,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Hull",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Hull",
+      "nodePath": [
+        0,
+        1,
+        7
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1.2925000190734863,
+        0,
+        0,
+        0,
+        0,
+        1.2925000190734863,
+        0,
+        0,
+        0,
+        0,
+        1.2925000190734863,
+        0,
+        -3.5999999046325684,
+        0.19999999552965164,
+        -1.2500000298023224,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanical",
+      "localTransform": [
+        2.0057767033576965,
+        0,
+        0,
+        0,
+        0,
+        2.0057767033576965,
+        0,
+        0,
+        0,
+        0,
+        2.0057767033576965,
+        0,
+        -3.19422310590744,
+        0.19999998807907104,
+        -1.25,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Mechanical",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Mechanical",
+      "nodePath": [
+        0,
+        1,
+        8
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        2.0057767033576965,
+        0,
+        0,
+        0,
+        0,
+        2.0057767033576965,
+        0,
+        0,
+        0,
+        0,
+        2.0057767033576965,
+        0,
+        -3.19422310590744,
+        0.19999998807907104,
+        -1.25,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanicaldark",
+      "localTransform": [
+        1.3000000715255737,
+        0,
+        0,
+        0,
+        0,
+        1.3000000715255737,
+        0,
+        0,
+        0,
+        0,
+        1.3000000715255737,
+        0,
+        -3.600000023841858,
+        0.20000001788139343,
+        -1.25,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_MechanicalDark",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        9
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1.3000000715255737,
+        0,
+        0,
+        0,
+        0,
+        1.3000000715255737,
+        0,
+        0,
+        0,
+        0,
+        1.3000000715255737,
+        0,
+        -3.600000023841858,
+        0.20000001788139343,
+        -1.25,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-armor",
+      "localTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        -1.1176232397556305,
+        2.01011061668396,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Armor",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Armor",
+      "nodePath": [
+        0,
+        1,
+        10
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        -1.1176232397556305,
+        2.01011061668396,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-lights-cyan",
+      "localTransform": [
+        0.0700000524520874,
+        0,
+        0,
+        0,
+        0,
+        0.0700000524520874,
+        0,
+        0,
+        0,
+        0,
+        0.0700000524520874,
+        0,
+        -1.4319168329238892,
+        2.694153308868408,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+      "nodePath": [
+        0,
+        1,
+        11
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        0.0700000524520874,
+        0,
+        0,
+        0,
+        0,
+        0.0700000524520874,
+        0,
+        0,
+        0,
+        0,
+        0.0700000524520874,
+        0,
+        -1.4319168329238892,
+        2.694153308868408,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-mechanical",
+      "localTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        -1.1029562056064606,
+        1.7828256487846375,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+      "nodePath": [
+        0,
+        1,
+        12
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        -1.1029562056064606,
+        1.7828256487846375,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hull",
+      "localTransform": [
+        6.225056409835815,
+        0,
+        0,
+        0,
+        0,
+        6.225056409835815,
+        0,
+        0,
+        0,
+        0,
+        6.225056409835815,
+        0,
+        -0.4749433994293213,
+        0.24141272902488708,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodePath": [
+        0,
+        1,
+        13
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        6.225056409835815,
+        0,
+        0,
+        0,
+        0,
+        6.225056409835815,
+        0,
+        0,
+        0,
+        0,
+        6.225056409835815,
+        0,
+        -0.4749433994293213,
+        0.24141272902488708,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-lights-cyan",
+      "localTransform": [
+        7.757006645202637,
+        0,
+        0,
+        0,
+        0,
+        7.757006645202637,
+        0,
+        0,
+        0,
+        0,
+        7.757006645202637,
+        0,
+        1.6529932022094727,
+        0.6447500437498093,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+      "nodePath": [
+        0,
+        1,
+        14
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        7.757006645202637,
+        0,
+        0,
+        0,
+        0,
+        7.757006645202637,
+        0,
+        0,
+        0,
+        0,
+        7.757006645202637,
+        0,
+        1.6529932022094727,
+        0.6447500437498093,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-lights-warm",
+      "localTransform": [
+        1.5240359902381897,
+        0,
+        0,
+        0,
+        0,
+        1.5240359902381897,
+        0,
+        0,
+        0,
+        0,
+        1.5240359902381897,
+        0,
+        2.2073692679405212,
+        0.6433592885732651,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodePath": [
+        0,
+        1,
+        15
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1.5240359902381897,
+        0,
+        0,
+        0,
+        0,
+        1.5240359902381897,
+        0,
+        0,
+        0,
+        0,
+        1.5240359902381897,
+        0,
+        2.2073692679405212,
+        0.6433592885732651,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-mechanical",
+      "localTransform": [
+        8.359999656677246,
+        0,
+        0,
+        0,
+        0,
+        8.359999656677246,
+        0,
+        0,
+        0,
+        0,
+        8.359999656677246,
+        0,
+        0.039999961853027344,
+        0.5374999940395355,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodePath": [
+        0,
+        1,
+        16
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        8.359999656677246,
+        0,
+        0,
+        0,
+        0,
+        8.359999656677246,
+        0,
+        0,
+        0,
+        0,
+        8.359999656677246,
+        0,
+        0.039999961853027344,
+        0.5374999940395355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.lod0-motion-hull-core-mechanicaldark",
+      "localTransform": [
+        7.409999847412109,
+        0,
+        0,
+        0,
+        0,
+        7.409999847412109,
+        0,
+        0,
+        0,
+        0,
+        7.409999847412109,
+        0,
+        -0.9099998474121094,
+        0.16416886448860168,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodeName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        17
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        7.409999847412109,
+        0,
+        0,
+        0,
+        0,
+        7.409999847412109,
+        0,
+        0,
+        0,
+        0,
+        7.409999847412109,
+        0,
+        -0.9099998474121094,
+        0.16416886448860168,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.motion-hull-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_HULL_CORE",
+      "nodeName": "MOTION_HULL_CORE",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "RANGER_LOD0_ROOT",
+      "nodeName": "RANGER_LOD0_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.9634000062942505,
+        1.046576738357544,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.9634000062942505,
+        1.046576738357544,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-cargo-ventral",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        -0.5999999642372131,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Cargo_Ventral",
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        -0.5999999642372131,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.050000190734863,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.050000190734863,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-rcs-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        1.046576738357544,
+        -2.262239933013916,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Port",
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        1.046576738357544,
+        -2.262239933013916,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-rcs-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        1.046576738357544,
+        2.262239933013916,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Starboard",
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        1.046576738357544,
+        2.262239933013916,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.355599880218506,
+        1.3715766668319702,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.355599880218506,
+        1.3715766668319702,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-trail-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        -0.9426000118255615,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Port",
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        -0.9426000118255615,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-trail-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        0.9426000118255615,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Starboard",
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.420000076293945,
+        0,
+        0.9426000118255615,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-utility-dorsal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        2.6931533813476562,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Utility_Dorsal",
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5450000762939453,
+        2.6931533813476562,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ranger-production-v1.node.socket-weapon-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.400000095367432,
+        -0.05000000074505806,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Weapon_Front",
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.ranger-production-v1.node.ranger-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ranger-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.400000095367432,
+        -0.05000000074505806,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "82d40061c12ea800de257136d57a274e7dff281194082dede2c34936b262ec44"
+    },
+    "sourceGlb": {
+      "bytes": 795624,
+      "sha256": "9c5f117f81a1a283be149fa820505b3cde0cfdb02bea103eff0cf5ced9d9dc20",
+      "uri": "ranger_production_v1.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 804656,
+    "sha256": "13328d33b96d4d0ba2726149e6c8ef2764f2f4064bce2476eff6f46f239f8bbf",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.5449504852294922,
+        1.0481506674625938,
+        0
+      ],
+      "max": [
+        9.410038948059082,
+        2.7464526294434073,
+        3.770694218443846
+      ],
+      "min": [
+        -8.320137977600098,
+        -0.65015129451822,
+        -3.770694218443846
+      ],
+      "size": [
+        17.73017692565918,
+        3.396603923961627,
+        7.541388436887692
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "MOTION_HULL_CORE",
+        "planIndex": 3,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "hull_core",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_HULL_CORE",
+          "spaceface": {
+            "motionGroup": "hull_core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_HULL_CORE",
+            "recordIds": [
+              "sf.render.ranger-production-v1.node.motion-hull-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.359999895095825,
+          0,
+          0,
+          0,
+          0,
+          3.359999895095825,
+          0,
+          0,
+          0,
+          0,
+          3.359999895095825,
+          0,
+          -7.471250057220459,
+          -1.30385160446167e-8,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 7,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -5,
+          0.05000000260770321,
+          -3.6700000762939453,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 9,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -5,
+          0.05000000260770321,
+          3.6700000762939453,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 11,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.4700000286102295,
+          0,
+          0,
+          0,
+          0,
+          0.4700000286102295,
+          0,
+          0,
+          0,
+          0,
+          0.4700000286102295,
+          0,
+          -3.600000023841858,
+          0.20000001788139343,
+          -1.25,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Armor",
+        "planIndex": 13,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Armor",
+            "recordIds": [
+              "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.2925000190734863,
+          0,
+          0,
+          0,
+          0,
+          1.2925000190734863,
+          0,
+          0,
+          0,
+          0,
+          1.2925000190734863,
+          0,
+          -3.5999999046325684,
+          0.19999999552965164,
+          -1.2500000298023224,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Hull",
+        "planIndex": 15,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Hull",
+            "recordIds": [
+              "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.0057767033576965,
+          0,
+          0,
+          0,
+          0,
+          2.0057767033576965,
+          0,
+          0,
+          0,
+          0,
+          2.0057767033576965,
+          0,
+          -3.19422310590744,
+          0.19999998807907104,
+          -1.25,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Mechanical",
+        "planIndex": 17,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Mechanical",
+            "recordIds": [
+              "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.3000000715255737,
+          0,
+          0,
+          0,
+          0,
+          1.3000000715255737,
+          0,
+          0,
+          0,
+          0,
+          1.3000000715255737,
+          0,
+          -3.600000023841858,
+          0.20000001788139343,
+          -1.25,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_MechanicalDark",
+        "planIndex": 19,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_MechanicalDark",
+            "recordIds": [
+              "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          -1.1176232397556305,
+          2.01011061668396,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Armor",
+        "planIndex": 21,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Armor",
+            "recordIds": [
+              "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.0700000524520874,
+          0,
+          0,
+          0,
+          0,
+          0.0700000524520874,
+          0,
+          0,
+          0,
+          0,
+          0.0700000524520874,
+          0,
+          -1.4319168329238892,
+          2.694153308868408,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+        "planIndex": 23,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+            "recordIds": [
+              "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          -1.1029562056064606,
+          1.7828256487846375,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 25,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.9634000062942505,
+          1.046576738357544,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 32,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-camera-focus",
+              "sf.render.ranger-production-v1.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5450000762939453,
+          -0.5999999642372131,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 33,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-cargo-ventral",
+              "sf.render.ranger-production-v1.node.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.050000190734863,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 34,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-engine-main",
+              "sf.render.ranger-production-v1.node.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.300000190734863,
+          -0.20000000298023224,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 35,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-mining-front",
+              "sf.render.ranger-production-v1.node.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5450000762939453,
+          1.046576738357544,
+          -2.262239933013916,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 36,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-rcs-port",
+              "sf.render.ranger-production-v1.node.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5450000762939453,
+          1.046576738357544,
+          2.262239933013916,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 37,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-rcs-starboard",
+              "sf.render.ranger-production-v1.node.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.355599880218506,
+          1.3715766668319702,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 38,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-tether-massline",
+              "sf.render.ranger-production-v1.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.420000076293945,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 39,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-trail-main",
+              "sf.render.ranger-production-v1.node.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.420000076293945,
+          0,
+          -0.9426000118255615,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 40,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-trail-port",
+              "sf.render.ranger-production-v1.node.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.420000076293945,
+          0,
+          0.9426000118255615,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 41,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-trail-starboard",
+              "sf.render.ranger-production-v1.node.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5450000762939453,
+          2.6931533813476562,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 42,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-utility-dorsal",
+              "sf.render.ranger-production-v1.node.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.400000095367432,
+          -0.05000000074505806,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 43,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.ranger-production-v1.anchor.socket-weapon-front",
+              "sf.render.ranger-production-v1.node.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "drive": 1,
+      "glass": 1,
+      "hull": 5,
+      "mechanical": 5,
+      "signal": 6
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      }
+    ],
+    "motionBank": {
+      "bytes": 7157,
+      "rigId": "hull",
+      "sha256": "65be9322dcc0a579f452f9cb7ff65235c4ad459b41d138e22aaf2b86649c6281",
+      "uri": "assets/ships/motions/ranger-production-v1.motion.json"
+    },
+    "nodeCount": 44,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          8.473511457443237,
+          0,
+          0,
+          0,
+          0,
+          8.473511457443237,
+          0,
+          0,
+          0,
+          0,
+          8.473511457443237,
+          0,
+          0.873511552810669,
+          0.1970188319683075,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Armor",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07000017166137695,
+          0,
+          0,
+          0,
+          0,
+          0.07000017166137695,
+          0,
+          0,
+          0,
+          0,
+          0.07000017166137695,
+          0,
+          -6.099999904632568,
+          0.699999988079071,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1.0500000715255737,
+          0,
+          0,
+          0,
+          0,
+          1.0500000715255737,
+          0,
+          0,
+          0,
+          0,
+          1.0500000715255737,
+          0,
+          3.2500001192092896,
+          0.9087829291820526,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_CANOPY",
+        "planIndex": 6,
+        "tags": {
+          "canopy": true,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.359999895095825,
+          0,
+          0,
+          0,
+          0,
+          3.359999895095825,
+          0,
+          0,
+          0,
+          0,
+          3.359999895095825,
+          0,
+          -7.471250057220459,
+          -1.30385160446167e-8,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            3.359999895095825,
+            0,
+            0,
+            0,
+            0,
+            3.359999895095825,
+            0,
+            0,
+            0,
+            0,
+            3.359999895095825,
+            0,
+            -7.471250057220459,
+            -1.30385160446167e-8,
+            0,
+            1
+          ],
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -5,
+          0.05000000260770321,
+          -3.6700000762939453,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -5,
+          0.05000000260770321,
+          3.6700000762939453,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4700000286102295,
+          0,
+          0,
+          0,
+          0,
+          0.4700000286102295,
+          0,
+          0,
+          0,
+          0,
+          0.4700000286102295,
+          0,
+          -3.600000023841858,
+          0.20000001788139343,
+          -1.25,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Armor_1",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.2925000190734863,
+          0,
+          0,
+          0,
+          0,
+          1.2925000190734863,
+          0,
+          0,
+          0,
+          0,
+          1.2925000190734863,
+          0,
+          -3.5999999046325684,
+          0.19999999552965164,
+          -1.2500000298023224,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Hull_1",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.0057767033576965,
+          0,
+          0,
+          0,
+          0,
+          2.0057767033576965,
+          0,
+          0,
+          0,
+          0,
+          2.0057767033576965,
+          0,
+          -3.19422310590744,
+          0.19999998807907104,
+          -1.25,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_Mechanical_1",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.3000000715255737,
+          0,
+          0,
+          0,
+          0,
+          1.3000000715255737,
+          0,
+          0,
+          0,
+          0,
+          1.3000000715255737,
+          0,
+          -3.600000023841858,
+          0.20000001788139343,
+          -1.25,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TANK_MechanicalDark_1",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          -1.1176232397556305,
+          2.01011061668396,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Armor_1",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.0700000524520874,
+          0,
+          0,
+          0,
+          0,
+          0.0700000524520874,
+          0,
+          0,
+          0,
+          0,
+          0.0700000524520874,
+          0,
+          -1.4319168329238892,
+          2.694153308868408,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan_1",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          -1.1029562056064606,
+          1.7828256487846375,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.225056409835815,
+          0,
+          0,
+          0,
+          0,
+          6.225056409835815,
+          0,
+          0,
+          0,
+          0,
+          6.225056409835815,
+          0,
+          -0.4749433994293213,
+          0.24141272902488708,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Hull",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.757006645202637,
+          0,
+          0,
+          0,
+          0,
+          7.757006645202637,
+          0,
+          0,
+          0,
+          0,
+          7.757006645202637,
+          0,
+          1.6529932022094727,
+          0.6447500437498093,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5240359902381897,
+          0,
+          0,
+          0,
+          0,
+          1.5240359902381897,
+          0,
+          0,
+          0,
+          0,
+          1.5240359902381897,
+          0,
+          2.2073692679405212,
+          0.6433592885732651,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.359999656677246,
+          0,
+          0,
+          0,
+          0,
+          8.359999656677246,
+          0,
+          0,
+          0,
+          0,
+          8.359999656677246,
+          0,
+          0.039999961853027344,
+          0.5374999940395355,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Mechanical",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.409999847412109,
+          0,
+          0,
+          0,
+          0,
+          7.409999847412109,
+          0,
+          0,
+          0,
+          0,
+          7.409999847412109,
+          0,
+          -0.9099998474121094,
+          0.16416886448860168,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/ranger_production_v1.glb"
+  },
+  "runtimeHash": "e1ddd801a6303d62cc423a09c1e513d1b1b08a041612becf19a526afccca6b3c",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          9.410038948059082,
+          2.7464526294434073,
+          3.770694218443846
+        ],
+        "min": [
+          -8.320137977600098,
+          -0.65015129451822,
+          -3.770694218443846
+        ]
+      },
+      "id": "sf.render.ranger-production-v1.body",
+      "nodeIds": [
+        "sf.render.ranger-production-v1.node.collision-hull",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-armor",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-canopy",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-drive-core",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-port",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-nav-starboard",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-armor",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-hull",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanical",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-secondary-tank-mechanicaldark",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-armor",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-lights-cyan",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hook-sensor-dish-mechanical",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-hull",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-lights-cyan",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-lights-warm",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-mechanical",
+        "sf.render.ranger-production-v1.node.lod0-motion-hull-core-mechanicaldark",
+        "sf.render.ranger-production-v1.node.motion-hull-core",
+        "sf.render.ranger-production-v1.node.ranger-lod0-root",
+        "sf.render.ranger-production-v1.node.socket-camera-focus",
+        "sf.render.ranger-production-v1.node.socket-cargo-ventral",
+        "sf.render.ranger-production-v1.node.socket-engine-main",
+        "sf.render.ranger-production-v1.node.socket-mining-front",
+        "sf.render.ranger-production-v1.node.socket-rcs-port",
+        "sf.render.ranger-production-v1.node.socket-rcs-starboard",
+        "sf.render.ranger-production-v1.node.socket-tether-massline",
+        "sf.render.ranger-production-v1.node.socket-trail-main",
+        "sf.render.ranger-production-v1.node.socket-trail-port",
+        "sf.render.ranger-production-v1.node.socket-trail-starboard",
+        "sf.render.ranger-production-v1.node.socket-utility-dorsal",
+        "sf.render.ranger-production-v1.node.socket-weapon-front"
+      ]
+    }
+  ]
+}

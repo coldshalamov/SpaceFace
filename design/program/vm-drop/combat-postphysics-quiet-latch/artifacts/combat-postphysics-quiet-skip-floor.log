@@ -1,0 +1,60 @@
+capture 1: median=14.086× min=12.815× absBefore=11.42µs dirtyWake=true
+capture 2: median=13.661× min=12.897× absBefore=11.77µs dirtyWake=true
+capture 3: median=13.506× min=11.700× absBefore=11.49µs dirtyWake=true
+capture 4: median=13.827× min=9.315× absBefore=11.48µs dirtyWake=true
+capture 5: median=13.553× min=12.020× absBefore=11.45µs dirtyWake=true
+{
+  "captures": [
+    {
+      "capture": 1,
+      "medianSpeedup": 14.086358809797785,
+      "minSpeedup": 12.814859088753554,
+      "maxSpeedup": 15.924661159988032,
+      "absBeforeUsMedian": 11.418035516666665,
+      "absAfterUsMedian": 0.8244459000000002,
+      "dirtyWakeOk": true
+    },
+    {
+      "capture": 2,
+      "medianSpeedup": 13.660621807991603,
+      "minSpeedup": 12.897466873098194,
+      "maxSpeedup": 15.304623521084125,
+      "absBeforeUsMedian": 11.766308083333334,
+      "absAfterUsMedian": 0.8522656833333334,
+      "dirtyWakeOk": true
+    },
+    {
+      "capture": 3,
+      "medianSpeedup": 13.506072957068694,
+      "minSpeedup": 11.700190533647607,
+      "maxSpeedup": 14.300979482949016,
+      "absBeforeUsMedian": 11.486245616666666,
+      "absAfterUsMedian": 0.8489680666666667,
+      "dirtyWakeOk": true
+    },
+    {
+      "capture": 4,
+      "medianSpeedup": 13.826981230100847,
+      "minSpeedup": 9.31515897648917,
+      "maxSpeedup": 16.6945799585101,
+      "absBeforeUsMedian": 11.478227233333334,
+      "absAfterUsMedian": 0.8197898499999998,
+      "dirtyWakeOk": true
+    },
+    {
+      "capture": 5,
+      "medianSpeedup": 13.553323808713623,
+      "minSpeedup": 12.01958028261888,
+      "maxSpeedup": 14.752489878104225,
+      "absBeforeUsMedian": 11.452145633333334,
+      "absAfterUsMedian": 0.8461509833333334,
+      "dirtyWakeOk": true
+    }
+  ],
+  "packageMedianRange": [
+    13.506072957068694,
+    14.086358809797785
+  ],
+  "packageFloorMin": 9.31515897648917,
+  "allDirtyWakeOk": true
+}

@@ -1,0 +1,646 @@
+// Swarm draft additions (PQ-135 / PQ-175.02) — what "upgrade every five waves" actually gives you.
+//
+// THE PROBLEM THIS SOLVES
+// -----------------------
+// The arc's draft pool is weapons, and the starter hull holds three. On a thirty-wave arc with a
+// draft after every wave that is fine: you are constantly re-answering the question of what your
+// three guns should be. In an endless swarm run it is not. After three picks the hull is full and
+// every later draft is a sideways swap forever, while enemy levels keep climbing.
+//
+// The fix is not a percentage. It is fittings that change a verb's shape: a heavier line, a wider
+// well, a faster reel, a ram plate, a whip snap. Attack traits (src/data/attackTraits.js) change
+// what every shot DOES. Massline heads and the Hitch-legal winch change the line. A ram plate
+// makes the hull the weapon. Number cards stay in the minority — at most one in three.
+//
+// Those live in UTILITY, SHIELD and ENGINE slots, which the weapon-only pool could never reach.
+// `fits` decides where a card can land. Hitch cannot take M concussion or M utility heads; those
+// cards stay in the pool for hulls that can, and Hitch simply never sees them.
+//
+// RULES
+// -----
+//   * Every id here is a live module in src/data/modules.js. Nothing is invented.
+//   * `kind` is verb or number. Verb cards name a shape when they change one.
+//   * Blurbs are one line. No percentages, no +stat.
+//   * The arc is untouched. This pool is appended only for the swarm ruleset.
+//   * Kind strings stay literal here so this file never imports survivalDraft (that file imports us).
+
+import { SWARM_RULESET } from './swarmMode.js';
+
+export const SWARM_DRAFT_SCHEMA_VERSION = 1;
+
+/**
+ * The trait pool. Verb-shape cards lead. Number cards stay at the tail so the audit can name them.
+ */
+export const SWARM_DRAFT_OFFERS = Object.freeze([
+  {
+    id: 'snarl', defId: 'wpn_snarl_s', verb: 'Web', kind: 'verb', shape: null,
+    blurb: 'Hits stitch nearby enemies together. Their thrust fights their partners; a shove swings the knot.',
+  },
+  {
+    id: 'repulsion_trap', defId: 'mod_repulsion_trap_s', verb: 'Trap',
+    kind: 'verb', shape: null,
+    blurb: 'Brake and throw to drop a trap behind your flight path; a plain throw is still your sticky plate. Pursuers trigger a blast that throws the pack into the room.',
+  },
+  {
+    id: 'bank', defId: 'mod_bank_shot', verb: 'Bank',
+    kind: 'verb', shape: null,
+    blurb: 'Your shots bounce off rock. Every wall becomes a firing angle.',
+  },
+  {
+    id: 'pierce_core', defId: 'mod_piercing_core', verb: 'Punch',
+    kind: 'verb', shape: null,
+    blurb: 'Shots carry through the first hull into whatever is behind it.',
+  },
+  {
+    id: 'fork', defId: 'mod_forked_core', verb: 'Fork',
+    kind: 'verb', shape: null,
+    blurb: 'Every shot splits. One trigger pull, two things to hit.',
+  },
+  {
+    id: 'twin', defId: 'mod_twin_mount', verb: 'Twin',
+    kind: 'verb', shape: null,
+    blurb: 'Every gun grows a second barrel.',
+  },
+  {
+    id: 'relay', defId: 'mod_relay_arc', verb: 'Arc',
+    kind: 'verb', shape: null,
+    blurb: 'A hit jumps to the next hull in reach. Tight packs kill themselves.',
+  },
+  {
+    id: 'gravity_payload', defId: 'mod_gravity_tag', verb: 'Weight',
+    kind: 'verb', shape: 'well',
+    blurb: 'Hits mark a hull so the well takes that one.',
+  },
+  {
+    id: 'ion', defId: 'mod_ion_payload', verb: 'Short',
+    kind: 'verb', shape: null,
+    blurb: 'Hits bleed into systems, not just plating.',
+  },
+  {
+    id: 'incendiary', defId: 'mod_incendiary_payload', verb: 'Burn',
+    kind: 'verb', shape: null,
+    blurb: 'Hits keep burning after the shot has gone.',
+  },
+  {
+    id: 'cryo', defId: 'mod_cryo_payload', verb: 'Freeze',
+    kind: 'verb', shape: null,
+    blurb: 'Hits freeze a hull stiff so the next blow lands on something that cannot yield.',
+  },
+  {
+    id: 'herald', defId: 'mod_herald_fan', verb: 'Fan',
+    kind: 'verb', shape: null,
+    blurb: 'Shots spread as they travel — worse on one, better on eight.',
+  },
+  {
+    id: 'ram', defId: 'mod_ram_plate', verb: 'Ram',
+    kind: 'verb', shape: 'ram',
+    blurb: 'A ram plate. Flying through something stops being your problem.',
+  },
+  {
+    id: 'reel', defId: 'mod_winch_hd', verb: 'Reel',
+    kind: 'verb', shape: 'reel',
+    blurb: 'The line hauls them to you. You are the winch, not the bait.',
+  },
+  {
+    id: 'charges', defId: 'mod_charge_rack', verb: 'Charges',
+    kind: 'verb', shape: null,
+    blurb: 'Impulse charges on the rack — a shove for whatever is on top of you.',
+  },
+  {
+    id: 'burner', defId: 'mod_afterburner_m', verb: 'Burst',
+    kind: 'verb', shape: null,
+    blurb: 'A hard shove on demand. The way out of a closing ring.',
+  },
+  {
+    id: 'tractor', defId: 'mod_tractor_beam_m', verb: 'Pull',
+    kind: 'verb', shape: null,
+    blurb: 'A line you put on a hull and haul.',
+  },
+  {
+    id: 'whip', defId: 'mod_elastic_whip_m', verb: 'Whip',
+    kind: 'verb', shape: 'whip',
+    blurb: 'A springy line. Latch, stretch, snap them into something solid.',
+  },
+  {
+    id: 'sweep', defId: 'mod_monofilament_sweep_m', verb: 'Sweep',
+    kind: 'verb', shape: null,
+    blurb: 'A taut line that cuts whatever crosses it.',
+  },
+  {
+    id: 'snare', defId: 'mod_transverse_snare_m', verb: 'Snare',
+    kind: 'verb', shape: 'line_load',
+    blurb: 'One line laid across the lane they are coming down.',
+  },
+  // FB-021 — the four live emergent weapons (src/data/emergentPrimitives.js) join the shelf as
+  // verb cards. Each sentence names its primitive. `fromWave` is the debut gate the wave planner
+  // already speaks: the detonator is the first emergent toy on the shelf and the primer does not
+  // arrive until after it — a primer with nothing to blow up is a card that lies.
+  {
+    id: 'sticky', defId: 'wpn_sticky_detonator', verb: 'Trap',
+    kind: 'verb', shape: null, fromWave: 3,
+    blurb: 'Sticks a charge to a hull — you call the moment it goes.',
+  },
+  {
+    id: 'driver', defId: 'wpn_mass_driver', verb: 'Throw',
+    kind: 'verb', shape: null, fromWave: 5,
+    blurb: 'Drives a mass slug through whatever it meets — the shove is the shot.',
+  },
+  {
+    id: 'primer', defId: 'wpn_conductive_primer', verb: 'Arc',
+    kind: 'verb', shape: null, fromWave: 7,
+    blurb: 'Primes a hull so the next hit jumps the gap to its neighbours.',
+  },
+  {
+    id: 'cooker', defId: 'wpn_thermal_cooker', verb: 'Burn',
+    kind: 'verb', shape: null, fromWave: 9,
+    blurb: 'Cooks a target from the inside until its own fuel joins the fire.',
+  },
+  {
+    id: 'spool', defId: 'mod_massline_spool_m', verb: 'Spool',
+    kind: 'number', shape: null,
+    blurb: 'A longer sling line. Speed lives in the rope.',
+  },
+  {
+    id: 'chaff', defId: 'mod_chaff_dispenser_m', verb: 'Chaff',
+    kind: 'verb', shape: null,
+    blurb: 'A cloud that breaks every missile lock behind you at once.',
+  },
+  {
+    id: 'booster', defId: 'mod_shield_booster_s', verb: 'Screen',
+    kind: 'number', shape: null,
+    blurb: 'A heavier screen between the swarm and your hull.',
+  },
+  {
+    id: 'sink', defId: 'mod_thermal_sink_s', verb: 'Cool',
+    kind: 'number', shape: null,
+    blurb: 'Heat leaves the guns so you can hold the trigger.',
+  },
+  {
+    id: 'hardener', defId: 'mod_shield_hardener_m', verb: 'Harden',
+    kind: 'number', shape: null,
+    blurb: 'The screen shrugs every flavor of fire, not just one.',
+  },
+  {
+    id: 'fusion', defId: 'mod_engine_fusion_m', verb: 'Drive',
+    kind: 'number', shape: null,
+    blurb: 'More thrust under you. The whole fight gets faster.',
+  },
+
+  // SEED-SW-17 … 23 — the armory's authored weapon verbs. Each card is a live gun in
+  // src/data/weapons.js whose verb the room can feel, gated behind wave debuts like the
+  // emergent set above them. (SW-17 arc caster shipped separately as `wpn_arc_caster`
+  // via the emergent-primitive route — no duplicate offer here.)
+  {
+    id: 'disc_launcher', defId: 'wpn_disc_launcher_m', verb: 'Carom',
+    kind: 'verb', shape: null, fromWave: 4,
+    blurb: 'A sawblade that caroms hull to hull until its edge is spent.',
+  },
+  {
+    id: 'micro_barrage', defId: 'wpn_micro_barrage_m', verb: 'Flight',
+    kind: 'verb', shape: null, fromWave: 5,
+    blurb: 'One pull releases a fan of small missiles; each picks its own hull.',
+  },
+  {
+    id: 'plasma_cone', defId: 'wpn_plasma_cone_s', verb: 'Cone',
+    kind: 'verb', shape: null, fromWave: 3,
+    blurb: 'A fan of plasma bolts for the fights that get close.',
+  },
+  {
+    id: 'singularity_mortar', defId: 'wpn_singularity_mortar_m', verb: 'Knot',
+    kind: 'verb', shape: null, fromWave: 6,
+    blurb: 'A lobbed shell drags the pack into a knot, then pops.',
+  },
+  {
+    id: 'debris_orbit', defId: 'wpn_debris_orbit_s', verb: 'Ring',
+    kind: 'verb', shape: null, fromWave: 5,
+    blurb: 'Loose rocks lash to your hull and circle it as a shield.',
+  },
+  {
+    id: 'glaive', defId: 'wpn_glaive_s', verb: 'Return',
+    kind: 'verb', shape: null, fromWave: 4,
+    blurb: 'The shot flies out and carves back through you — a hit each way.',
+  },
+]);
+
+/** Every defId this pool can offer, for validators and tests. */
+export const SWARM_DRAFT_DEF_IDS = Object.freeze(SWARM_DRAFT_OFFERS.map((o) => o.defId));
+
+// ── the room-control legendaries (build-map row 270) ───────────────────────────────────────────
+//
+// A LEGENDARY IS NOT A FITTING. It takes no hardpoint, it is not a module, and it never joins the
+// scored draft pool above. A legendary is a run-long change to the ROOM: the armory sells it from
+// the service counter, the run remembers it as a `swarm_legendary` record, and the runtime reads
+// that record to know the room has changed.
+//
+// `fromWave` counts CLEARED waves: the opening armory sits at wave 0, so a legendary gated at 3
+// reaches the shelf from the armory that follows the third cleared wave. Prices are run credits,
+// spent through the run wallet like every other armory row.
+
+export const SWARM_LEGENDARY_RECORD_KIND = 'swarm_legendary';
+
+const SWARM_ROOM_LEGENDARIES_BASE = Object.freeze([
+  Object.freeze({
+    id: 'domino',
+    offerId: 'legendary_domino',
+    name: 'Domino',
+    verb: 'Domino',
+    price: 76,
+    fromWave: 3,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Every credited kill shoves nearby bodies outward.',
+  }),
+  Object.freeze({
+    id: 'graviton_heart',
+    offerId: 'legendary_graviton_heart',
+    name: 'Graviton Heart',
+    verb: 'Graviton Heart',
+    price: 112,
+    fromWave: 5,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'A weak gravity well follows your ship and pulls nearby bodies inward.',
+  }),
+]);
+
+// SEED-SW-08/11/12 — the throw-and-room legendaries join the same service counter: the throw
+// economy (volatile hulls), the cover (bumper walls) and the kill (second sun) are room-long
+// changes bought like every other legendary and read from the run's own ledger.
+export const SWARM_ROOM_LEGENDARIES = Object.freeze(SWARM_ROOM_LEGENDARIES_BASE.concat([
+  Object.freeze({
+    id: 'volatile_hulls',
+    offerId: 'legendary_volatile_hulls',
+    name: 'Volatile Hulls',
+    verb: 'Volatile Hulls',
+    price: 120,
+    fromWave: 4,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Anything you throw detonates on its first solid impact, credited to you.',
+  }),
+  Object.freeze({
+    id: 'bumper_walls',
+    offerId: 'legendary_bumper_walls',
+    name: 'Bumper Walls',
+    verb: 'Bumper Walls',
+    price: 100,
+    fromWave: 3,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Arena cover throws the pack back like a pinball table. Your own contacts unchanged.',
+  }),
+  Object.freeze({
+    id: 'second_sun',
+    offerId: 'legendary_second_sun',
+    name: 'Second Sun',
+    verb: 'Second Sun',
+    price: 140,
+    fromWave: 5,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Every kill ignites whatever stood close to it — ships and brood alike.',
+  }),
+  Object.freeze({
+    id: 'chain_feeder',
+    offerId: 'legendary_chain_feeder',
+    name: 'Chain Feeder',
+    verb: 'Chain Feeder',
+    price: 95,
+    fromWave: 4,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Your guns eat the kill chain: +1% damage per live chain point.',
+  }),
+  Object.freeze({
+    id: 'echo',
+    offerId: 'legendary_echo',
+    name: 'Echo',
+    verb: 'Echo',
+    price: 105,
+    fromWave: 4,
+    category: 'Service',
+    slotLabel: 'Legendary · lasts this run · uses no hardpoint',
+    blurb: 'Every fifth shot from a fitted gun fires twice — no extra heat, no extra capacitor.',
+  }),
+]));
+
+const LEGENDARY_BY_ID = new Map(SWARM_ROOM_LEGENDARIES.map((entry) => [entry.id, entry]));
+
+/** The catalog row for one legendary id, or null for an id the catalog does not name. */
+export function swarmLegendaryById(id) {
+  return typeof id === 'string' ? (LEGENDARY_BY_ID.get(id) || null) : null;
+}
+
+/**
+ * The legendaries THIS run owns.
+ *
+ * Reads only recognized `swarm_legendary` records out of the run's own modifier ledger, and
+ * returns their ids, deduplicated, in first-seen order. Everything else is ignored: a missing run,
+ * a malformed run, a non-Swarm run, a record of another kind, an unknown legendary id. Ownership
+ * is a receipt the run keeps, never a guess.
+ */
+export function ownedSwarmLegendaryIds(run) {
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return [];
+  if (run.ruleset !== SWARM_RULESET) return [];
+  const modifiers = Array.isArray(run.modifiers) ? run.modifiers : [];
+  const ids = [];
+  const seen = new Set();
+  for (const record of modifiers) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) continue;
+    if (record.kind !== SWARM_LEGENDARY_RECORD_KIND) continue;
+    const id = record.legendaryId;
+    if (typeof id !== 'string' || !LEGENDARY_BY_ID.has(id)) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
+// ── the call-in charges (SEED-SW-01..07) ────────────────────────────────────────────────────────
+//
+// A call-in charge is SPENT STOCK, not a fitting and not a room upgrade: the armory sells the
+// charge, the run remembers how many it holds as `swarm_callin` records (count summed across
+// rows of the same callinId), and one fire spends exactly one. Like the legendaries they ride
+// the run's own modifier ledger — nothing here reads a save, and a charge lives exactly as long
+// as the run that bought it. `fromWave` counts CLEARED waves (the opening armory sits at 0).
+
+export const SWARM_CALLIN_RECORD_KIND = 'swarm_callin';
+
+// ── the stacking passives (SEED-SW-14) ────────────────────────────────────────────────────────
+//
+// A stacking passive is SPENT STOCK of a room effect: the armory sells repeat copies of one
+// passive (each copy applies its effect exactly once — the effect readers multiply by the held
+// count), the stack caps small, and the copies ride the run's own modifier ledger as
+// `swarm_passive` records — never the Hangar profile, which stays earned profile gear.
+
+export const SWARM_PASSIVE_RECORD_KIND = 'swarm_passive';
+
+/** The stack cap: a passive is a rack, not a vault. */
+export const SWARM_PASSIVE_STACK_MAX = 5;
+
+export const SWARM_PASSIVE_CATALOG = Object.freeze([
+  Object.freeze({
+    id: 'plated_hull',
+    offerId: 'passive_plated_hull',
+    name: 'Plated Hull',
+    verb: 'Plate',
+    price: 48,
+    fromWave: 1,
+    perCopyHull: 14,
+    blurb: '+14 hull per plate, stacked to five. Scrap welded straight onto the frame.',
+  }),
+  Object.freeze({
+    // SWARM-08 — the second rack on the passive shelf: a faster gun cycle per copy. The
+    // weapons system reads the count through swarmPassiveFireRateScale the same way the
+    // elite weld reads plated_hull — one reader, one ledger, no second truth.
+    id: 'gun_cycler',
+    offerId: 'passive_gun_cycler',
+    name: 'Gun Cycler',
+    verb: 'Cycle',
+    price: 54,
+    fromWave: 2,
+    perCopyRofPct: 0.06,
+    blurb: '+6% gun cycle per coil, stacked to five. A hotter hammer on the same trigger.',
+  }),
+]);
+
+const PASSIVE_BY_ID = new Map(SWARM_PASSIVE_CATALOG.map((entry) => [entry.id, entry]));
+
+/** The catalog row for one passive id, or null. */
+export function swarmPassiveById(id) {
+  return typeof id === 'string' ? (PASSIVE_BY_ID.get(id) || null) : null;
+}
+
+/** How many copies of one passive THIS run holds (sum across ledger rows). */
+export function swarmPassiveCount(run, passiveId) {
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return 0;
+  if (typeof passiveId !== 'string' || !PASSIVE_BY_ID.has(passiveId)) return 0;
+  if (run.ruleset !== SWARM_RULESET) return 0;
+  const modifiers = Array.isArray(run.modifiers) ? run.modifiers : [];
+  let total = 0;
+  for (const record of modifiers) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) continue;
+    if (record.kind !== SWARM_PASSIVE_RECORD_KIND || record.passiveId !== passiveId) continue;
+    const n = Number(record.count);
+    if (Number.isFinite(n) && n > 0) total += Math.floor(n);
+  }
+  return total;
+}
+
+/**
+ * The hull bonus the run's plated-hull stack grants: once per copy up to the rack cap —
+ * `count × perCopyHull`, the same shape the fire-rate sibling keeps. The catalog row is the
+ * one authored source of the number; the effect host (swarmElites) reads it through here.
+ */
+export function swarmPassiveHullBonus(run) {
+  const entry = PASSIVE_BY_ID.get('plated_hull');
+  const stacks = Math.min(SWARM_PASSIVE_STACK_MAX, swarmPassiveCount(run, 'plated_hull'));
+  return entry ? stacks * entry.perCopyHull : 0;
+}
+
+/**
+ * The rate-of-fire factor the run's gun-cycler stack grants, once per copy: ×1.06 per coil,
+ * ×1.3 at the rack cap. The weapons cooldown path multiplies this over the overdrive rate —
+ * heat and capacitor still charge in full, so the gift is cadence only, never a free magazine.
+ */
+export function swarmPassiveFireRateScale(run) {
+  const entry = PASSIVE_BY_ID.get('gun_cycler');
+  if (!entry) return 1;
+  const coils = Math.min(SWARM_PASSIVE_STACK_MAX, swarmPassiveCount(run, 'gun_cycler'));
+  return 1 + coils * entry.perCopyRofPct;
+}
+
+
+/** Restock cap per charge type: stock is a rack, not a vault. */
+export const SWARM_CALLIN_MAX_PER_TYPE = 3;
+
+export const SWARM_CALLIN_CATALOG = Object.freeze([
+  Object.freeze({
+    id: 'smart_bomb',
+    offerId: 'callin_smart_bomb',
+    name: 'Smart Bomb',
+    verb: 'Bomb',
+    price: 64,
+    fromWave: 1,
+    category: 'Service',
+    slotLabel: 'Call-in charge · one Bomb press · spends one',
+    blurb: 'One Bomb press detonates a room-clearing blast that throws and breaks the pack, never you.',
+  }),
+  Object.freeze({
+    id: 'orbital_lance',
+    offerId: 'callin_orbital_lance',
+    name: 'Orbital Lance',
+    verb: 'Lance',
+    price: 90,
+    fromWave: 2,
+    category: 'Service',
+    slotLabel: 'Call-in charge · telegraphed strike · spends one',
+    blurb: 'Paints the aim point, then a beam column lands a real hit and a shove on everything in it.',
+  }),
+  Object.freeze({
+    id: 'turret_drop',
+    offerId: 'callin_turret_drop',
+    name: 'Turret Drop',
+    verb: 'Turret',
+    price: 96,
+    fromWave: 2,
+    category: 'Service',
+    slotLabel: 'Call-in charge · fights this wave · spends one',
+    blurb: 'Drops an allied turret that fights beside you until the wave clears, then strikes its colors.',
+  }),
+  Object.freeze({
+    id: 'drone_wing',
+    offerId: 'callin_drone_wing',
+    name: 'Drone Wing',
+    verb: 'Wing',
+    price: 104,
+    fromWave: 3,
+    category: 'Service',
+    slotLabel: 'Call-in charge · four escorts · spends one',
+    blurb: 'Launches four escort drones that shoot the pack for the wave and leave with it.',
+  }),
+  Object.freeze({
+    id: 'shield_dome',
+    offerId: 'callin_shield_dome',
+    name: 'Shield Dome',
+    verb: 'Dome',
+    price: 84,
+    fromWave: 2,
+    category: 'Service',
+    slotLabel: 'Call-in charge · plants where you stand · spends one',
+    blurb: 'Plants a fixed dome that stops the pack and its shots at the rim while yours leave. Runs on a clock.',
+  }),
+  Object.freeze({
+    id: 'decoy',
+    offerId: 'callin_decoy',
+    name: 'Decoy',
+    verb: 'Decoy',
+    price: 56,
+    fromWave: 1,
+    category: 'Service',
+    slotLabel: 'Call-in charge · throwable lure · spends one',
+    blurb: 'A thrown lure the pack cannot resist. It dies like debris when the battery does.',
+  }),
+]);
+
+const CALLIN_BY_ID = new Map(SWARM_CALLIN_CATALOG.map((entry) => [entry.id, entry]));
+
+/** The catalog row for one call-in id, or null for an id the catalog does not name. */
+export function swarmCallinById(id) {
+  return typeof id === 'string' ? (CALLIN_BY_ID.get(id) || null) : null;
+}
+
+/**
+ * How many of one charge THIS run holds: the sum of counts across recognized `swarm_callin`
+ * records of that id. Restocks append rows; the count is the truth, not any single row.
+ */
+export function swarmCallinCount(run, callinId) {
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return 0;
+  if (typeof callinId !== 'string' || !CALLIN_BY_ID.has(callinId)) return 0;
+  if (run.ruleset !== SWARM_RULESET) return 0;
+  const modifiers = Array.isArray(run.modifiers) ? run.modifiers : [];
+  let total = 0;
+  for (const record of modifiers) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) continue;
+    if (record.kind !== SWARM_CALLIN_RECORD_KIND) continue;
+    if (record.callinId !== callinId) continue;
+    const n = Number(record.count);
+    if (Number.isFinite(n) && n > 0) total += Math.floor(n);
+  }
+  return total;
+}
+
+// ── the hull patch ──
+//
+// The weld sells the whole hull back at one flat price and throws the armor in. The patch
+// sells a piece of it: a bounded mend priced by the scar it closes, so a hurt pilot whose
+// wallet cannot reach the weld still has a "pay to live" row on the counter between waves.
+// The price reads off the hull's own MAXIMUM — a Hornet's patch and a Bastion's patch cost
+// the same share of a wallet, where a flat per-point rate would be free healing on a
+// capital hull and robbery on a fighter.
+//
+// The mend bound sits one step above the repair cell's free 22% (src/systems/swarmSupply.js):
+// the counter's answer is a little better because it is paid for and takes no risks, and a
+// lot thinner than the weld's all-the-way because the weld is the yard's wholesale rate.
+
+/** The most one patch mends, as a share of max hull. A top-up, never a reset. */
+export const SWARM_HULL_PATCH_FRACTION = 0.30;
+/** The wallet price if a patch could restore the whole hull — a full-size mend lands at 30. */
+export const SWARM_HULL_PATCH_PRICE_FULL = 100;
+/** A scratch still pays the house call. */
+export const SWARM_HULL_PATCH_MIN_PRICE = 2;
+
+export const SWARM_HULL_PATCH = Object.freeze({
+  offerId: 'svc_hull_patch',
+  service: 'hull_patch',
+  verb: 'Patch',
+  name: 'Hull patch',
+  category: 'Service',
+  slotLabel: 'Hull only — armor stays the weld\'s job',
+  blurb: 'A plate over the worst of it, priced by the scar. The weld still does the whole hull.',
+});
+
+/**
+ * The patch's live quote: how much hull it restores and what that mend costs, computed against
+ * the hull as it stands right now. `restored` caps at the patch's reach (a share of max hull);
+ * `price` is the same share of PRICE_FULL — charging for the mend delivered is the same
+ * arithmetic as charging on missing hull, bounded so deep damage can never price the row out
+ * of a dying pilot's reach. A sound hull quotes nothing. Pure.
+ */
+export function swarmHullPatchQuote(hull, hullMax) {
+  const max = Number.isFinite(hullMax) && hullMax > 0 ? hullMax : 0;
+  if (max <= 0) return { restored: 0, price: 0 };
+  const current = Number.isFinite(hull) ? hull : max;
+  const missing = Math.max(0, max - Math.min(max, current));
+  const restored = Math.min(missing, Math.max(1, Math.round(max * SWARM_HULL_PATCH_FRACTION)));
+  if (restored <= 0) return { restored: 0, price: 0 };
+  const price = Math.max(SWARM_HULL_PATCH_MIN_PRICE,
+    Math.round((restored / max) * SWARM_HULL_PATCH_PRICE_FULL));
+  return { restored, price };
+}
+
+/**
+ * Spend one charge of `callinId` from the run's own ledger: rows are consumed FIFO (a restock
+ * never short-changes an older row), and the row that reaches zero is removed. Returns the count
+ * held after the spend — the caller compares before/after to know the fire was real.
+ */
+export function spendSwarmCallin(run, callinId) {
+  if (!run || !Array.isArray(run.modifiers)) return 0;
+  const rows = run.modifiers.filter((record) => record && typeof record === 'object'
+    && !Array.isArray(record) && record.kind === SWARM_CALLIN_RECORD_KIND && record.callinId === callinId);
+  for (const row of rows) {
+    const n = Number(row.count);
+    if (!(Number.isFinite(n) && n > 0)) continue;
+    const left = Math.floor(n) - 1;
+    if (left > 0) row.count = left;
+    else run.modifiers.splice(run.modifiers.indexOf(row), 1);
+    return swarmCallinCount(run, callinId);
+  }
+  return swarmCallinCount(run, callinId);
+}
+
+// ── the mid-run pact ──
+//
+// A wager, not stock: the counter pays the purse NOW and the pilot signs a mutator onto the
+// run for the rest of it. The handicap rides `run.arenaMutators` — the same live contract a
+// launch challenge or a Threat wager writes — so every consumer that already reads the
+// compiled challenge (the cradle shelf, the re-roll bench, the draft gate) binds the signing
+// mid-run without a second code path. The price is a rule, not a number: `price` stays zero
+// on the shelf row because the wallet is never asked — the signature is what it costs.
+//
+// `mutatorId` names the catalog row the signature folds in (src/data/survivalMutators.js);
+// `purse` is flat by design — a Threat's bounty is a flat number too, and a wage that
+// floated with the wave would pay the most to the pilot who had the least left to sign away.
+
+export const SWARM_PACT_ONE_HULL = Object.freeze({
+  offerId: 'svc_pact_one_hull',
+  service: 'pact',
+  mutatorId: 'one_hull',
+  purse: 90,
+  verb: 'Sign',
+  name: 'Pact of the One Hull',
+  category: 'Service',
+  slotLabel: 'Wager — pays on signing, binds the rest of the run',
+  blurb: 'Ninety credits on the counter. The hull you flew is the hull you finish.',
+});

@@ -1,0 +1,163 @@
+{
+  "assetId": "stepped_fracture_shelf",
+  "category": "geology",
+  "description": "stepped fracture shelf; reusable geology assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -0.1,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          2.9899999999999998,
+          0.28,
+          1.8199999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.22,
+          0.43,
+          -0.0
+        ],
+        "size": [
+          2.522,
+          0.25,
+          1.6640000000000001
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5,
+          0.75,
+          -0.0
+        ],
+        "size": [
+          2.08,
+          0.28,
+          1.3650000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.72,
+          1.08,
+          -0.0
+        ],
+        "size": [
+          1.586,
+          0.23,
+          1.066
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "geology",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.844666838645935,
+      -0.11020684987306595,
+      -1.2136286497116089
+    ],
+    "max": [
+      1.9390666484832764,
+      1.2623107433319092,
+      1.2045685052871704
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "stepped_fracture_shelf_lod0.glb",
+      "triangles": 2208,
+      "draws": 3,
+      "bytes": 186836,
+      "method": "source",
+      "sha256": "706b3e5e37910c6be4987702b469d6a6b910d00eff31491e32bdd551b0743df0"
+    },
+    {
+      "level": 1,
+      "file": "stepped_fracture_shelf_lod1.glb",
+      "triangles": 882,
+      "draws": 3,
+      "bytes": 88376,
+      "method": "Forge-decimation",
+      "sha256": "ed1a076585511883384fcd7b8946cd9e5bb8e7b9c18dfeb0902209b7be3940c8"
+    },
+    {
+      "level": 2,
+      "file": "stepped_fracture_shelf_lod2.glb",
+      "triangles": 396,
+      "draws": 3,
+      "bytes": 44748,
+      "method": "Forge-decimation",
+      "sha256": "7844f6fb9ce2b1dcfb170daf798af0a790eafe7661df5aec3fb4b8c4728f9452"
+    }
+  ]
+}

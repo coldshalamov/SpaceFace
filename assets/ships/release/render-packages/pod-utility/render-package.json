@@ -1,0 +1,689 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.pod-utility",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "5177e8e303920f2f84608a93414a9005c48c27290dbf0b3565e9b37d34d481d2",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.725017500974386,
+          1.1799938607707752,
+          0.8100000023841858
+        ],
+        "min": [
+          3.374982403658182,
+          1.020006067703651,
+          -0.8100000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c4cf3b0c314d23a6d16ca97486cfd266fceab7fba7d298725fbf6a8b9e6be130",
+      "id": "sf.render.pod-utility.mesh.pod-utility-material-accent-merged.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "materialPipelineKey": "opaque",
+      "meshName": "pod_utility_Material_Accent_Merged",
+      "nodeId": "sf.render.pod-utility.mesh.pod-utility-material-accent-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 198
+    },
+    {
+      "bounds": {
+        "max": [
+          3.6011931896209717,
+          1.6600318311677227,
+          0.6998970222494245
+        ],
+        "min": [
+          -0.3011930584907532,
+          1.4999681354536762,
+          -1.1685846161863447
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "08a2137e09aea72767b5dad6472243dd7107d733c61b8dbe794888ad26718f82",
+      "id": "sf.render.pod-utility.mesh.pod-utility-material-mechanical-merged.primitive.0",
+      "indexCount": 6324,
+      "indexed": true,
+      "materialHash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "materialPipelineKey": "opaque",
+      "meshName": "pod_utility_Material_Mechanical_Merged",
+      "nodeId": "sf.render.pod-utility.mesh.pod-utility-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 1511
+    },
+    {
+      "bounds": {
+        "max": [
+          2.8899155161431485,
+          1.6550669887660479,
+          1.340000033378601
+        ],
+        "min": [
+          2.510084579224283,
+          -0.09506703108534564,
+          -1.340000033378601
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "df9db0eac46fdc3333d4d8d45dbabc65325964409039fad3417bdc6211e71660",
+      "id": "sf.render.pod-utility.mesh.utility-band.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Utility_Band",
+      "nodeId": "sf.render.pod-utility.mesh.utility-band",
+      "primitiveIndex": 0,
+      "vertexCount": 104
+    },
+    {
+      "bounds": {
+        "max": [
+          3.75,
+          1.5498931697320892,
+          1.2501174749721085
+        ],
+        "min": [
+          -0.44999992847442627,
+          -0.049893173457379425,
+          -1.2501174749721085
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "85bac85bb8393ae9519181c7733d5ff7ee1049b320994aebb967bf1478a3f9e2",
+      "id": "sf.render.pod-utility.mesh.utility-shell.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "41756d73679628e0615d3e4a5a0fdd85a6224b6596ad6a46127cb477812260cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "Utility_Shell",
+      "nodeId": "sf.render.pod-utility.mesh.utility-shell",
+      "primitiveIndex": 0,
+      "vertexCount": 166
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "id": "material:0d612528a03bab333df5b88a",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "id": "material:26ac8e79234691141b934c6c",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "41756d73679628e0615d3e4a5a0fdd85a6224b6596ad6a46127cb477812260cf",
+      "id": "material:41756d73679628e0615d3e4a",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.pod-utility.mesh.pod-utility-material-accent-merged",
+      "localTransform": [
+        0.8100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.8100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.8100000023841858,
+        0,
+        3.549999952316284,
+        1.0999999642372131,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_utility_Material_Accent_Merged",
+      "nodeName": "pod_utility_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.pod-utility.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-utility.body",
+      "worldTransform": [
+        0.8100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.8100000023841858,
+        0,
+        0,
+        0,
+        0,
+        0.8100000023841858,
+        0,
+        3.549999952316284,
+        1.0999999642372131,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-utility.mesh.pod-utility-material-mechanical-merged",
+      "localTransform": [
+        1.9511931240558624,
+        0,
+        0,
+        0,
+        0,
+        1.9511931240558624,
+        0,
+        0,
+        0,
+        0,
+        1.9511931240558624,
+        0,
+        1.6500000655651093,
+        1.5799999833106995,
+        -0.23434379696846008,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_utility_Material_Mechanical_Merged",
+      "nodeName": "pod_utility_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.pod-utility.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-utility.body",
+      "worldTransform": [
+        1.9511931240558624,
+        0,
+        0,
+        0,
+        0,
+        1.9511931240558624,
+        0,
+        0,
+        0,
+        0,
+        1.9511931240558624,
+        0,
+        1.6500000655651093,
+        1.5799999833106995,
+        -0.23434379696846008,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-utility.mesh.utility-band",
+      "localTransform": [
+        1.340000033378601,
+        0,
+        0,
+        0,
+        0,
+        1.340000033378601,
+        0,
+        0,
+        0,
+        0,
+        1.340000033378601,
+        0,
+        2.700000047683716,
+        0.7799999788403511,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Utility_Band",
+      "nodeName": "Utility_Band",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.pod-utility.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-utility.body",
+      "worldTransform": [
+        1.340000033378601,
+        0,
+        0,
+        0,
+        0,
+        1.340000033378601,
+        0,
+        0,
+        0,
+        0,
+        1.340000033378601,
+        0,
+        2.700000047683716,
+        0.7799999788403511,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-utility.mesh.utility-shell",
+      "localTransform": [
+        2.099999964237213,
+        0,
+        0,
+        0,
+        0,
+        2.099999964237213,
+        0,
+        0,
+        0,
+        0,
+        2.099999964237213,
+        0,
+        1.6500000357627869,
+        0.7499999981373549,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Utility_Shell",
+      "nodeName": "Utility_Shell",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.pod-utility.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-utility.body",
+      "worldTransform": [
+        2.099999964237213,
+        0,
+        0,
+        0,
+        0,
+        2.099999964237213,
+        0,
+        0,
+        0,
+        0,
+        2.099999964237213,
+        0,
+        1.6500000357627869,
+        0.7499999981373549,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-utility.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "pod_utility",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-utility.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "65c61126a1431906582f9d12890bfc50cd206da9420a1122393d2964f8c63a0b"
+    },
+    "sourceGlb": {
+      "bytes": 250232,
+      "sha256": "2a2d028cf035827209b071e91f4dd2fb748ccfb122b21710d2681f067391ae68",
+      "uri": "pod_utility.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 243408,
+    "sha256": "c85f3f5572badece556769fa71a775ef19ffda5b28db30a27f69e921f453bf0d",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.6500000357627869,
+        0.7824824000411885,
+        0
+      ],
+      "max": [
+        3.75,
+        1.6600318311677227,
+        1.340000033378601
+      ],
+      "min": [
+        -0.44999992847442627,
+        -0.09506703108534564,
+        -1.340000033378601
+      ],
+      "size": [
+        4.199999928474426,
+        1.7550988622530683,
+        2.680000066757202
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 2,
+        "tags": {},
+        "userData": {
+          "name": "HOOK_Emissive",
+          "spacefaceHook": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.799999952316284,
+          0.800000011920929,
+          0,
+          1
+        ],
+        "name": "MOUNT_Child",
+        "planIndex": 6,
+        "tags": {
+          "mountKey": "true",
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "utility-child"
+        },
+        "userData": {
+          "forward": [
+            1,
+            0,
+            0
+          ],
+          "name": "MOUNT_Child",
+          "role": "utility-child",
+          "spacefaceMount": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 17,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.8100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.8100000023841858,
+          0,
+          0,
+          0,
+          0,
+          0.8100000023841858,
+          0,
+          3.549999952316284,
+          1.0999999642372131,
+          0,
+          1
+        ],
+        "name": "pod_utility_Material_Accent_Merged",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.9511931240558624,
+          0,
+          0,
+          0,
+          0,
+          1.9511931240558624,
+          0,
+          0,
+          0,
+          0,
+          1.9511931240558624,
+          0,
+          1.6500000655651093,
+          1.5799999833106995,
+          -0.23434379696846008,
+          1
+        ],
+        "name": "pod_utility_Material_Mechanical_Merged",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.340000033378601,
+          0,
+          0,
+          0,
+          0,
+          1.340000033378601,
+          0,
+          0,
+          0,
+          0,
+          1.340000033378601,
+          0,
+          2.700000047683716,
+          0.7799999788403511,
+          0,
+          1
+        ],
+        "name": "Utility_Band",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.099999964237213,
+          0,
+          0,
+          0,
+          0,
+          2.099999964237213,
+          0,
+          0,
+          0,
+          0,
+          2.099999964237213,
+          0,
+          1.6500000357627869,
+          0.7499999981373549,
+          0,
+          1
+        ],
+        "name": "Utility_Shell",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "pod",
+    "url": "assets/ships/release/parts/pods/pod_utility.glb"
+  },
+  "runtimeHash": "8e01a0c211689740c229ecb97f80b5527cb174030f7a125451f71f33185f030d",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.75,
+          1.6600318311677227,
+          1.340000033378601
+        ],
+        "min": [
+          -0.44999992847442627,
+          -0.09506703108534564,
+          -1.340000033378601
+        ]
+      },
+      "id": "sf.render.pod-utility.body",
+      "nodeIds": [
+        "sf.render.pod-utility.mesh.pod-utility-material-accent-merged",
+        "sf.render.pod-utility.mesh.pod-utility-material-mechanical-merged",
+        "sf.render.pod-utility.mesh.utility-band",
+        "sf.render.pod-utility.mesh.utility-shell",
+        "sf.render.pod-utility.root"
+      ]
+    }
+  ]
+}

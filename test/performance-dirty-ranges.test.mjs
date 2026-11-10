@@ -1,0 +1,911 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
+
+import {
+  DYNAMIC_BUFFER_FULL_SPAN_VARIANT,
+  applyDiagnosticVariantToState,
+  assertTier1CountersBooted,
+  awaitElectronInitialCanonicalLoad,
+  cleanupIsolatedElectronProfile,
+  installTier1CountersInitScript,
+  launchIsolatedElectronApplication,
+  reloadElectronWithTier1Counters,
+  restoreDiagnosticVariantToState,
+  snapshotDiagnosticSettings,
+} from '../scripts/lib/releaseSoakProbe.mjs';
+import {
+  PERFORMANCE_DIRTY_RANGE_ACCEPTANCE_SCHEMA,
+  evaluateDirtyRangeComparison,
+} from '../scripts/lib/performanceDirtyRangeAcceptance.mjs';
+import browserManifest from '../scripts/validation-manifests/performance-dirty-ranges-browser.mjs';
+import electronManifest from '../scripts/validation-manifests/performance-dirty-ranges-electron.mjs';
+import {
+  computeGateDigestsFromManifest,
+  isEnvironmentBlockedProbeError,
+  isMeasurementIntegrityProbeError,
+} from '../scripts/lib/validationBroker.mjs';
+import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const probeSource = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
+const routeSource = await readFile(new URL('../scripts/lib/alphaLiveBaselineRoute.mjs', import.meta.url), 'utf8');
+
+function windowFixture(variantId, {
+  logicalBytes = 12_000,
+  requestedBytes,
+  driverBytes,
+  managedDriverBytes = driverBytes,
+  frameP95 = 16.8,
+} = {}) {
+  return {
+    routeTag: 'combat_vfx_burst',
+    diagnosticVariant: variantId,
+    restoration: { restored: true },
+    settings: {
+      start: { video: { bloom: true, particleQuality: 'high', renderScale: 1 }, dynResScale: 1, timeScale: 1 },
+      end: { video: { bloom: true, particleQuality: 'high', renderScale: 1 }, dynResScale: 1, timeScale: 1 },
+    },
+    frameMs: { p50: 16.7, p95: frameP95, p99: 17.2, max: 18, sampleCount: 300 },
+    dynamicBuffers: {
+      available: true,
+      probeForceFullUploads: variantId === DYNAMIC_BUFFER_FULL_SPAN_VARIANT,
+      delta: {
+        logicalBytesChanged: logicalBytes,
+        requestedUploadBytes: requestedBytes,
+        uploadRangeCount: 900,
+        probeFullUploads: variantId === DYNAMIC_BUFFER_FULL_SPAN_VARIANT ? 900 : 0,
+      },
+      partialUploadCensus: {
+        resolvedBytes: driverBytes,
+        unresolvedBytes: 0,
+        coordinatorOwnedBytes: managedDriverBytes,
+        coordinatorOwnedFullBytes: 0,
+        coordinatorTrackedViews: 12,
+        top: [],
+      },
+    },
+    tier1: {
+      enabled: true,
+      postBootFrames: 300,
+      postBoot: {
+        bufferUploadBytes: driverBytes,
+        bufferPartialUploads: 900,
+        shaderLinks: 0,
+        shaderCompiles: 0,
+        textureUploads: 0,
+        renderTargetAllocations: 0,
+      },
+      nondeterministic: {
+        allocation: { heapBytesDeltaTotal: 100_000, collectionsDetected: 0, samples: 20 },
+      },
+    },
+  };
+}
+
+test('probe full-span diagnostic variant is explicit and restores the shipped ranged default', () => {
+  let forceFull = false;
+  const dynamicBuffers = {
+    get probeForceFullUploads() { return forceFull; },
+    setProbeForceFullUploads(on) { forceFull = !!on; return forceFull; },
+  };
+  const state = {
+    timeScale: 1,
+    settings: { video: { bloom: true } },
+    render: { spaceBg: { group: { visible: true } }, dynamicBufferRanges: dynamicBuffers },
+  };
+  const snapshot = snapshotDiagnosticSettings(state);
+  const applied = applyDiagnosticVariantToState(state, snapshot, DYNAMIC_BUFFER_FULL_SPAN_VARIANT);
+  assert.equal(applied.applied, true);
+  assert.equal(forceFull, true);
+  const restored = restoreDiagnosticVariantToState(state, snapshot);
+  assert.equal(restored.restored, true);
+  assert.equal(forceFull, false);
+});
+
+function pageHarness(pageRealm) {
+  let initScript = null;
+  return {
+    get initScript() { return initScript; },
+    async addInitScript(script) { initScript = script; },
+    async waitForFunction(predicate, argument, options) {
+      assert.equal(argument, null);
+      assert.ok(Number.isFinite(options.timeout));
+      if (!runInNewContext(`(${predicate.toString()})()`, pageRealm)) {
+        throw new Error('Tier-1 runtime API did not boot');
+      }
+    },
+    async evaluate(predicate) {
+      return JSON.parse(JSON.stringify(runInNewContext(`(${predicate.toString()})()`, pageRealm)));
+    },
+  };
+}
+
+test('Tier-1 acceptance arms an immutable flag and verifies the live sink without a timeout wait', async () => {
+  const pageRealm = {};
+  const page = pageHarness(pageRealm);
+
+  await installTier1CountersInitScript(page);
+  assert.equal(typeof page.initScript, 'function');
+  runInNewContext(`(${page.initScript.toString()})()`, pageRealm);
+  const descriptor = Object.getOwnPropertyDescriptor(pageRealm, '__SPACEFACE_PERF_COUNTERS__');
+  assert.deepEqual(descriptor, {
+    value: true,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+
+  pageRealm.__SPACEFACE_PERF__ = { tier1: { isEnabled: () => true } };
+  assert.deepEqual(
+    await assertTier1CountersBooted(page, { timeoutMs: 1234, phase: 'focused test' }),
+    { flag: descriptor, enabled: true },
+  );
+});
+
+test('Tier-1 readiness fails immediately for missing authority or a disabled replacement sink', async () => {
+  const missingFlagRealm = {
+    __SPACEFACE_PERF__: { tier1: { isEnabled: () => true } },
+  };
+  await assert.rejects(
+    assertTier1CountersBooted(pageHarness(missingFlagRealm), { phase: 'missing flag' }),
+    /lost its immutable install-on-boot authority/,
+  );
+
+  const disabledRealm = {};
+  const disabledPage = pageHarness(disabledRealm);
+  await installTier1CountersInitScript(disabledPage);
+  runInNewContext(`(${disabledPage.initScript.toString()})()`, disabledRealm);
+  disabledRealm.__SPACEFACE_PERF__ = { tier1: { isEnabled: () => false } };
+  await assert.rejects(
+    assertTier1CountersBooted(disabledPage, { phase: 'authored flight admission' }),
+    /counter sink exists but is not enabled/,
+  );
+
+  await assert.rejects(
+    assertTier1CountersBooted(pageHarness({}), { timeoutMs: 25 }),
+    /runtime API did not boot/,
+  );
+});
+
+test('Electron Tier-1 reload owns expected navigation and releases it on failure', async () => {
+  const events = [];
+  const page = {
+    async addInitScript() { events.push('init'); },
+    async reload(options) {
+      events.push(['reload', options]);
+      throw new Error('injected reload failure');
+    },
+  };
+  const tracker = {
+    beginExpectedNavigation(label) {
+      events.push(['begin', label]);
+      return 47;
+    },
+    endExpectedNavigation(token) {
+      events.push(['end', token]);
+      return token === 47;
+    },
+  };
+  await assert.rejects(
+    reloadElectronWithTier1Counters(page, tracker, { timeoutMs: 4321 }),
+    /injected reload failure/,
+  );
+  // Three init scripts install before the reload: the Tier-1 counter flag, the GL program-query
+  // trap, and the GL delete trap (PQ-033.02 delete-storm instrument).
+  assert.deepEqual(events, [
+    'init',
+    'init',
+    'init',
+    ['begin', 'tier1-counter-install'],
+    ['reload', { waitUntil: 'domcontentloaded', timeout: 4321 }],
+    ['end', 47],
+  ]);
+});
+
+test('Electron Tier-1 reload waits for the initial canonical load to settle in main', async () => {
+  const events = [];
+  let releaseInitialLoad;
+  const initialLoad = new Promise((resolve) => { releaseInitialLoad = resolve; });
+  const rootUrl = 'http://127.0.0.1:64291/';
+  const page = {
+    url() { return rootUrl; },
+    async waitForLoadState(state, options) {
+      events.push(['wait', state, options]);
+      await initialLoad;
+      events.push('load-settled');
+    },
+    async addInitScript() { events.push('init'); },
+    async reload(options) {
+      events.push(['reload', options]);
+      return { ok: true };
+    },
+  };
+  const electronApp = {
+    async browserWindow(boundPage) {
+      events.push(['bind-window', boundPage === page]);
+      return {
+        async evaluate(_callback, expectedRootUrl) {
+          events.push(['main-turn', expectedRootUrl]);
+          return { url: expectedRootUrl, loadingMainFrame: false };
+        },
+        async dispose() { events.push('window-handle-disposed'); },
+      };
+    },
+  };
+  const tracker = {
+    beginExpectedNavigation(label) {
+      events.push(['begin', label]);
+      return 53;
+    },
+    endExpectedNavigation(token) {
+      events.push(['end', token]);
+      return token === 53;
+    },
+  };
+
+  const prepareAndReload = (async () => {
+    await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl, { timeoutMs: 7654 });
+    events.push('ownership-ready');
+    return reloadElectronWithTier1Counters(page, tracker, { timeoutMs: 4321 });
+  })();
+  await Promise.resolve();
+  assert.deepEqual(events, [['wait', 'load', { timeout: 7654 }]],
+    'the instrumentation reload must remain blocked while Electron main owns the initial load');
+
+  releaseInitialLoad();
+  await prepareAndReload;
+  assert.deepEqual(events, [
+    ['wait', 'load', { timeout: 7654 }],
+    'load-settled',
+    ['bind-window', true],
+    ['main-turn', rootUrl],
+    'window-handle-disposed',
+    'ownership-ready',
+    'init',
+    'init',
+    'init',
+    ['begin', 'tier1-counter-install'],
+    ['reload', { waitUntil: 'domcontentloaded', timeout: 4321 }],
+    ['end', 53],
+  ]);
+});
+
+test('Electron initial-load proof rejects a mismatched page owner and disposes its handle', async () => {
+  const events = [];
+  const rootUrl = 'http://127.0.0.1:64291/';
+  const page = {
+    url() { return rootUrl; },
+    async waitForLoadState() { events.push('load'); },
+  };
+  const electronApp = {
+    async browserWindow(boundPage) {
+      assert.equal(boundPage, page);
+      events.push('bound');
+      return {
+        async evaluate() {
+          events.push('evaluated');
+          return { url: 'http://127.0.0.1:65530/', loadingMainFrame: false };
+        },
+        async dispose() { events.push('disposed'); },
+      };
+    },
+  };
+  await assert.rejects(
+    awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl),
+    /main-process window left its canonical root/,
+  );
+  assert.deepEqual(events, ['load', 'bound', 'evaluated', 'disposed']);
+});
+
+test('Electron launch publishes one canonical tracker and exact root before Tier-1 reload', () => {
+  const launchStart = probeSource.indexOf('async function launchElectron(');
+  const launchEnd = probeSource.indexOf('\nexport async function awaitElectronInitialCanonicalLoad', launchStart);
+  const launch = probeSource.slice(launchStart, launchEnd);
+  assert.ok(launchStart >= 0 && launchEnd > launchStart, 'Electron launch implementation must be inspectable');
+  assert.equal((launch.match(/createElectronCanonicalUrlTracker\(/g) || []).length, 1,
+    'the launch must own exactly one canonical lifecycle tracker');
+  const appAcquired = launch.indexOf('const electronApp = await launchIsolatedElectronApplication');
+  const appPublished = launch.indexOf('publishOwnership();', appAcquired);
+  const processRead = launch.indexOf('childProcess = electronApp.process();', appAcquired);
+  const processPublished = launch.indexOf('publishOwnership();', processRead);
+  const monitorCreated = launch.indexOf('processMonitor = createElectronProcessMonitor', processRead);
+  const monitorPublished = launch.indexOf('publishOwnership();', monitorCreated);
+  const trackerCreated = launch.indexOf('pageIssueTracker = createStrictElectronApplicationIssueTracker', monitorCreated);
+  const trackerPublished = launch.indexOf('publishOwnership();', trackerCreated);
+  const firstWindow = launch.indexOf('await electronApp.firstWindow', trackerCreated);
+  assert.ok(
+    appAcquired >= 0
+      && appPublished > appAcquired
+      && processRead > appPublished
+      && processPublished > processRead
+      && monitorCreated > processPublished
+      && monitorPublished > monitorCreated
+      && trackerCreated > monitorPublished
+      && trackerPublished > trackerCreated
+      && firstWindow > trackerPublished,
+    'app, child, monitor, and issue-tracker ownership must publish before each later setup seam',
+  );
+  const pagePublished = launch.indexOf('publishOwnership({ page });', firstWindow);
+  const pollingInstalled = launch.indexOf('installCspSafePlaywrightPolling(page);', firstWindow);
+  const canonicalTrackerCreated = launch.indexOf('const canonicalUrlTracker = createElectronCanonicalUrlTracker', pollingInstalled);
+  const canonicalTrackerPublished = launch.indexOf('publishOwnership({\n    page,\n    canonicalUrlTracker,\n  });', canonicalTrackerCreated);
+  assert.ok(
+    pagePublished > firstWindow
+      && pollingInstalled > pagePublished
+      && canonicalTrackerCreated > pollingInstalled
+      && canonicalTrackerPublished > canonicalTrackerCreated,
+    'page and canonical tracker ownership must publish before each later page setup seam',
+  );
+  const rootPublication = launch.indexOf('canonicalUrlTracker,\n    rootUrl,');
+  const initialLoad = launch.indexOf('await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);');
+  const reload = launch.indexOf('await reloadElectronWithTier1Counters(page, pageIssueTracker);');
+  assert.ok(rootPublication >= 0 && initialLoad > rootPublication && reload > initialLoad,
+    'page, tracker, and exact root cleanup ownership must precede settled-load proof and reload');
+});
+
+test('isolated Electron launch rejection removes its unpublished owned profile', async () => {
+  const calls = [];
+  const isolatedLaunch = {
+    options: { args: ['.'] },
+    cleanup(options) { calls.push(options); },
+  };
+  await assert.rejects(
+    launchIsolatedElectronApplication({
+      async launch(options) {
+        assert.equal(options, isolatedLaunch.options);
+        throw new Error('injected launch rejection');
+      },
+    }, isolatedLaunch),
+    /injected launch rejection/,
+  );
+  assert.deepEqual(calls, [{ runtimeClosed: true }]);
+});
+
+test('Windows game launch uses Normal priority and restores the yielding helper on success or failure', async () => {
+  for (const fail of [false, true]) {
+    let currentPriority = 19;
+    const changes = [];
+    const cleanup = [];
+    const ownedApp = {};
+    const operation = launchIsolatedElectronApplication({
+      async launch() {
+        assert.equal(currentPriority, 0, 'the game must inherit Normal priority');
+        await Promise.resolve();
+        assert.equal(currentPriority, 0, 'priority stays Normal through asynchronous creation');
+        if (fail) throw new Error('priority launch rejection');
+        return ownedApp;
+      },
+    }, {
+      options: {},
+      cleanup(value) { cleanup.push(value); },
+    }, {
+      platform: 'win32',
+      priority: {
+        getPriority() { return currentPriority; },
+        setPriority(value) { currentPriority = value; changes.push(value); },
+      },
+    });
+    if (fail) await assert.rejects(operation, /priority launch rejection/);
+    else assert.equal(await operation, ownedApp);
+    assert.deepEqual(changes, [0, 19]);
+    assert.equal(currentPriority, 19, 'the helper yields again after creation');
+    assert.deepEqual(cleanup, fail ? [{ runtimeClosed: true }] : []);
+  }
+});
+
+test('isolated Electron profile cleanup depends on process shutdown, not acceptance success', () => {
+  const calls = [];
+  const isolatedLaunch = { cleanup(options) { calls.push(options); } };
+  assert.equal(cleanupIsolatedElectronProfile(isolatedLaunch, {
+    pass: false,
+    processCloseConfirmed: true,
+    processExited: true,
+  }), true);
+  assert.deepEqual(calls, [{ runtimeClosed: true }]);
+  assert.equal(cleanupIsolatedElectronProfile({ cleanup() { throw new Error('must not run'); } }, {
+    pass: false,
+    processCloseConfirmed: true,
+    processExited: false,
+  }), false);
+});
+
+test('attribution validates Tier-1 ownership at authored flight admission before route input or sampling', () => {
+  const routeReady = routeSource.indexOf("recordCanonicalUrl('authored-flight-ready');");
+  const routeHook = routeSource.indexOf('await onAuthoredFlightReady({ page, launchSnapshot });', routeReady);
+  const routeInput = routeSource.indexOf("phase = 'flight-input';", routeReady);
+  assert.ok(routeReady >= 0 && routeHook > routeReady && routeInput > routeHook,
+    'the awaited ownership hook must run at authored readiness before player input');
+
+  const callback = probeSource.indexOf("assertTier1CountersBooted(page, { phase: 'authored flight admission' })");
+  const sample = probeSource.indexOf('const { document } = await samplePerformanceAttribution(page', callback);
+  assert.ok(callback >= 0, 'attribution must bind its ownership assertion to authored flight readiness');
+  assert.ok(sample > callback, 'authored-flight ownership must fail before attribution sampling begins');
+});
+
+test('dirty-range comparator requires causal owner and driver byte reduction at unchanged quality', () => {
+  const document = {
+    windows: [
+      windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 }),
+      windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, { requestedBytes: 12_000_000, driverBytes: 12_200_000 }),
+    ],
+  };
+  const result = evaluateDirtyRangeComparison(document, { runtimeKind: 'browser' });
+  assert.equal(result.schema, PERFORMANCE_DIRTY_RANGE_ACCEPTANCE_SCHEMA);
+  assert.equal(result.pass, true);
+  assert.ok(result.metrics.ownerRequestedByteReductionFraction > 0.9);
+  assert.ok(result.metrics.driverUploadByteReductionFraction > 0.9);
+  assert.deepEqual(result.failures, []);
+
+  const differentFrameVolume = {
+    windows: [
+      windowFixture('baseline', {
+        logicalBytes: 3_637_604,
+        requestedBytes: 3_711_372,
+        driverBytes: 21_560_044,
+      }),
+      windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+        logicalBytes: 4_418_200,
+        requestedBytes: 39_682_528,
+        driverBytes: 65_656_176,
+      }),
+    ],
+  };
+  const normalized = evaluateDirtyRangeComparison(differentFrameVolume, { runtimeKind: 'browser' });
+  assert.equal(normalized.pass, true,
+    'fixed-duration windows compare upload amplification per logical byte, not unequal frame totals');
+  assert.ok(normalized.metrics.logicalByteDriftFraction > 0.1,
+    'raw logical drift remains visible as a diagnostic rather than an invalid equality gate');
+
+  const noDriverGain = {
+    ...document,
+    windows: [document.windows[0], windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+      requestedBytes: 12_000_000,
+      driverBytes: 700_000,
+    })],
+  };
+  assert.match(
+    evaluateDirtyRangeComparison(noDriverGain, { runtimeKind: 'browser' }).failures.join(' '),
+    /driver upload bytes/i,
+  );
+});
+
+test('the driver leg grades coordinator-managed bytes, not ambient foreign traffic', () => {
+  // 2026-09-25: ambient writers (SF_WeaponRibbons re-poses its whole buffers every frame
+  // regardless of upload policy) dominated the raw tier-1 total and swung the driver ratio
+  // 13.8%↔58% between identical builds — the gate measured the combat phase that landed in
+  // each window, not the feature. The census attributes every driver write to its source
+  // view; the leg compares only bytes on coordinator-tracked views.
+  const ambientHeavy = {
+    windows: [
+      windowFixture('baseline', {
+        logicalBytes: 2_000_000,
+        requestedBytes: 2_200_000,
+        driverBytes: 34_500_000,
+        managedDriverBytes: 2_400_000,
+      }),
+      windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+        logicalBytes: 1_800_000,
+        requestedBytes: 21_750_000,
+        driverBytes: 39_150_000,
+        managedDriverBytes: 22_000_000,
+      }),
+    ],
+  };
+  const scoped = evaluateDirtyRangeComparison(ambientHeavy, { runtimeKind: 'browser' });
+  assert.equal(scoped.pass, true, `ambient-dominated totals must not fail the leg: ${scoped.failures}`);
+  assert.ok(scoped.metrics.driverUploadByteReductionFraction > 0.85);
+  assert.ok(scoped.metrics.rawDriverUploadByteReductionFraction < 0.25,
+    'the raw ambient-inclusive total stays on the record as diagnostic-only');
+
+  const noCensus = evaluateDirtyRangeComparison({
+    windows: ambientHeavy.windows.map((window) => ({
+      ...window,
+      dynamicBuffers: { ...window.dynamicBuffers, partialUploadCensus: null },
+    })),
+  }, { runtimeKind: 'browser' });
+  assert.match(noCensus.failures.join(' '), /partial-upload census/i,
+    'a window without census attribution must fail closed, not grade an unattributed total');
+});
+
+test('dirty-range comparator refuses missing and contaminated capture windows', () => {
+  // The 2026-09-15 electron launch reached its route but the capture tore before
+  // either variant window closed: the comparator emitted the whole missing/contaminated
+  // surface at once. Pin each distinct failure so a torn capture stays loud.
+  const healthy = () => [
+    windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 }),
+    windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, { requestedBytes: 12_000_000, driverBytes: 12_200_000 }),
+  ];
+
+  const missing = evaluateDirtyRangeComparison({ windows: [] }, { runtimeKind: 'electron' });
+  assert.equal(missing.pass, false);
+  const missingFailures = missing.failures.join(' ');
+  assert.match(missingFailures, /ranged baseline combat_vfx_burst window is missing/);
+  assert.match(missingFailures, /full-span control combat_vfx_burst window is missing/);
+  assert.match(missingFailures, /did not retain the shipped partial-upload mode/);
+  assert.match(missingFailures, /full-span control was not active during its measurement window/);
+
+  const unrestored = healthy();
+  unrestored[0].restoration = { restored: false };
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: unrestored }, { runtimeKind: 'electron' }).failures.join(' '),
+    /ranged scenario or probe control did not restore exactly/,
+  );
+
+  const noTier1 = healthy();
+  noTier1[1].tier1 = { enabled: false, postBootFrames: 0 };
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: noTier1 }, { runtimeKind: 'electron' }).failures.join(' '),
+    /full-span Tier-1 GL counters are not live post-boot evidence/,
+  );
+
+  const contaminated = healthy();
+  contaminated[0].tier1.postBoot.shaderLinks = 2;
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: contaminated }, { runtimeKind: 'electron' }).failures.join(' '),
+    /ranged window was contaminated by post-boot shaderLinks/,
+  );
+
+  const noBuffers = healthy();
+  noBuffers[0].dynamicBuffers = { available: false };
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: noBuffers }, { runtimeKind: 'electron' }).failures.join(' '),
+    /ranged dynamic-buffer owner diagnostics are unavailable/,
+  );
+});
+
+test('dirty-range comparator refuses windows whose settings drifted mid-capture', () => {
+  // 2026-09-15 run: a contended host let adaptive quality mutate renderScale inside
+  // both windows; the numbers still compared, but a shifted quality baseline is not
+  // paired evidence. Pin the per-window stability gate that invalidated that run.
+  const drifted = windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 });
+  drifted.settings.end = {
+    ...drifted.settings.end,
+    video: { ...drifted.settings.end.video, renderScale: 0.75 },
+  };
+  const result = evaluateDirtyRangeComparison({
+    windows: [
+      drifted,
+      windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, { requestedBytes: 12_000_000, driverBytes: 12_200_000 }),
+    ],
+  }, { runtimeKind: 'browser' });
+  assert.equal(result.pass, false);
+  assert.match(result.failures.join(' '), /ranged quality\/settings changed inside the capture window/);
+});
+
+test('dirty-range comparator does not mistake hit-stop timeScale edges for settings drift', () => {
+  // combat_vfx_burst intrinsically produces hit-stop dilation (timeScale ~0.12) on kills, so
+  // window edges land at arbitrary dilation phases — the codebase itself classifies timeScale
+  // as authored transient runtime state, not a quality setting (releaseSoakProbe.mjs). The
+  // settings gate must still fire on real quality drift (video, dynResScale) while ignoring
+  // the transient field.
+  const ranged = windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 });
+  ranged.settings.end = { ...ranged.settings.end, timeScale: 0.12 };
+  const fullSpan = windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+    requestedBytes: 12_000_000,
+    driverBytes: 12_200_000,
+  });
+  fullSpan.settings.start = { ...fullSpan.settings.start, timeScale: 0.12 };
+  const result = evaluateDirtyRangeComparison({ windows: [ranged, fullSpan] }, { runtimeKind: 'browser' });
+  assert.equal(
+    result.failures.some((f) => /quality\/settings/.test(f)), false,
+    `timeScale dilation must not trip the settings gate: ${result.failures.join(' | ')}`,
+  );
+  assert.equal(result.metrics.rangedTimeScaleEnd, 0.12, 'the transient stays on the record');
+  assert.equal(result.metrics.fullSpanTimeScaleStart, 0.12);
+  // A real quality change still fails even when timeScale is also dilated.
+  const drifted = windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 });
+  drifted.settings.end = { ...drifted.settings.end, dynResScale: 0.5, timeScale: 0.12 };
+  const strict = evaluateDirtyRangeComparison({
+    windows: [drifted, windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+      requestedBytes: 12_000_000, driverBytes: 12_200_000,
+    })],
+  }, { runtimeKind: 'browser' });
+  assert.match(strict.failures.join(' '), /ranged quality\/settings changed inside the capture window/);
+});
+
+test('paired dirty-range manifests bind one scenario and source candidate to distinct runtimes', async () => {
+  for (const manifest of [browserManifest, electronManifest]) {
+    assert.equal(manifest.mode, 'acceptance');
+    assert.equal(manifest.requireBrokerClaim, true);
+    assert.equal(manifest.maxLaunchesPerCandidate, 1);
+    assert.equal(manifest.fixedSeed, 47);
+    assert.equal(manifest.command, process.execPath);
+    assert.equal(manifest.cleanupPolicy, 'kill-tree');
+    assert.ok(manifest.commandArgs.includes(`--runtime=${manifest.runtimeKind}`));
+    assert.ok(manifest.commandArgs.includes('--acceptance'));
+    assert.ok(manifest.scenarioPaths.includes('scripts/lib/performanceScenarioDriver.mjs'));
+    assert.ok(manifest.fastGateCommands.some((command) => (
+      command.includes('test/electron-shell-lifecycle.test.mjs')
+    )));
+    assert.ok(manifest.regressionSourcePaths.includes('test/electron-shell-lifecycle.test.mjs'));
+    assert.ok(manifest.productionSourcePaths.includes('electron/main.cjs'));
+  }
+  assert.equal(browserManifest.runtimeKind, 'browser');
+  assert.equal(electronManifest.runtimeKind, 'electron');
+  assert.deepEqual(browserManifest.scenarioPaths, electronManifest.scenarioPaths);
+  assert.deepEqual(browserManifest.regressionSourcePaths, electronManifest.regressionSourcePaths);
+  assert.deepEqual(browserManifest.productionSourcePaths, electronManifest.productionSourcePaths);
+  assert.deepEqual(browserManifest.harnessSourcePaths, electronManifest.harnessSourcePaths);
+  assert.notEqual(path.normalize(browserManifest.artifactRoot), path.normalize(electronManifest.artifactRoot));
+
+  for (const id of [browserManifest.id, electronManifest.id]) {
+    const registered = await loadValidationManifestById({ root: ROOT, id });
+    assert.equal(registered.id, id);
+  }
+  // The candidate/worktree digests hash the live tree, so a foreign write landing between
+  // the two manifest computations flakes an otherwise-static pairing contract. Retry the
+  // pair until one stable read shows them equal; only the persistent identity fields must
+  // differ (runtimeKind, manifest).
+  let browser = null;
+  let electron = null;
+  let stable = false;
+  for (let attempt = 0; attempt < 6 && !stable; attempt++) {
+    browser = await computeGateDigestsFromManifest({ root: ROOT, manifest: browserManifest });
+    electron = await computeGateDigestsFromManifest({ root: ROOT, manifest: electronManifest });
+    stable = browser.sourceCandidateDigest === electron.sourceCandidateDigest
+      && browser.worktreeDigest === electron.worktreeDigest;
+  }
+  assert.ok(stable, 'browser and electron manifests never bound the same source candidate within 6 reads');
+  assert.notEqual(browser.candidateDigest, electron.candidateDigest);
+  assert.notEqual(browser.manifestDigest, electron.manifestDigest);
+});
+
+test('environment census blocks are not primary acceptance failures', () => {
+  // A census refusal fires before any measurement exists; persisting it as a
+  // primaryAcceptance failure would wedge the manifest behind a regression
+  // change no product fix can satisfy. Pin the classification seam.
+  const envBlockText = [
+    'file:///repo/scripts/lib/releaseSoakProbe.mjs:5765',
+    "      const error = new Error('PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED: performance activity census is active or unavailable');",
+    '                    ^',
+    '',
+    'Error: PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED: performance activity census is active or unavailable',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isEnvironmentBlockedProbeError(envBlockText), true);
+
+  const productFailureText = [
+    '[dirty-ranges] FAIL: owner requested bytes did not fall by at least 25%',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isEnvironmentBlockedProbeError(productFailureText), false);
+  assert.equal(isEnvironmentBlockedProbeError(''), false);
+  assert.equal(isEnvironmentBlockedProbeError(null), false);
+});
+
+test('mid-capture tree mutation exits are not primary acceptance failures', () => {
+  // A concurrent commit invalidates the capture before valid evidence exists;
+  // persisting it as primaryAcceptance wedges the manifest behind a regression
+  // change no product fix can satisfy — same family as the census block above.
+  const worktreeText = [
+    '[dirty-ranges] FAIL: worktree changed during performance capture | measurement invalid: worktree-not-clean-and-stable',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(worktreeText), true);
+
+  // A claim minted before a foreign commit lands is stale at the probe's
+  // authority gate — same family: no evidence produced, cause is tree churn.
+  const staleClaimText = [
+    'Error: PERFORMANCE_ATTRIBUTION_AUTHORITY_REJECTED: broker-claim-stale-digest',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(staleClaimText), true);
+
+  // Boundary contamination confounds every byte count in the run — the
+  // measurement is invalid evidence, not a product verdict.
+  const contaminatedText = [
+    '[dirty-ranges] FAIL: measurement invalid: contaminating-process-or-authoring-activity | driver upload bytes did not fall by at least 25%',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(contaminatedText), true);
+
+  // A tree mutation noticed during an already-failed run is the same event:
+  // the files changed mid-capture, so the failure cannot be attributed to the
+  // claimed candidate. Persisting it wedges the gate identically (2026-09-25,
+  // a mid-merge capture stored 'CSP-safe page condition timed out' as primary).
+  const mutatedFailedText = [
+    '[dirty-ranges] FAIL: CSP-safe page condition timed out after 30000ms | worktree changed during failed capture',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(mutatedFailedText), true);
+
+  const productFailureText = [
+    '[dirty-ranges] FAIL: owner requested bytes did not fall by at least 25%',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(productFailureText), false);
+  assert.equal(isMeasurementIntegrityProbeError(''), false);
+  assert.equal(isMeasurementIntegrityProbeError(null), false);
+});
+
+test('window-end pipeline drain requires a sustained empty queue, not one zero sample', async () => {
+  // Ships keep crossing mesh-build thresholds while the player moves, so the
+  // queue refills in bursts. A single zero sample raced a late burst and cost a
+  // measured acceptance run (windows[0]-pipeline-cache-mismatch, 2026-09-25).
+  // The boundary contract needs the queue to STAY empty for a beat; pin the
+  // sustained-settle loop so it cannot regress to a one-shot sample.
+  const source = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
+  const drainIndex = source.indexOf('pipelineDrainDeadline');
+  assert.notEqual(drainIndex, -1, 'window-end pipeline drain wait must exist');
+  const drainBlock = source.slice(drainIndex, drainIndex + 2400);
+  assert.match(drainBlock, /pipelineSettledSince/,
+    'drain must track a settled-since timestamp across consecutive samples');
+  assert.match(drainBlock, /meshBuildQueueRemaining\) === 0\s*&&\s*Number\(probeReadiness\?\.activeAdmissionJobs\) === 0/,
+    'drain must require both the mesh-build queue and admission jobs empty');
+  assert.match(drainBlock, /now - pipelineSettledSince >= 250/,
+    'drain must require the empty state to persist for a sustained window');
+});
+
+test('owner-gone admission classifies the flight-instance retention race', async () => {
+  // 2026-09-25 electron acceptance: an 82 MB trade-hub package lost its boundary-owner
+  // retain while the player undocked mid-admission; createFlightInstance threw "must be
+  // retained before creating a flight instance", which missed the owner-inactive family
+  // regex and warned 'no substitute visual published' instead of marking the boundary
+  // re-requestable. Both message spellings must classify as the owner-gone race.
+  const { admissionOwnerInactive } = await import('../src/render/partsLibrary.js');
+  assert.equal(admissionOwnerInactive(null, { alive: true },
+    new Error('Render package sf.render.helios-trade-hub must be retained before creating a flight instance.')),
+    true, 'flight-static retention loss is the owner-gone teardown race');
+  assert.equal(admissionOwnerInactive(null, { alive: true },
+    new Error('Render package x must be retained before creating an instance.')),
+    true, 'ordinary retention loss classifies the same way');
+  assert.equal(admissionOwnerInactive(null, { alive: true },
+    new Error('Render package x has no prepared flight records.')),
+    false, 'unrelated package errors must still warn');
+});
+
+test('the probe arms a partial-upload census that names ambient writers', async () => {
+  // Tier-1 totals can prove owners requested less but cannot name ambient
+  // bufferSubData writers — the 2026-09-25 acceptance runs showed ambient
+  // swings of 10M→37M deciding the driver gate. The census keys partial
+  // uploads by CPU view and resolves them to attributes; pin the wiring so a
+  // future refactor cannot silently disarm it.
+  const counters = await import('../src/core/perfCounters.js');
+  const api = counters.createPerfCounters();
+  assert.equal(typeof api.armPartialUploadCensus, 'function');
+  assert.equal(typeof api.collectPartialUploadCensus, 'function');
+  assert.equal(typeof api.disarmPartialUploadCensus, 'function');
+  assert.deepEqual(api.collectPartialUploadCensus(), [], 'disarmed census reports nothing');
+
+  const probeSource = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
+  assert.match(probeSource, /armPartialUploadCensus/, 'window open must arm the census');
+  assert.match(probeSource, /collectPartialUploadCensusReport/, 'window close must resolve it');
+});
+
+test('the acceptance route keeps whole-ship LOD demotion on a scoped library plan', async () => {
+  // The 2026-09-15 browser acceptance run failed on page warnings: every whole-ship
+  // LOD demotion threw because its custom per-level bootstrapPlan still rode the
+  // canonical libraryScope, which bootstrapPlanForOptions refuses by contract. Pin
+  // the call-site pairing so the demotion path cannot regress to that throw.
+  const partsSource = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  const planIndex = partsSource.indexOf('authoredPreloadPlanForEntityAtLod(entity, requested, options)');
+  assert.notEqual(planIndex, -1, 'demotion preload must request a per-level authored plan');
+  const callSite = partsSource.slice(Math.max(0, planIndex - 600), planIndex + 600);
+  assert.match(callSite, /bootstrapPlan:\s*authoredPreloadPlanForEntityAtLod\(entity, requested, options\)/);
+  assert.match(callSite, /libraryScope:\s*['"]whole-ship-lod-family['"]/,
+    'a custom demotion bootstrapPlan requires a non-canonical libraryScope');
+});
+
+test('every committed src import resolves to a committed file', async () => {
+  // The 2026-09-22 browser acceptance run died at the boot gate: HEAD's
+  // shipMicroMotion.js imported presentation/flightOverheadMath.js, which was
+  // intent-to-add staged but never committed — a clean candidate 404'd the module
+  // and the route starved inside waitForFunction. Pin the closure: a relative
+  // specifier in a tracked source must resolve to a tracked file.
+  const { execFileSync } = await import('node:child_process');
+  const tracked = new Set(
+    // 17k+ tracked files overflow the default 1 MiB maxBuffer (ENOBUFS kill).
+    execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+      .split('\n').filter(Boolean),
+  );
+  const sources = [...tracked].filter((f) => /^src\/.*\.(js|mjs)$/.test(f));
+  const missing = [];
+  for (const file of sources) {
+    const text = await readFile(path.join(ROOT, file), 'utf8');
+    for (const m of text.matchAll(/(?:from|import)\s*['"](\.[^'"]+)['"]/g)) {
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), m[1]));
+      if (!tracked.has(resolved)) missing.push(`${file} -> ${m[1]}`);
+    }
+  }
+  assert.deepEqual(missing, [],
+    `tracked sources import untracked modules (clean checkout would 404):\n${missing.join('\n')}`);
+});
+
+test('every committed src named import resolves to a committed export', async () => {
+  // Same failure class, one layer deeper: a51aa1241's title screen imported
+  // selectLatestOccupiedSlot while the helper sat uncommitted — the module
+  // rejected at eval, mainMenu/pause screens never registered, and the
+  // 2026-09-22 acceptance died waiting for a menu that could not mount.
+  // export * chains are skipped rather than resolved transitively.
+  const { execFileSync } = await import('node:child_process');
+  const tracked = new Set(
+    execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+      .split('\n').filter(Boolean),
+  );
+  // `function\s*\*?` so a generator export (`export function* name`, the stepped census twins) counts as an export too.
+  const exportRe = /export\s+(?:async\s+)?(?:function\s*\*?|class|const|let|var)\s*([A-Za-z_$][\w$]*)|export\s*\{([^}]*)\}/g;
+  const starRe = /export\s*\*\s*(?:as\s+[A-Za-z_$][\w$]*\s*)?from\s*['"](\.[^'"]+)['"]/g;
+  const ownExports = new Map();
+  const starTargets = new Map();
+  for (const file of tracked) {
+    if (!/\.(js|mjs)$/.test(file)) continue;
+    const text = await readFile(path.join(ROOT, file), 'utf8');
+    const names = new Set();
+    for (const m of text.matchAll(exportRe)) {
+      if (m[1]) names.add(m[1]);
+      if (m[2]) for (const part of m[2].split(',')) {
+        const name = part.trim().split(/\s+as\s+/).pop().trim();
+        if (name) names.add(name);
+      }
+    }
+    ownExports.set(file, names);
+    const stars = [];
+    for (const m of text.matchAll(starRe)) {
+      stars.push(path.posix.normalize(path.posix.join(path.posix.dirname(file), m[1])));
+    }
+    starTargets.set(file, stars);
+  }
+  // `export * from` chains re-export the target's names transitively — resolve them so a missing
+  // name cannot hide behind a barrel module (the isModeAvailable skew surfaced through one).
+  const exportsOf = new Map();
+  const resolveExports = (file, seen = new Set()) => {
+    if (exportsOf.has(file)) return exportsOf.get(file);
+    if (seen.has(file)) return new Set();
+    seen.add(file);
+    const names = new Set(ownExports.get(file));
+    for (const target of starTargets.get(file) || []) {
+      for (const n of resolveExports(target, seen)) names.add(n);
+    }
+    exportsOf.set(file, names);
+    return names;
+  };
+  const missing = [];
+  for (const file of tracked) {
+    if (!/^src\/.*\.(js|mjs)$/.test(file)) continue;
+    const text = await readFile(path.join(ROOT, file), 'utf8');
+    for (const m of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"](\.[^'"]+)['"]/g)) {
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), m[2]));
+      if (!tracked.has(resolved)) continue;
+      const names = resolveExports(resolved);
+      // Comments inside the braces (an import list with a // note on its first line) are not names.
+      const specifiers = m[1].replace(/\/\/[^\r\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const part of specifiers.split(',')) {
+        const name = part.trim().split(/\s+as\s+/)[0].trim();
+        if (name && !names.has(name)) missing.push(`${file} imports ${name} from ${resolved}`);
+      }
+    }
+  }
+  assert.deepEqual(missing, [],
+    `tracked sources import names that tracked modules do not export (module eval rejects):\n${missing.join('\n')}`);
+});
+
+test('acceptance launch and settle budgets cover a contended host without weakening the windows', async () => {
+  const { AUTHORED_FLIGHT_READY_BUDGET_MS } = await import('../scripts/lib/alphaLiveBaselineRoute.mjs');
+  const { performanceScenario, performanceScenarioPipelineSettleTimeoutMs } = await import(
+    '../scripts/lib/performanceClosureContracts.mjs'
+  );
+
+  // The launch gate waits for readiness and does not measure load speed. The packaged
+  // Electron shell measured 123s new-game -> flight-ready on a quiet host
+  // (2026-09-25T20-28-40Z) and was still compositing its loading progress at 96% when a
+  // 150s budget expired (2026-09-25T22-12-38Z): the budget, not the product, was binding.
+  assert.equal(AUTHORED_FLIGHT_READY_BUDGET_MS, 240_000);
+
+  // The settle phase waits for pipeline counters to hold stable before a window opens and
+  // measures nothing itself. At 100% host load (2026-09-26T07-18Z) background compilation
+  // outlasted the 20s default and both windows demoted pipeline-warmup-unsettled; combat
+  // scenarios use the probe's full 30s patience. A genuinely unsettled pipeline still
+  // fails the window contract, so this only widens the wait.
+  assert.equal(performanceScenarioPipelineSettleTimeoutMs('combat_vfx_burst'), 30_000);
+  assert.equal(performanceScenario('combat_vfx_burst').pipelineSettleTimeoutMs, 30_000);
+
+  // The attribution route must actually consume the scenario settle timeout.
+  assert.ok(
+    probeSource.includes('pipelineSettleTimeoutMs: performanceScenarioPipelineSettleTimeoutMs(routeTag)'),
+    'attribution windows must take their settle budget from the scenario table',
+  );
+});

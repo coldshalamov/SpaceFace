@@ -1,0 +1,29 @@
+{
+  "label": "syncEntityViews-submit-scratch-alloc",
+  "entities": 800,
+  "frames": 600,
+  "hiddenFraction": 0.4,
+  "before": {
+    "submits": 288600,
+    "ms": 14.253782000000001,
+    "heapDeltaBytes": 13712
+  },
+  "hiddenOnly": {
+    "submits": 288600,
+    "ms": 1.1361180000000104,
+    "heapDeltaBytes": -64
+  },
+  "after": {
+    "submits": 288600,
+    "ms": 11.466768000000002,
+    "heapDeltaBytes": 11448
+  },
+  "heapReductionVsBefore": {
+    "hiddenOnly": 13776,
+    "after": 2264
+  },
+  "cpuSpeedupVsBefore": {
+    "hiddenOnly": 12.546,
+    "after": 1.243
+  }
+}

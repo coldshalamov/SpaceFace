@@ -1,0 +1,116 @@
+{
+  "schema": "spaceface.creatorsDockRequest.v1",
+  "id": "agent.undo-rock",
+  "ops": [
+    {
+      "op": "create",
+      "project": {
+        "id": "dock.agent-undo-rock",
+        "title": "Agent undo rock",
+        "description": "A nudge is undone. The rock returns to the authored point.",
+        "composition": "agent-undo-rock",
+        "seed": 22003,
+        "ticks": 180,
+        "grid": { "size": 10, "snap": false },
+        "notes": {
+          "composition": "agent-undo-rock",
+          "expectedObservation": "After undo the rock is back at x 40 and player thrust still raises playerZ."
+        }
+      }
+    },
+    {
+      "op": "addObject",
+      "object": {
+        "id": "player",
+        "kind": "actor",
+        "role": "player",
+        "profile": "ship.starter",
+        "x": 0,
+        "z": 0,
+        "heading": 1.570796,
+        "velX": 0,
+        "velZ": 0,
+        "angularVelocity": 0,
+        "team": 0,
+        "factionId": "faction_free",
+        "isPlayer": true,
+        "persistent": true,
+        "label": "agent hitch"
+      }
+    },
+    {
+      "op": "addObject",
+      "object": {
+        "id": "rock",
+        "kind": "actor",
+        "role": "debris",
+        "profile": "asteroid.light",
+        "x": 40,
+        "z": 0,
+        "heading": 0,
+        "velX": 0,
+        "velZ": 0,
+        "angularVelocity": 0,
+        "team": 2,
+        "persistent": true,
+        "label": "rock"
+      }
+    },
+    { "op": "nudge", "id": "rock", "dx": 20, "dz": 10 },
+    { "op": "undo" },
+    {
+      "op": "setFrames",
+      "frames": [
+        { "tick": 0, "input": { "moveX": 0, "moveZ": 1, "turnIntent": 0, "boost": false, "fire": false } }
+      ]
+    },
+    {
+      "op": "addObject",
+      "object": {
+        "id": "final_z",
+        "kind": "objective",
+        "x": 0,
+        "z": 0,
+        "metric": "trace.final",
+        "signal": "playerZ",
+        "op": ">",
+        "value": 0.5,
+        "labOnly": true,
+        "label": "final playerZ"
+      }
+    },
+    {
+      "op": "addObject",
+      "object": {
+        "id": "alive",
+        "kind": "trigger",
+        "shape": "circle",
+        "x": 0,
+        "z": 0,
+        "radius": 10,
+        "labOnly": true,
+        "label": "alive",
+        "assertion": { "kind": "holds", "signal": "playerAlive", "holdsTicks": 30 }
+      }
+    },
+    {
+      "op": "setEncounter",
+      "encounter": {
+        "id": "dock_agent_undo",
+        "order": 1013,
+        "tier": "ambient",
+        "deck": "civilian",
+        "weight": 1,
+        "zoneTypes": ["derelict_field"],
+        "script": "salvageSignal",
+        "pressureCost": 8,
+        "cooldownS": 480,
+        "proximity": true,
+        "shape": { "situation": "wreck", "place": "derelict_field", "twist": "none", "actor": "none" },
+        "factionId": "faction_free",
+        "context": "encounter",
+        "title": "Undo rock"
+      }
+    }
+  ]
+}

@@ -1,0 +1,529 @@
+// impoundPayPrompt.js — the impound clerk's counter. The pound ships three ways out of a bill:
+// work the yard (proximity accrues law:impoundWorked), cut the lock (steal), or pay the clerk.
+// The first two are overlaps and already live; pay is a CHOICE, and until this module nothing
+// emitted law:impoundPay — the whole verb was unreachable.
+//
+// lawSecurity._updateWantedImpound now emits `law:impoundPayOffer` on the clerk-pad overlap edge
+// (clear on the falling edge). This thin adapter turns that domain event into a prompt-deck
+// decision. The PAY verb emits `law:impoundPay` — the intent lawSecurity._payWantedImpound has
+// always listened for — and the engine re-validates reach and credits before charging, so a
+// stale panel can never double-charge. Refusals come back on `law:impoundPayRefused` and are
+// reported verbatim; this panel never computes or charges the bill itself.
+//
+// Registry SYSTEMS-only entry (no update; event-driven), same posture as customsPrompt.
+//
+// FB-039 — the same adapter in fine mode. lawSecurity emits `law:fineAssessed` with
+// `offer: true` when a wanted pilot berths at a lawful station: the charge is no longer
+// automatic, it is an offer with the impound clerk's three doors — pay, work the desk's
+// shift, or carry the warrant out. The prompt deck is a flight surface (it voids every
+// decision on dock:docked and cannot hold the floor while docked), so the assessment is
+// held while the player is aboard and re-asserted the moment the hull clears the pad —
+// the desk gets the last word at the airlock. Replies go back as `law:fineChoice` intents;
+// the engine re-derives tier, price and credits against the live offer, so a stale card
+// can never charge.
+//
+// Helix docket mode — the same counter for the Bureau's service ring. faction_helix
+// edge-emits `helix:serviceOffer` while the hull sits inside an assessment desk's (or a
+// field assessor's) ring; the card offers the docket's own verbs — settle or contest an
+// open instrument, file the manifest, remit the warrant — and answers with
+// `helix:docketChoice` intents. The Bureau re-checks reach, the instrument and credits.
+
+import { getPromptDeck } from './promptDeck.js';
+import { wantedClearClause, wantedReasonText } from './wantedReason.js';
+import { SECTORS } from '../data/sectors.js';
+import { isPlayerWanted, heatLevelFor } from '../systems/heat.js';
+import { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../data/lawDeskTariff.js';
+import { FINE_WHY_COPY, lawDeskLine } from '../data/lawDeskCopy.js';
+
+const DECK_ID = 'impound-pay';
+const FINE_DECK_ID = 'law-fine';
+const RESTITUTION_DECK_ID = 'restitution-bill';
+const HELIX_DECK_ID = 'helix-docket';
+
+// The Bureau's instrument causes in the pilot's words.
+const HELIX_CAUSE_WORDS = Object.freeze({
+  unlogged_transit: 'unlogged transit',
+  lien: 'lien',
+  instrument_destroyed: 'destroyed instrument',
+});
+
+export const impoundPayPrompt = {
+  name: 'impoundPayPrompt',
+
+  init(ctx) {
+    this._ctx = ctx;
+    this._bus = ctx && ctx.bus;
+    this._state = ctx && ctx.state;
+    this._onOffer = (p) => this._handleOffer(p);
+    this._onRefused = (p) => this._handleRefused(p);
+    this._onClosed = () => this._dismiss();
+    this._onFine = (p) => this._handleFineAssessed(p);
+    this._onFineUndock = () => this._surfaceFine();
+    this._onFineRefused = (p) => this._handleFineRefused(p);
+    this._onRestitutionNoted = (p) => this._handleRestitutionNoted(p);
+    this._onRestitutionPaid = (p) => this._handleRestitutionPaid(p);
+    this._onRestitutionUndock = () => this._surfaceRestitution();
+    this._onRestitutionExit = () => this._dismissRestitution();
+    if (this._bus && this._bus.on) {
+      this._bus.on('law:impoundPayOffer', this._onOffer);
+      this._bus.on('law:impoundPayRefused', this._onRefused);
+      this._bus.on('law:impoundRecovered', this._onClosed);
+      this._bus.on('law:impoundReleased', this._onClosed);
+      this._bus.on('sector:exit', this._onClosed);
+      this._bus.on('dock:docked', this._onClosed);
+      this._bus.on('law:fineAssessed', this._onFine);
+      this._bus.on('law:fineRefused', this._onFineRefused);
+      this._bus.on('dock:undocked', this._onFineUndock);
+      this._bus.on('sector:exit', () => this._dismissFine(true));
+      this._bus.on('dock:docked', () => this._dismissFine(false));
+      this._bus.on('law:obligationNoted', this._onRestitutionNoted);
+      this._bus.on('law:obligationPaid', this._onRestitutionPaid);
+      this._bus.on('dock:undocked', this._onRestitutionUndock);
+      this._bus.on('sector:exit', this._onRestitutionExit);
+    }
+    this._onHelixOffer = (p) => this._handleHelixOffer(p);
+    this._onHelixClose = () => this._dismissHelix();
+    if (this._bus && this._bus.on) {
+      this._bus.on('helix:serviceOffer', this._onHelixOffer);
+      this._bus.on('sector:exit', this._onHelixClose);
+      this._bus.on('dock:docked', this._onHelixClose);
+    }
+  },
+
+  // ── Helix docket mode ────────────────────────────────────────────────────────────
+  _handleHelixOffer(p) {
+    if (!p || p.clear || p.open !== true) { this._dismissHelix(); return; }
+    const fines = Array.isArray(p.fines) ? p.fines : [];
+    const fine = fines.find((f) => f && f.overdue) || fines[0] || null;
+    const warrant = p.warrant && Number.isFinite(Number(p.warrant.costCr)) ? p.warrant : null;
+    const choices = [];
+    if (fine) {
+      const amount = Math.max(0, Math.round(Number(fine.amount) || 0));
+      choices.push({ id: `pay:${fine.fineId}`, label: `SETTLE ${amount} CR`, title: 'Pay this instrument in full at the desk. The Bureau does not take part payments.' });
+      if (!fine.contested) {
+        choices.push({ id: `contest:${fine.fineId}`, label: 'CONTEST', title: 'The clerk hears the appeal once. Won, the instrument is voided; lost, the desk adds its costs.' });
+      }
+    }
+    if (warrant) {
+      const cost = Math.max(0, Math.round(Number(warrant.costCr) || 0));
+      choices.push({ id: 'remit', label: `REMIT ${cost} CR`, title: 'Pay off the warrant on your name. The writ cutters stand down.' });
+    }
+    if (!p.manifestValid) {
+      const fee = Math.max(0, Math.round(Number(p.manifestFeeCr) || 0));
+      choices.push({ id: 'manifest', label: `FILE MANIFEST ${fee} CR`, title: 'Declare the hold. While the manifest is on file, an audit reads you clean and pays a rebate.' });
+    }
+    if (choices.length === 0) { this._dismissHelix(); return; }
+    choices.push({ id: 'leave', label: 'STEP AWAY', title: 'Close the counter. Open instruments keep their clocks.' });
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (!deck) return;
+    const count = fines.length;
+    const headline = fine
+      ? (count > 1 ? `${count} OPEN INSTRUMENTS` : `INSTRUMENT ${Math.max(0, Math.round(Number(fine.amount) || 0))} CR`)
+      : warrant ? 'WARRANT ON FILE' : 'FILINGS TAKEN';
+    const causeWord = fine ? (HELIX_CAUSE_WORDS[fine.cause] || 'Bureau') : null;
+    const detail = fine
+      ? `A ${causeWord} instrument stands${fine.overdue ? ' overdue — the garnish clock is running' : ''}. Settle it, contest it, or let the clock run.${p.manifestValid ? ' Your manifest is on file.' : ''}`
+      : warrant
+        ? `The Bureau has a warrant on your name at heat ${Math.max(0, Math.round(Number(warrant.heat) || 0))}. Remit it here, or the writ cutters keep coming.`
+        : 'No instrument stands against you. File a manifest and the next audit reads you clean.';
+    const clerk = typeof p.clerkName === 'string' && p.clerkName ? p.clerkName : 'HELIX BUREAU';
+    deck.offerDecision({
+      id: HELIX_DECK_ID,
+      kind: fine || warrant ? 'warn' : 'info',
+      sender: p.serviceKind === 'assessor' ? `FIELD ASSESSOR · ${clerk}` : `ASSESSMENT DESK · ${clerk}`,
+      statusFlag: 'HELIX',
+      headline,
+      detail,
+      choices,
+      deadlineAt: null,
+      onChoose: (choiceId) => this.chooseHelix(choiceId),
+      onExpire: () => this._dismissHelix(),
+    });
+  },
+
+  chooseHelix(actionId) {
+    const id = String(actionId || '');
+    const bus = this._bus;
+    if (id === 'leave') { this._dismissHelix(); return; }
+    let intent = null;
+    if (id.startsWith('pay:')) intent = { verb: 'pay', fineId: id.slice(4) };
+    else if (id.startsWith('contest:')) intent = { verb: 'contest', fineId: id.slice(8) };
+    else if (id === 'manifest') intent = { verb: 'manifest' };
+    else if (id === 'remit') intent = { verb: 'remit' };
+    if (!intent) return;
+    // The card closes on the answer; the Bureau re-announces whatever the ring still
+    // offers, so a settled docket re-opens the card only with what is left to do.
+    this._dismissHelix();
+    if (bus && bus.emit) bus.emit('helix:docketChoice', intent);
+  },
+
+  _dismissHelix() {
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (deck && deck.resolveDecision) deck.resolveDecision(HELIX_DECK_ID);
+  },
+
+  _handleOffer(p) {
+    if (!p || p.clear) { this._dismiss(); return; }
+    const state = this._state;
+    const owed = Math.max(0, Math.round(Number(p.owedCr) || 0));
+    const credits = Math.max(0, Math.round(Number(state && state.player && state.player.credits) || 0));
+    if (state && state.ui) {
+      state.ui.impoundPayPrompt = { poundId: p.poundId, billId: p.billId, owedCr: owed, t: state.simTime || 0 };
+    }
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (!deck) return;
+    const short = owed > credits;
+    deck.offerDecision({
+      id: DECK_ID,
+      kind: 'warn',
+      sender: 'IMPOUND CLERK',
+      statusFlag: 'IMPOUND',
+      headline: 'RELEASE THE SHIP',
+      detail: `The bill stands at ${owed} cr — pay it here, work the yard, or cut the lock.${short ? ` You hold ${credits} cr.` : ''}`,
+      choices: [
+        { id: 'pay', label: `PAY ${owed} CR`, title: 'Hand the clerk the bill amount — the hull is released where it stands. The engine re-checks reach and credits; nothing is charged twice.' },
+        { id: 'leave', label: 'STEP AWAY', title: 'Close the counter. The yard shift and the lock stay open as ways out.' },
+      ],
+      onChoose: (choiceId) => this.choose(choiceId),
+      onExpire: () => this._dismiss(),
+    });
+  },
+
+  choose(actionId) {
+    const bus = this._bus;
+    this._dismiss();
+    if (!bus || !bus.emit) return;
+    if (actionId === 'pay') bus.emit('law:impoundPay', {});
+    // 'leave' emits nothing — the prompt closing IS the choice, same as walking off the pad.
+  },
+
+  _handleRefused(p) {
+    const bus = this._bus;
+    if (!bus || !bus.emit || !p) return;
+    if (p.reason === 'short') {
+      bus.emit('toast', {
+        text: `SHORT — the bill is ${p.owedCr != null ? p.owedCr : '—'} cr and you hold ${p.credits != null ? p.credits : '—'} cr. Work the yard, or cut the lock.`,
+        kind: 'warn', ttl: 4,
+      });
+    } else {
+      bus.emit('toast', { text: 'The clerk is out of reach — nothing was charged.', kind: 'info', ttl: 3 });
+    }
+  },
+
+  _dismiss() {
+    const state = this._state;
+    if (state && state.ui) delete state.ui.impoundPayPrompt;
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (deck) deck.resolveDecision(DECK_ID);
+  },
+
+  // ── FB-039 fine mode ─────────────────────────────────────────────────────────────────
+  // law:fineAssessed arrives in three shapes: the open offer (`offer: true`), a reply echo
+  // (`choice` set — paid/left/working/short), and the already-settled re-dock marker
+  // (`alreadySettled`). Only the offer is a decision surface; the echoes drive toasts and
+  // the card's lifecycle. The card itself is asserted immediately — the deck suppresses it
+  // while docked and its own tick resurfaces it the frame `ui.docked` releases — and
+  // re-asserted on dock:undocked so the answer is always reachable on the lane.
+
+  _liveFineOffer() {
+    const state = this._state;
+    const offer = state && state.lawSecurity && state.lawSecurity.fineOffer;
+    if (!offer || offer.status === 'paid' || offer.status === 'left') return null;
+    return offer;
+  },
+
+  _handleFineAssessed(p) {
+    if (!p) return;
+    const bus = this._bus;
+    const state = this._state;
+    if (p.offer === true) {
+      if (state && state.ui) {
+        state.ui.lawFinePrompt = {
+          stationId: p.stationId, amountCr: Math.max(0, Math.round(Number(p.amount) || 0)),
+          wantedTier: p.wantedTier || null, working: p.working === true, t: state.simTime || 0,
+        };
+      }
+      if (bus && bus.emit && !p.working) {
+        bus.emit('toast', {
+          text: `FINE ASSESSED — ${Math.max(0, Math.round(Number(p.amount) || 0))} cr on a ${p.wantedTier || 'wanted'} warrant. The desk takes your answer on the lane.`,
+          kind: 'warn', ttl: 6,
+        });
+      }
+      this._surfaceFine();
+      return;
+    }
+    if (p.paid === true) {
+      if (!p.alreadySettled && bus && bus.emit) {
+        bus.emit('toast', {
+          text: p.choice === 'work'
+            ? 'SHIFT COMPLETE — the desk clears the warrant.'
+            : `FINE PAID — ${Math.max(0, Math.round(Number(p.amount) || 0))} cr. The warrant is clear.`,
+          kind: 'law', ttl: 5,
+        });
+      }
+      this._dismissFine(true);
+      return;
+    }
+    if (p.choice === 'pay' && p.shortfall != null) {
+      // The engine said no: short account. The offer still stands — keep the card up.
+      if (bus && bus.emit) {
+        bus.emit('toast', {
+          text: `SHORT — the fine is ${p.amount != null ? p.amount : '—'} cr. Work the shift or carry the warrant.`,
+          kind: 'warn', ttl: 4,
+        });
+      }
+      this._surfaceFine();
+      return;
+    }
+    if (p.choice === 'leave' || p.choice === 'work') {
+      // Answered: the receipt is written engine-side; close the card without clearing the
+      // marker — a re-dock re-offers while the warrant stands.
+      this._dismissFine(false);
+    }
+  },
+
+  _surfaceFine() {
+    const offer = this._liveFineOffer();
+    if (!offer) return;
+    const state = this._state;
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (!deck) return;
+    const amount = Math.max(0, Math.round(Number(offer.amount) || 0));
+    const name = stationNameForDeck(offer.stationId) || 'STATION';
+    deck.offerDecision({
+      id: FINE_DECK_ID,
+      kind: 'warn',
+      sender: `${name} LAW DESK`,
+      statusFlag: 'WANTED',
+      headline: `FINE ${amount} CR`,
+      detail: fineWarrantDetail(offer, state),
+      choices: [
+        { id: 'pay', label: `PAY ${amount} CR`, title: 'Wire the desk its fine — the warrant clears. The engine re-checks credits; a short account is refused, never charged.' },
+        { id: 'work', label: 'WORK THE DEBT', title: 'A short lawful shift accrues against the bill — no credits needed, just the clock.' },
+        { id: 'leave', label: 'CARRY THE WARRANT', title: 'Walk away. The warrant stands and the next lawful dock assesses it again.' },
+      ],
+      onChoose: (choiceId) => this.chooseFine(choiceId),
+      onExpire: () => this._dismissFine(false),
+    });
+  },
+
+  chooseFine(actionId) {
+    const bus = this._bus;
+    const offer = this._liveFineOffer();
+    const stationId = (offer && offer.stationId) || null;
+    if (actionId !== 'pay' && actionId !== 'work' && actionId !== 'leave') return;
+    if (!stationId) { this._dismissFine(false); return; }
+    // The answer goes to the desk as an intent; the echo decides the card — 'pay' shortfalls
+    // re-assert it, 'work'/'leave'/paid close it. Never a charge from this side.
+    if (actionId !== 'pay') this._dismissFine(false);
+    if (bus && bus.emit) bus.emit('law:fineChoice', { choice: actionId, stationId });
+  },
+
+  _handleFineRefused(p) {
+    const bus = this._bus;
+    if (!bus || !bus.emit || !p) return;
+    if (p.kind === 'restitution' && p.reason === 'short') {
+      bus.emit('toast', {
+        text: 'SHORT — that restitution stays open. Nothing was charged.',
+        kind: 'warn', ttl: 4,
+      });
+      this._surfaceRestitution();
+      return;
+    }
+    if (p.reason === 'no_open_fine') {
+      bus.emit('toast', { text: 'No open fine at that berth — nothing was charged.', kind: 'info', ttl: 3 });
+    }
+    this._dismissFine(false);
+  },
+
+  // A named restitution is its own card. Paying one cause does not clear heat, a warrant,
+  // or a second bill. Leaving the card keeps the debt. Leaving the sector hides the card.
+  _openRestitutionBills() {
+    const own = this._state && this._state.lawSecurity;
+    const rows = own && own.composed && typeof own.composed === 'object' && !Array.isArray(own.composed)
+      ? Object.values(own.composed) : [];
+    return rows.filter((row) => row
+      && row.kind === 'restitution'
+      && row.status !== 'paid'
+      && row.remainingCr > 0
+      && row.advertisePay !== false
+      && typeof row.causeId === 'string'
+      && row.causeId);
+  },
+
+  _handleRestitutionNoted(p) {
+    if (!p || p.kind !== 'restitution') return;
+    if (p.status === 'paid' || p.advertisePay === false) return;
+    this._surfaceRestitution();
+  },
+
+  _handleRestitutionPaid(p) {
+    if (!p || p.kind !== 'restitution') return;
+    const left = this._openRestitutionBills();
+    if (p.status === 'paid' && left.length === 0) {
+      this._dismissRestitution();
+      return;
+    }
+    if (left.length > 0) this._surfaceRestitution();
+  },
+
+  _surfaceRestitution() {
+    const bills = this._openRestitutionBills();
+    if (bills.length === 0) return;
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (!deck) return;
+    const choices = bills.map((row) => {
+      const amount = Math.max(0, Math.round(Number(row.remainingCr) || 0));
+      const who = row.forPerson ? ` for ${row.forPerson}` : '';
+      return {
+        id: `pay:${row.causeId}`,
+        label: `PAY ${amount} CR`,
+        title: `Settle this restitution${who}. Only this cause's standing comes back. Heat stays.`,
+      };
+    });
+    choices.push({
+      id: 'leave',
+      label: 'LEAVE THE BILL',
+      title: 'Close the card. The bill stays, and nothing is charged.',
+    });
+    const first = bills[0];
+    const amount = Math.max(0, Math.round(Number(first.remainingCr) || 0));
+    deck.offerDecision({
+      id: RESTITUTION_DECK_ID,
+      kind: 'warn',
+      sender: 'RESTITUTION',
+      statusFlag: 'OWED',
+      headline: bills.length === 1 ? `RESTITUTION ${amount} CR` : `${bills.length} RESTITUTION BILLS`,
+      detail: 'Paying one bill returns only the standing that cause took. Other grudges and the heat sheet stay.',
+      choices,
+      deadlineAt: null,
+      onChoose: (choiceId) => this.chooseRestitution(choiceId),
+    });
+  },
+
+  chooseRestitution(actionId) {
+    const id = String(actionId || '');
+    if (id === 'leave') {
+      this._dismissRestitution();
+      return;
+    }
+    if (!id.startsWith('pay:')) return;
+    const bus = this._bus;
+    if (bus && bus.emit) {
+      bus.emit('law:fineChoice', { choice: 'pay', kind: 'restitution', causeId: id.slice(4) });
+    }
+  },
+
+  _dismissRestitution() {
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (deck && deck.resolveDecision) deck.resolveDecision(RESTITUTION_DECK_ID);
+  },
+
+  _dismissFine(clearMarker) {
+    const state = this._state;
+    if (clearMarker && state && state.ui) delete state.ui.lawFinePrompt;
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (deck) deck.resolveDecision(FINE_DECK_ID);
+  },
+
+  destroy() {
+    if (this._bus && this._bus.off) {
+      if (this._onOffer) this._bus.off('law:impoundPayOffer', this._onOffer);
+      if (this._onRefused) this._bus.off('law:impoundPayRefused', this._onRefused);
+      if (this._onClosed) {
+        this._bus.off('law:impoundRecovered', this._onClosed);
+        this._bus.off('law:impoundReleased', this._onClosed);
+        this._bus.off('sector:exit', this._onClosed);
+        this._bus.off('dock:docked', this._onClosed);
+      }
+      if (this._onFine) this._bus.off('law:fineAssessed', this._onFine);
+      if (this._onFineRefused) this._bus.off('law:fineRefused', this._onFineRefused);
+      if (this._onFineUndock) this._bus.off('dock:undocked', this._onFineUndock);
+      if (this._onRestitutionNoted) this._bus.off('law:obligationNoted', this._onRestitutionNoted);
+      if (this._onRestitutionPaid) this._bus.off('law:obligationPaid', this._onRestitutionPaid);
+      if (this._onRestitutionUndock) this._bus.off('dock:undocked', this._onRestitutionUndock);
+      if (this._onRestitutionExit) this._bus.off('sector:exit', this._onRestitutionExit);
+      if (this._onHelixOffer) this._bus.off('helix:serviceOffer', this._onHelixOffer);
+      if (this._onHelixClose) {
+        this._bus.off('sector:exit', this._onHelixClose);
+        this._bus.off('dock:docked', this._onHelixClose);
+      }
+    }
+    this._onHelixOffer = null;
+    this._onHelixClose = null;
+    this._dismissHelix();
+    this._onOffer = null;
+    this._onRefused = null;
+    this._onClosed = null;
+    this._onFine = null;
+    this._onFineUndock = null;
+    this._onFineRefused = null;
+    this._onRestitutionNoted = null;
+    this._onRestitutionPaid = null;
+    this._onRestitutionUndock = null;
+    this._onRestitutionExit = null;
+    this._dismiss();
+    this._dismissFine(true);
+    this._dismissRestitution();
+  },
+};
+
+// The law-desk card's warrant line. At or above the wanted threshold the same
+// clear clock as the flight alert is appended; below it the clause is empty.
+export function fineWarrantDetail(offer, state) {
+  const amount = Math.max(0, Math.round(Number(offer && offer.amount) || 0));
+  const credits = Math.max(0, Math.round(Number(state && state.player && state.player.credits) || 0));
+  const short = amount > credits;
+  const heat = state && state.player ? state.player.heat : 0;
+  const clock = (typeof heat === 'number' && isPlayerWanted({ player: { heat } }))
+    ? wantedClearClause(heat)
+    : '';
+  const explanation = fineWhyClause(state, offer);
+  const why = explanation ? `${clock ? '. ' : ' '}${explanation}` : '';
+  if (offer && offer.status === 'working') {
+    return `The shift is running against the bill — stay on the lane while it accrues, or wire the ${amount} cr and walk.${clock}${why}`;
+  }
+  return `The warrant rides your transponder. Wire the ${amount} cr, work the desk's shift, or carry the warrant — the next lawful berth will ask again.${short ? ` You hold ${credits} cr.` : ''}${clock}${why}`;
+}
+
+/**
+ * inf-fine-why — the fine card's why clause: what the number is made of and what it answers
+ * for. The composition is the law's own price (LAW_DOCK_FINE_BASE_CR plus one
+ * LAW_DOCK_FINE_PER_LEVEL_CR step per heat band). A card uses its retained assessed step only
+ * when those parts match its actual bill; legacy or custom bills do not invent a breakdown. The
+ * trace is the heat owner's convicting-incident record rendered by the same no-false-witness
+ * helper the flight alert uses (suspicion without a receipt names nothing, never a witness
+ * claim). Unknown parts are omitted; a clean or sub-threshold sheet gets no clause at all.
+ * Pure read; never mutates state.
+ */
+export function fineWhyClause(state, assessment = null) {
+  const heat = state && state.player ? Number(state.player.heat) : 0;
+  const liveLevel = heatLevelFor(heat);
+  if (!(liveLevel > 0)) return '';
+  const level = assessment ? Number(assessment.heatLevel) : liveLevel;
+  const baseCr = Math.max(0, Math.round(Number(LAW_DOCK_FINE_BASE_CR)) || 0);
+  const perLevelCr = Math.max(0, Math.round(Number(LAW_DOCK_FINE_PER_LEVEL_CR)) || 0);
+  const parts = [];
+  if (Number.isInteger(level) && level > 0
+    && (!assessment || Number(assessment.amount) === baseCr + perLevelCr * level)) {
+    parts.push(lawDeskLine(FINE_WHY_COPY.price, { base: baseCr, perStep: perLevelCr, step: level }));
+  }
+  const trace = wantedReasonText(null, state && state.player);
+  if (trace) parts.push(lawDeskLine(FINE_WHY_COPY.answersFor, {
+    trace: trace.replace(/^ · /, ' ').replace(/\.+$/, ''),
+  }));
+  return parts.join('').trim();
+}
+
+// Station display name for the card sender — authored geography first, else a bare desk.
+// Same lookup precedent as barkDirector's stationNameFor.
+function stationNameForDeck(stationId) {
+  if (!stationId) return null;
+  for (const sector of SECTORS) {
+    const station = (sector.stations || []).find((row) => row.id === stationId);
+    if (station && station.name) return String(station.name).toUpperCase();
+  }
+  return null;
+}
+
+export default impoundPayPrompt;

@@ -1,0 +1,3544 @@
+{
+  "fmt": "spaceface-save",
+  "version": 17,
+  "savedAt": "2026-10-18T10:03:52.341Z",
+  "playtimeS": 0,
+  "slot": "continue-v17",
+  "checksum": "e10d25db",
+  "data": {
+    "meta": {
+      "version": 17,
+      "seed": 4242,
+      "playtimeS": 0,
+      "createdAt": "",
+      "lastSavedAt": "2026-10-18T10:03:52.166Z"
+    },
+    "player": {
+      "credits": 0,
+      "debt": 0,
+      "bounty": 0,
+      "heat": 0,
+      "heatZone": {
+        "active": false,
+        "center": {
+          "x": 0,
+          "z": 0
+        },
+        "radius": 0,
+        "level": 0,
+        "outsideS": 0,
+        "clearAfterS": 0,
+        "sectorId": null
+      },
+      "ownedShips": [
+        {
+          "defId": "ship_kestrel",
+          "fittings": [
+            "wpn_pulse_laser_s",
+            "mod_shield_booster_s",
+            "mod_engine_ion_m",
+            null,
+            "mod_mining_laser_s",
+            "mod_drill_amp",
+            null
+          ],
+          "appearance": {
+            "version": 1,
+            "hullColor": null,
+            "accentColor": null,
+            "finish": "worn",
+            "wear": 0.55,
+            "decalId": "borrowed_time"
+          },
+          "livingHull": {
+            "schema": "spaceface.livingHull.v1",
+            "killTally": 0,
+            "repairPatches": 0,
+            "heatScorch": 0,
+            "lastWashAtT": 0,
+            "washCount": 0,
+            "graffitiLine": null,
+            "graffitiAuthor": null,
+            "updatedAtT": 0
+          }
+        }
+      ],
+      "activeShipIndex": 0,
+      "moduleInventory": [],
+      "researchedNodes": [],
+      "droneTierCap": 0,
+      "efficiencyMods": {
+        "miningYieldMult": 1,
+        "shieldRegenMult": 1,
+        "energyRegenMult": 1,
+        "cargoCapMult": 1,
+        "tradeFeeMult": 1
+      },
+      "researchPoints": 0,
+      "salvageRights": 0,
+      "targetId": null,
+      "fireGroups": {
+        "1": [],
+        "2": []
+      },
+      "boostActive": false,
+      "insurance": {
+        "rate": 0.6,
+        "deductibleCr": 500,
+        "insuredModules": false,
+        "lastStationId": null
+      },
+      "magnetRange": 250,
+      "miningBeam": {
+        "tierId": "beam_mk1",
+        "range": 220,
+        "dps": 18,
+        "directToCargo": true
+      },
+      "miningTargetId": null,
+      "stats": {
+        "lifetimeProfit": 0,
+        "tradesCount": 0,
+        "biggestSingleProfit": 0,
+        "smuggledValue": 0,
+        "kills": 0,
+        "missionsDone": 0,
+        "totalPassiveEarnedLifetime": 0,
+        "creditsEarned": 0
+      },
+      "hints": {
+        "firstFlight": false,
+        "firstCombat": false,
+        "firstShieldDrop": false,
+        "firstStation": false,
+        "firstGate": false,
+        "firstCargoFull": false
+      },
+      "massSeed": {
+        "cooldownUntil": 0
+      },
+      "loadoutPresets": []
+    },
+    "cargo": {
+      "items": {
+        "cmdty_refined_metals": 4,
+        "cmdty_scrap_metal": 3
+      },
+      "capVolume": 250,
+      "capMass": 60
+    },
+    "morrow": {},
+    "vesper": {},
+    "bracket": {},
+    "ravel": {},
+    "solstice": {},
+    "rubric": {},
+    "ruckus": {},
+    "ruud": {},
+    "salvage": {},
+    "survivorPod": {},
+    "economy": {},
+    "economyContracts": {},
+    "factions": {},
+    "environmentMaterials": {
+      "reactions": [],
+      "blasts": []
+    },
+    "reactiveMatter": null,
+    "spectrum": null,
+    "orbitalGalleryLedger": null,
+    "kineticLeague": null,
+    "mercyService": null,
+    "wreckCourt": null,
+    "world": {},
+    "entities": {
+      "player": {
+        "id": 3,
+        "type": "ship",
+        "alive": true,
+        "factionId": null,
+        "pos": {
+          "x": 80,
+          "z": 40
+        },
+        "vel": {
+          "x": 6,
+          "z": 0
+        },
+        "rot": 0,
+        "angVel": 0,
+        "prevBank": 0,
+        "pitch": 0,
+        "prevPitch": 0,
+        "radius": 14,
+        "mass": 40.5,
+        "hull": 37,
+        "hullMax": 140,
+        "armorHp": 0,
+        "armorMax": 0,
+        "armorFlat": 0,
+        "shield": 3,
+        "shieldMax": 345,
+        "shieldRegenRate": 26.5,
+        "shieldRegenDelay": 3,
+        "lastDamageT": -1000000000,
+        "cap": 9,
+        "capMax": 80,
+        "capRegen": 12,
+        "thrust": 291.1433768750528,
+        "turnRate": 2.685523531669866,
+        "maxSpeed": 124.02121684867397,
+        "drag": 3.0229999999999997,
+        "collides": true,
+        "collisionMask": 31,
+        "team": 0,
+        "ownerId": null,
+        "flags": {
+          "boosting": false
+        },
+        "data": {
+          "defId": "ship_kestrel",
+          "derived": {
+            "hull": 140,
+            "hullMax": 140,
+            "armorHp": 0,
+            "armorMax": 0,
+            "armorFlat": 0,
+            "shield": 345,
+            "shieldMax": 345,
+            "shieldRegenRate": 26.5,
+            "shieldRegenDelay": 3,
+            "cap": 80,
+            "capMax": 80,
+            "capRegen": 12,
+            "thrust": 291.1433768750528,
+            "turnRate": 2.685523531669866,
+            "maxSpeed": 124.02121684867397,
+            "drag": 3.0229999999999997,
+            "bankFactor": 0.37038926633581065,
+            "flightClass": "scout",
+            "flightModel": {
+              "flightClass": "scout",
+              "mass": 40.5,
+              "inertia": 34.120879120879124,
+              "mainAccel": 305.7005457188055,
+              "reverseAccel": 152.85027285940274,
+              "strafeAccel": 168.86315858753062,
+              "angularAccel": 16.602265185303466,
+              "angularBrake": 36.3630880837085,
+              "maxYawRate": 2.2622850230786953,
+              "linearDrag": 3.0229999999999997,
+              "lateralDrag": 1.2696599999999998,
+              "assistStrength": 1.15,
+              "reverseBrake": 2.7822,
+              "maxSpeed": 124.02121684867397,
+              "boostMult": 2.2,
+              "normalMaxSpeedMult": 1.15,
+              "boostMaxSpeedMult": 2,
+              "bankMax": 0.68,
+              "bankFactor": 0.37038926633581065,
+              "role": "starter"
+            },
+            "propulsion": {
+              "schemaVersion": 1,
+              "id": "drive_reaction_m",
+              "label": "Vector Reaction Drive M",
+              "family": "reaction",
+              "mainAccel": 90.94911213396801,
+              "reverseAccel": 70.94030746449505,
+              "strafeAccel": 61.84539625109825,
+              "yawAccel": 8.003521867789186,
+              "yawBrake": 12.732875698755521,
+              "maxYawRate": 2.45,
+              "boostAccelMult": 2.05,
+              "boostSpeedMult": 1.55,
+              "precisionSpeed": 115,
+              "combatSpeed": 195,
+              "travelCeiling": 438.75,
+              "assist": {
+                "settleTimeConstantS": 12,
+                "settleFloorAccel": 1.5,
+                "lateralKillFraction": 0.32,
+                "commandedAxisDamping": 0.07,
+                "stopHorizonS": 4,
+                "driftStopHorizonS": 8.5,
+                "deadSpeed": 0.2,
+                "deadInput": 0.025,
+                "governorResponseS": 0.3,
+                "overspeedBrakeFraction": 0.24
+              },
+              "resources": {
+                "energyPerAccel": 0.009,
+                "heatPerAccel": 0.012,
+                "boostHeatMult": 1.8,
+                "coolingPerS": 3
+              },
+              "designMass": 35,
+              "massLoadFactor": 0.9094911213396801,
+              "driveAccelMult": 1,
+              "driveSpeedMult": 1,
+              "driveTravelMult": 1,
+              "thrusterTurnMult": 1,
+              "thrusterStrafeMult": 1,
+              "thrusterBrakeMult": 1,
+              "thrusterId": "mod_thruster_stock_s"
+            },
+            "dryMass": 35,
+            "cargoMass": 5.5,
+            "operationalMass": 40.5,
+            "operationalFeelMass": 39.69,
+            "designMass": 35,
+            "massLoadFactor": 0.9094911213396801,
+            "mass": 40.5,
+            "radius": 14,
+            "tetherSpoolMult": 1,
+            "tetherReelRateMult": 1,
+            "masslineHeadId": null,
+            "masslineLoadCapacityMult": 1,
+            "magnetRange": 0,
+            "lootMagnetRange": 0,
+            "swingDrive": false,
+            "towFlail": false,
+            "phaseBlink": false,
+            "hullBurstKind": null,
+            "hullBurstRank": 0,
+            "weaponRangePct": 0,
+            "weaponDmgPct": 0,
+            "weaponHeatDissipPct": 0,
+            "radarRangePct": 0,
+            "weaponRangeMult": 1,
+            "weaponDmgMult": 1,
+            "weaponHeatDissipMult": 1,
+            "radarRangeMult": 1,
+            "radarRange": 4000,
+            "jumpDriveTier": "jump_t1",
+            "hullRepairOOC": 0,
+            "droneBayCount": 0,
+            "cargoCap": 250,
+            "maxWeaponRange": 240,
+            "controlWeaponCount": 0,
+            "chaffCount": 0,
+            "ecmCount": 0,
+            "miningSlotsFilled": 1,
+            "miningSlotsTotal": 1,
+            "boost": {
+              "max": 200,
+              "drainRate": 38,
+              "regenRate": 44,
+              "dashImpulse": 150,
+              "dashCooldown": 2,
+              "topSpeedPct": 0,
+              "burnDurS": 0,
+              "burnCdS": 0
+            },
+            "continuousDrain": 12,
+            "damageReductionMult": 1,
+            "hiddenCargoPct": 0,
+            "scannerCloak": 0,
+            "ramDamageDealtMult": 0,
+            "roleIdentity": {
+              "shipId": "ship_kestrel",
+              "role": "starter",
+              "roleLabel": "Starter Scout",
+              "flightClass": "scout",
+              "shortWhy": "Forgiving first hull — enough hold, drill, and a gun to try every loop.",
+              "primaryCareers": [
+                "prospector",
+                "hauler",
+                "hunter"
+              ],
+              "upgradeAdjacency": [
+                "ship_pelican",
+                "ship_wasp",
+                "ship_mule"
+              ],
+              "counterRoles": [
+                "interceptor",
+                "gunship"
+              ]
+            },
+            "roleBiases": {
+              "opMassBias": 0.98,
+              "handlingBias": 1.04,
+              "thrustBias": 1.06,
+              "turnBias": 1.04
+            }
+          },
+          "weapons": [
+            {
+              "slotIndex": 0,
+              "defId": "wpn_pulse_laser_s",
+              "name": "Pulse Laser S",
+              "facing": "front",
+              "facingAngle": 0,
+              "gimbalArc": 3.141592653589793,
+              "muzzleOffset": [
+                0.8,
+                0
+              ],
+              "mountClass": "gun",
+              "hardpointClass": "fixed",
+              "mountOutput": 1,
+              "dmg": 8,
+              "rof": 5.5,
+              "energyCost": 2,
+              "heat": 8,
+              "heatMax": 100,
+              "heatDissip": 12,
+              "projSpeed": 320,
+              "range": 240,
+              "spread": 0.6,
+              "tracking": "fixed",
+              "lockTimeS": 0,
+              "damageType": "energy",
+              "arc": {
+                "gimbal": 3.141592653589793
+              },
+              "_cooldown": 0,
+              "_heat": 0
+            }
+          ],
+          "miningBeam": {
+            "tierId": "beam_mk1",
+            "dps": 18,
+            "range": 240,
+            "directToCargo": false
+          },
+          "fittings": [
+            "wpn_pulse_laser_s",
+            "mod_shield_booster_s",
+            "mod_engine_ion_m",
+            null,
+            "mod_mining_laser_s",
+            "mod_drill_amp",
+            null
+          ],
+          "appearance": null,
+          "livingHull": {
+            "schema": "spaceface.livingHull.v1",
+            "killTally": 0,
+            "repairPatches": 0,
+            "heatScorch": 0,
+            "lastWashAtT": 0,
+            "washCount": 0,
+            "graffitiLine": null,
+            "graffitiAuthor": null,
+            "updatedAtT": 0
+          },
+          "combat": {
+            "targetId": null,
+            "lockTarget": null,
+            "lockProgress": 0
+          },
+          "intent": null,
+          "ai": null,
+          "factionId": null,
+          "team": 0,
+          "lootTableId": null,
+          "bountyCr": 0,
+          "collisionProxy": "skin:ship_kestrel",
+          "_appearance": "ship_kestrel|wpn_pulse_laser_s,mod_shield_booster_s,mod_engine_ion_m,,mod_mining_laser_s,mod_drill_amp,|1|-|-|worn|0.550|borrowed_time"
+        },
+        "isPlayer": true,
+        "flightClass": "scout",
+        "flightModel": {
+          "flightClass": "scout",
+          "mass": 40.5,
+          "inertia": 34.120879120879124,
+          "mainAccel": 305.7005457188055,
+          "reverseAccel": 152.85027285940274,
+          "strafeAccel": 168.86315858753062,
+          "angularAccel": 16.602265185303466,
+          "angularBrake": 36.3630880837085,
+          "maxYawRate": 2.2622850230786953,
+          "linearDrag": 3.0229999999999997,
+          "lateralDrag": 1.2696599999999998,
+          "assistStrength": 1.15,
+          "reverseBrake": 2.7822,
+          "maxSpeed": 124.02121684867397,
+          "boostMult": 2.2,
+          "normalMaxSpeedMult": 1.15,
+          "boostMaxSpeedMult": 2,
+          "bankMax": 0.68,
+          "bankFactor": 0.37038926633581065,
+          "role": "starter"
+        },
+        "propulsion": {
+          "schemaVersion": 1,
+          "id": "drive_reaction_m",
+          "label": "Vector Reaction Drive M",
+          "family": "reaction",
+          "mainAccel": 90.94911213396801,
+          "reverseAccel": 70.94030746449505,
+          "strafeAccel": 61.84539625109825,
+          "yawAccel": 8.003521867789186,
+          "yawBrake": 12.732875698755521,
+          "maxYawRate": 2.45,
+          "boostAccelMult": 2.05,
+          "boostSpeedMult": 1.55,
+          "precisionSpeed": 115,
+          "combatSpeed": 195,
+          "travelCeiling": 438.75,
+          "assist": {
+            "settleTimeConstantS": 12,
+            "settleFloorAccel": 1.5,
+            "lateralKillFraction": 0.32,
+            "commandedAxisDamping": 0.07,
+            "stopHorizonS": 4,
+            "driftStopHorizonS": 8.5,
+            "deadSpeed": 0.2,
+            "deadInput": 0.025,
+            "governorResponseS": 0.3,
+            "overspeedBrakeFraction": 0.24
+          },
+          "resources": {
+            "energyPerAccel": 0.009,
+            "heatPerAccel": 0.012,
+            "boostHeatMult": 1.8,
+            "coolingPerS": 3
+          },
+          "designMass": 35,
+          "massLoadFactor": 0.9094911213396801,
+          "driveAccelMult": 1,
+          "driveSpeedMult": 1,
+          "driveTravelMult": 1,
+          "thrusterTurnMult": 1,
+          "thrusterStrafeMult": 1,
+          "thrusterBrakeMult": 1,
+          "thrusterId": "mod_thruster_stock_s"
+        },
+        "boost": {
+          "energy": 200,
+          "max": 200,
+          "drainRate": 38,
+          "regenRate": 44,
+          "dashImpulse": 150,
+          "dashCd": 2,
+          "dashCdT": 0,
+          "topSpeedPct": 0,
+          "burnDurS": 0,
+          "burnCdS": 0,
+          "_burnCdT": 0
+        },
+        "presentationAdmission": "pending",
+        "bankFactor": 0.37038926633581065,
+        "physicsBody": {
+          "schemaVersion": 1,
+          "mass": 40.5,
+          "inertiaY": 34.120879120879124,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "radius": 14,
+          "shape": "capsule",
+          "dynamic": true,
+          "ccd": true,
+          "material": "ship",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [
+            {
+              "id": "drive-port",
+              "forward": 1,
+              "reverse": 0.8,
+              "strafe": 0.45,
+              "yaw": 0.8,
+              "health": 1
+            },
+            {
+              "id": "drive-starboard",
+              "forward": 1,
+              "reverse": 0.8,
+              "strafe": 0.45,
+              "yaw": 0.8,
+              "health": 1
+            },
+            {
+              "id": "rcs-port",
+              "forward": 0.35,
+              "reverse": 0.55,
+              "strafe": 1,
+              "yaw": 1,
+              "health": 1
+            },
+            {
+              "id": "rcs-starboard",
+              "forward": 0.35,
+              "reverse": 0.55,
+              "strafe": 1,
+              "yaw": 1,
+              "health": 1
+            }
+          ],
+          "revision": 1
+        },
+        "activity": {
+          "simTier": "S0_EXACT",
+          "presentationTier": "R0_GLASS",
+          "nextEventAtT": -1,
+          "pins": [
+            "PLAYER",
+            "VISIBLE_ON_GLASS"
+          ],
+          "pinnedExact": true,
+          "lastExactT": 2,
+          "lastObservedT": 2,
+          "graceUntilT": -1
+        },
+        "_isPlayer": true
+      },
+      "persistent": [
+        {
+          "id": 1,
+          "type": "payload",
+          "alive": true,
+          "factionId": null,
+          "pos": {
+            "x": 80,
+            "z": 100
+          },
+          "vel": {
+            "x": 0,
+            "z": 0
+          },
+          "rot": 0,
+          "angVel": 0,
+          "prevBank": 0,
+          "pitch": 0,
+          "prevPitch": 0,
+          "radius": 5,
+          "mass": 68,
+          "hull": 53,
+          "hullMax": 80,
+          "armorHp": 0,
+          "armorMax": 0,
+          "armorFlat": 0,
+          "shield": 0,
+          "shieldMax": 0,
+          "shieldRegenRate": 0,
+          "shieldRegenDelay": 3,
+          "lastDamageT": -1000000000,
+          "cap": 0,
+          "capMax": 0,
+          "capRegen": 0,
+          "thrust": 0,
+          "turnRate": 0,
+          "maxSpeed": 0,
+          "drag": 0,
+          "collides": true,
+          "collisionMask": 7,
+          "team": 0,
+          "ownerId": null,
+          "flags": {
+            "boosting": false,
+            "invuln": false,
+            "persistent": true
+          },
+          "data": {
+            "name": "Cargo crate",
+            "fixtureMarker": "continue-crate"
+          },
+          "physicsBody": {
+            "schemaVersion": 1,
+            "mass": 10,
+            "inertiaY": 125,
+            "centerOfMass": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "radius": 5,
+            "shape": "ball",
+            "dynamic": true,
+            "ccd": true,
+            "material": "payload",
+            "attachmentPoints": {
+              "massline": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              }
+            },
+            "thrusters": [],
+            "revision": 0
+          },
+          "activity": {
+            "simTier": "S0_EXACT",
+            "presentationTier": "R0_GLASS",
+            "nextEventAtT": -1,
+            "pins": [
+              "VISIBLE_ON_GLASS"
+            ],
+            "pinnedExact": true,
+            "lastExactT": 2,
+            "lastObservedT": 2,
+            "graceUntilT": -1
+          },
+          "_isPlayer": false
+        }
+      ],
+      "ceresWorkfleetRefs": [],
+      "simTime": 2,
+      "tick": 120,
+      "freeIds": [],
+      "nextEntityId": 4,
+      "nextOccupantGeneration": 4
+    },
+    "combat": {
+      "schemaVersion": 1,
+      "combatSchemaVersion": 1,
+      "statusNextPendingSeq": 1,
+      "entities": [
+        {
+          "schemaVersion": 1,
+          "profileId": "combat_profile_standard_ship",
+          "heat": 0,
+          "heatMax": 100,
+          "heatDissipationPerTick": 0.5,
+          "immunityTags": [],
+          "baseCapabilities": {
+            "drive": true,
+            "weapon": true,
+            "sensor": true,
+            "tether": true,
+            "power": true
+          },
+          "capabilities": {
+            "drive": true,
+            "weapon": true,
+            "sensor": true,
+            "tether": true,
+            "power": true
+          },
+          "multipliers": {
+            "movement": 1,
+            "capRegen": 1,
+            "heatDissipation": 1
+          },
+          "physicsResponse": {
+            "massScale": 1,
+            "inertiaScale": 1
+          },
+          "blockedActionTags": [],
+          "subsystems": {
+            "subsystem_drive": {
+              "id": "subsystem_drive",
+              "health": 45,
+              "maxHealth": 45,
+              "destroyed": false,
+              "effectiveDisabled": false,
+              "pendingTransition": null,
+              "lastDamageTick": -1
+            },
+            "subsystem_weapon": {
+              "id": "subsystem_weapon",
+              "health": 38,
+              "maxHealth": 38,
+              "destroyed": false,
+              "effectiveDisabled": false,
+              "pendingTransition": null,
+              "lastDamageTick": -1
+            },
+            "subsystem_sensor": {
+              "id": "subsystem_sensor",
+              "health": 26,
+              "maxHealth": 26,
+              "destroyed": false,
+              "effectiveDisabled": false,
+              "pendingTransition": null,
+              "lastDamageTick": -1
+            },
+            "subsystem_tether_spool": {
+              "id": "subsystem_tether_spool",
+              "health": 32,
+              "maxHealth": 32,
+              "destroyed": false,
+              "effectiveDisabled": false,
+              "pendingTransition": null,
+              "lastDamageTick": -1
+            },
+            "subsystem_power": {
+              "id": "subsystem_power",
+              "health": 52,
+              "maxHealth": 52,
+              "destroyed": false,
+              "effectiveDisabled": false,
+              "pendingTransition": null,
+              "lastDamageTick": -1
+            }
+          },
+          "statuses": {},
+          "pendingStatuses": [],
+          "pendingSubsystemTransitionCount": 0,
+          "sockets": {
+            "socket_massline": {
+              "id": "socket_massline",
+              "tags": [
+                "massline"
+              ],
+              "localPos": [
+                -0.25,
+                0.42
+              ],
+              "maxAttachments": 1
+            },
+            "socket_tether_spool": {
+              "id": "socket_tether_spool",
+              "tags": [
+                "tether_spool"
+              ],
+              "localPos": [
+                0.5,
+                0
+              ],
+              "maxAttachments": 1
+            },
+            "socket_hull": {
+              "id": "socket_hull",
+              "tags": [
+                "tether"
+              ],
+              "localPos": [
+                0,
+                0
+              ],
+              "maxAttachments": 2
+            }
+          },
+          "revision": 2,
+          "_sfSortedSubsystemIds": [
+            "subsystem_drive",
+            "subsystem_power",
+            "subsystem_sensor",
+            "subsystem_tether_spool",
+            "subsystem_weapon"
+          ],
+          "entityRef": {
+            "kind": "player"
+          }
+        }
+      ],
+      "actions": {
+        "nextRequestSeq": 1,
+        "nextInstanceSeq": 1,
+        "requests": [],
+        "active": [],
+        "cooldowns": []
+      },
+      "attachments": {
+        "nextId": 1,
+        "byId": {}
+      },
+      "lastPlayerDefeat": null
+    },
+    "physics": {
+      "schema": 4,
+      "nativeGeometryRevision": "xz-support-prism-obb-v3",
+      "nativeGeometryParameters": {
+        "lengthUnit": 1,
+        "normalizedPredictionDistance": 3.5,
+        "normalizedAllowedLinearError": 0.0010000000474974513
+      },
+      "backend": "rapier-dynamic",
+      "runtime": {
+        "captureContactImpacts": false,
+        "engine": "rapier3d-compat",
+        "engineVersion": "0.19.3",
+        "fixedDt": 0.016666666666666666,
+        "gravity": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "integration": {
+          "contact_erp": 0.7153651714324951,
+          "dt": 0.01666666753590107,
+          "lengthUnit": 1,
+          "maxCcdSubsteps": 4,
+          "minIslandSize": 128,
+          "normalizedAllowedLinearError": 0.0010000000474974513,
+          "normalizedPredictionDistance": 3.5,
+          "numInternalPgsIterations": 1,
+          "numSolverIterations": 12
+        },
+        "mode": "rapier-dynamic",
+        "quantum": 0.0001
+      },
+      "snapshot": "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fD4BEgAAAAAAAAAAAAAAAQAAAAMAAAAAAAAAAwAAAAQAAAAAAAAAAQAAAAQAAAABAAAAAgAAAAMAAAACAAAAAwAAAAQAAAABAAAAAgAAAAQAAAASAAAAAAAAAAIAAAAFAAAAAQAAAAEAAAAKAAAAAAAAAAAAAAACAAAAAwAAAAYAAAAIAAAABQAAAAcAAAAIAAAACgAAAAMAAAAGAAAABwAAABIAAAAAAAAAAAAAAAEAAAACAAAAAwAAAAIAAAAFAAAABgAAAAcAAAAGAAAACAAAAAgAAAAFAAAAAQAAAAoAAAAKAAAAAAAAAAMAAAAHAAAAEgAAAAAAAAACAAAAAQAAAAAAAAAFAAAAAgAAAAAAAAADAAAABAAAAAUAAAADAAAABAAAAAMAAAAAAAAAAQAAAAQAAAABAAAAAgAAAAUAAAAAAAAAAAAAAP8BAAABAQAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAoEIAAAAAAAAgQgAAAAAAAAAAAAAAAAEAAAAPAAIAAAAHAAAA//8AAP//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARoAAAAAAAAAARsAAAAAAAAAARwAAAAAAAAAAR0AAAAAAAAAAR4AAAAAAAAAAR8AAAAAAAAAAAAAAAABGQAAABkAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAgAAAAAAAAADAAAAAAAAAAQAAAAAAAAABQAAAAAAAAAGAAAAAAAAAAcAAAAAAAAACAAAAAAAAAAJAAAAAAAAAAoAAAAAAAAACwAAAAAAAAAMAAAAAAAAAA0AAAAAAAAADgAAAAAAAAAPAAAAAAAAABAAAAAAAAAAEQAAAAAAAAASAAAAAAAAABMAAAAAAAAAFAAAAAAAAAAVAAAAAAAAABYAAAAAAAAAFwAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAABAQAAAAAAAAABAgAAAAAAAAABAwAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAABAQAAAAAAAAABAgAAAAAAAAABAwAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+      "bodies": {
+        "1": {
+          "handle": "0",
+          "identity": {
+            "defId": null,
+            "gateId": null,
+            "isPlayer": false,
+            "payloadId": null,
+            "persistenceOwner": null,
+            "poiId": null,
+            "shipId": null,
+            "siteId": null,
+            "stationId": null,
+            "type": "payload",
+            "worldObjectId": null,
+            "worldRecordId": null,
+            "worldSiteCollisionProxyId": null,
+            "worldSiteComponentId": null,
+            "worldSiteId": null,
+            "worldSitePayloadId": null,
+            "worldSiteProxy": null
+          },
+          "sourceLife": 1,
+          "state": {
+            "x": 80,
+            "z": 100,
+            "vx": 0,
+            "vz": 0,
+            "yaw": 0,
+            "wy": 0
+          },
+          "contractRef": 0,
+          "nativeRef": 0,
+          "effectiveMass": 10,
+          "effectiveInertiaY": 125,
+          "bodyResponseMassScale": 1,
+          "bodyResponseInertiaScale": 1,
+          "tumbleMaterial": false,
+          "forcesDirty": false,
+          "createdCanSleep": false,
+          "sleepAllowed": null,
+          "contactEpisode": {
+            "lastTick": null,
+            "cumulativeDeltaV": 0
+          }
+        },
+        "3": {
+          "handle": "5e-324",
+          "identity": {
+            "defId": "ship_kestrel",
+            "gateId": null,
+            "isPlayer": true,
+            "payloadId": null,
+            "persistenceOwner": null,
+            "poiId": null,
+            "shipId": null,
+            "siteId": null,
+            "stationId": null,
+            "type": "ship",
+            "worldObjectId": null,
+            "worldRecordId": null,
+            "worldSiteCollisionProxyId": null,
+            "worldSiteComponentId": null,
+            "worldSiteId": null,
+            "worldSitePayloadId": null,
+            "worldSiteProxy": null
+          },
+          "sourceLife": 3,
+          "state": {
+            "x": 80,
+            "z": 40,
+            "vx": 6,
+            "vz": 0,
+            "yaw": 0,
+            "wy": 0
+          },
+          "contractRef": 1,
+          "nativeRef": 1,
+          "effectiveMass": 40.5,
+          "effectiveInertiaY": 34.120879120879124,
+          "bodyResponseMassScale": 1,
+          "bodyResponseInertiaScale": 1,
+          "tumbleMaterial": false,
+          "forcesDirty": false,
+          "createdCanSleep": false,
+          "sleepAllowed": null,
+          "contactEpisode": {
+            "lastTick": 120,
+            "cumulativeDeltaV": 4
+          }
+        }
+      },
+      "bodyOrder": [
+        "1",
+        "3"
+      ],
+      "ceresBodyOrder": [],
+      "dynamicBodyOrder": [
+        "1",
+        "3"
+      ],
+      "attachments": {},
+      "attachmentOrder": [],
+      "tick": 0,
+      "accumulator": 0,
+      "frameOrigin": {
+        "x": 0,
+        "z": 0
+      },
+      "frameOriginSeq": 0,
+      "attestations": {
+        "schema": 1,
+        "contracts": [
+          {
+            "canSleep": false,
+            "collisionGroups": 262159,
+            "manifest": null,
+            "material": {
+              "angularDamping": 0.15,
+              "density": 0.08,
+              "friction": 0,
+              "ghost": false,
+              "restitution": 0.1
+            },
+            "proportions": null,
+            "proxyScale": null,
+            "spec": {
+              "attachmentPoints": {
+                "massline": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              "ccd": true,
+              "centerOfMass": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "dynamic": true,
+              "inertiaY": 125,
+              "mass": 10,
+              "material": "payload",
+              "radius": 5,
+              "revision": 0,
+              "schemaVersion": 1,
+              "shape": "ball"
+            }
+          },
+          {
+            "canSleep": false,
+            "collisionGroups": 131079,
+            "manifest": {
+              "flags": {
+                "collides": true,
+                "radarVisible": false,
+                "renderable": false,
+                "targetable": false
+              },
+              "id": "skin:ship_kestrel:polygon",
+              "mouthBearingDeg": null,
+              "opening": null,
+              "planarPolygon": [
+                {
+                  "x": -0.886464,
+                  "z": -0.116705
+                },
+                {
+                  "x": -0.660921,
+                  "z": -0.273762
+                },
+                {
+                  "x": -0.563614,
+                  "z": -0.432476
+                },
+                {
+                  "x": -0.345806,
+                  "z": -0.450664
+                },
+                {
+                  "x": -0.178829,
+                  "z": -0.431731
+                },
+                {
+                  "x": -0.055338,
+                  "z": -0.420334
+                },
+                {
+                  "x": 0.055893,
+                  "z": -0.424548
+                },
+                {
+                  "x": 0.179415,
+                  "z": -0.433145
+                },
+                {
+                  "x": 0.293578,
+                  "z": -0.382599
+                },
+                {
+                  "x": 0.336426,
+                  "z": -0.258149
+                },
+                {
+                  "x": 0.402883,
+                  "z": -0.166879
+                },
+                {
+                  "x": 0.830835,
+                  "z": -0.109382
+                },
+                {
+                  "x": 0.830835,
+                  "z": 0.109382
+                },
+                {
+                  "x": 0.402883,
+                  "z": 0.166879
+                },
+                {
+                  "x": 0.336426,
+                  "z": 0.258149
+                },
+                {
+                  "x": 0.293578,
+                  "z": 0.382599
+                },
+                {
+                  "x": 0.179415,
+                  "z": 0.433145
+                },
+                {
+                  "x": 0.055893,
+                  "z": 0.424548
+                },
+                {
+                  "x": -0.055338,
+                  "z": 0.420334
+                },
+                {
+                  "x": -0.178829,
+                  "z": 0.431731
+                },
+                {
+                  "x": -0.345806,
+                  "z": 0.450664
+                },
+                {
+                  "x": -0.563614,
+                  "z": 0.432476
+                },
+                {
+                  "x": -0.660921,
+                  "z": 0.273762
+                },
+                {
+                  "x": -0.886464,
+                  "z": 0.116705
+                }
+              ],
+              "primitives": [
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.872301,
+                  "bz": -0.114841,
+                  "id": "arm-0",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.647722,
+                  "bz": -0.268295,
+                  "id": "arm-1",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.552281,
+                  "bz": -0.42378,
+                  "id": "arm-2",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.33711,
+                  "bz": -0.43933,
+                  "id": "arm-3",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.173362,
+                  "bz": -0.418533,
+                  "id": "arm-4",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.053473,
+                  "bz": -0.40617,
+                  "id": "arm-5",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.054028,
+                  "bz": -0.410384,
+                  "id": "arm-6",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.173948,
+                  "bz": -0.419947,
+                  "id": "arm-7",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.284882,
+                  "bz": -0.371265,
+                  "id": "arm-8",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.325092,
+                  "bz": -0.249452,
+                  "id": "arm-9",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.389684,
+                  "bz": -0.161413,
+                  "id": "arm-10",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.816672,
+                  "bz": -0.107517,
+                  "id": "arm-11",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.816672,
+                  "bz": 0.107517,
+                  "id": "arm-12",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.389684,
+                  "bz": 0.161413,
+                  "id": "arm-13",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.325092,
+                  "bz": 0.249452,
+                  "id": "arm-14",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.284882,
+                  "bz": 0.371265,
+                  "id": "arm-15",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.173948,
+                  "bz": 0.419947,
+                  "id": "arm-16",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": 0.054028,
+                  "bz": 0.410384,
+                  "id": "arm-17",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.053473,
+                  "bz": 0.40617,
+                  "id": "arm-18",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.173362,
+                  "bz": 0.418533,
+                  "id": "arm-19",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.33711,
+                  "bz": 0.43933,
+                  "id": "arm-20",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.552281,
+                  "bz": 0.42378,
+                  "id": "arm-21",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.647722,
+                  "bz": 0.268295,
+                  "id": "arm-22",
+                  "kind": "capsule",
+                  "r": 0.032143
+                },
+                {
+                  "ax": 0,
+                  "az": 0,
+                  "bx": -0.872301,
+                  "bz": 0.114841,
+                  "id": "arm-23",
+                  "kind": "capsule",
+                  "r": 0.032143
+                }
+              ],
+              "referenceRadius": "radius",
+              "schemaVersion": 1,
+              "sourceRow": "ship_kestrel",
+              "stationIds": []
+            },
+            "material": {
+              "angularDamping": 0.4,
+              "density": 0,
+              "friction": 0,
+              "ghost": false,
+              "restitution": 0,
+              "restitutionCombine": "min"
+            },
+            "proportions": {
+              "halfWidth": 0.33,
+              "height": 0.31,
+              "length": 1.72
+            },
+            "proxyScale": 14,
+            "spec": {
+              "attachmentPoints": {
+                "massline": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              "ccd": true,
+              "centerOfMass": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "dynamic": true,
+              "inertiaY": 34.120879120879124,
+              "mass": 40.5,
+              "material": "ship",
+              "radius": 14,
+              "revision": 1,
+              "schemaVersion": 1,
+              "shape": "capsule"
+            }
+          }
+        ],
+        "native": [
+          {
+            "angularDamping": 0.15000000596046448,
+            "centerOfMass": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "colliders": [
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 262159,
+                "restitution": 0.10000000149011612,
+                "restitutionCombineRule": 0,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "radius": 5,
+                  "type": 0
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              }
+            ],
+            "enabled": true,
+            "inertia": {
+              "x": 1,
+              "y": 124.99999237060547,
+              "z": 1
+            },
+            "inverseMass": {
+              "x": 0.10000000149011612,
+              "y": 0,
+              "z": 0.10000000149011612
+            },
+            "linearDamping": 0,
+            "mass": 10,
+            "type": 0
+          },
+          {
+            "angularDamping": 0.4000000059604645,
+            "centerOfMass": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "colliders": [
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    2,
+                    1,
+                    0,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    4,
+                    5,
+                    3,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    1,
+                    2,
+                    4,
+                    2,
+                    5
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    6.494462966918945,
+                    0,
+                    -12.41049575805664,
+                    6.494462966918945,
+                    -1.633870005607605,
+                    -9.252894401550293,
+                    6.494462966918945,
+                    -3.8326680660247803,
+                    0,
+                    -6.494462966918945,
+                    0,
+                    -12.41049575805664,
+                    -6.494462966918945,
+                    -1.633870005607605,
+                    -9.252894401550293,
+                    -6.494462966918945,
+                    -3.8326680660247803
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    2,
+                    1,
+                    0,
+                    3,
+                    5,
+                    2,
+                    3,
+                    2,
+                    0,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    1,
+                    2,
+                    4,
+                    2,
+                    5,
+                    4,
+                    5,
+                    3
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    5.528936862945557,
+                    0,
+                    -9.252894401550293,
+                    5.528936862945557,
+                    -3.8326680660247803,
+                    -7.89059591293335,
+                    5.528936862945557,
+                    -6.054664134979248,
+                    0,
+                    -5.528936862945557,
+                    0,
+                    -9.252894401550293,
+                    -5.528936862945557,
+                    -3.8326680660247803,
+                    -7.89059591293335,
+                    -5.528936862945557,
+                    -6.054664134979248
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    2,
+                    1,
+                    0,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    4,
+                    5,
+                    3,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    1,
+                    2,
+                    4,
+                    2,
+                    5
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    5.051483631134033,
+                    0,
+                    -7.89059591293335,
+                    5.051483631134033,
+                    -6.054664134979248,
+                    -4.841283798217773,
+                    5.051483631134033,
+                    -6.309296131134033,
+                    0,
+                    -5.051483631134033,
+                    0,
+                    -7.89059591293335,
+                    -5.051483631134033,
+                    -6.054664134979248,
+                    -4.841283798217773,
+                    -5.051483631134033,
+                    -6.309296131134033
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    2,
+                    1,
+                    0,
+                    5,
+                    4,
+                    1,
+                    5,
+                    1,
+                    2,
+                    3,
+                    5,
+                    2,
+                    3,
+                    2,
+                    0,
+                    3,
+                    0,
+                    1,
+                    3,
+                    1,
+                    4,
+                    3,
+                    4,
+                    5
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.9763681888580322,
+                    0,
+                    -4.841283798217773,
+                    3.9763681888580322,
+                    -6.309296131134033,
+                    -2.503606081008911,
+                    3.9763681888580322,
+                    -6.044233798980713,
+                    0,
+                    -3.9763681888580322,
+                    0,
+                    -4.841283798217773,
+                    -3.9763681888580322,
+                    -6.309296131134033,
+                    -2.503606081008911,
+                    -3.9763681888580322,
+                    -6.044233798980713
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    2,
+                    1,
+                    0,
+                    5,
+                    4,
+                    1,
+                    5,
+                    1,
+                    2,
+                    3,
+                    5,
+                    2,
+                    3,
+                    2,
+                    0,
+                    3,
+                    0,
+                    1,
+                    3,
+                    1,
+                    4,
+                    3,
+                    4,
+                    5
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.27113938331604,
+                    0,
+                    -2.503606081008911,
+                    3.27113938331604,
+                    -6.044233798980713,
+                    -0.7747319936752319,
+                    3.27113938331604,
+                    -5.884675979614258,
+                    0,
+                    -3.27113938331604,
+                    0,
+                    -2.503606081008911,
+                    -3.27113938331604,
+                    -6.044233798980713,
+                    -0.7747319936752319,
+                    -3.27113938331604,
+                    -5.884675979614258
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    5,
+                    3,
+                    2,
+                    0,
+                    3,
+                    2,
+                    3,
+                    5,
+                    2,
+                    5,
+                    4,
+                    2,
+                    4,
+                    1,
+                    2,
+                    1,
+                    0
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.072164297103882,
+                    0,
+                    -0.7747319936752319,
+                    3.072164297103882,
+                    -5.884675979614258,
+                    0.7825019955635071,
+                    3.072164297103882,
+                    -5.943672180175781,
+                    0,
+                    -3.072164297103882,
+                    0,
+                    -0.7747319936752319,
+                    -3.072164297103882,
+                    -5.884675979614258,
+                    0.7825019955635071,
+                    -3.072164297103882,
+                    -5.943672180175781
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    1,
+                    0,
+                    2,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    5,
+                    4,
+                    1,
+                    5,
+                    1,
+                    2,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    5,
+                    3,
+                    4
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.2818539142608643,
+                    0,
+                    0.7825019955635071,
+                    3.2818539142608643,
+                    -5.943672180175781,
+                    2.511810064315796,
+                    3.2818539142608643,
+                    -6.064030170440674,
+                    0,
+                    -3.2818539142608643,
+                    0,
+                    0.7825019955635071,
+                    -3.2818539142608643,
+                    -5.943672180175781,
+                    2.511810064315796,
+                    -3.2818539142608643,
+                    -6.064030170440674
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    5,
+                    3,
+                    2,
+                    0,
+                    3,
+                    2,
+                    3,
+                    5,
+                    2,
+                    5,
+                    4,
+                    2,
+                    4,
+                    1,
+                    2,
+                    1,
+                    0
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.662853956222534,
+                    0,
+                    2.511810064315796,
+                    3.662853956222534,
+                    -6.064030170440674,
+                    4.1100921630859375,
+                    3.662853956222534,
+                    -5.356386184692383,
+                    0,
+                    -3.662853956222534,
+                    0,
+                    2.511810064315796,
+                    -3.662853956222534,
+                    -6.064030170440674,
+                    4.1100921630859375,
+                    -3.662853956222534,
+                    -5.356386184692383
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    2,
+                    1,
+                    0,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    5,
+                    4,
+                    1,
+                    5,
+                    1,
+                    2,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    5,
+                    3,
+                    4
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.566343069076538,
+                    0,
+                    4.1100921630859375,
+                    3.566343069076538,
+                    -5.356386184692383,
+                    4.709963798522949,
+                    3.566343069076538,
+                    -3.6140859127044678,
+                    0,
+                    -3.566343069076538,
+                    0,
+                    4.1100921630859375,
+                    -3.566343069076538,
+                    -5.356386184692383,
+                    4.709963798522949,
+                    -3.566343069076538,
+                    -3.6140859127044678
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    5,
+                    3,
+                    2,
+                    0,
+                    3,
+                    2,
+                    3,
+                    5,
+                    2,
+                    5,
+                    4,
+                    2,
+                    4,
+                    1,
+                    2,
+                    1,
+                    0
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.349472999572754,
+                    0,
+                    4.709963798522949,
+                    3.349472999572754,
+                    -3.6140859127044678,
+                    5.640361785888672,
+                    3.349472999572754,
+                    -2.336306095123291,
+                    0,
+                    -3.349472999572754,
+                    0,
+                    4.709963798522949,
+                    -3.349472999572754,
+                    -3.6140859127044678,
+                    5.640361785888672,
+                    -3.349472999572754,
+                    -2.336306095123291
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    1,
+                    0,
+                    2,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    5,
+                    4,
+                    1,
+                    5,
+                    1,
+                    2,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    5,
+                    3,
+                    4
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    5.9320454597473145,
+                    0,
+                    5.640361785888672,
+                    5.9320454597473145,
+                    -2.336306095123291,
+                    11.63169002532959,
+                    5.9320454597473145,
+                    -1.5313479900360107,
+                    0,
+                    -5.9320454597473145,
+                    0,
+                    5.640361785888672,
+                    -5.9320454597473145,
+                    -2.336306095123291,
+                    11.63169002532959,
+                    -5.9320454597473145,
+                    -1.5313479900360107
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    2,
+                    1,
+                    0,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    4,
+                    5,
+                    3,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    1,
+                    2,
+                    4,
+                    2,
+                    5
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    6.01411771774292,
+                    0,
+                    11.63169002532959,
+                    6.01411771774292,
+                    -1.5313479900360107,
+                    11.63169002532959,
+                    6.01411771774292,
+                    1.5313479900360107,
+                    0,
+                    -6.01411771774292,
+                    0,
+                    11.63169002532959,
+                    -6.01411771774292,
+                    -1.5313479900360107,
+                    11.63169002532959,
+                    -6.01411771774292,
+                    1.5313479900360107
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    2,
+                    1,
+                    0,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    4,
+                    5,
+                    3,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    1,
+                    2,
+                    4,
+                    2,
+                    5
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    5.9320454597473145,
+                    0,
+                    11.63169002532959,
+                    5.9320454597473145,
+                    1.5313479900360107,
+                    5.640361785888672,
+                    5.9320454597473145,
+                    2.336306095123291,
+                    0,
+                    -5.9320454597473145,
+                    0,
+                    11.63169002532959,
+                    -5.9320454597473145,
+                    1.5313479900360107,
+                    5.640361785888672,
+                    -5.9320454597473145,
+                    2.336306095123291
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    5,
+                    3,
+                    4,
+                    1,
+                    2,
+                    5,
+                    1,
+                    5,
+                    4,
+                    0,
+                    1,
+                    4,
+                    0,
+                    4,
+                    3,
+                    0,
+                    3,
+                    5,
+                    0,
+                    5,
+                    2,
+                    0,
+                    2,
+                    1
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.349472999572754,
+                    0,
+                    5.640361785888672,
+                    3.349472999572754,
+                    2.336306095123291,
+                    4.709963798522949,
+                    3.349472999572754,
+                    3.6140859127044678,
+                    0,
+                    -3.349472999572754,
+                    0,
+                    5.640361785888672,
+                    -3.349472999572754,
+                    2.336306095123291,
+                    4.709963798522949,
+                    -3.349472999572754,
+                    3.6140859127044678
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    1,
+                    0,
+                    2,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    4,
+                    5,
+                    3,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    1,
+                    2,
+                    4,
+                    2,
+                    5
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.566343069076538,
+                    0,
+                    4.709963798522949,
+                    3.566343069076538,
+                    3.6140859127044678,
+                    4.1100921630859375,
+                    3.566343069076538,
+                    5.356386184692383,
+                    0,
+                    -3.566343069076538,
+                    0,
+                    4.709963798522949,
+                    -3.566343069076538,
+                    3.6140859127044678,
+                    4.1100921630859375,
+                    -3.566343069076538,
+                    5.356386184692383
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    2,
+                    1,
+                    0,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    4,
+                    5,
+                    3,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    1,
+                    2,
+                    4,
+                    2,
+                    5
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.662853956222534,
+                    0,
+                    4.1100921630859375,
+                    3.662853956222534,
+                    5.356386184692383,
+                    2.511810064315796,
+                    3.662853956222534,
+                    6.064030170440674,
+                    0,
+                    -3.662853956222534,
+                    0,
+                    4.1100921630859375,
+                    -3.662853956222534,
+                    5.356386184692383,
+                    2.511810064315796,
+                    -3.662853956222534,
+                    6.064030170440674
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    2,
+                    1,
+                    0,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    4,
+                    5,
+                    3,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    1,
+                    2,
+                    4,
+                    2,
+                    5
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.2818539142608643,
+                    0,
+                    2.511810064315796,
+                    3.2818539142608643,
+                    6.064030170440674,
+                    0.7825019955635071,
+                    3.2818539142608643,
+                    5.943672180175781,
+                    0,
+                    -3.2818539142608643,
+                    0,
+                    2.511810064315796,
+                    -3.2818539142608643,
+                    6.064030170440674,
+                    0.7825019955635071,
+                    -3.2818539142608643,
+                    5.943672180175781
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    5,
+                    3,
+                    2,
+                    0,
+                    3,
+                    2,
+                    3,
+                    5,
+                    2,
+                    5,
+                    4,
+                    2,
+                    4,
+                    1,
+                    2,
+                    1,
+                    0
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.072164297103882,
+                    0,
+                    0.7825019955635071,
+                    3.072164297103882,
+                    5.943672180175781,
+                    -0.7747319936752319,
+                    3.072164297103882,
+                    5.884675979614258,
+                    0,
+                    -3.072164297103882,
+                    0,
+                    0.7825019955635071,
+                    -3.072164297103882,
+                    5.943672180175781,
+                    -0.7747319936752319,
+                    -3.072164297103882,
+                    5.884675979614258
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    1,
+                    0,
+                    2,
+                    4,
+                    1,
+                    2,
+                    4,
+                    2,
+                    5,
+                    3,
+                    4,
+                    5,
+                    3,
+                    5,
+                    2,
+                    3,
+                    2,
+                    0,
+                    3,
+                    0,
+                    1,
+                    3,
+                    1,
+                    4
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.27113938331604,
+                    0,
+                    -0.7747319936752319,
+                    3.27113938331604,
+                    5.884675979614258,
+                    -2.503606081008911,
+                    3.27113938331604,
+                    6.044233798980713,
+                    0,
+                    -3.27113938331604,
+                    0,
+                    -0.7747319936752319,
+                    -3.27113938331604,
+                    5.884675979614258,
+                    -2.503606081008911,
+                    -3.27113938331604,
+                    6.044233798980713
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    1,
+                    0,
+                    2,
+                    4,
+                    1,
+                    2,
+                    4,
+                    2,
+                    5,
+                    3,
+                    4,
+                    5,
+                    3,
+                    5,
+                    2,
+                    3,
+                    2,
+                    0,
+                    3,
+                    0,
+                    1,
+                    3,
+                    1,
+                    4
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    3.9763681888580322,
+                    0,
+                    -2.503606081008911,
+                    3.9763681888580322,
+                    6.044233798980713,
+                    -4.841283798217773,
+                    3.9763681888580322,
+                    6.309296131134033,
+                    0,
+                    -3.9763681888580322,
+                    0,
+                    -2.503606081008911,
+                    -3.9763681888580322,
+                    6.044233798980713,
+                    -4.841283798217773,
+                    -3.9763681888580322,
+                    6.309296131134033
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    1,
+                    4,
+                    3,
+                    1,
+                    3,
+                    0,
+                    1,
+                    0,
+                    2,
+                    5,
+                    3,
+                    4,
+                    5,
+                    4,
+                    1,
+                    5,
+                    1,
+                    2,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    5.051483631134033,
+                    0,
+                    -4.841283798217773,
+                    5.051483631134033,
+                    6.309296131134033,
+                    -7.89059591293335,
+                    5.051483631134033,
+                    6.054664134979248,
+                    0,
+                    -5.051483631134033,
+                    0,
+                    -4.841283798217773,
+                    -5.051483631134033,
+                    6.309296131134033,
+                    -7.89059591293335,
+                    -5.051483631134033,
+                    6.054664134979248
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    1,
+                    4,
+                    3,
+                    1,
+                    3,
+                    0,
+                    1,
+                    0,
+                    2,
+                    5,
+                    3,
+                    4,
+                    5,
+                    4,
+                    1,
+                    5,
+                    1,
+                    2,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    5.528936862945557,
+                    0,
+                    -7.89059591293335,
+                    5.528936862945557,
+                    6.054664134979248,
+                    -9.252894401550293,
+                    5.528936862945557,
+                    3.8326680660247803,
+                    0,
+                    -5.528936862945557,
+                    0,
+                    -7.89059591293335,
+                    -5.528936862945557,
+                    6.054664134979248,
+                    -9.252894401550293,
+                    -5.528936862945557,
+                    3.8326680660247803
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    1,
+                    0,
+                    2,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    5,
+                    4,
+                    1,
+                    5,
+                    1,
+                    2,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    5,
+                    3,
+                    4
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    6.494462966918945,
+                    0,
+                    -9.252894401550293,
+                    6.494462966918945,
+                    3.8326680660247803,
+                    -12.41049575805664,
+                    6.494462966918945,
+                    1.633870005607605,
+                    0,
+                    -6.494462966918945,
+                    0,
+                    -9.252894401550293,
+                    -6.494462966918945,
+                    3.8326680660247803,
+                    -12.41049575805664,
+                    -6.494462966918945,
+                    1.633870005607605
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              },
+              {
+                "activeCollisionTypes": 15,
+                "activeEvents": 0,
+                "contactForceEventThreshold": 0,
+                "contactSkin": 0,
+                "density": 0,
+                "enabled": true,
+                "friction": 0,
+                "frictionCombineRule": 0,
+                "groups": 131079,
+                "restitution": 0,
+                "restitutionCombineRule": 1,
+                "rotation": {
+                  "w": 1,
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "sensor": false,
+                "shape": {
+                  "indices": [
+                    2,
+                    1,
+                    0,
+                    5,
+                    2,
+                    0,
+                    5,
+                    0,
+                    3,
+                    4,
+                    5,
+                    3,
+                    4,
+                    3,
+                    0,
+                    4,
+                    0,
+                    1,
+                    4,
+                    1,
+                    2,
+                    4,
+                    2,
+                    5
+                  ],
+                  "type": 9,
+                  "vertices": [
+                    0,
+                    6.4167938232421875,
+                    0,
+                    -12.41049575805664,
+                    6.4167938232421875,
+                    1.633870005607605,
+                    -12.41049575805664,
+                    6.4167938232421875,
+                    -1.633870005607605,
+                    0,
+                    -6.4167938232421875,
+                    0,
+                    -12.41049575805664,
+                    -6.4167938232421875,
+                    1.633870005607605,
+                    -12.41049575805664,
+                    -6.4167938232421875,
+                    -1.633870005607605
+                  ]
+                },
+                "solverGroups": 4294967295,
+                "translation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                }
+              }
+            ],
+            "enabled": true,
+            "inertia": {
+              "x": 1,
+              "y": 34.120880126953125,
+              "z": 1
+            },
+            "inverseMass": {
+              "x": 0.02469135820865631,
+              "y": 0,
+              "z": 0.02469135820865631
+            },
+            "linearDamping": 0,
+            "mass": 40.5,
+            "type": 0
+          }
+        ]
+      }
+    },
+    "bombs": {},
+    "snares": null,
+    "charges": null,
+    "stunts": null,
+    "fields": null,
+    "missions": {
+      "missions": {
+        "boards": {},
+        "active": [],
+        "completedLog": [],
+        "receipts": [],
+        "nextId": 1,
+        "config": null
+      },
+      "story": {
+        "beatIndex": 0,
+        "branch": null,
+        "flags": {},
+        "chainProgress": 0,
+        "phase": 1,
+        "seenComms": {},
+        "ambientQueue": [],
+        "ambientTimerS": 0,
+        "graffitiShown": {},
+        "endgameChoice": null,
+        "endgameOffered": false,
+        "endgameDeclined": [],
+        "persistentCargo": []
+      }
+    },
+    "capitalBoss": null,
+    "careerOrigins": {},
+    "careerLadders": {},
+    "scenario": {
+      "schemaVersion": 1,
+      "active": null,
+      "facts": {},
+      "actorBindings": {},
+      "unresolvedActorIds": [],
+      "enteredBeatIds": []
+    },
+    "automation": {
+      "drones": [],
+      "traders": [],
+      "outposts": [],
+      "fleet": [],
+      "fleetCap": 0,
+      "balance": {
+        "activeRefByTier": [
+          250,
+          600,
+          1400,
+          3200,
+          7000
+        ],
+        "passiveCapFrac": 0.45,
+        "overflowEff": 0.25,
+        "offlineEff": 0.6,
+        "offlineCapSec": 14400,
+        "distressGraceSec": 120
+      },
+      "accumulators": {
+        "creditBuffer": 0,
+        "upkeepDebt": 0
+      },
+      "meta": {
+        "lastTickTime": 0,
+        "totalPassiveEarnedLifetime": 0,
+        "lostAssetsLog": [],
+        "rngSeed": 0
+      }
+    },
+    "crafting": {
+      "queues": {}
+    },
+    "sectorSim": {},
+    "npcJobs": {},
+    "traffic": {},
+    "claims": {
+      "bodies": []
+    },
+    "sites": {},
+    "formations": {},
+    "aceMemory": {},
+    "nemesis": null,
+    "nemesisDeployment": null,
+    "enemyMind": null,
+    "latchNine": null,
+    "scissorwake": null,
+    "lastShift": null,
+    "redKite": null,
+    "sableVenn": null,
+    "ilexArk": null,
+    "kilnback": null,
+    "mothlight": null,
+    "palletJack": null,
+    "secondRinse": null,
+    "towlineTable": null,
+    "borrowedVoice": null,
+    "lossLedger": {},
+    "provenance": {},
+    "factionPresence": {},
+    "bandRadio": {},
+    "v2Flavor": {},
+    "aftermathWrecks": {},
+    "lawSecurity": {},
+    "fieldDepletion": {},
+    "livingPoiBehaviors": {},
+    "signalInvestigation": {},
+    "recoveryEncounters": {},
+    "chronicler": {},
+    "tensionDirector": null,
+    "regionalEcology": {},
+    "stationServices": {},
+    "onboarding": null,
+    "encounterDirector": {},
+    "worldNews": null,
+    "flight": {
+      "mode": "manual",
+      "previousMode": "manual",
+      "modeReason": "save",
+      "modeChangedTick": 0
+    },
+    "nav": {
+      "route": null,
+      "autoTravel": false,
+      "waypoint": null,
+      "autopilot": {
+        "active": false,
+        "target": null,
+        "targetEntityId": null,
+        "label": "",
+        "status": "idle",
+        "arrivalRadius": 36
+      }
+    },
+    "settings": {
+      "uiScale": 1,
+      "showDamageNumbers": true,
+      "audio": {
+        "master": 0.55,
+        "sfx": 0.7,
+        "music": 0.32,
+        "muted": false,
+        "muteOnFocusLoss": false,
+        "voice": 1,
+        "engine": 0.7,
+        "ambient": 0.7,
+        "combat": 0.7,
+        "ui": 0.7,
+        "comms": 0.7,
+        "defaultMuteVersion": 2
+      },
+      "video": {
+        "renderScale": 1,
+        "bloom": true,
+        "bloomStrength": 0.52,
+        "bloomThreshold": 1,
+        "vsync": true,
+        "fov": 50,
+        "particleQuality": "medium",
+        "engineTrails": true,
+        "pixelRatioCap": 2,
+        "motionReduce": false,
+        "shadows": false,
+        "shadowsDefaultVersion": 1,
+        "energyMaterials": true,
+        "renderGraph": false,
+        "dynamicResolution": false,
+        "chaseClose": false,
+        "qualityPreset": "medium",
+        "frameCap": 0,
+        "bloomLevels": 2,
+        "postFx": true,
+        "sharpen": false,
+        "screenShake": 100,
+        "hudScale": 1,
+        "hudOpacity": 1,
+        "arcadeEffects": "full"
+      },
+      "gameplay": {
+        "autosaveIntervalS": 120,
+        "tutorialHints": true,
+        "difficulty": "standard",
+        "pauseOnFocusLoss": true,
+        "physicsBackend": "rapier-dynamic",
+        "aiBackend": "sg06-tactical",
+        "flightBackend": "v3",
+        "controlScheme": "pilot",
+        "controlSchemeV2": true,
+        "orbitAssistStrength": "standard",
+        "pursuitSlotAssist": false,
+        "targetAssistStrength": "full",
+        "masslineReleaseAssist": "snap",
+        "stuntMoments": "cinematic",
+        "hitPips": true,
+        "ironmanChoiceLocked": true
+      },
+      "controls": {
+        "bindings": null,
+        "masslineBindingProfile": "space-v1",
+        "flightMode": "assisted",
+        "gamepad": {
+          "enabled": true,
+          "deadzone": 0.12,
+          "invertY": false,
+          "scheme": "drive",
+          "schemeSuggested": false,
+          "curve": "linear",
+          "deadzoneRight": 0.12,
+          "sensitivityAim": 1,
+          "sensitivityFly": 1,
+          "glyphSet": "xb"
+        },
+        "mouse": {
+          "sensitivity": 1,
+          "invertY": false
+        }
+      },
+      "accessibility": {
+        "colorblindMode": "none",
+        "highContrast": false,
+        "flashReduce": false,
+        "dyslexiaFont": false,
+        "motionPreference": "full",
+        "motionAsked": false,
+        "motionPrompted": false,
+        "motionDefaultVersion": 1,
+        "captions": false,
+        "audioCues": true,
+        "captionSize": "medium",
+        "captionBackground": true,
+        "haptics": "full",
+        "holdToToggle": {}
+      }
+    },
+    "uiScreenMemory": {
+      "v": 1,
+      "bags": {}
+    },
+    "uiWatchlist": [],
+    "entropy": {
+      "schema": "spaceface.entropyContinuation.v1",
+      "covered": [
+        "core.seed+state+draws",
+        "weapons.seed0+draws",
+        "traffic.rngSeed"
+      ],
+      "uncovered": [
+        "automation.meta.rngSeed",
+        "claims.meta.rngSeed",
+        "sectorSim.meta.rngSeed",
+        "interventionMeta.rngSeed",
+        "other-system-private-streams"
+      ],
+      "core": {
+        "seed0": 4242,
+        "state": 4242,
+        "draws": 0
+      },
+      "weapons": null,
+      "trafficRngSeed": null
+    }
+  }
+}

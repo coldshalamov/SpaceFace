@@ -1,0 +1,161 @@
+/* Crucible choices stay close to play. These rules are scoped to the mode's surfaces. */
+/* The door's smoked window is a LEFT COLUMN, not a full-width band: approved/frames/frame-crucible-door.png
+   puts it at 4-44 % of the width and 25-82 % of the height with the yard lit on the right, and its
+   three tile rows (mode, starter build, arena) all in view. Stretched full-width the window was
+   short and wide at 1280x800 and clipped the hull row out of sight. The tiles themselves follow
+   --k-s (crucible.js paintTile), so three rows fit the stage at every default viewport. */
+.sf-crucible-door:not(.sf-crucible-results) .k-stage {
+  overflow: auto;
+  scrollbar-width: thin;
+  padding-right: 12px;
+  width: min(100%, max(760px, 50vw));
+  justify-self: start;
+}
+/* Vertical budget for three tile rows on a short frame: the screen's 5vw margin is 64 px top and
+   bottom at 1280x800, and the title band and the foot both carried the kit's default air. */
+#screens .sf-crucible-door.k-screen {
+  padding-block: calc(var(--k-margin) * 0.35) calc(var(--k-margin) * 0.28);
+  row-gap: calc(18px * var(--k-s, 1));
+}
+#screens .sf-crucible-door .k-title p { margin-top: calc(4px * var(--k-s)); }
+#screens .sf-crucible-door .k-stage { margin-top: calc(6px * var(--k-s)); }
+#screens .sf-crucible-door .k-foot { margin-top: calc(8px * var(--k-s)); }
+#screens .sf-crucible-door .sf-crd-settings .k-sentence { margin-top: calc(6px * var(--k-s)); margin-bottom: 0; }
+/* The hero marking follows the height as well as the kit scale: at 1280x720 / 1280x800 the
+   160 px-at-1080 name plus its tagline ate a third of the screen and left the stage 270 px tall
+   with three tile rows to show. 15vh is the frame's own proportion (162 px at 1080). */
+.sf-crucible-door .k-title .k-t-name { font-size: min(var(--k-fs-name), 12vh); line-height: 0.92; }
+.sf-crucible-door .sf-crd-settings .k-row { min-height: 0; padding-block: calc(4px * var(--k-s, 1)); }
+.sf-crucible-door .sf-crd-modes .fh-tile-art,
+.sf-crucible-door .sf-crd-arenas .fh-tile-art { min-height: 52px; }
+.sf-crucible-door .sf-crd-settings .k-row .k-row__name { margin-bottom: calc(6px * var(--k-s, 1)); }
+.sf-crucible-door .sf-crd-settings .k-words { flex-wrap: wrap; gap: 10px 24px; }
+/* Eight kits in one row. A wrap put Bolt and Hinge under the window, cut in half. */
+.sf-crucible-door .sf-crd-hulls {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  align-items: stretch;
+}
+.sf-crucible-door .sf-crd-hulls > li { min-width: 0; }
+/* A legend word wider than one column is clipped by the tile's cut shape, not wrapped — the wide
+   mark lets that kit take two columns so the full name reads. */
+.sf-crucible-door .sf-crd-hulls > li:has(> .sf-crd-hull--wide) { grid-column: span 2; }
+html body #screens .sf-crucible-door .sf-crd-hulls .fh-tile {
+  border-width: 12px;
+}
+.sf-crucible-door .sf-crd-hulls .fh-tile-art { min-height: 0; }
+.sf-crucible-door .sf-crd-hulls .fh-tile-legend {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+.sf-crucible-door .sf-crd-hulls .fh-tile-art .sf-crd-glyph {
+  width: calc(32px * var(--k-s, 1));
+  height: calc(32px * var(--k-s, 1));
+}
+.sf-crucible-door .sf-crd-hull-sub[data-kind='earn'] {
+  color: var(--dp-lamp, #e7d7a8);
+}
+/* Hull marks are inline kit glyphs (currentColor). An <img> of the same SVG paints black
+   and reads as an empty square on the glass. */
+.sf-crucible-door .fh-tile { position: relative; }
+.sf-crucible-door .fh-tile-art .sf-crd-glyph {
+  width: calc(48px * var(--k-s, 1));
+  height: calc(48px * var(--k-s, 1));
+  color: currentColor;
+  display: block;
+}
+.sf-crucible-door .fh-tile-art .sf-crd-glyph .accent { fill: var(--dp-lamp, currentColor); }
+.sf-crucible-door .fh-tile-legend {
+  white-space: normal;
+  line-height: 1.15;
+  padding-inline: 4px;
+}
+.sf-crucible-door .fh-tile[data-locked='1'] {
+  color: var(--dp-ink-mute, var(--fh-text-resting));
+}
+/* The lock badge rides a hull TILE. The records band's unlock rows also carry .sf-crd-lock (as
+   k-row items), and an unscoped rule made every one of them an 18px box pinned to the window's
+   top-right corner: their names spilled out there as stray fragments when the band opened. */
+.sf-crucible-door .fh-tile > .sf-crd-lock {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  color: var(--dp-ink, currentColor);
+  pointer-events: none;
+}
+.sf-crucible-door .fh-tile > .sf-crd-lock .sf-crd-lock-glyph {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.sf-crucible-door .fh-tile > .sf-crd-lock .accent { fill: var(--dp-lamp, currentColor); }
+.sf-crd-records { margin-top: 20px; }
+.sf-crd-records summary { cursor: pointer; padding: 12px 0; }
+.sf-crd-records .k-row { padding-block: 10px; }
+/* The armory is a shop of twenty-odd offers: a denser grid than the rearm's three, so a third
+   row shows at the bottom edge and says the list goes on. Fill, edge and state are the deckplate
+   sheet's (src/ui/deckplate/screens.js, THE CRUCIBLE): printed fields, never a tinted glass card. */
+.sf-crucible-armory .sf-cru-stage { overflow: auto; scrollbar-width: thin; }
+.sf-crucible-armory .sf-cru-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+.sf-cru-filters { margin-bottom: 18px; }
+.sf-cru-filters[hidden] { display: none; }
+.sf-crucible-armory .sf-cru-card { text-align: left; min-height: 0; }
+.sf-crucible-armory .sf-cru-name { font-size: clamp(18px, 1.5vw, 24px); }
+.sf-crucible-armory .sf-cru-blurb { font-size: 15px; line-height: 1.45; }
+.sf-crucible-armory .sf-cru-price { font-weight: 700; }
+.sf-crucible-armory .sf-cru-wallet { font-size: 20px; font-weight: 700; }
+
+/* Fitting guidance uses the kit's text and colour tokens; it needs neither hover nor motion. */
+.sf-cru-activation { color: var(--k-bone); margin-block: 10px; line-height: 1.45; }
+.sf-crucible-combat {
+  position: fixed; right: 24px; top: 148px; z-index: 10;
+  box-sizing: border-box; width: 310px; max-width: calc(100vw - 48px);
+  margin: 0; padding: 10px 14px; list-style: none;
+  color: var(--k-bone); background: var(--k-ink);
+  border-left: 2px solid var(--k-gold); pointer-events: none;
+  overflow-wrap: anywhere; font-variant-numeric: tabular-nums;
+}
+.sf-crucible-combat[hidden], .ui-modal-open .sf-crucible-combat { display: none; }
+.sf-crucible-combat__toy + .sf-crucible-combat__toy { margin-top: 6px; }
+@media (max-width: 760px) {
+  .sf-crucible-combat { right: 10px; top: 180px; width: 245px; max-width: calc(100vw - 20px); }
+}
+@media (forced-colors: active) {
+  .sf-crucible-combat { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
+  .sf-cru-activation { color: ButtonText; }
+}
+
+/* Swarm keeps the flight HUD's hardware. Adventure-only instruments hide so the arena owns
+   the centre; the Crucible readout stays in the comms strip. Do not restyle materials here —
+   that overlay was the cheap web-HUD the owner named on 2026-09-20 (PQ-210.05). */
+.sf-swarm-flight .sf-overview,
+.sf-swarm-flight .sf-mission-tracker,
+.sf-swarm-flight #sf-wpnstat,
+.sf-swarm-flight #sf-rolestat { display: none !important; }
+.sf-swarm-flight #hud .sf-stat[data-chip] { display: none !important; }
+.sf-swarm-flight #hud .sf-pslot[data-slot="9"],
+.sf-swarm-flight #hud .sf-pslot[data-slot="8"][data-state="locked"] { display: none; }
+.sf-crucible-door .k-title h1 { font-weight: 800; letter-spacing: -.055em; }
+.sf-crucible-door .k-word[aria-checked="true"] { color: var(--dp-lamp-hot, #ffd98c); }
+.sf-crucible-door .sf-crd-settings .k-row > .k-row__name { color: var(--dp-ink-mute, #96948e); }
+@media (forced-colors: active) {
+  .sf-swarm-flight .sf-crun { background: Canvas; color: CanvasText; }
+}
+@media (max-width: 760px) {
+  .sf-crucible-armory .sf-cru-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sf-crucible-door .sf-crd-settings .k-row { display: block; }
+  .sf-crucible-armory .sf-cru-foot { display: block; }
+}
+@media (max-width: 480px) {
+  .sf-crucible-armory .sf-cru-cards { grid-template-columns: minmax(0, 1fr); }
+}

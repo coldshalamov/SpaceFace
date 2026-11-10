@@ -1,0 +1,318 @@
+// causeLedger.js — BP-12 packet CAUSE_LEDGER_TOOLTIP ("why prices changed").
+//
+// Hover a moving price → the world tells you WHO moved it. The doctrine's own gate rule made
+// perceptible: "no economy change without cause" (design/revamp/DETAIL_DOCTRINE.md §1). Every line
+// this module renders traces to an ENUMERATED dangerModel.classifyDrivers tag carried on the live
+// sector signal — never invented text. The deep field already computes the cause; this is a read
+// layer only.
+//
+// Split of concerns (copies the marketNews/sectorPostcard shape):
+//   • driverPhrase(signal, sectorName) — PURE. Maps signal.driver.{danger,pricePressure,influence}
+//     + trend signs + dominantFactionId → one prose line per axis (null for a tag with no entry in
+//     the causePhrases bank — unknown tags render NOTHING, the anti-free-text failure mode).
+//   • causeFor(state, sectorId) — PURE read. Pulls the LIVE signal via sectorSim.sectorSignalFor
+//     (the field-preferring public contract — never the legacy drift mirror) and phrases it.
+//     Deterministic given a fixed field digest.
+//   • causeLedger (registry SYSTEMS-only entry, NOT UPDATE_ORDER) — keeps state.ui.causeLedger
+//     fresh on sector:enter / dock:docked and mounts a `typeof document`-guarded hover tooltip
+//     over the market screen's commodity rows ([data-cmdty]). Tooltip text only — it NEVER speaks
+//     (voice:none per the packet budget; voiceArbiter is not touched).
+//
+// noTouch honored: dangerModel.js / sectorSim.js / economy.js / marketNews.js / uiRoot.js are
+// imported read-only or not at all. Budget: spawn:none · voice:none · draw:+1 guarded tooltip div.
+
+import { CAUSE_PHRASES, CAUSE_AXES, DIRECTION_WORDS, TREND_EPSILON } from '../data/causePhrases.js';
+import { sectorSignalFor } from '../systems/sectorSim.js';
+import { SECTORS } from '../data/sectors.js';
+import { FACTION_META } from '../data/factions.js';
+import { showWhyTip, hideWhyTip } from './whyReveal.js';
+
+const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+const STATION_NAME_BY_ID = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((station) => [station.id, station.name])));
+const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
+const STATION_TO_SECTOR = new Map();
+for (const sec of SECTORS) for (const st of (sec.stations || [])) STATION_TO_SECTOR.set(st.id, sec.id);
+
+function factionShort(factionId) {
+  const f = factionId ? FACTION_BY_ID.get(factionId) : null;
+  return (f && (f.short || f.name)) || 'An unknown power';
+}
+
+function directionWord(axis, trendValue) {
+  const words = DIRECTION_WORDS[axis] || DIRECTION_WORDS.pricePressure;
+  const t = Number(trendValue) || 0;
+  if (t > TREND_EPSILON) return words.up;
+  if (t < -TREND_EPSILON) return words.down;
+  return words.flat;
+}
+
+function fill(template, tokens) {
+  return String(template)
+    .replace(/\{dir\}/g, tokens.dir)
+    .replace(/\{faction\}/g, tokens.faction)
+    .replace(/\{sector\}/g, tokens.sector)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * driverPhrase(signal, sectorName) -> { danger, pricePressure, influence } prose lines.
+ *
+ * PURE + deterministic. `signal` is a sectorSignalFor packet (driver + trend + dominantFactionId).
+ * Each axis maps its enumerated driver tag through the causePhrases bank; a tag with no entry
+ * yields null for that axis (NEVER invented text — the packet's named failure mode). A missing
+ * signal yields all-null.
+ */
+export function driverPhrase(signal, sectorName) {
+  const out = { danger: null, pricePressure: null, influence: null };
+  if (!signal || !signal.driver) return out;
+  const trend = signal.trend || {};
+  const tokens = {
+    faction: factionShort(signal.dominantFactionId),
+    sector: sectorName || String(signal.sectorId || 'this sector').replace(/^sector_/, '').replace(/_/g, ' '),
+    dir: '',
+  };
+  for (const axis of CAUSE_AXES) {
+    const tag = signal.driver[axis];
+    const template = tag && CAUSE_PHRASES[axis] && CAUSE_PHRASES[axis][tag];
+    if (!template) continue; // enumerated tags only — unknown tag renders nothing
+    tokens.dir = directionWord(axis, trend[axis]);
+    out[axis] = fill(template, tokens);
+  }
+  return out;
+}
+
+// words-authored-names: the hauler-lane why-line names stations as the chart does ("Ceres
+// Refinery"), never as a lowercase de-snaked id ("ceres"); the id fallback is for an
+// uncatalogued berth only.
+const LEDGER_STATION_NAME = new Map((SECTORS || []).flatMap((sector) => (sector && sector.stations) || [])
+  .filter((station) => station && station.id && station.name)
+  .map((station) => [station.id, station.name]));
+
+function stationShort(stationId) {
+  const name = LEDGER_STATION_NAME.get(stationId);
+  if (name) return name;
+  return String(stationId || '').replace(/^station_/, '').replace(/_/g, ' ') || 'this station';
+}
+
+/**
+ * lanePressureLine(state, stationId, commodityId) -> one record-cited cause line or null.
+ *
+ * INF-090: completes the market explanation with a concrete, player-known cause. When the
+ * player's own hauler lane completed a PAID delivery of this good touching this station, the
+ * price move and the displayed cause share one source record: the delivery receipt
+ * (automation.js writes the receipt in the same cycle that emits the economy:applyTradePressure
+ * events, and only paid cycles emit pressure — so result==='paid' is the honesty gate).
+ * The respond path names the existing Automation-board Route verb; the tooltip tier carries
+ * no buttons by design.
+ * PURE + deterministic. Returns null (renders NOTHING) when no paid lane record matches —
+ * never a fabricated shortage or crisis.
+ */
+export function lanePressureLine(state, stationId, commodityId) {
+  const traders = state && state.automation && state.automation.traders;
+  if (!stationId || !commodityId || !Array.isArray(traders)) return null;
+  const hit = traders.find((t) => t && t.lastReceipt && t.lastReceipt.result === 'paid'
+    && t.lastReceipt.good === commodityId
+    && (t.lastReceipt.from === stationId || t.lastReceipt.to === stationId));
+  if (!hit) return null;
+  const r = hit.lastReceipt;
+  const leg = r.from === stationId
+    ? 'buys here, lifting the buy price'
+    : 'sells here, pressing the sell price down';
+  return `Your hauler lane ${stationShort(r.from)}→${stationShort(r.to)} (delivery #${r.n}) ${leg}. Re-route it from the Automation board to let the spread recover.`;
+}
+
+/** A lot the board can feel: the quote's own impact math moves on any stock change, but a
+ *  two-unit buy claiming the price is the ledger overreaching. TUNE, not a physical constant. */
+export const HAND_TRADE_PRESSURE_MIN_QTY = 10;
+/** Attribution goes stale: past this window the move has usually settled back out. */
+export const HAND_TRADE_PRESSURE_WINDOW_S = 1200;
+
+/**
+ * handTradeLine(state, stationId, commodityId) -> one receipt-cited cause line or null.
+ *
+ * The hand-trade twin of lanePressureLine: the player's OWN settled trade of this good at this
+ * station, read from the economy-owned trade ledger (state.player.tradeLedger — the same record
+ * tradeTruth projects). Every settled trade moves the mid price by the stock it shifts (the
+ * quote's impact math), so the receipt IS the cause record; the line names the lot and lets the
+ * spread recover on its own. Newest matching receipt only, inside the freshness window, and a
+ * lot big enough to claim. PURE + deterministic; null renders NOTHING.
+ */
+export function handTradeLine(state, stationId, commodityId) {
+  const entries = state && state.player && state.player.tradeLedger;
+  if (!stationId || !commodityId || !Array.isArray(entries)) return null;
+  const now = Number(state && state.simTime) || 0;
+  const hit = entries.find((e) => e && String(e.stationId || '') === String(stationId)
+    && e.commodityId === commodityId
+    && Number.isFinite(Number(e.seenAt)) && now - Number(e.seenAt) >= 0
+    && now - Number(e.seenAt) <= HAND_TRADE_PRESSURE_WINDOW_S
+    && Math.floor(Number(e.qty) || 0) >= HAND_TRADE_PRESSURE_MIN_QTY);
+  if (!hit) return null;
+  const qty = Math.floor(Number(hit.qty));
+  const verb = hit.side === 'sell' ? 'pressed' : 'lifted';
+  const leg = hit.side === 'sell' ? 'sold' : 'bought';
+  const seq = Number(hit.tradeSequence) > 0 ? ` (receipt #${Number(hit.tradeSequence)})` : '';
+  return `Your last trade here ${verb} this board: ${qty}u of lot ${leg}${seq}. The spread recovers as the stock settles.`;
+}
+
+/**
+ * cargoKillLine(state, stationId, commodityId) -> one receipt-cited cause line or null.
+ *
+ * The third player-cause twin (inf-cause-your-kill): a laden hauler the pilot downed, whose
+ * freight never landed here. Economy owns the chain (state.economy.cargoKillChains): killing
+ * a manifested hauler opens one, salvaging its spill debits it, and selling the salvaged
+ * units redeems it with buy-side stock pressure at the destination — this board tightened
+ * because of the pilot's own kill. The chain carries no clock, so recency joins to the
+ * pilot's own settled sell receipt at the sale station (state.player.tradeLedger, the same
+ * record handTradeLine reads, under the same freshness window): a chain with no redeeming
+ * receipt inside the window renders NOTHING, and an old chain never claims a live move.
+ * PURE + deterministic; null is the honest default.
+ */
+export function cargoKillLine(state, stationId, commodityId) {
+  const chains = state && state.economy && Array.isArray(state.economy.cargoKillChains)
+    ? state.economy.cargoKillChains : null;
+  if (!chains || !stationId || !commodityId) return null;
+  const now = Number(state && state.simTime) || 0;
+  const chain = chains.find((row) => {
+    const fact = row && row.pressureReceipts && row.pressureReceipts[commodityId];
+    return fact && fact.stationId === stationId && fact.receiptId && fact.saleStationId
+      && Number.isFinite(fact.seenAt) && now >= fact.seenAt
+      && now - fact.seenAt <= HAND_TRADE_PRESSURE_WINDOW_S && fact.qty > 0;
+  });
+  if (!chain) return null;
+  const fact = chain.pressureReceipts[commodityId];
+  const saleName = STATION_NAME_BY_ID.get(fact.saleStationId) || fact.saleStationId;
+  return `Its freight ran short when the hauler you downed never landed: ${fact.qty}u of its manifest was sold at ${saleName}.`;
+}
+
+/**
+ * causeFor(state, sectorId) -> stable current field snapshot + 1–3 sanctioned cause receipts
+ * or null for an unknown sector.
+ *
+ * The ONE sanctioned read: routes through sectorSim.sectorSignalFor, which prefers the live field
+ * node and only falls back to structural defaults — never the legacy drift mirror. Deterministic
+ * given a fixed field digest.
+ */
+export function causeFor(state, sectorId) {
+  const signal = sectorSignalFor(state, sectorId);
+  if (!signal) return null;
+  const base = SECTOR_BY_ID.get(sectorId);
+  const sectorName = (base && base.name) || String(sectorId).replace(/^sector_/, '').replace(/_/g, ' ');
+  const lines = driverPhrase(signal, sectorName);
+  return {
+    sectorId,
+    sectorName,
+    // These values come from the same sanctioned read as the prose. Keeping them together prevents
+    // map/tooltip callers from sampling another mirror and presenting a contradictory snapshot.
+    danger: Number(signal.danger) || 0,
+    pricePressure: Number(signal.pricePressure) || 0,
+    influence: { ...(signal.influence || {}) },
+    ownerId: signal.ownerId || null,
+    driver: { ...signal.driver },
+    trend: { ...signal.trend },
+    dominantFactionId: signal.dominantFactionId || null,
+    dominantInfluence: Number(signal.dominantInfluence) || 0,
+    contestMargin: Number(signal.contestMargin) || 0,
+    lines,
+    receipts: CAUSE_AXES
+      .map((axis) => lines[axis] ? { axis, line: lines[axis] } : null)
+      .filter(Boolean),
+  };
+}
+
+// ── registry SYSTEMS-only entry (event-driven; guarded tooltip; zero voice) ─────────────────────
+
+export const causeLedger = {
+  name: 'causeLedger',
+
+  init(ctx) {
+    this._state = ctx && ctx.state;
+    this._bus = ctx && ctx.bus;
+    this._onEnter = (p) => this._refresh(p && p.sectorId);
+    this._onDocked = (p) => this._refresh(p && p.stationId ? STATION_TO_SECTOR.get(p.stationId) : null);
+    if (this._bus && this._bus.on) {
+      this._bus.on('sector:enter', this._onEnter);
+      this._bus.on('dock:docked', this._onDocked);
+    }
+    this._mountTooltip();
+  },
+
+  _refresh(sectorId) {
+    const state = this._state;
+    if (!state) return;
+    const id = sectorId || (state.world && state.world.currentSectorId);
+    if (!id) return;
+    const cause = causeFor(state, id);
+    if (!cause) return;
+    if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+    // Additive UI state (NOT in the sim snapshot hash) — readable by dock screens and tests.
+    state.ui.causeLedger = { ...cause, t: state.simTime || 0 };
+  },
+
+  // ── hover tooltip over market commodity rows (cosmetic; fully guarded; read-only) ────────────
+  _mountTooltip() {
+    if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') return;
+    this._over = (ev) => {
+      const row = ev.target && ev.target.closest && ev.target.closest('[data-cmdty], .st-row');
+      // `.st-market` is the legacy hub host; `.sx-mkt` is the live station rebuild's market screen
+      // (the reference hover was silently dead there — no ancestor matched, so no price why).
+      if (!row || !row.closest || !row.closest('.st-market, .sx-mkt')) { this._hideTip(); return; }
+      const model = this._state && this._state.ui && this._state.ui.causeLedger;
+      const lines = model && model.lines;
+      // INF-090: per-commodity lane record. The row carries the good; the docked station is
+      // the market being read. A paid lane receipt on this station+good appends its line.
+      let lane = null;
+      let hand = null;
+      let kill = null;
+      try {
+        const cmdty = row.getAttribute && row.getAttribute('data-cmdty');
+        const docked = this._state && this._state.ui && this._state.ui.dockedStationId;
+        lane = cmdty ? lanePressureLine(this._state, docked, cmdty) : null;
+        hand = cmdty ? handTradeLine(this._state, docked, cmdty) : null;
+        kill = cmdty ? cargoKillLine(this._state, docked, cmdty) : null;
+      } catch (_) { lane = null; hand = null; kill = null; }
+      // A downed hauler outranks the generic hand-trade note: the closing sale is the same
+      // receipt, and the kill line is the truer why.
+      const text = [lines && lines.pricePressure, lines && lines.danger, lane,
+        kill || hand].filter(Boolean).join('\n');
+      if (!text) { this._hideTip(); return; }
+      this._showTip(text, ev.clientX, ev.clientY);
+    };
+    this._out = (ev) => {
+      const row = ev.target && ev.target.closest && ev.target.closest('[data-cmdty], .st-row');
+      if (row) this._hideTip();
+    };
+    document.addEventListener('mouseover', this._over, true);
+    document.addEventListener('mouseout', this._out, true);
+  },
+
+  _showTip(text, x, y) {
+    // ONE tooltip mechanism (whyReveal.js, generalised from this module): shared element, shared
+    // positioning, shared visual identity. This delegation is what keeps tier 2 one system. The
+    // owner token means this module can retract only the tip IT showed — its mouseover sweep of
+    // non-market rows must never erase a [data-why] reveal the pointer is resting on.
+    showWhyTip(text, x, y, 'causeLedger');
+  },
+
+  _hideTip() {
+    hideWhyTip('causeLedger');
+  },
+
+  destroy() {
+    if (this._bus && this._bus.off) {
+      if (this._onEnter) this._bus.off('sector:enter', this._onEnter);
+      if (this._onDocked) this._bus.off('dock:docked', this._onDocked);
+    }
+    this._onEnter = null;
+    this._onDocked = null;
+    if (typeof document !== 'undefined') {
+      if (this._over) document.removeEventListener('mouseover', this._over, true);
+      if (this._out) document.removeEventListener('mouseout', this._out, true);
+    }
+    this._over = null;
+    this._out = null;
+    this._hideTip();
+  },
+};
+
+export default causeLedger;

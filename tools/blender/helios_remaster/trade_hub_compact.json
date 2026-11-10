@@ -1,0 +1,755 @@
+{
+  "asset": "place_station_trade_hub",
+  "scope": "Candidate-only source storage using existing shipping precision",
+  "command": "node tools/blender/helios_remaster/trade_hub_compact.mjs",
+  "source": "assets/ships/parts/places/place_station_trade_hub.glb",
+  "donorRelease": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+  "candidate": ".devshots/helios-remaster/trade-hub-compact/place_station_trade_hub.glb",
+  "sourceSha256": "2edca1e1c8a3309801ffe2bf88f3ebcd4a8ca82857d51946f00b6f5015e80be3",
+  "releaseSha256": "fca11eabec3cb3c1e1956ed9ca54bfdb483cd867db2609f5e6d1d85e64091a9a",
+  "candidateSha256": "fca11eabec3cb3c1e1956ed9ca54bfdb483cd867db2609f5e6d1d85e64091a9a",
+  "sourceBytes": 289342776,
+  "candidateBytes": 82073572,
+  "under100DecimalMB": true,
+  "geometry": {
+    "losslessVersusUncompressedAuthoredSource": false,
+    "shippingProfile": {
+      "level": "high",
+      "quantizePosition": 14,
+      "quantizeNormal": 12,
+      "quantizeTexcoord": 13,
+      "quantizeColor": 8,
+      "quantizeWeight": 8,
+      "quantizeGeneric": 12
+    },
+    "exactShippingContainer": true,
+    "additionalPositionErrorVersusShippingReleaseM": 0,
+    "maximumPositionErrorM": 0.0015135023756622532,
+    "maximumErrorNode": "LOD0_Remaster_Material_Mechanical_BrushedNickel",
+    "comparedVertices": 4991494,
+    "comparedPrimitives": 123,
+    "allTrianglesPreservedAllowingCyclicCornerRotation": true,
+    "vertexComparison": "same shipping reorder; world-space paired vertices",
+    "nodeMaterialIdentityAndMarkersPreserved": true,
+    "nonMeshHelperFieldsUnchanged": true,
+    "sourceToolchainMeshoptReadPassed": true,
+    "perNode": [
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_00",
+        "maximumPositionErrorM": 1.4977934511968352e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_01",
+        "maximumPositionErrorM": 1.497793456221028e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_02",
+        "maximumPositionErrorM": 1.49779350550814e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_03",
+        "maximumPositionErrorM": 1.4977938889150926e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_04",
+        "maximumPositionErrorM": 1.4977934234073912e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_05",
+        "maximumPositionErrorM": 1.4977938729130247e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_06",
+        "maximumPositionErrorM": 1.49779382714243e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_07",
+        "maximumPositionErrorM": 1.4977950730916792e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_08",
+        "maximumPositionErrorM": 1.497793468732435e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_09",
+        "maximumPositionErrorM": 1.4977939017563354e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_10",
+        "maximumPositionErrorM": 1.4977936993030674e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_11",
+        "maximumPositionErrorM": 1.4977936661478349e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_12",
+        "maximumPositionErrorM": 1.4977934234073912e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_13",
+        "maximumPositionErrorM": 1.4977936032711151e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_14",
+        "maximumPositionErrorM": 1.4977934570746795e-7
+      },
+      {
+        "name": "LOD0_SFG02_SupportedRingBay_15",
+        "maximumPositionErrorM": 1.4977935209570185e-7
+      },
+      {
+        "name": "LOD1_SFG02_SupportedRingBay_00",
+        "maximumPositionErrorM": 1.4977934511968352e-7
+      },
+      {
+        "name": "LOD1_SFG02_SupportedRingBay_01",
+        "maximumPositionErrorM": 1.49779350550814e-7
+      },
+      {
+        "name": "LOD1_SFG02_SupportedRingBay_02",
+        "maximumPositionErrorM": 1.4977934234073912e-7
+      },
+      {
+        "name": "LOD1_SFG02_SupportedRingBay_03",
+        "maximumPositionErrorM": 1.49779382714243e-7
+      },
+      {
+        "name": "LOD1_SFG02_SupportedRingBay_04",
+        "maximumPositionErrorM": 1.497793468732435e-7
+      },
+      {
+        "name": "LOD1_SFG02_SupportedRingBay_05",
+        "maximumPositionErrorM": 1.4977936993030674e-7
+      },
+      {
+        "name": "LOD1_SFG02_SupportedRingBay_06",
+        "maximumPositionErrorM": 1.4977934234073912e-7
+      },
+      {
+        "name": "LOD1_SFG02_SupportedRingBay_07",
+        "maximumPositionErrorM": 1.4977934570746795e-7
+      },
+      {
+        "name": "LOD2_HeliosGolden02_Batch",
+        "maximumPositionErrorM": 0.000002438046797630605
+      },
+      {
+        "name": "HeliosGolden02_CommonBatch",
+        "maximumPositionErrorM": 6.691872734235774e-7
+      },
+      {
+        "name": "LOD0_HeliosGolden02_Batch",
+        "maximumPositionErrorM": 0.000002440254691659834
+      },
+      {
+        "name": "LOD1_HeliosGolden02_Batch",
+        "maximumPositionErrorM": 0.000002440293210697609
+      },
+      {
+        "name": "LOD0_Remaster_Material_Hull_VitreousCeramic",
+        "maximumPositionErrorM": 0.001434385650074569
+      },
+      {
+        "name": "LOD0_Remaster_Material_Glass_RecessedSignal",
+        "maximumPositionErrorM": 0.0012832940939246078
+      },
+      {
+        "name": "LOD0_Remaster_Material_Mechanical_BrushedNickel",
+        "maximumPositionErrorM": 0.0015135023756622532
+      },
+      {
+        "name": "LOD1_Remaster_Material_Mechanical_BrushedNickel",
+        "maximumPositionErrorM": 0.0015135023756622532
+      },
+      {
+        "name": "LOD2_Remaster_Material_Mechanical_BrushedNickel",
+        "maximumPositionErrorM": 0.0015135023756622532
+      },
+      {
+        "name": "LOD1_Remaster_Material_Hull_VitreousCeramic",
+        "maximumPositionErrorM": 0.001434385650074569
+      },
+      {
+        "name": "LOD2_Remaster_Material_Hull_VitreousCeramic",
+        "maximumPositionErrorM": 0.001434385650074569
+      },
+      {
+        "name": "LOD1_Remaster_Material_Glass_RecessedSignal",
+        "maximumPositionErrorM": 0.0012832940939246078
+      },
+      {
+        "name": "LOD2_Remaster_Material_Glass_RecessedSignal",
+        "maximumPositionErrorM": 0.0012832940939246078
+      }
+    ]
+  },
+  "textures": {
+    "imageCount": 39,
+    "bindingCount": 52,
+    "sameCurrentCachedEncoderBytesAsRelease": true,
+    "images": [
+      {
+        "sourceImage": 0,
+        "releaseImage": 0,
+        "name": "mechanical_normal",
+        "sourceSha256": "f0a85efc10476d0bf7584cee7d46f1a426a422cf23ca0355802b29e6b63b88ea",
+        "ktx2Sha256": "c6825e81f6c75529b5003b152b2e8c4943574be3045be994cfa955fcd3aa7fb5",
+        "currentEncoderCacheKey": "d04038497a668a02ca1385b13fb922ea99b9088de7662fbd342954b91873b9ad",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 1,
+        "releaseImage": 1,
+        "name": "mechanical_orm",
+        "sourceSha256": "ffff0dc5ca68f0f26c9bbe0ace05b7f332ac2172a2de09cd1734d13fee2baf7d",
+        "ktx2Sha256": "c18111f7c61b89ebefce399750e90e206900879281ecc73588f15edd9a6c58b0",
+        "currentEncoderCacheKey": "c3c83bc338f6ded89052dde686e009bfd3615f661a0e00a978afc2ad7b3c8e09",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 2,
+        "releaseImage": 2,
+        "name": "mechanical_basecolor",
+        "sourceSha256": "4909f9738227f1b2bfb5c577a7104715ce507c856f850689d56a377bc1ddade0",
+        "ktx2Sha256": "f1d1c2b3634f71907d424d013b5a0ce190a69d9fb5b01f764dae374953923782",
+        "currentEncoderCacheKey": "8e05341efe4243c1bafc907d59317b35787603e25e03a73c88e6132c59dedfc6",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 3,
+        "releaseImage": 3,
+        "name": "service_normal",
+        "sourceSha256": "0ffa2d69a54f7a73c6d41359de961c4ff81cfb1a37d42cd086e2032cd57b28b6",
+        "ktx2Sha256": "0b9f7ef34930e563d1c86d0d703184adf03a144c4b0e23ecd9722a5d1cb2bbb4",
+        "currentEncoderCacheKey": "78947bf2ef63c6ff971f195fc65fd763dcd465c6b1c8a384210420abb78d1b02",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 4,
+        "releaseImage": 4,
+        "name": "service_orm",
+        "sourceSha256": "55fba87027e45d8bd8d703b18a220cc49bc9372411a3a953703a8cf8dbabb031",
+        "ktx2Sha256": "8e1ea8d9491ffe69064ace47fb0676a5ca564fbf5f4f90055b253ecda8283440",
+        "currentEncoderCacheKey": "5fb1568cb28b0f090de8686d166f1772784998f9d77f99484e988ee3d6736768",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 5,
+        "releaseImage": 5,
+        "name": "service_basecolor",
+        "sourceSha256": "8ea140b8244785ed3564cdef97d4ec70362d3af5eb16686ddee3d563c5aa7c86",
+        "ktx2Sha256": "de2b3a1a5eca2f75d727070c458e5fd5de06286f0a889a26ba1b289ed5ad8ae3",
+        "currentEncoderCacheKey": "6e7486faf1293503c80fdf90f0c9a6452d99f518258508f0c1d2da69c02890aa",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 6,
+        "releaseImage": 6,
+        "name": "marking_normal",
+        "sourceSha256": "3950d7d3bf8d8eae4af18dcd4e89faa4677780a9d1db20e2845f9bd155dbbe41",
+        "ktx2Sha256": "cfe3e93fcd826b9316afd9d209adba64eeb2de6e1eb8ef6a2623b2f7e2c023e0",
+        "currentEncoderCacheKey": "37f505cc2adde374d8eef339ef93e3410f8fb5f2831346b1546efe68dc91fabf",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 7,
+        "releaseImage": 7,
+        "name": "marking_orm",
+        "sourceSha256": "d3eff378cc953e32b328691620b9254868b2e6e885b42774fd6f122312a1a616",
+        "ktx2Sha256": "c114c23fe4c2a06e398e81e7ee563456b562062b482bae45e614f5a72c73cb50",
+        "currentEncoderCacheKey": "f6ff1494aa743e39112e635dafc10cd4b7c1347eb58ecff490d849beba4a9e65",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 8,
+        "releaseImage": 8,
+        "name": "marking_basecolor",
+        "sourceSha256": "9144d9a6e700b8dcc504e76834246e221175e7f419ee332523b32edac6345877",
+        "ktx2Sha256": "bd6e232d5674c39306d2b543a76bb62ff53f416899911a7d9bce0e12ec72652f",
+        "currentEncoderCacheKey": "b78c26214b8e7aa43e47461d04658c5bcd78893737542e0444d95e50d054f38c",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 9,
+        "releaseImage": 9,
+        "name": "armor_normal",
+        "sourceSha256": "29b5640e864a085b41b44b8b4286dde7f2763949e26a88bc051cd797980f91e5",
+        "ktx2Sha256": "478b63dd538e365c234b47d9f933af8948cbd41cc595349b5c52ff2644a77d33",
+        "currentEncoderCacheKey": "17103f0595ec1c402f41a336ea711247a000f515b5d8e39bd9d5bbe60ddceff7",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 10,
+        "releaseImage": 10,
+        "name": "armor_orm",
+        "sourceSha256": "53d5fa3b0e51b2b1dc47951666def4d5052b71aa84d6385f0cdfc5b01ea2c16c",
+        "ktx2Sha256": "fdee34710d70492e7110a5196c12f2812d5dfd684df6719d323edfe5ca016cdc",
+        "currentEncoderCacheKey": "184fdf70941207bc66fb9794dedc0c7867a2f0a4bb16a377ed77691dd04b99f8",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 11,
+        "releaseImage": 11,
+        "name": "armor_basecolor",
+        "sourceSha256": "aa4ac343093ac4eb3276cf0e182f93841aca6a5e9a8c03b1a69f05b6a13b4045",
+        "ktx2Sha256": "7a99893d27642241b49bf98927a46468566280bf955d93cef4847c003441f990",
+        "currentEncoderCacheKey": "47b13490520c928ced63b4de7e9ac8e80c84b320f4d8e0bb1626593a1774b899",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 12,
+        "releaseImage": 12,
+        "name": "armor_dark_normal",
+        "sourceSha256": "b4f115e02d55e033e298d1c490938f99c7785d743addaa6251cbbc68ae5fe913",
+        "ktx2Sha256": "65ec2c01ffe56245bfb2daf3d2246c5ca774dba98bfbae055079c1823dfd7287",
+        "currentEncoderCacheKey": "14a290d672c181224536767d5f020befa26be5f5036b47055650b733b440e9a4",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 13,
+        "releaseImage": 13,
+        "name": "armor_dark_orm",
+        "sourceSha256": "62961b37cdb988eda81fe238488b51ee9d83ebc7ca64aed07057202a5da08cc0",
+        "ktx2Sha256": "76c5c6b171b6602f814ed566b104a2a4b14796809b246cba69904bfd6f6ebda3",
+        "currentEncoderCacheKey": "853733a4787ff41205e33a2dd0c955b90ac27bb64880b20b40ff4e3f34d396b0",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 14,
+        "releaseImage": 14,
+        "name": "armor_dark_basecolor",
+        "sourceSha256": "6def1aabaecd7ff39311181319c5cf1d90b5eb7d7d602416d10604f4c8bd9221",
+        "ktx2Sha256": "6e2e1d9793275d54cae2ef6bebe94c03549548e66373bb780aae49f48db397c3",
+        "currentEncoderCacheKey": "495461dcff9560c42ac32a672c51fcd68365e7b64aa513c2ca2710fa8777e2f6",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 15,
+        "releaseImage": 15,
+        "name": "hull_normal",
+        "sourceSha256": "19bffb0f85817ac97a20f5bcf898719c0c0d489cdb3c5de5c9c4a00ba988a3dc",
+        "ktx2Sha256": "ec60e79c2081ba83af755e184794e690c82e75d239fe937f79ca0367055c0cac",
+        "currentEncoderCacheKey": "29a7efcbcb9638cf3b189421414be404911f82fa08929bf3d90c895af374bee0",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 16,
+        "releaseImage": 16,
+        "name": "hull_orm",
+        "sourceSha256": "46fc4e6564a4a2d2ceaab88c26e0a3578621f49604bd9329a1ccd49a4d9d5754",
+        "ktx2Sha256": "e0808adccfa86f9db7243f652736260cfd7b3e70286c89dea5fa75b65d0bac02",
+        "currentEncoderCacheKey": "5997d434433ac3cead3f87e95fbcc0b4c570478abfd02703eb5df833f737c5e0",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 17,
+        "releaseImage": 17,
+        "name": "hull_basecolor",
+        "sourceSha256": "22424056a609d272bd02a9adf5f5a87edb27499a700286476ae6dcaf6ed62f28",
+        "ktx2Sha256": "7f79928239d57fc4424f582190582206bbad46a979b39658f01fc79728994130",
+        "currentEncoderCacheKey": "242834e8cef407d98b7042e19304de94703664de35d635200407ef56a70a11f9",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 18,
+        "releaseImage": 18,
+        "name": "structure_light_normal",
+        "sourceSha256": "977224bdb98b7d8598c7f6a824bc9d76189de7671eef17051d033b9c3c615b4b",
+        "ktx2Sha256": "b765c7942ae0ea1139a96bd74bfb741ffddd4d9a6e704858e2d1ea586d4fb1e7",
+        "currentEncoderCacheKey": "0cde97999f38485e7693e8087e357082e62ae6a77a07e3f36a97987871d652af",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 19,
+        "releaseImage": 19,
+        "name": "structure_light_orm",
+        "sourceSha256": "27a304a2174ce4d786485b17b504ebae7a68477b870d605634fd2a2825628f64",
+        "ktx2Sha256": "1e31a6ad249a1521560cd10d3d361eb54a1005e629bab499b655adce9463f0af",
+        "currentEncoderCacheKey": "91bf4e52d68c638c688750debb0ccc08c35bcde37f0ccb52e773552de007e5bb",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 20,
+        "releaseImage": 20,
+        "name": "structure_light_basecolor",
+        "sourceSha256": "1554506cad13256eb6a57ee8b8c834e5c497ad0cd51d4137e6ead327b05d35df",
+        "ktx2Sha256": "7649cf4549e82c3addd5a286bfdbaff16960a57a3cbc663d6e9a32909b080cd8",
+        "currentEncoderCacheKey": "b165f27b39bef6d2e5f6b7d110f156240bc723190b51295341c1f8d916ff268b",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 21,
+        "releaseImage": 21,
+        "name": "window_normal",
+        "sourceSha256": "b255be871840fdfa24a5b7dbc4fdd97016dbcc27319c05d39986673974cb388d",
+        "ktx2Sha256": "af3aea7e97cfb229b1505bb2fd6a636b71ef20b20c247966ca69dbb1e1d8fd0b",
+        "currentEncoderCacheKey": "13286878a17f5a0eb1926976b03ab730d37c48c084f4b92da61c92933b012e1e",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 22,
+        "releaseImage": 22,
+        "name": "window_orm",
+        "sourceSha256": "acb8c8515acb2cc2de227270be3c227e0c7cb2399c781f92126537c7b5742823",
+        "ktx2Sha256": "6f833dbf575c5a65439849006f6a6158d3fb8f1865f71ed05d694dbac8fc4bae",
+        "currentEncoderCacheKey": "426bbf5f03fa520cf494416985273c0edcb0e4afe5c1f7825ba0681a87d64697",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 23,
+        "releaseImage": 23,
+        "name": "window_basecolor",
+        "sourceSha256": "902ea924efa15b3af3e2455cfb1608ef3ac7592ad8e33ceed6ff971bb8ddefc5",
+        "ktx2Sha256": "fe1ec4649e7b272cdc355694e8c3c83bef4e8267cf2d63e62121128d00ee240f",
+        "currentEncoderCacheKey": "f9e6409cf75bb60878cbec6a6d3c2e96ee43bbd20ea779afdbe0189f070e0df6",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 24,
+        "releaseImage": 24,
+        "name": "docking_normal",
+        "sourceSha256": "62d41cf02da81b03e0c23f4efef4aa61f14fd93668290b2f9775e45709e36b5d",
+        "ktx2Sha256": "1310092c35abd59a1d0cecce405e080c77fdc6dec5ba18130940d7475463d831",
+        "currentEncoderCacheKey": "c82fc289bf1754bdd5c04e0f5a12d5137a213138e1d0d86d9cfdb88e5945fc55",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 25,
+        "releaseImage": 25,
+        "name": "docking_orm",
+        "sourceSha256": "cb6f1bc9c56241694482734940c19ea905d143d477776b93208ae1ff78077d45",
+        "ktx2Sha256": "0b147dc3401d1bddaa28f1b24c79645844113ec634898d6810563055b9a3be71",
+        "currentEncoderCacheKey": "614c9a4ff8165021e638c44bb62eabefae93558210122d8d5b3c761aad6994bd",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 26,
+        "releaseImage": 26,
+        "name": "docking_basecolor",
+        "sourceSha256": "1f243aeafce6cedb6c5f766a8340013582e3b0e350154b21cdc0ca7f5e1e5fa5",
+        "ktx2Sha256": "f7fa8962ac115e04e87204e1a4b80d96563b73bf3e606a0d40f65fb302ee6b5e",
+        "currentEncoderCacheKey": "d1b2fc76bfa3ac2c0d9dede131252ddcfcbd1577f70073fefef71693b4699a39",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 27,
+        "releaseImage": 27,
+        "name": "radiator_normal",
+        "sourceSha256": "fc55fe94463b428ad377afa7dc3acb1f5487ace5af73b97dd71c369f9b2540a2",
+        "ktx2Sha256": "0cfd877311e0c81ee68ca9b7cd435b4c57501eb9684980c07d08ca6efcdc15d5",
+        "currentEncoderCacheKey": "a6536a3c7bd9e7fbd6807093c52fb175b59839e635a351cb4d468e1f98045394",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 28,
+        "releaseImage": 28,
+        "name": "radiator_orm",
+        "sourceSha256": "4ea0de6150d8ea6d27ba7aa9a7e176c37eb175c9432c68e7f91e8f9198bb94fa",
+        "ktx2Sha256": "6c5bdc005e98df3170fea750cca6f230aa005f210df28ddc934b76456b6c8e44",
+        "currentEncoderCacheKey": "367f88cb8e98ca5bed3cca508efe0af01e09db5370a55a258a1ab09d7ae0d0e7",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 29,
+        "releaseImage": 29,
+        "name": "radiator_basecolor",
+        "sourceSha256": "9b81e83c2ca646ce19fbaa861bdd6c973d8c080246a4e3cdbd5ee36eec7ae17a",
+        "ktx2Sha256": "c551a54e3d3bc34c38e7ab6cbdde630f2c7e20a9c74ae603e81e0d49531b679c",
+        "currentEncoderCacheKey": "8bdd4463f3fde08c13b77b5b95a4039fce333c8741fac7fb88780851c254e56d",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 30,
+        "releaseImage": 30,
+        "name": "Material_Hull_VitreousCeramic_normal",
+        "sourceSha256": "deceba8dca02547d6552ecd03476699d785f905fe8b7dd14f091579b4b3dab74",
+        "ktx2Sha256": "a208c70a6f4d45cd1121347275dc9b8af4427ffcd788458e6e3bdfe94b900e78",
+        "currentEncoderCacheKey": "a61d454f3f6ac154c49e35bbbe8829c3887249b646560cfbae9560e0fcfe2fb3",
+        "width": 32,
+        "height": 32,
+        "mipLevels": 6,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 31,
+        "releaseImage": 31,
+        "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+        "sourceSha256": "815f513a158f24fd6ae676ba607ea3c1ff4198cd3246323bfbb0831776ebfd7c",
+        "ktx2Sha256": "5b23a4f82f841ccbb24d5b9b0ea45eb9adf46fc13efa5a5b5a3a48c9b96edd72",
+        "currentEncoderCacheKey": "0fe0f117115c45c3539e84174a5e94e5463399686d637a140e280767a67d5812",
+        "width": 32,
+        "height": 32,
+        "mipLevels": 6,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 32,
+        "releaseImage": 32,
+        "name": "Material_Hull_VitreousCeramic_base",
+        "sourceSha256": "4396705a5918910a62d0693eded1da4f32c491c24195a4a4d012be6492f8b5a9",
+        "ktx2Sha256": "9938dedc88a39e245f33cd4bb163b4a29a539fd33c851a0d80558db3f63fb836",
+        "currentEncoderCacheKey": "8a4b6211dcda4423d64bbf7b1c66e641de6c8967b78ea06bcae1290f45bb8150",
+        "width": 32,
+        "height": 32,
+        "mipLevels": 6,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 33,
+        "releaseImage": 33,
+        "name": "Material_Glass_RecessedSignal_normal",
+        "sourceSha256": "deceba8dca02547d6552ecd03476699d785f905fe8b7dd14f091579b4b3dab74",
+        "ktx2Sha256": "a208c70a6f4d45cd1121347275dc9b8af4427ffcd788458e6e3bdfe94b900e78",
+        "currentEncoderCacheKey": "a61d454f3f6ac154c49e35bbbe8829c3887249b646560cfbae9560e0fcfe2fb3",
+        "width": 32,
+        "height": 32,
+        "mipLevels": 6,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 34,
+        "releaseImage": 34,
+        "name": "Material_Glass_RecessedSignal_ao-Material_Glass_RecessedSignal_rough",
+        "sourceSha256": "e6da1c44627b06a453c5df236e61e4534ac716f8411b1e9b16b56e7d77727b9b",
+        "ktx2Sha256": "c584f8b5278b87536c3a2116b59a02e6245b1818b5098e3f06f1c4bd80ba1598",
+        "currentEncoderCacheKey": "ffd7d4775be10cfb050f92113c083d5a774eac714e4ee90a48477735f289eb92",
+        "width": 32,
+        "height": 32,
+        "mipLevels": 6,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 35,
+        "releaseImage": 35,
+        "name": "Material_Glass_RecessedSignal_base",
+        "sourceSha256": "e6797fe989cd06b26a73de5bcdae58737650153ae5e60623a5977d23f8be3e39",
+        "ktx2Sha256": "946352ae076d8d0cf59fbb3cbcd7284f267c0d01a8cf61b7abbf089d270919df",
+        "currentEncoderCacheKey": "0067997976ccb0514a944fb49e94e2794961a66b08fdb9759a536e8788294901",
+        "width": 32,
+        "height": 32,
+        "mipLevels": 6,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      },
+      {
+        "sourceImage": 36,
+        "releaseImage": 36,
+        "name": "Material_Mechanical_BrushedNickel_normal",
+        "sourceSha256": "deceba8dca02547d6552ecd03476699d785f905fe8b7dd14f091579b4b3dab74",
+        "ktx2Sha256": "a208c70a6f4d45cd1121347275dc9b8af4427ffcd788458e6e3bdfe94b900e78",
+        "currentEncoderCacheKey": "a61d454f3f6ac154c49e35bbbe8829c3887249b646560cfbae9560e0fcfe2fb3",
+        "width": 32,
+        "height": 32,
+        "mipLevels": 6,
+        "channels": [
+          "normalTexture"
+        ]
+      },
+      {
+        "sourceImage": 37,
+        "releaseImage": 37,
+        "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+        "sourceSha256": "a3ef9dfbf30f7c3c97f5a3b199ca694bc46651287f673b373005502289841248",
+        "ktx2Sha256": "3854c05c75957b89a5acb79abb6327add353e8404c723c6b8bdb4960048a6dd5",
+        "currentEncoderCacheKey": "01d8e6d90f46a80ce811555e37550c5e097620000fd3429984e0d774efbb51b8",
+        "width": 32,
+        "height": 32,
+        "mipLevels": 6,
+        "channels": [
+          "occlusionTexture",
+          "pbrMetallicRoughness.metallicRoughnessTexture"
+        ]
+      },
+      {
+        "sourceImage": 38,
+        "releaseImage": 38,
+        "name": "Material_Mechanical_BrushedNickel_base",
+        "sourceSha256": "6bff85724d85d0e70f89857b665e2050b49daafdd77309b618e9cef1dd49d661",
+        "ktx2Sha256": "a11c42ca86ff0c1751936f857a4a848953c8d7b10d256d5ebcf7f673bfaa461b",
+        "currentEncoderCacheKey": "5b0f5c72ce6caad6738adcca1dc85c4e55ead8edfa43456469489ccda97eff83",
+        "width": 32,
+        "height": 32,
+        "mipLevels": 6,
+        "channels": [
+          "pbrMetallicRoughness.baseColorTexture"
+        ]
+      }
+    ]
+  },
+  "authoring": "NodeIO with MeshoptDecoder, dequantize, then KTX extraction remains supported; sector_places.prepare.mjs demonstrates that decode path. Its original donor revision remains pinned for reproducible remaster authorship.",
+  "promotion": "Parent owns source promotion and source-derived manifests; no source, release or manifest was edited by this helper."
+}

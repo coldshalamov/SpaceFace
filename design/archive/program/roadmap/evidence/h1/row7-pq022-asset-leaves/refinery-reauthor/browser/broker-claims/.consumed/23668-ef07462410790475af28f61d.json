@@ -1,0 +1,33 @@
+{
+  "schema": "spaceface.validation-broker-claim-consumed.v1",
+  "claimId": "23668-ef07462410790475af28f61d",
+  "claimPath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq022-refinery-reauthor\\browser\\broker-claims\\23668-ef07462410790475af28f61d.json",
+  "consumedAt": "2026-09-07T12:19:30.054Z",
+  "pid": 19828,
+  "candidateDigest": "45035c13407444741163c1ff35768df6c6322300a6054f7860685dd8472cc661",
+  "runtimeKind": "browser",
+  "digests": {
+    "routeDigest": "533551ceca40472a70909136ff59e1f688c5d935d34e401f3d58ecda73d1eda9",
+    "regressionDigest": "9a65b10448d12a757b3c2aee4a11f0cd1ec5253a0c4772e781256cf40b6346c5",
+    "productionDigest": "533551ceca40472a70909136ff59e1f688c5d935d34e401f3d58ecda73d1eda9",
+    "harnessDigest": "ab596d9854791503c3354498f70759fd5297138da01578fca98e7275fb25b3aa",
+    "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "inputDigest": "4be1d5b2a73fb560c7fec997384d00c644efa0bdc4f85c139b79c2eb5708fcb5",
+    "profileDigest": "4648d249bc847fee3eebc6392a6b05cd910508cc51b578e75f1cfe18a46cba78",
+    "manifestDigest": "cef2f2a43af673f61ecebc561a8077e9d91a2a61dd56014cf24191e4eccc1fb9",
+    "candidateDigest": "45035c13407444741163c1ff35768df6c6322300a6054f7860685dd8472cc661",
+    "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+    "sourceCandidateDigest": null,
+    "worktreeDigest": null,
+    "worktreeHead": null,
+    "worktreeBranch": null,
+    "worktreeChangedFileCount": null,
+    "scenarioManifestDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "saveDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "inputTapeDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "cameraManifestDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "candidateSourceDigestMode": "all-src-js",
+    "candidateSourcePathCount": 1013
+  },
+  "mode": "acceptance"
+}

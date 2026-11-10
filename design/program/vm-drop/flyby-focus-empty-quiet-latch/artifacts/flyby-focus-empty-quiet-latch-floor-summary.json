@@ -1,0 +1,59 @@
+{
+  "name": "flyby-focus-empty-quiet-latch-floor",
+  "floors": [
+    {
+      "floor": 1,
+      "median": 17.42623563502398,
+      "minSpeedup": 15.644735708150312,
+      "absBeforeUsMedian": 6.585815733333334,
+      "dirtyWakeOk": true
+    },
+    {
+      "floor": 2,
+      "median": 17.565627213065362,
+      "minSpeedup": 15.788310807000073,
+      "absBeforeUsMedian": 6.634777999999999,
+      "dirtyWakeOk": true
+    },
+    {
+      "floor": 3,
+      "median": 17.43573524324111,
+      "minSpeedup": 15.331032906480894,
+      "absBeforeUsMedian": 6.661484416666665,
+      "dirtyWakeOk": true
+    },
+    {
+      "floor": 4,
+      "median": 16.955094935861375,
+      "minSpeedup": 14.443833684028156,
+      "absBeforeUsMedian": 6.7790198,
+      "dirtyWakeOk": true
+    },
+    {
+      "floor": 5,
+      "median": 17.801363623621576,
+      "minSpeedup": 16.740190494819366,
+      "absBeforeUsMedian": 6.822075716666668,
+      "dirtyWakeOk": true
+    }
+  ],
+  "packageFloor": {
+    "medians": [
+      17.42623563502398,
+      17.565627213065362,
+      17.43573524324111,
+      16.955094935861375,
+      17.801363623621576
+    ],
+    "mins": [
+      15.644735708150312,
+      15.788310807000073,
+      15.331032906480894,
+      14.443833684028156,
+      16.740190494819366
+    ],
+    "floorMinSpeedup": 14.443833684028156,
+    "medianOfMedians": 17.43573524324111
+  },
+  "dirtyWakeAllOk": true
+}

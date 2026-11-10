@@ -1,0 +1,37 @@
+{
+  "schema": "press-camp-authored-parity-proof-v1",
+  "baseCommit": "c435d10d6f78e441ae8b16132b9881e3fc829fbd",
+  "scope": "Scene-local supported pre-spawn authored Tradehub binding and warm declaration. No collider/radius/pose changes. No invisible-base/crash claim.",
+  "final": {
+    "visual": {
+      "exit": 0,
+      "stdout": "CAMP_VISUAL_PARITY {\"firstSpawn\":true,\"workerProjection\":true,\"native\":{\"colliderCount\":22,\"bodyType\":1,\"translation\":{\"x\":9200,\"y\":0,\"z\":9200},\"rotation\":{\"x\":0,\"y\":0,\"z\":0,\"w\":1}},\"radius\":42,\"collisionProxy\":\"skin:place_station_trade_hub\",\"drawScale\":1.442292,\"metadata\":{\"placeId\":\"place_station_trade_hub\",\"archetypeGlb\":\"place_station_trade_hub\",\"authoredAssetState\":\"awaiting-authored-admission\",\"authoredVisualRoot\":\"none-pending-admission\",\"visualBounds\":{\"center\":[0,17.319304288429528,0],\"size\":[212.74405530119043,118.63860857685906,228.82415055546912]},\"visualCenterOffset\":null,\"boundaryResolvingStandInFile\":\"places/place_station_trade_hub.glb\",\"boundaryResolvingStandInRecenter\":\"xz\",\"boundaryResolvingStandInYawDeg\":-77.5}}\n✔ camp authored Tradehub identity exists at first spawn and worker projection without changing its physical body (455.163673ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 460.897247\n",
+      "stderr": ""
+    },
+    "focused": {
+      "exit": 0,
+      "stdout": "✔ missing or recycled base is not a destroyed camp: missing (46.513942ms)\n✔ missing or recycled base is not a destroyed camp: replaced_alive (5.022897ms)\n✔ missing or recycled base is not a destroyed camp: replaced_dead (3.946617ms)\n✔ actual killed and reaped base preserves one reward, replacement=false (5.400595ms)\n✔ actual killed and reaped base preserves one reward, replacement=true (3.023205ms)\n✔ does not free a foreign or unavailable captive: absent (3.832625ms)\n✔ does not free a foreign or unavailable captive: dead (3.552726ms)\n✔ does not free a foreign or unavailable captive: replaced (2.874894ms)\n✔ does not free a foreign or unavailable captive: captured (3.302166ms)\n✔ does not free a foreign or unavailable captive: player (3.99394ms)\n✔ does not free a foreign or unavailable captive: foreign_ai (6.650909ms)\n✔ does not free a foreign or unavailable captive: foreign_activity (3.323313ms)\n✔ does not free a foreign or unavailable captive: foreign_intent (2.649723ms)\n✔ does not free a foreign or unavailable captive: foreign_body (2.542726ms)\n✔ synchronous comms callback cannot settle twice (3.100832ms)\n✔ synchronous grant callback cannot settle twice (2.782785ms)\n✔ synchronous rep callback cannot settle twice (2.835554ms)\n✔ synchronous resolve callback cannot settle twice (2.768811ms)\n✔ real defeated garrison frees original captive, preserves camp and three authored loot pods (4.634562ms)\n✔ missing guard does not imply defeated garrison (3.170274ms)\n✔ cleanup cannot manufacture camp outcome: restoring (2.437575ms)\n✔ cleanup cannot manufacture camp outcome: stale_live (2.334949ms)\n✔ timeout cannot later claim a destruction reward (2.557156ms)\n✔ real lifecycle save:restoring prevents stale settlement (3.61018ms)\n✔ real lifecycle save:loaded prevents stale settlement (7.690575ms)\n✔ real lifecycle sector:exit prevents stale settlement (3.361039ms)\n✔ continuous sector crossing retains authentic camp outcome (2.327499ms)\nℹ tests 27\nℹ suites 0\nℹ pass 27\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 152.687926\n",
+      "stderr": ""
+    }
+  },
+  "baseline": {
+    "exit": 1,
+    "stdout": "✖ camp authored Tradehub identity exists at first spawn and worker projection without changing its physical body (557.297522ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 564.207373\n\n✖ failing tests:\n\ntest at __camp_ram__.mjs:82:1\n✖ camp authored Tradehub identity exists at first spawn and worker projection without changing its physical body (557.297522ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  + actual - expected\n  \n  + undefined\n  - 'place_station_trade_hub'\n  \n      at TestContext.<anonymous> (file://<repository>/test/__camp_ram__.mjs:97:69)\n      at async Test.run (node:internal/test_runner/test:1389:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: 'place_station_trade_hub',\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n",
+    "stderr": ""
+  },
+  "pins": {
+    "scripts/lib/simWorkerHost.mjs": "9faf4a40f2a93001a0c5963fe1d1458bdf58d539",
+    "scripts/lib/simReadModel.mjs": "9093064d6a11e4515e19ab3af50cc5ab3bda4b3d",
+    "src/data/modelTruth.js": "706e7aa3768587e4cfcc1e6ad03dd3664dd5abdb",
+    "src/data/modelTruthCensus.generated.js": "030a156d171f08667b7c900cba40f091982abbd5",
+    "src/data/modelTruthMounts.js": "5a76018f09b307ef0fc3c77a73a579d6f9840b89",
+    "src/data/collisionProxyManifests.js": "fa6d39e4a00de8f52c914ebeb9f67e1d18bb12ba",
+    "src/data/enemyEngineGlow.js": "6a8c16f75d875b05f87c5e436e8419f280c3e6e0"
+  },
+  "rendererPins": {
+    "partsLibrary": "69e3de815fba57fb8b8d625b5728642aab061d68",
+    "visualOverrides": "0ca35e9ef11c38a181e95a6ee57cc546c918236c",
+    "visualFactory": "e9a11cfaf1c16f483ea6bf01f1b9fb07f977f135"
+  },
+  "limits": "Selected native RAM graph over older canonical dependencies. Actual public worker host production init and zero-step spawnInfos transport exercised, not an OS/browser worker. Actual pending authored admission metadata, not GLB final residency or live camera. Earlier import-only graph checks: missing enemyEngineGlow restored; empty large census file response replaced with full exact Git blob; private entityInfoBlock import rejected and replaced with public createSimHost. Baseline stdout path sanitized; all other stdout verbatim."
+}

@@ -1,0 +1,28 @@
+{
+  "label": "optic-far-quiet-latch",
+  "ITERS": 60000,
+  "RUNS": 11,
+  "isolatedPairs": 11,
+  "NON_OPTIC": 280,
+  "FAR_OPTIC": 40,
+  "medianSpeedup": 20.501771290109996,
+  "minSpeedup": 13.59809813227712,
+  "maxSpeedup": 28.4871929552672,
+  "pairs": [
+    13.5981,
+    16.1784,
+    19.0407,
+    20.1633,
+    20.31,
+    20.5018,
+    20.6025,
+    21.2695,
+    21.3844,
+    21.8741,
+    28.4872
+  ],
+  "primary": "~20.50×",
+  "ship_bar": 1.5,
+  "clears_bar": true,
+  "note": "Quiet tickOpticFieldRocks far-from-optic latch. Soft-GPU fps not claimed."
+}

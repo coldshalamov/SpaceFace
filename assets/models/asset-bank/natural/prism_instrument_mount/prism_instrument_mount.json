@@ -1,0 +1,202 @@
+{
+  "assetId": "prism_instrument_mount",
+  "category": "ancient",
+  "description": "prism instrument mount; reusable ancient assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_INSTRUMENT",
+      "position": [
+        0.0,
+        0.9,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_MOUNT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -0.07499999999999996,
+          0.09,
+          0.62
+        ],
+        "size": [
+          1.72,
+          0.18,
+          0.41600000000000004
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5,
+          0.45,
+          0.52
+        ],
+        "size": [
+          0.32,
+          0.5,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.07499999999999996,
+          0.09,
+          -0.62
+        ],
+        "size": [
+          1.72,
+          0.18,
+          0.41600000000000004
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5,
+          0.45,
+          -0.52
+        ],
+        "size": [
+          0.32,
+          0.5,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.35,
+          0.315,
+          -0.0
+        ],
+        "size": [
+          1.36,
+          0.13,
+          0.41600000000000004
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "ancient",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.1464412212371826,
+      0.0,
+      -0.8795503377914429
+    ],
+    "max": [
+      1.1940631866455078,
+      1.1857883930206299,
+      0.8795503377914429
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "prism_instrument_mount_lod0.glb",
+      "triangles": 5304,
+      "draws": 5,
+      "bytes": 288372,
+      "method": "source",
+      "sha256": "c1dae7689b1fea2223c816b376297d6b611a994a3fb1687c002d00da2fe57416"
+    },
+    {
+      "level": 1,
+      "file": "prism_instrument_mount_lod1.glb",
+      "triangles": 3988,
+      "draws": 5,
+      "bytes": 212400,
+      "method": "authored-topology",
+      "sha256": "e5299d2604e6df7d00eb51b6e39691193d8009d4e3bbd39dd42147e26be7e5c7"
+    },
+    {
+      "level": 2,
+      "file": "prism_instrument_mount_lod2.glb",
+      "triangles": 3704,
+      "draws": 5,
+      "bytes": 198408,
+      "method": "authored-topology",
+      "sha256": "18c0df162982c9f7afb11ebf2ed6702354bd0bd99953d35baec869ecc35be09c"
+    }
+  ]
+}

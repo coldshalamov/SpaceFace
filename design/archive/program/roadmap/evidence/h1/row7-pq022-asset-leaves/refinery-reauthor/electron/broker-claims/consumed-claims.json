@@ -1,0 +1,23 @@
+{
+  "schema": "spaceface.validation-broker-consumed-claims.v1",
+  "byClaimId": {
+    "12612-38ff7c1b5a8658e9b8d916ab": {
+      "claimPath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq022-refinery-reauthor\\electron\\broker-claims\\12612-38ff7c1b5a8658e9b8d916ab.json",
+      "consumedAt": "2026-09-07T12:24:11.872Z",
+      "candidateDigest": "63429ec3c10540966f33182a521f870a54472815dda6f4f8c914a0cf341db663",
+      "runtimeKind": "electron"
+    },
+    "29300-57e880c0138cab81468c1966": {
+      "claimPath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq022-refinery-reauthor\\electron\\broker-claims\\29300-57e880c0138cab81468c1966.json",
+      "consumedAt": "2026-09-07T13:16:05.412Z",
+      "candidateDigest": "22992ca66e9b2162acccbdec25bf251519dbd74dd62e3b74e7252f5513d8d043",
+      "runtimeKind": "electron"
+    },
+    "25260-f03f0389c73071d7b23b931c": {
+      "claimPath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq022-refinery-reauthor\\electron\\broker-claims\\25260-f03f0389c73071d7b23b931c.json",
+      "consumedAt": "2026-09-07T13:52:11.955Z",
+      "candidateDigest": "ac75dbbecfb3bcf9fcb809d72bdd4ed734d5a28df0e39f94027cc63d57a4070d",
+      "runtimeKind": "electron"
+    }
+  }
+}

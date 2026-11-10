@@ -1,0 +1,10 @@
+{
+  "beforeMs": 214.031567,
+  "afterMs": 63.608825000000024,
+  "speedup": 3.364809316946193,
+  "iters": 800000,
+  "sink": 70399990,
+  "lingerAssign": true,
+  "lingerRef": false,
+  "note": "lingerAssign true means Object.assign leaves stale optional keys; lingerRef should be false"
+}

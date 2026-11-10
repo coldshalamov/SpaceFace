@@ -1,0 +1,12 @@
+{
+  "labels": [
+    "drill_platform \u2014 shoes / well (reject house)",
+    "extraction_mast \u2014 tall over a feed (reject lattice)",
+    "worklight_tower \u2014 paired hoods (reject glowing ball)"
+  ],
+  "sources": [
+    "assets/incubator/everyday_space_kit/evidence/drill_platform.png",
+    "assets/incubator/everyday_space_kit/evidence/extraction_mast.png",
+    "assets/incubator/everyday_space_kit/evidence/worklight_tower.png"
+  ]
+}

@@ -1,0 +1,2016 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+
+import * as THREE from 'three';
+import { Object3D as VendoredObject3D, spacefaceShadowCastersIn } from '../vendor/three.module.js';
+
+import {
+  RENDER_PACKAGE_SCHEMA,
+  RENDER_PACKAGE_SEMANTIC_EXTRAS_KEY,
+  RENDER_PACKAGE_SEMANTIC_EXTRAS_SCHEMA,
+  computeRenderPackageRuntimeHash,
+  renderPackageContentIdentity,
+  stableJsonStringify,
+} from '../src/contracts/renderPackage.js';
+import { createAssetResidencyRegistry, getAssetResidency, disposeAssetResidency } from '../src/render/assetResidency.js';
+import { loadAuthoredRenderPackagePilot } from '../src/render/assetLoader.js';
+import {
+  assertRenderResourceBindings,
+  createRenderPackageLoader,
+  fetchVerifiedRenderResources,
+} from '../src/render/renderPackageLoader.js';
+import { installVisualOverrides } from '../src/render/visualOverrides.js';
+import {
+  detachPackageGeometry, isPackageGeometryDetached, noteOrientationDetachedHold,
+  presentedDetachRehydrateInFlight,
+} from '../src/render/packageCpuDetach.js';
+
+Object.defineProperty(THREE.Object3D.prototype, 'castShadow',
+  Object.getOwnPropertyDescriptor(VendoredObject3D.prototype, 'castShadow'));
+
+const HASH = '1'.repeat(64);
+
+function glbJson(json) {
+  const jsonBytes = Buffer.from(JSON.stringify(json));
+  const padded = Buffer.concat([jsonBytes, Buffer.alloc((4 - jsonBytes.length % 4) % 4, 0x20)]);
+  const bytes = Buffer.alloc(20 + padded.length);
+  bytes.writeUInt32LE(0x46546c67, 0); bytes.writeUInt32LE(2, 4); bytes.writeUInt32LE(bytes.length, 8);
+  bytes.writeUInt32LE(padded.length, 12); bytes.writeUInt32LE(0x4e4f534a, 16); padded.copy(bytes, 20);
+  return bytes;
+}
+
+test('shared KTX2 fetch resolves package-relative URLs and fails closed on missing or stale bytes', async () => {
+  const payload = Buffer.from([0xab, 0x4b, 0x54, 0x58, 4, 5, 6]);
+  const sha = createHash('sha256').update(payload).digest('hex');
+  const resource = { uri: `../_shared/images/${sha}.ktx2`, mimeType: 'image/ktx2', sha256: sha, bytes: payload.length };
+  const metadata = { assetId: 'fixture.ship', render: { resources: [resource] } };
+  const urls = [];
+  const fetchGood = async (url, options) => {
+    urls.push([url, options.cache]);
+    return { ok: true, arrayBuffer: async () => payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength) };
+  };
+  const verified = await fetchVerifiedRenderResources(
+    fetchGood,
+    'file:///app/assets/ships/release/render-packages/fixture/render.glb',
+    metadata,
+  );
+  assert.deepEqual([...verified.get(resource.uri)], [...payload]);
+  assert.equal(urls[0][0], `file:///app/assets/ships/release/render-packages/_shared/images/${sha}.ktx2`);
+  assert.equal(urls[0][1], 'force-cache');
+  await fetchVerifiedRenderResources(fetchGood, 'https://assets.example/packages/fixture/render.glb', metadata);
+  assert.equal(urls[1][0], `https://assets.example/packages/_shared/images/${sha}.ktx2`);
+  await assert.rejects(fetchVerifiedRenderResources(async () => ({ ok: false, status: 404 }), 'https://game.test/packages/fixture/render.glb', metadata), /HTTP 404/);
+  await assert.rejects(fetchVerifiedRenderResources(async () => ({
+    ok: true, arrayBuffer: async () => Buffer.from('stale').buffer,
+  }), 'https://game.test/packages/fixture/render.glb', metadata), /byte length mismatch|SHA-256 mismatch/);
+});
+
+test('render GLB external KTX2 URI set must match the hash-bound resource descriptors', () => {
+  const sha = 'a'.repeat(64), uri = `../_shared/images/${sha}.ktx2`;
+  const bytes = glbJson({ asset: { version: '2.0' }, images: [{ uri, mimeType: 'image/ktx2' }] });
+  const resource = { uri, mimeType: 'image/ktx2', sha256: sha, bytes: 12 };
+  assert.equal(assertRenderResourceBindings(bytes, { assetId: 'fixture.ship', render: { resources: [resource] } }), true);
+  assert.throws(() => assertRenderResourceBindings(bytes, { assetId: 'fixture.ship', render: {} }), /undeclared external/);
+  assert.throws(() => assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [] }), {
+    assetId: 'fixture.ship', render: { resources: [resource] },
+  }), /unreferenced external/);
+  assert.equal(assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ bufferView: 0, mimeType: 'image/ktx2' }] }), {
+    assetId: 'legacy.ship', render: {},
+  }), true, 'legacy embedded packages remain readable');
+  assert.equal(assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ uri: 'data:image/png;base64,AA==', mimeType: 'image/png' }] }), {
+    assetId: 'legacy.data-uri.ship', render: {},
+  }), true, 'legacy self-contained data URIs remain readable');
+  assert.throws(() => assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ uri: 'textures/escape.png' }] }), {
+    assetId: 'untyped.external.ship', render: {},
+  }), /unsupported external URI/);
+  assert.throws(() => assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ uri, mimeType: 'image/png' }] }), {
+    assetId: 'wrong-mime.external.ship', render: { resources: [resource] },
+  }), /unsupported external URI/);
+});
+
+test('verified URL cache rejects changed metadata that reuses declared trust anchors', async () => {
+  let current = packageMetadata();
+  const decoded = decodedFixture();
+  let digests = 0;
+  const loader = createRenderPackageLoader({ fetchImpl: async () => ({ ok: true, json: async () => current }),
+    loadGlb: async () => ({ scene: decoded.scene }),
+    contentDigest: async bytes => { digests++; return createHash('sha256').update(bytes).digest('hex'); } });
+  const url = 'https://assets.example/fixture/render-package.json';
+  try {
+    await loader.load(url);
+    const verifiedDigests = digests;
+    current = structuredClone(current); await loader.load(url);
+    assert.equal(digests, verifiedDigests, 'identical verified metadata keeps the fast reload path');
+    current = structuredClone(current);
+    current.nodes[0].localTransform[12] = 47;
+    await assert.rejects(loader.load(url), /content hash mismatch/);
+  } finally { loader.dispose(); }
+});
+test('a known content hash joins the resident package without a metadata request', async () => {
+  let fetches = 0;
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    fetchImpl: async () => { fetches += 1; return { ok: true, json: async () => packageMetadata() }; },
+    loadGlb: async () => ({ scene: decoded.scene }),
+    contentDigest: async bytes => createHash('sha256').update(bytes).digest('hex'),
+  });
+  const url = 'https://assets.example/fixture/render-package.json';
+  try {
+    const first = await loader.load(url);
+    assert.ok(first);
+    assert.equal(fetches, 1);
+    const second = await loader.load(url, { expectedContentHash: packageMetadata().contentHash });
+    assert.equal(second, first, 'the resident trusted package is returned, not a second decode');
+    assert.equal(fetches, 1, 'a content-hash hit never fetches or re-serializes metadata');
+    assert.equal(loader.diagnostics().cacheEntries, 1);
+  } finally { loader.dispose(); }
+});
+
+const IDENTITY = Object.freeze([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+
+function packageMetadata() {
+  const metadata = {
+    schema: RENDER_PACKAGE_SCHEMA,
+    assetId: 'fixture.ship',
+    kind: 'ship',
+    compiler: { name: 'spaceface-render-package-compiler', version: '1.0.0' },
+    contentHash: HASH,
+    render: { uri: 'render.glb', sha256: '2'.repeat(64), bytes: 256 },
+    provenance: {
+      sourceGlb: { uri: 'fixture.glb', sha256: '3'.repeat(64), bytes: 512 },
+      sourceManifest: null,
+      semantics: { sha256: '4'.repeat(64) },
+    },
+    nodes: [
+      {
+        id: 'fixture.body',
+        nodeName: 'Hull',
+        nodePath: [0],
+        role: 'immutable',
+        parentId: null,
+        localTransform: [...IDENTITY],
+        worldTransform: [...IDENTITY],
+        materialPipelineKey: 'opaque:front',
+        spatialClusterId: 'body',
+        mergeBoundary: 'body',
+      },
+      {
+        id: 'fixture.turret',
+        nodeName: 'Turret',
+        nodePath: [1],
+        role: 'dynamic',
+        parentId: null,
+        localTransform: [...IDENTITY],
+        worldTransform: [...IDENTITY],
+        materialPipelineKey: 'opaque:front',
+        spatialClusterId: 'body',
+        mergeBoundary: 'turret',
+      },
+    ],
+    anchors: [{
+      id: 'fixture.trail.left',
+      nodeName: 'FX_Trail_Left',
+      nodePath: [0, 0],
+      kind: 'trail',
+      parentNodeId: 'fixture.body',
+      localTransform: [...IDENTITY],
+      worldTransform: [...IDENTITY],
+    }],
+    dynamicGroups: [{
+      id: 'fixture.turret.group',
+      nodeId: 'fixture.turret',
+      kind: 'moving-part',
+    }],
+    geometry: [],
+    materials: [],
+    lods: [],
+    hlods: [],
+    collisions: [],
+    spatialClusters: [{ id: 'body', nodeIds: ['fixture.body', 'fixture.turret'], bounds: null }],
+  };
+  metadata.contentHash = createHash('sha256')
+    .update(stableJsonStringify(renderPackageContentIdentity(metadata)))
+    .digest('hex');
+  return metadata;
+}
+
+function semanticLocator(rawNodeName, recordIds) {
+  return {
+    [RENDER_PACKAGE_SEMANTIC_EXTRAS_KEY]: {
+      schema: RENDER_PACKAGE_SEMANTIC_EXTRAS_SCHEMA,
+      recordIds,
+      rawNodeName,
+    },
+  };
+}
+
+function decodedFixture(disposals = null) {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    0, 0, 0,
+    1, 0, 0,
+    0, 1, 0,
+  ], 3));
+  geometry.setIndex([0, 1, 2]);
+  const texture = new THREE.Texture();
+  texture.name = 'HullBaseColor';
+  const material = new THREE.MeshStandardMaterial({ map: texture });
+  material.name = 'HullMaterial';
+  if (disposals) {
+    geometry.dispose = () => { disposals.geometry++; };
+    material.dispose = () => { disposals.material++; };
+    texture.dispose = () => { disposals.texture++; };
+  }
+
+  const root = new THREE.Group();
+  root.name = 'FixtureScene';
+  const hull = new THREE.Mesh(geometry, material);
+  hull.name = 'Hull';
+  hull.userData = semanticLocator('Hull', ['fixture.body']);
+  const anchor = new THREE.Object3D();
+  anchor.name = 'FX_Trail_Left';
+  anchor.userData = semanticLocator('FX_Trail_Left', ['fixture.trail.left']);
+  hull.add(anchor);
+  const turret = new THREE.Mesh(geometry, material);
+  turret.name = 'Turret';
+  turret.userData = semanticLocator('Turret', ['fixture.turret']);
+  root.add(hull, turret);
+
+  return { scene: root, geometry, material, texture };
+}
+
+test('private orientation trace follows the real verified GLTF decoder through refill and rebind', async () => {
+  // An actual binary GLTF triangle, with the same semantic owners as packageMetadata().
+  // No GPU or texture decoder is stubbed; this exercises the production decoder's CPU path.
+  const bin = Buffer.alloc(80);
+  [0, 0, 0, 1, 0, 0, 0, 1, 0].forEach((value, i) => bin.writeFloatLE(value, i * 4));
+  [0, 0, 1, 0, 0, 1, 0, 0, 1].forEach((value, i) => bin.writeFloatLE(value, 36 + i * 4));
+  [0, 1, 2].forEach((value, i) => bin.writeUInt16LE(value, 72 + i * 2));
+  const json = {
+    asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0, 1] }],
+    nodes: [
+      { name: 'Hull', mesh: 0, children: [2], extras: semanticLocator('Hull', ['fixture.body']) },
+      { name: 'Turret', mesh: 0, extras: semanticLocator('Turret', ['fixture.turret']) },
+      { name: 'FX_Trail_Left', extras: semanticLocator('FX_Trail_Left', ['fixture.trail.left']) },
+    ],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2 }] }],
+    buffers: [{ byteLength: bin.length }],
+    bufferViews: [
+      { buffer: 0, byteOffset: 0, byteLength: 36 },
+      { buffer: 0, byteOffset: 36, byteLength: 36 },
+      { buffer: 0, byteOffset: 72, byteLength: 6 },
+    ],
+    accessors: [
+      { bufferView: 0, componentType: 5126, count: 3, type: 'VEC3', min: [0, 0, 0], max: [1, 1, 0] },
+      { bufferView: 1, componentType: 5126, count: 3, type: 'VEC3' },
+      { bufferView: 2, componentType: 5123, count: 3, type: 'SCALAR' },
+    ],
+  };
+  const jsonChunk = glbJson(json);
+  const bytes = Buffer.concat([jsonChunk, Buffer.alloc(8), bin]);
+  bytes.writeUInt32LE(bytes.length, 8);
+  bytes.writeUInt32LE(bin.length, jsonChunk.length);
+  bytes.writeUInt32LE(0x004e4942, jsonChunk.length + 4);
+  const metadata = packageMetadata();
+  metadata.render.sha256 = createHash('sha256').update(bytes).digest('hex');
+  metadata.render.bytes = bytes.length;
+  metadata.contentHash = createHash('sha256').update(stableJsonStringify(renderPackageContentIdentity(metadata))).digest('hex');
+  let reads = 0;
+  const loader = createRenderPackageLoader({ fetchImpl: async () => {
+    reads++;
+    return { ok: true, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
+  } });
+  const priorDiagnostic = globalThis.__SF_BUFFER_RESIZE_DIAG__;
+  const originalInfo = console.info;
+  const rows = [];
+  try {
+    const loaded = await loader.load(metadata);
+    const geometry = [...loaded.resources].find(resource => resource.isBufferGeometry);
+    assert.ok(geometry, 'the real GLTF scene publishes geometry');
+    assert.equal(detachPackageGeometry(geometry), true);
+    globalThis.__SF_BUFFER_RESIZE_DIAG__ = true;
+    console.info = (label, value) => {
+      if (label === '[render:package-refill]') rows.push(JSON.parse(value));
+      else originalInfo(label, value);
+    };
+    noteOrientationDetachedHold({}, { geometries: [geometry], textures: [] });
+    await presentedDetachRehydrateInFlight();
+    assert.equal(isPackageGeometryDetached(geometry), false);
+    assert.equal(reads, 2, 'the refill uses the real verified package decoder again');
+    assert.deepEqual(rows.map(row => row.stage), [
+      'decode:start', 'fetch-verify-glb:start', 'fetch-verify-glb:complete',
+      'prepass:start', 'prepass:complete', 'fetch-verify-images:start', 'fetch-verify-images:complete',
+      'parse:queued', 'parse:start', 'parse:complete',
+      'dedupe:queued', 'dedupe:start', 'dedupe:complete', 'rebind:start', 'rebind:complete',
+    ]);
+    assert.ok(rows.every(row => row.assetId === metadata.assetId && Number.isFinite(row.elapsedMs)));
+    assert.ok(geometry.attributes.position.array.length > 0);
+    assert.equal(geometry.attributes.normal.array.length, 9, 'the detached native GLTF attribute is refilled');
+  } finally {
+    console.info = originalInfo;
+    if (priorDiagnostic === undefined) delete globalThis.__SF_BUFFER_RESIZE_DIAG__;
+    else globalThis.__SF_BUFFER_RESIZE_DIAG__ = priorDiagnostic;
+    loader.dispose();
+  }
+});
+
+function flightPackageMetadata() {
+  const metadata = packageMetadata();
+  // The flight-static route is only eligible for a package with no dynamic-group ownership. The
+  // decoded fixture still contains a turret node so the generic plan has meaningful parity work;
+  // for this focused static fixture it is authored as an immutable primitive instead.
+  metadata.nodes = metadata.nodes.map((node) => ({ ...node, role: 'immutable' }));
+  metadata.dynamicGroups = [];
+  metadata.contentHash = createHash('sha256')
+    .update(stableJsonStringify(renderPackageContentIdentity(metadata)))
+    .digest('hex');
+  return metadata;
+}
+
+function preparedFlightFixture(decoded) {
+  return Object.freeze({
+    url: 'render.glb',
+    assetId: 'fixture.ship',
+    slot: 'ship',
+    primitives: Object.freeze([Object.freeze({
+      key: 'render.glb#Hull',
+      name: 'Hull',
+      geometry: decoded.geometry,
+      material: decoded.material,
+      matrix: new THREE.Matrix4(),
+      tags: Object.freeze({ lod: 'lod0', instance: true }),
+    })]),
+    markers: Object.freeze([Object.freeze({
+      name: 'FX_Trail_Left',
+      matrix: new THREE.Matrix4().makeTranslation(1, 2, 3),
+      tags: Object.freeze({ socket: true }),
+      userData: Object.freeze({ name: 'FX_Trail_Left' }),
+    })]),
+  });
+}
+
+function objectCount(root) {
+  let count = 0;
+  root.traverse(() => { count++; });
+  return count;
+}
+
+test('loader decodes once per content hash and creates lightweight instances sharing immutable resources', async () => {
+  const decoded = decodedFixture();
+  let decodeCount = 0;
+  const loader = createRenderPackageLoader({
+    loadGlb: async (url, metadata) => {
+      decodeCount++;
+      assert.equal(url, 'https://assets.example/render/fixture/render.glb');
+      assert.equal(metadata.assetId, 'fixture.ship');
+      return { scene: decoded.scene };
+    },
+  });
+  const metadata = packageMetadata();
+
+  const firstLoad = await loader.load(metadata, { baseUrl: 'https://assets.example/render/fixture/' });
+  const secondLoad = await loader.load(structuredClone(metadata), { baseUrl: 'https://assets.example/render/fixture/' });
+  assert.strictEqual(firstLoad, secondLoad);
+  assert.equal(decodeCount, 1);
+
+  const first = firstLoad.createInstance();
+  const second = firstLoad.createInstance();
+  assert.notStrictEqual(first.root, second.root);
+  assert.notStrictEqual(first.nodes.get('fixture.body'), second.nodes.get('fixture.body'));
+  assert.strictEqual(first.nodes.get('fixture.body').geometry, second.nodes.get('fixture.body').geometry);
+  assert.strictEqual(first.nodes.get('fixture.body').material, second.nodes.get('fixture.body').material);
+  assert.strictEqual(first.nodes.get('fixture.body').material.map, second.nodes.get('fixture.body').material.map);
+  assert.strictEqual(first.nodes.get('fixture.body').geometry, decoded.geometry);
+  assert.strictEqual(first.nodes.get('fixture.body').material, decoded.material);
+  assert.strictEqual(first.nodes.get('fixture.body').material.map, decoded.texture);
+
+  assert.equal(first.anchors.get('fixture.trail.left').name, 'FX_Trail_Left');
+  assert.strictEqual(first.dynamicGroups.get('fixture.turret.group'), first.nodes.get('fixture.turret'));
+  first.dynamicGroups.get('fixture.turret.group').rotation.y = 1.25;
+  assert.equal(second.dynamicGroups.get('fixture.turret.group').rotation.y, 0);
+
+  for (const resource of [decoded.geometry, decoded.material, decoded.texture]) {
+    assert.equal(resource.userData.spacefaceRenderPackageImmutable, true);
+    assert.equal(resource.userData.spacefaceSharedAsset, true);
+  }
+});
+
+test('loader records encoded package bytes as CPU residency, never as decoded GPU fallback', async () => {
+  const decoded = decodedFixture();
+  const residency = createAssetResidencyRegistry({ maxGpuBytes: 1 });
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+
+  await loader.load(packageMetadata());
+  const snapshot = residency.canonicalDiagnostics();
+  assert.equal(snapshot.cpuPackageBytes, 256);
+  assert.equal(snapshot.gpuResidentBytes, 42,
+    'position and index backing buffers are measured; package bytes are not spread over resources');
+  assert.equal(snapshot.residentBytes, snapshot.gpuResidentBytes);
+  assert.equal(snapshot.unaccountedResources, 1,
+    'the fixture texture has no image allocation and is reported instead of guessed');
+  const gpuReceipt = residency.enforceBudget();
+  assert.equal(gpuReceipt.budgetSatisfied, true,
+    'the measured GPU bytes can be reclaimed without treating the encoded package as GPU memory');
+  assert.equal(gpuReceipt.evictedBytes, 42);
+  assert.equal(residency.enforceBudget('cpu').budgetSatisfied, true,
+    'CPU package budget is planned independently from GPU bytes');
+  loader.dispose();
+});
+
+test('flight-static instances materialise one root per prepared primitive and marker while sharing resources', async () => {
+  const decoded = decodedFixture();
+  const prepared = preparedFlightFixture(decoded);
+  const loader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decoded,
+    prepareDecoded: async () => prepared,
+  });
+  const loaded = await loader.load(flightPackageMetadata(), { baseUrl: 'https://fixtures.test/' });
+
+  assert.equal(typeof loaded.createFlightInstance, 'function');
+  const first = loaded.createFlightInstance();
+  const second = loaded.createFlightInstance();
+  assert.equal(objectCount(first.root), 1 + prepared.primitives.length + prepared.markers.length);
+  assert.equal(objectCount(second.root), 1 + prepared.primitives.length + prepared.markers.length);
+  assert.notStrictEqual(first.root, second.root);
+
+  const firstObjects = [];
+  first.root.traverse((object) => firstObjects.push(object));
+  const firstMesh = firstObjects.find((object) => object.isMesh === true);
+  const firstMarker = firstObjects.find((object) => object.name === 'FX_Trail_Left');
+  assert.equal(
+    firstObjects.filter((object) => object.isMesh === true).length,
+    prepared.primitives.length,
+    'flight instance has one Mesh per prepared primitive',
+  );
+  assert.equal(
+    firstObjects.filter((object) => object !== first.root && object.isMesh !== true).length,
+    prepared.markers.length,
+    'flight instance has one Object3D per prepared marker',
+  );
+  assert.ok(firstMesh?.isMesh, 'prepared primitive becomes a Mesh');
+  assert.ok(firstMarker?.isObject3D && !firstMarker.isMesh, 'prepared marker becomes an Object3D');
+
+  const secondObjects = [];
+  second.root.traverse((object) => secondObjects.push(object));
+  const secondMesh = secondObjects.find((object) => object.isMesh === true);
+  assert.ok(secondMesh?.isMesh);
+  assert.notStrictEqual(firstMesh, secondMesh, 'flight instances have independent Mesh objects');
+  assert.strictEqual(firstMesh.geometry, secondMesh.geometry, 'flight instances share geometry');
+  assert.strictEqual(firstMesh.material, secondMesh.material, 'flight instances share material');
+  const scene = new THREE.Scene();
+  scene.add(first.root, second.root);
+  firstMesh.castShadow = secondMesh.castShadow = true;
+
+  // The generic route remains the full load-time plan, including the anchor and turret nodes.
+  const generic = loaded.createInstance();
+  assert.equal(generic.planNodes.length, loaded.planNodeCount);
+  assert.equal(objectCount(generic.root), loaded.planNodeCount);
+  assert.ok(objectCount(first.root) < generic.planNodes.length,
+    'flight-static route is smaller than generic plan cloning');
+
+  assert.equal(first.dispose(), true);
+  assert.equal(first.dispose(), false);
+  assert.deepEqual(spacefaceShadowCastersIn(scene), [secondMesh],
+    'retiring one flat flight plan preserves the sharing live instance');
+  second.dispose();
+  assert.deepEqual(spacefaceShadowCastersIn(scene), []);
+  generic.dispose();
+  loader.dispose();
+});
+
+test('flight-static instance creation rejects missing preparation and dynamic-group packages', async () => {
+  const decoded = decodedFixture();
+  const unpreparedLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decoded,
+  });
+  const unprepared = await unpreparedLoader.load(flightPackageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  assert.throws(
+    () => unprepared.createFlightInstance(),
+    /no prepared flight records|prepared flight/i,
+  );
+  unpreparedLoader.dispose();
+
+  const prepared = preparedFlightFixture(decoded);
+  const dynamicLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decoded,
+    prepareDecoded: async () => prepared,
+  });
+  const dynamic = await dynamicLoader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  assert.throws(
+    () => dynamic.createFlightInstance(),
+    /dynamic groups/i,
+  );
+  dynamicLoader.dispose();
+});
+
+test('runtime-table hash and expected binding fail closed while legacy packages remain valid', async () => {
+  const runtimeMetadata = packageMetadata();
+  runtimeMetadata.runtime = {
+    schema: 'spaceface.runtime.fixture.v3',
+    primitives: [{ name: 'Hull', planIndex: 1 }],
+    markers: [{ name: 'FX_Trail_Left', planIndex: 2 }],
+  };
+  runtimeMetadata.runtimeHash = await computeRenderPackageRuntimeHash(runtimeMetadata);
+
+  const trustedLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decodedFixture(),
+  });
+  const trusted = await trustedLoader.load(runtimeMetadata, {
+    baseUrl: 'https://fixtures.test/',
+    expectedRuntimeHash: runtimeMetadata.runtimeHash,
+  });
+  assert.equal(trusted.assetId, 'fixture.ship');
+  trustedLoader.dispose();
+
+  const mutated = structuredClone(runtimeMetadata);
+  mutated.runtime.primitives[0].name = 'TamperedHull';
+  const mutationLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decodedFixture(),
+  });
+  await assert.rejects(
+    mutationLoader.load(mutated, { expectedRuntimeHash: runtimeMetadata.runtimeHash }),
+    /runtime hash mismatch/i,
+  );
+  mutationLoader.dispose();
+
+  const rebound = structuredClone(mutated);
+  rebound.runtimeHash = await computeRenderPackageRuntimeHash(rebound);
+  const expectedBindingLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decodedFixture(),
+  });
+  await assert.rejects(
+    expectedBindingLoader.load(rebound, { expectedRuntimeHash: runtimeMetadata.runtimeHash }),
+    /runtime trust-anchor mismatch/i,
+  );
+  expectedBindingLoader.dispose();
+
+  const legacyLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decodedFixture(),
+  });
+  const legacy = await legacyLoader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  assert.equal(legacy.assetId, 'fixture.ship', 'v2 packages without a runtime hash remain loadable');
+  legacyLoader.dispose();
+});
+
+test('loader exposes one prepared blueprint and lets a render boundary own instance residency', async () => {
+  const decoded = decodedFixture();
+  const residency = createAssetResidencyRegistry();
+  const prepared = Object.freeze({ route: 'prepared-blueprint' });
+  let prepareCount = 0;
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+    prepareDecoded(value, metadata, renderUrl) {
+      prepareCount++;
+      assert.strictEqual(value.scene, decoded.scene);
+      assert.equal(metadata.assetId, 'fixture.ship');
+      assert.equal(renderUrl, 'render.glb');
+      return prepared;
+    },
+  });
+
+  const loaded = await loader.load(packageMetadata());
+  assert.equal(prepareCount, 1);
+  assert.strictEqual(loaded.prepared, prepared);
+  assert.match(loaded.residencyKey, /^render-package:/);
+
+  const boundary = new THREE.Group();
+  assert.equal(loaded.retain(boundary, { role: 'live-boundary' }), true);
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 2);
+  const instance = loaded.createInstance({
+    residencyOwner: boundary,
+    residencyRole: 'live-boundary',
+  });
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 2,
+    'an already-retained external owner is shared instead of creating an untracked instance owner');
+  assert.equal(instance.dispose(), true);
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 2,
+    'disposing one hierarchy cannot release the boundary-wide asset hold');
+  assert.equal(residency.releaseOwner(boundary, 'fixture-boundary-removed'), 1);
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 1);
+});
+
+test('released external owners cannot create an instance or leave a live package untracked', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+    prepareDecoded: async () => preparedFlightFixture(decoded),
+  });
+  const loaded = await loader.load(flightPackageMetadata());
+  const owner = new THREE.Group();
+  assert.equal(loaded.retain(owner, { role: 'live-boundary' }), true);
+  assert.equal(residency.releaseOwner(owner, 'fixture-boundary-removed'), 1);
+  assert.equal(residency.isOwnerReleased(owner), true);
+
+  assert.throws(
+    () => loaded.createInstance({ residencyOwner: owner }),
+    /residency owner has been released/i,
+  );
+  assert.throws(
+    () => loaded.createFlightInstance({ residencyOwner: owner }),
+    /residency owner has been released/i,
+  );
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 1,
+    'the rejected external owner does not mint a hidden instance hold');
+  assert.deepEqual(disposals, { geometry: 0, material: 0, texture: 0 });
+
+  assert.equal(loaded.release('fixture-package-released'), true);
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 },
+    'the package retires cleanly after the rejected instance attempts');
+  loader.dispose();
+});
+
+test('stepped instance creation rejects an external owner released during a yield', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  for (let i = 0; i < 510; i++) decoded.scene.add(new THREE.Object3D());
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+  const loaded = await loader.load(packageMetadata());
+  const owner = new THREE.Group();
+  assert.equal(loaded.retain(owner, { role: 'live-boundary' }), true);
+
+  const steps = loaded.createInstanceSteps({ residencyOwner: owner });
+  const yielded = steps.next();
+  assert.equal(yielded.done, false, 'the expanded fixture reaches the paced clone boundary');
+  assert.equal(residency.releaseOwner(owner, 'fixture-boundary-removed'), 1);
+  assert.throws(
+    () => steps.next(),
+    /residency owner has been released/i,
+    'a released owner cannot publish the partially cloned instance after yielding',
+  );
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 1,
+    'the failed stepped creation leaves only the package owner');
+  assert.equal(loaded.release('fixture-package-released'), true);
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 });
+  loader.dispose();
+});
+
+test('live external owners still share generic and flight-static instances', async () => {
+  const decoded = decodedFixture();
+  const prepared = preparedFlightFixture(decoded);
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+    prepareDecoded: async () => prepared,
+  });
+  const loaded = await loader.load(flightPackageMetadata());
+  const owner = new THREE.Group();
+  assert.equal(loaded.retain(owner, { role: 'live-boundary' }), true);
+  const generic = loaded.createInstance({ residencyOwner: owner });
+  const flight = loaded.createFlightInstance({ residencyOwner: owner });
+  assert.equal(generic.disposed, false);
+  assert.equal(flight.disposed, false);
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 2,
+    'duplicate retains share the existing live external owner');
+  assert.equal(generic.dispose(), true);
+  assert.equal(flight.dispose(), true);
+  assert.equal(residency.releaseOwner(owner, 'fixture-boundary-removed'), 1);
+  loader.dispose();
+});
+
+test('loader validates metadata and declared content identity before decoding', async () => {
+  let decodeCount = 0;
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => {
+      decodeCount++;
+      return { scene: decoded.scene };
+    },
+  });
+
+  const invalid = packageMetadata();
+  invalid.dynamicGroups[0].nodeId = 'missing.node';
+  await assert.rejects(loader.load(invalid), /render package validation failed.*reference/i);
+  assert.equal(decodeCount, 0);
+
+  const accepted = packageMetadata();
+  await assert.rejects(
+    loader.load(accepted, {
+      baseUrl: 'https://assets.example/render/fixture/',
+      expectedContentHash: '',
+    }),
+    /expectedContentHash must be lowercase SHA-256/i,
+  );
+  await assert.rejects(
+    loader.load(accepted, {
+      baseUrl: 'https://assets.example/render/fixture/',
+      expectedContentHash: '5'.repeat(64),
+    }),
+    /trust-anchor mismatch/i,
+  );
+  assert.equal(decodeCount, 0);
+
+  const acceptedLoad = await loader.load(accepted, {
+    baseUrl: 'https://assets.example/render/fixture/',
+    expectedContentHash: accepted.contentHash,
+  });
+  assert.equal(Object.isFrozen(acceptedLoad.metadata), true);
+  assert.equal(Object.isFrozen(acceptedLoad.metadata.nodes[0]), true);
+  assert.throws(() => { acceptedLoad.metadata = packageMetadata(); }, TypeError);
+  assert.throws(() => { acceptedLoad.metadata.nodes[0].nodeName = 'Turret'; }, TypeError);
+  const acceptedInstance = acceptedLoad.createInstance();
+  assert.equal(acceptedInstance.nodes.get('fixture.body').name, 'Hull');
+  acceptedInstance.dispose();
+
+  const relocated = packageMetadata();
+  relocated.render.uri = 'relocated.glb';
+  relocated.provenance.sourceGlb.uri = 'sources/relocated-fixture.glb';
+  assert.strictEqual(
+    await loader.load(relocated, { baseUrl: 'https://cdn.example/render/fixture/' }),
+    acceptedLoad,
+    'relocatable provenance and transport URIs do not create another decoded generation',
+  );
+  const tampered = packageMetadata();
+  tampered.render.sha256 = '9'.repeat(64);
+  await assert.rejects(
+    loader.load(tampered, { baseUrl: 'https://assets.example/render/fixture/' }),
+    /content hash mismatch/i,
+  );
+  assert.equal(decodeCount, 1);
+});
+
+test('loader disposes decoded resources when semantic template validation fails before registration', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  decoded.scene.children[0].userData[RENDER_PACKAGE_SEMANTIC_EXTRAS_KEY].rawNodeName = 'WrongHull';
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+
+  await assert.rejects(loader.load(packageMetadata()), /names WrongHull instead of Hull/i);
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 });
+  assert.equal(loader.diagnostics().residency.residentAssets, 0);
+  assert.equal(loader.diagnostics().cacheEntries, 0);
+});
+
+test('loader rejects missing and duplicate compiler-owned semantic IDs', async () => {
+  const missing = decodedFixture();
+  delete missing.scene.children[0].children[0].userData[RENDER_PACKAGE_SEMANTIC_EXTRAS_KEY];
+  const missingLoader = createRenderPackageLoader({
+    loadGlb: async () => ({ scene: missing.scene }),
+  });
+  await assert.rejects(missingLoader.load(packageMetadata()), /fixture\.trail\.left is missing/i);
+
+  const duplicate = decodedFixture();
+  duplicate.scene.children[1].userData[RENDER_PACKAGE_SEMANTIC_EXTRAS_KEY].recordIds.push('fixture.body');
+  const duplicateLoader = createRenderPackageLoader({
+    loadGlb: async () => ({ scene: duplicate.scene }),
+  });
+  await assert.rejects(duplicateLoader.load(packageMetadata()), /fixture\.body is duplicated/i);
+});
+
+test('package and instance owners dispose shared resources only at the final residency release', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  decoded.scene.traverse((object) => { if (object.isMesh) object.castShadow = true; });
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+  const metadata = packageMetadata();
+  const loaded = await loader.load(metadata);
+  const first = loaded.createInstance();
+  const second = loaded.createInstance();
+  const scene = new THREE.Scene();
+  scene.add(decoded.scene, first.root, second.root);
+  const sourceCasters = spacefaceShadowCastersIn(decoded.scene);
+  const secondCasters = spacefaceShadowCastersIn(second.root);
+  assert.equal(spacefaceShadowCastersIn(scene).length, sourceCasters.length * 3);
+
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 3);
+  assert.equal(loaded.release('fixture-package-released'), true);
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 2);
+  assert.deepEqual(disposals, { geometry: 0, material: 0, texture: 0 });
+  assert.throws(() => loaded.createInstance(), /must be retained/i);
+
+  assert.strictEqual(await loader.load(structuredClone(metadata)), loaded);
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 3);
+  assert.equal(loaded.release('fixture-package-released-again'), true);
+  assert.equal(first.dispose(), true);
+  assert.equal(first.dispose(), false);
+  assert.deepEqual(new Set(spacefaceShadowCastersIn(scene)), new Set([...sourceCasters, ...secondCasters]),
+    'instance retirement only unregisters its own flat plan nodes');
+  assert.deepEqual(disposals, { geometry: 0, material: 0, texture: 0 });
+  assert.equal(second.dispose(), true);
+  assert.deepEqual(spacefaceShadowCastersIn(scene), [],
+    'final eviction also unregisters the retired decoded template');
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 });
+  assert.equal(residency.canonicalDiagnostics().residentAssets, 0);
+  assert.equal(loader.diagnostics().cacheEntries, 0);
+  assert.throws(() => loaded.createInstance(), /must be retained/i);
+});
+
+test('loader disposal cancels an in-flight package generation and releases decoded resources', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  decoded.scene.traverse((object) => { if (object.isMesh) object.castShadow = true; });
+  assert.equal(spacefaceShadowCastersIn(decoded.scene).length, 2);
+  let resolveDecode;
+  let markDecodeStarted;
+  const decodeStarted = new Promise((resolve) => { markDecodeStarted = resolve; });
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => {
+      markDecodeStarted();
+      return new Promise((resolve) => { resolveDecode = resolve; });
+    },
+  });
+
+  const pending = loader.load(packageMetadata());
+  await decodeStarted;
+  assert.equal(loader.dispose('fixture-loader-disposed'), true);
+  resolveDecode({ scene: decoded.scene });
+  await assert.rejects(pending, { name: 'AbortError' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 });
+  assert.deepEqual(spacefaceShadowCastersIn(decoded.scene), [],
+    'a decode finishing after cancellation releases source Mesh shadow membership');
+  assert.equal(loader.diagnostics().residency.residentAssets, 0);
+  await assert.rejects(loader.load(packageMetadata()), /loader has been disposed/i);
+});
+
+test('late package progress and decode completion retain cancellation safety after admission settles', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  let resolveDecode;
+  let markDecodeStarted;
+  let reportProgress;
+  let ownerProgressCalls = 0;
+  const decodeStarted = new Promise((resolve) => { markDecodeStarted = resolve; });
+  const loader = createRenderPackageLoader({
+    loadGlb: async (_url, _metadata, onProgress) => {
+      reportProgress = onProgress;
+      markDecodeStarted();
+      return new Promise((resolve) => { resolveDecode = resolve; });
+    },
+  });
+
+  const pending = loader.load(packageMetadata(), { onFetchProgress: () => { ownerProgressCalls++; } });
+  await decodeStarted;
+  assert.equal(loader.dispose('fixture-late-decode-cancel'), true);
+  await assert.rejects(pending, { name: 'AbortError' },
+    'the caller retains the original cancellation verdict');
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(typeof reportProgress, 'function');
+  assert.doesNotThrow(() => reportProgress(),
+    'a late decoder progress callback must remain cancellation-safe after the cache entry detaches admission');
+  assert.equal(ownerProgressCalls, 0, 'late progress does not call back into a completed/canceled owner scope');
+
+  resolveDecode({ scene: decoded.scene });
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.doesNotThrow(() => reportProgress(),
+    'progress arriving after the underlying decode settles is ignored safely');
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 },
+    'a late decoded payload is disposed instead of being published');
+  assert.equal(loader.diagnostics().cacheEntries, 0, 'the canceled generation is not cached');
+  assert.equal(loader.diagnostics().residency.residentAssets, 0,
+    'the late decode does not publish residency');
+});
+
+test('loader disposal during content hashing cannot admit a later decode', async () => {
+  const metadata = packageMetadata();
+  let decodeCount = 0;
+  let resolveDigest;
+  let markDigestStarted;
+  const digestStarted = new Promise((resolve) => { markDigestStarted = resolve; });
+  const loader = createRenderPackageLoader({
+    contentDigest: async () => {
+      markDigestStarted();
+      return new Promise((resolve) => { resolveDigest = resolve; });
+    },
+    loadGlb: async () => {
+      decodeCount++;
+      return decodedFixture();
+    },
+  });
+
+  const pending = loader.load(metadata);
+  await digestStarted;
+  assert.equal(loader.dispose('fixture-loader-disposed-during-hash'), true);
+  resolveDigest(metadata.contentHash);
+  await assert.rejects(pending, /loader has been disposed/i);
+  assert.equal(decodeCount, 0);
+  assert.equal(loader.diagnostics().cacheEntries, 0);
+});
+
+test('source fallback is explicit, diagnostic, and never changes the ordinary package route silently', async () => {
+  const decoded = decodedFixture();
+  let decodeCount = 0;
+  let fallbackCount = 0;
+  const sourceValue = Object.freeze({ source: 'fixture.glb' });
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => {
+      decodeCount++;
+      return { scene: decoded.scene };
+    },
+    loadSourceFallback: async ({ packageError }) => {
+      fallbackCount++;
+      assert.match(packageError.message, /content hash mismatch/i);
+      return sourceValue;
+    },
+  });
+  const tampered = packageMetadata();
+  tampered.nodes[0].mergeBoundary = 'forged-boundary';
+
+  await assert.rejects(loader.load(tampered), /content hash mismatch/i);
+  assert.equal(fallbackCount, 0, 'ordinary loading must remain fail-closed');
+  const fallback = await loader.loadWithSourceFallback(tampered);
+  assert.equal(fallback.route, 'source-fallback');
+  assert.strictEqual(fallback.value, sourceValue);
+  assert.strictEqual(fallback.source, sourceValue);
+  assert.equal(fallback.renderPackage, null);
+  assert.match(fallback.packageError.message, /content hash mismatch/i);
+  assert.equal(decodeCount, 0);
+  assert.equal(fallbackCount, 1);
+
+  const packageRoute = await loader.loadWithSourceFallback(packageMetadata());
+  assert.equal(packageRoute.route, 'render-package');
+  assert.strictEqual(packageRoute.value, packageRoute.renderPackage);
+  assert.equal(packageRoute.source, null);
+  assert.equal(fallbackCount, 1);
+  assert.equal(decodeCount, 1);
+});
+
+test('disposing a package load cannot start a replacement source fallback', async () => {
+  let started;
+  const decodeStarted = new Promise((resolve) => { started = resolve; });
+  let fallbackCount = 0;
+  const loader = createRenderPackageLoader({
+    loadGlb: () => { started(); return new Promise(() => {}); },
+    loadSourceFallback: () => { fallbackCount++; return {}; },
+  });
+  const pending = loader.loadWithSourceFallback(packageMetadata());
+  const outcome = assert.rejects(pending, { name: 'AbortError' });
+  await decodeStarted;
+  loader.dispose();
+  await outcome;
+  assert.equal(fallbackCount, 0);
+});
+
+test('loader preserves absolute, rooted, protocol-relative, and parent-relative render URLs', async () => {
+  const cases = [
+    {
+      baseUrl: 'packages/fixture/',
+      uri: 'render.glb',
+      expected: 'packages/fixture/render.glb',
+    },
+    {
+      baseUrl: '../packages/fixture/',
+      uri: 'render.glb',
+      expected: '../packages/fixture/render.glb',
+    },
+    {
+      baseUrl: 'packages/fixture/',
+      uri: 'https://cdn.example/fixture/render.glb',
+      expected: 'https://cdn.example/fixture/render.glb',
+    },
+    {
+      baseUrl: 'packages/fixture/',
+      uri: '//cdn.example/fixture/render.glb',
+      expected: '//cdn.example/fixture/render.glb',
+    },
+    {
+      baseUrl: 'packages/fixture/',
+      uri: '/fixture/render.glb',
+      expected: '/fixture/render.glb',
+    },
+    {
+      baseUrl: 'https://assets.example/packages/fixture/',
+      uri: '//cdn.example/fixture/render.glb',
+      expected: 'https://cdn.example/fixture/render.glb',
+    },
+    {
+      baseUrl: 'https://assets.example/packages/fixture/',
+      uri: '/fixture/render.glb',
+      expected: 'https://assets.example/fixture/render.glb',
+    },
+  ];
+
+  for (const fixture of cases) {
+    const decoded = decodedFixture();
+    const metadata = packageMetadata();
+    metadata.render.uri = fixture.uri;
+    const loader = createRenderPackageLoader({
+      loadGlb: async (url) => {
+        assert.equal(url, fixture.expected);
+        return { scene: decoded.scene };
+      },
+    });
+    const loaded = await loader.load(metadata, { baseUrl: fixture.baseUrl });
+    assert.equal(loaded.assetId, 'fixture.ship');
+    loader.dispose('url-fixture-complete');
+  }
+});
+
+test('loader revalidates package URLs so a stale Electron cache cannot pin Hitch', async () => {
+  const decoded = decodedFixture();
+  const current = packageMetadata();
+  const stale = packageMetadata();
+  stale.render.sha256 = '9'.repeat(64);
+  stale.contentHash = createHash('sha256')
+    .update(stableJsonStringify(renderPackageContentIdentity(stale)))
+    .digest('hex');
+
+  const fetches = [];
+  const loader = createRenderPackageLoader({
+    fetchImpl: async (url, options) => {
+      fetches.push({ url, cache: options && options.cache });
+      assert.equal(url, 'assets/ships/release/render-packages/kestrel/render-package.json');
+      return {
+        ok: true,
+        json: async () => (options && options.cache === 'reload' ? current : stale),
+      };
+    },
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+
+  const loaded = await loader.load(
+    'assets/ships/release/render-packages/kestrel/render-package.json',
+    { expectedContentHash: current.contentHash },
+  );
+  assert.equal(loaded.metadata.contentHash, current.contentHash);
+  assert.deepEqual(fetches.map((entry) => entry.cache), ['no-cache', 'reload']);
+});
+
+test('loader preserves parent traversal when metadata itself is loaded by relative URL', async () => {
+  const decoded = decodedFixture();
+  const metadata = packageMetadata();
+  const loader = createRenderPackageLoader({
+    fetchImpl: async (url) => {
+      assert.equal(url, '../packages/fixture/render-package.json');
+      return { ok: true, json: async () => metadata };
+    },
+    loadGlb: async (url) => {
+      assert.equal(url, '../packages/fixture/render.glb');
+      return { scene: decoded.scene };
+    },
+  });
+
+  const loaded = await loader.load('../packages/fixture/render-package.json');
+  assert.equal(loaded.assetId, 'fixture.ship');
+});
+
+test('loader resolves relative render URLs from the final redirected metadata response URL', async () => {
+  const decoded = decodedFixture();
+  const metadata = packageMetadata();
+  const loader = createRenderPackageLoader({
+    fetchImpl: async (url) => {
+      assert.equal(url, 'https://assets.example/releases/latest/render-package.json');
+      return {
+        ok: true,
+        url: 'https://cdn.example/packages/fixture/render-package.json',
+        json: async () => metadata,
+      };
+    },
+    loadGlb: async (url) => {
+      assert.equal(url, 'https://cdn.example/packages/fixture/render.glb');
+      return { scene: decoded.scene };
+    },
+  });
+
+  const loaded = await loader.load('https://assets.example/releases/latest/render-package.json');
+  assert.equal(loaded.assetId, 'fixture.ship');
+});
+
+test('flat-plan instances are structurally identical to a recursive SkeletonUtils clone', async () => {
+  // The flat instance plan replaced `SkeletonUtils.clone()` + a semantic re-traversal. The bar for
+  // that swap is not "it runs" but "the resulting graph is indistinguishable". Build one instance
+  // through the loader and one through the old recursive route from the SAME template, walk both
+  // depth-first, and compare every property an instance is allowed to differ in.
+  const { clone: cloneObjectGraph } = await import('three/addons/utils/SkeletonUtils.js');
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => decoded,
+    residency: createAssetResidencyRegistry(),
+  });
+  const loaded = await loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  const instance = loaded.createInstance();
+
+  const legacyRoot = cloneObjectGraph(decoded.scene);
+
+  const walk = (object, out, parentName) => {
+    out.push({
+      name: object.name,
+      ctor: object.constructor.name,
+      parentName,
+      isMesh: object.isMesh === true,
+      matrix: [...object.matrix.elements],
+      position: object.position.toArray(),
+      quaternion: object.quaternion.toArray(),
+      scale: object.scale.toArray(),
+      visible: object.visible,
+      castShadow: object.castShadow,
+      receiveShadow: object.receiveShadow,
+      frustumCulled: object.frustumCulled,
+      renderOrder: object.renderOrder,
+      layers: object.layers.mask,
+      geometry: object.geometry || null,
+      material: object.material || null,
+      userData: JSON.stringify(object.userData),
+    });
+    for (const child of object.children) walk(child, out, object.name);
+    return out;
+  };
+
+  const fromPlan = walk(instance.root, [], null);
+  const fromClone = walk(legacyRoot, [], null);
+
+  assert.equal(fromPlan.length, fromClone.length, 'same node count');
+  for (let i = 0; i < fromPlan.length; i++) {
+    const a = fromPlan[i];
+    const b = fromClone[i];
+    // The root's name and userData are deliberately rewritten by createInstance (instance name and
+    // the spacefaceRenderPackage stamp), so those two fields are compared for every node but the
+    // root. Everything else must match exactly, including traversal ORDER.
+    assert.equal(a.ctor, b.ctor, `node ${i} constructor`);
+    assert.equal(a.parentName, b.parentName, `node ${i} parent`);
+    assert.equal(a.isMesh, b.isMesh, `node ${i} isMesh`);
+    assert.deepEqual(a.matrix, b.matrix, `node ${i} matrix`);
+    assert.deepEqual(a.position, b.position, `node ${i} position`);
+    assert.deepEqual(a.quaternion, b.quaternion, `node ${i} quaternion`);
+    assert.deepEqual(a.scale, b.scale, `node ${i} scale`);
+    assert.equal(a.visible, b.visible, `node ${i} visible`);
+    assert.equal(a.castShadow, b.castShadow, `node ${i} castShadow`);
+    assert.equal(a.receiveShadow, b.receiveShadow, `node ${i} receiveShadow`);
+    assert.equal(a.frustumCulled, b.frustumCulled, `node ${i} frustumCulled`);
+    assert.equal(a.renderOrder, b.renderOrder, `node ${i} renderOrder`);
+    assert.equal(a.layers, b.layers, `node ${i} layers`);
+    if (i > 0) {
+      assert.equal(a.name, b.name, `node ${i} name`);
+      assert.equal(a.userData, b.userData, `node ${i} userData`);
+    }
+    // Immutable resources must be SHARED with the template, not copied, on both routes.
+    assert.equal(a.geometry, b.geometry, `node ${i} shares geometry`);
+    assert.equal(a.material, b.material, `node ${i} shares material`);
+  }
+
+  // planNodes is the same set, in the same depth-first pre-order, as walking the graph.
+  assert.deepEqual(
+    instance.planNodes.map((object) => object.name),
+    fromPlan.map((entry) => entry.name),
+    'planNodes matches depth-first pre-order',
+  );
+
+  // Semantic maps resolve to the same objects the graph walk found.
+  assert.equal(instance.nodes.get('fixture.body').name, 'Hull');
+  assert.equal(instance.nodes.get('fixture.turret').name, 'Turret');
+  assert.equal(instance.anchors.get('fixture.trail.left').name, 'FX_Trail_Left');
+  assert.equal(instance.dynamicGroups.get('fixture.turret.group'), instance.nodes.get('fixture.turret'));
+  // …and they are this instance's objects, never the shared template's.
+  assert.notEqual(instance.nodes.get('fixture.body'), decoded.scene.children[0]);
+
+  instance.dispose();
+  loader.dispose();
+});
+
+test('createNode hook substitutes plan objects without changing plan or semantic-map identity', async () => {
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => decoded,
+    residency: createAssetResidencyRegistry(),
+  });
+  const loaded = await loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  const calls = [];
+  let bodyProxy = null;
+  const instance = loaded.createInstance({
+    createNode({ source, planIndex, parentIndex }) {
+      calls.push({ name: source.name, planIndex, parentIndex });
+      if (source.name !== 'Hull') return null;
+      bodyProxy = new THREE.Object3D().copy(source, false);
+      bodyProxy.geometry = source.geometry;
+      bodyProxy.material = source.material;
+      bodyProxy.userData.spacefaceInstanceProxy = true;
+      return bodyProxy;
+    },
+  });
+
+  assert.deepEqual(calls, [
+    { name: 'FixtureScene', planIndex: 0, parentIndex: -1 },
+    { name: 'Hull', planIndex: 1, parentIndex: 0 },
+    { name: 'FX_Trail_Left', planIndex: 2, parentIndex: 1 },
+    { name: 'Turret', planIndex: 3, parentIndex: 0 },
+  ]);
+  assert.strictEqual(instance.planNodes[1], bodyProxy);
+  assert.strictEqual(instance.nodes.get('fixture.body'), bodyProxy,
+    'semantic nodes map retains the exact hook-created object');
+  assert.strictEqual(instance.anchors.get('fixture.trail.left').parent, bodyProxy,
+    'recorded parent index attaches later plan nodes to the substitute');
+  assert.strictEqual(instance.dynamicGroups.get('fixture.turret.group'), instance.planNodes[3]);
+  assert.strictEqual(bodyProxy.geometry, decoded.geometry);
+  assert.strictEqual(bodyProxy.material, decoded.material);
+  assert.deepEqual(instance.planNodes.map((object) => object.name), [
+    'FixtureScene', 'Hull', 'FX_Trail_Left', 'Turret',
+  ]);
+
+  instance.dispose();
+  loader.dispose();
+});
+
+test('createNode hook rejects non-objects, template nodes, aliases, descendants, and attached objects', async () => {
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => decoded,
+    residency: createAssetResidencyRegistry(),
+  });
+  const loaded = await loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+
+  assert.throws(
+    () => loaded.createInstance({ createNode: () => ({}) }),
+    /must return an Object3D or null/i,
+  );
+  assert.throws(
+    () => loaded.createInstance({ createNode: ({ source }) => source }),
+    /cannot return a template node/i,
+  );
+  const reused = new THREE.Object3D();
+  assert.throws(
+    () => loaded.createInstance({ createNode: () => reused }),
+    /must return a unique Object3D/i,
+  );
+  const childBearing = new THREE.Object3D();
+  childBearing.add(new THREE.Object3D());
+  assert.throws(
+    () => loaded.createInstance({ createNode: () => childBearing }),
+    /must return an Object3D without children/i,
+  );
+  const parent = new THREE.Group();
+  const attached = new THREE.Object3D();
+  parent.add(attached);
+  assert.throws(
+    () => loaded.createInstance({ createNode: () => attached }),
+    /must return an unattached Object3D/i,
+  );
+
+  assert.equal(decoded.scene.children[0].parent, decoded.scene,
+    'rejected hooks never reparent the decoded template graph');
+  loader.dispose();
+});
+
+test('two instances of one package are independent in transform and shared in resources', async () => {
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => decoded,
+    residency: createAssetResidencyRegistry(),
+  });
+  const loaded = await loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  const a = loaded.createInstance();
+  const b = loaded.createInstance();
+
+  assert.notEqual(a.root, b.root);
+  assert.notEqual(a.nodes.get('fixture.turret'), b.nodes.get('fixture.turret'));
+
+  a.nodes.get('fixture.turret').position.set(5, 6, 7);
+  assert.deepEqual(b.nodes.get('fixture.turret').position.toArray(), [0, 0, 0],
+    'moving one instance must not move another');
+  assert.deepEqual(decoded.scene.children[1].position.toArray(), [0, 0, 0],
+    'moving an instance must not move the template');
+
+  assert.equal(a.nodes.get('fixture.body').geometry, b.nodes.get('fixture.body').geometry,
+    'geometry stays shared across instances');
+  assert.equal(a.nodes.get('fixture.body').material, b.nodes.get('fixture.body').material,
+    'material stays shared across instances');
+
+  a.dispose();
+  b.dispose();
+  loader.dispose();
+});
+
+test('a package containing skinned content is rejected rather than silently deep-cloned', async () => {
+  // Falling back to a recursive clone for skinned content would reintroduce the exact per-instance
+  // cost the flat plan removes, and would do it invisibly. Fail loudly instead.
+  const decoded = decodedFixture();
+  const skinned = new THREE.SkinnedMesh(decoded.geometry, decoded.material);
+  skinned.name = 'SkinnedIntruder';
+  decoded.scene.add(skinned);
+
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => decoded,
+    residency: createAssetResidencyRegistry(),
+  });
+  await assert.rejects(
+    loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' }),
+    /is a skinned mesh; render packages must contain only rigid/,
+  );
+  loader.dispose();
+});
+
+test('load claims the consumer owner at commit so byte pressure cannot evict a mount in flight', async () => {
+  // Regression for the save/load station-shell hang (PQ-033.02): a decoded package used to sit
+  // strictly render-package-cache-owned between commit and the caller's async retain
+  // continuation, so inline byte-pressure enforcement could reclaim it mid-mount and the loader
+  // retried forever while the authored-readiness gate stayed closed. The consumer owner now lands
+  // on the entry inside the decode commit, before the promise resolves.
+  const decoded = decodedFixture();
+  const residency = createAssetResidencyRegistry({ maxPackageCacheOnlyBytes: 1 });
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+  const consumer = { type: 'test-boundary-consumer' };
+  const loaded = await loader.load(packageMetadata(), {
+    residencyOwner: consumer,
+    residencyRole: 'current-sector',
+    residencySectorId: 'sector-test',
+  });
+
+  assert.equal(loaded.evicted, false,
+    'a just-committed package must still be resident for its claiming consumer');
+  const row = residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+  assert.ok(row, 'decoded package is registered');
+  assert.ok(row.roles.includes('current-sector'),
+    'the consumer role is pinned synchronously at commit, not after a later continuation');
+  assert.ok(row.sectors.includes('sector-test'), 'the consumer sector id is retained');
+  loader.dispose();
+});
+
+test('canceling one consumer leaves a shared decode available without retaining its dead owner', async () => {
+  let started;
+  let finishDecode;
+  const decodeStarted = new Promise((resolve) => { started = resolve; });
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: () => { started(); return new Promise((resolve) => { finishDecode = resolve; }); },
+  });
+  const controller = new AbortController();
+  const first = loader.load(packageMetadata(), {
+    signal: controller.signal, residencyOwner: {}, residencyRole: 'canceled-boundary',
+  });
+  const rejected = assert.rejects(first, { name: 'AbortError' });
+  await decodeStarted;
+  const second = loader.load(packageMetadata(), { residencyOwner: {}, residencyRole: 'live-boundary' });
+  controller.abort();
+  await rejected;
+  finishDecode(decodedFixture());
+  const loaded = await second;
+  assert.equal(loaded.evicted, false);
+  const row = residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+  assert.ok(row.roles.includes('live-boundary'));
+  assert.equal(row.roles.includes('canceled-boundary'), false);
+  loader.dispose();
+});
+
+test('cache hits claim the consumer owner before the shared package resolves', async () => {
+  const decoded = decodedFixture();
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+  const metadata = packageMetadata();
+  const firstConsumer = { type: 'test-boundary-consumer-a' };
+  await loader.load(metadata, { residencyOwner: firstConsumer, residencyRole: 'current-sector' });
+  residency.releaseOwner(firstConsumer, 'consumer-a-departed');
+
+  const secondConsumer = { type: 'test-boundary-consumer-b' };
+  const loaded = await loader.load(structuredClone(metadata), {
+    residencyOwner: secondConsumer,
+    residencyRole: 'live-boundary',
+  });
+  assert.equal(loaded.evicted, false);
+  const row = residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+  assert.ok(row.roles.includes('live-boundary'),
+    'a second consumer claims the shared decode on the hit path too');
+  loader.dispose();
+});
+
+const PILOT_SOURCE_URL = 'assets/ships/release/parts/fixture-hull.glb';
+
+function pilotRuntimeFixture(loader) {
+  return {
+    assets: new Map(),
+    failures: new Map(),
+    retiring: false,
+    renderPackages: loader,
+  };
+}
+
+async function settledPilotHandoffFixture() {
+  let clock = 0, decodes = 0, eventHook = null;
+  const renderer = {}, events = [];
+  const residency = getAssetResidency(renderer, { now: () => clock, maxEvents: 512,
+    onEvent(event) { events.push(event); eventHook?.(event); } });
+  residency.rotateSector('sector_ceres_belt');
+  const metadata = packageMetadata();
+  const loader = createRenderPackageLoader({ residency,
+    loadGlb() { decodes++; return { scene: decodedFixture().scene }; },
+    prepareDecoded: () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  runtime.defaultResidencyOwner = { type: 'authored-runtime-cache' };
+  const pilot = { metadataUrl: metadata, expectedContentHash: metadata.contentHash, assetId: metadata.assetId };
+  const load = options => loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+    renderer, slot: 'hull', optional: true, sectorId: 'sector_ceres_belt',
+    isResidencyOwnerActive: () => true, ...options,
+  });
+  const initial = new THREE.Group();
+  const first = await load({ residencyOwner: initial, residencyRole: 'current-sector' });
+  const key = first.residency.key;
+  const bytes = residency.diagnostics().assets.find(asset => asset.key === key).bytes;
+  clock = 10;
+  residency.releaseOwner(initial, 'initial-boundary-departed');
+  clock = 20;
+  residency.registerAsset('served-soft-pressure', [{ userData: {},
+    byteSize: 64 * 1024 * 1024 - Math.floor(bytes / 2), dispose() {} }]);
+  const pressure = () => residency.retain('served-soft-pressure', {}, {
+    role: 'runtime-cache', decodeServed: true, sectorId: 'sector_ceres_belt',
+  });
+  pressure();
+  clock = 30;
+  return { renderer, residency, runtime, loader, first, key, events, load, pressure,
+    decodes: () => decodes,
+    onEvent(hook) { eventHook = hook; },
+    close() { eventHook = null; loader.dispose(); disposeAssetResidency(renderer); },
+  };
+}
+
+function assertNoHandoffPin(f, renderPackage = f.first.renderPackage) {
+  assert.equal(f.residency.diagnostics().pendingRequests, 0);
+  const row = f.residency.diagnostics().assets.find(asset => asset.key === f.key);
+  assert.equal(row?.roles.includes('current-sector') || false, false, 'no cancelled or departed boundary retain remains');
+  // A legitimate cache residue may outlive the boundary; end those actual leases instead of
+  // assuming the budget must choose this particular victim over an older pressure asset.
+  f.residency.releaseOwner(f.runtime.defaultResidencyOwner, 'warm-expired');
+  renderPackage.release('cache-released');
+  assert.equal(f.residency.has(f.key), false, 'only the normal cache/warm leases kept the resources resident');
+}
+
+test('settled pilot handoff protects a requested live joiner before a warm cache hit can evict it', async () => {
+  const f = await settledPilotHandoffFixture();
+  const owner = new THREE.Group();
+  try {
+    const warm = f.load({ residencyRole: 'decode-runway' });
+    const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+    assert.equal(f.residency.diagnostics().pendingRequests, 1, 'handoff is protected synchronously, before await');
+    const [warmRecord, record] = await Promise.all([warm, live]);
+    assert.strictEqual(record.renderPackage, f.first.renderPackage);
+    assert.strictEqual(warmRecord.renderPackage, record.renderPackage);
+    assert.equal(f.decodes(), 1, 'warm-first/live-join must not decode a replacement generation');
+    const row = f.residency.diagnostics().assets.find(asset => asset.key === f.key);
+    assert.equal(row.refCount, 3, 'one cache owner, one warm owner and the normal boundary owner');
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    f.residency.releaseOwner(owner, 'boundary-departed');
+    assertNoHandoffPin(f);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff leaves warm-only eviction and live-first generation reuse intact', async () => {
+  for (const liveFirst of [false, true]) {
+    const f = await settledPilotHandoffFixture();
+    const owner = new THREE.Group();
+    try {
+      if (liveFirst) {
+        const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+        const warm = f.load({ residencyRole: 'decode-runway' });
+        assert.strictEqual((await live).renderPackage, f.first.renderPackage);
+        await warm;
+        assert.equal(f.first.renderPackage.evicted, false);
+      } else {
+        await f.load({ residencyRole: 'decode-runway' });
+        assert.equal(f.first.renderPackage.evicted, true, 'an unneeded warm-only package remains a legitimate victim');
+        assert.ok(f.events.some(e => e.type === 'asset-evicted' && e.key === f.key && e.reason === 'soft-residency-budget'));
+      }
+      assert.equal(f.decodes(), 1);
+      assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    } finally { f.close(); }
+  }
+});
+
+test('settled pilot handoff cancels aborted or departed live consumers without an extra hard owner', async () => {
+  for (const departure of ['abort', 'release', 'inactive']) {
+    const f = await settledPilotHandoffFixture();
+    const owner = new THREE.Group(), controller = new AbortController();
+    let active = true;
+    try {
+      const warm = f.load({ residencyRole: 'decode-runway' });
+      const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector',
+        signal: controller.signal, isResidencyOwnerActive: () => active });
+      assert.equal(f.residency.diagnostics().pendingRequests, 1);
+      if (departure === 'abort') controller.abort();
+      else if (departure === 'release') f.residency.releaseOwner(owner, 'boundary-departed');
+      else active = false;
+      assert.equal(await live, null);
+      await warm;
+      assert.equal(f.residency.diagnostics().pendingRequests, 0);
+      f.pressure();
+      assert.equal(f.residency.has(f.key), false, 'cancelled demand cannot leave an eviction-blocking owner');
+      assert.equal(f.decodes(), 1, 'a departed consumer cannot request a replacement decode');
+    } finally { f.close(); }
+  }
+});
+
+test('settled pilot handoff cancels failed waits without removing an existing boundary claim', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group();
+  try {
+    f.residency.retain(f.key, owner, { role: 'current-sector', sectorId: 'sector_ceres_belt' });
+    const record = await f.load({ residencyOwner: owner, residencyRole: 'current-sector',
+      asyncAdmission: { wait: () => Promise.reject(new Error('consumer wait failed')) } });
+    assert.equal(record, null);
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    assert.equal(f.residency.has(f.key), true, 'another existing boundary claim must survive this failed request');
+    f.residency.releaseOwner(owner, 'existing-boundary-left');
+    assertNoHandoffPin(f);
+    assert.equal(f.decodes(), 1);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff ends its exact request without cancelling a same-owner sibling', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group(), controller = new AbortController();
+  try {
+    const warm = f.load({ residencyRole: 'decode-runway' });
+    const cancelled = f.load({ residencyOwner: owner, residencyRole: 'current-sector', signal: controller.signal });
+    const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+    assert.equal(f.residency.diagnostics().pendingRequests, 2);
+    controller.abort();
+    assert.equal(await cancelled, null);
+    assert.strictEqual((await live).renderPackage, f.first.renderPackage);
+    await warm;
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    assert.equal(f.residency.diagnostics().assets.find(a => a.key === f.key).refCount, 3);
+    assert.equal(f.decodes(), 1);
+    f.residency.releaseOwner(owner, 'sibling-boundary-left');
+    assertNoHandoffPin(f);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff rolls back only its new claim if cancellation lands during retain', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group(), controller = new AbortController();
+  try {
+    f.onEvent(event => {
+      if (event.type === 'asset-retained' && event.key === f.key && event.role === 'current-sector') controller.abort();
+    });
+    assert.equal(await f.load({ residencyOwner: owner, residencyRole: 'current-sector', signal: controller.signal }), null);
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    assertNoHandoffPin(f);
+    assert.equal(f.decodes(), 1);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff rejects retired renderer, sector and generation scopes before committing', async () => {
+  for (const departure of ['renderer', 'runtime', 'sector', 'context-loss', 'context-generation']) {
+    const f = await settledPilotHandoffFixture(), owner = new THREE.Group();
+    const scope = f.residency.diagnostics();
+    try {
+      const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector',
+        isResidencyOwnerActive: () => {
+          const now = f.residency.diagnostics();
+          return !now.contextLost && now.currentSectorId === scope.currentSectorId && now.contextGeneration === scope.contextGeneration;
+        } });
+      assert.equal(f.residency.diagnostics().pendingRequests, 1);
+      if (departure === 'renderer') disposeAssetResidency(f.renderer, 'renderer-disposed');
+      else if (departure === 'runtime') f.runtime.retiring = true;
+      else if (departure === 'sector') f.residency.rotateSector('sector_next');
+      else {
+        f.residency.handleContextLost();
+        if (departure === 'context-generation') f.residency.handleContextRestored({ sectorId: 'sector_ceres_belt' });
+      }
+      assert.equal(await live, null, departure);
+      assert.equal(f.residency.diagnostics().pendingRequests, 0, departure);
+      assert.equal(f.decodes(), 1, 'an invalid scope must not re-admit its old generation');
+      assert.equal(f.residency.diagnostics().assets.some(a => a.roles.includes('current-sector')), false);
+    } finally { f.close(); }
+  }
+});
+
+test('settled pilot handoff closes a stale request before a fresh generation retry', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group();
+  try {
+    const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+    assert.equal(f.residency.diagnostics().pendingRequests, 1);
+    f.first.renderPackage.release('old-cache-generation-released');
+    const record = await live;
+    assert.ok(record && !record.renderPackage.evicted && !record.renderPackage.released);
+    assert.notStrictEqual(record.renderPackage, f.first.renderPackage);
+    assert.equal(f.decodes(), 2, 'only an explicitly retired generation needs its legitimate replacement');
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    f.residency.releaseOwner(owner, 'new-boundary-left');
+    assertNoHandoffPin(f, record.renderPackage);
+  } finally { f.close(); }
+});
+
+test('packaged scenario props retain their production package through pressure until boundary release', async () => {
+  const renderer = {};
+  const residency = getAssetResidency(renderer);
+  const decoded = decodedFixture();
+  const spindleSourceUrl = 'assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb';
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+    prepareDecoded: async () => Object.freeze({
+      url: spindleSourceUrl,
+      assetId: 'fixture.ship',
+      slot: 'pod',
+      primitives: Object.freeze([Object.freeze({
+        key: 'render.glb#EvidenceSpindleBody',
+        name: 'EvidenceSpindleBody',
+        geometry: decoded.geometry,
+        material: decoded.material,
+        matrix: new THREE.Matrix4(),
+        tags: Object.freeze({ lod: 'lod0' }),
+      })]),
+      markers: Object.freeze([]),
+      report: Object.freeze({}),
+    }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  const metadata = packageMetadata();
+  const pilot = {
+    metadataUrl: metadata,
+    expectedContentHash: metadata.contentHash,
+    assetId: metadata.assetId,
+  };
+  const factory = installVisualOverrides({
+    build() {
+      const root = new THREE.Group();
+      root.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial()));
+      return root;
+    },
+  }, { releaseMode: true });
+  const entity = {
+    id: 373,
+    type: 'payload',
+    alive: true,
+    radius: 5,
+    data: {
+      scenarioActorId: 'evidence_spindle_47a',
+      assetRef: 'asset.slice.47a_spindle',
+      packagedPropFile: 'pods/pod_47a_evidence_spindle.glb',
+      packagedPropSlot: 'pod',
+    },
+  };
+  const root = factory.build(entity);
+  const scene = new THREE.Scene();
+  scene.add(root);
+  let admittedRecord = null;
+  let createInstanceCalls = 0;
+  try {
+    const receipt = await root.userData.requestAuthoredUpgrade(renderer, scene, {
+      loadAuthoredPart: async (url, options) => {
+        admittedRecord = await loadAuthoredRenderPackagePilot(runtime, pilot, url, options);
+        if (admittedRecord?.renderPackage) {
+          admittedRecord.renderPackage.createInstance = () => {
+            createInstanceCalls++;
+            throw new Error('packaged scenario props mount flat primitives, not package instances');
+          };
+        }
+        return admittedRecord;
+      },
+    });
+    assert.equal(receipt, true);
+    assert.ok(admittedRecord?.renderPackage, 'the visual override used the production package pilot');
+    const body = root.userData.hull;
+    const bodyMesh = body && body.children.find((child) => child.isMesh);
+    assert.ok(bodyMesh, 'the packaged body publishes a mesh');
+    assert.strictEqual(bodyMesh.geometry, decoded.geometry,
+      'the mounted scenario prop uses record.primitives geometry directly');
+    assert.equal(createInstanceCalls, 0, 'scenario prop mounting must not create a package instance');
+
+    const resident = residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+    assert.ok(resident, 'the production package is registered with the renderer residency ledger');
+    assert.ok(resident.roles.includes('current-sector'),
+      'the mounted boundary owns the package with its live admission role');
+    const pressure = residency.releaseUnreferencedCacheOwners('test-mounted-prop-pressure', {
+      minAgeMs: 0,
+      maxCacheOnlyBytes: 0,
+    });
+    assert.equal(pressure.evicted.includes(resident.key), false,
+      'byte pressure cannot evict a package still owned by the mounted boundary');
+    assert.equal(admittedRecord.renderPackage.evicted, false);
+
+    root.userData.releaseAuthoredAssetResidency('test-mounted-prop-boundary-release');
+    residency.releaseUnreferencedCacheOwners('test-mounted-prop-after-release', {
+      minAgeMs: 0,
+      maxCacheOnlyBytes: 0,
+    });
+    assert.equal(admittedRecord.renderPackage.evicted, true,
+      'releasing the boundary returns the package to cache-only cleanup');
+    assert.equal(runtime.assets.size, 0, 'the pilot source task drops with its evicted package');
+  } finally {
+    loader.dispose();
+  }
+});
+
+test('D24: sector-exit eviction drops the stale source-url task instead of pinning the dead generation', async () => {
+  // Regression for the renderer heap slope: runtime.assets is keyed by source URL while the
+  // package loader evicts by content hash. Every sector-exit cache sweep evicted a decoded
+  // generation, but the fulfilled task kept record -> LoadedRenderPackage -> the whole decoded
+  // graph pinned until the same URL was requested again. Between requests the dead generations
+  // accumulated (~39 generations, ~749 MB of buffer payload in the D24 snapshot pair).
+  let decodeCount = 0;
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => {
+      decodeCount++;
+      return { scene: decodedFixture().scene };
+    },
+    prepareDecoded: async () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  const metadata = packageMetadata();
+  const pilot = {
+    metadataUrl: metadata,
+    expectedContentHash: metadata.contentHash,
+    assetId: metadata.assetId,
+  };
+  const options = { slot: 'hull' };
+  const cacheKey = `${PILOT_SOURCE_URL}::hull`;
+
+  const first = await loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, options);
+  assert.ok(first, 'the pilot load resolves an assembled record');
+  assert.equal(runtime.assets.has(cacheKey), true, 'the admitted task is cached under its source url');
+  assert.equal(decodeCount, 1);
+
+  // applySectorExitResidency's sweep releases the sole render-package-cache owner; with no live
+  // boundary the entry is evicted, mirroring what happens to every cache-only package between
+  // save/load and dock/undock boundaries.
+  residency.releaseUnreferencedCacheOwners('test-sector-exit', { minAgeMs: 0 });
+  assert.equal(first.renderPackage.evicted, true, 'a cache-only package generation is evicted');
+  assert.equal(runtime.assets.has(cacheKey), false,
+    'the fulfilled task must drop with its dead generation, not wait for a re-request');
+
+  const second = await loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, options);
+  assert.ok(second);
+  assert.notStrictEqual(second.renderPackage, first.renderPackage,
+    'the next request decodes a fresh generation');
+  assert.equal(decodeCount, 2);
+  assert.equal(runtime.assets.size, 1);
+
+  for (let cycle = 0; cycle < 3; cycle++) {
+    residency.releaseUnreferencedCacheOwners(`test-cycle-${cycle}`, { minAgeMs: 0 });
+    assert.equal(runtime.assets.has(cacheKey), false,
+      `cycle ${cycle}: eviction purges the stale task immediately`);
+    const next = await loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, options);
+    assert.ok(next.renderPackage && next.renderPackage.evicted !== true);
+  }
+  assert.equal(decodeCount, 5);
+  assert.equal(runtime.assets.size, 1, 'only the live task survives in the source-url cache');
+  assert.equal(loader.diagnostics().cacheEntries, 1, 'only the live generation stays cached');
+  loader.dispose();
+});
+
+test('D24: a released package generation drops its task and reacquires without re-decoding', async () => {
+  // The package-cache lease is a separate owner from boundary retains: a consumer
+  // LoadedRenderPackage.release() leaves the entry resident under other owners but makes the
+  // generation unmountable (retain()/createInstance() refuse while released). The stale task
+  // must drop at release; the next request reacquires the still-cached entry instead of
+  // decoding again.
+  let decodeCount = 0;
+  const residency = createAssetResidencyRegistry();
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => {
+      decodeCount++;
+      return { scene: decoded.scene };
+    },
+    prepareDecoded: async () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  const metadata = packageMetadata();
+  const pilot = {
+    metadataUrl: metadata,
+    expectedContentHash: metadata.contentHash,
+    assetId: metadata.assetId,
+  };
+  const boundary = new THREE.Group();
+  const options = { slot: 'hull', residencyOwner: boundary, residencyRole: 'live-boundary' };
+  const cacheKey = `${PILOT_SOURCE_URL}::hull`;
+
+  const first = await loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, options);
+  assert.ok(first);
+  assert.equal(first.renderPackage.release('test-consumer-departed'), true);
+  assert.equal(first.renderPackage.released, true);
+  assert.equal(first.renderPackage.evicted, false,
+    'the boundary owner keeps the entry resident; only the cache lease dropped');
+  assert.equal(runtime.assets.has(cacheKey), false,
+    'the stale task drops at lease release, not at the next request');
+
+  const second = await loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, options);
+  assert.ok(second);
+  assert.notStrictEqual(second, first);
+  assert.strictEqual(second.renderPackage, first.renderPackage,
+    'the still-cached generation is reacquired rather than decoded again');
+  assert.equal(second.renderPackage.released, false);
+  assert.equal(decodeCount, 1, 'reacquisition reuses the decoded package');
+  residency.releaseOwner(boundary, 'test-boundary-departed');
+  loader.dispose();
+});
+
+test('source-url dedupe preserves a live package consumer after the first owner departs', async () => {
+  const residency = createAssetResidencyRegistry({ maxPackageCacheOnlyBytes: 1 });
+  let resolveDecode, notifyStarted, decodeCount = 0;
+  const started = new Promise((resolve) => { notifyStarted = resolve; });
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: () => {
+      decodeCount++;
+      if (decodeCount > 1) throw new Error('live joiner lost its committed package to byte pressure');
+      notifyStarted();
+      return new Promise((resolve) => { resolveDecode = resolve; });
+    },
+    prepareDecoded: async () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  const metadata = packageMetadata();
+  const pilot = { metadataUrl: metadata, expectedContentHash: metadata.contentHash, assetId: metadata.assetId };
+  const creatorOwner = { id: 'departed-prefetch' }, liveOwner = { id: 'live-ship' };
+  let creatorActive = true;
+  try {
+    const creator = loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+      slot: 'hull', optional: true, residencyOwner: creatorOwner,
+      residencyRole: 'departed-creator', isResidencyOwnerActive: () => creatorActive,
+    });
+    await started;
+    const live = loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+      slot: 'hull', optional: true, residencyOwner: liveOwner,
+      residencyRole: 'live-joiner', isResidencyOwnerActive: () => true,
+    });
+    creatorActive = false;
+    resolveDecode({ scene: decodedFixture().scene });
+    assert.equal(await creator, null, 'the departed consumer cannot receive or retain the result');
+    const record = await live;
+    assert.ok(record, 'the live consumer must receive the actual shared package');
+    assert.equal(decodeCount, 1, 'the live joiner preserves the original decode');
+    const row = residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+    assert.ok(row.roles.includes('live-joiner'));
+    assert.equal(row.roles.includes('departed-creator'), false, 'decode liveness must not revive a dead owner');
+  } finally {
+    loader.dispose();
+  }
+});
+
+function gatedPilotConsumers() {
+  const residency = createAssetResidencyRegistry();
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decodes = [];
+  const starts = [];
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: () => new Promise((resolve, reject) => {
+      decodes.push({ resolve, reject });
+      for (const start of starts.splice(0)) start();
+    }),
+    prepareDecoded: async () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  const metadata = packageMetadata();
+  const pilot = { metadataUrl: metadata, expectedContentHash: metadata.contentHash, assetId: metadata.assetId };
+  const load = (id, active = () => true, signal = undefined) => loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+    slot: 'hull', optional: true, residencyOwner: { id }, residencyRole: id,
+    isResidencyOwnerActive: active, signal,
+  });
+  const waitForDecode = async (count) => {
+    while (decodes.length < count) await new Promise((resolve) => starts.push(resolve));
+    assert.equal(decodes.length, count, 'the expected production decode starts');
+  };
+  const resolve = (index = 0, trackDisposal = false) => {
+    const decoded = decodedFixture(trackDisposal ? disposals : null);
+    decodes[index].resolve({ scene: decoded.scene });
+  };
+  return { residency, disposals, loader, runtime, load, waitForDecode, resolve, decodes };
+}
+
+test('all shared pilot consumers departing disposes once and a fresh owner gets a fresh decode', async () => {
+  const f = gatedPilotConsumers();
+  let aActive = true, bActive = true;
+  try {
+    const a = f.load('owner-a', () => aActive);
+    await f.waitForDecode(1);
+    const b = f.load('owner-b', () => bActive);
+    aActive = false;
+    // A late departure of B removes the last live consumer, not just the first owner.
+    await Promise.resolve();
+    bActive = false;
+    f.resolve(0, true);
+    assert.deepEqual(await Promise.all([a, b]), [null, null]);
+    assert.deepEqual(f.disposals, { geometry: 1, material: 1, texture: 1 });
+    assert.equal(f.runtime.assets.size, 0, 'null cancellation does not poison the outer cache');
+    assert.equal(f.runtime.pendingAssetTasks.size, 0);
+    assert.equal(f.runtime.failures.size, 0, 'ordinary owner departure is not an asset failure');
+    assert.equal(f.residency.diagnostics().assets.length, 0, 'canceled decode never becomes resident');
+    const c = f.load('owner-c');
+    await f.waitForDecode(2);
+    f.resolve(1);
+    const record = await c;
+    assert.ok(record, 'a fresh live owner is admitted after complete cancellation');
+    const row = f.residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+    assert.ok(row.roles.includes('owner-c'));
+    assert.equal(row.roles.includes('owner-a'), false);
+    assert.equal(row.roles.includes('owner-b'), false);
+  } finally {
+    f.loader.dispose();
+  }
+});
+
+test('an aborted creator cannot receive a shared package or overwrite a live joiner cache result', async () => {
+  const f = gatedPilotConsumers();
+  const controller = new AbortController();
+  try {
+    const a = f.load('owner-a', () => true, controller.signal);
+    await f.waitForDecode(1);
+    const b = f.load('owner-b');
+    controller.abort(new Error('owner-a departed'));
+    assert.equal(await a, null);
+    f.resolve();
+    const record = await b;
+    assert.ok(record);
+    assert.equal(f.decodes.length, 1);
+    const c = await f.load('owner-c');
+    assert.strictEqual(c.renderPackage, record.renderPackage, 'late cache hit preserves the live generation');
+    assert.equal(f.decodes.length, 1);
+    const row = f.residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+    assert.equal(row.roles.includes('owner-a'), false);
+    assert.ok(row.roles.includes('owner-b'));
+    assert.ok(row.roles.includes('owner-c'));
+    assert.equal(f.runtime.failures.size, 0);
+  } finally {
+    f.loader.dispose();
+  }
+});
+
+test('real shared-package decode errors retain their original diagnostic and a later owner retries', async () => {
+  const f = gatedPilotConsumers();
+  const original = new Error('shared package decode failed');
+  try {
+    const a = f.load('owner-a');
+    await f.waitForDecode(1);
+    const b = f.load('owner-b');
+    f.decodes[0].reject(original);
+    // Null is the public asset-loader failure contract; the diagnostic must not be erased
+    // or reclassified as successful cancellation by the shared-consumer liveness handling.
+    assert.deepEqual(await Promise.all([a, b]), [null, null]);
+    assert.strictEqual(f.runtime.failures.get(`${PILOT_SOURCE_URL}::hull`), original);
+    assert.equal(f.runtime.assets.size, 0);
+    const c = f.load('owner-c');
+    await f.waitForDecode(2);
+    f.resolve(1);
+    assert.ok(await c);
+    assert.equal(f.runtime.failures.size, 0, 'the successful retry replaces the old failure');
+  } finally {
+    f.loader.dispose();
+  }
+});
+
+test('inline metadata cache hits see the complete source-task consumer set before the first loader call', async () => {
+  const residency = createAssetResidencyRegistry({ maxPackageCacheOnlyBytes: 1 });
+  let decodes = 0;
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: () => { decodes++; return { scene: decodedFixture().scene }; },
+    prepareDecoded: () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const metadata = packageMetadata();
+  const warmOwner = { id: 'cached-package-owner' };
+  let creatorActive = true;
+  const firstClaims = [];
+  try {
+    const cached = await loader.load(metadata, { residencyOwner: warmOwner });
+    const runtime = pilotRuntimeFixture({ load(value, options) {
+      // This read is deliberately synchronous at the factory boundary. It catches a
+      // temporal-dead-zone access or registration that happens only after loader.load.
+      firstClaims.push(options.getSharedDecodeConsumers().map((consumer) => ({
+        id: consumer.residencyOwner.id, active: consumer.isResidencyOwnerActive(),
+      })));
+      return loader.load(value, options);
+    } });
+    const pilot = { metadataUrl: metadata, expectedContentHash: metadata.contentHash, assetId: metadata.assetId };
+    const a = loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+      slot: 'hull', residencyOwner: { id: 'owner-a' }, isResidencyOwnerActive: () => creatorActive,
+    });
+    const b = loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+      slot: 'hull', residencyOwner: { id: 'owner-b' }, isResidencyOwnerActive: () => true,
+    });
+    creatorActive = false;
+    assert.equal(await a, null);
+    const record = await b;
+    assert.strictEqual(record.renderPackage, cached);
+    assert.equal(decodes, 1, 'the pilot uses the already-fulfilled inner cache entry');
+    assert.deepEqual(firstClaims, [[{ id: 'owner-a', active: false }, { id: 'owner-b', active: true }]]);
+    residency.releaseOwner(warmOwner, 'cache-owner-left');
+    assert.equal(record.renderPackage.evicted, false, 'live B owns the cached result');
+    assert.equal(runtime.failures.size, 0);
+  } finally {
+    loader.dispose();
+  }
+});

@@ -1,0 +1,131 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/bastion_production_v1.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/bastion_production_v1",
+  "focus": [
+    -0.566,
+    0.0,
+    0.49
+  ],
+  "boundsMin": [
+    -10.382,
+    -2.52,
+    -1.2
+  ],
+  "boundsMax": [
+    9.25,
+    2.52,
+    2.18
+  ],
+  "size": [
+    19.632,
+    5.04,
+    3.38
+  ],
+  "lightScale": 1.8178,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "triangles": 1580,
+      "materials": [
+        "Material_BrushedMetal_RemasterNickel"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
+      "triangles": 56,
+      "materials": [
+        "Material_Mechanical_RemasterOxidized"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_EngineCeramic_RemasterGlazed",
+      "triangles": 660,
+      "materials": [
+        "Material_EngineCeramic_RemasterGlazed"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "triangles": 120,
+      "materials": [
+        "Material_Mechanical_RemasterHeatCopper"
+      ]
+    },
+    {
+      "name": "LOD0_Accent",
+      "triangles": 216,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Armor",
+      "triangles": 7020,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Canopy",
+      "triangles": 376,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_Ceramic",
+      "triangles": 376,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 1988,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Mechanical",
+      "triangles": 23252,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Radiator",
+      "triangles": 3292,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_Thruster",
+      "triangles": 1648,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Warning",
+      "triangles": 108,
+      "materials": [
+        "Material_Warning"
+      ]
+    }
+  ],
+  "triangles": 40692,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/bastion_production_v1/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/bastion_production_v1/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/bastion_production_v1/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

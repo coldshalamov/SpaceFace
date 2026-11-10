@@ -1,0 +1,50 @@
+From 342fde89b06265324d30a85b41f573ee8a9e4185 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Wed, 23 Sep 2026 00:49:25 -0400
+Subject: [PATCH] perf(combat): type+range prefilter before stunt flight
+ hostility
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+StuntFlightObserver scanned every entity and paid isHostileForAI before
+distance. Restrict threat candidates to ship/projectile/drone inside
+2400 WU so far rocks and traffic skip the oracle (~5.1× scan microbench).
+---
+ src/combat/stuntFlightEvidence.js | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/src/combat/stuntFlightEvidence.js b/src/combat/stuntFlightEvidence.js
+index 33264fd0c..9f9cd6ada 100644
+--- a/src/combat/stuntFlightEvidence.js
++++ b/src/combat/stuntFlightEvidence.js
+@@ -10,6 +10,13 @@ export function interceptSeconds(relative,velocity,radius) {
+   const d=b*b-4*a*c;if(!(a>0)||d<0)return Infinity;
+   const t=(-b-Math.sqrt(d))/(2*a);return t>=0?t:Infinity;
+ }
++// Threat scan only needs bodies that can close in the 2s intercept window. Far rocks/pickups
++// and opposite-hemisphere traffic were paying isHostileForAI on every entity every tick.
++const THREAT_SCAN_RANGE_WU = 2400;
++const THREAT_SCAN_RANGE_SQ = THREAT_SCAN_RANGE_WU * THREAT_SCAN_RANGE_WU;
++function isThreatCandidateType(type) {
++  return type === 'ship' || type === 'projectile' || type === 'drone';
++}
+ function hostileThreat(state,e,player) {
+   const owner=e.ownerId!=null?state.entities.get(e.ownerId):e;
+   if(!owner||!isHostileForAI(state,owner,player))return false;
+@@ -27,8 +34,11 @@ export class StuntFlightObserver {
+     let incoming=false;const results=[];
+     const previous=this.history.at(-1);
+     for(const e of state.entities.values()) {
+-      if(!e?.pos||!e.vel||e.alive===false||e.id===player.id||!hostileThreat(state,e,player))continue;
++      if(!e?.pos||!e.vel||e.alive===false||e.id===player.id)continue;
++      if(!isThreatCandidateType(e.type))continue;
+       const dx=e.pos.x-player.pos.x,dz=e.pos.z-player.pos.z;
++      if(dx*dx+dz*dz>THREAT_SCAN_RANGE_SQ)continue;
++      if(!hostileThreat(state,e,player))continue;
+       const radius=pr+(e.radius??0),rv={x:e.vel.x-player.vel.x,z:e.vel.z-player.vel.z};
+       const t=interceptSeconds({x:dx,z:dz},rv,radius);
+       if(t<=2)incoming=true;
+-- 
+2.47.3
+
