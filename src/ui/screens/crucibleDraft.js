@@ -284,7 +284,7 @@ export function rerollControlLines(state, notice = null) {
   const exhausted = s.reason === 'pool_exhausted';
   return {
     visible: true,
-    label: exhausted ? 'Re-roll' : `Re-roll · ${price} cr`,
+    label: exhausted ? 'Re-roll' : `Re-roll · ${Number(price).toLocaleString('en-US')} cr`,
     wallet: `Run wallet ${credits} cr`,
     draw: s.rerolls > 0 ? `Draw ${s.rerolls + 1}` : '',
     disabled: !s.available,
