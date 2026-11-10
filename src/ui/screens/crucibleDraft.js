@@ -818,6 +818,23 @@ export function swarmForecastForRun(run, nextWave) {
   }
 }
 
+/** The champion's aftermath belongs at the earned shop, never over a live fight. */
+export function foundryAftermathIntermission(run, offers = []) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || ![5, 6].includes(run.wave) || run.telemetry?.firstBossDown?.wave !== 5
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: run.wave,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  const wallet = Number.isFinite(run.credits) ? Math.max(0, run.credits) : 0;
+  const repair = offers.filter(offer => offer?.available === true && !offer.purchased
+    && offer.kind === 'service' && ['weld', 'hull_patch'].includes(offer.service)
+    && Number.isFinite(offer.price) && offer.price >= 0 && offer.price <= wallet
+    && typeof offer.name === 'string' && offer.name.trim()).sort((a, b) => a.price - b.price)[0];
+  const service = repair ? ` ${repair.name.trim()}: ${repair.price} cr.` : '';
+  return run.wave === 5
+    ? `Iron Maw down. Round 5 cleared.${service} Surviving wreckage stays in the field. Spend your run purse here or save it; extraction opens after round 10.`
+    : `Round 6 cleared.${service} The next charge can break against surviving wreckage. Repair or Fortify, then launch when ready.`;
+}
+
 /** One no-admissions-promised forecast sentence shared by the Armory and Refit surfaces. */
 export function swarmNextLine(next) {
   if (!next) return '';
@@ -1504,7 +1521,8 @@ export const crucibleDraftScreen = {
     const runStart = context.state?.run?.telemetry
       && Number.isInteger(context.state.run.telemetry.startWave)
       ? context.state.run.telemetry.startWave : 1;
-    this._sub.textContent = firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
+    this._sub.textContent = foundryAftermathIntermission(context.state?.run, offers)
+      ?? firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
         : shop && runStart > 1 && wave === runStart - 1

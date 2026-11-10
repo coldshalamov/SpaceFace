@@ -67,6 +67,7 @@ import { planSwarmBank, swarmBankEligible } from './swarmBank.js';
 import { planSwarmOpeningVolley } from './swarmOpeningVolley.js';
 import { planSwarmOpeningSpitter } from './swarmOpeningSpitter.js';
 import { planSwarmOpeningCrossfire } from './swarmOpeningCrossfire.js';
+import { planSwarmOpeningWreck } from './swarmOpeningWreck.js';
 import { planSwarmOpeningFlanks, SWARM_OPENING_FLANK_GATES } from './swarmOpeningFlanks.js';
 import { planSwarmFortifiedFlanks } from './swarmFortifiedFlanks.js';
 import {
@@ -955,6 +956,11 @@ export function createBroodEngine(deps = {}) {
     if (!openingVolleyAttempted) {
       if (foundryScore) openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: null };
       const mite = familyIndex.get('mite');
+      const wreck = foundryScore && mite != null ? planSwarmOpeningWreck(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]) : null;
+      // A living wreck scene must not walk into an unattended pilot for free kills.
+      // Admit it on actual input, then keep all ordinary motion and damage laws.
+      if (wreck && !swarmPilotHasActed(state)) { nextSpawnAttemptAt = 0; return 0; }
       const fortified = foundryScore && mite != null ? planSwarmFortifiedFlanks(
         state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite], fortifyIngress()) : null;
       // Do not let invulnerable idle packs walk through a paid line before it may fire.
@@ -1013,8 +1019,10 @@ export function createBroodEngine(deps = {}) {
         return 1;
       }
       const mite = familyIndex.get('mite');
-      const layout = mite == null ? null : planSwarmOpeningVolley(
-        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]);
+      const wreck = foundryScore && mite != null ? planSwarmOpeningWreck(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]) : null;
+      const layout = wreck || (mite == null ? null : planSwarmOpeningVolley(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]));
       const free = [];
       for (let i = 0; layout && i < CAP && free.length < 3; i++) if (!alive[i]) free.push(i);
       if (layout && free.length === 3) {

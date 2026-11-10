@@ -6,7 +6,7 @@ const rows = [
   ['read_the_mark', 'Dodge the mark', 'Move after the acid mark commits; return fire from clear ground.', 360, 0, 0, 0],
   ['throw_then_move', 'Throw, then move', 'Release through the pack, then leave the acid mark.', 360, 720, 0, 0],
   ['break_the_maw', 'Break Iron Maw', 'Read the Maw first. Acid and fuse-lit reinforcements arrive later.', 0, 720, 360, 480],
-  ['use_the_wreck', 'Make the wreck work', 'Use surviving wreckage as cover or ammunition; watch the Jackal mines.', 0, 480, 0, 0],
+  ['use_the_wreck', 'Make the wreck work', 'If the Maw offcut survives nearby with a clear lane, use it against the pack. Guns work too; Jackal mines follow.', 360, 480, 0, 0],
   ['spend_the_charge', 'Let the charge spend itself', 'Leave the Maw offcut as cover, or throw it. Bait the charge and sidestep.', 480, 0, 0, 0],
 ];
 

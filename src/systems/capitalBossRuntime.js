@@ -204,14 +204,20 @@ function withSwarmBossRites(system) {
         const telemetry = run && (run.telemetry || (run.telemetry = {}));
         if (run && run.kind === 'survival' && run.ruleset === 'swarm' && telemetry.firstBossDown == null) {
           const encounter = requireCapitalBossEncounter(record.encounterId);
+          const foundry = foundryWreckRound(run)?.id === 'break_the_maw'
+            && record.encounterId === 'capital_boss_hulk' && swarmWaveOfFightId(fightId) === 5;
           telemetry.firstBossDown = {
             name: (encounter.score && encounter.score.name) || 'BOSS',
             line: (encounter.score && encounter.score.victory) || '',
             lesson: (encounter.score && encounter.score.lesson) || '',
             wave: run.wave,
-            pending: true,
+            pending: !foundry,
+            ...(foundry ? { presentation: 'foundry_intermission' } : {}),
           };
-          ctx.bus.emit('ui:pushScreen', { id: 'crucibleResults', source: 'swarm:bossMilestone' });
+          // Boss death is not a round clear. Keep the remaining fight and its
+          // original wreck visible; the ordinary Armory owns the safe handover.
+          if (foundry) ctx.bus.emit('swarm:announce', { kind: 'bossact', text: 'IRON MAW DOWN', count: 1 });
+          else ctx.bus.emit('ui:pushScreen', { id: 'crucibleResults', source: 'swarm:bossMilestone' });
         }
       }
     });
