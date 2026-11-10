@@ -75,8 +75,10 @@ belong to the heads they name, not automatically to the latest head.
    teaching sequence.
 2. **The first four openings do not own the whole fight.** Brood staging does not establish
    that full-size ship fire, the room field and the camera leave that lesson readable.
-   The source also gates these openings on zero Line rating. A player buying a Line upgrade
-   can bypass the next authored opening. The level must account for that choice deliberately.
+   The four opening helpers reject positive `rockCore.ratingT`: [volley](https://github.com/coldshalamov/SpaceFace/blob/47e1cd0d3ce58f0e5a44550fc448060d5abd2ab1/src/systems/swarmOpeningVolley.js#L6-L10), [flanks](https://github.com/coldshalamov/SpaceFace/blob/47e1cd0d3ce58f0e5a44550fc448060d5abd2ab1/src/systems/swarmOpeningFlanks.js#L11-L15), [Spitter](https://github.com/coldshalamov/SpaceFace/blob/47e1cd0d3ce58f0e5a44550fc448060d5abd2ab1/src/systems/swarmOpeningSpitter.js#L6-L10) and [crossfire](https://github.com/coldshalamov/SpaceFace/blob/47e1cd0d3ce58f0e5a44550fc448060d5abd2ab1/src/systems/swarmOpeningCrossfire.js#L6-L11).
+   [The rating owner](https://github.com/coldshalamov/SpaceFace/blob/47e1cd0d3ce58f0e5a44550fc448060d5abd2ab1/src/systems/rockCore.js#L130-L160) sums live mass currently attached to the pilot's Line and flail; it does not measure purchased carrying capacity.
+   Carrying mass can therefore skip the small-stone composition. Buying a module alone does not
+   establish that bypass. Purchased-build and carrying-build runs need separate play evidence.
 3. **A legal placement is not a designed place.** Reusing safe surviving props is correct.
    Falling back safely is correct. Neither establishes how often a player gets the intended
    experience after moving, throwing, shopping, or upgrading. Measure that on earned runs.
@@ -443,7 +445,7 @@ several exact-path commits.
    level-balance opinion. This does not authorize blindly replacing shared render/core files.
 2. **Author the shared 1–7 score.** Use existing plan packages and opening helpers. Introduce
    one plan-owned foreground cue/beat description if necessary, with explicit ship, Brood,
-   arena and event consumers. Resolve round-5 collisions and the upgraded-Line bypass. Choose
+   arena and event consumers. Resolve round-5 collisions and the carried-mass opening bypass. Choose
    useful legal fallback variants; preserve finite budgets and original prop identities.
 3. **Build the persistent court and preparation payoffs.** Reuse inspected physical furniture
    and Fortify owners. Ensure the same routes survive ordinary movement and are readable after
@@ -455,7 +457,7 @@ several exact-path commits.
    costs on earned play. Check the current banking inconsistency on the exact integrated build
    and fix it only within the accepted progression scope. Keep checkpoint redesign explicit.
 6. **Rehearse and correct the whole journey.** Exercise the default novice build, a Line-upgraded
-   build, a gun-focused build, an imperfect shopping choice and a same-seed retry. Fix failures
+   build, a separate carrying build, a gun-focused build, an imperfect shopping choice and a same-seed retry. Fix failures
    that undermine the run before commissioning the next arena or polishing a remote late wave.
 
 ### Existing integration seams
@@ -484,7 +486,7 @@ wholesale import of the dirty checkout into #942.
   use the real wallet; Fortify changes a later decision; the boss leaves real usable matter.
   Isolated fixtures remain valuable regression tests but do not replace this route.
 - **Choice survives:** guns-only early survival is viable, the featured physical answer is
-  materially rewarding, and an early Line upgrade does not remove the authored experience.
+  materially rewarding, and both purchased upgrades and carried loads retain viable authored play.
 - **Learning survives pressure:** the first Spitter mark is seen before damage; the round-4
   throw-and-dodge can be executed with ordinary controls; the Bank's escape is on-screen and
   physically traversable. Later motion can still create honest danger.
