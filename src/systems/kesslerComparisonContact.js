@@ -2,6 +2,9 @@
 // This contact never weighs, transfers freight, pays, or advances a mission.
 import { KESSLER_SCALE } from '../data/kessler.js';
 const KEY = 'kessler_comparison_watch';
+// Two voices on purpose: the desk speaks for the scale itself, while the ship's own
+// LOG keeps the pilot's paired slips — same persona as the comms:log speaker.
+const LOG_SENDER = 'LOG';
 const sane = n => Number.isFinite(n) && n > 0;
 const validSample = row => sane(row?.plate) && sane(row?.stamp) && row.plate < row.stamp && sane(row?.count);
 function flags(state) { return state.story?.flags; }
@@ -30,11 +33,11 @@ export function tickKesslerComparison(state,bus,pad) {
  if(watch?.version===1&&validSample(watch.second)&&!watch.secondSpoken&&t-watch.secondAt>=4){
   watch.secondSpoken=true;watch.firstSpoken=true;
   const a=watch.first,b=watch.second;
-  say(bus,'kessler_second_load','LOG',`Two different loads: ${a.stamp.toFixed(1)}t stamped, ${a.plate.toFixed(1)}t on the plate; then ${b.stamp.toFixed(1)}t stamped, ${b.plate.toFixed(1)}t on the plate. Both short. Keeping both slips. The freight still belongs to you.`,true);return;
+  say(bus,'kessler_second_load',LOG_SENDER,`Two different loads: ${a.stamp.toFixed(1)}t stamped, ${a.plate.toFixed(1)}t on the plate; then ${b.stamp.toFixed(1)}t stamped, ${b.plate.toFixed(1)}t on the plate. Both short. Keeping both slips. The freight still belongs to you.`,true);return;
  }
  if(watch?.version===1&&!watch.firstSpoken&&!watch.second&&t-watch.firstAt>=4){
   watch.firstSpoken=true;
-  say(bus,'kessler_first_comparison','LOG','One short reading is not a pattern. Bring a load with a different stamped mass back to Scale 4 and I can keep the slips side by side. Same stamp, no new comparison. Use freight you already have.',true);return;
+  say(bus,'kessler_first_comparison',LOG_SENDER,'One short reading is not a pattern. Bring a load with a different stamped mass back to Scale 4 and I can keep the slips side by side. Same stamp, no new comparison. Use freight you already have.',true);return;
  }
  if(!f.kessler_comparison_arrival&&!watch){
   f.kessler_comparison_arrival=true;
