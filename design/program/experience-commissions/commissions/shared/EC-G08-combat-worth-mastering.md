@@ -12,6 +12,8 @@
 
 **Proof:** a line-up still of all fifteen types in one arena where a stranger can sort them into groups without labels.
 
+**Written out, 2026-11-10:** each of the fifteen enemies — what it reads as, the one thing it does, and the physical answer to it — is tabled in [12 — Swarm: the Pit](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/12_SWARM_THE_PIT.md). Draw and wire them to match that table.
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
