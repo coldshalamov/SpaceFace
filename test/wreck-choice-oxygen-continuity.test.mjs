@@ -4,19 +4,22 @@ import { createBus } from '../src/core/eventBus.js';
 import { createPromptDeck } from '../src/ui/promptDeck.js';
 import { wreckChoicePrompt } from '../src/ui/wreckChoicePrompt.js';
 
-function boot(now = 5) {
+function boot(now = 5, { offer = null, podRecord = true } = {}) {
   const previous = globalThis.document;
   const doc = promptDeckDocument(900, 900); globalThis.document = doc;
-  const offer = { id: 'rescue-offer', source: 'salvage', salvagePointId: 'pod', title: 'Survivor',
+  offer = offer || { id: 'rescue-offer', source: 'salvage', salvagePointId: 'pod', title: 'Survivor',
     params: { survivorPodId: 'pod' }, survivorPod: { oxygenDueAt: 10 },
     choice: { prompt: 'Rescue or strip the pod?', options: [{ id: 'rescue', label: 'Rescue' }, { id: 'strip', label: 'Strip' }] } };
+  const pointId = offer.salvagePointId || (offer.params && offer.params.salvagePointId);
   const state = { mode: 'flight', simTime: now, ui: {}, world: { currentSectorId: 'ceres' },
     missions: { boards: { station: { slots: [offer] } } },
-    survivorPod: { promotedByPoint: { pod: { oxygenDueAt: 10, sectorId: 'ceres', rescueSelected: false, stripped: false } } } };
+    survivorPod: podRecord
+      ? { promotedByPoint: { pod: { oxygenDueAt: 10, sectorId: 'ceres', rescueSelected: false, stripped: false } } }
+      : { promotedByPoint: {} } };
   const bus = createBus();
   const deck = createPromptDeck({ document: doc, state, bus });
   const adapter = Object.create(wreckChoicePrompt); adapter.init({ state, bus });
-  bus.emit('salvage:communicatorFound', { salvagePointId: 'pod' });
+  bus.emit('salvage:communicatorFound', { salvagePointId: pointId });
   const text = node => [node.textContent, ...(node.children || []).map(text)].join(' ');
   return { state, bus, deck, adapter, text: () => text(deck.el), offer,
     close() { adapter.destroy(); deck.destroy(); globalThis.document = previous; } };
@@ -68,6 +71,87 @@ test('strip completion and player dismissal still remove the card', () => {
     f.bus.emit('salvage:communicatorFound', { salvagePointId: 'pod' });
     f.deck.choose('wreck-choice:rescue-offer', 'leave', 'test'); assert.equal(f.deck.size, 0);
     assert.equal(f.state.missions.boards.station.slots.length, 1, 'leave does not withdraw the contract');
+  } finally { f.close(); }
+});
+
+test('a committed rescue annotates the card instead of leaving strip silent', () => {
+  const f = boot();
+  try {
+    f.bus.emit('survivorPod:stripBlocked', { salvagePointId: 'pod', reason: 'rescue_committed' });
+    assert.equal(f.deck.size, 1);
+    assert.match(f.text(), /RESCUE COMMITTED/);
+    assert.match(f.text(), /strip claim is spent/);
+    f.state.simTime = 30; f.deck.tick();
+    assert.match(f.text(), /RESCUE COMMITTED/);
+    assert.match(f.text(), /SURVIVOR STABLE/);
+    assert.equal(f.deck.size, 1);
+  } finally { f.close(); }
+});
+
+test('the status line crosses the air boundary on a single tick', () => {
+  const f = boot(9);
+  try {
+    assert.match(f.text(), /AIR 1s/);
+    f.state.simTime = 10; f.deck.tick();
+    assert.match(f.text(), /SURVIVOR STABLE · PAYOUT DECAYING/);
+    assert.doesNotMatch(f.text(), /AIR \d+s/);
+    assert.equal(f.deck.size, 1, 'the decision survives its own boundary tick');
+  } finally { f.close(); }
+});
+
+test('a pod missing its owner record counts down from the offer stamp', () => {
+  const f = boot(5, { podRecord: false });
+  try {
+    // No promotedByPoint entry: the offer's stamped oxygenDueAt is the only clock.
+    assert.match(f.text(), /AIR 5s/);
+    f.state.simTime = 11; f.deck.tick();
+    assert.match(f.text(), /SURVIVOR STABLE/);
+    assert.equal(f.deck.size, 1);
+  } finally { f.close(); }
+});
+
+test('an ordinary communicator offer keeps its untimed card and the choose seam', () => {
+  const comms = { id: 'comms-offer', source: 'salvage', salvagePointId: 'claim', title: 'Wreck claim',
+    summary: 'A contract rides on this wreck.' };
+  const f = boot(5, { offer: comms, podRecord: false });
+  try {
+    assert.match(f.text(), /CONTRACT SIGNAL/);
+    assert.match(f.text(), /A contract rides on this wreck\./);
+    assert.doesNotMatch(f.text(), /AIR \d+s/);
+    assert.doesNotMatch(f.text(), /— \d+s/, 'no oxygen deadline is rendered for a plain offer');
+    f.state.simTime = 30; f.deck.tick();
+    assert.equal(f.deck.size, 1, 'an untimed decision never expires on the oxygen clock');
+    const choices = []; f.bus.on('wreckMission:choose', p => choices.push(p));
+    f.deck.choose('wreck-choice:comms-offer', 'take', 'test');
+    assert.equal(choices[0]?.offerId, 'comms-offer');
+    assert.equal(choices[0]?.choiceId, 'take');
+    assert.equal(f.deck.size, 0);
+  } finally { f.close(); }
+});
+
+test('Continue restores an unanswered authored wreck choice in-sector', () => {
+  const choiceOffer = { id: 'choice-offer', source: 'salvage', salvagePointId: 'claim',
+    sectorId: 'ceres', title: 'Black box claim', summary: 'Two parties want this wreck.',
+    choice: { prompt: 'Hand it over or keep it?', options: [
+      { id: 'handover', label: 'Hand over' }, { id: 'keep', label: 'Keep it' }] } };
+  const f = boot(5, { offer: choiceOffer, podRecord: false });
+  try {
+    assert.equal(f.deck.size, 1);
+    f.bus.emit('save:loaded', {});
+    assert.equal(f.deck.size, 1, 'an unanswered authored choice survives Continue');
+    assert.match(f.text(), /Hand it over or keep it\?/);
+    // A refused pick stays boarded with the stamp — the retry is still owed its card.
+    f.state.missions.boards.station.slots[0].params = { wreckChoiceId: 'keep' };
+    f.bus.emit('save:loaded', {});
+    assert.equal(f.deck.size, 1, 'a refused pick still owes the choice its card');
+    // An accepted pick withdrew the row — nothing left to restore.
+    f.state.missions.boards.station.slots = [];
+    f.bus.emit('save:loaded', {});
+    assert.equal(f.deck.size, 0);
+    // A choice owed on a wreck in another sector does not re-prompt here.
+    f.state.missions.boards.station.slots = [{ ...choiceOffer, sectorId: 'other' }];
+    f.bus.emit('save:loaded', {});
+    assert.equal(f.deck.size, 0);
   } finally { f.close(); }
 });
 
