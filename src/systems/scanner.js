@@ -81,6 +81,8 @@ import {
   liveEntityById,
   resolveEntitySelection,
 } from '../ui/sim/stableSelection.js';
+import { counted } from '../core/numberFormat.js';
+
 
 /**
  * The live body a signal record still points at. A record written with `entityStable` resolves
@@ -1528,7 +1530,7 @@ export const scanner = {
       if (resonanceSignal) {
         const response = resonanceObeliskResponse(scanCount);
         record.classification = 'RESONANCE OBELISK';
-        record.detail = `Pulse interval ${response.pulseIntervalS.toFixed(1)} s. ${scanCount} scan${scanCount === 1 ? '' : 's'} logged; Vael watch cadence target ${response.patrolIntervalS} s.`;
+        record.detail = `Pulse interval ${response.pulseIntervalS.toFixed(1)} s. ${counted(scanCount, 'scan', 'scans')} logged; Vael watch cadence target ${response.patrolIntervalS} s.`;
         record.resonance = response;
         if (own.completed[candidate.id]) {
           record.status = 'investigated';

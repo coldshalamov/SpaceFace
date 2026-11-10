@@ -1,3 +1,4 @@
+import { pluralWord } from './numberFormat.js';
 // marketPulsePresenter.js — the market's own pulse, read.
 //
 // The economy already MEASURES the berth economy's value flow (src/economy/economyPulse.js:
@@ -90,13 +91,13 @@ export function marketPulseRead(report) {
       : (lastMovementLine(rows, throughS) || 'This quarter-hour has been quiet so far.'));
     if (quietStretch > 0) lines.push(`The longest quiet stretch ran ${binCountWord(quietStretch)}.`);
     if (offers + accepts > 0) {
-      lines.push(`Contract work: ${grouped(offers)} ${offers === 1 ? 'offer' : 'offers'} posted, ${grouped(accepts)} ${accepts === 1 ? 'was taken' : 'were taken'}.`);
+      lines.push(`Contract work: ${grouped(offers)} ${pluralWord(offers, 'offer', 'offers')} posted, ${grouped(accepts)} ${pluralWord(accepts, 'was taken', 'were taken')}.`);
     }
     if (publishedUnits + depletedRequests > 0) {
       const parts = [];
       if (publishedUnits === 1) parts.push('fields published 1 unit of work');
       else if (publishedUnits > 0) parts.push(`fields published ${grouped(publishedUnits)} units of work`);
-      if (depletedRequests > 0) parts.push(`${grouped(depletedRequests)} work ${depletedRequests === 1 ? 'request came' : 'requests came'} back depleted`);
+      if (depletedRequests > 0) parts.push(`${grouped(depletedRequests)} work ${pluralWord(depletedRequests, 'request came', 'requests came')} back depleted`);
       lines.push(`Field work: ${parts.join(' and ')}.`);
     }
   }

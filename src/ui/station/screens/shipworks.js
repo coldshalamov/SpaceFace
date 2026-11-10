@@ -132,6 +132,8 @@ import {
   syncKeys,
 } from './fhChrome.js';
 import { bindStationMarkup, markStationControl, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
+import { counted } from '../../numberFormat.js';
+
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 export function shipworksHullName(defId) {
@@ -225,10 +227,10 @@ export function hullSwitchCargoGuidance(state, targetIndex) {
   for (const amount of Object.values(ships[targetIndex].cargo?.items || {})) {
     incoming += Math.max(0, Math.floor(Number(amount) || 0));
   }
-  const outgoing = stays ? `${stays} unreserved unit${stays === 1 ? '' : 's'} stay on ${name(ships[activeIndex])}.`
+  const outgoing = stays ? `${counted(stays, 'unreserved unit', 'unreserved units')} stay on ${name(ships[activeIndex])}.`
     : `No unreserved cargo stays on ${name(ships[activeIndex])}.`;
-  const protectedText = protectedUnits ? ` ${protectedUnits} sealed or protected unit${protectedUnits === 1 ? '' : 's'} must fit in ${name(ships[targetIndex])} to travel with you.` : '';
-  const incomingText = incoming ? ` ${name(ships[targetIndex])} has ${incoming} stored unit${incoming === 1 ? '' : 's'}; it loads what fits and keeps the rest aboard.`
+  const protectedText = protectedUnits ? ` ${counted(protectedUnits, 'sealed or protected unit', 'sealed or protected units')} must fit in ${name(ships[targetIndex])} to travel with you.` : '';
+  const incomingText = incoming ? ` ${name(ships[targetIndex])} has ${counted(incoming, 'stored unit', 'stored units')}; it loads what fits and keeps the rest aboard.`
     : ` ${name(ships[targetIndex])} has no stored cargo.`;
   return outgoing + protectedText + incomingText;
 }

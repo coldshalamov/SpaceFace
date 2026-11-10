@@ -158,6 +158,8 @@ import { el, settle, stamp, cue } from '../kit/index.js';
 import { renderResultsSheet, resultsSheetModel, recordedKitId } from './resultsSheet.js';
 import { capPins, platePins, panePins, channelPins, rowPins }
   from '../kit/computedMaterial.js';
+import { counted, pluralWord } from '../numberFormat.js';
+
 
 const FH_KEY = {
   primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
@@ -459,7 +461,7 @@ function canAnimate() {
 function hullBlurb(starter) {
   if (starter.blurb) return starter.blurb;
   const count = Array.isArray(starter.loadout) ? starter.loadout.length : 0;
-  return `${starter.hullId.replace(/^ship_/, '')} · ${count} hardpoint${count === 1 ? '' : 's'} fitted`;
+  return `${starter.hullId.replace(/^ship_/, '')} · ${counted(count, 'hardpoint', 'hardpoints')} fitted`;
 }
 
 // `freshSeed` lives in crucibleLaunch.js — the title's one-press Swarm launch uses the same
@@ -592,7 +594,7 @@ export function historyRunRows(profile) {
       run && run.arenaId ? String(run.arenaId).replace(/^arena_/, '').replace(/_/g, ' ') : '',
       ruleset && ruleset !== 'scored' ? ruleset.replace(/_/g, ' ') : '',
       run && run.trialId ? 'trial' : '',
-      mutators > 0 ? `${mutators} mutator${mutators === 1 ? '' : 's'}` : '',
+      mutators > 0 ? `${counted(mutators, 'mutator', 'mutators')}` : '',
       run && run.dailyDateKey ? 'daily' : '',
       run && run.ghostHash ? 'ghost on file' : '',
       run && run.bestLineId ? 'best line' : '',
@@ -702,7 +704,7 @@ function renderRecordRows(profile, hooks = {}) {
   const log = historyRunRows(profile);
   if (log.length) {
     const drawer = el('details', 'sf-crd-log');
-    const summary = el('summary', 'k-t-fine fh-legend', `Run log · ${log.length} run${log.length === 1 ? '' : 's'} recorded`);
+    const summary = el('summary', 'k-t-fine fh-legend', `Run log · ${counted(log.length, 'run', 'runs')} recorded`);
     paintLegend(summary, false);
     drawer.appendChild(summary);
     const list = el('ul', 'k-rows sf-crd-log__list');
@@ -1328,7 +1330,7 @@ export const crucibleScreen = {
         const button = word(perk.name, 'k-word--fine sf-crd-perk');
         paintKey(button, 'small');
         const gate = Number.isInteger(perk.stars) ? `${perk.stars} stars`
-          : Number.isInteger(perk.challenges) ? `${perk.challenges} challenge${perk.challenges === 1 ? '' : 's'}`
+          : Number.isInteger(perk.challenges) ? `${counted(perk.challenges, 'challenge', 'challenges')}`
             : 'locked';
         button.title = earned ? perk.blurb : `${perk.blurb} Earned at ${gate}.`;
         button.setAttribute('aria-label', `${perk.name}. ${perk.blurb}${earned ? '' : ` Earned at ${gate}.`}`);
@@ -1543,7 +1545,7 @@ export const crucibleScreen = {
           badge.setAttribute('aria-hidden', 'true');
           button.appendChild(badge);
         } else {
-          button.title = `${choice.name} — bare hull, ${choice.slotCount} hardpoint${choice.slotCount === 1 ? '' : 's'}`;
+          button.title = `${choice.name} — bare hull, ${counted(choice.slotCount, 'hardpoint', 'hardpoints')}`;
         }
         button.addEventListener('click', () => {
           if (hullLocked) {
@@ -1647,7 +1649,7 @@ export const crucibleScreen = {
         if (locked) {
           const need = SWARM_ARENA_STAR_GATES[button.dataset.arenaId] || 0;
           const have = swarmLadderStarTotal(doorProfile && doorProfile.ladder);
-          const earn = `${roomName} — locked. Opens at ${need} ladder star${need === 1 ? '' : 's'} — you have ${have}. The Foundry's climb pays them.`;
+          const earn = `${roomName} — locked. Opens at ${counted(need, 'ladder star', 'ladder stars')} — you have ${have}. The Foundry's climb pays them.`;
           button.title = earn;
           button.setAttribute('aria-label', earn);
         } else {
@@ -1680,7 +1682,7 @@ export const crucibleScreen = {
           const have = swarmLadderStarTotal(doorProfile && doorProfile.ladder);
           arenaSentence.dataset.kind = 'earn';
           arenaSentence.textContent = `${arenaDescriptions[arena.id][0]} opens at ${need} ladder `
-            + `star${need === 1 ? '' : 's'} — you have ${have}. The Foundry's climb pays them.`;
+            + `${pluralWord(need, 'star', 'stars')} — you have ${have}. The Foundry's climb pays them.`;
           cue('deny');
           return;
         }
@@ -1897,7 +1899,7 @@ export const crucibleScreen = {
         zoneIndex: swarmZoneIndexFor(startWave),
       });
       const pickedAsk = pickedOpen.length
-        ? ` The next star${pickedOpen.length > 1 ? 's' : ''} want${pickedOpen.length > 1 ? '' : 's'} ${pickedOpen.join(' and ')}.`
+        ? ` ${pluralWord(pickedOpen.length, 'The next star wants', 'The next stars want')} ${pickedOpen.join(' and ')}.`
         : '';
       els.zoneSentence.textContent = (startWave > 1
         ? `${picked.name} — checkpoint start at Round ${startWave}. The opening armory holds `
@@ -1928,7 +1930,7 @@ export const crucibleScreen = {
       const bounty = Math.max(0, Math.round(Number(hangar.bounty) || 0));
       const hulls = Array.isArray(hangar.ownedHulls) ? hangar.ownedHulls : [];
       els.hangarNote.textContent = `Bounty ${bounty} cr — banked across runs, not the run purse.`
-        + (hulls.length ? ` ${hulls.length} hull${hulls.length === 1 ? '' : 's'} in the bay.` : '');
+        + (hulls.length ? ` ${counted(hulls.length, 'hull', 'hulls')} in the bay.` : '');
       els.hangarTracks.innerHTML = '';
       for (const track of HANGAR_TRACKS) {
         const rank = hangarRank(hangar, track.id);
@@ -2063,7 +2065,7 @@ export const crucibleScreen = {
       try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
       if (res.ghostHash != null && lastGhostRowByHash(doorProfile, res.ghostHash)) raceGhost = true;
       shareNote.textContent = `Code loaded — seed ${res.seed}`
-        + (res.mutators.length ? `, ${res.mutators.length} mutator${res.mutators.length === 1 ? '' : 's'}` : '')
+        + (res.mutators.length ? `, ${counted(res.mutators.length, 'mutator', 'mutators')}` : '')
         + '.';
       cue('confirm');
       syncHull();
@@ -3316,7 +3318,7 @@ function renderLastSeconds(band, trail) {
     left.appendChild(track);
     line.appendChild(left);
     const fig = el('span', 'k-row__num');
-    fig.appendChild(el('span', 'k-t-fine k-62 sf-crres__hit-fig', `${row.hits} hit${row.hits === 1 ? '' : 's'}`));
+    fig.appendChild(el('span', 'k-t-fine k-62 sf-crres__hit-fig', `${counted(row.hits, 'hit', 'hits')}`));
     fig.appendChild(el('span', 'sf-crres__hit-fig', ` ${row.amount} damage`));
     line.appendChild(fig);
     list.appendChild(line);
@@ -4268,7 +4270,7 @@ export function deathDialSpec(result, ctx) {
     hitWeapons: trail.filter((e) => Number.isFinite(Number(e && e.amount)) && Number(e.amount) > 0)
       .map((e) => weaponDisplayName(typeof e.weaponId === 'string' ? e.weaponId : null)),
     hitGroups: breakdown.rows.map((r) => ({ weapon: r.weapon, hits: r.hits, amount: r.amount })),
-    hitSummary: breakdown.hits ? `Last ${breakdown.hits} hit${breakdown.hits === 1 ? '' : 's'} · ${breakdown.total} damage` : '',
+    hitSummary: breakdown.hits ? `Last ${counted(breakdown.hits, 'hit', 'hits')} · ${breakdown.total} damage` : '',
     engraving: Number(result.deepestWave || result.wave) > 0 ? `Wave ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',
     caption: {
       label: 'Killed by',

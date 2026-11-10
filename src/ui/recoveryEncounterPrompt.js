@@ -9,6 +9,7 @@
 
 import { stationName } from './sectorLawPresenter.js';
 import { getPromptDeck } from './promptDeck.js';
+import { counted } from './numberFormat.js';
 
 const RECEIPT_TTL_S = 6;
 
@@ -46,12 +47,6 @@ function receiptDetail(receipt) {
 
 function words(value) {
   return String(value == null ? '' : value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-/** A whole counted chip word: "1 CREDIT", "8 CARGO UNITS" — never "1 CREDITS". */
-function counted(value, singular, plural) {
-  const v = Math.max(0, Math.floor(Number(value) || 0));
-  return `${v.toLocaleString('en-US')} ${v === 1 ? singular : plural}`;
 }
 
 function recoveryLossText(reason) {

@@ -29,6 +29,8 @@ import {
   openDeadDropCap,
   planDeadDropStow,
 } from './boreDeadDrop.js';
+import { counted, pluralWord } from '../core/numberFormat.js';
+
 
 /** Explicit SF20-03 receiver intent. Source and payment owners commit before Massline retires. */
 export function deliverTallyThreeCrate(state,quote,registry) {
@@ -1279,7 +1281,7 @@ export const cargo = {
       bus.emit('cargo:parkedTransfer', { shipIndex: index, direction: dir, movedUnits: moved });
       bus.emit('toast', {
         text: moved > 0
-          ? `Deck crew moved ${moved} unit${moved === 1 ? '' : 's'} ${dir === 'load' ? 'aboard' : 'onto the parked hull'}.`
+          ? `Deck crew moved ${counted(moved, 'unit', 'units')} ${dir === 'load' ? 'aboard' : 'onto the parked hull'}.`
           : 'Nothing the deck crew could move.',
         kind: moved > 0 ? 'success' : 'info',
         ttl: 3,
@@ -1412,7 +1414,7 @@ export const cargo = {
       ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
       : names[0];
     this.bus.emit('toast', {
-      text: `Came in hot — the hold cracked open. ${pods} ${list} pod${pods === 1 ? '' : 's'} floating by the dock.`,
+      text: `Came in hot — the hold cracked open. ${pods} ${list} ${pluralWord(pods, 'pod', 'pods')} floating by the dock.`,
       kind: 'warn',
       ttl: 6,
     });

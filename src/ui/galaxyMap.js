@@ -148,6 +148,8 @@ import {
   RIBBON_ACTION_IDS,
   formatDurationS,
 } from './map/mapRouteRibbon.js';
+import { counted, pluralWord } from './numberFormat.js';
+
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
@@ -3169,7 +3171,7 @@ export function resolveRouteEngageAction(state) {
     visible: true,
     enabled: true,
     label: mapControlLabel('engage'),
-    reason: legs ? `${legs} leg${legs === 1 ? '' : 's'} plotted — ready to fly` : 'Route plotted — ready to fly',
+    reason: legs ? `${counted(legs, 'leg', 'legs')} plotted — ready to fly` : 'Route plotted — ready to fly',
     event: 'nav:engageRoute',
   };
 }
@@ -6914,9 +6916,9 @@ _stepAnimation(now) {
     const ecology = regionalEcologyReadout(state, sectorId);
     const economyProfile = REGIONAL_ECONOMY_PROFILE_BY_SECTOR.get(sectorId) || null;
     const conflictLine = conflict.wars > 0
-      ? `${conflict.wars} war${conflict.wars > 1 ? 's' : ''}${conflict.tense > 0 ? ` · ${conflict.tense} tense` : ''}`
+      ? `${counted(conflict.wars, 'war', 'wars')}${conflict.tense > 0 ? ` · ${conflict.tense} tense` : ''}`
       : conflict.tense > 0
-        ? `${conflict.tense} tense pairing${conflict.tense > 1 ? 's' : ''}`
+        ? `${counted(conflict.tense, 'tense pairing', 'tense pairings')}`
         : 'quiet';
     const holdingsLine = holdings.count
       ? `${holdings.count} claims · ${holdings.active} active · defense ${Math.round(holdings.defenseAvg)}`
@@ -7891,7 +7893,7 @@ _stepAnimation(now) {
         data-rail-alt="${mode}" data-route-option="${mode}"${same ? ' aria-selected="true"' : ''}
         data-route-hops="${alt.legs.length}" data-route-fuel="${Math.round(alt.totalFuel || 0)}">
         <span class="gm-rail-item-t k-row__name">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
-        <span class="gm-rail-item-s k-row__sub">${alt.totalHops} hop${alt.totalHops === 1 ? '' : 's'} · ${Math.round(alt.totalFuel || 0)}F${Number.isFinite(alt.totalToll) ? ` · ${alt.totalToll} cr toll` : ''} · worst leg ${Math.round(worst * 100)}% interdict${mode === 'spine' ? ' · fly the marked Ceres approach' : ''}</span>
+        <span class="gm-rail-item-s k-row__sub">${counted(alt.totalHops, 'hop', 'hops')} · ${Math.round(alt.totalFuel || 0)}F${Number.isFinite(alt.totalToll) ? ` · ${alt.totalToll} cr toll` : ''} · worst leg ${Math.round(worst * 100)}% interdict${mode === 'spine' ? ' · fly the marked Ceres approach' : ''}</span>
       </button>`);
     }
     if (!rows.length) return '<div class="gm-ins-note">No alternative path to that sector through charted space.</div>';
@@ -9545,7 +9547,7 @@ _draw() {
           x: anchor ? anchor.sx : this._line.x, y: anchor ? anchor.sy : this._line.y,
           clear: anchor ? (anchor.radiusPx || 14) + 8 : 12,
           title: String(target.name || sectorNameOf(state, sid)).toUpperCase(),
-          numerals: [{ value: String(hops), unit: hops === 1 ? 'JUMP' : 'JUMPS' }, { value: dist.value, unit: dist.unit }],
+          numerals: [{ value: String(hops), unit: pluralWord(hops, 'JUMP', 'JUMPS') }, { value: dist.value, unit: dist.unit }],
           figures: quiet.join('  ·  '),
           note: 'RELEASE TO LAY  ·  ESC TO DROP',
         };
@@ -9956,13 +9958,13 @@ _draw() {
       const holdingsSignal = this._layers.holdings ? sectorHoldingsSignal(state, n.id) : null;
       const eventDetail = eventSignal
         ? (eventSignal.wars > 0
-          ? `${eventSignal.wars} war${eventSignal.wars > 1 ? 's' : ''}${eventSignal.tense > 0 ? `, ${eventSignal.tense} tense` : ''}`
+          ? `${counted(eventSignal.wars, 'war', 'wars')}${eventSignal.tense > 0 ? `, ${eventSignal.tense} tense` : ''}`
           : eventSignal.tense > 0
             ? `${eventSignal.tense} tense`
             : 'quiet')
         : 'off';
       const holdingsDetail = holdingsSignal && holdingsSignal.count > 0
-        ? `${holdingsSignal.count} claim${holdingsSignal.count > 1 ? 's' : ''}`
+        ? `${counted(holdingsSignal.count, 'claim', 'claims')}`
         : 'none';
 
       this._clickTargets.push({
@@ -11498,7 +11500,7 @@ _drawLocal(g, state, w, h) {
       if (rememberedContacts > 0) {
         g.fillStyle = CHART_INK.bone(0.7);
         g.font = chartFont(560, 12, { stretch: 'normal' });
-        g.fillText(`${rememberedContacts} REMEMBERED ${rememberedContacts === 1 ? 'FIX' : 'FIXES'} FADING`, shipX, shipY + 52);
+        g.fillText(`${rememberedContacts} REMEMBERED ${pluralWord(rememberedContacts, 'FIX', 'FIXES')} FADING`, shipX, shipY + 52);
       }
       setTracking(g, 0, 12);
       g.restore();

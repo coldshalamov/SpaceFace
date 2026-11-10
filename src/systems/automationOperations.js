@@ -1,3 +1,4 @@
+import { pluralWord } from '../core/numberFormat.js';
 // PQ-177.07 — visible operational limits for a programmed miner.
 // Pure projection: names the physical stage that is actually stopping work, the operating
 // state a player can see, and whether another machine would help. Runtime owners still
@@ -26,7 +27,7 @@ export const THROUGHPUT_SETTLEMENT_SOURCES = Object.freeze(['drone:program']);
 /** A whole counted amount for a sentence: "1 unit", "12 units" — never a bare "1u". */
 function countedUnits(n) {
   const v = Math.max(0, Math.round(Number(n) || 0));
-  return `${v.toLocaleString('en-US')} ${v === 1 ? 'unit' : 'units'}`;
+  return `${v.toLocaleString('en-US')} ${pluralWord(v, 'unit', 'units')}`;
 }
 
 /** Grouped credits for a sentence: "1,234 cr" — never an ungrouped wall of digits. */
@@ -448,8 +449,8 @@ export function describeProgrammedMinerOperation(group, def = {}) {
   // words-field-counts: the screen-reader summary can count to one — "Gross cut 1 unit",
   // "Operating cost 1 credit per minute" — instead of reading "1 units" to a blind pilot.
   const countUnits = (n) => `${Math.max(0, Number(n) || 0)}`;
-  const unitWord = (n) => (Math.round(Number(n) || 0) === 1 ? 'unit' : 'units');
-  const creditWord = (n) => (Math.round(Number(n) || 0) === 1 ? 'credit' : 'credits');
+  const unitWord = (n) => pluralWord(Math.max(0, Math.round(Number(n) || 0)), 'unit', 'units');
+  const creditWord = (n) => pluralWord(Math.max(0, Math.round(Number(n) || 0)), 'credit', 'credits');
   const grossUnits = Math.max(0, Number(op.grossUnits) || 0);
   const accessibleSummary = [
     statusLabel,

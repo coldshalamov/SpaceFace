@@ -64,6 +64,8 @@ import { createCounter, decrypt } from '../../orrery/text.js';
 import { reducedMotion, stagger } from '../../orrery/motion.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
+import { counted } from '../../numberFormat.js';
+
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FAC = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -471,7 +473,7 @@ export function missionDossierHtml(m, state, options = {}) {
   const routeScope = missionRouteScope(m, state);
   const routeText = routeScope && routeScope.text
     ? routeScope.text
-    : (jumps > 0 ? `${jumps} jump${jumps > 1 ? 's' : ''}` : 'Route pending');
+    : (jumps > 0 ? `${counted(jumps, 'jump', 'jumps')}` : 'Route pending');
   // Restores the guidance the retired hub gave assistive tech: the verb must say what pressing it
   // does AND why it cannot be pressed, without depending on the visual readiness module.
   const acceptAria = ready

@@ -46,6 +46,8 @@ import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { GATE_BEARINGS } from './waveMaterialization.js';
 import { isSwarmSpecialistRun, swarmSpecialistBriefForEnemy } from '../data/swarmSpecialists.js';
 import { isHostileToPlayer } from './scannerReadModel.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 
 /**
  * Hard ceiling on player-facing lines per wave. Counts voice:say AND alert, because alerts.js
@@ -334,7 +336,7 @@ export function waveOpeningLine(wave, plan) {
   }
   if (bodies <= 0) return null;
 
-  const noun = bodies === 1 ? 'hostile' : 'hostiles';
+  const noun = pluralWord(bodies, 'hostile', 'hostiles');
   const where = joinBearings(bearings);
   const arrival = where ? `${capitalize(countWord(bodies))} ${noun} ${where}.` : `${capitalize(countWord(bodies))} ${noun} inbound.`;
 
@@ -694,7 +696,7 @@ export const survivalAnnounce = {
     if (!Number.isInteger(wave) || wave < 1) return;
     const stored = payload && Number.isInteger(payload.stored) ? payload.stored : 0;
     const countText = stored > 0
-      ? `${capitalize(countWord(stored))} ${stored === 1 ? 'hostile' : 'hostiles'}`
+      ? `${capitalize(countWord(stored))} ${pluralWord(stored, 'hostile', 'hostiles')}`
       : 'Hostile reinforcement';
     this._say('objective', `survival:w${wave}:surge:${payload && payload.tick != null ? payload.tick : 0}`, `Inbound surge. ${countText} on approach.`, 4);
   },

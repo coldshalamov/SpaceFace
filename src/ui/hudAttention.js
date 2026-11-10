@@ -8,6 +8,8 @@ import { getPromptDevice } from './bindings.js';
 import { controlPrompt } from './controlPrompts.js';
 import { isSwarmGlass, swarmGlassAdmits, swarmCalloutText } from './swarmGlass.js';
 import { attentionAdmits, isAdventureFlight, plainCallout, receiptSource } from './attentionGlass.js';
+import { counted } from './numberFormat.js';
+
 
 export const RECEIPT_MAX = 2;
 export const VITAL_NUMERIC_LOW = 0.5;
@@ -181,8 +183,8 @@ export function bingoFuelLine(fuelFrac) {
 /** The sortie tally read on dock: kills · rocks cracked · credits earned this outing. */
 export function sortieTallyLine({ kills = 0, rocks = 0, credits = 0 } = {}) {
   const parts = [];
-  if (kills > 0) parts.push(`${kills} kill${kills === 1 ? '' : 's'}`);
-  if (rocks > 0) parts.push(`${rocks} rock${rocks === 1 ? '' : 's'}`);
+  if (kills > 0) parts.push(`${counted(kills, 'kill', 'kills')}`);
+  if (rocks > 0) parts.push(`${counted(rocks, 'rock', 'rocks')}`);
   if (credits > 0) parts.push(`${credits.toLocaleString('en-US')} cr`);
   return parts.length ? `SORTIE — ${parts.join(' · ')}` : '';
 }
@@ -427,7 +429,7 @@ export function formatRosterCount(contacts = []) {
   const total = contacts.length;
   if (!total) return '';
   if (hostile) return `${hostile} HOSTILE · ${total}`;
-  return `${total} CONTACT${total === 1 ? '' : 'S'}`;
+  return `${counted(total, 'CONTACT', 'CONTACTS')}`;
 }
 
 export function masslineInstrumentVisible(tether) {

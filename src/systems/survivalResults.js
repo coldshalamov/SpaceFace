@@ -22,6 +22,8 @@ import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import { captureKillReplay } from './killReplay.js';
 import { thinBlackBoxTape } from '../sim/blackBoxTape.js';
 import { normalizeRunShareWreck } from '../core/runShareCode.js';
+import { counted } from '../core/numberFormat.js';
+
 
 /** How many recent hits on the player the summary keeps. Bounded: this is a ring, not a log. */
 export const DAMAGE_TRAIL_LENGTH = 8;
@@ -479,7 +481,7 @@ export function stuntRoundRows(combo, options = {}) {
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const bestChain = n(c.bestChain);
   if (bestChain > 0) {
-    rows.push(['Best chain', `${bestChain} trick${bestChain === 1 ? '' : 's'} · ${n(c.bestChainPoints)} banked`]);
+    rows.push(['Best chain', `${counted(bestChain, 'trick', 'tricks')} · ${n(c.bestChainPoints)} banked`]);
   }
   const banked = n(c.banked);
   if (banked > 0) rows.push(['Banked style', String(banked)]);
