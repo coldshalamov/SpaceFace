@@ -105,3 +105,9 @@ Every one of the 52 draft PR briefs now includes explicit **branch ownership, na
 - Draft PRs should only become ready for review after the **named player experience** is in code and independently exercised. No speculative merges or branch deletion.
 
 **Published:** 2026-11-08. Commission authorship baseline: `f95de0eb1ba7560839209936afba48c7b96fe41a`. All actual gameplay completion status is intentionally unknown until agents test it.
+
+## Added 2026-11-09 — the director's layer
+
+- **Start here now:** [09 — Creative direction, build order and how to check your own work](09_CREATIVE_DIRECTION.md). Every commission brief opens with a *Director's card* that says what to build first.
+- **Two new commissions, both Wave 0:** EC-G16 — One glass (the interface system), [#1024](https://github.com/coldshalamov/SpaceFace/pull/1024); EC-G17 — The workbench (see your own work in under a minute), [#1025](https://github.com/coldshalamov/SpaceFace/pull/1025).
+- **Order:** Wave 0 is EC-G11, EC-G16, EC-G17. Wave 1 is Helios (EC-S01 with EC-G01 and EC-G06), the Foundry (EC-A01 with EC-Z01), EC-G08 and EC-G10. No more than six in flight. The full table is in 09 §7.
