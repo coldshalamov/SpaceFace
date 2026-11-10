@@ -136,4 +136,6 @@ Written by the lead designer so that nobody has to invent it:
 - [17 — The ladder, the prices and the long game](17_THE_LADDER_AND_THE_LONG_GAME.md) — the eight rope classes, money, Swarm prices, the hours, Kiln's Dares, the yard.
 - [18 — Sound, look, and how we know it is finished](18_SOUND_LOOK_AND_DONE.md) — and the owner's ten-minute card.
 
-Sector cards S04, S06, S08–S25 and arena cards A02–A07 do not yet carry a pointer to 14 and 15; builders of those should read them directly.
+- [19 — What players expect](19_WHAT_PLAYERS_EXPECT.md) — the first-evening basics, each with the plan that owns it.
+
+Every sector, arena and shared-system card now points at the document that writes out its content.

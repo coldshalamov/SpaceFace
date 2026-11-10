@@ -99,3 +99,11 @@ Agents build well from something specific and badly from "make it good". So the 
 - **[12 — Swarm: the Pit](12_SWARM_THE_PIT.md)** — the whole run: what is on the floor, the drops, the freight lanes, fifteen enemies and the answer to each, thirty rounds by name, the bosses, Madame Kiln.
 - **[13 — Jobs and heists](13_JOBS_AND_HEISTS.md)** — the five towns, every job and heist beat by beat, the street moments, and the long game of building your own yard.
 - **`design/program/INFERENCE_PLANTS.md`** (on master) — sixty chance events, secrets, street moments and radio lines. INFERENCE agents build these as written; they do not invent them.
+- **[14 — Outposts and waystations](14_OUTPOSTS_AND_WAYSTATIONS.md)** — the six outposts' jobs and one job for each of the fourteen frontier stops.
+- **[15 — The seven arena floors](15_ARENA_FLOORS.md)** — for every arena: where the guns hang, where the freight runs, doors, traps, the loop, the secret, the round-thirty boss.
+- **[16 — The story, shown](16_THE_STORY_SHOWN.md)** — the eight books staged as things that happen in front of the ship; the cast's faces and places; the five doors.
+- **[17 — The ladder, the prices and the long game](17_THE_LADDER_AND_THE_LONG_GAME.md)** — the eight rope classes, money, Swarm prices, what each hour is for, Kiln's Dares, the Nightly, the yard.
+- **[18 — Sound, look, and how we know it is finished](18_SOUND_LOOK_AND_DONE.md)** — and the owner's ten-minute card. **This is the acceptance standard.**
+- **[19 — What players expect](19_WHAT_PLAYERS_EXPECT.md)** — the first-evening basics, each with the plan that owns it.
+
+**The writing is complete.** Every town, outpost, waystation, arena, round, enemy, gun family, power, story beat and screen has something specific to build from. From here there are no new plan documents: only builds, looks, and the card.

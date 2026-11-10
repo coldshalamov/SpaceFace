@@ -8,6 +8,8 @@
 
 **Build first:** nothing. Review Helios Slice 1 against the Stranger Test and say plainly whether it passes.
 
+**Also written out, 2026-11-10:** the three looks every plan must pass, the owner's ten-minute card, the bar for the whole game and the list of what could still stop it being great are in [18 — Sound, look, and how we know it is finished](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/18_SOUND_LOOK_AND_DONE.md) §3. Use them to accept or send back. No new plan documents from here: builds, looks and the card.
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
