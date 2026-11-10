@@ -8,6 +8,8 @@
 
 **Build first:** the Helios horn and lamp-up, and Static's line after the first job: *"Somebody put the Venn lamp back up. Helios says thanks, whoever you are."*
 
+**Also written out, 2026-11-10:** the rope as an instrument, one voice per gun family, places that keep time, and music in layers are in [18 — Sound, look, and how we know it is finished](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/18_SOUND_LOOK_AND_DONE.md) §1. The audio library is near its size ceiling: layer and pitch, do not add recordings.
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
