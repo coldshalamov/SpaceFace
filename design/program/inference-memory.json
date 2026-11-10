@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-quiet-berth",
-      "date": "2026-11-04",
-      "wf": "WF-14",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A berth with nothing happening reads one honest quiet line — whether its boards moved since you last read them — instead of a dead card",
-      "fingerprint": "verb=read,subject=dock-card-empty-state,sector=station,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "41729f77ea5a",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-dying-drive",
       "date": "2026-11-04",
       "wf": "WF-12",
@@ -1697,6 +1684,22 @@
       "evidence": "design/program/receipts/pl-56-line-class-static.md",
       "kind": "plant",
       "player": "Class the Line up and the Static reports it: 'New rope in the lanes. Mind your cargo.' — the lane notices a bigger rope."
+    },
+    {
+      "id": "PL-55",
+      "date": "2026-11-10",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Plant row built as written: player:death + isCivilianEntity opens player.killed_by_traffic; static_76 airs once.",
+      "fingerprint": "verb=roasts,subject=traffic-kill,sector=the-static,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "22f4977395b2",
+      "verification": "focused_green",
+      "evidence": "design/program/receipts/pl-55-killed-by-traffic.md",
+      "kind": "plant",
+      "player": "Get run down by a civilian ship and the Static snarks: 'Lane lights exist. Just saying.'"
     }
   ],
   "knownDefects": [
