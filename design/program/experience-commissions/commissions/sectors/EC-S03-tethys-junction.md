@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier A — one of the five towns.** Full recipe, finished standard. This town also holds a *weight gate* (EC-G19): something visible from the first visit that the player cannot move yet, and can once their Line Class is high enough. It moves or it does not; no lock, no level text.
+
 **One line:** a town built in a rail yard, where the noon train stops everyone's day for forty seconds.
 
 **Landmark:** the Switchyard — long container strings crossing between the two halves of Split Station. **Shift:** the Noon Train. It blocks Main Lane, everyone waits, the kitchen shutter goes up. **Toy:** the switch paddles — bump one and a whole container string takes the other track. Help or havoc.
@@ -15,6 +17,8 @@
 **First 90 seconds:** you arrive as the Noon Train crosses. Through the gaps between containers you can see the clinic sign on one side and a blue-banded crate sitting on the wrong dock on the other.
 
 **Build first (Slice 1):** Wrong Address, with the switch paddles and the Noon Train.
+
+**Director's amendment, 2026-11-10** — see [10 — The game](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/10_THE_GAME.md). **Registrar Kessler lives here** — canon, and the first voice of the story. Kessler is this town's fourth face and its most important: give Kessler a berth at Customs, a face, and the Scale. The first trip of the game now ends here, so Tethys has to be safe to arrive in and readable at a glance.
 
 ### How to build this town and check your own work
 
