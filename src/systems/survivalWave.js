@@ -1695,7 +1695,7 @@ export const survivalWave = {
     if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
     // The opening Lancer/guard pair is a lesson, not a stranded end-of-round survivor.
     // After the authored read, the ordinary cleanup rule owns the fight again.
-    if (['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt'].includes(this._foundry?.id) && this._foundryTicks < this._foundry.shipReadTicks) return;
+    if (['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt', 'crack_the_shell', 'peel_the_screen', 'cross_the_foreman'].includes(this._foundry?.id) && this._foundryTicks < this._foundry.shipReadTicks) return;
     const state = this.state;
     if (!state || !state.entities) return;
     const player = state.entities.get(state.playerId);
@@ -1738,7 +1738,7 @@ export const survivalWave = {
 
   _commitStragglers() {
     if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
-    if (['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt'].includes(this._foundry?.id) && this._foundryTicks < this._foundry.shipReadTicks) return;
+    if (['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt', 'crack_the_shell', 'peel_the_screen', 'cross_the_foreman'].includes(this._foundry?.id) && this._foundryTicks < this._foundry.shipReadTicks) return;
     // The ledger gate guards the arrival phase only: while the wave is still inside its
     // authored duration, outstanding quota may still be inbound. Past that budget the quota
     // is debt, not arrival — a stalled ledger (a pending batch retrying a refused arrival,
@@ -1774,7 +1774,7 @@ export const survivalWave = {
 
   _commitLastStand() {
     if (!this._cohort || this._cohort.size === 0) return;
-    if (['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt'].includes(this._foundry?.id) && this._foundryTicks < this._foundry.shipReadTicks) return;
+    if (['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt', 'crack_the_shell', 'peel_the_screen', 'cross_the_foreman'].includes(this._foundry?.id) && this._foundryTicks < this._foundry.shipReadTicks) return;
     const swarmKillRound = !!(this._swarm && this._swarm.killTarget);
     if (swarmKillRound) {
       // Same stalemate as the distant pursuit above: inside the finite duration the ledger

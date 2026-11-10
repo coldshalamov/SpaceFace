@@ -48,6 +48,7 @@
 
 import { foundryScoreFromPlan } from '../data/swarmFoundryScore.js';
 import { planSwarmOpeningLeecher } from './swarmOpeningLeecher.js';
+import { planSwarmOpeningGlassback } from './swarmOpeningGlassback.js';
 import { planSwarmOpeningCyst } from './swarmOpeningCyst.js';
 import { isFoundryWreckKept } from '../data/swarmFoundryWreck.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
@@ -956,7 +957,7 @@ export function createBroodEngine(deps = {}) {
     const familyIndex = buildFamilyIndex();
     // Let the guard pair speak before the second new shape. This clock counts
     // active pilot play; waiting in the room cannot spend the Cyst's approach.
-    const lessonAtTick = foundryScore?.leecherAtTick ?? foundryScore?.cystAtTick;
+    const lessonAtTick = foundryScore?.glassbackAtTick ?? foundryScore?.leecherAtTick ?? foundryScore?.cystAtTick;
     if (!openingVolleyAttempted && lessonAtTick > foundryTicks) {
       // Approach the authored edge without spending another half-second poll.
       // The Cyst's full six-second read must finish before the ship crowd at840.
@@ -996,6 +997,16 @@ export function createBroodEngine(deps = {}) {
     // through to ordinary arrivals, never teleports props or delays the round.
     if (!openingVolleyAttempted) {
       openingVolleyAttempted = true;
+      const glassback = familyIndex.get('glassback');
+      const shell = foundryScore?.glassbackAtTick != null && glassback != null
+        ? planSwarmOpeningGlassback(state, state.run, liveWave, pendingPlan, liveFamilyRadius[glassback]) : null;
+      const shellSlot = shell ? findFreeSlot() : -1;
+      if (shell && shellSlot >= 0) {
+        spawnAt(shellSlot, glassback, shell.pos.x, shell.pos.z);
+        pendingPlan.find(part => part.id === 'glassback').count -= 1;
+        assignMotherShares(); publish(); return 1;
+      }
+      if (foundryScore?.glassbackAtTick != null) recoveryFallback = true;
       const leecher = familyIndex.get('leecher');
       const scrape = foundryScore?.leecherAtTick != null && leecher != null
         ? planSwarmOpeningLeecher(state, state.run, liveWave, pendingPlan, liveFamilyRadius[leecher]) : null;
@@ -1086,7 +1097,7 @@ export function createBroodEngine(deps = {}) {
     }
     // Admit the whole vignette atomically before the usual gate arrivals. It spends the
     // existing plan and never moves the chosen rock or an already-live brood body.
-    if (!bankPlayed && !spawnRequestedBankAttempted && !['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt'].includes(foundryScore?.id)) {
+    if (!bankPlayed && !spawnRequestedBankAttempted && !['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt', 'crack_the_shell', 'peel_the_screen', 'cross_the_foreman'].includes(foundryScore?.id)) {
       spawnRequestedBankAttempted = true;
       const layout = planSwarmBank(state, state?.run, liveWave, pendingPlan);
       const charger = familyIndex.get('charger'), spitter = familyIndex.get('spitter');

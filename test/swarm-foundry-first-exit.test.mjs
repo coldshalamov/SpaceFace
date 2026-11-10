@@ -129,7 +129,7 @@ test('the shop names the real bench before its bank, extract and keep-flying cho
   run.phase='draft';assert.equal(JSON.stringify(run),before);
   for(const extra of [{arenaId:'the_hive'},{arenaMutators:['dense']},{telemetry:{circuit:{}}},{ruleset:'scored'}])
     assert.equal(foundryFirstExitIntermission({...run,...extra}),null);
-  for(const extra of [{arenaId:'the_hive'},{mutators:['heavies_only']},{circuitRound:{kind:'survive'}},{wave:13}])
+  for(const extra of [{arenaId:'the_hive'},{mutators:['heavies_only']},{circuitRound:{kind:'survive'}},{wave:16}])
     assert.equal(planFor(73311,extra).swarm.foundry,undefined);
 });
 

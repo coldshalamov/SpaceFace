@@ -37,7 +37,7 @@ for(const wave of [11,12])test(`round ${wave}: finite recovery score, truthful f
  const next=swarmNextLine(swarmForecastForRun(run,wave));assert.match(next,wave===11?/scrape/:/switches flank/);assert.doesNotMatch(next,/invisib|unseen/i);
  if(wave===12){const debut=p.schedule.filter(e=>e.debut);assert.equal(debut.length,1);assert.equal(debut[0].enemyId,'quiet_ghost');assert.equal(debut[0].atTick,0);assert.equal(debut[0].readAfterTicks,1);}
  for(const options of [{arenaId:'the_hive'},{mutators:['heavies_only']},{circuitRound:{kind:'survive'}}])assert.equal(planFor(wave,options).swarm.foundry,undefined);
- assert.equal(planFor(13).swarm.foundry,undefined);
+ assert.equal(planFor(16).swarm.foundry,undefined);
 });
 for(const wave of [11,12])test(`round ${wave}: idle, staged latch and finite paced reserve use active time`,t=>{
  const h=fixture(t,wave);h.tick(1200);assert.equal(h.engine.view.aliveCount,0);assert.equal(h.ships().length,0);assert.equal(h.engine.view.pendingCount,swarmBroodPopulation(wave));
@@ -137,7 +137,7 @@ for(const wave of [11,12])test(`mounted recovery Armory launches ${wave+1} in th
  try{session.init(ctx);machine.init(ctx);shop.init(ctx);bus.emit('run:beginRequested',{kind:'survival',ruleset:'swarm',seed,arenaId:'helios_core'});
   // A completed-round fixture exercises real UI/phase owners; it is not earned combat.
   state.run.wave=wave;bus.emit('run:awardRequested',{credits:137,reason:'fixture'});bus.emit('run:transitionRequested',{expectedPhase:'loadout',nextPhase:'draft',reason:'fixture',tick:0});
-  const root=doc.createElement('div');screen.mount(root,ctx);screen.update?.(0,ctx);assert.match(screen._sub.textContent,wave===11?/changes flank/:/Swarm continues/);assert.match(textLines(root).join(' '),new RegExp(`Launch round ${wave+1}`));
+  const root=doc.createElement('div');screen.mount(root,ctx);screen.update?.(0,ctx);assert.match(screen._sub.textContent,wave===11?/changes flank/:/Glassback/);assert.match(textLines(root).join(' '),new RegExp(`Launch round ${wave+1}`));
   screen._skip.click();machine.update(DT);assert.equal(state.run.phase,'wave_intro');assert.equal(state.run.wave,wave+1);assert.equal(state.run.credits,137);assert.equal(state.run.ruleset,'swarm');assert.equal(ended.length,0);
   state.run.wave=wave;state.run.phase='draft';state.run.telemetry={...state.run.telemetry,startWave:wave+1};assert.equal(foundryRecoveryIntermission(state.run),null);
  }finally{screen.unmount?.();shop.destroy();machine.destroy();session.destroy();globalThis.document=previous;}

@@ -98,7 +98,7 @@ test('normal Armory previews the real pair and finite follow-up without selling 
   for(const patch of [{wave:7},{wave:9},{phase:'active'},{arenaId:'the_hive'},
     {arenaMutators:['dense']},{telemetry:{circuit:{}}},{telemetry:{startWave:9}}])
     assert.equal(foundryWardenIntermission({...run,...patch}),null);
-  for(const extra of [{arenaId:'the_hive'},{mutators:['heavies_only']},{circuitRound:{kind:'survive'}},{wave:13}])
+  for(const extra of [{arenaId:'the_hive'},{mutators:['heavies_only']},{circuitRound:{kind:'survive'}},{wave:16}])
     assert.equal(planFor(extra).swarm.foundry,undefined);
 });
 

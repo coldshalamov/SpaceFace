@@ -13,6 +13,9 @@ const rows = [
   ['reach_the_exit', 'Reach the first exit', 'The Corsair opens alone. Dodge its charged lance, then return fire as it peels away. The forecast event follows, then the crowd. Clear the round to refit, bank or extract.', 840, 1, 840, 840],
   ['shed_the_drag', 'Shed the drag', 'A Leecher latches and slows you. Shoot it on approach, or carry it into a fast scrape against solid rock. A clear nearby surface earns a lone first approach; the crowd follows.', 720, 720, 720, 720],
   ['turn_the_hunt', 'Turn the hunt', 'The Quiet Ghost opens alone. Strafe its charge, then close as it switches flank. A Leecher follows if a nearby scrape lane is clear; recover your speed before the crowd.', 1080, 1, 1080, 1080],
+  ['crack_the_shell', 'Crack the shell', 'The Cutter opens alone: cross its plated nose and attack the flank. A Glassback follows beside usable loose mass if the lane is clear. Guns cannot crack its shell; ram or throw mass, then leave the shards.', 1080, 1, 1080, 1080],
+  ['peel_the_screen', 'Peel the screen', 'A Point-Defense Screen covers the Cutter. Break the escort or circle its firing position; then work the Cutter flank. The crowd follows.', 840, 1, 840, 840],
+  ['cross_the_foreman', 'Cross the Foreman', 'Read the Foreman alone first. Leave the locked charge lane, cross behind its mirrored prow and attack during the coast. Watch the stern vent; the Lawman and crowd follow.', 1200, 1200, 1200, 1200],
 ];
 
 export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparation,
@@ -21,7 +24,7 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparati
   broodReadTicks, sporeReadTicks,
   // Existing physical banks remain the room's reference; no rotating wall lesson
   // competes with the wreck payoff on round six.
-  arenaPhase: index === 4 ? 'boss' : 'loose_plate',
+  arenaPhase: index === 4 || index === 14 ? 'boss' : 'loose_plate',
   massGap: false,
   events: index === 9 ? 'seeded' : 'quiet',
   broodPacketSize: 18,
@@ -32,6 +35,8 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparati
   ...(index === 9 ? { debutAtTick: 0, eventReadTicks: 480 } : {}),
   ...(index === 10 ? { leecherAtTick: 1 } : {}),
   ...(index === 11 ? { debutAtTick: 0, leecherAtTick: 600 } : {}),
+  ...(index === 12 ? { debutAtTick: 0, glassbackAtTick: 480 } : {}),
+  ...(index === 13 ? { debutAtTick: 0 } : {}),
 })));
 
 export function swarmFoundryRound({ arenaId, wave, mutators = [], circuitRound = null } = {}) {

@@ -874,7 +874,18 @@ export function foundryRecoveryIntermission(run) {
     || !swarmFoundryRound({ arenaId: run.arenaId, wave: 12,
       mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
   if (run.wave === 11) return 'Round 11 cleared. Next, the Quiet Ghost charges a rail shot, then changes flank. Strafe the charge and close during its move. A Leecher may join before the crowd: keep a solid scrape surface within reach. Repair or restock before launch.';
-  if (run.wave === 12) return 'Round 12 cleared. The recovery stretch is behind you; Swarm continues. Check repairs, ammunition and your remaining purse before round 13.';
+  return null;
+}
+
+export function foundryForemanIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || (run.telemetry?.startWave || 1) > run.wave
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 15,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  if (run.wave === 12) return 'Round 12 cleared. Next, cross the Cutter’s plated nose and attack the flank. A Glassback follows: guns cannot crack its shell. Keep loose mass within reach, or ram it and leave the shards. Repair or restock what your build needs.';
+  if (run.wave === 13) return 'Round 13 cleared. Next, a Point-Defense Screen covers the Cutter. Break the escort or circle its fire before working the Cutter’s flank. Check your repairs and ammunition; no purchase is required.';
+  if (run.wave === 14) return 'Round 14 cleared. The Mirrorjaw Foreman is next. Leave its locked charge lane, cross behind the prow and attack during the coast. The stern also vents: keep moving. Prepare your own build before launch.';
+  if (run.wave === 15) return 'Round 15 cleared. If Foreman wreckage survives, use it if it suits your build. Swarm continues to round 16. Repair, restock or keep your purse.';
   return null;
 }
 
@@ -1574,6 +1585,7 @@ export const crucibleDraftScreen = {
       ?? foundryWardenIntermission(context.state?.run)
       ?? foundryFirstExitIntermission(context.state?.run)
       ?? foundryRecoveryIntermission(context.state?.run)
+      ?? foundryForemanIntermission(context.state?.run)
       ?? firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
