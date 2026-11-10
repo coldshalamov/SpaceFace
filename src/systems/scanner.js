@@ -72,6 +72,9 @@ import {
   pirateParleyDemandForHandoff,
   towAssistBodyFor,
 } from '../data/contactHail.js';
+import {
+  createStationResidentOffer, residentAtHail, stationResidentWork, residentWorkSignature,
+} from '../data/stationContactPresence.js';
 import { TOW_ASSIST_FEE_CR } from '../data/yardContracts.js';
 import { ruudTowAssistFeeQuote } from './ruud.js'; // SP2-123: the stamped tow-assist grade
 import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
@@ -1076,6 +1079,7 @@ export const scanner = {
     this._contactHail = null;
     this._contactHailBinding = null;
     this._contactHailSequence = 0;
+    this._contactHailContextEpoch = 0;
     this._orchardTowGuidance = null;
     this._contactHailAvailability = null;
     this._contactHailAvailabilitySignature = '';
@@ -1087,6 +1091,11 @@ export const scanner = {
     this._onSignalSurveyFiled = (payload) => this._completeSurveyedSignal(payload || {});
     this._onContactHailRequest = (payload) => this._requestContactHail(payload || {});
     this._onContactHailChoice = (payload) => this._chooseContactHail(payload || {});
+    this._onContactHailCancel = (payload) => {
+      if (payload?.requestId === this._contactHail?.requestId && payload?.targetId === this._contactHail?.targetId) {
+        this._clearContactHail('closed');
+      }
+    };
     this._onContactHailReset = () => this._resetContactHail('lifecycle');
     // The heave-to latch is entity- and clock-bound; a sector boundary leaves the stamped
     // target unreachable and the cooldown comparable only to the old roster's clock. The open
@@ -1104,10 +1113,13 @@ export const scanner = {
       this.bus.on('signal:surveyFiled', this._onSignalSurveyFiled);
       this.bus.on('contactHail:request', this._onContactHailRequest);
       this.bus.on('contactHail:choice', this._onContactHailChoice);
+      this.bus.on('contactHail:cancel', this._onContactHailCancel);
       this.bus.on('npcJobs:towAssistComplete', this._onOrchardTowComplete);
       this.bus.on('npcJobs:towAssistLost', this._onOrchardTowLost);
       this.bus.on('game:new', this._onContactHailReset);
       this.bus.on('game:load', this._onContactHailReset);
+      this.bus.on('save:restoring', this._onContactHailReset);
+      this.bus.on('save:loaded', this._onContactHailReset);
       this.bus.on('dock:docked', this._onContactHailReset);
       this.bus.on('mode:changed', this._onContactHailReset);
       this.bus.on('sector:enter', this._onContactHailSectorEnter);
@@ -1683,9 +1695,125 @@ export const scanner = {
     this.bus.emit('toast', { text, kind: 'warn', ttl: 1.6 });
   },
 
+  _residentOfferEligibility(offer, stationId) {
+    return this.registry?.get?.('missions')?.contactOfferReadiness?.(stationId, offer.id)
+      || { ok: false, reason: 'The station work desk is not ready.' };
+  },
+
+  _readContactHailAvailability(state) {
+    const availability = hailAvailabilityThroughSensors(state, contactHailAvailability(state));
+    if (availability.enabled && availability.kind === 'resident') {
+      const work = availability.hasResidents ? stationResidentWork(state, availability.stationId,
+        offer => this._residentOfferEligibility(offer, availability.stationId)) : null;
+      availability.workStatus = work?.status || null;
+      availability.workGlyph = work?.glyph || '';
+      availability.workLabel = work?.label || '';
+      availability.workSignature = residentWorkSignature(work);
+    }
+    return availability;
+  },
+
+  _residentHailOffer(availability, requestId, options = {}) {
+    return createStationResidentOffer(this.state, availability, requestId, { ...options,
+      offerEligibility: offer => this._residentOfferEligibility(offer, availability.stationId),
+    });
+  },
+
+  _chooseResidentHail(active, availability, choice) {
+    if (!active.actions?.some(action => action.id === choice)) return false;
+    const resident = active.contactId ? residentAtHail(this.state, active) : null;
+    if (active.contactId && !resident) { this._clearContactHail('resident_unavailable'); return false; }
+    const state = this.state, missionOwner = this.registry?.get?.('missions');
+    const playerAtRequest = state.player, missionsAtRequest = state.missions;
+    const boundGeneration = this._contactHailBinding?.generation;
+    const contextEpoch = this._contactHailContextEpoch;
+    const refreshInContext = () => {
+      if (this.state !== state || state.player !== playerAtRequest || state.missions !== missionsAtRequest
+        || this._contactHailContextEpoch !== contextEpoch) return null;
+      const fresh = this._readContactHailAvailability(state);
+      return fresh.enabled && fresh.kind === 'resident' && fresh.targetId === active.targetId
+        && fresh.stationId === active.stationId && fresh.entity === availability.entity
+        && (fresh.entity?.occupantGeneration ?? null) === boundGeneration
+        && (!active.contactId || residentAtHail(state, active)) ? fresh : null;
+    };
+    // Consume before invoking another owner or emitting anything. A synchronous listener
+    // cannot replay this authorization and accept a second contract or count speech twice.
+    this._contactHail = null;
+    this._contactHailBinding = null;
+    const now = Number(state.simTime) || 0;
+    let resultLine = null;
+    let close = false;
+    if (choice === 'resident_accept') {
+      const ready = missionOwner?.contactOfferReadiness?.(active.stationId, active.missionId);
+      const accepted = ready?.ok && ready.remoteSafe === true
+        && missionOwner.acceptMission(active.missionId) === true;
+      resultLine = accepted ? 'Work accepted. Your mission log now carries the route.'
+        : ready?.reason || 'That work changed while the channel was open. Ask again at the desk.';
+    } else if (choice === 'resident_track') {
+      const work = stationResidentWork(state, active.stationId);
+      const tracked = work?.focusMissionId === active.missionId && work.status === 'active'
+        && missionOwner?.trackMission?.(active.missionId) === true;
+      resultLine = tracked ? 'Your current work is tracked on navigation.' : 'That work is no longer active here.';
+    } else if (choice === 'resident_berth' || choice === 'resident_find') {
+      const target = choice === 'resident_find' ? state.entities?.get(resident?.physicalTargetId) : availability.entity;
+      if (!target || target.alive === false || !target.pos) {
+        this.bus.emit('contactHail:clear', { requestId: active.requestId, targetId: active.targetId, reason: 'resident_unavailable' });
+        return false;
+      }
+      this.bus.emit('ui:setCourse', { pos: { x: target.pos.x, z: target.pos.z },
+        targetEntityId: target.id, stationId: choice === 'resident_berth' ? active.stationId : null,
+        label: choice === 'resident_find' ? `${resident.name} · Lantern Ward launch` : availability.label.replace(/^HAIL /, ''),
+        reason: choice === 'resident_find' ? 'Hail the working launch for the actual lamp handoff.' : 'Approach the berth and use Dock for station services or settlement.',
+        waypointKind: 'contact', arrivalRadius: Math.max(40, Number(target.radius) || 0), autopilot: false });
+      resultLine = choice === 'resident_find' ? 'The working launch is marked. Hail Nessa there for physical help.'
+        : 'The berth is marked. Approach and use Dock; a radio call does not transfer cargo.';
+      close = true;
+    }
+    // Validate before persistent speech: an acceptance/navigation callback can load
+    // a different campaign even when this entity object or numeric ID was reused.
+    if (this._contactHail) return true;
+    let refreshed = refreshInContext();
+    if (!refreshed) {
+      this.bus.emit('contactHail:clear', { requestId: active.requestId, targetId: active.targetId, reason: 'availability_lost' });
+      return true;
+    }
+    if (resident && choice !== 'resident_next') this.bus.emit('stationContact:hailSpoken', {
+      contactId: resident.id, stationId: active.stationId, canonicalKey: resident.canonicalKey,
+      name: resident.name, role: resident.role, choiceId: choice.replace(/^resident_/, ''),
+    });
+    // Owner events may synchronously dock, change sectors, restore, or open another
+    // conversation. Never resurrect the consumed channel across that boundary.
+    if (this._contactHail) return true;
+    refreshed = refreshInContext();
+    if (!refreshed) {
+      this.bus.emit('contactHail:clear', { requestId: active.requestId, targetId: active.targetId, reason: 'availability_lost' });
+      return true;
+    }
+    if (close) {
+      this.bus.emit('contactHail:response', { ...cloneContactHailPayload(active),
+        choice: 'route', lines: [resultLine], actions: [], expiresAt: now + 12 });
+      return true;
+    }
+    this._contactHailSequence += 1;
+    const requestId = `contact-resident:${String(active.targetId)}:${this._contactHailSequence}:${state.tick | 0}`;
+    const next = this._residentHailOffer(refreshed, requestId, {
+      contactId: active.contactId, next: choice === 'resident_next',
+      section: choice === 'resident_local' ? 'local' : 'work',
+    });
+    if (!next) {
+      this.bus.emit('contactHail:clear', { requestId: active.requestId, targetId: active.targetId, reason: 'resident_unavailable' });
+      return true;
+    }
+    if (resultLine) next.lines[1] = resultLine;
+    this._contactHail = next;
+    this._contactHailBinding = { entity: availability.entity, generation: availability.entity?.occupantGeneration ?? null };
+    this.bus.emit('contactHail:offer', cloneContactHailPayload(next));
+    return true;
+  },
+
   _requestContactHail(payload) {
     const state = this.state;
-    const availability = hailAvailabilityThroughSensors(state, contactHailAvailability(state));
+    const availability = this._readContactHailAvailability(state);
     if (!availability.enabled || payload.targetId != null && payload.targetId !== availability.targetId) {
       this._clearContactHail('request_invalid');
       const reason = !availability.enabled ? availability.reason : 'stale_target';
@@ -1718,9 +1846,11 @@ export const scanner = {
       return true;
     }
     const now = Number(state.simTime) || 0;
+    if (availability.kind === 'resident') this.registry?.get?.('missions')?.ensureBoard?.(availability.stationId);
     this._contactHailSequence += 1;
     const requestId = `contact-hail:${availability.kind}:${String(availability.targetId)}:${state.tick | 0}:${Math.round(now * 1000)}:${this._contactHailSequence}`;
-    const offer = availability.kind==='tally_three'
+    const offer = availability.kind === 'resident' ? this._residentHailOffer(availability, requestId)
+      : availability.kind==='tally_three'
       ?this.registry.get('tallyThree')?.offer(availability,requestId,now+CONTACT_HAIL_REQUEST_TTL_S)
       :createContactHailOffer(
       state,
@@ -1758,7 +1888,7 @@ export const scanner = {
     if (!active || payload.requestId !== active.requestId) return false;
     const state = this.state;
     const now = Number(state && state.simTime) || 0;
-    const availability = hailAvailabilityThroughSensors(state, contactHailAvailability(state));
+    const availability = this._readContactHailAvailability(state);
     const valid = now < Number(active.expiresAt)
       && payload.targetId === active.targetId
       && availability.enabled
@@ -1770,6 +1900,7 @@ export const scanner = {
       return false;
     }
     const target = availability.entity;
+    if (availability.kind === 'resident') return this._chooseResidentHail(active, availability, String(payload.choice || '').toLowerCase());
     if(availability.kind==='tally_three'){
       const response=this.registry.get('tallyThree')?.choose(active,String(payload.choice||'').toLowerCase());
       if(!response)return false;
@@ -1778,6 +1909,22 @@ export const scanner = {
     const ai = target && target.data && target.data.ai || {};
     const wanted = isPlayerWanted(state);
     const choice = String(payload.choice || '').toLowerCase();
+    // Nessa's physical repair also shares durable contact memory with her field
+    // radio. Consume before the jobs callback; replay and restore rules are identical.
+    let lanternContext = null;
+    if (active.lanternWardHail) {
+      if (!active.actions?.some(action => action.id === choice)) return false;
+      lanternContext = { player: state.player, missions: state.missions,
+        epoch: this._contactHailContextEpoch, generation: this._contactHailBinding?.generation };
+      this._contactHail = null;
+      this._contactHailBinding = null;
+    }
+    const lanternContextCurrent = () => !lanternContext || (this.state === state
+      && state.player === lanternContext.player && state.missions === lanternContext.missions
+      && this._contactHailContextEpoch === lanternContext.epoch
+      && state.player?.targetId === active.targetId
+      && (target.occupantGeneration ?? null) === lanternContext.generation
+      && isLanternWardNessa(state, target) && this._readContactHailAvailability(state).enabled);
     const lanternRepair = choice === LANTERN_WARD_REPAIR_ACTION && active.lanternWardHail
       && active.actions?.some(action => action.id === choice) && isLanternWardNessa(state, target)
       ? this.registry?.get?.('npcJobsRuntime')?.lanternWardRepair?.(target) : null;
@@ -1804,9 +1951,19 @@ export const scanner = {
       lanternRepair,
       anvilReturn,anvilRendezvous,
     });
-    if (!response) return false;
+    if (!response || !lanternContextCurrent()) {
+      if (lanternContext) this.bus.emit('contactHail:clear', { requestId: active.requestId,
+        targetId: active.targetId, reason: 'availability_lost' });
+      return false;
+    }
+    if (lanternContext && this._contactHail) return true;
     this._contactHail = null;
     this._contactHailBinding = null;
+    if (active.lanternWardHail && active.contactId) this.bus.emit('stationContact:hailSpoken', {
+      contactId: active.contactId, stationId: active.stationId, canonicalKey: 'nessa_venn',
+      name: 'Nessa Venn', role: 'engineer', choiceId: choice,
+    });
+    if (!lanternContextCurrent() || (lanternContext && this._contactHail)) return true;
     this.bus.emit('contactHail:response', cloneContactHailPayload(response));
     return true;
   },
@@ -1955,7 +2112,7 @@ export const scanner = {
     const tick = state && state.tick | 0;
     if (!targetDirty && tick < this._contactHailNextPollTick) return;
 
-    const availability = hailAvailabilityThroughSensors(state, contactHailAvailability(state));
+    const availability = this._readContactHailAvailability(state);
     this._contactHailLastTargetId = targetId;
     this._contactHailNextPollTick = tick + CONTACT_HAIL_POLL_TICKS;
     this._publishContactHailAvailability(availability);
@@ -1964,8 +2121,23 @@ export const scanner = {
     if (current && (!availability.enabled
       || availability.targetId !== current.targetId
       || availability.kind !== current.kind
+      || (current.kind === 'resident' && current.contactId && !residentAtHail(state, current))
       || !this._sameContactHailBody(availability.entity))) {
       this._clearContactHail('availability_lost');
+      return;
+    }
+    // A cargo handoff, acceptance, failure, or expired posting retires its visible
+    // action at the same bounded cadence as the HAIL signal. Old request IDs stay dead.
+    if (current?.kind === 'resident' && current.contactId
+      && current.workSignature !== availability.workSignature) {
+      this._contactHailSequence += 1;
+      const requestId = `contact-resident:${String(current.targetId)}:${this._contactHailSequence}:${tick}`;
+      const refreshed = this._residentHailOffer(availability, requestId,
+        { contactId: current.contactId, section: current.section });
+      if (refreshed) {
+        this._contactHail = refreshed;
+        this.bus.emit('contactHail:offer', cloneContactHailPayload(refreshed));
+      }
     }
   },
 
@@ -1977,8 +2149,11 @@ export const scanner = {
       kind: availability && availability.kind || null,
       label: availability && availability.label || 'HAIL',
       heaveToAvailable: availability && availability.heaveToAvailable === true,
+      workStatus: availability?.workStatus || null,
+      workGlyph: availability?.workGlyph || '',
+      workLabel: availability?.workLabel || '',
     };
-    const signature = `${publicView.enabled}:${String(publicView.targetId)}:${publicView.kind}:${publicView.reason}:${publicView.label}:${publicView.heaveToAvailable}`;
+    const signature = `${publicView.enabled}:${String(publicView.targetId)}:${publicView.kind}:${publicView.reason}:${publicView.label}:${publicView.heaveToAvailable}:${publicView.workStatus}`;
     this._contactHailAvailability = publicView;
     if (signature === this._contactHailAvailabilitySignature) return false;
     this._contactHailAvailabilitySignature = signature;
@@ -1987,6 +2162,7 @@ export const scanner = {
   },
 
   _resetContactHail(reason) {
+    this._contactHailContextEpoch = (this._contactHailContextEpoch || 0) + 1;
     if(reason==='load' || reason==='new_game' || !['flight','paused','pause'].includes(this.state?.mode))
       this._orchardTowGuidance = null;
     // The heave-to latch's deadlines are simTime stamps: a fresh run restarts the clock at 0 and
@@ -2108,12 +2284,15 @@ export const scanner = {
       if (this._onSignalSurveyFiled) this.bus.off('signal:surveyFiled', this._onSignalSurveyFiled);
       if (this._onContactHailRequest) this.bus.off('contactHail:request', this._onContactHailRequest);
       if (this._onContactHailChoice) this.bus.off('contactHail:choice', this._onContactHailChoice);
+      if (this._onContactHailCancel) this.bus.off('contactHail:cancel', this._onContactHailCancel);
       this.bus.off('npcJobs:towAssistComplete', this._onOrchardTowComplete);
       this.bus.off('npcJobs:towAssistLost', this._onOrchardTowLost);
       this._orchardTowGuidance = null;
       if (this._onContactHailReset) {
         this.bus.off('game:new', this._onContactHailReset);
         this.bus.off('game:load', this._onContactHailReset);
+        this.bus.off('save:restoring', this._onContactHailReset);
+        this.bus.off('save:loaded', this._onContactHailReset);
         this.bus.off('dock:docked', this._onContactHailReset);
         this.bus.off('mode:changed', this._onContactHailReset);
         this.bus.off('sector:enter', this._onContactHailSectorEnter);

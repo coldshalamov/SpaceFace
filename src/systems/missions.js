@@ -1230,6 +1230,50 @@ export const missions = {
   // ACCEPT / ABANDON
   // =========================================================================================
   /** Move an offer from a board to active. Charges collateral, enforces maxActive, emits accepted. */
+  // Physical resident channels ask the canonical mission owner whether a posted row is
+  // usable. This read never withdraws offers, allocates a mission, loads cargo or charges.
+  contactOfferReadiness(stationId, missionId) {
+    let { offer } = this._findOffer(missionId);
+    if (!offer || offer.stationId !== stationId) return { ok: false, reason: 'That work is no longer posted here.' };
+    if (offer.source === CLAUSE_GAMBIT_SOURCE) {
+      offer = reconstructClauseGambitOffer(offer, this.state.missions.boards, this._epoch());
+      if (!offer) return { ok: false, reason: 'Those contract terms are no longer available.' };
+    }
+    if (Number.isFinite(offer.expiresAtEpoch) && offer.expiresAtEpoch <= this._epoch()) {
+      return { ok: false, reason: 'That offer has expired.' };
+    }
+    if (this._shortageOfferStale(offer)) return { ok: false, reason: 'The receiving station no longer needs this shipment.' };
+    if (offer.params && SET_PIECE_DISPOSITION_OBJECTIVES.has(offer.params.setPieceObjective)) {
+      const wreckId = offer.params.wreckId || offer.wreckId || offer.cause?.wreckId;
+      const bearing = this.state.player?.uniqueWrecks?.bearings?.[wreckId];
+      if (bearing?.phase === 'salvaged' && bearing.choiceId !== offer.params.wreckChoiceId) {
+        return { ok: false, reason: 'That wreck already has a different disposition.' };
+      }
+    }
+    if (offer.source === 'poiBehavior' && !validatePoiCausalOffer(offer).ok) {
+      return { ok: false, reason: 'That signal lead has gone cold.' };
+    }
+    const captain = captainStandingOfferPreflight(this.state, offer);
+    if (!captain.ok) return captain;
+    const cfg = this.state.missions.config || MISSION_TUNING;
+    if (this.state.missions.active.length >= (cfg.maxActive || 8)) {
+      return { ok: false, reason: 'Finish or leave an active contract before taking more work.' };
+    }
+    const preflight = this._acceptPreflight(offer);
+    if (!preflight.ok) return preflight;
+    const acceptCostCr = Math.max(0, Math.round(Number(offer.collateral_cr) || 0))
+      + setPieceUpfrontCost(offer, this.state);
+    if ((Number(this.state.player?.credits) || 0) < acceptCostCr) {
+      return { ok: false, reason: `Need ${acceptCostCr} cr for deposit and service fees.` };
+    }
+    // The normal dock UI is the physical cargo/terms handoff. Do not turn a radio
+    // conversation into remote sealed-cargo creation or an irreversible story choice.
+    const remoteSafe = !offer.preloadedCargo && !offer.storyTag && !offer.storyDisposition
+      && !offer.clauses?.length && !offer.params?.setPieceObjective && !offer.params?.workingBattlefield
+      && ['bounty_hunt', 'patrol_clear', 'mining_quota', 'recon_scan', 'salvage_retrieval'].includes(offer.type);
+    return { ok: true, acceptCostCr, remoteSafe, requiresDock: !remoteSafe };
+  },
+
   acceptMission(missionId, options = {}) {
     const state = this.state, cfg = state.missions.config || MISSION_TUNING;
     if (!missionId) return false;

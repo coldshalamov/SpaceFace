@@ -28,6 +28,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'cinderglassJob:presentationReady',
   'claim:defenseIgnore',
   'combat:aftermathChoose',
+  'contactHail:cancel',
   'contactHail:choice',
   'contactHail:request',
   'counterweightCircuit:action',
@@ -154,6 +155,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'swarm:fortifyReloadRequested',
   'swarm:fortifyRepairRequested',
   'swarm:fortifyStateRequested',
+  'title:arrivalGreeted',
   'toast',
   'touch:guide',
   'towlineTable:assist',
@@ -292,6 +294,8 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'station:marketTradeIntentRetired',
   'station:marketTradeReceiptRecovered',
   'station:navigate',
+  'swarm:bossMilestoneAck',
+  'swarm:scoreboardToggle',
   'ui:bulkHaulTag',
   'ui:bulkHaulTagCleared',
   'ui:cancel',
@@ -330,4 +334,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=185 dynamic=39 legacy=18 excluded=6 total=214 knownUnforwarded=83
+// provenance: census=187 dynamic=39 legacy=18 excluded=6 total=216 knownUnforwarded=85

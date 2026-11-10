@@ -238,6 +238,9 @@ export const stationContacts = {
       this._subs.push([event, handler]);
     };
     on('ui:talkContact', (payload = {}) => this._recordTalk(payload));
+    // Scanner has authenticated the physical target, occupant, gate and one-use request.
+    // Recording a radio conversation shares dock memory without dispatching dock-only services.
+    on('stationContact:hailSpoken', (payload = {}) => this._recordTalk(payload, { flightHail: true }));
     on('stationContact:counterDelta', (payload = {}) => this._recordCounterDelta(payload));
     on('stationContact:manifestWon', (payload = {}) => {
       const id = String(payload.contactId || '');
@@ -376,7 +379,7 @@ export const stationContacts = {
       || createInitialStationContactCounters());
   },
 
-  _recordTalk(payload) {
+  _recordTalk(payload, options = {}) {
     const contactId = String(payload.contactId || '').slice(0, 96);
     if (!contactId) return;
     const bag = ensureContactBag(this.state);
@@ -418,7 +421,7 @@ export const stationContacts = {
       name: payload.name || previous.name,
       lastChoice: choice || previous.lastChoice,
       lastTalkSimTime: now,
-      lastDockSimTime: now,
+      lastDockSimTime: options.flightHail ? previous.lastDockSimTime : now,
       flags,
       ...(vonnFreightLoss ? { vonnFreightLoss } : {}),
       ...(rescueMemory ? { rescueMemory } : {}),
