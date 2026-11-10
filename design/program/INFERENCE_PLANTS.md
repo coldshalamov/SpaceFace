@@ -21,6 +21,8 @@ or does not.
   before-and-after capture of it happening. Record with `--kind plant --id <PL-nn>`.
 - **Mark the row** `SHIPPED <sha>` when it lands, or `CLAIMED <who> <date>` while you work.
 - If a plant needs a place that is not built yet (a town's toy, a named person), **skip it** and take another.
+- **Radio lines (section E) are the easy ones.** Take at most one for every two physical plants you build.
+  A run of radio lines is not a run of plants.
 
 ## A. The world reacts to you (anywhere)
 
@@ -108,6 +110,66 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-58 | You win the Pit | *"Lights came up at the Pit last night."* | SHIPPED 86ea9fb8b546 |
 | PL-59 | You lose a search while wanted | *"Concord would like a word with a certain rope."* | OPEN |
 | PL-60 | You finish a town's first job | the town's name, and *"says thanks, whoever you are."* | OPEN |
+
+## F. In the Pit
+
+| ID | What happens | What the player can do | State |
+|---|---|---|---|
+| PL-61 | **Stowaway.** A Wasp clings to a freight container and rides it across the arena | Shove the container; or let it arrive behind you | OPEN |
+| PL-62 | **The janitor.** In the breath between rounds a small sweeper crosses the floor collecting Scrap | Bump it and it drops everything. Kiln: *"Leave the staff alone."* | OPEN |
+| PL-63 | **Crowd pleaser.** Three collision kills inside two seconds: the arena lights flash and Scrap rains from the stands | Do it on purpose | OPEN |
+| PL-64 | **The heckler.** A spectator drone hovers at the rail | Put an enemy through it. Next round it is back, taped up | OPEN |
+| PL-65 | **Loose container.** One freight string in ten has a container that is not latched | A hard bump frees it. It is full of barrels | OPEN |
+| PL-66 | **Red barrels.** A few volatile barrels stand about the floor each round | Shoot one, or better, throw one. They chain | OPEN |
+| PL-67 | **The gong.** A hanging plate in the Foundry | Hit it with a thrown body: everything near it is stunned for a second | OPEN |
+| PL-68 | **Leftovers.** When the Iron Maw dies its jaw stays on the floor | Throw something into it and it snaps shut. A trap you earned | OPEN |
+| PL-69 | **Kiln's tip.** In round seven one gold Wasp crosses the arena and does not fight | Catch it on the Line for a Free Forge. Shoot it and get nothing | OPEN |
+| PL-70 | **Had enough.** The last enemy of a round, if it is small, runs for a gate | Let it go. It comes back at the next boss wearing a scarf, with a name | OPEN |
+
+## G. Street life at the outposts and waystations
+
+| ID | Where | What happens | What the player can do | State |
+|---|---|---|---|---|
+| PL-71 | Dione | A cadet stalls out of the formation | Nudge them back before Baig counts four | OPEN |
+| PL-72 | Dione | A range drone slips its rail as the flag goes red | Catch it and hand it back. Sorrel has one word | OPEN |
+| PL-73 | Pallas | A child's ball comes bouncing down Rib Street off the plates | Bounce it back to the window it came from | OPEN |
+| PL-74 | Io | A paint pod drifts loose from the crew on the Plate | Bump it into the Plate: a stripe in a third colour, until the next repaint | OPEN |
+| PL-75 | Charon | A pruning tender is snagged in the growth | Pull gently. Too hard and you tear what it was pruning | OPEN |
+| PL-76 | Veil | The lighthouse beam sweeps | Fly inside it for one full turn. The keeper flashes it twice | OPEN |
+| PL-77 | Ashfall | A kite on a long tether, flown from the scar | Fly under it. Snag it and a window goes dark for a while | OPEN |
+| PL-78 | Kepler | A stall starts folding with a customer's ship still inside | Hold it open with your hull | OPEN |
+| PL-79 | Hyperion | A load swings loose on an anchor, back and forth across the Cut | Time your pass. Or catch it | OPEN |
+| PL-80 | Nereid | Somebody has a nose on the Scale | Bump them off. The board flips. Fair Tobias: *"Thank you."* | OPEN |
+| PL-81 | Sedna | One buoy in your chain of lights has gone dark; a scavenger is sitting on it for the warmth | Shoo it, or leave it and tow out another | OPEN |
+| PL-82 | Eunomia | Boosting near the Graves blows out a vigil light | Tow a lamp back and relight it. Little Oda is watching | OPEN |
+
+## H. The world reacts, part two
+
+| ID | What happens | What the player can do | State |
+|---|---|---|---|
+| PL-83 | **Too heavy.** Tow something above your class and the line creaks. A passing hauler: *"That's not going to hold."* It does not | Let go first, or chase the load when it snaps | OPEN |
+| PL-84 | **A good turn.** After you have helped three strangers in a sector, the next time you are disabled a passing tug pushes you to the dock | Nothing. You earned it | OPEN |
+| PL-85 | **Known.** With Vane's mark on your hull civilians give you room. With a Venn lamp lit, Helios traffic yields | Notice | OPEN |
+| PL-86 | **Itemised.** Wreck three parked ships and Tolliver arrives with a clipboard and follows you, reading the list | Pay at a dock, or lose him | OPEN |
+| PL-87 | **Copycat.** A kid in a skiff who saw your slingshot tries it, and fails. Later, somewhere else, they try again and land it | Applaud, by flashing your lamps | OPEN |
+| PL-88 | **A crowd.** Fight within sight of a town and ships gather at a safe distance to watch | Win: the dock lamps flash. Lose: they are already eyeing your wreck | OPEN |
+| PL-89 | **Hitchhiker.** A pod at a gate with one lamp held out | Tow it to the next town. It pays with a rumour: a pencil mark on your Chart | OPEN |
+| PL-90 | **Wrong turn.** A very large hauler has missed the lane and is wedging itself into a gap | Shove its tail round and it clears. Leave it and that route is blocked until the tugs come | OPEN |
+| PL-91 | **A price on you.** Enough chaos and a named hunter takes the contract. Static gives his arrival time | Be ready, be elsewhere, or be waiting with something heavy | OPEN |
+| PL-92 | **Clean.** A full hour without a crime and patrols wave you past the gate queue | Enjoy it while it lasts | OPEN |
+
+## I. Secrets, part two
+
+| ID | What happens | What the player can do | State |
+|---|---|---|---|
+| PL-93 | **KILN 7.** A wreck in the Foundry's Scrap Yard with that painted on it | Tow it to the Forge. She says nothing at all for one whole round | OPEN |
+| PL-94 | **Hot Fridge.** The Fridge survives the Vesta furnace | It comes out glowing, and for a minute everything it hits goes twice as far | OPEN |
+| PL-95 | **Lost property.** A box strapped to the roof of Benny's bus | Line it off at speed. It is a hat. Your ship can wear it | OPEN |
+| PL-96 | **Something big.** Once in a long while something enormous and slow passes far beneath Triton | Be there with your lamps off. It passes close | OPEN |
+| PL-97 | **The honest scale.** Put any story cargo on the Scale at Nereid | It reads 12.4 over. Fair Tobias checks it twice and says nothing | OPEN |
+| PL-98 | **Mirror rock.** A polished rock at Haumea | Your reflection is painted differently. Now you can be too | OPEN |
+| PL-99 | **Back in 5.** A berth at Helios with a sign in the window, all game | After any ending it reads *Gone fishing* | OPEN |
+| PL-100 | **The seedling.** A small pod at the edge of the Charon garden, stencilled *100* | Tow it home to your yard. Something grows on your rock. It is harmless and it is yours | OPEN |
 
 ## Suggestions
 
