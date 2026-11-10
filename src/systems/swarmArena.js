@@ -1728,14 +1728,21 @@ export const swarmArena = {
   /**
    * The ore ledger: collection is physics-contact truth (`pickup:collected`), the pay
    * rides the run's own award seam. Same collector gate as the supply pod — a drone or
-   * NPC scoop consumes the chunk but never pays the pilot's wallet.
+   * NPC scoop is refused outright: the chunk stays put and the credit stays owed.
    */
   _onPickupCollected(payload) {
     const id = payload && payload.pickupId;
     if (id == null || !this._millOres || !this._millOres.has(id)) return;
     const credits = this._millOres.get(id);
-    this._millOres.delete(id);
+    // Both scoop and contact honor explicit acceptance. A collector the gate refuses must
+    // leave the ore physical — spend the ledger only after the wallet actually pays.
+    const amount = Math.max(1, Math.floor(Number(credits) || 0));
+    payload.acceptedAmount = 0;
+    payload.rejectedAmount = amount;
     if (payload.collectorId != null && this.state && payload.collectorId !== this.state.playerId) return;
+    this._millOres.delete(id);
+    payload.acceptedAmount = amount;
+    payload.rejectedAmount = 0;
     this._emit('run:awardRequested', { credits, reason: 'swarm:millOre' });
   },
 

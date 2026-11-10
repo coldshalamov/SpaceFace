@@ -335,10 +335,18 @@ export function createSwarmEventDirector(ctx) {
       const id = payload && payload.pickupId;
       if (id == null || !this._pods.has(id)) return;
       const credits = this._pods.get(id);
-      this._pods.delete(id);
-      // Same collector gate as the repair cell: NPC/drone collection consumes the pod but
-      // never pays the player's wallet (the publishers disagree on shape, so absent still claims).
+      // Both scoop and contact honor explicit acceptance. A collector the gate refuses must
+      // leave the pod physical — spend the ledger only after the wallet actually pays.
+      const amount = Math.max(1, Math.floor(Number(credits) || 0));
+      payload.acceptedAmount = 0;
+      payload.rejectedAmount = amount;
+      // Same collector gate as the repair cell: an NPC/drone scoop is refused outright —
+      // the pod stays put and the wallet credit stays owed (the publishers disagree on
+      // shape, so an absent collector id still claims for the player).
       if (payload.collectorId != null && this._state && payload.collectorId !== this._state.playerId) return;
+      this._pods.delete(id);
+      payload.acceptedAmount = amount;
+      payload.rejectedAmount = 0;
       // The run wallet takes the pod's stamped worth — award is the only credits write path.
       // Supply events finish the same tick they spend (windowS 0), so _live is already gone
       // at collect time; the pod's own ledger entry is the truth.
