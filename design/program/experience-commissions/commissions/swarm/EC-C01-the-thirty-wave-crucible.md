@@ -1,5 +1,38 @@
 # EC-C01 — The thirty-wave Crucible — a course with an ending
 
+## Director's card — read this first
+
+*From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
+
+**A course with an ending.** Thirty rounds that go somewhere: three acts of ten, a different arena toy leading each act, and a final opponent with a name, a goodbye line and a proper finish — lights up, Madame Kiln says something almost kind, your run is put on the wall. People should be able to say "I finished the Crucible".
+
+**What the code says today:** a run ends by dying or by cashing out, and the round cap is 999 — nobody can ever win. The fourteen-boss rotation and the results screen already exist. Use them: a final boss at round thirty and a victory screen.
+
+**Build first:** the last five minutes. If the ending lands, the rest is pacing.
+
+### How to build this and check your own work
+
+Swarm has the best fast tools in the project. Use them in this order.
+
+1. **Look first.** Play three real rounds and read the contact sheet: `npm run player-truth -- --mode=swarm --arena="<name>" --rounds=3 --seed=4242`. Interface stills: `node scripts/ui-bench.mjs --shot=crucibleHud` (also `crucibleDraft`, `crucibleResults`). That is your "before".
+2. **Iterate with no screen.** `simulateCrucibleSwarm` in `scripts/lib/bench/crucibleBench.mjs` runs seeded waves with a scripted or idle pilot in seconds; `node scripts/check-crucible-swarm-bars.mjs` and `node scripts/run-fun-bench.mjs` read the result.
+3. **Then real clicks:** `node scripts/probe-crucible-playtest.mjs --arena=<id> --seed=<n> --rounds=<n>` saves frames you must open and look at.
+4. **Later rounds:** `node scripts/probe-crucible-stress.mjs` forces round fifteen. A proper "start at arena X, round N, spawn enemy Y" command does not exist yet — it is part of EC-G17; until then, reuse that probe's method.
+5. **Frames:** `node scripts/probe-crucible-perf.mjs` before and after, back to back in one sitting. The Foundry was last measured at a median 65 ms a frame, which is about 15 frames a second. Nothing in Swarm will feel good until EC-G11 lands; do not hide that by lowering what is on screen.
+6. **Stranger Test for an arena or a wave block:** a fresh agent, given only your contact sheets, must be able to say what this room's trick is, name two enemies and how they differ, and say what changed between round one and round ten.
+
+**The ways agents have fooled themselves on this project. Check each before you say done.**
+- *It is in the data and not in the game.* Fifteen enemy looks were authored and never drawn. Find your change on a contact sheet.
+- *Only the Foundry is route-tested.* If you touch another arena, play it.
+- *Harder by numbers.* More of the same enemy is not escalation. A new named situation is.
+- *A feature in a menu that should be in the room.* If the player does not have to move for it, it is not part of the fight.
+- *Fun faked with shake, particles or slow motion.* If the throw is not satisfying without them, fix the throw.
+- *"Done" on a partial.* Say what works, what does not, and what you could not look at.
+
+**How to use this card.** Existing names, bosses and ids stay. Everything else is yours to invent — decide, build, look. If an idea here plays badly, replace it with something that does the same job and say so in the PR. **This PR is ready when its "Build first" slice passes.** The rest of the brief follows in a second PR.
+
+---
+
 **Direct execution commission · Authored Crucible arc completion**  
 **Native parents:** `PQ-133`, `SWARM`, `Q2`  
 **Source-review baseline:** `f95de0eb1ba7560839209936afba48c7b96fe41a` · 2026-11-08  
