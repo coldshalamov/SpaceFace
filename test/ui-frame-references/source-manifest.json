@@ -290,7 +290,7 @@
   "src/ui/screens/base.js": "3d9af171b9746e1424f1d3dd4b942ae7b8c118ffbed013ffcb5eae008214eab5",
   "src/ui/screens/clipExport.js": "1d68dce0572da66a55e37edef757ca92ed6e9601d5e2dd13ced8439f143b2cec",
   "src/ui/screens/clips.js": "dcd27e0cad98096c73334435157e4dcbc76c0c920575647763f85cfa7a761195",
-  "src/ui/screens/codex.js": "a5633f62a17705a5c984d98de22890db06a9b1949a81c9b69ef9a3a97a63743b",
+  "src/ui/screens/codex.js": "8975e6de0a5f92c610ae80a34bee6dd96bc45ab6dab37717de857a9c6c9568c7",
   "src/ui/screens/codexRecord.js": "bb052b1cfaaa9fa3eaf7326b0a53b85f812017961b5ea24f59b7507a570dbcf2",
   "src/ui/screens/credits.js": "c3ca63ddf7bb3a7ddca229adc264daa2ffa998e240be2dffc8204fd1421f50ab",
   "src/ui/screens/crucible.js": "c08ba5104666ab20dec4be2da2c101c9c65d62d4daeee471b185a6a11b19fc39",
