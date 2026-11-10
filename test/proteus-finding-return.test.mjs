@@ -7,6 +7,8 @@ import { fenceContactId, FENCE_BY_ID } from '../src/data/fences.js';
 import { BORROWED_SUN } from '../src/data/borrowedSun.js';
 import { SORI_COMPARISON_CONTACT_ID, soriComparisonReply } from '../src/data/soriComparisonReturn.js';
 import { MAP_FOCUS, openGalaxyMap } from '../src/ui/mapAuthority.js';
+import { furnaceDetailReply } from '../src/ui/station/furnaceDetailConversation.js';
+import { cinderDepartureReply } from '../src/ui/station/cinderDepartureConversation.js';
 
 // Exact production buildReply body, with only unrelated contact families adapted.
 // The fence readers and map owner above are ordinary production imports. This is a
@@ -15,7 +17,7 @@ const source = fs.readFileSync(new URL('../src/ui/station/barContacts.js', impor
 const start = source.indexOf('export function buildReply(');
 const end = source.indexOf('\nfunction dossSourceList(', start);
 assert.ok(start >= 0 && end > start);
-const scope = { fenceBarReply, proteusFindingMapOffer, MAP_FOCUS, openGalaxyMap, BORROWED_SUN, SORI_COMPARISON_CONTACT_ID, soriComparisonReply,
+const scope = { fenceBarReply, proteusFindingMapOffer, MAP_FOCUS, openGalaxyMap, BORROWED_SUN, SORI_COMPARISON_CONTACT_ID, soriComparisonReply, furnaceDetailReply, cinderDepartureReply,
   DOSS_ARCHIVE_CONTACT_ID: 'contact_halev_doss', VONN_FREIGHT_CONTACT_ID: 'contact_vonn',
 };
 vm.runInNewContext(source.slice(start, end).replace('export function', 'function') + '\nglobalThis.reply = buildReply;', scope);
