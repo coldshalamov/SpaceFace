@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier B — an outpost.** A landmark, two faces, the toy, your mark and one job. Do not build the brief's full list; the card's Slice 1 is the whole of this PR.
+
 **One line:** the flag keeps changing; the mail keeps coming.
 
 **Landmark:** the Authority Plate — a dock-sized sign whose paint is always fresher than the plate; the volcanic moon behind it. **Shift:** the Plume. The moon erupts on a timetable the whole town plans around; mail goes out after each one. **Toy:** plumes push — ride one for a huge free boost or let it throw your cargo; mailbags are small towables and the chutes take a good sling.
