@@ -8,7 +8,7 @@ export const STARTER_WORKDAY_VERSION = 1;
 export const STARTER_WORK_SITES = Object.freeze({
   starter_hitch: Object.freeze([
     { label: 'Inner claim — first iron', pos: { x: 600, z: -300 }, radius: 260,
-      brief: 'Cut 2u iron for the berth repairs. Inner claim marked; any Helios iron you cut counts.' },
+      brief: 'Cut 2u iron for Kessler’s berth repairs. Inner claim marked; any Helios iron you cut counts. For a working position, select the seam cutter and choose Hail, then MARK FIRST IRON. The cutter keeps working if you pass by.' },
     { label: 'Claim rim — replacement stock', pos: { x: 830, z: -180 }, radius: 300,
       brief: 'Two more iron for replacement rails. Work the claim rim, or find your own Helios face.' },
     { label: 'Outer seam — yard order', pos: { x: -900, z: 640 }, radius: 380,

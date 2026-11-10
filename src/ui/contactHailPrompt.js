@@ -5,6 +5,7 @@ import {
   CONTACT_HAIL_RECEIPT_TTL_S,
   CONTACT_HAIL_REQUEST_TTL_S,
 } from '../data/contactHail.js';
+import { firstIronContactIdentity, firstIronCourseCurrent } from '../data/heliosFirstIronContact.js';
 import { markTold } from '../systems/deedRecord.js';
 import { isUiInteractionFenced } from './input.js';
 import { createMorphLabel } from './effects/morphLabel.js';
@@ -81,6 +82,8 @@ export function createContactHailPrompt(ctx) {
   let previousFreq = '';
   let nextRibbonUpdateAt = 0;
   let toldRequestId = null;
+  let firstIronOffer = null;
+  let courseRevision = 0;
 
   // Keep the authored relationship: the panel hangs 71px left and 38px below the channel button,
   // wherever the button's live home puts it (the tape adoption moves it once, safe-insets after).
@@ -134,6 +137,7 @@ export function createContactHailPrompt(ctx) {
   }
 
   function hidePanel() {
+    firstIronOffer = null;
     active = null;
     routeReadUntil = null;
     if (panel.contains(document.activeElement)) hailButton.focus?.();
@@ -153,6 +157,43 @@ export function createContactHailPrompt(ctx) {
       && active.requestId != null && payload.requestId === active.requestId
       && payload.targetId === active.targetId) return;
     hidePanel();
+  }
+
+  function receiveOffer(payload) {
+    firstIronOffer = payload?.firstIronHail && payload.targetId === state.player.targetId
+      ? { payload, courseRevision } : null;
+    return render(payload);
+  }
+
+  function receiveResponse(payload) {
+    const pending = firstIronOffer, course = payload?.firstIronCourse;
+    const offered = pending?.payload, identity = offered?.firstIronHail;
+    const matching = offered && payload?.requestId === offered.requestId && payload.targetId === offered.targetId;
+    if (course && !matching) return false; // A duplicate/older reply cannot replace newer contact detail.
+    if (matching) firstIronOffer = null;
+    const target = state.entities?.get(payload?.targetId), player = state.entities?.get(state.playerId);
+    const liveIdentity = course && firstIronContactIdentity(state, target);
+    const valid = course && identity && payload.choice === 'route'
+      && payload.requestId === offered.requestId && payload.targetId === offered.targetId
+      && offered.actions?.some(a => a.id === 'route') && offered.expiresAt > state.simTime
+      && pending.courseRevision === courseRevision && !isUiInteractionFenced(state)
+      && state.mode === 'flight' && !state.ui?.docked && !state.player?.flags?.docked && !state.save?.restoring
+      && state.player.targetId === target?.id && target?.alive && player?.alive
+      && target.occupantGeneration === identity.generation && player.id === identity.playerId
+      && player.occupantGeneration === identity.playerGeneration
+      && state.world?.currentSectorId === course.sectorId && course.sectorId === 'sector_helios_prime'
+      && (state.world.enterSerial ?? 0) === identity.enterSerial
+      && Object.keys(identity).every(k => course[k] === identity[k])
+      && liveIdentity && Object.keys(liveIdentity).every(k => identity[k] === liveIdentity[k])
+      && (identity.phase !== 'homebound' || course.targetEntityId === identity.buyerId)
+      && Number.isFinite(course.pos?.x) && Number.isFinite(course.pos?.z)
+      && firstIronCourseCurrent(state, target, course);
+    if (valid) bus.emit('ui:setCourse', { pos: { ...course.pos }, sectorId: course.sectorId,
+      ...(identity.phase === 'homebound' ? { targetEntityId: identity.buyerId } : {}),
+      label: course.label, reason: course.reason, autopilot: false });
+    else if (course) return render({ ...payload, lines: ['COURSE NOT MARKED · Your current course is unchanged.',
+      'Hail the cutter again if you still want directions for your first iron.'] });
+    return render(payload);
   }
 
   function render(payload) {
@@ -305,12 +346,15 @@ export function createContactHailPrompt(ctx) {
   document.addEventListener('keydown', onKeyDown, true);
   const busBindings = [
     ['contactHail:availability', applyAvailability],
-    ['contactHail:offer', render],
-    ['contactHail:response', render],
+    ['contactHail:offer', receiveOffer],
+    ['contactHail:response', receiveResponse],
+    ['ui:setCourse', () => { courseRevision++; }],
+    ['nav:waypoint', () => { courseRevision++; }],
     ['contactHail:clear', clearReceipt],
     ['contactHail:handoff', hidePanel],
     ['game:new', hidePanel],
     ['game:load', hidePanel],
+    ['save:loaded', hidePanel],
     ['dock:docked', hidePanel],
     ['mode:changed', hidePanel],
   ];

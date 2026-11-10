@@ -1,3 +1,4 @@
+import { firstIronContactIdentity, firstIronContactReply } from './heliosFirstIronContact.js';
 import { playerBearingHyphen } from '../core/playerCompass.js';
 import { lanternWardHailOffer, lanternWardHailResponse } from './lanternWardHail.js';
 import { winnowRecoveryHailLines } from '../world/vestaWinnowRecovery.js';
@@ -1209,11 +1210,22 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
         && traderManifestForTarget(state, availability.entity)) {
       actions.push({ id: 'manifest', label: 'MANIFEST' });
     }
+    const firstIronHail = firstIronContactIdentity(state, availability.entity);
+    if (firstIronHail) {
+      const label = firstIronHail.phase === 'homebound' ? 'MARK IRON BUYER' : 'MARK FIRST IRON';
+      const slot = actions.findIndex(a => a.id === CONTACT_HAIL_ACTION_HEAVE_TO);
+      if (slot >= 0) actions[slot] = { id: 'route', label };
+      else if (actions.length < 3) actions.push({ id: 'route', label });
+    }
     const remembered = availability.rescuedWorkerMemory;
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
+      ...(firstIronHail ? { firstIronHail } : {}),
       lines: charon ? charon.compact : [`${name} · WORKING TRAFFIC`,
-        remembered ? rescuedWorkerVoiceLine(remembered) : heliosFreight || voice],
+        remembered ? rescuedWorkerVoiceLine(remembered) : firstIronHail
+          ? (firstIronHail.phase === 'homebound' ? 'Your ticket is settled. Want the Helios buyer marked for the iron still aboard?'
+            : 'Kessler’s first iron ticket? Ask for a working position. I can point out nearby iron; you can also find your own.')
+          : heliosFreight || voice],
       actions,
     };
   }
@@ -1963,6 +1975,11 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
   const target = entityById(state, offer.targetId);
   if (!target) return null;
   const id = String(choice || '').toLowerCase();
+  if (id === 'route' && offer.firstIronHail) {
+    const reply = firstIronContactReply(state, target, offer);
+    return reply ? { requestId: offer.requestId, targetId: target.id, kind: offer.kind,
+      choice: id, expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_RECEIPT_TTL_S, ...reply } : null;
+  }
   if (offer.kind === 'variance_adjustment') {
     if (state?.world?.currentSectorId !== VARIANCE_ADJUSTMENT_BERTH.sectorId
       || offer.worldRecordId !== VARIANCE_ADJUSTMENT_BERTH.worldRecordId
