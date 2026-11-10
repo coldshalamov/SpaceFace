@@ -2921,6 +2921,14 @@ export function createMarketScreen(ctx) {
           qty = resume.qty;
         }
       }
+      // An explicit commodity handoff is an instruction, not passive resume. Do not
+      // let the cached lot or the first held commodity quietly replace the named iron.
+      // An unresolved trade still owns its selection until its receipt is reconciled.
+      if (!pendingTrade && open.commodityId && tradedList(st).some(row => row.id === open.commodityId)) {
+        selectedId = open.commodityId;
+        qty = mode === 'sell' ? sellOpeningQuantity(st, selectedId) : 1;
+        if (mode === 'sell') pinSealedSellQuantity(st, selectedId);
+      }
       if (pendingTrade) {
         selectedId = pendingTrade.commodityId;
         mode = pendingTrade.side;

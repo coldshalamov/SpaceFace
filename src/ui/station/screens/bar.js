@@ -1,3 +1,4 @@
+import { firstShiftMarketCurrent, openFirstShiftMarket } from '../heliosFirstShiftConversation.js';
 import { barFrameHtml } from '../../views/stationFrames.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { stationRegularRecognition } from '../stationArrival.js';
@@ -166,6 +167,8 @@ export function createBarScreen(ctx) {
   let stopType = null;
   const stopDecrypt = [];
   let pendingMissionOffer = null;
+  let pendingFirstShiftMarket = null;
+  let firstShiftAnswer = false;
   let pendingFrontierRumorOffer = null;
   let acceptedMissionId = null;
   let pinnedContact = null;
@@ -319,6 +322,13 @@ export function createBarScreen(ctx) {
       (unmet ? `<p class="k-sentence k-bad sx-bar-offer__blocker">${escapeHtml(unmet)}</p>` : '') +
       offerWord(`data-accept-mission="${escapeHtml(String(offer.id))}"${unmet ? ' disabled' : ''}`, 'Accept + track') +
     `</section>`;
+  }
+
+  function firstShiftMarketHtml(state) {
+    if (!firstShiftMarketCurrent(state, sid(), pendingFirstShiftMarket)) return '';
+    return '<section class="sx-bar-offer" aria-label="First shift iron buyer">'
+      + '<p class="k-sentence sx-bar-offer__state">Review your held iron and the current price. Nothing is sold until you choose Sell.</p>'
+      + offerWord('data-first-shift-market', 'Review iron at Market') + '</section>';
   }
 
   function frontierRumorOfferHtml() {
@@ -487,7 +497,7 @@ export function createBarScreen(ctx) {
           (choices.length
             ? choices.map((ch) => `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--emph sx-choice" data-choice="${escapeHtml(ch.id)}"${ch.disabled ? ` disabled title="${escapeHtml(ch.reason || '')}"` : ''}>${escapeHtml(ch.label)}</button></li>`).join('')
             : `<li class="k-sentence sx-muted">They have nothing to say.</li>`) +
-        `</ul>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
+        `</ul>` + firstShiftMarketHtml(state) + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
       `</div>`;
 
     appendVonnFreightLossMapOffer(state, c);
@@ -582,7 +592,7 @@ export function createBarScreen(ctx) {
       choices.insertAdjacentElement('afterend', hint);
     }
     const reply = stageEl.querySelector('.sx-talk__reply');
-    if (reply && saidText && saidText !== spokenText && !reducedMotion()) {
+    if (reply && saidText && saidText !== spokenText && !reducedMotion() && !firstShiftAnswer) {
       spokenText = saidText;
       const text = reply.textContent;
       const ms = Math.min(6000, 300 + text.length * 22);
@@ -673,7 +683,7 @@ export function createBarScreen(ctx) {
   // ---------- interactions ----------
   function selectContact(id, focus) {
     if (!id || id === selectedId) return;
-    selectedId = id; saidText = null; pendingMissionOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
+    selectedId = id; saidText = null; pendingMissionOffer = null; pendingFirstShiftMarket = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
     if (focus) {
@@ -777,6 +787,15 @@ export function createBarScreen(ctx) {
   });
 
   stageEl.addEventListener('click', async (ev) => {
+    if (ev.target.closest('[data-first-shift-market]')) {
+      if (!visible || selected(ctx.state || {})?.canonicalKey !== 'kessler') return;
+      if (!openFirstShiftMarket(ctx, sid(), pendingFirstShiftMarket)) {
+        pendingFirstShiftMarket = null;
+        saidText = 'The hold or ticket changed. Ask me again before taking this slip to Market.';
+        renderStage(ctx.state || {});
+      }
+      return;
+    }
     if (ev.target.closest('[data-open-vonn-freight-loss-map]')) {
       if (openVonnFreightLossMap(ctx) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
       return;
@@ -889,6 +908,8 @@ export function createBarScreen(ctx) {
       category: 'story', ttl: Math.max(8, Math.ceil(saidText.length / 18)), persist: true,
     });
     pendingMissionOffer = result && result.missionOffer || null;
+    pendingFirstShiftMarket = result && result.firstShiftMarket || null;
+    firstShiftAnswer = !!result?.firstShiftReceipt;
     pendingFrontierRumorOffer = result && result.frontierRumorOffer || null;
     acceptedMissionId = null;
     awaitingPointerMove = true;
@@ -965,6 +986,8 @@ export function createBarScreen(ctx) {
     },
     onHide() {
       visible = false;
+      pendingFirstShiftMarket = null;
+      if (firstShiftAnswer) { saidText = null; firstShiftAnswer = false; }
       erisOpenAnnounced = false;
       const leavingVisitId = erisVisitId();
       // A station overlay hides the shell but leaves this tab mounted. Only a real tab

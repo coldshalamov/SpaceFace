@@ -1,5 +1,5 @@
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
-import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
+import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './heliosFirstShiftConversation.js';
 import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
 import { kesslerCeresShiftChoice, kesslerCeresShiftReply } from './ceresShiftConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';

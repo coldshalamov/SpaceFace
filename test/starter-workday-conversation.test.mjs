@@ -21,19 +21,10 @@ const SECTOR = 'sector_helios_prime';
 const CHOICE = 'helios_local_work';
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
-// Use the exact current production board author and worksite reader. Its emitted board object is
-// the posting Kessler may surface; the conversation is not allowed to synthesize one.
-const workdaySource = read('src/missions/starterWorkday.js')
-  .replace(/^import[^;]*;\n/gm, '')
-  .replace(/^export /gm, '');
-const workday = Function(workdaySource + '; return { starterWorkSite, STARTER_WORKDAY_VERSION };')();
-const boardSource = read('src/systems/missionBoardOps.js')
-  .replace(/^import[\s\S]*?;\n/gm, '')
-  .replace('export const missionBoardOps', 'const missionBoardOps');
-const missionBoardOps = Function(
-  'activeOwnedShip', 'nextStarterStep', 'starterWorkSite', 'STARTER_WORKDAY_VERSION',
-  boardSource + '; return missionBoardOps;',
-)(activeOwnedShip, nextStarterStep, workday.starterWorkSite, workday.STARTER_WORKDAY_VERSION);
+// Exercise the real posting and settlement exports; source slicing breaks when
+// the owner imports helpers rather than declaring them inline.
+import { missionBoardOps } from '../src/systems/missionBoardOps.js';
+import { missionReceiptFor as receiptFor } from '../src/systems/missions.js';
 
 function freshState(job, done = 0) {
   return {
@@ -287,17 +278,6 @@ test('missing or malformed conversation state is read-only and fails without thr
 });
 
 
-// Exercise the actual receipt builder, not a hand-authored success flag. The production
-// board supplies the authored workday identity; settlement supplies the accepted method.
-const buoyReceiptFields = (await import('../src/missions/starterBuoyAftermath.js')).firstBuoyReceiptFields;
-const missionsSource = read('src/systems/missions.js');
-const receiptStart = missionsSource.indexOf('export function missionReceiptFor(');
-const receiptEnd = missionsSource.indexOf('export const CLEAN_PHYSICAL_RELEASE', receiptStart);
-assert.ok(receiptStart >= 0 && receiptEnd > receiptStart);
-const receiptFor = Function('firstBuoyReceiptFields', 'receiptTitle', 'missionRepDeltaFor',
-  'SET_PIECE_MISSION_SOURCE', missionsSource.slice(receiptStart, receiptEnd)
-    .replace('export function', 'function') + '; return missionReceiptFor;')(
-  buoyReceiptFields, (mission) => mission.title, () => 0, 'setPiece');
 
 function buoyReturn(step = 1, completionMethod = 'tow_in', outcome = 'completed') {
   const job = STARTER_JOBS.find((entry) => entry.id === 'starter_pelican');

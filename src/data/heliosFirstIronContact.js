@@ -131,7 +131,7 @@ export function firstIronContactReply(state, worker, offer) {
     || !(offer.expiresAt > state.simTime) || !offer.actions?.some(a => a.id === 'route')) return null;
   if (identity.phase === 'homebound') {
     const station = ironBuyer(state), qty = identity.freeIronQuantity;
-    const reason = `Your first cutting ticket is complete. You still have ${qty}u unsealed iron aboard. Fly to Helios, dock, then choose Market to review and sell it. The sale is separate from your ticket pay.`;
+    const reason = `Your first cutting ticket is complete. You still have ${qty}u unsealed iron aboard. Fly to Helios, dock, then choose Market to review and sell it. The sale is separate from your ticket pay. Then find Kessler at the Bar and ask about your first iron ticket.`;
     return { lines: ['SEAM CUTTER · The ticket pays for your cut. The iron in your hold is still yours; Helios buys it when you choose to sell.', reason],
       firstIronCourse: { ...identity, pos: { x: station.pos.x, z: station.pos.z }, sectorId: SECTOR,
         targetEntityId: station.id, label: 'Helios · sell held iron', reason, autopilot: false } };
@@ -140,7 +140,11 @@ export function firstIronContactReply(state, worker, offer) {
   if (!fix) return { lines: ['SEAM CUTTER · No clear iron working position close to me right now.',
     'Your ticket still accepts any iron you cut in Helios. Keep your current course; try another face.'] };
   const bearing = playerBearingHyphen(fix.facePos.x - fix.pos.x, fix.facePos.z - fix.pos.z);
-  const reason = `Brake at this working position, then aim ${bearing} at the nearby iron face. Hold the mining beam; collect the loose ore. Watch for moving traffic.`;
+  const mission = state.missions.active.find(row => row.id === identity.missionId);
+  const target = Number(mission?.objectiveTarget), progress = Number(mission?.objectiveProgress);
+  const tally = Number.isFinite(target) && target > 0 && Number.isFinite(progress) && progress >= 0
+    ? ` Ticket: ${Math.min(target, progress)}/${target}u iron cut. A small face may run out; track the ticket for another Helios iron face.` : '';
+  const reason = `Brake at this working position, then aim ${bearing} at the nearby iron face. Hold the mining beam; collect the loose ore. Watch for moving traffic.${tally}`;
   return { lines: [fix.sharedFace
       ? 'SEAM CUTTER · Kessler pays for your cut, not mine. Take this side of my face; I lower my beam while you actually cut and resume when you stop. The loose iron is yours to collect.'
       : 'SEAM CUTTER · Here is a working position beside an iron face. I will keep my own cut.', reason],
