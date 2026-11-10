@@ -1,0 +1,178 @@
+From c2de7839b7f06c3edb78a3ddcfa8e8909878385d Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 23:25:16 -0400
+Subject: [PATCH] perf(sim): skip flight step for dormant/abstract craft
+ without intent
+
+entityNeedsFlightStep mirrors physics shelving: S0/S1 keep the 60 Hz
+integrator; S2/S3/S4 only step when a wake carries intent. Stops
+continuous drag on shelved actors fighting catch-up authority and
+cuts the registry.step long-tail on settled traffic.
+---
+ src/systems/flight.js             |  3 ++
+ src/systems/flightV3.js           |  3 ++
+ src/world/activityRuntime.js      | 16 ++++++
+ test/flight-dormant-skip.test.mjs | 82 +++++++++++++++++++++++++++++++
+ 4 files changed, 104 insertions(+)
+ create mode 100644 test/flight-dormant-skip.test.mjs
+
+diff --git a/src/systems/flight.js b/src/systems/flight.js
+index d8fe0d159..3868f7081 100644
+--- a/src/systems/flight.js
++++ b/src/systems/flight.js
+@@ -20,6 +20,7 @@ import {
+ } from '../core/flightDynamics.js';
+ import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+ import { wrapAngle } from '../core/rng.js';
++import { entityNeedsFlightStep } from '../world/activityRuntime.js';
+ 
+ const ANG_VEL_DRAG = 2.2;     // per-second decay of yaw rate for drifting (intent-less) ships
+ const DASH_TAP_WINDOW = 0.32;  // Shift taps up to this duration become dash; longer holds boost.
+@@ -112,6 +113,8 @@ export const flight = {
+     }
+     for (const e of flightCraftCandidates(state)) {
+       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
++      // Shelved actors (S2/S3/S4) skip continuous drag; wake-edge intent still steps.
++      if (!entityNeedsFlightStep(e)) continue;
+       const intent = e.data && e.data.intent;
+       if (intent) this.applyIntent(e, intent, dt, { physicsAuthority: dynamicAuthority });
+       else this.applyDrag(e, dt, { physicsAuthority: dynamicAuthority });
+diff --git a/src/systems/flightV3.js b/src/systems/flightV3.js
+index c769def98..75b51fe7d 100644
+--- a/src/systems/flightV3.js
++++ b/src/systems/flightV3.js
+@@ -31,6 +31,7 @@ import {
+   resolveCollisionProxyManifest,
+   resolveCorridorAxisWorld,
+ } from '../data/collisionProxyManifests.js';
++import { entityNeedsFlightStep } from '../world/activityRuntime.js';
+ 
+ // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
+ // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
+@@ -206,6 +207,8 @@ export const flightV3 = {
+     for (const entity of flightCraftCandidates(state)) {
+       if (!entity || entity.id === state.playerId || entity.alive === false) continue;
+       if (entity.type !== 'ship' && entity.type !== 'drone') continue;
++      // Abstract/dormant/aggregate stay under catch-up unless a wake carries intent.
++      if (!entityNeedsFlightStep(entity)) continue;
+       if (!npcFlightNeedsCommand(entity)) continue;
+       const intent = entity.data && entity.data.intent;
+       if (intent) this._stepCraft(entity, intent, dt, state, false);
+diff --git a/src/world/activityRuntime.js b/src/world/activityRuntime.js
+index f555879d9..1168a7283 100644
+--- a/src/world/activityRuntime.js
++++ b/src/world/activityRuntime.js
+@@ -1113,6 +1113,22 @@ export function entityNeedsPhysics(entity) {
+   return isExactTier(activity.simTier);
+ }
+ 
++/**
++ * Exact/near craft keep the 60 Hz flight integrator. Abstract/dormant/aggregate craft are
++ * owned by catch-up / scheduled wakes — continuous drag on a shelved actor fights that
++ * authority and burns registry.step on the settled long-tail. A live intent on a wake edge
++ * still steps once so the command is consumed.
++ */
++export function entityNeedsFlightStep(entity) {
++  if (!entity || entity.alive === false) return false;
++  const activity = entity.activity;
++  if (!activity || !activity.simTier) return true;
++  if (activity.pinnedExact) return true;
++  if (isExactTier(activity.simTier)) return true;
++  const intent = entity.data && entity.data.intent;
++  return !!(intent && typeof intent === 'object');
++}
++
+ export function entityNeedsAiThink(entity, state = null) {
+   if (!entity || entity.alive === false) return false;
+   const runtime = state && RUNTIMES.get(state);
+diff --git a/test/flight-dormant-skip.test.mjs b/test/flight-dormant-skip.test.mjs
+new file mode 100644
+index 000000000..daa7ec073
+--- /dev/null
++++ b/test/flight-dormant-skip.test.mjs
+@@ -0,0 +1,82 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++
++import { SIM_TIER } from '../src/world/activityClassification.js';
++import { entityNeedsFlightStep } from '../src/world/activityRuntime.js';
++import { npcFlightNeedsCommand } from '../src/systems/flightV3.js';
++import { flight } from '../src/systems/flight.js';
++
++test('entityNeedsFlightStep keeps exact/near and unclassified craft', () => {
++  assert.equal(entityNeedsFlightStep({ alive: true }), true, 'no activity stamp → keep prior behavior');
++  assert.equal(entityNeedsFlightStep({
++    alive: true,
++    activity: { simTier: SIM_TIER.S0_EXACT },
++  }), true);
++  assert.equal(entityNeedsFlightStep({
++    alive: true,
++    activity: { simTier: SIM_TIER.S1_NEAR },
++  }), true);
++  assert.equal(entityNeedsFlightStep({
++    alive: true,
++    activity: { simTier: SIM_TIER.S3_DORMANT, pinnedExact: true },
++  }), true);
++});
++
++test('entityNeedsFlightStep shelves abstract/dormant/aggregate unless intent is live', () => {
++  const dormant = {
++    alive: true,
++    activity: { simTier: SIM_TIER.S3_DORMANT },
++    vel: { x: 12, z: 0 },
++    data: {},
++  };
++  assert.equal(entityNeedsFlightStep(dormant), false);
++  // Residual velocity alone must not keep a shelved actor on the 60 Hz integrator.
++  assert.equal(npcFlightNeedsCommand(dormant), true, 'V3 motion gate alone would still step');
++  dormant.data.intent = { moveX: 0.5, moveZ: 0 };
++  assert.equal(entityNeedsFlightStep(dormant), true, 'wake-edge intent still steps');
++});
++
++test('legacy flight.update skips continuous drag on dormant ships', () => {
++  const dormant = {
++    id: 2,
++    type: 'ship',
++    alive: true,
++    pos: { x: 0, z: 0 },
++    vel: { x: 40, z: 0 },
++    rot: 0,
++    maxSpeed: 100,
++    activity: { simTier: SIM_TIER.S3_DORMANT },
++    data: {},
++    flags: {},
++  };
++  const player = {
++    id: 1,
++    type: 'ship',
++    alive: true,
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    maxSpeed: 100,
++    flags: { docked: true },
++    boost: { energy: 0, max: 0, drainRate: 0, regenRate: 0, dashCdT: 0, dashCd: 1, dashCost: 1, dashImpulse: 0 },
++  };
++  const state = {
++    mode: 'docked',
++    playerId: 1,
++    tick: 10,
++    entities: new Map([[1, player], [2, dormant]]),
++    entityList: [player, dormant],
++    entityIndex: { __spacefaceEntityIndexV1: true, shipLike: [player, dormant] },
++    input: {},
++    ui: { screenStack: [] },
++  };
++  const before = dormant.vel.x;
++  const sys = Object.create(flight);
++  sys.state = state;
++  sys.bus = { emit() {} };
++  sys._diag = {};
++  sys._publishDiagnostics = () => {};
++  sys._cancelPlayerBoost = () => {};
++  sys.update(1 / 60, state);
++  assert.equal(dormant.vel.x, before, 'dormant velocity unchanged without intent');
++});
+-- 
+2.47.3
+

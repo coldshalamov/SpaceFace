@@ -1,0 +1,13 @@
+[save-size-quiet] sampled 0 min storedJsLength=103598 serializeUtf8=103459
+[save-size-quiet] progress 15 / 120 sim-min
+[save-size-quiet] sampled 30 min @ tick 108000 storedJsLength=687320 serializeUtf8=687264
+[save-size-quiet] progress 30 / 120 sim-min
+[save-size-quiet] progress 45 / 120 sim-min
+[save-size-quiet] sampled 60 min @ tick 216000 storedJsLength=718069 serializeUtf8=717941
+[save-size-quiet] progress 60 / 120 sim-min
+[save-size-quiet] progress 75 / 120 sim-min
+[save-size-quiet] progress 90 / 120 sim-min
+[save-size-quiet] progress 105 / 120 sim-min
+[save-size-quiet] sampled 120 min @ tick 432000 storedJsLength=736967 serializeUtf8=736915
+[save-size-quiet] progress 120 / 120 sim-min
+EXIT:0

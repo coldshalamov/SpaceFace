@@ -1,0 +1,234 @@
+// A1 The Band — compact tuner chip. Read-only over sim state; emits intents only.
+
+import { BAND_CHANNEL_BY_ID } from '../data/bandRadio.js';
+import QUIESSENCE_PACK from '../data/flavor/060-quiessence.js';
+import { createHudDragController } from './hudLayout.js';
+import { BINDINGS } from './bindings.js';
+import { bearingRefusalLine, paintBearingRefusal, BEARING_REFUSAL_HOLD_MS } from './orrery/bearingRefusal.js';
+
+const QUIESSENCE_INDEXES = new Set(QUIESSENCE_PACK.entries.map((entry) => entry.shipIndex));
+
+export function quiessenceCensusProgress(state) {
+  const scanned = new Set();
+  for (const receipt of (state && state.v2Flavor && state.v2Flavor.presentedReceipts || [])) {
+    if (typeof receipt !== 'string' || !receipt.startsWith(`${QUIESSENCE_PACK.id}:`)) continue;
+    const index = Number(receipt.slice(receipt.lastIndexOf(':') + 1));
+    if (QUIESSENCE_INDEXES.has(index)) scanned.add(index);
+  }
+  return {
+    scanned: scanned.size,
+    total: QUIESSENCE_INDEXES.size,
+    complete: scanned.size === QUIESSENCE_INDEXES.size,
+  };
+}
+
+export const BAND_HUD_CSS = `
+  /* Keep the tuner out of the radar and contact-roster column by default. It anchors in the sky
+     LEFT of the dock: the dock grew when the sector-law card moved into it, and at the old
+     top-right anchor the chip sat directly on the law card's headline. Players can still
+     Ctrl-drag it anywhere that reads better for their own flight setup.
+     ORRERY register: an instrument chip on the flight glass — etched face, warm bone rest light,
+     no bordered box (the 2px left edge is the state channel), the 2px bone bracket on focus. */
+  .sf-band-hud { position:absolute; right:calc(20px + var(--sf-dock-w, 220px) + var(--sf-safe-inset-x, 0px)); top:150px; bottom:auto; z-index:18; pointer-events:auto; }
+  #hud > .sf-band-hud { pointer-events:auto; }
+  .sf-band-hud__button { min-width:176px; min-height:34px; display:flex; align-items:center;
+    justify-content:space-between; gap:12px; padding:7px 12px 7px 14px;
+    border:0; border-left:2px solid var(--dp-lamp-dim, #8a6b3a);
+    border-radius:var(--dp-r-instrument, 3px);
+    background:var(--dp-glass-flight, rgb(18 23 29 / .82));
+    color:var(--dp-ink, #e8e2d4);
+    font-family:var(--dp-face-etch, var(--hud-data, system-ui));
+    font-size:12px; font-weight:700; line-height:1.2;
+    font-variation-settings:"wght" 720, "wdth" 68;
+    letter-spacing:.14em; text-transform:uppercase; cursor:pointer;
+    text-shadow:var(--dp-etch-shadow, none);
+    transition:color 160ms ease-out,border-color 160ms ease-out,background 160ms ease-out; }
+  .sf-band-hud__button:hover { color:var(--dp-phos, #dfeeff);
+    border-left-color:var(--dp-lamp, #f2b950); background:var(--dp-glass-flight, rgb(18 23 29 / .82)); }
+  .sf-band-hud__button:focus-visible { outline:2px solid var(--dp-ink-dim, #a9a696); outline-offset:2px; }
+  .sf-band-hud__button:active { color:var(--dp-phos, #dfeeff);
+    border-left-color:var(--dp-lamp-hot, #ffd98c); }
+  .sf-band-hud__button[data-off="true"] { border-left-color:var(--dp-metal-4, #2f3542);
+    color:var(--dp-ink-mute, #96948e); text-shadow:none; }
+  .sf-band-hud__button[data-off="true"]:hover { color:var(--dp-ink-dim, #a9a696); }
+  .sf-band-hud__button[data-silence="true"] { color:var(--dp-ink-dim, #a9a696); }
+  .sf-band-hud__button[data-bearing-refusal] { text-transform:none; letter-spacing:.01em; font-weight:560;
+    color:var(--dp-danger-hot, #ff8a70); white-space:normal; text-align:left; line-height:1.25; }
+  @media (prefers-reduced-motion: reduce) { .sf-band-hud__button { transition:none; } }
+  @media (max-width: 820px) { .sf-band-hud { right:12px; top:112px; bottom:auto; }
+    .sf-band-hud__button { min-width:148px; font-size:12px; } }
+`;
+
+export function createBandHud(ctx, options = {}) {
+  const state = ctx && ctx.state || {};
+  const bus = ctx && ctx.bus;
+  const documentRef = options.documentRef || (typeof document !== 'undefined' ? document : null);
+  if (!documentRef || typeof documentRef.createElement !== 'function') return inertBandHud();
+  const host = options.host
+    || (typeof documentRef.getElementById === 'function' && documentRef.getElementById('hud'))
+    || documentRef.body;
+  if (!host || typeof host.appendChild !== 'function') return inertBandHud();
+
+  injectBandHudCss(documentRef);
+  const root = documentRef.createElement('div');
+  root.id = 'sf-band-hud';
+  root.className = 'sf-band-hud';
+  const button = documentRef.createElement('button');
+  button.className = 'sf-band-hud__button';
+  button.setAttribute('type', 'button');
+  button.setAttribute('aria-live', 'off');
+  root.appendChild(button);
+  host.appendChild(root);
+  const layoutDrag = createHudDragController({
+    state, bus, element: root, key: 'band', documentRef, windowRef: options.windowRef,
+  });
+
+  let status = null;
+  let destroyed = false;
+  let lastHidden = null;
+  let lastText = null;
+  let lastDataOff = null;
+  let lastDataSilence = null;
+  let lastAriaLabel = null;
+  let lastEffectiveChannel = null;
+  let lastLive = null;
+  let lastSig = null;
+  let refusalReason = null;
+  let refusalTimer = 0;
+  const unsubscribers = [];
+  const onClick = (event) => {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (destroyed || !bus || typeof bus.emit !== 'function') return;
+    bus.emit('band:cycle', { source: 'hud-chip' });
+  };
+  button.addEventListener('click', onClick);
+  if (bus && typeof bus.on === 'function') {
+    unsubscribers.push(bus.on('band:status', (payload) => { status = payload || null; update(); }));
+    unsubscribers.push(bus.on('band:bearingUnavailable', (payload) => {
+      refusalReason = (payload && payload.reason) || 'unavailable';
+      if (refusalTimer) clearTimeout(refusalTimer);
+      refusalTimer = setTimeout(() => {
+        refusalTimer = 0;
+        refusalReason = null;
+        update();
+      }, BEARING_REFUSAL_HOLD_MS);
+      update();
+    }));
+    unsubscribers.push(bus.on('v2:flavorPresented', (payload) => {
+      if (payload && payload.sourceRef === 'landmark_c14_quiessence') update();
+    }));
+    unsubscribers.push(bus.on('save:loaded', () => {
+      status = null;
+      refusalReason = null;
+      if (refusalTimer) { clearTimeout(refusalTimer); refusalTimer = 0; }
+      update();
+    }));
+  }
+
+  function update() {
+    if (destroyed) return;
+    const own = state.bandRadio || {};
+    const channelId = status && status.channelId !== undefined ? status.channelId : own.channelId;
+    const effectiveId = status && status.effectiveChannelId || own.effectiveChannelId;
+    const sourceId = status && status.sourceId || own.effectiveSourceId;
+    const strength = clamp01(finite(status && status.signalStrength, finite(own.signalStrength, 0)));
+    const silence = !!(status && status.silence) || sourceId === 'planet_hush';
+    const hidden = !(state.mode === 'flight' && !(state.ui && state.ui.docked));
+
+    // Strength is published at 5 Hz but renders in four threshold buckets — compare the
+    // scalar projection inputs before any of the string formatting runs at all.
+    const census = sourceId === 'landmark_quiessence' ? quiessenceCensusProgress(state) : null;
+    const bandKeyLabel = (BINDINGS.band && BINDINGS.band.label) || 'Shift+O';
+    const refusalLine = refusalReason ? bearingRefusalLine(refusalReason) : '';
+    const sig = `${channelId}|${effectiveId}|${sourceId}|${strength >= 0.72 ? 3 : strength >= 0.38 ? 2 : strength >= 0.08 ? 1 : 0}`
+      + `|${silence ? 1 : 0}|${hidden ? 1 : 0}|${census ? census.scanned + '/' + census.total : ''}|${bandKeyLabel}|${refusalLine}`;
+    if (sig === lastSig) return;
+    lastSig = sig;
+
+    const channel = channelId && BAND_CHANNEL_BY_ID[channelId];
+    const label = sourceId === 'planet_hush' ? 'RF VOID'
+      : sourceId === 'landmark_quiessence' ? 'QUIET MEMORIAL'
+        : channel && channel.label || 'OFF';
+    const censusText = census ? `  FOUND ${census.scanned}/${census.total}` : '';
+    const meter = channelId ? signalMeter(strength, silence) : '';   // off: no dashed placeholder, the word says it
+    const text = `RADIO  ${label}${censusText}${meter ? `  ${meter}` : ''}`;
+    const dataOff = channelId ? 'false' : 'true';
+    const dataSilence = silence ? 'true' : 'false';
+    const censusAria = census ? ` Census ${census.scanned} of ${census.total}${census.complete ? ', complete' : ''}.` : '';
+    const ariaLabel = channelId
+      ? `Band tuner, ${label}, ${silence ? 'radio silence' : signalLabel(strength)}.${censusAria} Activate for next channel.`
+      : 'Band tuner, off. Activate for next channel.';
+    const effectiveChannel = effectiveId || 'off';
+    const shownText = refusalLine || text;
+    const shownAria = refusalLine ? `${refusalLine}.` : ariaLabel;
+    const shownLive = refusalLine ? 'polite' : 'off';
+    // Signal strength is published at 5 Hz, but the chip renders four threshold buckets. Key the
+    // cache to the exact DOM projection so within-bucket strength changes do not repaint identical
+    // text and attributes while every visible/accessibility transition still invalidates it.
+    if (hidden === lastHidden && shownText === lastText && dataOff === lastDataOff
+      && dataSilence === lastDataSilence && shownAria === lastAriaLabel
+      && effectiveChannel === lastEffectiveChannel && shownLive === lastLive) return;
+    lastHidden = hidden;
+    lastText = shownText;
+    lastDataOff = dataOff;
+    lastDataSilence = dataSilence;
+    lastAriaLabel = shownAria;
+    lastEffectiveChannel = effectiveChannel;
+    lastLive = shownLive;
+    root.hidden = hidden;
+    button.setAttribute('data-off', dataOff);
+    button.setAttribute('data-silence', dataSilence);
+    button.setAttribute('aria-keyshortcuts', bandKeyLabel);
+    button.setAttribute('title', `[ ${bandKeyLabel} ] Cycle Band channel`);
+    button.setAttribute('data-effective-channel', effectiveChannel);
+    if (refusalLine) paintBearingRefusal(button, refusalReason);
+    else {
+      button.textContent = text;
+      button.removeAttribute('data-bearing-refusal');
+      button.setAttribute('aria-live', 'off');
+      button.setAttribute('aria-label', ariaLabel);
+    }
+  }
+
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    if (refusalTimer) { clearTimeout(refusalTimer); refusalTimer = 0; }
+    button.removeEventListener('click', onClick);
+    layoutDrag.destroy();
+    for (const unsub of unsubscribers) {
+      try { unsub(); } catch (_) {}
+    }
+    if (root.parentNode && typeof root.parentNode.removeChild === 'function') root.parentNode.removeChild(root);
+  }
+
+  update();
+  return { root, button, update, destroy, layoutDrag };
+}
+
+export function injectBandHudCss(documentRef = (typeof document !== 'undefined' ? document : null)) {
+  if (!documentRef || !documentRef.head || typeof documentRef.createElement !== 'function') return false;
+  if (typeof documentRef.getElementById === 'function' && documentRef.getElementById('sf-band-hud-css')) return false;
+  const style = documentRef.createElement('style');
+  style.id = 'sf-band-hud-css';
+  style.textContent = BAND_HUD_CSS;
+  documentRef.head.appendChild(style);
+  return true;
+}
+
+function signalMeter(strength, silence) {
+  if (silence) return 'VOID';
+  const bars = strength >= 0.72 ? 3 : strength >= 0.38 ? 2 : strength >= 0.08 ? 1 : 0;
+  return `${'|'.repeat(bars)}${'.'.repeat(3 - bars)}`;
+}
+function signalLabel(strength) {
+  if (strength >= 0.72) return 'strong signal';
+  if (strength >= 0.38) return 'readable signal';
+  if (strength >= 0.08) return 'weak signal';
+  return 'carrier lost';
+}
+function inertBandHud() {
+  return { root: null, button: null, update() {}, destroy() {} };
+}
+function finite(value, fallback) { return Number.isFinite(value) ? value : fallback; }
+function clamp01(value) { return value < 0 ? 0 : value > 1 ? 1 : value; }

@@ -1,0 +1,137 @@
+TAP version 13
+# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
+ok 1 - player and on-screen ships stay on the inner band; off-glass runway is middle
+  ---
+  duration_ms: 1.558327
+  ...
+# Subtest: middle-band closures fire once per period, staggered by slot
+ok 2 - middle-band closures fire once per period, staggered by slot
+  ---
+  duration_ms: 0.243395
+  ...
+# Subtest: zero-dirty identical cull rect retains visible set without transitions
+ok 3 - zero-dirty identical cull rect retains visible set without transitions
+  ---
+  duration_ms: 5.997186
+  ...
+# Subtest: bench toggle restores always-walk (transitions still correct)
+ok 4 - bench toggle restores always-walk (transitions still correct)
+  ---
+  duration_ms: 0.537502
+  ...
+# Subtest: crossing the origin cell boundary does not leave stale grid links
+ok 5 - crossing the origin cell boundary does not leave stale grid links
+  ---
+  duration_ms: 3.907136
+  ...
+# Subtest: the same holds on the z axis
+ok 6 - the same holds on the z axis
+  ---
+  duration_ms: 0.435178
+  ...
+# Subtest: retiring an entity parked in a negative origin cell fully unlinks it
+ok 7 - retiring an entity parked in a negative origin cell fully unlinks it
+  ---
+  duration_ms: 0.714466
+  ...
+# Subtest: multi-entity chains around the origin survive churn without cycles or duplicates
+ok 8 - multi-entity chains around the origin survive churn without cycles or duplicates
+  ---
+  duration_ms: 1.326718
+  ...
+# Subtest: absurd finite coordinates cannot corrupt the grid (clamped cell indices)
+ok 9 - absurd finite coordinates cannot corrupt the grid (clamped cell indices)
+  ---
+  duration_ms: 0.551488
+  ...
+# Subtest: presentation-world-unchanged-refresh-skip
+    # Subtest: skip is on by default and bench toggle restores always-write
+    ok 1 - skip is on by default and bench toggle restores always-write
+      ---
+      duration_ms: 1.539011
+      ...
+    # Subtest: unchanged refresh returns false and does not mark TRANSFORM dirty
+    ok 2 - unchanged refresh returns false and does not mark TRANSFORM dirty
+      ---
+      duration_ms: 1.877177
+      ...
+    # Subtest: pose change returns true, updates scalars, and marks TRANSFORM dirty
+    ok 3 - pose change returns true, updates scalars, and marks TRANSFORM dirty
+      ---
+      duration_ms: 0.487474
+      ...
+    # Subtest: radius / flag metadata change is observed without a pose delta
+    ok 4 - radius / flag metadata change is observed without a pose delta
+      ---
+      duration_ms: 0.555159
+      ...
+    # Subtest: entity ref replacement forces a refresh path
+    ok 5 - entity ref replacement forces a refresh path
+      ---
+      duration_ms: 0.340793
+      ...
+    # Subtest: toggle off agrees with toggle on for a mover+static mix (oracle)
+    ok 6 - toggle off agrees with toggle on for a mover+static mix (oracle)
+      ---
+      duration_ms: 5.089166
+      ...
+    1..6
+ok 10 - presentation-world-unchanged-refresh-skip
+  ---
+  duration_ms: 11.44034
+  type: 'suite'
+  ...
+# Subtest: PresentationWorld reuses dense slots without accepting stale handles
+ok 11 - PresentationWorld reuses dense slots without accepting stale handles
+  ---
+  duration_ms: 3.011902
+  ...
+# Subtest: PresentationWorld retains previous/current pose and settles interpolation from live state
+ok 12 - PresentationWorld retains previous/current pose and settles interpolation from live state
+  ---
+  duration_ms: 0.62827
+  ...
+# Subtest: PresentationPublisher applies journal ranges idempotently and rebuilds generations
+ok 13 - PresentationPublisher applies journal ranges idempotently and rebuilds generations
+  ---
+  duration_ms: 3.265633
+  ...
+# Subtest: PresentationQueries return deterministic visible handles and exact transitions
+ok 14 - PresentationQueries return deterministic visible handles and exact transitions
+  ---
+  duration_ms: 1.718086
+  ...
+# Subtest: PresentationWorld rebuild skips duplicate ids instead of freezing the canvas
+ok 15 - PresentationWorld rebuild skips duplicate ids instead of freezing the canvas
+  ---
+  duration_ms: 0.645107
+  ...
+# Subtest: PresentationWorld drops stale maximum radius after large-root churn
+ok 16 - PresentationWorld drops stale maximum radius after large-root churn
+  ---
+  duration_ms: 0.626662
+  ...
+# Subtest: dirtySlots list tracks mark/clear cardinality
+ok 17 - dirtySlots list tracks mark/clear cardinality
+  ---
+  duration_ms: 5.855627
+  ...
+# Subtest: dirty-slot list pack matches forceFull and walk-all
+ok 18 - dirty-slot list pack matches forceFull and walk-all
+  ---
+  duration_ms: 6.539052
+  ...
+# Subtest: retire removes slot from dirty list
+ok 19 - retire removes slot from dirty list
+  ---
+  duration_ms: 1.070785
+  ...
+1..19
+# tests 24
+# suites 1
+# pass 24
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 211.45704

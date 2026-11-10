@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spaceface.game/schemas/combat/combat-trace.schema.json",
+  "title": "SpaceFace CombatTrace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "nextSeq", "dropped", "digest", "events"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "nextSeq": { "type": "integer", "minimum": 1 },
+    "dropped": { "type": "integer", "minimum": 0 },
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{8}$" },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["seq", "tick", "kind", "digest"],
+        "properties": {
+          "seq": { "type": "integer", "minimum": 1 },
+          "tick": { "type": "integer", "minimum": 0 },
+          "kind": { "type": "string", "minLength": 1 },
+          "digest": { "type": "string", "pattern": "^[0-9a-f]{8}$" },
+          "actorId": { "type": ["integer", "string", "null"] },
+          "targetId": { "type": ["integer", "string", "null"] },
+          "actionId": { "type": ["string", "null"] },
+          "actionInstanceId": { "type": ["string", "null"] },
+          "attachmentId": { "type": ["string", "null"] },
+          "subsystemId": { "type": ["string", "null"] },
+          "statusId": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

@@ -1,0 +1,543 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.fin-radiator-grid",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "0b25489002397dd7f26977fc310426961d07c36010ac78452786e39b6184f63f",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.070528488302775,
+          0.229928947882851,
+          3.4260218143463135
+        ],
+        "min": [
+          0.22947147891467035,
+          0.13007105152110254,
+          0.1539781242609024
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a0d5d846b14f17117136cb34585adc28898ee9cdd04b79cc3949bd9263ea3488",
+      "id": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-hull-merged.primitive.0",
+      "indexCount": 1296,
+      "indexed": true,
+      "materialHash": "345a2ca5e0bd4360fdc384bfede2f0daf1ebbe16ffd0edbbc31d64c12ec6aca5",
+      "materialPipelineKey": "opaque",
+      "meshName": "fin_radiator_grid_Material_Hull_Merged",
+      "nodeId": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-hull-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 486
+    },
+    {
+      "bounds": {
+        "max": [
+          3.600033514362873,
+          0.27993285870747703,
+          3.799999952316284
+        ],
+        "min": [
+          -0.00003358118308516289,
+          -0.11993285483317512,
+          0
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a532c98d66c90dede77f331e0e0c83f05392eaa9d60163209439d9b803b9962d",
+      "id": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-mechanical-merged.primitive.0",
+      "indexCount": 516,
+      "indexed": true,
+      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "fin_radiator_grid_Material_Mechanical_Merged",
+      "nodeId": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 178
+    },
+    {
+      "bounds": {
+        "max": [
+          2.8499999046325684,
+          0.31998290695350307,
+          0.26999297135550737
+        ],
+        "min": [
+          2.049999952316284,
+          0.16001709721882204,
+          0.09000702059786561
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "01b3f30d8d06c454a4d48df84efdc61a03c19772427f1d3f62930cfdb933d412",
+      "id": "sf.render.fin-radiator-grid.mesh.radiator-status.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Radiator_Status",
+      "nodeId": "sf.render.fin-radiator-grid.mesh.radiator-status",
+      "primitiveIndex": 0,
+      "vertexCount": 54
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "345a2ca5e0bd4360fdc384bfede2f0daf1ebbe16ffd0edbbc31d64c12ec6aca5",
+      "id": "material:345a2ca5e0bd4360fdc384bf",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "id": "material:4bbfc0af06e03d63cd7b8818",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "id": "material:7af6f768ac4f1f4c9ee04b14",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-hull-merged",
+      "localTransform": [
+        1.6360218450427055,
+        0,
+        0,
+        0,
+        0,
+        1.6360218450427055,
+        0,
+        0,
+        0,
+        0,
+        1.6360218450427055,
+        0,
+        1.6499999836087227,
+        0.17999999970197678,
+        1.789999969303608,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_radiator_grid_Material_Hull_Merged",
+      "nodeName": "fin_radiator_grid_Material_Hull_Merged",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.fin-radiator-grid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-radiator-grid.body",
+      "worldTransform": [
+        1.6360218450427055,
+        0,
+        0,
+        0,
+        0,
+        1.6360218450427055,
+        0,
+        0,
+        0,
+        0,
+        1.6360218450427055,
+        0,
+        1.6499999836087227,
+        0.17999999970197678,
+        1.789999969303608,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-mechanical-merged",
+      "localTransform": [
+        1.899999976158142,
+        0,
+        0,
+        0,
+        0,
+        1.899999976158142,
+        0,
+        0,
+        0,
+        0,
+        1.899999976158142,
+        0,
+        1.799999966589894,
+        0.08000000193715096,
+        1.899999976158142,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_radiator_grid_Material_Mechanical_Merged",
+      "nodeName": "fin_radiator_grid_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.fin-radiator-grid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-radiator-grid.body",
+      "worldTransform": [
+        1.899999976158142,
+        0,
+        0,
+        0,
+        0,
+        1.899999976158142,
+        0,
+        0,
+        0,
+        0,
+        1.899999976158142,
+        0,
+        1.799999966589894,
+        0.08000000193715096,
+        1.899999976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-radiator-grid.mesh.radiator-status",
+      "localTransform": [
+        0.3999999761581421,
+        0,
+        0,
+        0,
+        0,
+        0.3999999761581421,
+        0,
+        0,
+        0,
+        0,
+        0.3999999761581421,
+        0,
+        2.4499999284744263,
+        0.24000000208616257,
+        0.17999999597668648,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Radiator_Status",
+      "nodeName": "Radiator_Status",
+      "nodePath": [
+        0,
+        13,
+        0
+      ],
+      "parentId": "sf.render.fin-radiator-grid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-radiator-grid.body",
+      "worldTransform": [
+        0.3999999761581421,
+        0,
+        0,
+        0,
+        0,
+        0.3999999761581421,
+        0,
+        0,
+        0,
+        0,
+        0.3999999761581421,
+        0,
+        2.4499999284744263,
+        0.24000000208616257,
+        0.17999999597668648,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-radiator-grid.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "fin_radiator_grid",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-radiator-grid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "f7fa137cffb0d356b70b410c0d85d428fcfc8f6a3d62a5b00017851e2cd85835"
+    },
+    "sourceGlb": {
+      "bytes": 378784,
+      "sha256": "3a3e52f3c7891f44cbff5ad192b38906b9bd3b52e57f264f74486a9073ca0045",
+      "uri": "fin_radiator_grid.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 379660,
+    "sha256": "392b47643e51d15edbef99881326302c2ba842329d20791c71f29cd626c88a9b",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.799999966589894,
+        0.10002502606016397,
+        1.899999976158142
+      ],
+      "max": [
+        3.600033514362873,
+        0.31998290695350307,
+        3.799999952316284
+      ],
+      "min": [
+        -0.00003358118308516289,
+        -0.11993285483317512,
+        0
+      ],
+      "size": [
+        3.600067095545958,
+        0.4399157617866782,
+        3.799999952316284
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 15,
+        "tags": {},
+        "userData": {
+          "name": "HOOK_Emissive",
+          "spacefaceHook": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 19,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.3999999761581421,
+          0,
+          0,
+          0,
+          0,
+          0.3999999761581421,
+          0,
+          0,
+          0,
+          0,
+          0.3999999761581421,
+          0,
+          2.4499999284744263,
+          0.24000000208616257,
+          0.17999999597668648,
+          1
+        ],
+        "name": "Radiator_Status",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.899999976158142,
+          0,
+          0,
+          0,
+          0,
+          1.899999976158142,
+          0,
+          0,
+          0,
+          0,
+          1.899999976158142,
+          0,
+          1.799999966589894,
+          0.08000000193715096,
+          1.899999976158142,
+          1
+        ],
+        "name": "fin_radiator_grid_Material_Mechanical_Merged",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.6360218450427055,
+          0,
+          0,
+          0,
+          0,
+          1.6360218450427055,
+          0,
+          0,
+          0,
+          0,
+          1.6360218450427055,
+          0,
+          1.6499999836087227,
+          0.17999999970197678,
+          1.789999969303608,
+          1
+        ],
+        "name": "fin_radiator_grid_Material_Hull_Merged",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "fin",
+    "url": "assets/ships/release/parts/fins/fin_radiator_grid.glb"
+  },
+  "runtimeHash": "313c3e5be86ce25b85fffef07e87b5e44b1034a29f87a8c9b3a99867b68a7e8f",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.600033514362873,
+          0.31998290695350307,
+          3.799999952316284
+        ],
+        "min": [
+          -0.00003358118308516289,
+          -0.11993285483317512,
+          0
+        ]
+      },
+      "id": "sf.render.fin-radiator-grid.body",
+      "nodeIds": [
+        "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-hull-merged",
+        "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-mechanical-merged",
+        "sf.render.fin-radiator-grid.mesh.radiator-status",
+        "sf.render.fin-radiator-grid.root"
+      ]
+    }
+  ]
+}

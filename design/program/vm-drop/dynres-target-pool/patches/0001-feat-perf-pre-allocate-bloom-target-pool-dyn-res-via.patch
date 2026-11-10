@@ -1,0 +1,305 @@
+From ec33cf8fcce45a8cd928db47a5b6d983573d28d9 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 21:21:25 -0400
+Subject: [PATCH 1/3] feat(perf): pre-allocate bloom target pool; dyn-res via
+ content sub-rects
+
+Bloom/post render targets stay at max size. setContentScale shrinks the
+active viewport/scissor sub-rect and remaps downsample/composite UVs so
+scale changes never call setSize/realloc (PERF backlog #89).
+---
+ src/render/bloom.js | 143 +++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 121 insertions(+), 22 deletions(-)
+
+diff --git a/src/render/bloom.js b/src/render/bloom.js
+index 0b385343e..fbff266f6 100644
+--- a/src/render/bloom.js
++++ b/src/render/bloom.js
+@@ -774,7 +774,9 @@ const DOWNSAMPLE_FRAG = /* glsl */`
+   precision highp float;
+   varying vec2 vUv;
+   uniform sampler2D tDiffuse;
+-  uniform vec2 uTexel;     // 1.0 / source resolution (full for level 0, ½ for level 1, …)
++  uniform vec2 uTexel;     // 1.0 / allocated source size (content packed at origin)
++  uniform vec2 uUvScale;   // contentSize / allocatedSize — remaps vUv into the active sub-rect
++  uniform vec2 uUvOffset;  // usually (0,0); content origin in texture UV
+   uniform float uThreshold;
+   uniform float uKnee;
+   uniform float uBright;   // 1.0 = apply bright-pass (level 0 only), 0.0 = passthrough
+@@ -796,18 +798,20 @@ const DOWNSAMPLE_FRAG = /* glsl */`
+   }
+ 
+   void main() {
+-    // 5-tap cross + corners, gathered with bilinear-friendly offsets. x/y use the SOURCE texel size so
+-    // the footprint shrinks correctly at each pyramid level.
++    // Dyn-res content lives in a viewport sub-rect of a max-sized target. Remap the
++    // fullscreen-quad UV into that sub-rect before gathering; uTexel is one allocated
++    // texel in texture UV (equal to one content pixel when packed at the origin).
++    vec2 base = vUv * uUvScale + uUvOffset;
+     vec2 t = uTexel;
+     vec2 tl = vec2(-1.0, -1.0) * t;
+     vec2 tr = vec2( 1.0, -1.0) * t;
+     vec2 bl = vec2(-1.0,  1.0) * t;
+     vec2 br = vec2( 1.0,  1.0) * t;
+-    vec3 sum  = tap(vUv)            * (4.0 / 8.0);
+-    sum += tap(vUv + tl)            * (1.0 / 8.0);
+-    sum += tap(vUv + tr)            * (1.0 / 8.0);
+-    sum += tap(vUv + bl)            * (1.0 / 8.0);
+-    sum += tap(vUv + br)            * (1.0 / 8.0);
++    vec3 sum  = tap(base)            * (4.0 / 8.0);
++    sum += tap(base + tl)            * (1.0 / 8.0);
++    sum += tap(base + tr)            * (1.0 / 8.0);
++    sum += tap(base + bl)            * (1.0 / 8.0);
++    sum += tap(base + br)            * (1.0 / 8.0);
+     gl_FragColor = vec4(sum, 1.0);
+   }
+ `;
+@@ -843,11 +847,18 @@ const COMPOSITE_FRAG = /* glsl */`
+ 
+   ${SPACE_POST_PRESENTATION_GLSL}
+ 
++  uniform vec2 uUvScale;   // contentSize / allocatedSize for tScene / pyramid sub-rects
++  uniform vec2 uUvOffset;
++
+   void main() {
+-    vec3 scene = sampleSpaceIllustratedScene(tScene, vUv);
++    // Stretch the active content sub-rect across the full presentation buffer. Vignette/grain
++    // still use screen vUv so corner treatment follows the displayed frame, not the RT packing.
++    vec2 sceneUv = vUv * uUvScale + uUvOffset;
++    vec3 scene = sampleSpaceIllustratedScene(tScene, sceneUv);
+     // Multi-scale bloom: fine local brights + hardware-bilinear coarse halo (no upsample RT).
+-    vec3 bloom = texture2D(tBloom0, vUv).rgb * uBloomW0
+-               + texture2D(tBloom1, vUv).rgb * uBloomW1;
++    // Pyramid targets share the same content/allocated ratio, so one UV remap serves all.
++    vec3 bloom = texture2D(tBloom0, sceneUv).rgb * uBloomW0
++               + texture2D(tBloom1, sceneUv).rgb * uBloomW1;
+     vec3 spill = bloom * uStrength * uBloomNorm;
+     gl_FragColor = vec4(composeSpacePostPresentation(
+       scene, spill, vUv, gl_FragCoord.xy, uExposure, uAces,
+@@ -866,7 +877,7 @@ const COMPOSITE_FRAG = /* glsl */`
+  *        GPU timers are capability-gated and only emit when the timer set is enabled.
+  * @returns {{ render(scene,camera):void, compileScenePipelines(subject,camera,lightingScene):Promise,
+  *            warmScenePipelines(subject,camera,lightingScene):Promise,
+- *            setSize(w,h):void, setOptions(o):void, dispose():void,
++ *            setSize(w,h):void, setContentScale(s):void, setOptions(o):void, dispose():void,
+  *            get enabled():boolean, set enabled(v):void }}
+  */
+ export function createBloom(renderer, width, height, instrumentation = null) {
+@@ -891,6 +902,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+   // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
+   // level (½→¼). There is no separate upsample RT: the composite samples the pyramid multi-scale.
+   // All targets are allocated at init/resize/context-restore only — never inside render().
++  // Dyn-res scale changes use setContentScale (viewport sub-rects) and must not call setSize.
+   // All HalfFloat + linear colorSpace (default) so brights exceed 1.0.
+   // Reuse one options object so we do not allocate a fresh descriptor on every RT create/resize.
+   const pyramidRtOpts = {
+@@ -955,6 +967,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+   }
+ 
+   let { rtScene, halfW, halfH, levels, down } = createRenderTargets();
++  // Dyn-res content scale: targets stay allocated at max (W×H). Scaled frames render into an
++  // origin-aligned viewport sub-rect; setContentScale never calls setSize/realloc.
++  let contentScale = 1;
++  let contentW = W;
++  let contentH = H;
+ 
+   // ---- fullscreen quad (shared immutable geometry; private scene/mesh; material swapped per pass) ----
+   const quadGeo = retainSharedQuadGeometry();
+@@ -978,6 +995,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+   const downsampleMat = mkMat(DOWNSAMPLE_FRAG, {
+     tDiffuse: { value: null },
+     uTexel: { value: new THREE.Vector2(1 / W, 1 / H) },     // set per level in render()
++    uUvScale: { value: new THREE.Vector2(1, 1) },
++    uUvOffset: { value: new THREE.Vector2(0, 0) },
+     uThreshold: { value: threshold },
+     uKnee: { value: knee },
+     uBright: { value: 1.0 },                                // 1.0 only on level 0
+@@ -997,6 +1016,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+     uGrade:     { value: grade },     // teal-shadow/amber-highlight color grade
+     uToe:       { value: toe },       // lifted black floor (0 = true blacks)
+     uGrainFrame: { value: 0 },
++    uUvScale: { value: new THREE.Vector2(1, 1) },
++    uUvOffset: { value: new THREE.Vector2(0, 0) },
+   });
+ 
+   function postStyleScale() {
+@@ -1011,11 +1032,44 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+   }
+   applyPostStyleUniforms();
+ 
+-  // draw the shared quad with a given material into a given target (null = screen)
+-  function blit(material, target) {
++  // draw the shared quad with a given material into a given target (null = screen).
++  // Optional viewW/viewH restrict the write to an origin-aligned content sub-rect of a
++  // max-sized target (dyn-res). Omit both for a full-target / full-framebuffer blit.
++  function blit(material, target, viewW = null, viewH = null) {
+     quadMesh.material = material;
+     renderer.setRenderTarget(target);
+-    renderer.render(quadScene, quadCam);
++    const useSubRect = viewW != null && viewH != null
++      && Number.isFinite(viewW) && Number.isFinite(viewH);
++    let prevViewport = null;
++    let prevScissor = null;
++    let prevScissorTest = null;
++    if (useSubRect && typeof renderer.getViewport === 'function') {
++      prevViewport = renderer.getViewport(new THREE.Vector4());
++      prevScissor = typeof renderer.getScissor === 'function'
++        ? renderer.getScissor(new THREE.Vector4())
++        : null;
++      prevScissorTest = typeof renderer.getScissorTest === 'function'
++        ? renderer.getScissorTest()
++        : null;
++    }
++    if (useSubRect) {
++      if (typeof renderer.setViewport === 'function') renderer.setViewport(0, 0, viewW, viewH);
++      if (typeof renderer.setScissor === 'function') renderer.setScissor(0, 0, viewW, viewH);
++      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(true);
++    } else if (typeof renderer.setScissorTest === 'function') {
++      renderer.setScissorTest(false);
++    }
++    try {
++      renderer.render(quadScene, quadCam);
++    } finally {
++      if (useSubRect && prevViewport) {
++        renderer.setViewport(prevViewport);
++        if (prevScissor && typeof renderer.setScissor === 'function') renderer.setScissor(prevScissor);
++        if (prevScissorTest != null && typeof renderer.setScissorTest === 'function') {
++          renderer.setScissorTest(prevScissorTest);
++        }
++      }
++    }
+   }
+ 
+   function releaseBloomSceneSamplers() {
+@@ -1404,9 +1458,14 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+       releaseBloomSceneSamplers();
+       hideUnreadySceneDrawables(scene);
+       renderer.setRenderTarget(rtScene);
++      // Content sub-rect: scale changes never resize rtScene; they only shrink this viewport.
++      if (typeof renderer.setViewport === 'function') renderer.setViewport(0, 0, contentW, contentH);
++      if (typeof renderer.setScissor === 'function') renderer.setScissor(0, 0, contentW, contentH);
++      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(true);
+       renderer.clear();
+       renderer.render(scene, camera);
+-      if (tier1) tier1.countRenderPassPixels(rtScene.width * rtScene.height, 'bloom-scene');
++      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(false);
++      if (tier1) tier1.countRenderPassPixels(contentW * contentH, 'bloom-scene');
+     } finally {
+       restoreUnreadySceneDrawables();
+       renderer.autoClear = prevAutoClear;
+@@ -1459,8 +1518,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+       releaseBloomSceneSamplers();
+       hideUnreadySceneDrawables(scene);
+       renderer.setRenderTarget(rtScene);
++      if (typeof renderer.setViewport === 'function') renderer.setViewport(0, 0, contentW, contentH);
++      if (typeof renderer.setScissor === 'function') renderer.setScissor(0, 0, contentW, contentH);
++      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(true);
+       renderer.clear();
+       renderer.render(scene, camera);
++      if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(false);
+       rememberBloomGeometries(scene);
+       // The rehearsal's GL work sits in the driver's queue until something forces the flush —
+       // without a drain here the deferred cost lands inside the presented frame it exists to
+@@ -1477,14 +1540,22 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+   function renderDownsamplePass(tier1) {
+     let src = rtScene.texture;
+     for (let i = 0; i < levels; i++) {
+-      const sw = i === 0 ? W : Math.max(1, W >> i);
+-      const sh = i === 0 ? H : Math.max(1, H >> i);
++      // Allocated source size (max pool) vs active content size (dyn-res sub-rect).
++      const allocW = i === 0 ? W : Math.max(1, W >> i);
++      const allocH = i === 0 ? H : Math.max(1, H >> i);
++      const srcContentW = i === 0 ? contentW : Math.max(1, contentW >> i);
++      const srcContentH = i === 0 ? contentH : Math.max(1, contentH >> i);
++      const dstContentW = Math.max(1, contentW >> (i + 1));
++      const dstContentH = Math.max(1, contentH >> (i + 1));
+       downsampleMat.uniforms.tDiffuse.value = src;
+-      downsampleMat.uniforms.uTexel.value.set(1 / sw, 1 / sh);
++      // One allocated texel in texture UV == one content pixel when packed at the origin.
++      downsampleMat.uniforms.uTexel.value.set(1 / allocW, 1 / allocH);
++      downsampleMat.uniforms.uUvScale.value.set(srcContentW / allocW, srcContentH / allocH);
++      downsampleMat.uniforms.uUvOffset.value.set(0, 0);
+       downsampleMat.uniforms.uThreshold.value = threshold;
+       downsampleMat.uniforms.uBright.value = (i === 0) ? 1.0 : 0.0;
+-      blit(downsampleMat, down[i]);
+-      if (tier1) tier1.countRenderPassPixels(down[i].width * down[i].height, 'bloom-downsample');
++      blit(downsampleMat, down[i], dstContentW, dstContentH);
++      if (tier1) tier1.countRenderPassPixels(dstContentW * dstContentH, 'bloom-downsample');
+       src = down[i].texture;
+     }
+   }
+@@ -1505,6 +1576,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+     compositeMat.uniforms.uAces.value = aces;
+     const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
+     compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * POST_GRAIN_FPS);
++    compositeMat.uniforms.uUvScale.value.set(contentW / W, contentH / H);
++    compositeMat.uniforms.uUvOffset.value.set(0, 0);
++    // Full presentation buffer — content sub-rect is stretched via uUvScale.
+     blit(compositeMat, null);
+     if (tier1) tier1.countRenderPassPixels(W * H, 'bloom-composite');
+   }
+@@ -1617,6 +1691,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+     halfH = next.halfH;
+     levels = next.levels;
+     down = next.down;
++    contentW = Math.max(1, Math.round(W * contentScale));
++    contentH = Math.max(1, Math.round(H * contentScale));
+   }
+ 
+   function contextLossResources() {
+@@ -1631,6 +1707,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+     const nextW = Math.max(1, w | 0);
+     const nextH = Math.max(1, h | 0);
+     // Hot path: _applySize() may re-enter with an unchanged drawing buffer — never touch GPU RTs.
++    // Dyn-res scale changes must NOT call this with a smaller size; they use setContentScale.
+     if (nextW === W && nextH === H) return;
+     W = nextW;
+     H = nextH;
+@@ -1648,6 +1725,22 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+     for (let i = 0; i < levels; i++) {
+       resizeRenderTarget(down[i], Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), 'resize');
+     }
++    // Keep the active content sub-rect proportional to the new max pool size.
++    contentW = Math.max(1, Math.round(W * contentScale));
++    contentH = Math.max(1, Math.round(H * contentScale));
++  }
++
++  // Dyn-res only: change the active content sub-rect without reallocating any render target.
++  // scale is clamped to [0.2, 1] to match applyRendererSize / adaptiveQuality floors.
++  function setContentScale(scale) {
++    const s = Math.max(0.2, Math.min(1, Number(scale)));
++    const nextScale = Number.isFinite(s) ? s : 1;
++    const nextW = Math.max(1, Math.round(W * nextScale));
++    const nextH = Math.max(1, Math.round(H * nextScale));
++    if (nextScale === contentScale && nextW === contentW && nextH === contentH) return;
++    contentScale = nextScale;
++    contentW = nextW;
++    contentH = nextH;
+   }
+ 
+   // Accept partial option updates (wired from settings:changed by the render layer).
+@@ -1722,7 +1815,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+       drawingBufferHeight: H,
+       sceneTargetWidth: rtScene.width,
+       sceneTargetHeight: rtScene.height,
+-      effectiveSceneScale: 1,
++      contentWidth: contentW,
++      contentHeight: contentH,
++      contentScale,
++      effectiveSceneScale: W > 0 ? contentW / W : 1,
++      targetPoolMaxWidth: W,
++      targetPoolMaxHeight: H,
+       fullFramePasses: 2,
+       // Downsample pyramid only — multi-scale composite replaced the upsample chain.
+       bloomPasses: enabled && strength > 0.0001 ? down.length : 0,
+@@ -1754,6 +1852,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+     openingProgramMaterials,
+     contextLossResources,
+     setSize,
++    setContentScale,
+     setOptions,
+     setInstrumentation,
+     diagnostics,
+-- 
+2.47.3
+

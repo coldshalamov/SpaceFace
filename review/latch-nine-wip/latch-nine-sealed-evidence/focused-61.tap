@@ -1,0 +1,376 @@
+TAP version 13
+# Subtest: far quiet latch engages beyond approach band
+ok 1 - far quiet latch engages beyond approach band
+  ---
+  duration_ms: 8.200266
+  type: 'test'
+  ...
+# Subtest: near station prevents latch
+ok 2 - near station prevents latch
+  ---
+  duration_ms: 1.14438
+  type: 'test'
+  ...
+# Subtest: dirty-wake on player move beyond wake disc
+ok 3 - dirty-wake on player move beyond wake disc
+  ---
+  duration_ms: 1.213714
+  type: 'test'
+  ...
+# Subtest: dirty-wake on membership bump
+ok 4 - dirty-wake on membership bump
+  ---
+  duration_ms: 1.119573
+  type: 'test'
+  ...
+# Subtest: bench toggle off forces full walk
+ok 5 - bench toggle off forces full walk
+  ---
+  duration_ms: 0.773212
+  type: 'test'
+  ...
+# Subtest: capture/approach inside band never latches
+ok 6 - capture/approach inside band never latches
+  ---
+  duration_ms: 0.508395
+  type: 'test'
+  ...
+# Subtest: missing real authored model keeps production service unpromoted without a fallback
+ok 7 - missing real authored model keeps production service unpromoted without a fallback
+  ---
+  duration_ms: 1.778724
+  type: 'test'
+  ...
+# Subtest: admission rejects red/foreign art, static or sensor bodies, stale identity and duplicate tenders
+ok 8 - admission rejects red/foreign art, static or sensor bodies, stale identity and duplicate tenders
+  ---
+  duration_ms: 1.251982
+  type: 'test'
+  ...
+# Subtest: post-commit event observes both UI fields, even when service initialized before uiRoot
+ok 9 - post-commit event observes both UI fields, even when service initialized before uiRoot
+  ---
+  duration_ms: 1.232683
+  type: 'test'
+  ...
+# Subtest: paused keepalive finishes one ACK without advancing sim time or moving a body
+ok 10 - paused keepalive finishes one ACK without advancing sim time or moving a body
+  ---
+  duration_ms: 0.559631
+  type: 'test'
+  ...
+# Subtest: raw or wrong-identity post-commit messages cannot manufacture an ACK
+ok 11 - raw or wrong-identity post-commit messages cannot manufacture an ACK
+  ---
+  duration_ms: 0.307292
+  type: 'test'
+  ...
+# Subtest: denial during docked pause cancels acknowledgement immediately
+ok 12 - denial during docked pause cancels acknowledgement immediately
+  ---
+  duration_ms: 0.467583
+  type: 'test'
+  ...
+# Subtest: new tender or player lifetime cannot inherit an armed arrival even when the object is reused
+ok 13 - new tender or player lifetime cannot inherit an armed arrival even when the object is reused
+  ---
+  duration_ms: 0.494253
+  type: 'test'
+  ...
+# Subtest: physical service-box displacement exposes recovery while leaving bodies untouched
+ok 14 - physical service-box displacement exposes recovery while leaving bodies untouched
+  ---
+  duration_ms: 0.303886
+  type: 'test'
+  ...
+# Subtest: canonical killed body persists destroyed, but a stale/unrelated kill does not
+ok 15 - canonical killed body persists destroyed, but a stale/unrelated kill does not
+  ---
+  duration_ms: 0.354032
+  type: 'test'
+  ...
+# Subtest: real Save capture plan and sync/async section generator save only semantic fields
+ok 16 - real Save capture plan and sync/async section generator save only semantic fields
+  ---
+  duration_ms: 1.427996
+  type: 'test'
+  ...
+# Subtest: real restore prefix calls the owner before sector entry and completed arrival never replays
+ok 17 - real restore prefix calls the owner before sector entry and completed arrival never replays
+  ---
+  duration_ms: 1.011941
+  type: 'test'
+  ...
+# Subtest: fresh-run owner list resets destroyed/met without rediscovering a stale old-world body
+ok 18 - fresh-run owner list resets destroyed/met without rediscovering a stale old-world body
+  ---
+  duration_ms: 0.280712
+  type: 'test'
+  ...
+# Subtest: sector lifecycle and teardown discard active/stale observers without duplicate listeners
+ok 19 - sector lifecycle and teardown discard active/stale observers without duplicate listeners
+  ---
+  duration_ms: 0.312679
+  type: 'test'
+  ...
+# Subtest: production order, reset, browser and Node lookup and docked keepalive seams are wired
+ok 20 - production order, reset, browser and Node lookup and docked keepalive seams are wired
+  ---
+  duration_ms: 1.159423
+  type: 'test'
+  ...
+# Subtest: old-player dock:docked through the real commit helper cannot dock or acknowledge the new player
+ok 21 - old-player dock:docked through the real commit helper cannot dock or acknowledge the new player
+  ---
+  duration_ms: 0.282084
+  type: 'test'
+  ...
+# Subtest: legacy untagged docking remains usable but cannot gain Latch ACK on a later keepalive
+ok 22 - legacy untagged docking remains usable but cannot gain Latch ACK on a later keepalive
+  ---
+  duration_ms: 0.269395
+  type: 'test'
+  ...
+# Subtest: same ID and generation on a fresh restored object cannot authenticate an old dock intent
+ok 23 - same ID and generation on a fresh restored object cannot authenticate an old dock intent
+  ---
+  duration_ms: 0.290066
+  type: 'test'
+  ...
+# Subtest: cloning/serializing a receipt preserves ordinary compatibility but cannot forge recognition
+ok 24 - cloning/serializing a receipt preserves ordinary compatibility but cannot forge recognition
+  ---
+  duration_ms: 0.174142
+  type: 'test'
+  ...
+# Subtest: same actor cannot reuse a dock receipt across sector entry or target object replacement
+ok 25 - same actor cannot reuse a dock receipt across sector entry or target object replacement
+  ---
+  duration_ms: 0.184979
+  type: 'test'
+  ...
+# Subtest: range extraction drives the real physics owner with unchanged enter/leave events
+ok 26 - range extraction drives the real physics owner with unchanged enter/leave events
+  ---
+  duration_ms: 2.514911
+  type: 'test'
+  ...
+# Subtest: manifest berth and large-hull standoff keep the actual range/speed gate
+ok 27 - manifest berth and large-hull standoff keep the actual range/speed gate
+  ---
+  duration_ms: 2.264404
+  type: 'test'
+  ...
+# Subtest: nearest station and jump gate selection are preserved
+ok 28 - nearest station and jump gate selection are preserved
+  ---
+  duration_ms: 0.262995
+  type: 'test'
+  ...
+# Subtest: denial banner and command route keep the exact same pure refusal selector
+ok 29 - denial banner and command route keep the exact same pure refusal selector
+  ---
+  duration_ms: 0.609836
+  type: 'test'
+  ...
+# Subtest: requests, UI prompt repaints and corridor geometry never manufacture GUIDE
+ok 30 - requests, UI prompt repaints and corridor geometry never manufacture GUIDE
+  ---
+  duration_ms: 0.25335
+  type: 'test'
+  ...
+# Subtest: revocation interrupts GUIDE next tick, inside the 10 Hz readout interval
+ok 31 - revocation interrupts GUIDE next tick, inside the 10 Hz readout interval
+  ---
+  duration_ms: 0.277267
+  type: 'test'
+  ...
+# Subtest: fresh exact entity identity defeats stale station indexes and stale denial indexes
+ok 32 - fresh exact entity identity defeats stale station indexes and stale denial indexes
+  ---
+  duration_ms: 0.26559
+  type: 'test'
+  ...
+# Subtest: transition, jump, dead player and nonflight fences close guidance
+ok 33 - transition, jump, dead player and nonflight fences close guidance
+  ---
+  duration_ms: 0.238819
+  type: 'test'
+  ...
+# Subtest: only a confirmed docked-state edge after an eligible approach acknowledges, once
+ok 34 - only a confirmed docked-state edge after an eligible approach acknowledges, once
+  ---
+  duration_ms: 0.271438
+  type: 'test'
+  ...
+# Subtest: Save/Continue during GUIDE recomputes permission and after arrival never replays ACK
+ok 35 - Save/Continue during GUIDE recomputes permission and after arrival never replays ACK
+  ---
+  duration_ms: 0.736848
+  type: 'test'
+  ...
+# Subtest: save restore and replaced ship cannot inherit an armed arrival
+ok 36 - save restore and replaced ship cannot inherit an armed arrival
+  ---
+  duration_ms: 0.151508
+  type: 'test'
+  ...
+# Subtest: recovery reports the physical owner state without moving or freezing either vessel
+ok 37 - recovery reports the physical owner state without moving or freezing either vessel
+  ---
+  duration_ms: 0.280912
+  type: 'test'
+  ...
+# Subtest: disabled, dismissed and destroyed character never changes ordinary docking
+ok 38 - disabled, dismissed and destroyed character never changes ordinary docking
+  ---
+  duration_ms: 0.308704
+  type: 'test'
+  ...
+# Subtest: bounded save normalization rejects transient fields and returns independent data
+ok 39 - bounded save normalization rejects transient fields and returns independent data
+  ---
+  duration_ms: 0.244568
+  type: 'test'
+  ...
+# Subtest: manual approach gives mouth/alignment cues before permission, then READY only at the actual berth
+ok 40 - manual approach gives mouth/alignment cues before permission, then READY only at the actual berth
+  ---
+  duration_ms: 0.58504
+  type: 'test'
+  ...
+# Subtest: approach target reads do not engage autopilot or write player input, and revocation clears them
+ok 41 - approach target reads do not engage autopilot or write player input, and revocation clears them
+  ---
+  duration_ms: 2.554129
+  type: 'test'
+  ...
+# Subtest: off-duty service stays quiet instead of republishing every tick in another sector
+ok 42 - off-duty service stays quiet instead of republishing every tick in another sector
+  ---
+  duration_ms: 0.16626
+  type: 'test'
+  ...
+# Subtest: a menu or administrative transition cannot manufacture the first voluntary encounter
+ok 43 - a menu or administrative transition cannot manufacture the first voluntary encounter
+  ---
+  duration_ms: 0.222855
+  type: 'test'
+  ...
+# Subtest: Proteus Den carries the authored positive-standing dock threshold onto its live station
+ok 44 - Proteus Den carries the authored positive-standing dock threshold onto its live station
+  ---
+  duration_ms: 1.278041
+  type: 'test'
+  ...
+# Subtest: the shipped dock command refuses zero standing and admits positive standing without changing flight controls
+ok 45 - the shipped dock command refuses zero standing and admits positive standing without changing flight controls
+  ---
+  duration_ms: 1.705794
+  type: 'test'
+  ...
+# Subtest: ordinary stations keep their existing docking contract regardless of faction standing
+ok 46 - ordinary stations keep their existing docking contract regardless of faction standing
+  ---
+  duration_ms: 0.165179
+  type: 'test'
+  ...
+# Subtest: current live flight intent commits and remains valid for the post-commit observer
+ok 47 - current live flight intent commits and remains valid for the post-commit observer
+  ---
+  duration_ms: 1.961068
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current dead fence
+ok 48 - issued intent loses permission at the current dead fence
+  ---
+  duration_ms: 0.916207
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current depletedHull fence
+ok 49 - issued intent loses permission at the current depletedHull fence
+  ---
+  duration_ms: 0.215274
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current gameover fence
+ok 50 - issued intent loses permission at the current gameover fence
+  ---
+  duration_ms: 0.161192
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current menu fence
+ok 51 - issued intent loses permission at the current menu fence
+  ---
+  duration_ms: 0.175344
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current paused fence
+ok 52 - issued intent loses permission at the current paused fence
+  ---
+  duration_ms: 0.208183
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current loading fence
+ok 53 - issued intent loses permission at the current loading fence
+  ---
+  duration_ms: 0.195093
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current openMap fence
+ok 54 - issued intent loses permission at the current openMap fence
+  ---
+  duration_ms: 0.281623
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current blackout fence
+ok 55 - issued intent loses permission at the current blackout fence
+  ---
+  duration_ms: 0.256716
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current charging fence
+ok 56 - issued intent loses permission at the current charging fence
+  ---
+  duration_ms: 0.335845
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current jumping fence
+ok 57 - issued intent loses permission at the current jumping fence
+  ---
+  duration_ms: 0.25278
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current sectorShell fence
+ok 58 - issued intent loses permission at the current sectorShell fence
+  ---
+  duration_ms: 0.134823
+  type: 'test'
+  ...
+# Subtest: root reproducer: same exact actor dies and reaches gameover before UI commit
+ok 59 - root reproducer: same exact actor dies and reaches gameover before UI commit
+  ---
+  duration_ms: 0.21264
+  type: 'test'
+  ...
+# Subtest: existing fresh-destination tow can finish through its presentation cook, but cannot revive a dead pilot
+ok 60 - existing fresh-destination tow can finish through its presentation cook, but cannot revive a dead pilot
+  ---
+  duration_ms: 0.170126
+  type: 'test'
+  ...
+# Subtest: legacy unbound compatibility does not upgrade into a current recognition receipt
+ok 61 - legacy unbound compatibility does not upgrade into a current recognition receipt
+  ---
+  duration_ms: 0.1998
+  type: 'test'
+  ...
+1..61
+# tests 61
+# suites 0
+# pass 61
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1382.030388

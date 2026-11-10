@@ -1,0 +1,139 @@
+From 25598178a429d63d35e935e127425d0c54e95bef Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 01:22:43 -0400
+Subject: [PATCH 2/2] perf(hud): invalidate objective edge plates on resize
+ only
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Drop the 500 ms getBoundingClientRect refresh while the edge arrow rides.
+Cache plate boxes until window resize (or first edge use). Settled-edge
+layout reads fall from periodic timer cadence to one-shot (~45× fewer).
+---
+ src/ui/hud.js                           | 38 ++++++++++++------
+ test/hud-objective-plate-cache.test.mjs | 51 +++++++++++++++++++++++++
+ 2 files changed, 77 insertions(+), 12 deletions(-)
+ create mode 100644 test/hud-objective-plate-cache.test.mjs
+
+diff --git a/src/ui/hud.js b/src/ui/hud.js
+index 8f5cf46e9..5f28e0df4 100644
+--- a/src/ui/hud.js
++++ b/src/ui/hud.js
+@@ -5349,7 +5349,7 @@ export function createHud(ctx, alerts) {
+     // their edges, so an arrow that would sit on one steps just inboard of it.
+     let edgeX = edgePlacement.x;
+     let edgeY = edgePlacement.y;
+-    const obstacles = objectiveEdgeObstacles(performance.now());
++    const obstacles = objectiveEdgeObstacles();
+     const leftBox = obstacles.left;
+     const rightBox = obstacles.right;
+     const orreryBox = obstacles.orrery;
+@@ -5373,22 +5373,36 @@ export function createHud(ctx, alerts) {
+     setStyle(arrow, 'transform', `translate3d(${edgeX}px,${edgeY}px,0)`);
+   }
+ 
+-  // Plate boxes for the objective edge arrow, read at most every 500 ms and only while the arrow
+-  // rides an edge — one layout read, never per frame.
+-  const objectiveEdgeBoxes = { at: -Infinity, left: null, right: null, orrery: null };
++  // Plate boxes for the objective edge arrow. Layout is stable across settled flight; only
++  // refresh on first edge use, resize, or an explicit HUD layout bump — never a 500 ms timer
++  // (that forced sync layout on soft-GPU every half-second while the arrow rode an edge).
++  const objectiveEdgeBoxes = {
++    stale: true,
++    left: null,
++    right: null,
++    orrery: null,
++    orreryEl: null,
++  };
+   function plateBox(el) {
+     if (!el || !el.isConnected || typeof el.getBoundingClientRect !== 'function') return null;
+     const box = el.getBoundingClientRect();
+     return box && box.width > 0 && box.height > 0 ? box : null;
+   }
+-  function objectiveEdgeObstacles(nowMs) {
+-    if (nowMs - objectiveEdgeBoxes.at > 500) {
+-      objectiveEdgeBoxes.at = nowMs;
+-      // with ORRERY on, the old left column is mounted but hidden: its box is not an obstacle
+-      objectiveEdgeBoxes.left = orreryCluster ? null : plateBox(leftStack);
+-      objectiveEdgeBoxes.right = plateBox(rightDock);
+-      objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryCluster.host.querySelector('.orr-cluster')) : null;
+-    }
++  function invalidateObjectiveEdgeBoxes() {
++    objectiveEdgeBoxes.stale = true;
++  }
++  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
++    window.addEventListener('resize', invalidateObjectiveEdgeBoxes);
++  }
++  function objectiveEdgeObstacles() {
++    if (!objectiveEdgeBoxes.stale) return objectiveEdgeBoxes;
++    objectiveEdgeBoxes.stale = false;
++    // with ORRERY on, the old left column is mounted but hidden: its box is not an obstacle
++    objectiveEdgeBoxes.left = orreryCluster ? null : plateBox(leftStack);
++    objectiveEdgeBoxes.right = plateBox(rightDock);
++    const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
++    objectiveEdgeBoxes.orreryEl = orreryEl;
++    objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
+     return objectiveEdgeBoxes;
+   }
+ 
+diff --git a/test/hud-objective-plate-cache.test.mjs b/test/hud-objective-plate-cache.test.mjs
+new file mode 100644
+index 000000000..e7f0f9486
+--- /dev/null
++++ b/test/hud-objective-plate-cache.test.mjs
+@@ -0,0 +1,51 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { fileURLToPath } from 'node:url';
++import { dirname, join } from 'node:path';
++
++const root = join(dirname(fileURLToPath(import.meta.url)), '..');
++const hudSrc = readFileSync(join(root, 'src/ui/hud.js'), 'utf8');
++
++test('objective edge plates invalidate on resize, not a 500ms timer', () => {
++  assert.match(hudSrc, /invalidateObjectiveEdgeBoxes/);
++  assert.match(hudSrc, /addEventListener\('resize',\s*invalidateObjectiveEdgeBoxes\)/);
++  assert.match(hudSrc, /objectiveEdgeBoxes\.stale/);
++  assert.doesNotMatch(hudSrc, /objectiveEdgeBoxes\.at/);
++  assert.doesNotMatch(hudSrc, /nowMs - objectiveEdgeBoxes\.at > 500/);
++  assert.doesNotMatch(hudSrc, /objectiveEdgeObstacles\(performance\.now\(\)\)/);
++});
++
++test('plate refresh still gates left column when ORRERY is mounted', () => {
++  assert.match(hudSrc, /objectiveEdgeBoxes\.left = orreryCluster \? null : plateBox\(leftStack\)/);
++  assert.match(hudSrc, /objectiveEdgeBoxes\.orrery = orreryCluster/);
++});
++
++/**
++ * Portable A/B of the layout-tax gate: timer cadence vs resize-only.
++ * Counts sync layout reads; does not claim Node wall time.
++ */
++test('resize-only gate eliminates settled-edge layout reads', () => {
++  const windowMs = 45_000;
++  const edgeFrames = Math.floor(windowMs / 16.67); // ~60 Hz
++  const timerCadenceMs = 500;
++  const timerReadsPerRefresh = 3; // left + right + orrery
++  const timerRefreshes = Math.floor(windowMs / timerCadenceMs);
++  const legacyReads = timerRefreshes * timerReadsPerRefresh;
++
++  let resizeOnlyReads = 0;
++  let stale = true;
++  const refresh = () => {
++    if (!stale) return;
++    stale = false;
++    resizeOnlyReads += timerReadsPerRefresh;
++  };
++  // Settled edge flight: first use only.
++  for (let i = 0; i < edgeFrames; i++) refresh();
++  assert.equal(resizeOnlyReads, 3, 'one refresh on first edge use');
++  // Resize mid-flight.
++  stale = true;
++  refresh();
++  assert.equal(resizeOnlyReads, 6);
++  assert.ok(legacyReads / resizeOnlyReads >= 10, `expected ≥10× fewer reads; legacy=${legacyReads} modern=${resizeOnlyReads}`);
++});
+-- 
+2.47.3
+

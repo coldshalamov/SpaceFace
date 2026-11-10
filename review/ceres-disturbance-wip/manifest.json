@@ -1,0 +1,118 @@
+{
+  "schema": "spaceface.ceres.disturbance-wip.v1",
+  "status": "WIP; preserve open issues in docs/ceres-disturbance-wip.md",
+  "productionFrozenAt": "2026-10-03T23:28:17Z",
+  "base": "Original d31c8014 Ceres source; approved independent native8b2576ff required. Reconcile later master separately.",
+  "patch": "disturbance-reacquire-wip.patch",
+  "patchSha256": "f433fee5c547f81ae6bd5f529828ff57b471431d054d7debee1d8090db79aae2",
+  "files": [
+    {
+      "path": "docs/ceres-disturbance-wip.md",
+      "beforeSha256": null,
+      "sha256": "fdd6e355646e0ca1fa2dc7df8431fd2f90918f078ac84940c903fc08244d4a1c",
+      "bytes": 7840,
+      "binary": false
+    },
+    {
+      "path": "docs/verification/ceres-disturbance-executed-source-pins.json",
+      "beforeSha256": null,
+      "sha256": "f179c312be63f0c709b1c1ba6d6846ffa2060812af17305d95c307880de5c08e",
+      "bytes": 251251,
+      "binary": false
+    },
+    {
+      "path": "docs/verification/ceres-disturbance-observed-results.json",
+      "beforeSha256": null,
+      "sha256": "3141ada6552e3ad3f7f9c0cdb969e0b904e52d80e1c9fba1e13a00dc51ce795d",
+      "bytes": 7667,
+      "binary": false
+    },
+    {
+      "path": "scripts/probe-ceres-reacquire-saved.mjs",
+      "beforeSha256": null,
+      "sha256": "78b90dd51d2cc939de6e98008cbe10a6e2284607a1cbd9d56788faa6301d0037",
+      "bytes": 5135,
+      "binary": false
+    },
+    {
+      "path": "src/data/ceresWorkfleetHardware.js",
+      "beforeSha256": "fa7296b34deab91243eed9f4969d6f2dbdf92b92ac2804e3cebc083aef2b2ba0",
+      "sha256": "e98a1477636e5f41a9450dda2c5b64cf1b5edac4cff73e3382816cf73c84ddc5",
+      "bytes": 6484,
+      "binary": false
+    },
+    {
+      "path": "src/systems/ceresWorkfleet.js",
+      "beforeSha256": "f30416cb0ae8f0bc08bb7438307464c760c50acd2775cace5cad57e285ca1d33",
+      "sha256": "9b4db3a3ec7b56be3daceedc435c0563749c6f85bc165b13f091aba58860ece2",
+      "bytes": 72942,
+      "binary": false
+    },
+    {
+      "path": "src/systems/ceresWorkfleetRecovery.js",
+      "beforeSha256": "bc8eef53a4312933c907b00b0a210fca518f39dc0b4d5c47f491f98a2e6c6425",
+      "sha256": "90cdaacd405f5e8484290502c2ea8ab6199763b3341735225bda122e6a9797dc",
+      "bytes": 19956,
+      "binary": false
+    },
+    {
+      "path": "test/ceres-head-late-sweep.test.mjs",
+      "beforeSha256": null,
+      "sha256": "302152e8be8d2d794c801956d359e82c7bbdf3d55b4efcead48ffccb0fcbbb3a",
+      "bytes": 2058,
+      "binary": false
+    },
+    {
+      "path": "test/ceres-head-relative-frame.test.mjs",
+      "beforeSha256": null,
+      "sha256": "26073c6a29c501463fcc4c636d967797abb14d2e35d310e23cf2c8de465187b3",
+      "bytes": 4394,
+      "binary": false
+    },
+    {
+      "path": "test/ceres-reacquire-cycle.test.mjs",
+      "beforeSha256": null,
+      "sha256": "8be991f05b31aa11c9e423ab9d9b31c2c8c8d7342cbae31fdbf1afecb9030cdd",
+      "bytes": 3685,
+      "binary": false
+    },
+    {
+      "path": "test/ceres-reacquire-harness.mjs",
+      "beforeSha256": null,
+      "sha256": "5cd8981ab3968f98b67dfe30ff1bb717e7d84a73f575e85f20ece6727e72aff8",
+      "bytes": 4216,
+      "binary": false
+    },
+    {
+      "path": "test/ceres-reacquire-safety.test.mjs",
+      "beforeSha256": null,
+      "sha256": "53594d0fd8c3b310c6a76e50ee6f48e50f4be99f8849a7643218bf1af6aa6f69",
+      "bytes": 5001,
+      "binary": false
+    },
+    {
+      "path": "test/fixtures/ceres-reacquire/seed47-after-second-impact.json.gz",
+      "beforeSha256": null,
+      "sha256": "b16c18830bb1ab37390b5074d05a13535dc0c68728b19c0db06fd62ab6c3651a",
+      "bytes": 418690,
+      "binary": true
+    },
+    {
+      "path": "test/fixtures/ceres-reacquire/seed47-head-return-entry.json.gz",
+      "beforeSha256": null,
+      "sha256": "933bdaf25b3c7b11b879e26adb6fc5e4efc89bcd721c6f8879ed7f9a698f5a39",
+      "bytes": 315414,
+      "binary": true
+    },
+    {
+      "path": "test/fixtures/ceres-reacquire/seed47-mid-return.json.gz",
+      "beforeSha256": null,
+      "sha256": "3c5e6362083f2a48d8a32ecf3d8ade9b8620f9207e2ac5d1d23a00321a2128cc",
+      "bytes": 330628,
+      "binary": true
+    }
+  ],
+  "binaryInstallRule": "Copy only the three listed .gz fixtures from WIP/files after verifying hashes; text patch omits binary bytes.",
+  "latestFocused": "15/15; final normal/current-master/return-deadline acceptance remains pending",
+  "noRemoteWrites": true
+}

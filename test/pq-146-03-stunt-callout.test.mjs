@@ -1,0 +1,614 @@
+// PQ-146 Phase 3 — the game NAMES what the player just did (Crucible presentation).
+//
+// Pure, deterministic: a synthetic round is played through the REAL stunt combo accounting
+// (src/systems/stuntCombo.js — the single writer), and the callout/results builders are asserted
+// against what that round actually produced. No DOM required except a minimal double for the
+// overlay mount, and no sim clock — every builder takes its tick explicitly.
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import {
+  bankActive,
+  createComboState,
+  recordBridge,
+  recordTrick,
+} from '../src/systems/stuntCombo.js';
+import { stuntRoundRows, trickCountRows } from '../src/systems/survivalResults.js';
+import {
+  CALLOUT_TTL_MS,
+  HUD_PRIORITY_CLEARANCE_PX,
+  OBJECTIVE_SELECTOR,
+  VITALS_SELECTOR,
+  TOUCH_STATUS_SELECTOR,
+  TOUCH_BUTTONS_SELECTOR,
+  bankCalloutText,
+  calloutNow,
+  calloutTextFor,
+  comboReadout,
+  createStuntCallout,
+  ensureStuntCallout,
+  releaseStuntCallout,
+  SPEED_DIAL_CLEARANCE_PX,
+  SPEED_DIAL_SELECTOR,
+  PROMPT_DECK_CLEARANCE_PX,
+  PROMPT_DECK_SELECTOR,
+  STABLE_LOAD_CLEARANCE_PX,
+  STABLE_LOAD_SELECTOR,
+  trickCalloutName,
+  trickSpokenText,
+} from '../src/ui/stuntCallout.js';
+
+/** A detector-shaped trick for one id, with the evidence the scoring contract requires. */
+function trickFor(over = {}) {
+  const id = over.trickId ?? 'wrecking_ball';
+  const names = {
+    wrecking_ball: 'Wrecking Ball',
+    bank_job: 'Bank Job',
+    bolas: 'Bolas',
+  };
+  const families = { wrecking_ball: 'tether', bank_job: 'rebound', bolas: 'tether' };
+  return {
+    schemaVersion: 2,
+    actorId: 1,
+    trickId: id,
+    name: names[id] ?? id,
+    rarity: 'uncommon',
+    family: families[id] ?? null,
+    episodeId: over.episodeId ?? 'ep1',
+    tick: 600,
+    modifiers: { razorRelease: null, collateralCount: 1, closeShave: false },
+    victimLives: [{ lifeId: `v-${over.episodeId ?? 'ep1'}`, threatClass: 'boss', dead: true }],
+    metrics: { payloadMass: 20, playerDryHullMass: 20, usefulDeltaV: 0, referenceCruise: 100 },
+    ...over,
+  };
+}
+
+/** A fresh boss-budget trick lands its full candidate style (no victim-budget clamp). */
+test('the callout names the act and its earned modifiers as one line', () => {
+  assert.equal(
+    trickCalloutName(trickFor({ modifiers: { razorRelease: 'razor', collateralCount: 3, closeShave: false } })),
+    'Razor Wrecking Ball · Collateral ×3',
+  );
+  assert.equal(trickCalloutName(trickFor({ trickId: 'bolas', name: 'Bolas' })), 'Bolas');
+  assert.equal(trickCalloutName(null), '');
+  // An unknown id still names itself from its words — never "undefined" on the glass.
+  assert.match(trickCalloutName(trickFor({ trickId: 'mystery_move', name: null })), /Mystery Move/);
+  assert.equal(trickSpokenText(trickFor({ modifiers: { razorRelease: null, collateralCount: 3, closeShave: false } })),
+    'Wrecking Ball, Collateral times 3');
+});
+
+test('the open chain reads out its names, multiplier, window and banked total', () => {
+  const combo = createComboState();
+  assert.equal(comboReadout(combo, 600), null, 'no open line, no meter');
+  assert.equal(comboReadout(null, 600), null);
+
+  assert.ok(recordTrick(combo, trickFor({
+    modifiers: { razorRelease: 'razor', collateralCount: 3, closeShave: false },
+  })) > 0, 'the synthetic act is entitled to raw style');
+  let readout = comboReadout(combo, 600);
+  assert.ok(readout.active);
+  assert.deepEqual(readout.names, ['Razor Wrecking Ball · Collateral ×3']);
+  assert.equal(readout.multiplier, 1, 'one act starts at ×1.00');
+  assert.equal(readout.windowFrac, 1, 'the window is full the tick the line opens');
+  assert.ok(readout.windowLeftS <= 5 && readout.windowLeftS > 4.9, 'a five-second window');
+
+  assert.ok(recordTrick(combo, trickFor({ trickId: 'bank_job', episodeId: 'ep2', tick: 660 })) > 0);
+  assert.ok(recordBridge(combo, { kind: 'close_shave', tick: 670, setupId: 's1', preventedInterception: true }),
+    'a close shave is an eligible bridge');
+  readout = comboReadout(combo, 670);
+  assert.deepEqual(readout.names, ['Razor Wrecking Ball · Collateral ×3', 'Bank Job']);
+  assert.equal(readout.multiplier, 1.5, 'two acts from two families: ×1.50');
+  assert.equal(readout.bridges, 1, 'one bridge notch');
+  assert.ok(readout.windowFrac < 1 && readout.windowFrac > 0.9, 'the scale has begun to drain');
+  assert.ok(readout.points > 0 && Number.isInteger(readout.points), 'raw style rides the readout');
+
+  // A bridge-extended window drains against the window the line actually earned.
+  const later = comboReadout(combo, 1000);
+  assert.ok(later.windowLeftS < readout.windowLeftS, 'the window shrinks with the sim tick');
+});
+
+test('banking closes the meter and the receipt names what settled', () => {
+  const combo = createComboState();
+  recordTrick(combo, trickFor());
+  recordTrick(combo, trickFor({ trickId: 'bank_job', episodeId: 'ep2', tick: 660 }));
+  const amount = bankActive(combo, { tick: 700 });
+  assert.ok(amount > 0);
+  assert.equal(comboReadout(combo, 700), null, 'a settled chain is not a meter');
+  const bank = combo.banks.at(-1);
+  assert.match(bankCalloutText(bank), /Banked \+\d+ · ×1\.50/);
+  assert.match(bankCalloutText({ ...bank, reason: 'hard_crash', multiplier: 1 }), /Crash settle \+\d+/);
+  assert.doesNotMatch(bankCalloutText({ ...bank, reason: 'hard_crash', multiplier: 1 }), /×/, 'a crash settles at ×1 and says so');
+  assert.equal(bankCalloutText(null), '');
+});
+
+function playSyntheticRound() {
+  const combo = createComboState();
+  recordTrick(combo, trickFor({
+    modifiers: { razorRelease: 'razor', collateralCount: 3, closeShave: false },
+  }));
+  recordTrick(combo, trickFor({ trickId: 'bank_job', episodeId: 'ep2', tick: 660 }));
+  bankActive(combo, { tick: 700 });
+  recordTrick(combo, trickFor({ episodeId: 'ep3', tick: 900 }));
+  bankActive(combo, { tick: 1100 });
+  return combo;
+}
+
+test('the round rows name the top tricks with counts, the best chain and the banked total', () => {
+  const combo = playSyntheticRound();
+  const rows = stuntRoundRows(combo);
+  const byLabel = new Map(rows);
+  assert.deepEqual(byLabel.get('Wrecking Ball'), '×2 · 185 style', 'two episodes, style summed');
+  assert.deepEqual(byLabel.get('Bank Job'), '×1 · 90 style');
+  assert.match(byLabel.get('Best chain'), /^2 tricks · \d+ banked$/, 'the combo chain keeps its own word');
+  assert.ok(Number(byLabel.get('Banked style')) > 0, 'the banked total is printed');
+  assert.ok(rows.findIndex(([l]) => l === 'Wrecking Ball') < rows.findIndex(([l]) => l === 'Bank Job'),
+    'higher counts lead');
+});
+
+test('an act is counted once however many mirrors carry it, and rows are deterministic', () => {
+  const combo = playSyntheticRound();
+  // combo.lastTricks mirrors the last chain's acts, which also live in the settled bank —
+  // the episode dedupe must hold the count at the truth.
+  assert.ok(combo.lastTricks.length > 0 && combo.banks.length > 0);
+  const rows = stuntRoundRows(combo);
+  assert.deepEqual(stuntRoundRows(combo), rows, 'same snapshot, same rows');
+  assert.deepEqual(stuntRoundRows(JSON.parse(JSON.stringify(combo))), rows, 'rows survive the results clone');
+  assert.deepEqual(trickCountRows(null), [], 'no combo, no rows — an honest empty');
+  assert.deepEqual(stuntRoundRows({}), [], 'a combo with no named acts prints nothing');
+  const capped = trickCountRows(playSyntheticRound(), { limit: 1 });
+  assert.equal(capped.length, 1, 'the limit bounds the column');
+});
+
+/* --- the Crucible overlay, mounted against a minimal document double. ----------------------- */
+
+function fakeElement(tag) {
+  const el = {
+    tag,
+    children: [],
+    attributes: {},
+    className: '',
+    textContent: '',
+    hidden: false,
+    parentNode: null,
+    classList: {
+      add(...names) { for (const n of names) if (!el._classes.has(n)) el._classes.add(n); },
+      remove(...names) { for (const n of names) el._classes.delete(n); },
+      contains(name) { return el._classes.has(name); },
+      toggle(name, on) { const want = on === undefined ? !el._classes.has(name) : !!on; if (want) el._classes.add(name); else el._classes.delete(name); return want; },
+    },
+    _classes: new Set(),
+    style: {
+      setProperty(name, value) { el._styles[name] = String(value); },
+      removeProperty(name) { delete el._styles[name]; },
+      display: '',
+      left: '',
+    },
+    _styles: {},
+    setAttribute(name, value) { el.attributes[name] = String(value); },
+    appendChild(child) { child.parentNode = el; el.children.push(child); return child; },
+    removeChild(child) {
+      el.children = el.children.filter((c) => c !== child);
+      child.parentNode = null;
+      return child;
+    },
+  };
+  return el;
+}
+
+function fakeDocument() {
+  const doc = {
+    head: fakeElement('head'),
+    body: fakeElement('body'),
+    documentElement: fakeElement('html'),
+  };
+  doc.getElementById = () => null;
+  doc.createElement = (tag) => fakeElement(tag);
+  return doc;
+}
+
+function fakeBus() {
+  const handlers = new Map();
+  return {
+    on(event, cb) { handlers.set(event, cb); return () => handlers.delete(event); },
+    emit(event, payload) { const cb = handlers.get(event); if (cb) cb(payload); },
+  };
+}
+
+function calloutState(combo, over = {}) {
+  return {
+    run: { kind: 'survival', phase: 'active', ruleset: 'swarm' },
+    mode: 'flight',
+    ui: { screenStack: [] },
+    tick: 670,
+    playerId: 1,
+    stunts: { combo },
+    settings: { video: { motionReduce: false } },
+    ...over,
+  };
+}
+
+test('the overlay names the trick, meters the chain and banks out loud — Crucible only', () => {
+  const doc = fakeDocument();
+  const bus = fakeBus();
+  const combo = createComboState();
+  const state = calloutState(combo);
+  const owner = createStuntCallout({ state, bus, doc });
+  assert.ok(owner.root, 'the layer mounts');
+
+  recordTrick(combo, trickFor({
+    modifiers: { razorRelease: 'razor', collateralCount: 3, closeShave: false },
+  }));
+  bus.emit('stunt:trickDetected', trickFor({
+    modifiers: { razorRelease: 'razor', collateralCount: 3, closeShave: false },
+  }));
+  owner.update(0);
+  let text = calloutTextFor(owner.root);
+  assert.match(text, /Razor Wrecking Ball · Collateral ×3/, 'the act is named on the glass');
+  assert.match(text, /×1\.00/, 'the multiplier rides the meter');
+
+  recordTrick(combo, trickFor({ trickId: 'bank_job', episodeId: 'ep2', tick: 660 }));
+  bus.emit('stunt:trickAmended', trickFor({ trickId: 'bank_job', episodeId: 'ep2', tick: 660 }));
+  owner.update(10);
+  text = calloutTextFor(owner.root);
+  assert.match(text, /Bank Job/, 'the second act joins the line');
+  assert.match(text, /×1\.50/, 'the meter follows the multiplier');
+  assert.match(text, /window/, 'the chain window carries its seconds');
+
+  bus.emit('stunt:styleBanked', { bankId: 1, tick: 700, reason: 'quiet', points: 345, raw: 230, multiplier: 1.5, acts: [] });
+  owner.update(20);
+  text = calloutTextFor(owner.root);
+  assert.match(text, /Banked \+345 · ×1\.50/, 'the bank receipt names what settled');
+
+  // Scope law: outside a live survival flight the layer is dark and hears nothing.
+  const adventure = createStuntCallout({ state: calloutState(combo, { run: null, mode: 'adventure' }), bus: fakeBus(), doc: fakeDocument() });
+  bus.emit('stunt:trickDetected', trickFor({ episodeId: 'epX' }));
+  adventure.update(0);
+  assert.ok(adventure.root.hidden, 'adventure flight never sees a score popup');
+  assert.equal(calloutTextFor(adventure.root), '', 'and nothing rendered into it');
+
+  owner.destroy();
+  assert.equal(owner.root.parentNode, null, 'destroy unmounts the layer');
+});
+
+test('the overlay gates on the run, the stack and the clock; lines expire, reduce motion is static', () => {
+  const doc = fakeDocument();
+  const bus = fakeBus();
+  const combo = createComboState();
+  const state = calloutState(combo);
+  const owner = createStuntCallout({ state, bus, doc });
+
+  assert.equal(owner.update(0), false, 'a paused menu (modal open) stays dark');
+  assert.ok(owner.root.hidden);
+  state.ui.screenStack = ['pause'];
+  bus.emit('stunt:trickDetected', trickFor());
+  assert.equal(owner.update(0), false, 'receipts behind a modal are ignored');
+  state.ui.screenStack = [];
+  state.run.phase = 'inactive';
+  owner.update(0);
+  assert.ok(owner.root.hidden, 'an inactive run is dark');
+  state.run.phase = 'active';
+  assert.ok(owner.update(0) === false, 'nothing to show yet');
+
+  bus.emit('stunt:trickDetected', trickFor());
+  const firstLine = owner.root.children[0].children[0];
+  assert.ok(firstLine.classList.contains('sf-stuntcall__rise'), 'full motion rises in');
+  const t0 = calloutNow();
+  owner.update(t0 + 1);
+  assert.ok(!owner.root.hidden, 'the callout is up');
+  assert.equal(owner.active(), true);
+  assert.ok(owner.update(t0 + 2), 'the frame listener stays alive while a line is up');
+
+  // Expiry is wall-clock driven: the driver passes values on the layer's own exported clock. The
+  // lines die, and the open chain's meter alone would keep the layer awake — so bank the chain
+  // out to assert the full sleep.
+  owner.update(t0 + CALLOUT_TTL_MS + 50);
+  assert.doesNotMatch(calloutTextFor(owner.root.children[0]), /Wrecking Ball/, 'expired callouts leave the glass');
+  bankActive(combo, { tick: 2000 });
+  assert.equal(owner.update(t0 + CALLOUT_TTL_MS + 60), false, 'expired lines and a closed chain put the layer to sleep');
+  assert.ok(owner.root.hidden, 'nothing lingers');
+
+  state.settings.video.motionReduce = true;
+  bus.emit('stunt:trickDetected', trickFor({ episodeId: 'ep2', trickId: 'bank_job', tick: 660 }));
+  const reducedLine = owner.root.children[0].children.at(-1);
+  assert.ok(!reducedLine.classList.contains('sf-stuntcall__rise'), 'reduce motion is a static cut');
+
+  // A second mount is the same layer; destroy unmounts.
+  owner.destroy();
+  assert.equal(owner.root.parentNode, null, 'destroy unmounts the layer');
+});
+
+test('the layer re-arms after going dark — a trick after expiry still names itself', () => {
+  // Regression: the ORRERY frame scheduler deletes a listener whose step returned false, so the
+  // layer's own frame handle had to be cleared when it went dark — otherwise the first settled
+  // chain put the callout stream to sleep for the rest of the round. This test drives the REAL
+  // scheduler shape: a queued rAF, a tick that drops listeners which return false.
+  const doc = fakeDocument();
+  const bus = fakeBus();
+  const combo = createComboState();
+  const state = calloutState(combo);
+  const pending = [];
+  const realRAF = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = (fn) => { pending.push(fn); return pending.length; };
+  let owner;
+  try {
+    owner = createStuntCallout({ state, bus, doc });
+    const runFrame = (now) => { for (const fn of pending.splice(0)) fn(now); };
+
+    bus.emit('stunt:trickDetected', trickFor());
+    assert.ok(pending.length > 0, 'the first act wakes the frame step');
+    const t0 = calloutNow();
+    runFrame(t0 + 1);
+    assert.ok(!owner.root.hidden, 'the line is up');
+
+    // The line expires and the chain is banked: the step returns false, the scheduler drops it.
+    bankActive(combo, { tick: 2000 });
+    runFrame(t0 + CALLOUT_TTL_MS + 100);
+    assert.ok(owner.root.hidden, 'the layer is dark');
+    const queuedAfterDark = pending.length;
+
+    bus.emit('stunt:trickDetected', trickFor({ episodeId: 'ep9' }));
+    assert.ok(pending.length > queuedAfterDark, 'a later act re-arms the frame step');
+    // Drive on the layer's real clock from here: the fresh line lives at wallNow + TTL, so a
+    // synthetic now past t0 + TTL would prune it the frame it appears.
+    runFrame(calloutNow() + 1);
+    assert.ok(!owner.root.hidden, 'the layer is awake again');
+    assert.match(calloutTextFor(owner.root), /Wrecking Ball/, 'the new act is named on the glass');
+  } finally {
+    globalThis.requestAnimationFrame = realRAF;
+    if (owner) owner.destroy();
+  }
+});
+
+test('the mount is node-inert and the singleton release is safe without a document', () => {
+  const inert = createStuntCallout({ doc: {} });
+  assert.equal(inert.root, null, 'no document, no layer');
+  assert.equal(inert.active(), false);
+  assert.doesNotThrow(() => inert.update(0));
+  const held = ensureStuntCallout({ state: null, bus: null });
+  assert.equal(held.root, null, 'node tests hold an inert mount');
+  assert.doesNotThrow(() => releaseStuntCallout());
+  assert.doesNotThrow(() => releaseStuntCallout(), 'release is idempotent');
+});
+
+test('the callout column chooses the nearest vertical band clear of the HUD speed dial', () => {
+  const seat = (dialRect, stableLoadRect = null) => {
+    const doc = fakeDocument();
+    doc.defaultView = { innerHeight: 1080 };
+    doc.querySelector = (selector) => {
+      if (selector === SPEED_DIAL_SELECTOR) return { getBoundingClientRect: () => dialRect };
+      if (selector === STABLE_LOAD_SELECTOR && stableLoadRect) return { getBoundingClientRect: () => stableLoadRect };
+      return null;
+    };
+    const bus = fakeBus();
+    const owner = createStuntCallout({ state: calloutState(createComboState()), bus, doc });
+    owner.root.getBoundingClientRect = () => ({ left: 16, right: 134, top: 0, bottom: 0, height: 14 });
+    bus.emit('stunt:trickDetected', trickFor());
+    owner.update(0);
+    assert.equal(owner.root.hidden, false, 'the act is on the glass');
+    const bottom = owner.root.style.bottom;
+    owner.destroy();
+    return bottom;
+  };
+  assert.equal(seat({ left: 18, right: 225, top: 607, bottom: 815, height: 208 }),
+    `min(32vh, ${1080 - 815 - SPEED_DIAL_CLEARANCE_PX - 14}px)`,
+    'the nearest full-height band below the dial stays inside the viewport');
+  assert.equal(seat({ left: 760, right: 960, top: 860, bottom: 1060, height: 200 }), '',
+    'a dial elsewhere leaves the authored seat alone');
+  assert.equal(seat({ left: 18, right: 225, top: 607, bottom: 815, height: 208 }, { left: 22, right: 160, top: 540, bottom: 556, height: 16 }),
+    `min(32vh, ${1080 - 815 - SPEED_DIAL_CLEARANCE_PX - 14}px)`,
+    'stable-load and dial bands are both considered without forcing the callout offscreen');
+});
+
+test('a bottom-sheet decision card that rises under a showing column lifts it on the next line', () => {
+  const doc = fakeDocument();
+  doc.defaultView = { innerHeight: 844 };
+  let deckRect = null;
+  doc.querySelector = (selector) => (selector === PROMPT_DECK_SELECTOR && deckRect
+    ? { getBoundingClientRect: () => deckRect } : null);
+  const bus = fakeBus();
+  const owner = createStuntCallout({ state: calloutState(createComboState()), bus, doc });
+  owner.root.getBoundingClientRect = () => ({ left: 16, right: 134, top: 0, bottom: 0, height: 14 });
+  bus.emit('stunt:trickDetected', trickFor());
+  owner.update(0);
+  assert.equal(owner.root.style.bottom, '', 'no card, authored seat');
+  deckRect = { left: 12, right: 588, top: 420, bottom: 726, height: 306 };
+  bus.emit('stunt:trickDetected', trickFor({ trickId: 'bolas', episodeId: 'ep2' }));
+  assert.equal(owner.root.style.bottom, `max(32vh, ${844 - 420 + PROMPT_DECK_CLEARANCE_PX}px)`,
+    'the column sits above the card instead of printing over its choices');
+  owner.destroy();
+});
+
+test('the impact callout clears mission, vitals and touch controls and publishes geometry changes only', () => {
+  const doc = fakeDocument();
+  let onResize = null;
+  doc.defaultView = {
+    innerHeight: 844,
+    addEventListener(type, listener) { if (type === 'resize') onResize = listener; },
+    removeEventListener() {},
+  };
+  const rect = (top, left = 12, right = 180) => ({ left, right, top, bottom: top + 40, width: right - left, height: 40 });
+  let objectiveTop = 310;
+  const objective = { getBoundingClientRect: () => rect(objectiveTop) };
+  const vitals = { getBoundingClientRect: () => rect(460) };
+  const touchButtons = { getBoundingClientRect: () => rect(520) };
+  doc.querySelector = (selector) => ({
+    [OBJECTIVE_SELECTOR]: objective,
+    [VITALS_SELECTOR]: vitals,
+    [TOUCH_BUTTONS_SELECTOR]: touchButtons,
+  })[selector] || null;
+  const bus = fakeBus();
+  const geometryChanges = [];
+  const owner = createStuntCallout({
+    state: calloutState(createComboState()), bus, doc,
+    onFlightTextGeometryChange: () => geometryChanges.push(owner.root.style.bottom),
+  });
+  owner.root.getBoundingClientRect = () => {
+    const bottomPx = Number(owner.root.style.bottom?.match(/(\d+)px/)?.[1] || (844 * 0.32));
+    const top = 844 - bottomPx - 40;
+    return rect(top, 16, 134);
+  };
+  bus.emit('stunt:trickDetected', trickFor());
+  owner.update(0);
+  assert.equal(owner.root.style.bottom, `min(32vh, ${844 - (560 + HUD_PRIORITY_CLEARANCE_PX) - 40}px)`,
+    'the callout uses the nearest full-height band below the vertically overlapping controls');
+  assert.equal(geometryChanges.length, 1, 'the newly visible callout publishes one geometry change');
+
+  objectiveTop = 550;
+  onResize();
+  assert.equal(owner.root.style.bottom, `min(32vh, ${844 - (550 + 40 + HUD_PRIORITY_CLEARANCE_PX) - 40}px)`,
+    'a viewport resize recomputes the nearest band even inside the ordinary seat throttle window');
+  assert.equal(geometryChanges.length, 2, 'the changed placement publishes one coalesced geometry notification');
+
+  bus.emit('stunt:trickDetected', trickFor({ episodeId: 'ep2' }));
+  owner.update(1);
+  assert.equal(geometryChanges.length, 2, 'a new receipt with unchanged bounds does not notify layout consumers');
+  owner.destroy();
+  assert.equal(geometryChanges.length, 3, 'hiding the callout publishes the removal once');
+});
+
+test('portrait stunt placement stays in the nearest clear band and defers when none fits', () => {
+  const doc = fakeDocument();
+  let onResize = null;
+  const view = {
+    innerHeight: 664,
+    addEventListener(type, listener) { if (type === 'resize') onResize = listener; },
+    removeEventListener() {},
+  };
+  doc.defaultView = view;
+  const status = { left: 12, right: 220, top: 14, bottom: 138, width: 208, height: 124 };
+  const objective = { left: 12, right: 280, top: 244, bottom: 301, width: 268, height: 57 };
+  const buttons = { left: 250, right: 380, top: 490, bottom: 646, width: 130, height: 156 };
+  const bySelector = {
+    [TOUCH_STATUS_SELECTOR]: status,
+    [OBJECTIVE_SELECTOR]: objective,
+    [TOUCH_BUTTONS_SELECTOR]: buttons,
+  };
+  doc.querySelector = (selector) => {
+    const box = bySelector[selector];
+    return box ? { getBoundingClientRect: () => box } : null;
+  };
+  const bus = fakeBus();
+  const mounted = createStuntCallout({ state: calloutState(createComboState()), bus, doc });
+  mounted.root.getBoundingClientRect = () => {
+    const rawBottom = mounted.root.style.bottom?.match(/(\d+)px/)?.[1];
+    const bottom = rawBottom == null ? view.innerHeight * 0.32 : Number(rawBottom);
+    const top = view.innerHeight - bottom - 70;
+    return { left: 16, right: 300, top, bottom: top + 70, width: 284, height: 70 };
+  };
+  try {
+    bus.emit('stunt:trickDetected', trickFor());
+    mounted.update(0);
+    let box = mounted.root.getBoundingClientRect();
+    assert.ok(box.top >= status.bottom, `callout starts below touch status: ${JSON.stringify(box)}`);
+    assert.ok(box.top >= objective.bottom, `callout starts below objective: ${JSON.stringify(box)}`);
+    assert.ok(box.bottom <= buttons.top, `callout ends above touch buttons: ${JSON.stringify(box)}`);
+    assert.ok(box.top >= 0 && box.bottom <= view.innerHeight, 'the whole callout remains onscreen');
+    assert.notEqual(mounted.root.style.opacity, '0', 'the full-height free band keeps the callout visible');
+
+    view.innerHeight = 220;
+    objective.top = 145; objective.bottom = 175; objective.height = 30;
+    buttons.top = 180; buttons.bottom = 220; buttons.height = 40;
+    onResize();
+    assert.equal(mounted.root.hidden, false, 'the timed callout remains live while its visual seat is full');
+    assert.equal(mounted.root.style.opacity, '0', 'no full-height band defers only the visual callout');
+    assert.match(calloutTextFor(mounted.root), /Wrecking Ball/, 'the existing receipt and live text remain intact');
+
+    view.innerHeight = 664;
+    objective.top = 244; objective.bottom = 301; objective.height = 57;
+    buttons.top = 490; buttons.bottom = 646; buttons.height = 156;
+    bus.emit('hud:layoutChanged', { key: 'objective' });
+    box = mounted.root.getBoundingClientRect();
+    assert.notEqual(mounted.root.style.opacity, '0', 'the callout reappears when a band opens before expiry');
+    assert.ok(box.top >= objective.bottom && box.bottom <= buttons.top,
+      `recovered callout remains between objective and controls: ${JSON.stringify(box)}`);
+    mounted.update(calloutNow() + CALLOUT_TTL_MS + 1);
+    assert.equal(mounted.root.hidden, true, 'deferral did not restart the original expiry');
+  } finally {
+    mounted.destroy();
+  }
+});
+
+test('worker event bursts coalesce callout layout reads to one pre-paint seat', () => {
+  const doc = fakeDocument();
+  const pending = [];
+  let selectorReads = 0;
+  let rectReads = 0;
+  let cancelReads = 0;
+  doc.defaultView = {
+    innerHeight: 844,
+    requestAnimationFrame(callback) { pending.push(callback); return pending.length; },
+    cancelAnimationFrame() { cancelReads += 1; },
+  };
+  let deckRect = null;
+  doc.querySelector = (selector) => {
+    selectorReads += 1;
+    return selector === PROMPT_DECK_SELECTOR && deckRect
+      ? { getBoundingClientRect() { rectReads += 1; return deckRect; } } : null;
+  };
+  const bus = fakeBus();
+  const owner = createStuntCallout({ state: calloutState(createComboState()), bus, doc });
+  owner.root.getBoundingClientRect = () => {
+    rectReads += 1;
+    return { left: 16, right: 134, top: 0, bottom: 0, height: 14 };
+  };
+
+  bus.emit('stunt:trickDetected', trickFor());
+  owner.update(0); // first reveal keeps its immediate, correctly seated placement
+  selectorReads = 0;
+  rectReads = 0;
+  deckRect = { left: 12, right: 588, top: 420, bottom: 726, height: 306 };
+  bus.emit('stunt:trickDetected', trickFor({ trickId: 'bank_job', episodeId: 'ep2' }));
+  bus.emit('stunt:trickDetected', trickFor({ trickId: 'bolas', episodeId: 'ep3' }));
+  assert.equal(selectorReads, 0, 'receipt handling writes feedback without forcing layout reads');
+  assert.equal(pending.length, 1, 'multiple receipts schedule only one seat for the upcoming paint');
+  pending.shift()(calloutNow());
+  assert.equal(selectorReads, 11, 'the coalesced callback reads the HUD and touch obstacle set once');
+  assert.equal(rectReads, 3, 'the column is measured before and after placement plus the new card');
+  assert.equal(owner.root.style.bottom, `max(32vh, ${844 - 420 + PROMPT_DECK_CLEARANCE_PX}px)`,
+    'the latest card position still protects the callout from covering choices');
+
+  bus.emit('stunt:trickDetected', trickFor({ episodeId: 'ep4' }));
+  assert.equal(pending.length, 1);
+  owner.destroy();
+  assert.equal(cancelReads, 1, 'teardown cancels a pending presentation-only seat callback');
+});
+
+test('the physics LOG register stays in details on the Adventure glass; a plain stunt still speaks', () => {
+  const doc = fakeDocument();
+  const bus = fakeBus();
+  // X3 Adventure glass retired the declarative LOG register from the flight picture. The
+  // register still owns the facts; it is a details/backlog surface, not a callout. A plain
+  // stunt name is still a fight receipt and must draw.
+  const owner = createStuntCallout({ state: calloutState(createComboState(), { run: { kind: 'adventure' } }), bus, doc });
+  bus.emit('physics:impact', { aId: 21, bId: 22, playerInvolved: false, impulse: 90 });
+  assert.equal(owner.update(0), false, 'an unrelated NPC collision does not wake the player feed');
+  assert.equal(calloutTextFor(owner.root), '');
+
+  bus.emit('physics:impact', { aId: 1, bId: 22, playerInvolved: true, impulse: 90 });
+  assert.equal(owner.update(1), false, 'the jargon register does not draw over the Adventure glass');
+  assert.equal(calloutTextFor(owner.root), '');
+
+  bus.emit('physics:impact', { aId: 22, bId: 23, playerInvolved: false, causalActorId: 1, impulse: 120 });
+  owner.update(2);
+  assert.equal(calloutTextFor(owner.root), '', 'a player-caused impact is still a details fact, not a callout');
+
+  bus.emit('stunt:trickDetected', trickFor());
+  assert.equal(owner.update(3), true, 'the plain stunt lane still speaks');
+  assert.match(calloutTextFor(owner.root), /Wrecking Ball/);
+  owner.destroy();
+});
+
+
+test('the physics register does not narrate sector-wide lien bookkeeping on the flight glass', () => {
+  const doc = fakeDocument(), bus = fakeBus(), owner = createStuntCallout({
+    state: calloutState(createComboState(), { run: { kind: 'adventure' } }), bus, doc,
+  });
+  bus.emit('vael:lienClamped', { hostId: 24, anchorId: 30 });
+  bus.emit('helix:lienStuck', { shipId: 25, droneId: 31 });
+  assert.equal(owner.update(0), false);
+  assert.equal(calloutTextFor(owner.root), '');
+  bus.emit('vael:lienClamped', { hostId: 1, anchorId: 30 });
+  assert.equal(owner.update(1), false, 'the lien register is details copy, not a flight callout');
+  assert.equal(calloutTextFor(owner.root), '');
+  owner.destroy();
+});

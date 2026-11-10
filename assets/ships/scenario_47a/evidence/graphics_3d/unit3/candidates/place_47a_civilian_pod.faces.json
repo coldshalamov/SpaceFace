@@ -1,0 +1,57 @@
+{
+  "glb": "assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_civilian_pod.glb",
+  "fovV": 50.0,
+  "distances": [
+    144.0,
+    58.0
+  ],
+  "headings": [
+    0,
+    45,
+    90,
+    135,
+    180,
+    225,
+    270,
+    315
+  ],
+  "grid": [
+    80,
+    45
+  ],
+  "deleted": false,
+  "objects": [
+    {
+      "object": "CivilianPod_Aft_Scorch_Band",
+      "faces": 152,
+      "visible": 28,
+      "hidden": 124,
+      "hiddenFrac": 0.8158
+    },
+    {
+      "object": "CivilianPod_Distress_Band",
+      "faces": 152,
+      "visible": 28,
+      "hidden": 124,
+      "hiddenFrac": 0.8158
+    },
+    {
+      "object": "CivilianPod_Port_Port",
+      "faces": 24,
+      "visible": 4,
+      "hidden": 20,
+      "hiddenFrac": 0.8333
+    },
+    {
+      "object": "CivilianPod_Shell",
+      "faces": 1392,
+      "visible": 185,
+      "hidden": 1207,
+      "hiddenFrac": 0.8671
+    }
+  ],
+  "hiddenFaces": 1475,
+  "faces": 1720,
+  "hiddenFrac": 0.8576,
+  "note": "dry-run; pass --delete only after inspecting hiddenFrac"
+}

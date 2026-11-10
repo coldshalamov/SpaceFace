@@ -1,0 +1,125 @@
+{
+  "assetId": "split_ice_plate",
+  "category": "geology",
+  "description": "split ice plate; reusable geology assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.3,
+          0.8
+        ],
+        "size": [
+          2.5,
+          0.28,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.3,
+          -0.8
+        ],
+        "size": [
+          2.5,
+          0.28,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "geology",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.7697635889053345,
+      0.08127767592668533,
+      -1.855973243713379
+    ],
+    "max": [
+      1.9305753707885742,
+      0.5496570467948914,
+      1.7144907712936401
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "split_ice_plate_lod0.glb",
+      "triangles": 2280,
+      "draws": 3,
+      "bytes": 157264,
+      "method": "source",
+      "sha256": "f09c8da8dca5b22da42120516b393ec7a075427b033ecf01e8839243e0699a9a"
+    },
+    {
+      "level": 1,
+      "file": "split_ice_plate_lod1.glb",
+      "triangles": 912,
+      "draws": 3,
+      "bytes": 76312,
+      "method": "Forge-decimation",
+      "sha256": "20b77af7eff8395757b78816ff2d46d55b97e5ea889f0774ea8f4a122056200e"
+    },
+    {
+      "level": 2,
+      "file": "split_ice_plate_lod2.glb",
+      "triangles": 410,
+      "draws": 3,
+      "bytes": 35508,
+      "method": "Forge-decimation",
+      "sha256": "8e1abc531d27c6de38af20f27c24e9709480e3635edcaf1545c9dd12b09805ee"
+    }
+  ]
+}

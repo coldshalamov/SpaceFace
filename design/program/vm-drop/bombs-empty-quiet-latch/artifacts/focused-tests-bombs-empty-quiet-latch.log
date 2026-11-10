@@ -1,0 +1,106 @@
+TAP version 13
+# Subtest: quiet latch engages when typed bombs bucket is empty
+ok 1 - quiet latch engages when typed bombs bucket is empty
+  ---
+  duration_ms: 2.138896
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 2 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 0.509558
+  ...
+# Subtest: dropBomb edge refuses latch and consumes edge
+not ok 3 - dropBomb edge refuses latch and consumes edge
+  ---
+  duration_ms: 1.1538
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/bombs-empty-quiet-latch.test.mjs:102:1'
+  failureType: 'testCodeFailure'
+  error: 'this.helpers.spawnEntity is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Object.drop (file:///workspace/spaceface-scratch/hillclimb-20260924h/src/systems/bombs.js:545:31)
+    Object.update (file:///workspace/spaceface-scratch/hillclimb-20260924h/src/systems/bombs.js:319:16)
+    step (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/bombs-empty-quiet-latch.test.mjs:71:8)
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/bombs-empty-quiet-latch.test.mjs:109:3)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: live bomb in bucket refuses latch
+ok 4 - live bomb in bucket refuses latch
+  ---
+  duration_ms: 0.522671
+  ...
+# Subtest: bench toggle OFF keeps quietLatched false on empty
+ok 5 - bench toggle OFF keeps quietLatched false on empty
+  ---
+  duration_ms: 0.276989
+  ...
+# Subtest: without ready bombs bucket latch refuses
+ok 6 - without ready bombs bucket latch refuses
+  ---
+  duration_ms: 0.189808
+  ...
+# Subtest: a dropped bomb inherits the full ship velocity and falls behind under low drag
+ok 7 - a dropped bomb inherits the full ship velocity and falls behind under low drag
+  ---
+  duration_ms: 6.318888
+  ...
+# Subtest: the fuze arms on sim time and detonates on a hostile through the damage router
+ok 8 - the fuze arms on sim time and detonates on a hostile through the damage router
+  ---
+  duration_ms: 2.411191
+  ...
+# Subtest: friendly hulls and the owner never trip the fuze; a lonely bomb pops on its fuze
+ok 9 - friendly hulls and the owner never trip the fuze; a lonely bomb pops on its fuze
+  ---
+  duration_ms: 3.855538
+  ...
+# Subtest: the concussion drum shoves through the physics authority and routes no damage
+ok 10 - the concussion drum shoves through the physics authority and routes no damage
+  ---
+  duration_ms: 0.973626
+  ...
+# Subtest: the neutron slug opens a moving pull field, crushes, and collapses
+ok 11 - the neutron slug opens a moving pull field, crushes, and collapses
+  ---
+  duration_ms: 6.302863
+  ...
+# Subtest: the tarburst sticks status_goo on the burst and re-applies it inside the volume
+ok 12 - the tarburst sticks status_goo on the burst and re-applies it inside the volume
+  ---
+  duration_ms: 7.061561
+  ...
+# Subtest: the bay cycles payloads on the cycle verb and wraps
+ok 13 - the bay cycles payloads on the cycle verb and wraps
+  ---
+  duration_ms: 0.654099
+  ...
+# Subtest: the bay respects its payload cooldown, and a full bay preserves deployed traps
+ok 14 - the bay respects its payload cooldown, and a full bay preserves deployed traps
+  ---
+  duration_ms: 1.835509
+  ...
+# Subtest: sector exit releases every live bomb
+ok 15 - sector exit releases every live bomb
+  ---
+  duration_ms: 0.708624
+  ...
+# Subtest: indexed bomb targets receive the same effects in the same order, including loose bodies
+ok 16 - indexed bomb targets receive the same effects in the same order, including loose bodies
+  ---
+  duration_ms: 24.212042
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 15
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 226.127617

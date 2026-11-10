@@ -1,0 +1,12 @@
+{
+  "label": "stamp-near-work-awake-cache",
+  "before_ms": 97.177,
+  "after_ms": 62.09,
+  "speedup": 1.565,
+  "sizes": {
+    "before": 10,
+    "after": 10
+  },
+  "admit_parity": true,
+  "production_parity": true
+}

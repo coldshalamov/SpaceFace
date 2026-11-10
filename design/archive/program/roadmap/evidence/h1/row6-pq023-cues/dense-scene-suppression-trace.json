@@ -1,0 +1,598 @@
+{
+  "schema": "spaceface.pq023CorridorCueTrace.v1",
+  "leafId": "PQ-023.gold-corridor-required-cues",
+  "scenario": {
+    "flavorPerTick": 10,
+    "denseTicks": 6,
+    "criticalCues": [
+      "shield.collapse",
+      "subsystem.disabled",
+      "tether.break"
+    ]
+  },
+  "budget": {
+    "lanes": {
+      "camera": 3,
+      "vfx": 8,
+      "audio": 6,
+      "ui": 6,
+      "accessibility": 6
+    },
+    "criticalReserve": {
+      "camera": 1,
+      "vfx": 3,
+      "audio": 3,
+      "ui": 3,
+      "accessibility": 3
+    }
+  },
+  "totals": {
+    "criticalAttempted": 18,
+    "criticalEmitted": 18,
+    "criticalDropped": 0,
+    "flavorAttempted": 60,
+    "flavorEmitted": 18,
+    "flavorDropped": 42
+  },
+  "suppressionByReason": {
+    "lane_budget:audio": 42
+  },
+  "cathedralConditionMatrix": [
+    {
+      "status": "stabilized",
+      "condition": "nominal",
+      "opacityScale": 1,
+      "scaleMul": 1,
+      "stutter": 0,
+      "shape": "pulse",
+      "survivesGreyscale": true,
+      "reducedMotionDutyCycle": 1,
+      "fullMotionDutyCycleAtDropout": 1,
+      "accessibilityText": "Cathedral hull restored."
+    },
+    {
+      "status": "ready",
+      "condition": "nominal",
+      "opacityScale": 1,
+      "scaleMul": 1,
+      "stutter": 0,
+      "shape": "pulse",
+      "survivesGreyscale": true,
+      "reducedMotionDutyCycle": 1,
+      "fullMotionDutyCycleAtDropout": 1,
+      "accessibilityText": "Cathedral hull restored."
+    },
+    {
+      "status": "sealed",
+      "condition": "latent",
+      "opacityScale": 0.66,
+      "scaleMul": 0.88,
+      "stutter": 0,
+      "shape": "ring",
+      "survivesGreyscale": true,
+      "reducedMotionDutyCycle": 1,
+      "fullMotionDutyCycleAtDropout": 1,
+      "accessibilityText": "Cathedral hull sealed."
+    },
+    {
+      "status": "failed",
+      "condition": "impaired",
+      "opacityScale": 0.34,
+      "scaleMul": 0.72,
+      "stutter": 0.5,
+      "shape": "bracket",
+      "survivesGreyscale": true,
+      "reducedMotionDutyCycle": 1,
+      "fullMotionDutyCycleAtDropout": 0.5,
+      "accessibilityText": "Cathedral hull failed."
+    },
+    {
+      "status": "offline",
+      "condition": "impaired",
+      "opacityScale": 0.34,
+      "scaleMul": 0.72,
+      "stutter": 0.5,
+      "shape": "bracket",
+      "survivesGreyscale": true,
+      "reducedMotionDutyCycle": 1,
+      "fullMotionDutyCycleAtDropout": 0.5,
+      "accessibilityText": "Cathedral hull failed."
+    },
+    {
+      "status": "some_future_status",
+      "condition": "nominal",
+      "opacityScale": 1,
+      "scaleMul": 1,
+      "stutter": 0,
+      "shape": "pulse",
+      "survivesGreyscale": true,
+      "reducedMotionDutyCycle": 1,
+      "fullMotionDutyCycleAtDropout": 1,
+      "accessibilityText": "Cathedral hull restored."
+    }
+  ],
+  "worldSiteCues": [
+    {
+      "id": "world_site.damage",
+      "accessibilityText": "Cathedral hull failed.",
+      "reducedMotionMode": "static_dim",
+      "critical": true
+    },
+    {
+      "id": "world_site.recovery",
+      "accessibilityText": "Cathedral hull restored.",
+      "reducedMotionMode": "static_dim",
+      "critical": false
+    }
+  ],
+  "trace": [
+    {
+      "tick": 1000,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1000,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1000,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1000,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1000,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1000,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1000,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1000,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1000,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1000,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1000,
+      "id": "shield.collapse",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1000,
+      "id": "subsystem.disabled",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1000,
+      "id": "tether.break",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1001,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1001,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1001,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1001,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1001,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1001,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1001,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1001,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1001,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1001,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1001,
+      "id": "shield.collapse",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1001,
+      "id": "subsystem.disabled",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1001,
+      "id": "tether.break",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1002,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1002,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1002,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1002,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1002,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1002,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1002,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1002,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1002,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1002,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1002,
+      "id": "shield.collapse",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1002,
+      "id": "subsystem.disabled",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1002,
+      "id": "tether.break",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1003,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1003,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1003,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1003,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1003,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1003,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1003,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1003,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1003,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1003,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1003,
+      "id": "shield.collapse",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1003,
+      "id": "subsystem.disabled",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1003,
+      "id": "tether.break",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1004,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1004,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1004,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1004,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1004,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1004,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1004,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1004,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1004,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1004,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1004,
+      "id": "shield.collapse",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1004,
+      "id": "subsystem.disabled",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1004,
+      "id": "tether.break",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1005,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1005,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1005,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": true
+    },
+    {
+      "tick": 1005,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1005,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1005,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1005,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1005,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1005,
+      "id": "combat.damage.applied",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1005,
+      "id": "combat.near_miss",
+      "klass": "flavor",
+      "emitted": false
+    },
+    {
+      "tick": 1005,
+      "id": "shield.collapse",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1005,
+      "id": "subsystem.disabled",
+      "klass": "critical",
+      "emitted": true
+    },
+    {
+      "tick": 1005,
+      "id": "tether.break",
+      "klass": "critical",
+      "emitted": true
+    }
+  ]
+}

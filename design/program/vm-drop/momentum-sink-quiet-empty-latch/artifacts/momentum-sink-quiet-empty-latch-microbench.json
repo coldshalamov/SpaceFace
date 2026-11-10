@@ -1,0 +1,100 @@
+{
+  "name": "momentum-sink-quiet-empty-latch",
+  "primary": "quiet-momentum-sink-empty-combat-walk",
+  "iterations": 200000,
+  "runs": 11,
+  "entities": 48,
+  "pairs": [
+    {
+      "beforeMs": 511.354649,
+      "afterMs": 2.871718999999999,
+      "speedup": 178.06569828036803,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 499.530464,
+      "afterMs": 2.9879279999999966,
+      "speedup": 167.1828986508378,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 341.831083,
+      "afterMs": 2.4403289999999913,
+      "speedup": 140.0758188752423,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 319.257127,
+      "afterMs": 2.5037500000000037,
+      "speedup": 127.51158342486252,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 336.127903,
+      "afterMs": 3.295704999999998,
+      "speedup": 101.989681418695,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 336.428533,
+      "afterMs": 2.8719229999999953,
+      "speedup": 117.14399480766043,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 348.336477,
+      "afterMs": 2.314743000000007,
+      "speedup": 150.4860267424932,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 339.65738000000005,
+      "afterMs": 2.8415159999999986,
+      "speedup": 119.53386150209965,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 364.687951,
+      "afterMs": 2.4955190000000016,
+      "speedup": 146.13711656773592,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 337.703693,
+      "afterMs": 2.302374999999998,
+      "speedup": 146.67623345458506,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 355.95459900000003,
+      "afterMs": 2.867315000000005,
+      "speedup": 124.14213262233115,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000
+    }
+  ],
+  "medianSpeedup": 140.0758188752423,
+  "minSpeedup": 101.989681418695,
+  "maxSpeedup": 178.06569828036803
+}

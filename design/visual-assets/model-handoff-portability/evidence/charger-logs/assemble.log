@@ -1,0 +1,92 @@
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender').
+19:54:50 | INFO: Data are loaded, start creating Blender stuff
+19:54:50 | INFO: Blender create Mesh node CHARGER_fixed_keel
+19:54:50 | INFO: Blender create Mesh node CHARGER_unified_ramming_carapace
+19:54:50 | INFO: Blender create Mesh node CHARGER_central_pronotal_crown
+19:54:50 | INFO: Blender create Mesh node CHARGER_port_ram_shield
+19:54:50 | INFO: Blender create Mesh node CHARGER_starboard_ram_shield
+19:54:50 | INFO: Blender create Mesh node CHARGER_stabilizer_support_PORT
+19:54:50 | INFO: Blender create Mesh node CHARGER_stabilizer_support_STARBOARD
+19:54:50 | INFO: Blender create Mesh node CHARGER_oral_corner_PORT
+19:54:50 | INFO: Blender create Mesh node CHARGER_oral_corner_STARBOARD
+19:54:50 | INFO: Blender create Mesh node CHARGER_labrum
+19:54:50 | INFO: Blender create Mesh node CHARGER_folding_paddle_PORT
+19:54:50 | INFO: Blender create Mesh node CHARGER_folding_paddle_STARBOARD
+19:54:50 | INFO: Blender create Mesh node CHARGER_telescoping_anterior
+19:54:50 | INFO: Blender create Mesh node CHARGER_telescoping_middle
+19:54:50 | INFO: Blender create Mesh node CHARGER_telescoping_posterior
+19:54:50 | INFO: glTF import finished in 0.02s
+Warning: No mesh data to join
+Warning: No mesh data to join
+19:54:50 | INFO: Data are loaded, start creating Blender stuff
+19:54:50 | INFO: Blender create Mesh node CHARGER_fixed_keel
+19:54:50 | INFO: Blender create Mesh node CHARGER_unified_ramming_carapace
+19:54:50 | INFO: Blender create Mesh node CHARGER_central_pronotal_crown
+19:54:50 | INFO: Blender create Mesh node CHARGER_port_ram_shield
+19:54:50 | INFO: Blender create Mesh node CHARGER_starboard_ram_shield
+19:54:50 | INFO: Blender create Mesh node CHARGER_stabilizer_support_PORT
+19:54:50 | INFO: Blender create Mesh node CHARGER_stabilizer_support_STARBOARD
+19:54:50 | INFO: Blender create Mesh node CHARGER_oral_corner_PORT
+19:54:50 | INFO: Blender create Mesh node CHARGER_oral_corner_STARBOARD
+19:54:50 | INFO: Blender create Mesh node CHARGER_labrum
+19:54:50 | INFO: Blender create Mesh node CHARGER_folding_paddle_PORT
+19:54:50 | INFO: Blender create Mesh node CHARGER_folding_paddle_STARBOARD
+19:54:50 | INFO: Blender create Mesh node CHARGER_telescoping_anterior
+19:54:50 | INFO: Blender create Mesh node CHARGER_telescoping_middle
+19:54:50 | INFO: Blender create Mesh node CHARGER_telescoping_posterior
+19:54:50 | INFO: glTF import finished in 0.02s
+Warning: No mesh data to join
+Warning: No mesh data to join
+19:54:50 | INFO: Data are loaded, start creating Blender stuff
+19:54:50 | INFO: Blender create Mesh node CHARGER_fixed_keel
+19:54:50 | INFO: Blender create Mesh node CHARGER_unified_ramming_carapace
+19:54:50 | INFO: Blender create Mesh node CHARGER_central_pronotal_crown
+19:54:50 | INFO: Blender create Mesh node CHARGER_port_ram_shield
+19:54:50 | INFO: Blender create Mesh node CHARGER_starboard_ram_shield
+19:54:50 | INFO: Blender create Mesh node CHARGER_stabilizer_support_PORT
+19:54:50 | INFO: Blender create Mesh node CHARGER_stabilizer_support_STARBOARD
+19:54:50 | INFO: Blender create Mesh node CHARGER_oral_corner_PORT
+19:54:50 | INFO: Blender create Mesh node CHARGER_oral_corner_STARBOARD
+19:54:50 | INFO: Blender create Mesh node CHARGER_labrum
+19:54:50 | INFO: Blender create Mesh node CHARGER_folding_paddle_PORT
+19:54:50 | INFO: Blender create Mesh node CHARGER_folding_paddle_STARBOARD
+19:54:50 | INFO: Blender create Mesh node CHARGER_telescoping_anterior
+19:54:50 | INFO: Blender create Mesh node CHARGER_telescoping_middle
+19:54:50 | INFO: Blender create Mesh node CHARGER_telescoping_posterior
+19:54:50 | INFO: glTF import finished in 0.01s
+Warning: No mesh data to join
+Warning: No mesh data to join
+ERROR Draco mesh compression is not available because library could not be found at /usr/bin/4.3/python/lib/python3.13/site-packages/libextern_draco.so
+19:54:50 | INFO: Starting glTF 2.0 export
+19:54:50 | INFO: Extracting primitive: CHARGER_central_pronotal_crown
+19:54:50 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:50 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:50 | INFO: Primitives created: 3
+19:54:50 | INFO: Extracting primitive: CHARGER_unified_ramming_carapace.001
+19:54:50 | INFO: Primitives created: 3
+19:54:50 | INFO: Extracting primitive: CHARGER_starboard_ram_shield.002
+19:54:50 | INFO: Primitives created: 3
+19:54:50 | INFO: Extracting primitive: CHARGER_telescoping_posterior
+19:54:50 | INFO: Primitives created: 1
+19:54:50 | INFO: Extracting primitive: CHARGER_telescoping_posterior.001
+19:54:50 | INFO: Primitives created: 1
+19:54:50 | INFO: Extracting primitive: CHARGER_telescoping_anterior.002
+19:54:50 | INFO: Primitives created: 1
+19:54:50 | INFO: Extracting primitive: CHARGER_folding_paddle_PORT
+19:54:50 | INFO: Primitives created: 1
+19:54:50 | INFO: Extracting primitive: CHARGER_folding_paddle_PORT.001
+19:54:50 | INFO: Primitives created: 1
+19:54:50 | INFO: Extracting primitive: CHARGER_folding_paddle_PORT.002
+19:54:50 | INFO: Primitives created: 1
+19:54:50 | INFO: Extracting primitive: CHARGER_folding_paddle_STARBOARD
+19:54:50 | INFO: Primitives created: 1
+19:54:50 | INFO: Extracting primitive: CHARGER_folding_paddle_STARBOARD.001
+19:54:50 | INFO: Primitives created: 1
+19:54:50 | INFO: Extracting primitive: CHARGER_folding_paddle_STARBOARD.002
+19:54:50 | INFO: Primitives created: 1
+19:54:50 | INFO: Finished glTF 2.0 export in 0.05381441116333008 s
+
+[{'lod': 0, 'groups': [{'node': 'LOD0_ABDOMEN', 'triangles': 468, 'draws': 1}, {'node': 'LOD0_Fixed', 'triangles': 2868, 'draws': 3}, {'node': 'LOD0_PADDLE_STARBOARD', 'triangles': 188, 'draws': 1}, {'node': 'LOD0_PADDLE_PORT', 'triangles': 188, 'draws': 1}], 'triangles': 3712, 'draws': 6}, {'lod': 1, 'groups': [{'node': 'LOD1_Fixed', 'triangles': 1788, 'draws': 3}, {'node': 'LOD1_PADDLE_PORT', 'triangles': 116, 'draws': 1}, {'node': 'LOD1_ABDOMEN', 'triangles': 288, 'draws': 1}, {'node': 'LOD1_PADDLE_STARBOARD', 'triangles': 116, 'draws': 1}], 'triangles': 2308, 'draws': 6}, {'lod': 2, 'groups': [{'node': 'LOD2_Fixed', 'triangles': 1124, 'draws': 3}, {'node': 'LOD2_ABDOMEN', 'triangles': 168, 'draws': 1}, {'node': 'LOD2_PADDLE_STARBOARD', 'triangles': 68, 'draws': 1}, {'node': 'LOD2_PADDLE_PORT', 'triangles': 68, 'draws': 1}], 'triangles': 1428, 'draws': 6}]
+Blender 4.3.2
+
+Blender quit

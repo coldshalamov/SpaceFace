@@ -1,0 +1,1521 @@
+{
+  "schemaVersion": 1,
+  "campaignId": "open_reach",
+  "sourceBase": "42d57a248209c9f5a7354e65817c0f7b8f5dbcec",
+  "status": "authored_plan",
+  "notice": "Authoring specifications only. These records do not register geography, spawn actors, add models or implement missions. Native owners and acceptance evidence are named for local implementation.",
+  "districts": [
+    {
+      "id": "district_helios_lantern_ward",
+      "name": "Lantern Ward",
+      "sectorId": "sector_helios_prime",
+      "zoneIds": [
+        "zone_helios_core",
+        "zone_helios_memorial",
+        "zone_helios_freight"
+      ],
+      "status": "planned",
+      "premise": "A working harbor neighborhood tends the lamps of a convoy that never came home; its residents also need breakfast, coolant and a way through the afternoon traffic.",
+      "geometry": "A crescent of inhabited hulls around the existing Memorial Array, one public promenade route, an outside freight bypass and a narrow service cut. Keep the training claim and its departure corridor clear. The empty cradle is readable from all three routes.",
+      "arrival": "A lamp-lighter pulls alongside a dark berth while a passenger shuttle yields to a slow memorial tow. A repair arm works on a damaged shutter. The player sees who is waiting for whom before any job is offered.",
+      "landmark": {
+        "name": "The Empty Plinth",
+        "existingRef": "poi_memorial",
+        "change": "Retain the canonical memorial; build an inhabited crescent and a tow cradle around it. The missing lamp belongs to a living family, not a new unexploded-bomb story. The serviced family lamp and cradle are an adjoining new object; the Candle Fleet's canonical dark twenty-fifth memorial plinth remains dark and keeps its identity."
+      },
+      "population": {
+        "normalActive": 12,
+        "alertActive": 18,
+        "reserve": 4,
+        "sharedCap": 40,
+        "admission": "Planning envelopes, not raised runtime defaults. The current default shared budget is 24; any denser admission must coordinate existing owners and demonstrate cost. Reserve is finite logical inventory, not additional simultaneous bodies."
+      },
+      "resources": [
+        {
+          "id": "res_helios_lamp_charge",
+          "owner": "economy",
+          "path": "src/systems/economy.js",
+          "description": "Finite lamp service cells supplied by an ordinary freight delivery; no cosmetic source creates stock."
+        },
+        {
+          "id": "res_helios_work_parts",
+          "owner": "cargo",
+          "path": "src/systems/cargo.js",
+          "description": "Physical repair parts reserved once for an attended repair."
+        },
+        {
+          "id": "res_helios_berth_service",
+          "owner": "worldRecords",
+          "path": "src/world/worldRecords.js",
+          "description": "Durable service state of the affected lamp/berth, not a second commodity."
+        }
+      ],
+      "routines": [
+        {
+          "id": "routine_helios_lamplighter",
+          "role": "Lamplighter tender",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_helios_lamp_charge"
+          ],
+          "outputResourceIds": [
+            "res_helios_berth_service"
+          ],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Collect one cell at the freight platform.",
+            "Travel the public service loop with visible cargo.",
+            "Clamp at the adjoining family lamp, never the canonical dark twenty-fifth plinth; articulated service and a visible crew worker follow the actual native work phase.",
+            "Consume the cell only on confirmed service, light that lamp, return."
+          ],
+          "interruption": "Threat pauses service and causes retreat with the same cell. A destroyed lamp cannot be lit by a timer.",
+          "recovery": "Recover the same cell or obtain a new paid delivery; damaged mount needs repair."
+        },
+        {
+          "id": "routine_helios_shuttle",
+          "role": "Shift shuttle",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Open the passenger gate at its actual berth.",
+            "Wait while the slow tow crosses.",
+            "Depart along the promenade to the other dock.",
+            "Return on the next calendar shift, with stop lights and dwell."
+          ],
+          "interruption": "An obstructed lane yields or takes the signed bypass; passengers never unload into empty space.",
+          "recovery": "Physical obstruction removal reopens the normal route."
+        },
+        {
+          "id": "routine_helios_repair",
+          "role": "Yard repair crew",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_helios_work_parts"
+          ],
+          "outputResourceIds": [
+            "res_helios_berth_service"
+          ],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Fetch a part.",
+            "Brace beside the real damaged shutter.",
+            "Work while attached; show arm contact and sparks only during service.",
+            "Leave a visibly restored shutter and a service receipt."
+          ],
+          "interruption": "Unlatching interrupts progress. Damage creates salvage once; no repair-from-distance.",
+          "recovery": "Retain damage and consumed-stock history across departure and Continue."
+        }
+      ],
+      "opportunities": [
+        {
+          "id": "lw_helios_empty_plinth",
+          "title": "The Empty Plinth",
+          "approaches": [
+            "Escort the family tow to the empty cradle during ordinary traffic.",
+            "Borrow the tow cradle and move the disabled lamp yourself.",
+            "Clear the service cut so the crew can finish without you."
+          ],
+          "commitReceipt": "The exact lamp is secured at the matching cradle with its native service state restored; one local remembrance unlocks.",
+          "failure": "A broken lamp becomes a repair/recovery task. Missing the procession does not erase the family or restart time.",
+          "revisit": "The light is on, the family tow has a new berth and a shuttle now uses the reopened route."
+        },
+        {
+          "id": "lw_helios_shift_change",
+          "title": "Five Minutes Late",
+          "approaches": [
+            "Move the fallen traffic mast.",
+            "Escort the shuttle through the freight bypass.",
+            "Leave it alone and watch the tug resolve the obstruction later."
+          ],
+          "commitReceipt": "Actual shuttle arrival releases its existing schedule; no money for merely entering the area.",
+          "failure": "Causing a collision earns a witnessed liability and visible repair demand.",
+          "revisit": "Shuttle driver recognizes help or nuisance; the mast remains damaged until repaired."
+        },
+        {
+          "id": "lw_helios_borrowed_cradle",
+          "title": "Borrowed, According to You",
+          "approaches": [
+            "Ask the yard keeper for the portable tow cradle after helping.",
+            "Take the unclamped cradle during shift change and accept local theft consequences.",
+            "Buy the released surplus cradle when its work is complete."
+          ],
+          "commitReceipt": "Ownership/custody changes through the native object and crime owners; no cloned inventory reward.",
+          "failure": "A failed theft becomes retrieval or restitution rather than a reload.",
+          "revisit": "Your stored cradle remains the same object; its original berth is empty or supplied with a visibly delivered replacement."
+        }
+      ],
+      "assets": [
+        {
+          "id": "place_habitat_pod",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Rearrange into a crescent with readable doors and clear flight gaps."
+        },
+        {
+          "id": "place_shuttle_dock",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Use real arrival/service sockets."
+        },
+        {
+          "id": "place_lw_lantern_cradle",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Open two-prong cradle with lamp retention socket, powered/empty/damaged states; see asset bible."
+        }
+      ],
+      "sourcePaths": [
+        "src/data/sectorZones.js",
+        "src/data/sectorAnchors.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/data/worldCalendar.js",
+        "src/systems/faction_choir.js",
+        "src/world/worldRecords.js"
+      ],
+      "acceptance": [
+        {
+          "id": "accept_helios_idle",
+          "action": "Watch a whole lamp-service and shuttle cycle without accepting a mission.",
+          "expected": "A real source, journey, wait and service result are visible. The serviced object is the family lamp; the original dark twenty-fifth memorial plinth remains dark.",
+          "negative": "Do not count a looping orbit or lamp timer."
+        },
+        {
+          "id": "accept_helios_return",
+          "action": "Break one lamp, leave, save/Continue and return; then repair it.",
+          "expected": "Damage persists, same service outcome changes only after real work.",
+          "negative": "Repeated load or repair event cannot duplicate parts or payouts."
+        }
+      ]
+    },
+    {
+      "id": "district_dione_niner_bastion",
+      "name": "Niner Bastion",
+      "sectorId": "sector_dione_lane",
+      "zoneIds": [
+        "zone_dione_customs",
+        "zone_dione_relay",
+        "zone_dione_exchange"
+      ],
+      "status": "planned",
+      "premise": "Gate 3 is a public crossing wrapped in an old fortress. The customs staff keep trade moving; the garrison keeps a more powerful machine behind the fence.",
+      "geometry": "Three nested bands: signed public approach, inspection aprons, restricted hangar court. Two maintenance side cuts and a convoy-sized front mouth. Cranes and shield pylons make cover; a rail of hulls makes the standing army legible before it attacks.",
+      "arrival": "Two pickets exchange watch, a mechanic opens COUNTERSIGN's clamp arms, an inspected convoy leaves, and a recruit practices stopping a ballast target. The restricted court is unmistakable but visibly penetrable.",
+      "landmark": {
+        "name": "Gate 3 and its sleeping Auditor",
+        "existingRef": "zone_dione_customs",
+        "change": "Retain Gate 3/weir owners and Lane Customs anchors. Niner is the surrounding yard. The existing Lane Relay POI remains a separate service object, not Gate 3 renamed. Do not turn the public trade lane into compulsory combat."
+      },
+      "population": {
+        "normalActive": 20,
+        "alertActive": 32,
+        "reserve": 12,
+        "sharedCap": 40,
+        "admission": "Planning envelopes, not raised runtime defaults. The current default shared budget is 24; any denser admission must coordinate existing owners and demonstrate cost. Reserve is finite logical inventory, not additional simultaneous bodies."
+      },
+      "resources": [
+        {
+          "id": "res_dione_spares",
+          "owner": "economy",
+          "path": "src/systems/economy.js",
+          "description": "Finite repair/fuel inventory for grounded and returning garrison hulls."
+        },
+        {
+          "id": "res_dione_ready_hulls",
+          "owner": "factionPresence",
+          "path": "src/systems/factionPresence.js",
+          "description": "Persistent roster identities: ready, on-duty, disabled, captured, lost or replenishing."
+        },
+        {
+          "id": "res_dione_signal",
+          "owner": "gateThreeWeir",
+          "path": "src/systems/gateThreeWeir.js",
+          "description": "Local sensor/relay service state; this does not directly own global WANTED heat."
+        }
+      ],
+      "routines": [
+        {
+          "id": "routine_dione_watch",
+          "role": "Picket and relief pair",
+          "owner": "factionPresence",
+          "path": "src/systems/factionPresence.js",
+          "inputResourceIds": [
+            "res_dione_ready_hulls"
+          ],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Relief pair leaves a named berth.",
+            "Old watch transfers inspection duty at the marked gate.",
+            "Returning pair enters the repair lane.",
+            "Mechanic services the same hulls before they rejoin reserve."
+          ],
+          "interruption": "A witnessed intrusion commits only the available responders; civilians clear the firing lane.",
+          "recovery": "Damaged units limp back; lost units stay lost until a finite supply-backed replacement arrives."
+        },
+        {
+          "id": "routine_dione_service",
+          "role": "Clamp-tender crew",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_dione_spares"
+          ],
+          "outputResourceIds": [
+            "res_dione_ready_hulls"
+          ],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Service crane opens.",
+            "Crew transfers a physical spare/fuel pod.",
+            "COUNTERSIGN cycles a cargo clamp on a marked ballast target.",
+            "Tender rests at the same berth."
+          ],
+          "interruption": "Stolen fuel or severed power delays readiness; service animation must stop when its owner cannot work.",
+          "recovery": "Restore supply or recover the hull; no timer manufactures a second COUNTERSIGN."
+        },
+        {
+          "id": "routine_dione_convoy",
+          "role": "Customs convoy",
+          "owner": "gateThreeWeir",
+          "path": "src/systems/gateThreeWeir.js",
+          "inputResourceIds": [],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Queue before the visible scan beam.",
+            "Hale/Dree challenge a target with a local reason.",
+            "Approved hulls cross the actual opening.",
+            "A stopped hull is escorted to inspection, leaving space for the next."
+          ],
+          "interruption": "Warnings name who is challenged and why; a warning is not already an attack.",
+          "recovery": "Leaving the restricted band or complying clears the local challenge; global legal consequences stay with law."
+        }
+      ],
+      "opportunities": [
+        {
+          "id": "lw_dione_borrowed_authority",
+          "title": "Borrowed Authority",
+          "approaches": [
+            "Enter as a legitimate maintenance contractor and board the unoccupied tender.",
+            "Break the relay, slip through the service cut and disable the berth clamp.",
+            "Go loud: dismantle the screening formation and escape through the freight mouth."
+          ],
+          "commitReceipt": "BLACK FLAG transfers control of the same disabled/unoccupied COUNTERSIGN generation; old player hull and cargo retain custody.",
+          "failure": "A jammed transfer keeps the old player hull controllable; losing the tender leaves a recoverable wreck or impound, not a fabricated success.",
+          "revisit": "The original hangar is empty, the garrison logs a specific loss and your tender retains its serial and damage."
+        },
+        {
+          "id": "lw_dione_target_practice",
+          "title": "Target Practice, Revised",
+          "approaches": [
+            "Pull the training ballast into a different lane to distract the watch.",
+            "Win a sanctioned live-physics drill and earn access.",
+            "Use the ballast as cover during a heist."
+          ],
+          "commitReceipt": "Real target motion affects the actual watch/drill result; no score for pressing an interaction button.",
+          "failure": "Injured friendlies produce proportional witnessed consequences; no faction-wide omniscience.",
+          "revisit": "Bent targets, a postponed drill or a grudging invitation remain."
+        },
+        {
+          "id": "lw_dione_last_bus",
+          "title": "The Last Bus Through",
+          "approaches": [
+            "Escort a civilian shuttle during an alarm.",
+            "Restore the public relay after sabotaging it.",
+            "Negotiate a short corridor using physical evidence of the shuttle's cargo."
+          ],
+          "commitReceipt": "The identified shuttle clears the gate with its manifest; local outcome is independent of heist completion.",
+          "failure": "Missed departure moves passengers to a real refuge with another route; never locks the campaign graph.",
+          "revisit": "A refugee berth fills or empties and the driver remembers what actually happened."
+        }
+      ],
+      "assets": [
+        {
+          "id": "place_inspection_platform",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Build the public apron and clear stopping marks."
+        },
+        {
+          "id": "place_interdiction_buoy",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Readable connected sensor line; no unexplained invisible boundary."
+        },
+        {
+          "id": "ship_lw_countersign",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Warden/repair-tender derivative with two cargo clamp arms, one short-lived screening field and an exposed service socket; not a generic damage upgrade."
+        },
+        {
+          "id": "place_lw_niner_hangar",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Open-front armored hangar court, roof panels split for camera visibility, two side cuts and visible reserve berths."
+        }
+      ],
+      "sourcePaths": [
+        "src/data/factionPresence.js",
+        "src/systems/factionPresence.js",
+        "src/data/gateThree.js",
+        "src/systems/gateThreeWeir.js",
+        "src/systems/shipjack.js",
+        "src/systems/shipControlTransfer.js",
+        "src/ai/engagementAuthority.js"
+      ],
+      "acceptance": [
+        {
+          "id": "accept_dione_finite",
+          "action": "Provoke two successive alarms, disable and capture defenders, leave and return.",
+          "expected": "Roster conservation, finite reinforcements and visible replacement work.",
+          "negative": "No spawn behind the camera or reset refill."
+        },
+        {
+          "id": "accept_dione_control",
+          "action": "Attempt transfer while destroyed, paused, replaced, out of range and while another transfer is pending.",
+          "expected": "Invalid attempts deny safely; valid transfer keeps exact hull identity and possessions.",
+          "negative": "No duplicated hull, cargo or dead-player control."
+        }
+      ]
+    },
+    {
+      "id": "district_tethys_switchyard",
+      "name": "The Switchyard",
+      "sectorId": "sector_tethys_junction",
+      "zoneIds": [
+        "zone_tethys_hub",
+        "zone_tethys_lane",
+        "zone_tethys_checkpoint",
+        "zone_tethys_blackmkt",
+        "zone_tethys_split_station"
+      ],
+      "status": "planned",
+      "premise": "Meridian built a freight interchange; the people who could not afford to leave built a town in its disused sidings. The oldest routing machine still delivers to a neighborhood that has moved.",
+      "geometry": "A large freight spine with three side courts: exchange, domestic berths and unofficial transshipment. The Split Station remains two real physical halves. Public traffic loops around a narrow shunter crossing; service alleys connect courts without crossing every convoy.",
+      "arrival": "A shunter draws six coupled pods across the player's path; a lunch skiff slips under the stopped convoy's coupler, a school shuttle waits, and a repair drone paints a new address over an older one.",
+      "landmark": {
+        "name": "The Wrong Address",
+        "existingRef": "zone_tethys_split_station",
+        "change": "Use the existing split-station anomaly and its actors; add a domestic receiver that has physically moved. Do not clone the canonical station halves."
+      },
+      "population": {
+        "normalActive": 22,
+        "alertActive": 30,
+        "reserve": 8,
+        "sharedCap": 40,
+        "admission": "Planning envelopes, not raised runtime defaults. The current default shared budget is 24; any denser admission must coordinate existing owners and demonstrate cost. Reserve is finite logical inventory, not additional simultaneous bodies."
+      },
+      "resources": [
+        {
+          "id": "res_tethys_freight",
+          "owner": "physicalCargo",
+          "path": "src/systems/traffic.js",
+          "description": "Native shipment lots with source, destination and custody."
+        },
+        {
+          "id": "res_tethys_household",
+          "owner": "economy",
+          "path": "src/systems/economy.js",
+          "description": "Delivered household stock; receives only the appropriate finite lot."
+        },
+        {
+          "id": "res_tethys_route",
+          "owner": "worldRecords",
+          "path": "src/world/worldRecords.js",
+          "description": "Persistent switch and address destination, distinct from discovered-map position."
+        }
+      ],
+      "routines": [
+        {
+          "id": "routine_tethys_shunter",
+          "role": "Freight shunter",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_tethys_freight"
+          ],
+          "outputResourceIds": [
+            "res_tethys_route"
+          ],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Collect a finite train from the intake.",
+            "Signal and wait for the passenger crossing.",
+            "Pull it through the spine.",
+            "Detach the exact destination pod at the receiver; return with empties."
+          ],
+          "interruption": "Broken couplers leave actual pods; traffic routes around obstruction.",
+          "recovery": "An NPC or player can tow the same lot to a lawful receiver."
+        },
+        {
+          "id": "routine_tethys_households",
+          "role": "Lunch skiff and passenger shuttle",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_tethys_household"
+          ],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Service lit domestic berths.",
+            "Dock at the canteen/clinic.",
+            "Wait during freight priority.",
+            "Return to a real endpoint on shift change."
+          ],
+          "interruption": "A closed service receiver postpones the run visibly; it does not secretly refill.",
+          "recovery": "Goods restoration resumes the next service occurrence."
+        },
+        {
+          "id": "routine_tethys_wrong_sort",
+          "role": "Fulfillment sorter",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_tethys_freight"
+          ],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Read the old address on the physical shipment.",
+            "Carry it toward the vacated siding.",
+            "Wait at an absent receiver and request a correction.",
+            "Use the corrected receiver only after native destination change."
+          ],
+          "interruption": "Player seizure becomes custody; fake proximity at the new berth cannot transfer the load.",
+          "recovery": "Correct the address physically or redirect the same pod by towing; keep compensation with its owner."
+        }
+      ],
+      "opportunities": [
+        {
+          "id": "lw_tethys_wrong_address",
+          "title": "The Wrong Address",
+          "approaches": [
+            "Tow the lost refrigerator pod to the inhabited half.",
+            "Move the receiver mast and register the legitimate destination.",
+            "Persuade the clerk with a recovered shipping plate, then accompany the corrected run."
+          ],
+          "commitReceipt": "The exact finite lot reaches the correct working receiver; a canonical destination receipt changes future deliveries.",
+          "failure": "Damaged cargo supplies fewer units; blocked route leaves an address dispute and physical recovery job.",
+          "revisit": "Clinic lights and household deliveries change; the sorter stops returning to empty space."
+        },
+        {
+          "id": "lw_tethys_free_lunch",
+          "title": "No Such Thing",
+          "approaches": [
+            "Fund one real canteen shipment.",
+            "Escort a delayed produce load.",
+            "Steal it and sell through the Quiet Cache, accepting a visible shortage."
+          ],
+          "commitReceipt": "Only actual delivered quantity changes canteen stock and native payment.",
+          "failure": "Lost goods become salvage or shortage; no arbitrary global famine from one lunch crate.",
+          "revisit": "The canteen opens a hatch, changes its queue or posts a specific shortage."
+        },
+        {
+          "id": "lw_tethys_switching_fee",
+          "title": "The Switching Fee",
+          "approaches": [
+            "Rent the impulse shunter.",
+            "Earn its use by clearing a derailment.",
+            "Hijack it and improvise a moving barricade."
+          ],
+          "commitReceipt": "Control/tool access comes through native vehicle/service authority with actual mass and coupling limits.",
+          "failure": "Overweight consists do not move by script; an escape route remains.",
+          "revisit": "Bent couplers and abandoned pods persist until a crew resolves them."
+        }
+      ],
+      "assets": [
+        {
+          "id": "place_passenger_platform",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Domestic courts with visible sheltered queues and shutter states."
+        },
+        {
+          "id": "place_transfer_arm",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Physical goods handoff with contact/empty/loaded articulation."
+        },
+        {
+          "id": "place_lw_switchyard_truss",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Branching rail/truss kit whose geometry shows freight priority and pedestrian habitation; named junction sockets."
+        },
+        {
+          "id": "ship_lw_impulse_shunter",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Low wide tow body; two visible couplers; forward impulse shoe, no decorative train teleportation."
+        }
+      ],
+      "sourcePaths": [
+        "src/data/sectorCausalChains.js",
+        "src/systems/trafficCausalChainOps.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/data/stationLife.js",
+        "src/systems/faction_fulfillment.js",
+        "src/world/worldRecords.js"
+      ],
+      "acceptance": [
+        {
+          "id": "accept_tethys_custody",
+          "action": "Steal, spill, recover and deliver the same marked lot.",
+          "expected": "Conserved quantity, one owner and one payout.",
+          "negative": "A bare delivery event or replacement entity never grants stock."
+        },
+        {
+          "id": "accept_tethys_city",
+          "action": "Fly in by two different entrances without the map open.",
+          "expected": "The freight spine and three distinct courts give a navigable mental map.",
+          "negative": "More random station kit scatter does not satisfy composition."
+        }
+      ]
+    },
+    {
+      "id": "district_ceres_cathedral",
+      "name": "The Cathedral",
+      "sectorId": "sector_ceres_belt",
+      "zoneIds": [
+        "zone_ceres_belt",
+        "zone_ceres_refinery",
+        "zone_ceres_throughline"
+      ],
+      "status": "planned",
+      "premise": "Sixty years of extraction turned an ore body into a neighborhood of vaults. Its people know the rock by the notes its supports make under load.",
+      "geometry": "A very large connected hollow rock adjacent to the saved Wreck Cathedral site: three shipping mouths, six narrow service mouths, two chambers connected by an extraction nave and a shorter dangerous side passage. Retain the existing Wreck Cathedral geometry and ID as a nearby grave, not the rock shell.",
+      "arrival": "The rock occludes the sky. An ore tug emerges from a lit mouth with a line taut behind it; a cutter stops while a crew shuttle crosses the nave. A suspended quarry bell shivers when the load train passes.",
+      "landmark": {
+        "name": "Nine-Mouth Cut",
+        "existingRef": "world_site_wreck_cathedral",
+        "change": "New neighboring mined rock; preserve the existing Wreck Cathedral object and saved workfleet. The district title describes both work and mourning, not an identity swap."
+      },
+      "population": {
+        "normalActive": 16,
+        "alertActive": 24,
+        "reserve": 6,
+        "sharedCap": 40,
+        "admission": "Planning envelopes, not raised runtime defaults. The current default shared budget is 24; any denser admission must coordinate existing owners and demonstrate cost. Reserve is finite logical inventory, not additional simultaneous bodies."
+      },
+      "resources": [
+        {
+          "id": "res_ceres_ore",
+          "owner": "mining",
+          "path": "src/systems/mining.js",
+          "description": "Finite native ore source and extraction product."
+        },
+        {
+          "id": "res_ceres_brace",
+          "owner": "worldRecords",
+          "path": "src/world/worldRecords.js",
+          "description": "Load-bearing service state and exact installed brace identity."
+        },
+        {
+          "id": "res_ceres_transit",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "description": "Reserved passage capacity, not a reward counter."
+        }
+      ],
+      "routines": [
+        {
+          "id": "routine_ceres_cut",
+          "role": "Cutter and ore tug",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_ceres_ore"
+          ],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Brace at an actual seam.",
+            "Cut native ore into a real load.",
+            "Transfer to a tug only in range.",
+            "Move through a cleared mouth to the existing refinery."
+          ],
+          "interruption": "Danger shuts the cutter down and leaves its load; supply cannot appear in the receiver.",
+          "recovery": "Recover or recut from remaining source; respect depleted field records."
+        },
+        {
+          "id": "routine_ceres_bell",
+          "role": "Support inspector",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [],
+          "outputResourceIds": [
+            "res_ceres_brace"
+          ],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Visit each physical brace.",
+            "Strike the quarry bell/structure to test it.",
+            "Mark a damaged member.",
+            "Return with a replacement and install while attached."
+          ],
+          "interruption": "A collapse changes navigable geometry; no camera mode lets a ship fly through the blocked route.",
+          "recovery": "Alternate public mouth stays usable; physical shoring opens the shorter route."
+        },
+        {
+          "id": "routine_ceres_transit",
+          "role": "Crew shuttle",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_ceres_transit"
+          ],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Wait at a lit entrance.",
+            "Request the single-lane passage.",
+            "Cross the actual nave in view.",
+            "Release the reservation at the exit."
+          ],
+          "interruption": "Player mass or debris obstruction makes it stop early rather than interpenetrate.",
+          "recovery": "Reverse to a passing bay; a route timeout returns the same passengers home."
+        }
+      ],
+      "opportunities": [
+        {
+          "id": "lw_ceres_ninth_mouth",
+          "title": "The Ninth Mouth",
+          "approaches": [
+            "Tow a replacement brace into place before moving the jammed load.",
+            "Use the long safe shipping mouth to evacuate the crew.",
+            "Exploit a timed cutting pause to take the narrow service route with a light hull."
+          ],
+          "commitReceipt": "Exact brace installation and/or identified evacuee arrival change the opening state; extraction profit is separate.",
+          "failure": "A jam or collapse strands recoverable cargo and reroutes work; no softlock or forced civilian death.",
+          "revisit": "The supported mouth reopens, or permanent rubble changes the route while repair crews keep working."
+        },
+        {
+          "id": "lw_ceres_bell_load",
+          "title": "What the Rock Can Carry",
+          "approaches": [
+            "Sound the resonator to locate a stressed member.",
+            "Unload the overweight tug.",
+            "Bring in a heavier anchor and share the load with a physical rig."
+          ],
+          "commitReceipt": "Native load/contact evidence controls the intervention; no dialogue choice solves a mechanical failure.",
+          "failure": "A wrong pull breaks a replaceable member and moves the evacuation window.",
+          "revisit": "A named brace carries your patch and the inspector's route changes."
+        },
+        {
+          "id": "lw_ceres_winching",
+          "title": "The Portable Mountain",
+          "approaches": [
+            "Borrow the quarry winch after a service run.",
+            "Buy a retired head.",
+            "Recover a dropped winch from an unsafe side chamber."
+          ],
+          "commitReceipt": "The same usable winch head enters custody or installs on a valid mount.",
+          "failure": "A lost head can be recovered; it is not awarded again on revisiting.",
+          "revisit": "The borrowed machine's absence changes a crew's available lift until returned."
+        }
+      ],
+      "assets": [
+        {
+          "id": "place_conveyor_truss",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Use for extraction nave with meaningful load sockets."
+        },
+        {
+          "id": "place_lw_nine_mouth_shell",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Chunked traversable rock shell with explicit holes and swept collider clearance; distant body plus real local panels."
+        },
+        {
+          "id": "place_lw_quarry_bell",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Pendulous resonator with clear swing constraints, strike face and strain response."
+        }
+      ],
+      "sourcePaths": [
+        "src/data/sectorActivityPockets.js",
+        "src/systems/theBolus.js",
+        "src/render/camera.js",
+        "src/render/racingCameraBlend.js",
+        "src/data/sectorCoordinates.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/core/physicsAuthority.js"
+      ],
+      "acceptance": [
+        {
+          "id": "accept_ceres_tunnel",
+          "action": "Enter, reverse, tow a wider load, save mid-tunnel and Continue.",
+          "expected": "Stable reference frame, visible exit, unchanged physical collision and restored load.",
+          "negative": "Camera cannot pass through roofs or make blocked openings traversable."
+        },
+        {
+          "id": "accept_ceres_nonzero",
+          "action": "Run the route in nonzero-origin Ceres and after an origin rebase.",
+          "expected": "Objects, HUD route and colliders coincide.",
+          "negative": "No Helios-only coordinate proof accepted."
+        }
+      ]
+    },
+    {
+      "id": "district_pallas_widows_run",
+      "name": "Widow's Run",
+      "sectorId": "sector_pallas_drift",
+      "zoneIds": [
+        "zone_pallas_drift",
+        "zone_pallas_ambush",
+        "zone_pallas_empty_habitat",
+        "zone_pallas_empty_foundry"
+      ],
+      "status": "planned",
+      "premise": "A wreck gauntlet conceals Quiet Berths, a town whose households live in ships declared destroyed. Some residents smuggle medicine; some smuggle people who would rather not be cargo.",
+      "geometry": "Three connected wreck throats: a broad licensed lane, a tug-width hull corridor and a short dark coupler alley. The quiet court lies beyond the second bend. A massive freighter prow and an upside-down garden window orient the player. Choke points contain passing bays and retreat space.",
+      "arrival": "Two tugs maneuver a dead hull in a funeral procession while another crew strips its outer plates. Children's lit windows remain visible inside the procession hull. A sentry waves familiar traffic through without treating every smuggler as hostile.",
+      "landmark": {
+        "name": "The Never-Landed Ferry",
+        "existingRef": "poi_pwreck",
+        "change": "Compose around the saved wreck/Quiet nodes; a inhabited ferry shell is proposed adjacent scenery with real service berths and legal custody distinctions."
+      },
+      "population": {
+        "normalActive": 16,
+        "alertActive": 26,
+        "reserve": 8,
+        "sharedCap": 40,
+        "admission": "Planning envelopes, not raised runtime defaults. The current default shared budget is 24; any denser admission must coordinate existing owners and demonstrate cost. Reserve is finite logical inventory, not additional simultaneous bodies."
+      },
+      "resources": [
+        {
+          "id": "res_pallas_scrap",
+          "owner": "salvage",
+          "path": "src/systems/traffic.js",
+          "description": "Finite salvage lots held by real crews."
+        },
+        {
+          "id": "res_pallas_medicine",
+          "owner": "cargo",
+          "path": "src/systems/cargo.js",
+          "description": "Known shipment whose receiver is the clinic, not a generic credit sink."
+        },
+        {
+          "id": "res_pallas_channel",
+          "owner": "worldRecords",
+          "path": "src/world/worldRecords.js",
+          "description": "Route obstruction, opened coupler and local trust states."
+        }
+      ],
+      "routines": [
+        {
+          "id": "routine_pallas_funeral",
+          "role": "Funeral tugs",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [],
+          "outputResourceIds": [
+            "res_pallas_channel"
+          ],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Latch the same inhabited ferry hull.",
+            "Wait for the cutter to stop in the shared throat.",
+            "Tow to the memorial berth.",
+            "Unlatch and release the public lane."
+          ],
+          "interruption": "Attack scatters attendants into named shelters; the hull remains a real obstacle and rescue target.",
+          "recovery": "Return the lost hull or clear a different berth; remember casualties without erasing the town."
+        },
+        {
+          "id": "routine_pallas_cutters",
+          "role": "Salvage crew",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_pallas_scrap"
+          ],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Assess the existing wreck.",
+            "Cut a chosen recoverable piece.",
+            "Pass it to the yard tug.",
+            "Deliver to the foundry intake."
+          ],
+          "interruption": "Cutting a structural coupler changes the route; real collateral implicates the actual attacker.",
+          "recovery": "A crew can repair the service lane using finite purchased materials."
+        },
+        {
+          "id": "routine_pallas_runner",
+          "role": "Quiet medical runner",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_pallas_medicine"
+          ],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Hide a marked pod in a hull alcove.",
+            "Observe an actual patrol crossing.",
+            "Move the same pod through the quiet lane.",
+            "Deliver at the clinic receiver."
+          ],
+          "interruption": "A patrol with no witness cannot magically know the hiding place.",
+          "recovery": "The runner waits, reroutes or asks for physical escort; no new duplicate pod."
+        }
+      ],
+      "opportunities": [
+        {
+          "id": "lw_pallas_funeral_freight",
+          "title": "Funeral Freight",
+          "approaches": [
+            "Help tow the ferry and protect its occupants.",
+            "Use the funeral as cover for a medical shipment.",
+            "Steal a valuable unoccupied engine while the crews are occupied."
+          ],
+          "commitReceipt": "Actual delivery/custody and occupied-hull safety outcomes independently settle.",
+          "failure": "A theft can become a rescue; rescue does not erase the theft, and one mistake does not permanently close all Quiet trade.",
+          "revisit": "A berth is inhabited, a clinic is stocked, or a family mourns at a specific damaged hull."
+        },
+        {
+          "id": "lw_pallas_short_cut",
+          "title": "A Short Cut Through Someone's Kitchen",
+          "approaches": [
+            "Ask permission to use the family service gap.",
+            "Clear the blocked public route instead.",
+            "Blast through an occupied side passage and face the local repair claim."
+          ],
+          "commitReceipt": "Native passage opening changes the route and the affected home state.",
+          "failure": "Do not silently kill unseen families; occupied hazard must be visibly and audibly signaled before commitment.",
+          "revisit": "Windows, shutters, resident routes and toll/access change according to the action."
+        },
+        {
+          "id": "lw_pallas_salvage_ram",
+          "title": "Widowmaker, Secondhand",
+          "approaches": [
+            "Recover a coupler ram from a stalled tug.",
+            "Buy a salvage lease and work it loose.",
+            "Hijack the tug then return or keep the rig."
+          ],
+          "commitReceipt": "Same-body rig custody; mass and clearance govern escape.",
+          "failure": "An oversized rig becomes stuck visibly and can be detached or recovered.",
+          "revisit": "Its seller, owner or bereaved crew recognizes the actual object later."
+        }
+      ],
+      "assets": [
+        {
+          "id": "place_improvised_dock",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Irregular domestic berths in salvaged hull cavities."
+        },
+        {
+          "id": "place_illicit_transfer_frame",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Hidden-but-readable transshipment receiver."
+        },
+        {
+          "id": "place_lw_ferry_habitat",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Unmistakable ferry prow, warm patched interior courts, detachable exterior scrap and protected inhabited core."
+        },
+        {
+          "id": "place_lw_wreck_throat",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Three distinct broken hull portals, passing alcoves and explicit load-width thresholds."
+        }
+      ],
+      "sourcePaths": [
+        "src/data/wreckAftermathDressing.js",
+        "src/data/factionConduct.js",
+        "src/data/sectorActivityPockets.js",
+        "src/systems/shipjack.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/world/worldRecords.js"
+      ],
+      "acceptance": [
+        {
+          "id": "accept_pallas_routes",
+          "action": "Reach the clinic via fast, safe and concealed routes in two ship sizes.",
+          "expected": "Topology changes decisions and appropriate route access.",
+          "negative": "Routes cannot differ only by cosmetic color."
+        },
+        {
+          "id": "accept_pallas_society",
+          "action": "Enter unarmed; help one crew, steal from another, leave and return.",
+          "expected": "Separate local memories and civil routines; no faction-wide instant war.",
+          "negative": "A neutral smuggler must not become an enemy solely because its faction is Quiet."
+        }
+      ]
+    },
+    {
+      "id": "district_charon_memorial_gardens",
+      "name": "Memorial Gardens",
+      "sectorId": "sector_charon_expanse",
+      "zoneIds": [
+        "zone_charon_colony",
+        "zone_charon_cinder_nursery",
+        "zone_charon_hull_garden",
+        "zone_charon_broken_shepherd"
+      ],
+      "status": "planned",
+      "premise": "Gardeners turn wrecks into shelter and food at the edge of the Bloom. A filament can hold a greenhouse together or connect it to a predator; the same material does both.",
+      "geometry": "Three inhabited wreck hulls bridge across an open garden court. Safe pruned routes, a porous tissue tunnel and a bright hot machinery lane form different approaches. The growth surface fills the lower frame while native hull silhouettes still tell where the colony begins.",
+      "arrival": "A gardener cuts a mature filament and carries it to a greenhouse brace; a shepherd pulses and a line of harmless scavengers changes direction. Further out, a similar pulse draws predators toward hot machinery.",
+      "landmark": {
+        "name": "Greenwake",
+        "existingRef": "zone_charon_hull_garden",
+        "change": "Develop the existing Three Hull Garden and Understory owners; do not register a parallel infestation ledger or consume the same wreck twice."
+      },
+      "population": {
+        "normalActive": 16,
+        "alertActive": 26,
+        "reserve": 8,
+        "sharedCap": 40,
+        "admission": "Planning envelopes, not raised runtime defaults. The current default shared budget is 24; any denser admission must coordinate existing owners and demonstrate cost. Reserve is finite logical inventory, not additional simultaneous bodies."
+      },
+      "resources": [
+        {
+          "id": "res_charon_wreck_mass",
+          "owner": "aftermathWrecks",
+          "path": "src/systems/aftermathWrecks.js",
+          "description": "Canonical finite wreck mass, shared with salvage and nursery owners."
+        },
+        {
+          "id": "res_charon_garden",
+          "owner": "understoryGardens",
+          "path": "src/systems/faction_understory.js",
+          "description": "Existing persistent garden growth and service state."
+        },
+        {
+          "id": "res_charon_shepherd",
+          "owner": "alienEcology",
+          "path": "src/systems/alienEcology.js",
+          "description": "Exact living shepherd/node identity and bounded pulse state."
+        }
+      ],
+      "routines": [
+        {
+          "id": "routine_charon_feed",
+          "role": "Gardener tug",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_charon_wreck_mass"
+          ],
+          "outputResourceIds": [
+            "res_charon_garden"
+          ],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Inspect the real wreck for occupants.",
+            "Tow accepted scrap to the living receiver.",
+            "Feed only material held in valid custody.",
+            "Prune the grown branch and carry its usable product home."
+          ],
+          "interruption": "A player may rescue the hull or divert it; occupied hulls are never casually fed.",
+          "recovery": "Spoiled or missing source stays missing; new stock must arrive physically."
+        },
+        {
+          "id": "routine_charon_prune",
+          "role": "Pruning tender",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_charon_garden"
+          ],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Inspect the corridor membrane.",
+            "Cut one hazardous bridge with a readable tool.",
+            "Wait for scavengers to pass.",
+            "Deposit pruned biomass at the greenhouse."
+          ],
+          "interruption": "Cutting the wrong bridge closes shelter as well as a predator path.",
+          "recovery": "Install a real brace or regrow the safe connection using existing ecology rules."
+        },
+        {
+          "id": "routine_charon_pulse",
+          "role": "Blind Shepherd and attendant",
+          "owner": "alienEcology",
+          "path": "src/systems/alienEcology.js",
+          "inputResourceIds": [
+            "res_charon_shepherd"
+          ],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Pulse with a visible leading cue and non-flashing mode.",
+            "Creatures within the native radius react by species.",
+            "Attendant stays outside the dangerous route.",
+            "Pulse has a quiet refractory period."
+          ],
+          "interruption": "Harvesting the organ disables this actual node; it cannot also keep pulsing as scenery.",
+          "recovery": "Rescue or reinstall the same organ, or let the garden adapt to its absence."
+        }
+      ],
+      "opportunities": [
+        {
+          "id": "lw_charon_green_debt",
+          "title": "Green Debt",
+          "approaches": [
+            "Quarantine the hot wreck and protect the greenhouse.",
+            "Tow the wreck to a safe feed mouth after rescuing its occupant.",
+            "Sever the spreading bridge and rebuild the greenhouse support mechanically."
+          ],
+          "commitReceipt": "Canonical rescue, consumed wreck mass and garden stage produce separate durable results; no moral option overwrites physics.",
+          "failure": "A failed cut spreads danger into one readable route; evacuation and repair remain possible.",
+          "revisit": "The route is pruned, scarred, regrown or reinforced, and the gardener's work changes."
+        },
+        {
+          "id": "lw_charon_second_skin",
+          "title": "Second Skin",
+          "approaches": [
+            "Grow a protective membrane from delivered material.",
+            "Use a metal shield rig instead.",
+            "Sell the biomass and accept a short-term shelter shortage."
+          ],
+          "commitReceipt": "Physical installed protection responds to actual impacts and native damage.",
+          "failure": "Lost shelter alters convoy behavior without making a whole region unusable.",
+          "revisit": "A patched greenhouse changes silhouette and its repair crew stops repeating the completed work."
+        },
+        {
+          "id": "lw_charon_shepherd_borrow",
+          "title": "Borrow a Voice",
+          "approaches": [
+            "Earn a harvested pulse organ after helping the attendant.",
+            "Take the live organ and face ecological consequences.",
+            "Rescue one from a dead node before it decays."
+          ],
+          "commitReceipt": "Unique organ custody and usable pulse with native cooldown/affected-species rules.",
+          "failure": "An unsafe pulse can attract a threat; it does not always conveniently stun every enemy.",
+          "revisit": "The former site grows differently and the stolen organ is recognized."
+        }
+      ],
+      "assets": [
+        {
+          "id": "place_habitat_pod_derelict",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Retain steel windows and doors under growth so scale stays readable."
+        },
+        {
+          "id": "place_lw_greenwake_bridge",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Cuttable membrane spans with anchor roots, five persistent stage variants, clear positive/negative space."
+        },
+        {
+          "id": "place_lw_greenhouse_hull",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Warm occupied greenhouse court grafted into a broken cargo hull; repair sockets and emergency shutters."
+        }
+      ],
+      "sourcePaths": [
+        "src/systems/alienEcology.js",
+        "src/data/alienEcology.js",
+        "src/systems/faction_understory.js",
+        "src/systems/aftermathWrecks.js",
+        "src/world/worldRecords.js"
+      ],
+      "acceptance": [
+        {
+          "id": "accept_charon_conservation",
+          "action": "Feed, sell, destroy and reload a marked wreck in competing orders.",
+          "expected": "Exactly one custody settlement and no duplicated material.",
+          "negative": "Event strings alone cannot claim consumption."
+        },
+        {
+          "id": "accept_charon_ecology",
+          "action": "Prune one bridge, save, return through its old line, then restore another.",
+          "expected": "Ecology, collision, navigation and visual growth agree.",
+          "negative": "A green decal with unchanged routes is insufficient."
+        }
+      ]
+    },
+    {
+      "id": "district_ashfall_iron_maw",
+      "name": "The Iron Maw",
+      "sectorId": "sector_ashfall_reach",
+      "zoneIds": [
+        "zone_ashfall_approach",
+        "zone_ashfall_vault",
+        "zone_ashfall_maintenance",
+        "zone_ashfall_converted_yards"
+      ],
+      "status": "planned",
+      "premise": "An industrial dreadnought shell has accreted around the dead Deep-Mother. Its administrative beacon still orders a shift change, and people living in the keel have learned to steal power from the dead war.",
+      "geometry": "Layered but physically XZ navigable surface districts: radiator plain, gun trench, relief court, machinery throat and vault interior. The hull fills the visible ground below the ship. Horizons and macro silhouette imply a larger body; reachable panels have real colliders and joints. No single solid sphere under an enterable hole.",
+      "arrival": "The starfield disappears behind panelwork. A headlight sweeps grooves under the ship. Maintenance tugs crawl between dead batteries; an inhabited court opens warm shutters while an obsolete gun tries to track a harmless utility barge.",
+      "landmark": {
+        "name": "The Iron Maw / Dead Shift",
+        "existingRef": "poi_boss",
+        "change": "Reconcile existing dead Deep-Mother boss and dreadnought prose by retaining the corpse/vault inside an accreted human hull shell. Existing killed/boss states remain authoritative; exterior construction is new proposed content."
+      },
+      "population": {
+        "normalActive": 18,
+        "alertActive": 32,
+        "reserve": 12,
+        "sharedCap": 40,
+        "admission": "Planning envelopes, not raised runtime defaults. The current default shared budget is 24; any denser admission must coordinate existing owners and demonstrate cost. Reserve is finite logical inventory, not additional simultaneous bodies."
+      },
+      "resources": [
+        {
+          "id": "res_ashfall_power",
+          "owner": "worldRecords",
+          "path": "src/world/worldRecords.js",
+          "description": "Power route/service state committed by native machinery controls; no abstract player mana."
+        },
+        {
+          "id": "res_ashfall_coolant",
+          "owner": "economy",
+          "path": "src/systems/economy.js",
+          "description": "Finite coolant supply physically brought to relief infrastructure."
+        },
+        {
+          "id": "res_ashfall_plate",
+          "owner": "worldRecords",
+          "path": "src/world/worldRecords.js",
+          "description": "Persistent exact detachable hull plate/crane load with physical mass."
+        }
+      ],
+      "routines": [
+        {
+          "id": "routine_ashfall_maintenance",
+          "role": "Dead-shift utility barge",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_ashfall_coolant"
+          ],
+          "outputResourceIds": [
+            "res_ashfall_power"
+          ],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Leave the relief court with a coolant pod.",
+            "Follow a radiator service trench.",
+            "Clamp at the failing pump.",
+            "Return with the empty pod as lights change in the served court."
+          ],
+          "interruption": "An exposed run can be intercepted; the barge stops work when the line breaks.",
+          "recovery": "Recover the same pod or deliver a replacement; no automatic restore on reentry."
+        },
+        {
+          "id": "routine_ashfall_crane",
+          "role": "Surface crane operator",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_ashfall_plate"
+          ],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Lock the crane foot.",
+            "Lift a real detachable cover.",
+            "Wait for service craft to cross under it.",
+            "Lower and latch at the marked seat."
+          ],
+          "interruption": "A cut cable drops actual mass; emergency stop does not erase momentum.",
+          "recovery": "Winch or tow the same plate out of the route; secondary escape stays open."
+        },
+        {
+          "id": "routine_ashfall_watch",
+          "role": "Automated battery and scavenger lookout",
+          "owner": "factionPresence",
+          "path": "src/systems/factionPresence.js",
+          "inputResourceIds": [
+            "res_ashfall_power"
+          ],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Scan a narrow visible arc.",
+            "Cue its windup.",
+            "Fire only on authorized target categories.",
+            "Cool and rotate, leaving a forecastable crossing window."
+          ],
+          "interruption": "Rerouting power changes the actual battery; residents notice loss of supply.",
+          "recovery": "Alternate routing or physical disable leaves a changed but traversable surface."
+        }
+      ],
+      "opportunities": [
+        {
+          "id": "lw_ashfall_last_relief",
+          "title": "The Last Relief",
+          "approaches": [
+            "Keep the colony powered while removing the harmful control stack.",
+            "Evacuate the court, then use the crane and plates to dismantle the battery.",
+            "Bargain for access, physically isolate the vault and take evidence rather than destroy everything."
+          ],
+          "commitReceipt": "Separate native evacuation, power, boss and evidence receipts decide the result; no ending fires because a cutscene timer elapsed.",
+          "failure": "Failed evacuation leaves specific recoverable survivors; an already-dead boss never respawns to serve the new plot.",
+          "revisit": "The Gutted Maw has the actual missing panels, survivor settlement and usable routes you left."
+        },
+        {
+          "id": "lw_ashfall_headlight",
+          "title": "A Window in the Gun",
+          "approaches": [
+            "Route a service cable through the gun's blind interval.",
+            "Rotate a dead panel into cover with the crane.",
+            "Follow a maintenance barge through the protected trench."
+          ],
+          "commitReceipt": "Actual traversal with load clears the task, using physical line of sight and geometry.",
+          "failure": "A hit drops repair cargo and makes recovery the new job.",
+          "revisit": "Your improvised panel shield remains a future navigation landmark."
+        },
+        {
+          "id": "lw_ashfall_surface_rights",
+          "title": "Surface Rights",
+          "approaches": [
+            "Lease a working surface crane.",
+            "Take control after isolating its hostile owner.",
+            "Repair its controls and let the residents use it while you handle the load."
+          ],
+          "commitReceipt": "Native control lease and real moved plate; no click-to-remove wall.",
+          "failure": "Insufficient anchor load, broken tether or power loss denies motion truthfully.",
+          "revisit": "Residents use the reclaimed machine or complain about a missing one."
+        }
+      ],
+      "assets": [
+        {
+          "id": "place_maintenance_gantry",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Local maintenance sockets and human scale cues."
+        },
+        {
+          "id": "place_lw_maw_surface",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Chunked steel terrain kit: macro ribs, walkable-by-ship trenches, radiator fields, detached panels; never a giant close-up texture plane."
+        },
+        {
+          "id": "place_lw_maw_relief_court",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Inhabited negative space in the keel with shutters, shelter, dock mouth and evacuation lanes."
+        },
+        {
+          "id": "place_lw_maw_crane",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Root, slew, boom, hook and brake sockets; collider follows native moving parts."
+        }
+      ],
+      "sourcePaths": [
+        "src/data/sectorWonders.js",
+        "src/render/sectorLandmarkBackground.js",
+        "src/data/sectorCoordinates.js",
+        "src/render/camera.js",
+        "src/data/lookMoods.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/world/worldRecords.js"
+      ],
+      "acceptance": [
+        {
+          "id": "accept_ashfall_scale",
+          "action": "Fly the radiator plain, enter the trench and emerge at the relief court.",
+          "expected": "Ground occupies the frame continuously; native panel silhouette, lighting and collider agree.",
+          "negative": "Enlarging a distant background object or changing sky color does not satisfy the place."
+        },
+        {
+          "id": "accept_ashfall_aftermath",
+          "action": "Dismantle a plate, save mid-crisis and return after resolution.",
+          "expected": "No duplicate boss, plate, survivors or reward; world reflects the same causal outcome.",
+          "negative": "A generic intact model cannot silently replace the gutted body."
+        }
+      ]
+    },
+    {
+      "id": "district_phoebe_fourth_toll",
+      "name": "Fourth Toll",
+      "sectorId": "sector_phoebe_echo",
+      "zoneIds": [
+        "zone_phoebe_shrine",
+        "zone_phoebe_edge"
+      ],
+      "status": "planned",
+      "premise": "Pilgrims leave bells for people they cannot bring home. The fourth toll is deliberately silent so crews on distant work shifts can answer it themselves.",
+      "geometry": "A low-density refuge organized around an open circle of resonators, an active repair berth and a weather-sheltered approach. Empty space is composed: the bells and light path keep bearing while long shadows allow quiet coasting.",
+      "arrival": "Three bells sound. On the fourth interval everyone waits. A distant repair ship answers with an engine pulse, then work resumes. A cook skiff carries a pot to a late crew. There is no immediate combat pop-up.",
+      "landmark": {
+        "name": "The Missing Fourth Bell",
+        "existingRef": "zone_phoebe_shrine",
+        "change": "Develop the existing Echo Shrine zone using Struck Bell and BELLHOP/return hooks. The Shard Sphere POI keeps its identity as an adjacent landmark; do not rename it into a bell. The district adds social practice around existing owners rather than another duplicate bell quest."
+      },
+      "population": {
+        "normalActive": 8,
+        "alertActive": 16,
+        "reserve": 4,
+        "sharedCap": 40,
+        "admission": "Planning envelopes, not raised runtime defaults. The current default shared budget is 24; any denser admission must coordinate existing owners and demonstrate cost. Reserve is finite logical inventory, not additional simultaneous bodies."
+      },
+      "resources": [
+        {
+          "id": "res_phoebe_relief",
+          "owner": "economy",
+          "path": "src/systems/economy.js",
+          "description": "Finite relief supplies for visiting damaged hulls."
+        },
+        {
+          "id": "res_phoebe_resonance",
+          "owner": "worldRecords",
+          "path": "src/world/worldRecords.js",
+          "description": "Persistent arrangement/tuning of actual resonators."
+        },
+        {
+          "id": "res_phoebe_repair",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "description": "Completed attended service on a specific visiting hull."
+        }
+      ],
+      "routines": [
+        {
+          "id": "routine_phoebe_bell",
+          "role": "Bell keeper and BELLHOP",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [],
+          "outputResourceIds": [
+            "res_phoebe_resonance"
+          ],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Collect a resonator needing service.",
+            "Carry it along the lit approach.",
+            "Seat and tune it at a real socket.",
+            "Wait through the silent fourth interval before departure."
+          ],
+          "interruption": "A missing or damaged bell actually changes the sound/visual pattern.",
+          "recovery": "Use captions and visible motion to expose the same state for players who cannot hear it."
+        },
+        {
+          "id": "routine_phoebe_relief",
+          "role": "Relief tender",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [
+            "res_phoebe_relief"
+          ],
+          "outputResourceIds": [
+            "res_phoebe_repair"
+          ],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Dock beside a damaged traveler.",
+            "Take a finite kit from the refuge receiver.",
+            "Remain attached while working.",
+            "Unlatch and let the repaired hull leave under native flight."
+          ],
+          "interruption": "Separation or danger stops repair; departure does not occur by pose teleport.",
+          "recovery": "If supply is stolen, traveler waits or gets towed to a second refuge."
+        },
+        {
+          "id": "routine_phoebe_cook",
+          "role": "Cook skiff",
+          "owner": "npcJobsRuntime",
+          "path": "src/systems/npcJobsRuntime.js",
+          "inputResourceIds": [],
+          "outputResourceIds": [],
+          "dependsOn": [],
+          "visibleSteps": [
+            "Leave the small canteen hatch.",
+            "Wait for the bell tow to pass.",
+            "Dock at the work berth.",
+            "Return after service."
+          ],
+          "interruption": "A collision spills a visible bounded prop lot, not an infinite loot source.",
+          "recovery": "A local apology, repair or replacement changes the next greeting."
+        }
+      ],
+      "opportunities": [
+        {
+          "id": "lw_phoebe_quiet_bell",
+          "title": "The Quiet Bell",
+          "approaches": [
+            "Recover and tune the displaced resonator.",
+            "Carry a stranded crew into listening range.",
+            "Leave the missing fourth place empty at the family's request and repair the approach instead."
+          ],
+          "commitReceipt": "Native resonator/crew/approach outcomes remain distinct; a chosen silence is not an incomplete objective.",
+          "failure": "A broken resonator yields a salvage/rebuild route; never forces combat on a peaceful choice.",
+          "revisit": "The sound pattern, lights and waiting visitors reflect the actual choice."
+        },
+        {
+          "id": "lw_phoebe_home_signal",
+          "title": "A Light They Can Find",
+          "approaches": [
+            "Relight a safe approach with delivered cells.",
+            "Tow a repair ship through the unlit lane.",
+            "Install a rescued resonator as an alternate signal."
+          ],
+          "commitReceipt": "Actual arrival and service receipts; no reward for arbitrary dwell in a circle.",
+          "failure": "Failed rescue leaves a known distress contact and recoverable equipment.",
+          "revisit": "A named visitor returns; the beacon is useful to other ships as well as the player."
+        },
+        {
+          "id": "lw_phoebe_bell_weapon",
+          "title": "The Bell You Carry",
+          "approaches": [
+            "Earn a tuned resonator cluster for a service.",
+            "Salvage one from a dead pilgrimage barge.",
+            "Steal one and live with the missing voice at the shrine."
+          ],
+          "commitReceipt": "Same object custody grants a physics resonance capability with material-specific behavior.",
+          "failure": "Resonance cannot universally stun every material or bypass protection.",
+          "revisit": "The shrine audibly/visually lacks that cluster until a real replacement arrives."
+        }
+      ],
+      "assets": [
+        {
+          "id": "place_observation_blister",
+          "status": "reuse",
+          "sourcePath": "src/data/everydaySpaceKitDressing.js",
+          "brief": "Sheltered listening rooms and visible residents at ship-camera scale."
+        },
+        {
+          "id": "place_lw_fourth_toll_berth",
+          "status": "planned",
+          "sourcePath": null,
+          "brief": "Sparse hanging bell court, one deliberately empty socket and modest lit refuge; repair and listening sockets remain clear."
+        }
+      ],
+      "sourcePaths": [
+        "src/data/phoebePracticeConnection.js",
+        "src/systems/struckBellRuntime.js",
+        "src/systems/faction_choir.js",
+        "src/data/worldCalendar.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/world/worldRecords.js"
+      ],
+      "acceptance": [
+        {
+          "id": "accept_phoebe_quiet",
+          "action": "Spend one full shift here with no weapon use.",
+          "expected": "A legible routine, optional intervention and changed return state still exist.",
+          "negative": "Do not count text-only lore or mandatory attackers as activity."
+        },
+        {
+          "id": "accept_phoebe_access",
+          "action": "Play bell task muted and with reduced flash/motion.",
+          "expected": "Equivalent timing and action cues remain visible without revealing hidden outcomes.",
+          "negative": "No audio-only completion clue or compulsory camera motion."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,223 @@
+// Authored circuit presentation: real vertical apertures, route line and a visible pace beacon.
+// Presentation consumes the mission owner's truth; all course markers are non-colliding.
+import * as THREE from 'three';
+import { activeAuthoredRace, racingPaceSpeed } from '../systems/racingSteer.js';
+import { circuitGateLitState, circuitPacePoint, circuitUpcomingGate, gateApproach } from '../systems/racingGeometry.js';
+import { raceGateGlobals } from '../data/raceLevels.js';
+import { readFrameOrigin } from './frameCoordinates.js';
+import { createRacingGhostView } from './racingGhostView.js';
+import { createRacingDraftView } from './racingDraftView.js';
+
+const ROPE_POOL_SIZE = 3;
+// Mirrors combat/geometry.js entityLocalPointToWorld — scratch writes keep the frame
+// loop allocation-free while reading the same canonical anchor-local endpoints.
+function attachmentEndpoint(entity, local, out) {
+  const lx = Number(local && local.x) || 0, lz = Number(local && local.z) || 0;
+  const angle = Number(entity && entity.rot) || 0;
+  const c = Math.cos(angle), s = Math.sin(angle);
+  out.x = (entity && entity.pos ? Number(entity.pos.x) || 0 : 0) + lx * c - lz * s;
+  out.z = (entity && entity.pos ? Number(entity.pos.z) || 0 : 0) + lx * s + lz * c;
+  return out;
+}
+const noRaycast = () => {};
+
+function createActiveRacingCourseView(scene, state) {
+  const ghost = createRacingGhostView(scene, state);
+  const draft = createRacingDraftView(scene, state);
+  const root = new THREE.Group(); root.name = 'Racing course'; root.visible = false;
+  scene.add(root);
+  const ringGeometry = new THREE.TorusGeometry(1, 0.024, 6, 48);
+  const ringMaterial = new THREE.MeshBasicMaterial({ color:0xffffff, toneMapped:false });
+  const nextMaterial = new THREE.MeshBasicMaterial({ color:0xffe4a8, toneMapped:false });
+  const lineMaterial = new THREE.LineBasicMaterial({ color:0x567485, toneMapped:false });
+  const paceMaterial = new THREE.MeshBasicMaterial({ color:0xffe956, toneMapped:false });
+  const paceGeometry = new THREE.ConeGeometry(7, 22, 4);
+  const target = new THREE.Mesh(ringGeometry, nextMaterial); target.name='Next checkpoint';
+  const pace = new THREE.Mesh(paceGeometry, paceMaterial); pace.name='Draft pace beacon';
+  const markers=new THREE.InstancedMesh(ringGeometry,ringMaterial,8);
+  markers.name='Massline anchors and crossing refuges';markers.count=0;markers.frustumCulled=false;
+  // Pooled rival rope presentation: shared tube, narrow core plus a transparent outer
+  // strand. The sim's canonical attachment records are the only truth read here.
+  const ropeGeometry=new THREE.CylinderGeometry(1,1,1,6,1,true);
+  const ropeCoreMaterial=new THREE.MeshBasicMaterial({color:0x8adccf,toneMapped:false});
+  const ropeStrandMaterial=new THREE.MeshBasicMaterial({color:0x8adccf,transparent:true,opacity:0.18,toneMapped:false,depthWrite:false});
+  const ropes=[];
+  for(let i=0;i<ROPE_POOL_SIZE;i++){
+    const core=new THREE.Mesh(ropeGeometry,ropeCoreMaterial);
+    const strand=new THREE.Mesh(ropeGeometry,ropeStrandMaterial);
+    core.name='Rival Massline core';strand.name='Rival Massline strand';
+    core.raycast=noRaycast;strand.raycast=noRaycast;
+    core.visible=false;strand.visible=false;
+    root.add(core,strand);
+    ropes.push({core,strand,attachmentId:null,claimed:false});
+  }
+  root.add(target, pace, markers);
+  const dummy = new THREE.Object3D(), origin = {}, from = {}, pacePoint = {};
+  const ropeA = { x: 0, z: 0 }, ropeB = { x: 0, z: 0 };
+  const up = new THREE.Vector3(0,1,0), forward = new THREE.Vector3(), ropeDir = new THREE.Vector3();
+  const base = new THREE.Color(0x90b2c8), cleared = new THREE.Color(0x3c515c), burn = new THREE.Color(0xffe956), litColor = new THREE.Color(0xffe4a8);
+  const anchorColor=new THREE.Color(0x8adccf),refugeColor=new THREE.Color(0xffc577);
+  const markerState=new Float64Array(8*4);markerState.fill(NaN);
+  let owner = null, rings = null, line = null, globals = null, sectorX = 0, sectorZ = 0, lastGate = -1, lastLap = -1, lastFinished = false, disposed=false;
+  let markerCount=0,markersChanged=false;
+  function frameRopes(race){
+    let used=0;
+    const byId=state.combat?.attachments?.byId;
+    if(byId)for(const attachment of Object.values(byId)){
+      if(used>=ropes.length)break;
+      if(!attachment||attachment.state!=='active'||attachment.defId!=='tether_standard')continue;
+      const ownerEntity=state.entities?.get(attachment.ownerId);
+      if(!ownerEntity||ownerEntity.data?.raceOpponent?.missionId!==race.id)continue;
+      const targetEntity=state.entities?.get(attachment.targetId);
+      if(!targetEntity)continue;
+      let rope=null;
+      for(const row of ropes)if(row.attachmentId===attachment.id&&!row.claimed){rope=row;break;}
+      if(!rope)for(const row of ropes)if(!row.claimed){rope=row;rope.attachmentId=attachment.id;break;}
+      if(!rope)break;
+      rope.claimed=true;used++;
+      attachmentEndpoint(ownerEntity,attachment.sourceAnchorLocal,ropeA);
+      attachmentEndpoint(targetEntity,attachment.targetAnchorLocal,ropeB);
+      // Children of root live in sector-local space; the frame-origin rebase is inherited.
+      const ax=ropeA.x-sectorX,az=ropeA.z-sectorZ,bx=ropeB.x-sectorX,bz=ropeB.z-sectorZ;
+      ropeDir.set(bx-ax,0,bz-az);
+      const length=ropeDir.length()||0.001;
+      for(const mesh of [rope.core,rope.strand]){
+        mesh.visible=true;
+        mesh.position.set((ax+bx)/2,2.5,(az+bz)/2);
+        mesh.quaternion.setFromUnitVectors(up,ropeDir.normalize());
+        mesh.scale.set(mesh===rope.core?0.7:1.6,length,mesh===rope.core?0.7:1.6);
+      }
+    }
+    for(const rope of ropes){
+      if(!rope.claimed){rope.core.visible=false;rope.strand.visible=false;rope.attachmentId=null;}
+      rope.claimed=false;
+    }
+  }
+  function putMarker(point,radius,anchor){
+    const offset=markerCount*4,x=point.x-sectorX,z=point.z-sectorZ,y=anchor?4:-2;
+    if(markerState[offset]!==x||markerState[offset+1]!==z||markerState[offset+2]!==radius||markerState[offset+3]!==y){
+      markerState[offset]=x;markerState[offset+1]=z;markerState[offset+2]=radius;markerState[offset+3]=y;
+      dummy.position.set(x,y,z);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.setScalar(radius);
+      dummy.updateMatrix();markers.setMatrixAt(markerCount,dummy.matrix);
+      markers.setColorAt(markerCount,anchor?anchorColor:refugeColor);markersChanged=true;
+    }
+    markerCount++;
+  }
+  function releaseCourse() {
+    if(rings){root.remove(rings);rings.dispose();rings=null;}
+    if(line){root.remove(line);line.geometry.dispose();line=null;}
+    owner=null;globals=null;
+  }
+  function rebuild(params) {
+    releaseCourse(); owner=params;
+    const gates=params.gates;
+    globals=raceGateGlobals(params);
+    if(!Array.isArray(gates)||gates.length<2||globals.length!==gates.length)return;
+    sectorX=globals[0].x-gates[0].x; sectorZ=globals[0].z-gates[0].z;
+    const count=Math.min(128,params.closedCircuit?gates.length-1:gates.length);
+    const radius=Number(params.gateRadiusWU)||90;
+    rings=new THREE.InstancedMesh(ringGeometry,ringMaterial,count);rings.name='Checkpoint apertures';
+    for(let i=0;i<count;i++){
+      const approach=gateApproach(gates,i,from);
+      if(!approach)continue;
+      dummy.position.set(gates[i].x,0,gates[i].z);
+      dummy.rotation.set(0,Math.atan2(approach.nx,approach.nz),0);
+      dummy.scale.setScalar(radius);dummy.updateMatrix();rings.setMatrixAt(i,dummy.matrix);
+      const lit=circuitGateLitState(params,i);
+      rings.setColorAt(i,lit==='upcoming'?litColor:lit==='boost'?burn:lit==='cleared'?cleared:base);
+    }
+    rings.instanceMatrix.needsUpdate=true;rings.computeBoundingSphere();root.add(rings);
+    const vertices=new Float32Array(Math.min(128,gates.length)*3);
+    for(let i=0;i<vertices.length/3;i++){vertices[i*3]=gates[i].x;vertices[i*3+1]=-3;vertices[i*3+2]=gates[i].z;}
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(vertices,3));
+    line=new THREE.Line(geometry,lineMaterial);line.name='Circuit racing line';root.add(line);
+    lastGate=lastLap=-1;lastFinished=false;
+  }
+  return {
+    root,
+    frame(){
+      if(disposed)return;
+      const race=activeAuthoredRace(state);
+      ghost.frame(race);
+      draft.frame(race);
+      root.visible=!!race&&state.mode==='flight'&&!state.ui?.docked
+        &&state.world?.currentSectorId===race.params.courseSectorId
+        &&(!race.params.sectionMission||race.params.phase!=='handoff');
+      if(!root.visible)return;
+      const p=race.params;
+      if(owner!==p)rebuild(p);
+      if(!rings||!globals){root.visible=false;return;}
+      readFrameOrigin(state,origin);root.position.set(sectorX-origin.x,0,sectorZ-origin.z);
+      markerCount=0;markersChanged=false;
+      for(const cue of p.raceSetPieces||[]){
+        const anchor=cue.kind==='anchor',point=cue.phase==='clear'?null:anchor?cue.pos:cue.waitPos;
+        if(!point||markerCount===8)continue;
+        putMarker(point,anchor?38:cue.waitRadiusWU||42,anchor);
+        if(cue.servicePos&&markerCount<8&&cue.phase!=='clear'){
+          putMarker(cue.servicePos,Math.min(40,(cue.serviceWidthWU||80)/2),true);
+        }
+      }
+      markers.count=markerCount;
+      if(markersChanged){markers.instanceMatrix.needsUpdate=true;if(markers.instanceColor)markers.instanceColor.needsUpdate=true;}
+      const upcoming=circuitUpcomingGate(p);
+      const nextKey=upcoming!==null?upcoming:-1,isFinished=upcoming===null;
+      if(nextKey!==lastGate||(p.lap|0)!==lastLap||(isFinished&&!lastFinished)){
+        lastGate=nextKey;lastLap=p.lap|0;lastFinished=isFinished;
+        for(let i=0;i<rings.count;i++){
+          const lit=circuitGateLitState(p,i);
+          rings.setColorAt(i,lit==='upcoming'?litColor:lit==='boost'?burn:lit==='cleared'?cleared:base);
+        }
+        rings.instanceColor.needsUpdate=true;
+        if(upcoming!==null){
+          target.visible=true;
+          const approach=gateApproach(p.gates,upcoming,from),g=p.gates[upcoming];
+          target.position.set(g.x,0,g.z);
+          if(approach)target.rotation.set(0,Math.atan2(approach.nx,approach.nz),0);
+          target.scale.setScalar((Number(p.gateRadiusWU)||90)*1.005);
+        } else {
+          target.visible=false;
+        }
+      }
+      // The scripted pace light coaches the line; physical opponents alone provide drafting.
+      const paceStart=p.adventureSpeedId?p.adventureSpeedStartSimS:p.raceStartSimS;
+      const racing=Number.isFinite(paceStart)&&(!p.sectionMission||p.phase==='chase');
+      pace.visible=racing&&p.racingKind==='draft';
+      if(pace.visible&&circuitPacePoint(globals,Math.max(0,(state.simTime||0)-paceStart)*racingPaceSpeed(p)+70,pacePoint)){
+        pace.position.set(pacePoint.x-sectorX,0,pacePoint.z-sectorZ);
+        forward.set(Math.cos(pacePoint.heading),0,Math.sin(pacePoint.heading));
+        pace.quaternion.setFromUnitVectors(up,forward);
+      }
+      frameRopes(race);
+    },
+    dispose(){
+      if(disposed)return;disposed=true;ghost.dispose();draft.dispose();releaseCourse();root.removeFromParent();
+      markers.dispose();
+      ropeGeometry.dispose();ropeCoreMaterial.dispose();ropeStrandMaterial.dispose();
+      ringGeometry.dispose();paceGeometry.dispose();ringMaterial.dispose();nextMaterial.dispose();lineMaterial.dispose();paceMaterial.dispose();
+    },
+  };
+}
+
+export function createRacingCourseView(scene, state) {
+  // Course, rope, ghost, and wake resources belong to an authored race. The renderer creates
+  // this owner for every scene, including ordinary Swarm, so keep the cohort off-scene until a
+  // race is present. A race already active at scene setup is materialized eagerly, before the
+  // opening submission plan and GPU cook inspect the scene. If a race is accepted later, the
+  // same prepareFrame call that observes it creates the full cohort before drawing it.
+  let view = activeAuthoredRace(state) ? createActiveRacingCourseView(scene, state) : null;
+  let disposed = false;
+  return {
+    get root() { return view?.root || null; },
+    frame() {
+      if (disposed) return;
+      if (!view && activeAuthoredRace(state)) view = createActiveRacingCourseView(scene, state);
+      view?.frame();
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      view?.dispose();
+      view = null;
+    },
+  };
+}

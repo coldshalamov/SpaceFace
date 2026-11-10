@@ -1,0 +1,44 @@
+<!-- LIFETIME: STABLE -->
+# SpaceFace documentation
+
+This is the navigation front door for engineering and world-content documentation. It does not own product status.
+
+## Start by task
+
+| Need | Read |
+|---|---|
+| Orient in the repo / "what is this game / how does it work" | [`ORIENTATION.md`](./ORIENTATION.md) — repo map, reading ladder, planner route |
+| Named campaign / symptom door | [`TASK_ROUTER.md`](./TASK_ROUTER.md) |
+| Full working agreement (finish rules, `NOW.md` locks, `check:playable`, reporting) | [`AGENT_OPERATIONS.md`](./AGENT_OPERATIONS.md) |
+| Owner preferences and verified workspace facts | [`AGENT_LESSONS.md`](./AGENT_LESSONS.md) |
+| Active game-finishing work | [`../design/program/finish/MASTER_PLAN.md`](../design/program/finish/MASTER_PLAN.md) → [`MASTER_LANES.md`](../design/program/finish/MASTER_LANES.md); build-map rows are specification detail, not a queue |
+| Technical invariants and ownership | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) |
+| Active work and lane ownership | [`../design/program/finish/MASTER_LANES.md`](../design/program/finish/MASTER_LANES.md) + [`EXECUTION_STATUS`](../design/program/finish/EXECUTION_STATUS_2026-11-06.md); use [`../design/program/NOW.md`](../design/program/NOW.md) for current write claims |
+| Current work packet | The ordered campaign on [`MASTER_PLAN.md`](../design/program/finish/MASTER_PLAN.md); exact owned paths come from `NOW.md` |
+| Finish Program review and verification | [`../design/program/finish/README.md`](../design/program/finish/README.md) §§5.2–5.4; other work follows its selected packet and applicable verification route |
+| Find the module that owns behavior | [`MODULE_MAP.md`](./MODULE_MAP.md), then the nearest `src/**/AGENTS.md` |
+| Diagnose a recurring failure | [`COMMON_BUGS.md`](./COMMON_BUGS.md) |
+| Choose focused, lab, broker, and player-route validation | [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md) |
+| Trace an event end to end | [`EVENT_ROUTING.md`](./EVENT_ROUTING.md) (generated) |
+| Inspect registry/update order | [`SYSTEM_REGISTRY.md`](./SYSTEM_REGISTRY.md) (generated) |
+| Understand which files may direct an agent | [`POLICY_MANIFEST.md`](./POLICY_MANIFEST.md) |
+| Search without ingesting snapshots/transcripts | [`SEARCH_CONTEXT.md`](./SEARCH_CONTEXT.md) |
+| Evaluate third-party tools/assets | [`OPEN_SOURCE_INTAKE.md`](./OPEN_SOURCE_INTAKE.md) |
+| Work on the 47-A slice | [`Spec/47A_SLICE_CONTRACT.md`](./Spec/47A_SLICE_CONTRACT.md) |
+| Retained future plans not yet scheduled | [`../design/program/06_RETAINED_FUTURE_BACKLOG.md`](../design/program/06_RETAINED_FUTURE_BACKLOG.md) and [`../design/PLAN_REGISTRY.md`](../design/PLAN_REGISTRY.md) |
+| Work on narrative/setting | [`worldbuilding/`](./worldbuilding/) and [`worldbuilding/sheets/README.md`](./worldbuilding/sheets/README.md) |
+| Review prior integration evidence | [`handoffs/`](archive/handoffs) (historical, not status) |
+| Decide artifact retention | [`ARTIFACT_RETENTION.md`](./ARTIFACT_RETENTION.md) |
+| Resume deferred repository/context cleanup | [`REPOSITORY_HYGIENE.md`](./REPOSITORY_HYGIENE.md) |
+
+## Documentation classes
+
+- **Authority:** root `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `design/program/finish/MASTER_PLAN.md`, and the selected campaign.
+- **Current status:** `design/program/finish/EXECUTION_STATUS_2026-11-06.md` owns the campaign matrix; `design/program/NOW.md` is the volatile write-claim board.
+- **Navigation/reference:** `MODULE_MAP.md`, `COMMON_BUGS.md`, and `SEARCH_CONTEXT.md`.
+- **Generated indexes:** `EVENT_ROUTING.md` and `SYSTEM_REGISTRY.md`; regenerate with `npm run build:indexes`.
+- **Historical evidence:** handoffs, reviews, old audit reports, and captures. They explain; they do not dispatch.
+
+## Maintenance
+
+Read [`AGENTS.md`](./AGENTS.md) before changing this tree. Prefer durable paths/symbols over dates, line numbers, file sizes, or copied status. Run `node scripts/check-program-docs.mjs` after changing program-facing links or policy lifetimes.

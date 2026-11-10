@@ -1,0 +1,60 @@
+{
+  "schema": "spaceface.momentIndex.v1",
+  "situations": 2,
+  "selectMs": 637.933,
+  "evidenceClass": "production-manifest",
+  "videoVerified": false,
+  "tooling": {
+    "unverified": true,
+    "reason": "playback-frames-not-captured"
+  },
+  "headedCapture": {
+    "attempted": true,
+    "ok": false,
+    "videoVerified": false,
+    "producedVideo": false,
+    "error": "live-flight-page-required",
+    "serverUp": false
+  },
+  "selectedShapes": [],
+  "unselectedShapes": [
+    "chain_collision",
+    "impossible_tether_cut",
+    "accidental_collateral",
+    "dramatic_lawful_intervention",
+    "giant_sling",
+    "last_second_rescue",
+    "near_miss",
+    "volatile_cargo_catastrophe",
+    "moving_blockade",
+    "reversal",
+    "freak_ricochet",
+    "unplanned_recovery"
+  ],
+  "categoryCount": 0,
+  "clipCount": 0,
+  "sessions": [
+    {
+      "seed": 1,
+      "ok": true,
+      "evidenceClass": "production-manifest",
+      "tapeTicks": 60,
+      "tapeEvents": [],
+      "hasInputRing": true,
+      "positionSource": "tape-samples",
+      "ranked": [],
+      "dropped": []
+    },
+    {
+      "seed": 2,
+      "ok": true,
+      "evidenceClass": "production-manifest",
+      "tapeTicks": 60,
+      "tapeEvents": [],
+      "hasInputRing": true,
+      "positionSource": "tape-samples",
+      "ranked": [],
+      "dropped": []
+    }
+  ]
+}

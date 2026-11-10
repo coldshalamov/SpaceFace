@@ -1,0 +1,431 @@
+{
+  "assetId": "ops_induction_coil",
+  "category": "power",
+  "description": "induction coil",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "field_axis",
+      "position": [
+        1.0,
+        0.85,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.25,
+          -0.0
+        ],
+        "size": [
+          0.25,
+          0.5,
+          1.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.8,
+          0.25,
+          -0.0
+        ],
+        "size": [
+          0.25,
+          0.5,
+          1.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.4,
+          0.52
+        ],
+        "size": [
+          2,
+          0.1,
+          0.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.4,
+          -0.52
+        ],
+        "size": [
+          2,
+          0.1,
+          0.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.45,
+          -0.0
+        ],
+        "size": [
+          1.9,
+          0.22,
+          1.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.9,
+          -0.6
+        ],
+        "size": [
+          1.9,
+          1.2,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.9,
+          0.6
+        ],
+        "size": [
+          1.9,
+          1.2,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.6225,
+          0.54
+        ],
+        "size": [
+          0.10359999999999998,
+          0.025000000000000022,
+          0.10359999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.655,
+          0.54
+        ],
+        "size": [
+          0.074,
+          0.040000000000000036,
+          0.074
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.6225,
+          -0.54
+        ],
+        "size": [
+          0.10359999999999998,
+          0.025000000000000022,
+          0.10359999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.655,
+          -0.54
+        ],
+        "size": [
+          0.074,
+          0.040000000000000036,
+          0.074
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.8,
+          0.6225,
+          0.54
+        ],
+        "size": [
+          0.10359999999999998,
+          0.025000000000000022,
+          0.10359999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.8,
+          0.655,
+          0.54
+        ],
+        "size": [
+          0.074,
+          0.040000000000000036,
+          0.074
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.8,
+          0.6225,
+          -0.54
+        ],
+        "size": [
+          0.10359999999999998,
+          0.025000000000000022,
+          0.10359999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.8,
+          0.655,
+          -0.54
+        ],
+        "size": [
+          0.074,
+          0.040000000000000036,
+          0.074
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.9,
+          0.6,
+          0.58
+        ],
+        "size": [
+          0.19999999999999996,
+          0.12,
+          0.12
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.44,
+          0.58
+        ],
+        "size": [
+          0.12,
+          0.31999999999999995,
+          0.12
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "operations",
+    "power",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -1.0,
+      0.0,
+      -0.7049999833106995
+    ],
+    "max": [
+      1.0600000619888306,
+      1.5563204288482666,
+      0.7132434248924255
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_induction_coil_lod0.glb",
+      "triangles": 9600,
+      "draws": 5,
+      "bytes": 695196,
+      "method": "source",
+      "sha256": "929255cdc75e204cbfa9b452aa35656ae196a00925ce9b17cdf0f6164c772117"
+    },
+    {
+      "level": 1,
+      "file": "ops_induction_coil_lod1.glb",
+      "triangles": 2418,
+      "draws": 4,
+      "bytes": 351344,
+      "method": "Forge-decimation",
+      "sha256": "5158b91333ab97e783af94a307bee49c647656fe501f27586adae2a8d6fdb6fe"
+    },
+    {
+      "level": 2,
+      "file": "ops_induction_coil_lod2.glb",
+      "triangles": 928,
+      "draws": 4,
+      "bytes": 300048,
+      "method": "Forge-decimation",
+      "sha256": "c03fe95b613dc6454d9d2aa8ba26abea2cedb9ea572bdc97c7ee621f25aabd37"
+    }
+  ]
+}

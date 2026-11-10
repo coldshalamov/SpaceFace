@@ -1,0 +1,194 @@
+// PQ-146 revision 2. Physical witnesses, never action requests or scalar hitstun notifications.
+import { angleBetween, BRIDLE_EVIDENCE, EVIDENCE_REVISION } from './stuntEvidence.js';
+import { COMMODITIES } from '../data/commodities.js';
+export const STUNT_SCHEMA_VERSION = 2;
+export const TrickRarity = Object.freeze({ COMMON:'common', UNCOMMON:'uncommon', RARE:'rare', LEGENDARY:'legendary' });
+const rows = [
+  ['bolas','Bolas','tether',90],['wrecking_ball','Wrecking Ball','tether',90],['clothesline','Clothesline','tether',140],
+  ['collateral','Collateral',null,0],['near_miss','Close Shave',null,0],['tow_kill','Tow-kill','tether',90],
+  ['rock_discovery','Rock Discovery','impact',50],['well_golf','Well Golf','field',140],['dead_mans_mass',"Dead Man's Mass",'debris',140],
+  ['razor_release','Razor Release',null,0],['bank_job','Bank Job','rebound',90],['return_to_sender','Return to Sender','rebound',140],
+  ['kickstart','Kickstart','escape',140],['needle_thread','Needle Thread','escape',140],['one_two','One-Two','impact',140],
+  ['slingshot_golf','Slingshot Golf','field',200],
+  // THE WORLD ANSWERS T6: a cargo pod the player shoved or threw, spent as a shell. Debris family, like Dead Man's Mass.
+  ['ore_shotgun','Ore Shotgun','debris',90],
+];
+export const TRICK_DEFINITIONS = Object.freeze(Object.fromEntries(rows.map(([id,name,family,baseScore]) => [id,Object.freeze({id,name,family,baseScore,
+  role: family ? 'primary' : id === 'near_miss' ? 'bridge' : 'modifier',
+  rarity: baseScore===200?'legendary':baseScore===140?'rare':baseScore===90?'uncommon':'common' })])));
+export const KNOWN_TRICK_IDS = Object.freeze(Object.keys(TRICK_DEFINITIONS));
+export const STUNT_CONSTANTS = Object.freeze({ IMPULSE_WINDOW_TICKS:480, SLING_WINDOW_TICKS:480, CHAIN_WINDOW_TICKS:180 });
+const PRECEDENCE = ['slingshot_golf','one_two','return_to_sender','clothesline','dead_mans_mass','ore_shotgun','well_golf','bolas','tow_kill','wrecking_ball','bank_job','rock_discovery','needle_thread','kickstart','near_miss'];
+export function createStuntDetector(options={}) { return new StuntDetector(options); }
+const within = (end,start,limit) => Number.isFinite(end)&&Number.isFinite(start)&&end>=start&&end-start<=limit;
+const material = r => r.damageApplied===true && (r.targetKilled===true || (r.hullDamage>=r.targetHullMax*0.25 && r.targetHullMax>0 && r.helmLossSeconds>=1));
+const findFieldExit = (nodes, tick, u) => nodes?.find(n => n.kind === 'field_exit' && n.entryCausal === true && n.bend >= 35 && n.deltaV >= 0.2 * u && within(tick, n.tick, 180));
+
+export function classifyStuntEvidence(receipt) {
+  const e=receipt?.stuntEvidence;
+  if (e?.revision!==EVIDENCE_REVISION || !e.root || !e.path || (!e.contact&&!receipt.escape)) return [];
+  const {root:r,path:p,contact:c}=e, tick=receipt.tick;
+  if (r.truncated || !within(tick,r.tick,480) || p.edges>4 || !within(tick,p.tick,180)) return [];
+  if(receipt.escape) {
+    if(receipt.escape.completed!==true||!r.threatAtRoot||!within(tick,r.tick,180))return [];
+    if(r.needle&&r.escape?.boundaryIds?.length===2)return ['needle_thread'];
+    const launch=r.nodes.find(n=>n.kind==='launch_retained'&&n.deltaV>=.3*r.reference.cruise&&n.exitSpeed>=1.25*r.reference.cruise
+      &&n.retainedSpeed>=.9*n.exitSpeed&&n.retainedTicks>=45);
+    return launch&&r.sourceId===r.actorId?['kickstart']:receipt.escape.closeShave?['near_miss']:[];
+  }
+  if (receipt.targetHostile!==true || !material(receipt)) return [];
+  const u=r.reference.cruise;
+  const second = e.previousRoot;
+  const chainedSecond = second && second.sourceLife === r.sourceLife && within(r.tick, second.tick, 120) && within(tick, second.tick, 480) ? second : null;
+  const constraint = r.constraint || chainedSecond?.constraint;
+  const release = r.release || chainedSecond?.release;
+  const swingRoot = r.constraint ? r : chainedSecond;
+  if (!(u>0)) return [];
+  if (r.kind==='bridle') return classifyBridle(receipt,e);
+  const targetRef=c.aId===receipt.targetId?c.aRef:c.bRef;
+  const out=[];
+  const add=(id,yes)=>{if(yes) out.push(id);};
+  const swing=constraint && constraint.loadedTicks>=15 && constraint.sweep>=60&&swingRoot?.sourceHostile===true
+    &&swingRoot?.sourceType==='ship'&&swingRoot?.sourceDeathTick==null&&Math.hypot(swingRoot.before.x,swingRoot.before.z)>1e-6;
+  const attached=constraint?.attached===true || (release?.reason==='break' && release.tick===tick);
+  const victimIsPayload=receipt.targetId===r.sourceId;
+  const terrain=receipt.surface==='terrain'||receipt.surface==='structure';
+  add('rock_discovery',victimIsPayload&&terrain&&within(tick,r.tick,180)&&p.closingSpeed>=0.5*u);
+  add('bolas',swing&&release&&within(tick,release.tick,180)&&!victimIsPayload&&r.sourceType==='ship'&&r.sourceDeathTick==null&&p.closingSpeed>=0.5*u);
+  add('wrecking_ball',constraint&&attached&&constraint.loadedTicks>=15&&constraint.loadedTicks<=120&&constraint.sweep>=45
+    &&!victimIsPayload&&r.reference.mass>=0.5*targetRef.mass&&p.closingSpeed>=0.5*targetRef.cruise);
+  // T6: the shell is a jettisoned cargo pod the PLAYER set moving (the journal only roots the player's
+  // own impulses, so an NPC-shoved pod never reaches here). It must be what killed the hull.
+  add('ore_shotgun',!victimIsPayload&&r.sourceType==='payload'&&r.sourceCargo!=null&&receipt.targetKilled===true
+    &&r.reference.mass>=0.2*(r.sceneReferenceMass??16)&&p.closingSpeed>=ORE_SHOTGUN_CLOSING_FRACTION*u);
+  // Quarter-second load, same floor as the other tether primaries. Two hull lengths of
+  // displacement is what makes a tow; a faster haul is still one.
+  add('tow_kill',constraint&&attached&&victimIsPayload&&r.sourceType==='ship'&&r.sourceDeathTick==null&&receipt.targetKilled&&constraint.loadedTicks>=15&&constraint.loadedTicks<=180
+    &&constraint.displacement>=2*r.reference.length&&(terrain||(receipt.otherMass>=150)));
+  add('dead_mans_mass',!victimIsPayload&&r.sourceDeathTick!=null&&r.tick>r.sourceDeathTick&&within(tick,r.tick,180)
+    &&r.reference.mass>=0.2*(r.sceneReferenceMass??16)&&(angleBetween(r.before,r.after)>=25||Math.hypot(r.dv.x,r.dv.z)>=0.3*u));
+  add('one_two',second&&within(r.tick,second.tick,120)&&r.tick-second.tick>=12&&within(tick,r.tick,120)
+    &&within(tick,second.tick,480)&&angleBetween(r.before,r.after)>=45&&Math.hypot(r.dv.x,r.dv.z)>=0.2*u
+    &&r.tick-(second.nodes.at(-1)?.endTick??second.tick)>=12);
+  const field = findFieldExit(r.nodes, tick, u) || (chainedSecond ? findFieldExit(chainedSecond.nodes, tick, u) : null);
+  add('well_golf',field);
+  add('slingshot_golf',field&&swing&&release&&within(field.entryTick,release.tick,120)&&within(tick,field.tick,120));
+  const intercept=r.nodes.find(n=>n.kind==='line_intercept'&&n.loadedTicks>=9&&n.endpointDisplacement>0&&n.deltaV>=0.3*u&&within(tick,n.tick,120));
+  add('clothesline',intercept&&p.edges>=2&&p.sourceLife===intercept.lifeId&&intercept.crossedPriorCorridor===true&&within(intercept.tick,intercept.displacementTick,90));
+  const bank=r.nodes.find(n=>n.kind==='reflection'&&n.angle>=25&&n.unreflectedMiss===true&&n.directOccluded===true&&within(tick,n.tick,120));
+  add('bank_job',bank&&((bank.surfaceDisplacement>=bank.surfaceWidth&&bank.surfaceWidth>0)||bank.surfaceTurn>=20
+    ||(bank.playerDisplacement>=r.playerLength&&bank.playerTurn>=25))&&within(r.tick,bank.solutionTick,120));
+  add('return_to_sender',r.projectileOwnerId===receipt.targetId&&angleBetween(r.before,r.after)>=60
+    &&r.originalMissesOwner===true&&within(tick,r.tick,120)&&(r.kind!=='passive_reflect'));
+  const launch=r.nodes.find(n=>n.kind==='launch_retained'&&n.deltaV>=0.3*u&&n.exitSpeed>=1.25*u&&n.retainedSpeed>=0.9*n.exitSpeed&&n.retainedTicks>=45);
+  add('kickstart',launch&&r.sourceId===r.actorId&&r.threatAtRoot!=null&&within(tick,r.tick,180));
+  return out.sort((a,b)=>PRECEDENCE.indexOf(a)-PRECEDENCE.indexOf(b));
+}
+
+// Fraction of the struck hull's reference cruise a pod must close at to be a shell, not a nudge.
+export const ORE_SHOTGUN_CLOSING_FRACTION = 0.25;
+// T1: a Twin Bridle pair that swung (orbit sweep) and then struck hard is a bolas. Whether the
+// receipt names a rock (bolas_pair) or a hull (plain bolas) is stuntVariantFor's call.
+function classifyBridle(receipt,e) {
+  const {root:r,path:p,bridle:b}=e;
+  if(!b||!(b.orbitDegrees>=BRIDLE_EVIDENCE.orbitDegrees))return [];
+  return p.closingSpeed>=BRIDLE_EVIDENCE.closingFraction*r.reference.cruise?['bolas']:[];
+}
+/**
+ * THE WORLD ANSWERS: a recognised primary can carry a named variant - the same trick, said more
+ * exactly. `bolas_pair`: a Twin Bridle pair lawn-darted into terrain. `own_wingman`: a player-shoved
+ * wreck killed a hull of the SAME faction as the wreck's own origin. Unknown faction is never equal.
+ */
+export function stuntVariantFor(primary,receipt) {
+  const e=receipt?.stuntEvidence,r=e?.root;
+  if(!r)return null;
+  // Row 475 — Around the World: a recognised swing that turned the loaded line a full circle is
+  // the same trick said bigger. `constraint.sweep` already accumulates the swing angle, so the
+  // evidence revision stands; only the print name changes.
+  if(primary==='wrecking_ball'||primary==='bolas') {
+    const constraint=r.constraint||(e.previousRoot&&e.previousRoot.constraint);
+    if(constraint&&Number.isFinite(constraint.sweep)&&constraint.sweep>=360)return 'around_the_world';
+  }
+  if(primary==='bolas'&&r.kind==='bridle'&&(receipt.surface==='terrain'||receipt.surface==='structure'))return 'bolas_pair';
+  if(primary==='dead_mans_mass'&&receipt.targetKilled===true&&r.sourceFactionId&&e.contact) {
+    const ref=e.contact.aId===receipt.targetId?e.contact.aRef:e.contact.bRef;
+    if(ref?.factionId&&ref.factionId===r.sourceFactionId)return 'own_wingman';
+  }
+  return null;
+}
+// The print name a recognised variant carries when it differs from the primary's. Anything not
+// listed keeps the primary's name, so adding a variant never renames an old record.
+export const STUNT_VARIANT_NAMES = Object.freeze({
+  around_the_world: 'Around the World',
+});
+const COMMODITY_NAME=new Map(COMMODITIES.map(c=>[c.id,c.name]));
+export function stuntCargoOf(root) {
+  const c=root?.sourceCargo;
+  return c?{commodityId:c.commodityId,amount:c.amount,name:COMMODITY_NAME.get(c.commodityId)??'cargo'}:null;
+}
+export class StuntDetector {
+  constructor({playerId=null}={}) { this.playerId=playerId;this.tick=0;this.incidents=new Map();this.detectedTricks=[]; }
+  setPlayerId(id) { this.playerId=id??null; }
+  processTrace(events) {
+    return [...events].sort((a,b)=>(a.tick??a.data?.tick??0)-(b.tick??b.data?.tick??0)
+      || String(a.type).localeCompare(String(b.type))).flatMap(e=>this.processEvent(e.type??e.event,e.data??e.payload??e));
+  }
+  processEvent(name,receipt) {
+    if (!receipt || !Number.isFinite(receipt.tick)) return [];
+    this.tick=Math.max(this.tick,receipt.tick);
+    if (name!=='combat:collisionConsequence'&&name!=='combat:projectileConsequence'&&name!=='stunt:escapeConsequence') return [];
+    const e=receipt.stuntEvidence,r=e?.root;
+    if (!r || this.playerId==null || r.actorId!==this.playerId) return [];
+    const candidates=classifyStuntEvidence(receipt);
+    if (!candidates.length) return [];
+    const chained=candidates.includes('one_two') || (candidates.includes('slingshot_golf') && (!r.constraint || !r.nodes.some((n) => n.kind === 'field_exit')));
+    const episodeId=chained ? (r.previousRoot || r.id) : r.id;
+    const old=this.incidents.get(episodeId);
+    if (old && (receipt.tick>old.amendmentDeadline || old.finalized)) return [];
+    const terminal=receipt.victimLife;
+    if (!terminal || terminal.lifeId==null) return [];
+    const lives=old ? old.victimLives.map(v=>({...v})) : [];
+    const previous=lives.find(v=>v.lifeId===terminal.lifeId);
+    if (previous) {
+      const moreSpecific=PRECEDENCE.indexOf(candidates[0])<PRECEDENCE.indexOf(old.trickId);
+      const newRelease=(r.release?.grade??null)!==(old.modifiers?.razorRelease??null);
+      if((previous.dead||!terminal.dead)&&!moreSpecific&&!newRelease)return [];
+      previous.dead=previous.dead||terminal.dead;
+    }
+    else { if(lives.length>=8)return [];lives.push({...terminal}); }
+    const primary=old&&PRECEDENCE.indexOf(old.trickId)<PRECEDENCE.indexOf(candidates[0])?old.trickId:candidates[0];
+    const def=TRICK_DEFINITIONS[primary];
+    // An amendment keeps the episode's variant while the primary stands; a better reading replaces it.
+    const variantId=stuntVariantFor(primary,receipt)??(old&&old.trickId===primary?old.variantId??null:null);
+    const variantName=(variantId&&STUNT_VARIANT_NAMES[variantId])||null;
+    const cargo=primary==='ore_shotgun'?stuntCargoOf(r)??old?.cargo??null:null;
+    const collateralCount=e.path.edges>1 ? lives.length : old?.modifiers.collateralCount??1;
+    const razor=r.release&&within(receipt.tick,r.release.tick,180)?r.release.grade:null;
+    const modifiers={razorRelease:razor,collateralCount,closeShave:receipt.escape?.closeShave===true&&primary!=='needle_thread'};
+    const rawNodes=chained ? [...(e.previousRoot?.nodes || []), ...r.nodes] : r.nodes;
+    const chain=rawNodes.map((n,i)=>({step:i+1,type:n.kind,entityId:n.entityId??n.sourceId,targetId:n.targetId,
+      tick:n.tick,detail:n.kind, ...n}));
+    const trick={schemaVersion:2,trickId:primary,name:def.name,rarity:def.rarity,baseScore:def.baseScore,family:def.family,role:def.role,
+      actorId:r.actorId,targetId:receipt.targetId,secondaryIds:[r.sourceId],episodeId,rootId:episodeId,rootTick:e.previousRoot?.tick??r.tick,
+      tick:receipt.tick,firstPayoffTick:old?.firstPayoffTick??receipt.tick,amendment:!!old,
+      amendmentDeadline:old?.amendmentDeadline??Math.min(receipt.tick+180,r.tick+480),victimLives:lives,modifiers,
+      variantId,variantName,cargo,causeChain:chain, factualTags:candidates.slice(1), evidenceRevision:EVIDENCE_REVISION,encounterId:r.encounterId,
+      pureEscape:!!receipt.escape,threatEpisodeId:receipt.escape?.threatEpisodeId,
+      consequence:{killed:receipt.targetKilled,escaped:!!receipt.escape,hullDamage:receipt.hullDamage,hullMax:receipt.targetHullMax,helmLossSeconds:receipt.helmLossSeconds},
+      metrics:{payloadMass:r.reference.mass,playerDryHullMass:r.playerMass,usefulDeltaV:e.path.usefulDeltaV,referenceCruise:r.reference.cruise,
+        normalClosingSpeed:e.path.closingSpeed,availableMomentum:Math.max(old?.metrics?.availableMomentum??0,e.path.momentum??0),referenceMomentum:r.referenceMomentum??0,
+        mass:r.reference.mass,deltaV:e.path.usefulDeltaV,collateralCount,selfLaunch:r.sourceId===r.actorId,projectileOnly:r.sourceType==='projectile',
+        occludedAtRoot:e.contact?(e.path?.targetLife===terminal?.lifeId?e.path?.playerOccludedAtRoot
+          :e.path?.sourceLife===terminal?.lifeId?e.path?.sourceOccludedAtRoot:null):null,
+        sourceDeadBeforeRoot:r.sourceDeathTick!=null&&r.tick>r.sourceDeathTick,sceneReferenceMass:r.sceneReferenceMass??null,
+        bankCorridorId:r.nodes.find(n=>n.kind==='reflection'&&n.unreflectedMiss&&n.directOccluded)?.bankCorridorId??null},
+      sourceRadius:r.reference.radius,terminalPos:e.contact?(e.contact.aId===receipt.targetId?e.contact.aPos:e.contact.bPos):null,
+      sourceName:r.sourceName??String(r.sourceId),targetName:receipt.targetName??String(receipt.targetId)};
+    this.incidents.set(episodeId,trick);
+    if(this.incidents.size>256)this.incidents.delete(this.incidents.keys().next().value);
+    this.detectedTricks.push(trick);if(this.detectedTricks.length>64)this.detectedTricks.shift();
+    return [trick];
+  }
+  serialize() { return {revision:2,tick:this.tick,incidents:[...this.incidents]}; }
+  deserialize(raw) { if(raw?.revision===2){this.tick=raw.tick;this.incidents=new Map((raw.incidents??[]).slice(-256));} }
+}

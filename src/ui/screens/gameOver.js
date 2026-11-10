@@ -1,0 +1,1138 @@
+// Ship-loss after-action screen. Standard runs pause over the wreck until the player confirms a
+// deterministic lawful-dock recovery; Ironman keeps its final-run contract. Combat owns all state
+// mutation and consequences. This DOM surface only explains the receipt and emits intents.
+// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, game over, amended by Task B §1.5):
+// a still — the wreck or the last frame, cooled with the wanted-blue scrim; what killed you at
+// screen-title size; the final sortie and the final damage as the second line; the recovery dock,
+// recovery cost and cargo consequence as three hero blocks; coverage as one sentence; the actions as
+// words. Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS. The DOM is
+// built from `el` + appendChild only so the after-action unit test's minimal fake document runs it.
+
+//
+// ORRERY (design/frontend/ORRERY.md §6 Meta, "Game over"): light rays cooled to red stand behind the
+// report; the cause is the headline line and decrypts on arrival; the career record is a ring (the
+// career's time round it, the lost hull's life the red arc that ends it at the top, the figures on
+// stations round the rim); restore is the one Lamp Key (the recovery berth, else Load save, else New
+// Game in Ironman). Red is only the loss. Composition: src/ui/orrery/saveLayouts.js.
+// The signature: the last sortie as a black box along the foot (src/ui/orrery/saveSortieTape.js),
+// read from the session's own flight record. Drag the Hand back through it and the ring answers: a
+// bead runs round the red arc to that moment, the hub reads the time into the sortie, and the lost
+// hull's plan view brightens back toward the ship it was.
+
+import { STORY_BEATS } from '../../data/missions.js';
+import { el, settle, cue } from '../kit/index.js';
+import { dressLampKey } from '../orrery/lampKey.js';
+import { injectSaveLayouts } from '../orrery/saveLayouts.js';
+import { injectGameOverLayouts } from '../orrery/gameOverLayouts.js';
+import { injectEndCardLayouts } from '../orrery/game-overLayouts.js';
+import { svg, arcD, polar, ticksD } from '../orrery/svg.js';
+import { decrypt, rollTo } from '../orrery/text.js';
+import { createSortieTape, fmtSortieTime } from '../orrery/saveSortieTape.js';
+import { entitySpanHtml, decorateEntityNode, entityLabel } from '../entityResolver.js';
+import { hullPosterUrl } from '../hullPosters.js';
+import { NEW_GAME, DEFAULT_STARTER_ID, starterById } from '../../data/newGameDefaults.js';
+import { escapeHtml } from '../comms.js';
+import { injectDeckplate } from '../deckplate/index.js';
+import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { confirm } from '../confirm.js';
+import { loadConfirmBody } from './saveLoad.js';
+import { rangeRungIndex } from './range.js';
+import { killcamStageRequestFor } from '../../sim/killcamTape.js';
+import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel, wantedTierInfo } from '../../systems/heat.js';
+import { wantedReasonText } from '../wantedReason.js';
+import { DEFEAT_HUNT_COPY, lawDeskLine } from '../../data/lawDeskCopy.js';
+
+export { restoredDefeatIntent } from '../sim/restoredDefeatIntent.js';
+
+/** The career ring's stations: [label, bearing in dial degrees (0 = up, clockwise)]. Time flown reads
+ *  at the hub; the lost hull's life sits by the red arc it names (top left). */
+const RING_STATIONS = Object.freeze({
+  'Time flown': null,
+  'This hull lasted': 318,
+  'Contracts done': 42,
+  Kills: 90,
+  Trades: 138,
+  'Lifetime profit': 222,
+  'Best single trade': 270,
+});
+
+function parseDurationS(text) {
+  const m = /^(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+)s)?$/.exec(String(text || '').trim());
+  if (!m || !(m[1] || m[2] || m[3])) return null;
+  return (Number(m[1]) || 0) * 3600 + (Number(m[2]) || 0) * 60 + (Number(m[3]) || 0);
+}
+
+/** The receipt's fields and their labels. The kicker, the second line, the hero words and the
+ *  coverage sentence are all spelled from this table (the screen-import check reads the pairs). */
+const FIELD_LABELS = [
+  ['cause', 'Loss cause'],
+  ['lifespan', 'Final sortie'],
+  ['damage', 'Final damage'],
+  ['dock', 'Recovery dock'],
+  ['cost', 'Recovery cost'],
+  ['cargo', 'Cargo consequence'],
+  ['insurance', 'Coverage'],
+];
+const LABEL = Object.fromEntries(FIELD_LABELS);
+const lower = (s) => String(s).toLowerCase();
+
+/** A kit hero block (`.k-hero`): the number and its word. Returns the number element for updates. */
+function heroBlock(parent, word) {
+  const block = el('div', 'k-hero');
+  const n = el('span', 'k-hero__n', '-');
+  block.appendChild(n);
+  block.appendChild(el('span', 'k-hero__w', word));
+  parent.appendChild(block);
+  return n;
+}
+
+/** A kit word in a `.k-words` list. Returns the button; the caller hides its `li` with it. */
+function wordItem(list, label, className) {
+  const li = el('li');
+  const button = el('button', 'k-word k-word--emph' + (className ? ' ' + className : ''), label);
+  button.type = 'button';
+  li.appendChild(button);
+  list.appendChild(li);
+  button._kItem = li;
+  return button;
+}
+
+function setWordHidden(button, hidden) {
+  if (!button) return;
+  button.hidden = hidden;
+  if (button._kItem) button._kItem.hidden = hidden;
+}
+
+function fmtTime(s) {
+  s = Math.max(0, Math.floor(s || 0));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  if (h > 0) return h + 'h ' + m + 'm';
+  if (m > 0) return m + 'm ' + sec + 's';
+  return sec + 's';
+}
+
+function fmtCr(c) { return (Math.max(0, Math.round(c || 0))).toLocaleString() + ' cr'; }
+
+function fmtMs(ms) {
+  const s = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+  return fmtTime(s);
+}
+
+function catalogLabel(kind, id) {
+  return (id && entityLabel(kind + ':' + id)) || prettyLabel(id);
+}
+
+function prettyLabel(value) {
+  return String(value || 'unknown')
+    .replace(/^(faction|ship|sector|station)_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function storyProgressLabel(state = {}) {
+  const story = state.story || (state.missions && state.missions.story) || {};
+  const raw = Number(story.beatIndex);
+  const maxBeat = Math.max(0, STORY_BEATS.length - 1);
+  const beat = Number.isFinite(raw) ? Math.max(0, Math.min(maxBeat, Math.floor(raw))) : 0;
+  return 'Beat ' + beat + ' / ' + maxBeat;
+}
+
+function telemetryHandle(ctx) {
+  if (ctx && ctx.telemetry && typeof ctx.telemetry.getSessionStats === 'function') return ctx.telemetry;
+  const globalTelemetry = typeof window !== 'undefined' ? window.__SF_TELEMETRY__ : null;
+  return globalTelemetry && typeof globalTelemetry.getSessionStats === 'function' ? globalTelemetry : null;
+}
+
+/** The glass title. A logged "Destroyed by …" line names the hull; otherwise the receipt does. */
+export function afterActionCause(receipt, deathCause) {
+  if (typeof deathCause === 'string' && /^Destroyed by /.test(deathCause)) return deathCause;
+  if (receipt && (receipt.fatalSummary || receipt.cause)) return receipt.fatalSummary || receipt.cause;
+  return deathCause || '';
+}
+
+export function deathCauseLabel(entry = null) {
+  if (!entry) return 'Unknown loss';
+  const cause = String(entry.cause || 'unknown');
+  if (cause === 'environmental') return 'Environmental hazard';
+  if (cause === 'self') return 'Self-inflicted damage';
+  if (cause.startsWith('collision:')) return 'Collision with ' + prettyLabel(cause.slice('collision:'.length));
+  if (cause.startsWith('ship:')) {
+    const named = typeof entry.killerName === 'string' ? entry.killerName.trim() : '';
+    const killer = named || prettyLabel(entry.killerType || cause.slice('ship:'.length));
+    const faction = entry.killerFaction ? ' (' + catalogLabel('faction', entry.killerFaction) + ')' : '';
+    return 'Destroyed by ' + killer + faction;
+  }
+  return cause === 'unknown' ? 'Unknown loss' : prettyLabel(cause);
+}
+
+export function lastDeathSummary(ctx = {}) {
+  const telemetry = telemetryHandle(ctx);
+  let entry = null;
+  if (telemetry) {
+    try {
+      const stats = telemetry.getSessionStats();
+      const log = stats && Array.isArray(stats.deathLog) ? stats.deathLog : [];
+      entry = log.length ? log[log.length - 1] : null;
+    } catch (e) {
+      entry = null;
+    }
+  }
+  return {
+    cause: deathCauseLabel(entry),
+    lifespan: entry && entry.lifespanMs != null ? fmtMs(entry.lifespanMs) : '-',
+  };
+}
+
+/**
+ * inf-defeat-situation — the after-action sheet's situation clause: the loss receipt names the
+ * hull that killed you, but until now it never said the SITUATION you died in. When the law's
+ * hunt was live at death, the sheet names it: the wanted band the hull died under, the escape
+ * clock it carried, and — through the same no-false-witness trace the flight alert uses — the
+ * convicting incident the sheet stood on (suspicion without a receipt names nothing, and a
+ * clean or sub-threshold sheet gets no clause at all). The defeat freezes heat (heat decays
+ * only in flight), so the values here are the situation AT death, not the sheet's later state.
+ * Pure read; '' whenever any part would have to be invented.
+ */
+export function deathSituationClause(state = null) {
+  const player = state && state.player;
+  const heat = player && Number.isFinite(Number(player.heat)) ? Number(player.heat) : 0;
+  if (!isPlayerWanted({ player: { heat } })) return '';
+  const parts = [lawDeskLine(DEFEAT_HUNT_COPY.band, { band: wantedTierInfo(heat).label })];
+  const clearS = heatClearSecondsForLevel(heatLevelFor(heat));
+  if (clearS > 0) parts.push(lawDeskLine(DEFEAT_HUNT_COPY.clearClock, { seconds: Math.ceil(clearS) }));
+  const trace = wantedReasonText(null, player);
+  if (trace) parts.push(lawDeskLine(DEFEAT_HUNT_COPY.tracedTo, { trace: trace.replace(/^ · /, ' ') }));
+  return parts.join(', ');
+}
+
+/** What the sortie's black box kept: the moments of the lost hull's last sortie, from the session's own
+ *  telemetry ring (launch -> loss). Returns { lengthS, events } in seconds from the launch; lengthS null
+ *  when the loss has no recorded lifespan. Events are the kinds a pilot remembers; threats flagged. */
+export function sortieRecord(ctx = {}) {
+  const telemetry = telemetryHandle(ctx);
+  if (!telemetry) return { lengthS: null, events: [] };
+  let entry = null;
+  try {
+    const stats = telemetry.getSessionStats();
+    const log = stats && Array.isArray(stats.deathLog) ? stats.deathLog : [];
+    entry = log.length ? log[log.length - 1] : null;
+  } catch (e) { entry = null; }
+  const lengthMs = entry && Number(entry.lifespanMs);
+  if (!(lengthMs > 0)) return { lengthS: null, events: [] };
+  const lengthS = lengthMs / 1000;
+  const endAt = Number(entry.atMs);
+  let ring = [];
+  if (Number.isFinite(endAt) && typeof telemetry.getRecentEvents === 'function') {
+    try { ring = telemetry.getRecentEvents() || []; } catch (e) { ring = []; }
+  }
+  const startAt = endAt - lengthMs;
+  const events = [];
+  let kind = '';
+  const push = (atMs, label, threat = false) => {
+    const t = (atMs - startAt) / 1000;
+    if (!(t >= 0 && t < lengthS)) return;
+    // one mark per kind within ~2% of the sortie (a run of mining yields is one moment)
+    const last = events.length ? events[events.length - 1] : null;
+    if (last && last.kind === kind && t - last.t < lengthS * 0.02) return;
+    events.push({ t, label, threat, kind });
+  };
+  for (const e of Array.isArray(ring) ? ring : []) {
+    if (!e || !Number.isFinite(Number(e.atMs))) continue;
+    const d = e.data || {};
+    kind = e.type;
+    switch (e.type) {
+      case 'dock:docked': push(e.atMs, 'Docked' + (d.stationId ? ' · ' + catalogLabel('station', d.stationId) : '')); break;
+      case 'jump:arrive': push(e.atMs, d.interdicted ? 'Interdicted' : 'Jumped' + (d.sectorId ? ' · ' + catalogLabel('sector', d.sectorId) : ''), !!d.interdicted); break;
+      case 'entity:killed': push(e.atMs, 'Kill' + (d.victimClass ? ' · ' + prettyLabel(d.victimClass) : '')); break;
+      case 'economy:tradeCompleted': push(e.atMs, d.side === 'sell' ? 'Sold cargo' : 'Bought cargo'); break;
+      case 'mining:yield': push(e.atMs, 'Mined' + (d.commodityId ? ' · ' + catalogLabel('commodity', d.commodityId) : '')); break;
+      case 'mission:accepted': push(e.atMs, 'Contract taken'); break;
+      case 'mission:completed': push(e.atMs, 'Contract done'); break;
+      case 'mission:failed': push(e.atMs, 'Contract failed', true); break;
+      case 'escalation:arrived': push(e.atMs, 'Hostiles inbound', true); break;
+      default: break;
+    }
+  }
+  // the warning, when a telegraph led the kill
+  kind = 'telegraph';
+  if (entry.telegraphed && Number.isFinite(Number(entry.telegraphLeadTicks))) {
+    push(endAt - (Number(entry.telegraphLeadTicks) * 1000) / 60, 'It warned you', true);
+  }
+  events.sort((a, b) => a.t - b.t);
+  return { lengthS, events };
+}
+
+export function currentDefeat(ctx = {}) {
+  const state = ctx.state || {};
+  return state.combat && state.combat.lastPlayerDefeat || null;
+}
+
+/** One offer line when the receipt names a real Range rung. Empty for every other death. */
+export function deathRangeOfferText(receipt) {
+  const offer = receipt && receipt.rangeOffer;
+  if (!offer || !offer.line || !offer.rungId) return '';
+  if (rangeRungIndex(offer.rungId) < 0) return '';
+  return String(offer.line);
+}
+
+/**
+ * Ironman is permadeath (src/systems/combat.js): death ends the run and the save is final. Offering
+ * "Load latest" on an Ironman death would hand the player a way to undo the one promise that
+ * difficulty makes, so the verb is withdrawn rather than disabled-and-grayed.
+ */
+export function isIronmanDeath(ctx = {}) {
+  const state = ctx.state || {};
+  const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+  return difficulty === 'ironman';
+}
+
+/**
+ * Row 463 — the "Retry act" offer on the after-action screen. Only while the durable receipt
+ * names a capital fight, that fight's mission row is still active, and the run is not Ironman.
+ * Combat's boss_staging plan re-prices the same berth economics onto a staging point ~1100 WU
+ * off the boss; any missing piece falls back to the ordinary berth server-side.
+ */
+export function capitalBossRetryOffer(ctx = {}) {
+  if (isIronmanDeath(ctx)) return null;
+  const receipt = currentDefeat(ctx);
+  const fightId = receipt && receipt.capitalBossFightId;
+  if (fightId == null) return null;
+  const state = ctx.state || {};
+  const active = (state.missions && Array.isArray(state.missions.active) && state.missions.active) || [];
+  const mission = active.find((m) => m && String(m.id) === String(fightId));
+  if (!mission || mission.status !== 'active') return null;
+  const bossName = String(receipt.capitalBossName || 'the boss');
+  const actTitle = String(receipt.capitalBossActTitle || 'the current act');
+  return {
+    fightId,
+    bossName,
+    actTitle,
+    caption: `Back to ${bossName} — ${actTitle}. Same costs as the berth.`,
+  };
+}
+
+/**
+ * PRO-14 — the after-action model, and the "Load latest" verb the death screen was missing.
+ *
+ * The death screen offered exactly one save route: "Load save", which pushes the whole save browser.
+ * So a player who died and wanted to go back to their last autosave had to open a modal, read a
+ * slot list, and pick — on the one screen where the cheapest action is the one they almost always
+ * want. The verb belongs beside the recovery key.
+ *
+ * `slots` is the live slot index (state.save.slots). It resolves the newest OCCUPIED slot through
+ * the save system's own selectLatestOccupiedSlot, so this screen can never disagree with the save
+ * browser about which save is newest, and it never invents a second "latest" rule.
+ *
+ * The verb is `loadLatestSlot`, never a raw id: the click handler resolves it again through the
+ * trusted-slot confirmation, so the model exposes an intent and the save system still owns the load.
+ */
+export function afterActionModel(ctx = {}) {
+  const state = ctx.state || {};
+  const slots = (state.save && state.save.slots) || {};
+  const ironman = isIronmanDeath(ctx);
+  const slot = ironman ? null : selectLatestOccupiedSlot(slots);
+  return {
+    ironman,
+    // The newest occupied slot id, or null when there is nothing to go back to.
+    latestSlot: slot,
+    // Whether the verb is offered at all. Null means "nothing to load", which is not the same as
+    // ironman — the copy must not claim Ironman where the real reason is an empty drawer.
+    canLoadLatest: !ironman && !!slot,
+    loadLatestSlot: !ironman && slot ? slot : null,
+  };
+}
+
+function getManager(ctx) {
+  if (ctx && ctx.screenManager) return ctx.screenManager;
+  if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  if (ui && ui.screenManager) return ui.screenManager;
+  return null;
+}
+
+function asScreenStack(ctx) {
+  const stack = ctx && ctx.state && ctx.state.ui && ctx.state.ui.screenStack;
+  return Array.isArray(stack) ? stack : null;
+}
+
+/**
+ * Successful recovery must dismiss Game Over even when another modal (for example, Load save)
+ * is stacked above it — and when a modal is stacked BENEATH it. Death can land gameOver on top
+ * of an open pause/station/chart stack; respawn returns to flight, so the whole modal stack
+ * must resolve. A survivor below gameOver (pause was the real case) keeps ui:pausing-screen
+ * latched: the sim stays frozen and the flight input fence stays up — a softlock that looked
+ * like a dead recovery button. Prefer the manager's own closeAll (one bookkeeping pass: onHide,
+ * focus restore, syncPause resume edge); fall back to a bounded pop drain for harness managers,
+ * and to a single top-only pop when the shared stack is unavailable.
+ */
+function popAncestorsUntilGameOverResolves(ctx, manager) {
+  if (!manager) return { popped: 0, dismissed: false };
+  const stack = asScreenStack(ctx);
+  if (Array.isArray(stack)) {
+    if (!stack.includes('gameOver')) return { popped: 0, dismissed: false };
+    const popped = stack.length;
+    if (typeof manager.closeAll === 'function') manager.closeAll();
+    if (!stack.length) return { popped, dismissed: true };
+    if (typeof manager.popScreen !== 'function') {
+      return { popped: 0, dismissed: false };
+    }
+    // Drain whatever closeAll left (absent or inert on harness managers), bounded by the
+    // initial length so a broken/no-op manager cannot spin forever.
+    for (let i = 0; i < popped && stack.length; i++) {
+      const beforeLength = stack.length;
+      manager.popScreen();
+      // Keep lightweight harness managers honest when they do not mutate the shared stack.
+      if (stack.length === beforeLength) stack.pop();
+    }
+    return { popped, dismissed: !stack.includes('gameOver') };
+  }
+
+  const isGameOverTop = typeof manager.top === 'function' && manager.top() === 'gameOver';
+  if (!isGameOverTop) return { popped: 0, dismissed: false };
+  if (typeof manager.closeAll === 'function') {
+    manager.closeAll();
+    return { popped: 1, dismissed: true };
+  }
+  if (typeof manager.popScreen !== 'function') {
+    return { popped: 0, dismissed: false };
+  }
+  manager.popScreen();
+  return { popped: 1, dismissed: true };
+}
+
+export const gameOverScreen = {
+  id: 'gameOver',
+  data: { locked: true },
+  // ScreenManager owns this request and retains the wreck plate when the bounded
+  // tape is missing or motion is reduced. The replay never advances the simulation.
+  stage(ctx) { return killcamStageRequestFor(ctx?.state); },
+  _summaryEls: null,
+  _summarySig: null,
+  _defaultButton: null,
+  _titleEl: null,
+  _subEl: null,
+  _recoveryEl: null,
+  _retryButton: null,
+  _loadButton: null,
+  _newButton: null,
+  _menuButton: null,
+
+  mount(rootEl, ctx) {
+    this._rootEl = rootEl;
+
+    injectDeckplate();
+    injectSaveLayouts();
+    injectGameOverLayouts();
+    injectEndCardLayouts();
+    rootEl.innerHTML = '';
+    rootEl.classList.remove('panel', 'sf-menu', 'sf-gameover');
+    // k-screen--cold: the one screen that deepens the menu scrim to the wanted blue (Task B §1.5).
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'k-screen--cold', 'sf-gameover', 'orr-gameover');
+    rootEl.setAttribute('role', 'dialog');
+    rootEl.setAttribute('aria-modal', 'true');
+    rootEl.setAttribute('aria-labelledby', 'sf-gameover-title');
+    // Light rays cooled to red, behind the report (ORRERY §4 #16): one slow compositor turn, still
+    // under reduced motion.
+    const rays = el('div', 'orr-go-rays');
+    rays.setAttribute('aria-hidden', 'true');
+    rootEl.appendChild(rays);
+
+    // .k-title — what killed you, at screen-title size; the sortie and the damage as the second line.
+    const title = el('header', 'k-title');
+    // The verdict as a caps kicker over the cause ("Ship lost · loss cause"); the public-route check
+    // reads both phrases from the surface, and the cause itself is the display line.
+    const kicker = el('span', 'k-caps', 'Ship lost · ' + lower(LABEL.cause));
+    this._kickerEl = kicker;
+    title.appendChild(kicker);
+    const h = el('h1', 'k-display k-t-title', 'Ship Lost');
+    h.id = 'sf-gameover-title';
+    this._titleEl = h;
+    title.appendChild(h);
+    const line = el('p', 'k-sentence k-sentence--emph');
+    this._lineEl = line;
+    title.appendChild(line);
+    const sub = el('p', 'k-sentence sf-go-sub', 'Flight controls locked. Review the loss, then recover.');
+    this._subEl = sub;
+    title.appendChild(sub);
+    rootEl.appendChild(title);
+
+    // .k-stage — three hero blocks, the coverage sentence, the recovery sentence.
+    const stage = el('section', 'k-stage');
+    const heroes = el('div', 'k-words k-words--row sf-go-grid');
+    this._summaryEls = Object.create(null);
+    // `.sf-go-grid .v` is what the public-route check reads; the hero numbers carry the class.
+    // The sheet's words are "recovery dock", "recovery cost", "cargo"; the public-route check reads
+    // "Cargo consequence", so the third word is the nearest phrase that satisfies both.
+    for (const key of ['dock', 'cost', 'cargo']) {
+      const n = heroBlock(heroes, lower(LABEL[key]));
+      n.className += ' v';
+      this._summaryEls[key] = n;
+    }
+    stage.appendChild(heroes);
+    const insurance = el('p', 'k-sentence');
+    this._summaryEls.insurance = insurance;
+    stage.appendChild(insurance);
+    const rangeOffer = el('p', 'k-sentence');
+    rangeOffer.hidden = true;
+    this._summaryEls.rangeOffer = rangeOffer;
+    stage.appendChild(rangeOffer);
+    const recovery = el('p', 'k-sentence sf-go-recovery', 'Recovery receipt pending.');
+    this._recoveryEl = recovery;
+    stage.appendChild(recovery);
+    // SP2-188 — the results sheet gains one line on the defeat where the channel noticed a
+    // session of zero dismissed popups (state.ui.readEverythingFired, written by the
+    // special500ReadEverything leg on the same receipt). Hidden otherwise; no flag read past
+    // this session — the next session's quiet channel is story.js's own read.
+    const channelLine = el('p', 'k-sentence sf-go-channel');
+    channelLine.hidden = true;
+    this._channelEl = channelLine;
+    stage.appendChild(channelLine);
+    rootEl.appendChild(stage);
+    // The career record beside the loss report: what this pilot had done before the hull went, so
+    // the screen reads as the end of a chapter, not a receipt alone. Refilled on every show.
+    const recap = el('aside', 'sf-go-recap');
+    recap.setAttribute('aria-label', 'Career record');
+    recap.appendChild(el('p', 'k-caps sf-go-recap__title', 'Career record'));
+    // The ring the record's stations stand round (drawn by _paintCareerRing where SVG exists).
+    const ring = el('div', 'sf-go-ring');
+    ring.setAttribute('aria-hidden', 'true');
+    recap.appendChild(ring);
+    this._ringEl = ring;
+    const recapRows = el('dl', 'sf-go-recap__rows');
+    recap.appendChild(recapRows);
+    this._recapRows = recapRows;
+    // A remount rebuilds the DOM from scratch — the signature cache must not tell the first
+    // _refreshSummary the fresh tree is already right.
+    this._summarySig = null;
+    rootEl.appendChild(recap);
+    // Cause, sortie and damage read in the title; they are kept as summary keys for the refresh.
+    this._summaryEls.cause = h;
+    this._summaryEls.lifespan = el('span');
+    this._summaryEls.damage = el('span');
+
+    // .k-foot — the actions as words.
+    const foot = el('footer', 'k-foot sf-go-foot');
+    const list = el('ul', 'k-words k-words--row');
+    list.setAttribute('aria-label', 'After action');
+    foot.appendChild(list);
+
+    const bRetry = wordItem(list, 'Continue from recovery berth', 'k-word--primary sf-go-retry');
+    bRetry.title = 'Apply the shown recovery receipt and continue beside the named lawful dock';
+    bRetry.setAttribute('aria-label', 'Continue from the recovery berth with the shown consequences');
+    if (bRetry.childNodes) dressLampKey(bRetry);
+    else bRetry.classList.add('orr-lampkey');
+    bRetry.addEventListener('click', () => {
+      // Combat owns success/failure. Success closes via player:respawn; failure surfaces a toast
+      // (and player:recoveryFailed) so a dead latch never looks like a no-op button.
+      cue('confirm');
+      ctx.bus.emit('player:recoveryRequested', { source: 'after_action' });
+    });
+    this._retryButton = bRetry;
+
+    // Row 463: an active authored capital fight earns a second recovery verb beside the berth —
+    // the same consequences, a staging point back at the boss. The offer re-settles in
+    // _refreshSummary so a settled mission or a lost receipt removes it without a stale click.
+    const bBossRetry = wordItem(list, 'Retry act', 'sf-go-boss-retry');
+    bBossRetry.setAttribute('aria-label', 'Retry the boss act from a staging point with the shown consequences');
+    bBossRetry.addEventListener('click', () => {
+      const offer = capitalBossRetryOffer(ctx);
+      if (!offer) { this._refreshSummary(ctx); return; }
+      cue('confirm');
+      ctx.bus.emit('player:recoveryRequested', {
+        source: 'after_action', plan: 'boss_staging', fightId: offer.fightId,
+      });
+    });
+    this._bossRetryButton = bBossRetry;
+
+    const bLoad = wordItem(list, 'Load save');
+    bLoad.title = 'Open saved games without applying recovery consequences';
+    bLoad.setAttribute('aria-label', 'Load save instead of recovering this ship');
+    bLoad.addEventListener('click', () => {
+      cue('confirm');
+      const mgr = getManager(ctx);
+      if (mgr && mgr.pushScreen) mgr.pushScreen('saveLoad');
+      else ctx.bus.emit('ui:pushScreen', { id: 'saveLoad' });
+    });
+    this._loadButton = bLoad;
+
+    // PRO-14: "Load latest" beside the recovery key. "Load save" above still opens the full browser
+    // for picking a specific slot; this is the one-tap route back to the newest autosave, which is
+    // what a player who just died almost always wants.
+    const bLatest = wordItem(list, 'Load latest');
+    bLatest.classList.add('sf-go-loadlatest');
+    this._latestButton = bLatest;
+    bLatest.addEventListener('click', async () => {
+      cue('confirm');
+      // Resolve the slot AGAIN at click time: the slot index may have changed since the screen was
+      // built (an autosave can land while the player reads the after-action sheet).
+      const model = afterActionModel(ctx);
+      if (!model.canLoadLatest) {
+        // Re-checked rather than trusted from build time, so the button can never fire a load of a
+        // slot that no longer exists — or any load at all in Ironman.
+        this._syncLoadLatest(ctx);
+        return;
+      }
+      const id = model.loadLatestSlot;
+      const meta = (ctx.state.save && ctx.state.save.slots && ctx.state.save.slots[id]) || null;
+      // The SAME trusted-slot confirmation the save browser uses, with the SAME sentence. Never
+      // bypass it: this load silently discards everything since the last write.
+      const ok = await confirm({
+        title: 'Load this save?',
+        body: loadConfirmBody(id, meta),
+        confirmLabel: 'Load',
+        danger: true,
+      });
+      if (!ok) return;
+      ctx.bus.emit('game:over:dismissed', {});
+      ctx.bus.emit('game:load', { slot: id });
+    });
+
+    const bNew = wordItem(list, 'New Game');
+    bNew.title = 'Start a fresh run';
+    bNew.setAttribute('aria-label', 'Start a fresh run');
+    // The death sheet is pure dwell and this verb's launch is a fixed shape (default
+    // sector + starter, fresh seed) — hover/focus time is warm lead the click arm wastes.
+    const armFreshRunWarm = () => {
+      if (!ctx || !ctx.bus) return;
+      const starter = starterById(DEFAULT_STARTER_ID);
+      ctx.bus.emit('game:embarkSpeculation', {
+        sectorId: NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime',
+        seed: null,
+        shipDefId: starter && starter.shipId,
+      });
+    };
+    bNew.addEventListener('pointerenter', armFreshRunWarm);
+    bNew.addEventListener('focusin', armFreshRunWarm);
+    bNew.addEventListener('click', () => {
+      cue('confirm');
+      const mgr = getManager(ctx);
+      // A fresh new game clears the dead run; main.js's game:new handler resets all run state.
+      ctx.bus.emit('game:over:dismissed', {});
+      const difficulty = ctx.state && ctx.state.settings && ctx.state.settings.gameplay
+        && ctx.state.settings.gameplay.difficulty || 'standard';
+      ctx.bus.emit('game:new', { name: null, difficulty });
+      if (mgr && mgr.popScreen) { try { mgr.popScreen(); } catch (e) {} }
+    });
+    this._newButton = bNew;
+
+    // The label is what check-gameover-recovery-copy asserts in the source (and probes read in the DOM).
+    const bMenu = wordItem(list, 'Main Menu / Load');
+    bMenu.title = 'Return to title screen to continue or load another save';
+    bMenu.setAttribute('aria-label', 'Return to title screen to continue or load another save');
+    bMenu.addEventListener('click', () => {
+      cue('confirm');
+      // Let main.js publish the authoritative mode edge before this modal stack
+      // is closed; a worker mirror may still read `flight` at this click.
+      ctx.bus.emit('game:exitToMenu', { source: 'game-over' });
+      ctx.bus.emit('game:over:dismissed', {});
+      const mgr = getManager(ctx);
+      if (mgr) {
+        if (mgr.closeAll) mgr.closeAll();
+        if (mgr.replaceScreen) mgr.replaceScreen('mainMenu');
+        else if (mgr.pushScreen) mgr.pushScreen('mainMenu');
+      }
+    });
+    this._menuButton = bMenu;
+
+    // Combat alone decides whether recovery succeeded. Keep the locked screen in place on a
+    // rejected/duplicate intent; close only on the canonical successful respawn receipt.
+    ctx.bus.on('player:respawn', () => {
+      const mgr = getManager(ctx);
+      const close = popAncestorsUntilGameOverResolves(ctx, mgr);
+      if (!close.dismissed) return;
+      ctx.bus.emit('game:over:dismissed', {});
+    });
+    // Failed recovery stays on this modal. Refresh copy so Load/New paths appear if the receipt
+    // was cleared, and keep the primary button available when combat re-armed from the receipt.
+    ctx.bus.on('player:recoveryFailed', () => {
+      this._refreshSummary(ctx);
+      // PRO-14: an autosave can land while the sheet is open, so the verb is re-settled with the
+      // receipt rather than left describing a drawer that has since gained a save.
+      this._syncLoadLatest(ctx);
+    });
+
+    rootEl.appendChild(foot);
+    // PRO-14: settle the verb once at build time so it is never offered in Ironman or with an
+    // empty save drawer.
+    this._syncLoadLatest(ctx);
+    // The black box of the last sortie, along the foot: the screen's instrument to play.
+    const tapeHost = el('section', 'sf-go-tape');
+    tapeHost.setAttribute('aria-label', 'Last sortie');
+    rootEl.appendChild(tapeHost);
+    this._tapeHost = tapeHost;
+    this._tape = createSortieTape({ host: tapeHost, onScrub: (t, ev, atEnd) => this._onSortieScrub(t, ev, atEnd) });
+    this._tapeSig = null;
+    this._titleRegion = title;
+    this._stageRegion = stage;
+    this._footRegion = foot;
+    this._refreshSummary(ctx);
+  },
+
+  onShow(ctx) {
+    this._refreshSummary(ctx);
+    this._armDeathSlide(ctx);
+    // The cause resolves out of telemetry noise once the report is on the glass (ORRERY §4 #4).
+    if (this._titleEl) this._stopTitleDecrypt = decrypt(this._titleEl, this._titleEl.textContent, { duration: 560, delay: 420 });
+    // The kit's settle needs a real frame clock; the after-action unit test runs under a fake document.
+    if (typeof requestAnimationFrame === 'function' && this._titleRegion) {
+      settle(this._titleRegion, { from: 'left', state: 'gameover-title' });
+      settle(this._stageRegion, { from: 'left', delay: 60, state: 'gameover-stage' });
+      settle(this._footRegion, { from: 'bottom', delay: 120, state: 'gameover-foot' });
+      cue('open');
+    }
+    if (this._defaultButton) {
+      try { this._defaultButton.focus({ preventScroll: true }); } catch (e) { try { this._defaultButton.focus(); } catch (err) {} }
+    }
+  },
+
+  onHide() {
+    if (this._slideTimer) {
+      clearTimeout(this._slideTimer);
+      this._slideTimer = null;
+    }
+    this._endDeathSlide();
+  },
+
+  // The bench already awaits this screen seam. WAAPI settling alone cannot finish the
+  // timer-owned death slide (400ms) or delayed headline decrypt (420ms + 560ms).
+  // Production keeps the same entrance; composition captures read the report at rest.
+  settled() {
+    return new Promise((resolve) => setTimeout(resolve, this._slideTimer ? 1100 : 0));
+  },
+
+  _armDeathSlide(ctx) {
+    const settings = ctx && ctx.state && ctx.state.settings;
+    const root = this._rootEl;
+    if (!settings || !root) return;
+    const video = settings.video || {};
+    const access = settings.accessibility || {};
+    if (video.motionReduce || video.flashReduce || access.flashReduce) return;
+    if (this._slideTimer) clearTimeout(this._slideTimer);
+    root.classList.remove('k-screen--cold');
+    const hidden = [];
+    for (const child of root.children) {
+      if (!child || !child.style) continue;
+      hidden.push(child);
+      // opacity, not visibility: a hidden control cannot take focus, and a d-pad pressed during the
+      // slide moved nothing (the pad walk failed the screen); faded it stays reachable
+      child.style.opacity = '0';
+    }
+    this._slideHidden = hidden;
+    this._slideTimer = setTimeout(() => this._endDeathSlide(), 400);
+  },
+
+  _endDeathSlide() {
+    const root = this._rootEl;
+    if (root) root.classList.add('k-screen--cold');
+    const hidden = this._slideHidden;
+    if (hidden) {
+      for (const child of hidden) child.style.opacity = '';
+      this._slideHidden = null;
+    }
+    this._slideTimer = null;
+  },
+  refresh(ctx) { this._refreshSummary(ctx); },
+
+  /** The career record: lifetime figures the player earned before this loss. */
+  _refreshRecap(ctx) {
+    const rows = this._recapRows;
+    if (!rows) return;
+    const state = ctx && ctx.state || {};
+    const stats = state.player && state.player.stats || {};
+    const count = (n) => Math.max(0, Math.round(Number(n) || 0)).toLocaleString();
+    const playtimeS = Number(state.meta && state.meta.playtimeS) || 0;
+    if (this._recapRows.parentNode && this._recapRows.parentNode.classList) {
+      if (playtimeS > 0) this._recapRows.parentNode.classList.remove('is-blank');
+      else this._recapRows.parentNode.classList.add('is-blank');
+    }
+    const items = [
+      ['Time flown', playtimeS > 0 ? fmtTime(playtimeS) : 'No record'],
+      ['This hull lasted', lastDeathSummary(ctx).lifespan],
+      ['Contracts done', count(stats.missionsDone)],
+      ['Kills', count(stats.kills)],
+      ['Trades', count(stats.tradesCount)],
+      ['Lifetime profit', fmtCr(stats.lifetimeProfit)],
+      ['Best single trade', fmtCr(stats.biggestSingleProfit)],
+    ];
+    rows.textContent = '';
+    // Each figure is a station round the ring (a dt/dd pair in its own group, so the list still reads
+    // as the career record); counts and credits roll up to their value like mechanical counters.
+    const rolls = typeof requestAnimationFrame === 'function';
+    const isBlank = !(playtimeS > 0);
+    items.forEach(([label, value], order) => {
+      const bearing = RING_STATIONS[label];
+      const station = el('div', 'sf-go-st' + (bearing == null ? ' sf-go-st--hub' : '')
+        + (label === 'This hull lasted' ? ' sf-go-st--lost' : ''));
+      if (isBlank && bearing != null) station.hidden = true;
+      if (station.style && typeof station.style.setProperty === 'function') station.style.setProperty('--i', String(order));
+      if (bearing != null && station.style && typeof station.style.setProperty === 'function') {
+        const rad = (bearing * Math.PI) / 180;
+        station.style.setProperty('--sx', Math.sin(rad).toFixed(4));
+        station.style.setProperty('--sy', (-Math.cos(rad)).toFixed(4));
+        station.dataset.side = bearing > 10 && bearing < 170 ? 'right' : bearing > 190 && bearing < 350 ? 'left' : 'mid';
+      }
+      station.appendChild(el('dt', 'sf-go-recap__k', label));
+      const dd = el('dd', 'sf-go-recap__v', '');
+      const money = /^([\d,]+) cr$/.exec(value);
+      if (rolls && money) {
+        const n = el('span', 'sf-go-n', '');
+        dd.appendChild(n);
+        dd.appendChild(el('span', 'sf-go-u', 'cr'));
+        rollTo(n, Number(money[1].replace(/,/g, '')));
+      } else if (rolls && /^[\d,]+$/.test(value)) {
+        const n = el('span', 'sf-go-n', '');
+        dd.appendChild(n);
+        rollTo(n, Number(value.replace(/,/g, '')));
+      } else dd.textContent = value;
+      station.appendChild(dd);
+      rows.appendChild(station);
+    });
+    const player = state.player || {};
+    const owned = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+    const ship = owned[Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0] || owned[0] || null;
+    const hullId = (ship && typeof ship.defId === 'string' && ship.defId) || NEW_GAME.shipId;
+    this._paintCareerRing(playtimeS, parseDurationS(lastDeathSummary(ctx).lifespan), hullId);
+    if (this._tape) {
+      const record = sortieRecord(ctx);
+      const receipt = currentDefeat(ctx);
+      const killLabel = afterActionCause(receipt, lastDeathSummary(ctx).cause);
+      this._sortie = record;
+      this._tape.paint({ lengthS: record.lengthS, events: record.events, killLabel: /^unknown loss$/i.test(killLabel) ? 'The loss' : killLabel });
+      this._onSortieScrub(record.lengthS || 0, null, true);
+    }
+  },
+
+  /** The ring answers the black box: a bead runs round the red arc to the moment under the Hand, the
+   *  hub reads the time into the sortie, and the lost hull's plan view brightens toward the ship it was. */
+  _onSortieScrub(t, ev, atEnd) {
+    const bead = this._ringBead;
+    const host = this._ringEl;
+    const len = this._sortie && this._sortie.lengthS;
+    const recap = host && host.parentNode;
+    const frac = len > 0 ? Math.max(0, Math.min(1, t / len)) : 1;
+    if (recap && recap.classList) {
+      if (atEnd || !(len > 0)) recap.classList.remove('is-scrubbing');
+      else recap.classList.add('is-scrubbing');
+    }
+    if (host && host.style && typeof host.style.setProperty === 'function') host.style.setProperty('--life-left', (1 - frac).toFixed(3));
+    if (bead && this._lostFrom != null) {
+      const deg = this._lostFrom + (360 - this._lostFrom) * frac;
+      bead.setAttribute('transform', `rotate(${deg.toFixed(2)})`);
+    }
+    if (this._hubScrubT) this._hubScrubT.textContent = fmtSortieTime(t);
+    // the hub reads the time; the moment's word rides the tape's Hand (one place each)
+    if (this._hubScrubW) this._hubScrubW.textContent = 'Into the sortie';
+  },
+
+  /** The ring the career record stands round: the career's time as one closed track with a bezel of
+   *  ticks; the lost hull's life the red arc that ends it at the top (its share of the career), and
+   *  the red loss tick at the top. Nothing is drawn without SVG (the node tests' document). */
+  _paintCareerRing(playtimeS, lifespanS, hullId) {
+    const host = this._ringEl;
+    const doc = globalThis.document;
+    if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.replaceChildren !== 'function') return;
+    const root = svg('svg', { class: 'orr-svg sf-go-ring__svg', viewBox: '-120 -120 240 240', 'aria-hidden': 'true', focusable: 'false' });
+    const r = 100;
+    root.appendChild(svg('path', { d: ticksD(0, 0, r + 9, 60, { len: 3, inward: true }), class: 'sf-go-ring__ticks' }));
+    root.appendChild(svg('path', { d: ticksD(0, 0, r + 10, 12, { len: 8, inward: true }), class: 'sf-go-ring__majors-bloom' }));
+    root.appendChild(svg('path', { d: ticksD(0, 0, r + 10, 12, { len: 8, inward: true }), class: 'sf-go-ring__majors' }));
+    // a lit band between the track and the inner ring (one annulus, even-odd)
+    root.appendChild(svg('path', { d: `${arcD(0, 0, r - 1, 0, 360)} ${arcD(0, 0, r - 21, 0, 360)}`, 'fill-rule': 'evenodd', class: 'sf-go-ring__band' }));
+    root.appendChild(svg('circle', { cx: 0, cy: 0, r, class: 'sf-go-ring__track' }));
+    root.appendChild(svg('circle', { cx: 0, cy: 0, r: r - 22, class: 'sf-go-ring__inner' }));
+    const share = playtimeS > 0 && lifespanS != null ? Math.max(0.012, Math.min(1, lifespanS / playtimeS)) : null;
+    this._lostFrom = null;
+    this._ringBead = null;
+    if (playtimeS > 0) {
+      const lostFrom = share == null ? 360 : 360 - share * 360;
+      if (share != null) this._lostFrom = lostFrom;
+      if (lostFrom > 0.5) {
+        const career = arcD(0, 0, r, 0, lostFrom - (share == null ? 0 : 1.2));
+        root.appendChild(svg('path', { d: career, class: 'sf-go-ring__bloom orr-draw', pathLength: 1 }));
+        root.appendChild(svg('path', { d: career, class: 'sf-go-ring__career orr-draw', pathLength: 1 }));
+      }
+      // one ice pulse runs the career round on arrival and dies at the loss
+      if (lostFrom > 0.5) root.appendChild(svg('path', { d: arcD(0, 0, r, 0, Math.max(1, lostFrom - 1.2)), class: 'sf-go-ring__sweep', pathLength: 1 }));
+      if (share != null) {
+        const lost = arcD(0, 0, r, lostFrom, 359.999);
+        root.appendChild(svg('path', { d: lost, class: 'sf-go-ring__lost-bloom' }));
+        root.appendChild(svg('path', { d: lost, class: 'sf-go-ring__lost' }));
+      }
+    }
+    // the loss: a red tick across the ring at the top, where the career stopped
+    const [x0, y0] = polar(0, 0, r - 9, 0);
+    const [x1, y1] = polar(0, 0, r + 12, 0);
+    root.appendChild(svg('path', { d: `M ${x0} ${y0} L ${x1} ${y1}`, class: 'sf-go-ring__stop' }));
+    // the black box's bead: turned round the red arc to the moment under the tape's Hand
+    if (this._lostFrom != null) {
+      const bead = svg('g', { class: 'sf-go-ring__bead', transform: 'rotate(0)' });
+      bead.appendChild(svg('circle', { cx: 0, cy: -r, r: 7, class: 'sf-go-ring__bead-glow' }));
+      bead.appendChild(svg('circle', { cx: 0, cy: -r, r: 3.4, class: 'sf-go-ring__bead-core' }));
+      root.appendChild(bead);
+      this._ringBead = bead;
+    }
+    // the hull that was lost, at the hub: its produced plan view, cooled, under the time flown
+    const art = hullPosterUrl(hullId, 'top');
+    const nodes = [root];
+    if (art) {
+      const img = el('img', 'sf-go-ring__hull');
+      img.alt = '';
+      img.decoding = 'async';
+      img.draggable = false;
+      img.src = art;
+      nodes.unshift(img);
+    }
+    // the hub's reading while the tape is scrubbed (the career's time stands aside)
+    const hubScrub = el('div', 'sf-go-hubscrub');
+    const hubT = el('span', 'sf-go-hubscrub__t', '');
+    const hubW = el('span', 'sf-go-hubscrub__w', 'Into the sortie');
+    hubScrub.appendChild(hubT);
+    hubScrub.appendChild(hubW);
+    this._hubScrubT = hubT;
+    this._hubScrubW = hubW;
+    nodes.push(hubScrub);
+    host.replaceChildren(...nodes);
+  },
+
+  /** Restore is the one Lamp Key: the recovery berth when there is one, else the route the screen
+   *  focuses (Load save, or New Game in Ironman). The other words are small verbs with a notch. */
+  /**
+   * Show, hide, or explain the "Load latest" verb.
+   *
+   * The two reasons it is unavailable are DIFFERENT and must not share copy: an Ironman death is a
+   * rule ("this difficulty does not offer it"), an empty save drawer is a fact ("there is nothing
+   * to go back to"). Saying "Ironman" to a player with no saves would be a lie about why.
+   */
+  _syncLoadLatest(ctx) {
+    const button = this._latestButton;
+    if (!button || !button.classList) return null;
+    const model = afterActionModel(ctx);
+    if (model.canLoadLatest) {
+      button.hidden = false;
+      button.removeAttribute('aria-disabled');
+      button.classList.remove('sf-word--unavailable');
+      button.title = 'Return to ' + model.loadLatestSlot + ', your most recent save';
+      button.setAttribute('aria-label', 'Load your most recent save, ' + model.loadLatestSlot);
+      // Death→Load-latest is the highest-frequency reload: arm the envelope speculation lane
+      // while the player reads the sheet (and re-arm on refresh — an autosave landing while
+      // it is open bumps the store generation, which re-resolves the prepare internally).
+      if (ctx && ctx.bus && model.loadLatestSlot) {
+        ctx.bus.emit('save:loadSpeculationTarget', { slot: model.loadLatestSlot });
+      }
+      return model;
+    }
+    // Ironman is a deliberate withdrawal, not a missing feature: the verb leaves the row entirely
+    // rather than sitting there greyed with an excuse.
+    if (model.ironman) {
+      button.hidden = true;
+      button.removeAttribute('title');
+      button.removeAttribute('aria-label');
+      return model;
+    }
+    button.hidden = false;
+    button.classList.add('sf-word--unavailable');
+    button.setAttribute('aria-disabled', 'true');
+    button.title = 'No save to load yet';
+    button.setAttribute('aria-label', 'Load latest save: no save to load yet');
+    return model;
+  },
+
+  _dressRestore(primary) {
+    for (const button of [this._retryButton, this._latestButton, this._loadButton, this._newButton, this._menuButton]) {
+      if (!button || !button.classList) continue;
+      if (button === primary) {
+        if (!button._orrDressed && button.childNodes) { dressLampKey(button); button._orrDressed = true; }
+        button.classList.add('orr-lampkey');
+        button.classList.remove('sf-go-verb');
+        // restore leads the row (and the tab order), whichever route it is
+        const li = button._kItem;
+        const list = li && li.parentNode;
+        if (list && typeof list.insertBefore === 'function' && list.firstChild !== li) list.insertBefore(li, list.firstChild);
+      } else {
+        button.classList.remove('orr-lampkey');
+        button.classList.add('sf-go-verb');
+      }
+    }
+  },
+
+  _refreshSummary(ctx) {
+    const els = this._summaryEls;
+    if (!els) return;
+    const state = ctx && ctx.state || {};
+    const receipt = currentDefeat(ctx);
+    const recovery = receipt && receipt.recovery || {};
+    const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+    const death = lastDeathSummary(ctx);
+    const stats = state.player && state.player.stats || {};
+    const vitals = receipt && receipt.vitalsPct || {};
+    // The shell repaints the open screen ~3x/sec as refresh(ctx, { periodic: true }), and the
+    // screen-import check pins refresh() to a bare `this._refreshSummary(ctx)` call, so the
+    // periodic skip lives here as a content signature — the same gate footprint/mainMenu use.
+    // Everything on this surface is static after death; the one live update
+    // (player:recoveryFailed) lands in the receipt fields the signature covers. An unchanged
+    // signature means the DOM already says it: no 14-node recap rebuild, no recovery innerHTML
+    // re-parse.
+    // The drawer the verbs describe is a signature input too: a save landing (or rotating) while
+    // the sheet is open must re-run the paint so "Load latest" re-settles instead of staying
+    // grey over a save that now exists.
+    const latestSlot = selectLatestOccupiedSlot((state.save && state.save.slots) || {});
+    const sig = [
+      difficulty, death.cause, death.lifespan, state.meta && state.meta.playtimeS,
+      stats.missionsDone, stats.kills, stats.tradesCount,
+      stats.lifetimeProfit, stats.biggestSingleProfit,
+      receipt ? 1 : 0,
+      receipt && receipt.fatalSummary, receipt && receipt.cause, receipt && receipt.direction,
+      receipt && receipt.dominantLayer, receipt && receipt.subsystemId,
+      vitals.shield, vitals.armor, vitals.hull,
+      recovery.stationName, recovery.stationId, recovery.costCr, recovery.quotedCostCr,
+      recovery.hardshipCoveredCr, recovery.cargoLostQty, recovery.persistentCargoProtected,
+      recovery.insuranceStatus, recovery.coverageNote,
+      recovery.policyName, recovery.premiumCr, recovery.deductibleCr,
+      deathRangeOfferText(receipt),
+      latestSlot,
+      state.player && state.player.heat,
+      state.player && state.player.heatLastIncident ? 1 : 0,
+    ].join('|');
+    if (sig === this._summarySig) return;
+    this._summarySig = sig;
+    this._refreshRecap(ctx);
+    const ironman = difficulty === 'ironman';
+    const recoverable = !ironman && !!receipt;
+    const cargoLost = Math.max(0, Number(recovery.cargoLostQty) || 0);
+    const protectedQty = Math.max(0, Number(recovery.persistentCargoProtected) || 0);
+    const cargoText = cargoLost > 0
+      ? cargoLost + 'u lost' + (protectedQty > 0 ? ' · ' + protectedQty + 'u protected' : '')
+      : 'No cargo lost';
+    const charged = Math.max(0, Number(recovery.costCr) || 0);
+    const quoted = Math.max(charged, Number(recovery.quotedCostCr) || 0);
+    const recoveryFund = Math.max(0, Number(recovery.hardshipCoveredCr) || 0);
+    const costText = recoveryFund > 0
+      ? `${fmtCr(charged)} charged · ${fmtCr(quoted)} quote · ${fmtCr(recoveryFund)} recovery fund`
+      : fmtCr(charged);
+    const values = {
+      cause: afterActionCause(receipt, death.cause),
+      lifespan: death.lifespan,
+      // "aft hull, main drive · shield 0% · armour 0% · hull 0%": where it struck, then what was left
+      damage: receipt ? [
+        [
+          [receipt.direction, String(receipt.dominantLayer || 'hull').toUpperCase()].filter(Boolean).join(' '),
+          receipt.subsystemId && String(receipt.subsystemId).replace(/_/g, ' ').toUpperCase(),
+        ].filter(Boolean).join(', '),
+        receipt.vitalsPct && `shield ${receipt.vitalsPct.shield}% · armour ${receipt.vitalsPct.armor}% · hull ${receipt.vitalsPct.hull}%`,
+      ].filter(Boolean).join(' · ') : 'Unresolved',
+      dock: recovery.stationName || 'No recovery route',
+      cost: recovery.costCr != null ? costText : '-',
+      cargo: cargoText,
+      insurance: recovery.coverageNote || recovery.insuranceStatus || 'No recovery coverage',
+    };
+    for (const key in values) {
+      if (key === 'cause') continue; // the title carries the cause (below)
+      const text = key === 'insurance' ? LABEL.insurance + ': ' + values[key] : values[key];
+      if (els[key] && els[key].textContent !== text) els[key].textContent = text;
+    }
+    if (els.rangeOffer) {
+      const offerText = deathRangeOfferText(receipt);
+      if (els.rangeOffer.textContent !== offerText) els.rangeOffer.textContent = offerText;
+      els.rangeOffer.hidden = !offerText;
+    }
+    // The named recovery berth is a station door, not just a caption.
+    if (els.dock && recovery.stationId) decorateEntityNode(els.dock, 'station:' + recovery.stationId);
+    // No recovery cost to report: the readout leaves the report instead of showing a lone dash.
+    const costHero = els.cost && typeof els.cost.closest === 'function' ? els.cost.closest('.k-hero') : null;
+    if (costHero) costHero.hidden = values.cost === '-';
+    // The display line is the cause itself; the caps kicker above it carries the verdict.
+    const verdict = ironman ? 'Run Over' : 'Ship Lost';
+    if (this._titleEl) {
+      const cause = String(values.cause || '');
+      // With no recorded cause the title says so (the kicker above already carries the verdict).
+      // Pinned verbatim by test/zc-rc-50 — a real cause names itself; only a missing one falls back.
+      const text = cause && !/^unknown loss$/i.test(cause) ? cause : 'Cause unrecorded';
+      // A named faction rides in a trailing parenthetical; its inner spaces become no-break so
+      // the headline's measure never strands "(Crimson" alone on its own line.
+      const display = text === 'Cause unrecorded'
+        ? text
+        : text.replace(/\(([^()]*)\)$/, (m, inner) => '(' + inner.replace(/ /g, '\u00A0') + ')');
+      // A running decrypt would land its old word after this one: retire it first.
+      if (this._stopTitleDecrypt) { this._stopTitleDecrypt(); this._stopTitleDecrypt = null; }
+      if (this._titleEl.textContent !== display) this._titleEl.textContent = display;
+    }
+    if (this._kickerEl) {
+      // Over the honest fallback headline ("Cause unrecorded") the kicker's field tail would
+      // echo the headline word for word, so the verdict rides alone; a named cause keeps its
+      // field named ("SHIP LOST · LOSS CAUSE", which the public-route check reads).
+      const kicker = this._titleEl && this._titleEl.textContent === 'Cause unrecorded'
+        ? verdict
+        : verdict + ' · ' + lower(LABEL.cause);
+      if (this._kickerEl.textContent !== kicker) this._kickerEl.textContent = kicker;
+    }
+    if (this._lineEl) {
+      // A missing value drops its pair; an empty line hides, never prints a dash as data.
+      const pairs = [];
+      if (values.lifespan && values.lifespan !== '-') pairs.push(LABEL.lifespan + ' ' + values.lifespan);
+      if (values.damage && values.damage !== 'Unresolved') pairs.push(lower(LABEL.damage) + ' ' + lower(values.damage));
+      // inf-defeat-situation — the situation the hull died in rides the same line: the live
+      // hunt, its escape clock, and (only on a real receipt) what the sheet traced to.
+      const situation = deathSituationClause(state);
+      if (situation) pairs.push(lower(situation));
+      const text = pairs.join(' · ');
+      if (this._lineEl.textContent !== text) this._lineEl.textContent = text;
+      this._lineEl.hidden = !text;
+    }
+    if (this._subEl) {
+      this._subEl.textContent = ironman
+        ? 'Your ship was lost. In Ironman, death is final.'
+        : recoverable
+        ? 'Flight controls locked. Review the loss, then continue from the lawful recovery berth.'
+        // one sentence carries both the fact and the way out; the stage line under the receipt
+        // heroes stays silent rather than repeating it (no duplicate copy on the sheet)
+        : 'No recovery consequences were applied. Load a save or start a new run.';
+    }
+    if (this._recoveryEl) {
+      if (recoverable) {
+        const dockHtml = recovery.stationId
+          ? entitySpanHtml('station:' + recovery.stationId, escapeHtml(recovery.stationName || 'lawful dock'))
+          : escapeHtml(recovery.stationName || 'lawful dock');
+        this._recoveryEl.innerHTML = `RECOVERY BERTH · ${dockHtml} · ${escapeHtml(costText)} · ${escapeHtml(cargoText)}`;
+        this._recoveryEl.hidden = false;
+      } else if (ironman) {
+        this._recoveryEl.textContent = 'This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.';
+        this._recoveryEl.hidden = false;
+      } else {
+        // The sub sentence already says it; an empty element drops out of the sheet entirely.
+        this._recoveryEl.textContent = '';
+        this._recoveryEl.hidden = true;
+      }
+      // The receipt line repeats the figures above it: it leaves the view and stays their description.
+      if (this._recoveryEl.classList) {
+        if (recoverable) this._recoveryEl.classList.add('is-receipt');
+        else this._recoveryEl.classList.remove('is-receipt');
+      }
+    }
+    if (this._channelEl) {
+      const ui = ctx && ctx.state && ctx.state.ui;
+      const fired = !!(ui && ui.readEverythingFired);
+      this._channelEl.textContent = fired
+        ? 'One last popup arrives as the sheet renders and dismisses itself: YOU READ '
+          + 'EVERYTHING. THE CHANNEL NOTICED.'
+        : '';
+      this._channelEl.hidden = !fired;
+    }
+    setWordHidden(this._retryButton, !recoverable);
+    // Row 463: the retry-act verb rides with recoverable but adds its own gates — the receipt's
+    // fight must still map to a live mission and the run must not be Ironman.
+    const bossOffer = recoverable ? capitalBossRetryOffer(ctx) : null;
+    if (this._bossRetryButton) {
+      setWordHidden(this._bossRetryButton, !bossOffer);
+      this._bossRetryButton.title = bossOffer ? bossOffer.caption : '';
+    }
+    setWordHidden(this._loadButton, false);
+    setWordHidden(this._newButton, recoverable);
+    setWordHidden(this._menuButton, recoverable);
+    this._defaultButton = recoverable ? this._retryButton : ironman ? this._newButton : this._loadButton;
+    this._dressRestore(this._defaultButton);
+    // Re-settle the verb here too, not only at build/recoveryFailed: with the slot in the
+    // signature, the periodic repaint reaches this line the moment an autosave lands on an
+    // open sheet — the disabled-looking "Load latest" arms itself without a wasted click.
+    this._syncLoadLatest(ctx);
+  },
+};

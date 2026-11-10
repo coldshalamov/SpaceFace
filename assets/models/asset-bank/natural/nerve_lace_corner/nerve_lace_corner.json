@@ -1,0 +1,146 @@
+{
+  "assetId": "nerve_lace_corner",
+  "category": "growth",
+  "description": "nerve lace corner; reusable growth assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_A",
+      "position": [
+        -1.5,
+        0.2,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_B",
+      "position": [
+        -0.2,
+        0.18,
+        -2.2716814692820413
+      ],
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "up": [
+        0.0,
+        0.9999999403953552,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_HOST_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.06,
+          -0.0
+        ],
+        "size": [
+          0.45599999999999996,
+          0.12,
+          0.45599999999999996
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "growth",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.8865529298782349,
+      -0.0001319440925726667,
+      -2.2937188148498535
+    ],
+    "max": [
+      1.0875895023345947,
+      0.8487582206726074,
+      1.008910059928894
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "nerve_lace_corner_lod0.glb",
+      "triangles": 13216,
+      "draws": 5,
+      "bytes": 583336,
+      "method": "source",
+      "sha256": "559442cea06a0b014654be248f94064359c419d87d727e93a27d90b940233c2b"
+    },
+    {
+      "level": 1,
+      "file": "nerve_lace_corner_lod1.glb",
+      "triangles": 5286,
+      "draws": 5,
+      "bytes": 282748,
+      "method": "Forge-decimation",
+      "sha256": "f62028cf8dd933f8e42880590ed25e90b8ae67d39c5aeb691dd372e5aaa8ea83"
+    },
+    {
+      "level": 2,
+      "file": "nerve_lace_corner_lod2.glb",
+      "triangles": 2378,
+      "draws": 5,
+      "bytes": 159444,
+      "method": "Forge-decimation",
+      "sha256": "75cd9861d2f1a4f16d145440a4e29145c03137038ed43f5730aa46fafc702a1b"
+    }
+  ]
+}

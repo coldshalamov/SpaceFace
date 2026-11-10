@@ -1,0 +1,471 @@
+{
+  "assetId": "ops_robotic_tool_changer",
+  "category": "service",
+  "description": "robotic tool changer",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "tool",
+      "position": [
+        0.0,
+        0.6,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.1,
+          -0.0
+        ],
+        "size": [
+          1.28,
+          0.2,
+          1.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.36,
+          -0.0
+        ],
+        "size": [
+          0.96,
+          0.32,
+          0.96
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.56,
+          -0.0
+        ],
+        "size": [
+          0.5,
+          0.07999999999999996,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.54,
+          0.21250000000000002,
+          -0.0
+        ],
+        "size": [
+          0.10079999999999999,
+          0.024999999999999994,
+          0.10079999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.54,
+          0.245,
+          -0.0
+        ],
+        "size": [
+          0.072,
+          0.04000000000000001,
+          0.072
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2700000000000001,
+          0.21250000000000002,
+          -0.4676537180435969
+        ],
+        "size": [
+          0.10079999999999999,
+          0.024999999999999994,
+          0.10079999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2700000000000001,
+          0.245,
+          -0.4676537180435969
+        ],
+        "size": [
+          0.072,
+          0.04000000000000001,
+          0.072
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.2699999999999999,
+          0.21250000000000002,
+          -0.46765371804359696
+        ],
+        "size": [
+          0.10079999999999999,
+          0.024999999999999994,
+          0.10079999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.2699999999999999,
+          0.245,
+          -0.46765371804359696
+        ],
+        "size": [
+          0.072,
+          0.04000000000000001,
+          0.072
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.54,
+          0.21250000000000002,
+          -6.613092715395707e-17
+        ],
+        "size": [
+          0.10079999999999999,
+          0.024999999999999994,
+          0.10079999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.54,
+          0.245,
+          -6.613092715395707e-17
+        ],
+        "size": [
+          0.072,
+          0.04000000000000001,
+          0.072
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.27000000000000024,
+          0.21250000000000002,
+          0.46765371804359673
+        ],
+        "size": [
+          0.10079999999999999,
+          0.024999999999999994,
+          0.10079999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.27000000000000024,
+          0.245,
+          0.46765371804359673
+        ],
+        "size": [
+          0.072,
+          0.04000000000000001,
+          0.072
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2700000000000001,
+          0.21250000000000002,
+          0.4676537180435969
+        ],
+        "size": [
+          0.10079999999999999,
+          0.024999999999999994,
+          0.10079999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2700000000000001,
+          0.245,
+          0.4676537180435969
+        ],
+        "size": [
+          0.072,
+          0.04000000000000001,
+          0.072
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.62,
+          0.13
+        ],
+        "size": [
+          0.064,
+          0.040000000000000036,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.62,
+          -0.13
+        ],
+        "size": [
+          0.064,
+          0.040000000000000036,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "locking_dog_0",
+      "pivot": [
+        0.0,
+        0.5600000023841858,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "dog"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    },
+    {
+      "id": "locking_dog_1",
+      "pivot": [
+        0.0,
+        0.5600000023841858,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "dog.001"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    },
+    {
+      "id": "locking_dog_2",
+      "pivot": [
+        0.0,
+        0.5600000023841858,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "dog.002"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "service",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.6399999856948853,
+      -2.1492924773269806e-08,
+      -0.6399999856948853
+    ],
+    "max": [
+      0.6399999856948853,
+      0.6700000166893005,
+      0.6399999856948853
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_robotic_tool_changer_lod0.glb",
+      "triangles": 8560,
+      "draws": 7,
+      "bytes": 672660,
+      "method": "source",
+      "sha256": "f47efcbb7d38408fd496df51c23e42827b9d722447bc8d85f5d9a7d591838e4f"
+    },
+    {
+      "level": 1,
+      "file": "ops_robotic_tool_changer_lod1.glb",
+      "triangles": 1288,
+      "draws": 7,
+      "bytes": 302572,
+      "method": "Forge-decimation",
+      "sha256": "af6c079f6be619f25af49a6247a3d5b9dfc78545cad1b6387a6b3989f74038a7"
+    },
+    {
+      "level": 2,
+      "file": "ops_robotic_tool_changer_lod2.glb",
+      "triangles": 416,
+      "draws": 6,
+      "bytes": 265288,
+      "method": "Forge-decimation",
+      "sha256": "19481296c138e4631666648a35760d2f551300bb20424985b2b0e88751e34440"
+    }
+  ]
+}

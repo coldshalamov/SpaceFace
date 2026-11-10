@@ -1,0 +1,536 @@
+// faction_fulfillment.js — W-FULFILLMENT (build_map §34.5 row 518, bible 02 §11).
+//
+// The Fulfillment is the thesis made into a machine: autonomous trains on fixed routes,
+// forever fulfilling every order ever placed. Done-when:
+//   · re-router haulers on fixed routes — constant speed, they never deviate, never fire first
+//   · hitchhiking (E-25): latch a hauler and it tows you across the sector
+//   · derailment (E-24): enough mass off the line spills backordered goods; escorts re-rail
+//   · Administrative Boarding (E-19): a white pod files your cargo into an open order
+//   · Order #0000001 (E-20): the oldest open order closes — Sump's broom — and the
+//     oldest-open-order counter visibly advances
+//
+// Deterministic: routes, rerails and filing read simTime and state.rng only.
+
+import {
+  FULFILLMENT_ROUTES,
+  FULFILLMENT_DERAIL,
+  FULFILLMENT_HITCHHIKE,
+  FULFILLMENT_BOARDING,
+  FULFILLMENT_ORDER_ONE,
+  FULFILLMENT_BARKS,
+  fulfillmentOrderLabel,
+} from '../data/factions/fulfillment.js';
+import { removeCargo } from './cargo.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+
+const FACTION_ID = 'faction_fulfillment';
+const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
+const speedOf = (e) => Math.hypot(e.vel?.x || 0, e.vel?.z || 0);
+const isPlainObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+
+// Route service cadence: one re-router hauler rides each route while its sector is the
+// one the player is flying. A lost or culled hauler is replaced after this gap.
+const ROUTE_SERVICE = Object.freeze({
+  respawnGapS: 60,
+});
+// How far a hull may sit from "last rail pose + one rail step" and still read as the
+// physics step (not a teleport or a real knock) — see _driveTrain.
+const RAIL_PHYSICS_SLACK_WU = 2;
+
+/** Route waypoint `i` in galactic-global XZ — route data is authored sector-local. */
+export function routeWaypoint(route, i) {
+  const n = route.waypoints.length;
+  const wp = route.waypoints[((i % n) + n) % n];
+  return sectorLocalToGlobalForSector(wp, route.sectorId);
+}
+
+/** Player-facing route name: 'route_charon_spine' → 'CHARON SPINE'. */
+export function routeDisplayName(routeId) {
+  return String(routeId || '').replace(/^route_/, '').replace(/_/g, ' ').toUpperCase() || 'UNLISTED';
+}
+
+/** Fresh serializable Fulfillment record: trains, derailments, the open-order ledger. */
+export function ensureFulfillmentState(state) {
+  if (!isPlainObj(state.fulfillment)) {
+    state.fulfillment = {
+      trains: {}, orders: {}, nextOrderSeq: 2, hitchedTrainId: null,
+    };
+  }
+  const f = state.fulfillment;
+  if (!isPlainObj(f.trains)) f.trains = {};
+  if (!isPlainObj(f.orders)) f.orders = {};
+  if (!Number.isInteger(f.nextOrderSeq) || f.nextOrderSeq < 2) f.nextOrderSeq = 2;
+  // Per-route respawn clock (simTime). Additive: older saves heal to "due now".
+  if (!isPlainObj(f.nextSpawnAt)) f.nextSpawnAt = {};
+  if (f.hitchedTrainId === undefined) f.hitchedTrainId = null;
+  // Order #0000001 is always on the ledger until it closes (E-20).
+  if (!f.orders[FULFILLMENT_ORDER_ONE.seq]) {
+    f.orders[FULFILLMENT_ORDER_ONE.seq] = {
+      seq: FULFILLMENT_ORDER_ONE.seq,
+      item: FULFILLMENT_ORDER_ONE.item,
+      destination: FULFILLMENT_ORDER_ONE.destination,
+      addressee: FULFILLMENT_ORDER_ONE.addressee,
+      failedYears: FULFILLMENT_ORDER_ONE.failedYears,
+      status: 'open', origin: 'original',
+    };
+  }
+  return f;
+}
+
+export function routeById(routeId) {
+  return FULFILLMENT_ROUTES.routes[routeId] || null;
+}
+
+/** The smallest open order seq — the counter the world watches tick. */
+export function oldestOpenOrderSeq(state) {
+  const f = ensureFulfillmentState(state);
+  let best = null;
+  for (const key of Object.keys(f.orders)) {
+    const o = f.orders[key];
+    if (o && o.status === 'open' && (best == null || o.seq < best)) best = o.seq;
+  }
+  return best;
+}
+
+export function oldestOpenOrderLabel(state) {
+  const seq = oldestOpenOrderSeq(state);
+  return seq == null ? '#———————' : fulfillmentOrderLabel(seq);
+}
+
+/** Spawn a re-router hauler on a route leg. Returns the entity. The hauler enters at the
+ * previous waypoint so legIndex is the waypoint it is visibly heading to from tick one. */
+export function spawnHauler(state, helpers, { routeId, legIndex = 0, orderCrateSeq = null, role = 're-router-hauler' }) {
+  const route = routeById(routeId);
+  if (!route) return null;
+  const prev = routeWaypoint(route, legIndex - 1);
+  const e = helpers.spawnEntity({
+    // Neutral traffic team (team 2, as traffic.js haulers): a train is moving terrain,
+    // not a hostile hull — frontier raid logic treats every team-1 ship as a raider.
+    type: 'ship', team: 2, factionId: FACTION_ID,
+    pos: { x: prev.x, z: prev.z }, vel: { x: 0, z: 0 }, rot: 0,
+    radius: 26, mass: 300, hull: 1e9, hullMax: 1e9, collides: true,
+    data: {
+      fulfillmentTrain: true, routeId, legIndex,
+      role, name: 'Re-router Hauler', scannable: true,
+      scanLabel: `FULFILLMENT TRAIN · ${routeDisplayName(routeId)} ROUTE · fixed route · never fires first`,
+      // Legacy descriptive tag; the AI/fire gate reads `data.ai.roe` (below).
+      roe: 'never_first',
+      // "Never fires first" where the fire authority actually reads it: aiPorts and
+      // engagementAuthority gate on `data.ai.passive` / `data.ai.roe`. 'defensive' is the
+      // doctrine value for return-fire-only; passive civilian traffic holds fire outright.
+      ai: { archetype: 'passive', passive: true, roe: 'defensive', spawnContext: 'convoy_civilian' },
+    },
+  });
+  if (orderCrateSeq != null) e.data.orderCrate = { orderSeq: orderCrateSeq };
+  ensureFulfillmentState(state).trains[e.id] = {
+    routeId, legIndex, derailed: false, rerailAt: null, spills: 0,
+  };
+  return e;
+}
+
+export const fulfillmentRoutes = {
+  name: 'fulfillmentRoutes',
+
+  init(ctx) {
+    this.ctx = ctx; this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
+    this._railPose = new Map(); // trainId -> last rail pose (session-only; see _driveTrain)
+    ensureFulfillmentState(this.state);
+  },
+
+  _trainRec(state, e) {
+    const f = ensureFulfillmentState(state);
+    const d = e.data.fulfillmentTrain === true ? e.data : null;
+    if (!d) return null;
+    const rec = f.trains[e.id] || (f.trains[e.id] = {
+      routeId: d.routeId, legIndex: d.legIndex | 0, derailed: false, rerailAt: null, spills: 0,
+    });
+    return rec;
+  },
+
+  /** Fixed-route drive: constant speed on the leg line; it never deviates. Trains are
+   * kinematic rails — "moving terrain" — so the system integrates their pose itself and
+   * no physics impulse can argue with the route. */
+  _driveTrain(state, e, rec, dt) {
+    const route = routeById(rec.routeId);
+    if (!route || rec.derailed) {
+      if (rec.derailed) { e.vel.x = 0; e.vel.z = 0; }
+      this._railPose?.delete(e.id); // off the rail: physics owns it until re-railed
+      return;
+    }
+    // One integration per tick. This system ticks after physics, and physics has
+    // already advanced the hull by last tick's rail velocity — integrating again here
+    // moved trains at twice route speed. When the hull sits exactly where last tick's
+    // rail pose plus that step puts it (within slack), rebase on the rail pose so the
+    // route owns the only step; any other displacement (a teleport, a restore, a hard
+    // bump) is kept as the new base and the line lock below pulls it back.
+    if (!this._railPose) this._railPose = new Map();
+    const pose = this._railPose.get(e.id);
+    if (pose && pose.gen === (e.occupantGeneration ?? null)) {
+      const px = pose.x + pose.vx * dt, pz = pose.z + pose.vz * dt;
+      const moved = Math.hypot(e.pos.x - pose.x, e.pos.z - pose.z) > 1e-9;
+      if (moved && Math.hypot(e.pos.x - px, e.pos.z - pz) <= RAIL_PHYSICS_SLACK_WU) {
+        e.pos.x = pose.x; e.pos.z = pose.z;
+      }
+    }
+    const n = route.waypoints.length;
+    const target = routeWaypoint(route, rec.legIndex);
+    const dx = target.x - e.pos.x, dz = target.z - e.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d <= FULFILLMENT_ROUTES.arriveRadius) {
+      rec.legIndex = (rec.legIndex + 1) % n;
+      if (route.loop !== true && rec.legIndex === 0) rec.legIndex = n - 1;
+      e.data.legIndex = rec.legIndex;
+      this._railPose.set(e.id, { x: e.pos.x, z: e.pos.z, vx: e.vel.x, vz: e.vel.z, gen: e.occupantGeneration ?? null });
+      return;
+    }
+    const ux = dx / d, uz = dz / d;
+    e.vel.x = ux * route.speed;
+    e.vel.z = uz * route.speed;
+    e.pos.x += e.vel.x * dt;
+    e.pos.z += e.vel.z * dt;
+    // Line lock: pull the hull back onto the leg segment so bumps never read as a turn.
+    const prev = routeWaypoint(route, rec.legIndex - 1);
+    const lx = target.x - prev.x, lz = target.z - prev.z;
+    const len2 = lx * lx + lz * lz;
+    if (len2 > 0) {
+      const t = Math.max(0, Math.min(1, ((e.pos.x - prev.x) * lx + (e.pos.z - prev.z) * lz) / len2));
+      const px = prev.x + lx * t, pz = prev.z + lz * t;
+      const k = Math.min(1, FULFILLMENT_ROUTES.lineLockStrength);
+      e.pos.x += (px - e.pos.x) * k;
+      e.pos.z += (pz - e.pos.z) * k;
+    }
+    this._railPose.set(e.id, { x: e.pos.x, z: e.pos.z, vx: e.vel.x, vz: e.vel.z, gen: e.occupantGeneration ?? null });
+  },
+
+  /** E-24: enough incoming mass at enough speed knocks the train off the line. */
+  _checkDerail(state, e, rec) {
+    if (rec.derailed) {
+      if (state.simTime >= rec.rerailAt) this._rerail(state, e, rec);
+      return;
+    }
+    for (const body of state.entityList) {
+      if (body === e || !body || body.alive === false || body.factionId === FACTION_ID) continue;
+      if (body.data?.fulfillmentTrain || body.type === 'garden') continue;
+      const mass = Number(body.mass) || 0;
+      if (mass < FULFILLMENT_DERAIL.impactMassMin) continue;
+      const rr = e.radius + (Number(body.radius) || 0) + 4;
+      if (dist2(body.pos, e.pos) > rr * rr) continue;
+      const rel = Math.hypot((body.vel?.x || 0) - (e.vel?.x || 0), (body.vel?.z || 0) - (e.vel?.z || 0));
+      if (rel < FULFILLMENT_DERAIL.impactSpeedMin) continue;
+      this._derail(state, e, rec, body);
+      return;
+    }
+  },
+
+  _derail(state, e, rec, body) {
+    rec.derailed = true;
+    rec.spills += 1;
+    const escortNear = this._escortNear(state, e);
+    rec.rerailAt = state.simTime + (escortNear ? FULFILLMENT_DERAIL.rerailWithEscortS : FULFILLMENT_DERAIL.rerailAloneS);
+    e.vel.x = 0; e.vel.z = 0;
+    e.data.derailed = true;
+    this._spill(state, e, rec);
+    // The Clerk's crate is a physical drop — derailing it is how E-20 becomes deliverable.
+    if (e.data.orderCrate) {
+      const seq = e.data.orderCrate.orderSeq;
+      // The crate names its own order: only #0000001 carries the Recycler Service Kit.
+      const isOrderOne = seq === FULFILLMENT_ORDER_ONE.seq;
+      const order = ensureFulfillmentState(state).orders[seq] || null;
+      const itemLabel = isOrderOne ? FULFILLMENT_ORDER_ONE.itemLabel : 'Backordered parcel';
+      const dest = isOrderOne ? FULFILLMENT_ORDER_ONE.destinationLabel : ((order && order.address) || 'an open address');
+      this.helpers.spawnEntity({
+        type: 'cargo_pod', team: 0,
+        pos: { x: e.pos.x + 30, z: e.pos.z + 10 }, vel: { x: 6, z: -4 },
+        radius: 10, mass: 8, hull: 40, hullMax: 40, collides: true,
+        data: {
+          orderCrateSeq: seq, name: `Order ${fulfillmentOrderLabel(seq)} Crate`,
+          scanLabel: `ORDER ${fulfillmentOrderLabel(seq)} · ${itemLabel} · addressed to ${dest}`,
+          scannable: true,
+        },
+      });
+      delete e.data.orderCrate;
+    }
+    this.bus.emit('fulfillment:derailed', {
+      trainId: e.id, routeId: rec.routeId, byId: body.id, tick: state.tick,
+    });
+    this.bus.emit('comms:log', { text: FULFILLMENT_BARKS.derail, speaker: 'Fulfillment' });
+    this.bus.emit('toast', { text: 'DERAILMENT — backordered goods in the lane', tone: 'info' });
+  },
+
+  _rerail(state, e, rec) {
+    rec.derailed = false;
+    rec.rerailAt = null;
+    e.data.derailed = false;
+    this.bus.emit('fulfillment:rerailed', { trainId: e.id, routeId: rec.routeId, tick: state.tick });
+    this.bus.emit('comms:log', { text: FULFILLMENT_BARKS.rerail, speaker: 'Fulfillment' });
+  },
+
+  _escortNear(state, e) {
+    const r2 = FULFILLMENT_DERAIL.escortScanR * FULFILLMENT_DERAIL.escortScanR;
+    for (const s of state.entityList) {
+      if (s === e || !s || s.alive === false || s.factionId !== FACTION_ID) continue;
+      if (dist2(s.pos, e.pos) <= r2) return true;
+    }
+    return false;
+  },
+
+  /** The loot pinata: decades-old backordered goods scatter on seeded arcs. */
+  _spill(state, e, rec) {
+    const count = FULFILLMENT_DERAIL.spillPodsMin
+      + Math.floor(state.rng() * (FULFILLMENT_DERAIL.spillPodsMax - FULFILLMENT_DERAIL.spillPodsMin + 1));
+    for (let i = 0; i < count; i++) {
+      const a = state.rng() * Math.PI * 2;
+      const r = FULFILLMENT_DERAIL.spillScatterR * (0.4 + state.rng() * 0.6);
+      this.helpers.spawnEntity({
+        type: 'cargo_pod', team: 0,
+        pos: { x: e.pos.x + Math.cos(a) * r, z: e.pos.z + Math.sin(a) * r },
+        vel: { x: Math.cos(a) * FULFILLMENT_DERAIL.spillSpeed, z: Math.sin(a) * FULFILLMENT_DERAIL.spillSpeed },
+        radius: 8, mass: 6, hull: 30, hullMax: 30, collides: true,
+        data: {
+          backorderedGood: true, rarity: FULFILLMENT_DERAIL.goodRarity,
+          name: 'Backordered Goods', scannable: true,
+          scanLabel: `BACKORDERED GOODS · filed ${10 + Math.floor(state.rng() * 15)} years ago · rarity ${FULFILLMENT_DERAIL.goodRarity}`,
+          lootValue: 90 + Math.floor(state.rng() * 400),
+        },
+      });
+    }
+  },
+
+  /** E-25: a latched hauler tows the player down its own fixed route. */
+  _hitchhike(state) {
+    const f = ensureFulfillmentState(state);
+    const player = state.entities.get(state.playerId);
+    const tether = state.player?.tether;
+    const train = tether && tether.active ? state.entities.get(tether.targetId) : null;
+    const riding = player && player.alive !== false && train && train.alive !== false
+      && train.data?.fulfillmentTrain === true && !f.trains[train.id]?.derailed;
+    if (riding) {
+      player.vel.x = train.vel.x;
+      player.vel.z = train.vel.z;
+      if (f.hitchedTrainId !== train.id) {
+        f.hitchedTrainId = train.id;
+        this.bus.emit('fulfillment:hitchhike', { trainId: train.id, routeId: train.data.routeId, tick: state.tick });
+        this.bus.emit('toast', { text: 'HITCHHIKE — riding the route', tone: 'info' });
+        this.bus.emit('comms:log', { text: FULFILLMENT_HITCHHIKE.boardLine, speaker: 'Fulfillment' });
+      }
+    } else if (f.hitchedTrainId != null) {
+      f.hitchedTrainId = null;
+      this.bus.emit('comms:log', { text: FULFILLMENT_HITCHHIKE.alightLine, speaker: 'Fulfillment' });
+    }
+  },
+
+  /** E-19 Administrative Boarding: approach → attach → file cargo into an open order. */
+  _boarding(state, e, dt) {
+    const pod = e.data.fulfillmentBoardingPod;
+    const player = state.entities.get(state.playerId);
+    if (!pod || !player || player.alive === false) return;
+    const B = FULFILLMENT_BOARDING;
+    const speed = speedOf(e);
+    if (pod.phase !== 'flung' && pod.phase !== 'depart' && speed > B.flingSpeed) {
+      pod.phase = 'flung';
+      this.bus.emit('fulfillment:boardingFlung', { podId: e.id, tick: state.tick });
+      this.bus.emit('comms:log', { text: B.flungLine, speaker: 'Fulfillment' });
+    }
+    if (pod.phase === 'approach') {
+      const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
+      const d = Math.hypot(dx, dz) || 1;
+      e.vel.x = (dx / d) * B.podSpeed;
+      e.vel.z = (dz / d) * B.podSpeed;
+      e.pos.x += e.vel.x * dt;
+      e.pos.z += e.vel.z * dt;
+      if (d <= B.dockRadius) {
+        pod.phase = 'filing';
+        pod.filingUntil = state.simTime + B.filingTimeS;
+        this.bus.emit('fulfillment:boardingDocked', { podId: e.id, tick: state.tick });
+        this.bus.emit('comms:log', { text: B.approachLine, speaker: 'Fulfillment' });
+      }
+    } else if (pod.phase === 'filing') {
+      e.vel.x = player.vel.x; e.vel.z = player.vel.z;
+      e.pos.x = player.pos.x + player.radius + e.radius * 0.5;
+      e.pos.z = player.pos.z;
+      if (state.simTime >= pod.filingUntil) {
+        this._fileCargo(state, pod);
+        pod.phase = 'depart';
+      }
+    } else if (pod.phase === 'depart' || pod.phase === 'flung') {
+      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
+      const d = Math.hypot(dx, dz) || 1;
+      e.vel.x = (dx / d) * B.podSpeed;
+      e.vel.z = (dz / d) * B.podSpeed;
+      e.pos.x += e.vel.x * dt;
+      e.pos.z += e.vel.z * dt;
+      if (d > 1200) this.helpers.removeEntity(e.id, { reason: 'fulfillment_pod_departed' });
+    }
+  },
+
+  /** Filed cargo becomes an open order — recoverable at the order's address. */
+  _fileCargo(state, pod) {
+    const f = ensureFulfillmentState(state);
+    const items = state.player?.cargo?.items || {};
+    let remaining = FULFILLMENT_BOARDING.cargoUnitsFiled;
+    const filed = {};
+    for (const id of Object.keys(items)) {
+      if (remaining <= 0) break;
+      const took = removeCargo(state, id, remaining);
+      if (took > 0) { filed[id] = took; remaining -= took; }
+    }
+    const seq = f.nextOrderSeq++;
+    f.orders[seq] = {
+      seq, status: 'open', origin: 'administrative_boarding',
+      filedItems: filed, address: `route depot ${seq}`,
+      filedAt: state.simTime,
+    };
+    this.bus.emit('fulfillment:cargoFiled', { podSeq: pod.orderSeq, orderSeq: seq, filed, tick: state.tick });
+    this.bus.emit('comms:log', { text: FULFILLMENT_BOARDING.filedLine, speaker: 'Fulfillment' });
+    this.bus.emit('toast', {
+      text: `ORDER ${fulfillmentOrderLabel(seq)} OPENED — cargo filed to ${f.orders[seq].address}`,
+      tone: 'warn',
+    });
+  },
+
+  /**
+   * E-20: deliver Order #0000001 (by hand, at the Pit). Closes the ticket, pays off in
+   * Sump's broom, and the oldest-open-order counter visibly advances.
+   */
+  deliverOrderOne(state) {
+    const f = ensureFulfillmentState(state);
+    const order = f.orders[FULFILLMENT_ORDER_ONE.seq];
+    if (!order || order.status !== 'open') return false;
+    order.status = 'closed';
+    order.closedAt = state.simTime;
+    order.deliveredBy = state.playerId;
+    // The counter ticks: a fresh open order takes the oldest slot's place in the queue.
+    if (!f.orders[f.nextOrderSeq]) {
+      f.orders[f.nextOrderSeq] = {
+        seq: f.nextOrderSeq, status: 'open', origin: 'standing',
+        filedItems: {}, address: `route depot ${f.nextOrderSeq}`,
+      };
+      f.nextOrderSeq += 1;
+    }
+    // Paid through the economy intent — economy is the only credits writer. The ticket
+    // closed above before this speaks, so a re-entrant listener cannot pay twice.
+    const pay = Math.max(0, Math.floor(Number(FULFILLMENT_ORDER_ONE.deliveryPayCr) || 0));
+    if (pay > 0) {
+      order.paidCr = pay;
+      this.bus.emit('economy:grantCredits', { amount: pay, reason: 'fulfillment_order_one_delivered' });
+    }
+    this.bus.emit('fulfillment:orderOneClosed', { seq: FULFILLMENT_ORDER_ONE.seq, paidCr: pay, tick: state.tick });
+    this.bus.emit('comms:log', { text: FULFILLMENT_ORDER_ONE.closeLine, speaker: 'LOG' });
+    this.bus.emit('toast', { text: FULFILLMENT_ORDER_ONE.payoffLine, tone: 'good' });
+    return true;
+  },
+
+  /** The live hand-in for Order #0000001: the crate inside the Pit's berth, player by. */
+  _tickOrderOneDelivery(state) {
+    if (state.mode !== 'flight') return;
+    const O = FULFILLMENT_ORDER_ONE;
+    const order = ensureFulfillmentState(state).orders[O.seq];
+    if (!order || order.status !== 'open') return;
+    let crate = null;
+    let station = null;
+    for (const e of state.entityList) {
+      if (!e || e.alive === false || !e.data) continue;
+      if (!crate && e.data.orderCrateSeq === O.seq) crate = e;
+      else if (!station && e.type === 'station' && e.data.stationId === O.destinationStationId) station = e;
+      if (crate && station) break;
+    }
+    if (!crate || !station || !crate.pos || !station.pos) return;
+    const hullR = Number(station.radius) > 0 ? Number(station.radius) : 0;
+    const dockR = Number(station.data.dockRadius) > 0 ? Number(station.data.dockRadius) : 0;
+    const limit = Math.max(hullR, dockR) + (Number(crate.radius) || 0) + O.deliverySlackWU;
+    if (dist2(crate.pos, station.pos) > limit * limit) return;
+    // By hand: the player brought it — towing it, or flying close beside it.
+    const player = state.entities.get(state.playerId);
+    const tether = state.player?.tether;
+    const towing = !!(tether && tether.active && tether.targetId === crate.id);
+    const near = !!(player && player.alive !== false && player.pos
+      && dist2(player.pos, station.pos) <= O.deliverPlayerR * O.deliverPlayerR);
+    if (!towing && !near) return;
+    if (!this.deliverOrderOne(state)) return;
+    order.deliveredAt = station.data.stationId;
+    this.helpers.removeEntity?.(crate.id, { reason: 'fulfillment_order_delivered' });
+  },
+
+  // Save slot: orders (Order #0000001's status, filings), train records, hitch latch and
+  // the route respawn clock. Additive — an older save heals to the fresh ledger.
+  serialize() {
+    if (!this.state) return {};
+    return JSON.parse(JSON.stringify(ensureFulfillmentState(this.state)));
+  },
+
+  deserialize(data) {
+    if (!this.state) return undefined;
+    this.state.fulfillment = isPlainObj(data) ? JSON.parse(JSON.stringify(data)) : null;
+    return ensureFulfillmentState(this.state);
+  },
+
+  /**
+   * Route service — the live spawn path. While the player flies a sector that owns a
+   * route, one re-router hauler rides it; a lost or culled hauler is replaced after
+   * `respawnGapS`. The Clerk's route train carries Order #0000001's crate while that
+   * order is open and no crate is already loose. Entry leg is a `state.rng` pick.
+   */
+  _tickRouteService(state, liveTrains) {
+    if (state.mode !== 'flight' || typeof this.helpers?.spawnEntity !== 'function') return;
+    const sectorId = state.world && state.world.currentSectorId;
+    if (!sectorId) return;
+    const f = ensureFulfillmentState(state);
+    const now = Number(state.simTime) || 0;
+    for (const route of Object.values(FULFILLMENT_ROUTES.routes)) {
+      if (route.sectorId !== sectorId) continue;
+      if (liveTrains.some((e) => e.data.routeId === route.id)) continue;
+      const due = Number(f.nextSpawnAt[route.id]);
+      if (Number.isFinite(due) && now < due) continue;
+      f.nextSpawnAt[route.id] = now + ROUTE_SERVICE.respawnGapS; // latch before spawn emits
+      const legIndex = Math.floor(state.rng() * route.waypoints.length);
+      const crate = route.id === 'route_clerk_capital' && this._orderOneCrateDue(state, liveTrains)
+        ? FULFILLMENT_ORDER_ONE.seq : null;
+      const e = spawnHauler(state, this.helpers, { routeId: route.id, legIndex, orderCrateSeq: crate });
+      if (e) {
+        liveTrains.push(e);
+        this.bus.emit('fulfillment:trainSpawned', {
+          trainId: e.id, routeId: route.id, sectorId, legIndex, orderCrateSeq: crate, tick: state.tick,
+        });
+      }
+    }
+  },
+
+  /** Order #0000001 rides again only while open and not already aboard or loose. */
+  _orderOneCrateDue(state, liveTrains) {
+    const order = ensureFulfillmentState(state).orders[FULFILLMENT_ORDER_ONE.seq];
+    if (!order || order.status !== 'open') return false;
+    if (liveTrains.some((t) => t.data.orderCrate)) return false;
+    for (const e of state.entityList) {
+      if (e && e.alive !== false && e.data && e.data.orderCrateSeq === FULFILLMENT_ORDER_ONE.seq) return false;
+    }
+    return true;
+  },
+
+  update(dt, state) {
+    const f = ensureFulfillmentState(state);
+    const liveTrains = [];
+    for (const e of state.entityList) {
+      if (e && e.alive !== false && e.data && e.data.fulfillmentTrain === true) liveTrains.push(e);
+    }
+    // Train records follow their bodies: a culled or removed hauler drops its row
+    // (object keys are strings, so compare by String(id)).
+    const liveIds = new Set(liveTrains.map((e) => String(e.id)));
+    for (const key of Object.keys(f.trains)) if (!liveIds.has(key)) delete f.trains[key];
+    if (this._railPose) for (const key of this._railPose.keys()) if (!liveIds.has(String(key))) this._railPose.delete(key);
+    this._tickRouteService(state, liveTrains);
+    for (const e of state.entityList) {
+      if (!e || e.alive === false || !e.data) continue;
+      if (e.data.fulfillmentTrain === true) {
+        const rec = this._trainRec(state, e);
+        this._checkDerail(state, e, rec);
+        this._driveTrain(state, e, rec, dt);
+      } else if (e.data.fulfillmentBoardingPod) {
+        this._boarding(state, e, dt);
+      }
+    }
+    this._hitchhike(state);
+    this._tickOrderOneDelivery(state);
+  },
+};
+
+export default fulfillmentRoutes;

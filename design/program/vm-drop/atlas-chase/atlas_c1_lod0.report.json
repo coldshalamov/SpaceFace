@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "asset": "ship_atlas",
+  "revision": "chase_form_v1",
+  "lod": 0,
+  "source": "/workspace/spaceface/assets/ships/parts/wholeships/atlas_production_v1.glb",
+  "output": "/workspace/spaceface/design/program/vm-drop/atlas-chase/atlas_c1_lod0.glb",
+  "cargo": {
+    "kind": "hole",
+    "size": [
+      6.4,
+      2.4,
+      1.1
+    ],
+    "location": [
+      0.2,
+      0.0,
+      0.45
+    ]
+  },
+  "bridge": {
+    "kind": "tub+canopy+house",
+    "location": [
+      6.7,
+      0.0,
+      0.85
+    ]
+  },
+  "drive": {
+    "houses": [
+      {
+        "side": "PortUpper",
+        "y": -1.55,
+        "z": 0.55
+      },
+      {
+        "side": "StbdUpper",
+        "y": 1.55,
+        "z": 0.55
+      },
+      {
+        "side": "PortLower",
+        "y": -1.55,
+        "z": -0.15
+      },
+      {
+        "side": "StbdLower",
+        "y": 1.55,
+        "z": -0.15
+      }
+    ]
+  },
+  "size": [
+    22.29,
+    7.084,
+    3.516
+  ],
+  "boundsMin": [
+    -11.09,
+    -3.542,
+    -1.181
+  ],
+  "boundsMax": [
+    11.2,
+    3.542,
+    2.335
+  ],
+  "triangles": 26504,
+  "hullTriangles": 16858,
+  "objects": [
+    "COLLISION_HULL",
+    "LOD0_AftHouse",
+    "LOD0_AftWalk",
+    "LOD0_Bell_PortLower",
+    "LOD0_Bell_PortUpper",
+    "LOD0_Bell_StbdLower",
+    "LOD0_Bell_StbdUpper",
+    "LOD0_BellThroat_PortLower",
+    "LOD0_Canopy",
+    "LOD0_DriveCollar_PortLower",
+    "LOD0_Hull",
+    "LOD0_PalletA"
+  ],
+  "bytes": 1110792,
+  "gates": {
+    "TUBE_PADDLE": "NO",
+    "CAGE_READ": "NO",
+    "wells": "HOLES"
+  }
+}

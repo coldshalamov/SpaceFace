@@ -1,0 +1,359 @@
+#!/usr/bin/env node
+import assert from 'node:assert/strict';
+import { readCommandDeadline, closeOwnedProbeResources } from './lib/probeCommandBudget.mjs';
+import { runOptionalCharonCameraDiagnostic } from './lib/charonCameraDiagnostics.mjs';
+import { captureStartupFailureDiagnostics, observeStartupFailureEvents } from './lib/startup-failure-diagnostics.mjs';
+
+import { spawn } from 'node:child_process';
+import { createServer as createNetServer } from 'node:net';
+import { fileURLToPath } from 'node:url';
+
+import { collectPageIssues } from './lib/browser-issues.mjs';
+import { captureFlightPicturePair, observeGraphicsMessages } from './lib/flightPictureDiagnostics.mjs';
+import { loadPlaywright } from './lib/load-playwright.mjs';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const SCENARIO_ID = 'scenario.47a.mass-discrepancy';
+const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
+const REMOTE_ROLES = new Set(['remote_contact']);
+const AUTHORED_START_TIMEOUT_MS = 90000;
+const commandDeadline = readCommandDeadline();
+const { chromium } = await loadPlaywright();
+
+let server = null;
+let browser = null;
+let page = null;
+let graphicsObserver = null;
+
+try {
+  server = await startFreshServer();
+  browser = await chromium.launch({ headless: true });
+  page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+  const issues = collectPageIssues(page, { playerStoreMounted: false });
+  graphicsObserver = observeGraphicsMessages(page);
+
+  await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded' });
+  // Boot liveness on a contended runner: cooperative startup yields, so the SF surface can take
+  // tens of seconds to appear. AUTHORED_START_TIMEOUT_MS budgets the wait without asserting boot speed.
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.eventTrace, null, { timeout: AUTHORED_START_TIMEOUT_MS });
+  try {
+    await page.evaluate(`(() => {
+      try { window.__SF_STARTUP_FAILURE_OBSERVER__ = (${observeStartupFailureEvents.toString()})(window.SF); } catch (_) {}
+      window.SF.eventTrace.clear();
+      window.SF.bus.emit('game:new', { name: '47-A Live Cold Open Check', seed: 47 });
+    })()`);
+    await page.waitForFunction(
+      (scenarioId) => {
+        const sf = window.SF;
+        return sf && sf.state
+          && sf.state.mode === 'flight'
+          && sf.state.scenario
+          && sf.state.scenario.active
+          && sf.state.scenario.active.id === scenarioId;
+      },
+      SCENARIO_ID,
+      { timeout: AUTHORED_START_TIMEOUT_MS },
+    );
+  } catch (error) {
+    // Failure-only, bounded observation. Preserve the original error and 90s acceptance window.
+    let timer;
+    try {
+      const diagnostics = await Promise.race([
+        page.evaluate(`(${captureStartupFailureDiagnostics.toString()})(window.SF, window.__SF_STARTUP_FAILURE_OBSERVER__)`),
+        new Promise(resolve => { timer = setTimeout(() => resolve({ unavailable: true }), 1000); }),
+      ]);
+      console.error(`[47a-cold-open] startup gate diagnostics ${JSON.stringify(diagnostics)}`);
+    } catch (_) { console.error('[47a-cold-open] startup gate diagnostics unavailable'); }
+    finally { clearTimeout(timer); }
+    throw error;
+  }
+  await page.waitForFunction(
+    () => window.SF.eventTrace.snapshot().some((record) => record.type === 'presentation:cueApplied'),
+    null,
+    { timeout: AUTHORED_START_TIMEOUT_MS },
+  );
+
+  const report = await page.evaluate(async ({ scenarioId, scenarioPath }) => {
+    const { openingInstructionSolo } = await import('/src/ui/hudAttention.js');
+    const sf = window.SF;
+    const state = sf.state;
+    const contract = sf.helpers.scenarioContract;
+    const trace = sf.eventTrace.snapshot();
+    const actors = (contract.actors || []).map((actor) => {
+      const binding = state.scenario.actorBindings[actor.id] || null;
+      const entity = binding && binding.entityId != null ? state.entities.get(binding.entityId) : null;
+      const player = state.entities.get(state.playerId);
+      const dx = entity && player ? entity.pos.x - player.pos.x : null;
+      const dz = entity && player ? entity.pos.z - player.pos.z : null;
+      return {
+        id: actor.id,
+        role: actor.role,
+        required: actor.required === true,
+        status: binding && binding.status || 'missing',
+        entityId: binding && binding.entityId != null ? binding.entityId : null,
+        entityExists: !!entity,
+        entityType: entity && entity.type || null,
+        entityActorId: entity && entity.data && entity.data.scenarioActorId || null,
+        team: entity && entity.team != null ? entity.team : null,
+        factionId: entity && entity.factionId || null,
+        aiPassive: !!(entity && entity.data && entity.data.ai && entity.data.ai.passive),
+        liveColdStartSafe: !!(entity && entity.data && entity.data.ai && entity.data.ai.liveColdStartSafe),
+        targetId: entity && entity.data && entity.data.combat ? entity.data.combat.targetId ?? null : null,
+        distanceToPlayer: dx == null || dz == null ? null : Math.hypot(dx, dz),
+        sourceKind: binding && binding.source && binding.source.kind || null,
+      };
+      });
+    const player = state.entities.get(state.playerId);
+    const playerTeam = player && player.team != null ? player.team : 0;
+    const coldOpenShips = state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.id !== state.playerId)
+      .map((entity) => {
+        const dx = player ? entity.pos.x - player.pos.x : null;
+        const dz = player ? entity.pos.z - player.pos.z : null;
+        const ai = entity.data && entity.data.ai || {};
+        const combat = entity.data && entity.data.combat || {};
+        const intent = entity.data && entity.data.intent || {};
+        const weapons = entity.data && entity.data.weapons || [];
+        return {
+          id: entity.id,
+          actorId: entity.data && entity.data.scenarioActorId || null,
+          team: entity.team != null ? entity.team : null,
+          factionId: entity.factionId || null,
+          aiPassive: ai.passive === true,
+          hasCombatAi: !!entity.data && !!entity.data.ai,
+          hasWeapons: Array.isArray(weapons) && weapons.length > 0,
+          distanceToPlayer: dx == null || dz == null ? null : Math.hypot(dx, dz),
+          targetId: combat.targetId ?? null,
+          lockTarget: combat.lockTarget ?? null,
+          lockProgress: combat.lockProgress ?? 0,
+          firing: intent.fire === true,
+          fireGroup: intent.fireGroup ?? null,
+        };
+    });
+    const byType = {};
+    for (const record of trace) byType[record.type] = (byType[record.type] || 0) + 1;
+    const ambientGateProbe = 'COLD-OPEN AMBIENT GATE PROBE';
+    sf.bus.emit('comms:popup', { sender: 'TEST CARRIER', category: 'ambient', text: ambientGateProbe });
+    return {
+      mode: state.mode,
+      playerId: state.playerId,
+      playerTeam,
+      helperContractId: contract && contract.id,
+      helperContractPath: sf.helpers.scenarioContractPath,
+      helperContractHash: sf.helpers.scenarioContractHash,
+      active: state.scenario.active,
+      unresolvedActorIds: state.scenario.unresolvedActorIds.slice(),
+      enteredBeatIds: state.scenario.enteredBeatIds.slice(),
+      actors,
+      coldOpenShips,
+      traceCount: trace.length,
+      byType,
+      hasKesslerDialogue: trace.some((record) =>
+        record.type === 'scenario:dialogueLine'
+        && record.payload
+        && record.payload.speakerActorId === 'contact_kessler'
+        && /that pulse is the job/i.test(record.payload.text || '')),
+      hasSignalCue: trace.some((record) =>
+        record.type === 'presentation:cue' && record.payload && record.payload.id === 'scenario.signal.pulse'),
+      hasSignalCueApplied: trace.some((record) =>
+        record.type === 'presentation:cueApplied' && record.payload && record.payload.id === 'scenario.signal.pulse'),
+      kesslerCommsVisible: /Kestrel, that pulse is the job/i.test(document.body.textContent || ''),
+      onboardingGateActive: !!(state.onboarding && state.onboarding.active && !state.onboarding.finished),
+      openingSoloHolds: openingInstructionSolo(state),
+      ambientGateProbeVisible: (document.body.textContent || '').includes(ambientGateProbe),
+      scenarioId,
+      scenarioPath,
+    };
+  }, { scenarioId: SCENARIO_ID, scenarioPath: SCENARIO_PATH });
+
+  assert.equal(report.mode, 'flight', 'New Game should enter flight mode');
+  assert.equal(report.helperContractId, SCENARIO_ID, 'browser helpers should load the canonical 47-A contract');
+  assert.equal(report.helperContractPath, SCENARIO_PATH, 'browser helpers should report the canonical contract path');
+  assert.match(report.helperContractHash, /^[0-9a-f]{64}$/, 'browser helpers should publish the contract sha256');
+  assert.equal(report.active.id, SCENARIO_ID, 'scenario runtime should activate 47-A in the live browser game');
+  assert.equal(report.active.contractPath, SCENARIO_PATH, 'active scenario should retain the canonical contract path');
+  assert.equal(report.active.contractHash, report.helperContractHash, 'active scenario hash should match browser helper hash');
+  assert.equal(report.active.activeBeatId, 'drop_wreck_field', 'live cold open should enter the first 47-A beat');
+  assert.deepEqual(report.unresolvedActorIds, [], 'live cold open should bind every required 47-A actor');
+  assert(report.enteredBeatIds.includes('drop_wreck_field'), 'live cold open should record first beat entry');
+  assert(report.traceCount > 0, 'event trace should capture live scenario evidence');
+  assert.equal(report.byType['scenario:loaded'], 1, 'live cold open should emit scenario:loaded once');
+  assert.equal(report.byType['scenario:actorBindings'], 1, 'live cold open should emit actor binding evidence once');
+  assert(report.byType['scenario:beatEntered'] >= 1, 'live cold open should emit beat entry evidence');
+  assert(report.hasKesslerDialogue, 'live cold open should emit Kessler scenario dialogue');
+  assert(report.hasSignalCue, 'live cold open should emit the first signal presentation cue');
+  assert(report.hasSignalCueApplied, 'live cold open should apply the first signal presentation cue');
+  assert.equal(report.onboardingGateActive, true, 'cold-open comms proof must exercise the active onboarding gate');
+  assert.equal(report.ambientGateProbeVisible, false,
+    'ordinary ambient chatter should remain held while authored scenario dialogue bypasses the onboarding gate');
+  // ff87322f3 ("Opening one-instruction rule") retires the authored-dialogue gate bypass while
+  // openingInstructionSolo(state) holds — the Kessler line is now held in the comms queue until
+  // the player does the thing or the opening window ends. The cold-open assertions above ran
+  // at the original moment; now stage the separate post-opening fixture and prove the held line
+  // renders even while ordinary attention remains occupied by the real tracked objective.
+  // Clearing nav is not a stable fixture: missions restores that objective every 0.75 sim seconds.
+  if (!report.kesslerCommsVisible) {
+    assert.equal(report.openingSoloHolds, true,
+      'Kessler line held from the comms feed while the opening one-instruction rule does not hold — report this state, do not patch it');
+    const postOpening = await page.evaluate(async () => {
+      const { OPENING_INSTRUCTION_WINDOW_S, openingWindowActive, openingInstructionSolo }
+        = await import('/src/ui/hudAttention.js');
+      const state = window.SF.state;
+      const waypoint = state.nav?.waypoint;
+      const trackedId = state.ui?.trackedMissionId;
+      state.onboarding.startedAt = Number(state.simTime) - OPENING_INSTRUCTION_WINDOW_S - 1;
+      return {
+        openingWindowActive: openingWindowActive(state),
+        openingSoloHolds: openingInstructionSolo(state),
+        waypointPreserved: state.nav?.waypoint === waypoint,
+        trackedMissionPreserved: state.ui?.trackedMissionId === trackedId,
+      };
+    });
+    assert.deepEqual(postOpening, {
+      openingWindowActive: false, openingSoloHolds: false,
+      waypointPreserved: true, trackedMissionPreserved: true,
+    }, 'the post-opening fixture should release only the timed instruction gate');
+    await page.waitForFunction(
+      () => /Kestrel, that pulse is the job/i.test(document.body.textContent || ''),
+      null,
+      { timeout: AUTHORED_START_TIMEOUT_MS },
+    );
+  }
+  const kesslerCommsEventuallyVisible = await page.evaluate(
+    () => /Kestrel, that pulse is the job/i.test(document.body.textContent || ''));
+  assert(kesslerCommsEventuallyVisible,
+    'live cold open should render Kessler dialogue in the comms feed once the solo rule releases');
+
+  const missing = report.actors.filter((actor) => actor.required && actor.status !== 'bound');
+  assert.deepEqual(missing, [], 'all required scenario actors should bind');
+  const missingEntities = report.actors.filter((actor) =>
+    actor.required
+    && !REMOTE_ROLES.has(actor.role)
+    && (!actor.entityExists || actor.entityActorId !== actor.id));
+  assert.deepEqual(missingEntities, [], 'all required physical scenario actors should have live entities');
+  assert.equal(report.actors.find((actor) => actor.id === 'contact_kessler')?.sourceKind, 'narrativeFigure',
+    'Kessler should bind through the narrative figure catalog');
+  for (const id of ['scavenger_interceptor', 'scavenger_harasser', 'scavenger_thief', 'official_recovery_tug']) {
+    const actor = report.actors.find((entry) => entry.id === id);
+    assert(actor, `${id} actor should exist in live cold-open report`);
+    assert.equal(actor.team, 0, `${id} should be neutral before its scenario beat`);
+    assert.equal(actor.factionId, 'faction_free', `${id} should not present as an immediate hostile faction`);
+    assert.equal(actor.aiPassive, true, `${id} should be passive before its scenario beat`);
+    assert.equal(actor.liveColdStartSafe, true, `${id} should be marked as live cold-start safe`);
+    assert.equal(actor.targetId, null, `${id} should not target the player in the cold open`);
+    assert(actor.distanceToPlayer >= 1500, `${id} should hold outside the spawn threat bubble`);
+  }
+  const hostileShips = report.coldOpenShips.filter((ship) => ship.team != null && ship.team !== report.playerTeam);
+  const activeAttackers = hostileShips.filter((ship) =>
+    (ship.hasCombatAi && !ship.aiPassive && ship.hasWeapons)
+    || ship.targetId === report.playerId
+    || ship.lockTarget === report.playerId
+    || ship.firing
+    || ship.fireGroup != null);
+  assert.deepEqual(activeAttackers.filter((ship) => ship.distanceToPlayer < 1500), [],
+    'live cold open should not contain a close hostile attacker near the player');
+  assert.deepEqual(hostileShips.filter((ship) => ship.targetId === report.playerId || ship.lockTarget === report.playerId), [],
+    'live cold open should not contain a hostile target lock on the player');
+  assert.deepEqual(hostileShips.filter((ship) => ship.firing || ship.fireGroup != null), [],
+    'live cold open should not contain a hostile firing intent during the first window');
+  // Preserve the actual game camera/HUD after actor and safety checks, even if
+  // the final console gate fails. Diagnostic only: no DOM, animation or game edits.
+  try {
+    const diagnostic = await captureFlightPicturePair(page, { graphicsMessages: () => graphicsObserver.snapshot() });
+    console.log(`47-A game-camera diagnostic: ${diagnostic.path} (${diagnostic.report.status})`);
+  } catch (error) {
+    console.warn(`47-A camera diagnostic unavailable: ${error?.message || error}`);
+  }
+  assert.deepEqual(issues.errorIssues(), [], 'browser cold-open check should not record page errors');
+
+  console.log(`47-A live cold open OK (${report.actors.length} actors bound, ${report.traceCount} trace records)`);
+  // Optional, separately labeled staging only AFTER every original acceptance gate passed.
+  await runOptionalCharonCameraDiagnostic(page, { commandDeadline });
+} finally {
+  try { graphicsObserver?.dispose(); }
+  catch (error) { process.exitCode = 1; console.warn(`Graphics observer cleanup incomplete: ${error?.message || error}`); }
+  // A wedged page cannot delay owned-browser cleanup indefinitely.
+  let cleanupTimer;
+  if (page) {
+    try {
+      await Promise.race([
+        page.evaluate(() => {
+          window.__SF_STARTUP_FAILURE_OBSERVER__?.dispose();
+          delete window.__SF_STARTUP_FAILURE_OBSERVER__;
+        }),
+        new Promise(resolve => { cleanupTimer = setTimeout(resolve, 1000); }),
+      ]);
+    } catch (_) { /* Closing the owned page below also releases its listeners. */ }
+    finally { clearTimeout(cleanupTimer); }
+  }
+  if (!await closeOwnedProbeResources({ browser, server })) process.exitCode = 1;
+}
+
+async function startFreshServer() {
+  const port = await findFreePort(8124);
+  const url = `http://127.0.0.1:${port}/`;
+  const child = spawnProbeServer(port);
+  await waitForReachable(url, child);
+  return { baseUrl: url, kill: () => child.kill() };
+}
+
+function spawnProbeServer(port) {
+  const child = spawn(process.execPath, ['server.js', String(port)], {
+    cwd: ROOT,
+    // server.js mounts the real save drawer by default; a browser test server must boot
+    // with the store explicitly unmounted so the check can never touch real saves.
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let output = '';
+  const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };
+  child.stdout.on('data', capture);
+  child.stderr.on('data', capture);
+  child.probeOutput = () => output.trim();
+  return child;
+}
+
+async function waitForReachable(url, child) {
+  for (let i = 0; i < 80; i++) {
+    if (child.exitCode != null) {
+      throw new Error(`Dev server exited before becoming reachable at ${url}\n${child.probeOutput ? child.probeOutput() : ''}`);
+    }
+    if (await reachable(url)) return;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  child.kill();
+  throw new Error('Dev server did not become reachable at ' + url);
+}
+
+async function findFreePort(start) {
+  for (let port = start; port < start + 60; port++) {
+    if (await isPortFree(port)) return port;
+  }
+  throw new Error('No free local port found for 47-A live cold-open check');
+}
+
+function isPortFree(port) {
+  return new Promise((resolve) => {
+    const server = createNetServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => server.close(() => resolve(true)));
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+async function reachable(url) {
+  try {
+    const res = await fetch(url, { method: 'GET' });
+    return !!res.ok;
+  } catch (_) {
+    return false;
+  }
+}
+
+function withDebugFlight(url) {
+  const u = new URL(url);
+  u.searchParams.set('debug', 'flight');
+  // This probe reads authoritative scenario state and stages the onboarding time boundary.
+  // Those reads/writes require the main lane; scenario is deliberately not a worker mirror.
+  u.searchParams.set('simLane', 'main');
+  return String(u);
+}

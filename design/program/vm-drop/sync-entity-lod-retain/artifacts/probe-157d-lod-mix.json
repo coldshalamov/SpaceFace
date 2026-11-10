@@ -1,0 +1,22 @@
+{
+  "counts": {
+    "ships": 36,
+    "asteroids": 11,
+    "stations": 3,
+    "total": 50
+  },
+  "always": {
+    "name": "always_call_updateLod",
+    "us": 9.697
+  },
+  "central": {
+    "name": "central_retain_gate",
+    "us": 1.603
+  },
+  "localOnly": {
+    "name": "local_lastLod_ast_station",
+    "us": 2.671
+  },
+  "speedup_central": 6.05,
+  "speedup_local": 3.63
+}

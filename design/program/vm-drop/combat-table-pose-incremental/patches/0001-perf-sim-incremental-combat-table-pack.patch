@@ -1,0 +1,74 @@
+From a53db6d4bab50fb9cfbe7293dd82e5e83fda6cdb Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 01:57:30 -0400
+Subject: [PATCH] perf(sim): incremental combat-table pack on pose-only dirty
+
+Quiet Ceres marks the flying player every tick; packCombatTable was
+Map.clear + rewriting every shipLike/projectile/wreck row. Pose-only
+dirty now refreshes existing rows in place; membership still full-rebuilds.
+---
+ src/core/combatTable.js | 38 ++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 36 insertions(+), 2 deletions(-)
+
+diff --git a/src/core/combatTable.js b/src/core/combatTable.js
+index a0ed62f46..f1a1c50b3 100644
+--- a/src/core/combatTable.js
++++ b/src/core/combatTable.js
+@@ -1,7 +1,7 @@
+ // Dense combat SoA beside GameState. Entity objects remain save/authority;
+ // hot radius queries and later snapshot packing read these columns.
+ 
+-import { DIRTY, hasDirty } from './dirtyJournal.js';
++import { DIRTY, hasDirty, collectDirtyIds } from './dirtyJournal.js';
+ import { hasActiveSpatialHash } from './spatialQuery.js';
+ 
+ export const COMBAT_TABLE_SCHEMA = 'spaceface.combatTable.v1';
+@@ -47,10 +47,44 @@ export function packCombatTable(state) {
+   if (!table) return null;
+   const tick = state.tick | 0;
+   if (table.tick === tick && table.count >= 0) return table;
+-  if (table.packedOnce === true && !hasDirty(state, DIRTY.POSE | DIRTY.MEMBERSHIP)) {
++  const membershipDirty = hasDirty(state, DIRTY.MEMBERSHIP);
++  const poseDirty = hasDirty(state, DIRTY.POSE);
++  // Quiet / still: columns stay valid across ticks with no pose or roster change.
++  if (table.packedOnce === true && !membershipDirty && !poseDirty) {
+     table.tick = tick;
+     return table;
+   }
++  // Pose-only dirty: refresh existing rows in place. Quiet Ceres marks the flying
++  // player (and a few movers) every tick — rewriting every shipLike/projectile/wreck
++  // row paid O(roster) Map.clear + column writes for a handful of movers. Membership
++  // still forces a full rebuild so spawn/despawn keep row identity dense.
++  if (table.packedOnce === true && !membershipDirty && poseDirty) {
++    const entities = state.entities;
++    const rowById = table.rowById;
++    if (entities && typeof entities.get === 'function' && rowById) {
++      const dirtyIds = collectDirtyIds(
++        state,
++        DIRTY.POSE,
++        table._poseDirtyScratch || (table._poseDirtyScratch = []),
++      );
++      for (let i = 0; i < dirtyIds.length; i++) {
++        const id = dirtyIds[i];
++        const row = rowById.get(id >>> 0);
++        if (row == null || row >= table.count) continue;
++        const entity = entities.get(id);
++        if (!entity || entity.alive === false || !entity.pos) continue;
++        table.x[row] = Number(entity.pos.x) || 0;
++        table.z[row] = Number(entity.pos.z) || 0;
++        table.vx[row] = entity.vel ? Number(entity.vel.x) || 0 : 0;
++        table.vz[row] = entity.vel ? Number(entity.vel.z) || 0 : 0;
++        table.yaw[row] = Number(entity.rot) || 0;
++        table.radius[row] = Number(entity.radius) || 0;
++        table.team[row] = entity.team == null ? -1 : entity.team | 0;
++      }
++      table.tick = tick;
++      return table;
++    }
++  }
+   const index = state.entityIndex;
+   const ships = (index && index.shipLike) || [];
+   const projectiles = (index && index.projectiles) || [];
+-- 
+2.47.3
+

@@ -1,0 +1,189 @@
+WAVE 3 BASE R1 — CRITIC REPORT (re-score; two states of one surface)
+Stills: .devshots/ui-review/view/w3c-base-{1920,1280}.png (empty),
+        w3c-base-claimed-{1920,1280}.png (populated, NEW seed since audit)
+Crops: .devshots/ui-review/crops/w3c-base-*.png (17 crops, Read and measured)
+Method: sharp crops + .raw() pixel dumps. Ratios are WCAG contrast on composited
+pixels. Bench artefacts not scored: frozen motion, CYCLE clock, committed backdrops.
+Previous: wave3-sites-audit-critic.txt Surface 2 (VERDICT 3.5, empty card only;
+populated was UNSCOREABLE — no seed). The build round added the 'base-claimed' seed
+(Lacuna Survey Moon, 2/5 slots, Trade Relay ACTIVE, stores, convoy in flight).
+
+======================================================================
+STATE A — BASE EMPTY ("No body selected")
+======================================================================
+1. VERDICT: NOT PASSED, overall 7.0 (previous 3.5).
+2. AXES (score / prev / note):
+   - Composition 6.5 / 3.0 / Low-third glass dock (x~530-1345, y~795-965 of 1080)
+     lets the world breathe; but 73% of the frame above is uncomposed dark.
+   - Hierarchy 7.0 / 4.0 / Title > sub > keys is a clean order; title/sub weights
+     sit close together.
+   - Legibility 7.5 / 7.5 / Title 9.5:1, sub 12.2:1, ghost key 10.2:1, ESC 5.6:1,
+     lamp ink 10.1:1 — everything passes, nothing is large.
+   - ORRERY fidelity 7.0 / 1.0 / Glass + corner ticks + Lamp Key + ghost key +
+     faint lattice; no boxes, no pills. Lawful but minimal: the lattice is a
+     rumor and no light runs anywhere on the glass but the ticks.
+   - Craft/detail 6.5 / 3.5 / Key has 45 deg cut + sheen + 10:1 ink; ticks crisp;
+     ESC-on-tick is a nice detail. Glass interior is flat; top edge dips
+     darker than the backdrop above it (14 vs 23 — see FA4).
+   - Interaction clarity 7.5 / 2.0 / Two verbs, both hinted (N, ESC), one primary.
+     No longer a dead end.
+3. PREVIOUS ROUND F1-F8 (px evidence):
+   F1 dissolve card -> glass+mask+ticks: DONE. No card; borderless glass, 4 corner
+     ticks (TL arm ~13x24px at (546,808)), gradient-dissolved edges (col x900: no
+     step anywhere y780-822), dot lattice on the glass.
+   F2 Lamp Key Return 180x52 + Esc: DONE. Amber run x1170-1341 (w171) y916-966
+     (h50), 45 deg cut top-right, sheen on left third, ink 28/20/5 on 238/184/84
+     = 10.09:1; "ESC" on a tick rule at x~1085-1115.
+   F3 title to 22px 600 sentence case: DONE. "No body selected", ~22px, bone
+     183/180/166 = 9.46:1. It apologizes now.
+   F4 sub rewrite + ghost key: DONE. "Claim a body to build here — the surveyor
+     marks candidates." + "> OPEN CHART | N" (bone 10.2:1, ~13px caps).
+   F5 dock low-third y700+: DONE. Glass y~795-965.
+   F6 lamp is the one amber: DONE. Only amber on screen is the key (visually
+     confirmed full-frame + all crops; backdrop warmth is the committed still).
+   F7 lattice behind glass: DONE (weak — see FA1). Dots confirmed ~2px at ~36px
+     pitch across the glass; contrast ~1.2:1, near-invisible.
+   F8 1280 fit: DONE. e1280 crop: glass x~110-1170, key + cut + ticks all in
+     frame, nothing clipped.
+4. RANKED FIXES (empty):
+   FA1. Lattice near-invisible (glass x530-1345 y795-965; dots ~2px/36px pitch,
+     ~1.2:1): reads as sensor dust, not an instrument field. Fix: raise dot
+     alpha until dots hit >=2:1 vs local glass (dot rgb >= ~55/55/55) or delete
+     the layer — a rumored lattice is worse than none.
+   FA2. Glass tint has no read (mid-glass 50,50,50 vs backdrop ~1.4:1; top edge
+     14/15/17 is DARKER than the world above it at 23/20/17): the panel neither
+     glows nor grounds. Fix: lift mid tint to >=2:1 over local backdrop and
+     flatten the top-edge dip so the mask never goes below backdrop luminance.
+   FA3. Dead air above (y0-790, 73% of frame): backdrop soup with no instrument
+     over it. Fix: extend the lattice full-frame at half glass alpha + one dim
+     bone arc (r~300px, centered ~(1560,200), 1.5px core) so the eye has somewhere
+     to stand; keep it below 30% of glass peak light.
+   FA4. Ghost key affordance ("> OPEN CHART | N", x575-705 y915-937): naked caps
+     with no key shape; a first-timer may not read it as a key. Fix: put the N
+     hint in the 1px bone cut-corner outline chip per key law; keep text naked.
+   FA5. Title weight (x550-700 y825-849): 600-weight apologizes a touch too softly
+     next to the 171px amber key. Fix: Archivo 800 at the same 22px — one step
+     up, no larger.
+5. MEMORABLE LINE: The empty base should be the registry dreaming — candidate
+   moons ticking on a dark rail behind the glass, the ghost key an invitation to
+   go claim one. This is a polite waiting room with the lights half out.
+7. OWNER CRITERIA:
+   (a) Thin/generic: PASS. No hairline drawing (ticks are accents, not the
+     subject), no web components; the 171x50 amber key is real mass. FA1/FA2 are
+     polish, not wireframe failure.
+   (b) Signature interaction: FAIL. There is nothing to DO here that belongs to
+     Base — "Open chart" is a doorway, not an instrument. A candidate preview
+     (three survey ticks with names/ranges, riding the glass, chart key arming
+     the chosen one) would make this screen Base's and no one else's.
+
+======================================================================
+STATE B — BASE POPULATED ("Lacuna Survey Moon", first scoring)
+======================================================================
+1. VERDICT: NOT PASSED, overall 6.0 (previous: none — was UNSCOREABLE).
+2. AXES (score / prev / note):
+   - Composition 6.5 / — / Full-frame glass (y~95-1050) with a clear zone stack
+     (title > research > slots > identity > hero > stats > ledger) on a steady
+     x425 rail; but all type-and-rules, no art, left-heavy.
+   - Hierarchy 6.0 / — / 44px title leads well; then two competing bolds in the
+     research row, three equally loud identity columns, and a 46px "hero"
+     numeral (§3.4 wants 64-144px thin) that fails to crown the stores zone.
+   - Legibility 6.0 / — / Body 9-17:1 throughout, BUT ledger 2.11:1 (x440-760
+     y1013-1033) and CLEAR SITE STORAGE 3.07:1 (x430-600 y665-685) both fail 4.5.
+   - ORRERY fidelity 6.5 / — / Spines+ticks+beads on both rails, bead+arm chosen
+     marker, census-clean one-lamp (110 amber px @1/4 sampling, ZERO outside the
+     bead+arm box), borderless wells, lawful type. Missing: the Lamp Key the law
+     promises every screen, and any Hand that swings.
+   - Craft/detail 6.5 / — / 7px amber bead on a 1px bone spine with halo, 2px
+     amber arm (242/185/80), crisp DELIVER bracket; marred by the 8px bead/arm
+     jog (bead cx810, arm x801-802) and three dead "Empty" slabs.
+   - Interaction clarity 4.5 / — / The hole in the screen: NO verb, NO key hint,
+     NO exit anywhere. Identity columns don't read selectable, DELIVER 10U reads
+     as a ledger line, CLEAR SITE STORAGE reads as broken-dim. A readout, not
+     an instrument.
+3. PREVIOUS ROUND — POPULATED SEED SPEC (was: "add catalog id 'base-claimed' +
+   seedBaseShot: one claim, 2/5 slots, one convoy in flight, stored goods > 0,
+   specialized identity, pendingClaimBodyId set"):
+   DONE. The seed exists and shoots: "L-class body · 2/5 module slots · Helios
+   Prime"; Cargo Depot + Defense Battery built, 3 Empty wells; "Convoy / In
+   flight", "Convoy load 60u"; "Input 90u/300u"; "Trade Relay · ACTIVE" with
+   full verb/consequence/tradeoff copy; ledger "LAST · CONVOY AWAY — 60U TO
+   STATION_HELIOS". Every specced atom is on screen. (Stored-output hero reads
+   "0u / 0u" — the convoy carries the goods instead; acceptable, seed is DONE.)
+4. RANKED FIXES (populated):
+   FP1. 1280 CLIPS THE MANAGEMENT HALF (w3c-base-claimed-1280: last content
+     y~650 — identity footers + glass bottom ticks; hero, stats, convoy, ledger
+     ALL absent at 720p). Fix: compress to fit — identity body 13px/1.4, hero
+     64px, stats to 2-col under 1366px; glass bottom pinned in-frame. Re-shoot
+     1280 must show hero + ledger. Nothing else on this list matters until this
+     passes: half the screen is missing on laptops.
+   FP2. No primary verb and no exit (whole screen): add ONE Lamp Key "Dispatch
+     convoy" (amber, 45 deg cut, ~180x52) bottom-right of glass at (1230,975),
+     plus a ghost "Return | ESC" at its left. Currently zero keys, zero hints.
+   FP3. Identity columns lack affordance (x425-780 / 805-1130 / 1140-1460,
+     y494-690): nothing says "pick a doctrine". Fix: rest-state tick numerals
+     1/2/3 on the three spine ticks; hover/focus swings a bone bead+arm, chosen
+     keeps the amber (as now). Verify with --walk, not by eye.
+   FP4. Ledger 2.11:1 ("LAST · CONVOY AWAY — 60U…", x440-760 y1013-1033, text
+     71/70/69 on 8/9/12): convoy status is information, not texture. Fix: lift
+     text to >=120 gray (>=4.5:1) and 12px, or promote the line into the convoy
+     stat cell as "Away ▸ Helios · 60u".
+   FP5. CLEAR SITE STORAGE 3.07:1 (x430-600 y665-685, both flanks): if a control
+     it fails contrast; if disabled it fails the disabled-key law (no outline
+     shape). Fix: EITHER 4.5:1+ bone as a live key, OR the 1px bone cut-corner
+     outline chip that says intentionally-disabled. Pick one.
+   FP6. Bead/arm 8px jog (bead center x810 y467-473, arm x801-802 from y494, tick
+     x810-811 lands 8px right of the cell corner): the amber plumb kinks.
+     Fix: move the active cell's left edge (arm) to x809-810 so it hangs
+     straight from bead+tick.
+   FP7. Hero numeral undersized ("0u" ~46px tall, y752-798, x~460-560): §3.4
+     promises 64-144px thin display numerals; this reads as body text that got
+     lost. Fix: 84px Archivo 250 numeral + unit, "STORED OUTPUT · CAPACITY 0U"
+     as its leader label.
+   FP8. Research row has two heads (body x450-920 y285-300 vs right bold
+     "On-Site Refinery" x1300-1440 y260-285, 14.6:1): the right label shouts
+     across the room. Fix: demote it to 15px bone-dim, or dock it under the body
+     as the object line ("Next: On-Site Refinery").
+   FP9. Dead wells (3x "Empty" slabs x840-1460 y360-415, fill 1.22:1 darker than
+     glass): emptiness reads as missing content. Fix: ghost affordance in each
+     well — "+" bead + "Build ▸ B" microcopy at >=4.5:1 — so vacancy reads as
+     opportunity.
+   FP10. Convoy cell carries no state ("In flight", x425-480 y893-910, static):
+     frozen motion excuses the missing pulse but not the missing facts. Fix:
+     second line under it — "60u ▸ HELIOS · 62%" (Counter in motion) — so the
+     cell reads en route in a still.
+5. MEMORABLE LINE: The base screen should feel like standing in your own
+   machine room — the doctrine you chose humming amber down its rail, your
+   convoy a bead of light crawling the dark toward Helios. This is the machine
+   room's logbook: immaculate, truthful, and nothing hums.
+7. OWNER CRITERIA:
+   (a) Thin/generic: FAIL. Everything structural is a 1px bone core (spines,
+     group hairlines) plus type; the only mass in 1920x1080 is a 7px bead and a
+     46px numeral; wells are darker holes, not instruments; zero produced art.
+     It reads as a refined wireframe with light, not an instrument with weight.
+     Needs: a produced body plate or moon arc behind the title zone (the audit's
+     "galaxy of rocks you could own", one rock would do); active spine to 1.5px
+     core with a >=2:1 bloom band; the 84px hero numeral (FP7). No generic web
+     components — the failure is thinness, not genericness.
+   (b) Signature interaction: FAIL (a strong candidate, no execution). "Choose
+     your doctrine, feed your machine, dispatch your convoy" IS Base's alone —
+     the YOUR VERB / CONSEQUENCE / TRADEOFF doctrine rail is the most
+     per-screen thinking in wave 3. But nothing on screen is visibly DOABLE
+     (no selection affordance, no verb, no hint). It becomes a pass when FP2
+     (Dispatch key) + FP3 (1/2/3 selectable doctrines with the bead swinging
+     between them) land: pick the doctrine, feed the input, fire the convoy.
+
+======================================================================
+CROSS-STATE NOTES
+======================================================================
+- The build round is real: F1-F8 all DONE with px to show, the seed spec DONE to
+  the atom, one-lamp discipline census-clean on both states. The audit's 3.5
+  card is gone; what stands is a lawful 7.0 empty state and a 6.0 populated
+  debut. Neither passes: empty fails (b) + overall; populated fails (a) + (b) +
+  overall, and FP1 (1280 clip) is a ship-blocker for the populated screen.
+- Cheapest path to two passes: FP1 (fit 720p) + FP2/FP3 (verb + selectable
+  doctrines) + FP4/FP5 (two contrast lifts) + one produced body plate. That is
+  one build round, not a redesign — the rails, beads, glass and type voice are
+  keepers.
+- Do-not-score respected: frozen motion assumed for convoy pulse/lattice ripple;
+  backdrop warmth/blur taken as committed stills; no CYCLE/tab-rail elements
+  visible in these shots.

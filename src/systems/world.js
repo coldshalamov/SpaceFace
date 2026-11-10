@@ -1,0 +1,8739 @@
+import { starterBuoyRecordMarker } from '../missions/starterWorkday.js';
+import {TALLY_THREE} from '../data/tallyThree.js';
+import {tallyAssessorRecordSpec} from '../world/tallyThreeIdentity.js';
+import { handlePayloadSectorTransition } from '../combat/industrialBeam.js';
+// World / Sectors / Navigation system (ARCHITECTURE §2.3 step 13, §3.8, design 05).
+//
+// Owns: the sector graph (loaded copy of SECTORS), the active sector's live contents
+// (stations / asteroid fields / enemies / POIs / gates), the fog-of-war discovery overlay,
+// the jump state machine (IDLE→CHARGING→JUMPING→COOLDOWN), fuel, hazard membership, POI scan
+// reveal, and the Dijkstra route helper.
+//
+// M2a continuous corridor (Helios↔Ceres↔Tethys):
+//   - entity.pos is galactic-global; free-flight membership never teleports the player.
+//   - world-owned residentSectors track FULL / REDUCED / RECORD_ONLY with a hard cap.
+//   - enterSector still serves boot + intentional gate/drive jumps (may place at target).
+//   - Continuous membership changes never call the legacy global-wipe helper.
+//
+// enterSector(sectorId, {fromJump}) is the entry point main.js calls at boot
+//   (registry.get('world').enterSector(startSectorId)). It materializes the target + bounded
+//   corridor prefetch, sets state.world.currentSectorId / activeSector / corridor bounds,
+//   places the player only on non-continuous enters, and emits sector:enter.
+//
+// Determinism (§0.5): sector content uses mulberry32(hash32(meta.seed, sectorId, epoch));
+//   epoch is first materialization and does not change on membership jitter. Never Math.random().
+// Single-writer (§0.6): world owns world.*/jump/fuel/nav; it emits economy:chargeCredits for
+//   gate tolls and never writes credits/cargo/rep directly. Radiation is environmental damage
+//   routed through the combat kernel (shield then hull); isolated ticks fall back to the same
+//   vitals order and may kill.
+import { playerBearingLetter } from '../core/playerCompass.js';
+import { dedupWarn } from '../core/warnDedup.js';
+import { createDockIntent } from '../core/dockIntent.js';
+import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
+import { clearSurveyFix, bearingCharted } from './surveyFix.js';
+import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP, FUEL_CELL_COOK } from './fuelCrack.js';
+import { stepRadiationCargoCook } from './fragileCargo.js';
+import { writeHazardPresence } from '../data/hazardLanguage.js';
+import { stepDebrisCrossings } from './debrisCrossings.js';
+import { stepDockCollar } from './dockCollar.js';
+import { stepFuelWeep } from './fuelWeep.js';
+import { driveJumpMassLocked } from './jumpMassLock.js';
+import { CHART_FILING, chartFilingBounty } from '../data/surveyCharts.js';
+import { sectorExplorationProgress } from '../world/explorationJournal.js';
+import { FACTION_META } from '../data/factions.js';
+import { stationMinRepFor } from '../data/dockDeny.js';
+import { separateSkinOverlaps } from '../data/modelTruth.js';
+import { createSectorArranger } from '../world/arranger.js';
+import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
+import { WORLD_ONE_OFFS, crackerRunLoadRecovery } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
+import { VX_FREE_DRIVE_SECTOR_ID, VX_FREE_DRIVE_POI, vxFreeDrivePoisFor,
+  vxFreeDriveReservationsFor, vxFreeDriveStructuresFor, vxFreeDriveMarkersFor }
+  from '../data/vxFreeDriveRing.js'; // VX-02 — the Cracker Run free-drive ring
+import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
+import { KETTLE_LINE } from '../data/kettleLine.js';
+import { FACTION_BERTHS } from '../data/factionBerths.js'; // CR-BERTH-1 faction berths
+import {
+  FRONTIER_RUMOR_RECEIPT_LIMIT,
+  frontierRumorOffer,
+  hasTethysBlackMarketAccess,
+  normalizeFrontierRumorState,
+  sensorPostRumorOffer,
+  TETHYS_BLACK_MARKET_DISCOVERY,
+  TETHYS_BLACK_MARKET_RUN,
+  tethysBlackMarketRun,
+} from '../data/frontierRumors.js';
+import { isJettisonedCargoPod, spawnJettisonedCargoPod } from './lootShards.js';
+import {
+  VESTA_ORE_CACHE,
+  VESTA_ORE_CACHE_CHOICES,
+  freshVestaOreCacheState,
+  normalizeVestaOreCacheState,
+  vestaOreCacheChoice,
+} from '../data/vestaOreCache.js';
+import {
+  PALLAS_HIDDEN_CACHE,
+  PALLAS_HIDDEN_CACHE_CHOICES,
+  PALLAS_HIDDEN_CACHE_RESOLUTION_ID,
+  freshPallasHiddenCacheState,
+  normalizePallasHiddenCacheState,
+  pallasHiddenCacheChoice,
+  pallasHiddenCacheLot,
+} from '../data/pallasHiddenCache.js';
+import {
+  ORRIN_WITNESS_MARKER_ID,
+  ORRIN_WITNESS_PERSISTENCE_OWNER,
+  isOrrinWitnessRecorder,
+  orrinWitnessRecordId,
+  orrinWitnessSource,
+} from '../data/orrinWitnessCase.js';
+import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
+import { spawnRestoredCatalogStation } from '../save/catalogStationRestore.js';
+import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
+import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
+import { isPlayerWanted } from './heat.js';            // WANTED threshold is heat-owned — never restate it
+import { adventureMaterialFor, environmentSurfaceData } from '../data/environmentMaterials.js';
+import { applyRockSubstance, rockSubstanceForSlot, rockTierForRadius, ROCK_LADDER_RADII, ROCK_LADDER_MIN_PER_TIER, ROCK_PLACE_SUBSTANCES } from '../data/rockSubstances.js';
+import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import {
+  OPTIC_SCATTER_SALT,
+  compileOpticStructure,
+  opticScatterSpecsFor,
+  opticStructuresFor,
+} from '../data/opticStructures.js';
+import {
+  OPTIC_SPEND_QUIET,
+  normalizeOpticSpendLedger,
+  recordOpticSpend,
+} from '../combat/opticField.js';
+import {
+  FIELD_REGROWTH_BATCH_MAX,
+  FIELD_REGROWTH_BATCH_MIN,
+  FIELD_REGROWTH_YIELD_SCALE,
+  FIELD_USED_UP_DEPLETION,
+  NEXT_FIELD_MAX_WU,
+  fieldMemoryBand,
+  fieldRegrowthDue,
+  nextFieldOpportunityRecord,
+  planUsedUpFieldOpportunity,
+  recordFieldRegrowth,
+  recordNextFieldOpportunity,
+  releaseNextFieldOpportunity,
+} from './fieldDepletion.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { chooseLawfulStation, recoveryCostQuote } from '../combat/playerDefeat.js';
+import { tetherMemorialPresentation } from '../data/tetherMemorialPresentation.js';
+import { makeEnemySpawnSpec } from './combat.js';
+import { planZoneSpawns, zoneAt, zoneThreat, zonesForSector } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
+import {
+  CERES_ACTIVITY_POCKETS,
+  CERES_ACTIVITY_SECTOR_ID,
+  HELIOS_ACTIVITY_POCKETS,
+} from '../data/sectorActivityPockets.js';
+import {
+  ASHFALL_BURN_SURGE_PERIOD_S,
+  METRONOME_SECTOR_ID,
+  PALLAS_REEF_SECTOR_ID,
+  apertureHazardZones,
+  ashfallBurnProgramSeed,
+  killMachineHazardZones,
+  killMachinesForSector,
+  metronomeHazardZone,
+  movingHazardTick,
+  pallasReefHazardZone,
+  weatherHazardZones,
+  weatherScanScale,
+  WEATHER_SECTOR_IDS,
+} from '../data/environmentalMachinery.js';
+import {
+  EVERYDAY_SPACE_KIT_SALT,
+  POSTCARD_LANDMARK_PLACE_FILE_BY_ID,
+  everydaySpaceKitDressingForSector,
+} from '../data/everydaySpaceKitDressing.js';
+import {
+  WRECK_AFTERMATH_SALT,
+  wreckAftermathDressingForSector,
+} from '../data/wreckAftermathDressing.js';
+import { applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
+import {
+  CORRIDOR_SECTOR_IDS,
+  HELIOS_STARTER_PROTECTION_RADIUS_WU,
+  RESIDENCY_MATERIALIZED_CAP,
+  RESIDENCY_TIER,
+  corridorPlayableBounds,
+  globalToSectorLocalForSector,
+  isCorridorSector,
+  planMaterializedResidents,
+  sectorGlobalOrigin,
+  sectorLocalToGlobalForSector,
+  sectorMembershipAtGlobal,
+} from '../data/sectorCoordinates.js';
+import {
+  MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR,
+  RECORD_KIND,
+  applyRecordVitals,
+  bindEntityToRecord,
+  captureEntityRecord,
+  createEmptyRecordsBag,
+  normalizeRecordsBagChunked,
+  ensureWorldRecords,
+  recordPlayerHullLoss,
+  entityHasDurableMarkers,
+  entityIsDurableCandidate,
+  findLiveEntityForRecord,
+  markRecordDestroyed,
+  missionIdentityOf,
+  normalizeRecord,
+  recordShouldRematerialize,
+  recordsForSector,
+  serializeRecordsBag,
+  spawnSpecFromRecord,
+  gcExpiredRecentMemory,
+  stableRecordId,
+  upsertRecord,
+} from '../world/worldRecords.js';
+import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, isLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
+import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
+import { presentationEntityIdForCourseTarget, resolveContract47aRecoveryTarget } from '../ui/navigationWaypoint.js';
+import { captureEntitySelection, liveEntityById, resolveEntitySelection } from '../ui/sim/stableSelection.js';
+import {
+  dropAsteroidFieldSector,
+  insertAsteroidFieldRock,
+  promoteAsteroidFieldRock,
+  queryAsteroidField,
+  shouldKeepLiveAsteroid,
+  tickOpticFieldRocks,
+} from '../world/asteroidField.js';
+import { asteroidMass } from '../data/sectorPhysical.js';
+import {
+  dropDressingRow,
+  dropDressingSector,
+  insertDressingRow,
+  getDressingRow,
+  markDressingRowPoseDirty,
+} from '../world/dressingTable.js';
+import { markAuxRowDirty } from '../world/auxRowJournal.js';
+import { stampSolidDressing } from '../world/solidDressing.js';
+import { lanternWardReservations, materializeLanternWardDressing } from '../world/lanternWardDressing.js';
+import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
+import { racingCorridorSceneryShift } from '../world/racingCorridor.js';
+import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
+import {
+  materializeAlienEcology,
+  tickAlienEcology,
+  handleAlienEcologyEvent,
+  serializeAlienEcologyState,
+  deserializeAlienEcologyState,
+} from './alienEcology.js'; // Alien Ecology program (doc 08): world-owned library, not a registered system
+import {
+  materializeBolus,
+  tickBolus,
+  captureBolusRib,
+} from './theBolus.js';
+import {
+  materializeMachineLayer,
+  tickMachineLayer,
+  machineRouteOpen,
+  handleMachinePickupCollected,
+  handleMachineTokenDestroyed,
+} from './precursorMachines.js'; // Verge-Layer machine layer (doc 07, AE-090..109): same seam
+import {
+  materializeFoldAberrant,
+  tickFoldAberrant,
+  noteFoldAberrantKilled,
+  noteFoldSplinterCollected,
+} from './foldAberrant.js'; // The Unclosed (doc 16): damaged containment instrument, not a machine kind
+import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
+import { createAlienEcologyState, ensureAlienEcologyState } from '../data/alienEcologyState.js';
+import { handlePlayerHullEchoEvent } from '../world/playerHullEcho.js';
+import { ALIEN_SITES } from '../data/alienEcology.js';
+// Route planning core — shared with the worker-lane main-side facade
+// (src/core/registry.js). Pure functions; the handshake burn stays here.
+import {
+  DRIVE_TIERS,
+  DEFAULT_DRIVE,
+  ROUTE_BASE_FUEL as BASE_FUEL,
+  ROUTE_GATE_CHARGE as GATE_CHARGE,
+  ROUTE_BASE_INTERDICT as BASE_INTERDICT,
+  routeEdgeDist,
+  routeInterdictChance,
+  wormholeGateCheck,
+  computeDiscoveredRoute,
+} from './routePlanner.js';
+import { gateTollFor } from '../data/travelChoices.js';
+import { auditEdgeKey, gateTransitClosed } from '../data/worldPressure.js';
+import { removeCargo } from './cargo.js';
+import { Masks } from '../core/entity.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import {
+  releaseActivityPhysicsInterest,
+  requestActivityPhysicsInterest,
+} from '../world/activityRuntime.js';
+import {
+  catchUpFarRecord,
+  dropFarActorSector,
+  farActorHoldsWorldRecord,
+  findFarActorForTargetIdentity,
+  promoteFarActorForTargetIdentity,
+  resetFarActors,
+  restoreFarActorTable,
+  serializeFarActorTable,
+  tickFarActors,
+} from '../world/farActorTable.js';
+import {
+  applyResourceBodyToEntity,
+  captureResourceBodyRecord,
+  createEmptyResourceBodyBag,
+  normalizeResourceBodyBagChunked,
+  ensureResourceBodies,
+  findResourceBodyForEntity,
+  serializeResourceBodyBag,
+  upsertResourceBody,
+} from '../world/resourceBodyRecords.js';
+import { advanceResourceBody, advanceWorldRecord } from '../world/worldCatchup.js';
+import {
+  consumeEmbodimentPayload,
+  createEmptyEmbodimentCache,
+  embodimentRecordIntents,
+  normalizeEmbodimentCache,
+  recordFromEmbodimentIntent,
+  serializeEmbodimentCache,
+} from '../world/embodimentRecipes.js';
+
+function applySameSectorPlayerRelocation(state, entryPoint) {
+  const player = state && state.entities && state.entities.get
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!player || !player.pos || !entryPoint) return false;
+  const x = Number(entryPoint.x);
+  const z = Number(entryPoint.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+  player.pos.x = x;
+  player.pos.z = z;
+  player.pos.y = 0;
+  if (player.prevPos && typeof player.prevPos.copy === 'function') player.prevPos.copy(player.pos);
+  else player.prevPos = { x, y: 0, z };
+  if (!player.vel) player.vel = { x: 0, y: 0, z: 0 };
+  player.vel.x = 0;
+  player.vel.y = 0;
+  player.vel.z = 0;
+  player.angVel = 0;
+  const heading = Number.isFinite(entryPoint.heading) ? entryPoint.heading : (Number(player.rot) || 0);
+  player.rot = heading;
+  player.prevRot = heading;
+  player.flags = player.flags || {};
+  player.flags.noInterp = true;
+  return true;
+}
+
+// ---- global tuning constants (design 05 "GLOBAL TUNING CONSTANTS" + "Formulas") -------------
+const DEFAULT_WORLD_RADIUS = 4000;
+const EMPTY_ONE_OFF_PARTS = []; // no-cluster one-offs iterate this (no allocation per spawn)
+// Sealed cache payoffs (_spawnCachePayoffs): fixed sector-local offset from the opened cache
+// marker, sized like the Kettle strongbox's authored offset so the pod reads beside the cache.
+const CACHE_PAYOFF_OFFSET = Object.freeze({ x: 26, z: -18 });
+// FB-111 — a wedged hull gets a paid door, not a silent reload. Thrust held, the ship
+// producing no displacement and no speed for STUCK_OFFER_S ⇒ one tow offer per wedge
+// episode. A deliberate brake-hold or a coasting hull never counts: only an engine asked
+// for motion it cannot produce.
+const STUCK_OFFER_S = 8;
+const STUCK_DISPLACEMENT_WU = 3;
+const STUCK_SPEED_EPS_WU_S = 4;
+const ADOPTED_SALVOR_LATCH_HANDOFF_S = 3;
+const ADOPTED_SALVOR_LATCH_HANDOFF_RADIUS_WU = 200;
+const TOW_BERTH_CLEARANCE_WU = 140;
+// A wedge rescue is a berth tow, not a hull loss — a small fraction of the recovery quote,
+// floored so a starter hull still owes a real service call-out.
+const TOW_FEE_MIN_CR = 120;
+const TOW_FEE_RECOVERY_FRAC = 0.125;
+
+function sameAdoptedSalvorTargetIdentity(a, b) {
+  if (!a || !b || a.kind !== b.kind) return false;
+  if (a.kind === 'worldRecord') return typeof a.worldRecordId === 'string'
+    && a.worldRecordId.length > 0 && a.worldRecordId === b.worldRecordId;
+  if (a.kind === 'marker') return typeof a.markerId === 'string'
+    && a.markerId.length > 0 && a.markerId === b.markerId;
+  if (a.kind === 'salvagePoint') return typeof a.salvagePointId === 'string'
+    && a.salvagePointId.length > 0 && a.salvagePointId === b.salvagePointId
+    && typeof a.sourceKey === 'string' && a.sourceKey.length > 0 && a.sourceKey === b.sourceKey;
+  if (a.kind === 'salvorTarget') return typeof a.key === 'string'
+    && a.key.length > 0 && a.key === b.key;
+  return false;
+}
+
+// Same XZ write combat.js applies at a recovery berth — entity vectors are vec3-capable.
+function setVecXZTow(vec, x, z) {
+  if (!vec) return;
+  if (typeof vec.set === 'function') vec.set(x, 0, z);
+  else { vec.x = x; vec.y = 0; vec.z = z; }
+}
+
+const GATE_COOLDOWN = 0;
+const DRIVE_COOLDOWN = 6.0;     // s
+const JUMPING_DURATION = 1.2;   // s tunnel/blackout
+const UNFILED_JUMP_ORIGIN = 'sector_ashfall_reach';
+const UNFILED_JUMP_RETURN = 'sector_helios_prime';
+const SCAN_RANGE = 400;         // wu POI auto-detect radius
+const SECTOR_SCAN_TIME = 2.0;   // s to complete a sector scan
+const DAY_SECONDS = 600;        // core time contract (mirrors sectorSim)
+const WIRE_REPORT_COOLDOWN_S = 300; // min simTime gap between wire reports for one sector
+
+// sectorSim intel copy reads faction identity from the signal packet; FACTION_META carries the
+// short names already (single lookup, never re-derived per call).
+const FACTION_SHORT_NAMES = new Map(FACTION_META.map((f) => [f.id, f.short || f.name || f.id]));
+
+/**
+ * Permit id already stored on a tech-gated wormhole, when the pilot has not
+ * researched it and naming it is still a way through. Flag locks and a machine
+ * protocol fault stay unnamed: the destination and the lock cause are not a remedy.
+ */
+function wormholeMissingPermitId(state, sector) {
+  const link = sector && sector.wormholeTo;
+  const gatedBy = link && link.gatedBy;
+  if (typeof gatedBy !== 'string') return null;
+  const splitAt = gatedBy.indexOf(':');
+  if (splitAt <= 0) return null;
+  const kind = gatedBy.slice(0, splitAt);
+  const key = gatedBy.slice(splitAt + 1);
+  if (kind !== 'tech' || !key) return null;
+  const researched = ((state.player && state.player.researchedNodes) || []).includes(key);
+  if (researched) return null;
+  if (link.machineGate) {
+    const protocol = state.world && state.world.alienEcology && state.world.alienEcology.machineProtocol;
+    if (MACHINE_PROTOCOL_FAULTS.includes(protocol)) return null;
+  }
+  return key;
+}
+
+/** One bounded phrase for a 0..1 danger read — the lane-brief and wire-report vocabulary. */
+function laneDangerPhrase(danger) {
+  if (danger >= 0.82) return 'contested space — heavy raider presence';
+  if (danger >= 0.62) return 'dangerous lanes';
+  if (danger >= 0.42) return 'light pirate pressure';
+  if (danger >= 0.22) return 'quiet lanes';
+  return 'dead quiet';
+}
+
+// Free-flight membership hysteresis. The Voronoi membership test is a knife edge; a player
+// patrolling rocks on a border used to flip residency every oscillation across it (measured:
+// 38 continuous enter/exits in one hour, each leg penetrating ~5.4k WU past the edge), and each
+// flip re-runs the residency plan. The switch margin scales with the origin pair: the player
+// must sit a fraction of the inter-origin span past the edge — penetration the measured border
+// patrol never reached — and hold that lead for DWELL_S. Genuine inter-sector transits still
+// flip: once, mid-transit.
+const MEMBERSHIP_SWITCH_FRACTION = 0.35;
+const MEMBERSHIP_MIN_PENETRATION_WU = 2500;
+export const MEMBERSHIP_DWELL_S = 8;
+
+// Jump-drive tiers + defaults come from routePlanner.js (shared with the lane facade).
+const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+const AST_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
+const STATION_SECTOR_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) STATION_SECTOR_ID.set(station.id, sector.id);
+}
+
+const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+
+// Screen-space compass for scan text. Player north is +z, screen up (playerCompass.js).
+function compassLabel(dx, dz) {
+  return playerBearingLetter(dx, dz);
+}
+
+/** Squared distance from a global pose to a sector's galactic origin (membership hysteresis). */
+function _dist2ToSectorOrigin(pos, sectorId) {
+  const o = sectorGlobalOrigin(sectorId);
+  const dx = pos.x - o.x;
+  const dz = pos.z - o.z;
+  return dx * dx + dz * dz;
+}
+
+function driveCooldownMultiplier(player) {
+  const mods = player && player.efficiencyMods;
+  const multiplier = mods && mods.jumpCooldownMult;
+  return Number.isFinite(multiplier) && multiplier > 0 && multiplier <= 1 ? multiplier : 1;
+}
+
+// Per-sector enemy archetype pools (real ids from src/data/enemies.js), picked by lawfulness/tier.
+const LAWFUL_ENEMIES = ['patrol_lawman'];
+const PIRATE_ENEMIES = ['reaver_pirate', 'wasp_swarmer', 'corsair_raider'];
+const FRONTIER_ENEMIES = ['corsair_raider', 'reaver_pirate', 'wasp_swarmer'];
+const STARTER_SAFE_RADIUS = HELIOS_STARTER_PROTECTION_RADIUS_WU;
+const STATION_SAFE_RADIUS = 1100;
+const GATE_SAFE_RADIUS = 900;
+const AMBIENT_SPAWN_ATTEMPTS = 24;
+const DIRECT_HOSTILE_SPAWN_ATTEMPTS = 36;
+const HUNTER_SPAWN_MIN_RADIUS = 1900;
+const HUNTER_SPAWN_MAX_RADIUS = 2700;
+const AMBUSH_SPAWN_MIN_RADIUS = 1500;
+const AMBUSH_SPAWN_MAX_RADIUS = 2300;
+const ZONE_HOSTILE_PLAYER_CLEARANCE = 1200; // zone-anchored hostiles never spawn this close to the player
+const AMBIENT_HEADROOM = 8; // REVAMP 2.1 — max live-ship slots ambient may reserve; the rest (MAX-8) stays for encounters
+const CRITICAL_SPAWN_RETRY_TICKS = 15;
+const WORLD_RECORD_GC_TICKS = 60;
+// Observational proximity scans run at 30 Hz. Every output of _tickResidency /
+// _tickZoneLabel / _tickPOIScan / requestDecodeRunwayPromote is a monotonic
+// transition (corridor membership dwell, zone enter/exit, POI discovered or
+// identified, far-row decode promotion), so an even-tick cadence defers each
+// transition by at most one tick while halving the per-tick O(pois + zones +
+// corridor sectors + far/field queries) walk. On-run ordering is unchanged:
+// the gate skips whole ticks, never reorders inside one.
+const WORLD_OBSERVE_SCAN_TICKS = 2;
+const ARRIVAL_RESIDENCY_BUDGET = 1;
+// Field regrowth: the memory clock lives in fieldDepletion (slow, durable); the world only decides
+// where the fresh rocks land and caps how many may stand. A worked field reopens a seam batch on
+// that clock, so a cleared belt keeps paying while the scan readout calls out the freshest seam.
+const FIELD_REGROWTH_SCAN_TICKS = 300; // evaluate the slow clock at 5 s cadence
+const FIELD_REGROWTH_LIVE_CAP = 24;    // live rocks per field before the seam waits for the player
+// Economy resource-work publication (work-reservation contract). The world owner is the physical
+// publisher: when the depleted-field seam clock surfaces a replenishment opportunity the player can
+// actually reach, the fresh seam may be published under an economy work lease before rocks exist.
+// A missing economy subscriber (module absent) means free regrowth exactly as before; a present
+// subscriber that refuses means the seam waits — denial never bypasses the economic budget.
+const RESOURCE_WORK_APPROACH_MAX_WU = 2700;  // admission: player approach to the seam EDGE, not centre
+const RESOURCE_WORK_PUBLISHED_CAP = 48;      // unmined published rocks per sector before restraint
+const RESOURCE_WORK_PROP_MARGIN_WU = 40;     // station/gate/POI disc margin for published candidates
+const RESOURCE_WORK_SHIP_CLEARANCE_WU = 60;  // never publish a rock on top of a live hull
+const RESOURCE_WORK_RECHECK_S = 30;          // denied leases retry through this scheduler cadence
+const RESOURCE_WORK_LEDGER_LIMIT = 64;       // durable publication receipts kept per world
+const PALETTE_CLASS_BY_REF = new Map(Object.entries(SECTOR_PALETTE_CLASSES).map(([key, value]) => [value, key]));
+const DRESSING_RADIUS = Object.freeze({
+  place_lane_beacon: 18,
+  place_nav_buoy: 12,
+  place_mining_drone: 8,
+  place_station_billboard: 28,
+  place_conveyor_barge: 48,
+  place_charon_colony_service_barge: 48,
+  place_dead_hulk: 42,
+  place_rhea_slag_hauler: 42,
+  place_proteus_funnel: 40,
+  place_debris_chunk: 26,
+  place_ceres_bait_wreck: 48,
+  place_ceres_grave_shard: 28,
+  place_asteroid_seamed: 18,
+  place_asteroid_rock_a: 15,
+  place_asteroid_rock_b: 18,
+  place_asteroid_rock_c: 10,
+  place_asteroid_graffiti: 16,
+});
+function authoredGeologyPlaceForField(fieldDef) {
+  if (!fieldDef) return null;
+  const asteroidDef = AST_BY_ID.get(fieldDef.type);
+  return asteroidDef && asteroidDef.authoredPlaceId || null;
+}
+
+// Row 495: the 24-body rock family — the authored body for a stamped substance at a spawn
+// radius, or null so the caller can keep its legacy authoredPlaceId.
+const AUTHORED_ROCK_SIZE_CLASSES = Object.freeze({ pebble: 14, boulder: 24 });
+export function authoredRockPlaceId(substanceId, radius) {
+  // Only the family-BUILT substances have place GLBs — ROCK_SUBSTANCES also lists vethari_bone
+  // and bloom_husk, which would mint a missing placeId. null keeps the legacy authored skin.
+  if (!ROCK_PLACE_SUBSTANCES.includes(substanceId)) return null;
+  const r = Number(radius) || 0;
+  const sizeClass = r < AUTHORED_ROCK_SIZE_CLASSES.pebble ? 'pebble'
+    : r < AUTHORED_ROCK_SIZE_CLASSES.boulder ? 'boulder' : 'monolith';
+  return `place_rock_${substanceId}_${sizeClass}`;
+}
+
+const CERES_ACTIVITY_OBJECT_SLOTS = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
+  pocket.objectSlots.map((slot) => [slot.id, Object.freeze({ pocket, slot })])
+)));
+const CERES_ACTIVITY_COLLISION_ANCHORS = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
+  pocket.collisionAnchorSlots.map((slot) => [
+    `${slot.sourceFieldId}:${slot.sourceIndex}`,
+    Object.freeze({ pocket, slot }),
+  ])
+)));
+
+// How each activity slot that claims the belt-dressing drone prop presents itself. A slot absent from
+// this table keeps the ordinary ambient prospecting drone.
+const CERES_ACTIVITY_DRONE_SLOT_PRESENTATION = Object.freeze({
+  ceres_refinery_disabled_hull: Object.freeze({
+    placeId: 'place_dead_hulk', name: 'Disabled Refinery Client',
+  }),
+  ceres_ambush_bait_wreck: Object.freeze({
+    placeId: 'place_ceres_bait_wreck', name: 'Throughline Bait Wreck',
+  }),
+  ceres_cathedral_grave_shard: Object.freeze({
+    placeId: 'place_ceres_grave_shard', name: 'Cathedral Grave Shard',
+  }),
+});
+
+// Bind an existing-budget rock, not a decorative claim marker or an additional spawn.
+// Index zero keeps its authored geology; the materializer still consumes every original draw.
+export function heliosOpeningFaceBinding(sectorId, fieldId, index, toGlobal) {
+  if (sectorId !== 'sector_helios_prime' || fieldId !== 'f_helios_starter' || index !== 1) return null;
+  const pocket = HELIOS_ACTIVITY_POCKETS.find((row) => row.id === 'helios_starter_seam');
+  const slot = pocket?.objectSlots.find((row) => row.id === 'helios_seam_ore_face');
+  if (!slot) throw new Error('Missing Helios first-claim face');
+  return { id: slot.id, pos: toGlobal({
+    x: pocket.activityAnchor.localPos.x + slot.offset.x,
+    z: pocket.activityAnchor.localPos.z + slot.offset.z,
+  }) };
+}
+
+function ceresActivityObjectBinding(id, toGlobal) {
+  const binding = CERES_ACTIVITY_OBJECT_SLOTS.get(id);
+  if (!binding) throw new Error(`Missing Ceres activity object slot: ${id}`);
+  return {
+    id: binding.slot.id,
+    pos: toGlobal({
+      x: binding.pocket.activityAnchor.localPos.x + binding.slot.offset.x,
+      z: binding.pocket.activityAnchor.localPos.z + binding.slot.offset.z,
+    }),
+  };
+}
+
+function ceresActivityCollisionAnchorBinding(fieldId, sourceIndex, toGlobal) {
+  const binding = CERES_ACTIVITY_COLLISION_ANCHORS.get(`${fieldId}:${sourceIndex}`);
+  if (!binding) return null;
+  return {
+    id: binding.slot.id,
+    pos: toGlobal({
+      x: binding.pocket.activityAnchor.localPos.x + binding.slot.offset.x,
+      z: binding.pocket.activityAnchor.localPos.z + binding.slot.offset.z,
+    }),
+  };
+}
+
+function poiMustStayLiveActor(poi, activityObjectSlotId) {
+  if (activityObjectSlotId) return true;
+  if (!poi || typeof poi !== 'object') return false;
+  if (poi.collides === true) return true;
+  if (poi.scannerSignalKind) return true;
+  if (poi.flavorTargetRef) return true;
+  if (poi.requiresActiveScan === true) return true;
+  if (poi.landmark === true) return true;
+  if (poi.discoveryPlate) return true;
+  if (poi.survivorPod === true) return true;
+  if (poi.recoveryEncounter === true) return true;
+  if (poi.claimable === true) return true;
+  if (poi.hidden === true) return true;
+  return false;
+}
+
+/** Bench A/B: production default ON. Still-player latch skips asteroid-field ram query. */
+let ASTEROID_FIELD_INTERACT_STILL_QUIET = true;
+export function setAsteroidFieldInteractStillQuietForBench(enabled) {
+  ASTEROID_FIELD_INTERACT_STILL_QUIET = enabled !== false;
+}
+export function getAsteroidFieldInteractStillQuietForBench() {
+  return ASTEROID_FIELD_INTERACT_STILL_QUIET !== false;
+}
+
+/** Field-version / parked-pose rescan while latched (0.5 s @ 60 Hz). */
+const ASTEROID_FIELD_INTERACT_STILL_RESCAN_TICKS = 30;
+/** Player speed² below this is "parked" for the still-player latch. */
+const ASTEROID_FIELD_INTERACT_STILL_SPEED2 = 0.25;
+
+function publishAsteroidFieldInteractQuiet(state, latched) {
+  const worldState = state && state.world;
+  if (!worldState) return;
+  const rt = worldState.asteroidFieldInteractRuntime
+    || (worldState.asteroidFieldInteractRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+function normalizeCourtRulings(raw) {
+  const out = Object.create(null);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [id, row] of Object.entries(raw).slice(0, 24)) {
+    if (!/^wc_[a-z0-9_]+_ruling$/.test(id) || typeof row?.value !== 'string'
+      || typeof row.receiptId !== 'string' || typeof row.caseId !== 'string') continue;
+    out[id] = { value: row.value.slice(0, 200), receiptId: row.receiptId.slice(0, 160), caseId: row.caseId.slice(0, 80) };
+  }
+  return out;
+}
+
+export const world = {
+  name: 'world',
+  // records/embodiment serializers already return owned trees; the remaining live overlays are
+  // copied below so saveSystem does not duplicate the full world payload during autosave capture.
+  saveSnapshotOwned: true,
+
+  init(ctx) {
+    if (this.state) this._clearAdoptedSalvorApproachState(this.state);
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers;
+    this.registry = ctx.registry;
+    this._resourceBodyRestoreJobs = null;
+
+    const state = this.state;
+    const bus = this.bus;
+    state.world.wreckCourtRulings = normalizeCourtRulings(state.world.wreckCourtRulings);
+    bus.on('wreckCourt:worldFact', payload => {
+      if (this.registry?.get('wreckCourt')?.verifyRulingFact?.(payload)?.ok !== true) return;
+      const row = normalizeCourtRulings({ [payload.id]: payload })[payload.id];
+      if (!row) return;
+      const previous = state.world.wreckCourtRulings[payload.id];
+      if (previous?.receiptId === row.receiptId && previous.value === row.value && previous.caseId === row.caseId) return;
+      state.world.wreckCourtRulings[payload.id] = row;
+      this.bus.emit('world:courtRulingRecorded', { id: payload.id, ...row });
+    });
+
+    // Generation policy is save-versioned, never inferred from browser/headless environment.
+    state.world.arrangementVersion = readArrangementVersion(state.world.arrangementVersion, ARRANGEMENT_VERSION);
+
+    // Load a mutable copy of the static graph into world.sectors (owner field stays mutable).
+    if (!state.world.sectors || Object.keys(state.world.sectors).length === 0) {
+      state.world.sectors = {};
+      for (const s of SECTORS) state.world.sectors[s.id] = { ...s, owner: s.factionId };
+    }
+    this._registerFreeDriveRingPoi();
+    if (!state.world.discovery) state.world.discovery = {};
+    if (Object.keys(state.world.discovery).length === 0) this._seedChartedDiscovery();
+    if (!state.world.scanPings || typeof state.world.scanPings !== 'object') state.world.scanPings = {};
+    if (!state.world.pendingSpawns || typeof state.world.pendingSpawns !== 'object') state.world.pendingSpawns = {};
+    state.world.frontierRumors = normalizeFrontierRumorState(state.world.frontierRumors);
+    state.world.vestaOreCache = normalizeVestaOreCacheState(state.world.vestaOreCache);
+    state.world.pallasHiddenCache = normalizePallasHiddenCacheState(state.world.pallasHiddenCache);
+    state.world.resourceWork = normalizeResourceWorkState(state.world.resourceWork);
+    // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
+    ensureWorldRecords(state.world);
+    ensureResourceBodies(state.world, { npcJobs: state.npcJobs });
+    // M2-C2/C3 latest-epoch recipe cache. It is bounded data, not a live-entity authority.
+    state.world.embodiment = normalizeEmbodimentCache(state.world.embodiment);
+
+    // Runtime-only flags (not serialized).
+    this._combatLock = false;     // last combat:lockChanged value
+    this._scanT = 0;              // active sector-scan elapsed
+    this._scanning = false;
+    this._driveTierId = null;     // resolved from equipped jump-drive module (null → T1 default)
+    this._sectorSeq = 0;          // legacy counter (kept for compat; residency epoch owns content RNG)
+    this._tethysRunEntities = {};
+    this._nextCriticalSpawnTick = 0;
+    this._deferredCriticalRecordIds = new Map(); // recordId → sectorId, spawn-cap retries
+    this._pendingResidency = [];
+    this._vestaDecisionSignature = null;
+    this._vestaDecisionNeedsRebind = false;
+    this._pallasDecisionSignature = null;
+    this._pallasDecisionNeedsRebind = false;
+    this._hazardSet = new Set();      // hazard zone indices the player is currently inside
+    this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
+    this._fieldInteractQuiet = null;  // still-player asteroid-field ram latch
+    this._burnVentToastAtS = -Infinity; // scanBlocked vent-toast throttle (one per surge beat)
+    this._wireReportAt = new Map();     // sectorId → simTime; bounds offscreen wire reports
+    this._adoptedSalvorMaterializationRequests = new Map(); // jobId → one bounded, exact-target approach request
+    this._adoptedSalvorApproachHolds = new Map(); // jobId → bounded native-latch residency handoff
+    this._adoptedSalvorLeaseClock = Number.isFinite(ctx.state.simTime) ? ctx.state.simTime : 0;
+    // Floating-origin scratch (allocation-free no-shift path).
+    this._frameOriginScratch = { x: 0, z: 0 };
+    // Ensure coordinate membrane defaults exist even if state was hand-built.
+    if (!state.world.coordinateSchema) state.world.coordinateSchema = 'global_v1';
+    if (!state.world.frameOrigin || typeof state.world.frameOrigin !== 'object') {
+      state.world.frameOrigin = { x: 0, z: 0 };
+    }
+    if (!Number.isSafeInteger(state.world.frameOriginSeq) || state.world.frameOriginSeq < 0) {
+      state.world.frameOriginSeq = 0;
+    }
+    this._ensureResidencyState();
+
+    // --- event wiring (§4.4) ---
+    bus.on('player:death', () => recordPlayerHullLoss(state));
+    bus.on('world:requestJump', (p) => this._onRequestJump(p || {}));
+    bus.on('world:requestUnfiledJump', () => this._onRequestUnfiledJump());
+    bus.on('world:confirmUnfiledJump', () => this._confirmUnfiledJump());
+    bus.on('world:abortJumpCharge', (p) => this._abortCharge((p && p.reason) || 'requested'));
+    bus.on('world:requestRoute', (p) => this._onRequestRoute(p || {}));
+    bus.on('world:requestSectorScan', () => this._beginScan());
+    bus.on('ui:setCourse', (p) => this._onSetCourse(p || {}));
+    bus.on('fuel:crackCell', () => this._onCrackFuelCell());
+    bus.on('combat:lockChanged', (p) => this._onLockChanged(p || {}));
+    bus.on('combat:damage', (p) => this._onSpoolStrike(p || {}));
+    bus.on('module:equipped', () => this._resolveShipModules());
+    bus.on('module:unequipped', () => this._resolveShipModules());
+    bus.on('ship:statsChanged', () => this._resolveShipModules());
+    bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
+    bus.on('anomaly:triangulated', (p) => this._onAnomalyTriangulated(p || {}));
+    bus.on('signal:investigated', (p) => this._onSignalInvestigated(p || {}));
+    bus.on('cargo:caughtByNet', (p) => this._onTethysEntranceCaught(p || {}));
+    bus.on('orrinWitness:ensureEvidence', (p) => this._ensureOrrinWitnessEvidence(p || {}));
+    bus.on('vestaOreCache:choose', (p) => this._onVestaOreCacheChoice(p || {}));
+    bus.on('pallasHiddenCache:choose', (p) => this._onPallasHiddenCacheChoice(p || {}));
+    bus.on('pickup:collected', (p) => this._onVestaOreCachePickupCollected(p || {}));
+    bus.on('pickup:collected', (p) => this._onPallasHiddenCachePickupCollected(p || {}));
+    // SFQ-B141: a committed pickup receipt is the courier token's custody transfer — the
+    // machine layer settles intercept/stolen on the same receipt cargo's listener wrote.
+    bus.on('pickup:collected', (p) => handleMachinePickupCollected(this, p || {}));
+    bus.on('entity:destroyed', (p) => handleMachineTokenDestroyed(this, p || {}));
+    bus.on('pickup:collected', (p) => noteFoldSplinterCollected(this, p || {}));
+    bus.on('save:restoring', () => {
+      this._clearAdoptedSalvorApproachState(this.state);
+      this._vestaDecisionSignature = null;
+      this._pallasDecisionSignature = null;
+      // The loaded save carries its own simTime; stamps taken against the pre-load clock are
+      // stale — a leftover entry could suppress a fresh wire report for up to the full cooldown.
+      if (this._wireReportAt) this._wireReportAt.clear();
+      // A corridor candidate stamped pre-load keeps a sinceT the rewound simTime can never
+      // reach (now - sinceT goes negative), so the border switch stalls while the player sits
+      // across the line. Re-arm the dwell against the loaded clock instead.
+      this._membershipCandidate = null;
+      // Spawn decisions belong to the incoming restore's materialize lane — a pre-load
+      // deferral would answer a record the restore envelope already owns.
+      if (this._deferredCriticalRecordIds) this._deferredCriticalRecordIds.clear();
+    });
+    bus.on('save:loaded', () => {
+      if (this._vestaDecisionNeedsRebind) this._vestaDecisionSignature = null;
+      this._vestaDecisionNeedsRebind = false;
+      if (this._pallasDecisionNeedsRebind) this._pallasDecisionSignature = null;
+      this._pallasDecisionNeedsRebind = false;
+      this._spawnVestaOreCachePickup(this.state.world.currentSectorId);
+      this._presentVestaOreCacheDecision('save-loaded');
+      this._spawnPallasHiddenCachePickup(this.state.world.currentSectorId);
+      this._presentPallasHiddenCacheDecision('save-loaded');
+      this._ensureTethysEntranceRun(this.state.world.currentSectorId);
+    });
+    bus.on('dock:docked', (p) => this._presentPallasHiddenCacheDecision('dock:docked', p && p.stationId));
+    bus.on('dock:undocked', () => { this._pallasDecisionSignature = null; });
+    bus.on('landmark:artifactRecovered', (p) => this._onLandmarkArtifactRecovered(p || {}));
+    bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
+    bus.on('run:loadoutReady', () => this._clearAdventureCombatantsForRun());
+    bus.on('ui:purchaseSurveyData', (p) => this._onPurchaseSurveyData(p || {}));
+    bus.on('ui:purchaseFrontierRumor', (p) => this._onPurchaseFrontierRumor(p || {}));
+    bus.on('claim:sensorPostRumor', (p) => this._onSensorPostRumor(p || {}));
+    bus.on('poi:discovered', (p) => this._onFrontierRumorPoi(p || {}));
+    bus.on('poi:identified', (p) => this._onFrontierRumorPoi(p || {}));
+    bus.on('encounter:telegraph', (p) => this._onFrontierRumorEncounter(p || {}));
+    bus.on('uniqueWreck:scanBlocked', (p) => this._onUniqueWreckScanBlocked(p || {}));
+    // Mark the boss POI defeated when the dreadnought dies, so it does not respawn on sector
+    // re-entry or save reload. (The entity carries data.isBoss + data.bossSectorId/bossPoiId.)
+    bus.on('entity:killed', (p) => {
+      this._onBossKilled(p || {});
+      this._onDurableEntityKilled(p || {});
+      handleAlienEcologyEvent(this, 'entity:killed', p || {});
+      handleMachineTokenDestroyed(this, p || {}, true);
+      noteFoldAberrantKilled(this, p || {});
+    });
+    bus.on('salvage:completed', (p) => {
+      const entity = p && this.state.entities.get(p.wreckId);
+      const recovery = crackerRunLoadRecovery(entity);
+      if (!recovery || entity.alive !== false || entity.data?._salvaged !== true
+          || entity.occupantGeneration !== p.sourceGeneration
+          || entity.data.worldRecordId !== p.worldRecordId
+          || p.worldRecordId !== stableRecordId(this.state.meta?.seed || 1,
+            entity.data.homeSectorId, RECORD_KIND.WRECK, entity.data.identityKey)
+          || p.loot?.[recovery.commodityId] !== recovery.amount
+          || Object.values(entity.data.salvagePool || {}).some(qty => qty !== 0)) return;
+      const prior = this.state.world.records?.byId?.[p.worldRecordId];
+      if (prior?.alive === false || prior?.outcome === 'destroyed' || prior?.outcome === 'defeated') return;
+      // Use the existing durable retirement owner, without a lethal event,
+      // kill reward, or law attribution. Core removes this consumed mesh next.
+      this._onDurableEntityKilled({ id: entity.id });
+    });
+    bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));
+    // sectorSim's intel/reconcile channels were emitted and dropped before this binding — the
+    // offscreen field computed danger/market/ownership shifts nothing ever showed the player.
+    // Entry intel becomes one lane-brief comms line; offscreen threshold crossings surface as
+    // bounded 'news' wire reports; long-absence reconcile becomes a "while away" line.
+    bus.on('sectorsim:intel', (p) => this._onSectorSimIntel(p || {}));
+    bus.on('sectorsim:reconcile', (p) => this._onSectorSimReconcile(p || {}));
+    // Alien Ecology program (doc 09): world-site consequence intents land here; pickup
+    // collection is what turns a released flight recorder into the recovered objective.
+    bus.on('alienEcology:nurseryPowered', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryPowered', p));
+    bus.on('alienEcology:relaySevered', (p) => handleAlienEcologyEvent(this, 'alienEcology:relaySevered', p));
+    bus.on('alienEcology:nurseryBloom', (p) => handleAlienEcologyEvent(this, 'alienEcology:nurseryBloom', p));
+    bus.on('alienEcology:relocateSite', (p) => handleAlienEcologyEvent(this, 'alienEcology:relocateSite', p));
+    bus.on('alienEcology:blackBoxRecovered', (p) => handleAlienEcologyEvent(this, 'alienEcology:blackBoxRecovered', p));
+    // AE-051/079 stimulus + revelation intake: mining noise wakes dormant fauna; sector scans
+    // against live sites teach the taxonomy ladder.
+    bus.on('sectorsim:impulse', (p) => handleAlienEcologyEvent(this, 'sectorsim:impulse', p));
+    bus.on('scan:completed', (p) => handleAlienEcologyEvent(this, 'scan:completed', p));
+    bus.on('scan:pulse', (p) => handleAlienEcologyEvent(this, 'scan:pulse', p));
+    bus.on('combat:fire', (p) => handleAlienEcologyEvent(this, 'combat:fire', p));
+    // AE-124/125/138/139 + AE-167: lures, dock purge, custody outcomes, and cradle capture.
+    bus.on('alienEcology:lureDropped', (p) => handleAlienEcologyEvent(this, 'alienEcology:lureDropped', p));
+    bus.on('dock:docked', (p) => handleAlienEcologyEvent(this, 'dock:docked', p));
+    bus.on('tether:released', (p) => handleAlienEcologyEvent(this, 'tether:released', p));
+    bus.on('ecology:factionOutcome', (p) => handleAlienEcologyEvent(this, 'ecology:factionOutcome', p));
+    bus.on('ecology:evidence', (p) => handleAlienEcologyEvent(this, 'ecology:evidence', p));
+    bus.on('ecology:quarantinePulse', (p) => handleAlienEcologyEvent(this, 'ecology:quarantinePulse', p));
+    // FB-111 — the deck's "take the tow" verb lands here; the engine re-validates the wedge
+    // before charging or moving anything, so a stale offer can never tow a free ship.
+    bus.on('world:stuckTowAccept', () => this._executeStuckTow());
+    bus.on('pickup:collected', (p) => {
+      handlePlayerHullEchoEvent(this, ALIEN_SITES.preserved_cockpit, 'pickup:collected', p || {});
+      // cargo's listener (registered earlier) has already written the acceptance receipt, so
+      // the objective only fires on a committed, actually-accepted amount of THIS site's pod.
+      if (p && p.commodityId === 'cmdty_dmc_black_box'
+          && p.collectorId === this.state.playerId
+          && p.worldSiteId === 'world_site_charon_cinder_nursery'
+          && p.worldSitePayloadId === 'dmc_black_box'
+          && successfulPickupAmount(p) > 0) {
+        // The consequence is a real intent, like every site-manifest consequence: the declared
+        // listener above resolves it, and the recovery is observable to anything else that
+        // subscribes. Calling the handler privately left the listener dead.
+        bus.emit('alienEcology:blackBoxRecovered', {
+          siteId: 'cinder_nursery',
+          worldSiteId: p.worldSiteId,
+        });
+      }
+    });
+  },
+
+  /** Cache sectorSim recipes only. Live entities remain forbidden on this event boundary. */
+  _onSectorEmbodiment(payload) {
+    const worldState = this.state && this.state.world;
+    if (!worldState) return 0;
+    const current = normalizeEmbodimentCache(worldState.embodiment);
+    const result = consumeEmbodimentPayload(current, payload);
+    worldState.embodiment = result.cache;
+    return result.accepted;
+  },
+
+  /**
+   * sectorSim 'intel' facts → player-facing lines. `sector_entry` intel describes the sector just
+   * entered (one comms line per arrival; a continuous Voronoi handoff never emits this). Other
+   * sectors' threshold crossings become 'news' wire reports bounded per sector by simTime.
+   * All copy derives from the event's deterministic signal — no RNG, no wall clock.
+   */
+  _onSectorSimIntel(p) {
+    const signal = p && p.signal;
+    const sectorId = p && p.sectorId;
+    if (!signal || typeof sectorId !== 'string' || !sectorId) return;
+    if (!Number.isFinite(signal.danger)) return;
+    const name = String(p.sectorName || sectorId);
+    const danger = Math.max(0, Math.min(1, signal.danger));
+    const factionId = signal.dominantFactionId || signal.ownerId || null;
+    const faction = FACTION_SHORT_NAMES.get(factionId) || null;
+    const parts = [laneDangerPhrase(danger)];
+    if (faction && (Number(signal.dominantInfluence) || 0) >= 0.35) parts.push(`${faction} holds the lane`);
+    if (Number.isFinite(signal.pricePressure) && signal.pricePressure > 0.18) parts.push('prices running hot');
+    else if (Number.isFinite(signal.pricePressure) && signal.pricePressure < -0.18) parts.push('markets glutted');
+
+    if (p.reason === 'sector_entry') {
+      if (sectorId !== (this.state.world && this.state.world.currentSectorId)) return;
+      const transit = p.transit;
+      if (transit && Number.isFinite(transit.incidentChance) && transit.incidentChance >= 0.35) {
+        parts.push('departure corridor unstable');
+      }
+      this.bus.emit('voice:say', {
+        id: `lane-brief:${sectorId}`,
+        channel: 'comms',
+        kind: 'lane_brief',
+        ttl: 6,
+        text: `LANE BRIEF · ${name.toUpperCase()} — ${parts.join('; ')}.`,
+      });
+      return;
+    }
+
+    // Offscreen threshold crossing — the wire. The emitter already caps candidates/day; this
+    // per-sector cooldown keeps a churning field from re-reporting the same beat every quantum.
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const last = this._wireReportAt.get(sectorId);
+    if (Number.isFinite(last) && now - last < WIRE_REPORT_COOLDOWN_S) return;
+    this._wireReportAt.set(sectorId, now);
+    const headline = Number.isFinite(signal.contestMargin) && signal.contestMargin < 0.12
+      ? 'control contested'
+      : danger >= 0.6 ? 'raider pressure climbing'
+        : danger <= 0.2 ? 'lanes calming'
+          : signal.pricePressure > 0.18 ? 'shortage reported'
+            : signal.pricePressure < -0.18 ? 'surplus reported' : 'conditions shifting';
+    this.bus.emit('voice:say', {
+      id: `wire:${sectorId}`,
+      channel: 'news',
+      kind: 'wire_report',
+      ttl: 5,
+      text: `WIRE · ${name}: ${headline}${faction ? ` — ${faction} territory` : ''}.`,
+    });
+  },
+
+  /**
+   * Long-absence reconcile (>1 day): the field kept running while the player was gone — one
+   * "while away" line naming the sector's current drift read. SimTime-derived, emit-only.
+   */
+  _onSectorSimReconcile(p) {
+    const sectorId = p && p.sectorId;
+    if (typeof sectorId !== 'string' || !sectorId) return;
+    if (sectorId !== (this.state.world && this.state.world.currentSectorId)) return;
+    const signal = p.signal;
+    if (!signal || !Number.isFinite(signal.danger)) return;
+    const days = Math.max(1, Math.floor((Number(p.elapsedSimT) || 0) / DAY_SECONDS));
+    const factionId = signal.dominantFactionId || signal.ownerId || null;
+    const faction = FACTION_SHORT_NAMES.get(factionId) || null;
+      // The id fallback is a last resort — humanize it ('sector_io_reach' → 'Io Reach'), never print the slug.
+      const sectorLabel = p.sectorName
+        || String(sectorId).replace(/^sector_/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      this.bus.emit('toast', {
+        text: `While away (${days}d): ${sectorLabel} — ${laneDangerPhrase(Math.max(0, Math.min(1, signal.danger)))}${faction ? `; ${faction} holds the lane` : ''}.`,
+      kind: 'info',
+      ttl: 6,
+    });
+  },
+
+  /**
+   * Preserve destroyed outcomes on durable records so rematerialize never re-rolls kills.
+   * Kill may happen while FULL (before demote ever wrote the bag) — derive/stamp identity
+   * and upsert a snapshot first so markRecordDestroyed cannot no-op on a missing byId entry.
+   * Traffic/mission targets stamped only with markers (missionTag/trafficRole) get an id here.
+   */
+  _onDurableEntityKilled(p) {
+    if (!p || p.id == null) return;
+    const e = this.state.entities.get(p.id);
+    if (!e) return;
+    const d = e.data || (e.data = {});
+    if (d.tethysEntranceRunId === TETHYS_BLACK_MARKET_RUN.runId) return;
+    // Boss path already recorded outcome:defeated — do not clobber with destroyed.
+    if (d.isBoss) return;
+    const state = this.state;
+    // Derive durable identity even when bag empty and no prior demote stamp.
+    if (!d.worldRecordId) {
+      if (!entityHasDurableMarkers(e, state.playerId)) return;
+      const sectorId = e.homeSectorId || d.homeSectorId || d.sectorId || state.world.currentSectorId;
+      if (!sectorId) return;
+      if (!e.homeSectorId && !d.homeSectorId) {
+        e.homeSectorId = sectorId;
+        d.homeSectorId = sectorId;
+      }
+      if (d.sectorId == null) d.sectorId = sectorId;
+      syncEntitySectorMembership(state && state.entityIndex, e);
+      const kind = d.trafficRole || d.convoyId || d.itinerary
+        ? RECORD_KIND.CONVOY
+        : (missionIdentityOf(d) || d.missionPinned || (e.flags && e.flags.missionPinned)
+          ? RECORD_KIND.MISSION_TARGET
+          : RECORD_KIND.NPC);
+      const keyHint = missionIdentityOf(d)
+        || d.trafficRole
+        || d.lootTableId
+        || d.enemyTypeId
+        || d.defId
+        || e.type
+        || 'killed';
+      this._assignDurableRecordId(e, sectorId, kind, `kill:${keyHint}`, state.world.sectorContents && state.world.sectorContents[sectorId]);
+    }
+    if (!d.worldRecordId) return;
+    const bag = ensureWorldRecords(state.world);
+    if (!bag.byId[d.worldRecordId]) {
+      // Entity may already be alive=false; capture still needs a durable stub.
+      const sectorId = e.homeSectorId || d.homeSectorId || d.sectorId || state.world.currentSectorId;
+      const snap = captureEntityRecord(
+        Object.assign({}, e, { alive: true, data: d, homeSectorId: sectorId }),
+        {
+          sectorId,
+          seed: (state.meta && state.meta.seed) || 1,
+          tick: state.tick | 0,
+          simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
+          recordId: d.worldRecordId,
+          identityKey: d.identityKey,
+          durableReason: 'kill',
+          extra: bag.byId[d.worldRecordId] && bag.byId[d.worldRecordId].extra,
+        },
+      );
+      if (snap) {
+        snap.alive = false;
+        snap.outcome = 'destroyed';
+        upsertRecord(bag, snap);
+      }
+    }
+    this.markWorldRecordDestroyed(d.worldRecordId, {
+      outcome: 'destroyed',
+      pos: e.pos ? { x: e.pos.x, z: e.pos.z } : undefined,
+    });
+  },
+
+  _onBossKilled(p) {
+    if (!p || !p.id) return;
+    const e = this.state.entities.get(p.id);
+    const d = e && e.data;
+    if (!d || !d.isBoss) return;
+    const sectorId = d.bossSectorId || this.state.world.currentSectorId;
+    const poiId = d.bossPoiId;
+    if (!sectorId || !poiId) return;
+    const disc = this._discoveryFor(sectorId);
+    if (!disc.pois) disc.pois = {};
+    const rec = disc.pois[poiId] || (disc.pois[poiId] = { discovered: true, identified: true });
+    const sector = this.state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    const poi = sector && (sector.pois || []).find((row) => row && row.id === poiId);
+    const newlyDefeated = rec.defeated !== true;
+    rec.bossDefeated = true;
+    rec.discovered = true;
+    rec.identified = true;
+    rec.defeated = true;
+    // D238: a boss kill that identifies a sold cache spends its fix record too.
+    const clearedBossFix = clearSurveyFix(this.state, sectorId, poiId);
+    if (clearedBossFix && bearingCharted(this.state, clearedBossFix.mark)) this.state.nav.waypoint = null;
+    rec.type = poi && poi.type || rec.type || 'anomaly';
+    rec.name = poi && poi.name || rec.name || poiId;
+    if (newlyDefeated) {
+      rec.defeatedAt = Math.max(0, Number(this.state.simTime) || 0);
+    }
+    // Durable outcome: boss identity stays defeated across demote/promote/Continue.
+    if (d.worldRecordId) {
+      this.markWorldRecordDestroyed(d.worldRecordId, {
+        outcome: 'defeated',
+        pos: e.pos ? { x: e.pos.x, z: e.pos.z } : undefined,
+      });
+    }
+    // Clear the live boss handle so the active sector knows it's gone.
+    if (this.state.world.activeSector && this.state.world.activeSector.boss) {
+      delete this.state.world.activeSector.boss;
+    }
+    if (newlyDefeated) {
+      for (const change of this._applyBossHazardAftermath(sector, poiId)) {
+        this.bus.emit('hazard:changed', {
+          sectorId,
+          poiId,
+          reason: 'boss_defeated',
+          ...change,
+        });
+      }
+      this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
+      if (poi && poi.defeatNews && typeof poi.defeatNews.text === 'string') {
+        this.bus.emit('news:publish', {
+          id: `boss-defeated:${sectorId}:${poiId}`,
+          text: poi.defeatNews.text,
+          kind: poi.defeatNews.kind || 'combat-aftermath',
+          sectorId,
+          poiId,
+          source: 'boss-defeated',
+        });
+      }
+      for (const unlock of (sector && sector.pois || [])) {
+        if (!unlock || unlock.unlockAfterBossId !== poiId) continue;
+        const unlockRec = disc.pois[unlock.id]
+          || (disc.pois[unlock.id] = { discovered: false, identified: false });
+        if (unlockRec.discovered) continue;
+        unlockRec.discovered = true;
+        unlockRec.revealedByBossDefeat = true;
+        unlockRec.revealedAt = rec.defeatedAt;
+        unlockRec.type = unlock.type || unlockRec.type || null;
+        unlockRec.name = unlock.name || unlockRec.name || unlock.id;
+
+        const active = this.state.world.activeSector;
+        if (active && active.id === sectorId) {
+          const activePoi = (active.pois || []).find((row) => row && row.poiId === unlock.id);
+          if (activePoi) {
+            activePoi.hidden = false;
+            const entity = this.state.entities.get(activePoi.id);
+            if (entity && entity.data) entity.data.hidden = false;
+          }
+        }
+        this.bus.emit('poi:discovered', {
+          sectorId,
+          poiId: unlock.id,
+          type: unlockRec.type,
+          sourcePoiId: poiId,
+          reason: 'boss_defeated',
+        });
+        this.bus.emit('toast', {
+          text: `${unlockRec.name} coordinates recovered`,
+          kind: 'success',
+          ttl: 5,
+        });
+      }
+    }
+    this.bus.emit('boss:defeated', {
+      sectorId,
+      poiId,
+      killerId: p.killerId || null,
+      poiName: (poi && poi.name) || rec.name || null,
+    });
+    this._fileSectorChart(sectorId);
+  },
+
+  // =========================================================================================
+  // enterSector — load / switch membership (boot, gate/drive jump, or continuous)
+  // =========================================================================================
+  /**
+   * Materialize the target sector (+ corridor prefetch), update residency tiers, optionally
+   * place the player at an entry point (boot / intentional jump only), emit sector:enter.
+   * Free-flight continuous transitions use { continuous:true, noTeleport:true } and never
+   * place the player or global-wipe entities.
+   * @param {string} sectorId
+   * @param {{fromJump?:boolean, via?:string, fromSectorId?:string, continuous?:boolean, noTeleport?:boolean, placePlayer?:boolean, restoreDurableRecords?:boolean}} [opts]
+   */
+  enterSector(sectorId, opts = {}) {
+    // Sync lane: drain the generator twin — every batch inline, identical order.
+    let done = null;
+    const gen = this.enterSectorChunked(sectorId, opts);
+    while (!(done = gen.next()).done) { /* inline */ }
+    return done.value;
+  },
+
+  /**
+   * Generator twin of enterSector: yields only at phase boundaries (the residency plan's
+   * per-resident materialization steps pass through, then one paint point before the atomic
+   * emit tail). The restore generator drains it so a save's sector regen never freezes the
+   * loading shell behind a single unyielded brick.
+   */
+  *enterSectorChunked(sectorId, opts = {}) {
+    const state = this.state;
+    const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    if (!sector) { dedupWarn('world/unknown-sector', '[world] enterSector: unknown sector', sectorId); return null; }
+    // Producer identity for the whole generator. The restore lane drives this across
+    // awaited paint frames; a route/listener that resets the world or enters another
+    // sector inside one of those gaps must not let this stale producer publish later.
+    const producerWorld = state.world;
+
+    // Capture the pre-transition occupant cohort before exit listeners, residency
+    // materialization, or any yield can mint arrivals. Tick/time cannot distinguish
+    // two bodies created within the same simulation beat. Invalid counters fail closed.
+    const payloadGenerationCutoff = Number.isSafeInteger(state.nextOccupantGeneration)
+      && state.nextOccupantGeneration > 0 ? state.nextOccupantGeneration : null;
+
+    this._ensureResidencyState();
+    const fromSectorId = opts.fromSectorId != null ? opts.fromSectorId : (state.world.currentSectorId || null);
+    const continuous = !!opts.continuous;
+    const noTeleport = continuous || !!opts.noTeleport;
+    // Place on boot and intentional jumps only — never on free-flight membership.
+    const placePlayer = !noTeleport && opts.placePlayer !== false;
+
+    const prevSectorId = state.world.currentSectorId || null;
+    if (prevSectorId && prevSectorId !== sectorId) {
+      this._clearAdoptedSalvorApproachState(state);
+      // Bump before cleanup and exit: the deferred-enter FIFO holds entries minted under the
+      // outgoing epoch, and the residency collect below yields (enter-pre-emit) — a
+      // hold beat inside that gap would still see the old epoch as live and mint into
+      // the departing sector. A run-scoped monotonic minted at exit keeps every
+      // pre-gap payload dead for the rest of the enter.
+      state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+      state.world.enterSerial = state.enterSerialSeq;
+      const departingWorld = state.world;
+      const enterEpoch = state.world.enterSerial;
+      // Retire only the captured departing cohort before exit listeners or destination
+      // residency can see it. The later enter listener keeps its generation fence for
+      // sliced delivery and arrivals minted after this boundary.
+      handlePayloadSectorTransition(state, this.helpers, { enterEpoch, payloadGenerationCutoff });
+      // Canonical removal can synchronously reset or re-enter the world. Never continue
+      // this now-stale transition over the replacement run or sector.
+      if (state.world !== departingWorld || state.world.enterSerial !== enterEpoch
+        || state.world.currentSectorId !== prevSectorId) return null;
+      this.bus.emit('sector:exit', { sectorId: prevSectorId, continuous, noTeleport });
+      if (state.world !== departingWorld || state.world.enterSerial !== enterEpoch
+        || state.world.currentSectorId !== prevSectorId) return null;
+    }
+
+    // The serial is final for this producer: sector-changing enters minted it at the
+    // departure boundary, same-sector refresh/Continue mints at the emit below. Any
+    // later reset, replacement world or nested enter changes it.
+    const producerEpoch = state.world.enterSerial;
+    const superseded = () => state.world !== producerWorld
+      || state.world.enterSerial !== producerEpoch;
+
+    // Discovery overlay bookkeeping (§3.8) — entering reveals the sector + one hop.
+    // Free-flight membership jitter must not inflate visitedCount.
+    const disc = this._discoveryFor(sectorId);
+    const firstVisit = !disc.discovered;
+    disc.discovered = true;
+    if (!continuous) disc.visitedCount = (disc.visitedCount || 0) + 1;
+
+    // Corridor-global outer fence (not a per-sector disk trap). Non-corridor intentional
+    // enters still get a sector-local soft fence so legacy far systems stay bounded.
+    this._applyPlayableBounds(sectorId);
+
+    // Entry point for jump/boot placement (galactic-global). Continuous path leaves pose alone.
+    // Computed before residency so placePlayer/gate tight-cap neighbor ranking uses the
+    // destination entry pose — not the pre-teleport player position.
+    const rec = state.world.residentSectors && state.world.residentSectors[sectorId];
+    const epoch = rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    const entryRng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch, 'entry'));
+    const entryPoint = this._entryPointFor(sector, fromSectorId, entryRng);
+    state.world.entryPoint = entryPoint;
+
+    // Membership + residency plan (materialize FULL current + REDUCED neighbors, evict over cap).
+    const reason = continuous
+      ? 'free_flight'
+      : (opts.fromJump ? (opts.via || 'jump') : 'enter');
+    // placePlayer: rank from destination entry. Free-flight / noTeleport: rank from live player pose.
+    const focusGlobal = placePlayer
+      ? { x: entryPoint.x, z: entryPoint.z }
+      : (this._playerGlobalPos() || sectorGlobalOrigin(sectorId));
+    // _applyResidencyPlan is the observability seam (tests/tools wrap it to inspect plan opts):
+    // an own-property override still intercepts the enter and just collapses that call's yields.
+    const planOpts = {
+      reason,
+      noTeleport,
+      focusGlobal,
+      restoreDurableRecords: opts.restoreDurableRecords === true,
+    };
+    if (this._applyResidencyPlan !== world._applyResidencyPlan) {
+      this._applyResidencyPlan(sectorId, planOpts);
+    } else {
+      // Resume-gated delegation: each paint point re-checks the producer before the
+      // stale generator can run the next materialization brick or write the residency
+      // queue under the replacement run.
+      for (const step of this._applyResidencyPlanChunks(sectorId, planOpts)) {
+        yield step;
+        if (superseded()) return null;
+      }
+    }
+    if (superseded()) return null;
+
+    const active = state.world.sectorContents[sectorId]
+      || (state.world.sectorContents[sectorId] = this._emptySectorBag());
+    state.world.activeSector = active;
+    state.world.currentSectorId = sectorId;
+    this._spawnVestaOreCachePickup(sectorId);
+    this._presentVestaOreCacheDecision('sector-enter');
+    this._spawnPallasHiddenCachePickup(sectorId);
+    this._presentPallasHiddenCacheDecision('sector-enter');
+    this._ensureTethysEntranceRun(sectorId);
+    if (!this._hazardSet) this._hazardSet = new Set();
+    if (!this._hazardNextSet) this._hazardNextSet = new Set();
+    this._hazardSet.clear();
+    this._hazardNextSet.clear();
+
+    if (placePlayer) this._placePlayer(entryPoint);
+    this._resolveShipModules();
+    this._flushPendingSpawns(sectorId, sector);
+
+    // One paint point before the atomic emit tail — sector:enter listeners see a fully
+    // materialized world either way, but the restore lane gets to paint between spawn bricks.
+    yield 'enter-pre-emit';
+    // The paint gap can host a nested reset/enter; never publish the stale emitter's
+    // membership or sector:enter payload under the replacement world's current serial.
+    if (superseded()) return null;
+
+    if (firstVisit) {
+      this.bus.emit('sector:discovered', { sectorId });
+      this.bus.emit('toast', { text: `New sector discovered: ${sector.name}`, kind: 'info', ttl: 4 });
+    }
+    // Reveal direct neighbors on the map ("see one hop ahead") without marking them visited.
+    for (const nb of (sector.neighbors || [])) this._discoveryFor(nb);
+    // Discovery/toast listeners can synchronously start another route.
+    if (superseded()) return null;
+
+    this.bus.emit('world:membership', {
+      sectorId,
+      previousSectorId: prevSectorId,
+      reason,
+      tick: state.tick | 0,
+      noTeleport,
+    });
+    // A membership listener may have started a newer route; the serial mint and the
+    // sector:enter tail below belong to this producer only while it still owns the world.
+    if (superseded()) return null;
+    // A per-emit serial lets replay-suppression (traffic's cook dedupe) distinguish the
+    // sliced re-dispatch of THIS emit from a genuinely new same-sector enter under a
+    // frozen simTime — the replay carries this payload verbatim, a new enter mints +1.
+    // The sequence lives on the state root, not the world record: New Game replaces
+    // state.world wholesale, so a per-world counter restarts at 1 and a pending emit tail
+    // carrying epoch 1 would alias into the fresh world. A run-scoped monotonic keeps every
+    // pre-reset payload mismatched forever. Same-sector enters (no exit emit) still mint
+    // here; sector-changing enters already minted at the exit emit above.
+    if (!(prevSectorId && prevSectorId !== sectorId)) {
+      state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+      state.world.enterSerial = state.enterSerialSeq;
+    }
+    const enterPayload = {
+      sectorId, sector, entryPoint, firstVisit, continuous, noTeleport,
+      enterEpoch: state.world.enterSerial,
+      // A same-sector refresh or Continue is not a departure; pre-existing
+      // payloads in that sector must not be treated as an outgoing cohort.
+      payloadGenerationCutoff: prevSectorId && prevSectorId !== sectorId ? payloadGenerationCutoff : null,
+      // Tail-drain listeners run ~1-5 presented frames late (32-listener slice at
+      // 4/frame); state.simTime has advanced by then. Carry the emit's sim time so
+      // stamps that want the enter's own clock don't wobble by the window length.
+      enterSimTime: state.simTime,
+      enterTick: state.tick,
+    };
+    // The shell latch must cover the frames between this emit and the renderer's own
+    // tail-position sector:enter listener — the 32-listener slice drains 4/frame after
+    // the present, so the listener's own arm lands ~5 presented frames late while
+    // _meshReconcileDirty is already armed in-step by the residency mint. The first
+    // presented post-enter frame would otherwise run the departing-cohort dispose
+    // storm unlatched inside the magic frame. Arm at emit time, gated on the cook's
+    // own predicate: a latch the cook can't own (software GPU, recook-keep, continuous,
+    // non-flight) would pin the reconcile evict path shut — those enters keep arming
+    // and releasing through the listener's own path.
+    if (state.render
+      && typeof state.render.sectorEnterCookWillRun === 'function'
+      && state.render.sectorEnterCookWillRun(enterPayload) === true) {
+      state.render.sectorShellAdmission = true;
+      // Epoch-stamp the arm so a listener that never takes the cook path (stale-tail
+      // delivery, keep-GPU flip, sync throw) can tell this emit's latch from a newer
+      // enter's and release only its own.
+      state.render.sectorShellAdmissionSerial = state.world.enterSerial;
+    }
+    this.bus.emit('sector:enter', enterPayload);
+    return active;
+  },
+
+  // --- residency foundation (M2a) -----------------------------------------------------------
+  _ensureResidencyState() {
+    const state = this.state;
+    if (!state.world.residentSectors || typeof state.world.residentSectors !== 'object') {
+      state.world.residentSectors = {};
+    }
+    if (!state.world.sectorContents || typeof state.world.sectorContents !== 'object') {
+      state.world.sectorContents = {};
+    }
+    if (!state.world.activeSector || typeof state.world.activeSector !== 'object') {
+      state.world.activeSector = this._emptySectorBag();
+    }
+    ensureWorldRecords(state.world);
+  },
+
+  _emptySectorBag() {
+    return { stations: [], fields: [], hazards: [], pois: [], gates: [], enemies: [], dressing: [] };
+  },
+
+  _playerGlobalPos() {
+    const player = this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return null;
+    return player.pos;
+  },
+
+  _neighborLookup(sectorId) {
+    const s = this.state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    return s ? (s.neighbors || []) : [];
+  },
+
+  _applyPlayableBounds(membershipSectorId) {
+    const state = this.state;
+    if (isCorridorSector(membershipSectorId) || CORRIDOR_SECTOR_IDS.some((id) => {
+      const t = state.world.residentSectors && state.world.residentSectors[id];
+      return t && t.tier && t.tier !== RESIDENCY_TIER.RECORD_ONLY;
+    })) {
+      const b = corridorPlayableBounds(SECTORS, DEFAULT_WORLD_RADIUS);
+      state.bounds = {
+        radius: b.radius,
+        hardRadius: b.hardRadius,
+        center: { x: b.center.x, z: b.center.z },
+      };
+      return;
+    }
+    // Non-corridor intentional enter: keep a sector-centered soft fence (legacy far systems).
+    const sector = state.world.sectors[membershipSectorId] || SECTOR_BY_ID.get(membershipSectorId);
+    const worldRadius = (sector && sector.worldRadius) || DEFAULT_WORLD_RADIUS;
+    const sectorOrigin = sectorGlobalOrigin(membershipSectorId);
+    state.bounds = {
+      radius: worldRadius,
+      hardRadius: worldRadius + 500,
+      center: { x: sectorOrigin.x, z: sectorOrigin.z },
+    };
+  },
+
+  /**
+   * Apply FULL/REDUCED/RECORD_ONLY plan for membership. Materializes missing residents,
+   * demotes extras, never global-wipes, never touches the player.
+   * Sync lane: drain the generator twin — every batch inline, identical order.
+   */
+  _applyResidencyPlan(membershipSectorId, opts = {}) {
+    for (const _ of this._applyResidencyPlanChunks(membershipSectorId, opts)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin: yields only after each resident's materialization — plan order is
+   * unchanged, the yields simply let the restore lane paint between sector bricks.
+   */
+  *_applyResidencyPlanChunks(membershipSectorId, opts = {}) {
+    const state = this.state;
+    this._ensureResidencyState();
+    this._pendingResidency = [];
+    const focus = opts.focusGlobal
+      || this._playerGlobalPos()
+      || sectorGlobalOrigin(membershipSectorId);
+    const previousTiers = new Map();
+    for (const id of Object.keys(state.world.residentSectors)) {
+      previousTiers.set(id, state.world.residentSectors[id].tier);
+    }
+    const plan = planMaterializedResidents(
+      membershipSectorId,
+      focus,
+      previousTiers,
+      RESIDENCY_MATERIALIZED_CAP,
+      (id) => this._neighborLookup(id),
+    );
+
+    // Retire only FULL combat/dressing from sectors that are losing FULL before the new FULL bag
+    // requests capacity. Structural residents stay materialized, so there is no empty-world frame,
+    // while the shared ship cap remains true even inside this synchronous handoff.
+    for (const [id, previousTier] of previousTiers) {
+      const nextTier = plan.tiers.get(id) || RESIDENCY_TIER.RECORD_ONLY;
+      if (previousTier === RESIDENCY_TIER.FULL && nextTier !== RESIDENCY_TIER.FULL) {
+        this._stripSectorFullExtras(id);
+      }
+    }
+
+    const slice = this._arrivalSliceEnabled(opts);
+    const immediate = [];
+    const deferred = [];
+    for (const id of plan.materialize) {
+      if (!slice || id === membershipSectorId) immediate.push(id);
+      else deferred.push(id);
+    }
+
+    // Materialize / promote first so demotion never leaves the player with zero content mid-plan.
+    for (const id of immediate) {
+      const tier = plan.tiers.get(id);
+      const restoreDurableRecords = opts.restoreDurableRecords === true
+        && id === membershipSectorId
+        && tier === RESIDENCY_TIER.FULL;
+      yield* this._ensureSectorMaterializedChunks(id, tier, { restoreDurableRecords });
+      this._setResidentMeta(id, tier, opts.reason || 'residency');
+      yield 'residency:materialized';
+    }
+    // Demote everyone marked RECORD_ONLY (scoped despawn only).
+    for (const id of plan.demote) {
+      const prev = state.world.residentSectors[id];
+      if (prev && prev.tier !== RESIDENCY_TIER.RECORD_ONLY) {
+        this._demoteSectorToRecordOnly(id);
+      } else {
+        this._setResidentMeta(id, RESIDENCY_TIER.RECORD_ONLY, opts.reason || 'residency');
+      }
+    }
+    // Sync FULL/REDUCED transitions for already-materialized bags (enemies/dressing LOD).
+    for (const id of immediate) {
+      const tier = plan.tiers.get(id);
+      const restoreDurableRecords = opts.restoreDurableRecords === true
+        && id === membershipSectorId
+        && tier === RESIDENCY_TIER.FULL;
+      this._syncSectorTierContent(id, tier, { restoreDurableRecords });
+    }
+
+    if (deferred.length) {
+      this._pendingResidency = deferred.map((id) => ({
+        sectorId: id,
+        tier: plan.tiers.get(id),
+        reason: opts.reason || 'residency',
+        membershipSectorId,
+        noTeleport: !!opts.noTeleport,
+      }));
+    }
+
+    this.bus.emit('world:residency', {
+      sectors: Object.keys(state.world.residentSectors).sort().map((sectorId) => ({
+        sectorId,
+        tier: state.world.residentSectors[sectorId].tier,
+        epoch: state.world.residentSectors[sectorId].epoch,
+      })),
+      membershipSectorId,
+      reason: opts.reason || 'residency',
+      tick: state.tick | 0,
+      noTeleport: !!opts.noTeleport,
+      pending: this._pendingResidency.map((job) => job.sectorId),
+    });
+  },
+
+  _arrivalSliceEnabled(opts = {}) {
+    if (opts.syncResidency === true) return false;
+    // A restore still materializes the membership sector synchronously (durable records),
+    // but callers may opt its non-membership plan entries into the deferred queue — the
+    // restore generator drains them across its frame yields instead of in one chunk.
+    if (opts.restoreDurableRecords === true) return opts.sliceNeighbors === true;
+    return !!(this.state && this.state.world && this.state.world.sliceArrival === true);
+  },
+
+  _drainResidencyQueue(budget = ARRIVAL_RESIDENCY_BUDGET) {
+    const jobs = this._pendingResidency;
+    if (!jobs || !jobs.length) return 0;
+    const limit = Math.max(1, Math.floor(Number(budget) || ARRIVAL_RESIDENCY_BUDGET));
+    let ran = 0;
+    while (ran < limit && jobs.length) {
+      const job = jobs.shift();
+      this._ensureSectorMaterialized(job.sectorId, job.tier, { restoreDurableRecords: false });
+      this._setResidentMeta(job.sectorId, job.tier, job.reason || 'residency');
+      this._syncSectorTierContent(job.sectorId, job.tier, { restoreDurableRecords: false });
+      ran++;
+    }
+    if (!jobs.length) {
+      this._emitResidencyArrivalSlice();
+    }
+    return ran;
+  },
+
+  _emitResidencyArrivalSlice() {
+    const state = this.state;
+    this.bus.emit('world:residency', {
+      sectors: Object.keys(state.world.residentSectors).sort().map((sectorId) => ({
+        sectorId,
+        tier: state.world.residentSectors[sectorId].tier,
+        epoch: state.world.residentSectors[sectorId].epoch,
+      })),
+      membershipSectorId: state.world.currentSectorId,
+      reason: 'arrival-slice',
+      tick: state.tick | 0,
+      noTeleport: true,
+      pending: [],
+    });
+  },
+
+  /**
+   * Generator twin of _drainResidencyQueue for the restore lane: each deferred neighbor
+   * materializes through _ensureSectorMaterializedChunks so phase boundaries paint inside
+   * the neighbor too — the sync lane's per-job order (materialize → meta → tier sync) is
+   * preserved and the residency emit still fires once when the queue empties.
+   */
+  *_drainResidencyQueueChunks() {
+    const jobs = this._pendingResidency;
+    if (!jobs || !jobs.length) return;
+    while (jobs.length) {
+      const job = jobs.shift();
+      yield* this._ensureSectorMaterializedChunks(job.sectorId, job.tier, { restoreDurableRecords: false });
+      this._setResidentMeta(job.sectorId, job.tier, job.reason || 'residency');
+      this._syncSectorTierContent(job.sectorId, job.tier, { restoreDurableRecords: false });
+      yield 'residency-job';
+    }
+    this._emitResidencyArrivalSlice();
+  },
+
+  _setResidentMeta(sectorId, tier, reason) {
+    const state = this.state;
+    const prev = state.world.residentSectors[sectorId];
+    const epoch = prev && Number.isFinite(prev.epoch) ? prev.epoch : 0;
+    state.world.residentSectors[sectorId] = {
+      tier,
+      epoch,
+      reason: reason || (prev && prev.reason) || 'residency',
+      lastTouchTick: state.tick | 0,
+    };
+  },
+
+  /**
+   * First materialization creates the sector bag with epoch-stable RNG.
+   * FULL includes combat/dressing; REDUCED is structural only.
+   * Sync lane: drain the generator twin — every batch inline, identical phase order.
+   */
+  _ensureSectorMaterialized(sectorId, tier, opts = {}) {
+    for (const _ of this._ensureSectorMaterializedChunks(sectorId, tier, opts)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin: yields only between whole catalog spawn phases — RNG order, spawn order,
+   * and the final bag assignment are identical to the sync lane; the restore generator uses
+   * the boundaries as paint points instead of freezing the loading shell behind one brick.
+   */
+  *_ensureSectorMaterializedChunks(sectorId, tier, opts = {}) {
+    const state = this.state;
+    const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    if (!sector) return;
+    let rec = state.world.residentSectors[sectorId];
+    if (!rec) {
+      rec = { tier: RESIDENCY_TIER.RECORD_ONLY, epoch: 0, reason: 'init', lastTouchTick: state.tick | 0 };
+      state.world.residentSectors[sectorId] = rec;
+    }
+    const existing = state.world.sectorContents[sectorId];
+    if (existing && (rec.tier === RESIDENCY_TIER.FULL || rec.tier === RESIDENCY_TIER.REDUCED)
+        && (existing.stations.length || existing.gates.length || existing.fields.length)) {
+      return; // already live — do not re-roll content on membership jitter
+    }
+
+    const epoch = Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    // Epoch-stable content stream: (meta.seed, sectorId, epoch). Does not use state.rng.
+    state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch));
+    const rng = state.world.rng;
+    const disc = this._discoveryFor(sectorId);
+    const active = this._emptySectorBag();
+
+    this._spawnStations(sector, active, rng);
+    yield 'materialize:stations';
+    yield* this._spawnFieldsChunks(sector, active, disc, rng);
+    yield 'materialize:fields';
+    this._spawnGates(sector, active, rng);
+    yield 'materialize:gates';
+    this._spawnPOIs(sector, active, disc, rng, tier);
+    yield 'materialize:pois';
+    this._spawnHazards(sector, active);
+    // A used-up field's onward seam is a durable promise: the nextFields record outlives the
+    // sector bag, so re-materialize re-derives the same plan and re-places its rocks before
+    // ambient re-roll. Rocks the player already mined stay mined via resourceBodies.
+    this._rematerializeUsedUpFieldOpportunity(sectorId, sector, active);
+    yield 'materialize:field-opportunity';
+    // Durable records rematerialize before ambient re-roll so identity/outcomes never reroll.
+    const rematerialized = yield* this._rematerializeSectorRecordsChunks(sectorId, active, tier, opts);
+    yield 'materialize:records';
+    if (tier === RESIDENCY_TIER.FULL) {
+      // The bag is populated (anchors + records) but not yet published — arm the FULL-extras
+      // decode runway while dressing/enemies/optics still mount. Covers fresh-boot embark and
+      // first-visit jumps, which no prewarm arm reaches (no bag existed to enumerate).
+      if (this.helpers && typeof this.helpers.warmSectorFullExtras === 'function') {
+        this.helpers.warmSectorFullExtras(sectorId, active);
+      }
+      yield* this._spawnDressingChunks(sector, active, rng);
+      yield 'materialize:dressing';
+      // Only re-roll ambient combatants when this sector has no prior durable NPC/convoy history.
+      if (!rematerialized.hadCombatHistory) {
+        yield* this._spawnEnemiesChunks(sector, active, rng);
+        this._spawnBossIfDue(sector, active, rng);
+      } else {
+        // Boss still respects discovery.bossDefeated when no boss record was rematerialized.
+        if (!rematerialized.spawnedBoss) this._spawnBossIfDue(sector, active, rng);
+      }
+      yield 'materialize:enemies';
+      this._ensureOpticStructures(sector, active);
+      // Built-at-FULL stamp: _promoteSectorToFull skips its whole rescan when set — the bag
+      // already carries dressing/enemies/records from this build. Keys on the tier the bag
+      // was BUILT at, not rec.tier (the materialize call itself overwrites rec.tier below).
+      active.fullExtrasBuilt = true;
+    }
+
+    state.world.sectorContents[sectorId] = active;
+    rec.tier = tier;
+    rec.epoch = epoch;
+    rec.materializedAtTick = state.tick | 0;
+    this._ensureTethysEntranceRun(sectorId);
+    this.helpers.requestPresentationRebuild?.('sector-materialize');
+  },
+
+  /** Promote/demote live content between FULL and REDUCED without rematerializing anchors. */
+  _syncSectorTierContent(sectorId, tier, opts = {}) {
+    const state = this.state;
+    const rec = state.world.residentSectors[sectorId];
+    if (!rec || rec.tier === tier) {
+      // Still may need FULL extras if bag was created as REDUCED.
+      if (tier === RESIDENCY_TIER.FULL) this._promoteSectorToFull(sectorId, opts);
+      if (tier === RESIDENCY_TIER.REDUCED) this._stripSectorFullExtras(sectorId);
+      this._setResidentMeta(sectorId, tier, rec && rec.reason);
+      return;
+    }
+    if (tier === RESIDENCY_TIER.FULL) this._promoteSectorToFull(sectorId, opts);
+    if (tier === RESIDENCY_TIER.REDUCED) this._stripSectorFullExtras(sectorId);
+    this._setResidentMeta(sectorId, tier, rec.reason);
+  },
+
+  _promoteSectorToFull(sectorId, opts = {}) {
+    const state = this.state;
+    const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    const active = state.world.sectorContents[sectorId];
+    if (!sector || !active) return;
+    // A bag already built at FULL carries records/dressing/enemies/optics from its own
+    // materialize — promoting it re-walked the entire record bag a second time in one
+    // unyielded task (the largest restore-lane brick on a mature save). Bags built REDUCED
+    // or stripped since still run the full promote below.
+    if (active.fullExtrasBuilt === true) {
+      this._spawnFreeDriveRing(sector, active, { metadataOnly: true });
+      return;
+    }
+    // Rematerialize durable combat/convoy/mission records first (idempotent).
+    const rematerialized = this._rematerializeSectorRecords(
+      sectorId,
+      active,
+      RESIDENCY_TIER.FULL,
+      opts,
+    );
+    // A bag first built REDUCED presented its POIs as dressing rows; FULL owes the live actors.
+    this._promotePoiRowsToLive(sector, active);
+    // Already has combat presence → keep anchors; still may need dressing.
+    if ((active.enemies && active.enemies.length) || (active.dressing && active.dressing.length)) {
+      const resident = state.world.residentSectors[sectorId] || { epoch: 0 };
+      const epoch = Number.isFinite(resident.epoch) ? resident.epoch : 0;
+      if (!(active.dressing && active.dressing.length)) {
+        state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch, 'full_extra'));
+        this._spawnDressing(sector, active, state.world.rng);
+        this.helpers.requestPresentationRebuild?.('sector-full-dressing');
+      }
+      // Combat presence must not latch fullExtrasBuilt over the boss gate: a rematerialized
+      // mission target or projected raid recipe put a hull in active.enemies, so the normal
+      // neighbor promote (Charon → Ashfall REDUCED→FULL) returned here without ever running
+      // _spawnBossIfDue — the Iron Maw stayed absent on every later promote. Same gate as the
+      // cold-FULL materialize and the full promote below: only when no boss record spawned.
+      if (!rematerialized.spawnedBoss) {
+        const bossRng = this.helpers.mulberry32(
+          this.helpers.hash32(state.meta.seed, sectorId, epoch, 'full_extra_boss'));
+        this._spawnBossIfDue(sector, active, bossRng);
+      }
+      this._ensureOpticStructures(sector, active);
+      active.fullExtrasBuilt = true;
+      return;
+    }
+    const rec = state.world.residentSectors[sectorId] || { epoch: 0 };
+    const epoch = Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    // Separate stream so structural epoch RNG is not re-consumed.
+    state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch, 'full_extra'));
+    const rng = state.world.rng;
+    this._spawnDressing(sector, active, rng);
+    if (!rematerialized.hadCombatHistory) {
+      this._spawnEnemies(sector, active, rng);
+      this._spawnBossIfDue(sector, active, rng);
+    } else if (!rematerialized.spawnedBoss) {
+      this._spawnBossIfDue(sector, active, rng);
+    }
+    this._ensureOpticStructures(sector, active);
+    this.helpers.requestPresentationRebuild?.('sector-full');
+    active.fullExtrasBuilt = true;
+  },
+
+  /**
+   * FULL residents keep the POIs that must stay live actors (poiMustStayLiveActor: landmarks,
+   * scanner signals, discovery plates, band-fleet hulls) on the live list, exactly as a bag first
+   * materialized FULL spawns them. A bag first built REDUCED holds them as dressing rows; move each
+   * such row to a live marker under the same data and poi identity, and repoint the bag entry.
+   * Idempotent: rows already live are not dressing rows and are skipped.
+   */
+  _promotePoiRowsToLive(sector, active) {
+    if (!sector || !active || !Array.isArray(active.pois)) return;
+    const sourceById = new Map((sector.pois || []).map((poi) => [poi.id, poi]));
+    for (const entry of active.pois) {
+      const row = entry && entry.id != null ? getDressingRow(this.state, entry.id) : null;
+      if (!row || !row.data || row.data.poi !== true) continue;
+      const data = row.data;
+      const bandHull = Number.isFinite(Number(data.quiessenceShipIndex));
+      const source = sourceById.get(data.poiId) || null;
+      const slot = typeof data.activityObjectSlotId === 'string' ? data.activityObjectSlotId : null;
+      if (!bandHull && !(source && poiMustStayLiveActor(source, slot))) continue;
+      const pos = { x: row.pos.x, z: row.pos.z };
+      dropDressingRow(this.state, row.id);
+      // A row stamped solid by the dressing plan carries its measured body on the row
+      // (collides + collisionProxy on data) — the promoted entity must keep it, or a
+      // landmark that collided on cold-FULL ghosts on the dominant REDUCED→FULL arrive.
+      // Activity slots stay ghosts per the PQ-020 contract even if an old row carried
+      // a pre-fix stamp.
+      const keepsSolidBody = !slot && row.collides === true;
+      const ent = this.helpers.spawnEntity({
+        type: 'fx',
+        factionId: (source && source.factionId) || null,
+        pos,
+        radius: row.radius,
+        mass: 0,
+        collides: keepsSolidBody || !!(source && source.collides),
+        ...(bandHull
+          ? { physicsBody: false }
+          : (keepsSolidBody
+            ? { physicsBody: { dynamic: false, material: 'prop' }, collisionMask: Masks.STATION }
+            : {})),
+        ttl: Infinity,
+        data,
+      });
+      this._stampHomeSector(ent, sector.id);
+      entry.id = ent.id;
+    }
+  },
+
+  // Optic lattices are field-resident colliders, stamped once per FULL sector bag.
+  // They promote into entityList only inside the authored decode disc (tickOpticFieldRocks)
+  // so a quiet Ceres pocket does not keep ~40 combat asteroids warm for a distant gallery.
+  // They do not draw the field RNG and they are not ore. REDUCED neighbors stay empty until FULL.
+  _ensureOpticStructures(sector, active) {
+    if (!sector || !active) return;
+    // Array (even empty) means this bag already ran the stamp — do not double-spawn on promote.
+    if (Array.isArray(active.opticStructureIds)) return;
+    const specs = opticStructuresFor(sector.id);
+    // Seeded scatter: a belt with a rock field but no authored structure still
+    // grows a few small lattices from the sector seed — a short fuse or a
+    // three-crystal cluster, never a hand-authored list. The draw runs on its
+    // own branch of (seed, sectorId, epoch), AFTER the rock draw and never
+    // through its stream, so the field beneath it is byte-identical with or
+    // without scatter. Deterministic `scatter:<sectorId>:<n>` ids regrow the
+    // same cells on every re-materialize, so opticSpent rides them exactly
+    // like the authored stamps.
+    if (!specs.length && (active.fields || []).length) {
+      const scattered = this._opticScatterSpecs(sector, active);
+      for (let i = 0; i < scattered.length; i++) specs.push(scattered[i]);
+    }
+    const ids = [];
+    for (let s = 0; s < specs.length; s++) {
+      const spec = specs[s];
+      const bodies = compileOpticStructure(spec);
+      for (let i = 0; i < bodies.length; i++) {
+        const body = bodies[i];
+        const pos = this._toGlobal({
+          x: spec.origin.x + body.x,
+          z: spec.origin.z + body.z,
+        }, sector.id);
+        // Lattice spacing is authored against entity.radius; promote keeps physicsBody on that
+        // radius so scaled rock colliders cannot seal the mouth shut.
+        const rec = insertAsteroidFieldRock(this.state, {
+          pos,
+          radius: body.radius,
+          mass: 200 + body.radius * 40,
+          angVel: 0,
+          hull: 1e6,
+          hullMax: 1e6,
+          homeSectorId: sector.id,
+          data: {
+            typeId: body.typeId,
+            tint: body.tint,
+            opticMaterial: body.material,
+            opticStructureId: spec.id,
+            opticCell: `${body.ix},${body.iz}`,
+            opticLatticeSpacing: body.latticeSpacing,
+            surfaceMaterial: body.surfaceMaterial,
+            size: body.radius,
+            // Not ore: skip massline latch so the mining beam cannot acquire via tether.
+            masslineTetherable: false,
+            material: body.material === 'metal' ? 'metal' : body.material === 'diamond' || body.material === 'spent' ? 'crystal' : 'rock',
+            homeSectorId: sector.id,
+            sectorId: sector.id,
+          },
+        });
+        if (!rec) continue;
+        // A cell the player burned is durable state: restore it dark mid-quiet, or let a
+        // lattice that healed while shelved come back live and forget the stale entry.
+        const spentCells = this.state.world.opticSpent && this.state.world.opticSpent[spec.id];
+        const spentAt = spentCells ? spentCells[`${body.ix},${body.iz}`] : null;
+        if (Number.isFinite(spentAt)) {
+          const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+          if (now - spentAt >= OPTIC_SPEND_QUIET) {
+            delete spentCells[`${body.ix},${body.iz}`];
+            if (!Object.keys(spentCells).length) delete this.state.world.opticSpent[spec.id];
+          } else {
+            recordOpticSpend(rec, spentAt); // record side only — the ledger already holds it
+          }
+        }
+        ids.push(rec.id);
+      }
+    }
+    active.opticStructureIds = ids;
+  },
+
+  /**
+   * Plan this sector's seeded-scatter lattices. Everything the planner reads is
+   * materialized bag data (global frame) or static zone data, so the spec list
+   * is a pure function of (meta.seed, sectorId, epoch) — the rock draw's stream
+   * is never touched. Origins come back sector-local so the shared stamp loop's
+   * _toGlobal compose lands them exactly where they were planned.
+   */
+  _opticScatterSpecs(sector, active) {
+    const rec = this.state.world.residentSectors && this.state.world.residentSectors[sector.id];
+    const epoch = rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    const rng = this.helpers.mulberry32(
+      this.helpers.hash32(this.state.meta.seed, sector.id, epoch, OPTIC_SCATTER_SALT),
+    );
+    const tierParams = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1] || {};
+    const fdefs = sector.fields || [];
+    const fields = [];
+    for (const f of active.fields || []) {
+      if (!f || !f.center || !Number.isFinite(f.center.x) || !Number.isFinite(f.center.z)) continue;
+      const fdef = fdefs.find((d) => d && d.id === f.id) || null;
+      fields.push({
+        x: f.center.x,
+        z: f.center.z,
+        radius: (fdef && fdef.clusterRadius) || tierParams.clusterRadius || 450,
+      });
+    }
+    if (!fields.length) return [];
+    // Zone records are sector-local; everything else in the bag is global.
+    const zones = [];
+    for (const zone of zonesForSector(sector.id)) {
+      if (!zone || !zone.center) continue;
+      const g = this._toGlobal(zone.center, sector.id);
+      if (g && Number.isFinite(g.x) && Number.isFinite(g.z)) {
+        zones.push({ x: g.x, z: g.z, radius: Number(zone.radius) || 0 });
+      }
+    }
+    const specs = opticScatterSpecsFor(sector.id, rng, {
+      fields,
+      stations: (active.stations || []).map((s) => s && s.pos),
+      gates: (active.gates || []).map((g) => g && g.pos),
+      pois: (active.pois || []).map((p) => p && p.pos),
+      zones,
+    });
+    // The planner ran in the bag's global frame; spec.origin must be sector-local
+    // for the stamp loop's _toGlobal. Specs are frozen — translate, don't mutate.
+    return specs.map((spec) => ({
+      ...spec,
+      origin: globalToSectorLocalForSector(spec.origin, sector.id),
+    }));
+  },
+
+  _stripSectorFullExtras(sectorId) {
+    const state = this.state;
+    const active = state.world.sectorContents[sectorId];
+    if (!active) return;
+    // Remove enemies + dressing only; keep stations/gates/fields/pois/hazards.
+    const kill = new Set();
+    for (const id of (active.enemies || [])) kill.add(id);
+    for (const d of (active.dressing || [])) if (d && d.id != null) kill.add(d.id);
+    // Capture every durable sector record and collect the exact extras for removal in the same
+    // entity-list walk. Sector entry used to scan the full population twice here (capture, then
+    // despawn), making outgoing retirement a measurable arrival-frame cost.
+    this._captureSectorDurableRecords(sectorId, { reason: 'strip_full', despawnIds: kill });
+    // POI markers (and band-landmark hulls) share the dressing table with the FULL props, and this
+    // strip also runs the instant a neighbour is first materialized REDUCED. A sector-wide drop
+    // erased every non-live POI there before its first frame (the Skerris Throne, the Resonant
+    // Cathedral) and FULL promotion never re-spawned them. Keep the structural rows, per the
+    // contract above ("keep ... pois").
+    dropDressingSector(this.state, sectorId, (row) => !!(row && row.data && row.data.poi === true));
+    active.enemies = [];
+    active.dressing = [];
+    active.worldOneOffSpins = [];
+    if (active.boss) delete active.boss;
+    active.fullExtrasBuilt = false;
+  },
+
+  _demoteSectorToRecordOnly(sectorId) {
+    // Write epoch-stable durable records before scoped despawn (identity must not reroll).
+    this._captureSectorDurableRecords(sectorId, { reason: 'evict' });
+    if (sectorId === TETHYS_BLACK_MARKET_RUN.sectorId) this._tethysRunEntities = {};
+    this._despawnEntitiesForSector(sectorId);
+    if (this.state.world.sectorContents) {
+      this.state.world.sectorContents[sectorId] = this._emptySectorBag();
+    }
+    this._setResidentMeta(sectorId, RESIDENCY_TIER.RECORD_ONLY, 'evict');
+  },
+
+  // =========================================================================================
+  // M2-C2 durable records — capture on demote, rematerialize on promote (exactly once)
+  // =========================================================================================
+
+  /**
+   * Snapshot durable ships/wrecks/mission targets for a sector into world.records.
+   * Does not touch structural stations/gates/asteroids (authored rematerialize).
+   */
+  _captureSectorDurableRecords(sectorId, opts = {}) {
+    captureBolusRib(this, sectorId, opts);
+    const state = this.state;
+    if (sectorId === TETHYS_BLACK_MARKET_RUN.sectorId) this._captureTethysEntranceParcel();
+    const bag = ensureWorldRecords(state.world);
+    const recMeta = state.world.residentSectors && state.world.residentSectors[sectorId];
+    const epoch = recMeta && Number.isFinite(recMeta.epoch) ? recMeta.epoch : 0;
+    const tick = state.tick | 0;
+    const seed = (state.meta && state.meta.seed) || 1;
+    const list = state.entityList || [];
+    const despawnIds = opts.despawnIds instanceof Set ? opts.despawnIds : null;
+    const despawnIndexes = despawnIds && despawnIds.size ? [] : null;
+    if (despawnIndexes) {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e) continue;
+        const home = e.homeSectorId || (e.data && e.data.homeSectorId);
+        if (despawnIds.has(e.id)
+            && !this._isProtectedFromResidency(e)
+            && (!home || home === sectorId)) {
+          despawnIndexes.push(i);
+        }
+      }
+    }
+    // Alive-convoy ledger bound (MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR). Counted lazily once
+    // per capture pass; an existing record id always refreshes, only first-time convoy
+    // captures spend slots. A hull skipped by the cap stays live ambience — it is not
+    // persisted and must not keep the phantom record id it was stamped with.
+    let aliveConvoyRecords = -1;
+    const countAliveConvoyRecords = () => {
+      if (aliveConvoyRecords < 0) {
+        aliveConvoyRecords = 0;
+        for (const r of recordsForSector(bag, sectorId)) {
+          if (r && r.kind === RECORD_KIND.CONVOY && r.alive !== false
+            && r.outcome !== 'destroyed' && r.outcome !== 'defeated') {
+            aliveConvoyRecords++;
+          }
+        }
+      }
+      return aliveConvoyRecords;
+    };
+    const capture = (e) => {
+      // The bounded entrance run lives under its rumor record, never in two save owners.
+      if (e.data?.tethysEntranceRunId === TETHYS_BLACK_MARKET_RUN.runId) return;
+      const home = e.homeSectorId || (e.data && e.data.homeSectorId);
+      const dataSector = e.data && e.data.sectorId;
+      // Require explicit sector ownership — never attach homeless traffic to the wrong bag.
+      const ownedHere = home === sectorId || dataSector === sectorId;
+      if (!ownedHere) return;
+      if (!entityIsDurableCandidate(e, state.playerId)) return;
+      // Protected mission-pinned still get a durable record for Continue rematerialize,
+      // even though live despawn skips them.
+      const captured = captureEntityRecord(e, {
+        sectorId,
+        seed,
+        epoch,
+        tick,
+        simTime: Number.isFinite(state.simTime) ? state.simTime : tick,
+        createdTick: (e.data && e.data.recordCreatedTick) || tick,
+        durableReason: opts.reason || 'evict',
+        previousRecord: e.data && e.data.worldRecordId ? bag.byId[e.data.worldRecordId] : null,
+        recordsBag: bag,
+        stationSource: state,
+        extra: e.data && e.data.worldRecordId && bag.byId[e.data.worldRecordId]
+          ? bag.byId[e.data.worldRecordId].extra
+          : null,
+      });
+      if (!captured) return;
+      if (captured.kind === RECORD_KIND.CONVOY && !bag.byId[captured.recordId]) {
+        if (countAliveConvoyRecords() >= MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR) {
+          if (e.data && e.data.worldRecordId === captured.recordId) {
+            delete e.data.worldRecordId;
+            // Unregistered clear — decrement the counted lane now so the refused record id
+            // can't leave a stale positive entry (or a stale miss-memo negative) behind.
+            registerEntityWorldRecordId(state && state.entityIndex, e);
+          }
+          // The hull's job is keyed on that record id and re-enters the world ONLY through a
+          // persisted record — npcJobsRuntime restores every job VIRTUAL and re-links it by
+          // worldRecordId — so a refused record leaves a job nothing will ever bind. Release it
+          // here or the bag grows ~+4 phantom convoy jobs per save/load roundtrip until the save
+          // quota refuses writes (release soak: 5 MB of storage by cycle 42). The hull itself
+          // stays live ambience under the ordinary traffic stepper, exactly as before.
+          this.helpers?.npcJobs?.release?.(`job:${captured.recordId}`);
+          return;
+        }
+        aliveConvoyRecords++;
+      }
+      upsertRecord(bag, captured);
+      if (e.data) e.data.worldRecordId = captured.recordId;
+      // Register the stamp with the counted lane — the delete path above registers its clear;
+      // an unregistered write leaves byWorldRecordId/byWorldRecordIdCount missing this carrier,
+      // so every lookup takes the self-heal walk and the lane never bumps.
+      registerEntityWorldRecordId(state && state.entityIndex, e);
+    };
+    forEachLivingWorldActor(state, capture);
+    // These exact finite work payloads sit outside the actor view. All other payloads
+    // retain their existing persistence paths, and an actor is never captured twice.
+    for (const e of indexedTypeScan(state, 'payloads')) {
+      if (e?.type === 'payload' && !isLivingWorldActor(e)
+          && (starterBuoyRecordMarker(e) || isLanternWardHardwareEntity(e))) capture(e);
+    }
+    // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
+    this._destroyEntitiesAtIndices(despawnIndexes);
+  },
+
+  /**
+   * Rematerialize durable records into a live sector bag. Idempotent: skips when a live
+   * entity already carries the record id. Does not advance state.rng.
+   * @returns {{ spawned:number, hadCombatHistory:boolean, spawnedBoss:boolean }}
+   */
+  _rematerializeSectorRecords(sectorId, active, tier, opts = {}) {
+    const it = this._rematerializeSectorRecordsChunks(sectorId, active, tier, opts);
+    let step = it.next();
+    while (!step.done) step = it.next();
+    return step.value;
+  },
+
+  /**
+   * Generator twin of _rematerializeSectorRecords: yields every 8 processed records so the
+   * restore lane can paint inside a record-dense sector. The sync wrapper drains inline —
+   * identical record order and result.
+   */
+  *_rematerializeSectorRecordsChunks(sectorId, active, tier, opts = {}) {
+    const state = this.state;
+    const bag = ensureWorldRecords(state.world);
+    // sectorSim remains recipe-only; world adopts current recipes only at FULL promotion.
+    if (tier === RESIDENCY_TIER.FULL && opts.restoreDurableRecords !== true) {
+      yield* this._reconcileEmbodimentRecordsChunks(sectorId, bag);
+    }
+    const list = recordsForSector(bag, sectorId);
+    const liveByRecordId = liveRecordEntityIndex(state);
+    const farRecordIds = farActorRecordIdSet(state);
+    const deferredRecordIds = restoreEnvelopeRecordIds(state);
+    let spawned = 0;
+    let hadCombatHistory = false;
+    let spawnedBoss = false;
+    let processed = 0;
+    for (const rec of list) {
+      if ((++processed & 7) === 0) yield 'materialize:records-batch';
+      if (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss) {
+        hadCombatHistory = true;
+      }
+      // A marker-bound wreck's live body belongs to aftermathWrecks — the marker is its durable
+      // record and sector:enter respawns the full hulk (pool, provenance, drift). Materializing
+      // the thin record shell beside it was the D89 duplicate. World-owned AFTERMATH rows (the
+      // Orrin witness recorder) carry no aftermath marker and still rematerialize.
+      if (rec.kind === RECORD_KIND.AFTERMATH && aftermathOwnsMarker(state, rec.markerId)) continue;
+      if (!recordShouldRematerialize(rec, tier)) continue;
+      // Exactly-once: never double-spawn a live entity for the same record. A corpse still
+      // in the index (alive=false written, lifetimeSweep not yet run) is not a live holder —
+      // treating it as one defers rematerialize a pass and can pin a dead id into enemies.
+      const existing = liveByRecordId.get(rec.recordId) || null;
+      if (existing && existing.alive !== false) {
+        if (active && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.kind === RECORD_KIND.MISSION_TARGET)) {
+          if (active.enemies && !active.enemies.includes(existing.id) && existing.type === 'ship') {
+            active.enemies.push(existing.id);
+          }
+        }
+        continue;
+      }
+      // A shelved far-actor row already carries this record's live state — respawning here would
+      // double the actor (it promotes back to a live entity on approach via tickFarActors).
+      if (farRecordIds.has(rec.recordId)) continue;
+      // The restore's persistent envelope already carries this record's live body — the saved
+      // hull respawns later in _restoreChunks and is authoritative. Materializing the record
+      // shell now stands a second hull beside every respawned copy (D136: +1 live carrier per
+      // record per save→load round-trip, each later stamped persistent and re-serialized).
+      if (deferredRecordIds && deferredRecordIds.has(rec.recordId)) continue;
+      const ent = this._spawnFromDurableRecord(rec, sectorId);
+      if (!ent) continue;
+      spawned++;
+      if (ent.data && ent.data.isBoss) {
+        spawnedBoss = true;
+        if (active) active.boss = { entityId: ent.id, poiId: ent.data.bossPoiId || rec.bossPoiId };
+      }
+      if (active && ent.type === 'ship') {
+        if (!active.enemies) active.enemies = [];
+        if (!active.enemies.includes(ent.id)) active.enemies.push(ent.id);
+      }
+    }
+    return { spawned, hadCombatHistory, spawnedBoss };
+  },
+
+  /**
+   * Reconcile the latest bounded sector recipe snapshot into durable records.
+   * Existing records are never overwritten (preserves damage/destroyed outcomes). Stale active
+   * generated recipes retire once their live body is gone; destroyed recipe tombstones are
+   * exempt from the ambient-tombstone bound (recordSource 'sector_embodiment'), so an old
+   * outcome cannot be re-rolled.
+   * The intent/stale/insert phases yield at the same 8-row cadence the records loop uses, so a
+   * deferred FULL neighbor no longer pays an unyielded O(intents + records) pass inside a
+   * generator that exists to be chunked; the sync wrapper drains inline with identical output.
+   */
+  *_reconcileEmbodimentRecordsChunks(sectorId, bag = ensureWorldRecords(this.state.world)) {
+    const intents = embodimentRecordIntents(this.state.world.embodiment, sectorId);
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const sector = this.state.world.sectors && this.state.world.sectors[sectorId];
+    const current = [];
+    let processed = 0;
+    for (const intent of intents) {
+      if ((++processed & 7) === 0) yield 'reconcile:intents-batch';
+      const rec = recordFromEmbodimentIntent(intent, {
+        seed,
+        tick: this.state.tick | 0,
+        fallbackFactionId: (sector && (sector.owner || sector.factionId)) || 'faction_free',
+      });
+      if (rec) current.push(rec);
+    }
+    const currentIds = new Set(current.map((rec) => rec.recordId));
+
+    // Delete only stale, still-active generated recipes with no live body. Player-authored
+    // outcomes (destroyed/defeated) are history and remain as bounded tombstones.
+    const liveByRecordId = liveRecordEntityIndex(this.state);
+    for (const rec of recordsForSector(bag, sectorId)) {
+      if ((++processed & 7) === 0) yield 'reconcile:stale-batch';
+      if (rec.recordSource !== 'sector_embodiment' || currentIds.has(rec.recordId)) continue;
+      if (rec.outcome === 'destroyed' || rec.outcome === 'defeated') continue;
+      const holder = liveByRecordId.get(rec.recordId) || null;
+      if (holder && holder.alive !== false) continue;
+      delete bag.byId[rec.recordId];
+    }
+
+    let inserted = 0;
+    for (const rec of current) {
+      if ((++processed & 7) === 0) yield 'reconcile:insert-batch';
+      // Never overwrite an existing active/damaged/destroyed record for this identity.
+      if (bag.byId[rec.recordId]) continue;
+      if (upsertRecord(bag, rec)) inserted++;
+    }
+    return { inserted, retained: current.length - inserted, current: current.length };
+  },
+
+  _reconcileEmbodimentRecords(sectorId, bag = ensureWorldRecords(this.state.world)) {
+    const it = this._reconcileEmbodimentRecordsChunks(sectorId, bag);
+    let step = it.next();
+    while (!step.done) step = it.next();
+    return step.value;
+  },
+
+  /**
+   * Spawn one live entity from a durable record. Prefers makeEnemySpawnSpec for NPC archetypes.
+   */
+  _spawnFromDurableRecord(rec, sectorId) {
+    if (!rec || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const state = this.state;
+    let spec = null;
+    if(rec.recordId===TALLY_THREE.assessorId){spec=tallyAssessorRecordSpec(state,rec);if(!spec)return null;}
+    else if (rec.enemyTypeId && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss)) {
+      const pos = { x: rec.pos.x, z: rec.pos.z };
+      const level = Number.isFinite(rec.level) ? rec.level : 1;
+      spec = makeEnemySpawnSpec(rec.enemyTypeId, level, pos, {
+        factionId: rec.factionId || undefined,
+        startedTick: state.tick,
+      });
+      if (rec.ai && spec.data) {
+        spec.data.ai = Object.assign({}, spec.data.ai || {}, rec.ai);
+      }
+      if (rec.isBoss && spec.data) {
+        spec.data.isBoss = true;
+        spec.data.bossPoiId = rec.bossPoiId;
+        spec.data.bossSectorId = rec.bossSectorId || sectorId;
+      }
+      if (rec.missionId && spec.data) {
+        spec.data.missionId = rec.missionId;
+        spec.data.missionTag = rec.missionId;
+        spec.data.missionPinned = true;
+        spec.flags = Object.assign({}, spec.flags, { missionPinned: true });
+      }
+    } else {
+      spec = spawnSpecFromRecord(rec);
+      if (!spec) return null;
+      // Convoy / freighter shell via ship def when present.
+      if (rec.kind === RECORD_KIND.CONVOY && rec.shipDefId) {
+        // Keep spawnSpecFromRecord shell; shipDefId already stamped on data.defId.
+      }
+    }
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `world:record:${rec.recordId || `${sectorId}:${rec.kind || 'ship'}`}`;
+    const budgeted = spec.type === 'ship' && budget && typeof budget.request === 'function';
+    if (budgeted && budget.request(1, requester) <= 0) {
+      if (rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss) {
+        // The only retry (_tickDeferredCriticalSpawns) watched just poi_boss.bossSpawnDeferred,
+        // so a capped mission/boss record stayed missing until the whole sector bag rebuilt.
+        // Track the deferral on the system; the tick re-attempts while the sector is resident.
+        const deferred = this._deferredCriticalRecordIds
+          || (this._deferredCriticalRecordIds = new Map());
+        if (!deferred.has(rec.recordId)) {
+          deferred.set(rec.recordId, sectorId);
+          this._noteSpawnWitness('criticalDeferred');
+          this.bus.emit('world:criticalSpawnDeferred', {
+            kind: rec.isBoss ? 'boss_record' : 'mission_record',
+            recordId: rec.recordId || null,
+            sectorId,
+            reason: 'spawn_cap',
+          });
+        }
+      }
+      return null;
+    }
+    let ent = null;
+    try {
+      ent = this.helpers.spawnEntity(spec);
+    } catch (error) {
+      if (budgeted && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!ent) {
+      if (budgeted && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return null;
+    }
+    if (budgeted && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
+    // Zero is a valid simulation timestamp. Falling back to `simTime` for a record first
+    // observed at t=0 silently discarded its entire deterministic catch-up interval.
+    const fromT = Number.isFinite(rec.lastExactT)
+      ? Math.min(rec.lastExactT, simTime)
+      : simTime;
+    const advanced = advanceWorldRecord(rec, fromT, simTime) || rec;
+    applyRecordVitals(ent, advanced);
+    bindEntityToRecord(ent, advanced);
+    // `captureEntityRecord` uses this birth stamp to preserve createdTick on the next
+    // residency capture. A rematerialized record has no fresh birth: losing the stamp here
+    // made the next eviction rewrite its age to the current tick (and restarted age-based
+    // aftermath/retention behavior after every Continue).
+    if (ent.data && Number.isFinite(advanced.createdTick)) {
+      ent.data.recordCreatedTick = advanced.createdTick;
+    }
+    // bindEntityToRecord stamps data.worldRecordId post-append — register it so the index's
+    // byWorldRecordId/count answer O(1) for this rematerialized durable immediately instead
+    // of waiting on a fallback-walk reseed (which can't bump the lane or the count).
+    registerEntityWorldRecordId(state && state.entityIndex, ent);
+    // It may also stamp homeSectorId — the sector lane follows the same register-after-write
+    // contract so the bucket answer stays current for this rematerialized durable.
+    syncEntitySectorMembership(state && state.entityIndex, ent);
+    this._decorateOrrinWitnessRecorder(ent, advanced);
+    this._stampHomeSector(ent, advanced.homeSectorId || sectorId);
+    // Restore pose after stamp (global — never re-add sector origin). Catch-up is simTime-closed-form.
+    if (ent.pos && advanced.pos) {
+      ent.pos.x = advanced.pos.x;
+      ent.pos.z = advanced.pos.z;
+    }
+    if (advanced !== rec) {
+      const bag = ensureWorldRecords(state.world);
+      upsertRecord(bag, advanced);
+    }
+    if (this._deferredCriticalRecordIds && rec.recordId) {
+      this._deferredCriticalRecordIds.delete(rec.recordId);
+    }
+    return ent;
+  },
+
+  /**
+   * Public/test hook: upsert a durable record for an entity (or plain record object).
+   */
+  upsertWorldRecord(input) {
+    const state = this.state;
+    const bag = ensureWorldRecords(state.world);
+    if (input && input.recordId && input.kind && input.pos) {
+      return upsertRecord(bag, input);
+    }
+    if (input && input.id != null) {
+      const e = state.entities.get(input.id) || input;
+      const sectorId = e.homeSectorId || (e.data && e.data.homeSectorId) || state.world.currentSectorId;
+      const captured = captureEntityRecord(e, {
+        sectorId,
+        seed: (state.meta && state.meta.seed) || 1,
+        tick: state.tick | 0,
+        simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
+        previousRecord: e.data && e.data.worldRecordId ? bag.byId[e.data.worldRecordId] : null,
+        recordsBag: bag,
+        stationSource: state,
+        extra: e.data && e.data.worldRecordId && bag.byId[e.data.worldRecordId]
+          ? bag.byId[e.data.worldRecordId].extra
+          : null,
+      });
+      return captured ? upsertRecord(bag, captured) : null;
+    }
+    return null;
+  },
+
+  /**
+   * Public/test hook: drop the job anchor from a record whose npcJobs entry is gone. The
+   * anchor latched the record PERMANENT at assign() time (upsertWorldRecord above); once the
+   * job has completed/released, that latch is stale — without this, job churn pinned one
+   * permanent record (plus its exempt far row) per finished job, forever (PQ-033.02 D28
+   * residual). The caller owns the proof that the job no longer exists; other permanent
+   * identity markers (mission/named/player/wreck/terminal outcome) still win through
+   * deriveRetentionClass, so this can only ever demote a spent actor back to recent memory.
+   */
+  clearWorldRecordJobAnchor(worldRecordId, jobId) {
+    const bag = ensureWorldRecords(this.state.world);
+    const rec = bag && bag.byId && worldRecordId != null ? bag.byId[worldRecordId] : null;
+    if (!rec || rec.jobId == null) return false;
+    if (jobId != null && rec.jobId !== jobId) return false;
+    // upsertRecord's retention latch intentionally never relaxes; this hook is the one writer
+    // that may, and only for the job anchor it owns.
+    const demoted = normalizeRecord({ ...rec, jobId: null, retentionClass: null });
+    if (!demoted) return false;
+    bag.byId[demoted.recordId] = demoted;
+    return true;
+  },
+
+  /**
+   * Materialize the one physical original that survives the published Corridor Massacre. Story
+   * owns case progress; world owns the body and the durable record that makes Continue/re-entry
+   * conservative. This deliberately grants neither cargo nor any economic/law outcome.
+   */
+  _ensureOrrinWitnessEvidence(payload) {
+    const source = orrinWitnessSource(this.state);
+    if (!source || payload.sourceId !== source.id) return null;
+
+    const sourceId = source.id;
+    const { sectorId, anchor } = source;
+    const recordId = orrinWitnessRecordId(sourceId);
+    if (!recordId) return null;
+    const identityKey = `${ORRIN_WITNESS_MARKER_ID}:${sourceId}`;
+    const bag = ensureWorldRecords(this.state.world);
+    let record = bag.byId[recordId] || null;
+    if (record) {
+      if (record.kind !== RECORD_KIND.AFTERMATH
+        || record.sectorId !== sectorId
+        || record.markerId !== ORRIN_WITNESS_MARKER_ID
+        || record.identityKey !== identityKey) return null;
+      if (record.alive === false || record.outcome === 'destroyed' || record.outcome === 'defeated') {
+        const staleLive = findLiveRecordEntity(this.state, recordId);
+        if (staleLive) staleLive.alive = false;
+        return record;
+      }
+    } else {
+      record = this.upsertWorldRecord({
+        recordId,
+        kind: RECORD_KIND.AFTERMATH,
+        sectorId,
+        homeSectorId: sectorId,
+        pos: { x: Number(anchor.x), z: Number(anchor.z) },
+        vel: { x: 0, z: 0 },
+        rot: 0,
+        type: 'wreck',
+        team: 2,
+        alive: true,
+        outcome: 'active',
+        wreckClass: 'evidence_recorder',
+        markerId: ORRIN_WITNESS_MARKER_ID,
+        victimClass: 'corridor-original',
+        durableReason: 'orrin_witness_corridor_original',
+        identityKey,
+      });
+    }
+    if (!record) return null;
+
+    // worldRecords only retains schema-owned fields. Stamp the live shell after rematerialization
+    // too, so the scanner receipt can prove the exact source instead of accepting a look-alike.
+    const candidate = findLiveRecordEntity(this.state, record.recordId);
+    const existing = isOrrinWitnessRecorder(candidate, sourceId) ? candidate : null;
+    const entity = existing || (this.state.world.currentSectorId === sectorId
+      ? this._spawnFromDurableRecord(record, sectorId) : null);
+    this._decorateOrrinWitnessRecorder(entity, record);
+    if (entity) this._stampHomeSector(entity, sectorId);
+    this.bus.emit('orrinWitness:evidenceEnsured', {
+      sourceId,
+      recordId: record.recordId,
+      sectorId,
+      entityId: entity && entity.id || null,
+    });
+    return record;
+  },
+
+  _decorateOrrinWitnessRecorder(entity, record) {
+    const prefix = `${ORRIN_WITNESS_MARKER_ID}:`;
+    const sourceId = record && record.markerId === ORRIN_WITNESS_MARKER_ID
+      && typeof record.identityKey === 'string'
+      && record.identityKey.startsWith(prefix)
+      ? record.identityKey.slice(prefix.length)
+      : null;
+    if (!entity || !sourceId) return false;
+    if (!entity.data) entity.data = {};
+    entity.data.markerId = ORRIN_WITNESS_MARKER_ID;
+    entity.data.orrinWitnessSourceId = sourceId;
+    entity.data.persistenceOwner = ORRIN_WITNESS_PERSISTENCE_OWNER;
+    entity.data.scannerSignalKind = 'archive';
+    entity.data.scanLabel = 'Corridor original recorder';
+    entity.data.name = 'Corridor Original Recorder';
+    entity.data.durable = true;
+    return true;
+  },
+
+  /** Mark durable record destroyed (player kill / outcome). Keeps identity for no-reroll. */
+  markWorldRecordDestroyed(recordId, opts = {}) {
+    const bag = ensureWorldRecords(this.state.world);
+    return markRecordDestroyed(bag, recordId, {
+      tick: this.state.tick | 0,
+      ...opts,
+    });
+  },
+
+  // The living-world slot terminates when ships takes custody; the physical hull stays alive.
+  // Explicit persistence ownership prevents the old traffic/world slot rematerializing a twin.
+  transferRecordToVesselCustody(entityId,vesselId) {
+    const entity=this.state.entities.get(entityId);
+    if(!entity?.alive||entity.data?.vesselId!==vesselId)return false;
+    const data=entity.data;
+    if(data.worldRecordId){
+      // 'custody_transferred' is not a terminal outcome normalizeRecord keeps — a save
+      // round-trip rewrote it to 'active', so a later upsert could flip the slot alive and
+      // rematerialize a twin of the jacked hull. 'destroyed' is the terminal latch the bag's
+      // normalize/upsert contract preserves; the custody provenance rides in extra, which
+      // normalizeRecord passes through verbatim.
+      const rec=this.markWorldRecordDestroyed(data.worldRecordId,{outcome:'destroyed',pos:{x:entity.pos.x,z:entity.pos.z}});
+      if(rec)rec.extra={...(rec.extra||{}),custodyOutcome:'custody_transferred'};
+    }
+    if(data.jobId)this.helpers?.npcJobs?.release?.(data.jobId);
+    data.persistenceOwner='shipjack';
+    return true;
+  },
+
+  /**
+   * Test/harness hook: force a tier transition (used by residency tests for eviction).
+   * @param {string} sectorId
+   * @param {string} tier
+   * @param {{reason?:string}} [opts]
+   */
+  _setSectorTier(sectorId, tier, opts = {}) {
+    this._ensureResidencyState();
+    if (tier === RESIDENCY_TIER.RECORD_ONLY) {
+      this._demoteSectorToRecordOnly(sectorId);
+    } else if (tier === RESIDENCY_TIER.REDUCED || tier === RESIDENCY_TIER.FULL) {
+      this._ensureSectorMaterialized(sectorId, tier);
+      this._syncSectorTierContent(sectorId, tier);
+      this._setResidentMeta(sectorId, tier, opts.reason || 'test');
+    }
+    this.bus.emit('world:residency', {
+      sectors: Object.keys(this.state.world.residentSectors).sort().map((id) => ({
+        sectorId: id,
+        tier: this.state.world.residentSectors[id].tier,
+        epoch: this.state.world.residentSectors[id].epoch,
+      })),
+      membershipSectorId: this.state.world.currentSectorId,
+      reason: opts.reason || 'test',
+      tick: this.state.tick | 0,
+      noTeleport: true,
+    });
+  },
+
+  /** Scoped despawn: only entities owned by homeSectorId. Never player / persistent / mission-pinned. */
+  _despawnEntitiesForSector(sectorId) {
+    dropAsteroidFieldSector(this.state, sectorId);
+    dropDressingSector(this.state, sectorId);
+    dropFarActorSector(this.state, sectorId);
+    const state = this.state;
+    const list = state.entityList;
+    // Collect first, remove in one batch: a residency drop can strip dozens of bodies and
+    // per-entity removal re-scans every index bucket per corpse. The destroy path applies
+    // highest-index-first, so swap-pop and entity:destroyed ordering are unchanged.
+    const indices = this._despawnScratch || (this._despawnScratch = []);
+    indices.length = 0;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const e = list[i];
+      if (!e) continue;
+      if (this._isProtectedFromResidency(e)) continue;
+      const home = e.homeSectorId || (e.data && e.data.homeSectorId);
+      if (home !== sectorId) continue;
+      indices.push(i);
+    }
+    this._destroyEntitiesAtIndices(indices);
+  },
+
+  _despawnEntityIds(idSet, sectorId) {
+    if (!idSet || idSet.size === 0) return;
+    const state = this.state;
+    const list = state.entityList;
+    const indices = this._despawnScratch || (this._despawnScratch = []);
+    indices.length = 0;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const e = list[i];
+      if (!e || !idSet.has(e.id)) continue;
+      if (this._isProtectedFromResidency(e)) continue;
+      if (sectorId) {
+        const home = e.homeSectorId || (e.data && e.data.homeSectorId);
+        if (home && home !== sectorId) continue;
+      }
+      indices.push(i);
+    }
+    this._destroyEntitiesAtIndices(indices);
+  },
+
+  _isProtectedFromResidency(e) {
+    const state = this.state;
+    if (!e) return true;
+    if (e.id === state.playerId) return true;
+    if (e.isPlayer) return true;
+    if (e.flags && (e.flags.persistent || e.flags.missionPinned)) return true;
+    // missionTag is the live mission spawn marker (missions.js); treat as pinned identity.
+    if (e.data && (e.data.persistent || e.data.missionPinned || e.data.missionId || e.data.missionTag)) return true;
+    return false;
+  },
+
+  _destroyEntityAtIndex(i, reason) {
+    const state = this.state;
+    const list = state.entityList;
+    const e = list[i];
+    if (!e) return;
+    const removeEntity = this.helpers && this.helpers.removeEntity;
+    if (typeof removeEntity === 'function') removeEntity(e.id, { immediate: true, index: i, reason });
+    else e.alive = false;
+  },
+
+  // Batch despawn: one index pass via the core multi-corpse helper; falls back to the
+  // per-entity walk when helpers are stubbed (minimal harnesses). Indices are normalized to
+  // highest-first — the reverse-walk order every caller used before. Every caller is a
+  // residency-family teardown, so corpse emits carry reason:'sector_residency' like the
+  // run_reset/save_restore/virtualize tags — a listener that can classify the transition
+  // skips work it would otherwise pay per corpse inside the flush.
+  _destroyEntitiesAtIndices(indices, opts) {
+    if (!indices || indices.length === 0) return;
+    indices.sort((a, b) => b - a);
+    const reason = opts && opts.reason != null ? opts.reason : 'sector_residency';
+    const removeAt = this.helpers && this.helpers.removeEntitiesAtIndices;
+    if (typeof removeAt === 'function') {
+      removeAt(indices, { immediate: true, reason });
+      return;
+    }
+    for (let k = 0; k < indices.length; k++) this._destroyEntityAtIndex(indices[k], reason);
+  },
+
+  /**
+   * LEGACY global wipe — retained only for emergency tooling. Continuous residency and
+   * enterSector MUST NOT call this (M2a: no global wipe on continuous or bounded jump).
+   * @deprecated use _despawnEntitiesForSector
+   */
+  _despawnSectorEntities() {
+    const state = this.state;
+    const list = state.entityList;
+    const indices = this._despawnScratch || (this._despawnScratch = []);
+    indices.length = 0;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const e = list[i];
+      if (this._isProtectedFromResidency(e)) continue;
+      indices.push(i);
+    }
+    this._destroyEntitiesAtIndices(indices);
+  },
+
+  _stampHomeSector(ent, sectorId) {
+    if (!ent || !sectorId) return ent;
+    ent.homeSectorId = sectorId;
+    if (!ent.data) ent.data = {};
+    ent.data.homeSectorId = sectorId;
+    if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
+    syncEntitySectorMembership(this.state && this.state.entityIndex, ent);
+    return ent;
+  },
+
+  // Free-flight membership: nearest corridor origin; no teleport / vel zero / noInterp.
+  _tickResidency(state) {
+    if (state.mode !== 'flight') return;
+    // Skip membership auto-switch while gate/drive tunnel is in progress.
+    if (state.jump && (state.jump.state === 'CHARGING' || state.jump.state === 'JUMPING')) return;
+    const player = state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const next = sectorMembershipAtGlobal(player.pos, CORRIDOR_SECTOR_IDS);
+    const current = state.world.currentSectorId;
+    if (!next || next === current) { this._membershipCandidate = null; return; }
+    // Only auto-switch when both current and next are corridor (or current is unset/corridor).
+    if (current && !isCorridorSector(current)) return;
+    // Hysteresis: the player must penetrate a pair-scaled margin past the Voronoi edge and hold
+    // that lead for MEMBERSHIP_DWELL_S continuously before the residency plan re-runs. On the
+    // bisector, dCur² - dNext² = 2·span·y (y = perpendicular penetration past the edge), so the
+    // condition below is exactly y ≥ max(MIN_PENETRATION, SWITCH_FRACTION·span).
+    const dNext = _dist2ToSectorOrigin(player.pos, next);
+    const dCur = current ? _dist2ToSectorOrigin(player.pos, current) : Infinity;
+    const span = current ? Math.sqrt(_dist2ToSectorOrigin(sectorGlobalOrigin(next), current)) : 0;
+    const penetrationNeeded = Math.max(MEMBERSHIP_MIN_PENETRATION_WU, MEMBERSHIP_SWITCH_FRACTION * span);
+    const lead = dCur - dNext >= 2 * span * penetrationNeeded;
+    if (!lead) { this._membershipCandidate = null; return; }
+    const now = state.simTime || 0;
+    if (!this._membershipCandidate || this._membershipCandidate.sectorId !== next) {
+      this._membershipCandidate = { sectorId: next, sinceT: now };
+      // The dwell window before the switch is a warm runway for a candidate whose bag is
+      // already materialized REDUCED — continuous sector entry mounts the FULL-extras
+      // cohort with no charge screen to hide the decode.
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('sector:membershipCandidate', { sectorId: next });
+      }
+      return;
+    }
+    if (now - this._membershipCandidate.sinceT < MEMBERSHIP_DWELL_S) return;
+    this._membershipCandidate = null;
+    this.enterSector(next, {
+      continuous: true,
+      noTeleport: true,
+      fromSectorId: current,
+    });
+  },
+
+  // --- coordinate helpers (sector-local authored → galactic-global, once at spawn) ----------
+  /** Compose sector-local XZ into galactic-global for the given sector id. */
+  _toGlobal(local, sectorId, out) {
+    return sectorLocalToGlobalForSector(local, sectorId, out);
+  },
+
+  /** Sector galactic origin as a plain {x,z} (may share frozen table entries — treat read-only). */
+  _sectorOrigin(sectorId) {
+    return sectorGlobalOrigin(sectorId);
+  },
+
+  // --- spawn helpers ------------------------------------------------------------------------
+  // Arranger contexts exist only for a synchronous spawn pass. No registry entry, live cache,
+  // renderer write, event subscription or per-tick work is added. Authored Ceres marks are reserved
+  // BEFORE the first movable rock, including collision slots that materialize later in the loop.
+  _arrangerForSector(sector, active) {
+    if (readArrangementVersion(this.state.world.arrangementVersion, ARRANGEMENT_VERSION) === 0) return null;
+    const reservations = [];
+    reservations.push(...lanternWardReservations(this, sector, active));
+    // Machine adapters materialize after scatter; reserve the same authored envelopes
+    // used by ladder bedrock before any native body can be born inside their skins.
+    for (const machine of killMachinesForSector(sector.id)) {
+      reservations.push({ pos: machine.globalPos, radius: machine.hazardRadius });
+      reservations.push({ pos: machine.anvil.pos,
+        radius: asteroidColliderRadius('ast_common_rock', machine.anvil.radius) });
+    }
+    // Authored bedrock materializes after scatter. Reserve its native skin first, so
+    // mapping a free rock cannot put it inside a landmark that has not spawned yet.
+    for (const field of sector.fields || []) {
+      for (const boulder of field.boulders || []) {
+        if (!boulder || !boulder.id || !boulder.pos) continue;
+        const def = AST_BY_ID.get(boulder.type || field.type) || AST_BY_ID.get('ast_common_rock');
+        const radius = Math.max(1, Number(boulder.radius) || (def.sizeRange || [6, 14])[1]);
+        reservations.push({ pos: this._toGlobal(boulder.pos, sector.id),
+          radius: asteroidColliderRadius(def.id, radius) });
+      }
+    }
+    if (sector.id === CERES_ACTIVITY_SECTOR_ID) {
+      const asteroidRadiusFor = (fieldId) => {
+        const field = (sector.fields || []).find((row) => row.id === fieldId);
+        const def = AST_BY_ID.get(field && field.type) || AST_BY_ID.get('ast_common_rock');
+        const sizes = def && def.sizeRange;
+        return Array.isArray(sizes) && sizes.every(Number.isFinite) ? Math.max(1, ...sizes) : 30;
+      };
+      for (const { pocket, slot } of CERES_ACTIVITY_OBJECT_SLOTS.values()) {
+        const presentation = CERES_ACTIVITY_DRONE_SLOT_PRESENTATION[slot.id];
+        const placeId = presentation && presentation.placeId
+          || (slot.id === 'ceres_refinery_cargo_pod' ? 'place_conveyor_barge'
+            : slot.id === 'ceres_ambush_distress_beacon' ? 'place_nav_buoy' : null);
+        // Read the owner's real radii: a 48-WU bait hull must not get a 36-WU reservation.
+        const radius = slot.id === 'ceres_seam_ore_clast'
+          ? asteroidRadiusFor('f_ceres_1') : (DRESSING_RADIUS[placeId] || 48);
+        reservations.push({
+          pos: this._toGlobal({
+            x: pocket.activityAnchor.localPos.x + slot.offset.x,
+            z: pocket.activityAnchor.localPos.z + slot.offset.z,
+          }, sector.id),
+          radius,
+        });
+      }
+      for (const { pocket, slot } of CERES_ACTIVITY_COLLISION_ANCHORS.values()) {
+        reservations.push({
+          pos: this._toGlobal({
+            x: pocket.activityAnchor.localPos.x + slot.offset.x,
+            z: pocket.activityAnchor.localPos.z + slot.offset.z,
+          }, sector.id),
+          radius: asteroidRadiusFor(slot.sourceFieldId),
+        });
+      }
+    }
+    // VX-02 Cracker Run: authored lane discs keep seeded scatter out of the ring's rib
+    // corridor, apron, chute and refuge lines, the same protection machines and boulders get.
+    reservations.push(...vxFreeDriveReservationsFor(sector.id,
+      (localPos) => this._toGlobal(localPos, sector.id)));
+    const heliosFace = heliosOpeningFaceBinding(sector.id, 'f_helios_starter', 1,
+      (localPos) => this._toGlobal(localPos, sector.id));
+    if (heliosFace) {
+      const field = (sector.fields || []).find((row) => row.id === 'f_helios_starter');
+      const def = AST_BY_ID.get(field?.type) || AST_BY_ID.get('ast_common_rock');
+      const sizes = def?.sizeRange || [30];
+      reservations.push({ pos: heliosFace.pos, radius: Math.max(1, ...sizes) });
+    }
+    return createSectorArranger(sector, { origin: this._sectorOrigin(sector.id), active, reservations });
+  },
+
+  _spawnStations(sector, active, rng) {
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const stations = sector.stations || [];
+    const n = stations.length;
+    stations.forEach((st, i) => {
+      // Authored anchors win; procedural ring is fallback for dev sectors missing pos.
+      // RNG order preserved: roll ang/ringR before conversion even when pos is authored.
+      const ang = (Math.PI * 2 * i) / Math.max(1, n) + rng() * 0.6;
+      const ringR = wr * (0.28 + rng() * 0.22);
+      const local = st.pos
+        ? { x: st.pos.x, z: st.pos.z }
+        : { x: Math.cos(ang) * ringR, z: Math.sin(ang) * ringR };
+      const pos = this._toGlobal(local, sector.id);
+      const size = st.size || 'M';
+      const dockRadius = size === 'L' ? 90 : size === 'S' ? 60 : 72;
+      const collisionRadius = size === 'L' ? 42 : size === 'S' ? 26 : 34;
+      // PQ-008 compound collision proxies: every procedural station shares the ring-hub
+      // silhouette (buildStation), so every station gets the compound proxy — a single ball
+      // let ships fly through the drawn rings and spars. The corridor bearing faces the sector
+      // origin (the natural traffic approach), stamped in station-local degrees (station rot is
+      // 0); the manifest snaps it to an inter-spar lane.
+      const collisionProxyId = collisionProxyIdForStation(st.id) || 'station_ring_hub';
+      const sectorOrigin = this._sectorOrigin(sector.id);
+      const corridorBearingDeg = sectorOrigin && Number.isFinite(sectorOrigin.x)
+        ? Math.atan2(sectorOrigin.z - pos.z, sectorOrigin.x - pos.x) * (180 / Math.PI)
+        : null;
+      // During Continue the envelope may carry earned station recoil/attachment state.
+      // Materialize that exact carrier at the catalog's normal slot, so its bag/anchors
+      // and the later persistent pass all refer to one body rather than a fresh twin.
+      const ent = spawnRestoredCatalogStation(this.state, this.helpers, st.id, sector.id, pos)
+        || this.helpers.spawnEntity({
+        type: 'station', factionId: st.factionId || sector.factionId, pos,
+        radius: collisionRadius, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
+        data: {
+          stationId: st.id, stationTypeId: st.type, dockRadius,
+          ...(st.id === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(this.state)
+            ? { dockDeny: 'private' } : {}),
+          placeScale: dockRadius / 14,
+          collisionRadius,
+          ...(collisionProxyId ? { collisionProxy: collisionProxyId, corridorBearingDeg } : {}),
+          services: st.services || [], factionId: st.factionId || sector.factionId,
+          name: st.name, size,
+          // Chart note travels onto the live entity: the star chart's station lookup prefers live
+          // entity data over the static catalog, so a catalog-only note would vanish once the
+          // sector spawns. See src/ui/galaxyMap.js `findStationRecord`.
+          chartNote: st.chartNote || null,
+          contested: !!st.contested, repGated: !!st.repGated,
+          // The authored repGated flag means positive standing, not merely "not attack-on-sight".
+          // An explicit minRep remains available for stations with a stricter local contract.
+          ...(Number.isFinite(stationMinRepFor(st)) ? { minRep: stationMinRepFor(st) } : {}),
+          sectorId: sector.id,
+          homeSectorId: sector.id,
+          archetypeGlb: st.archetypeGlb || null,
+          landmark: !!st.landmark,
+          landmarkGlb: st.landmarkGlb || null,
+          // Stations are not authored set pieces, so a postcard body resolves only
+          // when the live station is marked as kit dressing. Other station types stay unmarked.
+          ...(st.archetypeGlb && POSTCARD_LANDMARK_PLACE_FILE_BY_ID[st.archetypeGlb]
+            ? { everydaySpaceKit: true }
+            : {}),
+        },
+      });
+      this._stampHomeSector(ent, sector.id);
+      active.stations.push({ id: ent.id, stationId: st.id, pos: { x: ent.pos.x, z: ent.pos.z } });
+    });
+  },
+
+  // Asteroid FIELDS: clusters of real ASTEROIDS-type rocks so mining oreTables resolve.
+  _spawnFields(sector, active, disc, rng) {
+    for (const _ of this._spawnFieldsChunks(sector, active, disc, rng)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin of _spawnFields: yields every 8 rock inserts so the restore lane paints
+   * inside a big field. The sync wrapper drains inline — identical rng draws and spawn order.
+   */
+  *_spawnFieldsChunks(sector, active, disc, rng) {
+    if (sector && sector.interiorHost) {
+      for (const fdef of sector.fields || []) {
+        const centerLocal = fdef.center || { x: 0, z: 0 };
+        const center = this._toGlobal(centerLocal, sector.id);
+        active.fields.push({
+          id: fdef.id,
+          type: fdef.type,
+          center: { x: center.x, z: center.z },
+          asteroidIds: [],
+        });
+      }
+      return;
+    }
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const baseParams = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1];
+    // Shallow copy so we can attach homeSectorId without mutating the shared FIELDS catalog.
+    const ecology = regionalEcologyReadout(this.state, sector.id);
+    const params = {
+      ...baseParams,
+      _homeSectorId: sector.id,
+      _ecologyYieldMultiplier: regionalResourceYieldMultiplier(this.state, sector.id),
+      _ecologyFingerprint: ecology && ecology.fingerprint || null,
+    };
+    const fieldDefs = sector.fields || [];
+    // The corridor peer list resets on this pass's first arranger. A fieldless sector
+    // still owns that reset — the POI/dressing membranes run after this phase and must
+    // neither consult last pass's seats nor lose the seats they register to a later
+    // arranger creation inside the same pass.
+    const arranger = this._arrangerForSector(sector, active);
+    if (!fieldDefs.length) return;
+
+    // Split the sector's asteroid budget across its declared fields, weighted by countWeight.
+    const totalWeight = fieldDefs.reduce((s, f) => s + (f.countWeight || 1), 0) || 1;
+    const budget = params.astCount || 80;
+
+    for (const fdef of fieldDefs) {
+      const depleted = (disc.fieldsDepleted && disc.fieldsDepleted[fdef.id]) || 0;
+      const share = (fdef.countWeight || 1) / totalWeight;
+      // An authored `count` is exact — including 0 for an intentionally empty field (a named
+      // grit row that owes the sector a field entry but no rocks). The floor of one used to
+      // force a rock the author removed; only the interior-host early return hid it on Bolus.
+      const count = fdef.count != null
+        ? Math.max(0, Math.round(fdef.count * (1 - 0.6 * depleted)))
+        : Math.max(4, Math.round(budget * share * (1 - 0.6 * depleted)));
+      // Authored fields may pin their center/radius for onboarding or landmark readability.
+      // Math stays sector-local for layout/RNG; convert the center once for live records + rocks.
+      const cang = rng() * Math.PI * 2;
+      const cR = wr * (0.35 + rng() * 0.4);
+      const centerLocal = fdef.center
+        ? { x: fdef.center.x, z: fdef.center.z }
+        : { x: Math.cos(cang) * cR, z: Math.sin(cang) * cR };
+      const center = this._toGlobal(centerLocal, sector.id);
+      const clusterR = fdef.clusterRadius || params.clusterRadius || 450;
+      const astIds = [];
+      const arrangement = arranger && arranger.createField(fdef, center, clusterR);
+      const authoredGeologyPlaceId = authoredGeologyPlaceForField(fdef);
+      for (let i = 0; i < count; i++) {
+        if (i > 0 && (i & 7) === 0) yield 'materialize:field-rocks';
+        const activityBinding = sector.id === CERES_ACTIVITY_SECTOR_ID
+          && fdef.id === 'f_ceres_1'
+          && i === 1
+          ? ceresActivityObjectBinding(
+            'ceres_seam_ore_clast',
+            (localPos) => this._toGlobal(localPos, sector.id),
+          )
+          : heliosOpeningFaceBinding(sector.id, fdef.id, i,
+            (localPos) => this._toGlobal(localPos, sector.id));
+        const collisionAnchorBinding = sector.id === CERES_ACTIVITY_SECTOR_ID
+          ? ceresActivityCollisionAnchorBinding(
+            fdef.id,
+            i,
+            (localPos) => this._toGlobal(localPos, sector.id),
+          )
+          : null;
+        if (activityBinding && collisionAnchorBinding) {
+          throw new Error(`Ceres activity bindings overlap at ${fdef.id}:${i}`);
+        }
+        const a = this._spawnAsteroid(
+          fdef,
+          params,
+          center,
+          clusterR,
+          rng,
+          i === 0 ? authoredGeologyPlaceId : null,
+          activityBinding,
+          collisionAnchorBinding,
+          i,
+          arrangement,
+        );
+        if (a) {
+          this._stampHomeSector(a, sector.id);
+          astIds.push(a.id);
+        }
+      }
+      // Authored heavy boulders (WF-06 starter-seam loop-lock): pinned sector-local bodies the
+      // field def names beside its scatter. No rng draws — the shared content stream (and every
+      // existing field layout) is untouched. They ride the same field-record shelf as the scatter
+      // rocks, so promotion, mining and durability all reuse the live owners.
+      if (Array.isArray(fdef.boulders)) {
+        for (const b of fdef.boulders) {
+          if (!b || !b.id || !b.pos) continue;
+          const ent = this._spawnAuthoredBoulder(sector, fdef, params, b);
+          if (ent) {
+            this._stampHomeSector(ent, sector.id);
+            astIds.push(ent.id);
+          }
+        }
+      }
+      // Authored count: 0 means a deliberately empty field — the ladder is for stocked belts,
+      // so its rungs respect the same authored floor the scatter pass does. Explicitly authored
+      // boulders (above) still stand: they are named bodies, not scatter.
+      if (fdef.count !== 0) {
+        this._ensureRockLadderBedrock(sector, fdef, params, centerLocal, clusterR, count, astIds);
+      }
+      active.fields.push({ id: fdef.id, type: fdef.type, center: { x: center.x, z: center.z }, asteroidIds: astIds });
+    }
+  },
+
+  _spawnAsteroid(
+    fdef,
+    params,
+    center,
+    clusterR,
+    rng,
+    authoredGeologyPlaceId = null,
+    activityBinding = null,
+    collisionAnchorBinding = null,
+    slotIndex = 0,
+    arrangement = null,
+  ) {
+    const def = AST_BY_ID.get(fdef.type) || AST_BY_ID.get('ast_common_rock');
+    // disc-uniform scatter inside the cluster (center is already galactic-global)
+    const ang = rng() * Math.PI * 2;
+    const r = clusterR * Math.sqrt(rng());
+    const scatteredPos = { x: center.x + Math.cos(ang) * r, z: center.z + Math.sin(ang) * r };
+
+    const [hpLo, hpHi] = def.hp || [120, 520];
+    const oreHP = Math.round(hpLo + (hpHi - hpLo) * rng());
+    const [szLo, szHi] = def.sizeRange || [6, 14];
+    const size = szLo + (szHi - szLo) * rng();
+    const [yLo, yHi] = def.yieldU || [8, 22];
+    // interpolate yield in lockstep with hp (matches mining's _defaultYield)
+    const t = hpHi === hpLo ? 1 : (oreHP - hpLo) / (hpHi - hpLo);
+    const baseYieldU = Math.max(1, Math.round(yLo + (yHi - yLo) * t));
+    const ecologyYield = Number(params && params._ecologyYieldMultiplier)
+      || regionalResourceYieldMultiplier(this.state, params && params._homeSectorId)
+      || 1;
+    const yieldU = Math.max(1, Math.round(baseYieldU * ecologyYield));
+    const tierCap = Math.min(def.tierCap, params.tierCap != null ? params.tierCap : def.tierCap);
+    const angVel = (rng() - 0.5) * 0.35;
+    // Activity bindings substitute existing-budget slots only after consuming every original
+    // asteroid draw. They must not alter count, spawn order, geology index 0, or the later stream.
+    const positionBinding = activityBinding || collisionAnchorBinding;
+    const originalPos = positionBinding && positionBinding.pos
+      ? { x: positionBinding.pos.x, z: positionBinding.pos.z }
+      : scatteredPos;
+    // Map positions only, after every legacy draw. Pinned geology/activity/collision slots win.
+    const pos = arrangement
+      ? arrangement.place(originalPos, asteroidColliderRadius(def.id, size), slotIndex, !!(positionBinding || authoredGeologyPlaceId))
+      : originalPos;
+
+    const data = environmentSurfaceData(adventureMaterialFor(def.id, this.state.meta.seed, fdef.id, slotIndex), {
+      typeId: def.id, tier: def.tierCap, tierCap,
+      oreHP, oreHPMax: oreHP, yieldU,
+      ecologyFingerprint: params && params._ecologyFingerprint
+        || regionalEcologyReadout(this.state, params && params._homeSectorId)?.fingerprint
+        || null,
+      size, pctEjected: 0, respawnSec: params.respawnSec || 120,
+      fieldId: fdef.id,
+      asteroidSlotId: String(slotIndex),
+      ...(authoredGeologyPlaceId ? {
+        authoredGeologySkin: true,
+        // Row 495: the field's hero rock wears the same hand-made family body the arena
+        // throws — picked by the deterministic substance roll stamped below, so the authored
+        // body and the substance physics never disagree.
+        placeId: authoredRockPlaceId(
+          rockSubstanceForSlot(this.state.meta.seed, fdef.id, slotIndex), size)
+          || authoredGeologyPlaceId,
+        placeTargetRadius: size,
+      } : {}),
+      ...(activityBinding && activityBinding.id
+        ? { activityObjectSlotId: activityBinding.id }
+        : {}),
+      ...(collisionAnchorBinding && collisionAnchorBinding.id
+        ? { activityCollisionAnchorSlotId: collisionAnchorBinding.id }
+        : {}),
+    });
+    // Row 509: the substance layer rides on the material read — pick deterministically per slot,
+    // stamp the contract on data, and let density answer the body's mass.
+    const densityMult = applyRockSubstance(data, rockSubstanceForSlot(this.state.meta.seed, fdef.id, slotIndex));
+    const keepLive = shouldKeepLiveAsteroid({
+      activityBinding,
+      collisionAnchorBinding,
+      authoredGeologyPlaceId,
+    });
+    const ent = keepLive
+      ? this.helpers.spawnEntity({
+        type: 'asteroid', pos,
+        radius: size, mass: Math.round(asteroidMass(params && params._homeSectorId, size) * densityMult), angVel,
+        hull: oreHP, hullMax: oreHP, collides: true,
+        // The render mesh's displaced bumps exceed entity.radius; the collider covers them.
+        physicsBody: { radius: asteroidColliderRadius(def.id, size) },
+        data,
+      })
+      : insertAsteroidFieldRock(this.state, {
+        pos,
+        rot: 0,
+        angVel,
+        radius: size,
+        mass: Math.round(asteroidMass(params && params._homeSectorId, size) * densityMult),
+        hull: oreHP,
+        hullMax: oreHP,
+        data,
+        homeSectorId: params && params._homeSectorId,
+      });
+    // Asteroid fields are always spawned for a concrete sector bag — recover id from field center bag via caller.
+    // homeSectorId is stamped by _spawnAsteroidInSector when available; fallback leaves data open.
+    if (params && params._homeSectorId) this._stampHomeSector(ent, params._homeSectorId);
+    ent.data.seams = deriveAsteroidSeams(this.state.meta.seed, ent.id, ent.radius, {
+      hash32: this.helpers.hash32,
+      mulberry32: this.helpers.mulberry32,
+    });
+    const generatedX = pos.x, generatedZ = pos.z;
+    this._restoreResourceBody(ent);
+    // A mined/moved durable body remains authoritative. Reserve its restored pose as well so
+    // later generated rocks do not crowd it; never pull it back into the composition.
+    if (arrangement && ent.pos && (ent.pos.x !== generatedX || ent.pos.z !== generatedZ || ent.radius !== size)) {
+      arrangement.reserveRestored(ent.pos, ent.radius);
+    }
+    return ent;
+  },
+
+  // An authored heavy boulder named by a field def's `boulders` row: pinned sector-local pos,
+  // authored radius/oreHP/yieldU inside its type's own tables, zero rng consumption so the
+  // sector's content stream never shifts. Shelf record (not live): the approach/promote path the
+  // scatter rocks use owns it the moment a pilot flies at it. The `boulder:<id>` slot id gives
+  // the body a durable resourceBody identity, so a mined boulder stays mined across saves.
+  _spawnAuthoredBoulder(sector, fdef, params, b) {
+    const def = AST_BY_ID.get(b.type || fdef.type) || AST_BY_ID.get('ast_common_rock');
+    const radius = Math.max(1, Number(b.radius) || (def.sizeRange || [6, 14])[1]);
+    const oreHP = Math.max(4, Math.round(Number(b.oreHP) || (def.hp || [120, 520])[1]));
+    const yieldU = Math.max(1, Math.round(Number(b.yieldU) || (def.yieldU || [8, 22])[1]));
+    const tierCap = Math.min(def.tierCap, params.tierCap != null ? params.tierCap : def.tierCap);
+    const pos = this._toGlobal({ x: Number(b.pos.x) || 0, z: Number(b.pos.z) || 0 }, sector.id);
+    const data = environmentSurfaceData(b.material || adventureMaterialFor(def.id, this.state.meta.seed, fdef.id, b.id), {
+      typeId: def.id, tier: def.tierCap, tierCap,
+      oreHP, oreHPMax: oreHP, yieldU,
+      ecologyFingerprint: params && params._ecologyFingerprint || null,
+      size: radius, pctEjected: 0, respawnSec: params.respawnSec || 120,
+      fieldId: fdef.id,
+      asteroidSlotId: `boulder:${b.id}`,
+      authoredBoulderId: b.id,
+    });
+    const boulderDensity = applyRockSubstance(data, rockSubstanceForSlot(this.state.meta.seed, fdef.id, `boulder:${b.id}`));
+    const ent = insertAsteroidFieldRock(this.state, {
+      pos,
+      rot: 0,
+      angVel: 0, // pinned seam bedrock — authored bodies do not tumble
+      radius,
+      mass: Math.round(asteroidMass(params && params._homeSectorId, radius) * boulderDensity),
+      hull: oreHP,
+      hullMax: oreHP,
+      data,
+      homeSectorId: params && params._homeSectorId,
+    });
+    if (!ent) return null;
+    ent.data.seams = deriveAsteroidSeams(this.state.meta.seed, ent.id, ent.radius, {
+      hash32: this.helpers.hash32,
+      mulberry32: this.helpers.mulberry32,
+    });
+    this._restoreResourceBody(ent);
+    return ent;
+  },
+
+  /**
+   * Row 511 (W-LADDER): pin ladder bedrock so every stocked field carries the Katamari rungs —
+   * ROCK_LADDER_MIN_PER_TIER bodies on each tier T0–T4. Scatter coverage counts at the field's
+   * sizeRange midpoint band; authored boulders count at their own radius; the ladder tops each
+   * short band up with pinned bodies riding the authored-boulder path (durable records, zero rng).
+   */
+  _ensureRockLadderBedrock(sector, fdef, params, centerLocal, clusterR, scatterCount, astIds) {
+    const def = AST_BY_ID.get(fdef.type) || AST_BY_ID.get('ast_common_rock');
+    const [szLo, szHi] = def.sizeRange || [6, 14];
+    const counts = [0, 0, 0, 0, 0];
+    counts[Math.min(4, rockTierForRadius((szLo + szHi) / 2))] += Math.max(0, scatterCount | 0);
+    for (const b of fdef.boulders || []) {
+      const r = Math.max(1, Number(b && b.radius) || szHi);
+      counts[Math.min(4, rockTierForRadius(r))] += 1;
+    }
+    // Logical field rows include dormant rocks, so the result is independent of promotion order.
+    // Reserve machine geometry from authored data too: its adapters materialize after the field.
+    // Only this sector's rocks block the spoke walk — a foreign-sector rock on the ray used to
+    // push a ladder rung tens of thousands of WU out of its own belt.
+    const blockers = (this.state.world?.asteroidField?.rocks || [])
+      .filter(rock => rock && rock.alive !== false && rock.pos && rock.homeSectorId === sector.id)
+      .map(rock => ({ pos: rock.pos,
+        radius: asteroidColliderRadius(rock.data?.typeId, rock.radius) }));
+    for (const machine of killMachinesForSector(sector.id)) {
+      blockers.push({ pos: machine.globalPos, radius: machine.hazardRadius });
+      blockers.push({ pos: machine.anvil.pos,
+        radius: asteroidColliderRadius('ast_common_rock', machine.anvil.radius) });
+    }
+    // Keep fresh ladder bedrock out of the same authored lanes as arranged scatter.
+    blockers.push(...vxFreeDriveReservationsFor(sector.id,
+      (localPos) => this._toGlobal(localPos, sector.id)));
+    const center = this._toGlobal(centerLocal || { x: 0, z: 0 }, sector.id);
+    for (let tier = 0; tier <= 4; tier++) {
+      for (let k = counts[tier]; k < ROCK_LADDER_MIN_PER_TIER; k++) {
+        const ang = k * 2.399963 + tier * 1.31;
+        let cr = Math.max(60, clusterR * (0.55 + 0.09 * (k % 3)));
+        const ux = Math.cos(ang), uz = Math.sin(ang);
+        const radius = asteroidColliderRadius(def.id, ROCK_LADDER_RADII[tier]);
+        const intervals = [];
+        for (const blocker of blockers) {
+          const dx = blocker.pos.x - center.x, dz = blocker.pos.z - center.z;
+          const along = dx * ux + dz * uz, across = dx * uz - dz * ux;
+          const reach = radius + blocker.radius + 4;
+          if (Math.abs(across) >= reach) continue;
+          const half = Math.sqrt(Math.max(0, reach * reach - across * across));
+          if (along + half >= cr) intervals.push([along - half, along + half]);
+        }
+        intervals.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+        // Advance along this rung's authored spoke through the finite union of occupied
+        // intervals. No retries, dropped rungs, extra RNG or post-physics pose correction.
+        for (const [start, end] of intervals) if (cr >= start && cr <= end) cr = end + 1;
+        const ent = this._spawnAuthoredBoulder(sector, fdef, params, {
+          id: `ladder_${fdef.id}_${tier}_${k}`,
+          pos: { x: (centerLocal ? centerLocal.x : 0) + ux * cr,
+                 z: (centerLocal ? centerLocal.z : 0) + uz * cr },
+          radius: ROCK_LADDER_RADII[tier],
+          type: fdef.type,
+        });
+        if (ent) {
+          this._stampHomeSector(ent, sector.id); astIds.push(ent.id); counts[tier]++;
+          blockers.push({ pos: ent.pos,
+            radius: asteroidColliderRadius(ent.data?.typeId, ent.radius) });
+        }
+      }
+    }
+  },
+
+  _resourceBodyRetentionOptions() {
+    return { npcJobs: this._resourceBodyRestoreJobs || this.state?.npcJobs };
+  },
+
+  finishResourceBodyRestore() {
+    this._resourceBodyRestoreJobs = null;
+  },
+
+  _restoreResourceBody(ent) {
+    if (!ent || ent.type !== 'asteroid') return ent;
+    const state = this.state;
+    const opts = this._resourceBodyRetentionOptions();
+    const bag = ensureResourceBodies(state.world, opts);
+    const rec = findResourceBodyForEntity(bag, ent);
+    if (!rec) return ent;
+    if (rec.outcome === 'destroyed') {
+      ent.alive = false;
+      if (ent.data) ent.data.respawnAt = Number.isFinite(rec.depletedAtT) ? rec.depletedAtT : state.simTime;
+      return ent;
+    }
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
+    // Zero is a valid observation/mining time; only clamp future timestamps, never treat zero as
+    // "missing" and lose deterministic drift/recovery on a Continue.
+    const observedT = Number.isFinite(rec.lastObservedT)
+      ? rec.lastObservedT
+      : (Number.isFinite(rec.lastMinedT) ? rec.lastMinedT : simTime);
+    const fromT = Math.min(observedT, simTime);
+    const advanced = advanceResourceBody(rec, fromT, simTime, {
+      fieldId: rec.fieldId,
+      allowRecovery: rec.outcome === 'depleted'
+        && rec.recoveryPolicy && rec.recoveryPolicy.recoverDepleted === true,
+    }) || rec;
+    applyResourceBodyToEntity(ent, advanced);
+    upsertResourceBody(bag, advanced, opts);
+    return ent;
+  },
+
+  persistResourceBody(entity) {
+    if (!entity || entity.type !== 'asteroid') return null;
+    const state = this.state;
+    const d = entity.data || {};
+    const opts = this._resourceBodyRetentionOptions();
+    const bag = ensureResourceBodies(state.world, opts);
+    const captured = captureResourceBodyRecord(entity, {
+      sectorId: entity.homeSectorId || d.homeSectorId || d.sectorId
+        || (state.world && state.world.currentSectorId),
+      fieldId: d.fieldId,
+      slotId: d.activityObjectSlotId || d.asteroidSlotId || d.slotId,
+      simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
+      previousRecord: d.resourceBodyId ? bag.byId[d.resourceBodyId] : null,
+      resourceBag: bag,
+    });
+    if (!captured) return null;
+    const stored = upsertResourceBody(bag, captured, opts);
+    if (stored && entity.data) entity.data.resourceBodyId = stored.recordId;
+    return stored;
+  },
+
+  // Jump GATES: one per outbound edge, placed on the disc rim toward the neighbor's map position.
+  _spawnGates(sector, active, rng) {
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const settleSkins = () => {
+      const bodies = [];
+      for (const row of active.stations || []) {
+        const ent = this.state.entities.get(row.id);
+        if (ent) bodies.push(ent);
+      }
+      for (const row of active.gates || []) {
+        const ent = this.state.entities.get(row.id);
+        if (ent) bodies.push(ent);
+      }
+      separateSkinOverlaps(bodies);
+      for (const ent of bodies) {
+        const station = (active.stations || []).find((row) => row.id === ent.id);
+        if (station) station.pos = { x: ent.pos.x, z: ent.pos.z };
+        const gate = (active.gates || []).find((row) => row.id === ent.id);
+        if (gate) gate.pos = { x: ent.pos.x, z: ent.pos.z };
+      }
+    };
+    const authored = Array.isArray(sector.gates) && sector.gates.length > 0 ? sector.gates : null;
+    const spawnGate = (nbId, pos, opts = {}) => {
+      const nb = safeSector(this.state, nbId);
+      const dockRadius = opts.wormhole ? 80 : 70;
+      const collisionRadius = opts.wormhole ? 38 : 32;
+      // Gate throat proxy: two side tubes + rear hub around a genuinely open portal. The stamped
+      // bearing faces the sector origin — the same direction buildGate aims the opening — so the
+      // proxy bar lands across the ring, never blocking the throat.
+      const sectorOrigin = this._sectorOrigin(sector.id);
+      const corridorBearingDeg = sectorOrigin && Number.isFinite(sectorOrigin.x)
+        ? Math.atan2(sectorOrigin.z - pos.z, sectorOrigin.x - pos.x) * (180 / Math.PI)
+        : null;
+      const ent = this.helpers.spawnEntity({
+        type: 'station', factionId: sector.factionId, pos,
+        radius: collisionRadius, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
+        data: {
+          stationId: null, isGate: true, gateTo: nbId, dockRadius,
+          collisionProxy: 'gate_jump_ring',
+          ...(Number.isFinite(corridorBearingDeg) ? { corridorBearingDeg } : {}),
+          placeScale: dockRadius / 14,
+          homeSectorId: sector.id,
+          collisionRadius,
+          services: [], factionId: sector.factionId,
+          name: opts.wormhole ? 'Wormhole' : `Gate → ${nb ? nb.name : nbId}`,
+          sectorId: sector.id,
+          isWormhole: !!opts.wormhole,
+          gatedBy: opts.gatedBy || null,
+          machineGate: opts.machineGate || null,
+          archetypeGlb: opts.archetypeGlb || 'place_gate_jump_ring',
+        },
+      });
+      this._stampHomeSector(ent, sector.id);
+      active.gates.push({ id: ent.id, to: nbId, pos, wormhole: !!opts.wormhole });
+    };
+    if (authored) {
+      for (const g of authored) {
+        if (!g.to || !g.pos) continue;
+        const isWh = !!g.wormhole;
+        spawnGate(g.to, this._toGlobal(g.pos, sector.id), {
+          wormhole: isWh,
+          gatedBy: isWh && sector.wormholeTo ? sector.wormholeTo.gatedBy : null,
+          machineGate: isWh && sector.wormholeTo ? sector.wormholeTo.machineGate || null : null,
+          archetypeGlb: g.archetypeGlb,
+        });
+      }
+      settleSkins();
+      return;
+    }
+    for (const nbId of (sector.neighbors || [])) {
+      const nb = safeSector(this.state, nbId);
+      const ang = this._bearingTo(sector, nb, rng);
+      const gateR = wr * 0.82;
+      spawnGate(nbId, this._toGlobal({ x: Math.cos(ang) * gateR, z: Math.sin(ang) * gateR }, sector.id));
+    }
+    if (sector.wormholeTo) {
+      const ang = rng() * Math.PI * 2;
+      spawnGate(sector.wormholeTo.sectorId, this._toGlobal({
+        x: Math.cos(ang) * wr * 0.6, z: Math.sin(ang) * wr * 0.6,
+      }, sector.id), {
+        wormhole: true, gatedBy: sector.wormholeTo.gatedBy,
+        machineGate: sector.wormholeTo.machineGate || null,
+      });
+    }
+    settleSkins();
+  },
+
+  // POIs: tracked in the discovery overlay; spawn a lightweight marker entity for in-range scan.
+  _spawnPOIs(sector, active, disc, rng, tier = RESIDENCY_TIER.FULL) {
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    // Only a FULL resident may put POI markers on the live combat list. REDUCED neighbors present
+    // the same authored markers through the dressing table, so a quiet pocket adjacent to several
+    // sectors does not grow entityList by other sectors' dressing (census contract).
+    const fullPresence = tier === RESIDENCY_TIER.FULL;
+    if (!disc.pois) disc.pois = {};
+    for (const poi of (sector.pois || [])) {
+      // This added navigation identity uses an existing buoy; consume no content RNG, so the
+      // original POIs, dressing and physical bodies retain their established generation stream.
+      const ringNavigation = poi.runtimeOwner === 'vxFreeDriveRing';
+      const ang = ringNavigation ? 0 : rng() * Math.PI * 2;
+      const r = ringNavigation ? 0 : wr * (0.2 + rng() * 0.6);
+      const local = poi.pos
+        ? { x: poi.pos.x, z: poi.pos.z }
+        : { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
+      let pos = this._toGlobal(local, sector.id);
+      if (!disc.pois[poi.id]) disc.pois[poi.id] = { discovered: false, identified: false };
+      const earnedMemorial = tetherMemorialPresentation(this.state, poi.id);
+      // Static Atlas rows may delegate their physical representation to a durable runtime owner.
+      // Keep the discovery identity here, but never create a second marker entity beside that owner.
+      // A markerless projection still joins active.pois: sector sweeps mark it discovered and
+      // proximity identification resolves the runtime-owned site root as its carrier.
+      if (typeof poi.runtimeOwner === 'string' && poi.runtimeOwner.length > 0) {
+        const ownerPos = this._toGlobal(poi.pos || poi.anchor || local, sector.id);
+        active.pois.push({
+          id: null, poiId: poi.id, type: poi.type,
+          pos: { x: ownerPos.x, z: ownerPos.z },
+          name: poi.name || null,
+          hidden: !!poi.hidden, claimable: false,
+          manualInvestigation: poi.manualInvestigation === true,
+          requiresActiveScan: poi.requiresActiveScan === true,
+          runtimeOwned: true,
+          ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
+          ...(finitePositive(poi.scannerSignalPriority)
+            ? { scannerSignalPriority: Number(poi.scannerSignalPriority) } : {}),
+          ...(finitePositive(poi.scanRange) ? { scanRange: Number(poi.scanRange) } : {}),
+        });
+        continue;
+      }
+      const placeId = poi.landmarkGlb
+        ? String(poi.landmarkGlb).replace(/^places\//, '').replace(/\.glb$/, '')
+        : null;
+      const visualRadius = finitePositive(poi.visualRadius)
+        ? Number(poi.visualRadius)
+        : (placeId && DRESSING_RADIUS[placeId]) || (poi.landmark ? 24 : 10);
+      const triangulation = poi.triangulation && typeof poi.triangulation === 'object'
+        ? { ...poi.triangulation }
+        : null;
+      const anomalyTriangulated = disc.pois[poi.id] && disc.pois[poi.id].triangulated === true;
+      const hidden = !!poi.hidden && disc.pois[poi.id].discovered !== true;
+      const poiData = {
+        poi: true, poiId: poi.id, poiType: poi.type, name: poi.name,
+        ...earnedMemorial,
+        hidden, gatedBy: poi.gatedBy || null,
+        requiresTriangulation: !!triangulation,
+        triangulation,
+        anomalyTriangulated,
+        scanRange: poi.scanRange || SCAN_RANGE, sectorId: sector.id,
+        claimable: !!poi.claimable, size: poi.size || 'M',
+        landmark: !!poi.landmark,
+        landmarkGlb: poi.landmarkGlb || null,
+        placeId,
+        visualRadius,
+        placeRadius: visualRadius,
+        ...(finitePositive(poi.placeScale) ? { placeScale: Number(poi.placeScale) } : {}),
+        ...(finitePositive(poi.placeTargetRadius)
+          ? { placeTargetRadius: Number(poi.placeTargetRadius) }
+          : {}),
+        homeSectorId: sector.id,
+        ...(poi.flavorTargetRef ? { flavorTargetRef: String(poi.flavorTargetRef) } : {}),
+        ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
+        ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
+        ...(finitePositive(poi.scannerSignalPriority)
+          ? { scannerSignalPriority: Number(poi.scannerSignalPriority) }
+          : {}),
+        ...(poi.repeatableScannerSignal === true ? { repeatableScannerSignal: true } : {}),
+        ...(poi.manualInvestigation === true ? { manualInvestigation: true } : {}),
+        ...(poi.requiresActiveScan === true ? { requiresActiveScan: true } : {}),
+        ...(poi.resonanceScanResponse === true ? { resonanceScanResponse: true } : {}),
+        ...(poi.recoveryEncounter === true ? { salvagePointId: String(poi.id) } : {}),
+        ...(poi.survivorPod === true ? { survivorPod: true } : {}),
+        ...(finitePositive(poi.bandProximityRadius)
+          ? { bandProximityRadius: Number(poi.bandProximityRadius) }
+          : {}),
+        ...(finitePositive(poi.dressingExclusionRadius)
+          ? { dressingExclusionRadius: Number(poi.dressingExclusionRadius) }
+          : {}),
+      };
+      const activityObjectSlotId = typeof poi.activityObjectSlotId === 'string'
+        && /[a-z]/i.test(poi.activityObjectSlotId)
+        ? poi.activityObjectSlotId
+        : null;
+      if (activityObjectSlotId) poiData.activityObjectSlotId = activityObjectSlotId;
+      // What the player sees is what the ship hits: an authored landmark (or a POI that
+      // explicitly declares collision) takes a fixed measured-skin body. Target-pinned draws
+      // re-derive the body radius so the skin scale equals the drawn scale exactly
+      // (solidDressing.js). An explicit `collides: false` is a no-presence contract (PQ-020
+      // transit pins) and outranks the landmark default; plain markers stay ghosts.
+      const solidPlan = (!activityObjectSlotId
+          && poi.collides !== false && (poi.landmark || poi.collides === true))
+        ? stampSolidDressing(poiData, {
+          radius: visualRadius,
+          placeTargetRadius: Number(poiData.placeTargetRadius) || 0,
+        })
+        : null;
+      const spawnRadius = solidPlan ? solidPlan.radius : visualRadius;
+      const fleetCount = Math.max(0, Math.min(24, Math.trunc(Number(poi.bandLandmarkFleet) || 0)));
+      // AL-RACE-2: incidental solid scenery shifts rigidly off a temporary circuit's
+      // corridor — the marker and any attached fleet move as one body, so a ring like
+      // the Quiessence still reads as the fleet it is. Gates keep their authored
+      // clearance (RF-02); runtime-owned native sites leave this loop above and never
+      // move. Only a session-registered sector object answers the shift.
+      if (solidPlan || poi.collides === true || fleetCount > 0) {
+        const sceneryShift = racingCorridorSceneryShift(this.state, sector.id, pos,
+          Math.max(spawnRadius, fleetCount > 0 ? 280 : 0), `poi:${poi.id}`);
+        if (sceneryShift) pos = { x: pos.x + sceneryShift.x, z: pos.z + sceneryShift.z };
+      }
+      const keepLive = fullPresence
+        ? poiMustStayLiveActor(poi, activityObjectSlotId)
+        : (!!activityObjectSlotId || poi.collides === true);
+      // Local +X is the face the mesh draws. The renderer yaws by -rot, so an
+      // authored rot is the XZ bearing of that face (atan2(dz, dx)).
+      const poiRot = Number(poi.rot);
+      const authoredRot = Number.isFinite(poiRot) ? { rot: poiRot } : {};
+      const ent = keepLive
+        ? this.helpers.spawnEntity({
+          type: 'fx', factionId: poi.factionId || null, pos,
+          ...authoredRot,
+          radius: spawnRadius, mass: 0,
+          collides: solidPlan ? true : !!poi.collides,
+          ...(solidPlan ? {
+            physicsBody: { dynamic: false, material: 'prop' },
+            collisionMask: Masks.STATION,
+          } : {}),
+          ttl: Infinity,
+          data: poiData,
+        })
+        : insertDressingRow(this.state, {
+          pos,
+          ...authoredRot,
+          radius: spawnRadius,
+          ...(solidPlan ? {
+            collides: true,
+            physicsBody: { dynamic: false, material: 'prop' },
+          } : {}),
+          homeSectorId: sector.id,
+          data: poiData,
+        });
+      this._stampHomeSector(ent, sector.id);
+      active.pois.push({
+        id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
+        ...earnedMemorial,
+        hidden, claimable: !!poi.claimable,
+        ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
+        ...(finitePositive(poi.scannerSignalPriority)
+          ? { scannerSignalPriority: Number(poi.scannerSignalPriority) }
+          : {}),
+        manualInvestigation: poi.manualInvestigation === true,
+        requiresActiveScan: poi.requiresActiveScan === true,
+        requiresTriangulation: !!triangulation,
+        triangulation,
+        anomalyTriangulated,
+      });
+
+      // A1/V2 physical Quiessence carriers. H1c still owns the eventual dark-freighter art;
+      // these sector-owned actors give the existing scanner and Band routes real identities.
+      // They are becalmed hulks the player can see, so they take real measured-skin fixed
+      // bodies (solid below) — no combatants, no signal-path change, but no fly-through either.
+      if (fleetCount > 0 && poi.flavorTargetRef) {
+        const hullFleetData = (shipIndex) => ({
+          poi: true,
+          poiId: `${poi.id}_hull_${shipIndex}`,
+          poiType: 'anomaly',
+          hidden: true,
+          name: `Quiessence Hull ${shipIndex}`,
+          sectorId: sector.id,
+          homeSectorId: sector.id,
+          flavorTargetRef: String(poi.flavorTargetRef),
+          quiessenceShipIndex: shipIndex,
+          bandProximityRadius: finitePositive(poi.bandProximityRadius)
+            ? Number(poi.bandProximityRadius)
+            : 1600,
+          memorialHull: true,
+          scanRange: finitePositive(poi.scanRange) ? Number(poi.scanRange) : SCAN_RANGE,
+          // PQ-153.02 carriers render as the bespoke Quiessence dark freighters — intact,
+          // becalmed hulls cycling three variants around the ring. placeTargetRadius pins the
+          // drawn size so the fleet reads without hulls overlapping; `hidden` keeps them off
+          // contacts as before.
+          placeId: `place_quiessence_freighter_${'abc'[shipIndex % 3]}`,
+          placeTargetRadius: 21,
+          visualRadius: 21,
+        });
+        for (let shipIndex = 1; shipIndex <= fleetCount; shipIndex += 1) {
+          const angle = (shipIndex / fleetCount) * Math.PI * 2;
+          const ring = 120 + (shipIndex % 5) * 28;
+          const hullPos = {
+            x: pos.x + Math.cos(angle) * ring,
+            z: pos.z + Math.sin(angle) * ring,
+          };
+          const hullData = hullFleetData(shipIndex);
+          const hullPlan = stampSolidDressing(hullData, { radius: 21, placeTargetRadius: 21 });
+          const hullRadius = hullPlan ? hullPlan.radius : 21;
+          const hull = fullPresence
+            ? this.helpers.spawnEntity({
+              type: 'fx',
+              pos: hullPos,
+              radius: hullRadius,
+              mass: 0,
+              ...(hullPlan ? {
+                collides: true,
+                physicsBody: { dynamic: false, material: 'prop' },
+                collisionMask: Masks.STATION,
+              } : {
+                collides: false,
+                physicsBody: false,
+              }),
+              ttl: Infinity,
+              data: hullData,
+            })
+            : insertDressingRow(this.state, {
+              pos: hullPos,
+              radius: hullRadius,
+              ...(hullPlan ? {
+                collides: true,
+                physicsBody: { dynamic: false, material: 'prop' },
+              } : {}),
+              homeSectorId: sector.id,
+              data: hullData,
+            });
+          this._stampHomeSector(hull, sector.id);
+          active.pois.push({
+            id: hull.id,
+            poiId: `${poi.id}_hull_${shipIndex}`,
+            type: 'anomaly',
+            pos: { x: hull.pos.x, z: hull.pos.z },
+            hidden: true,
+            claimable: false,
+          });
+        }
+      }
+    }
+  },
+
+  _spawnDressing(sector, active, rng) {
+    for (const _ of this._spawnDressingChunks(sector, active, rng)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin of _spawnDressing: yields between the named sub-spawns so the restore
+   * lane paints inside a dressing-heavy sector. The sync wrapper drains inline — identical
+   * spawn order.
+   */
+  *_spawnDressingChunks(sector, active, rng) {
+    if (sector && sector.interiorHost) {
+      materializeBolus(this, sector, active);
+      yield 'materialize:bolus';
+      return;
+    }
+    const arranger = this._arrangerForSector(sector, active);
+    const paletteClass = paletteClassForSector(sector);
+    if (paletteClass === 'core') {
+      this._spawnCoreDressing(sector, active, rng, paletteClass, arranger);
+    } else if (paletteClass === 'belt') {
+      this._spawnBeltDressing(sector, active, rng, paletteClass, arranger);
+    } else if (paletteClass === 'fringe') {
+      this._spawnFringeDressing(sector, active, rng, paletteClass, arranger);
+    } else if (paletteClass === 'anomaly') {
+      this._spawnAnomalyDressing(sector, active, rng, paletteClass, arranger);
+    }
+    yield 'materialize:dressing-palette';
+    this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
+    yield 'materialize:dressing-kit';
+    materializeLanternWardDressing(this, sector, active);
+    yield 'materialize:lantern-ward';
+    this._spawnWreckAftermathDressing(sector, active, paletteClass);
+    yield 'materialize:dressing-wrecks';
+    this._spawnWorldOneOffs(sector, active);
+    this._spawnFreeDriveRing(sector, active);
+    yield 'materialize:dressing-oneoffs';
+    // Alien Ecology program (doc 08/09): growth dressing + fauna cast for ALIEN_SITES in this
+    // sector. Deterministic off its own rng stream — runs last so the world rng order is
+    // untouched by ecology content.
+    materializeAlienEcology(this, sector, active);
+    yield 'materialize:dressing-ecology';
+    // Verge-Layer machine layer (AE-100..108): machine structures + kinematic machine
+    // entities, same deterministic seam, same dressing substrate.
+    materializeMachineLayer(this, sector, active);
+    // The Unclosed sits in the ossuary's empty slot. Same dressing pass, after the
+    // sane machines, so a second _spawnDressing drain cannot double-spawn it.
+    materializeFoldAberrant(this, sector, active);
+  },
+
+  // PQ-143.02 "six texture one-offs": memorable, non-systemic set pieces from
+  // src/data/worldOneOffs.js. No seed, no epoch, no rng — a one-off is always exactly where the
+  // data says, on the same non-colliding dressing substrate as every other prop (so it is killed
+  // with the rest of the sector's dressing on deactivation), and a record may carry a slow
+  // `spin` the tick loop advances. Anchors: 'station'/'gate' rows of the sector's own anchors,
+  // sector-local.
+  _spawnWorldOneOffs(sector, active) {
+    for (const oneOff of WORLD_ONE_OFFS) {
+      if (oneOff.sectorId !== sector.id) continue;
+      const anchorPos = this._oneOffAnchorPos(sector, oneOff.anchor);
+      if (!anchorPos) continue;
+      // Anchor rows are sector-local; entities and dressing rows live galactic-global
+      // (D176: without the hop every non-origin sector's one-offs spawned local-as-global,
+      // stranded beside the Helios origin instead of beside their named anchor).
+      const localPos = {
+        x: anchorPos.x + oneOff.offsetLocal.x,
+        z: anchorPos.z + oneOff.offsetLocal.z,
+      };
+      const pos = this._toGlobal(localPos, sector.id);
+      let ent = null;
+      if (oneOff.physicalBody) {
+        const identityKey = `worldOneOff:${oneOff.id}`;
+        const seed = (this.state.meta && this.state.meta.seed) || 1;
+        const recordId = stableRecordId(seed, sector.id, RECORD_KIND.WRECK, identityKey);
+        const records = ensureWorldRecords(this.state.world);
+        const durable = records.byId[recordId];
+        // A player-destroyed one-off is history. Keep its permanent tombstone from turning into
+        // a fresh copy when the sector becomes resident again.
+        if (durable && (durable.outcome === 'destroyed' || durable.alive === false)) continue;
+        ent = findLiveRecordEntity(this.state, recordId);
+        if (ent) {
+          // Pre-D176 materializations parked the body at local-as-global coords — only
+          // possible where the sector's galactic origin is non-zero. A body still parked in
+          // the buggy spot's neighbourhood was never moved by the player (drift bumps count
+          // as stranded too — the 20 WU window covers knock-loose jitter without yanking
+          // back a wreck somebody actually hauled off); re-seat it at the anchor. The
+          // physics owner resyncs its body from the pos write (noInterp).
+          const sectorOrigin = this._sectorOrigin(sector.id);
+          if (sectorOrigin && (sectorOrigin.x !== 0 || sectorOrigin.z !== 0) && ent.pos) {
+            const bdx = ent.pos.x - localPos.x, bdz = ent.pos.z - localPos.z;
+            if (bdx * bdx + bdz * bdz < 400) {
+              ent.pos.x = pos.x;
+              ent.pos.z = pos.z;
+              if (ent.prevPos && typeof ent.prevPos.copy === 'function') ent.prevPos.copy(ent.pos);
+              if (ent.vel) { ent.vel.x = 0; ent.vel.y = 0; ent.vel.z = 0; }
+              ent.flags = Object.assign({}, ent.flags, { noInterp: true });
+            }
+          }
+          this._decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey);
+        } else if (farActorHoldsWorldRecord(this.state, recordId)) {
+          // A shelved far row already owns this record's body. Minting a second copy here
+          // shelves again on exit — one extra durable row per load cycle (D141). The row
+          // promotes back on approach and this path re-decorates it live next materialize.
+          continue;
+        } else {
+          const mass = oneOff.physicalBody.mass;
+          ent = this.helpers.spawnEntity({
+            type: 'wreck',
+            pos,
+            vel: { x: 0, z: 0 },
+            rot: oneOff.rot,
+            angVel: oneOff.spin || 0,
+            radius: oneOff.radius,
+            mass,
+            hull: 1000,
+            hullMax: 1000,
+            collides: true,
+            physicsBody: { radius: oneOff.radius, mass },
+            flags: { noInterp: true },
+            data: {
+              placeId: oneOff.placeId,
+              placeScale: 1,
+              name: oneOff.name,
+              wreckClass: 'yard_tug',
+              worldOneOff: true,
+              oneOffId: oneOff.id,
+              worldRecordId: recordId,
+              identityKey,
+              homeSectorId: sector.id,
+              sectorId: sector.id,
+              visualRadius: oneOff.radius,
+              placeRadius: oneOff.radius,
+              masslineTetherable: true,
+            },
+          });
+          if (ent) this._decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey);
+        }
+        if (ent) active.dressing.push({
+          id: ent.id, placeId: oneOff.placeId, pos: { x: ent.pos.x, z: ent.pos.z },
+          paletteClass: paletteClassForSector(sector),
+        });
+      } else {
+        ent = this._spawnPlaceProp(active, sector, oneOff.placeId, pos, {
+          rot: oneOff.rot,
+          name: oneOff.name,
+          radius: oneOff.radius,
+          // The PQ-020 structural-cost census classifies additive dressing by data flag; without
+          // it the authored one-offs would be counted as core sector entities.
+          worldOneOff: true,
+        });
+        if (ent && oneOff.spin) this._trackOneOffSpin(active, ent.id, oneOff.spin);
+      }
+      for (const part of oneOff.cluster ? oneOff.cluster.props : EMPTY_ONE_OFF_PARTS) {
+        this._spawnPlaceProp(active, sector, part.placeId, {
+          x: pos.x + part.dx,
+          z: pos.z + part.dz,
+        }, { rot: part.rot, name: oneOff.name, radius: part.radius, worldOneOff: true });
+      }
+      this._spawnOneOffOfferings(oneOff, pos, sector, active);
+    }
+    this._spawnHeliosRopeCache(sector, active);
+    this._spawnKettleLinePayoff(sector, active);
+    this._spawnCachePayoffs(sector, active);
+    this._spawnFactionBerths(sector, active);
+  },
+
+  // VX-02 — the Cracker Run. Authored fixed dressing (skip the arranger like the one-offs):
+  // census-solid structures form the plaza/ribs/chute, nav buoys breadcrumb the route. Nothing
+  // here is a mission, a gate, a lease or a score — it is a place that exists in the sector.
+  _registerFreeDriveRingPoi() {
+    const sector = this.state.world.sectors?.[VX_FREE_DRIVE_SECTOR_ID];
+    if (sector) sector.pois = vxFreeDrivePoisFor(sector.id, sector.pois);
+  },
+
+  _spawnFreeDriveRing(sector, active, { metadataOnly = false } = {}) {
+    const structures = vxFreeDriveStructuresFor(sector.id);
+    const markers = vxFreeDriveMarkersFor(sector.id);
+    if (!structures.length || !active?.dressing) return;
+    // Read the table lazily: the first _spawnPlaceProp inside this pass creates
+    // state.world.dressing, so a captured handle from before the loop can be stale.
+    const dressingTable = () => this.state.world && this.state.world.dressing;
+    let known = 0, needsStamp = false;
+    // Cached FULL promotion is hot. Correct, missing, dead or replaced slots
+    // need no new allocation or write; only an original missing metadata does.
+    for (const slot of active.dressing) {
+      if (!slot.vxFreeDriveId) continue;
+      known++;
+      const body = dressingTable()?.byId?.get(slot.id);
+      if (body && body === slot._vxFreeDriveOriginal && body.alive !== false
+          && (body.data?.vxFreeDriveId !== slot.vxFreeDriveId
+            || body.data?.vxFreeDrivePoiId !== VX_FREE_DRIVE_POI.id)) needsStamp = true;
+    }
+    if (known === structures.length + markers.length && !needsStamp) return;
+
+    let metadataChanged = false;
+    const adopt = (source, placeId, name, radius, rot) => {
+      const pos = this._toGlobal(source.localPos, sector.id);
+      let slot = null;
+      for (const candidate of active.dressing) {
+        if (candidate.vxFreeDriveId === source.id) { slot = candidate; break; }
+        // Legacy first adoption uses the world's existing static dressing
+        // identity tuple, never a nearby body or its display name alone.
+        if (!candidate.vxFreeDriveId && candidate.placeId === placeId
+            && candidate.pos?.x === pos.x && candidate.pos?.z === pos.z) slot = candidate;
+      }
+      let body = slot && dressingTable()?.byId?.get(slot.id);
+      if (!slot) {
+        if (metadataOnly) return;
+        body = this._spawnPlaceProp(active, sector, placeId, pos, {
+          rot, name, radius, worldOneOff: true,
+        });
+        if (!body) return;
+        for (const candidate of active.dressing) if (candidate.id === body.id) { slot = candidate; break; }
+      }
+      if (!slot) return;
+      // An occupied original slot stays occupied even when its body is absent.
+      // No metadata pass replaces a worked/dead body or reuses a recycled id.
+      slot.vxFreeDriveId = source.id;
+      const data = body?.data;
+      if (!body || body.alive === false || body.type !== 'fx'
+          || dressingTable()?.byId?.get(slot.id) !== body
+          || (this.state.entities?.has(body.id) && this.state.entities.get(body.id) !== body)
+          || (slot._vxFreeDriveOriginal && slot._vxFreeDriveOriginal !== body)
+          || data?.worldDressing !== true || data.worldOneOff !== true
+          || data.placeId !== placeId || data.name !== name || body.radius !== radius
+          || data.homeSectorId !== sector.id || data.sectorId !== sector.id) return;
+      if (!slot._vxFreeDriveOriginal) Object.defineProperty(slot, '_vxFreeDriveOriginal', { value: body });
+      if (data.vxFreeDriveId !== source.id) { data.vxFreeDriveId = source.id; metadataChanged = true; }
+      if (data.vxFreeDrivePoiId !== VX_FREE_DRIVE_POI.id) {
+        data.vxFreeDrivePoiId = VX_FREE_DRIVE_POI.id; metadataChanged = true;
+      }
+    };
+    for (const structure of structures) adopt(structure, structure.placeId, structure.name, structure.radius, structure.rot);
+    for (const marker of markers) adopt(marker, 'place_nav_buoy', 'Cracker Run marker', 10, 0);
+    // Legacy rows may already have crossed the worker boundary. Their data uses
+    // the existing spawn/rebuild channel, not the pose-only aux delta.
+    if (metadataOnly && metadataChanged) this.helpers.requestPresentationRebuild?.('cracker-run-guidance');
+  },
+
+  _decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey) {
+    if (!ent) return ent;
+    const mass = oneOff.physicalBody.mass;
+    ent.type = 'wreck';
+    if (ent.collides !== true) bumpCollidesFlipEpoch();
+    ent.collides = true;
+    // The reuse path can revive an entity appended collides:false — re-key the collision
+    // slice or its hull physically collides while broadphase/splinter lanes see nothing.
+    syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, ent);
+    // Same hazard on the type lanes: the reused body was appended under a different type,
+    // so without this re-key it never reaches wrecks/mineables readers (or vice versa).
+    syncEntityTypeLaneMembership(this.state && this.state.entityIndex, ent);
+    ent.radius = oneOff.radius;
+    ent.mass = mass;
+    ent.physicsBody = { ...(ent.physicsBody && typeof ent.physicsBody === 'object' ? ent.physicsBody : {}),
+      radius: oneOff.radius, mass };
+    ent.data = Object.assign({}, ent.data, {
+      placeId: oneOff.placeId,
+      placeScale: 1,
+      name: oneOff.name,
+      wreckClass: 'yard_tug',
+      worldOneOff: true,
+      oneOffId: oneOff.id,
+      worldRecordId: recordId,
+      identityKey,
+      homeSectorId: sector.id,
+      sectorId: sector.id,
+      visualRadius: oneOff.radius,
+      placeRadius: oneOff.radius,
+      masslineTetherable: true,
+    });
+    this._stampHomeSector(ent, sector.id);
+    if (oneOff.materialRecovery) {
+      // Recovery is atomic: an intact original has paid no contents. A terminal
+      // original never reaches this decoration path (_spawnWorldOneOffs guards it).
+      const { commodityId, amount } = oneOff.materialRecovery;
+      const pool = { [commodityId]: amount };
+      ent.data.debrisCache ??= 'empty';
+      const salvage = this.registry?.get?.('salvageActions');
+      if (salvage?.configureAuthoredWreck) salvage.configureAuthoredWreck(ent, { salvagePool: pool });
+      else {
+        ent.data.authoredSalvagePool = { ...pool };
+        ent.data.salvagePool = pool;
+      }
+    }
+    return ent;
+  },
+
+  /**
+   * One-off offerings (CR-TEXTURE): real collectable pods left AT the set piece — the
+   * Toll Saint's tally plates and keepsakes. Each `offerings` slot spawns one dark cargo
+   * pickup (`unlitDrop` — a silhouette find, no strobe) beside the one-off, owned by the
+   * one-off itself so taking one answers the ordinary owned-cargo read. Slot ids live on
+   * `active.oneOffOfferings`: a taken offering stays empty for the visit, and the next
+   * materialization re-offers it — the lane keeps leaving tolls. `persistent` stays false
+   * so residency despawn clears the pile on sector exit; `anchored` keeps the sector's
+   * own materialize sweep from wiping the pod it just placed (the rope-cache treatment).
+   */
+  _spawnOneOffOfferings(oneOff, pos, sector, active) {
+    const offerings = oneOff && oneOff.offerings;
+    if (!Array.isArray(offerings) || !offerings.length || !pos) return;
+    const bag = active.oneOffOfferings || (active.oneOffOfferings = {});
+    const slots = bag[oneOff.id] || (bag[oneOff.id] = []);
+    const byId = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities : null;
+    for (let i = 0; i < offerings.length; i++) {
+      const priorId = slots[i];
+      const prior = priorId != null && byId ? byId.get(priorId) : null;
+      if (prior && prior.alive !== false) continue;
+      const offer = offerings[i];
+      const pod = spawnJettisonedCargoPod(this.state, {
+        commodityId: offer.commodityId,
+        amount: offer.amount || 1,
+        pos: { x: pos.x + (offer.dx || 0), z: pos.z + (offer.dz || 0) },
+        vel: { x: 0, z: 0 },
+        radius: offer.radius || 3,
+        ownerId: oneOff.id,
+        ownerName: oneOff.name,
+        originId: oneOff.id,
+        factionId: 'faction_free',
+      }, this.helpers);
+      if (!pod) { slots[i] = null; continue; }
+      pod.data = pod.data || {};
+      pod.data.unlitDrop = true;
+      pod.data.offeringFor = oneOff.id;
+      pod.data.offeringSlot = i;
+      pod.data.anchored = true;
+      pod.data.worldOneOff = true;
+      pod.data.oneOffId = oneOff.id;
+      if (offer.name) pod.data.name = offer.name;
+      pod.flags = Object.assign({}, pod.flags, { persistent: false });
+      this._stampHomeSector(pod, sector.id);
+      slots[i] = pod.id;
+    }
+  },
+
+  // The Candle Fleet cache is a live cargo pod, not dressing: dressing cannot be roped, and a
+  // payload without `anchored` is wiped on the same sector:enter that materializes it.
+  // `persistent` stays false so residency despawn still removes it and the next materialization
+  // places one pod again. A dead pod on this bag is not replaced until the bag itself is new.
+  _spawnHeliosRopeCache(sector, active) {
+    const cache = HELIOS_ROPE_CACHE;
+    if (!cache || !sector || cache.sectorId !== sector.id || !active) return;
+    const priorId = active.heliosRopeCacheId;
+    const prior = priorId != null && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(priorId)
+      : null;
+    if (prior) return;
+    const anchorPos = this._oneOffAnchorPos(sector, cache.anchor);
+    if (!anchorPos) return;
+    const pos = this._toGlobal({
+      x: anchorPos.x + cache.offsetLocal.x,
+      z: anchorPos.z + cache.offsetLocal.z,
+    }, sector.id);
+    const pod = spawnJettisonedCargoPod(this.state, {
+      commodityId: cache.commodityId,
+      amount: cache.amount,
+      pos,
+      vel: { x: 0, z: 0 },
+      radius: cache.radius,
+      ownerId: cache.landmarkPoiId,
+      originId: cache.landmarkPoiId,
+      factionId: 'faction_scn',
+    }, this.helpers);
+    if (!pod) return;
+    pod.data.placeId = cache.placeId;
+    pod.data.name = cache.name;
+    pod.data.oneOffId = cache.id;
+    pod.data.worldOneOff = true;
+    pod.data.anchored = true;
+    pod.data.packagedPropFile = `places/${cache.placeId}.glb`;
+    pod.data.packagedPropSlot = 'place';
+    pod.flags = Object.assign({}, pod.flags, { persistent: false });
+    this._stampHomeSector(pod, sector.id);
+    active.heliosRopeCacheId = pod.id;
+  },
+
+  // The Kettle Line payoff (src/data/kettleLine.js): the convoy crew's pay strongbox, still
+  // clamped to the drive stern. Sealed until the stern's scan tell is investigated — then it
+  // is an ordinary ropeable, splittable payload pod (the Candle Fleet rope-cache treatment)
+  // at the stern's side. No new state bag: the existing per-POI discovery record owns the
+  // seal, and the residency bag owns the spawn slot, exactly like the rope cache above.
+  _spawnKettleLinePayoff(sector, active) {
+    const trail = KETTLE_LINE;
+    if (!trail || !sector || trail.sectorId !== sector.id || !active) return;
+    // Data-only harnesses drive _spawnWorldOneOffs without a world bag; a sealed site
+    // simply has nothing to spawn there.
+    if (!this.state || !this.state.world || !this.state.world.discovery) return;
+    const disc = this._discoveryFor(sector.id);
+    const stern = disc.pois && disc.pois[trail.terminalPoiId];
+    if (!stern || !stern.investigated) return;
+    const priorId = active.kettleLinePayoffId;
+    const prior = priorId != null && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(priorId)
+      : null;
+    if (prior) return;
+    // The stern marker's live position in this sector; authored position is the fallback.
+    const row = (active.pois || []).find((poi) => poi && poi.poiId === trail.terminalPoiId);
+    const local = trail.payoff.offset;
+    const pos = row && row.pos
+      ? { x: row.pos.x + local.x, z: row.pos.z + local.z }
+      : null;
+    if (!pos) return;
+    const pod = spawnJettisonedCargoPod(this.state, {
+      commodityId: trail.payoff.commodityId,
+      amount: trail.payoff.amount,
+      pos,
+      vel: { x: 0, z: 0 },
+      radius: trail.payoff.radius,
+      ownerId: trail.terminalPoiId,
+      originId: trail.terminalPoiId,
+      factionId: trail.payoff.factionId,
+    }, this.helpers);
+    if (!pod) return;
+    pod.data.placeId = trail.payoff.placeId;
+    pod.data.name = trail.payoff.name;
+    pod.data.oneOffId = trail.payoff.id;
+    pod.data.kettleLinePayoff = true;
+    pod.data.anchored = true;
+    pod.data.packagedPropFile = `places/${trail.payoff.placeId}.glb`;
+    pod.data.packagedPropSlot = 'place';
+    pod.flags = Object.assign({}, pod.flags, { persistent: false });
+    this._stampHomeSector(pod, sector.id);
+    active.kettleLinePayoffId = pod.id;
+  },
+
+  _onKettleLineSignalInvestigated(payload) {
+    if (!payload || payload.sectorId !== KETTLE_LINE.sectorId) return false;
+    if (payload.poiId !== KETTLE_LINE.terminalPoiId) return false;
+    const worldBag = this.state && this.state.world;
+    const active = worldBag && worldBag.activeSector;
+    const sector = worldBag && worldBag.sectors && worldBag.sectors[KETTLE_LINE.sectorId];
+    if (!active || !sector || worldBag.currentSectorId !== KETTLE_LINE.sectorId) return false;
+    this._spawnKettleLinePayoff(sector, active);
+    return true;
+  },
+
+  // Sealed cache payoffs (src/data/sectors.js, src/data/frontierRegions/north.js): a plain
+  // unowned cache may carry a frozen `contents` lot. Investigating the cache pops that lot as
+  // a real anchored pod beside the marker — the same ropeable, splittable treatment as the
+  // Kettle Line strongbox above — and this residency tail respawns the lot on re-entry from
+  // the per-POI investigated record. `active.cachePayoffIds` is the spawn-slot guard, exactly
+  // the kettle payoff's idiom, so an already-spawned pod is never duplicated. No rng: the
+  // fixed offset keeps every opened pod clear of its marker body.
+  _spawnCachePayoffs(sector, active) {
+    if (!sector || !active || !Array.isArray(sector.pois)) return;
+    // Data-only harnesses drive _spawnWorldOneOffs without a world bag; a sealed site
+    // simply has nothing to spawn there.
+    if (!this.state || !this.state.world || !this.state.world.discovery) return;
+    const disc = this._discoveryFor(sector.id);
+    for (const poi of sector.pois) {
+      const contents = poi && poi.contents;
+      if (!contents || !contents.commodityId || !(contents.amount > 0)) continue;
+      const rec = disc.pois && disc.pois[poi.id];
+      if (!rec || !rec.investigated) continue;
+      if (!active.cachePayoffIds) active.cachePayoffIds = {};
+      const priorId = active.cachePayoffIds[poi.id];
+      const prior = priorId != null && this.state.entities && this.state.entities.get
+        ? this.state.entities.get(priorId)
+        : null;
+      if (prior) continue;
+      const row = (active.pois || []).find((entry) => entry && entry.poiId === poi.id);
+      if (!row || !row.pos) continue;
+      const pos = { x: row.pos.x + CACHE_PAYOFF_OFFSET.x, z: row.pos.z + CACHE_PAYOFF_OFFSET.z };
+      const pod = spawnJettisonedCargoPod(this.state, {
+        commodityId: contents.commodityId,
+        amount: contents.amount,
+        pos,
+        vel: { x: 0, z: 0 },
+        radius: 8,
+        ownerId: poi.id,
+        originId: poi.id,
+        factionId: poi.factionId || sector.factionId || 'faction_scn',
+      }, this.helpers);
+      if (!pod) continue;
+      pod.data.placeId = 'place_cargo_pod_standard';
+      pod.data.name = `${poi.name || poi.id} — opened`;
+      pod.data.cachePayoff = true;
+      pod.data.anchored = true;
+      pod.data.packagedPropFile = 'places/place_cargo_pod_standard.glb';
+      pod.data.packagedPropSlot = 'place';
+      pod.flags = Object.assign({}, pod.flags, { persistent: false });
+      this._stampHomeSector(pod, sector.id);
+      active.cachePayoffIds[poi.id] = pod.id;
+    }
+  },
+
+  _onCachePayoffsSignalInvestigated(payload) {
+    const worldBag = this.state && this.state.world;
+    const active = worldBag && worldBag.activeSector;
+    const sector = worldBag && worldBag.sectors && worldBag.sectors[payload.sectorId];
+    if (!active || !sector || worldBag.currentSectorId !== payload.sectorId) return false;
+    this._spawnCachePayoffs(sector, active);
+    return true;
+  },
+
+  // CR-BERTH-1 — the faction berth: an address and a memory (src/data/factionBerths.js). The
+  // crib is the rented apron's furniture and always stands on the pad; the consigned hulk only
+  // appears once factionPresence has written `serviceReceipts[berth.receiptKey]` off a
+  // redeem_rights payout at the berth station. The hulk is a real durable body (worldRecords
+  // stableRecordId, masslineTetherable), not a dressing row — the wreck your claim paid out on
+  // can be hauled back off the line between visits, and a player-terminal outcome tombstones
+  // the record so it never respawns. Positions are authored sector-local against the berth's
+  // station anchor and converted through _toGlobal, like the station/POI/field spawners.
+  _spawnFactionBerths(sector, active) {
+    if (!sector || !active) return;
+    const receipts = this.state && this.state.factionPresence
+      && this.state.factionPresence.serviceReceipts;
+    for (const berth of FACTION_BERTHS) {
+      if (berth.sectorId !== sector.id) continue;
+      const anchorPos = this._oneOffAnchorPos(sector, berth.anchor);
+      if (!anchorPos) continue;
+      const apron = this._toGlobal({
+        x: anchorPos.x + berth.offsetLocal.x,
+        z: anchorPos.z + berth.offsetLocal.z,
+      }, sector.id);
+      for (const prop of berth.crib || []) {
+        this._spawnPlaceProp(active, sector, prop.placeId, {
+          x: apron.x + prop.dx,
+          z: apron.z + prop.dz,
+        }, { rot: prop.rot, name: berth.name, radius: prop.radius, berthId: berth.id });
+      }
+      const hulk = berth.hulk;
+      if (!hulk) continue;
+      const receipt = receipts && receipts[berth.receiptKey];
+      if (!receipt) continue;
+      const identityKey = `factionBerth:${berth.id}`;
+      const seed = (this.state.meta && this.state.meta.seed) || 1;
+      const recordId = stableRecordId(seed, sector.id, RECORD_KIND.WRECK, identityKey);
+      const records = ensureWorldRecords(this.state.world);
+      const durable = records.byId[recordId];
+      // A hulk already destroyed or carried off to a far actor stays gone — the tombstone is
+      // the berth's memory, not a fresh copy on every visit.
+      if (durable && (durable.outcome === 'destroyed' || durable.alive === false)) continue;
+      let ent = findLiveRecordEntity(this.state, recordId);
+      if (ent) {
+        this._decorateBerthConsign(ent, berth, sector, recordId, identityKey);
+      } else if (farActorHoldsWorldRecord(this.state, recordId)) {
+        continue;
+      } else {
+        const pos = {
+          x: apron.x + (Number.isFinite(hulk.dx) ? hulk.dx : 0),
+          z: apron.z + (Number.isFinite(hulk.dz) ? hulk.dz : 0),
+        };
+        const mass = Math.max(1, Number(hulk.mass) || 1);
+        ent = this.helpers.spawnEntity({
+          type: 'wreck',
+          pos,
+          vel: { x: 0, z: 0 },
+          rot: Number.isFinite(hulk.rot) ? hulk.rot : 0,
+          angVel: Number.isFinite(hulk.spin) ? hulk.spin : 0,
+          radius: Math.max(1, Number(hulk.radius) || 1),
+          mass,
+          hull: 1000,
+          hullMax: 1000,
+          collides: true,
+          physicsBody: { radius: Math.max(1, Number(hulk.radius) || 1), mass },
+          flags: { noInterp: true },
+          data: {
+            placeId: hulk.placeId,
+            placeScale: 1,
+            name: hulk.name || berth.name,
+            wreckClass: hulk.wreckClass || 'consigned_hulk',
+            berthConsign: {
+              berthId: berth.id,
+              receiptKey: berth.receiptKey,
+              stationId: berth.stationId,
+            },
+            berthId: berth.id,
+            worldRecordId: recordId,
+            identityKey,
+            homeSectorId: sector.id,
+            sectorId: sector.id,
+            visualRadius: Math.max(1, Number(hulk.radius) || 1),
+            placeRadius: Math.max(1, Number(hulk.radius) || 1),
+            masslineTetherable: true,
+          },
+        });
+        if (ent) this._decorateBerthConsign(ent, berth, sector, recordId, identityKey);
+      }
+      if (ent) active.dressing.push({
+        id: ent.id, placeId: hulk.placeId, pos: { x: ent.pos.x, z: ent.pos.z },
+        paletteClass: paletteClassForSector(sector),
+      });
+    }
+  },
+
+  // Same job as _decoratePhysicalOneOff: the dress sheet for a berth-consign hull, applied on
+  // spawn AND on the worldRecords reuse path so a body rematerialized by another consumer gets
+  // re-stamped rather than orphaned under its old kind.
+  _decorateBerthConsign(ent, berth, sector, recordId, identityKey) {
+    if (!ent) return ent;
+    const hulk = berth.hulk;
+    const radius = Math.max(1, Number(hulk.radius) || 1);
+    const mass = Math.max(1, Number(hulk.mass) || 1);
+    ent.type = 'wreck';
+    if (ent.collides !== true) bumpCollidesFlipEpoch();
+    ent.collides = true;
+    // The reuse path can revive an entity appended collides:false — re-key the collision
+    // slice or its hull physically collides while broadphase/splinter lanes see nothing.
+    syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, ent);
+    // Same hazard on the type lanes: the reused body was appended under a different type,
+    // so without this re-key it never reaches wrecks/mineables readers (or vice versa).
+    syncEntityTypeLaneMembership(this.state && this.state.entityIndex, ent);
+    ent.radius = radius;
+    ent.mass = mass;
+    ent.physicsBody = { ...(ent.physicsBody && typeof ent.physicsBody === 'object' ? ent.physicsBody : {}),
+      radius, mass };
+    ent.data = Object.assign({}, ent.data, {
+      placeId: hulk.placeId,
+      placeScale: 1,
+      name: hulk.name || berth.name,
+      wreckClass: hulk.wreckClass || 'consigned_hulk',
+      berthConsign: {
+        berthId: berth.id,
+        receiptKey: berth.receiptKey,
+        stationId: berth.stationId,
+      },
+      berthId: berth.id,
+      worldRecordId: recordId,
+      identityKey,
+      homeSectorId: sector.id,
+      sectorId: sector.id,
+      visualRadius: radius,
+      placeRadius: radius,
+      masslineTetherable: true,
+    });
+    this._stampHomeSector(ent, sector.id);
+    return ent;
+  },
+
+  _trackOneOffSpin(active, entityId, spin) {
+    if (!active.worldOneOffSpins) active.worldOneOffSpins = [];
+    active.worldOneOffSpins.push({ id: entityId, spin });
+  },
+
+  _oneOffAnchorPos(sector, anchor) {
+    if (!anchor) return null;
+    const stations = sector.stations || [];
+    const gates = sector.gates || [];
+    if (anchor.type === 'station') {
+      const row = stations.find((s) => s.id === anchor.id);
+      return row && row.pos ? row.pos : null;
+    }
+    if (anchor.type === 'gate') {
+      const row = gates.find((g) => g.to === anchor.id);
+      return row && row.pos ? row.pos : null;
+    }
+    return null;
+  },
+
+  // Advance the authored one-off props' spin. O(authored one-offs) per tick; the list lives on
+  // the active-sector record next to `dressing` and is reset with it on deactivation, so a dead
+  // id simply resolves to no entity.
+  _tickWorldOneOffSpin(dt, state) {
+    const active = state.world && state.world.activeSector;
+    const spins = active && active.worldOneOffSpins;
+    if (!spins || !spins.length) return;
+    const entities = this.state.entities;
+    for (const row of spins) {
+      const live = entities && entities.get && entities.get(row.id);
+      const ent = live || getDressingRow(this.state, row.id);
+      if (ent) ent.rot += row.spin * dt;
+      // Dormant dressing rows (no live entity) need the journal for the renderer pose
+      // gate; live ids no-op inside the mark. Otherwise the prop freezes at insert yaw.
+      markDressingRowPoseDirty(this.state, row.id);
+      if (!live) markAuxRowDirty(this.state.world.dressing, row.id);
+    }
+  },
+
+  _spawnEverydaySpaceKitDressing(sector, active, paletteClass) {
+    const rec = this.state.world.residentSectors && this.state.world.residentSectors[sector.id];
+    const epoch = rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    const kitRng = this.helpers.mulberry32(
+      this.helpers.hash32(this.state.meta.seed, sector.id, epoch, EVERYDAY_SPACE_KIT_SALT),
+    );
+    const rows = everydaySpaceKitDressingForSector(sector.id, paletteClass, kitRng, {
+      pois: active.pois || [],
+      stations: active.stations || [],
+      gates: active.gates || [],
+      fields: active.fields || [],
+      wrecks: (active.pois || []).filter((row) => row.type === 'wreck' || row.type === 'derelict'),
+    });
+    for (const row of rows) {
+      this._spawnPlaceProp(active, sector, row.placeId, row.pos, {
+        paletteClass,
+        rot: row.rot,
+        name: row.name,
+        radius: row.radius,
+        everydaySpaceKit: true,
+      });
+    }
+  },
+
+  _spawnWreckAftermathDressing(sector, active, paletteClass) {
+    const rec = this.state.world.residentSectors && this.state.world.residentSectors[sector.id];
+    const epoch = rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    const wreckRng = this.helpers.mulberry32(
+      this.helpers.hash32(this.state.meta.seed, sector.id, epoch, WRECK_AFTERMATH_SALT),
+    );
+    const rows = wreckAftermathDressingForSector(sector.id, paletteClass, wreckRng, {
+      stations: active.stations || [],
+      wrecks: (active.pois || []).filter((row) => row.type === 'wreck' || row.type === 'derelict'),
+      fields: active.fields || [],
+      origin: this._sectorOrigin(sector.id),
+      worldRadius: sector.worldRadius || DEFAULT_WORLD_RADIUS,
+      enemyDensity: sector.enemyDensity,
+    });
+    for (const row of rows) {
+      this._spawnPlaceProp(active, sector, row.placeId, row.pos, {
+        paletteClass,
+        rot: row.rot,
+        name: row.name,
+        radius: row.radius,
+        wreckAftermath: true,
+      });
+    }
+  },
+
+  _spawnCoreDressing(sector, active, rng, paletteClass, arranger = null) {
+    const gates = active.gates || [];
+    const stations = active.stations || [];
+    const origin = this._sectorOrigin(sector.id);
+    for (let i = 0; i < Math.min(4, gates.length * 2); i++) {
+      const gate = gates[i % Math.max(1, gates.length)];
+      if (!gate || !gate.pos) continue;
+      const t = i % 2 === 0 ? 0.46 : 0.62;
+      const side = i % 2 === 0 ? 1 : -1;
+      const pos = offsetAlongRadial(gate.pos, t, side * (95 + rng() * 35), origin);
+      this._spawnPlaceProp(active, sector, 'place_lane_beacon', pos, {
+        paletteClass, arranger,
+        rot: bearingFromOrigin(pos, origin),
+        name: 'Lane Beacon',
+        placeScale: 1,
+      });
+    }
+    for (let i = 0; i < Math.min(2, stations.length); i++) {
+      const station = stations[i];
+      if (!station || !station.pos) continue;
+      const pos = offsetAlongRadial(station.pos, 1.0, 150 + rng() * 70, origin);
+      this._spawnPlaceProp(active, sector, 'place_station_billboard', pos, {
+        paletteClass, arranger,
+        // The authored display face is local +Z; renderer applies -entity.rot, so turn it
+        // stationward instead of leaving it edge-on to the station bearing.
+        rot: bearingToward(station.pos, pos) + Math.PI / 2,
+        name: `${station.stationId || 'Station'} Billboard`,
+        placeScale: 1,
+      });
+    }
+  },
+
+  _spawnBeltDressing(sector, active, rng, paletteClass, arranger = null) {
+    const fields = active.fields || [];
+    const stations = active.stations || [];
+    const ceresActivity = sector.id === CERES_ACTIVITY_SECTOR_ID;
+    const activityBinding = (id) => ceresActivity
+      ? ceresActivityObjectBinding(id, (localPos) => this._toGlobal(localPos, sector.id))
+      : null;
+    for (let i = 0; i < Math.min(3, fields.length); i++) {
+      const field = fields[i];
+      if (!field || !field.center) continue;
+      const ang = rng() * Math.PI * 2;
+      const dist = 210 + rng() * 170;
+      const originalNavPos = polarOffset(field.center, ang, dist);
+      const navBinding = i === 0 ? activityBinding('ceres_ambush_distress_beacon') : null;
+      // Each Ceres activity object RE-POINTS an ambient prop this loop was going to spawn anyway
+      // rather than adding one. That is what keeps the authored cast free of entity, collider and
+      // draw cost, and it is why the pinned PQ-020 structural-cost digest still holds with a sixth
+      // logical object. The RNG position is still computed either way, so the draw cadence is
+      // untouched whether or not a slot claims the prop.
+      const droneBinding = i === 0
+        ? activityBinding('ceres_refinery_disabled_hull')
+        : (i === 1
+          ? activityBinding('ceres_ambush_bait_wreck')
+          : (i === 2 ? activityBinding('ceres_cathedral_grave_shard') : null));
+      this._spawnPlaceProp(
+        active,
+        sector,
+        'place_nav_buoy',
+        navBinding ? navBinding.pos : originalNavPos,
+        {
+          paletteClass, arranger,
+          rot: ang + Math.PI * 0.5,
+          name: navBinding ? 'Throughline Distress Beacon' : 'Belt Survey Buoy',
+          placeScale: 1,
+          activityObjectSlotId: navBinding && navBinding.id,
+        },
+      );
+      const originalDronePos = polarOffset(field.center, ang + 1.9, 120 + rng() * 130);
+      const dronePresentation = droneBinding
+        ? CERES_ACTIVITY_DRONE_SLOT_PRESENTATION[droneBinding.id]
+        : null;
+      this._spawnPlaceProp(
+        active,
+        sector,
+        dronePresentation ? dronePresentation.placeId : 'place_mining_drone',
+        droneBinding ? droneBinding.pos : originalDronePos,
+        {
+          paletteClass, arranger,
+          rot: ang,
+          name: dronePresentation ? dronePresentation.name : 'Prospecting Drone',
+          placeScale: 1,
+          activityObjectSlotId: droneBinding && droneBinding.id,
+        },
+      );
+    }
+    if (stations[0] && fields[0] && fields[0].center) {
+      const originalPos = midpoint(stations[0].pos, fields[0].center, 0.58);
+      const cargoBinding = activityBinding('ceres_refinery_cargo_pod');
+      this._spawnPlaceProp(active, sector, 'place_conveyor_barge', cargoBinding ? cargoBinding.pos : originalPos, {
+        paletteClass, arranger,
+        rot: bearingToward(fields[0].center, stations[0].pos),
+        name: cargoBinding ? 'Refinery Cargo Staging Pod' : 'Ore Conveyor',
+        placeScale: 1,
+        activityObjectSlotId: cargoBinding && cargoBinding.id,
+      });
+    }
+  },
+
+  _spawnFringeDressing(sector, active, rng, paletteClass, arranger = null) {
+    const fields = active.fields || [];
+    const gates = active.gates || [];
+    const pois = active.pois || [];
+    const origin = this._sectorOrigin(sector.id);
+    if (gates[0] && gates[0].pos) {
+      const pos = offsetAlongRadial(gates[0].pos, 0.76, 120 + rng() * 60, origin);
+      this._spawnPlaceProp(active, sector, 'place_nav_buoy', pos, {
+        paletteClass, arranger,
+        rot: bearingFromOrigin(pos, origin),
+        name: 'Flickering Nav Buoy',
+      });
+    }
+    const hulkAnchor = pois.find((poi) => poi.type === 'wreck' || poi.type === 'derelict') || fields[0] || null;
+    if (hulkAnchor) {
+      const anchor = hulkAnchor.pos || hulkAnchor.center;
+      const ang = rng() * Math.PI * 2;
+      this._spawnPlaceProp(active, sector, 'place_dead_hulk', polarOffset(anchor, ang, 140 + rng() * 120), {
+        paletteClass, arranger,
+        rot: ang,
+        name: 'Dead Hulk',
+      });
+      this._spawnPlaceProp(active, sector, 'place_debris_chunk', polarOffset(anchor, ang + 0.8, 220 + rng() * 90), {
+        paletteClass, arranger,
+        rot: ang + Math.PI * 0.35,
+        name: 'Debris Chunk',
+      });
+    }
+    if (fields[0] && fields[0].center) {
+      const ang = rng() * Math.PI * 2;
+      this._spawnPlaceProp(active, sector, 'place_mining_drone', polarOffset(fields[0].center, ang, 250 + rng() * 120), {
+        paletteClass, arranger,
+        rot: ang,
+        name: 'Fringe Prospecting Drone',
+      });
+    }
+  },
+
+  _spawnAnomalyDressing(sector, active, rng, paletteClass, arranger = null) {
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const pois = active.pois || [];
+    const anchor = pois[0] && pois[0].pos
+      ? pois[0].pos
+      : this._toGlobal({ x: wr * 0.24, z: -wr * 0.18 }, sector.id);
+    const base = rng() * Math.PI * 2;
+    this._spawnPlaceProp(active, sector, 'place_nav_buoy', polarOffset(anchor, base, 180 + rng() * 80), {
+      paletteClass, arranger,
+      rot: base,
+      name: 'Quiet Nav Buoy',
+    });
+    this._spawnPlaceProp(active, sector, 'place_debris_chunk', polarOffset(anchor, base + 1.7, 260 + rng() * 110), {
+      paletteClass, arranger,
+      rot: base + 0.5,
+      name: 'Drifting Debris',
+    });
+    this._spawnPlaceProp(active, sector, 'place_mining_drone', polarOffset(anchor, base + 3.0, 330 + rng() * 140), {
+      paletteClass, arranger,
+      rot: base + Math.PI,
+      name: 'Anomaly Survey Drone',
+    });
+  },
+
+  _spawnPlaceProp(active, sector, placeId, pos, options = {}) {
+    if (!placeId || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    for (const poi of active.pois || []) {
+      const carrier = this._poiCarrier(poi && poi.id);
+      const exclusionRadius = Number(carrier && carrier.data && carrier.data.dressingExclusionRadius);
+      if (Number.isFinite(exclusionRadius) && exclusionRadius > 0 && carrier.pos
+          && dist2(pos, carrier.pos) < exclusionRadius * exclusionRadius) return null;
+    }
+    const paletteClass = options.paletteClass || paletteClassForSector(sector);
+    const radius = finitePositive(options.radius) ? Number(options.radius) : (DRESSING_RADIUS[placeId] || 12);
+    const activityObjectSlotId = typeof options.activityObjectSlotId === 'string'
+      && options.activityObjectSlotId.length > 0
+      ? options.activityObjectSlotId
+      : null;
+    let propRot = Number.isFinite(options.rot) ? options.rot : 0;
+    if (options.arranger && !activityObjectSlotId && !options.worldOneOff
+        && !options.everydaySpaceKit && !options.wreckAftermath && !options.berthId) {
+      const arranged = options.arranger.placeProp(placeId, pos, radius, propRot);
+      // Keep the original admission decision: a rejected baseline prop stays rejected, and an
+      // accepted prop never disappears because a new candidate crosses a runtime POI exclusion.
+      const admitted = !(active.pois || []).some((poi) => {
+        const carrier = this._poiCarrier(poi && poi.id);
+        const exclusionRadius = Number(carrier && carrier.data && carrier.data.dressingExclusionRadius);
+        return Number.isFinite(exclusionRadius) && exclusionRadius > 0 && carrier.pos
+          && dist2(arranged.pos, carrier.pos) < (exclusionRadius + radius) ** 2;
+      });
+      if (admitted) { pos = arranged.pos; propRot = arranged.rot; }
+    }
+    const data = {
+      placeId,
+      placeScale: finitePositive(options.placeScale) ? Number(options.placeScale) : 1,
+      worldDressing: true,
+      paletteClass,
+      sectorId: sector.id,
+      homeSectorId: sector.id,
+      name: options.name || placeId,
+      visualRadius: radius,
+      placeRadius: radius,
+      ...(activityObjectSlotId ? { activityObjectSlotId } : {}),
+      ...(options.everydaySpaceKit === true ? { everydaySpaceKit: true } : {}),
+      ...(options.wreckAftermath === true ? { wreckAftermath: true } : {}),
+      ...(options.worldOneOff === true ? { worldOneOff: true } : {}),
+      ...(typeof options.berthId === 'string' && options.berthId.length > 0
+        ? { berthId: options.berthId } : {}),
+    };
+    // What the player sees is what the ship hits: census-backed places at or above the
+    // craft-scale floor take a fixed measured-skin body (solidDressing.js). The skin's world
+    // scale tracks the same radius the renderer draws at, so collider == visible model.
+    // An activity object slot is the exception: it re-points an ambient prop the dressing
+    // loop was going to draw anyway, and the PQ-020 contract holds it free of collider
+    // cost — the same placeId spawned unclaimed keeps its measured body.
+    const solidPlan = activityObjectSlotId ? null : stampSolidDressing(data, { radius });
+    const spec = {
+      pos,
+      rot: propRot,
+      radius,
+      homeSectorId: sector.id,
+      data,
+      ...(solidPlan ? {
+        collides: true,
+        physicsBody: { dynamic: false, material: 'prop' },
+      } : {}),
+    };
+    const ent = activityObjectSlotId
+      ? this.helpers.spawnEntity({
+        type: 'fx',
+        factionId: sector.factionId || null,
+        pos: spec.pos,
+        rot: spec.rot,
+        radius: spec.radius,
+        mass: 0,
+        ...(solidPlan ? {
+          collides: true,
+          physicsBody: { dynamic: false, material: 'prop' },
+          collisionMask: Masks.STATION,
+        } : {
+          collides: false,
+        }),
+        ttl: Infinity,
+        flags: { noInterp: true },
+        data,
+      })
+      : insertDressingRow(this.state, spec);
+    this._stampHomeSector(ent, sector.id);
+    active.dressing.push({ id: ent.id, placeId, pos: { x: pos.x, z: pos.z }, paletteClass });
+    return ent;
+  },
+
+  // Hazard zones: pure data tags on activeSector (flight/combat/ai read these); no entity needed.
+  // Centers are converted once from sector-local authorship into galactic-global.
+  _spawnHazards(sector, active) {
+    const discovery = this._discoveryFor(sector.id);
+    for (const hz of (sector.hazards || [])) {
+      const center = this._toGlobal(hz.center, sector.id);
+      const aftermath = hz.afterBossDefeat;
+      const bossRecord = aftermath && discovery.pois && discovery.pois[aftermath.poiId];
+      const intensity = bossRecord && bossRecord.bossDefeated === true
+        ? aftermath.intensity
+        : hz.intensity;
+      active.hazards.push({
+        id: hz.id || null,
+        type: hz.type, center: { x: center.x, z: center.z },
+        radius: hz.radius, intensity, moving: !!hz.moving,
+      });
+    }
+    this._spawnKillMachineHazards(sector, active);
+  },
+
+  _spawnKillMachineHazards(sector, active) {
+    if (!sector) return;
+    const existing = new Set((active.hazards || []).map((row) => row && row.id).filter(Boolean));
+    const extra = [];
+    extra.push(...killMachineHazardZones(sector.id));
+    if (sector.id === PALLAS_REEF_SECTOR_ID) extra.push(pallasReefHazardZone());
+    extra.push(...weatherHazardZones(sector.id));
+    extra.push(...apertureHazardZones(sector.id));
+    // The Metronome's approach-warning circle: the map marker + hazard:enter/exit
+    // language come free, while the beam wedge itself does the real work.
+    if (sector.id === METRONOME_SECTOR_ID) extra.push(metronomeHazardZone());
+    for (const zone of extra) {
+      if (existing.has(zone.id)) continue;
+      existing.add(zone.id);
+      const center = this._toGlobal(zone.center, sector.id);
+      active.hazards.push({
+        id: zone.id,
+        type: zone.type,
+        center: { x: center.x, z: center.z },
+        radius: zone.radius,
+        intensity: zone.intensity,
+        moving: false,
+      });
+    }
+  },
+
+  _applyBossHazardAftermath(sector, poiId) {
+    const active = this.state.world.activeSector;
+    if (!sector || !active || active.id !== sector.id) return [];
+    const changed = [];
+    for (const authored of (sector.hazards || [])) {
+      const aftermath = authored.afterBossDefeat;
+      if (!aftermath || aftermath.poiId !== poiId || !Number.isFinite(aftermath.intensity)) continue;
+      const live = (active.hazards || []).find((hazard) => hazard && hazard.id === authored.id);
+      if (!live || live.intensity === aftermath.intensity) continue;
+      const previousIntensity = live.intensity;
+      live.intensity = aftermath.intensity;
+      changed.push({
+        hazardId: authored.id,
+        type: authored.type,
+        previousIntensity,
+        intensity: live.intensity,
+      });
+    }
+    return changed;
+  },
+
+  // Enemy spawns sized by enemyDensity / enemyLevel via makeEnemySpawnSpec (combat).
+  _spawnEnemies(sector, active, rng) {
+    for (const _ of this._spawnEnemiesChunks(sector, active, rng)) { /* inline */ }
+  },
+
+  /**
+   * Generator twin of _spawnEnemies: yields every 8 spawned combatants so the restore lane
+   * paints inside a dense ambient roll. The sync wrapper drains inline — identical rng draws.
+   */
+  *_spawnEnemiesChunks(sector, active, rng) {
+    // If sectorSim has drifted this sector while the player was away, use the drifted density/
+    // security so re-entering a sector reflects its current state (V2 §33/§35.3). Falls back to the
+    // passed-in sector (no drift → first visit or pre-sectorSim) so behavior is unchanged otherwise.
+    const sec = effectiveSectorFor(this.state, sector.id) || sector;
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const density = sec.enemyDensity || 0;
+    if (density <= 0) return;
+    const di = dangerIndex(sec);
+    const count = Math.min(10, Math.round(density * 8 + di * 2 + rng() * 1.5));
+    const [lvLo, lvHi] = sector.enemyLevel || [1, 2];
+
+    // REVAMP 2.1 — ambient is a spawnBudget CLIENT with static headroom: reserve at most AMBIENT_HEADROOM
+    // of the shared live-ship cap so the encounterDirector always retains slots (no eviction — we simply
+    // spawn fewer ambient when the world is tight). Each live slot is bound to its entity and the
+    // reservation is sector-scoped, so continuous residency handoffs release only the ships actually
+    // demoted. Any unspent slots are released below. No budget → unchanged.
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const ambientRequester = `world:ambient:${sector.id}`;
+    let grant = Math.min(count, AMBIENT_HEADROOM);
+    if (budget && typeof budget.request === 'function') grant = budget.request(grant, ambientRequester);
+    const enemiesBefore = active.enemies.length;
+
+    // Purposeful presence (WORLD_OVERHAUL_2_1): place ambient hostiles/patrols onto NAMED zones —
+    // ambush lanes, patrol corridors, outlaw dens — as cohesive faction squads with a shared squadId
+    // (so the SG-06 roster forms them up on the zone) instead of scattering singletons on random rings.
+    // The ships are relocated onto believable zones, not multiplied. Sectors with no authored zones
+    // keep the legacy ring path. `grant` (not `count`) caps how many we place, per the budget above.
+    const zonePlan = grant > 0 ? planZoneSpawns(sector.id, grant, sector.enemyLevel || [lvLo, lvHi], rng) : [];
+    let spawned = 0;
+    if (zonePlan.length) {
+      const player = this.state.entities.get(this.state.playerId);
+      const starterSafe = starterSafeRadius(sector);
+      const sectorOrigin = this._sectorOrigin(sector.id);
+      for (const intent of zonePlan) {
+        // Zone plans are sector-local; convert once at the spawn boundary.
+        const pos = this._toGlobal(intent.pos, sector.id);
+        if (intent.context === 'zone_hostile') {
+          // Never drop authored danger inside tutorial/port/arrival protection or on the player.
+          if (starterSafe > 0 && dist2(pos, sectorOrigin) < starterSafe * starterSafe) continue;
+          if (!this._ambientSpawnIsSafe(pos, sector, active)) continue;
+          if (player && player.pos && dist2(pos, player.pos) < ZONE_HOSTILE_PLAYER_CLEARANCE * ZONE_HOSTILE_PLAYER_CLEARANCE) continue;
+        }
+        const spec = makeEnemySpawnSpec(intent.archetypeId, clamp(intent.level, lvLo, lvHi + 2), pos, {
+          factionId: intent.factionId,
+          startedTick: this.state.tick,
+        });
+        spec.data = spec.data || {};
+        spec.data.ai = spec.data.ai || {};
+        spec.data.ai.squadId = intent.squadId;   // one squad per zone → coherent formation on the zone
+        spec.data.ai.doctrine = intent.doctrine;
+        spec.data.ai.formation = intent.formation;
+        spec.data.ai.zoneId = intent.zoneId;
+        spec.data.ai.zoneName = intent.zoneName;
+        if (Number.isFinite(intent.standingHostileBelow)) {
+          spec.data.ai.standingHostileBelow = intent.standingHostileBelow;
+        }
+        tagAiSpawnContext(spec, sector, sec, intent.context);
+        const ent = this.helpers.spawnEntity(spec);
+        if (!ent) continue;
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, ambientRequester);
+        this._stampHomeSector(ent, sector.id);
+        this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, intent.archetypeId || 'npc', active);
+        active.enemies.push(ent.id);
+        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
+      }
+    } else if (grant > 0) {
+      const pool = this._enemyPool(sector);
+      for (let i = 0; i < grant; i++) {
+        const typeId = pool[Math.floor(rng() * pool.length)];
+        const level = Math.round(lvLo + (lvHi - lvLo) * (rng() * 0.6 + 0.4 * (1 - sec.security)));
+        const pos = this._ambientEnemySpawnPos(sector, active, rng, wr);
+        if (!pos) continue;
+        const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos, { startedTick: this.state.tick });
+        tagAiSpawnContext(spec, sector, sec, 'ambient');
+        const ent = this.helpers.spawnEntity(spec);
+        if (!ent) continue;
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, ambientRequester);
+        this._stampHomeSector(ent, sector.id);
+        this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, typeId || 'npc', active);
+        active.enemies.push(ent.id);
+        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
+      }
+    }
+    // Return any reserved-but-unspent ambient slots (safe-zone skips / no valid pos) so the
+    // encounterDirector can use them. Reserve/release keeps the shared cap honest (REVAMP 2.1 risk #1).
+    if (budget && typeof budget.releaseSome === 'function') {
+      const spawnedAmbient = active.enemies.length - enemiesBefore;
+      if (spawnedAmbient < grant) budget.releaseSome(ambientRequester, grant - spawnedAmbient);
+    }
+    // WANTED hunters (V2 §20b / cut-list #15): if the player is hot, bounty-hunter lawful patrols
+    // spawn specifically to hunt them — real consequence for piracy. Count scales with heat; they
+    // drop near the player so the threat is immediate, not ambient. High-sec already has patrols,
+    // so hunters matter most in the lawless fringe where a criminal hides.
+    const heatVal = this.state.player && this.state.player.heat;
+    // WANTED is the heat owner's constant (heat.js THRESHOLD): read the lawful predicate, never
+    // restate the number — a drifting literal here silently detaches hunters from the ledger.
+    if (isPlayerWanted(this.state) && sector.security < 0.6) {
+      const hunters = Math.min(4, Math.round(heatVal * 4 + 0.5));
+      const player = this.state.entities.get(this.state.playerId);
+      if (this._playerInNoHostileSpawnZone(sector, active, player)) return;
+      const px = player ? player.pos.x : 0, pz = player ? player.pos.z : 0;
+      const hunterRequester = `world:bounty:${sector.id}`;
+      const hunterGrant = budget && typeof budget.request === 'function'
+        ? budget.request(hunters, hunterRequester)
+        : hunters;
+      if (hunterGrant < hunters) {
+        this._noteSpawnWitness('limited');
+        this.bus.emit('world:spawnLimited', {
+          kind: 'bounty_hunter', sectorId: sector.id, requested: hunters, granted: hunterGrant,
+          reason: 'spawn_cap',
+        });
+      }
+      let huntersSpawned = 0;
+      for (let i = 0; i < hunterGrant; i++) {
+        const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, HUNTER_SPAWN_MIN_RADIUS, HUNTER_SPAWN_MAX_RADIUS);
+        if (!pos) continue;
+        const level = Math.round(lvHi + (lvHi - lvLo) * 0.5 * rng()); // tough: top of band or above
+        const spec = makeEnemySpawnSpec('patrol_lawman', clamp(level, lvLo, lvHi + 2), pos, { startedTick: this.state.tick });
+        tagAiSpawnContext(spec, sector, sec, 'bounty_hunter');
+        const ent = this.helpers.spawnEntity(spec);
+        if (!ent) continue;
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, hunterRequester);
+        this._stampHomeSector(ent, sector.id);
+        this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, 'patrol_lawman:hunter', active);
+        active.enemies.push(ent.id);
+        huntersSpawned++;
+        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
+      }
+      if (budget && typeof budget.releaseSome === 'function' && huntersSpawned < hunterGrant) {
+        budget.releaseSome(hunterRequester, hunterGrant - huntersSpawned);
+      }
+    }
+  },
+
+  // MACH-06: cumulative spawn-authority counters the runtime witness samples. Limited clamps
+  // (spawnLimited) and critical deferrals (criticalSpawnDeferred) counted at emit time — a
+  // saturated scene reads non-zero limited / zero critical without a per-event log.
+  _noteSpawnWitness(key) {
+    const w = this.state && this.state.world;
+    if (!w) return;
+    const bag = w.spawnWitness || (w.spawnWitness = { limited: 0, criticalDeferred: 0 });
+    bag[key] = (bag[key] | 0) + 1;
+  },
+
+  /**
+   * Stamp a stable worldRecordId at first spawn so demote/promote never re-keys identity.
+   * Does not write the bag yet — capture happens on demote/strip.
+   */
+  _assignDurableRecordId(ent, sectorId, kind, keyHint, active) {
+    if (!ent || !ent.data) return null;
+    if (ent.data.worldRecordId) {
+      registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
+      return ent.data.worldRecordId;
+    }
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const seq = (active && (active._durableSeq = (active._durableSeq || 0) + 1)) || 0;
+    const qx = ent.pos ? Math.round(ent.pos.x / 4) * 4 : 0;
+    const qz = ent.pos ? Math.round(ent.pos.z / 4) * 4 : 0;
+    const key = `${keyHint || ent.type || 'e'}:${seq}:${qx}:${qz}`;
+    const recordId = stableRecordId(seed, sectorId, kind || RECORD_KIND.NPC, key);
+    ent.data.worldRecordId = recordId;
+    ent.data.identityKey = key;
+    ent.data.recordCreatedTick = this.state.tick | 0;
+    registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
+    return recordId;
+  },
+
+  // Boss encounter (V2 § frontier capstone): a sector authored with a `poi_boss` POI hosts the
+  // dreadnought 'Iron Maw' (dreadnought_boss). The marquee T4 fight was previously authored in
+  // data + render but had NO spawn call site — invisible to players. It spawns once per sector
+  // entry and stays defeated (tracked in the deterministic discovery overlay) once killed, so
+  // re-entering the sector or reloading a save does not respawn it. Position is offset from the
+  // boss POI marker so the fight reads as "at the arena signal", not on top of the entry point.
+  _spawnBossIfDue(sector, active, rng) {
+    const bossPoi = (sector.pois || []).find((p) => p.type === 'anomaly' && p.id === 'poi_boss');
+    if (!bossPoi) return;
+    const disc = this._discoveryFor(sector.id);
+    if (!disc.pois) disc.pois = {};
+    const rec = disc.pois[bossPoi.id] || (disc.pois[bossPoi.id] = { discovered: false, identified: false });
+    if (rec.bossDefeated) return; // already beaten this save — don't respawn
+    const liveBoss = active && active.boss && this.state.entities.get(active.boss.entityId);
+    if (liveBoss && liveBoss.alive !== false) return liveBoss;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `world:boss:${sector.id}:${bossPoi.id}`;
+    if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
+      if (!rec.bossSpawnDeferred) {
+        this._noteSpawnWitness('criticalDeferred');
+        this.bus.emit('world:criticalSpawnDeferred', {
+          kind: 'boss', sectorId: sector.id, poiId: bossPoi.id, reason: 'spawn_cap',
+        });
+      }
+      rec.bossSpawnDeferred = true;
+      return null;
+    }
+    // Place the boss near the POI marker (or a deterministic ring position if the POI is unplaced).
+    // Convert sector-local authorship once into galactic-global.
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const local = bossPoi.pos
+      ? { x: bossPoi.pos.x, z: bossPoi.pos.z }
+      : (() => { const ang = rng() * Math.PI * 2, r = wr * 0.45; return { x: Math.cos(ang) * r, z: Math.sin(ang) * r }; })();
+    const pos = this._toGlobal(local, sector.id);
+    const [lvLo, lvHi] = sector.enemyLevel || [10, 15];
+    const level = clamp(lvHi, lvLo, 15);
+    const spec = makeEnemySpawnSpec('dreadnought_boss', level, pos, { startedTick: this.state.tick });
+    spec.data = spec.data || {};
+    spec.data.isBoss = true;          // flag so the kill handler can find this entity cheaply
+    spec.data.bossPoiId = bossPoi.id; // links back to the discovery record to mark defeated
+    spec.data.bossSectorId = sector.id;
+    let ent = null;
+    try {
+      ent = this.helpers.spawnEntity(spec);
+    } catch (error) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!ent) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return null;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+    delete rec.bossSpawnDeferred;
+    this._stampHomeSector(ent, sector.id);
+    this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, `boss:${bossPoi.id}`, active);
+    active.enemies.push(ent.id);
+    active.boss = { entityId: ent.id, poiId: bossPoi.id };
+    return ent;
+  },
+
+  _enemyPool(sector) {
+    if (sector.security >= 0.6) return LAWFUL_ENEMIES;
+    if (sector.tier >= 3) return FRONTIER_ENEMIES;
+    return PIRATE_ENEMIES;
+  },
+
+  _ambientEnemySpawnPos(sector, active, rng, wr) {
+    for (let attempt = 0; attempt < AMBIENT_SPAWN_ATTEMPTS; attempt++) {
+      const ang = rng() * Math.PI * 2;
+      const r = wr * (0.3 + rng() * 0.5);
+      // Ring math is sector-local; convert once around the sector's global origin.
+      const pos = this._toGlobal({ x: Math.cos(ang) * r, z: Math.sin(ang) * r }, sector.id);
+      if (this._ambientSpawnIsSafe(pos, sector, active)) return pos;
+    }
+    return null;
+  },
+
+  _ambientSpawnIsSafe(pos, sector, active) {
+    const starterSafe = starterSafeRadius(sector);
+    if (starterSafe > 0 && dist2(pos, this._sectorOrigin(sector.id)) < starterSafe * starterSafe) return false;
+    for (const st of (active && active.stations) || []) {
+      const radius = stationSafeRadius(st);
+      if (st && st.pos && dist2(pos, st.pos) < radius * radius) return false;
+    }
+    for (const gate of (active && active.gates) || []) {
+      if (gate && gate.pos && dist2(pos, gate.pos) < GATE_SAFE_RADIUS * GATE_SAFE_RADIUS) return false;
+    }
+    return true;
+  },
+
+  _directHostileSpawnPos(sector, active, rng, origin, minRadius, maxRadius, bearing = null) {
+    const o = origin || { x: 0, z: 0 };
+    const lo = Math.max(1, minRadius || AMBUSH_SPAWN_MIN_RADIUS);
+    const hi = Math.max(lo + 1, maxRadius || AMBUSH_SPAWN_MAX_RADIUS);
+    for (let attempt = 0; attempt < DIRECT_HOSTILE_SPAWN_ATTEMPTS; attempt++) {
+      const ang = Number.isFinite(bearing) ? bearing + (rng() - 0.5) * 0.4 : rng() * Math.PI * 2;
+      const r = lo + rng() * (hi - lo);
+      const pos = { x: o.x + Math.cos(ang) * r, z: o.z + Math.sin(ang) * r };
+      if (this._directHostileSpawnIsSafe(pos, sector, active, lo)) return pos;
+    }
+    return null;
+  },
+
+  _directHostileSpawnIsSafe(pos, sector, active, minPlayerRadius) {
+    if (!this._ambientSpawnIsSafe(pos, sector, active)) return false;
+    const player = this.state.entities.get(this.state.playerId);
+    if (player && player.pos) {
+      const safe = Math.max(1, minPlayerRadius || AMBUSH_SPAWN_MIN_RADIUS);
+      if (dist2(pos, player.pos) < safe * safe) return false;
+    }
+    return true;
+  },
+
+  _playerInNoHostileSpawnZone(sector, active, player) {
+    if (!player || !player.pos) return false;
+    if (this._playerInPortNoHostileSpawnZone(active, player)) return true;
+    const starterSafe = starterSafeRadius(sector);
+    if (starterSafe > 0 && dist2(player.pos, this._sectorOrigin(sector.id)) < starterSafe * starterSafe) return true;
+    return false;
+  },
+
+  _playerInPortNoHostileSpawnZone(active, player) {
+    if (!player || !player.pos) return false;
+    if (this._playerDockedNoHostileSpawnZone(player)) return true;
+    for (const st of (active && active.stations) || []) {
+      const radius = stationSafeRadius(st);
+      if (st && st.pos && dist2(player.pos, st.pos) < radius * radius) return true;
+    }
+    for (const gate of (active && active.gates) || []) {
+      if (gate && gate.pos && dist2(player.pos, gate.pos) < GATE_SAFE_RADIUS * GATE_SAFE_RADIUS) return true;
+    }
+    return false;
+  },
+
+  _playerDockedNoHostileSpawnZone(player) {
+    if (player && player.flags && player.flags.docked) return true;
+    return !!(this.state.ui && this.state.ui.docked === true);
+  },
+
+  // --- entry point + player placement -------------------------------------------------------
+  // Returns galactic-global entry coordinates for the target sector (heading is sector-local-facing).
+  _entryPointFor(sector, fromSectorId, rng) {
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    if (fromSectorId && (sector.neighbors || []).includes(fromSectorId)) {
+      // arrive near the gate back to where we came from, facing inward
+      const ang = this._bearingTo(sector, safeSector(this.state, fromSectorId), rng);
+      const r = wr * 0.78;
+      const lx = Math.cos(ang) * r, lz = Math.sin(ang) * r;
+      const heading = Math.atan2(-lz, -lx); // face sector origin
+      const global = this._toGlobal({ x: lx, z: lz }, sector.id);
+      return { x: global.x, z: global.z, heading };
+    }
+    // first/home spawn: near the sector's galactic origin
+    const origin = this._sectorOrigin(sector.id);
+    return { x: origin.x, z: origin.z, heading: 0 };
+  },
+
+  _placePlayer(entryPoint) {
+    return applySameSectorPlayerRelocation(this.state, entryPoint);
+  },
+
+  /** Public same-sector relocation seam for authored incidents; never changes sector membership. */
+  relocatePlayerInSector(entryPoint, { reason = 'system' } = {}) {
+    const moved = applySameSectorPlayerRelocation(this.state, entryPoint);
+    if (moved && this.bus) {
+      this.bus.emit('world:playerRelocated', {
+        sectorId: this.state.world && this.state.world.currentSectorId || null,
+        pos: { x: entryPoint.x, z: entryPoint.z },
+        reason,
+        tick: this.state.tick | 0,
+      });
+    }
+    return moved;
+  },
+
+  // Map-space bearing from one sector node to another (their static map positions), + jitter.
+  _bearingTo(from, to, rng) {
+    if (from && to && from.position && to.position) {
+      const dx = (to.position.x - from.position.x);
+      const dz = (to.position.y - from.position.y); // map 'y' is the planar z axis
+      const a = Math.atan2(dz, dx);
+      return a + (rng ? (rng() - 0.5) * 0.3 : 0);
+    }
+    return (rng ? rng() : 0.5) * Math.PI * 2;
+  },
+
+  _discoveryFor(sectorId) {
+    const d = this.state.world.discovery;
+    if (!d[sectorId]) d[sectorId] = { discovered: false, visitedCount: 0, pois: {}, fieldsDepleted: {} };
+    if (!d[sectorId].pois) d[sectorId].pois = {};
+    if (!d[sectorId].fieldsDepleted) d[sectorId].fieldsDepleted = {};
+    return d[sectorId];
+  },
+
+  _seedChartedDiscovery() {
+    for (const sector of SECTORS) {
+      const rec = this._discoveryFor(sector.id);
+      if (sector.charted === true) {
+        rec.discovered = true;
+        if (!rec.source) rec.source = 'charted';
+      }
+    }
+  },
+
+  // The sell side of the survey deal (buy side: _onPurchaseSurveyData). When the authored-site
+  // census for a sector closes — every curated site investigated, identified, or defeated — the
+  // finished chart is filed with the cartography office exactly once. The stamp rides the
+  // serialized discovery overlay, the bounty goes through the canonical credit writer, and the
+  // Concord logs the filing as standing. Safe to call at every found-transition: the durable
+  // stamp makes the second call a no-op. Transitions: _tickPOIScan proximity identify,
+  // signal:investigated, boss defeat, landmark artifact return.
+  _fileSectorChart(sectorId) {
+    const state = this.state;
+    if (!state || !state.world || !sectorId) return false;
+    const disc = state.world.discovery && state.world.discovery[sectorId];
+    if (!disc || disc.chartFiled) return false;
+    const sector = (state.world.sectors && state.world.sectors[sectorId]) || SECTOR_BY_ID.get(sectorId);
+    if (!sector) return false;
+    const progress = sectorExplorationProgress(state, sector);
+    if (!(progress.total > 0) || progress.found < progress.total) return false;
+    const at = Math.max(0, Number(state.simTime) || 0);
+    const bounty = chartFilingBounty(sector, progress.total);
+    disc.chartFiled = { at, sites: progress.total, paid: bounty };
+    this.bus.emit('economy:grantCredits', {
+      amount: bounty, reason: CHART_FILING.reasonId,
+      sectorId, sites: progress.total, at,
+    });
+    this.bus.emit('faction:repDelta', {
+      factionId: CHART_FILING.repFactionId, delta: CHART_FILING.repDelta,
+      reason: `chart_filing:${sectorId}`,
+    });
+    this.bus.emit('discovery:chartFiled', {
+      sectorId, found: progress.found, total: progress.total, bounty, at,
+    });
+    this.bus.emit('toast', {
+      text: `${sector.name} chart filed — every site on the record. Cartography office pays ${bounty.toLocaleString('en-US')} cr.`,
+      kind: 'good', ttl: 5,
+    });
+    this.bus.emit('news:publish', {
+      id: `chart-filed:${sectorId}`,
+      text: `Chart filed: ${sector.name}. Every authored site in the sector is on the survey record; the cartography office paid ${bounty.toLocaleString('en-US')} cr for the completed chart.`,
+      kind: 'exploration',
+      sectorId,
+      source: 'cartography-office',
+    });
+    return true;
+  },
+
+  _onPurchaseSurveyData({ sectorId, stationId }) {
+    const sector = SECTOR_BY_ID.get(sectorId);
+    if (!sector || sector.charted === true) return false;
+    const stationSectorId = STATION_SECTOR_ID.get(stationId) || this.state.world.currentSectorId;
+    const stationSector = stationSectorId && (this.state.world.sectors[stationSectorId] || SECTOR_BY_ID.get(stationSectorId));
+    if (!stationSector || !(stationSector.neighbors || []).includes(sectorId)) return false;
+
+    const disc = this._discoveryFor(sectorId);
+    if (disc.discovered) {
+      this.bus.emit('toast', { text: `${sector.name} is already charted`, kind: 'info', ttl: 3 });
+      return true;
+    }
+
+    const price = surveyDataPrice(sector);
+    const credits = (this.state.player && this.state.player.credits) | 0;
+    if (credits < price) {
+      this.bus.emit('toast', { text: `Survey data costs ${price.toLocaleString('en-US')} cr`, kind: 'warn', ttl: 3 });
+      return false;
+    }
+
+    this.bus.emit('economy:chargeCredits', { amount: price, reason: `survey:${sectorId}` });
+    disc.discovered = true;
+    disc.source = 'survey';
+    disc.surveyedAt = this.state.simTime || 0;
+    this.bus.emit('map:sectorCharted', { sectorId, source: 'survey' });
+    this.bus.emit('toast', { text: `Survey data added: ${sector.name}`, kind: 'info', ttl: 3.5 });
+    return true;
+  },
+
+  _frontierRumorState() {
+    const normalized = normalizeFrontierRumorState(this.state.world.frontierRumors);
+    this.state.world.frontierRumors = normalized;
+    return normalized;
+  },
+
+  _onPurchaseFrontierRumor({ rumorId, stationId }) {
+    const offer = frontierRumorOffer(this.state, stationId);
+    if (!offer || offer.id !== rumorId) {
+      this.bus.emit('toast', { text: 'That rumor card is no longer available', kind: 'warn', ttl: 3 });
+      return false;
+    }
+    return this._acquireFrontierRumor(offer, { charge: true });
+  },
+
+  _onSensorPostRumor({ bodyId }) {
+    const bodies = this.state.claims && this.state.claims.bodies;
+    const body = Array.isArray(bodies)
+      ? bodies.find((row) => row && row.id === bodyId && row.owned !== false
+        && Array.isArray(row.modules) && row.modules.includes('mod_sensor_post'))
+      : null;
+    if (!body) return false;
+    return this._acquireFrontierRumor(sensorPostRumorOffer(this.state, body), { charge: false });
+  },
+
+  _acquireFrontierRumor(offer, { charge = false } = {}) {
+    if (!offer) return false;
+    const own = this._frontierRumorState();
+    if (own.byId[offer.id]) return true;
+    if (charge) {
+      const credits = Math.max(0, Math.floor(Number(this.state.player && this.state.player.credits) || 0));
+      if (credits < offer.price) {
+        this.bus.emit('toast', { text: `Rumor card costs ${offer.price.toLocaleString('en-US')} cr`, kind: 'warn', ttl: 3 });
+        return false;
+      }
+      this.bus.emit('economy:chargeCredits', { amount: offer.price, reason: `frontier-rumor:${offer.id}` });
+    }
+
+    const record = {
+      ...offer,
+      heardAt: Math.max(0, Number(this.state.simTime) || 0),
+      phase: 'rumored',
+    };
+    own.byId[record.id] = record;
+    const receipt = {
+      type: charge ? 'purchased' : 'generated',
+      rumorId: record.id,
+      kind: record.kind,
+      sectorId: record.sectorId,
+      source: record.source,
+      t: record.heardAt,
+    };
+    own.receipts.push(receipt);
+    while (own.receipts.length > FRONTIER_RUMOR_RECEIPT_LIMIT) own.receipts.shift();
+    this.bus.emit('frontierRumor:acquired', { ...record, bearingCenter: { ...record.bearingCenter } });
+    const sourceLabel = record.source === 'sensor_post' ? 'Sensor Post intel' : record.kindLabel;
+    this.bus.emit('toast', { text: `${sourceLabel} added — the search area is approximate`, kind: 'info', ttl: 4 });
+    return true;
+  },
+
+  _resolveFrontierRumors(predicate, reason) {
+    const own = this._frontierRumorState();
+    let resolved = 0;
+    for (const record of Object.values(own.byId)) {
+      if (!record || record.phase !== 'rumored' || !predicate(record)) continue;
+      record.phase = 'resolved';
+      record.resolvedAt = Math.max(0, Number(this.state.simTime) || 0);
+      record.resolution = reason;
+      const receipt = { type: 'resolved', rumorId: record.id, kind: record.kind, sectorId: record.sectorId, reason, t: record.resolvedAt };
+      own.receipts.push(receipt);
+      while (own.receipts.length > FRONTIER_RUMOR_RECEIPT_LIMIT) own.receipts.shift();
+      this.bus.emit('frontierRumor:resolved', { ...receipt });
+      this.bus.emit('toast', { text: `Rumor confirmed · ${record.kindLabel}`, kind: 'good', ttl: 3.5 });
+      resolved++;
+    }
+    return resolved;
+  },
+
+  _onFrontierRumorPoi(payload) {
+    const poiId = String(payload.poiId || '').trim();
+    if (!poiId) return 0;
+    const sectorId = payload.sectorId || this.state.world.currentSectorId;
+    return this._resolveFrontierRumors(
+      (record) => (record.kind === 'anomaly' || record.kind === 'cache')
+        && record.id !== TETHYS_BLACK_MARKET_DISCOVERY.rumorId
+        && record.targetId === poiId
+        && (!sectorId || record.sectorId === sectorId),
+      'poi_found',
+    );
+  },
+
+  _onFrontierRumorEncounter(payload) {
+    if (payload.kind !== 'bounty_hunter' && payload.kind !== 'named_hunter') return 0;
+    const sectorId = payload.sectorId || this.state.world.currentSectorId;
+    if (!sectorId) return 0;
+    return this._resolveFrontierRumors(
+      (record) => record.kind === 'hunter' && record.sectorId === sectorId,
+      'hunter_contact',
+    );
+  },
+
+  // =========================================================================================
+  // per-tick update: jump state machine, fuel, hazards, POI scan, cooldown
+  // =========================================================================================
+  update(dt, state) {
+    this._resetAdoptedSalvorApproachOnClockRewind(state);
+    if (state.mode !== 'flight') return;
+    this._drainResidencyQueue(ARRIVAL_RESIDENCY_BUDGET);
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') {
+      this._tickFrameOrigin(state);
+      this._tickWorldOneOffSpin(dt, state);
+      return;
+    }
+    const jump = state.jump;
+
+    if (jump.cooldownT > 0) {
+      jump.cooldownT = Math.max(0, jump.cooldownT - dt);
+      if (jump.cooldownT === 0 && jump.state === 'COOLDOWN') jump.state = 'IDLE';
+    }
+
+    switch (jump.state) {
+      case 'CHARGING': this._tickCharging(dt, state); break;
+      case 'JUMPING':  this._tickJumping(dt, state); break;
+      default: break;
+    }
+
+    const observeTick = (state.tick | 0) % WORLD_OBSERVE_SCAN_TICKS === 0;
+    this._tickFrameOrigin(state);
+    // A wedge cannot form inside a charge or the tunnel — and an offer latched just before
+    // either is answered only under the tow's jump-state guard in _executeStuckTow.
+    if (jump.state === 'IDLE' || jump.state === 'COOLDOWN') this._updateStuckWatch(dt, state);
+    if (observeTick) this._tickResidency(state);
+    this._tickDeferredCriticalSpawns(state);
+    this._tickScan(dt, state);
+    this._tickHazards(dt, state);
+    this._applyDockCollar(dt, state);
+    this._applyFuelWeep(dt, state);
+    if (observeTick) this._tickZoneLabel(state);
+    if (observeTick) this._tickPOIScan(state);
+    this._tickWorldOneOffSpin(dt, state);
+    this._tickAsteroidFieldInteractions(state);
+    this._tickFieldRegrowth(state);
+    this._tickUsedUpFieldOpportunity(state);
+    // 180 s expiry window: a 1 Hz sweep is exact enough and removes a per-tick Object.keys +
+    // full-bag scan. Tick-modulo gating keeps the sweep deterministic across replays and catch-up.
+    // Runs BEFORE tickFarActors so rows orphaned by this sweep are evicted by the far-row
+    // orphan pass in the SAME tick instead of lingering one tick (PQ-033.02: an orphan row
+    // observed mid-lag read as unbounded growth at every save boundary).
+    if ((state.tick | 0) % WORLD_RECORD_GC_TICKS === 0) {
+      gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
+    }
+    tickAlienEcology(this, dt);
+    tickBolus(this, dt);
+    tickMachineLayer(this, dt);
+    tickFoldAberrant(this, dt);
+    tickFarActors(state, this.helpers, this.bus,
+      entity => this._retainAdoptedSalvorApproachBody(entity, state));
+    this._pruneAdoptedSalvorApproachHolds(state);
+    // Adopted salvage requests are resolved after the player-centered residency sweep. A newly
+    // promoted hulk therefore remains live through the next physics step, where the existing
+    // Massline/latch owner can claim it before a later far-actor sweep considers shelving it.
+    this._processAdoptedSalvorMaterializationRequests(state);
+    // Optic lattices: field-resident until decode-disc approach, then shelve past exit.
+    tickOpticFieldRocks(state, this.helpers);
+    // Lane C: ask Lane A helpers to rematerialize anything already inside the authored
+    // decode disc (TABLE_AUTHORED_DECODE_SECONDS × top speed). tickFarActors covers the
+    // same disc for restore; this call also stamps renderRunwayIds so a just-promoted
+    // hull cannot be omitted by a stale activity frame on the present beat.
+    if (observeTick) requestDecodeRunwayPromote(state, this.helpers);
+  },
+
+  _adoptedSalvorMaterializationContext(request) {
+    const state = this.state;
+    const jobId = request?.jobId;
+    const jobs = state?.npcJobs?.byId;
+    const entry = typeof jobId === 'string' ? jobs?.[jobId] : null;
+    const job = entry?.job;
+    const payload = job?.payload;
+    if (!entry || job?.kind !== 'salvor' || payload?.role !== 'scavenger'
+      || payload.targetIdentity?.kind == null
+      || job.route?.[1]?.id !== `hulk:${payload.targetId}`
+      || [ 'flee', 'complete' ].includes(job.phase)
+      || entry.worldRecordId !== request.workerWorldRecordId) return null;
+    const worker = state.entities?.get?.(entry.entityId);
+    if (!worker || worker.alive === false || worker.data?.jobId !== jobId
+      || worker.data?.worldRecordId !== entry.worldRecordId || !worker.pos) return null;
+    const identity = payload.targetIdentity;
+    const targetType = payload.targetType;
+    const sectorId = entry.sectorId || worker.homeSectorId || worker.data?.homeSectorId
+      || worker.data?.sectorId || state.world?.currentSectorId;
+    if (!sectorId || request.sectorId !== sectorId || request.targetType !== targetType
+      || request.targetIdentity?.kind !== identity.kind) return null;
+    const origin = job.route?.[0];
+    const originId = origin?.id;
+    let validOrigin = originId === 'cut:hold'
+      && Number.isFinite(origin.pos?.x) && Number.isFinite(origin.pos?.z);
+    if (!validOrigin && typeof originId === 'string' && originId.startsWith('yard:')) {
+      const yardId = originId.slice(5);
+      const active = state.world?.sectorContents?.[sectorId]
+        || (state.world?.currentSectorId === sectorId ? state.world?.activeSector : null);
+      const yard = active?.stations?.find(row => row && row.stationId === yardId);
+      validOrigin = !!yard?.pos && Number.isFinite(origin.pos?.x) && Number.isFinite(origin.pos?.z)
+        && Number.isFinite(yard.pos.x) && Number.isFinite(yard.pos.z)
+        && Math.hypot(origin.pos.x - yard.pos.x, origin.pos.z - yard.pos.z) <= 0.01;
+    }
+    if (!validOrigin) return null;
+    for (const key of ['worldRecordId', 'markerId', 'salvagePointId', 'sourceKey', 'key']) {
+      if ((request.targetIdentity?.[key] ?? null) !== (identity[key] ?? null)) return null;
+    }
+    const target = findFarActorForTargetIdentity(state, identity, { type: targetType, sectorId });
+    if (!target) return null;
+    const claimant = target.data?.salvorClaimedBy;
+    if (claimant != null && claimant !== entry.worldRecordId) return null;
+    const worldRecordId = target.data?.worldRecordId;
+    if (worldRecordId != null) {
+      const durable = state.world?.records?.byId?.[worldRecordId];
+      if (durable && (durable.recordId !== worldRecordId
+        || durable.sectorId !== sectorId || !recordShouldRematerialize(durable, 'FULL'))) return null;
+    }
+    catchUpFarRecord(target, Number.isFinite(state.simTime) ? state.simTime : 0, state.world?.farActors);
+    const approachBandWU = Number(request.approachBandWU);
+    if (!Number.isFinite(approachBandWU) || approachBandWU <= 0 || approachBandWU > 1000) return null;
+    const distance = Math.hypot(worker.pos.x - target.pos.x, worker.pos.z - target.pos.z);
+    return { entry, job, worker, target, identity, targetType, sectorId, worldRecordId,
+      approachBandWU, distance };
+  },
+
+  _releaseAdoptedSalvorApproachHold(state, jobId, hold) {
+    if (this._adoptedSalvorApproachHolds?.get(jobId) === hold) {
+      this._adoptedSalvorApproachHolds.delete(jobId);
+    }
+    if (hold?.activityLease && hold.activityOwner) {
+      releaseActivityPhysicsInterest(state, hold.activityOwner, hold.activityLease);
+      hold.activityLease = null;
+    }
+  },
+
+  _clearAdoptedSalvorApproachState(state = this.state) {
+    this._adoptedSalvorMaterializationRequests?.clear?.();
+    const holds = this._adoptedSalvorApproachHolds;
+    if (holds instanceof Map) {
+      for (const [jobId, hold] of holds) this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+      holds.clear();
+    }
+    this._adoptedSalvorLeaseClock = Number.isFinite(state?.simTime) ? state.simTime : 0;
+  },
+
+  _resetAdoptedSalvorApproachOnClockRewind(state = this.state) {
+    const now = Number.isFinite(state?.simTime) ? state.simTime : 0;
+    if (Number.isFinite(this._adoptedSalvorLeaseClock) && now < this._adoptedSalvorLeaseClock) {
+      this._clearAdoptedSalvorApproachState(state);
+    }
+    this._adoptedSalvorLeaseClock = now;
+  },
+
+  /** Promote the unique existing shelf through the world owner, preserving its normal admission. */
+  promoteFarActorByIdentity(identity, options = {}) {
+    return promoteFarActorForTargetIdentity(this.state, identity, options, this.helpers);
+  },
+
+  /** Resolve a booked far target's current owner pose and enqueue only near physical approach. */
+  requestAdoptedSalvorTargetMaterialization(request = {}) {
+    const context = this._adoptedSalvorMaterializationContext(request);
+    if (!context) return null;
+    if (context.distance <= context.approachBandWU) {
+      const requests = this._adoptedSalvorMaterializationRequests
+        || (this._adoptedSalvorMaterializationRequests = new Map());
+      const previous = requests.get(request.jobId);
+      requests.set(request.jobId, {
+        jobId: request.jobId,
+        workerWorldRecordId: request.workerWorldRecordId,
+        targetIdentity: { ...context.identity },
+        targetType: context.targetType,
+        sectorId: context.sectorId,
+        approachBandWU: context.approachBandWU,
+        nextAttemptAt: previous?.nextAttemptAt || 0,
+      });
+    }
+    return {
+      worldRecordId: context.worldRecordId,
+      pos: { x: context.target.pos.x, z: context.target.pos.z },
+      vel: { x: Number(context.target.vel?.x) || 0, z: Number(context.target.vel?.z) || 0 },
+      radius: context.target.radius,
+      mass: context.target.mass,
+      type: context.target.type,
+      sectorId: context.sectorId,
+      claimant: context.target.data?.salvorClaimedBy || null,
+    };
+  },
+
+  _processAdoptedSalvorMaterializationRequests(state) {
+    const requests = this._adoptedSalvorMaterializationRequests;
+    if (!(requests instanceof Map) || requests.size === 0) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    for (const [jobId, request] of requests) {
+      if (request.nextAttemptAt > now) continue;
+      const context = this._adoptedSalvorMaterializationContext(request);
+      if (!context || context.distance > context.approachBandWU) {
+        requests.delete(jobId);
+        continue;
+      }
+      const entity = promoteFarActorForTargetIdentity(state, request.targetIdentity,
+        { type: request.targetType, sectorId: request.sectorId }, this.helpers);
+      if (entity) {
+        const expiresAt = now + ADOPTED_SALVOR_LATCH_HANDOFF_S;
+        const activityLease = requestActivityPhysicsInterest(state, context.worker, entity, {
+          expiresAt,
+          sectorId: context.sectorId,
+        });
+        if (!activityLease) {
+          request.nextAttemptAt = now + 0.5;
+          continue;
+        }
+        requests.delete(jobId);
+        const holds = this._adoptedSalvorApproachHolds
+          || (this._adoptedSalvorApproachHolds = new Map());
+        holds.set(jobId, {
+          jobId,
+          workerWorldRecordId: request.workerWorldRecordId,
+          workerEntityId: context.worker.id,
+          activityOwner: context.worker,
+          activityLease,
+          targetIdentity: { ...request.targetIdentity },
+          targetEntity: entity,
+          targetGeneration: entity.occupantGeneration ?? null,
+          sectorId: request.sectorId,
+          approachBandWU: request.approachBandWU,
+          expiresAt: now + ADOPTED_SALVOR_LATCH_HANDOFF_S,
+        });
+        this.bus?.emit?.('world:farActorRestored', {
+          id: entity.id, type: entity.type, jobId: entity.data?.jobId ?? null, causeJobId: jobId,
+          trafficRole: entity.data?.trafficRole || null,
+          entity, reason: 'adopted-salvor-approach',
+        });
+        continue;
+      }
+      // A spawn-budget denial leaves the same far record intact; retry at a bounded cadence while
+      // the exact live worker continues approaching. This is a request, never a residency pin.
+      request.nextAttemptAt = now + 0.5;
+    }
+  },
+
+  _retainAdoptedSalvorApproachBody(entity, state = this.state) {
+    const holds = this._adoptedSalvorApproachHolds;
+    if (!(holds instanceof Map) || !entity) return false;
+    const now = Number.isFinite(state?.simTime) ? state.simTime : 0;
+    for (const [jobId, hold] of holds) {
+      if (hold.expiresAt <= now) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+        continue;
+      }
+      if (hold.targetEntity !== entity || entity.alive === false
+        || (hold.targetGeneration != null && entity.occupantGeneration !== hold.targetGeneration)) continue;
+      const entry = state.npcJobs?.byId?.[jobId];
+      const job = entry?.job;
+      const worker = entry && state.entities?.get?.(entry.entityId);
+      const payload = job?.payload;
+      const identity = hold.targetIdentity;
+      const currentIdentity = payload?.targetIdentity;
+      const matches = identity?.kind === 'worldRecord'
+        ? entity.data?.worldRecordId === identity.worldRecordId
+        : identity?.kind === 'marker' ? entity.data?.markerId === identity.markerId
+          : identity?.kind === 'salvagePoint'
+            ? entity.data?.salvagePointId === identity.salvagePointId
+              && entity.data?.salvageSourceKey === identity.sourceKey
+            : identity?.kind === 'salvorTarget' && entity.data?.salvorTargetKey === identity.key;
+      const sectorId = entry?.sectorId || worker?.homeSectorId || worker?.data?.homeSectorId
+        || worker?.data?.sectorId || state.world?.currentSectorId;
+      if (!entry || job?.kind !== 'salvor' || payload?.role !== 'scavenger'
+        || job.phase === 'flee' || job.phase === 'complete'
+        || entry.worldRecordId !== hold.workerWorldRecordId
+        || entry.entityId !== hold.workerEntityId
+        || worker?.alive === false || worker?.data?.jobId !== jobId
+        || worker?.data?.worldRecordId !== hold.workerWorldRecordId
+        || !sameAdoptedSalvorTargetIdentity(currentIdentity, identity) || !matches
+        || sectorId !== hold.sectorId || !worker.pos || !entity.pos) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+        continue;
+      }
+      const distance = Math.hypot(worker.pos.x - entity.pos.x, worker.pos.z - entity.pos.z);
+      if (!Number.isFinite(distance) || distance > Math.max(hold.approachBandWU,
+        ADOPTED_SALVOR_LATCH_HANDOFF_RADIUS_WU)) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+        continue;
+      }
+      const attachments = this.registry?.get?.('combat')?.kernel?.attachments;
+      const line = entry.towAttachmentId != null ? attachments?.get?.(entry.towAttachmentId) : null;
+      const attached = line?.state === 'active' && line.controlMode === 'npc_tow'
+        && line.ownerId === worker.id && line.targetId === entity.id
+        && entry.towTargetId === entity.id && entry.towTargetRef === entity;
+      if (attached) this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+      return true;
+    }
+    return false;
+  },
+
+  _pruneAdoptedSalvorApproachHolds(state = this.state) {
+    const holds = this._adoptedSalvorApproachHolds;
+    if (!(holds instanceof Map) || holds.size === 0) return;
+    const now = Number.isFinite(state?.simTime) ? state.simTime : 0;
+    for (const [jobId, hold] of holds) {
+      const entry = state.npcJobs?.byId?.[jobId];
+      const job = entry?.job;
+      const worker = entry && state.entities?.get?.(entry.entityId);
+      const payload = job?.payload;
+      const entity = hold.targetEntity;
+      const identity = hold.targetIdentity;
+      const currentIdentity = payload?.targetIdentity;
+      const matches = identity?.kind === 'worldRecord'
+        ? entity?.data?.worldRecordId === identity.worldRecordId
+        : identity?.kind === 'marker' ? entity?.data?.markerId === identity.markerId
+          : identity?.kind === 'salvagePoint'
+            ? entity?.data?.salvagePointId === identity.salvagePointId
+              && entity?.data?.salvageSourceKey === identity.sourceKey
+            : identity?.kind === 'salvorTarget' && entity?.data?.salvorTargetKey === identity.key;
+      const sectorId = entry?.sectorId || worker?.homeSectorId || worker?.data?.homeSectorId
+        || worker?.data?.sectorId || state.world?.currentSectorId;
+      const valid = entry && job?.kind === 'salvor' && payload?.role === 'scavenger'
+        && !['flee', 'complete'].includes(job.phase)
+        && entry.worldRecordId === hold.workerWorldRecordId
+        && entry.entityId === hold.workerEntityId
+        && worker?.alive !== false && worker?.data?.jobId === jobId
+        && worker?.data?.worldRecordId === hold.workerWorldRecordId
+        && entity && entity.alive !== false && state.entities?.get?.(entity.id) === entity
+        && (hold.targetGeneration == null || entity.occupantGeneration === hold.targetGeneration)
+        && sameAdoptedSalvorTargetIdentity(currentIdentity, identity) && matches
+        && sectorId === hold.sectorId && worker.pos && entity.pos;
+      const distance = valid ? Math.hypot(worker.pos.x - entity.pos.x, worker.pos.z - entity.pos.z) : Infinity;
+      const attachments = this.registry?.get?.('combat')?.kernel?.attachments;
+      const line = valid && entry.towAttachmentId != null ? attachments?.get?.(entry.towAttachmentId) : null;
+      const attached = line?.state === 'active' && line.controlMode === 'npc_tow'
+        && line.ownerId === worker.id && line.targetId === entity.id
+        && entry.towTargetId === entity.id && entry.towTargetRef === entity;
+      if (!valid || !Number.isFinite(distance)
+        || distance > Math.max(hold.approachBandWU, ADOPTED_SALVOR_LATCH_HANDOFF_RADIUS_WU)
+        || attached || hold.expiresAt <= now) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+      }
+    }
+  },
+
+  _tickAsteroidFieldInteractions(state) {
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || !player.pos) {
+      this._fieldInteractQuiet = null;
+      publishAsteroidFieldInteractQuiet(state, false);
+      return;
+    }
+    // Quiet parked flight: dormant field rocks do not translate (vel defaults 0; only angVel
+    // spins). Still-player latch skips the near queryAsteroidField grid walk while parked;
+    // wake on asteroidField.version, player move beyond ~15% of reach, player unpark
+    // (speed), or a 0.5 s rescan. First probe (and any wake) still promotes rocks inside
+    // collide radius.
+    const field = state.world && state.world.asteroidField;
+    const fieldVersion = field && Number.isFinite(field.version) ? field.version : null;
+    const px = Number.isFinite(player.pos.x) ? player.pos.x : 0;
+    const pz = Number.isFinite(player.pos.z) ? player.pos.z : 0;
+    const pvx = player.vel ? Number(player.vel.x) || 0 : 0;
+    const pvz = player.vel ? Number(player.vel.z) || 0 : 0;
+    const parked = (pvx * pvx + pvz * pvz) <= ASTEROID_FIELD_INTERACT_STILL_SPEED2;
+    const tick = state.tick | 0;
+    const latchOn = ASTEROID_FIELD_INTERACT_STILL_QUIET !== false;
+
+    if (latchOn) {
+      const quiet = this._fieldInteractQuiet;
+      if (quiet
+        && parked
+        && quiet.fieldVersion === fieldVersion
+        && ((tick - (quiet.armedTick | 0)) < ASTEROID_FIELD_INTERACT_STILL_RESCAN_TICKS)) {
+        const mdx = px - quiet.x;
+        const mdz = pz - quiet.z;
+        if (mdx * mdx + mdz * mdz <= quiet.wakeMove2) {
+          publishAsteroidFieldInteractQuiet(state, true);
+          return;
+        }
+      }
+    } else if (this._fieldInteractQuiet) {
+      this._fieldInteractQuiet = null;
+    }
+
+    // Reach must cover the largest promotion distance below: a rock promotes when the
+    // player touches its real collider skin, which exceeds rec.radius by the authored
+    // collider factor (worst 1.55x). 36 covers every authored rock size (radius <= 30).
+    const reach = (player.radius || 8) + 36;
+    const hits = queryAsteroidField(state, player.pos, reach, this._fieldHitScratch || (this._fieldHitScratch = []));
+    for (let i = 0; i < hits.length; i++) {
+      const rec = hits[i];
+      if (!rec || !rec.pos) continue;
+      const dx = rec.pos.x - player.pos.x;
+      const dz = rec.pos.z - player.pos.z;
+      // Promote at the spawned collider's skin, not the record's: the Rapier ball is
+      // rec.radius x the authored collider scale, so a record-skin trigger would create
+      // the body already penetrating the player — a depenetration yeet, not a bump.
+      const colliderR = asteroidColliderRadius(rec.data && rec.data.typeId, rec.radius || 8);
+      const rad = (player.radius || 8) + colliderR;
+      if (dx * dx + dz * dz <= rad * rad) {
+        promoteAsteroidFieldRock(state, rec.id, this.helpers, 'ram');
+      }
+    }
+
+    if (latchOn && parked) {
+      const wakeR = Math.max(2, reach * 0.15);
+      this._fieldInteractQuiet = {
+        fieldVersion,
+        armedTick: tick,
+        x: px,
+        z: pz,
+        wakeMove2: wakeR * wakeR,
+      };
+      publishAsteroidFieldInteractQuiet(state, true);
+    } else {
+      this._fieldInteractQuiet = null;
+      publishAsteroidFieldInteractQuiet(state, false);
+    }
+  },
+
+  /**
+   * Slow field replenishment. The durable clock is fieldDepletion's; this method only turns a due
+   * seam into real rocks the player (and NPC miners) can work. Fresh rocks materialize live rather
+   * than dormant so the existing scan/beam/traffic surfaces see them the same tick — that is the
+   * readable "the belt is breathing again" signal, alongside `field:regrown` for presentation.
+   */
+  _tickFieldRegrowth(state) {
+    if ((state.tick | 0) % FIELD_REGROWTH_SCAN_TICKS !== 0) return 0;
+    const sectorId = state.world && state.world.currentSectorId;
+    const active = state.world && state.world.activeSector;
+    if (!sectorId || !active || !Array.isArray(active.fields) || !active.fields.length) return 0;
+    const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    if (!sector) return 0;
+    let grown = 0;
+    for (const field of active.fields) {
+      if (!field || !field.id || !field.center) continue;
+      const due = fieldRegrowthDue(state, field.id, state.simTime);
+      if (!due) continue;
+      grown += this._growFieldSeam(state, sector, field, due);
+    }
+    return grown;
+  },
+
+  _growFieldSeam(state, sector, field, due) {
+    const helpers = this.helpers;
+    if (!helpers || typeof helpers.spawnEntity !== 'function') return 0;
+    // The cap is an entity-budget guard — live rocks cost sim and scan bandwidth. Dormant
+    // field records do not: a stocked field whose live rocks were mined out must still get
+    // its seam, or regrowth can never fire anywhere rocks remain on the shelf.
+    const live = this._liveFieldRockCount(state, field.id, { includeDormant: false });
+    if (live >= FIELD_REGROWTH_LIVE_CAP) {
+      // The belt is already standing at cap; restart the slow clock so the next seam waits for the
+      // player to make room instead of spawning into a full field.
+      recordFieldRegrowth(state, { fieldId: field.id, sectorId: sector.id, simTime: state.simTime });
+      return 0;
+    }
+    const fdefs = sector.fields || [];
+    const fdef = fdefs.find((f) => f && f.id === field.id) || null;
+    const tierParams = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1] || {};
+    const clusterR = (fdef && fdef.clusterRadius) || tierParams.clusterRadius || 450;
+    const def = AST_BY_ID.get((fdef && fdef.type) || field.type) || AST_BY_ID.get('ast_common_rock');
+    const seed = Number(state.meta && state.meta.seed) || 1;
+    const rng = helpers.mulberry32(helpers.hash32(seed, sector.id, field.id, 'field-regrowth', due.batches));
+    const batch = FIELD_REGROWTH_BATCH_MIN
+      + Math.floor(rng() * (FIELD_REGROWTH_BATCH_MAX - FIELD_REGROWTH_BATCH_MIN + 1));
+    const richness = Number.isFinite(due.richnessMult) && due.richnessMult > 0 ? due.richnessMult : 1;
+    // Economy work-reservation contract: ask the economy budget only once the world owns a legal
+    // physical opportunity (accessible approach, clearances, budgets checked below/in admission).
+    const work = this._resourceWorkLeaseForSeam(state, sector, field, def, batch, clusterR);
+    if (work.blocked) return 0; // present economy refused (or published cap full): retry later
+    const lease = work.lease;   // null → the world's own free seam, exactly as before the contract
+    let grown = 0;
+    let sawThrow = false; // a throw mid-creation leaves that unit uncertain: it may exist physically
+    try {
+      // A lease publishes only the ACCEPTED quantity; the free seam keeps its full batch.
+      const units = lease ? Math.min(batch, lease.qty) : batch;
+      for (let i = 0; i < units; i++) {
+        const ang = rng() * Math.PI * 2;
+        const r = clusterR * Math.sqrt(rng());
+        const [hpLo, hpHi] = def.hp || [120, 520];
+        const oreHP = Math.round(hpLo + (hpHi - hpLo) * rng());
+        const [szLo, szHi] = def.sizeRange || [6, 14];
+        const size = szLo + (szHi - szLo) * rng();
+        const [yLo, yHi] = def.yieldU || [8, 22];
+        const t = hpHi === hpLo ? 1 : (oreHP - hpLo) / (hpHi - hpLo);
+        const baseYieldU = Math.max(1, Math.round(yLo + (yHi - yLo) * t));
+        const yieldU = Math.max(1, Math.round(baseYieldU * richness * FIELD_REGROWTH_YIELD_SCALE));
+        const px = field.center.x + Math.cos(ang) * r;
+        const pz = field.center.z + Math.sin(ang) * r;
+        // No rock may materialize inside a live hull — a spawned collider on a ship is a
+        // depenetration yeet, not a seam. Applies to the free seam too: a pilot parked in
+        // a dead belt still deserves to keep their ship.
+        const colliderR = asteroidColliderRadius(def.id, size);
+        if (!this._seamCandidateClearOfHulls(state, px, pz, colliderR)) continue;
+        // The remaining clearance applies to published rocks only; the free seam keeps its
+        // authored scatter against anchors and the sector envelope.
+        if (lease && !this._resourceWorkCandidateClear(state, sector, px, pz, size)) continue;
+        const ent = helpers.spawnEntity({
+          type: 'asteroid',
+          pos: { x: px, z: pz },
+          radius: size,
+          mass: asteroidMass(sector && sector.id, size),
+          angVel: (rng() - 0.5) * 0.35,
+          hull: oreHP,
+          hullMax: oreHP,
+          collides: true,
+          physicsBody: { radius: colliderR },
+          data: {
+            typeId: def.id, tier: def.tierCap, tierCap: def.tierCap,
+            oreHP, oreHPMax: oreHP, yieldU,
+            size, pctEjected: 0,
+            respawnSec: tierParams.respawnSec || 120,
+            fieldId: field.id,
+            asteroidSlotId: `regrow:${due.batches}:${i}`,
+            regrown: true,
+            regrownAtT: state.simTime,
+            ...(lease ? { resourceWork: { leaseId: lease.leaseId, seq: lease.seq, commodityId: lease.commodityId } } : {}),
+          },
+        });
+        if (!ent) continue;
+        this._stampHomeSector(ent, sector.id);
+        ent.data.seams = deriveAsteroidSeams(seed, ent.id, ent.radius, {
+          hash32: helpers.hash32,
+          mulberry32: helpers.mulberry32,
+        });
+        grown++;
+      }
+    } catch (err) {
+      sawThrow = true;
+    }
+    if (!grown) {
+      if (lease && !sawThrow) {
+        // Every unit was refused before creation: a known, uncommitted publication.
+        this._emitResourceWorkCancel(state, sector.id, lease);
+      }
+      // An uncertain throw with zero committed units expires silently — never cancel it.
+      return 0;
+    }
+    if (lease) {
+      // Durable publication committed (live entities + receipt below); settle only the committed
+      // quantity. An ack failure is reconciled through the receipt, never by re-spawning.
+      this._emitResourceWorkSettle(state, sector, field, lease, grown, sawThrow);
+    }
+    recordFieldRegrowth(state, {
+      fieldId: field.id, sectorId: sector.id, simTime: state.simTime, batches: 1,
+    });
+    const payload = {
+      fieldId: field.id,
+      sectorId: sector.id,
+      rocks: grown,
+      batch: due.batches + 1,
+      depleted: due.depletion,
+      richnessMult: due.richnessMult,
+      band: due.band,
+      center: { x: field.center.x, z: field.center.z },
+      reason: 'slow_clock',
+      ...(lease ? { published: true, leaseId: lease.leaseId, seq: lease.seq } : {}),
+    };
+    this.bus.emit('field:regrown', payload);
+    return grown;
+  },
+
+  /**
+   * A used-up field with nothing minable within a few minutes gets one onward cluster
+   * and rocks on the way. Not a slower beam, a smaller hold, or a tax — placed rocks.
+   * The economy work budget does not gate this: that refusal is what left the cleared
+   * belt empty while the next authored field sat ~14,000 WU off.
+   */
+  _tickUsedUpFieldOpportunity(state) {
+    if ((state.tick | 0) % FIELD_REGROWTH_SCAN_TICKS !== 0) return 0;
+    const sectorId = state.world && state.world.currentSectorId;
+    const active = state.world && state.world.activeSector;
+    if (!sectorId || !active || !Array.isArray(active.fields) || !active.fields.length) return 0;
+    if (nextFieldOpportunityRecord(state, sectorId)) return 0;
+    const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    if (!sector) return 0;
+    const usedUp = [];
+    for (const field of active.fields) {
+      if (!field || !field.id || !field.center) continue;
+      const rec = state.fieldDepletion && state.fieldDepletion.fields
+        ? state.fieldDepletion.fields[field.id]
+        : null;
+      if (!rec || rec.depletion < FIELD_USED_UP_DEPLETION) continue;
+      if (this._liveFieldRockCount(state, field.id) > 0) continue;
+      usedUp.push(field);
+    }
+    if (!usedUp.length) return 0;
+    usedUp.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const source = usedUp[0];
+    if (this._liveRockWithin(state, source.center, NEXT_FIELD_MAX_WU, source.id)) return 0;
+    const toward = this._nearestGatePos(active, source.center);
+    // Station and gate halos are placement keepouts — the seam must not land inside a structure.
+    const keepouts = [];
+    for (const st of active.stations || []) {
+      if (st && st.pos) keepouts.push({ x: st.pos.x, z: st.pos.z, r: 320 });
+    }
+    for (const gate of active.gates || []) {
+      if (gate && gate.pos) keepouts.push({ x: gate.pos.x, z: gate.pos.z, r: 240 });
+    }
+    // active.fields records carry no clusterRadius — read the authored field def for the
+    // footprint the trail must start outside of.
+    const fdef = (sector.fields || []).find((f) => f && f.id === source.id) || null;
+    const plan = planUsedUpFieldOpportunity({
+      from: source.center,
+      fromRadius: (fdef && (fdef.clusterRadius || fdef.radius)) || source.clusterRadius || 240,
+      toward,
+      keepouts,
+      sectorOrigin: this._sectorOrigin(sectorId),
+      sectorRadius: sector.worldRadius || 3500,
+      seed: Number(state.meta && state.meta.seed) || 1,
+      fieldId: source.id,
+      sectorId,
+    });
+    if (!plan || !plan.rocks.length) return 0;
+    const placed = this._spawnOpportunityRocks(state, sector, plan);
+    // Every spot suppressed by a durable dead body still counts as placed: the seam was
+    // already consumed, and skipping the record would re-plan the same seam every scan.
+    if (!placed.placed) return 0;
+    recordNextFieldOpportunity(state, {
+      sectorId,
+      fieldId: plan.fieldId,
+      sourceFieldId: plan.sourceFieldId,
+      center: plan.center,
+      distanceWU: plan.distanceWU,
+      rocks: placed.placed,
+      rockSpots: plan.rocks,
+      simTime: state.simTime,
+    });
+    if (placed.grown > 0) {
+      this.bus.emit('field:opportunity', {
+        sectorId,
+        sourceFieldId: source.id,
+        fieldId: plan.fieldId,
+        rocks: placed.grown,
+        distanceWU: plan.distanceWU,
+        center: { x: plan.center.x, z: plan.center.z },
+        reason: 'used_up_field',
+      });
+    }
+    return placed.grown;
+  },
+
+  _nearestGatePos(active, from) {
+    let best = null;
+    let bestD = Infinity;
+    for (const gate of (active && active.gates) || []) {
+      if (!gate || !gate.pos) continue;
+      const dx = gate.pos.x - from.x;
+      const dz = gate.pos.z - from.z;
+      const d = dx * dx + dz * dz;
+      if (d < bestD) {
+        bestD = d;
+        best = gate.pos;
+      }
+    }
+    return best;
+  },
+
+  _liveRockWithin(state, center, radius, ignoreFieldId) {
+    if (!center) return false;
+    const r2 = radius * radius;
+    const within = (pos, data) => {
+      if (!pos) return false;
+      if (ignoreFieldId && data && data.fieldId === ignoreFieldId) return false;
+      const dx = pos.x - center.x;
+      const dz = pos.z - center.z;
+      return dx * dx + dz * dz <= r2 && !!(data && data.yieldU > 0);
+    };
+    // Authored field rocks idle as dormant records, not entities — a stocked field must still
+    // count here or the "nothing minable nearby" check reads a full belt as empty. The bag is
+    // cross-sector and positions are sector-local, so only the current sector's records count.
+    const sectorId = state.world && state.world.currentSectorId;
+    const bag = state.world && state.world.asteroidField;
+    if (bag && Array.isArray(bag.rocks)) {
+      for (const rec of bag.rocks) {
+        if (!rec || rec.alive === false || rec.liveEntityId != null) continue;
+        const home = rec.homeSectorId || (rec.data && rec.data.homeSectorId);
+        if (sectorId && home !== sectorId) continue;
+        if (within(rec.pos, rec.data)) return true;
+      }
+    }
+    // Live asteroids only: the mineables bucket repeats wrecks and the fat list adds nothing
+    // the asteroids bucket does not already hold.
+    const list = indexedTypeScan(state, 'asteroids');
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
+      if (within(entity.pos, entity.data)) return true;
+    }
+    return false;
+  },
+
+  _spawnOpportunityRocks(state, sector, plan) {
+    const helpers = this.helpers;
+    if (!helpers || typeof helpers.spawnEntity !== 'function') return { grown: 0, placed: 0 };
+    const def = AST_BY_ID.get('ast_common_rock');
+    // A seam rock that survived sector demotion (mission-pinned, persistent) still owns its
+    // slot — re-spawning it would duplicate the asteroidSlotId.
+    const liveSlots = new Set();
+    for (const e of indexedTypeScan(state, 'asteroids')) {
+      if (e && e.alive !== false && e.data && e.data.fieldId === plan.fieldId
+        && e.data.asteroidSlotId != null) liveSlots.add(e.data.asteroidSlotId);
+    }
+    let grown = 0;
+    let placed = 0;
+    for (let i = 0; i < plan.rocks.length; i++) {
+      const rock = plan.rocks[i];
+      const slotId = `next:${rock.role}:${i}`;
+      if (liveSlots.has(slotId)) {
+        placed += 1;
+        grown += 1;
+        continue;
+      }
+      const size = 8;
+      const oreHP = 200;
+      const colliderR = asteroidColliderRadius(def && def.id, size);
+      // A spot under a live hull is a depenetration yeet, not a rock — the frozen spot stays
+      // canonical and retries on the next materialization when the hull has moved.
+      if (!this._seamCandidateClearOfHulls(state, rock.x, rock.z, colliderR)) continue;
+      const ent = helpers.spawnEntity({
+        type: 'asteroid',
+        pos: { x: rock.x, z: rock.z },
+        radius: size,
+        mass: asteroidMass(sector && sector.id, size),
+        hull: oreHP,
+        hullMax: oreHP,
+        collides: true,
+        physicsBody: { radius: colliderR },
+        data: {
+          typeId: def ? def.id : 'ast_common_rock',
+          tier: 0,
+          tierCap: 0,
+          oreHP,
+          oreHPMax: oreHP,
+          yieldU: 12,
+          size,
+          pctEjected: 0,
+          fieldId: plan.fieldId,
+          asteroidSlotId: slotId,
+          opportunity: true,
+          opportunityRole: rock.role,
+        },
+      });
+      if (!ent) continue;
+      placed += 1;
+      this._stampHomeSector(ent, sector.id);
+      // On rematerialize a rock the player already mined comes back suppressed by its
+      // durable resource body (depleted oreHP, or dead outright) instead of rerolled.
+      this._restoreResourceBody(ent);
+      if (ent.alive !== false) grown += 1;
+    }
+    return { grown, placed };
+  },
+
+  /**
+   * The nextFields record outlives the sector bag: on re-materialize the seam re-places its
+   * rocks from the positions frozen into the record — the live fields/gates re-roll under a
+   * different rng offset once a field is used up, so re-deriving the plan would relocate the
+   * seam (and a null plan would strand the suppressing record). No field:opportunity emit —
+   * that event fired once when the record was written.
+   */
+  _rematerializeUsedUpFieldOpportunity(sectorId, sector, active) {
+    const state = this.state;
+    const rec = nextFieldOpportunityRecord(state, sectorId);
+    if (!rec || !sector || !active) return 0;
+    if (!Array.isArray(rec.rockSpots) || !rec.rockSpots.length) {
+      // A record without placement truth (pre-rockSpots saves) can never re-place — release it
+      // so the used-up scan can promise a fresh seam instead of suppressing it forever.
+      releaseNextFieldOpportunity(state, sectorId);
+      return 0;
+    }
+    const res = this._spawnOpportunityRocks(state, sector, {
+      fieldId: rec.fieldId,
+      rocks: rec.rockSpots,
+    });
+    return res.grown;
+  },
+
+  _liveFieldRockCount(state, fieldId, { includeDormant = true } = {}) {
+    let live = 0;
+    // Authored field rocks idle as dormant records, not entities — count them or a stocked
+    // field reads as empty and the used-up trigger degenerates to depletion alone. Promoted
+    // records (liveEntityId set) are counted through the live lists instead. The bag is
+    // cross-sector; positions are sector-local, so only the current sector's records count.
+    const sectorId = state.world && state.world.currentSectorId;
+    const bag = state.world && state.world.asteroidField;
+    if (includeDormant && bag && Array.isArray(bag.rocks)) {
+      for (const rec of bag.rocks) {
+        if (!rec || rec.alive === false || rec.liveEntityId != null) continue;
+        const home = rec.homeSectorId || (rec.data && rec.data.homeSectorId);
+        if (sectorId && home !== sectorId) continue;
+        if (rec.data && rec.data.fieldId === fieldId) live++;
+      }
+    }
+    const list = indexedTypeScan(state, 'asteroids');
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false || e.type !== 'asteroid') continue;
+      if (e.data && e.data.fieldId === fieldId) live++;
+    }
+    return live;
+  },
+
+  // --- economy resource-work publisher (physical side of the work-reservation contract) ------
+
+  _resourceWorkState() {
+    const own = normalizeResourceWorkState(this.state.world.resourceWork);
+    this.state.world.resourceWork = own;
+    return own;
+  },
+
+  /**
+   * Ask the economy budget for permission to publish a fresh seam. Runs entirely inside the
+   * world's deterministic update pass: a synchronous `economy:resourceWork:reserve` emit whose
+   * `payload.result` is read back immediately (the intent convention — never a deferred queue).
+   *
+   * - `{}`            → not an accessible opportunity (no player, or approach beyond budget):
+   *                      the free seam proceeds; the economy contract is not engaged at all.
+   * - `{ blocked }`   → an economy subscriber exists and refused, or unmined published inventory
+   *                      is at cap: the seam waits and the scheduler retries. Denial is never
+   *                      permission to bypass the budget.
+   * - `{ lease }`     → accepted: publish the seam under this lease identity.
+   * A missing subscriber (economy modules absent) leaves `result` undefined → free seam. That
+   * makes this wiring no-subscriber-tolerant by construction.
+   */
+  _resourceWorkLeaseForSeam(state, sector, field, def, qty, clusterR) {
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || !player.pos) return {};
+    const dx = field.center.x - player.pos.x;
+    const dz = field.center.z - player.pos.z;
+    const approach = Math.hypot(dx, dz) - clusterR; // nearest seam edge, not the centre
+    if (!(approach <= RESOURCE_WORK_APPROACH_MAX_WU)) return {};
+    const rw = this._resourceWorkState();
+    const now = Math.max(0, Number(state.simTime) || 0);
+    const coolingUntil = Number(rw.deniedUntilBySector[sector.id]) || 0;
+    if (coolingUntil > now) return { blocked: true };
+    if (this._resourceWorkPublishedCount(state, sector.id) >= RESOURCE_WORK_PUBLISHED_CAP) {
+      return { blocked: true };
+    }
+    // One sector-wide allocator shared by every commodity; monotonically increasing and persisted
+    // (state.world.resourceWork.seq rides the world save). Allocated BEFORE the emit so a crash
+    // mid-attempt can never reuse a sequence the economy may have already recorded.
+    rw.seq = (rw.seq | 0) + 1;
+    const request = {
+      sectorId: sector.id,
+      commodityId: dominantOreCommodity(def),
+      qty: Math.max(1, Math.floor(Number(qty) || 1)),
+      seq: rw.seq,
+    };
+    this.bus.emit('economy:resourceWork:reserve', request);
+    const result = request.result;
+    if (!result) return {}; // no subscriber mounted: the world's own seam, unbilled
+    if (!result.ok) {
+      rw.deniedUntilBySector[sector.id] = now + RESOURCE_WORK_RECHECK_S;
+      return { blocked: true };
+    }
+    return {
+      lease: {
+        leaseId: String(result.id || `rw:${sector.id}:${request.seq}`),
+        seq: request.seq,
+        commodityId: request.commodityId,
+        // The economy may accept FEWER units than requested (bounded grant). Publishing more than
+        // the accepted quantity would make the settle ack a bad_production reject.
+        qty: Math.max(1, Math.floor(Number(result.qty) || 1)),
+      },
+    };
+  },
+
+  /** Unmined published rocks standing in the sector right now (the world's own inventory cap). */
+  _resourceWorkPublishedCount(state, sectorId) {
+    const list = indexedTypeScan(state, 'asteroids');
+    let count = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false || e.type !== 'asteroid') continue;
+      if (e.data && e.data.resourceWork && (e.homeSectorId === sectorId || (e.data && e.data.homeSectorId) === sectorId)) count++;
+    }
+    return count;
+  },
+
+  /**
+   * Clearance for a published candidate: inside the sector envelope, clear of station/gate/POI
+   * discs and approach halos, and never on top of a live hull. Bounded by the small authored
+   * anchor tables; ships are capped by the entity budget the scan already walks.
+   */
+  _resourceWorkCandidateClear(state, sector, x, z, radius) {
+    const active = state.world && state.world.activeSector;
+    const origin = this._sectorOrigin(sector.id);
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const odx = x - origin.x;
+    const odz = z - origin.z;
+    if (odx * odx + odz * odz > (wr - radius) * (wr - radius)) return false;
+    const anchorGroups = [active && active.stations, active && active.gates, active && active.pois];
+    for (const group of anchorGroups) {
+      if (!Array.isArray(group)) continue;
+      for (const anchor of group) {
+        if (!anchor || !anchor.pos) continue;
+        const keep = (anchor.radius || 40) + radius + RESOURCE_WORK_PROP_MARGIN_WU;
+        const adx = x - anchor.pos.x;
+        const adz = z - anchor.pos.z;
+        if (adx * adx + adz * adz < keep * keep) return false;
+      }
+    }
+    return this._seamCandidateClearOfHulls(state, x, z, radius);
+  },
+
+  /** True when a spawned disc at (x,z) would not intersect a live hull. Radius should be the
+   * real collider radius — that is the circle physics resolves, not the visual reference. */
+  _seamCandidateClearOfHulls(state, x, z, radius) {
+    const list = indexedShipLikeScan(state);
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false || (e.type !== 'ship' && e.type !== 'drone')) continue;
+      if (!e.pos) continue;
+      const keep = (e.radius || 8) + radius + RESOURCE_WORK_SHIP_CLEARANCE_WU;
+      const sdx = x - e.pos.x;
+      const sdz = z - e.pos.z;
+      if (sdx * sdx + sdz * sdz < keep * keep) return false;
+    }
+    return true;
+  },
+
+  /** Acknowledge a committed publication with the physical units actually created. */
+  _emitResourceWorkSettle(state, sector, field, lease, producedQty, uncertain) {
+    const ack = {
+      sectorId: sector.id,
+      leaseId: lease.leaseId,
+      producedQty: Math.max(0, Math.floor(Number(producedQty) || 0)),
+    };
+    this.bus.emit('economy:resourceWork:settle', ack);
+    this._resourceWorkRecord(state, {
+      kind: 'settle',
+      seq: lease.seq,
+      leaseId: lease.leaseId,
+      sectorId: sector.id,
+      fieldId: field.id,
+      commodityId: lease.commodityId,
+      producedQty: ack.producedQty,
+      uncertain: uncertain ? 1 : 0,
+      ackOk: !!(ack.result && ack.result.ok),
+      atT: Math.max(0, Number(state.simTime) || 0),
+    });
+  },
+
+  /** Retract a lease whose publication is KNOWN never to have committed. Uncertain never cancels. */
+  _emitResourceWorkCancel(state, sectorId, lease) {
+    const payload = { sectorId: sectorId, leaseId: lease.leaseId };
+    this.bus.emit('economy:resourceWork:cancel', payload);
+    this._resourceWorkRecord(this.state, {
+      kind: 'cancel',
+      seq: lease.seq,
+      leaseId: lease.leaseId,
+      sectorId: sectorId,
+      fieldId: '',
+      commodityId: lease.commodityId,
+      producedQty: 0,
+      uncertain: 0,
+      ackOk: !!(payload.result && payload.result.ok),
+      atT: Math.max(0, Number(this.state.simTime) || 0),
+    });
+  },
+
+  /** Durable publication receipt: the world's authority on whether the physical object exists. */
+  _resourceWorkRecord(state, row) {
+    const rw = this._resourceWorkState();
+    rw.ledger.push(row);
+    while (rw.ledger.length > RESOURCE_WORK_LEDGER_LIMIT) rw.ledger.shift();
+  },
+
+  _clearAdventureCombatantsForRun() {
+    const state = this.state;
+    if (state.run?.kind !== 'survival' || state.run.phase === 'inactive') return;
+    const remove = this.helpers?.removeEntity;
+    if (typeof remove !== 'function') return;
+    for (const entity of indexedShipLikeScan(state)) {
+      if (!entity.alive || entity.id === state.playerId
+        || !['ship', 'drone'].includes(entity.type)
+        || entity.data?.runCohort === 'survival'
+        || entity.data?.ownerId === state.playerId) continue;
+      // Despawn through core lifetime, never a kill: no loot, score, explosions
+      // or recycled identity before the queued lifecycle event has drained.
+      remove(entity.id);
+      this.helpers.spawnBudget?.releaseEntity?.(entity.id);
+    }
+  },
+
+  _tickDeferredCriticalSpawns(state) {
+    if ((state.tick | 0) < (this._nextCriticalSpawnTick | 0)) return;
+    this._nextCriticalSpawnTick = (state.tick | 0) + CRITICAL_SPAWN_RETRY_TICKS;
+    const sectorId = state.world && state.world.currentSectorId;
+    const active = state.world && state.world.activeSector;
+    const sector = sectorId && (state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId));
+    if (sector && active) {
+      const bossPoi = (sector.pois || []).find((p) => p.type === 'anomaly' && p.id === 'poi_boss');
+      const discovery = bossPoi && this._discoveryFor(sectorId).pois;
+      if (bossPoi && discovery && discovery[bossPoi.id]?.bossSpawnDeferred) {
+        const resident = state.world.residentSectors && state.world.residentSectors[sectorId];
+        if (resident && resident.tier === RESIDENCY_TIER.FULL) {
+          const epoch = Number.isFinite(resident.epoch) ? resident.epoch : 0;
+          const rng = this.helpers.mulberry32(this.helpers.hash32(
+            state.meta.seed, sectorId, epoch, 'deferred_boss',
+          ));
+          this._spawnBossIfDue(sector, active, rng);
+        }
+      }
+    }
+    this._retryDeferredCriticalRecords(state);
+  },
+
+  /**
+   * Retry mission-target/boss records a spawn-cap miss deferred (world:criticalSpawnDeferred
+   * reason 'spawn_cap'). The records loop is the same authority it deferred under: exactly-once
+   * by live holder, far-actor shelf, and restore envelope; tier still gates through
+   * recordShouldRematerialize. A still-capped retry re-marks nothing — the id stays mapped and
+   * _spawnFromDurableRecord only witnesses the first deferral. The flag dies when its record or
+   * its sector bag does; the next materialize is then the owning retry again.
+   */
+  _retryDeferredCriticalRecords(state) {
+    const deferred = this._deferredCriticalRecordIds;
+    if (!deferred || !deferred.size) return;
+    const world = state.world;
+    const bag = ensureWorldRecords(world);
+    const liveByRecordId = liveRecordEntityIndex(state);
+    const farRecordIds = farActorRecordIdSet(state);
+    const envelopeRecordIds = restoreEnvelopeRecordIds(state);
+    for (const [recordId, sectorId] of [...deferred]) {
+      const rec = bag && bag.byId ? bag.byId[recordId] : null;
+      const holder = rec ? liveByRecordId.get(recordId) : null;
+      if (!rec || (holder && holder.alive !== false)) { deferred.delete(recordId); continue; }
+      // Shelved far actors and restore-envelope rows own their live body elsewhere.
+      if (farRecordIds.has(recordId)
+        || (envelopeRecordIds && envelopeRecordIds.has(recordId))) continue;
+      const resident = world.residentSectors && world.residentSectors[sectorId];
+      const active = world.sectorContents && world.sectorContents[sectorId];
+      if (!resident || !active) { deferred.delete(recordId); continue; }
+      // Same FULL gate the boss retry uses: below FULL the strip equilibrium would take the
+      // body straight back to a record, and the next promote's records loop is the retry then.
+      if (resident.tier !== RESIDENCY_TIER.FULL || !recordShouldRematerialize(rec, resident.tier)) {
+        continue;
+      }
+      const ent = this._spawnFromDurableRecord(rec, sectorId);
+      if (!ent) continue;
+      if (ent.data && ent.data.isBoss) {
+        active.boss = { entityId: ent.id, poiId: ent.data.bossPoiId || rec.bossPoiId };
+      }
+      if (ent.type === 'ship') {
+        if (!active.enemies) active.enemies = [];
+        if (!active.enemies.includes(ent.id)) active.enemies.push(ent.id);
+      }
+      deferred.delete(recordId);
+    }
+  },
+
+  // Floating origin owner: derive a snapped frame from the player global position.
+  // On an actual change, mutate only world.frameOrigin / frameOriginSeq and emit a receipt.
+  // No-shift path reuses scratch and allocates nothing per tick.
+  _tickFrameOrigin(state) {
+    const player = state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const world = state.world;
+    if (!world.frameOrigin || typeof world.frameOrigin !== 'object') {
+      world.frameOrigin = { x: 0, z: 0 };
+    }
+    const scratch = this._frameOriginScratch || (this._frameOriginScratch = { x: 0, z: 0 });
+    const next = deriveFrameOrigin(player.pos, world.frameOrigin, scratch);
+    const cur = world.frameOrigin;
+    if (cur.x === next.x && cur.z === next.z) return;
+
+    const prevX = cur.x;
+    const prevZ = cur.z;
+    if (!applyFrameOrigin(state, next)) return;
+    // Shift path only: allocate a deterministic receipt payload.
+    this.bus.emit('world:originShift', {
+      previous: { x: prevX, z: prevZ },
+      next: { x: cur.x, z: cur.z },
+      seq: world.frameOriginSeq,
+    });
+  },
+
+  // Named-zone awareness (WORLD_OVERHAUL_2_1): announce when the player crosses into a named zone so
+  // the world reads as inhabited/territorial ("Belt-Shadow Ambush") instead of anonymous space.
+  // Also publishes state.world.currentZone for the HUD/map to label the player's surroundings.
+  _tickZoneLabel(state) {
+    const player = state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const sectorId = state.world.currentSectorId;
+    // Named zones are authored sector-local; convert the player global focus into local for the lookup.
+    const origin = this._sectorOrigin(sectorId);
+    const zone = zoneAt(sectorId, player.pos.x - origin.x, player.pos.z - origin.z);
+    const prevId = state.world.currentZoneId || null;
+    const nextId = zone ? zone.id : null;
+    if (nextId === prevId) return;
+    state.world.currentZoneId = nextId;
+    state.world.currentZone = zone
+      ? { id: zone.id, name: zone.name, type: zone.type, factionId: zone.factionId, threat: zoneThreat(zone) }
+      : null;
+    if (zone) {
+      const threat = zoneThreat(zone);
+      const kind = threat >= 3 ? 'danger' : (threat >= 2 ? 'warn' : 'info');
+      this.bus.emit('world:zoneEntered', { zoneId: zone.id, name: zone.name, type: zone.type, factionId: zone.factionId, threat, reason: zone.reason });
+      this.bus.emit('toast', { text: zone.name, kind, ttl: 2.5 });
+      // The zone's authored reason line is the place speaking — what the bare name cannot
+      // carry ("Sensors ghost, autopilot drifts; the Vael guard whatever waits inside."). It
+      // was written for every named zone, emitted on this same event, and read by nobody.
+      // Once per zone per session: every crossing already re-announces the name; the
+      // sentence returns with the next visit.
+      if (zone.reason) {
+        const heard = this._zoneReasonsHeard || (this._zoneReasonsHeard = new Set());
+        if (!heard.has(zone.id)) {
+          heard.add(zone.id);
+          this.bus.emit('toast', { text: zone.reason, kind: 'info', ttl: 6 });
+        }
+      }
+    } else {
+      this.bus.emit('world:zoneExited', { zoneId: prevId });
+    }
+  },
+
+  // --- jump: CHARGING --------------------------------------------------------
+  _tickCharging(dt, state) {
+    const jump = state.jump;
+    // The fare was checked when the spool started. A tank that weeps or is sipped
+    // during the charge must not complete a jump it can no longer pay for.
+    const fare = Number(jump._fuelCost) || 0;
+    const held = Number(state.fuel && state.fuel.current) || 0;
+    if (jump.via === 'drive' && fare > held) {
+      this._abortCharge('low_fuel');
+      return;
+    }
+    if (jump.via === 'drive' && driveJumpMassLocked(state)) {
+      this._abortCharge('mass_lock');
+      return;
+    }
+    const drive = this._activeDrive();
+    if (jump.via === 'drive' && this._combatLock && !drive.hotJump) {
+      this._abortCharge('combat_lock');
+      return;
+    }
+    // Choice C starts at a real drive seam, but the charge cannot run underneath its Yes/No
+    // prompt. Confirmation releases the ordinary charge state machine; decline aborts it.
+    if (jump._unfiled === true && jump._unfiledConfirmed !== true) return;
+    jump.chargeT += dt;
+    const tickPayload = {
+      progress: clamp(jump.chargeT / Math.max(0.01, jump.chargeNeeded), 0, 1),
+      playerId: state.playerId,
+    };
+    if (jump._unfiled === true) tickPayload.unfiled = true;
+    this.bus.emit('jump:chargeTick', tickPayload);
+    if (jump.chargeT >= jump.chargeNeeded) {
+      // consume fuel now (charge complete)
+      this._spendFuel(jump._fuelCost || 0);
+      jump.state = 'JUMPING';
+      jump.chargeT = 0;
+      jump._jumpT = 0;
+      const player = state.entities.get(state.playerId);
+      const fromPos = player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
+      const startPayload = {
+        from: state.world.currentSectorId,
+        to: jump.targetSectorId,
+        via: jump.via,
+        fromPos,
+        playerId: state.playerId,
+      };
+      // The pull is decided at departure. Arrival consumes this same bearing, so the
+      // warning describes the fight that will actually appear after the crossing.
+      jump._interdiction = null;
+      if (jump.via === 'drive') {
+        const target = state.world.sectors[jump.targetSectorId] || SECTOR_BY_ID.get(jump.targetSectorId);
+        const chance = this._interdictChance(target, 'drive', drive);
+        if (state.rng() < chance) {
+          jump._interdiction = { bearing: state.rng() * Math.PI * 2, pull: chance,
+            count: 1 + Math.floor(state.rng() * (1 + (target?.tier || 0))) };
+          startPayload.interdiction = { ...jump._interdiction };
+          this.bus.emit('jump:interdictionWarning', { ...jump._interdiction, targetSectorId: jump.targetSectorId });
+          this.bus.emit('toast', { text: `Interdiction pull ${Math.round(chance * 100)}% · bearing ${Math.round(jump._interdiction.bearing * 180 / Math.PI)}°`, kind: 'warn', ttl: 3 });
+        }
+      }
+      if (jump._unfiled === true) startPayload.unfiled = true;
+      this.bus.emit('jump:start', startPayload);
+    }
+  },
+
+  // --- jump: JUMPING (brief tunnel) → arrive --------------------------------
+  _tickJumping(dt, state) {
+    const jump = state.jump;
+    jump._jumpT = (jump._jumpT || 0) + dt;
+    jump.blend = Math.max(0, Math.min(1, jump._jumpT / JUMPING_DURATION));
+    if (jump._jumpT < JUMPING_DURATION) return;
+    jump.blend = 0;
+
+    const target = jump.targetSectorId;
+    const via = jump.via;
+    const unfiled = jump._unfiled === true;
+    const fromSectorId = state.world.currentSectorId;
+    const sector = state.world.sectors[target] || SECTOR_BY_ID.get(target);
+    const drive = this._activeDrive();
+
+    const warning = via === 'drive' ? jump._interdiction : null;
+    const interdicted = !!warning;
+    let ambushCount = 0;
+
+    // Intentional jump: residency plan + place player at target entry. Does not global-wipe
+    // other bounded residents (scoped demote/evict only when over the materialization cap).
+    this.enterSector(target, { fromJump: true, via, fromSectorId });
+
+    if (via === 'drive' && interdicted) {
+      ambushCount = this._spawnAmbush(sector, warning.count, null, null, null, warning.bearing).length;
+    }
+
+    const player = state.entities.get(state.playerId);
+    const toPos = player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
+    const arrivePayload = { sectorId: target, fromSectorId, interdicted, ambushCount, toPos, playerId: state.playerId,
+      ...(warning ? { interdiction: { ...warning } } : {}) };
+    if (unfiled) arrivePayload.unfiled = true;
+    this.bus.emit('jump:arrive', arrivePayload);
+
+    jump.state = via === 'gate' ? (GATE_COOLDOWN > 0 ? 'COOLDOWN' : 'IDLE') : 'COOLDOWN';
+    jump.cooldownT = via === 'gate'
+      ? GATE_COOLDOWN
+      : DRIVE_COOLDOWN * driveCooldownMultiplier(state.player);
+    jump.targetSectorId = null;
+    jump.via = null;
+    jump.chargeNeeded = 0;
+    jump._fuelCost = 0;
+    jump._unfiled = false;
+    jump._unfiledConfirmed = false;
+    jump._interdiction = null;
+  },
+
+  _spawnAmbush(sector, count, origin = null, enemyTypeId = null, requestMeta = null, bearing = null) {
+    if (!sector || count <= 0) return [];
+    const player = this.state.entities.get(this.state.playerId);
+    const active = this.state.world.activeSector || null;
+    if (this._playerDockedNoHostileSpawnZone(player)) return [];
+    const px = origin ? origin.x : (player ? player.pos.x : 0);
+    const pz = origin ? origin.z : (player ? player.pos.z : 0);
+    const pool = this._enemyPool(sector);
+    const rng = this.state.world.rng || this.state.rng;
+    const [lvLo, lvHi] = sector.enemyLevel || [1, 2];
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const source = requestMeta ? 'spawn-request' : 'interdiction';
+    const requestIdentity = requestMeta && requestMeta.refId
+      ? requestMeta.refId
+      : `${sector.id}:${this.state.tick | 0}`;
+    const requester = `world:${source}:${requestIdentity}`;
+    const grant = budget && typeof budget.request === 'function'
+      ? budget.request(count, requester)
+      : count;
+    if (grant <= 0) return [];
+    const placed = [];
+    try {
+      for (let i = 0; i < grant; i++) {
+        const typeId = enemyTypeId || pool[Math.floor(rng() * pool.length)];
+        const level = Math.round(lvLo + (lvHi - lvLo) * 0.6);
+        const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, AMBUSH_SPAWN_MIN_RADIUS, AMBUSH_SPAWN_MAX_RADIUS, bearing);
+        if (!pos) continue;
+        const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos, { startedTick: this.state.tick });
+        tagAiSpawnContext(spec, sector, sector, origin ? 'spawn_request' : 'interdiction');
+        if (requestMeta && requestMeta.refId) spec.data.spawnRefId = requestMeta.refId;
+        if (requestMeta && requestMeta.tags && requestMeta.tags.length) spec.data.spawnTags = [...requestMeta.tags];
+        const ent = this.helpers.spawnEntity(spec);
+        if (!ent || ent.id == null) continue;
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+        this._stampHomeSector(ent, sector.id);
+        placed.push(ent.id);
+        // Commit each successful entity immediately so a later spawn failure cannot orphan it.
+        if (active && Array.isArray(active.enemies)) active.enemies.push(ent.id);
+      }
+    } finally {
+      if (budget && typeof budget.releaseSome === 'function' && placed.length < grant) {
+        budget.releaseSome(requester, grant - placed.length);
+      }
+    }
+    if (!placed.length) return [];
+    this.bus.emit('interdiction:triggered', {
+      sectorId: sector.id,
+      ambushCount: placed.length,
+      spawnPos: { x: px, z: pz },
+      entityIds: placed,
+      refId: requestMeta && requestMeta.refId || null,
+      tags: requestMeta && requestMeta.tags ? [...requestMeta.tags] : [],
+    });
+    return placed;
+  },
+
+  _onSpawnRequest(p) {
+    const req = this._normalizeSpawnRequest(p);
+    if (!req) return false;
+    const sector = this.state.world.sectors[req.sectorId] || SECTOR_BY_ID.get(req.sectorId);
+    if (!sector) return false;
+    if (req.sectorId !== this.state.world.currentSectorId || !this.state.world.activeSector) {
+      this._queueSpawnRequest(req);
+      return true;
+    }
+    this._spawnFromRequest(req, sector);
+    return true;
+  },
+
+  _normalizeSpawnRequest(p) {
+    const tags = Array.isArray(p.tags) ? p.tags.filter((t) => typeof t === 'string') : [];
+    const entityType = p.entityType || p.type;
+    if (entityType !== 'pirate') return null;
+    const sectorId = p.sectorId || (this.state.world && this.state.world.currentSectorId);
+    if (!sectorId) return null;
+    const pos = p.position && Number.isFinite(p.position.x) && Number.isFinite(p.position.z)
+      ? { x: p.position.x, z: p.position.z }
+      : null;
+    const rawCount = p.count != null ? p.count : (p.ambushCount != null ? p.ambushCount : 1);
+    return {
+      entityType: 'pirate',
+      sectorId,
+      position: pos,
+      tags,
+      refId: p.refId || null,
+      enemyTypeId: typeof p.enemyTypeId === 'string' && p.enemyTypeId ? p.enemyTypeId : null,
+      count: clamp(Math.floor(rawCount) || 1, 1, 6),
+    };
+  },
+
+  _queueSpawnRequest(req) {
+    const world = this.state.world;
+    if (!world.pendingSpawns || typeof world.pendingSpawns !== 'object') world.pendingSpawns = {};
+    const list = world.pendingSpawns[req.sectorId] || (world.pendingSpawns[req.sectorId] = []);
+    list.push(req);
+  },
+
+  _flushPendingSpawns(sectorId, sector) {
+    const pending = this.state.world.pendingSpawns;
+    const list = pending && pending[sectorId];
+    if (!list || !list.length) return;
+    delete pending[sectorId];
+    for (const raw of list) {
+      const req = this._normalizeSpawnRequest(raw);
+      if (req) this._spawnFromRequest(req, sector);
+    }
+  },
+
+  _spawnFromRequest(req, sector) {
+    if (!req || req.entityType !== 'pirate') return;
+    this._spawnAmbush(sector, req.count || 1, req.position || null, req.enemyTypeId || null, req);
+  },
+
+  // =========================================================================================
+  // jump request validation + start (handles world:requestJump)
+  // =========================================================================================
+  _onRequestJump({ targetSectorId, via }) {
+    const state = this.state;
+    const jump = state.jump;
+    const cur = state.world.currentSectorId;
+    const sector = state.world.sectors[cur] || SECTOR_BY_ID.get(cur);
+    const target = state.world.sectors[targetSectorId] || SECTOR_BY_ID.get(targetSectorId);
+
+    // Refusals may carry the world's own numbers (fuelNeeded/creditsNeeded/cooldownS) so the
+    // receipt lane can say the cause AND the fix (WF-14) without mirroring jump math in the UI.
+    const reject = (reason, extra) => this.bus.emit('jump:chargeAbort', { reason, ...(extra || {}) });
+
+    // A jump request issued while docked (or outside flight) is rejected outright: the charge
+    // state machine ticks under the flight sim, so accepting here would wedge CHARGING with no
+    // player-visible path to it. Emitters on the docked surface should surface 'docked'.
+    if ((state.ui && state.ui.docked) || state.mode !== 'flight') return reject('docked');
+    if (!target) return reject('unknown_target');
+    if (jump.state !== 'IDLE') return reject('busy');
+    if (jump.cooldownT > 0) return reject('cooldown', { cooldownS: Math.ceil(jump.cooldownT) });
+
+    // must be a graph neighbor (or the wormhole edge if unlocked)
+    const isNeighbor = !!(sector && (sector.neighbors || []).includes(targetSectorId));
+    const isWormhole = !!(sector && sector.wormholeTo && sector.wormholeTo.sectorId === targetSectorId);
+    if (!isNeighbor && !isWormhole) return reject('not_a_neighbor');
+    if (isWormhole && !this._wormholeUnlocked(sector)) {
+      const permitId = wormholeMissingPermitId(state, sector);
+      return reject('wormhole_locked', permitId ? { permitId } : null);
+    }
+
+    via = (via === 'gate' || via === 'drive') ? via : 'gate';
+    const drive = this._activeDrive();
+    if (via === 'drive' && !this._hasDrive()) return reject('no_drive');
+
+    // §34 row 521: a welded audit gate refuses gate transit — the Helix weld is
+    // on the road itself. The jump drive still flies the same edge, so no
+    // sector is stranded; the closure only lengthens the tolled route.
+    if (via === 'gate' && isNeighbor && gateTransitClosed(state, cur, targetSectorId)) {
+      const gates = state.worldPressure && state.worldPressure.gates;
+      const audit = gates && gates[auditEdgeKey(cur, targetSectorId)];
+      return reject('gate_closed', { gateName: audit && audit.gateName || null });
+    }
+
+    // combat lock blocks the start unless a hot-jump drive
+    if (this._combatLock && !(via === 'drive' && drive.hotJump)) return reject('combat_lock');
+
+    const edgeDist = this._edgeDist(sector, target);
+    const fuelCost = via === 'gate' ? 0 : Math.ceil(BASE_FUEL * edgeDist * drive.tierFuelMult);
+    if (via === 'drive' && state.fuel.current < fuelCost) {
+      return reject('low_fuel', { fuelNeeded: fuelCost, fuelHeld: Math.floor(state.fuel.current) });
+    }
+    if (via === 'drive' && driveJumpMassLocked(state)) return reject('mass_lock');
+
+    // Gate toll (high-sec customs) is validated before the departure preflight, but charged only
+    // after it. Contextual story choices may defer a valid departure without consuming credits or
+    // entering the jump state machine.
+    let gateToll = 0;
+    if (via === 'gate') {
+      gateToll = this._gateToll(target);
+      if (gateToll > 0 && ((state.player && state.player.credits) | 0) < gateToll) {
+        return reject('credits', {
+          creditsNeeded: gateToll,
+          creditsHeld: Math.floor((state.player && state.player.credits) || 0),
+        });
+      }
+    }
+
+    const preflight = { targetSectorId, via, deferred: false };
+    this.bus.emit('jump:departurePreflight', preflight);
+    if (preflight.deferred === true) return;
+
+    if (gateToll > 0) {
+      this.bus.emit('economy:chargeCredits', { amount: gateToll, reason: 'gate_toll' });
+    }
+
+    const chargeNeeded = via === 'gate' ? GATE_CHARGE : drive.baseCharge * (edgeDist / 4);
+    jump.state = 'CHARGING';
+    jump.targetSectorId = targetSectorId;
+    jump.via = via;
+    jump.chargeT = 0;
+    jump.chargeNeeded = chargeNeeded;
+    jump._fuelCost = fuelCost;
+    jump._unfiled = false;
+    jump._unfiledConfirmed = false;
+    // Drive interdiction rolls on arrival against this sector's fixed hostile pool — publish
+    // it with the charge so the squad's hulls decode during the charge window.
+    this.bus.emit('jump:chargeStart', {
+      targetSectorId, via, chargeNeeded, playerId: this.state.playerId,
+      interdictionPool: via === 'drive' && target ? this._enemyPool(target) : null,
+    });
+  },
+
+  /**
+   * Choice C's explicit, destinationless Ashfall drive charge. The hidden return target is only
+   * world-owned transition plumbing; presentation and story receive targetSectorId:null until the
+   * normal tunnel commits. The charge remains at zero until the player confirms the prompt.
+   */
+  _onRequestUnfiledJump() {
+    const state = this.state;
+    const jump = state.jump;
+    const currentId = state.world.currentSectorId;
+    const source = state.world.sectors[currentId] || SECTOR_BY_ID.get(currentId);
+    const target = state.world.sectors[UNFILED_JUMP_RETURN] || SECTOR_BY_ID.get(UNFILED_JUMP_RETURN);
+    const reject = (reason) => {
+      this.bus.emit('jump:chargeAbort', { reason, unfiled: true });
+      return false;
+    };
+
+    if (currentId !== UNFILED_JUMP_ORIGIN) return reject('unfiled_wrong_sector');
+    if (!source || !target) return reject('unfiled_route_missing');
+    if (jump.state !== 'IDLE') return reject('busy');
+    if (jump.cooldownT > 0) return reject('cooldown');
+    if (!this._hasDrive()) return reject('no_drive');
+
+    const drive = this._activeDrive();
+    if (this._combatLock && !drive.hotJump) return reject('combat_lock');
+    const edgeDist = this._edgeDist(source, target);
+    const fuelCost = Math.ceil(BASE_FUEL * edgeDist * drive.tierFuelMult);
+    if (state.fuel.current < fuelCost) {
+      return reject('low_fuel', { fuelNeeded: fuelCost, fuelHeld: Math.floor(state.fuel.current) });
+    }
+
+    jump.state = 'CHARGING';
+    jump.targetSectorId = UNFILED_JUMP_RETURN;
+    jump.via = 'drive';
+    jump.chargeT = 0;
+    jump.chargeNeeded = drive.baseCharge * (edgeDist / 4);
+    jump._fuelCost = fuelCost;
+    jump._unfiled = true;
+    jump._unfiledConfirmed = false;
+    this.bus.emit('jump:chargeStart', {
+      targetSectorId: null,
+      via: 'drive',
+      chargeNeeded: jump.chargeNeeded,
+      unfiled: true,
+      playerId: state.playerId,
+      interdictionPool: target ? this._enemyPool(target) : null,
+    });
+    return true;
+  },
+
+  _confirmUnfiledJump() {
+    const jump = this.state && this.state.jump;
+    if (!jump || jump.state !== 'CHARGING' || jump._unfiled !== true) return false;
+    if (this.state.fuel.current < (jump._fuelCost || 0)) {
+      this._abortCharge('low_fuel');
+      return false;
+    }
+    jump._unfiledConfirmed = true;
+    const returnSector = this.state.world.sectors[UNFILED_JUMP_RETURN] || SECTOR_BY_ID.get(UNFILED_JUMP_RETURN);
+    this.bus.emit('jump:unfiledConfirmed', {
+      returnSectorId: UNFILED_JUMP_RETURN,
+      interdictionPool: returnSector ? this._enemyPool(returnSector) : null,
+    });
+    return true;
+  },
+
+  _abortCharge(reason) {
+    const jump = this.state.jump;
+    if (jump.state !== 'CHARGING') return;
+    // Fuel is only spent when a charge COMPLETES (_tickCharging calls _spendFuel on the
+    // completion tick; the request path merely validated affordability). Aborting before that
+    // point has nothing to refund — the half-cost "refund" that used to live here minted free
+    // fuel on every abort, repeatable without bound.
+    const fuelNeeded = Number(jump._fuelCost) || 0;
+    jump.state = 'IDLE';
+    jump.targetSectorId = null; jump.via = null;
+    jump.chargeT = 0; jump.chargeNeeded = 0; jump._fuelCost = 0;
+    const unfiled = jump._unfiled === true;
+    jump._unfiled = false; jump._unfiledConfirmed = false;
+    this.bus.emit('jump:chargeAbort', {
+      reason,
+      fuelHeld: Math.floor(this.state.fuel.current) || 0,
+      ...(reason === 'low_fuel' && fuelNeeded > 0 ? { fuelNeeded } : {}),
+      ...(unfiled ? { unfiled: true } : {}),
+    });
+  },
+
+  // =========================================================================================
+  // route planning (Dijkstra) — handles world:requestRoute / ui:setCourse
+  // =========================================================================================
+  _onRequestRoute({ targetSectorId, mode }) {
+    const route = this.computeRoute(targetSectorId, mode || 'fuel');
+    this.state.nav.route = route;
+    this.state.nav.autoTravel = !!route;
+    return route;
+  },
+
+  _onSetCourse(payload = {}) {
+    const pos = sanitizeCoursePos(payload.pos);
+    if (pos) {
+      if (payload.recoverySource) {
+        const source = resolveContract47aRecoveryTarget(this.state, payload.missionId, payload.recoverySource);
+        if (!source || !payload.stable || resolveEntitySelection(this.state, payload.stable) !== source
+          || source.id !== payload.targetEntityId) return null;
+        // The UI command crosses a worker boundary: retain its identity, but use the live pose.
+        pos.x = source.pos.x; pos.z = source.pos.z;
+      }
+      const label = String(payload.label || payload.reason || 'Autopilot fix');
+      const targetEntityId = payload.targetEntityId != null ? payload.targetEntityId : null;
+      const targetSectorId = typeof payload.targetSectorId === 'string'
+        ? payload.targetSectorId
+        : (payload.type === 'gate' && typeof payload.sectorId === 'string' ? payload.sectorId : null);
+      const arrivalRadius = Number.isFinite(payload.arrivalRadius)
+        ? Math.max(12, Math.min(500, payload.arrivalRadius))
+        : 36;
+      this.state.nav.route = null;
+      this.state.nav.autoTravel = false;
+      this.state.nav.waypoint = {
+        kind: payload.waypointKind || payload.kind || 'local',
+        label,
+        reason: payload.reason || label,
+        pos,
+        ...(payload.recoverySource ? { missionId: payload.missionId,
+          recoverySource: { ...payload.recoverySource } } : {}),
+      };
+      let stableTarget = null;
+      if (targetEntityId != null) {
+        // Dead or despawned targets bind nothing: writing the bare id without its stamp would
+        // leave an unprovable bind that a recycled occupant later inherits — the authored pos
+        // stays the fail-closed place instead. presentationEntityId already refused the same
+        // dead bind two lines above; the id write now agrees with it (review).
+        const bound = payload.stable ? resolveEntitySelection(this.state, payload.stable)
+          : liveEntityById(this.state, targetEntityId);
+        // SF-244: the armed course outlives the commit instant and the core recycles entity
+        // ids — stamp what the id meant so a later holder resolves closed (autopilot falls
+        // back to the fix) instead of redirecting the burn onto an unrelated body. A live but
+        // uncapturable entity binds nothing: the waypoint must not keep a bare recyclable id
+        // the autopilot already refused (review).
+        if (bound) {
+          stableTarget = payload.stable || captureEntitySelection(bound);
+          if (stableTarget) {
+            this.state.nav.waypoint.targetEntityId = bound.id;
+            this.state.nav.waypoint.stable = stableTarget;
+            // INF-056: the course aimed at a live body, so bind the presentation id too — flight
+            // (resolveAutopilotTarget) re-resolves the entity every tick, and with the bind every
+            // instrument resolves the same moving position through the canonical resolver. The
+            // save whitelist drops the field, so a loaded waypoint falls back to pos the same way.
+            const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, bound.id);
+            if (presentationEntityId != null) this.state.nav.waypoint.presentationEntityId = presentationEntityId;
+          }
+        }
+      }
+      // A physical gate is a local position with an inter-sector completion condition. Preserve the
+      // destination identity so navigation can retire the old-sector marker only after authoritative
+      // sector entry; ordinary local fixes intentionally carry no targetSectorId.
+      if (targetSectorId) this.state.nav.waypoint.targetSectorId = targetSectorId;
+      this.state.nav.autopilot = {
+        active: payload.autopilot !== false,
+        target: pos,
+        targetEntityId: stableTarget ? this.state.nav.waypoint.targetEntityId : null,
+        label,
+        arrivalRadius,
+        status: 'armed',
+        ...(payload.planetaryApproach === 'planet_tethys_anvil' ? { planetaryApproach: payload.planetaryApproach } : {}),
+        ...(payload.rendezvous === true && stableTarget ? { rendezvous: true } : {}),
+        ...(payload.recoverySource ? { missionId: payload.missionId,
+          recoverySource: { ...payload.recoverySource } } : {}),
+      };
+      if (stableTarget) this.state.nav.autopilot.stable = stableTarget;
+      this.bus.emit('nav:waypoint', this.state.nav.waypoint);
+      this.bus.emit('nav:autopilot', this.state.nav.autopilot);
+      return this.state.nav.autopilot;
+    }
+
+    const sectorId = payload.sectorId;
+    const route = this.computeRoute(sectorId, 'fuel');
+    this.state.nav.route = route;
+    this.state.nav.autoTravel = true;
+    if (this.state.nav.autopilot) {
+      this.state.nav.autopilot.active = false;
+      this.state.nav.autopilot.status = route ? 'route-plotted' : 'idle';
+    }
+    return route;
+  },
+
+  /** Dijkstra over discovered edges. Weight = per-leg fuelCost ('fuel') or 1 ('hops'). */
+  computeRoute(targetSectorId, mode = 'fuel') {
+    return computeDiscoveredRoute(this.state, targetSectorId, mode, {
+      drive: this._activeDrive(),
+      wormholeGate: (_st, sector) => (this._wormholeUnlocked(sector) ? 'open' : 'closed'),
+    });
+  },
+
+  // =========================================================================================
+  // sector scan + POI reveal
+  // =========================================================================================
+  _beginScan() {
+    if (this.state.mode !== 'flight') return;
+    if (this._scanning) return;
+    this._scanning = true;
+    this._scanT = 0;
+  },
+
+  /**
+   * Readable scan hint: when the sector's freshest seam is not rich, name it with a range and
+   * bearing from the player. Existing toast chrome only — the scan was already the surface that
+   * reveals fields, and this makes its line lead to the next one instead of just counting them.
+   */
+  _scanFieldLead(state) {
+    const active = state.world && state.world.activeSector;
+    const player = state.entities && state.entities.get(state.playerId);
+    const fields = (active && active.fields) || [];
+    if (!player || !player.pos || !fields.length) return null;
+    let best = null;
+    for (const f of fields) {
+      if (!f || !f.id || !f.center) continue;
+      const rec = state.fieldDepletion && state.fieldDepletion.fields
+        ? state.fieldDepletion.fields[f.id] : null;
+      const depletion = rec && Number.isFinite(rec.depletion) ? rec.depletion : 0;
+      const dx = f.center.x - player.pos.x;
+      const dz = f.center.z - player.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (!best || depletion < best.depletion - 1e-9
+        || (Math.abs(depletion - best.depletion) <= 1e-9 && d < best.d)) {
+        best = { id: f.id, depletion, dx, dz, d, regrown: !!(rec && rec.regrownBatches > 0) };
+      }
+    }
+    if (!best || best.depletion < 0.12) return null; // every seam still rich; nothing to lead to
+    const reopen = best.regrown ? ', reopening' : '';
+    return `freshest seam ${Math.round(best.d)} WU ${compassLabel(best.dx, best.dz)}${reopen}`;
+  },
+
+  _tickScan(dt, state) {
+    if (!this._scanning) return;
+    this._scanT += dt;
+    if (this._scanT < SECTOR_SCAN_TIME) return;
+    this._scanning = false;
+    this._scanT = 0;
+    // reveal all stations + fields immediately; mark non-hidden in-range POIs detected.
+    const disc = this._discoveryFor(state.world.currentSectorId);
+    let revealedPois = 0;
+    for (const p of (state.world.activeSector.pois || [])) {
+      const rec = disc.pois[p.poiId] || (disc.pois[p.poiId] = { discovered: false, identified: false });
+      if (p.hidden) continue; // hidden POIs need close approach, not a sweep
+      if (!rec.discovered) { rec.discovered = true; revealedPois++; this.bus.emit('poi:discovered', { poiId: p.poiId, type: p.type }); }
+    }
+    const stationCount = (state.world.activeSector.stations || []).length;
+    const fieldCount = (state.world.activeSector.fields || []).length;
+    this.bus.emit('scan:completed', { targetId: null });
+    const fieldLead = this._scanFieldLead(state);
+    this.bus.emit('toast', {
+      text: `Sector scanned: ${stationCount} stations, ${fieldCount} fields, ${revealedPois} landmarks`
+        + (fieldLead ? ` — ${fieldLead}` : ''),
+      kind: 'info', ttl: 4,
+    });
+  },
+
+  // A hidden cache with an authored lot opens when proximity identify names it.
+  // The sector sweep still skips hidden sites. Standing on a sold survey mark,
+  // outside the full scan range, never reaches this.
+  _openSealedCache(state, sectorId, projection, rec) {
+    if (!projection || !rec || rec.investigated) return;
+    const sector = (state.world.sectors && state.world.sectors[sectorId]) || SECTOR_BY_ID.get(sectorId);
+    if (!sector || !Array.isArray(sector.pois)) return;
+    const authored = sector.pois.find((poi) => poi && poi.id === projection.poiId);
+    if (!authored || authored.hidden !== true) return;
+    if (authored.requiresActiveScan === true || projection.requiresActiveScan === true) return;
+    if (authored.triangulation || projection.requiresTriangulation) return;
+    const contents = authored.contents;
+    if (!contents || !contents.commodityId || !(contents.amount > 0)) return;
+    rec.investigated = true;
+    const active = state.world.activeSector;
+    if (active) this._spawnCachePayoffs(sector, active);
+    const clearedFix = clearSurveyFix(state, sectorId, projection.poiId);
+    if (clearedFix && bearingCharted(state, clearedFix.mark)) state.nav.waypoint = null;
+  },
+
+  // continuous proximity reveal: detect/identify POIs the player flies near (design 05 scanReveal)
+  _poiCarrier(id) {
+    if (id == null) return null;
+    return (this.state.entities && this.state.entities.get && this.state.entities.get(id))
+      || getDressingRow(this.state, id);
+  },
+
+  // Markerless runtime-owned POI projections carry no marker entity id; their carrier is the
+  // owning system's site root (data.worldSiteId === poiId for asteroidSites manifests). Resolved
+  // lazily — the root materializes after dressing spawns — and cached on the projection until it
+  // dies or the sector bag is rebuilt.
+  _worldSitePoiCarrier(p) {
+    if (!p || p.runtimeOwned !== true) return null;
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.get !== 'function' || typeof entities.values !== 'function') return null;
+    const cached = p._wsCarrierId != null ? entities.get(p._wsCarrierId) : null;
+    if (cached && cached.alive !== false) return cached;
+    // A miss latches on the world_site_root lane: while root membership is unchanged the walk
+    // cannot find anything new, so a site whose root never materializes doesn't re-scan — and
+    // projectile/pickup churn no longer wakes it like the global entity version did.
+    const laneVersion = entityIndexLaneVersion(this.state, ['worldSiteRoots']);
+    if (laneVersion !== -1 && p._wsCarrierMissVersion === laneVersion) return null;
+    let found = null;
+    for (const e of entities.values()) {
+      const d = e && e.data;
+      if (d && d.worldSiteId === p.poiId && d.role === 'world_site_root' && e.alive !== false) {
+        found = e;
+        break;
+      }
+    }
+    p._wsCarrierId = found ? found.id : null;
+    p._wsCarrierMissVersion = found || laneVersion === -1 ? null : laneVersion;
+    return found;
+  },
+
+  _tickPOIScan(state) {
+    const player = state.entities.get(state.playerId);
+    if (!player) return;
+    const sectorId = state.world.currentSectorId;
+    const disc = this._discoveryFor(sectorId);
+    const scannerTier = this._scannerTier();
+    // Weather is a pure function of (sector, player pos, sim time): evaluate once per tick, not
+    // once per POI. Non-weather sectors skip the volume scan entirely (scale is 1 by construction).
+    const weather = WEATHER_SECTOR_IDS.has(sectorId)
+      ? weatherScanScale(sectorId, player.pos, state.simTime)
+      : 1;
+    const scanBonus = 1 + 0.25 * scannerTier;
+    for (const p of (state.world.activeSector.pois || [])) {
+      const ent = this._poiCarrier(p.id) || this._worldSitePoiCarrier(p);
+      if (ent && ent.alive === false) continue;
+      const entData = ent && ent.data;
+      // No carrier yet for a runtime-owned projection (site root not materialized this tick):
+      // the authored anchor position still anchors the proximity read.
+      const carrierPos = ent ? ent.pos : (p && p.runtimeOwned === true ? p.pos : null);
+      if (!carrierPos) continue;
+      const rec = disc.pois[p.poiId] || (disc.pois[p.poiId] = { discovered: false, identified: false });
+      if (rec.identified) continue;
+      // A concealed layer marked this way is an active-scanner verb, never a proximity freebie.
+      // `signal:investigated` below is the sole path that turns the return into durable discovery.
+      if ((p.requiresActiveScan || entData && entData.requiresActiveScan) && !rec.investigated) continue;
+      if (entData && entData.requiresTriangulation && !rec.triangulated && !entData.anomalyTriangulated) continue;
+      const dx = carrierPos.x - player.pos.x, dz = carrierPos.z - player.pos.z;
+      const distSq = dx * dx + dz * dz;
+      const sr = ((entData && entData.scanRange) || (p && p.scanRange) || SCAN_RANGE) * scanBonus * weather;
+      if (distSq <= sr * sr) {
+        if (!rec.discovered) { rec.discovered = true; this.bus.emit('poi:discovered', { poiId: p.poiId, type: p.type }); }
+        if (distSq <= sr * sr * 0.25) {
+          const newlyIdentified = !rec.identified;
+          rec.identified = true;
+          rec.type = p.type || rec.type || null;
+          rec.name = entData && entData.name || p.name || rec.name || p.poiId;
+          rec.identifiedAt = Number(state.simTime) || 0;
+          this.bus.emit('poi:identified', {
+            poiId: p.poiId,
+            type: p.type,
+            name: rec.name,
+            sectorId: state.world.currentSectorId,
+            reward: (entData && entData.reward) || null,
+          });
+          if (newlyIdentified) {
+            this._openSealedCache(state, sectorId, p, rec);
+            this.bus.emit('discovery:plateUnlocked', {
+              sectorId: state.world.currentSectorId,
+              poiId: p.poiId,
+              type: p.type,
+            });
+            this._fileSectorChart(sectorId);
+          }
+          // Never show a raw internal id ('poi_kettle_stern') — name the landmark as rec.name
+          // records it (carrier name, then the projected chart name), and humanize the slug only
+          // when neither source names it.
+          const fallbackName = String(p.poiId || '')
+            .replace(/^poi_/, '')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase())
+            .trim();
+          this.bus.emit('toast', { text: `Landmark identified: ${(entData && entData.name) || p.name || fallbackName || 'unidentified contact'}`, kind: 'info', ttl: 4 });
+        }
+      }
+    }
+  },
+
+  // =========================================================================================
+  // hazards + fuel + helpers
+  // =========================================================================================
+  _tickHazards(dt, state) {
+    const player = state.entities.get(state.playerId);
+    if (!player || player.alive === false) {
+      if (state.world && state.world.hazardPresence) {
+        state.world.hazardPresence.nebula = false;
+        state.world.hazardPresence.radiation = false;
+      }
+      this._applyDebrisCrossings(dt, state);
+      return;
+    }
+    const zones = state.world.activeSector.hazards || [];
+    this._resolveMovingHazards(zones, state);
+    const inside = this._hazardSet || (this._hazardSet = new Set());
+    let nowInside = this._hazardNextSet;
+    if (!nowInside || nowInside === inside) nowInside = this._hazardNextSet = new Set();
+    nowInside.clear();
+    for (let i = 0; i < zones.length; i++) {
+      const z = zones[i];
+      const dx = player.pos.x - z.center.x, dz = player.pos.z - z.center.z;
+      if (dx * dx + dz * dz <= z.radius * z.radius) {
+        nowInside.add(i);
+        if (!inside.has(i)) {
+          this.bus.emit('hazard:enter', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
+          this._emitHazardPresence(player, z, 'enter');
+        }
+        if (z.type === 'radiation') this._applyRadiationTick(player, z, dt, state);
+      }
+    }
+    for (const i of inside) {
+      if (!nowInside.has(i)) {
+        const z = zones[i];
+        if (z) {
+          this.bus.emit('hazard:exit', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
+          this._emitHazardPresence(player, z, 'exit');
+        }
+      }
+    }
+    inside.clear();
+    this._hazardSet = nowInside;
+    this._hazardNextSet = inside;
+    const presence = state.world.hazardPresence || (state.world.hazardPresence = { nebula: false, radiation: false });
+    writeHazardPresence(zones, player.pos, presence);
+    this._applyDebrisCrossings(dt, state);
+  },
+
+  // A cracked hull weeps fuel until the plating is back or the ship is berthed.
+  _applyFuelWeep(dt, state) {
+    stepFuelWeep(this, dt, state || this.state);
+  },
+
+  // The berth gate already refuses a fast dock. A hull that is in the pocket
+  // above that gate takes one scrape. A crawl and a docked ship do not.
+  _applyDockCollar(dt, state) {
+    const live = state || this.state;
+    const scraped = stepDockCollar(this, dt, live);
+    const hits = scraped && scraped.hits;
+    if (!hits || !hits.length) return scraped;
+    const player = live.entities && live.entities.get(live.playerId);
+    for (let i = 0; i < hits.length; i++) this._applyDockCollarHit(player, hits[i], live);
+    return scraped;
+  },
+
+  _applyDockCollarHit(player, hit, state) {
+    if (!player || player.alive === false || !hit || !(hit.damage > 0)) return;
+    const packet = scalarHitToDamagePacket({
+      damage: hit.damage,
+      damageType: 'kinetic',
+      pos: player.pos,
+      source: { kind: 'dock_collar', hazardId: null },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    const request = {
+      attackerId: null,
+      targetId: player.id,
+      packet,
+      origin: { kind: 'dock_collar' },
+    };
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    if (combat && combat.state === state && typeof combat.ensureKernel === 'function') {
+      combat.ensureKernel().routeDamage(request);
+      return;
+    }
+    if (combat && combat.state === state && combat.kernel && typeof combat.kernel.routeDamage === 'function') {
+      combat.kernel.routeDamage(request);
+      return;
+    }
+    if (player.flags && (player.flags.invuln || player.flags.docked)) return;
+    if (state && state.ui && state.ui.docked) return;
+    const shield = Math.max(0, Number(player.shield) || 0);
+    let remaining = hit.damage;
+    if (shield > 0) {
+      const absorbed = Math.min(shield, remaining);
+      player.shield = shield - absorbed;
+      remaining -= absorbed;
+    }
+    if (remaining > 0) player.hull = Math.max(0, (Number(player.hull) || 0) - remaining);
+  },
+
+  // A debris disc throws a few shards across itself. The chart already calls
+  // that hull-on-impact. A slow crossing is a graze. Kill machines are not discs.
+  _applyDebrisCrossings(dt, state) {
+    const live = state || this.state;
+    const crossed = stepDebrisCrossings(this, dt, live);
+    const hits = crossed && crossed.hits;
+    if (!hits || !hits.length) return crossed;
+    const player = live.entities && live.entities.get(live.playerId);
+    for (let i = 0; i < hits.length; i++) this._applyDebrisImpact(player, hits[i], live);
+    return crossed;
+  },
+
+  _applyDebrisImpact(player, hit, state) {
+    if (!player || player.alive === false || !hit || !(hit.damage > 0)) return;
+    const packet = scalarHitToDamagePacket({
+      damage: hit.damage,
+      damageType: 'kinetic',
+      pos: player.pos,
+      source: { kind: 'hazard_debris', hazardId: null },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    const request = {
+      attackerId: null,
+      targetId: player.id,
+      packet,
+      origin: { kind: 'hazard_debris' },
+    };
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    if (combat && combat.state === state && typeof combat.ensureKernel === 'function') {
+      combat.ensureKernel().routeDamage(request);
+      return;
+    }
+    if (combat && combat.state === state && combat.kernel && typeof combat.kernel.routeDamage === 'function') {
+      combat.kernel.routeDamage(request);
+      return;
+    }
+    if (player.flags && (player.flags.invuln || player.flags.docked)) return;
+    if (state && state.ui && state.ui.docked) return;
+    const shield = Math.max(0, Number(player.shield) || 0);
+    let remaining = hit.damage;
+    if (shield > 0) {
+      const absorbed = Math.min(shield, remaining);
+      player.shield = shield - absorbed;
+      remaining -= absorbed;
+    }
+    if (remaining > 0) player.hull = Math.max(0, (Number(player.hull) || 0) - remaining);
+  },
+
+  // WORLD-25: radiation and nebula entry/exit raise the HUD alert line. Damage is unchanged.
+  // Boss aftermath keeps its own hazard:changed shape (reason: 'boss_defeated') and is not an entry.
+  _emitHazardPresence(player, zone, phase) {
+    if (!zone || (zone.type !== 'radiation' && zone.type !== 'nebula')) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('hazard:changed', {
+      entityId: player && player.id,
+      zoneType: zone.type,
+      hazardId: zone.id || null,
+      phase,
+      intensity: this._hazardEffectiveIntensity(zone),
+    });
+  },
+
+  // Authored intensity × the vent/roar scale the moving-hazard law stamps each tick (1 for
+  // static zones), so the enter/exit language reports the burn the player actually feels.
+  _hazardEffectiveIntensity(zone) {
+    return (Number(zone && zone.intensity) || 0) * (Number(zone && zone.intensityScale) || 1);
+  },
+
+  // The Ashfall roaming burn vents on the same clock as the Lighthouse survey gate. When that
+  // gate blocks a bearing fix, the burn is roaring — speak the vent, once per surge beat, so
+  // the survey window is something the player can time instead of a ping that silently dies.
+  _onUniqueWreckScanBlocked(payload) {
+    if (!payload || payload.reason !== 'moving_radiation_window') return;
+    const state = this.state;
+    if (!state || !state.world || payload.sectorId !== state.world.currentSectorId) return;
+    const now = Number(state.simTime) || 0;
+    if (now - Number(this._burnVentToastAtS) < ASHFALL_BURN_SURGE_PERIOD_S) return;
+    const waitS = Math.max(0, Math.ceil((Number(payload.nextOpenAt) || now) - now));
+    this._burnVentToastAtS = now;
+    this.bus.emit('toast', {
+      text: `The burn is roaring over the wreck — it vents in ~${waitS}s. Time the ping.`,
+      kind: 'info',
+      ttl: 6,
+    });
+  },
+
+  // The Ashfall roaming burn (and any future moving hazard) resolves its live center, body
+  // radius, and vent/roar scale from the environmental-machinery law every tick. Static zones
+  // pay one flag check and nothing else.
+  _resolveMovingHazards(zones, state) {
+    let programSeed = null;
+    for (let i = 0; i < zones.length; i++) {
+      const z = zones[i];
+      if (!z || z.moving !== true) continue;
+      if (programSeed === null) programSeed = ashfallBurnProgramSeed(state);
+      movingHazardTick(z, state.simTime, programSeed);
+    }
+  },
+
+  _applyRadiationTick(player, zone, dt, state) {
+    const damage = this._hazardEffectiveIntensity(zone) * 6 * dt;
+    if (!(damage > 0) || !player || player.alive === false) return;
+    const live = state || this.state;
+    stepRadiationCargoCook(live, {
+      dt,
+      intensity: this._hazardEffectiveIntensity(zone),
+      bus: this.bus,
+    });
+    const packet = scalarHitToDamagePacket({
+      damage,
+      damageType: 'thermal',
+      pos: player.pos,
+      source: { kind: 'hazard_radiation', hazardId: zone && zone.id || null },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    const request = {
+      attackerId: null,
+      targetId: player.id,
+      packet,
+      origin: { kind: 'hazard_radiation', id: (zone && zone.id) || (zone && zone.type) },
+    };
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    if (combat && combat.state === live && typeof combat.ensureKernel === 'function') {
+      combat.ensureKernel().routeDamage(request);
+      return;
+    }
+    if (combat && combat.state === live && combat.kernel && typeof combat.kernel.routeDamage === 'function') {
+      combat.kernel.routeDamage(request);
+      return;
+    }
+    if (this.helpers && typeof this.helpers.routeCombatDamage === 'function' && combat && combat.state === live) {
+      this.helpers.routeCombatDamage(request);
+      return;
+    }
+    this._applyRadiationVitalsFallback(player, zone, damage, live);
+  },
+
+  _applyRadiationVitalsFallback(player, zone, damage, state) {
+    if (player.flags && (player.flags.invuln || player.flags.docked)) return;
+    if (state && state.ui && state.ui.docked) return;
+    const shield = Math.max(0, Number(player.shield) || 0);
+    let remaining = damage;
+    if (shield > 0) {
+      const absorbed = Math.min(shield, remaining);
+      player.shield = shield - absorbed;
+      remaining -= absorbed;
+    }
+    if (remaining > 0) {
+      player.hull = Math.max(0, (Number(player.hull) || 0) - remaining);
+    }
+    if ((Number(player.hull) || 0) > 0) return;
+    player.hull = 0;
+    if (player.alive === false) return;
+    const live = state || this.state;
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    if (combat && combat.state === live && typeof combat.kill === 'function') {
+      combat.kill(player, null, { origin: { kind: 'hazard_radiation', id: zone && zone.id } });
+      return;
+    }
+    player.alive = false;
+    player.flags = player.flags || {};
+    player.flags.defeated = true;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('combat:kill', {
+        targetId: player.id,
+        killerId: null,
+        origin: { kind: 'hazard_radiation' },
+      });
+      const vx = Number(player.vel && player.vel.x);
+      const vz = Number(player.vel && player.vel.z);
+      this.bus.emit('player:death', {
+        recoverable: true,
+        origin: { kind: 'hazard_radiation' },
+        victimVel: {
+          x: Number.isFinite(vx) ? vx : 0,
+          z: Number.isFinite(vz) ? vz : 0,
+        },
+      });
+    }
+  },
+
+  _spendFuel(amount) {
+    if (!amount) return;
+    const f = this.state.fuel;
+    f.current = Math.max(0, f.current - amount);
+    this.bus.emit('fuel:changed', { current: f.current, max: f.max });
+    if (f.current <= 0) this.bus.emit('fuel:empty', { sectorId: this.state.world.currentSectorId });
+  },
+
+  _addFuel(amount) {
+    if (!amount) return;
+    const f = this.state.fuel;
+    f.current = Math.min(f.max, f.current + amount);
+    this.bus.emit('fuel:changed', { current: f.current, max: f.max });
+  },
+
+  // One free fuel cell becomes a sip, or cooks against the layer that is still up.
+  // A refuse, a missing damage route, or a packet that moves neither shield nor hull
+  // leaves the cell in the hold.
+  _onCrackFuelCell() {
+    const plan = planFuelCrack(this.state);
+    if (!plan || plan.mode === 'refuse') return;
+    if (plan.mode === 'fill') {
+      if (removeCargo(this.state, FUEL_CELL_ID, 1) !== 1) return;
+      this._addFuel(FUEL_CELL_SIP);
+      this.bus.emit('toast', { text: `Cracked one cell — ${FUEL_CELL_SIP} in the tank`, kind: 'info', ttl: 3 });
+      return;
+    }
+    if (plan.mode !== 'cook') return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player) return;
+    const shieldBefore = Number(player.shield) || 0;
+    const hullBefore = Number(player.hull) || 0;
+    const result = this._routeFuelCook(player, FUEL_CELL_COOK);
+    if (result === null || (result && result.ok === false)) return;
+    const shieldAfter = Number(player.shield) || 0;
+    const hullAfter = Number(player.hull) || 0;
+    if (!(shieldAfter < shieldBefore) && !(hullAfter < hullBefore)) return;
+    if (removeCargo(this.state, FUEL_CELL_ID, 1) !== 1) return;
+    const spent = hullAfter < hullBefore ? 'hull' : 'shield';
+    this.bus.emit('toast', { text: `The cell cooked against the ${spent}.`, kind: 'warn', ttl: 3 });
+  },
+
+  _routeFuelCook(player, damage) {
+    const packet = scalarHitToDamagePacket({
+      damage,
+      damageType: 'thermal',
+      pos: player.pos,
+      source: { kind: 'fuel_cell_cook' },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    const request = {
+      attackerId: null,
+      targetId: player.id,
+      packet,
+      origin: { kind: 'fuel_cell_cook', id: player.id },
+    };
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    const live = this.state;
+    if (combat && combat.state === live && typeof combat.ensureKernel === 'function') {
+      return combat.ensureKernel().routeDamage(request);
+    }
+    if (combat && combat.state === live && combat.kernel && typeof combat.kernel.routeDamage === 'function') {
+      return combat.kernel.routeDamage(request);
+    }
+    if (this.helpers && typeof this.helpers.routeCombatDamage === 'function' && combat && combat.state === live) {
+      return this.helpers.routeCombatDamage(request);
+    }
+    return null;
+  },
+
+  // --- FB-111: wedged-hull tow -----------------------------------------------------------
+  // A ship thrusting at full commitment that produces neither speed nor displacement is
+  // wedged on geometry physics will not release — the depenetration impulse keeps solving
+  // and losing. After STUCK_OFFER_S of that, the sector offers one paid tow; the engine
+  // re-validates the wedge on accept so a freed ship can never buy a ride it stopped needing.
+
+  _resetStuckWatch(w, cleared) {
+    const wasOffered = w && w.offered === true;
+    w.s = 0;
+    w.live = false;
+    w.offered = false;
+    w.ax = 0;
+    w.az = 0;
+    if (cleared && wasOffered) this.bus.emit('world:stuckCleared', {});
+  },
+
+  _updateStuckWatch(dt, state) {
+    const w = this._stuckWatch || (this._stuckWatch = { s: 0, live: false, offered: false, ax: 0, az: 0 });
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const input = state.input;
+    const thrusting = !!(input && Number(input.moveZ) > 0.2 && input.brake !== true);
+    const docked = !!(state.ui && state.ui.docked === true);
+    if (!player || player.alive === false || docked || !thrusting || !player.pos) {
+      this._resetStuckWatch(w, thrusting === false || docked);
+      return;
+    }
+    const px = Number(player.pos.x) || 0;
+    const pz = Number(player.pos.z) || 0;
+    const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
+    if (!w.live) {
+      w.live = true;
+      w.ax = px;
+      w.az = pz;
+      w.s = 0;
+      return;
+    }
+    const drifted = Math.hypot(px - w.ax, pz - w.az);
+    if (drifted > STUCK_DISPLACEMENT_WU || speed > STUCK_SPEED_EPS_WU_S) {
+      // The hull still answers the engine — a grind along a wall is motion, not a wedge.
+      this._resetStuckWatch(w, true);
+      return;
+    }
+    w.s += Math.max(0, Number(dt) || 0);
+    if (w.s >= STUCK_OFFER_S && !w.offered) {
+      w.offered = true;
+      const quote = this._stuckTowQuote(state, player);
+      this.bus.emit('world:stuckTowOffer', {
+        stuckS: w.s,
+        stationId: quote && quote.stationId || null,
+        stationName: quote && quote.stationName || null,
+        quotedCr: quote ? quote.quotedCr : null,
+      });
+    }
+  },
+
+  _stuckTowQuote(state, playerEntity) {
+    const station = chooseLawfulStation(state);
+    if (!station) return null;
+    const player = state.player || {};
+    const index = Math.max(0, Math.floor(Number(player.activeShipIndex) || 0));
+    const owned = Array.isArray(player.ownedShips) ? player.ownedShips[index] : null;
+    const shipId = (owned && owned.defId) || (playerEntity && playerEntity.data && playerEntity.data.defId) || 'ship_kestrel';
+    const q = recoveryCostQuote(shipId, player.insurance || {});
+    const base = q && q.insured ? q.insuredCostCr : q.uninsuredCostCr;
+    return {
+      station,
+      stationId: station.id,
+      stationName: station.name || station.id,
+      quotedCr: Math.max(TOW_FEE_MIN_CR, Math.round((Number(base) || 0) * TOW_FEE_RECOVERY_FRAC)),
+    };
+  },
+
+  _executeStuckTow() {
+    const state = this.state;
+    const w = this._stuckWatch;
+    if (!w || w.offered !== true) return;    // no live offer — a stale deck answer tows nothing
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    if (state.ui && state.ui.docked === true) return;
+    // A live jump owns the sector transition. Mid-tunnel the answer is stale — the wedge it
+    // priced was in the sector already leaving; a charging drive stands down for the tow
+    // instead of both transitions landing on the same hull.
+    const jump = state.jump;
+    if (jump && jump.state === 'JUMPING') { this._resetStuckWatch(w, false); return; }
+    if (jump && jump.state === 'CHARGING') this._abortCharge('tow');
+    const quote = this._stuckTowQuote(state, player);
+    if (!quote || !quote.station) return;
+    const charge = { quotedCr: quote.quotedCr };
+    if (this.bus && this.bus.emit) this.bus.emit('economy:towCharge', charge);
+    const station = quote.station;
+    const currentSectorId = state.world && state.world.currentSectorId;
+    if (station.sectorId && station.sectorId !== currentSectorId && typeof this.enterSector === 'function') {
+      this.enterSector(station.sectorId, {
+        via: 'tow',
+        fromSectorId: currentSectorId || null,
+        placePlayer: true,
+      });
+    }
+    const active = state.world && state.world.activeSector;
+    const record = active && Array.isArray(active.stations)
+      ? active.stations.find((st) => st && (st.stationId || st.id) === station.id)
+      : null;
+    const base = record && record.pos ? record.pos : { x: 0, z: 0 };
+    const px = (Number(base.x) || 0) + TOW_BERTH_CLEARANCE_WU;
+    const pz = Number(base.z) || 0;
+    setVecXZTow(player.pos, px, pz);
+    setVecXZTow(player.vel, 0, 0);
+    if (player.prevPos && typeof player.prevPos.copy === 'function') player.prevPos.copy(player.pos);
+    else if (player.prevPos) setVecXZTow(player.prevPos, px, pz);
+    this._resetStuckWatch(w, false);
+    this.bus.emit('toast', {
+      text: charge.ok === false
+        ? `Towed to ${quote.stationName}`
+        : `Towed to ${quote.stationName} — ${Math.round(charge.chargedCr || 0)} cr`
+          + (charge.debtCr > 0 ? ` + ${Math.round(charge.debtCr)} cr on the note` : ''),
+      kind: charge.debtCr > 0 ? 'warn' : 'success',
+      ttl: 4,
+    });
+    this.bus.emit('dock:docked', createDockIntent(state, { stationId: station.id, via: 'tow' }, player));
+  },
+
+  // --- jump-drive / scanner / fuel-tank module resolution -----------------------------------
+  _resolveShipModules() {
+    // Best-effort: read the active ship entity's derived stats (ships writes data.derived).
+    // If ships exposes fuelMax / jumpDriveTier / scannerTier, honor them. Resolve the drive on
+    // every call so unfit/load/malformed derived data cannot leave a stale higher tier behind.
+    const state = this.state;
+    const player = state.entities.get(state.playerId);
+    const derived = player && player.data && player.data.derived;
+    this._driveTierId = 'jump_t1';
+    if (!derived) return;
+    if (derived.fuelMax != null && derived.fuelMax > 0) {
+      const wasFull = state.fuel.current >= state.fuel.max;
+      state.fuel.max = derived.fuelMax;
+      if (wasFull || state.fuel.current > state.fuel.max) state.fuel.current = Math.min(state.fuel.current, state.fuel.max);
+    }
+    if (typeof derived.jumpDriveTier === 'string' && DRIVE_TIERS[derived.jumpDriveTier]) {
+      this._driveTierId = derived.jumpDriveTier;
+    }
+  },
+
+  _activeDrive() {
+    return (this._driveTierId && DRIVE_TIERS[this._driveTierId]) || DEFAULT_DRIVE;
+  },
+
+  _hasDrive() {
+    // Every ship has at least a basic (T1) drive so the early game can use both gate and drive.
+    return true;
+  },
+
+  _scannerTier() {
+    const player = this.state.entities.get(this.state.playerId);
+    const derived = player && player.data && player.data.derived;
+    return (derived && derived.scannerTier) || 0;
+  },
+
+  _wormholeUnlocked(sector) {
+    // Pure gate evaluation lives in routePlanner; the handshake burn + toast are
+    // the only side effects and they stay here.
+    const gate = wormholeGateCheck(this.state, sector, machineRouteOpen);
+    if (gate.status === 'open') return true;
+    if (gate.status !== 'burnable') return false;
+    // K01 (Phase 26): a Gate Handshake Token burns once to open a machine-gated route.
+    removeCargo(this.state, 'cmdty_gate_handshake', 1);
+    const ae = ensureAlienEcologyState(this.state);
+    if (!ae.machineAccess) ae.machineAccess = {};
+    ae.machineAccess[gate.burnKey] = true;
+    this.bus.emit('toast', {
+      text: 'Handshake token accepted — the gate files you as a route-holder.',
+      kind: 'good', ttl: 6,
+    });
+    return true;
+  },
+
+  _onLockChanged({ locked }) {
+    this._combatLock = !!locked;
+    if (this._combatLock && this.state.jump.state === 'CHARGING' && this.state.jump.via === 'drive') {
+      if (!this._activeDrive().hotJump) this._abortCharge('combat_lock');
+    }
+  },
+
+  // A travel spool is a held charge. A hull strike dumps it. A shield graze,
+  // a gate transit, and a drive built to jump hot do not.
+  _onSpoolStrike(payload) {
+    const state = this.state;
+    const jump = state && state.jump;
+    if (!jump || jump.state !== 'CHARGING' || jump.via !== 'drive') return;
+    if (jump._unfiled === true) return;
+    if (!payload || payload.targetId !== state.playerId) return;
+    if (!(Number(payload.hullDamage) > 0)) return;
+    const drive = this._activeDrive();
+    if (drive && drive.hotJump) return;
+    this._abortCharge('spool_struck');
+  },
+
+  _onFieldDepleted({ fieldId, depleted }) {
+    if (!fieldId) return;
+    const disc = this._discoveryFor(this.state.world.currentSectorId);
+    disc.fieldsDepleted[fieldId] = clamp(depleted == null ? 1 : depleted, 0, 1);
+    if (depleted == null || Number(depleted) > 0) {
+      const sectorId = this.state.world.currentSectorId;
+      this._resolveFrontierRumors(
+        (record) => record.kind === 'vein' && record.targetId === fieldId
+          && (!sectorId || record.sectorId === sectorId),
+        'vein_worked',
+      );
+    }
+  },
+
+  _onAnomalyTriangulated(payload) {
+    const sectorId = payload.sectorId || this.state.world.currentSectorId;
+    const poiId = payload.poiId;
+    if (!sectorId || !poiId) return false;
+    const disc = this._discoveryFor(sectorId);
+    const rec = disc.pois[poiId] || (disc.pois[poiId] = { discovered: false, identified: false });
+    const newlyDiscovered = !rec.discovered;
+    rec.discovered = true;
+    rec.triangulated = true;
+    rec.triangulatedAt = Number(payload.completedAt) || Number(this.state.simTime) || 0;
+    rec.triangulationSampleCount = Math.max(1, Math.floor(Number(payload.sampleCount) || 3));
+    rec.type = 'anomaly';
+    const active = this.state.world.activeSector;
+    if (active && active.id === sectorId) {
+      const row = (active.pois || []).find((poi) => poi && poi.poiId === poiId);
+      if (row) {
+        row.anomalyTriangulated = true;
+        const entity = this.state.entities.get(row.id);
+        if (entity && entity.data) entity.data.anomalyTriangulated = true;
+      }
+    }
+    if (newlyDiscovered) this.bus.emit('poi:discovered', { poiId, type: 'anomaly', sectorId });
+    return true;
+  },
+
+  _onSignalInvestigated(payload) {
+    const sectorId = payload.sectorId || this.state.world.currentSectorId;
+    const poiId = payload.sourceId;
+    if (!sectorId || !poiId) return false;
+    if (sectorId === VESTA_ORE_CACHE.sectorId && poiId === VESTA_ORE_CACHE.cachePoiId
+      && this._vestaOreCacheState().phase === 'unfound') return false;
+    if (sectorId === PALLAS_HIDDEN_CACHE.sectorId && poiId === PALLAS_HIDDEN_CACHE.cachePoiId
+      && this._pallasHiddenCacheState().phase === 'unfound') return false;
+    const sector = this.state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    const poi = sector && (sector.pois || []).find((row) => row && row.id === poiId);
+    if (!poi) return false;
+    const disc = this._discoveryFor(sectorId);
+    const rec = disc.pois[poiId] || (disc.pois[poiId] = { discovered: false, identified: false });
+    const newlyFound = !rec.investigated && !rec.identified && !rec.defeated;
+    const newlyDiscovered = !rec.discovered;
+    const newlyIdentified = !rec.identified;
+    rec.discovered = true;
+    rec.identified = true;
+    rec.investigated = true;
+    rec.investigatedAt = Number(payload.completedAt) || Number(this.state.simTime) || 0;
+    rec.type = poi.type || payload.sourceKind || rec.type || null;
+    rec.name = poi.name || rec.name || poiId;
+    // D238: identifying a sold cache through the signal path must spend its fix record —
+    // an orphaned record otherwise keeps gating dock purchases and re-pins a dead mark.
+    const clearedSignalFix = clearSurveyFix(this.state, sectorId, poiId);
+    if (clearedSignalFix && bearingCharted(this.state, clearedSignalFix.mark)) this.state.nav.waypoint = null;
+    if (newlyDiscovered) this.bus.emit('poi:discovered', { poiId, type: rec.type, sectorId });
+    if (newlyIdentified) this.bus.emit('poi:identified', { poiId, type: rec.type, sectorId });
+    if (newlyFound) {
+      this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
+    }
+    this._onVestaOreCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
+    this._onPallasHiddenCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
+    this._onKettleLineSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
+    this._onCachePayoffsSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
+    this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
+    this._fileSectorChart(sectorId);
+    return true;
+  },
+
+  _vestaOreCacheState() {
+    const own = normalizeVestaOreCacheState(this.state.world.vestaOreCache);
+    this.state.world.vestaOreCache = own;
+    return own;
+  },
+
+  _onVestaOreCacheSignalInvestigated(payload) {
+    if (payload.sectorId !== VESTA_ORE_CACHE.sectorId) return false;
+    const own = this._vestaOreCacheState();
+    const completedAt = Math.max(0, Number(payload.completedAt) || Number(this.state.simTime) || 0);
+    if (payload.poiId === VESTA_ORE_CACHE.relayPoiId) {
+      if (own.phase !== 'unfound') return false;
+      own.phase = 'searching';
+      own.evidence = {
+        evidenceId: VESTA_ORE_CACHE.evidenceId,
+        sourcePoiId: VESTA_ORE_CACHE.relayPoiId,
+        signalId: VESTA_ORE_CACHE.relaySignalId,
+        foundAt: completedAt,
+        carrier: 'physical_relay_ore_residue',
+      };
+      own.search = {
+        center: sectorLocalToGlobalForSector(VESTA_ORE_CACHE.searchCenterLocal, VESTA_ORE_CACHE.sectorId),
+        radius: VESTA_ORE_CACHE.searchRadiusWu,
+        sourceEvidenceId: VESTA_ORE_CACHE.evidenceId,
+      };
+      this.bus.emit('vestaOreCache:clueRecovered', {
+        recordId: own.recordId,
+        sectorId: VESTA_ORE_CACHE.sectorId,
+        phase: own.phase,
+        evidence: { ...own.evidence },
+        search: { ...own.search, center: { ...own.search.center } },
+      });
+      return true;
+    }
+    if (payload.poiId !== VESTA_ORE_CACHE.cachePoiId || own.phase !== 'searching') return false;
+    own.phase = 'choice';
+    own.cache = {
+      poiId: VESTA_ORE_CACHE.cachePoiId,
+      fixedPos: payload.pos && Number.isFinite(Number(payload.pos.x)) && Number.isFinite(Number(payload.pos.z))
+        ? { x: Number(payload.pos.x), z: Number(payload.pos.z) }
+        : sectorLocalToGlobalForSector(VESTA_ORE_CACHE.cacheLocalPos, VESTA_ORE_CACHE.sectorId),
+      foundAt: completedAt,
+    };
+    this._presentVestaOreCacheDecision('physical-investigation');
+    return true;
+  },
+
+  _presentVestaOreCacheDecision(source = 'world') {
+    const own = this._vestaOreCacheState();
+    if (own.phase !== 'choice' || !own.cache) return false;
+    // Continue re-enters the sector before save:loaded announces that presentation state is ready.
+    // Hold this one transient edge so the usable post-load prompt is not consumed early.
+    if (source === 'sector-enter' && this._vestaDecisionNeedsRebind) return false;
+    const signature = `${own.recordId}:${own.cache.foundAt}`;
+    if (this._vestaDecisionSignature === signature) return false;
+    this._vestaDecisionSignature = signature;
+    this.bus.emit('vestaOreCache:decisionReady', {
+      recordId: own.recordId,
+      sectorId: VESTA_ORE_CACHE.sectorId,
+      phase: own.phase,
+      headline: 'SHIFT-END ORE CACHE',
+      prompt: 'The seal is intact. Choose what the ship records and what leaves this rock.',
+      source,
+      choices: VESTA_ORE_CACHE_CHOICES.map((choice) => ({ ...choice })),
+      fixedPos: { ...own.cache.fixedPos },
+    });
+    return true;
+  },
+
+  _onVestaOreCacheChoice(payload) {
+    const own = this._vestaOreCacheState();
+    const choice = vestaOreCacheChoice(String(payload.choiceId || payload.choice || ''));
+    if (own.phase !== 'choice' || !own.cache || own.receipt || !choice) return false;
+    if (payload.recordId && payload.recordId !== own.recordId) return false;
+    const resolvedAt = Math.max(0, Number(this.state.simTime) || 0);
+    own.phase = choice.id === 'preserve' ? 'preserved' : choice.id === 'report' ? 'reported' : 'taken';
+    own.choiceId = choice.id;
+    own.resolvedAt = resolvedAt;
+    const details = {
+      preserve: 'Seal left intact. The fixed cache remains in the ship chart for a later return.',
+      report: 'DMC dispatch acknowledged the sealed cache report.',
+      take: 'Seal opened. Six units of legal nickel ore remain a physical recovery, limited by hold space.',
+    };
+    own.receipt = {
+      id: 'vesta-ore-cache:resolution:v1',
+      recordId: own.recordId,
+      sectorId: VESTA_ORE_CACHE.sectorId,
+      cachePoiId: VESTA_ORE_CACHE.cachePoiId,
+      choiceId: choice.id,
+      outcome: own.phase,
+      title: `SHIFT-END CACHE ${choice.label}`,
+      detail: details[choice.id],
+      resolvedAt,
+      ...(choice.id === 'report' ? {
+        factionId: VESTA_ORE_CACHE.reportFactionId,
+        repDelta: VESTA_ORE_CACHE.reportRepDelta,
+      } : {}),
+      ...(choice.id === 'take' ? {
+        lotId: VESTA_ORE_CACHE.lotId,
+        commodityId: VESTA_ORE_CACHE.commodityId,
+        totalQty: VESTA_ORE_CACHE.totalQty,
+      } : {}),
+    };
+    if (choice.id === 'take') {
+      own.cargoLot = {
+        lotId: VESTA_ORE_CACHE.lotId,
+        provenanceId: VESTA_ORE_CACHE.provenanceId,
+        commodityId: VESTA_ORE_CACHE.commodityId,
+        totalQty: VESTA_ORE_CACHE.totalQty,
+        collectedQty: 0,
+        lostQty: 0,
+        remainingQty: VESTA_ORE_CACHE.totalQty,
+        collectionReceipts: [],
+      };
+    }
+    // Commit the durable receipt before delegating any consequence to its single writer.
+    if (choice.id === 'report') {
+      this.bus.emit('faction:repDelta', {
+        factionId: VESTA_ORE_CACHE.reportFactionId,
+        delta: VESTA_ORE_CACHE.reportRepDelta,
+        reason: 'vesta_ore_cache_report',
+      });
+    }
+    if (choice.id === 'take') this._spawnVestaOreCachePickup(VESTA_ORE_CACHE.sectorId);
+    this.bus.emit('vestaOreCache:resolved', {
+      recordId: own.recordId,
+      choiceId: choice.id,
+      receipt: { ...own.receipt },
+    });
+    return true;
+  },
+
+  _spawnVestaOreCachePickup(sectorId = this.state.world.currentSectorId) {
+    if (sectorId !== VESTA_ORE_CACHE.sectorId || this.state.world.currentSectorId !== sectorId) return null;
+    const own = this._vestaOreCacheState();
+    if (own.phase !== 'taken' || !own.cache || !own.cargoLot || !(own.cargoLot.remainingQty > 0)) return null;
+    const live = findCacheLotEntity(this.state, 'vestaOreCacheLotId', VESTA_ORE_CACHE.lotId);
+    if (live) return live;
+    const revision = own.cargoLot.collectedQty + own.cargoLot.lostQty;
+    const entity = this.helpers.spawnEntity({
+      type: 'pickup',
+      pos: { ...own.cache.fixedPos },
+      vel: { x: 0, z: 0 },
+      radius: 1.5,
+      mass: 0.1,
+      collides: true,
+      ttl: Infinity,
+      data: {
+        kind: 'ore',
+        commodityId: VESTA_ORE_CACHE.commodityId,
+        amount: own.cargoLot.remainingQty,
+        name: 'Shift-End Nickel Ore',
+        vestaOreCacheLotId: VESTA_ORE_CACHE.lotId,
+        vestaOreCacheRevision: revision,
+        richLotSource: {
+          lotId: VESTA_ORE_CACHE.lotId,
+          provenanceId: VESTA_ORE_CACHE.provenanceId,
+          sourceKind: 'vesta_ore_cache',
+          sourcePoiId: VESTA_ORE_CACHE.cachePoiId,
+          recordId: VESTA_ORE_CACHE.recordId,
+          choiceId: 'take',
+          lotQty: own.cargoLot.remainingQty,
+          sourceOwner: 'player',
+        },
+      },
+    });
+    this._stampHomeSector(entity, VESTA_ORE_CACHE.sectorId);
+    this.bus.emit('vestaOreCache:pickupReady', {
+      recordId: own.recordId,
+      pickupId: entity.id,
+      remainingQty: own.cargoLot.remainingQty,
+      pos: { ...entity.pos },
+    });
+    return entity;
+  },
+
+  _onVestaOreCachePickupCollected(payload) {
+    const own = this._vestaOreCacheState();
+    if (own.phase !== 'taken' || !own.cargoLot || !(own.cargoLot.remainingQty > 0)) return false;
+    const pickup = payload.pickupId != null && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(payload.pickupId) : null;
+    if (pickup && pickup.data && pickup.data.jettisonedCargo) return false;
+    const source = payload.lotSource || payload.richLotSource
+      || pickup && pickup.data && (pickup.data.lotSource || pickup.data.richLotSource);
+    if (!source || source.lotId !== VESTA_ORE_CACHE.lotId
+      || source.provenanceId !== VESTA_ORE_CACHE.provenanceId) return false;
+    const revision = Math.max(0, Math.floor(Number(pickup && pickup.data && pickup.data.vestaOreCacheRevision)
+      || own.cargoLot.collectedQty + own.cargoLot.lostQty));
+    const receiptId = `${VESTA_ORE_CACHE.lotId}:collection:${revision}`;
+    if (own.cargoLot.collectionReceipts.some((entry) => entry.id === receiptId)) return false;
+    const requested = Math.max(0, Math.floor(Number(payload.amount) || 0));
+    const playerPickup = payload.collectorId === this.state.playerId;
+    const acceptedQty = playerPickup
+      ? Math.max(0, Math.min(own.cargoLot.remainingQty, Math.floor(Number(payload.acceptedAmount) || 0)))
+      : 0;
+    const lostQty = playerPickup ? 0 : Math.max(0, Math.min(own.cargoLot.remainingQty, requested));
+    if (!(acceptedQty > 0) && !(lostQty > 0)) return false;
+    own.cargoLot.collectedQty += acceptedQty;
+    own.cargoLot.lostQty += lostQty;
+    own.cargoLot.remainingQty = Math.max(0,
+      own.cargoLot.totalQty - own.cargoLot.collectedQty - own.cargoLot.lostQty);
+    own.cargoLot.collectionReceipts.push({ id: receiptId, acceptedQty, lostQty });
+    if (own.cargoLot.collectionReceipts.length > 16) own.cargoLot.collectionReceipts.shift();
+    if (pickup && pickup.data) pickup.data.vestaOreCacheRevision = revision + acceptedQty + lostQty;
+    this.bus.emit('vestaOreCache:cargoChanged', {
+      recordId: own.recordId,
+      lotId: own.cargoLot.lotId,
+      acceptedQty,
+      lostQty,
+      collectedQty: own.cargoLot.collectedQty,
+      remainingQty: own.cargoLot.remainingQty,
+    });
+    return true;
+  },
+
+  _pallasHiddenCacheState() {
+    const own = normalizePallasHiddenCacheState(this.state.world.pallasHiddenCache);
+    this.state.world.pallasHiddenCache = own;
+    return own;
+  },
+
+  _onPallasHiddenCacheSignalInvestigated(payload) {
+    if (payload.sectorId !== PALLAS_HIDDEN_CACHE.sectorId) return false;
+    const own = this._pallasHiddenCacheState();
+    const completedAt = Math.max(0, Number(payload.completedAt) || Number(this.state.simTime) || 0);
+    if (payload.poiId === PALLAS_HIDDEN_CACHE.cluePoiId) {
+      if (own.phase !== 'unfound') return false;
+      own.phase = 'searching';
+      own.evidence = {
+        evidenceId: PALLAS_HIDDEN_CACHE.evidenceId,
+        sourcePoiId: PALLAS_HIDDEN_CACHE.cluePoiId,
+        signalId: PALLAS_HIDDEN_CACHE.clueSignalId,
+        foundAt: completedAt,
+        carrier: 'physical_pirate_wreck_manifest',
+      };
+      own.search = {
+        center: sectorLocalToGlobalForSector(PALLAS_HIDDEN_CACHE.searchCenterLocal, PALLAS_HIDDEN_CACHE.sectorId),
+        radius: PALLAS_HIDDEN_CACHE.searchRadiusWu,
+        sourceEvidenceId: PALLAS_HIDDEN_CACHE.evidenceId,
+      };
+      this.bus.emit('pallasHiddenCache:clueRecovered', {
+        recordId: own.recordId,
+        sectorId: PALLAS_HIDDEN_CACHE.sectorId,
+        phase: own.phase,
+        evidence: { ...own.evidence },
+        search: { ...own.search, center: { ...own.search.center } },
+      });
+      return true;
+    }
+    if (payload.poiId !== PALLAS_HIDDEN_CACHE.cachePoiId || own.phase !== 'searching') return false;
+    own.phase = 'choice';
+    own.cache = {
+      poiId: PALLAS_HIDDEN_CACHE.cachePoiId,
+      fixedPos: payload.pos && Number.isFinite(Number(payload.pos.x)) && Number.isFinite(Number(payload.pos.z))
+        ? { x: Number(payload.pos.x), z: Number(payload.pos.z) }
+        : sectorLocalToGlobalForSector(PALLAS_HIDDEN_CACHE.cacheLocalPos, PALLAS_HIDDEN_CACHE.sectorId),
+      foundAt: completedAt,
+    };
+    this._presentPallasHiddenCacheDecision('physical-investigation');
+    return true;
+  },
+
+  _canReportPallasHiddenCache() {
+    const ui = this.state && this.state.ui;
+    return !!(ui && ui.docked === true && ui.dockedStationId === PALLAS_HIDDEN_CACHE.reportStationId);
+  },
+
+  _presentPallasHiddenCacheDecision(source = 'world', stationId = null) {
+    const own = this._pallasHiddenCacheState();
+    if (own.phase !== 'choice' || !own.cache) return false;
+    if (source === 'sector-enter' && this._pallasDecisionNeedsRebind) return false;
+    const reportAvailable = stationId === PALLAS_HIDDEN_CACHE.reportStationId || this._canReportPallasHiddenCache();
+    const signature = `${own.recordId}:${own.cache.foundAt}:${reportAvailable ? 'drift-report' : 'field'}`;
+    if (this._pallasDecisionSignature === signature) return false;
+    this._pallasDecisionSignature = signature;
+    this.bus.emit('pallasHiddenCache:decisionReady', {
+      recordId: own.recordId,
+      sectorId: PALLAS_HIDDEN_CACHE.sectorId,
+      phase: own.phase,
+      headline: 'BLACK-WAKE WEAPONS CACHE',
+      prompt: reportAvailable
+        ? 'Drift Market can file the cache report. Other dispositions leave a physical lot at the fixed cache.'
+        : 'The cache is fixed. Recover or criminal use leaves a physical lot at the cache; report only from Drift Market.',
+      source,
+      reportAvailable,
+      reportStationId: PALLAS_HIDDEN_CACHE.reportStationId,
+      choices: PALLAS_HIDDEN_CACHE_CHOICES.map((choice) => ({
+        ...choice,
+        available: choice.id !== 'report' || reportAvailable,
+        ...(choice.id === 'report' && !reportAvailable
+          ? { unavailableReason: 'Dock at Drift Market to file this report.' }
+          : {}),
+      })),
+      fixedPos: { ...own.cache.fixedPos },
+    });
+    return true;
+  },
+
+  _onPallasHiddenCacheChoice(payload) {
+    const own = this._pallasHiddenCacheState();
+    const choice = pallasHiddenCacheChoice(String(payload.choiceId || payload.choice || ''));
+    if (own.phase !== 'choice' || !own.cache || own.receipt || !choice) return false;
+    if (payload.recordId && payload.recordId !== own.recordId) return false;
+    if (choice.id === 'report' && !this._canReportPallasHiddenCache()) return false;
+
+    const resolvedAt = Math.max(0, Number(this.state.simTime) || 0);
+    const phaseByChoice = { recover: 'recovered', report: 'reported', criminal_use: 'criminal_used' };
+    own.phase = phaseByChoice[choice.id];
+    own.choiceId = choice.id;
+    own.resolvedAt = resolvedAt;
+    const lot = pallasHiddenCacheLot(choice.id);
+    const details = {
+      recover: 'Weapons case secured. The finite restricted lot remains a physical pickup at the cache.',
+      report: 'Drift Market logged the Pallas cache report through its own station desk.',
+      criminal_use: 'Custody tags burned. The finite stolen-goods lot remains a physical pickup at the cache.',
+    };
+    own.receipt = {
+      id: PALLAS_HIDDEN_CACHE_RESOLUTION_ID,
+      recordId: own.recordId,
+      sectorId: PALLAS_HIDDEN_CACHE.sectorId,
+      cachePoiId: PALLAS_HIDDEN_CACHE.cachePoiId,
+      choiceId: choice.id,
+      outcome: own.phase,
+      title: `BLACK-WAKE CACHE ${choice.label}`,
+      detail: details[choice.id],
+      resolvedAt,
+      ...(choice.id === 'report' ? {
+        stationId: PALLAS_HIDDEN_CACHE.reportStationId,
+        factionId: PALLAS_HIDDEN_CACHE.reportFactionId,
+        repDelta: PALLAS_HIDDEN_CACHE.reportRepDelta,
+      } : {}),
+      ...(lot ? {
+        lotId: lot.lotId,
+        commodityId: lot.commodityId,
+        totalQty: lot.totalQty,
+      } : {}),
+    };
+    if (lot) {
+      own.cargoLot = {
+        lotId: lot.lotId,
+        provenanceId: lot.provenanceId,
+        commodityId: lot.commodityId,
+        totalQty: lot.totalQty,
+        collectedQty: 0,
+        lostQty: 0,
+        remainingQty: lot.totalQty,
+        collectionReceipts: [],
+      };
+    }
+    // Commit the durable receipt before delegating any consequence to its single writer.
+    if (choice.id === 'report') {
+      this.bus.emit('faction:repDelta', {
+        factionId: PALLAS_HIDDEN_CACHE.reportFactionId,
+        delta: PALLAS_HIDDEN_CACHE.reportRepDelta,
+        reason: 'pallas_hidden_cache_report',
+      });
+    }
+    if (lot) this._spawnPallasHiddenCachePickup(PALLAS_HIDDEN_CACHE.sectorId);
+    this.bus.emit('pallasHiddenCache:resolved', {
+      recordId: own.recordId,
+      choiceId: choice.id,
+      receipt: { ...own.receipt },
+    });
+    return true;
+  },
+
+  _spawnPallasHiddenCachePickup(sectorId = this.state.world.currentSectorId) {
+    if (sectorId !== PALLAS_HIDDEN_CACHE.sectorId || this.state.world.currentSectorId !== sectorId) return null;
+    const own = this._pallasHiddenCacheState();
+    const lot = pallasHiddenCacheLot(own.choiceId);
+    if (!lot || !own.cache || !own.cargoLot || !(own.cargoLot.remainingQty > 0)) return null;
+    if (own.cargoLot.lotId !== lot.lotId || own.cargoLot.provenanceId !== lot.provenanceId
+      || own.cargoLot.commodityId !== lot.commodityId) return null;
+    const live = findCacheLotEntity(this.state, 'pallasHiddenCacheLotId', lot.lotId);
+    if (live) return live;
+    const revision = own.cargoLot.collectedQty + own.cargoLot.lostQty;
+    const entity = this.helpers.spawnEntity({
+      type: 'pickup',
+      pos: { ...own.cache.fixedPos },
+      vel: { x: 0, z: 0 },
+      radius: 1.5,
+      mass: 0.1,
+      collides: true,
+      ttl: Infinity,
+      data: {
+        kind: 'cargo',
+        commodityId: lot.commodityId,
+        amount: own.cargoLot.remainingQty,
+        name: lot.pickupName,
+        pallasHiddenCacheLotId: lot.lotId,
+        pallasHiddenCacheRevision: revision,
+        richLotSource: {
+          lotId: lot.lotId,
+          provenanceId: lot.provenanceId,
+          sourceKind: 'pallas_hidden_cache',
+          sourcePoiId: PALLAS_HIDDEN_CACHE.cachePoiId,
+          recordId: PALLAS_HIDDEN_CACHE.recordId,
+          choiceId: own.choiceId,
+          lotQty: own.cargoLot.remainingQty,
+          sourceOwner: 'player',
+        },
+      },
+    });
+    this._stampHomeSector(entity, PALLAS_HIDDEN_CACHE.sectorId);
+    this.bus.emit('pallasHiddenCache:pickupReady', {
+      recordId: own.recordId,
+      pickupId: entity.id,
+      lotId: lot.lotId,
+      remainingQty: own.cargoLot.remainingQty,
+      pos: { ...entity.pos },
+    });
+    return entity;
+  },
+
+  _onPallasHiddenCachePickupCollected(payload) {
+    const own = this._pallasHiddenCacheState();
+    const lot = pallasHiddenCacheLot(own.choiceId);
+    if (!lot || !own.cargoLot || !(own.cargoLot.remainingQty > 0)
+      || !Array.isArray(own.cargoLot.collectionReceipts)) return false;
+    const pickup = payload.pickupId != null && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(payload.pickupId) : null;
+    if (pickup && pickup.data && pickup.data.jettisonedCargo) return false;
+    const source = payload.lotSource || payload.richLotSource
+      || pickup && pickup.data && (pickup.data.lotSource || pickup.data.richLotSource);
+    if (!source || source.lotId !== lot.lotId || source.provenanceId !== lot.provenanceId
+      || source.commodityId && source.commodityId !== lot.commodityId) return false;
+    const revision = Math.max(0, Math.floor(Number(pickup && pickup.data && pickup.data.pallasHiddenCacheRevision)
+      || own.cargoLot.collectedQty + own.cargoLot.lostQty));
+    const receiptId = `${lot.lotId}:collection:${revision}`;
+    if (own.cargoLot.collectionReceipts.some((entry) => entry.id === receiptId)) return false;
+    const requested = Math.max(0, Math.floor(Number(payload.amount) || 0));
+    const playerPickup = payload.collectorId === this.state.playerId;
+    const acceptedQty = playerPickup
+      ? Math.max(0, Math.min(own.cargoLot.remainingQty, Math.floor(Number(payload.acceptedAmount) || 0)))
+      : 0;
+    const lostQty = playerPickup ? 0 : Math.max(0, Math.min(own.cargoLot.remainingQty, requested));
+    if (!(acceptedQty > 0) && !(lostQty > 0)) return false;
+    own.cargoLot.collectedQty += acceptedQty;
+    own.cargoLot.lostQty += lostQty;
+    own.cargoLot.remainingQty = Math.max(0,
+      own.cargoLot.totalQty - own.cargoLot.collectedQty - own.cargoLot.lostQty);
+    own.cargoLot.collectionReceipts.push({ id: receiptId, acceptedQty, lostQty });
+    if (own.cargoLot.collectionReceipts.length > 16) own.cargoLot.collectionReceipts.shift();
+    if (pickup && pickup.data) pickup.data.pallasHiddenCacheRevision = revision + acceptedQty + lostQty;
+    this.bus.emit('pallasHiddenCache:cargoChanged', {
+      recordId: own.recordId,
+      lotId: own.cargoLot.lotId,
+      acceptedQty,
+      lostQty,
+      collectedQty: own.cargoLot.collectedQty,
+      remainingQty: own.cargoLot.remainingQty,
+    });
+    return true;
+  },
+
+  _contactTethysBlackMarket({ poiId, sectorId, completedAt }) {
+    const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+    if (poiId !== discovery.poiId || sectorId !== discovery.sectorId) return false;
+    const own = this._frontierRumorState();
+    const record = own.byId[discovery.rumorId];
+    if (!record || record.phase !== 'rumored') return false;
+    const contactedAt = Math.max(0, Number(completedAt) || Number(this.state.simTime) || 0);
+    record.phase = 'contacted';
+    record.contactedAt = contactedAt;
+    record.contactId = discovery.contactId;
+    record.opportunity = {
+      type: discovery.opportunityType,
+      stationId: discovery.stationId,
+      status: 'available',
+    };
+    record.risk = 'Quiet capsule work can draw law attention; loss means no payout.';
+    record.entranceRun = { ...TETHYS_BLACK_MARKET_RUN, phase: 'available', parcel: null, suppliedAt: 0, deliveredAt: 0 };
+    const receipt = {
+      type: 'contacted', rumorId: record.id, contactId: record.contactId,
+      sectorId, poiId, opportunityType: discovery.opportunityType, t: contactedAt,
+    };
+    own.receipts.push(receipt);
+    while (own.receipts.length > FRONTIER_RUMOR_RECEIPT_LIMIT) own.receipts.shift();
+    this.bus.emit('frontierRumor:contacted', { ...receipt, opportunity: { ...record.opportunity } });
+    this._ensureTethysEntranceRun(TETHYS_BLACK_MARKET_RUN.sectorId);
+    return true;
+  },
+
+  _captureTethysEntranceParcel() {
+    const run = tethysBlackMarketRun(this.state);
+    if (!run || run.phase === 'available') return;
+    const id = this._tethysRunEntities.parcel;
+    if (id == null) return; // RECORD_ONLY keeps its last snapshot until rematerialization.
+    const pod = this.state.entities.get(id);
+    run.parcel = isJettisonedCargoPod(pod) ? {
+      pos: { x: pod.pos.x, z: pod.pos.z }, vel: { x: pod.vel.x, z: pod.vel.z },
+      hull: pod.hull, data: cloneSaveTree(pod.data),
+    } : null;
+    const resident = this.state.world.residentSectors?.[run.sectorId];
+    if (!pod?.alive && resident?.tier === RESIDENCY_TIER.RECORD_ONLY) delete this._tethysRunEntities.parcel;
+  },
+
+  _ensureTethysEntranceRun(sectorId) {
+    const run = tethysBlackMarketRun(this.state);
+    if (!run || sectorId !== run.sectorId) return;
+    const active = this.state.world.sectorContents?.[sectorId];
+    const station = active?.stations?.find((row) => row.stationId === run.stationId);
+    if (!station) return; // Bodies exist only in actual sector residency.
+    const members = this._tethysRunEntities;
+    const live = (role) => this.state.entities.get(members[role])?.alive;
+    const tag = (entity, role) => {
+      if (!entity) return null;
+      this._stampHomeSector(entity, sectorId);
+      entity.flags = { ...entity.flags, persistent: false };
+      entity.data.tethysEntranceRunId = run.runId;
+      entity.data.tethysEntranceMemberId = run[`${role}Id`];
+      members[role] = entity.id;
+      return entity;
+    };
+    // The cutter points east across the parcel's route; the receiver sits beyond its 90 WU cone.
+    const start = { x: station.pos.x - 240, z: station.pos.z + 80 };
+    for (const [role, dx, dz, defId, name] of [
+      ['scanner', 19, -28, 'ship_hornet', 'Customs cutter — east-facing scan'],
+      ['receiver', 144, 0, 'ship_mule', 'Quiet receiving barge'],
+    ]) {
+      if (live(role) || run.phase === 'delivered') continue;
+      const radius = role === 'scanner' ? 14 : 18;
+      tag(this.helpers.spawnEntity({
+        type: 'ship', team: 2, factionId: role === 'scanner' ? 'faction_scn' : 'faction_quiet',
+        pos: { x: start.x + dx, z: start.z + dz }, vel: { x: 0, z: 0 }, rot: 0,
+        radius, mass: 8000, hull: 10000, hullMax: 10000, collides: true,
+        physicsBody: { schemaVersion: 1, radius, mass: 8000, inertiaY: 8000, dynamic: false, material: 'ship', revision: 0 },
+        data: {
+          defId, name, ai: { passive: true }, customsScanner: role === 'scanner',
+          outlawCatchNet: role === 'receiver', trafficRole: 'outlaw',
+          ...(role === 'scanner' ? { customsScanCone: { heading: 0, range: 90, halfAngle: 0.55, dwellS: 0.7 } } : {}),
+        },
+      }), role);
+    }
+    if (live('parcel')) return;
+    // Available supplies exactly once. Missing/collected/destroyed cargo is never replaced.
+    if (members.parcel != null || (run.phase !== 'available' && !run.parcel)) return;
+    const saved = run.parcel;
+    const pod = tag(spawnJettisonedCargoPod(this.state, {
+      commodityId: saved?.data.commodityId || run.commodityId,
+      amount: saved ? saved.data.amount : run.amount,
+      pos: saved?.pos || start, vel: saved?.vel || { x: 0, z: 0 },
+      radius: 5, ownerId: this.state.playerId,
+      originId: TETHYS_BLACK_MARKET_DISCOVERY.stationId, destinationId: run.stationId,
+      pickupEmbargoUntil: saved?.data.pickupEmbargoUntil ?? Number.MAX_SAFE_INTEGER,
+    }, this.helpers), 'parcel');
+    if (!pod) return;
+    if (saved) {
+      Object.assign(pod.data, saved.data);
+      pod.hull = saved.hull;
+    }
+    pod.data.name = 'Quiet entrance parcel';
+    if (run.phase === 'available') {
+      run.phase = 'in_progress';
+      run.suppliedAt = this.state.simTime;
+    }
+    this._captureTethysEntranceParcel();
+  },
+
+  _onTethysEntranceCaught(payload) {
+    const run = tethysBlackMarketRun(this.state);
+    if (!run || run.phase !== 'in_progress' || this.state.world.currentSectorId !== run.sectorId) return false;
+    const members = this._tethysRunEntities;
+    if (payload.podId !== members.parcel || payload.netId !== members.receiver) return false;
+    const pod = this.state.entities.get(payload.podId);
+    const net = this.state.entities.get(payload.netId);
+    if (!isJettisonedCargoPod(pod) || !net?.alive || net.data?.outlawCatchNet !== true
+        || pod.data.tethysEntranceRunId !== run.runId || net.data.tethysEntranceRunId !== run.runId
+        || pod.data.tethysEntranceMemberId !== run.parcelId || net.data.tethysEntranceMemberId !== run.receiverId
+        || pod.data.commodityId !== run.commodityId || pod.data.amount !== run.amount
+        || pod.data.legality !== 'contraband' || pod.data.customsConeEntered !== true
+        || pod.data.customsScanned === true || pod.data.caughtByNet !== true
+        || pod.data.caughtByNetId !== net.id) return false;
+    const reach = (pod.radius || 3) + (net.radius || 18);
+    if (Math.hypot(pod.pos.x - net.pos.x, pod.pos.z - net.pos.z) > reach + 1) return false;
+    run.phase = 'delivered';
+    run.deliveredAt = Math.max(0, this.state.simTime || 0);
+    const station = this.state.world.sectorContents?.[run.sectorId]?.stations?.find((row) => row.stationId === run.stationId);
+    const berth = station && this.state.entities.get(station.id);
+    if (berth?.data.dockDeny === 'private') delete berth.data.dockDeny;
+    pod.data.pickupEmbargoUntil = 0;
+    this._captureTethysEntranceParcel();
+    this.bus.emit('frontierRumor:blackMarketAccess', { rumorId: TETHYS_BLACK_MARKET_DISCOVERY.rumorId, runId: run.runId, stationId: run.stationId });
+    this.bus.emit('toast', { text: 'Quiet parcel delivered. Smuggler Den market and papers wash are open.', kind: 'success', ttl: 5 });
+    return true;
+  },
+
+  _onLandmarkArtifactRecovered(payload) {
+    const sectorId = payload && payload.sectorId;
+    const poiId = payload && payload.poiId;
+    const artifact = payload && payload.artifact;
+    if (!sectorId || !poiId || !artifact || !artifact.id || !artifact.title || !artifact.body) return false;
+    const sector = this.state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    const poi = sector && (sector.pois || []).find((row) => row && row.id === poiId);
+    if (!poi) return false;
+    if (payload.targetRef && poi.flavorTargetRef && payload.targetRef !== poi.flavorTargetRef) return false;
+    const disc = this._discoveryFor(sectorId);
+    const rec = disc.pois[poiId] || (disc.pois[poiId] = { discovered: false, identified: false });
+    if (rec.landmarkArtifact && rec.landmarkArtifact.id === artifact.id) return false;
+    const returnedAt = Math.max(0, Number(payload.returnedAt) || Number(this.state.simTime) || 0);
+    rec.discovered = true;
+    rec.identified = true;
+    rec.investigated = true;
+    rec.investigatedAt = returnedAt;
+    rec.landmarkArtifact = {
+      id: String(artifact.id),
+      title: String(artifact.title),
+      body: String(artifact.body),
+      sourceRef: payload.targetRef ? String(payload.targetRef) : null,
+      signalId: payload.signalId ? String(payload.signalId) : null,
+      returnedAt,
+    };
+    // D238: an artifact return that identifies a sold cache spends its fix record too.
+    const clearedArtifactFix = clearSurveyFix(this.state, sectorId, poiId);
+    if (clearedArtifactFix && bearingCharted(this.state, clearedArtifactFix.mark)) this.state.nav.waypoint = null;
+    this.bus.emit('discovery:plateUnlocked', {
+      sectorId,
+      poiId,
+      type: poi.type || rec.type || null,
+      artifactId: rec.landmarkArtifact.id,
+    });
+    this._fileSectorChart(sectorId);
+    return true;
+  },
+
+  // --- numeric helpers (shared with the lane facade via routePlanner.js) ---------------------
+  _edgeDist(a, b) {
+    return routeEdgeDist(a, b);
+  },
+
+  _interdictChance(sector, via, drive) {
+    return routeInterdictChance(sector, via, drive);
+  },
+
+  _gateToll(sector) {
+    return gateTollFor(sector);
+  },
+
+  // =========================================================================================
+  // save/load (§4.5 — world overlay only: discovery, currentSectorId, jump, fuel, owners)
+  // =========================================================================================
+  serialize() {
+    const state = this.state;
+    // Capture live durable entities into the bag before save so mid-route Continue
+    // restores NPC/convoy/mission outcomes without depending on residency bags.
+    const membership = state.world.currentSectorId;
+    if (membership) this._captureSectorDurableRecords(membership, { reason: 'serialize' });
+    // Also snapshot any other FULL/REDUCED resident that still has live entities.
+    const residents = state.world.residentSectors || {};
+    for (const sid of Object.keys(residents)) {
+      if (sid === membership) continue;
+      const tier = residents[sid] && residents[sid].tier;
+      if (tier === RESIDENCY_TIER.FULL || tier === RESIDENCY_TIER.REDUCED) {
+        this._captureSectorDurableRecords(sid, { reason: 'serialize' });
+      }
+    }
+    // Saves never resume a transition FSM. Once Choice C is confirmed, normalize an in-flight
+    // snapshot to its inevitable return instead of reloading at Ashfall with the ending already
+    // filed and no way to charge again. A CHARGING snapshot has not spent fuel yet; JUMPING has.
+    const unfiledCommitted = state.jump._unfiled === true
+      && state.jump._unfiledConfirmed === true
+      && (state.jump.state === 'CHARGING' || state.jump.state === 'JUMPING');
+    const savedJump = unfiledCommitted
+      ? {
+        state: 'COOLDOWN', targetSectorId: null, via: null,
+        chargeT: 0, chargeNeeded: 0, cooldownT: DRIVE_COOLDOWN * driveCooldownMultiplier(state.player),
+      }
+      : {
+        state: state.jump.state, targetSectorId: state.jump.targetSectorId, via: state.jump.via,
+        chargeT: state.jump.chargeT, chargeNeeded: state.jump.chargeNeeded, cooldownT: state.jump.cooldownT,
+      };
+    const savedFuelCurrent = unfiledCommitted && state.jump.state === 'CHARGING'
+      ? Math.max(0, state.fuel.current - (state.jump._fuelCost || 0))
+      : state.fuel.current;
+    return {
+      currentSectorId: unfiledCommitted ? UNFILED_JUMP_RETURN : state.world.currentSectorId,
+      discovery: cloneSaveTree(state.world.discovery || {}),
+      wreckCourtRulings: normalizeCourtRulings(state.world.wreckCourtRulings),
+      scanPings: cloneSaveTree(state.world.scanPings || {}),
+      pendingSpawns: cloneSaveTree(state.world.pendingSpawns || {}),
+      frontierRumors: cloneSaveTree(this._frontierRumorState()),
+      vestaOreCache: cloneSaveTree(this._vestaOreCacheState()),
+      pallasHiddenCache: cloneSaveTree(this._pallasHiddenCacheState()),
+      // Economy resource-work publisher: persisted seq allocator + denied cooldowns + receipts.
+      resourceWork: cloneSaveTree(this._resourceWorkState()),
+      // Arrangement v0 preserves old saves; v1 is a generation policy, not saved geometry.
+      arrangementVersion: readArrangementVersion(state.world.arrangementVersion, ARRANGEMENT_VERSION),
+      // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
+      records: serializeRecordsBag(ensureWorldRecords(state.world)),
+      resourceBodies: serializeResourceBodyBag(
+        ensureResourceBodies(state.world, this._resourceBodyRetentionOptions()), this._resourceBodyRetentionOptions()),
+      // Shelved far actors are durable run state: without them a virtualized NPC rematerializes
+      // live on load and the next serialize captures a fat record where the save held a thin one.
+      farActors: serializeFarActorTable(state.world.farActors),
+      // Latest sectorSim recipes are bounded per sector and needed because sectorSim restores its
+      // applied-id set on Continue (it correctly will not re-emit the same epoch).
+      embodiment: serializeEmbodimentCache(state.world.embodiment),
+      // v9: entity/overlay positions are already galactic-global. Persist schema tag only —
+      // frameOrigin / frameOriginSeq are runtime boundary values and must not re-offset poses.
+      coordinateSchema: state.world.coordinateSchema || 'global_v1',
+      // Spent optic cells ride the world save: lattice bodies are recipe-spawned, so the dark
+      // state lives as { structureId: { cell: spentAtT } } against absolute sim time. A cell
+      // whose quiet stretch elapsed while the game was closed simply loads live.
+      opticSpent: cloneSaveTree(state.world.opticSpent || {}),
+      // Alien Ecology: revelation tier, site aftermath, taxonomy unlocks (doc 08 §persist).
+      alienEcology: serializeAlienEcologyState(state),
+      sectorOwners: this._ownerOverlay(),
+      jump: savedJump,
+      fuel: { current: savedFuelCurrent, max: state.fuel.max },
+    };
+  },
+
+  _ownerOverlay() {
+    const out = {};
+    for (const id in this.state.world.sectors) {
+      const s = this.state.world.sectors[id];
+      if (s && s.owner && s.owner !== s.factionId) out[id] = s.owner;
+    }
+    return out;
+  },
+
+  deserialize(data, context) {
+    for (const _ of this.deserializeChunked(data, context)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: yields only at section boundaries (between the durable bag restores), never
+  // inside a section — the async lane paints between them while every call keeps sync order.
+  *deserializeChunked(data, context) {
+    if (!data) return;
+    // World and its resource rows restore before npcJobs. During that interval use the
+    // incoming saved job bag, never the outgoing session's transient jobs.
+    this._resourceBodyRestoreJobs = context ? (context.npcJobs || { byId: {} }) : null;
+    this._clearAdoptedSalvorApproachState(this.state);
+    // Reject unknown future layouts BEFORE any state mutation. Missing means legacy geometry.
+    const arrangementVersion = readArrangementVersion(data.arrangementVersion);
+    const state = this.state;
+    state.world.arrangementVersion = arrangementVersion;
+    this._registerFreeDriveRingPoi();
+    // Sector entities are runtime-only and save load clears them before re-entering the saved
+    // sector. Drop all residency bags as well, otherwise stale structural IDs make the
+    // materializer believe stations/gates are still live and the loaded sector appears empty.
+    state.world.residentSectors = {};
+    state.world.sectorContents = {};
+    state.world.activeSector = this._emptySectorBag();
+    resetWorldPresentationTables(state);
+    restoreFarActorTable(state, data.farActors);
+    if (data.discovery) state.world.discovery = data.discovery;
+    state.world.wreckCourtRulings = normalizeCourtRulings(data.wreckCourtRulings);
+    state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
+    state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
+    state.world.frontierRumors = normalizeFrontierRumorState(data.frontierRumors);
+    this._tethysRunEntities = {};
+    state.world.vestaOreCache = normalizeVestaOreCacheState(data.vestaOreCache);
+    state.world.pallasHiddenCache = normalizePallasHiddenCacheState(data.pallasHiddenCache);
+    // Publication ledger + allocator restore BEFORE any seam can publish again, so a reloaded
+    // world never reuses a sequence the economy already recorded.
+    state.world.resourceWork = normalizeResourceWorkState(data.resourceWork);
+    this._vestaDecisionSignature = null;
+    this._vestaDecisionNeedsRebind = true;
+    this._pallasDecisionSignature = null;
+    this._pallasDecisionNeedsRebind = true;
+    // Durable records restore before enterSector rematerializes them exactly once.
+    state.world.records = yield* normalizeRecordsBagChunked(data.records);
+    yield 'world-records';
+    state.world.resourceBodies = yield* normalizeResourceBodyBagChunked(data.resourceBodies, this._resourceBodyRetentionOptions());
+    yield 'world-resource-bodies';
+    // Dark optic cells come back through _ensureOpticStructures on the next materialize;
+    // absent (older saves) normalizes to an empty ledger.
+    state.world.opticSpent = normalizeOpticSpendLedger(data.opticSpent);
+    state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
+    deserializeAlienEcologyState(state, data.alienEcology);
+    yield 'world-alien-ecology';
+    if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
+    // Coordinate schema is global_v1 for v9+. Always reset the runtime frame on load rather
+    // than trusting a stale rendering frame that may have been smuggled into a payload.
+    state.world.coordinateSchema = (data.coordinateSchema === 'global_v1' || data.coordinateSchema == null)
+      ? 'global_v1'
+      : String(data.coordinateSchema);
+    if (!state.world.frameOrigin || typeof state.world.frameOrigin !== 'object') {
+      state.world.frameOrigin = { x: 0, z: 0 };
+    } else {
+      state.world.frameOrigin.x = 0;
+      state.world.frameOrigin.z = 0;
+    }
+    state.world.frameOriginSeq = 0;
+    // Never rehydrate runtime residency bags from disk (even if smuggled).
+    if (data.residentSectors) { /* intentionally ignored */ }
+    if (data.sectorContents) { /* intentionally ignored */ }
+    if (data.jump) {
+      // restore overlay fields but never resume a mid-charge/jump (avoid a stuck FSM on load)
+      Object.assign(state.jump, data.jump);
+      if (state.jump.state === 'CHARGING' || state.jump.state === 'JUMPING') {
+        state.jump.state = 'IDLE'; state.jump.targetSectorId = null; state.jump.via = null;
+        state.jump.chargeT = 0; state.jump.chargeNeeded = 0;
+      }
+      state.jump._unfiled = false;
+      state.jump._unfiledConfirmed = false;
+    }
+    if (data.fuel) state.fuel = { current: data.fuel.current, max: data.fuel.max };
+    if (data.sectorOwners) {
+      for (const id in data.sectorOwners) {
+        if (state.world.sectors[id]) state.world.sectors[id].owner = data.sectorOwners[id];
+      }
+    }
+    // NOTE: the active sector's entities are NOT serialized; the save load sequence re-enters
+    // the saved sector to repopulate it (calling enterSector after deserialize). Durable
+    // world.records rematerialize inside _ensureSectorMaterialized during that enter.
+  },
+
+  newGame() {
+    const state = this.state;
+    this._clearAdoptedSalvorApproachState(state);
+    // reset overlay + jump/fuel to defaults; the home sector is entered by main.js post-boot.
+    // main.startNewGame replaces state.world with a fresh record after system init, so rebuild the
+    // mutable ownership/map table here instead of relying on init's now-discarded copy.
+    state.world.sectors = {};
+    for (const sector of SECTORS) {
+      state.world.sectors[sector.id] = { ...sector, owner: sector.factionId };
+    }
+    this._registerFreeDriveRingPoi();
+    state.world.discovery = {};
+    state.world.wreckCourtRulings = normalizeCourtRulings(null);
+    state.world.scanPings = {};
+    state.world.pendingSpawns = {};
+    state.world.frontierRumors = normalizeFrontierRumorState(null);
+    state.world.alienEcology = createAlienEcologyState();
+    this._tethysRunEntities = {};
+    state.world.vestaOreCache = freshVestaOreCacheState();
+    state.world.pallasHiddenCache = freshPallasHiddenCacheState();
+    state.world.resourceWork = freshResourceWorkState();
+    state.world.arrangementVersion = ARRANGEMENT_VERSION;
+    state.world.records = createEmptyRecordsBag();
+    state.world.resourceBodies = createEmptyResourceBodyBag();
+    state.world.opticSpent = {};
+    state.world.embodiment = createEmptyEmbodimentCache();
+    state.world.residentSectors = {};
+    state.world.sectorContents = {};
+    state.world.activeSector = this._emptySectorBag();
+    resetWorldPresentationTables(state);
+    resetFarActors(state);
+    state.world.currentSectorId = null;
+    this._nextCriticalSpawnTick = 0;
+    if (this._deferredCriticalRecordIds) this._deferredCriticalRecordIds.clear();
+    this._membershipCandidate = null;
+    // simTime restarts at 0 on a new run — drop the wire-report cooldown map with it, or every
+    // stamped sector suppresses its first report for up to WIRE_REPORT_COOLDOWN_S.
+    this._wireReportAt = new Map();
+    this._vestaDecisionSignature = null;
+    this._vestaDecisionNeedsRebind = false;
+    this._pallasDecisionSignature = null;
+    this._pallasDecisionNeedsRebind = false;
+    // Coordinate membrane: new games always start at global_v1 with a zero runtime frame.
+    state.world.coordinateSchema = 'global_v1';
+    if (!state.world.frameOrigin || typeof state.world.frameOrigin !== 'object') {
+      state.world.frameOrigin = { x: 0, z: 0 };
+    } else {
+      state.world.frameOrigin.x = 0;
+      state.world.frameOrigin.z = 0;
+    }
+    state.world.frameOriginSeq = 0;
+    this._seedChartedDiscovery();
+    state.jump.state = 'IDLE'; state.jump.targetSectorId = null; state.jump.via = null;
+    state.jump.chargeT = 0; state.jump.chargeNeeded = 0; state.jump.cooldownT = 0;
+    state.jump._unfiled = false; state.jump._unfiledConfirmed = false;
+    state.fuel = { current: 100, max: 100 };
+    state.nav.route = null; state.nav.autoTravel = false; state.nav.waypoint = null;
+    state.nav.autopilot = { active: false, target: null, targetEntityId: null, label: '', arrivalRadius: 36, status: 'idle' };
+  },
+};
+
+function cloneSaveTree(value) {
+  if (value == null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(cloneSaveTree);
+  const out = {};
+  for (const key of Object.keys(value)) out[key] = cloneSaveTree(value[key]);
+  return out;
+}
+
+// Economy resource-work publisher state (module-private, like the vesta/pallas cache states).
+// `seq` is THE world's publication allocator: one monotonic counter shared by every commodity and
+// every field in the world (per-commodity counters could collide across publishers). It persists
+// with the world save so a save/load cycle can never hand the economy a reused sequence.
+function freshResourceWorkState() {
+  return { seq: 0, deniedUntilBySector: {}, ledger: [] };
+}
+
+function normalizeResourceWorkState(input) {
+  const out = freshResourceWorkState();
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return out;
+  out.seq = Math.max(0, Math.floor(Number(input.seq) || 0));
+  if (input.deniedUntilBySector && typeof input.deniedUntilBySector === 'object'
+    && !Array.isArray(input.deniedUntilBySector)) {
+    for (const key of Object.keys(input.deniedUntilBySector)) {
+      if (typeof key !== 'string' || key.length > 64) continue;
+      const until = Number(input.deniedUntilBySector[key]);
+      if (Number.isFinite(until) && until >= 0) out.deniedUntilBySector[key] = until;
+      if (Object.keys(out.deniedUntilBySector).length >= RESOURCE_WORK_LEDGER_LIMIT) break;
+    }
+  }
+  if (Array.isArray(input.ledger)) {
+    for (const row of input.ledger) {
+      if (!row || typeof row !== 'object') continue;
+      const leaseId = typeof row.leaseId === 'string' ? row.leaseId.slice(0, 96) : '';
+      if (!leaseId) continue;
+      out.ledger.push({
+        kind: row.kind === 'cancel' ? 'cancel' : 'settle',
+        seq: Math.max(0, Math.floor(Number(row.seq) || 0)),
+        leaseId,
+        sectorId: typeof row.sectorId === 'string' ? row.sectorId.slice(0, 64) : '',
+        fieldId: typeof row.fieldId === 'string' ? row.fieldId.slice(0, 64) : '',
+        commodityId: typeof row.commodityId === 'string' ? row.commodityId.slice(0, 64) : '',
+        producedQty: Math.max(0, Math.floor(Number(row.producedQty) || 0)),
+        uncertain: row.uncertain ? 1 : 0,
+        ackOk: row.ackOk ? 1 : 0,
+        atT: Math.max(0, Number(row.atT) || 0),
+      });
+      if (out.ledger.length >= RESOURCE_WORK_LEDGER_LIMIT) break;
+    }
+  }
+  return out;
+}
+
+/** Dominant ore of a seam's asteroid definition — one commodity per publication request. */
+function dominantOreCommodity(def) {
+  const table = def && def.oreTable;
+  if (table && typeof table === 'object' && !Array.isArray(table)) {
+    let best = null;
+    let bestP = -Infinity;
+    for (const commodityId of Object.keys(table)) {
+      const p = Number(table[commodityId]);
+      if (Number.isFinite(p) && p > bestP) { bestP = p; best = commodityId; }
+    }
+    if (best) return best;
+  }
+  return 'cmdty_silicate';
+}
+
+// Module-private helper (kept out of the singleton so `this` stays simple in callers).
+function safeSector(state, id) {
+  return state.world.sectors[id] || SECTOR_BY_ID.get(id) || null;
+}
+
+function paletteClassForSector(sector) {
+  if (!sector) return 'core';
+  if (PALETTE_CLASS_BY_REF.has(sector.palette)) return PALETTE_CLASS_BY_REF.get(sector.palette);
+  const p = sector.palette || {};
+  for (const [key, value] of Object.entries(SECTOR_PALETTE_CLASSES)) {
+    if (p.nebulaTint === value.nebulaTint && p.fog === value.fog) return key;
+  }
+  return 'core';
+}
+
+function polarOffset(origin, angle, distance) {
+  return {
+    x: origin.x + Math.cos(angle) * distance,
+    z: origin.z + Math.sin(angle) * distance,
+  };
+}
+
+// Radial offset relative to a sector origin (default galactic 0,0 for Helios-local legacy).
+// When pos is already galactic-global, pass the sector's global origin so t scales from the sector center.
+function offsetAlongRadial(pos, t, sideOffset, origin = null) {
+  const ox = origin ? origin.x : 0;
+  const oz = origin ? origin.z : 0;
+  const lx = pos.x - ox;
+  const lz = pos.z - oz;
+  const angle = Math.atan2(lz, lx);
+  const baseX = ox + lx * t;
+  const baseZ = oz + lz * t;
+  return {
+    x: baseX + Math.cos(angle + Math.PI / 2) * sideOffset,
+    z: baseZ + Math.sin(angle + Math.PI / 2) * sideOffset,
+  };
+}
+
+function midpoint(a, b, t) {
+  return {
+    x: a.x + (b.x - a.x) * t,
+    z: a.z + (b.z - a.z) * t,
+  };
+}
+
+function bearingFromOrigin(pos, origin = null) {
+  const ox = origin ? origin.x : 0;
+  const oz = origin ? origin.z : 0;
+  return Math.atan2(pos.z - oz, pos.x - ox);
+}
+
+function bearingToward(from, to) {
+  return Math.atan2(to.z - from.z, to.x - from.x);
+}
+
+function sanitizeCoursePos(pos) {
+  if (!pos || typeof pos !== 'object' || Array.isArray(pos)) return null;
+  const x = Number(pos.x);
+  const z = Number(pos.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  return { x, z };
+}
+
+function dist2(a, b) {
+  const dx = (a && a.x || 0) - (b && b.x || 0);
+  const dz = (a && a.z || 0) - (b && b.z || 0);
+  return dx * dx + dz * dz;
+}
+
+function starterSafeRadius(sector) {
+  if (!sector) return 0;
+  return sector.id === 'sector_helios_prime' || sector.tier === 0 ? STARTER_SAFE_RADIUS : 0;
+}
+
+function stationSafeRadius(station) {
+  const liveRadius = Number(station && station.radius);
+  return STATION_SAFE_RADIUS + (Number.isFinite(liveRadius) ? liveRadius : 0);
+}
+
+function tagAiSpawnContext(spec, sector, effectiveSector, context) {
+  spec.data = spec.data || {};
+  spec.data.ai = spec.data.ai || {};
+  spec.data.ai.spawnContext = context;
+  spec.data.ai.sectorId = sector && sector.id || null;
+  spec.data.ai.sectorSecurity = Number.isFinite(effectiveSector && effectiveSector.security)
+    ? effectiveSector.security
+    : (Number.isFinite(sector && sector.security) ? sector.security : 0);
+  spec.data.ai.sectorTier = Number.isFinite(effectiveSector && effectiveSector.tier)
+    ? effectiveSector.tier
+    : (Number.isFinite(sector && sector.tier) ? sector.tier : 0);
+}
+
+function findCacheLotEntity(state, lotKey, lotId) {
+  if (!state || !lotKey || lotId == null) return null;
+  const lists = [indexedTypeScan(state, 'pickups'), indexedTypeScan(state, 'payloads')];
+  for (let l = 0; l < lists.length; l++) {
+    const list = lists[l];
+    if (!list) continue;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (entity && entity.alive !== false && entity.data && entity.data[lotKey] === lotId) {
+        return entity;
+      }
+    }
+  }
+  return null;
+}
+
+function aftermathOwnsMarker(state, markerId) {
+  const bySector = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
+  if (!markerId || !bySector) return false;
+  for (const markers of Object.values(bySector)) {
+    if (Array.isArray(markers) && markers.some((marker) => marker && marker.markerId === markerId)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function findLiveRecordEntity(state, recordId) {
+  if (!recordId || !state) return null;
+  const index = state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+    // Same covered+unambiguous gate liveRecordEntityIndex applies to the whole batch: a
+    // provably-unique row on a total-coverage index answers O(1); anything else keeps the
+    // lane-order walk (first-match priority is part of the contract).
+    const byRecord = index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+    if (byRecord) {
+      const entities = state.entities;
+      const indexedIds = index._indexedIds;
+      const covered = entities && typeof entities.values === 'function'
+        && indexedIds instanceof Set && indexedIds.size === entities.size;
+      const count = index.byWorldRecordIdCount instanceof Map
+        ? (index.byWorldRecordIdCount.get(recordId) || 0) : 1;
+      if (covered && count <= 1) {
+        const e = byRecord.get(recordId);
+        return e && e.alive !== false ? e : null;
+      }
+    }
+    return findLiveEntityForRecord(index.shipLike, recordId)
+      || findLiveEntityForRecord(index.wrecks, recordId)
+      || findLiveEntityForRecord(index.stations, recordId)
+      || findLiveEntityForRecord(index.payloads, recordId);
+  }
+  return findLiveEntityForRecord(state.entityList, recordId);
+}
+
+// Batch record->entity lookup for rematerialize/reconcile passes: per-record scans of up to
+// four index lanes (then a far-actor row walk) cost O(records x entities) inside a single
+// chunked-enter section. byWorldRecordId answers O(1) whenever coverage is total (no
+// bare-map divergence and no duplicate carriers); the rare path falls back to the
+// lane-order walk (shipLike, wrecks, stations, payloads — entityList only when the
+// index is cold, then a full-map pass covers holders no lane indexes).
+function liveRecordEntityIndex(state) {
+  const map = new Map();
+  const index = state && state.entityIndex;
+  const indexReady = index && index.__spacefaceEntityIndexV1 && index.ready === true;
+  // Total-coverage index (W26): every live holder registers its data.worldRecordId stamp,
+  // including the non-lane carriers the old lane-union existed to catch. Only the
+  // bare-map residual (entities Map members the index never saw — poiSignal-rebadged
+  // husks) still needs a scan; when the sets agree the index answer is already total.
+  const byRecord = indexReady && index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+  if (byRecord) {
+    const entities = state.entities;
+    const indexedIds = index._indexedIds;
+    const diverged = entities && typeof entities.values === 'function'
+      && (!indexedIds || indexedIds.size !== entities.size);
+    // First-match priority matters to the .get() consumer (it pushes the winner's id into
+    // active.enemies only for ships). A recordId with >1 live carrier could pick a
+    // different winner by index order than by lane order — rebuild lane-priority then.
+    const countMap = index.byWorldRecordIdCount instanceof Map ? index.byWorldRecordIdCount : null;
+    let ambiguous = false;
+    if (countMap) {
+      for (const n of countMap.values()) {
+        if (n > 1) { ambiguous = true; break; }
+      }
+    }
+    if (!diverged && !ambiguous) return byRecord;
+    const lanes = [index.shipLike, index.wrecks, index.stations, index.payloads];
+    for (const lane of lanes) {
+      if (!lane) continue;
+      for (const e of lane) {
+        if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
+        if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
+      }
+    }
+    if (entities) {
+      for (const e of entities.values()) {
+        if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
+        if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
+      }
+    }
+    return map;
+  }
+  for (const e of state && state.entityList || []) {
+    if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
+    if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
+  }
+  return map;
+}
+
+// During a save restore, saveSystem publishes the incoming persistent envelope's worldRecordIds
+// on state (null outside a restore). It is the third carrier class of the exactly-once law:
+// the saved live hull respawns at _restoreChunks step 10, so a record it names must not
+// materialize a shell twin here.
+function restoreEnvelopeRecordIds(state) {
+  const set = state && state.restoreEnvelopeRecordIds;
+  return set instanceof Set ? set : null;
+}
+
+// Far-actor shelved rows carrying a worldRecordId — the same batch surface as the live index.
+function farActorRecordIdSet(state) {
+  const set = new Set();
+  const rows = state && state.world && state.world.farActors && state.world.farActors.rows;
+  if (!rows) return set;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row && row.alive !== false && row.data && row.data.worldRecordId != null) {
+      set.add(row.data.worldRecordId);
+    }
+  }
+  return set;
+}
+
+function finitePositive(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0;
+}

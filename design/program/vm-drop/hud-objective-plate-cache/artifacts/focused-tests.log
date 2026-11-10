@@ -1,0 +1,80 @@
+TAP version 13
+# Subtest: restartCreditsChipPulse schedules class add without reading offsetWidth
+ok 1 - restartCreditsChipPulse schedules class add without reading offsetWidth
+  ---
+  duration_ms: 1.448846
+  ...
+# Subtest: restartCreditsChipPulse cancels a superseded pulse token
+ok 2 - restartCreditsChipPulse cancels a superseded pulse token
+  ---
+  duration_ms: 0.387056
+  ...
+# Subtest: portable A/B: modern pulse path records zero sync layout reads
+ok 3 - portable A/B: modern pulse path records zero sync layout reads
+  ---
+  duration_ms: 7.449395
+  ...
+# Subtest: source: refreshCredits no longer forces chip.offsetWidth
+ok 4 - source: refreshCredits no longer forces chip.offsetWidth
+  ---
+  duration_ms: 10.455581
+  ...
+# Subtest: objective edge plates invalidate on resize, not a 500ms timer
+ok 5 - objective edge plates invalidate on resize, not a 500ms timer
+  ---
+  duration_ms: 2.183091
+  ...
+# Subtest: plate refresh still gates left column when ORRERY is mounted
+ok 6 - plate refresh still gates left column when ORRERY is mounted
+  ---
+  duration_ms: 0.389432
+  ...
+# Subtest: resize-only gate eliminates settled-edge layout reads
+ok 7 - resize-only gate eliminates settled-edge layout reads
+  ---
+  duration_ms: 0.41723
+  ...
+# Subtest: every rail slot lands in exactly one group, keyed by its rail index
+ok 8 - every rail slot lands in exactly one group, keyed by its rail index
+  ---
+  duration_ms: 2.563485
+  ...
+# Subtest: the cluster model reads the same sources as the old instruments
+ok 9 - the cluster model reads the same sources as the old instruments
+  ---
+  duration_ms: 0.760724
+  ...
+# Subtest: no drift is reported at a crawl, and missing numbers never become NaN
+ok 10 - no drift is reported at a crawl, and missing numbers never become NaN
+  ---
+  duration_ms: 0.450853
+  ...
+# Subtest: the rail states map onto the Cluster vocabulary
+ok 11 - the rail states map onto the Cluster vocabulary
+  ---
+  duration_ms: 1.370708
+  ...
+# Subtest: the cooldown tracker turns time-left into a rising fraction
+ok 12 - the cooldown tracker turns time-left into a rising fraction
+  ---
+  duration_ms: 0.558294
+  ...
+# Subtest: hud.js mounts the Cluster once and feeds it once per frame
+ok 13 - hud.js mounts the Cluster once and feeds it once per frame
+  ---
+  duration_ms: 2.086778
+  ...
+# Subtest: a settled Cluster frame writes nothing: springs at rest ignore a repeat target
+ok 14 - a settled Cluster frame writes nothing: springs at rest ignore a repeat target
+  ---
+  duration_ms: 0.908056
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 937.17646

@@ -1,0 +1,747 @@
+// codexPages.js — PULSE-CODEX (build_map row 437), the in-world reference half of the codex.
+//
+// One catalog page per canonical thing a pilot can know: every commodity, hull, module, weapon,
+// faction, sector, species, and named figure. Bodies are written in the archive's dry field-guide
+// voice and answer three questions where they honestly can: who makes it, who smuggles it, and
+// who died for it. Canonical fields carry the facts (commodity.lore already names the crew that
+// moves a lot; FAUNA_SPECIES[].note is the field-journal line); CODEX_OVERLAYS carry the authored
+// attribution — the yard that welds the hull, the clerk who died over the manifest.
+//
+// Pure data (src/data/AGENTS.md): no runtime reads, no RNG, no state. The discovery gates that
+// decide which page is legible live in src/ui/sim/codexPages.js; the codex screen renders what
+// that view hands it.
+
+import { COMMODITIES } from './commodities.js';
+import { SHIPS } from './ships.js';
+import { MODULES } from './modules.js';
+import { WEAPONS } from './weapons.js';
+import { FACTION_KITS } from './factions/index.js';
+import { SECTORS } from './sectors.js';
+import { FAUNA_SPECIES } from './alienFauna.js';
+import { faunaFamily } from './discoveryPresentation.js';
+import { FIGURES } from './narrative.js';
+import { hash32 } from '../core/rng.js';
+
+export const CODEX_SECTIONS = Object.freeze([
+  { id: 'commodities', title: 'Cargo', line: 'What the lanes carry, who refines it, who buries it.' },
+  { id: 'hulls', title: 'Hulls', line: 'The fifteen frames the yards will sell you — and the one they will not admit exists.' },
+  { id: 'modules', title: 'Modules', line: 'Fittings for the empty slots, priced by what they forgive.' },
+  { id: 'weapons', title: 'Weapons', line: 'Every argument a hull can make.' },
+  { id: 'factions', title: 'Factions', line: 'Fourteen flags and the cargoes each will not name.' },
+  { id: 'sectors', title: 'Sectors', line: 'Twenty-five systems, charted by whoever came back.' },
+  { id: 'species', title: 'Xenofauna', line: 'Field notes on what lives where the chart ends.' },
+  { id: 'figures', title: 'Figures', line: 'The people whose names keep turning up.' },
+]);
+
+// What a locked page admits, per section — never the real name or lore.
+export const CODEX_LOCKED_HINTS = Object.freeze({
+  commodities: 'Unlogged cargo. Hold it, trade it, or read its price on a market board.',
+  hulls: 'An airframe the ledger has not certified for you. Fly one, or find one dead.',
+  modules: 'A fitting you have never held. Salvage, buy, or fit it.',
+  weapons: 'A mounting you have never held. Salvage, buy, or fit it.',
+  factions: 'A flag you have not flown under or been billed by.',
+  sectors: 'Off the edge of your chart. Jump there.',
+  species: 'No field notes for this organism. Pulse the scanner across a living return to file its behaviour page.',
+  figures: 'A name the story has not spoken to you yet.',
+});
+
+// ── Authored overlays ──────────────────────────────────────────────────────────────────────
+// id → extra sentences woven after the canonical text. `maker` names who builds or moves it;
+// `casualty` names who died over it. Only written where the world has an honest answer.
+
+const COMMODITY_OVERLAYS = Object.freeze({
+  cmdty_narcotics: {
+    maker: 'The Vael refine the resin under their own locks; the Quiet move it after dark.',
+    casualty: 'Clerk Yune\'s predecessor was spaced over a pouch that scanned as tea.',
+  },
+  cmdty_weapons: {
+    maker: 'Reach forges stamp them unserialized; Pitborn crates carry the rest.',
+    casualty: 'Three customs officers at Charon did not survive a hold that declared "farm tools."',
+  },
+  cmdty_live_specimen: {
+    maker: 'Collected by whoever was brave or desperate enough to close the jar.',
+    casualty: 'The first collector\'s name is on the Veil memorial wall; the jar came back empty.',
+  },
+  cmdty_host_archive_sample: {
+    maker: 'Only the Archive grows it, and the Archive does not sell — it lends to the dead.',
+    casualty: 'An Understory broker died holding one. The sample is still alive.',
+  },
+  cmdty_stolen_goods: {
+    maker: 'Nobody files a maker. That is the point of the crate.',
+    casualty: 'Hale\'s REF 44-C exists because of the last crew that guessed wrong.',
+  },
+  cmdty_relay_nodule: {
+    maker: 'Choir foundries cast them to a hymn specification the foundries will not translate.',
+  },
+  cmdty_cyst_resin: {
+    maker: 'Cut from lantern cysts and spindle broods by people who wash their hands twice.',
+  },
+  cmdty_ice_water: {
+    maker: 'Belt ice is harvested by crews who never see it liquid. The Quiet mark theirs.',
+    casualty: 'A water war at Ceres predates the Concord charter. The water won.',
+  },
+  cmdty_volatiles: {
+    maker: 'Ice volatiles — skimmed, bottled, priced by the breath they could have been.',
+  },
+  cmdty_gas_hydrogen: {
+    maker: 'Hydrogen feedstock, compression-graded. The tank is worth more than the gas until it isn\'t.',
+  },
+  cmdty_medical: {
+    maker: 'Relief cargo. Every sector\'s shortage is someone else\'s price.',
+    casualty: 'The Aesop run lost a hull to spoilage once. The Consortium renamed the route.',
+  },
+  cmdty_food: {
+    maker: 'Provisions, packed to regulation shelf-life. Eating fresh is a berth-class privilege.',
+  },
+  cmdty_silicate: {
+    maker: 'Silicate rock: the commodity that pays for the trucks that haul it.',
+  },
+  cmdty_ore_platinium: {
+    maker: 'Platinum ore moves quiet and insured. The manifest never says the word twice.',
+  },
+  cmdty_ore_iron: {
+    maker: 'Drift Miners Collective claims pull it out by the claim-load.',
+    casualty: 'Voss can recite the crews the exhausted veins kept.',
+  },
+  cmdty_revocation_beacon: {
+    maker: 'No maker on record. The Verge-Layers leave them where questions accumulate.',
+    casualty: 'Everyone who priced one publicly. Ask The Question why.',
+  },
+  cmdty_fuel_cells: {
+    maker: 'Refined everywhere a refinery flag flies; the Reach sells it cut.',
+  },
+});
+
+const HULL_OVERLAYS = Object.freeze({
+  ship_kestrel: { maker: 'Built to a Concord courier pattern the yards stopped stamping. Every pilot\'s first argument.', casualty: 'Maera Vols flew one into the Quiessence story. The pattern outlives the paperwork on it.' },
+  ship_pelican: { maker: 'Drift Miners yard-stock; the cargo frame eats what the rock gives up.', casualty: 'The first production run cracked a gantry at Ceres and took the shop foreman with it. The collective still counts the frame lucky.' },
+  ship_wasp: { maker: 'Reach-adjacent fighter shops turn these out fast and do not ask what for.', casualty: 'Two of the pattern\'s test pilots filed complaints before the third stopped filing anything. The shops sell it anyway.' },
+  ship_mule: { maker: 'Meridian Trade Syndicate contract freight; boring on purpose, alive because of it.' },
+  ship_drifter: { maker: 'A free-market frame assembled from whoever bid lowest that quarter.' },
+  ship_hornet: { maker: 'Interceptor shops sell it to people who intend to be somewhere else already.' },
+  ship_ironback: { maker: 'Drift Miners heavy barge. Senna\'s crews weld names of the dead inside the keel.' },
+  ship_hawser: { maker: 'The tug every hauler curses and every hauler eventually needs.' },
+  ship_bastion: { maker: 'Concord-pattern corvette; the Navy sells surplus hulls to people it then watches.' },
+  ship_atlas: { maker: 'Meridian flagship freight. The manifests it carries get their own insurance desks.' },
+  ship_ranger: { maker: 'Explorer frame sold to people who file flight plans nobody reads.' },
+  ship_warden: { maker: 'Gunship hull. Concord law says patrol only; the secondhand market says otherwise.' },
+  ship_colossus: { maker: 'Battlecruiser tonnage; the yards that build them answer to flags, not buyers.' },
+  ship_leviathan: { maker: 'Flagship-class. A buyer this size gets a file opened, not a receipt.' },
+  ship_saucer: {
+    maker: 'No yard stamps it. The Vael do not confirm they grow it; nothing else flies that profile.',
+    casualty: 'Everyone who has publicly claimed to own one is missing, fined, or fiction.',
+  },
+});
+
+// Slot-family fallback voices — deterministic pick by hash so un-described modules still read
+// authored, not generated.
+const MODULE_FAMILY_VOICE = Object.freeze({
+  utility: [
+    'Bay-shop hardware; it does one unglamorous thing and keeps doing it.',
+    'Traded out of a crate at Sker with the serial filed warm.',
+    'The kind of box a fitter installs without looking up from the invoice.',
+  ],
+  engine: [
+    'A drive part. The yard welds it where the last one burned out.',
+    'Thrust hardware; the rating plate lies a little, which is traditional.',
+  ],
+  shield: [
+    'A projector coil. It answers fire the way an umbrella answers weather.',
+    'Shield shop work; the warranty assumes you will not test it personally.',
+  ],
+  weapon: [
+    'A mounting bracket with opinions about what hangs off it.',
+    'Ordnance-adjacent hardware; the receipt calls it agricultural.',
+  ],
+  cargo: [
+    'Hold hardware. It makes mass honest, which is the most you can ask of metal.',
+    'Freight-shop frame; smells of the last load, always.',
+  ],
+  reactor: [
+    'Power hardware. It hums at a frequency the insurance desk knows by heart.',
+    'A coil and a promise; the promise is the expensive part.',
+  ],
+});
+
+const MODULE_OVERLAYS = Object.freeze({
+  unique_blackbird_governor: { maker: 'One governor, one registry: the Quiet built it for a hull they will not name.' },
+  unique_choir_bell_aegis: { maker: 'Cast in a Choir foundry to a bell tone; it hums the liturgy back at incoming fire.', casualty: 'The acolyte who tuned it first is still listening. That is the story.' },
+  unique_pale_coil_warp_drive: { maker: 'Verge-Layer work, or a very good copy of it; the coil is warm when nothing should be.' },
+  unique_truesight_scanner: { maker: 'Archive-pattern optics. It reads what the hull wishes it had not.' },
+  unique_quietcloak: { maker: 'The Quiet\'s answer to being interesting: stop being it.', casualty: 'Its last certified owner is listed as "recovered, eventually."' },
+  unique_deepsurvey_suite: { maker: 'Survey-crew salvage; the deep arrays were meant to outlive the crew. They did.' },
+  unique_phantom_scrambler: { maker: 'A Reach engineer\'s revenge on every targeting computer that ever found her.' },
+  unique_smokesong_chaff: { maker: 'Chaff that sings on the way out. Pitborn work — nothing they make is quiet.' },
+  unique_cryo_shroud_sink: { maker: 'Cold-storage camouflage; the ship reads as freight with a pulse of zero.' },
+  unique_quadrille_box_reader: { maker: 'Reads precursor quadrille boxes. The Archive wants it back. The Archive always wants it back.' },
+  unique_double_entry_mask: { maker: 'Bookkeeping hardware: one manifest for Hale, one for the truth.', casualty: 'Dorin posted a bounty against the man who filed the first one.' },
+  unique_first_notch_marker: { maker: 'A marker the first Vols crew cut their tally on. It was not meant to leave the hull.' },
+  unique_regular_mass_shifter: { maker: 'Shifts mass regularly and slightly illegally; customs scales hate it on principle.' },
+  unique_knitbots: { maker: 'Swarm of repair mites in a sock. The Fulfillment calls them "unlicensed labor."' },
+  unique_tideline_tractor: { maker: 'A tractor tuned to the tideline between charted and not. Rangers pay stupid money.' },
+  unique_no_cut_filament: { maker: 'Filament that refuses to be severed — mined, allegedly, not grown.' },
+  unique_toll_saint_bridle: { maker: 'Reach toll hardware, sanctified by a toll-saint. The receipt is a prayer slip.' },
+  unique_broken_ring_whip: { maker: 'A ring-gate fragment whipped into a tool. The Verge-Layers have asked, in their way, for it back.' },
+  mod_ram_plate_scarred: { maker: 'Pulled off a wreck that rammed something bigger. The scar is structural now.' },
+  mod_precursor_handshake_s: { maker: 'Says hello in precursor on the right frequency. Nobody agrees on what it says next.' },
+  mod_resonant_massline_m: { maker: 'Tunes the massline to a hum the hull finds calming; the invoice does not.' },
+  mod_quiet_equation_s: { maker: 'The Quiet\'s math, boxed. It solves for "was never here."', casualty: 'The equation\'s author redacted themselves.' },
+  mod_lattice_coupler_s: { maker: 'Couples to lattice relics only the Archive admits exist.' },
+  mod_thruster_stock_s: { maker: 'Stock thruster. The part the yard puts in when you cannot afford the adjective.' },
+  mod_thruster_stock_m: { maker: 'Stock thruster, mid-frame. Honest thrust, honest burn.' },
+  mod_thruster_stock_l: { maker: 'Stock thruster, heavy frame. The bolt pattern is older than most pilots.' },
+  mod_claw_anchor_s: { maker: 'Custody-hardware; bounty crews fit it when the mark\'s hull is worth more intact.' },
+  mod_signature_reader_s: { maker: 'Reads a drive plume the way a clerk reads a forged seal — for the lie of it.' },
+  mod_shield_booster_s: { maker: 'First shield most hulls ever buy. The yard sells it with the invoice half-typed.', casualty: 'More pilots have died trusting this panel than any other line item in the shop.' },
+  mod_shield_capacitor_m: { maker: 'Capacitor bank with a waiting list; the deep-charge cells are stamped Meridian surplus.' },
+  mod_shield_aegis_l: { maker: 'The L-frame aegis. It costs more than the hull it protects, which is the entire pitch.' },
+  mod_engine_ion_m: { maker: 'Ion drive, baseline M. Quiet thrust for pilots who still pay the toll on noise.' },
+  mod_engine_fusion_m: { maker: 'Fusion bottle with a Meridian warranty sticker over a Drift serial. Both halves work.' },
+  mod_engine_sprint_m: { maker: 'Sprint profile: burns hot, cools slow. Smugglers buy two and call it redundancy.' },
+  mod_engine_endurance_m: { maker: 'Long-haul tune. The manual\'s first page is a picture of a man who is not in a hurry.' },
+  mod_engine_warp_l: { maker: 'L-frame coil. Customs asks about the drain signature; everyone says "refrigeration."' },
+  mod_thruster_stripped_s: { maker: 'Verniers with the safeties filed off by hand. You can see the file marks.' },
+  mod_thruster_vernier_m: { maker: 'Proper vernier cluster. The kind of part that makes a cheap hull fly expensive.' },
+  mod_thruster_gimbal_l: { maker: 'Full gimbal array. Turns a freight box like it owes the pilot money.' },
+  mod_cargo_pod_m: { maker: 'Bolt-on pod. The welds outlive whatever you put inside it.' },
+  mod_cargo_expander_l: { maker: 'Hold expansion, L-rated. Legal in nine sectors, tolerated in the rest.' },
+  mod_cargo_compactor_l: { maker: 'Compression rig for cargo that should not compress. Manifest says "assorted."' },
+  mod_mining_laser_s: { maker: 'The starter beam. Every Drift crew began with one of these and a grudge.' },
+  mod_mining_beam_m: { maker: 'Mid-beam, steady draw. It sings at a pitch the old hands call "payday."' },
+  mod_mining_pulverizer_l: { maker: 'Pulverizes the vein and the schedule. The rock never gets a vote.' },
+  mod_mining_industrial_l: { maker: 'Industrial-grade extractor. Belt crews call the mount "the mortgage."' },
+  mod_repulsion_trap_s: { maker: 'Repulsion field in a box. Pirates hate it; insurers pretend to.' },
+  mod_cargo_scanner_s: { maker: 'Sees through a hold wall the way a customs clerk sees through a smile.', casualty: 'Bought at a discount after the last owner saw too much.' },
+  mod_filter_stack_s: { maker: 'Biofilm scrubber. The smell it removes has its own union.' },
+  mod_field_coherence_meter: { maker: 'Measures how honest a jump field is being. Rarely good news.' },
+  mod_quarantine_locker_s: { maker: 'A locker that locks from the inside out, which is the point.', casualty: 'The first crew to need one did not have one.' },
+});
+
+const WEAPON_OVERLAYS = Object.freeze({
+  wpn_saucer_death_ray: {
+    maker: 'Integral to the Saucer frame — if the Saucer exists, so does this. Neither is on a receipt.',
+    casualty: 'Ask the ghost convoys. The ledger calls it "unattributed energy event."',
+  },
+  wpn_snarl_s: {
+    maker: 'Webcaster filament spun from repulsion-trap stock. The Reach sells it as "negotiation aid."',
+  },
+  wpn_pulse_laser_s: {
+    maker: 'First gun on most hulls. The capacitor hum is the sound of being taken seriously.',
+  },
+  wpn_autocannon_s: {
+    maker: 'Belt-fed, drum-cooled, honest. The recoil writes its name in your shoulder.',
+  },
+  wpn_flak_turret_s: {
+    maker: 'Point-defense drum. It does not aim so much as argue a volume.',
+  },
+  wpn_concussion_cannon_s: {
+    maker: 'Hits like a dropped berth. Mining crews buy it for rocks and keep it for arguments.',
+  },
+  wpn_pulse_laser_m: {
+    maker: 'Twin-lens M frame. The upgrade that makes a hauler write "armed" on the manifest and mean it.',
+  },
+  wpn_bank_stream_m: {
+    maker: 'Kinetic stream, bank-fed. Sounds like a rivet gun arguing with a door.',
+  },
+  wpn_autocannon_m: {
+    maker: 'The heavy workhorse. Every weigh-slip in the Reach has a column for what it did.',
+  },
+  wpn_beam_laser_m: {
+    maker: 'Continuous M beam. It costs the price of a small crew and hires itself anyway.',
+  },
+  wpn_railgun_m: {
+    maker: 'Slugs at speed. The firing report is the loudest silence on the ship.',
+  },
+  wpn_plasma_cannon_m: {
+    maker: 'Bottled star, poured slowly. The coolant bill is a second weapon.',
+  },
+  wpn_missile_rack_m: {
+    maker: 'Rack of six, dumb until told otherwise. The tell is the lock-tone, not the launch.',
+  },
+  wpn_heavy_beam_l: {
+    maker: 'L-frame lance. Ships this size stop being vehicles and start being weather.',
+    casualty: 'The first capital duel in Charon Expanse used two of these. The Expanse kept the glass.',
+  },
+  wpn_torpedo_l: {
+    maker: 'A missile with patience. The target hears it before the alarm does.',
+  },
+  wpn_siege_lance_l: {
+    maker: 'Flagship ordnance. Mounting it is a statement; firing it is a legal proceeding.',
+    casualty: 'Station Kessel\'s last report was twelve words long and mostly static.',
+  },
+  wpn_emp_disruptor_m: {
+    maker: 'Kills the lights, keeps the hull. Bounty crews call it "the polite option."',
+  },
+});
+
+const FACTION_OVERLAYS = Object.freeze({
+  faction_scn: {
+    maker: 'Runs the patrol grid, the customs desk, and the forms both are filed on. '
+      + 'File enough paperwork and Records returns the favor: your patterns filed back as a form, '
+      + 'a 44-C number assigned by receipt day, you citable in correspondence you never addressed.',
+    casualty: 'Hale files REF 44-C in the name of everyone the grid could not save.',
+  },
+  faction_mts: {
+    maker: 'Owns the freight lanes it does not bother to patrol; price is the only law with a signature. '
+      + 'When the wire raises a shelter advisory, the aprons double their work-lights and berths go half price '
+      + 'until second bell — weather, touching the price of a berth through one honest sentence.',
+  },
+  faction_dmc: { maker: 'Mines the drift, drinks the dust, and keeps the names of the crews the veins kept.', casualty: 'Senna reads the roll at shift end. It gets longer.' },
+  faction_reach: { maker: 'Tolls the lanes it cannot hold outright; a Reach stamp means you paid, not that you are safe.', casualty: 'Sker Vane\'s toll-saints died proving the toll was negotiable. It was not.' },
+  faction_quiet: {
+    maker: 'Moves what the other thirteen will not touch, through doors that do not officially open. '
+      + 'Their board at the Listening Field has been counting hulls all along — forty-one registered, forty-two observed, '
+      + 'and the difference is always you. They respect a fellow bookkeeper. '
+      + 'Sixty seconds after quiet business closes, an unaddressed relay files you a receipt sealed one character off '
+      + 'your own hull registration; they will not say which character, and the file is current regardless. '
+      + 'Their chain letter denies itself in writing. Forwarding it is how it moves.',
+    casualty: 'Maera Vols flew their colors. The crew manifest is still mostly blank.',
+  },
+  faction_vael: { maker: 'Xeno-reclusive; their lockers move cargo at night and their biology is nobody\'s business.' },
+  faction_free: { maker: 'Independent haulers flying their own flag because nobody else\'s fit.', casualty: '"Coldburn" Rey drinks to the ones who went independent and stayed that way.' },
+  faction_choir: { maker: 'Casts relics to a hymn spec and listens for the answer in the relay band.' },
+  faction_helix: {
+    maker: 'Paper-first authority; their writs arrive before their ships do and outlast them. '
+      + 'Every tenth fine receipt runs a verse in the footer — THE FINE IS THE PRICE / OF KNOWING THE PRICE / '
+      + 'OF THE ROAD. Unauthorized, unauthorized for years; removing it is queued.',
+  },
+  faction_understory: { maker: 'Grows in the wreck-filament understory; trades in what the dead left composting.' },
+  faction_fulfillment: {
+    maker: 'The administrative automaton; it processes you the way weather processes a field. '
+      + 'Exactly once per pilot, a delivery with zero seconds of buffer is classified MIRACLE (STATISTICAL). '
+      + 'The queue is emotional about this and declines to elaborate.',
+  },
+  faction_archive: { maker: 'Silent-script archivists. They do not confiscate — they accession.', casualty: 'Everything in the collection is a casualty of being remembered.' },
+  faction_pitborn: { maker: 'Escaped scrappers welding patchwork miracles out of the Pit\'s offal.' },
+  faction_verge_layers: { maker: 'Precursor-interrogative; they leave relics where the questions accumulate and wait for the answer to arrive screaming.' },
+});
+
+const SECTOR_OVERLAYS = Object.freeze({
+  sector_helios_prime: 'The Concord\'s shop window. Everything legal, everything priced, everything watched. '
+    + 'Scale 4 keeps one line of 47-A paperwork older than most of its clerks; the desk neither closes it nor explains it. '
+    + 'The Candle Fleet memorial keeps a twenty-fifth plinth dark on purpose; scan it after you have watched a hull die here '
+    + 'and it answers once, in a maintenance clerk\'s voice — twenty-five is whoever is out there right now. '
+    + 'Inside the apron approach the docking chatter stops being noise and becomes texture — overlapping approach calls, '
+    + 'berth assignments, one voice always slightly behind the others. The apron has a choir and it is made of work. '
+    + 'The station wire also runs the bay 7 notice, and the regulars will tell you bay 7 has been empty for nine years, '
+    + 'which is exactly why the wire uses it: nothing in bay 7 has ever contradicted the wire yet. '
+    + 'The pilgrim mooring keeps a guest book in handwriting; the most recent entry is always half-finished, '
+    + 'because every pilgrim moors mid-thought, and the entry finishes itself when the hull actually leaves. '
+    + 'Once a year, on day 21, the pod bay throws a folded hull plate with a lamp on it across the apron\'s light — '
+    + 'a computed arc, a brief silver flash in the heat wash, and the wire never mentions it. '
+    + 'Nothing glides in vacuum. Somebody folds these on purpose.',
+  sector_ceres_belt: 'First belt, first lesson: the rock does not care about your manifest. '
+    + 'Shaft 7\'s stake carries a re-chalked tally and two helmets face-out on a memorial clamp. The math is legal. The math is not done. '
+    + 'One rock in every field carries the Tally\'s paint — a small 500, forty strokes under it — and rings one note of a ten-note scale '
+    + 'when the beam bites. One person spent a decade painting an instrument, then stopped counting at five hundred. '
+    + 'At the Belt Outpost bar the miners\' corner buys the tired seller a drink for exactly two credits: rest, then sell — '
+    + 'the scale can hear it in the tonnage, and the rock is not going anywhere; that is its whole personality. '
+    + 'The ash pins are a pair — one burned down in Helios, one on the Pallas leg of Ceres: same stake design, '
+    + 'same paint batch, same era, marking the same incident from two ends. Read both and the two partial texts complete '
+    + 'each other, except the middle: the part everyone remembers and no one wrote down.',
+  sector_tethys_junction: 'Where the lanes braid. Half the rumor-trade passes through with the cargo. '
+    + 'The weigh-slip buoy\'s abutment stone keeps a season of chalk: every hull that ever idled there, massed and dated, whether or not it asked. '
+    + 'Cross the Anvil sling band fast and tangential and the band becomes audible for a moment: one harmonic, every hull singing the '
+    + 'same note at the same place on the curve. Mass made audible; even the pirates cross it politely. '
+    + 'Inside the band there is also one calm pocket the storm flows around — eighty WU where the lightning stops, the drag vanishes '
+    + 'and heat cools at the out-of-band rate. It steps one band-width per season, and the pilots who track it do not share '
+    + 'the coordinates. They share the season math.',
+  sector_vesta_forge: 'Foundry sector; the glow is honest work and the smoke is somebody\'s claim. '
+    + 'Gallery Rock is a permanent collection now. Accession No. 1; the label is for you. '
+    + 'Cold Drill Four, the derelict on the cold line, still runs its PA on schedule — a night-shift roll call for a crew '
+    + 'that has not assembled in years, faithful down to the pause where the last name should be. Good watch. '
+    + 'When the forge wire calls pour in thirty, the channel is hot, the aprons dim on schedule, and the floor stands down '
+    + 'to watch-light: the announcement is the appointment.',
+  sector_pallas_drift: 'Tag-lane bookkeeping, read aloud: a roadside buoy transmits a rolling list of captains of interest — '
+    + 'names, unpaid tithes, interest accrued — updated while you listen. One entry always matches a callsign you have met. '
+    + 'The buoy does not editorialize. It does not have to. '
+    + 'During Ring Fair, one small green lamp on the Den\'s vent spine, shadow side, blinks a patient pattern; decoded, '
+    + 'it names the tag lane buoy\'s roll — the market\'s oldest sign, hidden where only neighbors would look. '
+    + 'The neighbors all pretend the lamp is a lamp.',
+  sector_io_reach: 'Listening posts and the traffic that learned to whisper back. '
+    + 'The retired channel buoy at the Listening Field answers anyway. Nobody living holds its license, and the channel is held open regardless. '
+    + 'The Quiet Mast edits, and does not jam: three hails inside a minute near it and your third plays back with every filler word '
+    + 'removed. TRANSMISSION: EDITED. CONTENT: PRESERVED. The preference is permanent, and nobody has ever gotten the mast to explain it.',
+  sector_charon_expanse: 'The long dark between customs desks. Smugglers call it "the reading room." '
+    + 'Past the Tether Memorial a pre-Collapse beacon still spells out one very long sentence, one pulse per character. Old hands do not spoil it. '
+    + 'The Preserved Cockpit\'s manifest grows a line every session — gloves, a thermos, a paperback, a second paperback, a note — items '
+    + 'being added, not recovered; the last line says DO NOT WAKE UNTIL THE BELT IS SAFE. A crewless freighter keeps its galley open '
+    + 'and its tab good: one meal at any Charon dock, marked PAID — KITCHEN. And at third watch the construction frame off the abandoned '
+    + 'colony welds in a pattern that reads as a constellation from one marked bearing; the plate calls it the sky we came from. '
+    + 'At the Reader\'s Stake a ribbon bookmark has been tied by AR-3\'s grip, marking the page that names every sealed thing you have '
+    + 'unsealed, with dates — the Archive has been filing your work as its own recommendations, and the recommendations are good. '
+    + 'Break a hull near the Broken Shepherd and its herding rigs gather the fresh wreckage into a quiet orbit around it; the one '
+    + 'working PA loops, softer each cycle: COUNTED. The count is correct. '
+    + 'The Slurry Relic\'s scan names its container — R3-CARRIER GRID, PANEL 9, shelved full in Helios Bay 7, the only panel that ever '
+    + 'left the warehouse, and it left as a container, not cargo. '
+    + 'And the Star Marker is a sextant: two bearings by two watches intersect above nothing, where nothing is charted. It has been aimed this whole time.',
+  sector_sker_haven: 'Reach country. The bazaar prices everything, including you. '
+    + 'Drift quiet near the Bounty Wrecks field and you may pass through a hunter stakeout\'s open channel — target '
+    + 'descriptions, shift changes, crisp argot, none of it about you. Professionals mid-job; the band is their workplace. '
+    + 'The plan is worth money to exactly two parties, and only one of them is the hunters. '
+    + 'And at one bearing off the market, if you hold still inside the eighty-WU zone, the hum every hull half-notices resolves '
+    + 'into a slow melody: the yard\'s cranes, pumps and welders are all in tune, and from here they compose. Move, and it '
+    + 'degrades back into machinery. It was always the same machinery. You are what changed.',
+  sector_veil_nebula: 'Research Station Veil and the things Dr. Suhl has not translated yet. '
+    + 'A marginal note on the Veil chart: two cold hulls nose-to-nose over a mid-game table, one piece moved per visit. The chart does not say who countersigns the notation. '
+    + 'The Helix audit\'s unresolvable coordinates resolve for whoever stands in them holding the salvaged communicator: one hull-sized '
+    + 'hole in the universe. The file was never wrong; the file was a photograph. In the calm patches of the fog, wakes hold for hours, '
+    + 'and someone has been writing there — re-carved daily, signed by a pilot everyone thought died.',
+  sector_ashfall_reach: 'A ledger that kept running after everyone else left. Kurtz is still there.',
+  sector_nyx_march: 'Frontier march; the patrol grid thins to a rumor of itself. '
+    + 'One rock field here is measurably smaller every time it is counted, and the missing rocks stand elsewhere in the sector '
+    + 'in a neat row, numbered in survey paint, facing away from everything. The count is exact. The arrangement is exact. '
+    + 'The reason is absent.',
+  sector_hyperion_cut: 'A lane cut through wreck-mass older than the Concord.',
+  sector_kepler_scar: 'The scar is the map; everything else is collateral. '
+    + 'The wire posts rock crossings one day ahead and the rock keeps the appointment: a forty-meter iron on the lane at '
+    + 'the posted minute — survey lamps blinking in file, a lit tail of dust, a bored tender skiff hanging back. '
+    + 'Schedule literacy is a survival skill here.',
+  sector_orcus_shadow: 'Where shadows the size of stations drift without comment. '
+    + 'The debris tide\'s transponder gate keeps a sun-bleached odometer reading CYCLE 4,110, count correct as of CYCLE 4,110. '
+    + 'Someone winds it. Nobody has ever been seen winding it.',
+  sector_rhea_cinder: 'Burned-over belt; the cinder fields still pay if you sift them right.',
+  sector_haumea_rift: 'The rift reads your drive plume and decides to be elsewhere.',
+  sector_eris_margin: 'Margin space — the chart\'s apology for what it cannot promise.',
+  sector_phoebe_echo: 'Every signal arrives twice here. The second one lies.',
+  sector_nereid_shoal: 'Shoal water for hulls; wreck-divers file the names in Senna\'s book. '
+    + 'One rock in the deep field scans 0.0 and pulls heavy anyway; its interior is a void stasis crate stamped with a Verge-Layer '
+    + 'interrogative, and the answer is withheld.',
+  sector_proteus_well: 'The well at the lane\'s bottom; what falls in, the Understory catalogues.',
+  sector_triton_wake: 'Wake-line territory — follow a big enough hull and the law forgets you. '
+    + 'Leave an offering at the Watcher\'s rim often enough and the rim curates it: a neat row under a tally plate — 3 FOR 3, '
+    + 'NOBODY EVER TAKES — signed with the Watcher\'s own glyph.',
+  sector_eunomia_gulf: 'Wide, legal, and dull until it is none of those.',
+  sector_sedna_dark: 'The dark the Verge-Layers asked about first. It is still answering. '
+    + 'On the ringworld arc a dormant gate ring wakes one ring at a time and asks each hull the same '
+    + 'toll-question — WHAT IS THE MASS OF A DECISION? — then weighs hull, cargo and transponder '
+    + 'history and files the answer as a receipt. The ring has never opened. The receipts are the prize. '
+    + 'A drifting survey wreck keeps its chart table lit: every star replaced by a hand-cut tally mark, one circled — '
+    + 'position for position, a real body no chart row names. The surveyor died before filing it, or after, or because of it. '
+    + 'The map does not say. The map is only a map.',
+  sector_dione_lane: 'The straight shot everyone takes and nobody watches. '
+    + 'Settle the Dione customs dispute honestly — both liens — and the desk stamps a coin that is legal nowhere and valid everywhere. '
+    + 'It works once. There is a nail waiting in the customs hall.',
+  sector_the_bolus: 'Not a sector — a mouth the chart agreed to draw around.',
+});
+
+const CHARACTER_OVERLAYS = Object.freeze({
+  protagonist: 'Wren, current pilot of the Tessera. Concord Registry lists the operator as UNKNOWN; the ship knows better than the paperwork.',
+  vale: 'Concord administrator. Vale appears through forwarded paperwork, authorization codes, and systems that make refusal more expensive than compliance.',
+  kessler: 'Cargo registrar tied to the 47-A weight variance. If a manifest changes mass, his initials usually survive the transfer.',
+  mira: 'Bourse freight seal clerk. When the verification database agrees with the cargo seal, the seal becomes the story everyone else must use. '
+    + 'When a manifest corrects itself, a line from Bourse Freight arrives dated one hour before the correction happened, taking credit for your misreading. You checked. You did not misread it.',
+  hale: 'Gate 3 customs officer. Hale does not need to open a sealed hold; he only needs to file the second fine correctly.',
+  rook: 'Bounty broker. A clean tag is useful because it can be billed twice before anyone asks which target was real.',
+  slate: 'Shipyard welder. His repairs look official because they are signed official, which is not the same as safe.',
+  quinn: 'Outpost 9 bar proprietor. Rates stay posted, management keeps changing, and the drawer always closes on the same count. '
+    + 'Once a year on the Pale Holiday the jukebox plays one slow, wrong-temperature track that no recipe in the catalog matches, '
+    + 'and the barkeep\'s review never changes: "Nobody loaded that."',
+  voss: 'Drift claim recorder. Exhausted claims have a way of becoming fresh again for the crew that files second.',
+  elroy: 'Pit Engineering maintenance worker attached to the recycler report. The bounty paperwork called him hostile; the ledger says why that mattered.',
+  kurtz: 'The Ashfall figure. His station is less a confession than a ledger that kept running after everyone else left.',
+  clerk_yune: 'The Quiet\'s sealed-evidence broker. Everything has a price; hers have citations.',
+  coldburn_rey: 'Free Frontier\'s loudest independent. Races you for the same contract and buys the first round whoever loses.',
+  iren_suhl: 'Xenolinguist at Research Station Veil. Translates what the deep fauna means by what it does to your hull.',
+  // SP2-004 "Incident 7741, the Sealed Side" — the Orrin line: his file closes on the one
+  // unsealed line, and he has never explained the exception.
+  warrant_orrin: 'Concord Inspector General. The evidence-case witness the case was built around. '
+    + 'His file on Incident 7741 closes on one unsealed line — HULL STATUS: HELD TOGETHER — and he has '
+    + 'never said out loud what held it, or why that was the line he left open.',
+  sker_vane: 'Crimson Reach lane kingpin. The toll is the toll; the courtesy is optional.',
+  dustwife_senna: 'Drift Miners wreck elder and keeper of names. If a crew died in the drift, she files them. '
+    + 'The names reach her however they can — re-chalked tally plates, helmets on a clamp, half a tonne of water filed as moisture so the paperwork could close.',
+  latch_child: 'Feral salvage automaton running Quiet logistics with an origin nobody can file. '
+    + 'It keeps things. A wreck left intact comes back tidied — plates stacked, tags straightened, a child\'s drawing welded where the hull number was. Nothing was taken. Something was kept.',
+  the_question: 'A persistent interrogative of precursor make. Every artifact it leaves is a question with mass.',
+  filecleaver_dorin: 'Concord records clerk who cleaved the wrong file open and is now bounty-posted for honesty.',
+  lira_vonn: 'Independent correspondent of The Margin. Files the stories the factions pay to keep unfiled.',
+  tinker_zell: 'Sker Bazaar\'s black-market mechanic. If it fits, he\'ll weld it; if it doesn\'t, he\'ll make it.',
+  mara_children: 'Civilian convoy survivors. The refugee witness whose testimony the factions keep misplacing.',
+  wraith_kell: 'The Quiet\'s deep-cover manifest clerk at Customs. Reads every seal, forgets none, remembers being paid to.',
+  halev_doss: 'Helios public archive. The last academic still filing what the Concord would rather misplace.',
+  maera_vols: 'Previous captain of the Tessera. Her crew\'s manifest is the blank the story keeps circling. '
+    + 'A scorched crew-pod past the Helios weigh-lanes still carries her transponder — TESSERA / OLD RIG — and plays one calm log to whoever finds it: she floats better than she steers; third bulkhead, behind the plate; sorry about the plate.',
+  // SP2-116 "Morrow's Hundredth Push" — the rescue machine keeps its own count, and the
+  // archive keeps Morrow's: a civilian momentum-rescue register, lapsed, that never
+  // stopped answering.
+  morrow: 'Civilian momentum-rescue machine, callsign R-07, anchored beside the Helios tutorial corridor. '
+    + 'Built to give motion back to heavy hulls on the starter seam; the yard that welded it has moved twice and stopped filing. '
+    + 'It counts departures and arrivals in the same column, which is either optimism or arithmetic.',
+});
+
+// When each non-core figure's page unseals: at this story beat, or the moment the story
+// writes a flag under their id (some arrive through signals, not the spine). Beats mirror
+// the codex screen's own FIGURE_GATED table; late-arc figures sit deeper.
+const FIGURE_UNLOCK_BEATS = Object.freeze({
+  coldburn_rey: 1, sker_vane: 2, dustwife_senna: 2, elroy: 2, tinker_zell: 2,
+  clerk_yune: 3, iren_suhl: 3, latch_child: 3, lira_vonn: 3, halev_doss: 3, vale: 3,
+  mira: 4, rook: 4, filecleaver_dorin: 4, mara_children: 4,
+  warrant_orrin: 5, wraith_kell: 5,
+  kurtz: 6, the_question: 6, maera_vols: 6,
+  morrow: 1,
+});
+const FIGURE_ALWAYS = new Set(['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss']);
+
+// ── Composers ────────────────────────────────────────────────────────────────────────────
+
+const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+const FACTION_BY_ID = new Map(Object.values(FACTION_KITS).map((k) => [k.id, k]));
+
+function factionName(id) {
+  const kit = FACTION_BY_ID.get(id);
+  return kit ? kit.name : String(id || 'unknown flag');
+}
+
+function sectorName(id) {
+  const sector = SECTOR_BY_ID.get(id);
+  return sector ? sector.name : String(id || 'uncharted');
+}
+
+// producedBy/consumedBy role keys → who actually moves it.
+const CARGO_ROLE_PHRASE = Object.freeze({
+  mining: 'drift claims and belt crews',
+  refinery: 'the refinery flags',
+  fab: 'fabricator combines',
+  trade_hub: 'the exchange floors',
+  blackmarket: 'unlicensed lockers',
+  military: 'the quartermaster desks',
+  research: 'the research stations',
+  agriculture: 'the grow-vats',
+  medical: 'the med-bays',
+  salvage: 'the wreck-dives',
+});
+
+function rolePhrase(role) {
+  return CARGO_ROLE_PHRASE[role] || 'whoever stocks it';
+}
+
+function commodityBody(def) {
+  const sentences = [];
+  if (def.desc) sentences.push(def.desc);
+  if (def.lore) sentences.push(def.lore);
+  const made = Array.isArray(def.producedBy) && def.producedBy.length
+    ? `Moved out of ${def.producedBy.map(rolePhrase).join(' and ')}.`
+    : '';
+  const used = Array.isArray(def.consumedBy) && def.consumedBy.length
+    ? `Bought by ${def.consumedBy.map(rolePhrase).join(' and ')}.`
+    : '';
+  if (made) sentences.push(made);
+  if (used) sentences.push(used);
+  if (def.legality && def.legality !== 'legal') {
+    sentences.push(`Customs files it as ${def.legality}; a fine multiplier of ${def.fineMult || '—'} applies to whoever signs the manifest.`);
+  }
+  const overlay = COMMODITY_OVERLAYS[def.id];
+  if (overlay) {
+    if (overlay.maker) sentences.push(overlay.maker);
+    if (overlay.casualty) sentences.push(overlay.casualty);
+  }
+  return sentences.join(' ');
+}
+
+function hullBody(def) {
+  const sentences = [];
+  const overlay = HULL_OVERLAYS[def.id];
+  if (overlay && overlay.maker) sentences.push(overlay.maker);
+  sentences.push(`A ${def.role || 'working'} frame — T${def.tier != null ? def.tier : '?'} tonnage, ${def.cargo != null ? def.cargo : '—'} cargo, priced at ${def.price != null ? def.price : 'unpriced'} credits where they admit to selling it.`);
+  if (overlay && overlay.casualty) sentences.push(overlay.casualty);
+  return sentences.join(' ');
+}
+
+function modPhrase(key, value) {
+  switch (key) {
+    case 'radarRangePct': return 'reads further down the lane';
+    case 'shieldRegenMult': return 'knits the shield faster';
+    case 'energyRegenMult': return 'feeds the capacitor';
+    case 'cargoCapMult': return 'makes the hold bigger on the inside';
+    case 'tradeFeeMult': return 'talks the fee desk down';
+    case 'miningYieldMult': return 'argues more rock out of the seam';
+    case 'containmentSeal': return 'seals what customs should not smell';
+    case 'marketIntel': return 'whispers market prices before you dock';
+    case 'stealthBio': return 'reads as cargo to a bio-scan';
+    case 'thrustMult': case 'thrust': return 'pushes harder per unit of nerve';
+    case 'speedMult': return 'raises the top end';
+    case 'turnMult': case 'turnRateMult': return 'answers the stick faster';
+    case 'energyCapMult': case 'energyCap': return 'deepens the reserve';
+    case 'heatDissipMult': case 'cooling': return 'sheds heat it was never rated for';
+    case 'fuelEffMult': case 'fuelEff': return 'stretches a tank further than honest';
+    case 'armorMult': case 'armor': return 'adds skin where the seam was thin';
+    default: return 'does its job';
+  }
+}
+
+function moduleBody(def) {
+  const sentences = [];
+  if (def.description) sentences.push(def.description);
+  const overlay = MODULE_OVERLAYS[def.id];
+  const mods = def.mods && typeof def.mods === 'object' ? Object.keys(def.mods) : [];
+  if (mods.length) {
+    const phrases = [...new Set(mods.map((k) => modPhrase(k, def.mods[k])))].slice(0, 2);
+    sentences.push(`In the field it ${phrases.join(' and it ')}.`);
+  } else if (!def.description) {
+    const family = MODULE_FAMILY_VOICE[def.slotType] || MODULE_FAMILY_VOICE.utility;
+    const pick = family[hash32(def.id) % family.length];
+    sentences.push(pick);
+    sentences.push(`Fills a ${def.slotType || 'utility'} ${def.size || ''} slot at T${def.tier != null ? def.tier : '?'}.`);
+  } else {
+    sentences.push(`Fills a ${def.slotType || 'utility'} ${def.size || ''} slot at T${def.tier != null ? def.tier : '?'}.`);
+  }
+  if (overlay) {
+    if (overlay.maker) sentences.push(overlay.maker);
+    if (overlay.casualty) sentences.push(overlay.casualty);
+  } else if (!def.description && def.purchasable !== false) {
+    sentences.push('Listed on the open market; no maker\'s stamp worth reading.');
+  } else if (def.purchasable === false && !overlay) {
+    sentences.push('Not on any market list. You find it or you do not.');
+  }
+  return sentences.join(' ');
+}
+
+function weaponBody(def) {
+  const sentences = [];
+  if (def.sentence) sentences.push(def.sentence.charAt(0).toUpperCase() + def.sentence.slice(1));
+  const overlay = WEAPON_OVERLAYS[def.id];
+  sentences.push(`Mounts ${def.mount || def.slotType || 'hardpoint'}${def.size ? ' ' + def.size : ''}, ${def.damageType || 'kinetic'} damage, ${def.dps != null ? def.dps + ' dps' : 'output unlisted'}.`);
+  if (def.purchasable === false) sentences.push('Not on any market list; it arrives attached to the hull that owns it.');
+  if (overlay) {
+    if (overlay.maker) sentences.push(overlay.maker);
+    if (overlay.casualty) sentences.push(overlay.casualty);
+  }
+  return sentences.join(' ');
+}
+
+function factionBody(kit) {
+  const sentences = [];
+  const homes = (kit.homeSectors || []).map(sectorName);
+  if (homes.length) sentences.push(`Holds ${homes.join(', ')}.`);
+  if (kit.personality) sentences.push(`Read by the lanes as "${kit.personality}."`);
+  const overlay = FACTION_OVERLAYS[kit.id];
+  if (overlay && overlay.maker) sentences.push(overlay.maker);
+  const illegal = kit.illegalCommodities && Array.isArray(kit.illegalCommodities)
+    ? kit.illegalCommodities : null;
+  if (illegal && illegal.length) {
+    sentences.push('Files certain cargoes as unwelcome at its customs desks.');
+  }
+  if (overlay && overlay.casualty) sentences.push(overlay.casualty);
+  return sentences.join(' ');
+}
+
+function sectorBody(def) {
+  const sentences = [];
+  const overlay = SECTOR_OVERLAYS[def.id];
+  if (overlay) sentences.push(overlay);
+  const owner = def.factionId ? factionName(def.factionId) : null;
+  if (owner) sentences.push(`${owner} flies the flag where a flag would stick.`);
+  sentences.push(`${def.stations ? def.stations.length : 0} station${def.stations && def.stations.length === 1 ? '' : 's'} on the chart, security ${def.security != null ? def.security : 'unrated'}, ${def.neighbors ? def.neighbors.length : 0} gate${def.neighbors && def.neighbors.length === 1 ? '' : 's'} out.`);
+  if (def.hazards && def.hazards.length) sentences.push('The hazard list is on file; the pilots who skipped it are too.');
+  return sentences.join(' ');
+}
+
+function speciesBody(def) {
+  const sentences = [];
+  const family = faunaFamily(def.id);
+  sentences.push(`Field family: ${family.name}. ${family.note}`);
+  if (def.note) sentences.push(def.note.charAt(0).toUpperCase() + def.note.slice(1));
+  const anatomy = def.anatomy || {};
+  const tissue = [anatomy.hostTissue, anatomy.fungalTissue].filter(Boolean).join(' over ');
+  if (tissue) sentences.push(`Tissue reads as ${tissue}.`);
+  if (def.role) sentences.push(`Behaves as a ${def.role}${def.capturable ? '; a live one fits in a specimen jar, which is more than most crews get' : ''}.`);
+  if (def.coherenceLoss) sentences.push('A broken relay changes its response. Watch the organism again before closing in.');
+  return sentences.join(' ');
+}
+
+function figureBody(id, fig) {
+  const overlay = CHARACTER_OVERLAYS[id];
+  const sentences = [];
+  if (overlay) sentences.push(overlay);
+  if (fig.org) sentences.push(`Filed under ${fig.org}.`);
+  if (fig.role && !overlay) sentences.push(`Role on record: ${fig.role}.`);
+  return sentences.join(' ');
+}
+
+// ── Catalog build ────────────────────────────────────────────────────────────────────────
+
+function entry(section, id, name, body, meta = {}) {
+  return Object.freeze({ section, id, name, body, ...meta });
+}
+
+function buildCatalog() {
+  const pages = [];
+  for (const def of COMMODITIES) {
+    pages.push(entry('commodities', def.id, def.displayName || def.name || def.id,
+      commodityBody(def), { tag: def.legality && def.legality !== 'legal' ? def.legality : 'legal' }));
+  }
+  for (const def of SHIPS) {
+    pages.push(entry('hulls', def.id, def.name || def.id, hullBody(def),
+      { tag: `T${def.tier != null ? def.tier : '?'} ${def.role || ''}`.trim() }));
+  }
+  for (const def of MODULES) {
+    pages.push(entry('modules', def.id, def.name || def.id, moduleBody(def),
+      { tag: `${def.slotType || 'mod'} ${def.size || ''} T${def.tier != null ? def.tier : '?'}` }));
+  }
+  for (const def of WEAPONS) {
+    pages.push(entry('weapons', def.id, def.name || def.id, weaponBody(def),
+      { tag: `${def.mount || def.slotType || 'mount'} ${def.damageType || ''}`.trim() }));
+  }
+  for (const kit of Object.values(FACTION_KITS)) {
+    pages.push(entry('factions', kit.id, kit.name || kit.id, factionBody(kit), { tag: kit.personality || '' }));
+  }
+  for (const def of SECTORS) {
+    pages.push(entry('sectors', def.id, def.name || def.id, sectorBody(def),
+      { tag: `T${def.tier != null ? def.tier : '?'} security ${def.security != null ? def.security : '—'}` }));
+  }
+  for (const def of Object.values(FAUNA_SPECIES)) {
+    pages.push(entry('species', def.id, def.name || def.id, speciesBody(def),
+      { tag: def.role || 'fauna' }));
+  }
+  for (const [id, fig] of Object.entries(FIGURES)) {
+    pages.push(entry('figures', id, fig.name || id, figureBody(id, fig), { tag: fig.org || fig.role || '' }));
+  }
+  return Object.freeze(pages);
+}
+
+/** All pages, in section order. Pure — unlock state is applied by the view in ui/sim/codexPages.js. */
+
+// SP2-138 "The Scale Zero Rock" — the codex-only commodity: one unit, void stasis crate,
+// discontinued. It is deliberately not in COMMODITIES (no market lists it anymore), so the
+// catalog builder never sees it; the page unseals through the ordinary commodity gate the
+// day the hold or the trade ledger carries it. The sale-date rewrite is a live read — the
+// World tab's void stasis crate section prints the day — because this file stays pure data.
+const EXTRA_PAGES = [
+  entry('commodities', 'cmdty_discontinued_cargo', 'Discontinued Cargo',
+    'The manifest calls it discontinued because the market stopped listing it, not because it stopped existing. '
+    + 'One unit survives, packed in a void stasis crate that is older than the charter and mass-canceled past the point of honesty. '
+    + 'The Verge-Layer interrogative on the lid — WHAT WAS STORED HERE? (ANSWER WITHHELD) — is the only label it will ever carry. '
+    + 'No market stocks it; an Archive berth is the only desk that has ever bought one, and this page rewrites itself with the sale date the day you sell.',
+    { tag: 'discontinued' }),
+];
+
+export const CODEX_PAGES = Object.freeze([...buildCatalog(), ...EXTRA_PAGES]);
+
+const PAGE_BY_ID = new Map(CODEX_PAGES.map((p) => [p.id, p]));
+export function codexPageById(id) { return PAGE_BY_ID.get(id) || null; }
+
+/** Which gate a page answers to — the view maps these onto live state. */
+export function codexPageGate(page) {
+  if (!page) return 'none';
+  switch (page.section) {
+    case 'commodities': return 'commodity';
+    case 'hulls': return 'hull';
+    case 'modules': case 'weapons': return 'equipment';
+    case 'factions': return 'faction';
+    case 'sectors': return 'sector';
+    case 'species': return 'species';
+    case 'figures': {
+      if (FIGURE_ALWAYS.has(page.id)) return 'always';
+      if (page.id in FIGURE_UNLOCK_BEATS) return 'beat';
+      return 'story';
+    }
+    default: return 'always';
+  }
+}
+
+export function codexFigureUnlockBeat(id) {
+  return FIGURE_UNLOCK_BEATS[id] != null ? FIGURE_UNLOCK_BEATS[id] : null;
+}
+
+export default { CODEX_SECTIONS, CODEX_PAGES, CODEX_LOCKED_HINTS, codexPageById, codexPageGate, codexFigureUnlockBeat };

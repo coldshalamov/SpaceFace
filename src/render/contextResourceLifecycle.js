@@ -1,0 +1,356 @@
+// Context-loss cleanup for Three.js CPU resource identities.
+//
+// WebGLRenderer replaces its internal property/geometry/material managers when a context is
+// restored. Resources rendered before the loss still retain dispose listeners from the old
+// managers, however. If a later sector transition disposes one of those resources, the stale
+// listener attempts to delete its old buffer/program/VAO through the restored context and Chromium
+// reports INVALID_OPERATION. Function names are not provenance: release minification renames Three's
+// callbacks and a foreign listener can have the same name. The renderer-generation probe records the
+// exact opaque callback identities instead; context loss consumes that provenance once.
+//
+// A lost context also freezes the picture the player is watching. The simulation must halt with it:
+// stepping combat, AI, and the clock behind a dead canvas is an invisible ambush, and a frozen GPU
+// batch is not "working". The pause below rides the time-effects minimum ledger (the sole owner of
+// the time-scale scalar), so a menu/pause/cutscene hold already in force survives the outage and
+// recovery clears exactly this hold — never another system's.
+
+import { createTimeEffects } from '../core/timeEffects.js';
+
+// Source key in the time-effects minimum ledger while the WebGL context is lost.
+export const CONTEXT_LOSS_TIME_EFFECT_SOURCE = 'webgl-context-loss';
+
+export const WEBGL_DISPOSE_LISTENER_KINDS = Object.freeze([
+  'instancedMeshes',
+  'geometries',
+  'materials',
+  'textures',
+  'renderTargets',
+]);
+
+const WEBGL_DISPOSE_LISTENER_MINIMUMS = Object.freeze({
+  instancedMeshes: 1,
+  geometries: 1,
+  // WebGLRenderer and WebGLShadowMap own distinct material-disposal callbacks.
+  materials: 2,
+  textures: 1,
+  renderTargets: 1,
+});
+
+export function createWebGlDisposeListenerProvenance() {
+  return {
+    instancedMeshes: new Set(),
+    geometries: new Set(),
+    materials: new Set(),
+    textures: new Set(),
+    renderTargets: new Set(),
+  };
+}
+
+export function mergeWebGlDisposeListenerProvenance(target, source) {
+  const merged = target || createWebGlDisposeListenerProvenance();
+  for (const kind of WEBGL_DISPOSE_LISTENER_KINDS) {
+    const listeners = source?.[kind];
+    if (!listeners || typeof listeners[Symbol.iterator] !== 'function') continue;
+    for (const listener of listeners) {
+      if (typeof listener === 'function') merged[kind].add(listener);
+    }
+  }
+  return merged;
+}
+
+/**
+ * Return the exact dispose-listener identities currently attached to one owned Three resource.
+ * Three's EventDispatcher keeps these in its private `_listeners` table; reading that table is
+ * deliberately isolated here so callers can record an acquisition-time identity delta without
+ * matching callback names or detaching unrelated application listeners.
+ */
+export function snapshotWebGlDisposeListeners(resource) {
+  const listeners = resource?._listeners?.dispose;
+  if (!Array.isArray(listeners)) return new Set();
+  return new Set(listeners.filter((listener) => typeof listener === 'function'));
+}
+
+/**
+ * Add only dispose callbacks that appeared after `before` to exact renderer-generation
+ * provenance. This is used for Three's environment conversion cache: `onCubemapDispose` is
+ * attached lazily when an equirectangular source is first rendered, outside the private resource
+ * probe. The source is owned, but pre-existing listeners still belong to the caller and remain
+ * outside the provenance set.
+ */
+export function captureWebGlDisposeListenerDelta(provenance, resource, before, kind = 'textures') {
+  const target = provenance?.[kind];
+  if (!(target instanceof Set)) return 0;
+  const prior = before instanceof Set ? before : new Set();
+  const current = snapshotWebGlDisposeListeners(resource);
+  let captured = 0;
+  for (const listener of current) {
+    if (prior.has(listener) || target.has(listener)) continue;
+    target.add(listener);
+    captured++;
+  }
+  return captured;
+}
+
+export function describeWebGlDisposeListenerProvenance(provenance) {
+  const listenerCounts = {};
+  const missingKinds = [];
+  for (const kind of WEBGL_DISPOSE_LISTENER_KINDS) {
+    const count = provenance?.[kind] instanceof Set ? provenance[kind].size : 0;
+    listenerCounts[kind] = count;
+    if (count < WEBGL_DISPOSE_LISTENER_MINIMUMS[kind]) missingKinds.push(kind);
+  }
+  return {
+    complete: missingKinds.length === 0,
+    missingKinds,
+    listenerCounts,
+  };
+}
+
+export function deferWebGlContextRestore(rebuild, enqueue = enqueueRestoreMicrotask) {
+  if (typeof rebuild !== 'function') {
+    throw new TypeError('deferWebGlContextRestore requires a rebuild callback');
+  }
+  if (typeof enqueue !== 'function') {
+    throw new TypeError('deferWebGlContextRestore requires a microtask scheduler');
+  }
+  const receipt = {
+    pending: true,
+    ran: false,
+    cancelled: false,
+    cancel() {
+      if (!receipt.pending) return false;
+      receipt.pending = false;
+      receipt.cancelled = true;
+      return true;
+    },
+  };
+  enqueue(() => {
+    if (!receipt.pending) return;
+    receipt.pending = false;
+    receipt.ran = true;
+    rebuild();
+  });
+  return receipt;
+}
+
+/**
+ * The context becomes unusable before the asynchronous `webglcontextlost` event updates application
+ * state. Query the live GL object at each draw boundary so that short event-delivery gap cannot feed
+ * now-invalid program handles back into Three.js.
+ */
+export function isWebGlContextUnavailable(explicitlyLost, renderer) {
+  if (explicitlyLost) return true;
+  try {
+    const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+    return !!(gl && typeof gl.isContextLost === 'function' && gl.isContextLost());
+  } catch (_) {
+    // A context getter/query throwing is itself proof that a draw is unsafe this frame.
+    return true;
+  }
+}
+
+export function collectContextLossRoots({
+  scene = null,
+  environment = null,
+  spaceBackground = null,
+  bloom = null,
+  renderGraph = null,
+  vfxRoots = [],
+  vfxResources = [],
+  entities = [],
+} = {}) {
+  const roots = [scene, environment];
+  for (const provider of [spaceBackground, bloom, renderGraph]) {
+    if (!provider || typeof provider.contextLossResources !== 'function') continue;
+    const resources = provider.contextLossResources();
+    if (Array.isArray(resources)) roots.push(...resources);
+  }
+  // VFX owner pools can be intentionally detached from the world scene while still retaining
+  // renderer-owned geometries/materials. Include those roots so a restored context cannot later
+  // fire the dying generation's Three.js dispose listeners through the fresh GL binding.
+  if (Array.isArray(vfxRoots)) roots.push(...vfxRoots);
+  // Some VFX owners retain raw geometries/textures outside any Object3D. Providers publish only
+  // those exact identities so the detach walker can preserve the same listener provenance rules
+  // without widening the walk to arbitrary object graphs.
+  if (Array.isArray(vfxResources)) roots.push(...vfxResources);
+  for (const entity of entities || []) {
+    if (entity?.mesh) roots.push(entity.mesh);
+  }
+  return roots.filter(Boolean);
+}
+
+export function detachStaleWebGlDisposeListeners(roots, provenance) {
+  const seenObjects = new Set();
+  const seenResources = new Set();
+  const provenanceStatus = describeWebGlDisposeListenerProvenance(provenance);
+  const counts = {
+    objects: 0,
+    instancedMeshes: 0,
+    batchedMeshes: 0,
+    geometries: 0,
+    materials: 0,
+    textures: 0,
+    renderTargets: 0,
+    listenersDetached: 0,
+    provenanceComplete: provenanceStatus.complete,
+    provenanceMissingKinds: provenanceStatus.missingKinds,
+    provenanceListenerCounts: provenanceStatus.listenerCounts,
+  };
+
+  const detachExactListeners = (resource, kind) => {
+    const provenListeners = provenance?.[kind];
+    if (!resource || !(provenListeners instanceof Set) || provenListeners.size === 0) return;
+    for (const listener of provenListeners) {
+      if (resource.hasEventListener?.('dispose', listener) !== true) continue;
+      resource.removeEventListener('dispose', listener);
+      counts.listenersDetached++;
+    }
+  };
+
+  const visitResource = (resource) => {
+    if (!resource || typeof resource !== 'object' || seenResources.has(resource)) return;
+    seenResources.add(resource);
+    if (resource.isBufferGeometry) {
+      counts.geometries++;
+      detachExactListeners(resource, 'geometries');
+    } else if (resource.isMaterial) {
+      counts.materials++;
+      detachExactListeners(resource, 'materials');
+    } else if (resource.isTexture) {
+      counts.textures++;
+      detachExactListeners(resource, 'textures');
+    } else if (resource.isWebGLRenderTarget) {
+      counts.renderTargets++;
+      detachExactListeners(resource, 'renderTargets');
+    } else return;
+
+    if (resource.isMaterial) {
+      for (const [key, value] of Object.entries(resource)) {
+        if (key === '_listeners') continue;
+        visitMaterialValue(value, visitResource, 0);
+      }
+    } else if (resource.isWebGLRenderTarget) {
+      visitResource(resource.texture);
+      visitResource(resource.depthTexture);
+      for (const texture of resource.textures || []) visitResource(texture);
+    }
+  };
+
+  const visitObject = (object) => {
+    if (!object || typeof object !== 'object' || seenObjects.has(object)) return;
+    seenObjects.add(object);
+    counts.objects++;
+    if (object.isInstancedMesh) {
+      counts.instancedMeshes++;
+      detachExactListeners(object, 'instancedMeshes');
+    }
+    if (object.isBatchedMesh) {
+      counts.batchedMeshes++;
+      // BatchedMesh owns transform/indirect DataTextures outside its material graph. Their old-
+      // context disposal listeners must be detached before the batch is rebuilt and retired.
+      visitResource(object._matricesTexture);
+      visitResource(object._indirectTexture);
+      visitResource(object._colorsTexture);
+    }
+    visitResource(object.geometry);
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) visitResource(material);
+    visitResource(object.customDepthMaterial);
+    visitResource(object.customDistanceMaterial);
+    visitResource(object.skeleton?.boneTexture);
+  };
+
+  for (const root of Array.isArray(roots) ? roots : [roots]) {
+    if (!root) continue;
+    if (root.isBufferGeometry || root.isMaterial || root.isTexture || root.isWebGLRenderTarget) {
+      visitResource(root);
+      continue;
+    }
+    if (typeof root.traverse === 'function') root.traverse(visitObject);
+    else visitObject(root);
+  }
+  return counts;
+}
+
+function visitMaterialValue(value, visitResource, depth) {
+  if (!value || depth > 3) return;
+  if (value.isTexture || value.isWebGLRenderTarget) {
+    visitResource(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const entry of value) visitMaterialValue(entry, visitResource, depth + 1);
+    return;
+  }
+  // ShaderMaterial uniforms wrap textures in { value }; do not walk arbitrary Three.js objects.
+  if (typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, 'value')) {
+    visitMaterialValue(value.value, visitResource, depth + 1);
+  }
+}
+
+// The loss-time detach pass can only strip callbacks from roots it is handed. Resources outside
+// those roots — parked boundary trees, procedural world-site fixtures on detached structures —
+// keep the dying generation's callbacks attached, and their later teardown fires those callbacks
+// against handles that are already dead: Chromium logs every one as `delete: object does not
+// belong to this context` (the 2026-09-23 v6 Electron storm, 256 warnings, and its 09-22 browser
+// equivalent, 1120). The renderer therefore stashes the dying generation's exact identities here
+// at loss; the teardown chokepoint strips those identities from a root's resources BEFORE any
+// dispose fires. Stripping an identity that is no longer attached is a no-op, and an identity is
+// only ever detached when the recorded provenance set contains it — foreign listeners stay.
+let stashedStaleWebGlDisposeProvenance = null;
+
+export function stashStaleWebGlDisposeProvenance(provenance) {
+  if (!provenance) return false;
+  let stashed = false;
+  for (const kind of WEBGL_DISPOSE_LISTENER_KINDS) {
+    const listeners = provenance[kind];
+    if (!(listeners instanceof Set) || listeners.size === 0) continue;
+    for (const listener of listeners) {
+      if (typeof listener !== 'function') continue;
+      if (!stashedStaleWebGlDisposeProvenance) {
+        stashedStaleWebGlDisposeProvenance = createWebGlDisposeListenerProvenance();
+      }
+      stashedStaleWebGlDisposeProvenance[kind].add(listener);
+      stashed = true;
+    }
+  }
+  return stashed;
+}
+
+export function detachStashedStaleWebGlDisposeListeners(roots) {
+  if (!stashedStaleWebGlDisposeProvenance) return null;
+  return detachStaleWebGlDisposeListeners(roots, stashedStaleWebGlDisposeProvenance);
+}
+
+function enqueueRestoreMicrotask(callback) {
+  if (typeof queueMicrotask === 'function') queueMicrotask(callback);
+  else Promise.resolve().then(callback);
+}
+
+/**
+ * Halt the simulation while the WebGL context is lost. Returns the effective scale before the
+ * hold so callers can log it. Idempotent: a repeated loss re-requests the same ledger source.
+ * Never touches state.timeScale directly — only the time-effects service owns that scalar.
+ */
+export function pauseSimForContextLoss(state) {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return 0;
+  const service = createTimeEffects(state);
+  const prior = service.getEffectiveScale();
+  service.set(CONTEXT_LOSS_TIME_EFFECT_SOURCE, { scale: 0 });
+  const recovery = state.render && typeof state.render === 'object' ? state.render.contextRecovery : null;
+  if (recovery && typeof recovery === 'object') recovery.simPaused = true;
+  return prior;
+}
+
+/**
+ * Release the context-loss hold after the GPU rebuild succeeds. Returns the effective scale after
+ * the release so callers can confirm a surviving menu/pause hold (0) versus a resumed sim (1).
+ * A failed rebuild must NOT call this: the picture is still dead, so the sim stays halted.
+ */
+export function resumeSimAfterContextRestore(state) {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return 1;
+  const service = createTimeEffects(state);
+  service.clear(CONTEXT_LOSS_TIME_EFFECT_SOURCE);
+  const recovery = state.render && typeof state.render === 'object' ? state.render.contextRecovery : null;
+  if (recovery && typeof recovery === 'object') recovery.simPaused = false;
+  return service.getEffectiveScale();
+}

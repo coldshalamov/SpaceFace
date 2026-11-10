@@ -1,0 +1,24 @@
+{
+  "label": "radarContactCuts",
+  "rangePlate": {
+    "uncachedMs": 92.21,
+    "cachedMs": 3.68,
+    "speedup": 25.0,
+    "iters": 500000
+  },
+  "contactColorDefer": {
+    "beforeMs": 41.6,
+    "afterMs": 22.76,
+    "speedup": 1.83,
+    "contacts": 40,
+    "hostilesSkipped": 24,
+    "iters": 100000,
+    "note": "Models swarm scope: defer contactColor for hostiles that spend no trail slot"
+  },
+  "hostileOrder": {
+    "sortMs": 15.03,
+    "insertMs": 26.04,
+    "speedup": 0.58,
+    "note": "insertion slower than sort — NOT shipped"
+  }
+}

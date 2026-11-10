@@ -1,0 +1,55 @@
+{
+  "label": "combat-prephysics-quiet-residual",
+  "primary": "quiet-48-combatant-prephysics-residual-after-84",
+  "pairs": [
+    {
+      "beforeMs": 183.884,
+      "afterMs": 69.811,
+      "speedup": 2.634
+    },
+    {
+      "beforeMs": 191.829,
+      "afterMs": 66.336,
+      "speedup": 2.892
+    },
+    {
+      "beforeMs": 193.679,
+      "afterMs": 71.118,
+      "speedup": 2.723
+    },
+    {
+      "beforeMs": 187.164,
+      "afterMs": 71.82,
+      "speedup": 2.606
+    },
+    {
+      "beforeMs": 189.98,
+      "afterMs": 67.615,
+      "speedup": 2.81
+    },
+    {
+      "beforeMs": 229.089,
+      "afterMs": 68.011,
+      "speedup": 3.368
+    },
+    {
+      "beforeMs": 201.044,
+      "afterMs": 64.982,
+      "speedup": 3.094
+    },
+    {
+      "beforeMs": 191.751,
+      "afterMs": 68.298,
+      "speedup": 2.808
+    },
+    {
+      "beforeMs": 187.44,
+      "afterMs": 70.572,
+      "speedup": 2.656
+    }
+  ],
+  "medianSpeedup": 2.808,
+  "minSpeedup": 2.606,
+  "maxSpeedup": 3.368,
+  "note": "Before=ensure resolve+sync + isDynamic×2 + sink miss + cool always. After=production ensure quiet-hit + cool heat0 skip + dynamic/momentum gated. Soft-GPU fps not claimed."
+}

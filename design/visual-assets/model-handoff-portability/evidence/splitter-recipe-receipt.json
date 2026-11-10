@@ -1,0 +1,177 @@
+{
+  "schema": "spaceface.portableRejectedModelRecipe.v1",
+  "model": "splitter",
+  "status": "generated-unverified",
+  "artAccepted": false,
+  "runtimeAdmitted": false,
+  "historicalModel": {
+    "sourceSealSHA256": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+    "glbs": [
+      {
+        "path": "review/brood-splitter-a6-v12/source/brood_splitter_axial_v01.glb",
+        "sha256": "eabc33fd9e7081a71b2ffabb60bc61a75005558c7cbea4e56927914ff6805fec",
+        "bytes": 2526172
+      },
+      {
+        "path": "review/brood-splitter-a6-v12/source/brood_splitter_port_v01.glb",
+        "sha256": "ab5993d54a4a48ea5a8ec3ee9b509d914aaae5649eefe4ac2de5d08ced2651f3",
+        "bytes": 1106136
+      },
+      {
+        "path": "review/brood-splitter-a6-v12/source/brood_splitter_starboard_v01.glb",
+        "sha256": "495e5095904636a2d918233a6f12145368a22ffe662fb04eda5d65738135768c",
+        "bytes": 1109952
+      },
+      {
+        "path": "review/brood-splitter-a6-v12/source/brood_splitter_v01.glb",
+        "sha256": "6bf7ef85ab3d4a13e0d73e9dfa03bcdc476efeae268807eec12c7a2b25b9d9d1",
+        "bytes": 4613008
+      }
+    ]
+  },
+  "inputContractSHA256": "5ecea300388c13b524887cfb6aed837d01a7d054a0e77c0380d021577ba5e541",
+  "inputs": [
+    {
+      "path": "tools/blender/forge/brood_splitter_a6.py",
+      "stagePath": "tools/blender/forge/brood_splitter_a6.py",
+      "sha256": "38dee5f12f619c469f8769bf3646af471998084569b76b12a3900eddccc12b39",
+      "bytes": 7855
+    },
+    {
+      "path": "tools/blender/forge/forge.py",
+      "stagePath": "tools/blender/forge/forge.py",
+      "sha256": "987500394bedd3875c916afa7eeff368c2c545e4ac7371592a9f02e3283e064d",
+      "bytes": 58900
+    },
+    {
+      "path": "tools/blender/forge/forge_export.py",
+      "stagePath": "tools/blender/forge/forge_export.py",
+      "sha256": "f9964988d97fef59ce764031091993178af96989be88c8e237f63d8da6c6b946",
+      "bytes": 23607
+    },
+    {
+      "path": "tools/blender/forge/brood_kit.py",
+      "stagePath": "tools/blender/forge/brood_kit.py",
+      "sha256": "80f98695b94feddfd5cae9ac435dc2b01658fdc965c6278f41cffb96f344c14d",
+      "bytes": 28565
+    },
+    {
+      "path": "tools/blender/forge/motion.py",
+      "stagePath": "tools/blender/forge/motion.py",
+      "sha256": "49ea1d5b90f6da57a427865ef6ebef74604609fc426001ca4be0e6305f8951ff",
+      "bytes": 3973
+    },
+    {
+      "path": "tools/blender/forge/animations/motion_bank.py",
+      "stagePath": "tools/blender/forge/animations/motion_bank.py",
+      "sha256": "b0f0c16db14facc11bb7dcc6e4441693a756caa80300ed75fc3f6f463277bd45",
+      "bytes": 13295
+    },
+    {
+      "path": "tools/blender/forge/source_assets/splitter_a6/body-map.json",
+      "stagePath": "tools/blender/forge/source_assets/splitter_a6/body-map.json",
+      "sha256": "5ecea300388c13b524887cfb6aed837d01a7d054a0e77c0380d021577ba5e541",
+      "bytes": 52397
+    },
+    {
+      "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-finished-source.blend",
+      "stagePath": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-finished-source.blend",
+      "sha256": "a9371077b518747467bfef18b7f95bb9bfc85644936451dd2d2c832989b2870e",
+      "bytes": 6687486
+    },
+    {
+      "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD0-editable.blend",
+      "stagePath": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD0-editable.blend",
+      "sha256": "156583b7a3baf32cf24f47aad0a52fa7dcb356ea61cd0053e8e460bcf29812e5",
+      "bytes": 4960762
+    },
+    {
+      "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD1-editable.blend",
+      "stagePath": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD1-editable.blend",
+      "sha256": "2adb694c6957a3655c023c3d634019a9ff29e02cc0bbafb8a2763b9d157621f5",
+      "bytes": 3810450
+    },
+    {
+      "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD2-editable.blend",
+      "stagePath": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD2-editable.blend",
+      "sha256": "a7831a9a91069e6db75404b05ab00972023aa0e5eb4c64634fe6ab753a762ad7",
+      "bytes": 2687742
+    },
+    {
+      "path": "scripts/lib/broodSourceSeal.mjs",
+      "stagePath": "scripts/lib/broodSourceSeal.mjs",
+      "sha256": "c48809639604bea1276cc3b0ef79c9b742b3d810d99b50f1dc7097108099f226",
+      "bytes": 5246
+    },
+    {
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_axial_v01.glb",
+      "sha256": "eabc33fd9e7081a71b2ffabb60bc61a75005558c7cbea4e56927914ff6805fec",
+      "bytes": 2526172
+    },
+    {
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_port_v01.glb",
+      "sha256": "ab5993d54a4a48ea5a8ec3ee9b509d914aaae5649eefe4ac2de5d08ced2651f3",
+      "bytes": 1106136
+    },
+    {
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_starboard_v01.glb",
+      "sha256": "495e5095904636a2d918233a6f12145368a22ffe662fb04eda5d65738135768c",
+      "bytes": 1109952
+    },
+    {
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_v01.glb",
+      "sha256": "6bf7ef85ab3d4a13e0d73e9dfa03bcdc476efeae268807eec12c7a2b25b9d9d1",
+      "bytes": 4613008
+    }
+  ],
+  "recipeManifestSHA256": "65465d4daa45a95ba9a8a34b70df5cb954984bb5f4c6c6a581a2fd79836a5dc8",
+  "steps": [
+    {
+      "step": "export",
+      "exitCode": 0,
+      "log": "logs/export.log"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "staging/assets/ships/parts/wholeships/brood_splitter_axial_v01.glb",
+      "sha256": "2140af0e5628034df46b54a0f9413bc87dbb8ae85ddf25728ca23e44d3b0f753",
+      "bytes": 2526172
+    },
+    {
+      "path": "staging/assets/ships/parts/wholeships/brood_splitter_port_v01.glb",
+      "sha256": "ab5993d54a4a48ea5a8ec3ee9b509d914aaae5649eefe4ac2de5d08ced2651f3",
+      "bytes": 1106136
+    },
+    {
+      "path": "staging/assets/ships/parts/wholeships/brood_splitter_starboard_v01.glb",
+      "sha256": "495e5095904636a2d918233a6f12145368a22ffe662fb04eda5d65738135768c",
+      "bytes": 1109952
+    },
+    {
+      "path": "staging/assets/ships/parts/wholeships/brood_splitter_v01.glb",
+      "sha256": "46c1ccebb9fa5167844c27a0485a03f7482843682c0e2a6ea7b61d4248ad7a64",
+      "bytes": 4613008
+    },
+    {
+      "path": "staging/tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD0-editable.blend",
+      "sha256": "156583b7a3baf32cf24f47aad0a52fa7dcb356ea61cd0053e8e460bcf29812e5",
+      "bytes": 4960762
+    },
+    {
+      "path": "staging/tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD1-editable.blend",
+      "sha256": "2adb694c6957a3655c023c3d634019a9ff29e02cc0bbafb8a2763b9d157621f5",
+      "bytes": 3810450
+    },
+    {
+      "path": "staging/tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD2-editable.blend",
+      "sha256": "a7831a9a91069e6db75404b05ab00972023aa0e5eb4c64634fe6ab753a762ad7",
+      "bytes": 2687742
+    },
+    {
+      "path": "staging/tools/blender/forge/source_assets/splitter_a6/splitter-A6-finished-source.blend",
+      "sha256": "a9371077b518747467bfef18b7f95bb9bfc85644936451dd2d2c832989b2870e",
+      "bytes": 6687486
+    }
+  ]
+}

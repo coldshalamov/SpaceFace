@@ -1,0 +1,23 @@
+{
+  "label": "prepare-pitch-settle",
+  "entities": 400,
+  "frames": 240,
+  "middleFraction": 0.72,
+  "settledFraction": 0.55,
+  "before": {
+    "calls": 96000,
+    "ms": 129.578
+  },
+  "settleOnly": {
+    "calls": 43440,
+    "ms": 69.992
+  },
+  "settleAndBand": {
+    "calls": 31200,
+    "ms": 56.979
+  },
+  "settleCallReduction": 0.5475,
+  "bothCallReduction": 0.675,
+  "settleSpeedup": 1.851,
+  "bothSpeedup": 2.274
+}

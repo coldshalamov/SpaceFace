@@ -1,0 +1,203 @@
+{
+  "assetId": "cargo-v-load-cradle",
+  "category": "cargo",
+  "description": "V-shaped padded cradle for an irregular load",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        0.9708908796310425,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.4249999523162842,
+        0.5179454386234283,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          0.95
+        ],
+        "size": [
+          2.6,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          -0.95
+        ],
+        "size": [
+          2.6,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.45,
+          0.52
+        ],
+        "size": [
+          2.5,
+          0.3,
+          0.75
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.45,
+          -0.52
+        ],
+        "size": [
+          2.5,
+          0.3,
+          0.75
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "handling",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.4249999523162842,
+      0.06499999761581421,
+      -1.0750000476837158
+    ],
+    "max": [
+      1.4249999523162842,
+      0.9708908796310425,
+      1.0750000476837158
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-v-load-cradle_lod0.glb",
+      "triangles": 5792,
+      "draws": 5,
+      "bytes": 523496,
+      "method": "source",
+      "sha256": "4eceaee081915f2900236daee0935dcdb33380bb9ce5ed64287d79fd87177767"
+    },
+    {
+      "level": 1,
+      "file": "cargo-v-load-cradle_lod1.glb",
+      "triangles": 832,
+      "draws": 5,
+      "bytes": 289416,
+      "method": "authored-topology",
+      "sha256": "0e8b24e6bd8844cfaea8690022e63ce62dcebea1466dc27235a47383851ebb1a"
+    },
+    {
+      "level": 2,
+      "file": "cargo-v-load-cradle_lod2.glb",
+      "triangles": 400,
+      "draws": 4,
+      "bytes": 266072,
+      "method": "authored-topology",
+      "sha256": "8b3fa45428cf3c3fe1c05588d88f3bcf98e206eb9c978142156e3eb2cc4bcdc8"
+    }
+  ]
+}

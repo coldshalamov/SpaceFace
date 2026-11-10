@@ -1,0 +1,23 @@
+{
+  "latched": true,
+  "census": {
+    "ships": 49,
+    "attachments": 0
+  },
+  "actPlusPost": {
+    "name": "act+postPhysics",
+    "usPerCall": 11.073,
+    "msTotal": 442.94
+  },
+  "postPhysicsOnly": {
+    "name": "postPhysics.only",
+    "usPerCall": 9.911,
+    "msTotal": 396.46
+  },
+  "postPhysicsSketchSkipWalk": {
+    "name": "postPhysics.sketchSkipWalk",
+    "usPerCall": 0.041,
+    "msTotal": 1.63
+  },
+  "note": "postPhysicsOnly is residual after #154 latch (attach empty + ensure/sync walk)"
+}

@@ -1,0 +1,148 @@
+TAP version 13
+# Subtest: reinitializing core does not duplicate entity command listeners
+ok 1 - reinitializing core does not duplicate entity command listeners
+  ---
+  duration_ms: 4.511778
+  ...
+# Subtest: destroying core detaches entity command listeners
+ok 2 - destroying core detaches entity command listeners
+  ---
+  duration_ms: 0.376633
+  ...
+# Subtest: residency demotion recycles an entity id without creating an index ghost
+ok 3 - residency demotion recycles an entity id without creating an index ghost
+  ---
+  duration_ms: 9.611966
+  ...
+# Subtest: repeated civilian manifest cap disposal does not retain dead payload index entries
+ok 4 - repeated civilian manifest cap disposal does not retain dead payload index entries
+  ---
+  duration_ms: 3.047215
+  ...
+# Subtest: traffic salvor payload disposal uses the core lifecycle indexes
+ok 5 - traffic salvor payload disposal uses the core lifecycle indexes
+  ---
+  duration_ms: 2.427813
+  ...
+# Subtest: lifecycle delta keeps exact counter and simulation differences
+ok 6 - lifecycle delta keeps exact counter and simulation differences
+  ---
+  duration_ms: 2.208989
+  ...
+# Subtest: foreground settling rejects a warmup window and accepts consecutive normal cadence
+ok 7 - foreground settling rejects a warmup window and accepts consecutive normal cadence
+  ---
+  duration_ms: 0.304092
+  ...
+# Subtest: foreground settling reacquires native focus after the long warmup before sampling
+ok 8 - foreground settling reacquires native focus after the long warmup before sampling
+  ---
+  duration_ms: 0.515917
+  ...
+# Subtest: hidden lifecycle readiness waits for synchronous input-owner neutralization
+ok 9 - hidden lifecycle readiness waits for synchronous input-owner neutralization
+  ---
+  duration_ms: 0.184514
+  ...
+# Subtest: Electron cadence sampling uses bounded exact native foreground acquisition
+ok 10 - Electron cadence sampling uses bounded exact native foreground acquisition
+  ---
+  duration_ms: 0.886725
+  ...
+# Subtest: foreground settling records and excludes explicitly interrupted native samples
+ok 11 - foreground settling records and excludes explicitly interrupted native samples
+  ---
+  duration_ms: 0.534501
+  ...
+# Subtest: Electron focus sink targets and cleans exact native window identities
+ok 12 - Electron focus sink targets and cleans exact native window identities
+  ---
+  duration_ms: 1.193412
+  ...
+# Subtest: broker claim identity is extracted from authoritative nested digests
+ok 13 - broker claim identity is extracted from authoritative nested digests
+  ---
+  duration_ms: 0.335667
+  ...
+# Subtest: Browser and Electron native lifecycle evidence pass the same fail-closed contract
+ok 14 - Browser and Electron native lifecycle evidence pass the same fail-closed contract
+  ---
+  duration_ms: 3.493914
+  ...
+# Subtest: hidden work, stale input, audio drift, and restore storms each invalidate acceptance
+ok 15 - hidden work, stale input, audio drift, and restore storms each invalidate acceptance
+  ---
+  duration_ms: 2.102112
+  ...
+# Subtest: driver provenance, foreground equivalence, soak uniqueness, hardware, and cleanup fail closed
+ok 16 - driver provenance, foreground equivalence, soak uniqueness, hardware, and cleanup fail closed
+  ---
+  duration_ms: 1.528918
+  ...
+# Subtest: native lifecycle launch policy avoids Playwright page emulation and background switches
+ok 17 - native lifecycle launch policy avoids Playwright page emulation and background switches
+  ---
+  duration_ms: 0.74913
+  ...
+# Subtest: raw Browser window driver never installs the Playwright focus override
+ok 18 - raw Browser window driver never installs the Playwright focus override
+  ---
+  duration_ms: 0.779046
+  ...
+# Subtest: raw Browser waitForFunction preserves a truthy by-value receipt
+ok 19 - raw Browser waitForFunction preserves a truthy by-value receipt
+  ---
+  duration_ms: 51.910193
+  ...
+# Subtest: raw Browser keyboard emits text-bearing keyDown and a physical keyUp for public input
+ok 20 - raw Browser keyboard emits text-bearing keyDown and a physical keyUp for public input
+  ---
+  duration_ms: 1.133522
+  ...
+# Subtest: physical suspend or lock can never be promoted from a synthetic EventEmitter call
+ok 21 - physical suspend or lock can never be promoted from a synthetic EventEmitter call
+  ---
+  duration_ms: 0.612095
+  ...
+# Subtest: audio unlock uses a focused keyboard gesture that HUD overlays cannot intercept
+ok 22 - audio unlock uses a focused keyboard gesture that HUD overlays cannot intercept
+  ---
+  duration_ms: 0.483593
+  ...
+# Subtest: Browser visibility uses the owned native Chrome window instead of unreliable tab transfer
+ok 23 - Browser visibility uses the owned native Chrome window instead of unreliable tab transfer
+  ---
+  duration_ms: 0.74389
+  ...
+# Subtest: agy catalog maps three real commodities to three classes and lamps
+ok 24 - agy catalog maps three real commodities to three classes and lamps
+  ---
+  duration_ms: 1.271753
+  ...
+# PQ-148.01 explosive slam: witnessΔv=38.671 WU/s radialImpulse=2455.7 lamp=amber radius=80
+# PQ-148.01 corrosive contact: hullTick=5.980 farHull=0.000 lamp=green
+# PQ-148.01 superdense: throwSpeed=30.000 WU/s ironThrow=60.000 fieldAccel=188.657 ironAccel=75.463 lamp=violet
+# Subtest: explosive slam publishes a radial impulse a nearby hull feels
+ok 25 - explosive slam publishes a radial impulse a nearby hull feels
+  ---
+  duration_ms: 144.196035
+  ...
+# Subtest: corrosive contact ticks hull once, not a distance aura
+ok 26 - corrosive contact ticks hull once, not a distance aura
+  ---
+  duration_ms: 10.401306
+  ...
+# Subtest: superdense pulls on fields and cannot be thrown far
+ok 27 - superdense pulls on fields and cannot be thrown far
+  ---
+  duration_ms: 13.432787
+  ...
+1..27
+# tests 27
+# suites 0
+# pass 27
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 548.319854

@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-transit-pressure-cap",
+  "category": "cargo",
+  "description": "Pressure-port transit cover with radial dogs",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        0.7749999761581421,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        0.9549999833106995,
+        0.4274999722838402,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.25,
+          -0.0
+        ],
+        "size": [
+          1.8,
+          0.35,
+          1.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "handling",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -0.9549999833106995,
+      0.07999996840953827,
+      -0.8999999761581421
+    ],
+    "max": [
+      0.9549999833106995,
+      0.7749999761581421,
+      0.8999999761581421
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-transit-pressure-cap_lod0.glb",
+      "triangles": 5192,
+      "draws": 6,
+      "bytes": 494140,
+      "method": "source",
+      "sha256": "59909ab9952361c44ab9dcdf8464235a4b53eafd30968c72ad1597aa9da91ef9"
+    },
+    {
+      "level": 1,
+      "file": "cargo-transit-pressure-cap_lod1.glb",
+      "triangles": 1256,
+      "draws": 6,
+      "bytes": 306928,
+      "method": "authored-topology",
+      "sha256": "a9195b411966dd40d7c272b62ea4e77bf96afa8aefdf1c2d0e305a56f74c675a"
+    },
+    {
+      "level": 2,
+      "file": "cargo-transit-pressure-cap_lod2.glb",
+      "triangles": 464,
+      "draws": 6,
+      "bytes": 269888,
+      "method": "authored-topology",
+      "sha256": "a536a1b7d562dcbc408f3de98fd0ca43d0460f6294cf1aabb40c973779006738"
+    }
+  ]
+}

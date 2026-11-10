@@ -1,0 +1,11 @@
+# Mobile startup camera witness
+
+CI run38662841862/headc199511 passed its startup/control checks while the Chromium portrait and landscape captures showed large surface geometry obscuring much of the game view. The prior report had no camera pose, zoom/focus or bounds. This is evidence of missing diagnostic coverage, not proof of a particular camera bug or a persistent regression: a near-base capture shows readable scenery, and startup seed/scenery may differ.
+
+The existing ordinary menu/touch route is unchanged. At flight, landscape and failure screenshot checkpoints only, a read-only public debug snapshot records seed/sector/frame origin, player identity/hull, actual camera pose and cached matrices/frustum, requested/live zoom/focus, selective existing zoom diagnostics, numeric occluder count and bounded entity/scenery geometry. Unknown fields stay null. Limits:4096 entity reads,8nearest+8largest rows,512mesh nodes per selected row,512scene nodes and8scene rows. Existing cached geometry bounds may omit instances, shader displacement and proxies; projected AABB corners are not a visibility test. Actual occluder IDs remain unknown; nearby/large geometry is only a diagnostic candidate set.
+
+No camera/renderer/native/state writes, matrix/bounds recomputation, raycasts, workflow/security changes or per-frame instrumentation. Existing passed means startup/control acceptance only; worldVisibility is explicitly unverified and the unsupported word unobstructed is removed. Six focused tests and37mobile-neighbor cases pass, including closure-free browser-function serialization and bounded malformed/cyclic geometry. Independent review and next ordinary CI capture are tracked separately. The next capture should distinguish camera geometry from scenery; it does not itself certify playability.
+
+Observer round-trip elapsedMs is measured outside page.evaluate at each checkpoint. It identifies diagnostic cost only and is excluded from gameplay performance claims and pass criteria. Circular/object-shaped metadata is replaced by bounded scalar/string/null fields; a dedicated regression proves report serialization stays safe.
+
+Independent review passed6/6 plus frozen-state/cross-realm/NaN serialization and syntax checks. No local browser capture was run for this increment; the next existing ordinary CI mobile job is the integration evidence gate.

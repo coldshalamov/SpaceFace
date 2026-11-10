@@ -1,0 +1,93 @@
+{
+  "ok": true,
+  "asset": "ship_ranger",
+  "revision": "chase_form_v1",
+  "cycle": 1,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.8031450123722164,
+  "authoredX": 17.17,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 9.1731, 5.3483],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/ranger_production_v1.glb",
+    "sha256": "ae3fdd621f2a836cc39a5de126bcbe19000db01cc18c7ca66ee093112115a56c",
+    "triangles": 23178,
+    "hullTriangles": 17152,
+    "bytes": 3094036,
+    "size": [17.17, 5.087, 2.966]
+  },
+  "releaseLod0": {
+    "path": "assets/ships/release/parts/wholeships/ranger_production_v1.glb",
+    "sha256": "03adf3b8e04d3d5cf24151655dd27910ff3557e0d69d9973086adffaaefa393e",
+    "bytes": 617064
+  },
+  "expectedContentHash": "d5043b3a6cab1d531cad4d81801de042352b92e6aa4c39910781748c5424494e",
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "drifterFreezeLod0": "3278b8ed1763d8dfbccf900a55b4a9cbbf63404fb8222a965bb5db89fc19bc7e",
+  "hitchStills": "/tmp/hitch-c10",
+  "playChase": {
+    "shipW": 12.9,
+    "occupancy": 0.35,
+    "widthFrac": 0.131,
+    "lightGe026": 14.9,
+    "dark": 42.6,
+    "mid": 56.4,
+    "hot": 1.0
+  },
+  "playChaseAbeam": {
+    "shipW": 3.8,
+    "shipH": 20.3,
+    "occupancy": 0.33,
+    "widthFrac": 0.039
+  },
+  "playChaseClose": {
+    "shipW": 32.0,
+    "occupancy": 2.1,
+    "widthFrac": 0.321
+  },
+  "hitchPlayChase": {
+    "shipW": 10.1,
+    "occupancy": 0.52,
+    "widthFrac": 0.102,
+    "dark": 74.0,
+    "mid": 25.8,
+    "hot": 0.2
+  },
+  "gapsTargeted": {
+    "c1first": "explorer needle: wells as holes, nacelle throats in loft, swept wings, real mast; no factory --only; no seats/megatex"
+  },
+  "tubePaddleReadGoneOnPlayChase": false,
+  "tubePaddleReadGoneOnClose": false,
+  "tubePaddleReadGoneOnAbeam": false,
+  "tubePaddleReadGoneOnAbeamClay": false,
+  "tubePaddleReadGoneOnAbeamShaded": false,
+  "cageReadGone": false,
+  "wellsBoolean": {
+    "greenhouseTub": true,
+    "greenhouseWindshield": true,
+    "surveyWellMouth": true
+  },
+  "reviews": {
+    "play_chase": {
+      "id": "bc-7e90d610-1828-5460-acdb-ae2241164870",
+      "verdict": "REVISE",
+      "note": "VALID framing. TUBE_PADDLE YES clay+shaded. CAGE_READ YES. WELLS shallow/not framed at D=144. HITCH_WINS YES."
+    },
+    "play_chase_abeam": {
+      "id": "bc-7737cffd-5e17-5477-a093-3db460a81f28",
+      "verdict": "REVISE",
+      "note": "VALID framing. TUBE_PADDLE YES clay+shaded. CAGE_READ YES. WELLS HOLES. CLAY_SPINE_FLANK_SPLIT YES. HITCH_WINS YES."
+    },
+    "play_chase_close": {
+      "id": "bc-6ebb3111-bb96-5225-94b1-6cf06c876fca",
+      "verdict": "REVISE",
+      "note": "VALID framing. TUBE_PADDLE YES clay+shaded. CAGE_READ YES. WELLS mixed (clay holes / shaded shallow). HITCH_WINS YES."
+    }
+  },
+  "result": "REVISE",
+  "hitchPlusChase": false,
+  "notes": "C1 first explorer needle. Three reviews REVISE / HITCH_WINS YES. Tube/paddle + cage leftover. No seats. No megatex. Hitch/Kestrel/Hornet/Drifter frozen. Parent unproven / not G7. Five-cycle bar starts; do not start C2 in this leaf."
+}

@@ -1,0 +1,211 @@
+From 8a1797a58aa549f177594b435bb23f55d4ea94ff Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 08:02:13 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20massline?=
+ =?UTF-8?q?=20swing-trace=20(~1.9=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid tether resolve + a11y +
+writeMasslineSwingTraceGeometry every tick with no live latch and
+empty fade/count. Latch after first empty publish; wake on cheap
+player/remote tether.active. Soft-GPU fps not claimed.
+---
+ src/render/vfx.js                         |  32 +++++++
+ test/swing-trace-quiet-idle-skip.test.mjs | 112 ++++++++++++++++++++++
+ 2 files changed, 144 insertions(+)
+ create mode 100644 test/swing-trace-quiet-idle-skip.test.mjs
+
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 540b41ae6..2d5fae283 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1360,6 +1360,11 @@ export const vfx = {
+     // _updateRibbonTrails when the ribbon map is empty.
+     this._trailEmitQuietIdle = false;
+     this._trailEmitQuietIndexVersion = -1;
++    // Quiet settled flight: massline swing-trace still paid tether resolve +
++    // a11y + writeMasslineSwingTraceGeometry every tick with no live latch and
++    // empty fade/count. Latch after first empty publish; cheap tether.active
++    // wake. Soft-GPU fps not claimed.
++    this._swingTraceQuietIdle = false;
+     this._energyPlumeWasRelevant = false;
+     // Quiet settled flight: _hideEnergyPlumes used to re-run plasma/retro/fleet.reset
+     // every idle tick (fleet walks ships + family plume/rcs and clears the #100
+@@ -8702,6 +8707,7 @@ export const vfx = {
+     mesh.visible = false;
+     this._scene.add(mesh);
+     this._masslineSwingTrace = { mesh, trace, scratch, samplePos: { x: 0, z: 0 } };
++    this._swingTraceQuietIdle = false;
+   },
+ 
+   _resetMasslineSwingTrace() {
+@@ -8711,11 +8717,32 @@ export const vfx = {
+     st.mesh.visible = false;
+     st.mesh.material.opacity = 0;
+     st.mesh.geometry.setDrawRange(0, 0);
++    this._swingTraceQuietIdle = false;
++  },
++
++  // Cheap dirty wake for quiet swing-trace latch — player/remote tether live only.
++  // False-wake falls through to one full update and re-latches when empty.
++  _swingTraceQuietMaybeAwake() {
++    const player = this.state && this.state.player;
++    if (!player) return false;
++    const pt = player.tether;
++    if (pt && pt.active && pt.targetId != null) return true;
++    const rt = player.remoteMassline;
++    if (rt && rt.active && rt.sourceId != null && rt.targetId != null) return true;
++    return false;
+   },
+ 
+   _updateMasslineSwingTrace(dt) {
+     const st = this._masslineSwingTrace;
+     if (!st) return false;
++    // Quiet settled flight: swing-trace still paid tether resolve + a11y +
++    // writeMasslineSwingTraceGeometry every tick with no live latch and empty
++    // fade/count. Latch after first empty publish; cheap tether.active wake.
++    // Soft-GPU fps not claimed.
++    if (this._swingTraceQuietIdle) {
++      if (!this._swingTraceQuietMaybeAwake()) return false;
++      this._swingTraceQuietIdle = false;
++    }
+     const trace = st.trace;
+     const state = this.state;
+     const playerTether = state && state.player && state.player.tether;
+@@ -8771,8 +8798,13 @@ export const vfx = {
+         st.mesh.material.opacity = 0;
+         st.mesh.geometry.setDrawRange(0, 0);
+       }
++      // Fully idle empty (no fade, no samples, no live tether) → quiet latch.
++      if (!(trace.fade > 0) && !(trace.count > 0) && !this._swingTraceQuietMaybeAwake()) {
++        this._swingTraceQuietIdle = true;
++      }
+       return false;
+     }
++    this._swingTraceQuietIdle = false;
+     const positions = geometry.positions;
+     for (let vertex = 0; vertex < geometry.indexCount / 6 * 4; vertex += 1) {
+       const offset = vertex * 3;
+diff --git a/test/swing-trace-quiet-idle-skip.test.mjs b/test/swing-trace-quiet-idle-skip.test.mjs
+new file mode 100644
+index 000000000..08b378045
+--- /dev/null
++++ b/test/swing-trace-quiet-idle-skip.test.mjs
+@@ -0,0 +1,112 @@
++// Quiet latch for idle massline swing-trace residual under prepareFrame / vfx.
++// Soft-GPU fps not claimed. Picture unchanged while no tether latch is live.
++
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import { createBus } from '../src/core/eventBus.js';
++import { vfx } from '../src/render/vfx.js';
++
++const DT = 1 / 60;
++const PLAYER_ID = 1;
++const TARGET_ID = 42;
++
++function makeHarness() {
++  const scene = new THREE.Scene();
++  const player = {
++    id: PLAYER_ID,
++    type: 'ship',
++    alive: true,
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    radius: 6,
++  };
++  const target = {
++    id: TARGET_ID,
++    type: 'asteroid',
++    alive: true,
++    pos: { x: 40, z: 0 },
++    vel: { x: 0, z: 18 },
++    rot: 0,
++    radius: 4,
++  };
++  const state = {
++    playerId: PLAYER_ID,
++    player: {
++      tether: { active: false, targetId: null },
++      remoteMassline: { active: false, sourceId: null, targetId: null },
++    },
++    entities: new Map([[PLAYER_ID, player], [TARGET_ID, target]]),
++    entityList: [player, target],
++    simTime: 0,
++    tick: 0,
++    settings: {
++      video: { particleQuality: 'low', motionReduce: false, engineTrails: false },
++      accessibility: { flashReduce: false },
++    },
++    render: { scene },
++  };
++  const bus = createBus();
++  const system = Object.create(vfx);
++  system.init({
++    state,
++    bus,
++    helpers: {
++      player: () => player,
++    },
++  });
++  return { system, state, bus, player, target };
++}
++
++test('swing-trace quiet-latches after idle empty and wakes on tether latch', () => {
++  const { system, state, target } = makeHarness();
++  assert.ok(system._masslineSwingTrace, 'swing-trace mesh must init');
++
++  for (let i = 0; i < 4; i++) system._updateMasslineSwingTrace(DT);
++  assert.equal(system._swingTraceQuietIdle, true, 'idle swing-trace must quiet-latch');
++  assert.equal(system._masslineSwingTrace.mesh.visible, false);
++
++  const fadeBefore = system._masslineSwingTrace.trace.fade;
++  const countBefore = system._masslineSwingTrace.trace.count;
++  for (let i = 0; i < 30; i++) {
++    assert.equal(system._updateMasslineSwingTrace(DT), false);
++  }
++  assert.equal(system._swingTraceQuietIdle, true);
++  assert.equal(system._masslineSwingTrace.trace.fade, fadeBefore);
++  assert.equal(system._masslineSwingTrace.trace.count, countBefore);
++
++  // Dirty wake: player tether latch with tangentially swinging target
++  state.player.tether = { active: true, targetId: TARGET_ID };
++  assert.equal(system._swingTraceQuietMaybeAwake(), true);
++  // Target has tangential speed relative to source at rest → samples push
++  target.vel = { x: 0, z: 40 };
++  target.pos = { x: 40, z: 0 };
++  system._updateMasslineSwingTrace(DT);
++  assert.equal(system._swingTraceQuietIdle, false, 'tether latch must clear quiet latch');
++  assert.ok(system._masslineSwingTrace.trace.fade > 0, 'fade must rise while latched live');
++});
++
++test('swing-trace quiet-latches wake on remote massline', () => {
++  const { system, state } = makeHarness();
++  for (let i = 0; i < 4; i++) system._updateMasslineSwingTrace(DT);
++  assert.equal(system._swingTraceQuietIdle, true);
++
++  state.player.remoteMassline = {
++    active: true,
++    sourceId: PLAYER_ID,
++    targetId: TARGET_ID,
++  };
++  assert.equal(system._swingTraceQuietMaybeAwake(), true);
++  system._updateMasslineSwingTrace(DT);
++  assert.equal(system._swingTraceQuietIdle, false);
++});
++
++test('swing-trace boundary reset clears quiet latch', () => {
++  const { system } = makeHarness();
++  for (let i = 0; i < 4; i++) system._updateMasslineSwingTrace(DT);
++  assert.equal(system._swingTraceQuietIdle, true);
++  system._resetMasslineSwingTrace();
++  assert.equal(system._swingTraceQuietIdle, false);
++});
+-- 
+2.47.3
+

@@ -1,0 +1,1708 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.anchor.socket-salvage-weapon",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.126316070556641,
+        2.1293537616729736,
+        0.059465885162353516,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Weapon",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.126316070556641,
+        2.1293537616729736,
+        0.059465885162353516,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-wreck-corvette-turret",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "7bff504b0e630799e0e6f27181da28534958e12890932db21dd0b767f5424441",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -0.96682584573509,
+          -0.16018270506509424,
+          3.6517298239669445
+        ],
+        "min": [
+          -7.164036084586447,
+          -3.274779522503016,
+          -3.6517152804336193
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "64934a6b65479e1caca367a04dcf9aedfd610aad054f3de29101aba36e8ab4a4",
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-wreck-corvette-turret.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          7.663075675467247,
+          3.2747363687401987,
+          3.2591397414679104
+        ],
+        "min": [
+          -7.326150397260177,
+          -0.3711266299899484,
+          -3.140957536286866
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "99c22686dc6d52b86632f8d9618511d172caf85a00cdf573fae0ae1fb2f9ae03",
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0.primitive.1",
+      "indexCount": 4488,
+      "indexed": true,
+      "materialHash": "2a85e9ff514d3991263809dc1fc3503b0883dc4e10219c245756fb647ea521a6",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-wreck-corvette-turret.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0",
+      "primitiveIndex": 1,
+      "vertexCount": 1540
+    },
+    {
+      "bounds": {
+        "max": [
+          8,
+          1.9170290000977055,
+          3.252303595752753
+        ],
+        "min": [
+          -7.31931425154502,
+          -0.3965180283605327,
+          -3.1341213905717087
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a00d790174691aebd5356b42be2190dc1e8614d1a7c591203455c74282fadefc",
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0.primitive.2",
+      "indexCount": 4416,
+      "indexed": true,
+      "materialHash": "0a3083fab34e89419b4b9aa5a2f228c8ad7b14e46fed0e5a1ff4d33278b4b70f",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-wreck-corvette-turret.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0",
+      "primitiveIndex": 2,
+      "vertexCount": 1360
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.5918144236464604,
+          2.693663982951827,
+          2.7767031724268088
+        ],
+        "min": [
+          -7.998045861835639,
+          0.5664019252316256,
+          -2.6575443750007417
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6357b9e71e8ed52c8a6da07c5c497b422d2b3dc5afd8c5780d8f856e5e318963",
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0.primitive.3",
+      "indexCount": 1299,
+      "indexed": true,
+      "materialHash": "a74dd4b143963f79a060f17a3f39a90317a038bf97dfa49ab12c8587df6825fd",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-wreck-corvette-turret.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0",
+      "primitiveIndex": 3,
+      "vertexCount": 441
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.5898612391564154,
+          1.5371346167839637,
+          2.779632949161876
+        ],
+        "min": [
+          -7.999999046325684,
+          0.5751912554368278,
+          -2.660474151735809
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fc3e6e249d9279768651b74778a0a1e055a5390aeb0f550ff26c8c3f73dbd7c4",
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0.primitive.4",
+      "indexCount": 837,
+      "indexed": true,
+      "materialHash": "413bc5886588f6b46a4ecc0464398cdf9cc4773739979e2ceb997ed3ee5d2643",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-wreck-corvette-turret.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0",
+      "primitiveIndex": 4,
+      "vertexCount": 279
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.7535622758097285,
+          2.7190553813224114,
+          2.8050243475324605
+        ],
+        "min": [
+          -5.52018718815237,
+          0.5292914199207717,
+          -2.6858655501063935
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6047605882090f9a5369e1ee590dfffb6abd8a6358836ad83f445735f561b442",
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0.primitive.5",
+      "indexCount": 1404,
+      "indexed": true,
+      "materialHash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-wreck-corvette-turret.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0",
+      "primitiveIndex": 5,
+      "vertexCount": 498
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0a3083fab34e89419b4b9aa5a2f228c8ad7b14e46fed0e5a1ff4d33278b4b70f",
+      "id": "material:0a3083fab34e89419b4b9aa5",
+      "name": "Forge_bastion_dark",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2a85e9ff514d3991263809dc1fc3503b0883dc4e10219c245756fb647ea521a6",
+      "id": "material:2a85e9ff514d3991263809dc",
+      "name": "Forge_bastion_gunmetal",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
+      "id": "material:37885cdf4e6b5e498b4175dd",
+      "name": "Forge_bastion_stripe",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "413bc5886588f6b46a4ecc0464398cdf9cc4773739979e2ceb997ed3ee5d2643",
+      "id": "material:413bc5886588f6b46a4ecc04",
+      "name": "Forge_bastion_paint",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
+      "id": "material:a0b9525a2334f9c031ad55fd",
+      "name": "Forge_bastion_wk_torn",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a74dd4b143963f79a060f17a3f39a90317a038bf97dfa49ab12c8587df6825fd",
+      "id": "material:a74dd4b143963f79a060f17a",
+      "name": "Forge_bastion_paint.upper",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.socket-salvage-weapon",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.126316070556641,
+        2.1293537616729736,
+        0.059465885162353516,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Salvage_Weapon",
+      "nodeName": "SOCKET_Salvage_Weapon",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.126316070556641,
+        2.1293537616729736,
+        0.059465885162353516,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0",
+      "localTransform": [
+        7.999999523162842,
+        0,
+        0,
+        0,
+        0,
+        7.999999523162842,
+        0,
+        0,
+        0,
+        0,
+        7.999999523162842,
+        0,
+        4.76837158203125e-7,
+        -0.000021576881408691406,
+        0.000007271766662597656,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "trBase_tear0",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        7.999999523162842,
+        0,
+        0,
+        0,
+        0,
+        7.999999523162842,
+        0,
+        0,
+        0,
+        0,
+        7.999999523162842,
+        0,
+        4.76837158203125e-7,
+        -0.000021576881408691406,
+        0.000007271766662597656,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "trBase_tear1",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "trBase_tear2",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "trBase_tear3",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "trBase_tear4",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "trBase_tear5",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabarrel-0-22",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TurretABarrel-0.22",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabarrel0-22",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TurretABarrel0.22",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabrake-0-22",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TurretABrake-0.22",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabrake0-22",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TurretABrake0.22",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.turretahouse",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TurretAHouse",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.turretamantlet",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TurretAMantlet",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.turretarace",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TurretARace",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.turretaring",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TurretARing",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasight",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TurretASight",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasleeve-0-22",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TurretASleeve-0.22",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasleeve0-22",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TurretASleeve0.22",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "wreck_corvette_turret",
+      "nodeName": "wreck_corvette_turret",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "867df02322f72c4ed3f2a6caa9afaaf689c8d19568f6f98f4f83decef976a8eb"
+    },
+    "sourceGlb": {
+      "bytes": 201832,
+      "sha256": "a019bbdd23efba3733b6f574935804a6490dba1eb5d86798c4bc1b630c36db4a",
+      "uri": "place_aftermath_wreck_corvette_turret.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 78704,
+    "resources": [
+      {
+        "bytes": 29332,
+        "mimeType": "image/ktx2",
+        "sha256": "1f399eb85acd5548c35aef3c0525443cf838c59954c327fe95b7f105f391347d",
+        "uri": "../_shared/images/1f399eb85acd5548c35aef3c0525443cf838c59954c327fe95b7f105f391347d.ktx2"
+      },
+      {
+        "bytes": 10835,
+        "mimeType": "image/ktx2",
+        "sha256": "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
+        "uri": "../_shared/images/26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9.ktx2"
+      },
+      {
+        "bytes": 5381,
+        "mimeType": "image/ktx2",
+        "sha256": "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+        "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
+      },
+      {
+        "bytes": 22990,
+        "mimeType": "image/ktx2",
+        "sha256": "56ec2f38df0a78756ca9f379026eb1c9f367d908df537147096bdf4e7d02277a",
+        "uri": "../_shared/images/56ec2f38df0a78756ca9f379026eb1c9f367d908df537147096bdf4e7d02277a.ktx2"
+      },
+      {
+        "bytes": 13407,
+        "mimeType": "image/ktx2",
+        "sha256": "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
+        "uri": "../_shared/images/622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0.ktx2"
+      },
+      {
+        "bytes": 21717,
+        "mimeType": "image/ktx2",
+        "sha256": "6920431fb8ec4fe7b0acc3ad2e96b869f9d5a7aa0b72b00c85e1f5ee18d4f444",
+        "uri": "../_shared/images/6920431fb8ec4fe7b0acc3ad2e96b869f9d5a7aa0b72b00c85e1f5ee18d4f444.ktx2"
+      }
+    ],
+    "sha256": "6659d1ff3dda8e7443cb46e4f22f1e929bf2e1aa63ee8dd448c57aae8606ceaa",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        4.76837158203125e-7,
+        -0.000021576881408691406,
+        0.000007271766662597656
+      ],
+      "max": [
+        8,
+        3.2747363687401987,
+        3.6517298239669445
+      ],
+      "min": [
+        -7.999999046325684,
+        -3.274779522503016,
+        -3.6517152804336193
+      ],
+      "size": [
+        15.999999046325684,
+        6.549515891243215,
+        7.303445104400564
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.126316070556641,
+          2.1293537616729736,
+          0.059465885162353516,
+          1
+        ],
+        "name": "SOCKET_Salvage_Weapon",
+        "planIndex": 2,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Weapon",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Weapon",
+            "recordIds": [
+              "sf.render.aftermath-wreck-corvette-turret.anchor.socket-salvage-weapon",
+              "sf.render.aftermath-wreck-corvette-turret.node.socket-salvage-weapon"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 2,
+      "mechanical": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "accent"
+      }
+    ],
+    "nodeCount": 26,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          4.76837158203125e-7,
+          -0.000021576881408691406,
+          0.000007271766662597656,
+          1
+        ],
+        "name": "rendersfrenderaftermath-wreck-corvette-turretflight-static-lane1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          4.76837158203125e-7,
+          -0.000021576881408691406,
+          0.000007271766662597656,
+          1
+        ],
+        "name": "rendersfrenderaftermath-wreck-corvette-turretflight-static-lane1_1",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          4.76837158203125e-7,
+          -0.000021576881408691406,
+          0.000007271766662597656,
+          1
+        ],
+        "name": "rendersfrenderaftermath-wreck-corvette-turretflight-static-lane1_2",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          4.76837158203125e-7,
+          -0.000021576881408691406,
+          0.000007271766662597656,
+          1
+        ],
+        "name": "rendersfrenderaftermath-wreck-corvette-turretflight-static-lane1_3",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          4.76837158203125e-7,
+          -0.000021576881408691406,
+          0.000007271766662597656,
+          1
+        ],
+        "name": "rendersfrenderaftermath-wreck-corvette-turretflight-static-lane1_4",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          0,
+          0,
+          0,
+          7.999999523162842,
+          0,
+          4.76837158203125e-7,
+          -0.000021576881408691406,
+          0.000007271766662597656,
+          1
+        ],
+        "name": "rendersfrenderaftermath-wreck-corvette-turretflight-static-lane1_5",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_turret.glb"
+  },
+  "runtimeHash": "2c6b34706bf7e35412c0717e473d3f960d13a8251280f6c6a0e66f4e84c3ca27",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          8,
+          3.2747363687401987,
+          3.6517298239669445
+        ],
+        "min": [
+          -7.999999046325684,
+          -3.274779522503016,
+          -3.6517152804336193
+        ]
+      },
+      "id": "sf.render.aftermath-wreck-corvette-turret.body",
+      "nodeIds": [
+        "sf.render.aftermath-wreck-corvette-turret.node.socket-salvage-weapon",
+        "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0",
+        "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear1",
+        "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear2",
+        "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear3",
+        "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear4",
+        "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear5",
+        "sf.render.aftermath-wreck-corvette-turret.node.turretabarrel-0-22",
+        "sf.render.aftermath-wreck-corvette-turret.node.turretabarrel0-22",
+        "sf.render.aftermath-wreck-corvette-turret.node.turretabrake-0-22",
+        "sf.render.aftermath-wreck-corvette-turret.node.turretabrake0-22",
+        "sf.render.aftermath-wreck-corvette-turret.node.turretahouse",
+        "sf.render.aftermath-wreck-corvette-turret.node.turretamantlet",
+        "sf.render.aftermath-wreck-corvette-turret.node.turretarace",
+        "sf.render.aftermath-wreck-corvette-turret.node.turretaring",
+        "sf.render.aftermath-wreck-corvette-turret.node.turretasight",
+        "sf.render.aftermath-wreck-corvette-turret.node.turretasleeve-0-22",
+        "sf.render.aftermath-wreck-corvette-turret.node.turretasleeve0-22",
+        "sf.render.aftermath-wreck-corvette-turret.node.wreck-corvette-turret"
+      ]
+    }
+  ]
+}

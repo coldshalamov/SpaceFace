@@ -1,0 +1,2604 @@
+// Survival arena participation (CRU / PQ-133 follow-on).
+//
+// The ten-wave Survival ruleset authors an `arenaPhase` per wave, validates it, carries it into the
+// pure plan and hashes it — and previously nothing consumed it. Ten waves therefore played identically:
+// hostiles arrive from a compass gate and you kill them, in a room that never does anything. This
+// system is the consumer that closed that gap. It reads `plan.arenaPhase` off `run:wavePlanned` and installs a
+// ROOM for that wave, so the player can tell wave 5 from wave 8 by what the space is doing to them.
+//
+// Six rules shape the whole file:
+//
+//   * It only ever uses seams that already exist and are public. Three of them:
+//       - `registry.get('fields').registerEnvironmental/unregisterExternal/hasExternal`
+//         (src/systems/fields.js:499/504/512) — the ONE continuous-field kernel. No bespoke force
+//         path is invented here; the same membrane that moves a player Well moves the room.
+//       - bus `mines:placeRequest` (consumed at src/systems/mines.js:34) — physical, shootable,
+//         armed-on-a-delay mines. Counterplay already exists; this file adds none of it.
+//       - bus `encounter:telegraph` (consumed at src/systems/terrainAnchors.js:43) — 2-3 LARGE
+//         cover rocks in the bubble. Ownership is released only by the paired `encounter:resolved`
+//         (terrainAnchors.js:112), so teardown ALWAYS emits it or rocks accumulate forever.
+//
+//   * The FIELD_MAX_ACTIVE = 6 cap (src/data/fields.js:63) is never raised and never crowded out.
+//     `registerEnvironmental` deliberately skips the cap check the player deploy path enforces
+//     (fields.js:191), and `_enforceCap` (fields.js:418) can only evict entries in `rt.deployed` —
+//     it can never evict an arena field. So an arena field silently steals a slot the player's
+//     Well/Repulsor/Cone would otherwise get. The room therefore gets exactly TWO fixed slot ids
+//     and no phase may ask for a third: 2 room + 3 player tools + 1 anchor-controller snare
+//     (a wave-9 build-pressure swap, survivalWavePlanner.js:165) = exactly 6. Fixed ids also make
+//     re-registration idempotent for free, because kernel `register` is upsert-by-id
+//     (src/core/fields/fieldKernel.js:294) — the room can never occupy 3 kernel entries even if a
+//     teardown were missed.
+//
+//   * It is calibrated to the AUTHORED ENVIRONMENTAL precedent, not to the player tools. The Cinder
+//     Sluice current is radius 620 / strength 150 (src/data/environmentalMachinery.js:40-41).
+//     Player deploys are radius ~170-190 / strength 240-300 — punchy and 9 seconds long. A room is
+//     wide and permanent, so it is wide and gentle: nothing here would dominate the summed
+//     FIELD_MAX_ACCEL when a player field overlaps it.
+//
+//   * It NEVER writes state.run (runSession is the sole writer), never spawns a ship, never touches
+//     spawnBudget, and never raises any cap. Its mines carry a non-null owner id so the per-owner
+//     mine cap (mines.js:12/52) actually applies to them — a null owner would skip the cap check
+//     entirely. That owner is deliberately a STRING, not an entity id: the room is not a ship, so
+//     it can neither steal the player's own six mine slots nor exempt any hull from a trigger
+//     (mines.js:158 compares ids, and a string never matches one). What spares friendlies is the
+//     TEAM, which is read off the player rather than defaulted, because `teamOf` (mines.js:249)
+//     silently answers "team 1" for an unknown owner — which would have quietly turned the room's
+//     mines against the player instead of the hostiles wading through them.
+//
+//   * Determinism: shape comes from a seeded mulberry32 stream mixed off (run.seed, wave); position
+//     comes from the player anchor at plan time, exactly as waveMaterialization.js:72-80 anchors the
+//     gates ("the arena follows the player… without pinning world coordinates"). No Math.random, no
+//     Date.now, no wall clock. Same seed + same wave => same room.
+//
+//   * Everything it installs is released on wave clear, run end, newGame and destroy, and its
+//     bookkeeping is dropped whenever `fields._clearAll` empties the kernel underneath it
+//     (sector enter/exit, new game, save load — fields.js:135-141). A field that outlives its run
+//     is a defect, not a leftover.
+//
+// Event-driven for Helios: no work on a tick where no wave was planned. Authored toys (shutters,
+// plates, crushers, currents, relays) are extra furniture, not a third field slot: the live room
+// registers them on install and applies crusher/current force in update. Cinder machinery is a
+// cheap no-op unless that law is live.
+
+import { mulberry32 } from '../core/rng.js';
+import { validateRunState } from '../core/runState.js';
+import { Masks } from '../core/entity.js';
+import { readPhysicsTelemetry, requestPhysicsTelemetry, writePhysicsControl, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { ensureCombatant } from '../combat/runtime.js';
+import { getCombatKernel } from '../combat/kernel.js';
+import { terrainCrumpleDamage, readRecentImpulseProvenance, TERRAIN_CRUMPLE_LAW } from '../combat/impulseKernel.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { CRYO_LOCK_DURATION_TICKS, CRYO_LOCK_STATUS_ID } from '../combat/cryoLock.js';
+import { BURNING_STATUS_ID } from '../combat/thermalShock.js';
+import { makeEnemySpawnSpec } from './combat.js';
+import { isSwarmRuleset } from './survivalSwarm.js';
+import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
+import {
+  SWARM_BOSS_ROTATION,
+  SWARM_ROSTER,
+  bossPackagesFor,
+} from '../data/swarmMode.js';
+import {
+  ARENA_TOY_DT,
+  ARENA_TOY_HAZARDS,
+  ARENA_TOY_LIGHT_MASS,
+  ARENA_TOY_LIGHT_RADIUS,
+  ARENA_TOY_MAX,
+  SHUTTER_MASS,
+  SHUTTER_SERVO,
+  currentCarry,
+  listArenaToys,
+  shutterCutsLine,
+  shutterCommand,
+  shutterJammed,
+  shutterPhase,
+  stepCrusher,
+} from '../data/arenaModuleLibrary.js';
+import { SURVIVAL_ARENA_PHASES as CANONICAL_ARENA_PHASES } from '../data/survivalWaves.js';
+import { gateBearing } from './waveMaterialization.js';
+import { FOUNDRY_ARENA_ID } from './swarmArena.js';
+import { foundryPlateShape, foundryPlateProxy } from '../data/foundryPlate.js';
+import { foundryFurnitureProxy } from '../data/foundryFurniture.js';
+import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
+import {
+  CRYO_ARENA_ID,
+  CRYO_PROP_HOME_EPS,
+  CRYO_PROP_VENT_TICKS,
+  applyCryoDrift,
+  createCryoRoomLineage,
+  cryoZoneAt,
+  planCryoInstall,
+} from './cryoDriftArena.js';
+import { LAGRANGE_ARENA_ID, planLagrangeInstall } from './lagrangeCrucible.js';
+import {
+  STORM_ARENA_ID,
+  STORM_DISCHARGE_DAMAGE,
+  STORM_DISCHARGE_FIRST_S,
+  STORM_DISCHARGE_MAX_EXTRAS,
+  STORM_DISCHARGE_PERIOD_S,
+  STORM_DISCHARGE_PLAYER_WIRE_S,
+  STORM_DISCHARGE_RADIUS,
+  STORM_DISCHARGE_WARNING_S,
+  STORM_ISLAND_RADIUS,
+  STORM_RELAY_COUNT,
+  STORM_RELAY_ORBIT,
+  STORM_RELAY_PERIOD,
+  conductAlongGraph,
+  buildConductivityGraph,
+  createStormLineage,
+  dischargeBiteTargets,
+  placeStormRelays,
+  planStormInstall,
+  selectDischargeOrigin,
+  stormGraphNodes,
+  stormRelayGuide,
+} from './stormLatticeArena.js';
+import { MILL_ARENA_ID, planMillInstall } from './asteroidMillArena.js';
+import { HIVE_ARENA_ID, planHiveInstall } from './theHiveArena.js';
+import { orbitNodePose } from '../combat/orbitNodes.js';
+import { createSwarmEventDirector, swarmEventFrame, bearingPoint } from './swarmEvents.js';
+import { createSwarmLegendaryDirector } from './swarmLegendaries.js';
+import { createSwarmCallinsDirector } from './swarmCallins.js';
+import { swarmEventFor } from '../data/swarmEvents.js';
+
+const CRYO_LOCK_REFRESH_LEAD_TICKS = 30;
+const BURNING_STATUS_DURATION_TICKS = 120;
+// One crush receipt per body per half second: the jaws GRIND a hull held at crumple speed,
+// they do not stack a full contact receipt every tick. Matches the tumble-rake receipt cadence.
+const CRUSH_RECEIPT_COOLDOWN_TICKS = 30;
+
+function finiteOf(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+export { CINDER_ARENA_ID, CRYO_ARENA_ID, LAGRANGE_ARENA_ID, STORM_ARENA_ID, MILL_ARENA_ID, HIVE_ARENA_ID };
+export const LAW_ARENA_IDS = Object.freeze([
+  LAGRANGE_ARENA_ID,
+  CINDER_ARENA_ID,
+  CRYO_ARENA_ID,
+  STORM_ARENA_ID,
+  MILL_ARENA_ID,
+  HIVE_ARENA_ID,
+]);
+
+const CINDER_CYCLE_PHASES = new Set([
+  'idle',
+  'shutter_slow',
+  'furnace_active',
+  'shutter_alternating',
+]);
+
+/** The eight authored values in src/data/survivalWaves.js. Helios idle installs nothing; law arenas keep their law on idle. */
+export const SURVIVAL_ARENA_PHASES = CANONICAL_ARENA_PHASES;
+
+/**
+ * The room's two kernel slots. FIXED ids, so the arena can occupy at most two entries of
+ * FIELD_MAX_ACTIVE (6) no matter what happens to teardown, and a re-install of the same wave is an
+ * upsert rather than a leak.
+ */
+export const ARENA_FIELD_SLOT_IDS = Object.freeze([
+  'survival_arena_field_a',
+  'survival_arena_field_b',
+]);
+
+/** Non-null so the per-owner mine cap applies. A string owner is not an entity id on purpose. */
+export const ARENA_MINE_OWNER = 'survival-arena';
+
+/** At most four of the six per-owner mine slots, so the room never fills its own cap. */
+export const ARENA_MINE_MAX = 4;
+
+const _arenaBodiesScratch = [];
+const _arenaProjectileScratch = [];
+const _heldBodyScratch = new Set();
+
+const ARENA_MINE_ARM_DELAY_S = 3;
+const TAU = Math.PI * 2;
+
+/** Mix (seed, wave) into a uint32 stream seed — same idiom as wavePlanStreamSeed/batchStreamSeed. */
+export function arenaStreamSeed(seed, wave) {
+  const label = `survival-arena-v1|w${wave}`;
+  let h = (seed >>> 0) ^ 0x9e3779b9;
+  for (let i = 0; i < label.length; i++) {
+    h = Math.imul(h ^ label.charCodeAt(i), 0x01000193);
+  }
+  h = (h ^ Math.imul(Number.isInteger(wave) ? wave : 0, 0x85ebca6b)) >>> 0;
+  return h || 1;
+}
+
+/**
+ * The gate the wave leans on — the gate group of its largest scheduled batch, ties broken by the
+ * earliest tick then the lowest package index. Pure read of the plan: the room's lane is the lane
+ * the fight actually uses, not a second independent roll.
+ */
+export function dominantGate(plan) {
+  const schedule = plan && Array.isArray(plan.schedule) ? plan.schedule : null;
+  if (!schedule || schedule.length === 0) return 'front';
+  let best = null;
+  for (const entry of schedule) {
+    if (!entry || typeof entry.gateGroup !== 'string') continue;
+    const count = Number.isInteger(entry.count) ? entry.count : 0;
+    const atTick = Number.isInteger(entry.atTick) ? entry.atTick : 0;
+    const packageIndex = Number.isInteger(entry.packageIndex) ? entry.packageIndex : 0;
+    if (
+      best == null
+      || count > best.count
+      || (count === best.count && atTick < best.atTick)
+      || (count === best.count && atTick === best.atTick && packageIndex < best.packageIndex)
+    ) {
+      best = { gateGroup: entry.gateGroup, count, atTick, packageIndex };
+    }
+  }
+  return best ? best.gateGroup : 'front';
+}
+
+function point(anchor, dx, dz) {
+  return { x: anchor.x + dx, z: anchor.z + dz };
+}
+
+function alongBearing(anchor, bearing, distance) {
+  return point(anchor, bearing.x * distance, bearing.z * distance);
+}
+
+function finalizeInstall(out) {
+  if (out.fields.length > ARENA_FIELD_SLOT_IDS.length) {
+    out.fields.length = ARENA_FIELD_SLOT_IDS.length;
+  }
+  for (let i = 0; i < out.fields.length; i++) out.fields[i].id = ARENA_FIELD_SLOT_IDS[i];
+  if (out.mines.length > ARENA_MINE_MAX) out.mines.length = ARENA_MINE_MAX;
+  // Toys are extra furniture, not a third field slot. Never strip them here.
+  return out;
+}
+
+function acceptedToys(install) {
+  const toys = listArenaToys(install);
+  const out = [];
+  for (let i = 0; i < toys.length && out.length < ARENA_TOY_MAX; i++) {
+    const toy = toys[i];
+    if (!toy || typeof toy !== 'object') continue;
+    if (toy.hazardType === 'radiation') continue;
+    if (!ARENA_TOY_HAZARDS.includes(toy.hazardType)) continue;
+    out.push(toy);
+  }
+  return out;
+}
+
+function coneFieldBacksCurrent(fields, toy) {
+  if (!Array.isArray(fields) || !toy) return false;
+  const center = toy.center || toy.pos;
+  if (!center) return false;
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i];
+    if (!field || field.kind !== 'cone') continue;
+    const fc = field.center;
+    if (!fc) continue;
+    if (Math.hypot(fc.x - center.x, fc.z - center.z) <= 8) return true;
+  }
+  return false;
+}
+
+function isLawArena(arenaId) {
+  return arenaId === LAGRANGE_ARENA_ID
+    || arenaId === CINDER_ARENA_ID
+    || arenaId === CRYO_ARENA_ID
+    || arenaId === STORM_ARENA_ID
+    || arenaId === MILL_ARENA_ID
+    || arenaId === HIVE_ARENA_ID;
+}
+
+/** Non-null so release bookkeeping can tag-check: only our own room solids ever die by tag. */
+export const ARENA_ROOM_OWNER = 'survival-arena';
+
+/** Foundry toys draw on their own seeded stream so the per-phase field draws stay byte-identical. */
+const FOUNDRY_TOY_SALT = 0x1cd3e17;
+
+/**
+ * PURE authored Foundry furniture (PQ-133.04 R3). Foundry — helios_core — is the room that
+ * teaches the bank: three reflective bank plates (material 'plate') in every authored phase,
+ * gate posts marking the dominant arrival lane, the furnace block on the fire phases, and the
+ * moving shutters on the shutter phases. `solid: true` toys materialize as immovable room
+ * bodies; the shutters materialize dynamic and are commanded only through the SG-02 membrane.
+ */
+function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
+  const rng = mulberry32((arenaStreamSeed(seed, wave) ^ FOUNDRY_TOY_SALT) >>> 0);
+  const toys = [];
+  for (let i = 0; i < 3; i++) {
+    const bearing = spin + (i / 3) * TAU + (rng() - 0.5) * 0.5;
+    const distance = 240 + rng() * 70;
+    const pos = alongBearing(at, { x: Math.cos(bearing), z: Math.sin(bearing) }, distance);
+    const length = Math.hypot(pos.x - at.x, pos.z - at.z) || 1;
+    toys.push({
+      id: `foundry_plate_${i + 1}`,
+      kind: 'plate',
+      verb: 'bank',
+      material: 'plate',
+      hazardType: 'debris',
+      solid: true,
+      pos,
+      normal: { x: (at.x - pos.x) / length, z: (at.z - pos.z) / length },
+      halfWidth: 48,
+      referenceRadius: 26,
+      radius: foundryPlateShape({ halfWidth: 48, referenceRadius: 26 }).radius,
+    });
+  }
+  const mouth = alongBearing(at, lane, 320);
+  for (let i = 0; i < 2; i++) {
+    const side = i === 0 ? -1 : 1;
+    toys.push({
+      id: `foundry_gate_${i === 0 ? 'a' : 'b'}`,
+      kind: 'gate',
+      material: 'gate',
+      hazardType: 'debris_current',
+      solid: true,
+      pos: point(mouth, across.x * 110 * side, across.z * 110 * side),
+      radius: 16,
+    });
+  }
+  if (phase === 'furnace_active' || phase === 'boss') {
+    toys.push({
+      id: 'foundry_furnace',
+      kind: 'furnace',
+      verb: 'consume',
+      material: 'furnace',
+      hazardType: 'nebula',
+      solid: true,
+      pos: { x: at.x, z: at.z },
+      radius: 34,
+    });
+  }
+  if (phase === 'shutter_slow' || phase === 'shutter_alternating') {
+    for (let i = 0; i < 2; i++) {
+      const side = i === 0 ? -1 : 1;
+      const center = point(at, across.x * 230 * side, across.z * 230 * side);
+      const dir = { x: across.x * -side, z: across.z * -side };
+      const tangent = { x: -dir.z, z: dir.x };
+      const half = 60;
+      toys.push({
+        id: `foundry_shutter_${i === 0 ? 'a' : 'b'}`,
+        kind: 'shutter',
+        verb: 'cut',
+        material: 'shutter',
+        hazardType: 'debris',
+        solid: true,
+        dynamic: true,
+        pos: center,
+        a: point(center, tangent.x * -half, tangent.z * -half),
+        b: point(center, tangent.x * half, tangent.z * half),
+        dir,
+        surgeDistance: 96,
+        radius: 20,
+      });
+    }
+  }
+  return toys;
+}
+
+/** Authored frame extent over the live toys — camera-law inputs; the renderer stays with its controller. */
+function authoredRoomFrame(toys) {
+  if (!Array.isArray(toys) || toys.length === 0) return null;
+  let minX = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxZ = -Infinity;
+  for (const toy of toys) {
+    if (!toy || !toy.pos || !Number.isFinite(toy.pos.x) || !Number.isFinite(toy.pos.z)) continue;
+    const reach = Math.max(
+      0,
+      Number.isFinite(toy.radius) ? toy.radius : 0,
+      Number.isFinite(toy.halfWidth) ? toy.halfWidth : 0,
+    );
+    minX = Math.min(minX, toy.pos.x - reach);
+    minZ = Math.min(minZ, toy.pos.z - reach);
+    maxX = Math.max(maxX, toy.pos.x + reach);
+    maxZ = Math.max(maxZ, toy.pos.z + reach);
+  }
+  if (!Number.isFinite(minX) || !Number.isFinite(maxX)) return null;
+  return { minX, minZ, maxX, maxZ };
+}
+
+/**
+ * PURE room description for one wave. No bus, no registry, no state.
+ *
+ * Helios keeps the eight-phase table. Law arenas keep their law on idle, because the law IS the
+ * room. An unknown phase is inert on every arena — never a guess.
+ *
+ * Returns { phase, note, fields: [...], mines: [{x,z}], cover: boolean }.
+ * `fields` is capped at ARENA_FIELD_SLOT_IDS.length and its entries already carry their slot id.
+ */
+export function planArenaInstall(args) {
+  if (args && args.ruleset === POWERED_CONVEYOR_RULESET && args.arenaId === FOUNDRY_ARENA_ID
+    && SURVIVAL_ARENA_PHASES.includes(args.arenaPhase)) {
+    // Keep the proven bank room and replace only its law. The offset leaves the pilot's
+    // starting position in a quiet side pocket; the current never cages a slow build.
+    const install = planArenaInstallBody({ ...args, arenaPhase: 'idle', bossRoom: null });
+    const at = args.anchor || { x: 0, z: 0 };
+    const lane = gateBearing('front');
+    const across = { x: -lane.z, z: lane.x };
+    const center = point(at, across.x * ROOM_SOLID_PILOT_CLEARANCE * 2,
+      across.z * ROOM_SOLID_PILOT_CLEARANCE * 2);
+    const sluice = planCinderInstall({ arenaPhase: 'idle', at: center, lane, across });
+    const current = sluice.fields[0];
+    install.phase = args.arenaPhase;
+    install.note = 'Powered conveyor: warning, downstream surge, then calm. Carry foes into the plates or hold the quiet sides. No rig required.';
+    install.fields = [{ ...current, poweredStrength: current.strength, strength: 0 }];
+    install.toys.push({ ...sluice.toys[0], id: 'powered_conveyor', poweredCycle: true });
+    return finalizeInstall(install);
+  }
+  const install = planArenaInstallBody(args);
+  // The swarm event's pre-place is a merge AFTER the phase's own room: the event rides the
+  // install the wave already asked for (a mine berth on a flood lane, a well the storm runs
+  // hot). Authored caps still bind — slot ids are stamped here, caps kept.
+  const swarmEvent = args && args.swarmEvent;
+  if (!swarmEvent || !swarmEvent.install || !install) return install;
+  const frame = swarmEventFrame({
+    at: install.at || args.anchor || { x: 0, z: 0 },
+    laneGate: args.laneGate,
+    seed: args.seed,
+    wave: args.wave,
+  });
+  const evInstall = swarmEvent.install;
+  for (const spec of evInstall.fields || []) {
+    if (!spec || install.fields.length >= ARENA_FIELD_SLOT_IDS.length) break;
+    const field = { ...spec };
+    delete field.bearing;
+    delete field.dist;
+    field.center = bearingPoint(frame, spec.bearing, spec.dist);
+    if (spec.kind === 'cone') {
+      const tip = bearingPoint(frame, spec.bearing, 1);
+      field.dir = { x: tip.x - frame.at.x, z: tip.z - frame.at.z };
+    }
+    install.fields.push(field);
+  }
+  for (let i = 0; i < install.fields.length; i++) {
+    if (install.fields[i] && install.fields[i].id == null) {
+      install.fields[i].id = ARENA_FIELD_SLOT_IDS[i];
+    }
+  }
+  for (const mine of evInstall.mines || []) {
+    if (!mine || install.mines.length >= ARENA_MINE_MAX) break;
+    install.mines.push({ x: mine.x, z: mine.z });
+  }
+  if (evInstall.cover === true) install.cover = true;
+  if (typeof evInstall.note === 'string' && evInstall.note) {
+    install.note = install.note ? `${install.note}; ${evInstall.note}` : evInstall.note;
+  }
+  return install;
+}
+
+function planArenaInstallBody({
+  arenaPhase,
+  arenaId = null,
+  wave = 1,
+  seed = 1,
+  anchor = null,
+  laneGate = 'front',
+  bossRoom = null,
+} = {}) {
+  const at = {
+    x: anchor && Number.isFinite(anchor.x) ? anchor.x : 0,
+    z: anchor && Number.isFinite(anchor.z) ? anchor.z : 0,
+  };
+  const phase = typeof arenaPhase === 'string' ? arenaPhase : 'idle';
+  const empty = { phase, note: 'inert room', fields: [], mines: [], cover: false };
+  if (!isLawArena(arenaId) && phase === 'idle') {
+    // PQ-133.04 R3: Foundry idle is no longer empty — wave one installs the authored bank room
+    // (three reflective plates plus gate posts marking the arrival lane). Every other non-law
+    // arena keeps the honest nothing.
+    if (arenaId === FOUNDRY_ARENA_ID) {
+      const lane = gateBearing(laneGate);
+      return decorateBossRoom(finalizeInstall({
+        phase,
+        note: 'three bank plates around the quiet room, and the arrival gate marked',
+        fields: [],
+        mines: [],
+        cover: false,
+        toys: planFoundryToys({
+          phase,
+          at,
+          lane,
+          across: { x: -lane.z, z: lane.x },
+          spin: 0,
+          wave,
+          seed,
+        }),
+      }), bossRoom);
+    }
+    return empty;
+  }
+  if (isLawArena(arenaId) && !SURVIVAL_ARENA_PHASES.includes(phase)) return empty;
+
+  const rng = mulberry32(arenaStreamSeed(seed, wave));
+  const spin = rng() * TAU;                                  // the room's own bearing
+  const lean = { x: Math.cos(spin), z: Math.sin(spin) };
+  const lane = gateBearing(laneGate);                        // the bearing the fight arrives on
+  const across = rng() < 0.5
+    ? { x: -lane.z, z: lane.x }
+    : { x: lane.z, z: -lane.x };                             // which way the lane gets swept
+
+  const out = { phase, note: '', fields: [], mines: [], cover: false };
+
+  if (arenaId === LAGRANGE_ARENA_ID) {
+    return decorateBossRoom(finalizeInstall(planLagrangeInstall({
+      arenaPhase: phase, at, lane, across, lean, spin,
+    })), bossRoom);
+  }
+  if (arenaId === CINDER_ARENA_ID) {
+    return decorateBossRoom(finalizeInstall(planCinderInstall({
+      arenaPhase: phase, at, lane, across, spin,
+    })), bossRoom);
+  }
+  if (arenaId === CRYO_ARENA_ID) {
+    return decorateBossRoom(finalizeInstall(planCryoInstall({
+      arenaPhase: phase, at, lane, across, spin,
+    })), bossRoom);
+  }
+  if (arenaId === STORM_ARENA_ID) {
+    return decorateBossRoom(finalizeInstall(planStormInstall({
+      arenaPhase: phase, at, lane, across, spin, simTime: 0,
+    })), bossRoom);
+  }
+  if (arenaId === MILL_ARENA_ID) {
+    return decorateBossRoom(finalizeInstall(planMillInstall({
+      arenaPhase: phase, at, lane, across, lean, spin,
+    })), bossRoom);
+  }
+  if (arenaId === HIVE_ARENA_ID) {
+    return decorateBossRoom(finalizeInstall(planHiveInstall({
+      arenaPhase: phase, at, lane, across, lean, spin,
+    })), bossRoom);
+  }
+
+  switch (phase) {
+    // A slow shutter dropping on one wall: everything — hulls, shots, loose cargo — leans that way,
+    // so the fight drifts off centre instead of orbiting a fixed point.
+    case 'shutter_slow':
+      out.note = 'a slow drag toward one wall';
+      out.fields.push({
+        kind: 'well',
+        center: alongBearing(at, lean, 300),
+        radius: 520,
+        strength: 96,
+        falloff: 1.25,
+      });
+      break;
+
+    // The furnace is lit: the middle of the room shoves everything out of it. You fight on the rim
+    // and nothing can camp the centre — including the hostiles.
+    case 'furnace_active':
+      out.note = 'the centre pushes everything out';
+      out.fields.push({
+        kind: 'repulsor',
+        center: { x: at.x, z: at.z },
+        radius: 430,
+        strength: 170,
+        falloff: 1.55,
+      });
+      break;
+
+    // A hull plate has torn loose: the fight gets GEOMETRY (large tetherable rocks, spawned through
+    // the shipped terrain-anchor seam) plus a soft sag that keeps the debris drifting one way.
+    case 'loose_plate':
+      out.note = 'cover rocks, and a slow sag pulling them one way';
+      out.cover = true;
+      out.fields.push({
+        kind: 'well',
+        center: alongBearing(at, lean, 340),
+        radius: 470,
+        strength: 58,
+        damping: 0.85,
+        falloff: 1.15,
+      });
+      break;
+
+    // Two shutters working against each other: one flank pulls, the opposite flank pushes, so the
+    // whole room rakes bodies across a diagonal and no formation holds its shape.
+    case 'shutter_alternating':
+      out.note = 'one flank pulls, the opposite flank shoves';
+      out.fields.push({
+        kind: 'well',
+        center: alongBearing(at, lean, 300),
+        radius: 400,
+        strength: 120,
+        falloff: 1.2,
+      });
+      out.fields.push({
+        kind: 'repulsor',
+        center: alongBearing(at, lean, -300),
+        radius: 400,
+        strength: 132,
+        falloff: 1.2,
+      });
+      break;
+
+    // The flood lane closes: a directed current runs ACROSS the gate the wave pours out of, raking
+    // arrivals sideways, and the mouth of that lane is salted with mines. Wading in costs something.
+    case 'shutter_lane_close': {
+      out.note = 'a cross-current sweeps the arrival lane, and the mouth is mined';
+      out.fields.push({
+        kind: 'cone',
+        center: alongBearing(at, lane, 300),
+        dir: { x: across.x, z: across.z },
+        radius: 560,
+        strength: 145,
+        falloff: 1.15,
+        halfAngleRad: 0.5,
+        edgeSoftRad: 0.14,
+      });
+      const mouth = alongBearing(at, lane, 260);
+      for (let i = 0; i < ARENA_MINE_MAX; i++) {
+        const offset = (i - (ARENA_MINE_MAX - 1) / 2) * 62;
+        out.mines.push(point(mouth, across.x * offset, across.z * offset));
+      }
+      break;
+    }
+
+    // An absorbent screen: near-zero pull, heavy velocity damping. Inside it every dash, charge and
+    // shot bleeds speed — the room takes the momentum out of the fight rather than steering it.
+    case 'absorbent_screen':
+      out.note = 'the whole room drinks momentum';
+      out.fields.push({
+        kind: 'well',
+        center: { x: at.x, z: at.z },
+        radius: 620,
+        strength: 26,
+        damping: 2.6,
+        falloff: 1.05,
+      });
+      break;
+
+    // The boss room bites: a heavy central pull you have to fly against, a repulsor berm on one
+    // flank, a mined ring at knife range and cover to break line of sight. The loudest room, still
+    // inside the two-slot budget.
+    case 'boss': {
+      if (bossRoom === 'wing_bank') {
+        out.note = 'bank stone on the wing\'s bearing — one bank catches them';
+        out.cover = true;
+        out.fields.push({
+          kind: 'well',
+          center: alongBearing(at, lane, 180),
+          radius: 280,
+          strength: 70,
+          falloff: 1.2,
+        });
+        break;
+      }
+      if (bossRoom === 'screen_wall') {
+        out.note = 'a screen wall between you and the brawlers — shove it';
+        out.cover = true;
+        out.fields.push({
+          kind: 'repulsor',
+          center: alongBearing(at, lane, 150),
+          radius: 220,
+          strength: 160,
+          falloff: 1.3,
+        });
+        break;
+      }
+      if (bossRoom === 'hold_close') {
+        out.note = 'the room holds you; close on the ghosts';
+        out.fields.push({
+          kind: 'well',
+          center: { x: at.x, z: at.z },
+          radius: 340,
+          strength: 90,
+          damping: 1.8,
+          falloff: 1.15,
+        });
+        break;
+      }
+      // FB-120 — the Foreman's lane. A cross-current sweeps the pass corridor sideways (crossing
+      // the committed run is free, chasing head-on up it is a fight against the rake), and the
+      // repulsor at the lane's end is the mirror the pass banks off — overshoot rebounds toward
+      // the stern side instead of meeting the prow's reversal. One plate breaks the head-on line.
+      if (bossRoom === 'mirror_lane') {
+        out.note = 'a mirrored lane — cross the committed pass, work the stern';
+        out.cover = true;
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, 200),
+          dir: { x: across.x, z: across.z },
+          radius: 540,
+          strength: 130,
+          falloff: 1.1,
+          halfAngleRad: 0.55,
+          edgeSoftRad: 0.15,
+        });
+        out.fields.push({
+          kind: 'repulsor',
+          center: alongBearing(at, lane, 380),
+          radius: 300,
+          strength: 175,
+          falloff: 1.25,
+        });
+        break;
+      }
+      // FB-120 — the Regent's furnace. The centre shoves everyone to the rim (the crown's front
+      // half is plate — nobody camps its face), a rim current runs a racetrack that carries an
+      // orbiting fighter around behind it, and the gate-facing approach inside the furnace is
+      // salted: taking the face costs, going around is free.
+      if (bossRoom === 'crown_furnace') {
+        out.note = 'the furnace wears a crown — the middle shoves, the rim is plate to bank off';
+        out.fields.push({
+          kind: 'repulsor',
+          center: { x: at.x, z: at.z },
+          radius: 360,
+          strength: 190,
+          falloff: 1.45,
+        });
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, across, 330),
+          dir: { x: -lane.x, z: -lane.z },
+          radius: 480,
+          strength: 110,
+          falloff: 1.1,
+          halfAngleRad: 0.5,
+          edgeSoftRad: 0.14,
+        });
+        const arc = alongBearing(at, lane, 190);
+        for (let i = 0; i < ARENA_MINE_MAX; i++) {
+          const offset = (i - (ARENA_MINE_MAX - 1) / 2) * 58;
+          out.mines.push(point(arc, across.x * offset, across.z * offset));
+        }
+        break;
+      }
+      // SWARM-07 B3 — the Queen's nest. A soft pull toward the rear of the arrival lane (the
+      // nest draws the fight toward the sacs), a repulsor berm on the lean flank to throw the
+      // flood into, and cover rocks for ammunition — the rocks the lunges get fed.
+      if (bossRoom === 'brood_nest') {
+        out.note = 'the nest pulls toward the sacs — cover to break the flood, rocks to throw back';
+        out.cover = true;
+        out.fields.push({
+          kind: 'well',
+          center: alongBearing(at, lane, -240),
+          radius: 480,
+          strength: 62,
+          damping: 0.9,
+          falloff: 1.2,
+        });
+        out.fields.push({
+          kind: 'repulsor',
+          center: alongBearing(at, lean, 300),
+          radius: 320,
+          strength: 140,
+          falloff: 1.25,
+        });
+        break;
+      }
+      // SWARM-07 B3 — the Tendril's coil field. A slow cross-breeze rakes the weave lanes
+      // sideways (dodging WITH the drift is free, fighting it costs) and the cover rocks are
+      // the ammunition: feed the committed pass a stone and the weave answers for itself.
+      if (bossRoom === 'coil_field') {
+        out.note = 'the weave field — a slow cross-breeze, and rocks to feed the committed pass';
+        out.cover = true;
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, 60),
+          dir: { x: across.x, z: across.z },
+          radius: 560,
+          strength: 78,
+          falloff: 1.15,
+          halfAngleRad: 0.62,
+          edgeSoftRad: 0.16,
+        });
+        break;
+      }
+      // W-COLOSSI (row 547) — the Nest Carrier's berth. The nest's own draught pulls the fight
+      // toward the belly side of the room (the wasps launch off the flanks, so the pull is the
+      // same direction the doors want you) while a slow vent-breeze rakes the lane sideways —
+      // ride the draught or fight it, and the cover rocks are ammunition.
+      if (bossRoom === 'nest_berth') {
+        out.note = 'the berth pulls toward the belly — a vent-breeze rakes the launch lanes';
+        out.cover = true;
+        out.fields.push({
+          kind: 'well',
+          center: alongBearing(at, lane, -180),
+          radius: 460,
+          strength: 70,
+          damping: 0.8,
+          falloff: 1.2,
+        });
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, 40),
+          dir: { x: across.x, z: across.z },
+          radius: 520,
+          strength: 64,
+          falloff: 1.15,
+          halfAngleRad: 0.58,
+          edgeSoftRad: 0.15,
+        });
+        break;
+      }
+      // W-COLOSSI (row 547) — the Casket Worm's grave. Two counter-breezes rake the derelict
+      // field in opposite drifts: the weave lanes slide under you one way and back the other,
+      // and the drifting cover is the ammunition the middle cut is asking for.
+      if (bossRoom === 'casket_field') {
+        out.note = 'the grave drifts two ways — rocks to feed the middle cut';
+        out.cover = true;
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, -80),
+          dir: { x: across.x, z: across.z },
+          radius: 540,
+          strength: 70,
+          falloff: 1.15,
+          halfAngleRad: 0.6,
+          edgeSoftRad: 0.16,
+        });
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, 180),
+          dir: { x: -across.x, z: -across.z },
+          radius: 540,
+          strength: 70,
+          falloff: 1.15,
+          halfAngleRad: 0.6,
+          edgeSoftRad: 0.16,
+        });
+        break;
+      }
+      // W-COLOSSI (row 547) — the Furnace Maw's feeding rim. One repulsor bank shoves the
+      // whole face outward — nobody stands in the mouth for free — and the mouth arc behind
+      // it is salted, so the only cheap way in is the rim orbit the radiators open when they
+      // come off. Cover rocks are what the cavity gets fed.
+      if (bossRoom === 'maw_feed') {
+        out.note = 'the mouth shoves — the rim orbit is free, and the cavity eats what you feed it';
+        out.cover = true;
+        out.fields.push({
+          kind: 'repulsor',
+          center: alongBearing(at, lane, 170),
+          radius: 300,
+          strength: 165,
+          falloff: 1.3,
+        });
+        const mouth = alongBearing(at, lane, 260);
+        for (let i = 0; i < ARENA_MINE_MAX; i++) {
+          const offset = (i - (ARENA_MINE_MAX - 1) / 2) * 56;
+          out.mines.push(point(mouth, across.x * offset, across.z * offset));
+        }
+        break;
+      }
+      // W-COLOSSI (row 547) — the Yardmaster's yard. The magnet core drags the whole room
+      // inward through a ring of floating scrap: riding the pull is free, fighting it costs,
+      // and the cover rocks are the same ammunition the ball is wearing.
+      if (bossRoom === 'wreck_magnet') {
+        out.note = 'the magnet drags the whole yard inward — everything loose ends up inside the pile';
+        out.cover = true;
+        out.fields.push({
+          kind: 'well',
+          center: { x: at.x, z: at.z },
+          radius: 520,
+          strength: 88,
+          damping: 0.9,
+          falloff: 1.2,
+        });
+        for (let i = 0; i < ARENA_MINE_MAX; i++) {
+          const angle = spin + (i / ARENA_MINE_MAX) * TAU;
+          out.mines.push(point(at, Math.cos(angle) * 240, Math.sin(angle) * 240));
+        }
+        break;
+      }
+      // W-COLOSSI (row 547) — the Adjudicator's gate. Two repulsor berms stand off either
+      // flank of the arrival lane like seal rails coming down, and the mouth of the corridor
+      // between them is salted — the gate literally closes behind you, and the corridor it
+      // leaves is the honest way in.
+      if (bossRoom === 'seal_gate') {
+        out.note = 'the gate is welding shut — rails on the flanks, mines at the mouth, one honest corridor';
+        out.cover = true;
+        out.fields.push({
+          kind: 'repulsor',
+          center: point(alongBearing(at, lane, 230), across.x * 190, across.z * 190),
+          radius: 240,
+          strength: 155,
+          falloff: 1.3,
+        });
+        out.fields.push({
+          kind: 'repulsor',
+          center: point(alongBearing(at, lane, 230), -across.x * 190, -across.z * 190),
+          radius: 240,
+          strength: 155,
+          falloff: 1.3,
+        });
+        const mouth = alongBearing(at, lane, 300);
+        for (let i = 0; i < ARENA_MINE_MAX; i++) {
+          const offset = (i - (ARENA_MINE_MAX - 1) / 2) * 60;
+          out.mines.push(point(mouth, across.x * offset, across.z * offset));
+        }
+        break;
+      }
+      // W-COLOSSI (row 547) — the Hive-hulk's shaft. A long pull runs down the shaft on the
+      // lane axis and a slow cross-breeze rakes it, mines seeding the far mouth — the shaft
+      // is a clean kill-lane with no cover but the hulk itself, and every coupling node that
+      // comes off is something to throw down it.
+      if (bossRoom === 'hive_shaft') {
+        out.note = 'the shaft pulls long and rakes crosswise — the hulk is the only cover';
+        out.fields.push({
+          kind: 'well',
+          center: alongBearing(at, lane, 240),
+          radius: 540,
+          strength: 82,
+          damping: 0.8,
+          falloff: 1.25,
+        });
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, 20),
+          dir: { x: across.x, z: across.z },
+          radius: 500,
+          strength: 58,
+          falloff: 1.15,
+          halfAngleRad: 0.55,
+          edgeSoftRad: 0.15,
+        });
+        const throat = alongBearing(at, lane, 380);
+        for (let i = 0; i < ARENA_MINE_MAX; i++) {
+          const offset = (i - (ARENA_MINE_MAX - 1) / 2) * 60;
+          out.mines.push(point(throat, across.x * offset, across.z * offset));
+        }
+        break;
+      }
+      out.note = 'a heavy central pull, a berm on one flank, a mined ring and cover';
+      out.cover = true;
+      out.fields.push({
+        kind: 'well',
+        center: { x: at.x, z: at.z },
+        radius: 560,
+        strength: 150,
+        damping: 0.7,
+        falloff: 1.35,
+      });
+      out.fields.push({
+        kind: 'repulsor',
+        center: alongBearing(at, lean, 330),
+        radius: 360,
+        strength: 150,
+        falloff: 1.3,
+      });
+      for (let i = 0; i < ARENA_MINE_MAX; i++) {
+        const angle = spin + (i / ARENA_MINE_MAX) * TAU;
+        out.mines.push(point(at, Math.cos(angle) * 205, Math.sin(angle) * 205));
+      }
+      break;
+    }
+
+    // An arenaPhase this file does not know is an INERT room, never a guessed one. A silently
+    // wrong room is worse than the honest nothing the ten waves already had.
+    default:
+      return empty;
+  }
+
+  // PQ-133.04 R3: every authored Foundry phase carries the bank-room furniture on top of its
+  // phase fields (which stay exactly as authored below). Unknown phases returned early — inert.
+  if (arenaId === FOUNDRY_ARENA_ID) {
+    out.toys = planFoundryToys({ phase, at, lane, across, spin, wave, seed });
+  }
+
+  return decorateBossRoom(finalizeInstall(out), bossRoom);
+}
+
+function decorateBossRoom(install, bossRoom) {
+  if (!install || !bossRoom) return install;
+  if (bossRoom === 'wing_bank') install.cover = true;
+  return install;
+}
+
+/** Copied verbatim from survivalWave.js:25-33 — the same "is this a live Survival run" question. */
+function liveSurvivalRun(state) {
+  if (!state) return null;
+  const run = state.run;
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
+  if (run.kind !== 'survival') return null;
+  if (run.phase === 'inactive') return null;
+  if (!validateRunState(run).ok) return null;
+  return run;
+}
+
+// Seconds a later round's field law waits after the round is planned: the intro plus the arrivals.
+const ROUND_FIELD_BREATH_S = 4;
+
+function simTimeOf(state) {
+  return Number.isFinite(state && state.simTime)
+    ? state.simTime
+    : Math.max(0, Number(state && state.tick) || 0) / 60;
+}
+
+function playerAnchor(state) {
+  const player = state && state.entities && state.playerId != null
+    && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const x = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+  const z = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+  return { x, z };
+}
+
+function playerTeam(state) {
+  const player = state && state.entities && state.playerId != null
+    && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  return player && player.team != null ? player.team : 0;
+}
+
+function compareEntityIds(a, b) {
+  const as = String(a.id);
+  const bs = String(b.id);
+  if (as < bs) return -1;
+  if (as > bs) return 1;
+  return 0;
+}
+
+function liveArenaBodies(state) {
+  const list = _arenaBodiesScratch;
+  list.length = 0;
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.shipLike)) {
+    for (let i = 0; i < index.shipLike.length; i++) {
+      const entity = index.shipLike[i];
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      list.push(entity);
+    }
+  } else if (state && state.entities && typeof state.entities.values === 'function') {
+    for (const entity of state.entities.values()) {
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      if (entity.type && entity.type !== 'ship' && entity.type !== 'drone') continue;
+      list.push(entity);
+    }
+  } else if (state && Array.isArray(state.entityList)) {
+    for (let i = 0; i < state.entityList.length; i++) {
+      const entity = state.entityList[i];
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      if (entity.type && entity.type !== 'ship' && entity.type !== 'drone') continue;
+      list.push(entity);
+    }
+  }
+  list.sort(compareEntityIds);
+  return list;
+}
+
+function bodySnapshot(entity) {
+  const vel = entity && entity.vel && typeof entity.vel === 'object' ? entity.vel : null;
+  const vx = Number.isFinite(entity && entity.vx) ? entity.vx : (vel && Number.isFinite(vel.x) ? vel.x : 0);
+  const vz = Number.isFinite(entity && entity.vz) ? entity.vz : (vel && Number.isFinite(vel.z) ? vel.z : 0);
+  return {
+    id: entity && entity.id,
+    pos: entity && entity.pos,
+    vx,
+    vz,
+    statuses: Array.isArray(entity && entity.statuses) ? entity.statuses : [],
+  };
+}
+
+function writeVel(entity, vx, vz) {
+  if (!entity) return;
+  if (!entity.vel || typeof entity.vel !== 'object') entity.vel = { x: vx, z: vz };
+  else {
+    entity.vel.x = vx;
+    entity.vel.z = vz;
+  }
+  entity.vx = vx;
+  entity.vz = vz;
+}
+
+function toyBodyOf(entity) {
+  const snap = bodySnapshot(entity);
+  return {
+    pos: entity && entity.pos,
+    vel: { x: snap.vx, z: snap.vz },
+    vx: snap.vx,
+    vz: snap.vz,
+    mass: Number.isFinite(entity && entity.mass) ? entity.mass : ARENA_TOY_LIGHT_MASS,
+    radius: Number.isFinite(entity && entity.radius) ? entity.radius : ARENA_TOY_LIGHT_RADIUS,
+  };
+}
+
+function liveProjectiles(state) {
+  const list = _arenaProjectileScratch;
+  list.length = 0;
+  const indexed = state && state.entityIndex && Array.isArray(state.entityIndex.projectiles)
+    ? state.entityIndex.projectiles
+    : null;
+  const source = indexed || (state && Array.isArray(state.entityList) ? state.entityList : null);
+  if (source) {
+    for (let i = 0; i < source.length; i++) {
+      const entity = source[i];
+      if (!entity || entity.alive === false || entity.type !== 'projectile' || !entity.pos) continue;
+      list.push(entity);
+    }
+  } else if (state && state.entities && typeof state.entities.values === 'function') {
+    for (const entity of state.entities.values()) {
+      if (!entity || entity.alive === false || entity.type !== 'projectile' || !entity.pos) continue;
+      list.push(entity);
+    }
+  }
+  list.sort(compareEntityIds);
+  return list;
+}
+
+/**
+ * PQ-210.00 roster prewarm. A wave that introduces a hull the GPU has never drawn pays the
+ * authored composition's program link + first-upload cost inside the fight — the measured ~180 ms
+ * freeze at second 22 of the Crucible probe. The render side can only warm what the sim side
+ * names, so every `run:wavePlanned` receipt also publishes one REAL `makeEnemySpawnSpec` exemplar
+ * per hull the ruleset can field. For swarm that is the WHOLE roster plus every boss package (the
+ * wave that unlocks an archetype is exactly the wave that would freeze on it); for timed runs it
+ * is the hulls this plan's schedule and packages name. Exemplars are tagged
+ * `data.rosterPrewarm` and are NEVER registered in state.entities — they are admission subjects,
+ * not combatants, and they do not touch the spawn budget, the plan, or the RNG stream.
+ */
+export const SURVIVAL_ROSTER_PREWARM_ID_PREFIX = 'survival-roster-prewarm:';
+
+export function collectSurvivalRosterPrewarmEnemyIds(run, plan) {
+  const ids = new Set();
+  const take = (value) => {
+    if (typeof value === 'string' && value.length > 0) ids.add(value);
+  };
+  const schedule = plan && Array.isArray(plan.schedule) ? plan.schedule : [];
+  for (const entry of schedule) take(entry && entry.enemyId);
+  const packages = plan && Array.isArray(plan.packages) ? plan.packages : [];
+  for (const pkg of packages) take(pkg && pkg.enemyId);
+  const swarmRoster = plan && plan.swarm && Array.isArray(plan.swarm.roster) ? plan.swarm.roster : [];
+  for (const entry of swarmRoster) take(entry && entry.enemyId);
+  if (run && isSwarmRuleset(run.ruleset)) {
+    for (const entry of SWARM_ROSTER) take(entry.enemyId);
+    for (const boss of SWARM_BOSS_ROTATION) {
+      for (const pkg of bossPackagesFor(boss)) take(pkg && pkg.enemyId);
+    }
+  }
+  return [...ids].sort();
+}
+
+function makeRosterPrewarmSpec(enemyId) {
+  // Level 1: swarm materialization always passes swarmLevel() === 1 (swarmMode.js:455-465), and the
+  // exemplar is an admission subject, not a combatant — combat scaling is irrelevant to the
+  // authored visual it forces. What matters is that the spec carries the SAME fields a real
+  // materialization produces (shipId, silhouette, fittings, weapons) so the authored mount path
+  // builds the identical composition.
+  const spec = makeEnemySpawnSpec(enemyId, 1, { x: 0, z: 0 });
+  spec.id = `${SURVIVAL_ROSTER_PREWARM_ID_PREFIX}${enemyId}`;
+  spec.data = spec.data && typeof spec.data === 'object' ? spec.data : {};
+  spec.data.rosterPrewarm = true;
+  spec.data.enemyId = enemyId;
+  return spec;
+}
+
+// A room solid is immovable. Stamped over the pilot (a later round's room is laid out around wherever
+// the ship sits), it pinned the ship inside a fixed body: thrust built speed for a few frames, then the
+// solver snapped the hull back to rest - the owner's round-2 "could not move" (player-truth m2-active,
+// station solid at 2 u from the ship). Keep authored solids clear of the ship; when a toy starts exactly
+// at the pilot, put it aft of current motion (or facing if stationary). The old +X tie-break placed the
+// centered furnace in the first thrust path, where its camera projection covered the ship after takeoff.
+// 64u remains the spawn-view margin; it is not a substitute for choosing a safe side of the pilot.
+export const ROOM_SOLID_PILOT_CLEARANCE = 64;
+function clearOfPilot(state, at, radius) {
+  const pos = { x: at.x, z: at.z };
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!player || player.alive === false || !player.pos) return pos;
+  const need = radius + (Number.isFinite(player.radius) ? player.radius : 10) + ROOM_SOLID_PILOT_CLEARANCE;
+  const dx = pos.x - player.pos.x;
+  const dz = pos.z - player.pos.z;
+  const d = Math.hypot(dx, dz);
+  if (d >= need) return pos;
+  const vx = player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0;
+  const vz = player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0;
+  const speed = Math.hypot(vx, vz);
+  const heading = Number.isFinite(player.rot) ? player.rot : 0;
+  const fallback = speed > 0.5
+    ? { x: -vx / speed, z: -vz / speed }
+    : { x: -Math.cos(heading), z: -Math.sin(heading) };
+  const ux = d > 1e-3 ? dx / d : fallback.x;
+  const uz = d > 1e-3 ? dz / d : fallback.z;
+  return { x: player.pos.x + ux * need, z: player.pos.z + uz * need };
+}
+
+export const survivalArena = {
+  name: 'survivalArena',
+
+  init(ctx) {
+    this.destroy();
+    this.state = ctx.state;
+    this.bus = ctx.bus || null;
+    this.registry = ctx.registry || null;
+    this.ctx = ctx;
+    this._unsubs = [];
+    this._reset();
+    // The swarm event director is hosted under this slot — it telegraphs and spends through
+    // the same seams this system already owns, ticking inside this update() before fields run.
+    this._swarmEvents = createSwarmEventDirector(ctx);
+    this._swarmEvents.init();
+    // Row-270 — the room legendary director is hosted on the same slot for the same reason:
+    // a Heart field registered here is felt by this tick's field pass, a Domino impulse queued
+    // here is solved by this tick's physics pass, and death callbacks stay enqueue-only.
+    this._legendaries = createSwarmLegendaryDirector(ctx);
+    this._legendaries.init();
+    // SEED-SW-01..07 — the call-in director rides the same fixed slot: the bomb edge is resolved
+    // here, and the wave teardown removes every called body with the room.
+    this._callins = createSwarmCallinsDirector(ctx);
+    this._callins.init();
+    if (!this.bus || typeof this.bus.on !== 'function') return;
+    this._unsubs.push(this.bus.on('run:modifierRecorded', (p) => this._onCallinRecorded(p)));
+    this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
+    // ---------------------------------------------------------------------------------------
+    // PQ-210.00 roster prewarm: BUILT, TESTED, AND DELIBERATELY NOT SUBSCRIBED (2026-09-21).
+    //
+    // The renderer has listened for 'survivalArena:rosterPrewarm' since 99769c8f9 and admits a
+    // real exemplar of every hull, wreck, pickup, mine and rock the ruleset can field. Nothing
+    // has ever emitted the event, so that whole path is inert on the live route. The three lines
+    // that wire it are:
+    //
+    //     this._unsubs.push(this.bus.on('run:started', (payload) => {
+    //       if (payload && payload.kind !== 'survival') return;
+    //       this._rosterPrewarmEmitted = new Set();
+    //       const run = liveSurvivalRun(this.state);
+    //       if (run) this._emitRosterPrewarm(run, null, null);
+    //     }));
+    //     this._unsubs.push(this.bus.on('run:loadoutReady', () => {
+    //       const run = liveSurvivalRun(this.state);
+    //       if (run) this._emitRosterPrewarm(run, null, null);
+    //     }));
+    //     ... and clear this._rosterPrewarmEmitted on 'run:ended' beside the teardown.
+    //
+    // They are out because both wired configurations were MEASURED as regressions on the owner's
+    // iGPU, Crucible seed 4242, five matched runs (receipt: PQ-210.00-REPORT.md):
+    //
+    //   * wired with the part catalog — launch-to-flight 63 s -> 205 s. The catalog promotes
+    //     ~4000 instanced-pool roots and cook.rockPools costs ~0.1 s per root.
+    //   * wired without it — 94 s, and MORE program links in the round (15) than the unwired
+    //     game (2), because the exemplar cohort drains its own compiles into flight.
+    //
+    // The unwired game is the best measured configuration on every number that survives host
+    // contention. Wire this only after cook.rockPools stops being O(roots) at 100 ms each — the
+    // functions below and their six tests are ready and stay covered meanwhile.
+    // ---------------------------------------------------------------------------------------
+    this._unsubs.push(this.bus.on('run:waveCleared', () => this._teardown('wave_cleared')));
+    this._unsubs.push(this.bus.on('run:openingLessonReleased', () => {
+      const deferred = this._deferredFields;
+      this._deferredFields = null;
+      if (deferred) this._installFields(deferred);
+    }));
+    this._unsubs.push(this.bus.on('run:ended', () => {
+      // Mirrors the renderer's _releaseSurvivalRosterPrewarm('run_ended'): the roots are gone,
+      // so the ledger that says "already warm" has to go with them.
+      this._rosterPrewarmEmitted = new Set();
+      this._teardown('run_ended');
+    }));
+    // Mines report themselves as they land; this is the only way to know WHICH entities are ours.
+    // `mines.releaseAll` would also take the player's own mines, so it is never called from here.
+    this._unsubs.push(this.bus.on('mines:placed', (p) => this._onMinePlaced(p)));
+    this._unsubs.push(this.bus.on('tether:attached', (p) => this._observeStormLine(p)));
+    this._unsubs.push(this.bus.on('tether:broken', (p) => this._observeStormLine(p)));
+    this._unsubs.push(this.bus.on('tether:rebound', (p) => this._observeStormLine(p)));
+    this._unsubs.push(this.bus.on('survivalArena:stormPresented', (p) => this._onStormPresented(p)));
+    // fields._clearAll (sector change / new game / save load) empties the kernel under us. Drop the
+    // bookkeeping so teardown never reports releasing something the kernel no longer holds.
+    const forget = () => {
+      this._forgetFields();
+      if (this._lawId === POWERED_CONVEYOR_RULESET) this._teardown('world_changed');
+    };
+    this._unsubs.push(this.bus.on('sector:enter', forget));
+    this._unsubs.push(this.bus.on('sector:exit', forget));
+    this._unsubs.push(this.bus.on('save:loaded', forget));
+    this._unsubs.push(this.bus.on('save:restoring', () => this._resetStormDischarge()));
+    this._unsubs.push(this.bus.on('save:loaded', () => this._resetStormDischarge()));
+  },
+
+  destroy() {
+    if (this._swarmEvents) this._swarmEvents.destroy();
+    if (this._legendaries) this._legendaries.destroy();
+    if (this._callins) this._callins.destroy();
+    this._teardown('destroy');
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
+  },
+
+  newGame() {
+    this._teardown('new_game');
+  },
+
+  diagnostics() {
+    const toys = this._toys || [];
+    return Object.freeze({
+      wave: this._wave,
+      phase: this._phase,
+      note: this._note,
+      lawId: this._lawId,
+      fieldIds: (this._fieldIds || []).slice(),
+      mineIds: (this._mineIds || []).slice(),
+      coverEncounterId: this._encounterId,
+      toyIds: toys.map((toy) => toy.id),
+      toyCount: toys.length,
+      toys: toys.map((toy) => ({
+        id: toy.id,
+        kind: toy.kind,
+        verb: toy.verb,
+        hazardType: toy.hazardType,
+      })),
+      // FB-022: live prop positions — the law follows the bodies, and so must anyone asking.
+      relayPositions: this._relayLive && this._relayLive.size
+        ? Object.fromEntries([...this._relayLive].map(([k, v]) => [k, { ...v }]))
+        : null,
+      propBodies: (this._roomSolids ? [...this._roomSolids] : [])
+        .filter(([, e]) => e && e.data && e.data.propRole)
+        .map(([toyId, e]) => ({
+          toyId,
+          propRole: e.data.propRole,
+          alive: e.alive !== false,
+          pos: e.pos ? { x: e.pos.x, z: e.pos.z } : null,
+        })),
+    });
+  },
+
+  // Law ticks plus authored toys. Helios with no toys stays a no-op. Toys are not a third
+  // field slot — crushers and unmatched currents apply force here; shutters cut shots;
+  // plates bank shots. A missing law id, or no live Survival run, is an immediate no-op.
+  update(_dt, state) {
+    const st = state || this.state;
+    // The legendary director ticks ahead of the survival gate on purpose: when the run is gone
+    // it must still run once to release its field and drop its pending shoves.
+    if (this._legendaries) this._legendaries.update(_dt, st);
+    if (this._callins) this._callins.update(_dt, st);
+    if (!liveSurvivalRun(st)) {
+      if (this._dischargePending) this._resetStormDischarge();
+      return;
+    }
+    if (this._cycleMachinery) {
+      const system = this._fieldsSystem();
+      if (system && typeof system.updateExternal === 'function') {
+        const elapsed = simTimeOf(st) - (this._installedAt || 0);
+        const cycle = stepCinderMachinery(elapsed);
+        // The surge factor rides INSIDE the per-tick write — a one-shot patch would die on the
+        // next machinery update, and the authored strength coming back is the window's calm.
+        const strength = cycle.strength === 0 ? 0
+          : this._authoredStrength * this._surgeScale(ARENA_FIELD_SLOT_IDS[0]);
+        const applied = system.updateExternal(ARENA_FIELD_SLOT_IDS[0], { strength });
+        if (applied && this._lawId === POWERED_CONVEYOR_RULESET && this._conveyorPhase !== cycle.phase) {
+          this._conveyorPhase = cycle.phase;
+          if (cycle.phase === 'surge') this._emit('audio:cue', { id: 'sfx_field_deploy_cone', gain: 0.4 });
+          this._emit('toast', { text: `Conveyor ${cycle.phase}: ${cycle.phase === 'surge'
+            ? 'downstream carries; the sides stay quiet' : cycle.phase === 'warning'
+              ? 'pulse incoming; watch the workpiece' : 'power off; momentum remains'}`, kind: 'info', ttl: 2 });
+        }
+      }
+    } else if (this._lawId === CRYO_ARENA_ID) {
+      this._tickCryo(st);
+    } else if (this._lawId === STORM_ARENA_ID) {
+      this._tickStorm(st);
+    }
+    this._releaseRoundFields(st);
+    if (this._swarmEvents) this._swarmEvents.update(_dt, st);
+    this._tickToys(_dt, st);
+    this._tickPlayerSlams(st);
+  },
+
+  // ---- install --------------------------------------------------------------
+
+  /** SEED-SW-04..07 / S5 — a bought call-in charge queues for the player's Q press. */
+  _onCallinRecorded(payload) {
+    const record = payload && payload.record;
+    if (!record || record.kind !== 'swarm_callin') return;
+    const called = record.callinId === 'turret_drop' || record.callinId === 'drone_wing'
+      || record.callinId === 'shield_dome' || record.callinId === 'decoy';
+    if (!called || !this._callins) return;
+    this._callins.queueCallin(record.callinId);
+  },
+
+  _onWavePlanned(payload) {
+    // Re-entrant: wave N+1 can never stack its room on top of wave N's.
+    this._teardown('rearm');
+    const state = this.state;
+    const run = liveSurvivalRun(state);
+    if (!run) return;
+    const plan = payload && payload.plan;
+    if (!plan || plan.ok === false) return;
+    // PQ-210.00: `this._emitRosterPrewarm(run, plan, payload);` belongs here. See init().
+    const phase = plan.arenaPhase;
+    if (typeof phase !== 'string' || phase.length === 0) return;
+    const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    const seed = Number.isInteger(run.seed) ? run.seed : 1;
+
+    const laneGate = dominantGate(plan);
+    const install = planArenaInstall({
+      arenaPhase: phase,
+      arenaId: run.arenaId,
+      ruleset: run.ruleset,
+      wave,
+      seed,
+      anchor: playerAnchor(state),
+      laneGate,
+      bossRoom: plan.swarm && plan.swarm.bossRoom ? plan.swarm.bossRoom : null,
+      // The seeded event card — an event round pre-places the objects the event needs, so the
+      // mid-wave spend lands on a room already shaped for it (the inevitability is placement).
+      swarmEvent: run.ruleset === 'swarm'
+        ? swarmEventFor({ arenaId: run.arenaId, wave, seed })
+        : null,
+    });
+
+    this._wave = wave;
+    this._phase = install.phase;
+    this._note = install.note;
+    this._arenaId = run.arenaId;
+    const conveyor = run.ruleset === POWERED_CONVEYOR_RULESET && run.arenaId === FOUNDRY_ARENA_ID;
+    this._lawId = conveyor ? POWERED_CONVEYOR_RULESET : (isLawArena(run.arenaId) ? run.arenaId : null);
+    this._installedAt = simTimeOf(state);
+    this._cycleMachinery = conveyor || (run.arenaId === CINDER_ARENA_ID && CINDER_CYCLE_PHASES.has(phase));
+    this._authoredStrength = 0;
+    this._cryoRoom = run.arenaId === CRYO_ARENA_ID ? install : null;
+    // FB-022: each prop pocket remembers its docked spot and its vented charge. The pocket
+    // rides the live body while the body is away — a bounded window, not a moved law.
+    this._cryoVents = new Map();
+    if (this._cryoRoom && this._cryoRoom.props) {
+      for (const role of ['coolant', 'heat']) {
+        const spot = this._cryoRoom.props[role] && this._cryoRoom.props[role][0];
+        if (spot) {
+          this._cryoVents.set(role, {
+            toyId: role === 'coolant' ? 'coolant_tank' : 'heat_manifold',
+            home: { x: spot.x, z: spot.z },
+            charge: CRYO_PROP_VENT_TICKS,
+          });
+        }
+      }
+    }
+    this._stormAt = run.arenaId === STORM_ARENA_ID
+      ? { x: install.at ? install.at.x : playerAnchor(state).x, z: install.at ? install.at.z : playerAnchor(state).z }
+      : null;
+    if (this._stormAt) this._stormRoomGeneration = (this._stormRoomGeneration || 0) + 1;
+    this._relayLive = new Map();
+    this._resetStormDischarge();
+    this._cryoShocked = new Set();
+    if (this._cycleMachinery) {
+      const cone = install.fields.find((f) => f.kind === 'cone') || install.fields[0];
+      this._authoredStrength = conveyor ? cone.poweredStrength
+        : (cone && Number.isFinite(cone.strength) ? cone.strength : 0);
+    }
+    this._installedFields = Array.isArray(install.fields) ? install.fields.slice() : [];
+    // The opening lesson is a still room: one hostile, one rock, nothing drifting. The room's
+    // law (a sag, a shove) arrives with the pack — otherwise it drags the furniture into the
+    // lone hostile before the pilot has touched a key and the round plays itself.
+    // Every later Swarm round opens the same way: the room's law waits out the arrival breath, so a rock
+    // the field would sling is not already flying into the next pack before the pilot can see it.
+    this._deferredUntil = null;
+    if (plan.openingLesson && wave <= 1) this._deferredFields = install.fields;
+    else if (wave > 1 && run.ruleset === 'swarm' && Array.isArray(install.fields) && install.fields.length > 0) {
+      this._deferredFields = install.fields;
+      this._deferredUntil = simTimeOf(state) + ROUND_FIELD_BREATH_S;
+    } else this._installFields(install.fields);
+    this._installMines(install.mines);
+    this._installCover(install.cover || run.ruleset === 'swarm', wave);
+    this._installToys(install);
+    this._materializeRoom(this._toys, wave);
+    if (conveyor && wave === 1) this._installConveyorWorkpiece(install.fields[0]);
+    // The event director inherits the room it will spend through: the frame the install placed
+    // against, and the field specs it may later surge (their authored strengths are the calm it
+    // restores, not a re-read).
+    if (this._swarmEvents) {
+      this._swarmEvents.setFrame(swarmEventFrame({
+        at: install.at || playerAnchor(state) || { x: 0, z: 0 },
+        laneGate,
+        seed,
+        wave,
+      }));
+      this._swarmEvents.setInstalledFields(this._installedFields);
+    }
+    this._emit('survivalArena:installed', {
+      wave,
+      arenaId: run.arenaId,
+      stormRoomGeneration: this._stormAt ? this._stormRoomGeneration : null,
+      lawId: this._lawId,
+      arenaPhase: install.phase,
+      note: install.note,
+      fields: this._fieldIds.length,
+      mines: install.mines.length,
+      cover: install.cover,
+      toys: this._toys.length,
+      toyIds: this._toys.map((toy) => toy.id),
+      // PQ-133.04 R3: authored room solids (count + frame extent). Camera-law inputs only —
+      // the renderer consumer stays with its controller.
+      solids: this._roomIds.length,
+      frame: authoredRoomFrame(this._toys),
+      // PQ-133.08: the render layer's room dressing needs the finalized geometry, not counts —
+      // field specs carry kind/center/strength so a pylon can stand where the force is, and toy
+      // specs carry a/b/pos/anvil/dir/cycle so the shutter bars, crusher jaws and current mouths
+      // animate on the SAME authored clocks the sim is ticking (`installedAtSim` anchors them).
+      fieldSpecs: this._installedFields.map((spec) => ({ ...spec })),
+      toySpecs: this._toys.map((toy) => ({ ...toy })),
+      installedAtSim: this._installedAt,
+      // PQ-133.09: the cryo/storm rooms carry authored shape BEYOND fields+toys — the thermal
+      // quadrant map, prop positions, the insulated island's radius, the storm pylon ring and
+      // the relay seed poses. Passing the finished install's own keys keeps the render layer
+      // in phase with the law instead of re-deriving (or guessing) the room.
+      roomSpec: {
+        at: install.at ? { x: install.at.x, z: install.at.z } : null,
+        thermal: install.thermal ? { ...install.thermal } : null,
+        islandRadius: Number.isFinite(install.islandRadius) ? install.islandRadius : null,
+        fieldRadius: Number.isFinite(install.fieldRadius) ? install.fieldRadius : null,
+        props: install.props ? {
+          coolant: (install.props.coolant || []).map((p) => ({ x: p.x, z: p.z })),
+          heat: (install.props.heat || []).map((p) => ({ x: p.x, z: p.z })),
+        } : null,
+        pylons: Array.isArray(install.pylons)
+          ? install.pylons.map((n) => ({ id: n.id, pos: { x: n.pos.x, z: n.pos.z } }))
+          : null,
+        relays: Array.isArray(install.relays)
+          ? install.relays.map((n) => ({ id: n.id, pos: { x: n.pos.x, z: n.pos.z }, phase: n.phase }))
+          : null,
+      },
+    });
+  },
+
+  /**
+   * Publish the roster's real spawn specs for the renderer to admit behind the loading shell
+   * (wave 1 lands there via survivalRun._prepareOpening) and between rounds for later unlocks.
+   * Re-emitted every wavePlanned so a mutator-extended roster still reaches the admission path.
+   *
+   * `enemyIds` is always the full union — it is the receipt of what the ruleset can field, and
+   * consumers read it to answer "is this hull covered?". `specs` carries only the hulls this run
+   * has not published yet. The renderer discards a repeat exemplar by id anyway, so building the
+   * whole roster again was pure waste — and it was spent on `run:wavePlanned`, which is the exact
+   * frame PQ-210.00 exists to keep cheap (measured 1.28 ms for the 12-hull swarm union on the
+   * owner's box). After wave 1 the swarm re-emit is now an empty spec list.
+   */
+  _emitRosterPrewarm(run, plan, payload) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const enemyIds = collectSurvivalRosterPrewarmEnemyIds(run, plan);
+    if (enemyIds.length === 0) return;
+    if (!this._rosterPrewarmEmitted) this._rosterPrewarmEmitted = new Set();
+    const fresh = enemyIds.filter((enemyId) => !this._rosterPrewarmEmitted.has(enemyId));
+    const specs = fresh.map(makeRosterPrewarmSpec);
+    for (const enemyId of fresh) this._rosterPrewarmEmitted.add(enemyId);
+    const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    this.bus.emit('survivalArena:rosterPrewarm', {
+      wave,
+      enemyIds,
+      specs,
+    });
+  },
+
+  _fieldsSystem() {
+    return this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('fields')
+      : null;
+  },
+
+  _installFields(specs) {
+    if (!specs || specs.length === 0) return;
+    const system = this._fieldsSystem();
+    if (!system || typeof system.registerEnvironmental !== 'function') return;
+    const createdAt = simTimeOf(this.state);
+    for (const spec of specs) {
+      const record = system.registerEnvironmental({ ...spec, createdAt });
+      if (record === null || record === undefined) continue;
+      if (!this._fieldIds.includes(spec.id)) this._fieldIds.push(spec.id);
+    }
+  },
+
+  _installMines(spots) {
+    if (!spots || spots.length === 0) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const team = playerTeam(this.state);
+    for (const spot of spots) {
+      if (!Number.isFinite(spot.x) || !Number.isFinite(spot.z)) continue;
+      this.bus.emit('mines:placeRequest', {
+        ownerId: ARENA_MINE_OWNER,
+        pos: { x: spot.x, z: spot.z },
+        team,
+        armDelayS: ARENA_MINE_ARM_DELAY_S,
+      });
+    }
+  },
+
+  _onMinePlaced(payload) {
+    if (!payload || payload.ownerId !== ARENA_MINE_OWNER) return;
+    if (payload.mineId == null) return;
+    if (!this._mineIds.includes(payload.mineId)) this._mineIds.push(payload.mineId);
+  },
+
+  _installToys(install) {
+    this._toys = acceptedToys(install);
+  },
+
+  _installCover(wanted, wave) {
+    if (!wanted) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const state = this.state;
+    const anchor = playerAnchor(state);
+    // Distinct kind/shape so the many `encounter:*` consumers (world.js:2573 frontier rumours,
+    // prospectorLadderFsm:563 claim threats, claims.js defence receipts) all fall through their own
+    // guards. This is cover geometry, not a scripted encounter.
+    const encounterId = `survival-arena-w${Number.isInteger(wave) ? wave : 0}`;
+    this._encounterId = encounterId;
+    this.bus.emit('encounter:telegraph', {
+      encounterId,
+      kind: 'survival_arena',
+      shape: 'survival_arena',
+      arcadeLayout: state?.run?.ruleset === 'swarm',
+      arenaSeed: state?.run?.seed,
+      pos: { x: anchor.x, z: anchor.z },
+      sectorId: (state && state.world && state.world.currentSectorId) || null,
+    });
+  },
+
+  // ---- teardown -------------------------------------------------------------
+
+  _teardown(reason) {
+    // The director calms first: a surge mid-window restores authored strengths onto fields that
+    // still exist, and its own pulse field unregisters before the room's ledger clears.
+    if (this._swarmEvents) this._swarmEvents.teardown(reason);
+    // The legendary director calms with the room: pending shoves and the Heart well release on
+    // wave clear / run end / new game. Purchases are untouched — they live on the run record.
+    if (this._legendaries) this._legendaries.teardown(reason);
+    if (this._callins) this._callins.teardown(reason);
+    // NXB-019 — a swarm wave clear is a preparation interval: the cover the player displaced
+    // and the wrecks/supplies it left are the next round's terrain, not trash. Fields, mines
+    // and room solids are per-wave law and still release; anchor rocks retain their bodies
+    // (ownership releases so the next install re-adopts or tops up honestly).
+    const retainAnchors = reason === 'wave_cleared'
+      && liveSurvivalRun(this.state)?.ruleset === 'swarm';
+    const released = {
+      fields: this._releaseFields(),
+      mines: this._releaseMines(),
+      cover: this._releaseCover(retainAnchors),
+      solids: this._releaseRoom(reason),
+    };
+    const had = released.fields > 0 || released.mines > 0 || released.cover || released.solids > 0;
+    const phase = this._phase;
+    const wave = this._wave;
+    const arenaId = this._arenaId;
+    this._reset();
+    if (had) {
+      this._emit('survivalArena:released', {
+        wave, arenaPhase: phase, reason, arenaId, ...released,
+      });
+    }
+  },
+
+  _releaseFields() {
+    const ids = this._fieldIds || [];
+    if (ids.length === 0) return 0;
+    const system = this._fieldsSystem();
+    let n = 0;
+    if (system && typeof system.unregisterExternal === 'function') {
+      for (const id of ids) if (system.unregisterExternal(id)) n++;
+    }
+    this._fieldIds = [];
+    return n;
+  },
+
+  /** Kernel already emptied by fields._clearAll — drop the ids without pretending to release them. */
+  _forgetFields() {
+    this._fieldIds = [];
+  },
+
+  _releaseMines() {
+    const ids = this._mineIds || [];
+    this._mineIds = [];
+    const state = this.state;
+    if (ids.length === 0 || !state || !state.entities || typeof state.entities.get !== 'function') {
+      return 0;
+    }
+    let n = 0;
+    for (const id of ids) {
+      const mine = state.entities.get(id);
+      if (!mine || mine.alive === false) continue;
+      // Only ever our own mines: never `mines.releaseAll`, which would take the player's too.
+      const owner = mine.ownerId != null ? mine.ownerId : (mine.data && mine.data.ownerId);
+      if (owner !== ARENA_MINE_OWNER) continue;
+      mine.alive = false;
+      n++;
+    }
+    return n;
+  },
+
+  _releaseCover(retainAnchors = false) {
+    const encounterId = this._encounterId;
+    this._encounterId = null;
+    if (!encounterId) return false;
+    if (!this.bus || typeof this.bus.emit !== 'function') return false;
+    // MANDATORY pair: terrainAnchors only releases rock ownership on this event (terrainAnchors.js
+    // :112). Without it the cover rocks keep their 900s TTL and accumulate across waves.
+    // NXB-019 — under the swarm ruleset a wave clear is a preparation interval, not the end of
+    // the room: ownership still releases (the next wave's telegraph re-adopts what survives in
+    // the bubble and tops up what was destroyed), but the bodies keep their authored TTL
+    // instead of taking the 45 s aftermath sweep. Run end, newGame and destroy resolve without
+    // the flag — those genuinely sweep the room.
+    this.bus.emit('encounter:resolved', {
+      encounterId,
+      kind: 'survival_arena',
+      shape: 'survival_arena',
+      outcome: 'cleared',
+      retainAnchors: retainAnchors === true,
+      sectorId: (this.state && this.state.world && this.state.world.currentSectorId) || null,
+    });
+    return true;
+  },
+
+  /**
+   * FB-022: the coolant tank and heat manifold are live bodies; the pocket rides the body.
+   * At its dock a prop's pocket is the authored room; displaced, it vents a bounded charge —
+   * a thrown tank cools a window of a hot quadrant, then is spent inert debris. A dead body's
+   * pocket is gone. The occupancy field marker follows the pocket.
+   */
+  _syncCryoProps(state) {
+    const room = this._cryoRoom;
+    if (!room || !room.props || !this._cryoVents) return;
+    const system = this._fieldsSystem();
+    let slot = 0;
+    for (const [role, vent] of this._cryoVents) {
+      const slotId = ARENA_FIELD_SLOT_IDS[slot++];
+      const body = this._roomSolids.get(vent.toyId);
+      const alive = body && body.alive !== false && body.pos
+        && Number.isFinite(body.pos.x) && Number.isFinite(body.pos.z);
+      if (!alive) {
+        room.props[role] = [];
+        continue;
+      }
+      const dx = body.pos.x - vent.home.x;
+      const dz = body.pos.z - vent.home.z;
+      const displaced = dx * dx + dz * dz > CRYO_PROP_HOME_EPS * CRYO_PROP_HOME_EPS;
+      if (!displaced) {
+        vent.charge = CRYO_PROP_VENT_TICKS;
+        room.props[role] = [{ x: vent.home.x, z: vent.home.z }];
+      } else if (vent.charge > 0) {
+        vent.charge -= 1;
+        room.props[role] = [{ x: body.pos.x, z: body.pos.z }];
+      } else {
+        room.props[role] = [];
+      }
+      if (system && typeof system.updateExternal === 'function') {
+        const center = room.props[role][0] || vent.home;
+        system.updateExternal(slotId, { center: { x: center.x, z: center.z } });
+      }
+    }
+  },
+
+  _tickCryo(state) {
+    const room = this._cryoRoom;
+    const ctx = this.ctx;
+    if (!room || !ctx || !ctx.state || ctx.state !== state) return;
+    this._syncCryoProps(state);
+    const bodies = liveArenaBodies(state);
+    const lineage = createCryoRoomLineage(Number.isInteger(state && state.tick) ? state.tick : 0);
+    const kernel = getCombatKernel(ctx);
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
+    for (let i = 0; i < bodies.length; i++) {
+      const entity = bodies[i];
+      const zone = cryoZoneAt(room, entity.pos);
+      if (zone === 'outside' || zone === 'insulated') {
+        if (this._cryoShocked) this._cryoShocked.delete(entity.id);
+        continue;
+      }
+      // A resolved shock consumes its source statuses once for this stay in the overlap.
+      // Re-applying both every tick would turn a single thermal reaction into an impulse loop.
+      const alreadyShockedThisExposure = !!(this._cryoShocked && this._cryoShocked.has(entity.id));
+      if (zone === 'shock' && alreadyShockedThisExposure) continue;
+
+      const runtime = ensureCombatant(state, entity, kernel.catalog);
+      if (!runtime) continue;
+      const cryo = runtime.statuses && runtime.statuses[CRYO_LOCK_STATUS_ID];
+      const burning = runtime.statuses && runtime.statuses[BURNING_STATUS_ID];
+      const hasPending = (id) => Array.isArray(runtime.pendingStatuses)
+        && runtime.pendingStatuses.some((status) => status && status.id === id);
+      const wantsCold = zone === 'cold' || zone === 'shock';
+      const wantsHot = zone === 'hot' || zone === 'shock';
+      if (wantsCold && !hasPending(CRYO_LOCK_STATUS_ID)
+        && (!cryo || cryo.expiresTick <= tick + CRYO_LOCK_REFRESH_LEAD_TICKS)) {
+        kernel.statuses.schedule(entity, runtime, {
+          id: CRYO_LOCK_STATUS_ID,
+          stacks: 1,
+          durationTicks: CRYO_LOCK_DURATION_TICKS,
+        }, { attackerId: CRYO_ARENA_ID });
+      }
+      // Burning stacks are gameplay damage. Refresh only after expiry so standing in one hot
+      // pocket cannot build three stacks just by ticking the arena system.
+      if (wantsHot && !burning && !hasPending(BURNING_STATUS_ID)) {
+        kernel.statuses.schedule(entity, runtime, {
+          id: BURNING_STATUS_ID,
+          stacks: 1,
+          durationTicks: BURNING_STATUS_DURATION_TICKS,
+        }, { attackerId: CRYO_ARENA_ID });
+      }
+
+      const statusIds = [];
+      if (cryo && cryo.expiresTick > tick) {
+        for (let stack = 0; stack < Math.max(1, Math.trunc(cryo.stacks || 1)); stack++) statusIds.push(CRYO_LOCK_STATUS_ID);
+      }
+      if (burning && burning.expiresTick > tick) {
+        for (let stack = 0; stack < Math.max(1, Math.trunc(burning.stacks || 1)); stack++) statusIds.push(BURNING_STATUS_ID);
+      }
+      const result = applyCryoDrift({ ...bodySnapshot(entity), statuses: statusIds }, room, { lineage });
+      const hasCanonicalCryo = !!(cryo && cryo.expiresTick > tick);
+      const hasCanonicalBurning = !!(burning && burning.expiresTick > tick);
+      if (alreadyShockedThisExposure || !hasCanonicalCryo || !hasCanonicalBurning
+        || !result.shock || !result.shock.ok) continue;
+
+      // Status ownership remains in the combat kernel. Thermal Shock consumes one burn stack;
+      // rebuild only its remainder through the same service, preserving its remaining lifetime.
+      const remainingBurnStacks = Math.max(0, Math.trunc(burning && burning.stacks || 0) - 1);
+      const burnRemainingTicks = Math.max(1, Math.trunc((burning && burning.expiresTick || tick + 1) - tick));
+      kernel.statuses.clear(entity, runtime, CRYO_LOCK_STATUS_ID, 'thermal_shock');
+      kernel.statuses.clear(entity, runtime, BURNING_STATUS_ID, 'thermal_shock');
+      if (remainingBurnStacks > 0) {
+        kernel.statuses.schedule(entity, runtime, {
+          id: BURNING_STATUS_ID,
+          stacks: remainingBurnStacks,
+          durationTicks: burnRemainingTicks,
+        }, { attackerId: burning.attackerId, actionId: burning.actionId });
+      }
+
+      const bodySpec = resolvePhysicsBodySpec(entity);
+      const mass = bodySpec && Number.isFinite(bodySpec.mass) ? bodySpec.mass : 1;
+      const impulse = result.shock.impulse;
+      if (impulse) {
+        queuePhysicsImpulse(entity, { x: impulse.x * mass, y: 0, z: impulse.z * mass }, {
+          tick,
+          kind: 'cryo_thermal_shock',
+          actorId: CRYO_ARENA_ID,
+        });
+      }
+      const subsystemPulse = result.shock.subsystemPulse;
+      if (subsystemPulse) {
+        kernel.pulseSubsystem(entity.id, subsystemPulse.id, subsystemPulse.pulse, {
+          attackerId: CRYO_ARENA_ID,
+        });
+      }
+      if (this._cryoShocked) this._cryoShocked.add(entity.id);
+    }
+  },
+
+  _releaseRoundFields(state) {
+    if (!this._deferredFields || !Number.isFinite(this._deferredUntil)) return;
+    if (simTimeOf(state) < this._deferredUntil) return;
+    const deferred = this._deferredFields;
+    this._deferredFields = null;
+    this._deferredUntil = null;
+    this._installFields(deferred);
+  },
+
+  _tickToys(dt, state) {
+    const toys = this._toys;
+    if (!toys || toys.length === 0) return;
+    // The opening lesson is a still room: the crushers and currents that shove bodies arrive
+    // with the room's fields, when the lesson releases the pack — not before the first key.
+    const roomStill = this._deferredFields != null;
+    const step = Number.isFinite(dt) && dt > 0 ? dt : ARENA_TOY_DT;
+    const elapsed = simTimeOf(state) - (this._installedAt || 0);
+    const fields = this._installedFields || [];
+    const bodies = liveArenaBodies(state);
+    const projectiles = liveProjectiles(state);
+
+    for (let i = 0; i < toys.length; i++) {
+      const toy = toys[i];
+      if (!toy) continue;
+      if (roomStill && (toy.kind === 'crusher' || toy.kind === 'current')) continue;
+      if (toy.kind === 'crusher') {
+        for (let b = 0; b < bodies.length; b++) {
+          const entity = bodies[b];
+          const next = stepCrusher(toy, toyBodyOf(entity), elapsed, step);
+          writeVel(entity, next.vel.x, next.vel.z);
+          // The verdict the room used to throw away: surge-phase jaws meeting a body at
+          // crumple speed. The bite is the terrain-crumple law's own reading, credited to
+          // whoever set the body moving — the hazard is a weapon the physics aims.
+          if (next.crushed) this._crushBody(entity, toy, next, state);
+        }
+      } else if (toy.kind === 'current' && !coneFieldBacksCurrent(fields, toy)) {
+        for (let b = 0; b < bodies.length; b++) {
+          const entity = bodies[b];
+          const body = toyBodyOf(entity);
+          const acc = currentCarry(toy, body);
+          writeVel(entity, body.vx + acc.ax * step, body.vz + acc.az * step);
+        }
+      } else if (toy.kind === 'shutter') {
+        // PQ-133.04 Stage C: a MATERIALIZED shutter is an authoritative dynamic physics body.
+        // The room commands it through the SG-02 membrane and never touches its pose, never
+        // predictively deletes shots — contact truth belongs to physics and its receipt owners.
+        const solidEntity = toy.id != null ? this._roomSolids.get(String(toy.id)) : null;
+        if (solidEntity && solidEntity.alive !== false) {
+          this._commandShutter(toy, solidEntity, elapsed, state);
+          continue;
+        }
+        // Non-authoritative law-arena shutters keep the predictive cut.
+        for (let p = 0; p < projectiles.length; p++) {
+          const shot = projectiles[p];
+          if (shot.alive === false) continue;
+          const vel = toyBodyOf(shot).vel;
+          const speed = Math.hypot(vel.x, vel.z);
+          if (!(speed > 0)) continue;
+          const look = Math.max(speed * step, 40);
+          const inv = 1 / speed;
+          const to = {
+            x: shot.pos.x + vel.x * inv * look,
+            z: shot.pos.z + vel.z * inv * look,
+          };
+          if (shutterCutsLine(toy, shot.pos, to)) shot.alive = false;
+        }
+      }
+      // PQ-133.04 R3 Stage A: the room plate branch is GONE. Plates are authored room solids
+      // whose bank acceptance lives in the combat kernel (resolveLiveAttackHit -> resolveRicochet
+      // over a physics-issued receipt); the room neither reflects shots nor emits bank feedback.
+    }
+  },
+
+  /**
+   * The crusher's bite. `crush` is stepCrusher's verdict: surge phase, inside the anvil's
+   * reach, closing at crumple speed. The damage is terrainCrumpleDamage — the SAME reading
+   * the collision law gives a hull meeting terrain at that speed — routed through the combat
+   * kernel with the last shover's impulse provenance as the attacker, so a hull the pilot
+   * threw into the jaws is the pilot's kill, and one the room itself closed is nobody's
+   * bounty. In an Adventure room the player is exempt, exactly as collisionConsequences
+   * exempts the player from the terrain-crumple path: the jaws still shove the pilot
+   * around, they never crumple them. In a Swarm run the jaws are the signature hazard
+   * the spec names — friend and foe — and a pilot drifted in at crumple speed takes the
+   * same mass-scaled reading as everything else the room catches.
+   */
+  _crushBody(entity, toy, crush, state) {
+    if (!entity || entity.alive === false) return;
+    const run = liveSurvivalRun(state);
+    if (entity.id === state.playerId && !(run && isSwarmRuleset(run.ruleset))) return;
+    if (entity.type !== 'ship' && entity.type !== 'drone') return;
+    const tick = state.tick | 0;
+    const data = entity.data || (entity.data = {});
+    const last = Number(data.crusherCrushAt);
+    if (Number.isFinite(last) && tick - last < CRUSH_RECEIPT_COOLDOWN_TICKS) return;
+    const bodySpec = resolvePhysicsBodySpec(entity);
+    const mass = bodySpec && Number.isFinite(bodySpec.mass) ? bodySpec.mass
+      : (Number.isFinite(entity.mass) ? entity.mass : 1);
+    const damage = terrainCrumpleDamage(crush.speed, mass);
+    if (!(damage > 0)) return;
+    const kernel = this.ctx ? getCombatKernel(this.ctx) : null;
+    const routeDamage = kernel && typeof kernel.routeDamage === 'function' ? kernel.routeDamage
+      : (this.ctx && this.ctx.helpers && typeof this.ctx.helpers.routeCombatDamage === 'function'
+        ? this.ctx.helpers.routeCombatDamage : null);
+    if (!routeDamage) return;
+    data.crusherCrushAt = tick;
+    // Kill credit follows the shove: the freshest impulse record on the body IS the law's
+    // "who set this hull moving" answer (the same provenance the collision path reads).
+    const provenance = readRecentImpulseProvenance(entity, tick);
+    const attackerId = provenance && provenance.actorId != null ? provenance.actorId
+      : (state.run && state.run.arenaId) || 'survival_arena';
+    const anvilX = finiteOf(toy && toy.anvil && toy.anvil.x, 0);
+    const anvilZ = finiteOf(toy && toy.anvil && toy.anvil.z, 0);
+    const dx = anvilX - finiteOf(entity.pos && entity.pos.x, 0);
+    const dz = anvilZ - finiteOf(entity.pos && entity.pos.z, 0);
+    const len = Math.hypot(dx, dz);
+    const approach = len > 1e-6
+      ? { x: dx / len, z: dz / len }
+      : { x: finiteOf(crush.vel && crush.vel.x, 1), z: finiteOf(crush.vel && crush.vel.z, 0) };
+    const packet = scalarHitToDamagePacket({
+      damage,
+      damageType: 'kinetic',
+      pos: { x: finiteOf(entity.pos && entity.pos.x, 0), z: finiteOf(entity.pos && entity.pos.z, 0) },
+      approach,
+      source: { kind: 'crusher_jaws', hullId: toy && toy.id != null ? String(toy.id) : 'crusher' },
+    });
+    routeDamage({
+      attackerId,
+      targetId: entity.id,
+      packet,
+      origin: { kind: 'crusher_jaws', id: toy && toy.id != null ? String(toy.id) : 'crusher' },
+    });
+    this._emit('combat:crushed', {
+      entityId: entity.id,
+      toyId: toy && toy.id != null ? toy.id : null,
+      damage,
+      speed: crush.speed,
+      attackerId,
+      t: simTimeOf(state),
+      tick,
+    });
+  },
+
+  /**
+   * S9 — the room is friend AND foe. Static room furniture (plates, pylons, shutter rails,
+   * machinery housings — anything the install stamped `roomDynamic: false`) is terrain-class
+   * for the pilot in a Swarm run: meet it at crumple closing speed and the collision law's own
+   * reading applies, routed through the kernel like the crusher's bite. Adventure keeps the
+   * global exemption untouched (collisionConsequences spares the player everywhere), and the
+   * radial-closing gate means a tangential skim under 30 WU/s never bites. Dynamic props are
+   * exempt on purpose — a coolant tank gives way instead of being an anvil.
+   */
+  _tickPlayerSlams(state) {
+    const run = liveSurvivalRun(state);
+    if (!run || !isSwarmRuleset(run.ruleset)) return;
+    const solids = this._roomSolids;
+    if (!solids || solids.size === 0) return;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos || !player.vel) return;
+    const vx = finiteOf(player.vel.x, 0), vz = finiteOf(player.vel.z, 0);
+    const tick = state.tick | 0;
+    const data = player.data || (player.data = {});
+    const last = Number(data.arenaSlamAt);
+    if (Number.isFinite(last) && tick - last < CRUSH_RECEIPT_COOLDOWN_TICKS) return;
+    const kernel = this.ctx ? getCombatKernel(this.ctx) : null;
+    const routeDamage = kernel && typeof kernel.routeDamage === 'function' ? kernel.routeDamage
+      : (this.ctx && this.ctx.helpers && typeof this.ctx.helpers.routeCombatDamage === 'function'
+        ? this.ctx.helpers.routeCombatDamage : null);
+    if (!routeDamage) return;
+    for (const [toyId, solid] of solids) {
+      if (!solid || solid.alive === false || !solid.pos) continue;
+      if (!solid.data || solid.data.roomDynamic === true) continue;
+      const dx = solid.pos.x - player.pos.x;
+      const dz = solid.pos.z - player.pos.z;
+      const dist = Math.hypot(dx, dz);
+      const reach = Math.max(4, finiteOf(solid.radius, 8)) + Math.max(1, finiteOf(player.radius, 8)) + 2;
+      if (dist > reach) continue;
+      const closing = dist > 1e-6 ? (vx * dx + vz * dz) / dist : 0;
+      if (closing < TERRAIN_CRUMPLE_LAW.threshold) continue;
+      const bodySpec = resolvePhysicsBodySpec(player);
+      const mass = bodySpec && Number.isFinite(bodySpec.mass) ? bodySpec.mass
+        : (Number.isFinite(player.mass) ? player.mass : 1);
+      const damage = terrainCrumpleDamage(closing, mass);
+      if (!(damage > 0)) continue;
+      data.arenaSlamAt = tick;
+      const provenance = readRecentImpulseProvenance(player, tick);
+      const attackerId = provenance && provenance.actorId != null ? provenance.actorId
+        : (state.run && state.run.arenaId) || 'survival_arena';
+      const approach = { x: dx / dist, z: dz / dist };
+      const packet = scalarHitToDamagePacket({
+        damage,
+        damageType: 'kinetic',
+        pos: { x: finiteOf(player.pos.x, 0), z: finiteOf(player.pos.z, 0) },
+        approach,
+        source: { kind: 'arena_slam', hullId: toyId != null ? String(toyId) : 'solid' },
+      });
+      routeDamage({
+        attackerId,
+        targetId: player.id,
+        packet,
+        origin: { kind: 'arena_slam', id: toyId != null ? String(toyId) : 'solid' },
+      });
+      this._emit('combat:crushed', {
+        entityId: player.id,
+        toyId: toyId != null ? toyId : null,
+        damage,
+        speed: closing,
+        attackerId,
+        t: simTimeOf(state),
+        tick,
+      });
+      return;
+    }
+  },
+
+  /**
+   * Command one materialized shutter toward its authored pose. ONLY channel: writePhysicsControl
+   * (consumed by sg02DynamicBodyOwner in its next _stepFixed). The jam verdict reads measured
+   * telemetry against sim time and is deterministic; a jammed shutter is held, never pushed.
+   */
+  _commandShutter(toy, entity, elapsed, state) {
+    const clock = shutterPhase(toy, elapsed);
+    const jammed = shutterJammed(readPhysicsTelemetry(entity), {
+      tick: state && Number.isInteger(state.tick) ? state.tick : null,
+      phase: clock.phase,
+      phaseElapsedS: clock.phaseElapsedS,
+    });
+    if (jammed) {
+      writePhysicsControl(entity, {
+        mode: 'shutter_hold',
+        force: { x: 0, y: 0, z: 0 },
+        source: 'survival-arena',
+        maxSpeed: SHUTTER_SERVO.maxSpeed,
+      });
+      return;
+    }
+    const command = shutterCommand(toy, elapsed, entity);
+    writePhysicsControl(entity, {
+      mode: command.mode,
+      force: { x: command.force.x, y: 0, z: command.force.z },
+      source: 'survival-arena',
+      maxSpeed: SHUTTER_SERVO.maxSpeed,
+    });
+  },
+
+  /**
+   * PQ-133.04 R3 Stage B: materialize the room's solid toys as immovable 'station' bodies
+   * (the shutters dynamic) through helpers.spawnEntity — capability-guarded like _installFields,
+   * never through spawnBudget. Deterministic ids `survival-room-w{wave}-{toyId}`; idempotent by
+   * the data tag, so a missed teardown can never double a solid.
+   */
+  _installConveyorWorkpiece(field) {
+    const spawn = this.ctx && this.ctx.helpers && this.ctx.helpers.spawnEntity;
+    if (typeof spawn !== 'function' || !field) return;
+    const body = this.ctx.helpers.spawnEntity({
+      type: 'asteroid',
+      pos: point(field.center, field.dir.x * 160, field.dir.z * 160),
+      vel: { x: 0, z: 0 }, rot: 0, angVel: 0,
+      radius: ARENA_TOY_LIGHT_RADIUS, mass: ARENA_TOY_LIGHT_MASS,
+      hull: 40, hullMax: 40, collides: true,
+      collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.STATION | Masks.PROJECTILE,
+      physicsBody: {
+        schemaVersion: 1, radius: ARENA_TOY_LIGHT_RADIUS, mass: ARENA_TOY_LIGHT_MASS,
+        inertiaY: ARENA_TOY_LIGHT_MASS * ARENA_TOY_LIGHT_RADIUS ** 2,
+        dynamic: true, ccd: true, material: 'debris', revision: 0,
+      },
+      data: { roomOwner: ARENA_ROOM_OWNER, roomSolidId: 'conveyor-workpiece',
+        conveyorWorkpiece: true, majorDebris: true },
+    });
+    if (body && body.id != null) this._roomIds.push(body.id);
+  },
+
+  _materializeRoom(toys, wave) {
+    if (!Array.isArray(toys) || toys.length === 0) return;
+    const helpers = this.ctx && this.ctx.helpers;
+    if (!helpers || typeof helpers.spawnEntity !== 'function') return;
+    const state = this.state;
+    if (!state) return;
+    const w = Number.isInteger(wave) ? wave : 0;
+    for (const toy of toys) {
+      if (!toy || toy.solid !== true) continue;
+      const solidId = `survival-room-w${w}-${toy.id}`;
+      if (this._findRoomSolid(solidId)) continue;
+      const dynamic = toy.dynamic === true;
+      const plate = toy.kind === 'plate' ? foundryPlateShape(toy) : null;
+      const radius = plate ? plate.radius : Math.max(4, Number.isFinite(toy.radius) ? toy.radius : 16);
+      const furnitureProxy = plate ? null : foundryFurnitureProxy({ kind: toy.kind, radius });
+      const lawRadius = plate ? plate.referenceRadius : radius;
+      // FB-022: a toy may author its own mass (prop class); shutters keep SHUTTER_MASS.
+      const mass = dynamic
+        ? Math.max(1, Number.isFinite(toy.mass) ? toy.mass : SHUTTER_MASS)
+        : Math.max(400, Math.round(lawRadius * lawRadius * 2.5));
+      const hull = 100000 + Math.round(lawRadius * 40);
+      const pos = clearOfPilot(state, toy.pos, radius);
+      const entity = helpers.spawnEntity({
+        type: 'station',
+        id: solidId,
+        pos,
+        ...(plate ? { rot: plate.rot } : {}),
+        vel: { x: 0, z: 0 },
+        angVel: 0,
+        radius,
+        mass,
+        hull,
+        hullMax: hull,
+        collides: true,
+        collisionMask: Masks.SHIP | Masks.STATION | Masks.ASTEROID | Masks.PROJECTILE
+          | Masks.DRONE | Masks.PAYLOAD,
+        physicsBody: {
+          schemaVersion: 1,
+          radius,
+          mass,
+          inertiaY: Math.max(8, Math.round(mass * lawRadius * lawRadius * 0.4)),
+          dynamic,
+          ccd: false,
+          material: 'station',
+          revision: 0,
+          ...(plate ? { collisionProxyManifest: foundryPlateProxy(plate) } : {}),
+          ...(furnitureProxy ? { collisionProxyManifest: furnitureProxy } : {}),
+        },
+        data: {
+          roomOwner: ARENA_ROOM_OWNER,
+          roomSolidId: solidId,
+          roomToyId: toy.id,
+          roomKind: toy.kind,
+          roomDynamic: dynamic,
+          ...(plate ? { foundryPlate: { referenceRadius: plate.referenceRadius,
+            halfWidth: plate.halfWidth, halfDepth: plate.halfDepth, halfHeight: plate.halfHeight } } : {}),
+          propRole: typeof toy.propRole === 'string' ? toy.propRole : null,
+          surfaceMaterial: typeof toy.material === 'string' && toy.material
+            ? toy.material
+            : 'station',
+        },
+      });
+      if (entity && entity.id != null) {
+        this._roomIds.push(entity.id);
+        if (toy.id != null) this._roomSolids.set(String(toy.id), entity);
+        // E2: the jammed-shutter rule reads this body's measured post-solve state
+        // (`readPhysicsTelemetry`); declare the interest once, at admission.
+        if (dynamic) requestPhysicsTelemetry(entity);
+      }
+    }
+  },
+
+  /** Find a live room solid by its deterministic data tag (harnesses may renumber entity ids). */
+  _findRoomSolid(solidId) {
+    const state = this.state;
+    if (!state || !state.entities || typeof state.entities.get !== 'function') return null;
+    const source = Array.isArray(state.entityList)
+      ? state.entityList
+      : (typeof state.entities.values === 'function' ? state.entities.values() : null);
+    if (!source) return null;
+    for (const entity of source) {
+      if (entity && entity.alive !== false && entity.data && entity.data.roomSolidId === solidId) {
+        return entity;
+      }
+    }
+    return null;
+  },
+
+  /** Tag-checked release: only entities carrying our roomOwner tag ever die here. */
+  _releaseRoom(reason) {
+    const ids = this._roomIds || [];
+    this._roomIds = [];
+    this._roomSolids = new Map();
+    const state = this.state;
+    if (ids.length === 0 || !state || !state.entities || typeof state.entities.get !== 'function') {
+      return 0;
+    }
+    let n = 0;
+    for (const id of ids) {
+      const solid = state.entities.get(id);
+      if (!solid || solid.alive === false) continue;
+      if (!solid.data || solid.data.roomOwner !== ARENA_ROOM_OWNER) continue;
+      solid.alive = false;
+      if (reason === 'wave_cleared' && Number.isInteger(this._wave) && this._wave > 0
+        && typeof solid.data.roomSolidId === 'string'
+        && solid.data.roomSolidId.startsWith(`survival-room-w${this._wave}-`)) {
+        this._emit('entity:retired', { id: solid.id, occupantGeneration: solid.occupantGeneration,
+          type: solid.type, pos: { x: solid.pos.x, z: solid.pos.z }, reason: 'survival-room-wave-cleared',
+          owner: ARENA_ROOM_OWNER, roomSolidId: solid.data.roomSolidId, wave: this._wave, simTime: state.simTime });
+      }
+      n++;
+    }
+    return n;
+  },
+
+  /**
+   * FB-022: the relays are live bodies. While a body lives, the law follows IT — the occupancy
+   * field and the graph node sit where the Massline dragged the relay, not where the orbit
+   * would have put it. A free relay that has left its band gets a bounded servo pull back
+   * through the SG-02 membrane; a tethered relay is the player's, untouched. A dead relay's
+   * marker stays at its last live position — the wreck is the truth.
+   */
+  _tickStorm(state) {
+    const at = this._stormAt;
+    if (!at) return;
+    const system = this._fieldsSystem();
+    const host = { x: at.x, z: at.z };
+    const simTime = simTimeOf(state);
+    const poses = placeStormRelays(at, simTime);
+    const held = this._heldBodyIds(state);
+    for (let i = 0; i < STORM_RELAY_COUNT; i++) {
+      const pose = poses[i] || orbitNodePose(host, i, STORM_RELAY_COUNT, STORM_RELAY_ORBIT, simTime, STORM_RELAY_PERIOD);
+      const posePos = pose.pos || pose;
+      const body = this._roomSolids.get(`relay_${i}`);
+      const alive = body && body.alive !== false && body.pos
+        && Number.isFinite(body.pos.x) && Number.isFinite(body.pos.z);
+      // The marker sits at the body whenever a body exists — live relay at its dragged spot,
+      // dead relay at its wreck. Only a never-materialized relay rides the pure pose.
+      const pos = body && body.pos && Number.isFinite(body.pos.x) ? body.pos : posePos;
+      if (alive) {
+        if (this._relayLive) this._relayLive.set(`relay_${i}`, { x: pos.x, z: pos.z });
+        const guide = stormRelayGuide(pos, body.vel, posePos, body.mass);
+        if (held.has(body.id)) {
+          writePhysicsControl(body, { mode: 'relay_held', force: { x: 0, y: 0, z: 0 }, source: 'survival-arena' });
+        } else {
+          writePhysicsControl(body, {
+            mode: guide.mode,
+            force: guide.force,
+            source: 'survival-arena',
+            maxSpeed: guide.maxSpeed,
+          });
+        }
+      }
+      if (system && typeof system.updateExternal === 'function') {
+        system.updateExternal(ARENA_FIELD_SLOT_IDS[i], {
+          center: { x: pos.x, z: pos.z },
+          strength: 0,
+        });
+      }
+    }
+    this._tickStormDischarge(state, at);
+  },
+
+  /** Reset transient discharge state on a new room, restore, or teardown. */
+  _resetStormDischarge() {
+    if (this._dischargePending) this._emit('survivalArena:stormCancel', {
+      wave: this._wave, roomGeneration: this._stormRoomGeneration, serial: this._dischargePending.serial,
+    });
+    this._relayWiredAt = new Map();
+    this._dischargeElapsed = 0;
+    this._dischargeLastAt = null;
+    this._dischargeNextAt = STORM_DISCHARGE_FIRST_S;
+    this._dischargePending = null;
+    if (!Number.isSafeInteger(this._dischargeSerial)) this._dischargeSerial = 0;
+  },
+
+  _onStormPresented(payload) {
+    const pending = this._dischargePending;
+    const now = simTimeOf(this.state);
+    if (!pending || payload?.wave !== this._wave
+      || payload.roomGeneration !== this._stormRoomGeneration || payload.serial !== pending.serial) return;
+    if (payload.available === false) {
+      this._dischargePending = null;
+      this._dischargeNextAt = this._dischargeElapsed + STORM_DISCHARGE_PERIOD_S;
+      this._emit('survivalArena:stormCancel', { wave: this._wave,
+        roomGeneration: this._stormRoomGeneration, serial: pending.serial });
+      return;
+    }
+    if (pending.presentedAt != null
+      || this.state?.mode !== 'flight' || !['active', 'cleanup'].includes(this.state.run?.phase)
+      || now + STORM_DISCHARGE_WARNING_S > pending.expiresAtSim) return;
+    pending.presentedAt = now;
+    if (this._dischargeLastAt === now) pending.fireAt = this._dischargeElapsed + STORM_DISCHARGE_WARNING_S;
+  },
+
+  // The accepted attachment owner, endpoint lives and controller are the only source of
+  // player wiring credit. A HUD held-id and another actor's cable are not possession.
+  _rememberStormLine(state, attachment, broken = false) {
+    if (!attachment || !['tether_standard', 'attachment_massline'].includes(attachment.defId)) return;
+    if (broken ? attachment.state !== 'broken' : attachment.state !== 'active') return;
+    const player = state.entities?.get(state.playerId);
+    const target = state.entities?.get(attachment.targetId);
+    if (!player || player.alive === false || !target || target.alive === false
+      || !Number.isSafeInteger(player.occupantGeneration) || !Number.isSafeInteger(target.occupantGeneration)) return;
+    const playerOwns = attachment.ownerId === player.id && attachment.ownerGeneration === player.occupantGeneration
+      && (attachment.controllerId == null || (attachment.controllerId === player.id
+        && attachment.controllerGeneration === player.occupantGeneration));
+    const playerControls = attachment.controllerId === player.id
+      && attachment.controllerGeneration === player.occupantGeneration;
+    if (attachment.targetGeneration !== target.occupantGeneration) return;
+    for (const [id, relay] of this._roomSolids || []) {
+      if (!String(id).startsWith('relay_') || relay !== target) continue;
+      if (!playerOwns && !playerControls) {
+        // A new accepted hand on the same relay supersedes an earlier player's release.
+        this._relayWiredAt.delete(id);
+        break;
+      }
+      this._relayWiredAt.set(id, { at: simTimeOf(state), playerId: player.id,
+        playerLife: player.occupantGeneration, relayId: relay.id, relayLife: relay.occupantGeneration });
+      break;
+    }
+  },
+
+  _observeStormLine(payload) {
+    const state = this.state;
+    if (!this._stormAt || this._phase !== 'furnace_active' || state?.mode !== 'flight'
+      || !['active', 'cleanup'].includes(state.run?.phase) || !payload?.attachmentId) return;
+    const attachments = this.ctx && getCombatKernel(this.ctx)?.attachments;
+    const attachment = attachments?.get(payload.attachmentId);
+    if (!attachment) return;
+    if (attachment.state === 'active' && !attachments.physicsContract(attachment.id)) return;
+    this._rememberStormLine(state, attachment, attachment.state === 'broken');
+  },
+
+  _stormPlayerWiring(state) {
+    const attachments = this.ctx && getCombatKernel(this.ctx)?.attachments;
+    if (!attachments || state.playerId == null) return;
+    const owned = attachments.listForEntity(state.playerId, true);
+    const controlled = attachments.listControlledBy(state.playerId, true);
+    for (const attachment of owned.concat(controlled)) {
+      if (attachments.physicsContract(attachment.id)) this._rememberStormLine(state, attachment);
+    }
+    for (const [id, relay] of this._roomSolids || []) {
+      if (!String(id).startsWith('relay_') || !relay || state.entities?.get(relay.id) !== relay) continue;
+      for (const attachment of attachments.listForEntity(relay.id, true)) {
+        if (attachment.targetId !== relay.id || !attachments.physicsContract(attachment.id)) continue;
+        const player = state.entities?.get(state.playerId);
+        const controls = attachment.controllerId != null ? attachment.controllerId === player?.id
+          && attachment.controllerGeneration === player?.occupantGeneration
+          : attachment.ownerId === player?.id && attachment.ownerGeneration === player?.occupantGeneration;
+        if (!controls) this._relayWiredAt.delete(id);
+      }
+    }
+  },
+
+  _stormRelayCredited(state, id, now) {
+    const record = this._relayWiredAt.get(id);
+    const player = state.entities?.get(state.playerId);
+    const relay = this._roomSolids?.get(id);
+    return !!(record && player && player.alive !== false && relay && relay.alive !== false
+      && state.entities?.get(relay.id) === relay && record.playerId === player.id
+      && record.playerLife === player.occupantGeneration && record.relayId === relay.id
+      && record.relayLife === relay.occupantGeneration && now >= record.at
+      && now - record.at <= STORM_DISCHARGE_PLAYER_WIRE_S);
+  },
+
+  // Only actual current relay bodies and current hull lives enter the graph. A dead,
+  // removed or replaced relay is insulating; never substitute its old orbital pose.
+  _stormDischargeGraph(state, at, extras) {
+    const relays = new Map();
+    let live = 0;
+    for (let i = 0; i < STORM_RELAY_COUNT; i++) {
+      const id = `relay_${i}`;
+      const body = this._roomSolids?.get(id);
+      const valid = body && body.alive !== false && state.entities?.get(body.id) === body
+        && Number.isSafeInteger(body.occupantGeneration) && body.occupantGeneration > 0
+        && Number.isFinite(body.pos?.x) && Number.isFinite(body.pos?.z);
+      if (valid) live++;
+      relays.set(id, valid ? { pos: body.pos, conductive: true }
+        : { pos: at, conductive: false });
+    }
+    if (!live) return null;
+    const hulls = [];
+    for (const entry of extras) {
+      const e = entry.entity;
+      if (!e || e.alive === false || state.entities?.get(e.id) !== e
+        || e.occupantGeneration !== entry.life || !Number.isFinite(e.pos?.x) || !Number.isFinite(e.pos?.z)) continue;
+      hulls.push({ id: e.id, kind: 'hull', conductive: true, score: 4,
+        pos: { x: e.pos.x, z: e.pos.z } });
+    }
+    return buildConductivityGraph(stormGraphNodes(at, simTimeOf(state), hulls, relays), { at, discharge: true });
+  },
+
+  /** Warn a bounded, committed graph before damage; no elapsed fight time while paused. */
+  _tickStormDischarge(state, at) {
+    const run = state.run;
+    if (this._phase !== 'furnace_active' || run?.arenaId !== STORM_ARENA_ID || run.wave !== this._wave
+      || !['active', 'cleanup'].includes(run.phase)) {
+      if (this._dischargePending || this._dischargeElapsed) this._resetStormDischarge();
+      return;
+    }
+    if (state.mode !== 'flight') { this._dischargeLastAt = null; return; }
+    const now = simTimeOf(state);
+    if (this._dischargeLastAt != null && now >= this._dischargeLastAt) {
+      this._dischargeElapsed += now - this._dischargeLastAt;
+    }
+    this._dischargeLastAt = now;
+    const elapsed = this._dischargeElapsed;
+    if (this._dischargePending) {
+      if (now >= this._dischargePending.expiresAtSim) {
+        const pending = this._dischargePending;
+        this._dischargePending = null;
+        this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S;
+        this._emit('survivalArena:stormCancel', { wave: this._wave,
+          roomGeneration: this._stormRoomGeneration, serial: pending.serial });
+        return;
+      }
+      if (this._dischargePending.fireAt == null) {
+        if (this._dischargePending.presentedAt == null) return;
+        this._dischargePending.fireAt = elapsed + STORM_DISCHARGE_WARNING_S;
+      }
+      if (elapsed < this._dischargePending.fireAt) return;
+      const pending = this._dischargePending;
+      this._dischargePending = null;
+      this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S;
+      this._resolveStormDischarge(state, at, pending);
+      return;
+    }
+    if (elapsed < this._dischargeNextAt - STORM_DISCHARGE_WARNING_S) return;
+    this._stormPlayerWiring(state);
+    const candidates = (state.entityList || []).filter(e => e && e.alive !== false
+      && (e.type === 'ship' || e.type === 'drone') && state.entities?.get(e.id) === e
+      && Number.isSafeInteger(e.occupantGeneration) && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z)
+      && Math.hypot(e.pos.x - at.x, e.pos.z - at.z) >= STORM_ISLAND_RADIUS);
+    candidates.sort((a, b) => {
+      const da = (a.pos.x - at.x) ** 2 + (a.pos.z - at.z) ** 2;
+      const db = (b.pos.x - at.x) ** 2 + (b.pos.z - at.z) ** 2;
+      return da - db || (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0);
+    });
+    const extras = candidates.slice(0, STORM_DISCHARGE_MAX_EXTRAS)
+      .map(entity => ({ entity, life: entity.occupantGeneration }));
+    const graph = this._stormDischargeGraph(state, at, extras);
+    const origin = selectDischargeOrigin(graph);
+    if (!origin) { this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S; return; }
+    const tick = state.tick | 0;
+    const walk = conductAlongGraph(graph, origin.id, createStormLineage({ lineageProcBudget: 16, tick }), { tick });
+    if (!walk.hops.length) { this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S; return; }
+    const points = new Map();
+    for (const hop of walk.hops) for (const id of [hop.fromId, hop.toId]) {
+      const node = graph.nodesById.get(id);
+      if (node?.pos) points.set(id, { x: node.pos.x, z: node.pos.z });
+    }
+    const serial = ++this._dischargeSerial;
+    const relayLives = new Map();
+    for (const [id, entity] of this._roomSolids) if (String(id).startsWith('relay_') && entity) {
+      relayLives.set(id, { entity, life: entity.occupantGeneration });
+    }
+    this._dischargePending = { serial, fireAt: null, expiresAtSim: now + 4, extras,
+      originId: origin.id, hops: walk.hops, points, relayLives };
+    this._emit('survivalArena:stormWarning', {
+      wave: this._wave, roomGeneration: this._stormRoomGeneration, serial,
+      atSim: now, expiresAtSim: now + 4, warningS: STORM_DISCHARGE_WARNING_S,
+      segments: walk.hops.map(hop => {
+        const a = points.get(hop.fromId), b = points.get(hop.toId);
+        return { ax: a.x, az: a.z, bx: b.x, bz: b.z };
+      }),
+      nodes: [origin.id, ...walk.hops.map(hop => hop.toId)]
+        .map(id => ({ ...points.get(id), radius: STORM_DISCHARGE_RADIUS })),
+    });
+    this._emit('audio:cue', { id: 'sfx_doctrine_ranged_charge', position: { x: at.x, z: at.z }, gain: 0.5 });
+  },
+
+  _resolveStormDischarge(state, at, pending) {
+    this._stormPlayerWiring(state);
+    const graph = this._stormDischargeGraph(state, at, pending.extras);
+    const now = simTimeOf(state);
+    const wave = this._wave, roomGeneration = this._stormRoomGeneration, run = state.run;
+    const kernel = this.ctx && getCombatKernel(this.ctx);
+    if (!graph || !kernel?.routeDamage) {
+      this._emit('survivalArena:stormCancel', { wave: this._wave, roomGeneration: this._stormRoomGeneration, serial: pending.serial });
+      return;
+    }
+    const candidates = (state.entityList || []).filter(e => e && e.alive !== false
+      && (e.type === 'ship' || e.type === 'drone') && state.entities?.get(e.id) === e
+      && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z)
+      && Math.hypot(e.pos.x - at.x, e.pos.z - at.z) >= STORM_ISLAND_RADIUS);
+    const bitten = new Set();
+    let bites = 0, playerBites = 0, hops = 0, playerWire = false;
+    const segments = [], nodes = [];
+    for (const hop of [{ fromId: pending.originId, toId: pending.originId }, ...pending.hops]) {
+      if (state.run !== run || this._wave !== wave || this._stormRoomGeneration !== roomGeneration
+        || this._phase !== 'furnace_active' || !['active', 'cleanup'].includes(run.phase)) break;
+      let staleRelay = false;
+      for (const id of [hop.fromId, hop.toId]) {
+        if (!String(id).startsWith('relay_')) continue;
+        const saved = pending.relayLives.get(id), current = this._roomSolids.get(id);
+        if (!saved || saved.entity !== current || saved.life !== current?.occupantGeneration) staleRelay = true;
+      }
+      if (staleRelay) break;
+      const from = graph.nodesById.get(hop.fromId), node = graph.nodesById.get(hop.toId);
+      const warnedFrom = pending.points.get(hop.fromId), warned = pending.points.get(hop.toId);
+      if (!from || !node || !warnedFrom || !warned || from.conductive === false || node.conductive === false
+        || (hop.fromId !== hop.toId && !graph.neighbors.get(hop.fromId)?.includes(hop.toId))
+        || Math.hypot(from.pos.x - warnedFrom.x, from.pos.z - warnedFrom.z) > STORM_DISCHARGE_RADIUS
+        || Math.hypot(node.pos.x - warned.x, node.pos.z - warned.z) > STORM_DISCHARGE_RADIUS) break;
+      if (this._stormRelayCredited(state, hop.fromId, now) || this._stormRelayCredited(state, hop.toId, now)) playerWire = true;
+      nodes.push({ x: node.pos.x, z: node.pos.z, radius: STORM_DISCHARGE_RADIUS });
+      if (hop.fromId !== hop.toId) {
+        hops++;
+        segments.push({ ax: from.pos.x, az: from.pos.z, bx: node.pos.x, bz: node.pos.z });
+      }
+      const targets = dischargeBiteTargets(warned, candidates, { excludeIds: bitten });
+      for (const body of targets) {
+        if (state.run !== run || this._wave !== wave || this._phase !== 'furnace_active') break;
+        if (Math.hypot(body.pos.x - node.pos.x, body.pos.z - node.pos.z) > STORM_DISCHARGE_RADIUS) continue;
+        bitten.add(body.id);
+        const attackerId = playerWire && body.id !== state.playerId ? state.playerId : STORM_ARENA_ID;
+        const packet = scalarHitToDamagePacket({ damage: STORM_DISCHARGE_DAMAGE, damageType: 'kinetic',
+          pos: { x: node.pos.x, z: node.pos.z }, source: { kind: 'storm_discharge', nodeId: hop.toId } });
+        const result = kernel.routeDamage({ attackerId, targetId: body.id, packet,
+          origin: { kind: 'storm_discharge', id: hop.toId } });
+        if (result?.totalApplied > 0) { bites++; if (attackerId === state.playerId) playerBites++; }
+      }
+    }
+    this._emit('survivalArena:stormResolve', { wave, roomGeneration,
+      serial: pending.serial, hops, atSim: now, segments, nodes });
+    this._emit('swarm:stormDischarge', { hops, bites, playerBites, at: { x: at.x, z: at.z }, t: now, tick: state.tick | 0 });
+  },
+  /** Entity ids currently held by an active Massline attachment (attachment targetIds). */
+  _heldBodyIds(state) {
+    const byId = state && state.combat && state.combat.attachments
+      ? state.combat.attachments.byId
+      : null;
+    const held = _heldBodyScratch;
+    held.clear();
+    if (!byId || typeof byId !== 'object') return held;
+    for (const id in byId) {
+      if (!Object.prototype.hasOwnProperty.call(byId, id)) continue;
+      const attachment = byId[id];
+      if (attachment && attachment.state === 'active' && attachment.targetId != null) {
+        held.add(attachment.targetId);
+      }
+    }
+    return held;
+  },
+
+  /** The director's overdrive factor for an installed field — 1 while nothing runs hot. */
+  _surgeScale(fieldId) {
+    const dir = this._swarmEvents;
+    return dir && typeof dir.fieldStrengthScale === 'function'
+      ? dir.fieldStrengthScale(fieldId) : 1;
+  },
+
+  _reset() {
+    this._resetStormDischarge();
+    this._fieldIds = [];
+    this._deferredFields = null;
+    this._deferredUntil = null;
+    this._mineIds = [];
+    this._encounterId = null;
+    this._phase = null;
+    this._note = '';
+    this._wave = 0;
+    this._lawId = null;
+    this._arenaId = null;
+    this._installedAt = 0;
+    this._cycleMachinery = false;
+    this._conveyorPhase = null;
+    this._authoredStrength = 0;
+    this._cryoRoom = null;
+    this._cryoVents = new Map();
+    this._stormAt = null;
+    this._relayLive = new Map();
+    this._cryoShocked = new Set();
+    this._roomIds = [];
+    this._roomSolids = new Map();
+    this._toys = [];
+    this._installedFields = [];
+  },
+
+  _emit(event, payload) {
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
+  },
+};

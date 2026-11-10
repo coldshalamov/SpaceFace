@@ -1,0 +1,515 @@
+// SF-275 — a pause request releases only its own hold.
+// scope: the REAL screenManager aggregate source ('ui:pausing-screen'), the REAL focus-loss
+// hold ('window-focus-loss'), and the REAL timeEffects minimum-composition are driven together
+// so each release path is proven against the other owners still holding — not a re-implemented
+// ledger. describeRequests() is asserted as the diagnostic surface that must show the truth.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
+import { createTimeEffects } from '../src/core/timeEffects.js';
+import {
+  FOCUS_LOSS_TIME_SOURCE,
+  beginFocusLossSaveWrite,
+  endFocusLossSaveWrite,
+  syncFocusLossHold,
+} from '../src/core/focusLossHold.js';
+import {
+  installSimCommandSink,
+  laneSetMode,
+  uninstallSimCommandSink,
+} from '../src/core/simLaneCommands.js';
+import { createScreenManager } from '../src/ui/screenManager.js';
+
+const UI_SOURCE = 'ui:pausing-screen';
+const HIT_STOP = 'feel:hit-stop';
+
+function installDomFixture() {
+  const elements = new Map();
+  class FakeClassList {
+    constructor() { this.values = new Set(); }
+    add(...values) { values.forEach((value) => this.values.add(value)); }
+    remove(...values) { values.forEach((value) => this.values.delete(value)); }
+    contains(value) { return this.values.has(value); }
+    toggle(value, force) {
+      if (force === undefined) force = !this.values.has(value);
+      if (force) this.values.add(value); else this.values.delete(value);
+      return force;
+    }
+  }
+  class FakeElement {
+    constructor(tagName = 'div') {
+      this.tagName = String(tagName).toUpperCase();
+      this.children = [];
+      this.parentNode = null;
+      this.style = {};
+      this.dataset = {};
+      this.classList = new FakeClassList();
+      this.attributes = new Map();
+      this.hidden = false;
+      this.disabled = false;
+      this.isConnected = true;
+      this.inert = false;
+      this.id = '';
+    }
+    appendChild(child) { child.parentNode = this; this.children.push(child); if (child.id) elements.set(child.id, child); return child; }
+    prepend(child) { child.parentNode = this; this.children.unshift(child); return child; }
+    removeChild(child) { this.children = this.children.filter((node) => node !== child); child.parentNode = null; return child; }
+    addEventListener() {}
+    removeEventListener() {}
+    querySelectorAll() { return []; }
+    querySelector() { return null; }
+    setAttribute(name, value) { this.attributes.set(name, String(value)); }
+    removeAttribute(name) { this.attributes.delete(name); }
+    getAttribute(name) { return this.attributes.get(name) ?? null; }
+    contains(candidate) { for (let node = candidate; node; node = node.parentNode) if (node === this) return true; return false; }
+    focus() { globalThis.document.activeElement = this; }
+    blur() { if (globalThis.document.activeElement === this) globalThis.document.activeElement = globalThis.document.body; }
+  }
+  const body = new FakeElement('body');
+  const head = new FakeElement('head');
+  const screens = new FakeElement('div'); screens.id = 'screens'; elements.set('screens', screens); body.appendChild(screens);
+  const backdrop = new FakeElement('div'); backdrop.id = 'modal-backdrop'; elements.set('modal-backdrop', backdrop); body.appendChild(backdrop);
+  const hud = new FakeElement('div'); hud.id = 'hud'; elements.set('hud', hud); body.appendChild(hud);
+  globalThis.document = {
+    body, head, activeElement: body,
+    getElementById(id) { return elements.get(id) || null; },
+    createElement(tagName) { return new FakeElement(tagName); },
+    addEventListener() {},
+    removeEventListener() {},
+  };
+  globalThis.window = { innerWidth: 1920, innerHeight: 1080, addEventListener() {}, removeEventListener() {} };
+  globalThis.requestAnimationFrame = (callback) => { callback(0); return 1; };
+  globalThis.cancelAnimationFrame = () => {};
+}
+
+function makeFixture({ workerPause = false } = {}) {
+  installDomFixture();
+  const state = createGameState(11);
+  state.mode = 'flight';
+  const bus = createBus();
+  const emitted = [];
+  bus.on('sim:pause', () => emitted.push('pause'));
+  bus.on('sim:resume', () => emitted.push('resume'));
+  const effects = createTimeEffects(state);
+  const manager = createScreenManager({ state, bus, timeEffects: effects });
+  manager.register({
+    id: 'pause',
+    ...(workerPause ? {
+      onShow: () => {
+        if (state.mode === 'flight') laneSetMode(state, bus, 'paused');
+      },
+    } : {}),
+  });
+  manager.register({ id: 'settings' });
+  manager.register({ id: 'crucibleResults' });
+  manager.register({ id: 'mainMenu' });
+  return { state, bus, emitted, effects, manager };
+}
+
+function sources(effects) {
+  return Object.keys(effects.describeRequests()).sort();
+}
+
+test('SF-275 a UI release leaves the focus-loss hold frozen; focus return releases only its own', () => {
+  const { state, emitted, effects, manager } = makeFixture();
+
+  manager.pushScreen('pause');
+  assert.equal(state.timeScale, 0);
+  assert.deepEqual(sources(effects), [UI_SOURCE]);
+  assert.deepEqual(emitted, ['pause']);
+
+  // The window blurs under the open pause screen: a second, independent hold.
+  const blurred = syncFocusLossHold(state, true);
+  assert.deepEqual(blurred, { paused: true, muted: false });
+  assert.equal(state.timeScale, 0);
+  assert.deepEqual(sources(effects), [FOCUS_LOSS_TIME_SOURCE, UI_SOURCE].sort());
+
+  // Closing the screen releases ONLY the UI source — the window is still blurred.
+  manager.popScreen();
+  assert.equal(state.timeScale, 0, 'focus-loss hold must keep the sim frozen after UI releases');
+  assert.deepEqual(sources(effects), [FOCUS_LOSS_TIME_SOURCE]);
+  assert.deepEqual(emitted, ['pause', 'resume'],
+    'UI emits its resume edge; whether the sim actually runs belongs to the scalar');
+
+  // Focus returns: the focus hold clears and nothing is left — the sim resumes.
+  const focused = syncFocusLossHold(state, false);
+  assert.deepEqual(focused, { paused: false, muted: false });
+  assert.equal(state.timeScale, 1);
+  assert.deepEqual(sources(effects), []);
+});
+
+test('SF-275 worker pause release queues flight before the paused mirror reply', () => {
+  const queued = [];
+  installSimCommandSink((descriptor) => { queued.push(descriptor); });
+  try {
+    const { state, effects, manager } = makeFixture({ workerPause: true });
+    const modeCommands = () => queued.filter((descriptor) => descriptor.kind === 'mode');
+    manager.pushScreen('pause');
+    assert.equal(state.mode, 'flight', 'the delayed worker reply leaves the main mode mirror unchanged');
+    assert.deepEqual(modeCommands().map((descriptor) => descriptor.mode), ['paused']);
+    assert.equal(state.timeScale, 0);
+
+    manager.popScreen();
+    assert.equal(state.ui.screenStack.length, 0);
+    assert.deepEqual(
+      modeCommands().map((descriptor) => descriptor.mode),
+      ['paused', 'flight'],
+      'releasing the last modal must pair the queued pause with a queued resume',
+    );
+    assert.equal(state.mode, 'flight', 'mode ownership remains on the worker');
+    assert.deepEqual(effects.describeRequests(), {});
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 deferred worker menu exit does not append a stale flight command', () => {
+  const queued = [];
+  installSimCommandSink((descriptor) => { queued.push(descriptor); });
+  try {
+    const { state, bus, manager } = makeFixture({ workerPause: true });
+    const modeCommands = () => queued.filter((descriptor) => descriptor.kind === 'mode');
+    manager.pushScreen('pause');
+
+    // Mirror main.js: queue the authoritative menu write, then publish the
+    // worker's mode edge before closeAll releases the aggregate UI hold.
+    laneSetMode(state, bus, 'menu');
+    bus.emit('mode:changed', { mode: 'menu', previousMode: 'flight' });
+    manager.closeAll();
+
+    assert.deepEqual(
+      modeCommands().map((descriptor) => descriptor.mode),
+      ['paused', 'menu'],
+      'menu exit must not resume flight after the worker has left flight',
+    );
+    assert.equal(state.mode, 'flight', 'the main mirror remains worker-owned until its reply');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 menu handoff stays locked until the worker returns to flight', () => {
+  const queued = [];
+  installSimCommandSink((descriptor) => { queued.push(descriptor); });
+  try {
+    const { state, bus, manager } = makeFixture({ workerPause: true });
+    const modeCommands = () => queued.filter((descriptor) => descriptor.kind === 'mode');
+    manager.pushScreen('pause');
+
+    // Exit to menu while the main mirror still says flight, then install the
+    // real menu screen as Pause/Game Over do after the authoritative edge.
+    laneSetMode(state, bus, 'menu');
+    bus.emit('mode:changed', { mode: 'menu', previousMode: 'flight' });
+    manager.closeAll();
+    manager.pushScreen('mainMenu');
+    assert.equal(manager.locked(), true, 'published menu mode locks the title screen despite a stale mirror');
+
+    // Escape and backdrop both consult locked(); neither may pop the title or
+    // append a resume command while the worker remains in menu mode.
+    if (!manager.locked()) manager.popScreen();
+    if (!manager.locked()) manager.popScreen();
+    assert.equal(manager.top(), 'mainMenu');
+    assert.deepEqual(modeCommands().map((descriptor) => descriptor.mode), ['paused', 'menu']);
+
+    // A later worker acknowledgement re-opens the normal flight path. The
+    // title may close without a redundant flight write, and a fresh Pause edge
+    // still resumes correctly.
+    bus.emit('mode:changed', { mode: 'flight', previousMode: 'menu' });
+    assert.equal(manager.locked(), false);
+    manager.popScreen();
+    assert.equal(manager.top(), null);
+    manager.pushScreen('pause');
+    assert.deepEqual(modeCommands().map((descriptor) => descriptor.mode), ['paused', 'menu', 'paused']);
+    manager.popScreen();
+    assert.deepEqual(modeCommands().map((descriptor) => descriptor.mode), ['paused', 'menu', 'paused', 'flight']);
+    assert.equal(state.mode, 'flight', 'the mirror remains worker-owned throughout the handoff');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 stale paused ACK cannot unlock menu before a real flight re-entry', () => {
+  const queued = [];
+  installSimCommandSink((descriptor) => { queued.push(descriptor); });
+  try {
+    const { state, bus, manager } = makeFixture({ workerPause: true });
+    const modeCommands = () => queued.filter((descriptor) => descriptor.kind === 'mode');
+    manager.pushScreen('pause');
+
+    // Main publishes menu immediately, while the worker still has the pause write in flight.
+    laneSetMode(state, bus, 'menu');
+    bus.emit('mode:changed', { mode: 'menu', previousMode: 'flight' });
+    manager.closeAll();
+    manager.pushScreen('mainMenu');
+
+    // This is the delayed ACK from the earlier paused command. Escape and backdrop both gate
+    // through locked(); neither may dismiss the title while the worker's menu edge is pending.
+    bus.emit('mode:changed', { mode: 'paused' });
+    assert.equal(manager.locked(), true, 'a stale paused ACK must not unlock the title');
+    if (!manager.locked()) manager.popScreen(); // Escape path
+    if (!manager.locked()) manager.popScreen(); // Backdrop path
+    assert.equal(manager.top(), 'mainMenu');
+    assert.deepEqual(modeCommands().map((descriptor) => descriptor.mode), ['paused', 'menu']);
+
+    // Once the worker crosses menu, a real worker flight edge is accepted. A fresh pause/resume
+    // then retains the ordinary mode lifecycle instead of inheriting the stale ACK fence.
+    bus.emit('mode:changed', { mode: 'menu' });
+    assert.equal(manager.locked(), true);
+    bus.emit('mode:changed', { mode: 'flight' });
+    assert.equal(manager.locked(), false);
+    manager.popScreen();
+    manager.pushScreen('pause');
+    manager.popScreen();
+    assert.deepEqual(
+      modeCommands().map((descriptor) => descriptor.mode),
+      ['paused', 'menu', 'paused', 'flight'],
+    );
+    assert.equal(state.mode, 'flight', 'the main mirror remains worker-owned throughout re-entry');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 menu fence survives a newer loading intent until the worker crosses it', () => {
+  installSimCommandSink(() => {});
+  try {
+    const { state, bus, manager } = makeFixture({ workerPause: true });
+    manager.pushScreen('pause');
+
+    laneSetMode(state, bus, 'menu');
+    bus.emit('mode:changed', { mode: 'menu', previousMode: 'flight' });
+    manager.closeAll();
+    manager.pushScreen('mainMenu');
+
+    // Starting a new game supersedes the menu intent, but the old paused ACK can still arrive
+    // before the worker has applied menu and loading in FIFO order.
+    bus.emit('mode:changed', { mode: 'loading', previousMode: 'menu' });
+    bus.emit('mode:changed', { mode: 'paused' });
+    manager.syncVisibility();
+    assert.equal(document.body.dataset.gameMode, 'loading');
+
+    // The old menu ACK is also stale relative to loading; the following loading/flight edges are
+    // still accepted normally.
+    bus.emit('mode:changed', { mode: 'menu' });
+    manager.syncVisibility();
+    assert.equal(document.body.dataset.gameMode, 'loading');
+    bus.emit('mode:changed', { mode: 'loading' });
+    bus.emit('mode:changed', { mode: 'flight' });
+    manager.syncVisibility();
+    assert.equal(document.body.dataset.gameMode, 'flight');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 worker pause release keeps menu mode guarded', () => {
+  const queued = [];
+  installSimCommandSink((descriptor) => { queued.push(descriptor); });
+  try {
+    const { state, manager } = makeFixture({ workerPause: true });
+    state.mode = 'menu';
+    manager.pushScreen('pause');
+    manager.popScreen();
+    assert.deepEqual(
+      queued.filter((descriptor) => descriptor.kind === 'mode'),
+      [],
+      'menu screens must not queue a flight mode on release',
+    );
+    assert.equal(state.mode, 'menu');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 a focus return under a still-open screen cannot resume the sim', () => {
+  const { state, effects, manager } = makeFixture();
+
+  manager.pushScreen('pause');
+  manager.pushScreen('settings');
+  syncFocusLossHold(state, true);
+  assert.equal(state.timeScale, 0);
+  assert.deepEqual(sources(effects), [FOCUS_LOSS_TIME_SOURCE, UI_SOURCE].sort());
+
+  // Focus returns while the nested stack is still open — its hold stays.
+  syncFocusLossHold(state, false);
+  assert.equal(state.timeScale, 0, 'the UI aggregate must outlive the focus hold');
+  assert.deepEqual(sources(effects), [UI_SOURCE]);
+
+  manager.popScreen();
+  assert.equal(state.timeScale, 0, 'one nested screen still holds the aggregate');
+  assert.deepEqual(sources(effects), [UI_SOURCE]);
+  manager.popScreen();
+  assert.equal(state.timeScale, 1);
+  assert.deepEqual(sources(effects), []);
+});
+
+test('SF-275 docked is folded into the SAME ui source — one aggregate hold, one pause edge', () => {
+  const { state, emitted, effects, manager } = makeFixture();
+
+  manager.pushScreen('pause');
+  assert.deepEqual(sources(effects), [UI_SOURCE]);
+  assert.deepEqual(emitted, ['pause']);
+
+  // Docking under an open screen must not mint a second source or a second pause edge.
+  state.ui.docked = true;
+  manager.syncVisibility();
+  assert.deepEqual(sources(effects), [UI_SOURCE], 'docked shares the aggregate ui source');
+  assert.equal(state.timeScale, 0);
+  assert.deepEqual(emitted, ['pause'], 'no second sim:pause for the same interruption');
+
+  // Undocking while the screen is still open keeps exactly that one hold.
+  state.ui.docked = false;
+  manager.syncVisibility();
+  assert.equal(state.timeScale, 0);
+  assert.deepEqual(sources(effects), [UI_SOURCE]);
+
+  // And the inverse edge: dock alone freezes, a screen pushed over it reuses the same source.
+  manager.popScreen();
+  assert.equal(state.timeScale, 1);
+  assert.deepEqual(emitted, ['pause', 'resume']);
+  state.ui.docked = true;
+  manager.syncVisibility();
+  assert.equal(state.timeScale, 0);
+  assert.deepEqual(sources(effects), [UI_SOURCE]);
+  assert.deepEqual(emitted, ['pause', 'resume', 'pause']);
+  manager.pushScreen('settings');
+  assert.deepEqual(sources(effects), [UI_SOURCE], 'a screen over a docked pause stays one hold');
+  assert.deepEqual(emitted, ['pause', 'resume', 'pause']);
+  state.ui.docked = false;
+  manager.syncVisibility();
+  assert.equal(state.timeScale, 0, 'undocking under an open screen must not resume');
+  manager.popScreen();
+  assert.equal(state.timeScale, 1);
+});
+
+test('SF-275 a worker-mirrored undock releases the stale UI source after the station pop', () => {
+  const { state, bus, effects, manager } = makeFixture();
+
+  // This is the worker-lane ordering from the release-soak failure: the UI
+  // popped the station while the authoritative fold was still docked=true.
+  state.ui.docked = true;
+  manager.pushScreen('pause');
+  manager.popScreen();
+  assert.equal(state.ui.screenStack.length, 0);
+  assert.deepEqual(Object.keys(effects.describeRequests()), [UI_SOURCE]);
+  assert.equal(state.timeScale, 0);
+
+  // The worker reply then mirrors ui.docked=false and simLaneMain emits the
+  // main-only resume wake. A second modal must still keep the aggregate hold.
+  state.ui.docked = false;
+  bus.emit('sim:resume', { source: 'sim-lane-domain-mirror' });
+  assert.equal(state.timeScale, 1);
+  assert.deepEqual(effects.describeRequests(), {});
+
+  state.ui.docked = true;
+  manager.syncVisibility();
+  manager.pushScreen('settings');
+  state.ui.docked = false;
+  bus.emit('sim:resume', { source: 'sim-lane-domain-mirror' });
+  assert.equal(state.timeScale, 0, 'nested modal remains a real pause owner');
+  assert.deepEqual(Object.keys(effects.describeRequests()), [UI_SOURCE]);
+  manager.popScreen();
+  assert.equal(state.timeScale, 1);
+});
+
+test('SF-275 hit-stop composes under UI pause in both release orders', () => {
+  const { state, effects, manager } = makeFixture();
+
+  manager.pushScreen('pause');
+  effects.set(HIT_STOP, { scale: 0.12 });
+  assert.equal(state.timeScale, 0, 'pause (0) still beats hit-stop slow-time');
+  assert.deepEqual(sources(effects), [HIT_STOP, UI_SOURCE].sort());
+
+  effects.clear(HIT_STOP);
+  assert.equal(state.timeScale, 0, 'releasing hit-stop leaves the UI hold untouched');
+  assert.deepEqual(sources(effects), [UI_SOURCE]);
+
+  // Reverse order: hit-stop outlives the UI release.
+  effects.set(HIT_STOP, { scale: 0.12 });
+  manager.popScreen();
+  assert.equal(state.timeScale, 0.12, 'UI release must expose the surviving hit-stop request');
+  assert.deepEqual(sources(effects), [HIT_STOP]);
+  effects.clear(HIT_STOP);
+  assert.equal(state.timeScale, 1);
+});
+
+test('SF-275 destroy() releases the aggregate UI hold and nothing else', () => {
+  const { state, effects, manager } = makeFixture();
+
+  manager.pushScreen('pause');
+  syncFocusLossHold(state, true);
+  effects.set(HIT_STOP, { scale: 0.3 });
+  assert.equal(state.timeScale, 0);
+  assert.deepEqual(sources(effects), [FOCUS_LOSS_TIME_SOURCE, HIT_STOP, UI_SOURCE].sort());
+
+  manager.destroy();
+  assert.equal(state.timeScale, 0, 'other owners still hold the freeze after UI teardown');
+  assert.deepEqual(sources(effects), [FOCUS_LOSS_TIME_SOURCE, HIT_STOP].sort(),
+    'destroy must clear only its own ui:pausing-screen source');
+});
+
+test('SF-275 a blocked focus pause leaves no hold and touches no other owner', () => {
+  const { state, effects, manager } = makeFixture();
+
+  // Crucible results own their own clock: a blur there must not mint a focus hold.
+  manager.pushScreen('pause');
+  manager.pushScreen('crucibleResults');
+  assert.equal(state.timeScale, 0);
+  const blocked = syncFocusLossHold(state, true);
+  assert.deepEqual(blocked, { paused: false, muted: false });
+  assert.deepEqual(sources(effects), [UI_SOURCE], 'blocked blur must not mint window-focus-loss');
+  manager.popScreen();
+  manager.popScreen();
+  assert.equal(state.timeScale, 1, 'releasing the UI hold leaves nothing behind');
+
+  // A save write holds the same gate — and ends cleanly.
+  beginFocusLossSaveWrite(state);
+  const duringSave = syncFocusLossHold(state, true);
+  assert.deepEqual(duringSave, { paused: false, muted: false });
+  assert.deepEqual(sources(effects), []);
+  assert.equal(state.timeScale, 1);
+  endFocusLossSaveWrite(state);
+  const afterSave = syncFocusLossHold(state, true);
+  assert.equal(afterSave.paused, true, 'the block ends with the write');
+  assert.equal(state.timeScale, 0);
+  syncFocusLossHold(state, false);
+  assert.equal(state.timeScale, 1);
+});
+
+test('SF-275 focus-loss preferences gate pause and mute independently of other holds', () => {
+  const { state, effects, manager } = makeFixture();
+  state.settings.gameplay.pauseOnFocusLoss = false;
+  state.settings.audio.muteOnFocusLoss = true;
+
+  manager.pushScreen('pause');
+  const blurred = syncFocusLossHold(state, true);
+  assert.deepEqual(blurred, { paused: false, muted: true },
+    'mute applies even when the pause preference is off');
+  assert.equal(state.render.focusLossMuted, true);
+  assert.deepEqual(sources(effects), [UI_SOURCE], 'no focus hold is minted under pause-off');
+  assert.equal(state.timeScale, 0, 'the UI hold, not focus, owns this freeze');
+
+  const focused = syncFocusLossHold(state, false);
+  assert.deepEqual(focused, { paused: false, muted: false });
+  assert.equal(state.render.focusLossMuted, false);
+  assert.deepEqual(sources(effects), [UI_SOURCE]);
+});
+
+test('SF-275 describeRequests is a diagnostic copy — mutating it cannot forge a release', () => {
+  const { state, effects, manager } = makeFixture();
+  manager.pushScreen('pause');
+  const description = effects.describeRequests();
+  assert.deepEqual(description, { [UI_SOURCE]: { scale: 0 } });
+  description[UI_SOURCE].scale = 1;
+  delete description[UI_SOURCE];
+  assert.equal(state.timeScale, 0, 'the description is a copy, not a writable view');
+  assert.deepEqual(sources(effects), [UI_SOURCE]);
+});

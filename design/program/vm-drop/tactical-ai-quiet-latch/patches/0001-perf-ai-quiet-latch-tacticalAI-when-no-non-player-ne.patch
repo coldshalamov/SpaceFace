@@ -1,0 +1,280 @@
+From fbd9cadb6c0d1cba84e391ad8a24006cda337b7b Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 11:29:45 -0400
+Subject: [PATCH] =?UTF-8?q?perf(ai):=20quiet-latch=20tacticalAI=20when=20n?=
+ =?UTF-8?q?o=20non-player=20needs=20think=20(~6.5=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Production quiet flight still paid cohort stamp, squad/fodder steps, and
+stack update every tick while shipLike had no AI-think interest. Latch
+after classify+probe finds none; wake on spawn/think interest. Injected
+port fixtures keep every-tick cadence. Soft-GPU fps not claimed.
+---
+ src/systems/tacticalAI.js             |  51 ++++++++-
+ test/tactical-ai-quiet-latch.test.mjs | 158 ++++++++++++++++++++++++++
+ 2 files changed, 208 insertions(+), 1 deletion(-)
+ create mode 100644 test/tactical-ai-quiet-latch.test.mjs
+
+diff --git a/src/systems/tacticalAI.js b/src/systems/tacticalAI.js
+index 3d021a794..3f7a6c982 100644
+--- a/src/systems/tacticalAI.js
++++ b/src/systems/tacticalAI.js
+@@ -30,7 +30,7 @@ import {
+   createFodderCohortDirector,
+ } from '../ai/fodderCohort.js';
+ import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
+-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
++import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+ import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
+ import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
+ import { applyMineLayerVerb } from '../ai/mineLayerVerb.js';
+@@ -150,6 +150,32 @@ function finite(value, fallback = 0) {
+  * and remains the sole action executor. Missing ports throw before gameplay updates; no intent.fire
+  * or velocity fallback exists.
+  */
++/** Bench A/B: production default ON. Skip tacticalAI.update when no non-player needs AI think. */
++let TACTICAL_AI_QUIET_LATCH = true;
++export function setTacticalAiQuietLatchForBench(enabled) {
++  TACTICAL_AI_QUIET_LATCH = enabled !== false;
++}
++export function getTacticalAiQuietLatchForBench() {
++  return TACTICAL_AI_QUIET_LATCH !== false;
++}
++
++function anyNonPlayerNeedsAiThink(state, shipLikeList) {
++  const list = shipLikeList || indexedShipLikeScan(state);
++  if (!list || !list.length) return false;
++  const pid = state && state.playerId;
++  for (let i = 0; i < list.length; i++) {
++    const entity = list[i];
++    if (!entity || entity.alive === false || entity.id === pid) continue;
++    if (entityNeedsAiThink(entity, state)) return true;
++  }
++  return false;
++}
++
++function publishTacticalAiQuiet(state, latched) {
++  const rt = state.tacticalAiRuntime || (state.tacticalAiRuntime = {});
++  rt.quietLatched = !!latched;
++}
++
+ export function createTacticalAISystem({
+   seed = null,
+   config = {},
+@@ -189,6 +215,7 @@ export function createTacticalAISystem({
+   const lastDecisionEntityRefs = new Map();
+   const lifecycleUnsubscribes = [];
+   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
++  let quietLatch = null;
+ 
+   function ensureStack(state) {
+     if (stack) return stack;
+@@ -275,6 +302,7 @@ export function createTacticalAISystem({
+     lastOwnershipRefreshTick = -Infinity;
+     lastManeuverRequests = [];
+     lastDecisionEntityRefs.clear();
++    quietLatch = null;
+     resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
+   }
+ 
+@@ -364,10 +392,31 @@ export function createTacticalAISystem({
+ 
+     update(_dt, state) {
+       ensureActivityClassified(state);
++      // Quiet latch: no non-player needs AI think → skip cohort stamp, squad/fodder steps, stack
++      // update, and maneuver replay. Probe think interest every tick (nextEventAtT / pins can flip
++      // without membership). Injected-port fixtures keep every-tick cadence; production quiet
++      // Ceres is the latch target. Different angle from held preStep-all-sleeping.
+       // One classified scan per tick: every helper below walks the same shipLike view, so the list
+       // is fetched once here and threaded through instead of re-scanning (and re-classifying each
+       // entity) four to six times per fixed step.
+       const shipLikeList = indexedShipLikeScan(state);
++      if (TACTICAL_AI_QUIET_LATCH !== false && productionPortDefaults) {
++        if (!anyNonPlayerNeedsAiThink(state, shipLikeList)) {
++          quietLatch = {
++            armed: true,
++            armedTick: Number.isInteger(state && state.tick) ? state.tick : 0,
++            membership: entityIndexVersion(state),
++          };
++          lastManeuverRequests.length = 0;
++          lastDecisionEntityRefs.clear();
++          publishTacticalAiQuiet(state, true);
++          return;
++        }
++        quietLatch = null;
++        publishTacticalAiQuiet(state, false);
++      } else if (state && state.tacticalAiRuntime) {
++        state.tacticalAiRuntime.quietLatched = false;
++      }
+       markCheapCohortMembers(state, shipLikeList);
+       stampManeuverIdentities(state, shipLikeList);
+       const liveStack = ensureStack(state);
+diff --git a/test/tactical-ai-quiet-latch.test.mjs b/test/tactical-ai-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..22d36fc89
+--- /dev/null
++++ b/test/tactical-ai-quiet-latch.test.mjs
+@@ -0,0 +1,158 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++
++import { createBus } from '../src/core/eventBus.js';
++import { createGameState } from '../src/core/gameState.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  createTacticalAISystem,
++  setTacticalAiQuietLatchForBench,
++  getTacticalAiQuietLatchForBench,
++} from '../src/systems/tacticalAI.js';
++import { ensureActivityClassified } from '../src/world/activityRuntime.js';
++import { SIM_TIER } from '../src/world/activityClassification.js';
++
++function stubHelpers(helpers) {
++  helpers.aiSensors = {
++    frameFor(entityId, tick) {
++      return {
++        tick,
++        self: {
++          id: entityId, team: 2, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
++          radius: 12, hullFraction: 1, energyFraction: 1, heatFraction: 0,
++          disabled: false, tethered: false, capabilities: ['drive', 'weapon', 'ranged'],
++          subsystemFractions: {}, activity: null, roe: 'weapons_free', combatDoctrineId: null,
++        },
++        contacts: [], events: [],
++      };
++    },
++  };
++  helpers.aiRoster = {
++    listSquads() { return []; },
++    liveListSquads() { return []; },
++  };
++  helpers.aiManeuver = { request(req) { return req; } };
++}
++
++function boot(nNpc = 0) {
++  const state = createGameState(21 + nNpc);
++  state.mode = 'flight';
++  state.runtime = { profileId: 'production' };
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  stubHelpers(helpers);
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, mass: 12,
++    hull: 100, hullMax: 100, collides: true, team: 1,
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++  const npcs = [];
++  for (let i = 0; i < nNpc; i++) {
++    npcs.push(helpers.spawnEntity({
++      type: 'ship', pos: { x: 900 + i * 30, z: 100 }, vel: { x: 0, z: 0 }, radius: 8, mass: 10,
++      hull: 80, hullMax: 80, collides: true, team: 2,
++      data: { ai: true, intent: {} },
++    }));
++  }
++  if (state.entityIndex) state.entityIndex.ready = true;
++  // Production create: ports via helpers only so quiet latch is eligible.
++  const tactical = createTacticalAISystem({
++    actionPortFactory: () => ({
++      list() { return []; },
++      canStart() { return { ok: false, reason: 'idle_fixture' }; },
++      start() { return null; },
++      status() { return 'idle'; },
++      interrupt() { return true; },
++    }),
++  });
++  tactical.init({ state, bus, helpers, registry: null });
++  return { state, helpers, bus, tactical, player, npcs };
++}
++
++function stampDormant(state, entity) {
++  entity.activity = {
++    simTier: SIM_TIER.S3_DORMANT,
++    nextEventAtT: (state.simTime || 0) + 1e6,
++    pinnedExact: false,
++  };
++}
++
++test('bench toggle defaults ON', () => {
++  assert.equal(getTacticalAiQuietLatchForBench(), true);
++});
++
++test('player-only quiet flight latches tacticalAI', () => {
++  setTacticalAiQuietLatchForBench(true);
++  const { state, tactical } = boot(0);
++  for (let i = 0; i < 5; i++) {
++    state.tick = (state.tick | 0) + 1;
++    state.simTime = (state.simTime || 0) + 1 / 60;
++    ensureActivityClassified(state);
++    tactical.update(1 / 60, state);
++  }
++  assert.equal(!!(state.tacticalAiRuntime && state.tacticalAiRuntime.quietLatched), true);
++  setTacticalAiQuietLatchForBench(true);
++});
++
++test('dormant NPCs latch; due thinker wakes', () => {
++  setTacticalAiQuietLatchForBench(true);
++  const { state, tactical, npcs } = boot(2);
++  for (const npc of npcs) stampDormant(state, npc);
++  for (let i = 0; i < 5; i++) {
++    state.tick = (state.tick | 0) + 1;
++    state.simTime = (state.simTime || 0) + 1 / 60;
++    for (const npc of npcs) stampDormant(state, npc);
++    tactical.update(1 / 60, state);
++  }
++  assert.equal(!!(state.tacticalAiRuntime && state.tacticalAiRuntime.quietLatched), true);
++
++  // Wake: make one NPC need think now.
++  npcs[0].activity = {
++    simTier: SIM_TIER.S0_EXACT,
++    nextEventAtT: -1,
++    pinnedExact: true,
++  };
++  state.tick = (state.tick | 0) + 1;
++  state.simTime = (state.simTime || 0) + 1 / 60;
++  tactical.update(1 / 60, state);
++  assert.equal(!!(state.tacticalAiRuntime && state.tacticalAiRuntime.quietLatched), false);
++  setTacticalAiQuietLatchForBench(true);
++});
++
++test('membership spawn wakes quiet latch', () => {
++  setTacticalAiQuietLatchForBench(true);
++  const { state, tactical, helpers } = boot(0);
++  for (let i = 0; i < 4; i++) {
++    state.tick = (state.tick | 0) + 1;
++    state.simTime = (state.simTime || 0) + 1 / 60;
++    tactical.update(1 / 60, state);
++  }
++  assert.equal(!!(state.tacticalAiRuntime && state.tacticalAiRuntime.quietLatched), true);
++
++  const hostile = helpers.spawnEntity({
++    type: 'ship', pos: { x: 40, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, mass: 10,
++    hull: 80, hullMax: 80, collides: true, team: 2,
++    data: { ai: true, intent: {} },
++  });
++  // No activity → entityNeedsAiThink true (fail-open).
++  assert.equal(hostile.activity == null || !hostile.activity.simTier, true);
++  state.tick = (state.tick | 0) + 1;
++  state.simTime = (state.simTime || 0) + 1 / 60;
++  tactical.update(1 / 60, state);
++  assert.equal(!!(state.tacticalAiRuntime && state.tacticalAiRuntime.quietLatched), false);
++  setTacticalAiQuietLatchForBench(true);
++});
++
++test('bench toggle OFF refuses latch', () => {
++  setTacticalAiQuietLatchForBench(false);
++  const { state, tactical } = boot(0);
++  for (let i = 0; i < 5; i++) {
++    state.tick = (state.tick | 0) + 1;
++    state.simTime = (state.simTime || 0) + 1 / 60;
++    tactical.update(1 / 60, state);
++  }
++  assert.equal(!!(state.tacticalAiRuntime && state.tacticalAiRuntime.quietLatched), false);
++  setTacticalAiQuietLatchForBench(true);
++});
+-- 
+2.47.3
+

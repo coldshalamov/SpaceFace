@@ -1,0 +1,2088 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.power-skid.anchor.socket-hoist-center",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        2.4000000953674316,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Hoist_Center",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.power-skid.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        2.4000000953674316,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.anchor.socket-power-out",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.099999904632568,
+        0.3499999940395355,
+        1.5,
+        1
+      ],
+      "nodeName": "SOCKET_Power_Out",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.power-skid.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.099999904632568,
+        0.3499999940395355,
+        1.5,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.power-skid",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "cfd5bfe82ecf861b122cc9c1dc25f597e83ad6c6f865ce82b67cb7c832bface8",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.599997011727219,
+          2.300090076296837,
+          1.2000000476837158
+        ],
+        "min": [
+          1.2000030597983549,
+          0.3999099415845566,
+          -1.2000000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ffb0cd813783831714934436f13e2bb4447fb9b8c7897ef2b29f0f750ff73cfc",
+      "id": "sf.render.power-skid.mesh.cabinet.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.power-skid.mesh.cabinet",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.6094512939453125,
+          0.608282983602985,
+          1.5947692162082794
+        ],
+        "min": [
+          2.543034553527832,
+          0.19004280835200912,
+          0.7135765188648102
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5d996a01692062a8134e48b1a50881e3c81ab11702a938ba2297a41964e89076",
+      "id": "sf.render.power-skid.mesh.cable.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.power-skid.mesh.cable",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.901203400451976,
+          2.827000141143799,
+          1.1269999742507935
+        ],
+        "min": [
+          -3.098796599548024,
+          0.5730001926422119,
+          -1.1269999742507935
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "560c6c5ca3de0d811da1f3d8e7bf192e03f0f16313440b0083fec9ee8eb01d11",
+      "id": "sf.render.power-skid.mesh.core-domea.primitive.0",
+      "indexCount": 588,
+      "indexed": true,
+      "materialHash": "71880284f6aae962fa407931b8a2638883486d46b4b48204760ab51ad34edd50",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.002",
+      "nodeId": "sf.render.power-skid.mesh.core-domea",
+      "primitiveIndex": 0,
+      "vertexCount": 100
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8987965667654694,
+          2.8269999027252197,
+          1.1269999742507935
+        ],
+        "min": [
+          -0.2987966323305786,
+          0.5729999542236328,
+          -1.1269999742507935
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "560c6c5ca3de0d811da1f3d8e7bf192e03f0f16313440b0083fec9ee8eb01d11",
+      "id": "sf.render.power-skid.mesh.core-domef.primitive.0",
+      "indexCount": 588,
+      "indexed": true,
+      "materialHash": "71880284f6aae962fa407931b8a2638883486d46b4b48204760ab51ad34edd50",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.power-skid.mesh.core-domef",
+      "primitiveIndex": 0,
+      "vertexCount": 100
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.46254391972525033,
+          0.575004109796102,
+          1.3224999904632568
+        ],
+        "min": [
+          -2.4174561649133453,
+          0.22499587232250462,
+          -1.3224999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f998b0bfdc46caa62d3242f3359f4be9efec4f765410ade110a4b41fa66276a9",
+      "id": "sf.render.power-skid.mesh.core-saddlea.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.power-skid.mesh.core-saddlea",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.2174560427238235,
+          0.575004109796102,
+          1.3224999904632568
+        ],
+        "min": [
+          -0.7374562024642715,
+          0.22499587232250462,
+          -1.3224999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f998b0bfdc46caa62d3242f3359f4be9efec4f765410ade110a4b41fa66276a9",
+      "id": "sf.render.power-skid.mesh.core-saddlef.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.power-skid.mesh.core-saddlef",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8000003099441528,
+          2.8325360822385472,
+          1.1499681807791822
+        ],
+        "min": [
+          -2.000000238418579,
+          0.5674640727335292,
+          -1.1499681807791822
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e93c06015962538768343bd69e9e45f85560382331f6ec320cb777ce5cdbc9df",
+      "id": "sf.render.power-skid.mesh.core-shell.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": "71880284f6aae962fa407931b8a2638883486d46b4b48204760ab51ad34edd50",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.power-skid.mesh.core-shell",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6000000238418579,
+          4.850051885441814,
+          0.10005188544181377
+        ],
+        "min": [
+          -1.8000000715255737,
+          4.649948114558186,
+          -0.10005188544181377
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "53d7a8374f38bab2e11a588dae432f5c270c4efde74e02c3c8cb9ca21487a8e5",
+      "id": "sf.render.power-skid.mesh.fin-frame.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.power-skid.mesh.fin-frame",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5,
+          4.700055024350796,
+          0.0699606326391318
+        ],
+        "min": [
+          -1.7000000476837158,
+          2.8999451187003515,
+          -0.0699606326391318
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "155ec5965dbc897194be9aaf8be5890c1d37ac32b40fb559456fc295d5bdbf85",
+      "id": "sf.render.power-skid.mesh.fin.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "193ebfc9185b0fcc79b57cf704681dfab2bac38d0517c48d59075d388de12ce7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.power-skid.mesh.fin",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.150000110268593,
+          0.6000000238418579,
+          1.7500000149011612
+        ],
+        "min": [
+          4.6500000804662704,
+          0.09999999403953552,
+          1.2499999850988388
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4653d2db3349c50b3e27357ec5a33dd01bb412daf9c86dc24e4fd5b8d804d599",
+      "id": "sf.render.power-skid.mesh.plug.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.power-skid.mesh.plug",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.700000047683716,
+          0.1499679582135796,
+          -1.2000320656282784
+        ],
+        "min": [
+          -2.700000047683716,
+          -0.1499679582135796,
+          -1.4999679820554375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "00038d3b0f67eece5b24cb4b4d588b0b3620e333853686d5cfab0b14a2e36c46",
+      "id": "sf.render.power-skid.mesh.runner-p.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.power-skid.mesh.runner-p",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.700000047683716,
+          0.1499679582135796,
+          1.4999679820554375
+        ],
+        "min": [
+          -2.700000047683716,
+          -0.1499679582135796,
+          1.2000320656282784
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "00038d3b0f67eece5b24cb4b4d588b0b3620e333853686d5cfab0b14a2e36c46",
+      "id": "sf.render.power-skid.mesh.runner-s.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.power-skid.mesh.runner-s",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.400031996751234,
+          0.4250541852554811,
+          1.5
+        ],
+        "min": [
+          -2.6999679078813346,
+          0.0749458445468413,
+          -1.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "34082a0feb79595519af2c33fd44b9537951936326bc9198121a893d3496ac84",
+      "id": "sf.render.power-skid.mesh.skid-hz-a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.power-skid.mesh.skid-hz-a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.6999679078813346,
+          0.4250541852554811,
+          1.5
+        ],
+        "min": [
+          2.400031996751234,
+          0.0749458445468413,
+          -1.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "34082a0feb79595519af2c33fd44b9537951936326bc9198121a893d3496ac84",
+      "id": "sf.render.power-skid.mesh.skid-hz-f.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.power-skid.mesh.skid-hz-f",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.5,
+          0.3998962474985944,
+          1.500137333292642
+        ],
+        "min": [
+          -2.5,
+          0.00010377336303121765,
+          -1.500137333292642
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b4997efc17bbd31867626f41f0367a0c541d9b1f2349bb7b253fd7b5399939b9",
+      "id": "sf.render.power-skid.mesh.skid.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.power-skid.mesh.skid",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.6899864574149124,
+          1.89998621898702,
+          0.25
+        ],
+        "min": [
+          2.5500133137032517,
+          1.7000136856455483,
+          -0.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "388d7a65196d8ed06d1d40ab78c6edaf3fd8388e166949eda63d53d14227863f",
+      "id": "sf.render.power-skid.mesh.status.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.power-skid.mesh.status",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "id": "material:143624083cd581b0939afdce",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "193ebfc9185b0fcc79b57cf704681dfab2bac38d0517c48d59075d388de12ce7",
+      "id": "material:193ebfc9185b0fcc79b57cf7",
+      "name": "esk_radiator_hot",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
+      "id": "material:34f564162e21bc0296927f4f",
+      "name": "esk_light_signal_amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
+      "id": "material:5305fc668e4d72b103333713",
+      "name": "esk_hazard_stripe",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "71880284f6aae962fa407931b8a2638883486d46b4b48204760ab51ad34edd50",
+      "id": "material:71880284f6aae962fa407931",
+      "name": "esk_tank_shell",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
+      "id": "material:c4d232af0c91939b2fe36a45",
+      "name": "esk_paint_service_blue",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "id": "material:ef83aaa905288b1ffc8a4f70",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
+      "id": "material:f6ac19da4caa1b500dda88b0",
+      "name": "esk_pipe_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.power-skid.mesh.cabinet",
+      "localTransform": [
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        1.9000000357627869,
+        1.3500000089406967,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cabinet",
+      "nodeName": "cabinet",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        1.9000000357627869,
+        1.3500000089406967,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.cable",
+      "localTransform": [
+        1.0332083702087402,
+        0,
+        0,
+        0,
+        0,
+        1.0332083702087402,
+        0,
+        0,
+        0,
+        0,
+        1.0332083702087402,
+        0,
+        3.5762429237365723,
+        0.3991628959774971,
+        1.1541728675365448,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cable",
+      "nodeName": "cable",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1.0332083702087402,
+        0,
+        0,
+        0,
+        0,
+        1.0332083702087402,
+        0,
+        0,
+        0,
+        0,
+        1.0332083702087402,
+        0,
+        3.5762429237365723,
+        0.3991628959774971,
+        1.1541728675365448,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.core-domea",
+      "localTransform": [
+        1.1269999742507935,
+        0,
+        0,
+        0,
+        0,
+        1.1269999742507935,
+        0,
+        0,
+        0,
+        0,
+        1.1269999742507935,
+        0,
+        -2,
+        1.7000001668930054,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "core_domea",
+      "nodeName": "core_domea",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1.1269999742507935,
+        0,
+        0,
+        0,
+        0,
+        1.1269999742507935,
+        0,
+        0,
+        0,
+        0,
+        1.1269999742507935,
+        0,
+        -2,
+        1.7000001668930054,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.core-domef",
+      "localTransform": [
+        1.1269999742507935,
+        0,
+        0,
+        0,
+        0,
+        1.1269999742507935,
+        0,
+        0,
+        0,
+        0,
+        1.1269999742507935,
+        0,
+        0.7999999672174454,
+        1.6999999284744263,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "core_domef",
+      "nodeName": "core_domef",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1.1269999742507935,
+        0,
+        0,
+        0,
+        0,
+        1.1269999742507935,
+        0,
+        0,
+        0,
+        0,
+        1.1269999742507935,
+        0,
+        0.7999999672174454,
+        1.6999999284744263,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.core-saddlea",
+      "localTransform": [
+        1.3224999904632568,
+        0,
+        0,
+        0,
+        0,
+        1.3224999904632568,
+        0,
+        0,
+        0,
+        0,
+        1.3224999904632568,
+        0,
+        -1.4400000423192978,
+        0.3999999910593033,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "core_saddlea",
+      "nodeName": "core_saddlea",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1.3224999904632568,
+        0,
+        0,
+        0,
+        0,
+        1.3224999904632568,
+        0,
+        0,
+        0,
+        0,
+        1.3224999904632568,
+        0,
+        -1.4400000423192978,
+        0.3999999910593033,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.core-saddlef",
+      "localTransform": [
+        1.3224999904632568,
+        0,
+        0,
+        0,
+        0,
+        1.3224999904632568,
+        0,
+        0,
+        0,
+        0,
+        1.3224999904632568,
+        0,
+        0.239999920129776,
+        0.3999999910593033,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "core_saddlef",
+      "nodeName": "core_saddlef",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1.3224999904632568,
+        0,
+        0,
+        0,
+        0,
+        1.3224999904632568,
+        0,
+        0,
+        0,
+        0,
+        1.3224999904632568,
+        0,
+        0.239999920129776,
+        0.3999999910593033,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.core-shell",
+      "localTransform": [
+        1.400000274181366,
+        0,
+        0,
+        0,
+        0,
+        1.400000274181366,
+        0,
+        0,
+        0,
+        0,
+        1.400000274181366,
+        0,
+        -0.5999999642372131,
+        1.7000000774860382,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "core_shell",
+      "nodeName": "core_shell",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1.400000274181366,
+        0,
+        0,
+        0,
+        0,
+        1.400000274181366,
+        0,
+        0,
+        0,
+        0,
+        1.400000274181366,
+        0,
+        -0.5999999642372131,
+        1.7000000774860382,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.fin",
+      "localTransform": [
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        -0.6000000238418579,
+        3.8000000715255737,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin",
+      "nodeName": "fin",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        -0.6000000238418579,
+        3.8000000715255737,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.fin-frame",
+      "localTransform": [
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        -0.6000000238418579,
+        4.75,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_frame",
+      "nodeName": "fin_frame",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        -0.6000000238418579,
+        4.75,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.plug",
+      "localTransform": [
+        0.2500000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.2500000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.2500000149011612,
+        0,
+        4.900000095367432,
+        0.3500000089406967,
+        1.5,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "plug",
+      "nodeName": "plug",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        0.2500000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.2500000149011612,
+        0,
+        0,
+        0,
+        0,
+        0.2500000149011612,
+        0,
+        4.900000095367432,
+        0.3500000089406967,
+        1.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.runner-p",
+      "localTransform": [
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        0,
+        -1.350000023841858,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "runner_p",
+      "nodeName": "runner_p",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        0,
+        -1.350000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.runner-s",
+      "localTransform": [
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        0,
+        1.350000023841858,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "runner_s",
+      "nodeName": "runner_s",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        0,
+        1.350000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.skid",
+      "localTransform": [
+        2.5,
+        0,
+        0,
+        0,
+        0,
+        2.5,
+        0,
+        0,
+        0,
+        0,
+        2.5,
+        0,
+        0,
+        0.20000001043081284,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "skid",
+      "nodeName": "skid",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        2.5,
+        0,
+        0,
+        0,
+        0,
+        2.5,
+        0,
+        0,
+        0,
+        0,
+        2.5,
+        0,
+        0,
+        0.20000001043081284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.skid-hz-a",
+      "localTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        -2.549999952316284,
+        0.2500000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "skid_hz_a",
+      "nodeName": "skid_hz_a",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        -2.549999952316284,
+        0.2500000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.skid-hz-f",
+      "localTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        2.549999952316284,
+        0.2500000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "skid_hz_f",
+      "nodeName": "skid_hz_f",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        2.549999952316284,
+        0.2500000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.mesh.status",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        2.619999885559082,
+        1.7999999523162842,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "status",
+      "nodeName": "status",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.power-skid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        2.619999885559082,
+        1.7999999523162842,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "power_skid",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "d4ad10b93b992abbcece0645b6631d0169f1eb204055001c2360427eb5cbbef5"
+    },
+    "sourceGlb": {
+      "bytes": 23084,
+      "sha256": "945291679598ae7fa12ba2a6343f504cda25beac07ec38766d20340a1ffb04e2",
+      "uri": "place_power_skid.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 23428,
+    "sha256": "06f039d73f439b972c59c444cad9f686481aafb4c5f9297784e16913fad14c78",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.0256017553602845,
+        2.350041963614117,
+        0.1249313408042596
+      ],
+      "max": [
+        5.150000110268593,
+        4.850051885441814,
+        1.7500000149011612
+      ],
+      "min": [
+        -3.098796599548024,
+        -0.1499679582135796,
+        -1.500137333292642
+      ],
+      "size": [
+        8.248796709816617,
+        5.0000198436553935,
+        3.250137348193803
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          2.4000000953674316,
+          0,
+          1
+        ],
+        "name": "SOCKET_Hoist_Center",
+        "planIndex": 18,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Hoist_Center",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Hoist_Center",
+            "recordIds": [
+              "sf.render.power-skid.anchor.socket-hoist-center"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.099999904632568,
+          0.3499999940395355,
+          1.5,
+          1
+        ],
+        "name": "SOCKET_Power_Out",
+        "planIndex": 19,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Power_Out",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Power_Out",
+            "recordIds": [
+              "sf.render.power-skid.anchor.socket-power-out"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "mechanical": 11,
+      "radiator": 1,
+      "service": 1,
+      "signal": 1,
+      "warning": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "service"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "signal"
+      }
+    ],
+    "nodeCount": 21,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.2000000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.2000000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.2000000476837158,
+          0,
+          1.9000000357627869,
+          1.3500000089406967,
+          0,
+          1
+        ],
+        "name": "cabinet",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0332083702087402,
+          0,
+          0,
+          0,
+          0,
+          1.0332083702087402,
+          0,
+          0,
+          0,
+          0,
+          1.0332083702087402,
+          0,
+          3.5762429237365723,
+          0.3991628959774971,
+          1.1541728675365448,
+          1
+        ],
+        "name": "cable",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.1269999742507935,
+          0,
+          0,
+          0,
+          0,
+          1.1269999742507935,
+          0,
+          0,
+          0,
+          0,
+          1.1269999742507935,
+          0,
+          -2,
+          1.7000001668930054,
+          0,
+          1
+        ],
+        "name": "core_domea",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.1269999742507935,
+          0,
+          0,
+          0,
+          0,
+          1.1269999742507935,
+          0,
+          0,
+          0,
+          0,
+          1.1269999742507935,
+          0,
+          0.7999999672174454,
+          1.6999999284744263,
+          0,
+          1
+        ],
+        "name": "core_domef",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.3224999904632568,
+          0,
+          0,
+          0,
+          0,
+          1.3224999904632568,
+          0,
+          0,
+          0,
+          0,
+          1.3224999904632568,
+          0,
+          -1.4400000423192978,
+          0.3999999910593033,
+          0,
+          1
+        ],
+        "name": "core_saddlea",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.3224999904632568,
+          0,
+          0,
+          0,
+          0,
+          1.3224999904632568,
+          0,
+          0,
+          0,
+          0,
+          1.3224999904632568,
+          0,
+          0.239999920129776,
+          0.3999999910593033,
+          0,
+          1
+        ],
+        "name": "core_saddlef",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.400000274181366,
+          0,
+          0,
+          0,
+          0,
+          1.400000274181366,
+          0,
+          0,
+          0,
+          0,
+          1.400000274181366,
+          0,
+          -0.5999999642372131,
+          1.7000000774860382,
+          0,
+          1
+        ],
+        "name": "core_shell",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.100000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.100000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.100000023841858,
+          0,
+          -0.6000000238418579,
+          3.8000000715255737,
+          0,
+          1
+        ],
+        "name": "fin",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.2000000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.2000000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.2000000476837158,
+          0,
+          -0.6000000238418579,
+          4.75,
+          0,
+          1
+        ],
+        "name": "fin_frame",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.2500000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.2500000149011612,
+          0,
+          0,
+          0,
+          0,
+          0.2500000149011612,
+          0,
+          4.900000095367432,
+          0.3500000089406967,
+          1.5,
+          1
+        ],
+        "name": "plug",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.700000047683716,
+          0,
+          0,
+          0,
+          0,
+          2.700000047683716,
+          0,
+          0,
+          0,
+          0,
+          2.700000047683716,
+          0,
+          0,
+          0,
+          -1.350000023841858,
+          1
+        ],
+        "name": "runner_p",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.700000047683716,
+          0,
+          0,
+          0,
+          0,
+          2.700000047683716,
+          0,
+          0,
+          0,
+          0,
+          2.700000047683716,
+          0,
+          0,
+          0,
+          1.350000023841858,
+          1
+        ],
+        "name": "runner_s",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.5,
+          0,
+          0,
+          0,
+          0,
+          2.5,
+          0,
+          0,
+          0,
+          0,
+          2.5,
+          0,
+          0,
+          0.20000001043081284,
+          0,
+          1
+        ],
+        "name": "skid",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          -2.549999952316284,
+          0.2500000149011612,
+          0,
+          1
+        ],
+        "name": "skid_hz_a",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          2.549999952316284,
+          0.2500000149011612,
+          0,
+          1
+        ],
+        "name": "skid_hz_f",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          2.619999885559082,
+          1.7999999523162842,
+          0,
+          1
+        ],
+        "name": "status",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_power_skid.glb"
+  },
+  "runtimeHash": "bd000887afe52406360512cc64f8a16758b87c5b1f4abb47458162b50a2be869",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.150000110268593,
+          4.850051885441814,
+          1.7500000149011612
+        ],
+        "min": [
+          -3.098796599548024,
+          -0.1499679582135796,
+          -1.500137333292642
+        ]
+      },
+      "id": "sf.render.power-skid.body",
+      "nodeIds": [
+        "sf.render.power-skid.mesh.cabinet",
+        "sf.render.power-skid.mesh.cable",
+        "sf.render.power-skid.mesh.core-domea",
+        "sf.render.power-skid.mesh.core-domef",
+        "sf.render.power-skid.mesh.core-saddlea",
+        "sf.render.power-skid.mesh.core-saddlef",
+        "sf.render.power-skid.mesh.core-shell",
+        "sf.render.power-skid.mesh.fin",
+        "sf.render.power-skid.mesh.fin-frame",
+        "sf.render.power-skid.mesh.plug",
+        "sf.render.power-skid.mesh.runner-p",
+        "sf.render.power-skid.mesh.runner-s",
+        "sf.render.power-skid.mesh.skid",
+        "sf.render.power-skid.mesh.skid-hz-a",
+        "sf.render.power-skid.mesh.skid-hz-f",
+        "sf.render.power-skid.mesh.status",
+        "sf.render.power-skid.root"
+      ]
+    }
+  ]
+}

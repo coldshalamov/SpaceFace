@@ -1,0 +1,271 @@
+{
+  "exit": 0,
+  "source_sha256": "bc701365639279ea041a8b57185c7f595815f977988879ca9b716dfa0df38e61",
+  "test_sha256": "cbde47213d4bb8ba99d6972113876ffcd694a787d85d3efd79d99fc54ca19800",
+  "qualification": "Selected-public-authority local diagnostic; mixed transitive dependency graph. Synthetic radius-2 carriers, not production MTS geometry; actual native bodies/impulses, no trajectory interpolation.",
+  "scenarios": [
+    {
+      "native": "rapier-dynamic",
+      "passing": true,
+      "time": 110.699999999995,
+      "outcome": "deal_done",
+      "remaining": [],
+      "bondAt": null,
+      "rewards": [],
+      "directedDisplacement": null,
+      "snapshots": [
+        {
+          "kind": "terminal_receipt",
+          "time": 17.583333333333616,
+          "outcome": "deal_done",
+          "bodies": [
+            {
+              "id": 3,
+              "role": "player",
+              "x": 704.1264038085938,
+              "z": 80,
+              "ownerId": null,
+              "alive": true
+            },
+            {
+              "id": 1,
+              "role": "seller",
+              "x": 32,
+              "z": 0,
+              "ownerId": null,
+              "alive": true
+            },
+            {
+              "id": 2,
+              "role": "buyer",
+              "x": -32.97450637817383,
+              "z": 1.8327904095110682e-15,
+              "ownerId": null,
+              "alive": true
+            },
+            {
+              "id": 4,
+              "role": "pod",
+              "x": -7.575851917266846,
+              "z": 9.17768668679507e-15,
+              "ownerId": 2,
+              "alive": true
+            },
+            {
+              "id": 5,
+              "role": "pod",
+              "x": -14.006494522094727,
+              "z": 1.0615423470805574e-15,
+              "ownerId": 2,
+              "alive": true
+            },
+            {
+              "id": 6,
+              "role": "pod",
+              "x": -22.70669937133789,
+              "z": 1.3689375493093105e-14,
+              "ownerId": 2,
+              "alive": true
+            },
+            {
+              "id": 7,
+              "role": "pod",
+              "x": -28.871591567993164,
+              "z": -2.4610401675004452e-14,
+              "ownerId": 2,
+              "alive": true
+            }
+          ]
+        }
+      ],
+      "receipts": [
+        {
+          "id": 7,
+          "time": 1.0833333333333344,
+          "distance": 25.333255767822266
+        },
+        {
+          "id": 6,
+          "time": 5.583333333333319,
+          "distance": 25.335768222808838
+        },
+        {
+          "id": 5,
+          "time": 10.083333333333414,
+          "distance": 24.279959201812744
+        },
+        {
+          "id": 4,
+          "time": 17.583333333333616,
+          "distance": 25.398654460906982
+        }
+      ]
+    },
+    {
+      "native": "rapier-dynamic",
+      "passing": false,
+      "time": 110.699999999995,
+      "outcome": "contact_made",
+      "remaining": [],
+      "bondAt": 7.0833333333333135,
+      "rewards": [
+        {
+          "name": "rep",
+          "faction": "faction_quiet",
+          "delta": 2
+        },
+        {
+          "name": "grant",
+          "amount": 60,
+          "reason": "handoff:quiet_lay"
+        }
+      ],
+      "directedDisplacement": 6.399850433551243,
+      "snapshots": [
+        {
+          "kind": "acceptance",
+          "time": 7.0833333333333135,
+          "outcome": null,
+          "bodies": [
+            {
+              "id": 3,
+              "role": "player",
+              "x": 132,
+              "z": 80,
+              "ownerId": null,
+              "alive": true
+            },
+            {
+              "id": 1,
+              "role": "seller",
+              "x": 32,
+              "z": 0,
+              "ownerId": null,
+              "alive": true
+            },
+            {
+              "id": 2,
+              "role": "buyer",
+              "x": -32,
+              "z": 0,
+              "ownerId": null,
+              "alive": true
+            },
+            {
+              "id": 4,
+              "role": "pod",
+              "x": 3.5156683921813965,
+              "z": 2.7990167743118096e-15,
+              "ownerId": 3,
+              "alive": true
+            },
+            {
+              "id": 5,
+              "role": "pod",
+              "x": -2.5145814418792725,
+              "z": 2.419604247457007e-15,
+              "ownerId": 1,
+              "alive": true
+            },
+            {
+              "id": 6,
+              "role": "pod",
+              "x": -8.590998649597168,
+              "z": 2.994457556671241e-15,
+              "ownerId": 2,
+              "alive": true
+            },
+            {
+              "id": 7,
+              "role": "pod",
+              "x": -15.879474639892578,
+              "z": -5.498539788089708e-16,
+              "ownerId": 2,
+              "alive": true
+            }
+          ]
+        },
+        {
+          "kind": "terminal_receipt",
+          "time": 10.083333333333414,
+          "outcome": "contact_made",
+          "bodies": [
+            {
+              "id": 3,
+              "role": "player",
+              "x": 132,
+              "z": 80,
+              "ownerId": null,
+              "alive": true
+            },
+            {
+              "id": 1,
+              "role": "seller",
+              "x": 32,
+              "z": 0,
+              "ownerId": null,
+              "alive": true
+            },
+            {
+              "id": 2,
+              "role": "buyer",
+              "x": -32,
+              "z": 0,
+              "ownerId": null,
+              "alive": true
+            },
+            {
+              "id": 4,
+              "role": "pod",
+              "x": 11.66480827331543,
+              "z": 5.074252605438232,
+              "ownerId": 3,
+              "alive": true
+            },
+            {
+              "id": 5,
+              "role": "pod",
+              "x": -7.720040798187256,
+              "z": 2.678033999664294e-15,
+              "ownerId": 2,
+              "alive": true
+            },
+            {
+              "id": 6,
+              "role": "pod",
+              "x": -14.412379264831543,
+              "z": 3.578534207648127e-15,
+              "ownerId": 2,
+              "alive": true
+            },
+            {
+              "id": 7,
+              "role": "pod",
+              "x": -22.298198699951172,
+              "z": -1.4036322729387308e-15,
+              "ownerId": 2,
+              "alive": true
+            }
+          ]
+        }
+      ],
+      "receipts": [
+        {
+          "id": 7,
+          "time": 1.0833333333333344,
+          "distance": 25.333255767822266
+        },
+        {
+          "id": 6,
+          "time": 5.583333333333319,
+          "distance": 25.335768222808838
+        },
+        {
+          "id": 5,
+          "time": 10.083333333333414,
+          "distance": 24.279959201812744
+        }
+      ]
+    }
+  ]
+}

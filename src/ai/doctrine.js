@@ -1,0 +1,543 @@
+import {
+  ManeuverKind,
+  ObjectiveKind,
+  distance2,
+  finite,
+  finiteInt,
+  memberObservedTarget,
+  stableId,
+} from './contracts.js';
+
+export const ActivityKind = Object.freeze({
+  LOITER: 'loiter',
+  PATROL_ROUTE: 'patrol_route',
+  TRANSIT: 'transit',
+  SCAN_APPROACH: 'scan_approach',
+  HAIL_HOLD: 'hail_hold',
+  ATTACK_RUN: 'attack_run',
+  REPOSITION: 'reposition',
+  SCREEN: 'screen',
+  DISENGAGE: 'disengage',
+  RETURN_TO_ANCHOR: 'return_to_anchor',
+  FLEE: 'flee',
+});
+
+export const RulesOfEngagement = Object.freeze({
+  HOLD_FIRE: 'hold_fire',
+  DEFENSIVE: 'defensive',
+  LAWFUL_WANTED_ONLY: 'lawful_wanted_only',
+  WEAPONS_FREE: 'weapons_free',
+});
+
+const ACTIVITY_VALUES = new Set(Object.values(ActivityKind));
+const ROE_VALUES = new Set(Object.values(RulesOfEngagement));
+const OFFENSIVE_ACTIVITY_VALUES = new Set([
+  ActivityKind.ATTACK_RUN,
+  ActivityKind.REPOSITION,
+  ActivityKind.SCREEN,
+  ActivityKind.SCAN_APPROACH,
+  ActivityKind.PATROL_ROUTE,
+]);
+const DEFAULT_LEASH_RADIUS = 2600;
+
+// Outputs are frozen and every field is idempotent under re-normalization, so re-normalizing an
+// already-normalized activity (the common case inside one decision pass) can return it as-is.
+const NORMALIZED_ACTIVITIES = new WeakSet();
+
+// Perf: a raw activity object that survives across ticks (the common case — the stack re-reads
+// the same authored/morale record every tick) previously rebuilt and re-froze its normalized
+// form every call. The output is a pure function of the source fields, so the raw values are
+// cached beside the output and compared before any rebuild; any difference rebuilds.
+const NORMALIZED_BY_SRC = new WeakMap();
+
+export function normalizeActivity(value, fallback = null) {
+  if (value && typeof value === 'object' && NORMALIZED_ACTIVITIES.has(value)) return value;
+  const src = value && typeof value === 'object' ? value : fallback;
+  if (!src || typeof src !== 'object') return null;
+  const cached = value === src ? NORMALIZED_BY_SRC.get(src) : null;
+  if (cached
+    && cached.kind === src.kind
+    && cached.reason === src.reason
+    && cached.anchor === src.anchor
+    && cached.anchorVelocity === src.anchorVelocity
+    && cached.leashRadius === src.leashRadius
+    && cached.preferredRange === src.preferredRange
+    && cached.startedTick === src.startedTick
+    && cached.deadlineTick === src.deadlineTick
+    && cached.targetId === src.targetId
+    && cached.routeId === src.routeId
+    && cached.encounterId === src.encounterId) {
+    return cached.out;
+  }
+  const kind = ACTIVITY_VALUES.has(String(src.kind)) ? String(src.kind) : ActivityKind.LOITER;
+  const activity = Object.freeze({
+    kind,
+    reason: String(src.reason || kind),
+    anchor: normalizeVec(src.anchor),
+    ...(src.anchorVelocity ? { anchorVelocity: normalizeVec(src.anchorVelocity) } : {}),
+    leashRadius: positive(src.leashRadius, DEFAULT_LEASH_RADIUS),
+    preferredRange: positive(src.preferredRange, 0),
+    startedTick: finiteInt(src.startedTick, 0),
+    deadlineTick: Number.isInteger(src.deadlineTick) ? src.deadlineTick : null,
+    targetId: src.targetId == null ? null : src.targetId,
+    routeId: src.routeId == null ? null : String(src.routeId),
+    encounterId: src.encounterId == null ? null : String(src.encounterId),
+  });
+  NORMALIZED_ACTIVITIES.add(activity);
+  if (value === src) {
+    NORMALIZED_BY_SRC.set(src, {
+      kind: src.kind,
+      reason: src.reason,
+      anchor: src.anchor,
+      anchorVelocity: src.anchorVelocity,
+      leashRadius: src.leashRadius,
+      preferredRange: src.preferredRange,
+      startedTick: src.startedTick,
+      deadlineTick: src.deadlineTick,
+      targetId: src.targetId,
+      routeId: src.routeId,
+      encounterId: src.encounterId,
+      out: activity,
+    });
+  }
+  return activity;
+}
+
+/**
+ * Resolve the activity the live tactical stack must obey. Morale and outcome systems can order an
+ * immediate flight before the authored encounter activity record is rewritten; that transient
+ * survival order must win over a stale attack-run record at every decision and execution gate.
+ */
+export function effectiveActivityForAI(ai) {
+  const activity = normalizeActivity(ai && ai.activity);
+  const forcedFlee = !!(ai && (ai.forceFlee === true || ai.fsm === 'flee'));
+  if (!forcedFlee) return activity;
+  return normalizeActivity({
+    ...(activity || {}),
+    kind: ActivityKind.FLEE,
+    reason: ai.forceFlee === true ? 'morale_force_flee' : 'fsm_flee',
+    targetId: null,
+  });
+}
+
+/**
+ * An ATTACK_RUN whose reason carries one of these prefixes is an AUTHORITATIVE ASSIGNMENT: a
+ * named target handed down by an owner that outranks the squad's advisory vote — an ambush's
+ * marked prey, CONTROL's dispatched incident offender, a WANTED warrant, the PQ-195 heist
+ * pressure element's run on the tug (D93), or the X-02 raid wing's lesson run on the pilot
+ * holding its crew's tow. Every layer that must honor such an order beyond the
+ * pilot's own sensor picture keys on this one predicate: the reported track (aiPorts), declared
+ * hostility (scanner), the FOCUS override + formation break, and the doctrine's target tag.
+ */
+const AUTHORITATIVE_ASSIGNMENT_PREFIXES = Object.freeze([
+  'ambush_snare:', 'security_response:', 'wanted_warrant:', 'heist:pressure:', 'npc_grudge:',
+  'onboarding_raid:', 'swarm_fortify:',
+]);
+
+export function isAuthoritativeAssignmentReason(reason) {
+  const text = String(reason || '');
+  for (const prefix of AUTHORITATIVE_ASSIGNMENT_PREFIXES) if (text.startsWith(prefix)) return true;
+  return false;
+}
+
+/** The named target of an authoritative ATTACK_RUN assignment, else null. */
+export function authoritativeAssignmentTargetId(activity) {
+  if (!activity || typeof activity !== 'object') return null;
+  if (activity.kind !== ActivityKind.ATTACK_RUN || activity.targetId == null) return null;
+  return isAuthoritativeAssignmentReason(activity.reason) ? activity.targetId : null;
+}
+
+export function normalizeRoe(value, fallback = RulesOfEngagement.WEAPONS_FREE) {
+  const text = String(value || fallback);
+  return ROE_VALUES.has(text) ? text : fallback;
+}
+
+export function activityForEncounterSpawn(live, ship = {}, options = {}) {
+  const passive = !!ship.passive || !!options.passive;
+  const role = String(ship.role || 'squad');
+  const shapeId = String(live && live.shapeId || ship.context || 'encounter');
+  const phase = String(live && live.phase || (passive ? 'offer' : 'conflict'));
+  const nowTick = Number.isInteger(options.tick) ? options.tick : Math.round(finite(options.now, 0) * 60);
+  let kind = passive ? ActivityKind.LOITER : ActivityKind.ATTACK_RUN;
+  let roe = passive ? RulesOfEngagement.HOLD_FIRE : RulesOfEngagement.WEAPONS_FREE;
+
+  if (shapeId === 'pirate_toll') {
+    kind = passive || phase === 'offer' ? ActivityKind.HAIL_HOLD : ActivityKind.ATTACK_RUN;
+    roe = passive || phase === 'offer' ? RulesOfEngagement.HOLD_FIRE : RulesOfEngagement.WEAPONS_FREE;
+  } else if (shapeId === 'patrol_scan') {
+    kind = ActivityKind.SCAN_APPROACH;
+    roe = RulesOfEngagement.LAWFUL_WANTED_ONLY;
+  } else if (shapeId === 'patrol_beat') {
+    kind = ActivityKind.PATROL_ROUTE;
+    roe = RulesOfEngagement.LAWFUL_WANTED_ONLY;
+  } else if (shapeId === 'convoy_departure' || shapeId === 'trader_run') {
+    kind = role === 'escort' ? ActivityKind.SCREEN : ActivityKind.TRANSIT;
+    roe = role === 'escort' ? RulesOfEngagement.DEFENSIVE : RulesOfEngagement.HOLD_FIRE;
+  } else if (shapeId === 'bounty_hunter' || shapeId === 'named_hunter') {
+    kind = passive ? ActivityKind.HAIL_HOLD : ActivityKind.ATTACK_RUN;
+    roe = passive ? RulesOfEngagement.HOLD_FIRE : RulesOfEngagement.WEAPONS_FREE;
+  } else if (shapeId === 'ambush_snare' || shapeId === 'claim_threat' || shapeId === 'distress_call') {
+    kind = passive ? ActivityKind.LOITER : (role === 'escort' || role === 'threat' ? ActivityKind.SCREEN : ActivityKind.ATTACK_RUN);
+    roe = passive ? RulesOfEngagement.HOLD_FIRE : RulesOfEngagement.WEAPONS_FREE;
+  }
+
+  return normalizeActivity({
+    kind,
+    reason: `${shapeId}:${phase}:${role}`,
+    anchor: live && live.anchor ? live.anchor : ship.pos,
+    leashRadius: positive(ship.leashRadius, positive(live && live.shape && live.shape.leashRadius, DEFAULT_LEASH_RADIUS)),
+    preferredRange: positive(ship.preferredRange, positive(live && live.shape && live.shape.preferredRange, 0)),
+    startedTick: nowTick,
+    deadlineTick: Number.isFinite(live && live.deadlineAt) ? Math.round(live.deadlineAt * 60) : null,
+    targetId: ship.targetId == null ? null : ship.targetId,
+    routeId: ship.routeId || (live && live.zoneId) || null,
+    encounterId: live && live.id,
+  });
+}
+
+export function roeForEncounterSpawn(live, ship = {}, options = {}) {
+  const activity = activityForEncounterSpawn(live, ship, options);
+  return roeForActivity(activity, ship.roe || options.roe);
+}
+
+export function roeForActivity(activity, explicit = null) {
+  if (explicit) return normalizeRoe(explicit);
+  const kind = activity && activity.kind;
+  if (kind === ActivityKind.HAIL_HOLD || kind === ActivityKind.LOITER || kind === ActivityKind.TRANSIT) return RulesOfEngagement.HOLD_FIRE;
+  if (kind === ActivityKind.PATROL_ROUTE || kind === ActivityKind.SCAN_APPROACH) return RulesOfEngagement.LAWFUL_WANTED_ONLY;
+  if (kind === ActivityKind.SCREEN) return RulesOfEngagement.DEFENSIVE;
+  return RulesOfEngagement.WEAPONS_FREE;
+}
+
+export function setEntityDoctrine(entity, values = {}) {
+  if (!entity) return null;
+  const data = entity.data || (entity.data = {});
+  const ai = data.ai || (data.ai = {});
+  const activity = normalizeActivity(values.activity || values, ai.activity || null);
+  if (activity) ai.activity = activity;
+  ai.roe = normalizeRoe(values.roe, activity ? roeForActivity(activity) : ai.roe);
+  return ai;
+}
+
+/** Player wing orders refine squad advice; retreat remains an absolute survival override. */
+export function overrideDirectiveForWingOrder(directive, perception, freeze = Object.freeze) {
+  if (!directive) return directive;
+  if (directive.objective && directive.objective.kind === ObjectiveKind.RETREAT) return directive;
+  const activity = normalizeActivity(perception && perception.self && perception.self.activity);
+  if (!activity) return directive;
+  const reason = String(activity.reason || '');
+  // An ATTACK_RUN activity that names a concrete target is an authoritative assignment — an
+  // ambush's marked prey or CONTROL's dispatched incident offender — and outranks the squad's
+  // advisory tactic vote, including a veto that left the objective null. Without the override,
+  // ambient same-squad members who never learned of the incident vote the offender non-hostile
+  // (hostileVotes <= friendlyVotes), no focus ever materializes, and dispatched lawmen hold an
+  // impotent guard ring around the jurisdiction anchor while the offender fires at will.
+  if (authoritativeAssignmentTargetId(activity) != null) {
+    // SF-057: the rebuilt objective must keep sighting truth. Same target → carry the squad's
+    // merged verdict; a re-pointed target → fall back to the member's own contact. A marked-but-
+    // unseen offender (dispatchedTarget) is a search anchor, never a firing solution.
+    const observed = directive.objective && directive.objective.targetId != null
+      && stableId(directive.objective.targetId) === stableId(activity.targetId)
+      ? directive.objective.targetObserved
+      : memberObservedTarget(perception, activity.targetId);
+    return freeze({
+      ...directive,
+      focusTargetId: activity.targetId,
+      objective: freeze({
+        kind: ObjectiveKind.FOCUS, targetId: activity.targetId, reason,
+        ...(observed !== undefined ? { targetObserved: observed } : {}),
+      }),
+      formation: freeze({
+        ...(directive.formation || {}),
+        breakFormation: true,
+        breakReason: reason.startsWith('ambush_snare:')
+          ? 'ambush_snare_prey'
+          : reason.startsWith('wanted_warrant:')
+            ? 'wanted_warrant_target'
+            : reason.startsWith('heist:pressure:')
+              ? 'heist_pressure_target'
+              : reason.startsWith('npc_grudge:')
+                ? 'npc_grudge_target'
+                : reason.startsWith('onboarding_raid:')
+                  ? 'onboarding_raid_target'
+                  : 'security_response_target',
+      }),
+    });
+  }
+  if (!directive.objective) return directive;
+  if (!reason.startsWith('wing_order:')) return directive;
+  const order = reason.slice('wing_order:'.length);
+  let kind = ObjectiveKind.REFORM;
+  let targetId = null;
+  if (order === 'attack') {
+    kind = ObjectiveKind.FOCUS;
+    targetId = activity.targetId;
+  } else if (order === 'screen') {
+    kind = ObjectiveKind.SCREEN;
+  } else if (order === 'hold') {
+    kind = ObjectiveKind.HOLD;
+  }
+  const anchor = activity.anchor;
+  const formation = anchor ? freeze({
+    ...directive.formation,
+    slot: freeze({ x: anchor.x, z: anchor.z }),
+    velocity: freeze({ x: 0, z: 0 }),
+    bound: activity.leashRadius,
+    breakFormation: false,
+  }) : directive.formation;
+  // SF-057: a wing-order attack re-points the objective at the ordered target — keep the squad's
+  // sighting verdict when it's the same target, else trust only the member's own contact.
+  const observed = kind === ObjectiveKind.FOCUS && targetId != null
+    ? (directive.objective.targetId != null
+        && stableId(directive.objective.targetId) === stableId(targetId)
+        ? directive.objective.targetObserved
+        : memberObservedTarget(perception, targetId))
+    : undefined;
+  return freeze({
+    ...directive,
+    focusTargetId: kind === ObjectiveKind.FOCUS ? targetId : null,
+    objective: freeze({
+      kind, targetId, reason: activity.reason,
+      ...(observed !== undefined ? { targetObserved: observed } : {}),
+    }),
+    formation,
+  });
+}
+
+/** Restrict combat-doctrine target scoring to an explicit player Attack target. */
+export function perceptionForWingOrderCombatDoctrine(perception, directive, freeze = Object.freeze) {
+  if (!perception || !directive || !directive.objective) return perception;
+  const activity = normalizeActivity(perception.self && perception.self.activity);
+  const exactTargetId = directive.objective.targetId;
+  if (!activity || exactTargetId == null) return perception;
+  const reason = String(activity.reason || '');
+  if (reason !== 'wing_order:attack' && !isAuthoritativeAssignmentReason(reason)) return perception;
+  const contacts = Array.isArray(perception.contacts) ? perception.contacts : [];
+  const filtered = contacts
+    .filter((contact) => contact && (contact.kind !== 'ship' || contact.id === exactTargetId))
+    .map((contact) => {
+      // A wing-order mark, ambush prey, or CONTROL-dispatched offender arrives WITH its firing
+      // track — the assignment is the sensor contact. confidenceFor() dips below the doctrine's
+      // 0.55 selection floor at long range (~45%+ of sensor reach), which would leave a lawfully
+      // dispatched responder orbiting its anchor forever while the offender sits in plain sight.
+      if (contact.kind !== 'ship' || contact.id !== exactTargetId) return contact;
+      return {
+        ...contact,
+        confidence: Math.max(finite(contact.confidence, 0), 0.55),
+        // The dispatch itself is the track: a responder ordered onto an offender beyond its own
+        // sensor reach holds a reported (unseen) contact. Tagging it lets doctrine MANEUVER on
+        // the assignment — an untagged reported contact reads as a stale memory and the doctrine
+        // settles into targetless ingress, tracking the squad slot home while the offender fires
+        // untouched (measured on the PQ-138 live route: a chaser receded 504 -> 1328 WU in
+        // interceptor_flyby:ingress with maneuverTargetId null). Fire authorization is a
+        // separate gate and still requires its own sighting.
+        dispatchedTarget: true,
+      };
+    });
+  return freeze({ ...perception, contacts: freeze(filtered) });
+}
+
+export function applyDoctrineToSelection({ selected, perception, directive, tick = 0, freeze = Object.freeze }) {
+  if (!selected) return selected;
+  const self = perception && perception.self;
+  const activity = normalizeActivity(self && self.activity);
+  const roe = normalizeRoe(self && self.roe);
+  const def = selected.__spacefaceActionDef || null;
+  const legalAction = actionLegalByDoctrine({
+    def,
+    selected,
+    activity,
+    roe,
+    objective: directive && directive.objective,
+    self,
+    tick,
+  });
+  const next = legalAction ? selected : {
+    ...selected,
+    actionId: null,
+    targetId: null,
+    targetContact: null,
+    utility: Math.min(finite(selected.utility, 0), 0.22),
+    reasons: appendReason(selected.reasons, `roe_${roe}`),
+  };
+  next.maneuver = movementForActivity(next.maneuver, activity, directive, freeze);
+  return next;
+}
+
+export function movementForActivity(maneuver, activityValue, directive, freeze = Object.freeze) {
+  const activity = normalizeActivity(activityValue);
+  if (!activity || !maneuver) return maneuver;
+  const anchor = activity.anchor || maneuver.formationSlot || (directive && directive.formation && directive.formation.slot) || null;
+  const base = {
+    ...maneuver,
+    reason: activity.reason || maneuver.reason,
+  };
+  if (anchor) base.formationSlot = freeze({ x: finite(anchor.x), z: finite(anchor.z) });
+
+  // Encounter and squad survival orders outrank a member's previous doctrine phase. Without this
+  // guard an ATTACK_RUN activity rewrites an explicit retreat back into an intercept on the same
+  // tick, making damaged wings appear suicidally aggressive.
+  if (directive && directive.objective && directive.objective.kind === ObjectiveKind.RETREAT) {
+    return freeze({
+      ...base,
+      kind: ManeuverKind.RETREAT,
+      targetId: null,
+      breakFormation: true,
+      reason: directive.objective.reason || 'ordered_retreat',
+    });
+  }
+
+  switch (activity.kind) {
+    case ActivityKind.HAIL_HOLD:
+      return freeze({ ...base, kind: ManeuverKind.HOLD, targetId: null, breakFormation: false });
+    case ActivityKind.LOITER:
+      // A loiter that names a concrete body (the witness holder's wreck or pod) is station-
+      // keeping on that body, not on the squad slot: HOLD tracks formationSlot, so a squad-bound
+      // holder would fly home mid-hold. Orbit the live contact and break the squad bound; when
+      // the body never resolves as a contact (a pod is payload, not a perceived object) the
+      // planner falls back to the activity's live-tracked anchor via orbitCenter.
+      if (activity.targetId != null) {
+        return freeze({
+          ...base,
+          kind: ManeuverKind.ORBIT,
+          targetId: activity.targetId,
+          orbitCenter: activity.anchor && Number.isFinite(activity.anchor.x)
+            ? { x: activity.anchor.x, z: activity.anchor.z }
+            : null,
+          preferredRange: Math.max(40, activity.preferredRange || finite(base.preferredRange, 90)),
+          breakFormation: true,
+        });
+      }
+      return freeze({ ...base, kind: ManeuverKind.HOLD, targetId: null, breakFormation: false });
+    case ActivityKind.PATROL_ROUTE:
+    case ActivityKind.TRANSIT:
+    case ActivityKind.RETURN_TO_ANCHOR: {
+      // A vignette supplies a moving, authored world point (orbit/weave/depart), not a
+      // squad slot to rejoin at formation crawl. Use the existing intercept point tracker
+      // and keep its obstacle/arrival control. Never inherit a selected combat target:
+      // these passive hold-fire destinations have no body to pursue or ram.
+      if (activity.kind === ActivityKind.TRANSIT && activity.reason.startsWith('vignette_motion:')) {
+        return freeze({ ...base, kind: ManeuverKind.INTERCEPT, targetId: null, breakFormation: true,
+          formationVelocity: activity.anchorVelocity || freeze({ x: 0, z: 0 }) });
+      }
+      // Ordinary lane transit keeps formation travel. A TRANSIT activity that names a concrete
+      // target (freight pod recovery, rendezvous) must break the squad formation envelope and
+      // seek the activity anchor/target until physical contact can fire. A full interceptor
+      // pass is wrong here: flyby geometry keeps missing slow pickup-scale targets.
+      if (activity.kind === ActivityKind.TRANSIT && activity.targetId != null) {
+        const preferred = Number.isFinite(activity.preferredRange) && activity.preferredRange > 0
+          ? activity.preferredRange
+          : 1;
+        // Bound the formation arrival envelope to the contact standoff so TRAVEL/FORMATION does not
+        // treat a 170-WU squad spacing as "arrived" far outside pickup radius.
+        const bound = Math.max(preferred, 24);
+        return freeze({
+          ...base,
+          kind: ManeuverKind.FORMATION,
+          targetId: activity.targetId,
+          preferredRange: preferred,
+          breakFormation: true,
+          formationBound: bound,
+        });
+      }
+      return freeze({ ...base, kind: ManeuverKind.FORMATION, targetId: null, breakFormation: false });
+    }
+    case ActivityKind.SCAN_APPROACH:
+      // An approach order is a deliberate leave-formation whose destination is the activity's
+      // own contact — without the targetId pass-through the intercept solves toward whatever
+      // combat target the selector last named (measured: the witness holder intercepted the
+      // offender instead of the drifting body), and without breakFormation the squad bound veto
+      // parks it mid-approach at formation crawl.
+      return freeze({
+        ...base,
+        kind: ManeuverKind.INTERCEPT,
+        targetId: activity.targetId == null ? base.targetId : activity.targetId,
+        preferredRange: activity.preferredRange || 620,
+        breakFormation: true,
+      });
+    case ActivityKind.REPOSITION:
+      return freeze({ ...base, kind: ManeuverKind.ORBIT, preferredRange: Math.max(260, activity.preferredRange || finite(base.preferredRange, 360)) });
+    case ActivityKind.SCREEN:
+      return freeze({ ...base, kind: ManeuverKind.SCREEN });
+    case ActivityKind.DISENGAGE:
+    case ActivityKind.FLEE:
+      return freeze({ ...base, kind: ManeuverKind.RETREAT, targetId: null });
+    case ActivityKind.ATTACK_RUN:
+    default:
+      return freeze({ ...base, kind: attackRunManeuverKind(base.kind), preferredRange: Math.max(140, activity.preferredRange || finite(base.preferredRange, 180)) });
+  }
+}
+
+export function canFireByDoctrine({
+  activity: activityValue,
+  roe: roeValue,
+  objectiveKind,
+  target,
+  self,
+  wanted = false,
+  recentlyDamaged = false,
+}) {
+  const activity = normalizeActivity(activityValue);
+  const roe = normalizeRoe(roeValue);
+  if (roe === RulesOfEngagement.HOLD_FIRE) return false;
+  if (!target || !target.alive) return false;
+  if (objectiveKind !== ObjectiveKind.FOCUS && objectiveKind !== ObjectiveKind.ENGAGE) return false;
+  if (roe === RulesOfEngagement.LAWFUL_WANTED_ONLY && !wanted) return false;
+  if (roe === RulesOfEngagement.DEFENSIVE && !recentlyDamaged && !(activity && activity.kind === ActivityKind.SCREEN)) return false;
+  if (!activity) return true;
+  if (!activityAllowsOffense(activity)) return false;
+  if (activity.targetId != null && activity.targetId !== target.id) return false;
+  if (activity.anchor && Number.isFinite(activity.leashRadius) && self && self.pos) {
+    const distance = distance2(self.pos, activity.anchor);
+    if (distance > activity.leashRadius * 1.25) return false;
+  }
+  return true;
+}
+
+export function activityAllowsOffense(activityValue) {
+  const activity = normalizeActivity(activityValue);
+  return activity == null || OFFENSIVE_ACTIVITY_VALUES.has(activity.kind);
+}
+
+export function outsideActivityLeash(self, activityValue) {
+  const activity = normalizeActivity(activityValue);
+  if (!activity || !activity.anchor || !self || !self.pos) return false;
+  return distance2(self.pos, activity.anchor) > activity.leashRadius;
+}
+
+function actionLegalByDoctrine({ def, selected, activity, roe, objective, self, tick }) {
+  if (!selected || !def) return true;
+  if (!isAttackAction(def)) return true;
+  if (!activityAllowsOffense(activity)) return false;
+  if (roe === RulesOfEngagement.HOLD_FIRE) return false;
+  if (activity && activity.deadlineTick != null && tick < activity.deadlineTick && activity.kind === ActivityKind.HAIL_HOLD) return false;
+  if (activity && outsideActivityLeash(self, activity)) return false;
+  if (roe === RulesOfEngagement.DEFENSIVE && !(activity && activity.kind === ActivityKind.SCREEN)) return false;
+  return true;
+}
+
+function isAttackAction(def) {
+  const tags = def && Array.isArray(def.tags) ? def.tags : [];
+  return tags.includes('attack') || tags.includes('disable');
+}
+
+function attackRunManeuverKind(kind) {
+  if (kind === ManeuverKind.ORBIT) return ManeuverKind.ORBIT;
+  if (kind === ManeuverKind.SCREEN) return ManeuverKind.SCREEN;
+  return ManeuverKind.INTERCEPT;
+}
+
+function appendReason(reasons, reason) {
+  const out = Array.isArray(reasons) ? reasons.slice() : [];
+  out.push(reason);
+  return out;
+}
+
+function normalizeVec(value) {
+  if (!value || !Number.isFinite(value.x) || !Number.isFinite(value.z)) return null;
+  return Object.freeze({ x: finite(value.x), z: finite(value.z) });
+}
+
+function positive(value, fallback) {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}

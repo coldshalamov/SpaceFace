@@ -1,0 +1,49 @@
+/* ORRERY instrument refinement. Loaded after intro.css (index.html order); does not replace the
+   cinematic or logo. Every colour is a --dp-* token (design/frontend/ORRERY.md §3.3): the arc is
+   ice because a loading progress is data in motion; everything at rest is warm bone. */
+#boot-overlay.boot-overlay--orrery .boot-progress-row {
+  position:relative; width:216px; min-width:216px; height:250px; margin-top:12px;
+  display:flex; justify-content:center; align-items:center; flex:none;
+}
+.boot-instrument { position:relative; width:176px; height:208px; transform:scale(1.2); transform-origin:center; isolation:isolate; contain:layout style; }
+/* Local legibility shield: the baked cinematic's bright structures pass directly behind the
+   ring's hairline field, so the hero instrument gets its own edge-dissolved wash (glass, no
+   border — the same treatment the lockup plate already has). */
+.boot-instrument::before {
+  content:""; position:absolute; inset:-40px -54px -36px; z-index:-1; pointer-events:none;
+  background:radial-gradient(50% 50% at 50% 47%,
+    color-mix(in srgb, var(--dp-void, #05070a) 62%, transparent) 32%, transparent 74%);
+}
+.boot-instrument .boot-ring { position:absolute; inset:0; width:176px; height:208px; overflow:visible; }
+.boot-instrument .boot-ring-layer { position:absolute; inset:0; width:176px; height:208px; visibility:hidden; pointer-events:none; }
+.boot-instrument--worker .boot-ring-layer { visibility:visible; }
+.boot-instrument--worker .boot-ring__fallback { visibility:hidden; }
+#boot-overlay.boot-overlay--orrery .boot-progress-row > .boot-progress,
+#boot-overlay.boot-overlay--orrery .boot-progress-row > [data-loading-pct] { display:none; }
+.boot-instrument .boot-ring__emblem { opacity:.56; }
+.boot-instrument .boot-ring__emblem-layer { position:absolute; left:38px; top:38px; width:100px; height:100px; object-fit:contain; will-change:transform; }
+.boot-instrument .boot-ring__grad { fill:none; stroke:color-mix(in srgb, var(--dp-ink) 34%, transparent); stroke-width:.65; }
+.boot-ring__filigree { fill:none; stroke:color-mix(in srgb, var(--dp-ink) 36%, transparent); stroke-width:.6; }
+.boot-instrument .boot-ring__track { fill:none; stroke:color-mix(in srgb, var(--dp-ink) 20%, transparent); stroke-width:1; }
+.boot-instrument .boot-ring__bloom { fill:none; stroke:color-mix(in srgb, var(--dp-ice) 32%, transparent); stroke-width:7; stroke-linecap:round; }
+.boot-instrument .boot-ring__fill { fill:none; stroke:var(--dp-ice, #8fcbff); stroke-width:1.8; stroke-linecap:round; }
+.boot-instrument .boot-ring__head { fill:var(--dp-phos, #dfeeff); filter:none; }
+.boot-ring__percent { fill:var(--dp-phos, #dfeeff); font-family:"Archivo",system-ui,sans-serif; font-size:var(--dp-fs-num, 28px); font-weight:260; font-variant-numeric:tabular-nums; letter-spacing:0; }
+.boot-instrument .boot-ring__marks path { fill:none; stroke:color-mix(in srgb, var(--dp-ink) 80%, transparent); stroke-width:1; }
+@media (max-height:680px) {
+  #boot-overlay.boot-overlay--orrery .boot-lockup { bottom:18px; }
+  #boot-overlay.boot-overlay--orrery .boot-progress-row { margin-top:5px; }
+}
+@media (prefers-reduced-motion:reduce) { .boot-instrument .boot-ring__emblem { animation:none; } }
+html.sf-reduce-motion .boot-instrument .boot-ring__emblem { animation:none; }
+@media (forced-colors:active) {
+  .boot-instrument::before { content:none; }
+  .boot-instrument .boot-ring-layer { display:none; }
+  .boot-instrument .boot-ring__fallback { visibility:visible; }
+  .boot-instrument .boot-ring__emblem, .boot-instrument .boot-ring__bloom { display:none; }
+  .boot-instrument .boot-ring__track, .boot-instrument .boot-ring__grad,
+  .boot-ring__filigree, .boot-instrument .boot-ring__marks path { stroke:CanvasText; }
+  .boot-instrument .boot-ring__fill { stroke:Highlight; }
+  .boot-instrument .boot-ring__head, .boot-ring__percent { fill:CanvasText; }
+}
+#boot-overlay:not(.hidden) { pointer-events:auto; }

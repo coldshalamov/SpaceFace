@@ -1,0 +1,873 @@
+// The Bolus — interior host. One volume, one fungus, one Massline.
+// Spawns the seeded cast and ticks the throat. No second ecology, no second grapple.
+
+import { addCargo } from './cargo.js';
+import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
+import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import { queuePhysicsImpulse, physicsBodyNativeReady, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { Masks } from '../core/entity.js';
+import {
+  BOLUS_SECTOR_ID,
+  BOLUS_RIB_STATE, readBolusRibState, migrateBolusRibState,
+  BOLUS_SPECIMEN_KEYS, bolusSpecimenStateKey, readBolusSpecimenState,
+  BOLUS_ACID_X0,
+  BOLUS_ACID_X1,
+  planBolusLayout,
+  bolusResolvedSpec,
+  commitBolusLatch,
+  bolusInCone,
+  bolusIrisOpen,
+} from '../data/theBolus.js';
+import { BOLUS_FORCES as F } from '../data/bolusForces.js';
+import { BOLUS_CUE } from '../data/bolusAudio.js';
+import {
+  BOLUS_PLAY as P,
+  bolusCrestZ,
+  bolusCoughDue,
+  bolusFloaterKind,
+  bolusInBerth,
+  bolusIrisCycle,
+  bolusIsSwingRole,
+  bolusNearNursery,
+  bolusNurseryRadius,
+  bolusSwingBlocksCilia,
+  bolusThreadZ,
+  bolusToothSlips,
+} from '../data/bolusPlay.js';
+import {
+  BOLUS_LORE,
+  bolusAcidScale,
+  bolusFilmBeat,
+  bolusHeldSwing,
+  bolusPearlOpens,
+  bolusValveCount,
+} from '../data/bolusLore.js';
+
+const DRIVEN = new Set(['louse', 'drum', 'fingerling', 'floater', 'mite', 'glove', 'mote']);
+const LOOSE = new Set(['drum', 'rib', 'bezoar', 'cyst']);
+const SMALL = new Set(['louse', 'mite', 'fingerling']);
+const CROOK_AT = { x: 480, z: -1680 };
+const SPUR_AT = { x: 640, z: 80 };
+
+// Runtime binding is object-and-life specific. IDs and copied data are not custody.
+const ribRuntime = new WeakMap();
+function originalRibBinding(binding, entity = binding?.entity) {
+  return !!entity && binding?.entity === entity && binding.id === entity.id
+    && binding.life === entity.occupantGeneration && binding.data === entity.data
+    && binding.tag === entity.data?.bolus && binding.tag.key === 'bolus_rib'
+    && binding.tag.role === 'rib' && entity.homeSectorId === BOLUS_SECTOR_ID;
+}
+function ribOwner(world) {
+  const flags = ensureAlienEcologyState(world.state).sectorFlags;
+  let runtime = ribRuntime.get(world);
+  if (!runtime) {
+    runtime = { flags, binding: null };
+    ribRuntime.set(world, runtime);
+    world.bus?.on?.('entity:destroyed', event => {
+      const r = ribRuntime.get(world), b = r?.binding, e = event?.entity;
+      if (!e || !originalRibBinding(b, e) || event.id !== b.id
+        || r.flags !== ensureAlienEcologyState(world.state).sectorFlags) return;
+      if (event.reason === 'sector_residency') r.binding = null;
+      else if (e.hull <= 0 && !['save_restore', 'run_reset', 'virtualize'].includes(event.reason)) {
+        r.flags[BOLUS_RIB_STATE] = { version: 1, key: 'bolus_rib', status: 'lost' };
+        r.binding = null;
+      }
+    });
+    world.bus?.on?.('save:restoring', () => { runtime.binding = null; });
+    world.bus?.on?.('game:newGame', () => { runtime.binding = null; });
+    world.bus?.on?.('sector:exit', () => captureBolusRib(world, BOLUS_SECTOR_ID));
+    world.bus?.on?.('save:started', () => captureBolusRib(world, BOLUS_SECTOR_ID));
+  }
+  if (runtime.flags !== flags) { runtime.flags = flags; runtime.binding = null; }
+  return runtime;
+}
+
+function ribPose(world, binding, isOriginal = originalRibBinding) {
+  const e = binding?.entity, s = world.state;
+  if (!isOriginal(binding) || e.alive === false || s.entities?.get(e.id) !== e
+    || !presentationAllowsPlayerFacingAction(e, s)) return null;
+  const origin = world._sectorOrigin?.(BOLUS_SECTOR_ID);
+  if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return null;
+  if (s.settings?.gameplay?.physicsBackend !== 'rapier-dynamic') {
+    return { source: 'scalar', x: e.pos.x - origin.x, z: e.pos.z - origin.z,
+      vx: e.vel?.x ?? 0, vz: e.vel?.z ?? 0, rot: e.rot ?? 0, spin: e.angVel ?? 0, hull: e.hull };
+  }
+  const physics = world.registry?.get('physics'), n = physics?._sg02;
+  const r = n?.records?.get(e.id), b = r?.body, spec = resolvePhysicsBodySpec(e);
+  if (!n?.world || physics._nativeRestorePending || physics._nativeRestoreDeferred
+    || !physicsBodyNativeReady(e) || r?.entity !== e || !b || !spec
+    || r.revision !== spec.revision || r.proxyId !== (e.physicsBody?.collisionProxyManifest?.id ?? null)
+    || spec.dynamic !== true || r.spec.dynamic !== true || r.spec.mass !== spec.mass || r.spec.radius !== spec.radius
+    || r.spec.shape !== spec.shape || r.spec.inertiaY !== spec.inertiaY || r.spec.material !== spec.material
+    || r.spec.ccd !== spec.ccd || r.spec.contact !== spec.contact
+    || r._postStepReadTick !== n.tick || !Number.isInteger(n._simTick)
+    || s.tick - n._simTick < 0 || s.tick - n._simTick > 2) return null;
+  try {
+    if (n.world.getRigidBody(b.handle) !== b || !b.isEnabled() || !r.colliders?.length
+      || b.numColliders() !== r.colliders.length || r.colliders.some((c, i) =>
+        !c.isEnabled() || b.collider(i) !== c || n.world.getCollider(c.handle) !== c || c.parent() !== b)) return null;
+    const p = b.translation(), v = b.linvel(), q = b.rotation(), w = b.angvel(), o = n._frameOrigin;
+    if (!o || ![p.x, p.y, p.z, v.x, v.y, v.z, q.x, q.y, q.z, q.w, w.x, w.y, w.z, o.x, o.z].every(Number.isFinite)) return null;
+    return { source: 'native', x: p.x + o.x - origin.x, z: p.z + o.z - origin.z,
+      vx: v.x, vz: v.z, rot: -Math.atan2(2 * (q.w * q.y + q.x * q.z), 1 - 2 * (q.y * q.y + q.z * q.z)),
+      spin: -w.y, hull: e.hull };
+  } catch { return null; }
+}
+
+// Called at world-owned capture boundaries, before residency removal or Save.
+// Only observes the original body's native state; never writes live native motion.
+export function captureBolusRib(world, sectorId = BOLUS_SECTOR_ID, opts = {}) {
+  if (!world?.state || sectorId !== BOLUS_SECTOR_ID) return false;
+  // This is the existing world-owned Save/residency seam for Bolus loose bodies.
+  captureBolusSpecimens(world, sectorId, opts);
+  const runtime = ribOwner(world), bound = runtime.binding;
+  if (originalRibBinding(bound) && world.state.entities?.get(bound.id) === bound.entity
+    && Number.isFinite(bound.entity.hull) && bound.entity.hull <= 0) {
+    runtime.flags[BOLUS_RIB_STATE] = { version: 1, key: 'bolus_rib', status: 'lost' };
+    return true;
+  }
+  const pose = ribPose(world, bound);
+  // The world owner supplies this boundary before its synchronous residency sweep.
+  // Keep the binding until the exact old life is gone; a delayed corpse event must
+  // not erase a replacement that was legitimately constructed in the same tick.
+  if (originalRibBinding(bound) && world.state.entities?.get(bound.id) === bound.entity
+    && !world._isProtectedFromResidency?.(bound.entity)
+    && (opts.reason === 'evict' || opts.reason === 'strip_full' && opts.despawnIds?.has(bound.id))) bound.retiring = true;
+  if (!pose) return false;
+  const row = { version: 1, key: 'bolus_rib', status: 'present', ...pose };
+  const valid = readBolusRibState({ [BOLUS_RIB_STATE]: row });
+  if (!valid) return false;
+  runtime.flags[BOLUS_RIB_STATE] = valid;
+  return true;
+}
+
+// Specimens share the rib's read-only native observation, not a motion controller.
+// A maximum of five bound lives is checked, regardless of world population.
+const specimenRuntime = new WeakMap();
+function originalSpecimenBinding(b, e = b?.entity) {
+  return !!e && b?.entity === e && b.id === e.id && b.life === e.occupantGeneration
+    && b.data === e.data && b.tag === e.data?.bolus && b.key === b.tag.key
+    && BOLUS_SPECIMEN_KEYS.includes(b.key) && b.tag.role === (b.key === 'bolus_cyst' ? 'cyst' : 'bezoar')
+    && e.homeSectorId === BOLUS_SECTOR_ID;
+}
+function specimenOwner(world) {
+  const flags = ensureAlienEcologyState(world.state).sectorFlags;
+  let r = specimenRuntime.get(world);
+  if (!r) {
+    r = { flags, bindings: new Map() }; specimenRuntime.set(world, r);
+    world.bus?.on?.('entity:destroyed', event => {
+      if (r.flags !== ensureAlienEcologyState(world.state).sectorFlags) return;
+      for (const [key, b] of r.bindings) {
+        if (!event?.entity || !originalSpecimenBinding(b, event.entity) || event.id !== b.id) continue;
+        if (event.reason === 'sector_residency' && !b.terminal) r.bindings.delete(key);
+        else if (event.entity.hull <= 0 && !['save_restore', 'run_reset', 'virtualize'].includes(event.reason)) {
+          r.flags[bolusSpecimenStateKey(key)] = { version: 1, key, status: 'lost' };
+          b.terminal = 'lost';
+        }
+      }
+    });
+    world.bus?.on?.('save:restoring', () => r.bindings.clear());
+    world.bus?.on?.('game:newGame', () => r.bindings.clear());
+  }
+  // A bag replacement alone is not a new physical life. Only explicit restore or
+  // New Game boundaries release bindings; cloning flags cannot duplicate bodies.
+  if (r.flags !== flags) r.flags = flags;
+  return r;
+}
+export function captureBolusSpecimens(world, sectorId = BOLUS_SECTOR_ID, opts = {}) {
+  if (!world?.state || sectorId !== BOLUS_SECTOR_ID) return false;
+  const r = specimenOwner(world); let captured = false;
+  for (const [key, b] of r.bindings) {
+    const stateKey = bolusSpecimenStateKey(key), e = b.entity;
+    const saved = readBolusSpecimenState(r.flags, key);
+    if (!b.terminal && (saved?.status === 'lost' || saved?.status === 'unavailable')) b.terminal = saved.status;
+    if (b.terminal) { r.flags[stateKey] = { version: 1, key, status: b.terminal }; continue; }
+    const exact = originalSpecimenBinding(b) && world.state.entities?.get(b.id) === e;
+    if (!exact || e.alive === false && !(Number.isFinite(e.hull) && e.hull <= 0)) {
+      // An unexplained missing/recycled runtime is not an observed death and must
+      // not reload the previous pose as a second body (or a new reward source).
+      if (!b.retiring) {
+        b.terminal = 'unavailable';
+        r.flags[stateKey] = { version: 1, key, status: b.terminal };
+      }
+      continue;
+    }
+    if (Number.isFinite(e.hull) && e.hull <= 0) {
+      b.terminal = 'lost';
+      r.flags[stateKey] = { version: 1, key, status: b.terminal }; captured = true; continue;
+    }
+    const pose = ribPose(world, b, originalSpecimenBinding);
+    if (!world._isProtectedFromResidency?.(e)
+      && (opts.reason === 'evict' || opts.reason === 'strip_full' && opts.despawnIds?.has(b.id))) b.retiring = true;
+    if (!pose) {
+      // Hull belongs to the logical damage owner. Keep its finite current value
+      // even during native warm-up, without changing the last observed pose.
+      if (saved?.status === 'present' && Number.isFinite(e.hull) && e.hull > 0 && e.hull <= 48) {
+        r.flags[stateKey] = { ...saved, hull: e.hull }; captured = true;
+      }
+      continue; // Native readiness cannot authorize stale scalar motion.
+    }
+    const row = readBolusSpecimenState({ [stateKey]: { version: 1, key, status: 'present', ...pose } }, key);
+    if (row) { r.flags[stateKey] = row; captured = true; }
+  }
+  return captured;
+}
+
+export function materializeBolus(world, sector, active) {
+  if (!world || !sector || sector.id !== BOLUS_SECTOR_ID) return;
+  const spawn = world.helpers && world.helpers.spawnEntity;
+  if (typeof spawn !== 'function' || typeof world._toGlobal !== 'function') return;
+  const state = world.state;
+  const seed = state && state.meta ? state.meta.seed : 1;
+  const flags = state ? ensureAlienEcologyState(state).sectorFlags : {};
+  const runtime = ribOwner(world);
+  if (runtime.binding?.retiring && (state.entities?.get(runtime.binding.entity.id) !== runtime.binding.entity
+    || runtime.binding.entity.alive === false)) runtime.binding = null;
+  const specimens = specimenOwner(world);
+  const savedRib = migrateBolusRibState(flags);
+  const layout = planBolusLayout(seed);
+  for (let i = 0; i < layout.length; i++) {
+    const spec = bolusResolvedSpec(layout[i], flags);
+    const isRib = spec.key === 'bolus_rib';
+    if (isRib && (runtime.binding || savedRib?.status === 'lost'
+      || Object.hasOwn(flags, BOLUS_RIB_STATE) && !savedRib)) continue;
+    const isSpecimen = BOLUS_SPECIMEN_KEYS.includes(spec.key);
+    const specimenKey = bolusSpecimenStateKey(spec.key);
+    const savedSpecimen = isSpecimen ? readBolusSpecimenState(flags, spec.key) : null;
+    const bound = specimens.bindings.get(spec.key);
+    if (bound?.retiring && !bound.terminal && (state.entities?.get(bound.id) !== bound.entity || bound.entity.alive === false)) specimens.bindings.delete(spec.key);
+    if (isSpecimen && (specimens.bindings.has(spec.key)
+      || Object.hasOwn(flags, specimenKey) && savedSpecimen?.status !== 'present')) continue;
+    const restored = isRib && savedRib?.status === 'present' ? savedRib : savedSpecimen?.status === 'present' ? savedSpecimen : null;
+    const pos = world._toGlobal(restored || { x: spec.x, z: spec.z }, sector.id);
+    const ent = spawn({
+      type: 'fauna',
+      name: spec.name,
+      pos,
+      rot: restored?.rot ?? spec.rot ?? 0,
+      ...(restored ? { vel: { x: restored.vx, y: 0, z: restored.vz }, angVel: restored.spin } : {}),
+      radius: spec.radius,
+      mass: spec.mass,
+      hull: restored?.hull ?? (spec.dynamic ? 48 : 900),
+      hullMax: spec.dynamic ? 48 : 900,
+      collides: true,
+      collisionMask: Masks.SHIP | Masks.ASTEROID,
+      physicsBody: {
+        dynamic: !!spec.dynamic,
+        mass: spec.mass,
+        radius: spec.radius,
+        material: 'fauna',
+        shape: 'ball',
+      },
+      homeSectorId: sector.id,
+      data: {
+        name: spec.name,
+        strainId: 'ashfall_choir',
+        masslineTetherable: true,
+        bolus: {
+          role: spec.role,
+          key: spec.key,
+          anchorX: spec.x,
+          anchorZ: spec.z,
+          phase: spec.phase || 0,
+          hold: 0,
+          spent: false,
+        },
+        ecology: {
+          speciesId: spec.speciesId,
+          driveState: spec.dynamic ? 'drift' : 'anchored',
+          phase: spec.phase || 0,
+          anchor: { x: pos.x, z: pos.z },
+        },
+      },
+    });
+    if (!ent) continue;
+    if (isSpecimen) {
+      specimens.bindings.set(spec.key, { key: spec.key, entity: ent, id: ent.id, life: ent.occupantGeneration, data: ent.data, tag: ent.data.bolus });
+      // First materialization is authored provenance, never invented native motion.
+      if (!savedSpecimen) flags[specimenKey] = { version: 1, key: spec.key, status: 'present', source: 'authored',
+        x: spec.x, z: spec.z, vx: 0, vz: 0, rot: spec.rot ?? 0, spin: 0, hull: 48 };
+    }
+    if (isRib) runtime.binding = { entity: ent, id: ent.id, life: ent.occupantGeneration, data: ent.data, tag: ent.data.bolus };
+    if (typeof world._stampHomeSector === 'function') world._stampHomeSector(ent, sector.id);
+    if (active && Array.isArray(active.dressing)) {
+      active.dressing.push({ id: ent.id, placeId: null, pos: ent.pos, paletteClass: 'alien' });
+    }
+  }
+}
+
+function tautTargetIds(state) {
+  const out = new Set();
+  const phase = state.player && state.player.tether && state.player.tether.phase;
+  if (phase !== 'loaded' && phase !== 'overload') return out;
+  const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!byId || typeof byId !== 'object') return out;
+  const pid = state.playerId;
+  const rows = Object.values(byId);
+  for (let i = 0; i < rows.length; i++) {
+    const att = rows[i];
+    if (!att || att.state !== 'active') continue;
+    if (att.ownerId !== pid && att.controllerId !== pid) continue;
+    if (att.targetId != null) out.add(att.targetId);
+  }
+  return out;
+}
+
+function speedOf(entity) {
+  const vel = entity && entity.vel;
+  if (!vel) return 0;
+  return Math.hypot(vel.x || 0, vel.z || 0);
+}
+
+function push(world, entity, ix, iz) {
+  if (!entity) return;
+  if (world.state.settings?.gameplay?.physicsBackend === 'rapier-dynamic') {
+    const mass = Number(entity.physicsBody?.mass) || Number(entity.mass) || 1;
+    queuePhysicsImpulse(entity, { x: ix * mass, y: 0, z: iz * mass });
+    return;
+  }
+  if (!entity.vel) entity.vel = { x: 0, y: 0, z: 0 };
+  entity.vel.x += ix;
+  entity.vel.z += iz;
+}
+
+function drive(world, entity, vx, vz) {
+  if (!entity) return;
+  if (!entity.vel) entity.vel = { x: 0, y: 0, z: 0 };
+  const dx = vx - (entity.vel.x || 0);
+  const dz = vz - (entity.vel.z || 0);
+  if (dx !== 0 || dz !== 0) push(world, entity, dx, dz);
+}
+
+function hurt(world, entity, amount) {
+  if (!entity || !(amount > 0)) return;
+  const request = {
+    attackerId: null,
+    targetId: entity.id,
+    packet: scalarHitToDamagePacket({ damage: amount, damageType: 'thermal', source: { kind: 'bolus_acid' } }),
+    origin: { kind: 'bolus_acid' },
+  };
+  if (typeof world.helpers?.routeCombatDamage === 'function') world.helpers.routeCombatDamage(request);
+  else world.bus?.emit('combat:routeDamage', request);
+}
+
+function toast(world, text) {
+  const bus = world && world.bus;
+  if (bus && typeof bus.emit === 'function') bus.emit('toast', { text, kind: 'info', ttl: 3.4 });
+}
+
+function cue(world, id) {
+  const bus = world && world.bus;
+  if (bus && typeof bus.emit === 'function') bus.emit('audio:cue', { id });
+}
+
+function latchCue(role, event) {
+  if (role === 'valve') return BOLUS_CUE.stitch;
+  if (role === 'bezoar' || role === 'cyst' || role === 'concretion') return BOLUS_CUE.grit;
+  if (event === 'pleat') return BOLUS_CUE.pleat;
+  return BOLUS_CUE.latch;
+}
+
+function kickHold(flags, simTime) {
+  return Number(flags['bolus:crestHoldUntil']) > simTime
+    || Number(flags['bolus:irisKickUntil']) > simTime
+    || Number(flags['bolus:baleenKickUntil']) > simTime
+    || Number(flags['bolus:pleatHoldUntil']) > simTime;
+}
+
+export function tickBolus(world, dt) {
+  captureBolusRib(world);
+  const state = world && world.state;
+  if (!state || !(dt > 0)) return;
+  const sectorId = state.world && state.world.currentSectorId;
+  if (sectorId !== BOLUS_SECTOR_ID) {
+    const outside = state.world && state.world.alienEcology;
+    if (outside && outside.sectorFlags && outside.sectorFlags['bolus:inVolume'] === true) {
+      outside.sectorFlags['bolus:inVolume'] = false;
+    }
+    return;
+  }
+  const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (!player || !player.pos || player.alive === false) return;
+  const step = dt > 0.1 ? 0.1 : dt;
+  const origin = world._sectorOrigin(BOLUS_SECTOR_ID);
+  if (!origin) return;
+  if (!player.vel) player.vel = { x: 0, y: 0, z: 0 };
+  const lx = player.pos.x - origin.x;
+  const lz = player.pos.z - origin.z;
+  const simTime = Number(state.simTime) || 0;
+  const ae = ensureAlienEcologyState(state);
+  const flags = ae.sectorFlags;
+  if (flags['bolus:inVolume'] !== true) {
+    flags['bolus:inVolume'] = true;
+    flags['bolus:baleenTolled'] = false;
+    flags['bolus:coughPaid'] = false;
+    if (flags['bolus:chartLine'] !== true) {
+      flags['bolus:chartLine'] = true;
+      toast(world, BOLUS_LORE.chart);
+    }
+    if (flags['bolus:stitchesHailed'] !== true && bolusValveCount(flags) > 0) {
+      flags['bolus:stitchesHailed'] = true;
+      toast(world, BOLUS_LORE.stitches);
+    }
+  }
+  const taut = tautTargetIds(state);
+  const speed = speedOf(player);
+  const boosting = !!(player.flags && player.flags.boosting);
+  const rot = player.rot || 0;
+  const cast = [];
+  const tetherPhase = state.player && state.player.tether ? state.player.tether.phase : null;
+  const wasFast = (Number(flags['bolus:fastFor']) || 0) >= F.drumChaseDelay;
+
+  const exposureBefore = ae.exposure || 0;
+  if (!bolusInBerth(lx, lz)) ae.exposure = Math.min(1, (ae.exposure || 0) + F.exposurePerSec * step);
+  if (boosting || speed >= F.fast) flags['bolus:fastFor'] = (Number(flags['bolus:fastFor']) || 0) + step;
+  else {
+    if (wasFast) flags['bolus:drumSlideUntil'] = simTime + P.drumSlide;
+    flags['bolus:fastFor'] = 0;
+  }
+
+  const openNow = bolusIrisOpen(simTime);
+  if (openNow && flags['bolus:irisWasOpen'] !== true) cue(world, BOLUS_CUE.breath);
+  flags['bolus:irisWasOpen'] = openNow;
+
+  let toothRising = false;
+  let uvulaHold = 0;
+  let uvulaHeld = false;
+  let pleat = false;
+  let crookHeld = false;
+  let miteHit = false;
+  let baleenCandidate = false;
+  let gloveCandidate = null;
+  let valveHeld = false;
+  let fingerlingHeld = false;
+  let schoolFlee = false;
+  let swingHeld = false;
+  let ringHeld = false;
+  let lipHeldLoaded = false;
+
+  // Bolus organs all claim the bolus sector; outside it this used to scan the whole
+  // live list for nothing. The sector bucket early-outs to empty there and narrows
+  // the walk inside — homeSectorId heads the canonical claim chain, so the bucket
+  // holds every match; fall back to the list walk while the lane is unready.
+  const bolusIndex = state.entityIndex;
+  const list = bolusIndex && bolusIndex.__spacefaceEntityIndexV1 === true
+      && bolusIndex.ready === true && bolusIndex.bySectorId instanceof Map
+    ? (bolusIndex.bySectorId.get(BOLUS_SECTOR_ID) || [])
+    : (state.entityList || []);
+  for (let i = 0; i < list.length; i++) {
+    const ent = list[i];
+    if (!ent || ent.alive === false || !ent.data || !ent.data.bolus) continue;
+    if (ent.homeSectorId !== BOLUS_SECTOR_ID) continue;
+    const tag = ent.data.bolus;
+    const heldLine = taut.has(ent.id);
+    const wasHeld = tag.held === true;
+    if (wasHeld && !heldLine && LOOSE.has(tag.role)) {
+      flags[`bolus:loose:${tag.key}`] = simTime + F.looseWindow;
+    }
+    if (wasHeld && !heldLine && bolusIsSwingRole(tag.role)) {
+      flags['bolus:swingUntil'] = simTime + P.swingSeconds;
+    }
+    tag.held = heldLine;
+    const ex = ent.pos.x - origin.x;
+    const ez = ent.pos.z - origin.z;
+    if (heldLine && bolusHeldSwing(tag.role)) swingHeld = true;
+    if (heldLine && tag.role === 'ring') ringHeld = true;
+    if (heldLine && tag.role === 'lip' && tetherPhase === 'loaded') lipHeldLoaded = true;
+    if (heldLine && tag.role === 'knob' && flags['bolus:wallHolds'] !== true) {
+      flags['bolus:wallHolds'] = true;
+      toast(world, BOLUS_LORE.wall);
+    }
+    if (heldLine && tag.role === 'knob' && Number(flags['bolus:hushUntil']) > simTime && flags['bolus:chartReread'] !== true) {
+      flags['bolus:chartReread'] = true;
+      toast(world, BOLUS_LORE.chart);
+    }
+    if (!heldLine) {
+      tag.hold = 0;
+      tag.spent = false;
+    } else {
+      tag.hold = (tag.hold || 0) + step;
+      if (tag.role === 'tendon' && !tag.spent) {
+        tag.spent = true;
+        flags['bolus:peristalsisUntil'] = simTime + 12;
+      }
+      const pearlRefuses = tag.role === 'pearl' && !tag.spent
+        && flags['bolus:pearl'] !== true && !bolusPearlOpens(ae.exposure);
+      if (pearlRefuses) {
+        if (tag.told !== true) {
+          tag.told = true;
+          toast(world, BOLUS_LORE.pearlShut);
+        }
+      } else if (!tag.spent && tag.role !== 'tendon') {
+        // A finite reward is spent only when the cargo owner accepts it. Keep the
+        // latch available after a full hold so the player can return for the specimen.
+        const pendingFlags = Object.create(flags);
+        let committed = commitBolusLatch(pendingFlags, tag.role, tag.key, tag.hold, simTime);
+        if (committed?.cargo && addCargo(state, committed.cargo, committed.qty) < committed.qty) committed = null;
+        if (committed) {
+          Object.assign(flags, pendingFlags);
+          tag.spent = true;
+          if (committed.exposure) {
+            ae.exposure = Math.min(1, (ae.exposure || 0) + committed.exposure);
+            if (tag.role === 'nerve' && bolusIrisOpen(simTime) && flags['bolus:breathSample'] !== true) {
+              ae.exposure = Math.max(0, (ae.exposure || 0) - committed.exposure * 0.5);
+              flags['bolus:breathSample'] = true;
+              toast(world, BOLUS_LORE.breath);
+            }
+          }
+          if (committed.toast) toast(world, committed.toast);
+          cue(world, latchCue(tag.role, committed.event));
+          if (committed.event === 'suture') {
+            tag.role = 'suture';
+            if (!ent.data.ecology) ent.data.ecology = {};
+            ent.data.ecology.speciesId = 'bolus_suture';
+            ent.data.name = 'White Suture';
+            ent.mass = 2400;
+            if (ent.physicsBody && typeof ent.physicsBody === 'object') {
+              ent.physicsBody.dynamic = false;
+              ent.physicsBody.mass = 2400;
+              if (Number.isFinite(ent.physicsBody.revision)) ent.physicsBody.revision += 1;
+            }
+          }
+          if (committed.event === 'pleat') pleat = true;
+          if (committed.event === 'suture' && bolusValveCount(flags) >= 3 && flags['bolus:stitchedQuiet'] !== true) {
+            flags['bolus:stitchedQuiet'] = true;
+            toast(world, BOLUS_LORE.shy);
+          }
+          if (tag.role === 'bezoar' && bolusInCone(lx, lz, rot, ex, ez)) {
+            const hushLeft = Number(flags['bolus:hushUntil']) || 0;
+            flags['bolus:hushUntil'] = Math.max(hushLeft, simTime + BOLUS_LORE.gritFlash);
+            if (flags['bolus:gritFlashTold'] !== true) {
+              flags['bolus:gritFlashTold'] = true;
+              toast(world, BOLUS_LORE.grit);
+            }
+          }
+        }
+      }
+    }
+    if (heldLine && tag.role === 'tooth') {
+      if (Number(flags['bolus:acidQuietUntil']) > simTime) {
+        if (flags['bolus:combTooth'] !== true) {
+          flags['bolus:combTooth'] = true;
+          toast(world, BOLUS_LORE.comb);
+        }
+      } else if (flags['bolus:toothHeld'] !== true && !(Number(flags['bolus:toothYankUntil']) > simTime)) {
+        toothRising = true;
+      }
+    }
+    if (heldLine && tag.role === 'uvula') {
+      uvulaHeld = true;
+      uvulaHold = tag.hold;
+    }
+    if (heldLine && tag.role === 'crook' && tag.hold >= 0.4) crookHeld = true;
+    if (heldLine && (tag.role === 'valve' || tag.role === 'suture')) valveHeld = true;
+    if (heldLine && tag.role === 'fingerling') fingerlingHeld = true;
+    if (tag.role === 'fingerling' && boosting && Math.hypot(ex - lx, ez - lz) < P.schoolNear) schoolFlee = true;
+    if (tag.role === 'lantern' && Math.hypot(ex - lx, ez - lz) < P.gallRadius) {
+      flags['bolus:gallUntil'] = simTime + P.gallSeconds;
+      const gallKey = `bolus:gall:${tag.key}`;
+      if (flags[gallKey] !== true) {
+        flags[gallKey] = true;
+        cue(world, BOLUS_CUE.gall);
+      }
+    }
+    if (tag.role === 'floater' && !flags[`bolus:brush:${tag.key}`]
+        && Math.hypot(ex - lx, ez - lz) < P.brushRadius && speed < F.limp) {
+      flags[`bolus:brush:${tag.key}`] = true;
+      ae.exposure = Math.min(1, (ae.exposure || 0) + P.brushExposure);
+    }
+    if (tag.role === 'mite' && !flags['bolus:mite'] && Math.hypot(ex - lx, ez - lz) < 36 && speed < F.limp) {
+      miteHit = true;
+    }
+    if (tag.role === 'rib' && flags['bolus:ribLodged'] !== true) {
+      const native = state.settings?.gameplay?.physicsBackend === 'rapier-dynamic';
+      const observed = native ? ribPose(world, ribOwner(world).binding) : null;
+      // The old flag means stopped once, not permanently anchored. Re-towing
+      // keeps the flag and the newly observed position, without a second stop.
+      const atCough = native
+        ? observed && ribOwner(world).binding?.entity === ent
+          && Math.hypot(observed.x - P.coughAnchorX, observed.z - P.coughAnchorZ) < P.ribLodge
+        : Math.hypot(ex - P.coughAnchorX, ez - P.coughAnchorZ) < P.ribLodge;
+      if (atCough) {
+        flags['bolus:ribLodged'] = true;
+        if (native) {
+          const mass = resolvePhysicsBodySpec(ent).mass;
+          queuePhysicsImpulse(ent, { x: -observed.vx * mass, y: 0, z: -observed.vz * mass });
+        } else drive(world, ent, 0, 0);
+      }
+    }
+    if (tag.role === 'baleen' && boosting && Math.hypot(ex - lx, ez - lz) < F.baleenReach
+        && !(Number(flags['bolus:baleenUntil']) > simTime)) {
+      baleenCandidate = true;
+    }
+    if (tag.role === 'glove') {
+      const near = Math.hypot(ex - lx, ez - lz) < F.gloveReach;
+      if (!near) tag.gloveHot = false;
+      else if (!tag.gloveHot) {
+        const frenum = Number(flags['bolus:frenumUntil']) > simTime;
+        if (speed < F.limp) {
+          const kx = F.gloveKnob.x - lx;
+          const kz = F.gloveKnob.z - lz;
+          const dist = Math.hypot(kx, kz) || 1;
+          gloveCandidate = { tag, ix: (kx / dist) * F.gloveNudge, iz: (kz / dist) * F.gloveNudge };
+        } else if (!frenum && speed >= F.fast) {
+          const gx = ex - lx;
+          const gz = ez - lz;
+          const dist = Math.hypot(gx, gz) || 1;
+          gloveCandidate = { tag, ix: (gx / dist) * F.gloveYank, iz: (gz / dist) * F.gloveYank };
+        }
+      }
+    }
+    cast.push({ ent, tag, heldLine, ex, ez });
+  }
+
+  let ix = 0;
+  let iz = 0;
+  let xKicked = false;
+  let zKicked = false;
+  const sour = !!flags['bolus:papilla'];
+
+  if (toothRising) {
+    flags['bolus:toothYankUntil'] = simTime + F.toothQuiet;
+    if (bolusToothSlips(tetherPhase)) cue(world, BOLUS_CUE.slip);
+    else {
+      ix = sour ? F.toothXSour : F.toothX;
+      xKicked = true;
+      if (flags['bolus:toothLied'] !== true) {
+        flags['bolus:toothLied'] = true;
+        toast(world, BOLUS_LORE.tooth);
+      }
+      cue(world, BOLUS_CUE.tooth);
+    }
+  } else if (!bolusIrisOpen(simTime) && !(Number(flags['bolus:hushUntil']) > simTime)
+      && !(Number(flags['bolus:irisBumpUntil']) > simTime)
+      && Math.abs(lz - F.irisAt) < F.irisHalfWidth && Math.abs(lx) < F.irisSkirt) {
+    iz = (lz <= F.irisAt ? -1 : 1) * F.irisZ;
+    zKicked = true;
+    flags['bolus:irisBumpUntil'] = simTime + F.irisQuiet;
+    flags['bolus:irisKickUntil'] = simTime + F.irisKick;
+    if (flags['bolus:irisSeen'] !== true) {
+      flags['bolus:irisSeen'] = true;
+      toast(world, BOLUS_LORE.iris);
+    }
+    cue(world, BOLUS_CUE.iris);
+  } else if (pleat) {
+    iz = F.pleatZ;
+    zKicked = true;
+    flags['bolus:pleatHoldUntil'] = simTime + F.pleatHold;
+  } else if (baleenCandidate) {
+    iz = F.baleenZ;
+    zKicked = true;
+    flags['bolus:baleenUntil'] = simTime + F.baleenRearm;
+    flags['bolus:baleenKickUntil'] = simTime + F.baleenKick;
+    flags['bolus:baleenTolled'] = true;
+    cue(world, BOLUS_CUE.baleen);
+  } else if (gloveCandidate) {
+    ix = gloveCandidate.ix;
+    iz = gloveCandidate.iz;
+    xKicked = true;
+    zKicked = true;
+    gloveCandidate.tag.gloveHot = true;
+  } else if (crestDue(flags, simTime)) {
+    flags['bolus:peristalsisMark'] = Math.floor(simTime / F.peristalsisPeriod);
+    if (!valveHeld) {
+      iz = bolusCrestZ(lx);
+      zKicked = true;
+      flags['bolus:crestHoldUntil'] = simTime + F.crestHold;
+      cue(world, BOLUS_CUE.crest);
+    }
+  }
+
+  const threadZ = bolusThreadZ(simTime, speed, lx, lz);
+  const cycle = bolusIrisCycle(simTime);
+  if (threadZ && flags['bolus:threadMark'] !== cycle) {
+    iz += threadZ;
+    zKicked = true;
+    flags['bolus:threadMark'] = cycle;
+    cue(world, BOLUS_CUE.thread);
+  }
+
+  if (uvulaHeld && uvulaHold >= F.uvulaHold) {
+    const arrived = Math.abs(lx - F.uvulaX) <= F.uvulaArrive;
+    const want = arrived ? 0 : Math.sign(F.uvulaX - lx) * F.uvulaSpeed;
+    if (!xKicked) ix += want - (player.vel.x || 0);
+    flags['bolus:uvulaSeek'] = true;
+  } else if (flags['bolus:uvulaSeek']) {
+    flags['bolus:uvulaSeek'] = false;
+    if (!xKicked) ix += -(player.vel.x || 0);
+  }
+
+  if (!zKicked && !kickHold(flags, simTime) && !bolusSwingBlocksCilia(flags['bolus:swingUntil'], simTime)
+      && lx >= F.ciliaX0 && lx <= F.ciliaX1) {
+    const vz = player.vel.z || 0;
+    if (vz < F.ciliaZ) iz += F.ciliaZ - vz;
+  }
+
+  if (bolusCoughDue(lx, lz, flags['bolus:baleenTolled'] === true, flags['bolus:coughPaid'] === true)) {
+    iz += P.coughZ;
+    flags['bolus:coughPaid'] = true;
+    flags['bolus:coughCracked'] = true;
+    cue(world, BOLUS_CUE.cough);
+  }
+
+  if (ix !== 0 || iz !== 0) push(world, player, ix, iz);
+
+  const galling = Number(flags['bolus:gallUntil']) > simTime;
+  const quiet = Number(flags['bolus:acidQuietUntil']) > simTime;
+  const strip = lx >= BOLUS_ACID_X0 && lx <= BOLUS_ACID_X1;
+  if (strip && !quiet && !galling) {
+    if (!swingHeld) hurt(world, player, F.acidDps * bolusAcidScale(flags) * step);
+    if (flags['bolus:inAcid'] !== true) {
+      flags['bolus:inAcid'] = true;
+      cue(world, BOLUS_CUE.acid);
+    }
+    if (flags['bolus:acidTold'] !== true) {
+      flags['bolus:acidTold'] = true;
+      toast(world, BOLUS_LORE.acid);
+    }
+  } else flags['bolus:inAcid'] = false;
+  if (miteHit) {
+    flags['bolus:mite'] = true;
+    flags['bolus:miteFleeUntil'] = simTime + P.miteFleeSeconds;
+    ae.exposure = Math.min(1, (ae.exposure || 0) + 0.04);
+    toast(world, 'Something thin is on the line.');
+  }
+
+  if (lipHeldLoaded && strip && !quiet && !galling && flags['bolus:lipHonest'] !== true) {
+    flags['bolus:lipHonest'] = true;
+    toast(world, BOLUS_LORE.lip);
+  }
+  if (Number(flags['bolus:hushUntil']) > simTime
+      && Math.abs(lz - F.irisAt) < F.irisHalfWidth && Math.abs(lx) < F.irisSkirt
+      && flags['bolus:hushWalk'] !== true) {
+    flags['bolus:hushWalk'] = true;
+    toast(world, BOLUS_LORE.hush);
+  }
+  if (ringHeld) {
+    ae.exposure = exposureBefore;
+    if (flags['bolus:ringTold'] !== true) {
+      flags['bolus:ringTold'] = true;
+      toast(world, BOLUS_LORE.ring);
+    }
+  }
+  const filmBeat = bolusFilmBeat(ae.exposure);
+  const filmPrev = Number(flags['bolus:filmBeat']) || 0;
+  if (filmBeat > filmPrev) {
+    for (let b = filmPrev + 1; b <= filmBeat; b++) toast(world, BOLUS_LORE.film[b - 1]);
+    flags['bolus:filmBeat'] = filmBeat;
+  }
+
+  flags['bolus:toothHeld'] = false;
+  for (let i = 0; i < cast.length; i++) {
+    if (cast[i].heldLine && cast[i].tag.role === 'tooth') flags['bolus:toothHeld'] = true;
+    steerFauna(cast[i], {
+      lx, lz, rot, speed, boosting, simTime, flags, crookHeld, state, world,
+      fingerlingHeld, schoolFlee, exposure: ae.exposure, vz: player.vel.z || 0,
+    });
+  }
+}
+
+function crestDue(flags, simTime) {
+  const mark = Math.floor(simTime / F.peristalsisPeriod);
+  if (!Object.prototype.hasOwnProperty.call(flags, 'bolus:peristalsisMark')) {
+    flags['bolus:peristalsisMark'] = mark;
+    return false;
+  }
+  if (mark === flags['bolus:peristalsisMark']) return false;
+  if (Number(flags['bolus:peristalsisUntil']) > simTime) {
+    flags['bolus:peristalsisMark'] = mark;
+    return false;
+  }
+  return true;
+}
+
+function steerFauna(row, ctx) {
+  const { ent, tag, heldLine, ex, ez } = row;
+  if (Number(ctx.flags[`bolus:loose:${tag.key}`]) > ctx.simTime) return;
+  if (heldLine || !DRIVEN.has(tag.role)) return;
+  if (!ent.physicsBody || ent.physicsBody.dynamic === false) return;
+  const inCone = bolusInCone(ctx.lx, ctx.lz, ctx.rot, ex, ez);
+  const crookFreeze = tag.role === 'louse' && ctx.crookHeld && Math.hypot(ex - CROOK_AT.x, ez - CROOK_AT.z) <= F.crookReach;
+
+  if (SMALL.has(tag.role) && (inCone || crookFreeze)) {
+    drive(ctx.world, ent, 0, 0);
+  } else if (tag.role === 'louse') {
+    const phase = (tag.phase || 0) + ctx.simTime * 0.7;
+    drive(ctx.world, ent, Math.cos(phase) * F.louseScurry, Math.sin(phase) * F.louseScurry);
+  } else if (tag.role === 'drum') {
+    const spur = Number(ctx.flags['bolus:spurUntil']) > ctx.simTime
+      && Math.hypot(ex - SPUR_AT.x, ez - SPUR_AT.z) <= 450;
+    if (inCone || spur) {
+      drive(ctx.world, ent, 0, 0);
+    } else if (Number(ctx.flags['bolus:drumSlideUntil']) > ctx.simTime) {
+      return;
+    } else if (Number(ctx.flags['bolus:fastFor']) >= F.drumChaseDelay) {
+      if (ctx.flags['bolus:drumHeard'] !== true) {
+        ctx.flags['bolus:drumHeard'] = true;
+        toast(ctx.world, BOLUS_LORE.drum);
+      }
+      const dx = ctx.lx - ex;
+      const dz = ctx.lz - ez;
+      const dist = Math.hypot(dx, dz) || 1;
+      drive(ctx.world, ent, (dx / dist) * F.drumChase, (dz / dist) * F.drumChase);
+    } else {
+      const phase = (ent.rot || 0) + ctx.simTime * 0.2;
+      drive(ctx.world, ent, Math.cos(phase) * F.drumWander, Math.sin(phase) * F.drumWander);
+    }
+  } else if (tag.role === 'fingerling') {
+    if (ctx.schoolFlee && bolusNearNursery(ex, ez)) {
+      const dx = ex - ctx.lx;
+      const dz = ez - ctx.lz;
+      const dist = Math.hypot(dx, dz) || 1;
+      drive(ctx.world, ent, (dx / dist) * P.fingerlingFlee, (dz / dist) * P.fingerlingFlee);
+    } else {
+      const radius = bolusNurseryRadius(ctx.fingerlingHeld && !ctx.boosting);
+      const phase = ctx.simTime * 0.8 + (tag.phase || 0);
+      drive(ctx.world, ent, (tag.anchorX + Math.cos(phase) * radius - ex) * 0.8, (tag.anchorZ + Math.sin(phase) * radius - ez) * 0.8);
+    }
+  } else if (tag.role === 'floater') {
+    const kind = bolusFloaterKind(ctx.exposure, ex);
+    if (kind === 'wake') {
+      drive(ctx.world, ent, 0, ctx.vz || 0);
+    } else {
+      const scale = kind === 'heavy' ? P.floaterHeavyScale : 1;
+      const phase = (tag.phase || 0) + ctx.simTime * 0.35;
+      const ax = tag.anchorX + Math.cos(phase) * 40;
+      const az = tag.anchorZ + Math.sin(phase * 0.7) * 26;
+      drive(ctx.world, ent, (ax - ex) * 0.4 * scale, (az - ez) * 0.4 * scale);
+    }
+  } else if (tag.role === 'mite') {
+    if (Number(ctx.flags['bolus:miteFleeUntil']) > ctx.simTime) {
+      const dx = ex - ctx.lx;
+      const dz = ez - ctx.lz;
+      const dist = Math.hypot(dx, dz) || 1;
+      drive(ctx.world, ent, (dx / dist) * P.miteFlee, (dz / dist) * P.miteFlee);
+    } else {
+      const phase = ctx.simTime * 1.4 + (ent.rot || 0);
+      drive(ctx.world, ent, Math.cos(phase) * 10, Math.sin(phase) * 8);
+    }
+  } else if (tag.role === 'glove') {
+    drive(ctx.world, ent, (tag.anchorX - ex) * 0.6, (tag.anchorZ - ez) * 0.6);
+  } else if (tag.role === 'mote') {
+    if (inCone) {
+      const dx = ex - ctx.lx;
+      const dz = ez - ctx.lz;
+      const dist = Math.hypot(dx, dz) || 1;
+      drive(ctx.world, ent, (dx / dist) * 22, (dz / dist) * 22);
+    } else {
+      const phase = (tag.phase || 0) + ctx.simTime * 0.9;
+      drive(ctx.world, ent, Math.cos(phase) * 8, Math.sin(phase) * 6);
+    }
+  }
+
+  const frozen = SMALL.has(tag.role) && (inCone || crookFreeze);
+  if (frozen && tag.frozen !== true) {
+    cue(ctx.world, BOLUS_CUE.freeze);
+    if (ctx.flags['bolus:lightPins'] !== true) {
+      ctx.flags['bolus:lightPins'] = true;
+      toast(ctx.world, BOLUS_LORE.light);
+    }
+  }
+  tag.frozen = frozen;
+}

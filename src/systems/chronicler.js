@@ -1,0 +1,480 @@
+/**
+ * The Chronicler — the simulation's evidence-backed memory, not a second gameplay authority.
+ * Owns ONLY state.chronicler. Public events are offers/facts, never reputation/bounty commands.
+ * Registry contract: init(ctx), update(dt, state), newGame(), serialize(), deserialize(), destroy().
+ */
+import { FACT_EVENTS, configFor, freshMemory, clone, finite, increment } from '../chronicler/schema.js';
+import { normalizeFact } from '../chronicler/normalize.js';
+import { ingestBatch, resolveLineage, pruneMemory } from '../chronicler/ledger.js';
+import { buildStoryView, semanticSignature, rankViews, recallText } from '../chronicler/narrative.js';
+import { restoreMemory, restoreMemoryChunked } from '../chronicler/persistence.js';
+import { createChroniclerVoiceBridge } from '../chronicler/voiceBridge.js';
+
+// ── FB-090 owner-local quiet latch ─────────────────────────────────────────────
+// Bench A/B: production default ON. The chronicler's own wake schedule is the authority:
+// `m.pending` non-empty (a fact event landed) or `now >= _nextWake` (a publication came due)
+// are the only things that give update() real work. Otherwise the tick can only write
+// `m.clock = now` and run an empty splice, so we keep the clock write — it is persisted state
+// and must stay byte-identical — and skip the batch/publish/schedule tail. Wakes ride the
+// existing seams: capture() extends pending, _adopt()/deserialize() reset _nextWake to 0.
+let CHRONICLER_QUIET_LATCH = true;
+export function setChroniclerQuietLatchForBench(enabled) {
+  CHRONICLER_QUIET_LATCH = enabled !== false;
+}
+export function getChroniclerQuietLatchForBench() {
+  return CHRONICLER_QUIET_LATCH !== false;
+}
+
+function priority(f) {
+  if (['recovered', 'sold', 'law', 'remedy'].includes(f.stage)) return 100;
+  if (f.stage === 'war') return 85; // the galaxy's biggest fact outranks one more kill
+  if (['ace', 'rescue', 'wanted'].includes(f.stage)) return 80;
+  if (['aftermath', 'binding', 'salvage'].includes(f.stage)) return 70;
+  if (f.stage === 'kill') return (f.actor.player || (f.subject && f.subject.player)) ? 65 : 20;
+  return 40;
+}
+function due(at, now, cooldown) { return at === null || now - at >= cooldown; }
+
+/**
+ * STORY-08 — dockside weekly digest selection. Pure and read-only: a UI/query never
+ * advances the simulation or consumes a headline. Docking after seven-plus sim days
+ * (one line, not a screen) cites the week's biggest fresh fact, once per week.
+ */
+export const CHRONICLER_DIGEST_WEEK_S = 4200; // 7 sim days at 600 s each
+const DIGEST_SKIP_STAGES = new Set(['binding', 'cause']);
+
+export function chroniclerDigestWeek(now) {
+  return Math.floor(Math.max(0, finite(now)) / CHRONICLER_DIGEST_WEEK_S);
+}
+
+function digestCitedIds(state) {
+  const list = state && state.ui && state.ui.dockDigest && state.ui.dockDigest.citedFactIds;
+  return new Set(Array.isArray(list) ? list.filter(id => typeof id === 'string') : []);
+}
+
+/**
+ * The week's biggest fresh fact, or null. Fresh means a milestone fact stamped inside the
+ * current seven-day window; biggest means the highest-score public story view wins, and the
+ * highest-priority fresh fact inside that story is the citation. Already-cited facts never
+ * replay, and a week that already spoke stays silent until the next window.
+ */
+export function selectWeeklyDigest(state, now = finite(state && state.simTime)) {
+  if (!state) return null;
+  const t = Math.max(0, finite(now));
+  const week = chroniclerDigestWeek(t);
+  if (week < 1) return null;
+  const memory = state.chronicler;
+  if (!memory || !Array.isArray(memory.stories) || memory.stories.length === 0) return null;
+  const dock = state.ui && state.ui.dockDigest;
+  if (dock && Number.isInteger(dock.lastWeek) && dock.lastWeek === week) return null;
+  const cited = digestCitedIds(state);
+  const weekStart = week * CHRONICLER_DIGEST_WEEK_S;
+  let best = null;
+  for (const story of memory.stories) {
+    if (!story || !Array.isArray(story.nodes) || story.nodes.length === 0) continue;
+    const fresh = story.nodes.filter(n => n && Number.isFinite(n.t)
+      && n.t >= weekStart && n.t <= t && !cited.has(n.id) && !DIGEST_SKIP_STAGES.has(n.stage));
+    if (fresh.length === 0) continue;
+    let view = null;
+    try { view = buildStoryView(story); } catch { continue; }
+    if (!view || view.visibility !== 'public') continue;
+    let fact = fresh[0];
+    for (const candidate of fresh) {
+      const priorityOf = (f) => priority(f);
+      if (priorityOf(candidate) > priorityOf(fact)
+        || (priorityOf(candidate) === priorityOf(fact)
+          && (candidate.t > fact.t || (candidate.t === fact.t && candidate.seq > fact.seq)))) {
+        fact = candidate;
+      }
+    }
+    const score = Number.isFinite(view.score) ? view.score : 0;
+    if (!best || score > best.score
+      || (score === best.score && (fact.t > best.fact.t
+        || (fact.t === best.fact.t && fact.seq > best.fact.seq)))) {
+      best = { story, view, fact, score };
+    }
+  }
+  if (!best) return null;
+  return {
+    storyId: best.story.id,
+    factId: best.fact.id,
+    score: best.score,
+    title: best.view.title,
+    summary: best.view.summary,
+    week,
+  };
+}
+function storyPacket(view) {
+  return { ...clone(view), source: 'chronicler', sourceRef: `${view.id}:r${view.revision}` };
+}
+function publication(view, text) {
+  const sourceRef = `${view.id}:r${view.revision}`;
+  return {
+    id: sourceRef, eventId: sourceRef, source: 'chronicler', sourceRef,
+    storyId: view.id, revision: view.revision, kind: `chronicler-${view.kind}`,
+    text, headline: view.title, sectorId: view.sectorId,
+    stationId: view.stationIds[view.stationIds.length - 1] || null,
+    factionId: view.factionIds[0] || null,
+    complete: view.complete,
+    // Compact, self-contained citations survive ticker retention independently of archive eviction.
+    evidence: view.evidence.filter(f => view.proof.length ? view.proof.includes(f.id) : true)
+      .slice(0, 8).map(f => ({ factId: f.id, event: f.sourceEvent, receiptId: f.sourceReceiptId, t: f.t })),
+  };
+}
+
+export function createChronicler(options = {}) {
+  const defaults = configFor(options);
+  const shouldObserve = typeof options.shouldObserve === 'function' ? options.shouldObserve : () => true;
+  return {
+    name: 'chronicler',
+    // serialize() returns clone(this._memory) — already fully owned.
+    saveSnapshotOwned: true,
+    init(ctx) {
+      if (!ctx?.state || !ctx.bus || typeof ctx.bus.on !== 'function' || typeof ctx.bus.emit !== 'function') {
+        throw new TypeError('Chronicler.init requires { state, bus }');
+      }
+      this.destroy();
+      this._state = ctx.state; this._bus = ctx.bus;
+      this._subs = []; this._restoring = false; this._updating = false; this._clockBlocked = false;
+      this._adopt(restoreMemory(ctx.state.chronicler, defaults, ctx.state.simTime));
+      for (const event of FACT_EVENTS) this._listen(event, p => this.capture(event, p));
+      this._listen('game:new', () => this.newGame());
+      this._listen('game:newGame', () => this.newGame());
+      this._listen('save:restoring', () => { this._restoring = true; });
+      this._listen('save:error', () => { this._restoring = false; });
+      this._listen('save:loaded', () => {
+        // Some save owners replace a whole field, others call deserialize first. Support both.
+        if (this._state.chronicler !== this._memory) this.deserialize(this._state.chronicler);
+        this._restoring = false; this._clockBlocked = false;
+      });
+      this._listen('game:started', () => {
+        // This fires on Continue too. NEVER erase an archive merely because a game started.
+        if (this._state.chronicler !== this._memory) this.deserialize(this._state.chronicler);
+      });
+      this._listen('dock:docked', p => this.requestRecall({
+        context: 'dock', stationId: p?.stationId,
+        sectorId: p?.sectorId || this._state.world?.currentSectorId,
+      }));
+      this._listen('sector:enter', p => {
+        // A stale queued tail would burn the recall cooldown on the departed sector.
+        if (p?.enterEpoch != null && this._state.world
+            && this._state.world.enterSerial != null && p.enterEpoch !== this._state.world.enterSerial) return;
+        this.requestRecall({
+          context: 'sector', sectorId: p?.sectorId || p?.id || this._state.world?.currentSectorId,
+        });
+      });
+      // Presentation adapter: old-story radio offers ride the band channel, station/sector
+      // recollections ride comms — through the arbiter when one exists. helpers is held by
+      // reference, so a voice attaching later still works; the bridge guards per-offer and
+      // acceptance is arbiter acceptance, never playback. Destroyed with the owner below.
+      if (ctx.helpers && typeof ctx.helpers === 'object') {
+        this._voiceBridge = createChroniclerVoiceBridge({ bus: ctx.bus, helpers: ctx.helpers });
+      }
+      return this;
+    },
+    _listen(event, fn) {
+      const off = this._bus.on(event, fn);
+      this._subs.push(typeof off === 'function' ? off : () => this._bus?.off?.(event, fn));
+    },
+    _adopt(memory) {
+      // Derive the graph and every read model before touching live state. Even a structurally
+      // malformed narrative fact must not partially replace a healthy archive at a load boundary.
+      resolveLineage(memory);
+      const views = new Map(memory.stories.map(story => [story.id, buildStoryView(story)]));
+      this._memory = memory;
+      this._state.chronicler = memory;
+      this._seen = new Set(memory.seen);
+      // `memory.seen` is a FIFO-capped ring (maxSeen), so it can forget a dedupe key for a fact the
+      // archive still retains. `_retainedKeys` is the second membership set that closes that hole —
+      // it is rebuilt wholesale from pending + every retained node whenever the archive changes, so
+      // a re-observed fact is still a duplicate after its ring entry ages out.
+      this._retainedKeys = new Set([...memory.pending, ...memory.stories.flatMap(s => s.nodes)].map(f => f.dedupe));
+      this._nextWake = 0;
+      this._views = views;
+    },
+    _enabled() { return !!this._memory && !this._restoring && shouldObserve(this._state) !== false; },
+
+    /** Public producer/harness entry point; ordinary integration uses the bus subscriptions. */
+    capture(event, payload) {
+      if (!this._enabled()) return null;
+      const m = this._memory;
+      if (finite(this._state.simTime) + 1e-9 < m.clock) { this._clockBlocked = true; return null; }
+      increment(m.metrics, 'observed');
+      const f = normalizeFact(event, payload, this._state);
+      if (!f) { increment(m.metrics, 'ignored'); return null; }
+      if (f.invalid) { increment(m.metrics, 'invalid'); return null; }
+      if (this._seen.has(f.dedupe) || this._retainedKeys.has(f.dedupe)) { increment(m.metrics, 'duplicates'); return null; }
+      if (m.pending.length >= m.config.maxPending) {
+        let weakest = 0;
+        for (let i = 1; i < m.pending.length; i++) {
+          if (priority(m.pending[i]) < priority(m.pending[weakest])) weakest = i;
+        }
+        increment(m.metrics, 'queueDropped');
+        if (priority(f) <= priority(m.pending[weakest])) return null;
+        const [dropped] = m.pending.splice(weakest, 1);
+        this._seen.delete(dropped.dedupe); this._retainedKeys.delete(dropped.dedupe);
+        m.seen = m.seen.filter(k => k !== dropped.dedupe);
+      }
+      if (!Number.isSafeInteger(m.nextFact + 1)) throw new RangeError('Chronicler receipt sequence exhausted');
+      f.seq = m.nextFact++; f.id = `ch:f:${f.seq}`;
+      this._seen.add(f.dedupe); this._retainedKeys.add(f.dedupe); m.seen.push(f.dedupe);
+      while (m.seen.length > m.config.maxSeen) this._seen.delete(m.seen.shift());
+      m.pending.push(f);
+      return f.id;
+    },
+
+    update(_dt, state = this._state) {
+      if (!this._memory || this._updating || this._restoring) return 0;
+      if (state !== this._state) {
+        this._state = state;
+        this._adopt(restoreMemory(state.chronicler, defaults, state.simTime));
+      } else if (state.chronicler !== this._memory) this.deserialize(state.chronicler);
+      if (!this._enabled()) return 0;
+      const now = Math.max(0, finite(state.simTime));
+      if (now + 1e-9 < this._memory.clock) {
+        // A host rewind needs deserialize/newGame. Silently retiming old evidence would lie.
+        this._clockBlocked = true;
+        return 0;
+      }
+      this._clockBlocked = false; this._updating = true;
+      try {
+        const m = this._memory;
+        m.clock = now;
+        // FB-090 quiet latch: pending empty AND no publication due ⇒ the tail below is a proven
+        // no-op except the (identical) empty splice and `return 0`. The clock write above is kept
+        // so persisted memory advances exactly as the unlatched path would leave it.
+        if (CHRONICLER_QUIET_LATCH !== false
+            && m.pending.length === 0
+            && now < this._nextWake) {
+          const rt = state.chroniclerRuntime || (state.chroniclerRuntime = {});
+          rt.quietLatched = true;
+          return 0;
+        }
+        const rt = state.chroniclerRuntime || (state.chroniclerRuntime = {});
+        rt.quietLatched = false;
+        const batch = m.pending.splice(0, m.config.factsPerUpdate);
+        if (batch.length) {
+          // ingestBatch returns the post-merge ids of stories whose (nodes, edges, statuses)
+          // actually changed — buildStoryView+semanticSignature are the O(archive) line in
+          // combat ticks, so only touched stories re-render. The link gauges are already
+          // published by resolveLineage when it runs, and statuses cannot move when it
+          // doesn't, so a second flatMap recount here was pure duplicate work.
+          const { touched, droppedDedupe } = ingestBatch(m, batch);
+          this._refreshViews(true, touched);
+          for (const k of pruneMemory(m, this._views, now)) this._retainedKeys.delete(k);
+          for (const k of droppedDedupe) this._retainedKeys.delete(k);
+          const retained = new Set(m.stories.map(s => s.id));
+          for (const key of this._views.keys()) if (!retained.has(key)) this._views.delete(key);
+          // ingest/prune just mutated m.stories — the publisher's id map rebuilds lazily.
+          this._storyByIdMap = null;
+          this._nextWake = now;
+        }
+        // Do not publish an intermediate proof while its later packets are still in the inbox.
+        if (m.pending.length === 0 && now >= this._nextWake) {
+          this._publish(now);
+          if (this._memory === m) this._scheduleWake(now);
+        }
+        return batch.length;
+      } finally { this._updating = false; }
+    },
+    _refreshViews(revise, only = null) {
+      for (const story of this._memory.stories) {
+        if (only && !only.has(story.id)) continue;
+        const view = buildStoryView(story);
+        const signature = semanticSignature(view);
+        if (revise && signature !== story.signature) {
+          story.revision++;
+          story.signature = signature;
+        }
+        view.revision = story.revision;
+        this._views.set(story.id, view);
+      }
+    },
+    _emit(event, payload) { this._bus?.emit(event, clone(payload)); },
+    // id→story lookup for the publisher/wake passes, which run post-ingest inside update —
+    // stories only mutate in that ingest block (or via a _memory swap, caught by identity),
+    // so one build covers every find below.
+    _storyById(m) {
+      if (this._storyByIdMemory !== m) {
+        this._storyByIdMemory = m;
+        this._storyByIdMap = null;
+      }
+      if (!this._storyByIdMap) {
+        this._storyByIdMap = new Map();
+        for (const s of m.stories) this._storyByIdMap.set(s.id, s);
+      }
+      return this._storyByIdMap;
+    },
+    _publish(now) {
+      const m = this._memory;
+      const ranked = rankViews([...this._views.values()], { minScore: m.config.minNewsScore }, now);
+      let announcements = 0;
+      for (const view of ranked) {
+        const story = this._storyById(m).get(view.id);
+        if (now - story.updatedAt < m.config.settleSeconds || story.announcedRevision >= story.revision) continue;
+        story.announcedRevision = story.revision; // reserve before synchronous callbacks/re-entry
+        increment(m.metrics, 'storiesPublished');
+        this._emit('chronicler:story', storyPacket(view));
+        if (this._memory !== m || !this._bus) return;
+        if (++announcements >= 4) break;
+      }
+      let legends = 0;
+      for (const legend of m.legends) {
+        if (legend.announced || legend.visibility !== 'public') continue;
+        legend.announced = true;
+        // A legend IS public memory: it rides the same news seam as a story. The old
+        // `chronicler:legend` emission had no consumer anywhere in the tree — the sector's
+        // record of your deeds (three rescues → "A Hand in the Dark") formed, persisted,
+        // woke this publisher, and then reached nobody. Publication carries the citation
+        // fields the news surface gates on (sourceRef), and stays one announcement per
+        // legend for its whole life (the `announced` latch above, persisted in the save).
+        this._emit('news:publish', {
+          id: legend.id,
+          eventId: legend.id,
+          source: 'chronicler',
+          sourceRef: `${legend.id}:a${legend.count}`,
+          kind: 'chronicler-legend',
+          text: `${legend.title} — ${legend.text}`,
+          headline: legend.title,
+          formedAt: legend.formedAt,
+          evidence: clone(legend.evidence || []),
+        });
+        if (this._memory !== m || !this._bus) return;
+        if (++legends >= 2) break;
+      }
+      if (m.config.publishNews && due(m.cadence.newsAt, now, m.config.newsCooldown)) {
+        const view = ranked.find(v => {
+          const s = this._storyById(m).get(v.id);
+          return now - s.updatedAt >= m.config.settleSeconds && s.newsRevision < s.revision
+            && due(s.newsAt, now, m.config.storyCooldown);
+        });
+        if (view) {
+          const story = this._storyById(m).get(view.id);
+          story.newsRevision = story.revision; story.newsAt = now; m.cadence.newsAt = now;
+          increment(m.metrics, 'newsPublished');
+          this._emit('news:publish', publication(view, view.summary));
+          if (this._memory !== m || !this._bus) return;
+        }
+      }
+      if (m.config.offerRadio && due(m.cadence.radioAt, now, m.config.radioCooldown)) {
+        const view = ranked.find(v => {
+          const s = this._storyById(m).get(v.id);
+          return now - s.updatedAt >= m.config.recallMinAge && s.radioRevision < s.revision;
+        });
+        if (view) {
+          this._storyById(m).get(view.id).radioRevision = view.revision;
+          m.cadence.radioAt = now;
+          increment(m.metrics, 'radioOffered');
+          this._emit('chronicler:radio', { ...publication(view, recallText(view, now)), channel: 'band' });
+        }
+      }
+    },
+
+    _scheduleWake(now) {
+      const m = this._memory;
+      let next = Infinity;
+      for (const v of this._views.values()) {
+        if (v.visibility !== 'public' || v.score < m.config.minNewsScore) continue;
+        const s = this._storyById(m).get(v.id);
+        const settled = s.updatedAt + m.config.settleSeconds;
+        if (s.announcedRevision < s.revision) next = Math.min(next, settled);
+        if (m.config.publishNews && s.newsRevision < s.revision) {
+          next = Math.min(next, Math.max(settled,
+            s.newsAt === null ? 0 : s.newsAt + m.config.storyCooldown,
+            m.cadence.newsAt === null ? 0 : m.cadence.newsAt + m.config.newsCooldown));
+        }
+        if (m.config.offerRadio && s.radioRevision < s.revision) {
+          next = Math.min(next, Math.max(s.updatedAt + m.config.recallMinAge,
+            m.cadence.radioAt === null ? 0 : m.cadence.radioAt + m.config.radioCooldown));
+        }
+      }
+      if (m.legends.some(l => !l.announced && l.visibility === 'public')) next = now;
+      // Only quotas can leave already-due work. Retry at the next fixed tick, not recursively.
+      this._nextWake = next <= now ? now + 1 / 60 : next;
+    },
+
+    /** Read-only snapshots. A UI/query never advances the simulation or consumes a headline. */
+    query(context = {}) {
+      if (!this._memory) return [];
+      const now = Math.max(0, finite(this._state.simTime));
+      const limit = Math.max(0, Math.min(256, Math.floor(finite(context.limit, 12))));
+      return clone(rankViews([...this._views.values()], context, now).slice(0, limit));
+    },
+    getStory(storyId, { includePrivate = false } = {}) {
+      const view = this._views?.get(storyId);
+      return view && (includePrivate || view.visibility === 'public') ? clone(view) : null;
+    },
+    getLegends({ includePrivate = false } = {}) {
+      return this._memory ? clone(this._memory.legends.filter(l => includePrivate || l.visibility === 'public')) : [];
+    },
+    recall(context = {}) {
+      if (!this._memory) return null;
+      const m = this._memory;
+      const filter = { ...context, includePrivate: false, minScore: m.config.minNewsScore,
+        minAgeSeconds: m.config.recallMinAge, limit: 256 };
+      let candidates = this.query(filter);
+      if (!candidates.length && context.stationId && context.sectorId) {
+        delete filter.stationId;
+        candidates = this.query(filter);
+      }
+      const key = JSON.stringify([context.context || 'recall', context.stationId || null,
+        context.sectorId || null, context.actorKey || null, context.factionId || null]);
+      const view = candidates.find(v => !m.recallKeys.includes(`${key}:${v.id}:r${v.revision}`));
+      if (!view) return null;
+      return { ...publication(view, recallText(view, finite(this._state.simTime))),
+        context: context.context || 'recall', recallKey: `${key}:${view.id}:r${view.revision}` };
+    },
+    requestRecall(context = {}) {
+      if (!this._enabled()) return null;
+      const m = this._memory;
+      const now = Math.max(0, finite(this._state.simTime));
+      if (now < m.clock || !due(m.cadence.recallAt, now, m.config.recallCooldown)) return null;
+      const offer = this.recall(context);
+      if (!offer) return null;
+      m.cadence.recallAt = now;
+      m.recallKeys.push(offer.recallKey);
+      if (m.recallKeys.length > 128) m.recallKeys.shift();
+      increment(m.metrics, 'recallsOffered');
+      this._emit('chronicler:recall', offer);
+      return clone(offer);
+    },
+    diagnostics() {
+      if (!this._memory) return { initialized: false };
+      const m = this._memory;
+      return { initialized: true, restoring: this._restoring, clockBlocked: this._clockBlocked,
+        stories: m.stories.length, facts: m.stories.reduce((n, s) => n + s.nodes.length, 0),
+        pending: m.pending.length, seen: m.seen.length, profiles: m.profiles.length,
+        legends: m.legends.length, config: clone(m.config), ...clone(m.metrics) };
+    },
+    serialize() { return this._memory ? clone(this._memory) : null; },
+    deserialize(data) {
+      for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+      return true;
+    },
+
+    // Generator twin so the async restore lane can paint inside the archive validation —
+    // a long campaign's pending/stories/profiles/legends walk is one atomic span otherwise.
+    *deserializeChunked(data) {
+      if (!this._state) throw new Error('Initialize Chronicler before deserialize');
+      const inner = restoreMemoryChunked(data, defaults, this._state.simTime);
+      let candidate;
+      for (const r of inner) { candidate = r; yield 'chronicler-memory-section'; }
+      this._adopt(candidate); this._clockBlocked = false;
+    },
+    newGame() {
+      if (!this._state) return;
+      this._adopt(freshMemory(defaults, this._state.simTime));
+      this._restoring = false; this._clockBlocked = false;
+    },
+    destroy() {
+      if (this._voiceBridge) { this._voiceBridge.destroy(); this._voiceBridge = null; }
+      for (const off of this._subs || []) off();
+      this._subs = [];
+      this._bus = null; this._state = null; this._memory = null;
+      this._views = new Map(); this._seen = new Set(); this._retainedKeys = new Set(); this._nextWake = Infinity;
+    },
+  };
+}
+
+export const chronicler = createChronicler();
+export default chronicler;

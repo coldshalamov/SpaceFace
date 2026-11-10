@@ -1,0 +1,185 @@
+From 9fdb832df61bc0e2f4f173d3b5eb3a086829d410 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 22:35:26 -0400
+Subject: [PATCH] perf(opening): soft-GPU residency deadlineMs; continue to
+ receipt on partial
+
+Promise.race alone missed sync initTexture bursts past the 750ms budget.
+Pass deadlineMs into prepareStartupGpuResidency and keep cooking through
+post/receipt when uploads stop early so the opening identity freeze still lands.
+---
+ src/render/renderer.js                   | 39 +++++++++++++++---------
+ src/render/startupGpuResidency.js        | 36 ++++++++++++++++++++--
+ test/opening-residency-deadline.test.mjs | 34 +++++++++++++++++++++
+ 3 files changed, 92 insertions(+), 17 deletions(-)
+ create mode 100644 test/opening-residency-deadline.test.mjs
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index 34f18eb8b..5cea083f1 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -8605,19 +8605,22 @@ export const render = {
+           return { skipped: true, reason: 'opening-plan-incomplete' };
+         }
+         openingStepStarted = openingNow();
++        const softGpuOpening = !shouldAwaitOpeningGpuCook({
++          gpu: state.render && state.render.gpu,
++          renderer,
++        });
++        // Soft-GPU cannot hide texture uploads behind parallel compile; keep residency
++        // bounded so this stage yields back to the loading/flight event loop sooner.
++        // Also pass deadlineMs into the uploader — Promise.race alone misses sync initTexture
++        // bursts that starve the timer until well past the budget.
++        const residencyBudgetMs = softGpuOpening ? 750 : 5000;
+         const residency = prepareStartupGpuResidency(renderer, plan.residencySubjects, {
+           yieldToMain: yieldToBrowser,
+           includeEmpty: true,
+           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+           textures: plan.textureRefs,
++          deadlineMs: softGpuOpening ? residencyBudgetMs : undefined,
+         });
+-        // Soft-GPU cannot hide texture uploads behind parallel compile; keep residency
+-        // bounded so this stage yields back to the loading/flight event loop sooner.
+-        const softGpuOpening = !shouldAwaitOpeningGpuCook({
+-          gpu: state.render && state.render.gpu,
+-          renderer,
+-        });
+-        const residencyBudgetMs = softGpuOpening ? 750 : 5000;
+         const result = await Promise.race([
+           residency,
+           new Promise((resolve) => setTimeout(() => resolve({
+@@ -8626,13 +8629,21 @@ export const render = {
+             textures: 0,
+           }), residencyBudgetMs)),
+         ]);
+-        recordOpeningCookStep(state.render, 'opening.residency', openingStepStarted,
+-          result && result.reason === 'loading-budget' ? 'timeout' : 'resolved', {
+-            subjects: Array.isArray(plan.residencySubjects) ? plan.residencySubjects.length : undefined,
+-            textureRefs: Array.isArray(plan.textureRefs) ? plan.textureRefs.length : undefined,
+-            textures: result ? result.textures : undefined,
+-          });
+-        if (result && result.skipped === true) {
++        const residencyOutcome = result && (
++          result.reason === 'loading-budget'
++          || result.reason === 'loading-deadline'
++          || result.reason === 'loading-deadline-partial'
++        ) ? 'timeout' : 'resolved';
++        recordOpeningCookStep(state.render, 'opening.residency', openingStepStarted, residencyOutcome, {
++          subjects: Array.isArray(plan.residencySubjects) ? plan.residencySubjects.length : undefined,
++          textureRefs: Array.isArray(plan.textureRefs) ? plan.textureRefs.length : undefined,
++          textures: result ? result.textures : undefined,
++          reason: result && result.reason || undefined,
++        });
++        // Soft-GPU partial deadline must continue to receipt. Only abandon when residency
++        // itself refused the whole stage (legacy loading-budget skip without partial work).
++        if (result && result.skipped === true && result.partial !== true
++            && result.reason !== 'loading-deadline-partial') {
+           result.openingSubmissionPlan = plan;
+           return result;
+         }
+diff --git a/src/render/startupGpuResidency.js b/src/render/startupGpuResidency.js
+index c77546ab2..e2066243e 100644
+--- a/src/render/startupGpuResidency.js
++++ b/src/render/startupGpuResidency.js
+@@ -525,9 +525,21 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
+   }
+   const uploads = [];
+   const count = textures.length;
++  const deadlineMs = Number(options.deadlineMs);
++  const hasDeadline = Number.isFinite(deadlineMs) && deadlineMs >= 0;
++  const startedAt = now();
++  let hitDeadline = false;
+   for (let index = 0; index < count; index++) {
++    if (hasDeadline && now() - startedAt >= deadlineMs) {
++      hitDeadline = true;
++      break;
++    }
+     const texture = textures[index];
+     await yieldToMain();
++    if (hasDeadline && now() - startedAt >= deadlineMs) {
++      hitDeadline = true;
++      break;
++    }
+     const started = now();
+     let success = false;
+     try {
+@@ -551,15 +563,33 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
+       });
+     }
+   }
+-  const geometryResidency = options.includeGeometry === false
+-    ? { skipped: true, reason: 'geometry residency owned by exact opening admission' }
+-    : await prepareStartupGeometryResidency(renderer, subjects, {
++  let geometryResidency;
++  if (hitDeadline) {
++    geometryResidency = { skipped: true, reason: 'loading-deadline' };
++  } else if (options.includeGeometry === false) {
++    geometryResidency = { skipped: true, reason: 'geometry residency owned by exact opening admission' };
++  } else {
++    geometryResidency = await prepareStartupGeometryResidency(renderer, subjects, {
+       ...options,
+       yieldToMain,
+       onBlockingSlice,
+       now,
+     });
++  }
+   await yieldToMain();
++  if (hitDeadline) {
++    // Soft-GPU opening cook must still freeze a receipt after a bounded upload slice.
++    // Mark partial, but do not skip — callers that treat skipped as "abandon cook" would
++    // re-open the identity/plan hole we just closed.
++    return {
++      skipped: false,
++      reason: 'loading-deadline-partial',
++      textures: uploads.length,
++      uploads,
++      geometryResidency,
++      partial: true,
++    };
++  }
+   return {
+     skipped: false,
+     textures: textures.length,
+diff --git a/test/opening-residency-deadline.test.mjs b/test/opening-residency-deadline.test.mjs
+new file mode 100644
+index 000000000..429ecd682
+--- /dev/null
++++ b/test/opening-residency-deadline.test.mjs
+@@ -0,0 +1,34 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import { readFileSync } from 'node:fs';
++import { dirname, join } from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const root = join(dirname(fileURLToPath(import.meta.url)), '..');
++const residencySrc = readFileSync(join(root, 'src/render/startupGpuResidency.js'), 'utf8');
++const rendererSrc = readFileSync(join(root, 'src/render/renderer.js'), 'utf8');
++
++test('prepareStartupGpuResidency honors deadlineMs and stops early', () => {
++  assert.match(residencySrc, /deadlineMs/);
++  assert.match(residencySrc, /loading-deadline-partial/);
++  assert.match(residencySrc, /partial:\s*true/);
++  assert.match(residencySrc, /hitDeadline/);
++});
++
++test('soft-GPU partial residency continues past skipped=false', () => {
++  const residencySrc = readFileSync(join(root, 'src/render/startupGpuResidency.js'), 'utf8');
++  assert.match(residencySrc, /loading-deadline-partial/);
++  assert.doesNotMatch(
++    residencySrc.slice(residencySrc.indexOf('hitDeadline'), residencySrc.indexOf('hitDeadline') + 800),
++    /skipped:\s*true/,
++    'deadline partial must not set skipped:true',
++  );
++});
++
++test('soft-GPU opening cook passes deadlineMs into residency', () => {
++  const start = rendererSrc.indexOf('state.render.prepareOpeningGpuResources');
++  assert.ok(start > 0);
++  const section = rendererSrc.slice(start, start + 9000);
++  assert.match(section, /deadlineMs:\s*softGpuOpening\s*\?\s*residencyBudgetMs/);
++  assert.match(section, /residencyBudgetMs\s*=\s*softGpuOpening\s*\?\s*750\s*:\s*5000/);
++});
+-- 
+2.47.3
+

@@ -1,0 +1,1913 @@
+// Depth Program K1 — live, additive presence for Understory, Fulfillment, Archive, Pitborn,
+// and the Verge Layers. The system owns only state.factionPresence receipts. Ships are created
+// through the core spawn helper; cargo is changed only through cargo.removeCargo; faction rep and
+// loss-ledger state are read-only.
+
+import { hash32 } from '../core/rng.js';
+import { dockIntentStatus } from '../core/dockIntent.js';
+import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
+import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
+import { syncEntityActivitySlotMembership, syncEntitySectorMembership } from '../core/coreSystem.js';
+import { shouldRunOnTick } from '../core/activityScheduler.js';
+import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
+import { buildSlotList, makeShipEntitySpec } from './ships.js';
+import { isPersistentCargo, removeCargo } from './cargo.js';
+import { lossesFor } from './lossLedger.js';
+import { SHIPS } from '../data/ships.js';
+import {
+  CERES_ACTIVITY_SECTOR_ID,
+  ceresActivityPocket,
+} from '../data/sectorActivityPockets.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import {
+  FULFILLMENT_FIXED_ROUTES,
+  currentStoryInputs,
+  planBerthKeepers,
+  planFactionPresence,
+  presenceServiceForStation,
+} from '../data/factionPresence.js';
+export { currentStoryInputs } from '../data/factionPresence.js';
+import {
+  FACTION_BERTHS,
+  factionBerthById,
+  factionBerthForStation, // CR-BERTH-1
+  factionBerthHulkHome,
+  factionBerthKeeperPos,
+  factionBerthsInSector,
+} from '../data/factionBerths.js';
+import {
+  conductActivity,
+  conductFor,
+  conductLine,
+  deriveConductStance,
+  emptyConductMemory,
+  forgiveConduct,
+  grudgeLapsed,
+  normalizeConductMemory,
+  recordConductAct,
+} from '../data/factionConduct.js';
+import { FACTION_KITS } from '../data/factions/index.js';
+import { conflictAftermathAnchor } from '../data/conflictZones.js';
+import {
+  RECORD_KIND,
+  findLiveEntityForRecord,
+  stableRecordId,
+} from '../world/worldRecords.js';
+
+
+/** Bench A/B: production default ON. Quiet latch skips shipLike fulfillment-route +
+ * pitborn-bind scans when no fixed-route / pitborn presence remains. Soft-GPU fps not
+ * claimed. Fresh registry.step residual (#160). */
+let FACTION_PRESENCE_QUIET_LATCH = true;
+export function setFactionPresenceQuietLatchForBench(enabled) {
+  FACTION_PRESENCE_QUIET_LATCH = enabled !== false;
+}
+export function getFactionPresenceQuietLatchForBench() {
+  return FACTION_PRESENCE_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const FACTION_PRESENCE_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the route/pitborn census reads shipLike only. */
+const PRESENCE_QUIET_LANES = ['shipLike'];
+
+// Entity ids sort numerically when both sides carry one (spawn counters reach two digits);
+// string compare alone would order '10' before '9' and bind first-fire targets to the wrong hull.
+function comparePresenceEntityIds(a, b) {
+  const an = Number(a);
+  const bn = Number(b);
+  if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
+  return String(a).localeCompare(String(b));
+}
+
+function publishPresenceQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.factionPresenceRuntime || (state.factionPresenceRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
+const CERES_REFINERY_ACTIVITY = ceresActivityPocket('ceres_refinery_pocket');
+const CERES_REFINERY_TENDER = CERES_REFINERY_ACTIVITY.actorSlots
+  .find((slot) => slot.id === 'ceres_refinery_tender');
+const TENDER_CANONICAL_FIELDS = Object.freeze([
+  'type', 'factionId', 'team', 'radius', 'mass', 'flightClass', 'flightModel', 'propulsion',
+  'armorFlat', 'shieldRegenRate', 'shieldRegenDelay', 'capMax', 'capRegen',
+  'thrust', 'turnRate', 'maxSpeed', 'drag',
+]);
+
+function ensureOwnState(state) {
+  if (!state.factionPresence || typeof state.factionPresence !== 'object') {
+    state.factionPresence = { active: {}, receipts: [], sequence: 0, boarding: null, processedDisable: {} };
+  }
+  const own = state.factionPresence;
+  if (!own.active || typeof own.active !== 'object') own.active = {};
+  if (!Array.isArray(own.receipts)) own.receipts = [];
+  if (!Number.isFinite(own.sequence)) own.sequence = 0;
+  if (!own.processedDisable || typeof own.processedDisable !== 'object') own.processedDisable = {};
+  if (!own.servicesByStation || typeof own.servicesByStation !== 'object') own.servicesByStation = {};
+  if (!own.serviceReceipts || typeof own.serviceReceipts !== 'object') own.serviceReceipts = {};
+  if (own.boarding != null && typeof own.boarding !== 'object') own.boarding = null;
+  if (!own.conduct || typeof own.conduct !== 'object') own.conduct = {};
+  if (!own.berthWatch || typeof own.berthWatch !== 'object') own.berthWatch = {};
+  return own;
+}
+
+// Conduct: a berth hulk counts as carried off past this distance from its rack, and as returned
+// once it is back inside the smaller radius (hysteresis so a nudge never flickers the writ).
+const BERTH_DISPLACED_WU = 220;
+const BERTH_RETURNED_WU = 120;
+const CONDUCT_PERIOD_S = 0.5;
+// A berth keeper comes out to meet a hull that approaches its berth, well beyond the glass edge,
+// instead of idling (and sleeping in Rapier) across the whole sector from the moment of entry.
+const BERTH_KEEPER_WAKE_WU = 1500;
+const SELF_DEFENSE_MOTIVES = new Set(['self_defense', 'archive_station_defense']);
+const FACTION_NAME = new Map(FACTION_KITS.map((kit) => [kit.id, kit.name || kit.short || kit.id]));
+
+function conductMemory(own, factionId) {
+  if (!own.conduct[factionId]) own.conduct[factionId] = emptyConductMemory();
+  return own.conduct[factionId];
+}
+
+function conductStanceFor(state, factionId) {
+  const own = ensureOwnState(state);
+  const rep = Number(state && state.factions && state.factions[factionId] && state.factions[factionId].rep) || 0;
+  return deriveConductStance(factionId, rep, own.conduct[factionId] || null, Number(state.simTime) || 0);
+}
+
+/** factionId → stance for every faction with conduct doctrine (desk gating input). */
+export function conductStances(state) {
+  const out = {};
+  for (const factionId of FACTION_NAME.keys()) {
+    if (conductFor(factionId)) out[factionId] = conductStanceFor(state, factionId);
+  }
+  return out;
+}
+
+function sanitizeBerthWatch(value) {
+  const out = {};
+  for (const [berthId, row] of Object.entries(value && typeof value === 'object' ? value : {})) {
+    if (!row || typeof row !== 'object') continue;
+    out[berthId] = {
+      displaced: row.displaced === true,
+      displacedAt: Number.isFinite(row.displacedAt) ? row.displacedAt : null,
+      visits: Math.max(0, Math.floor(Number(row.visits) || 0)),
+      lastVisitAt: Number.isFinite(row.lastVisitAt) ? row.lastVisitAt : null,
+    };
+  }
+  return out;
+}
+
+function berthReceiptCount(own, berth) {
+  const receipt = own.serviceReceipts && own.serviceReceipts[berth.receiptKey];
+  return Math.max(0, Math.floor(Number(receipt && receipt.count) || 0));
+}
+
+function pushReceipt(state, receipt) {
+  const own = ensureOwnState(state);
+  own.sequence += 1;
+  own.receipts.push({ sequence: own.sequence, ...receipt });
+  if (own.receipts.length > 48) own.receipts.splice(0, own.receipts.length - 48);
+}
+
+function factionReps(state) {
+  const reps = {};
+  for (const [id, row] of Object.entries((state && state.factions) || {})) {
+    reps[id] = Number(row && row.rep) || 0;
+  }
+  return reps;
+}
+
+function spawnKey(plan) {
+  const pos = plan.pos || { x: 0, z: 0 };
+  return [plan.sectorId, plan.factionId, plan.lossId || plan.routeId || plan.vergePhase || 'presence', pos.x, pos.z].join(':');
+}
+
+function teamFor(plan, profile) {
+  if (!profile || plan.passive !== false) return 2;
+  // Pitborn first-fire is faction-specific, not membership in the generic hostile team. A distinct
+  // combat team lets their authorized shots physically resolve against Concord while the canonical
+  // hostility oracle still keeps the ordinary player neutral.
+  if (plan.factionId === 'faction_pitborn') return 3;
+  return plan.factionId === 'faction_verge_layers' ? 1 : 2;
+}
+
+function presenceActivity(plan, profile, state) {
+  const startedTick = Number.isInteger(state.tick) ? state.tick : 0;
+  if (plan.passive === false && profile) {
+    return {
+      kind: 'attack_run',
+      reason: plan.factionId === 'faction_verge_layers' ? 'verge_gate_closer_response' : 'pitborn_disable_and_run',
+      anchor: { ...plan.pos },
+      leashRadius: 2200,
+      preferredRange: profile.preferredRange,
+      startedTick,
+      targetId: null,
+    };
+  }
+  if (plan.fixedRoute) {
+    return {
+      kind: 'transit',
+      reason: 'fulfillment_fixed_route',
+      routeId: plan.routeId,
+      anchor: { ...plan.pos },
+      leashRadius: 1400,
+      preferredRange: profile ? profile.preferredRange : 0,
+      startedTick,
+    };
+  }
+  return {
+    kind: 'loiter',
+    reason: 'k1_nonhostile_presence',
+    anchor: { ...plan.pos },
+    leashRadius: 900,
+    preferredRange: profile ? profile.preferredRange : 0,
+    startedTick,
+  };
+}
+
+function engagementFields(plan, profile) {
+  if (plan.passive !== false || !profile) return {};
+  const verge = plan.factionId === 'faction_verge_layers';
+  return {
+    motive: verge ? 'gate_closure_response' : 'disable_and_escape',
+    engagementTrigger: verge ? 'confirmed_gate_closer' : 'concord_target',
+    zoneId: plan.sectorId,
+    approachTelegraph: verge ? 'verge_lattice_focus' : 'pitborn_yard_pack',
+    noFireResponseWindowS: 1,
+  };
+}
+
+function presenceFittings(plan) {
+  // Every K1 doctrine is non-lethal. An omni turret owns the EMP verb by itself; otherwise fill
+  // compatible fixed hardpoints so front/rear hulls keep that verb through a retreat turn. S-only
+  // hulls receive the pulse and never pretend to fit a disable gun they cannot carry.
+  const ship = SHIP_BY_ID.get(plan.shipDefId);
+  const slots = ship ? buildSlotList(ship) : [];
+  const fittings = new Array(slots.length).fill(null);
+  const weaponSlots = slots.filter((slot) => slot.type === 'weapon');
+  const turret = weaponSlots.find((slot) => slot.facing === 'turret' && slot.size !== 'S');
+  if (turret) {
+    fittings[turret.index] = 'wpn_emp_disruptor_m';
+  } else {
+    for (const slot of weaponSlots) {
+      if (slot.size !== 'S') fittings[slot.index] = 'wpn_emp_disruptor_m';
+    }
+  }
+  for (const slot of weaponSlots) {
+    if (slot.size === 'S') fittings[slot.index] = 'wpn_pulse_laser_s';
+  }
+  return fittings;
+}
+
+function presenceMarker(plan) {
+  return {
+    source: 'depth-program-k1',
+    factionId: plan.factionId,
+    lossId: plan.lossId || null,
+    routeId: plan.routeId || null,
+    route: plan.route || null,
+    fixedRoute: plan.fixedRoute === true,
+    observerPrism: plan.observerPrism === true,
+    vergePhase: plan.vergePhase || null,
+    yardTender: plan.yardTender === true,
+    routeStart: plan.routeStart || null,
+    routeEnd: plan.routeEnd || null,
+    routePeriodS: plan.routePeriodS || null,
+    formation: plan.formation || null,
+    formationIndex: plan.formationIndex,
+    formationCount: plan.formationCount,
+    formationSpacing: plan.formationSpacing,
+    berthKeeper: plan.berthKeeper === true,
+    berthId: plan.berthId || null,
+  };
+}
+
+function makePresenceSpec(plan, state) {
+  const profile = normalizeFactionBehaviorProfile(plan.behavior);
+  const activeCombat = plan.passive === false && !!profile;
+  const ai = {
+    archetype: 'passive',
+    passive: !activeCombat,
+    allowPassiveManeuver: !!profile,
+    spawnContext: plan.fixedRoute ? 'convoy_civilian' : 'faction_presence',
+    factionPresenceDoctrine: profile,
+    formation: plan.formation || (profile && profile.liveFormation) || null,
+    formationSpacing: plan.formationSpacing || null,
+    formationBound: Number.isFinite(plan.formationBound) && plan.formationBound > 0
+      ? plan.formationBound
+      : null,
+    combatDoctrineId: profile && profile.combatDoctrineId,
+    roe: activeCombat ? 'weapons_free' : 'hold_fire',
+    activity: presenceActivity(plan, profile, state),
+    ...engagementFields(plan, profile),
+  };
+  const fittings = presenceFittings(plan);
+  ai.capabilities = fittings.includes('wpn_emp_disruptor_m') ? ['disable', 'ranged'] : ['ranged'];
+  if (activeCombat && plan.factionId === 'faction_verge_layers'
+    && profile.firstFireCondition === 'gate_closer') {
+    ai.retaliationTargetId = state.playerId;
+    ai.activity.targetId = state.playerId;
+  }
+  const spec = makeShipEntitySpec(plan.shipDefId, {
+    team: teamFor(plan, profile),
+    factionId: plan.factionId,
+    pos: plan.pos,
+    fittings,
+    ai,
+  });
+  spec.data.factionPresence = presenceMarker(plan);
+  return spec;
+}
+
+function matchesCeresRefineryTender(plan) {
+  const match = CERES_REFINERY_TENDER && CERES_REFINERY_TENDER.binding
+    && CERES_REFINERY_TENDER.binding.match;
+  return !!match
+    && plan.sectorId === match.sectorId
+    && plan.factionId === match.factionId
+    && plan.yardTender === match.yardTender
+    && plan.sectorId === CERES_ACTIVITY_SECTOR_ID;
+}
+
+function tenderGlobalPoint(offset) {
+  const anchor = CERES_REFINERY_ACTIVITY.activityAnchor.localPos;
+  return sectorLocalToGlobalForSector({
+    x: anchor.x + offset.x,
+    z: anchor.z + offset.z,
+  }, CERES_ACTIVITY_SECTOR_ID);
+}
+
+// The projected job route must reproduce the authored marks EXACTLY — id, label, position and
+// `targetRef` — because npcJobsRuntime re-derives each mark from this same authored slot and refuses
+// any relationship whose waypoint does not match it field for field. Dropping `targetRef` here (or
+// omitting the canonical `speed` below) is indistinguishable, downstream, from the tender having no
+// authored service client at all. Both are computed with the identical expressions traffic uses for
+// the other Ceres cast routes so the float comparison is exact rather than merely close.
+function ceresTenderRoute() {
+  return CERES_REFINERY_TENDER.route.marks.map((mark) => {
+    const pos = tenderGlobalPoint(mark.offset);
+    return { id: mark.id, label: mark.id, pos: { x: pos.x, z: pos.z }, targetRef: mark.targetRef };
+  });
+}
+
+function ceresTenderRouteSpeed(route) {
+  const durationS = CERES_REFINERY_TENDER.route.durationS;
+  if (!Number.isFinite(durationS) || durationS <= 0 || route.length !== 2) return null;
+  const distance = Math.hypot(
+    route[1].pos.x - route[0].pos.x,
+    route[1].pos.z - route[0].pos.z,
+  );
+  if (!Number.isFinite(distance) || distance <= 0) return null;
+  const speed = distance / durationS;
+  return Number.isFinite(speed) && speed > 0 ? speed : null;
+}
+
+function ceresTenderContext(plan, seed, createdTick = 0) {
+  if (!matchesCeresRefineryTender(plan)) return null;
+  const identityKey = CERES_REFINERY_TENDER.worldRecordSlotId;
+  const route = ceresTenderRoute();
+  return {
+    plan: { ...plan, pos: tenderGlobalPoint(CERES_REFINERY_TENDER.spawnOffset) },
+    slot: CERES_REFINERY_TENDER,
+    identityKey,
+    createdTick: createdTick | 0,
+    recordId: stableRecordId(seed, CERES_ACTIVITY_SECTOR_ID, RECORD_KIND.NPC, identityKey),
+    activeKey: `ceres-activity:${CERES_REFINERY_TENDER.id}`,
+    route,
+    routeSpeed: ceresTenderRouteSpeed(route),
+  };
+}
+
+function ceresTenderJobSpec(context) {
+  const spec = {
+    kind: context.slot.jobKind,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    route: context.route,
+  };
+  // Omit rather than pass a null: the job kernel treats a non-finite speed as "use the kind default",
+  // which is the pre-existing authored-route behavior we fall back to if the geometry ever degrades.
+  if (Number.isFinite(context.routeSpeed)) spec.speed = context.routeSpeed;
+  return spec;
+}
+
+function recordIsTerminal(record) {
+  return !!record && (record.alive === false
+    || record.outcome === 'destroyed'
+    || record.outcome === 'defeated');
+}
+
+function stampCeresTenderIdentity(entity, context) {
+  if (!entity.data) entity.data = {};
+  entity.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
+  entity.data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
+  entity.data.sectorId = CERES_ACTIVITY_SECTOR_ID;
+  entity.data.worldRecordId = context.recordId;
+  entity.data.identityKey = context.identityKey;
+  entity.data.durable = true;
+  if (!Number.isFinite(entity.data.recordCreatedTick)) {
+    entity.data.recordCreatedTick = context.createdTick | 0;
+  }
+  entity.data.activityActorSlotId = context.slot.id;
+  delete entity.data.trafficRole;
+}
+
+function releaseCeresTenderFromWorldExtras(state, entity) {
+  const bag = state.world && state.world.sectorContents
+    && state.world.sectorContents[CERES_ACTIVITY_SECTOR_ID];
+  const enemies = bag && bag.enemies;
+  if (!Array.isArray(enemies) || !entity) return;
+  for (let index = enemies.length - 1; index >= 0; index -= 1) {
+    if (enemies[index] === entity.id) enemies.splice(index, 1);
+  }
+}
+
+function rehydrateCeresTenderWeapons(existing, canonical) {
+  if (!Array.isArray(canonical)) return [];
+  const sameLoadout = Array.isArray(existing)
+    && existing.length === canonical.length
+    && canonical.every((weapon, index) => existing[index]
+      && existing[index].defId === weapon.defId
+      && existing[index].slotIndex === weapon.slotIndex);
+  return canonical.map((weapon, index) => {
+    if (!sameLoadout) return { ...weapon };
+    const current = existing[index];
+    return {
+      ...weapon,
+      _cooldown: Number.isFinite(current._cooldown) ? Math.max(0, current._cooldown) : 0,
+      _heat: Number.isFinite(current._heat)
+        ? Math.max(0, Math.min(weapon.heatMax, current._heat))
+        : 0,
+    };
+  });
+}
+
+function rehydrateCeresTender(entity, canonicalSpec, context) {
+  const preservedData = entity.data || (entity.data = {});
+  for (const field of TENDER_CANONICAL_FIELDS) {
+    const value = canonicalSpec[field];
+    if (value && typeof value === 'object') {
+      entity[field] = Array.isArray(value) ? value.slice() : { ...value };
+    } else {
+      entity[field] = value;
+    }
+  }
+  entity.cap = Number.isFinite(entity.cap)
+    ? Math.max(0, Math.min(canonicalSpec.capMax, entity.cap))
+    : 0;
+  if (!entity.boost || typeof entity.boost !== 'object') {
+    entity.boost = { ...canonicalSpec.boost };
+  } else {
+    const currentEnergy = Number.isFinite(entity.boost.energy) ? entity.boost.energy : 0;
+    const currentCooldown = Number.isFinite(entity.boost.dashCdT) ? entity.boost.dashCdT : 0;
+    entity.boost = {
+      ...canonicalSpec.boost,
+      energy: Math.max(0, Math.min(canonicalSpec.boost.max, currentEnergy)),
+      dashCdT: Math.max(0, Math.min(canonicalSpec.boost.dashCd, currentCooldown)),
+    };
+  }
+  for (const field of ['defId', 'derived', 'miningBeam', 'fittings', 'appearance', 'livingHull']) {
+    const value = canonicalSpec.data[field];
+    if (Array.isArray(value)) preservedData[field] = value.slice();
+    else if (value && typeof value === 'object') preservedData[field] = { ...value };
+    else preservedData[field] = value;
+  }
+  preservedData.weapons = rehydrateCeresTenderWeapons(
+    preservedData.weapons,
+    canonicalSpec.data.weapons,
+  );
+  if (!preservedData.combat) preservedData.combat = { ...canonicalSpec.data.combat };
+  preservedData.ai = canonicalSpec.data.ai;
+  preservedData.factionId = canonicalSpec.data.factionId;
+  preservedData.team = canonicalSpec.data.team;
+  preservedData.factionPresence = canonicalSpec.data.factionPresence;
+  stampCeresTenderIdentity(entity, context);
+  return entity;
+}
+
+export const factionPresence = {
+  name: 'factionPresence',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers || {};
+    this.registry = ctx.registry || null;
+    this._boardingRepairRequested = false;
+    this._presenceQuiet = null;
+    this._presenceWakeSeq = 0;
+    this._conductAt = -Infinity;
+    this._serviceBerth = null;
+    this._watchedHulkByBerth = {};
+    ensureOwnState(this.state);
+    this._unsub = [
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains this same body under its slice clock in listener order.
+      this.bus.on('sector:enter', (payload) => {
+        if (deferSectorEnterMaterialization(this.state, payload, this._cookProvider)) return;
+        // Sync lane (emit listener): drain the chunked steps inline.
+        for (const _ of this._onSectorEnterSteps(payload || {})) { /* inline */ }
+      }),
+      this.bus.on('sector:exit', (payload) => this._onSectorExit(payload || {})),
+      this.bus.on('dock:docked', (payload) => this._onDocked(payload || {})),
+      this.bus.on('dock:undocked', () => { this._serviceBerth = null; }),
+      this.bus.on('sector:exit', () => { this._serviceBerth = null; }),
+      this.bus.on('save:loaded', () => { this._serviceBerth = null; }),
+      this.bus.on('game:started', () => { this._serviceBerth = null; }),
+      this.bus.on('lossLedger:recorded', (payload) => this._onLossRecorded(payload || {})),
+      this.bus.on('combat:subsystemDisabled', (payload) => this._onSubsystemDisabled(payload || {})),
+      this.bus.on('combat:subsystemEnabled', (payload) => this._onSubsystemEnabled(payload || {})),
+      this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})),
+      this.bus.on('ui:factionPresenceService', (payload) => this._onServiceAction(payload || {})),
+      // CR-BERTH-1 — a redeem_rights payout at a berth station is the desk receipt for the
+      // consigned wreck that world.js then parks on the strip-line.
+      this.bus.on('service:completed', (payload) => this._onServiceCompleted(payload || {})),
+      this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload || {})),
+      this.bus.on('save:loaded', () => this._onSaveLoaded()),
+      this.bus.on('conflict:flip', (payload) => this._onConflictFlip(payload || {})),
+      this.bus.on('combat:kill', (payload) => this._onCombatKill(payload || {})),
+      this.bus.on('faction:repChanged', (payload) => this._onRepChanged(payload || {})),
+    ];
+    // Census arm: faction-presence materialization lands inside the sector cook
+    // deterministically (the handler falls back to world.currentSectorId itself).
+    this._cookProvider = (sector) => {
+      if (!this._unsub || !this._unsub.length) return null;
+      return this._onSectorEnterSteps({ sectorId: (sector && sector.id) || undefined });
+    };
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
+  },
+
+  newGame() {
+    this._boardingRepairRequested = false;
+    this._presenceQuiet = null;
+    this._presenceWakeSeq = 0;
+    this.state.factionPresence = {
+      active: {}, receipts: [], sequence: 0, boarding: null, processedDisable: {},
+      servicesByStation: {}, serviceReceipts: {}, conduct: {}, berthWatch: {},
+    };
+  },
+
+  update() {
+    // Reconcile against the live entity set rather than consuming combat-death events here. This
+    // keeps the Understory strictly downstream of lossLedger:recorded while still promoting a
+    // surviving Concord patrol for Pitborn on the next deterministic simulation tick.
+    //
+    // Quiet open flight: every tick still walked shipLike for fulfillment fixed-route anchors
+    // and (via || short-circuit) pitborn-gone probes even when no fixed-route / pitborn markers
+    // existed. Quiet latch short-circuits those scans; wakes on membership, presence wake seq
+    // (sector enter / spawn / combat / boarding / save), or 0.5 s rescan. Soft-GPU fps not claimed.
+    const state = this.state;
+    const own = ensureOwnState(state);
+    // Conduct runs on its own slow cadence ahead of the quiet latch: forgiveness is a clock and
+    // a berth hulk can be towed off its rack without any shipLike membership change.
+    // Gated on sim time, not tick phase: the registry may itself run this system on a coarse
+    // cadence, and a second tick-phase gate on top of it can never line up.
+    const conductNow = Number(state.simTime) || 0;
+    if (!(conductNow >= this._conductAt && conductNow - this._conductAt < CONDUCT_PERIOD_S)) {
+      this._conductAt = conductNow;
+      this._conductTick();
+    }
+    if (FACTION_PRESENCE_QUIET_LATCH !== false) {
+      const laneVersion = entityIndexLaneVersion(state, PRESENCE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+      const tick = state.tick | 0;
+      const wakeSeq = this._presenceWakeSeq | 0;
+      const quiet = this._presenceQuiet;
+      if (!own.boarding
+        && quiet
+        && membership != null
+        && quiet.membership === membership
+        && quiet.wakeSeq === wakeSeq
+        && ((tick - (quiet.armedTick | 0)) < FACTION_PRESENCE_QUIET_RESCAN_TICKS)) {
+        publishPresenceQuiet(state, true);
+        return;
+      }
+    } else if (this._presenceQuiet) {
+      this._presenceQuiet = null;
+    }
+
+    if (
+      shouldRunOnTick(state.tick, 'factionPresence:pitbornBind', 8)
+      || this._boundPitbornConcordIsGone()
+    ) {
+      this._bindPitbornConcordTargets();
+    }
+    this._updateFulfillmentRoutes();
+    this._updateBoarding();
+
+    if (FACTION_PRESENCE_QUIET_LATCH !== false) {
+      const laneVersion = entityIndexLaneVersion(state, PRESENCE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+      const census = this._censusPresenceWork();
+      if (membership != null && !own.boarding && !census.busy) {
+        this._presenceQuiet = {
+          membership,
+          armedTick: state.tick | 0,
+          wakeSeq: this._presenceWakeSeq | 0,
+        };
+        publishPresenceQuiet(state, true);
+      } else {
+        this._presenceQuiet = null;
+        publishPresenceQuiet(state, false);
+      }
+    }
+  },
+
+  _wakePresenceQuiet() {
+    this._presenceWakeSeq = (this._presenceWakeSeq | 0) + 1;
+    this._presenceQuiet = null;
+  },
+
+  /** Count live fixed-route / pitborn markers that force per-tick shipLike work. */
+  _censusPresenceWork() {
+    let fixedRoute = 0;
+    let pitborn = 0;
+    for (const entity of indexedShipLikeScan(this.state)) {
+      const marker = entity && entity.data && entity.data.factionPresence;
+      if (!marker) continue;
+      if (marker.fixedRoute) fixedRoute++;
+      if (marker.factionId === 'faction_pitborn') pitborn++;
+    }
+    return { fixedRoute, pitborn, busy: fixedRoute > 0 || pitborn > 0 };
+  },
+
+  // Every presence plan key is re-derivable off an existing carrier — live or shelved — because
+  // the carrier retains the authored marker plus either its loiter anchor (= plan.pos) or the
+  // fixed-route frame + formation slot that produced plan.pos. deserialize() clears own.active,
+  // so without this census the first sector:enter after load mints a twin beside every shelved
+  // hull; the shelved rows then pile up one plan set per visit (D141).
+  _presenceCarrierIndex(sectorId) {
+    const carriers = new Map();
+    const collect = (carrier) => {
+      // A wreck carrier keeps the marker but is not the plan's live body — adopting it would
+      // suppress the hull the plan is owed. Dead or wrecked carriers leave the mint path alone.
+      if (!carrier || carrier.alive === false || carrier.type === 'wreck') return;
+      const data = carrier.data && typeof carrier.data === 'object' ? carrier.data : null;
+      const marker = data && data.factionPresence;
+      if (!marker || typeof marker !== 'object' || marker.source !== 'depth-program-k1') return;
+      let px = null;
+      let pz = null;
+      if (marker.fixedRoute && marker.routeStart && marker.routeEnd) {
+        // _updateFulfillmentRoutes rewrites activity.anchor to the moving route point each
+        // tick, so the plan key must be rebuilt from the stored frame the same way
+        // planFactionPresence built plan.pos.
+        const dx = marker.routeEnd.x - marker.routeStart.x;
+        const dz = marker.routeEnd.z - marker.routeStart.z;
+        const length = Math.hypot(dx, dz) || 1;
+        const offset = ((Number(marker.formationIndex) || 0)
+          - ((Number(marker.formationCount) || 1) - 1) / 2)
+          * (Number(marker.formationSpacing) || 52);
+        px = marker.routeStart.x + (-dz / length) * offset;
+        pz = marker.routeStart.z + (dx / length) * offset;
+      } else {
+        const ai = (carrier.ai && typeof carrier.ai === 'object' ? carrier.ai : null)
+          || (data.ai && typeof data.ai === 'object' ? data.ai : null);
+        const anchor = ai && ai.activity && ai.activity.anchor;
+        if (anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.z)) {
+          px = anchor.x;
+          pz = anchor.z;
+        }
+      }
+      if (px == null || pz == null) return;
+      const key = [
+        sectorId,
+        marker.factionId || carrier.factionId,
+        marker.lossId || marker.routeId || marker.vergePhase || 'presence',
+        px,
+        pz,
+      ].join(':');
+      if (!carriers.has(key)) carriers.set(key, carrier.id != null ? carrier.id : null);
+    };
+    for (const entity of indexedShipLikeScan(this.state)) collect(entity);
+    const rows = this.state && this.state.world && this.state.world.farActors
+      && this.state.world.farActors.rows;
+    if (Array.isArray(rows)) {
+      for (let i = 0; i < rows.length; i++) collect(rows[i]);
+    }
+    return carriers;
+  },
+
+  _onSectorEnter(payload) {
+    for (const _ of this._onSectorEnterSteps(payload)) { /* inline */ }
+  },
+
+  // Chunked cook-provider twin: one presence per yield so the sliced census interleaves
+  // presentation between hulls; own.active dedupe makes a superseded cook's re-run safe.
+  *_onSectorEnterSteps(payload) {
+    this._wakePresenceQuiet();
+    const state = this.state;
+    // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+    // payload whose enterEpoch no longer matches the world's serial is stale — presence
+    // must not mint for it under the live world's id. Synthetic payloads carry no epoch
+    // and always run.
+    if (payload.enterEpoch != null && state.world && state.world.enterSerial != null
+        && payload.enterEpoch !== state.world.enterSerial) return;
+    const sectorId = payload.sectorId || (state.world && state.world.currentSectorId);
+    if (!sectorId) return;
+    const seed = ((state.meta && state.meta.seed) || 1) >>> 0;
+    // lossesFor is called only when the canonical ledger already exists, so this observer cannot
+    // initialize or backfill another system's state.
+    const hasLedger = state.lossLedger
+      && state.lossLedger.bySector
+      && typeof state.lossLedger.bySector === 'object'
+      && Array.isArray(state.lossLedger.entries);
+    const losses = hasLedger ? lossesFor(state, sectorId) : [];
+    const story = currentStoryInputs(state);
+    const sectors = (state.world && state.world.sectors) || {};
+    const plans = [
+      ...planFactionPresence({
+        sectorId,
+        seed,
+        losses,
+        ...story,
+        conflicts: state.conflicts || null,
+        ownerFactionId: (sectors[sectorId] && sectors[sectorId].owner) || null,
+        gateAnchor: state.world?.currentSectorId === sectorId
+          ? state.world?.activeSector?.gates?.find(gate => gate?.pos)?.pos : null,
+      }),
+    ];
+    const own = ensureOwnState(state);
+    const carriers = this._presenceCarrierIndex(sectorId);
+    for (const presencePlan of plans) {
+      const tenderContext = ceresTenderContext(presencePlan, seed, deferredEnterTick(state));
+      if (tenderContext) {
+        this._bindCeresRefineryTender(tenderContext, own);
+        continue;
+      }
+      const key = spawnKey(presencePlan);
+      if (own.active[key]) continue;
+      const carrierId = carriers.get(key);
+      if (carrierId !== undefined) {
+        // Re-own the existing hull — live or a shelved far row — instead of minting a twin.
+        // The shelved copy promotes when the player crosses its bubble, so the presence set
+        // stays exactly-once across load/enter cycles (D141).
+        own.active[key] = {
+          entityId: carrierId,
+          sectorId,
+          factionId: presencePlan.factionId,
+          routeId: presencePlan.routeId || null,
+        };
+        continue;
+      }
+      const spec = makePresenceSpec(presencePlan, state);
+      const entity = typeof this.helpers.spawnEntity === 'function'
+        ? this.helpers.spawnEntity(spec)
+        : null;
+      if (!entity) continue;
+      own.active[key] = {
+        entityId: entity.id || null,
+        sectorId,
+        factionId: presencePlan.factionId,
+        routeId: presencePlan.routeId || null,
+      };
+      const receipt = {
+        t: deferredEnterNow(state) || 0,
+        sectorId,
+        factionId: presencePlan.factionId,
+        entityId: entity.id || null,
+        shipDefId: presencePlan.shipDefId,
+        source: presencePlan.source || 'authoredPresence',
+      };
+      pushReceipt(state, { kind: 'spawned', ...receipt });
+      this.bus.emit('factionPresence:spawned', receipt);
+      // Atomic unit complete: hull minted, active record stamped, receipt emitted.
+      yield;
+    }
+    this._bindPitbornConcordTargets();
+    this._rehydrateBoardingConvoy();
+    this._applyConductInSector();
+    this._greetBerths(sectorId);
+  },
+
+  // ── Conduct: what the player did to a faction, and how its people treat them for it ──
+
+  _recordAct(factionId, act, extra = {}) {
+    const conduct = conductFor(factionId);
+    if (!conduct) return null;
+    const own = ensureOwnState(this.state);
+    const now = Number(this.state.simTime) || 0;
+    const result = recordConductAct(conductMemory(own, factionId), factionId, act, now);
+    const stance = conductStanceFor(this.state, factionId);
+    const payload = {
+      factionId, act, stance, opened: result.opened, forgave: result.forgave, t: now, ...extra,
+    };
+    // A hit lands every damage tick; only the grudge opening is a receipt worth a row.
+    if (act !== 'struck' || result.opened) pushReceipt(this.state, { kind: 'conduct', ...payload });
+    this.bus.emit('factionPresence:conduct', payload);
+    if (result.forgave) this._speakConduct(factionId, 'forgive');
+    // A direct hit already triggers the faction's own immediate response (self-defense, the
+    // route variance); conduct only takes the hulls when its grudge is a hostile doctrine, or
+    // when the act was not a shot at all (a robbed berth, a kill the hull cannot answer).
+    if (result.forgave || (result.opened && (act !== 'struck' || conduct.grudge.hostile))) {
+      this._applyConduct(factionId);
+    }
+    if (result.opened || result.forgave) this._refreshDesks();
+    return result;
+  },
+
+  _speakConduct(factionId, key, { count = 0, berth = null } = {}) {
+    const text = conductLine(factionId, key, { count });
+    if (!text) return;
+    const own = ensureOwnState(this.state);
+    this.bus.emit('comms:popup', {
+      id: `conduct_${factionId}_${key}_${own.sequence}`,
+      sender: berth ? berth.name : (FACTION_NAME.get(factionId) || factionId),
+      text,
+      category: 'faction',
+      persist: false,
+    });
+  },
+
+  _applyConductInSector() {
+    for (const factionId of FACTION_NAME.keys()) {
+      if (conductFor(factionId)) this._applyConduct(factionId);
+    }
+  },
+
+  /** Restyle this faction's live presence hulls to the stance the player's history earns. */
+  _applyConduct(factionId) {
+    const conduct = conductFor(factionId);
+    if (!conduct) return 0;
+    const stance = conductStanceFor(this.state, factionId);
+    const playerId = this.state.playerId;
+    const tick = this.state.tick | 0;
+    let styled = 0;
+    for (const entity of indexedShipLikeScan(this.state)) {
+      const marker = entity && entity.data && entity.data.factionPresence;
+      const ai = entity && entity.data && entity.data.ai;
+      if (!marker || marker.factionId !== factionId || !ai || entity.alive === false) continue;
+      // Route walkers keep their route law; Verge prisms keep their phase law.
+      if (marker.fixedRoute || marker.observerPrism) continue;
+      const conductOwned = typeof ai.conductStance === 'string';
+      if (ai.passive === false && !conductOwned && !SELF_DEFENSE_MOTIVES.has(ai.motive)) continue;
+      const keeper = marker.berthKeeper === true;
+      // A keeper always works its apron; every other hull keeps its authored behavior until the
+      // player's history gives its faction a reason to change it.
+      if (stance === 'known' && !conductOwned && ai.passive !== false && !keeper) continue;
+      if (!ai.conductAnchor) {
+        const apron = keeper ? factionBerthKeeperPos(factionBerthById(marker.berthId)) : null;
+        const anchor = apron || (ai.activity && ai.activity.anchor);
+        ai.conductAnchor = anchor && Number.isFinite(anchor.x)
+          ? { x: anchor.x, z: anchor.z }
+          : { x: entity.pos.x, z: entity.pos.z };
+      }
+      if (stance === 'grudge' && conduct.grudge.hostile) {
+        entity.team = 1;
+        if (entity.data) entity.data.team = 1;
+        ai.passive = false;
+        ai.roe = 'weapons_free';
+        ai.retaliationTargetId = playerId;
+        ai.motive = `${conduct.short}_grudge`;
+        ai.engagementTrigger = 'player_history';
+        ai.zoneId = (this.state.world && this.state.world.currentSectorId) || marker.sectorId || null;
+        ai.approachTelegraph = conduct.grudge.reason;
+        ai.noFireResponseWindowS = 1;
+      } else {
+        if (ai.passive === false) {
+          entity.team = 2;
+          if (entity.data) entity.data.team = 2;
+          ai.passive = true;
+          ai.roe = 'hold_fire';
+          ai.retaliationTargetId = null;
+          ai.motive = null;
+          ai.engagementTrigger = null;
+          ai.approachTelegraph = null;
+        }
+      }
+      ai.activity = conductActivity(factionId, stance, {
+        playerId, anchor: ai.conductAnchor, tick, keeper,
+      }) || {
+        kind: 'loiter',
+        reason: keeper ? 'berth_keeper_holds_apron' : 'k1_nonhostile_presence',
+        anchor: { ...ai.conductAnchor },
+        leashRadius: 900,
+        preferredRange: 0,
+        startedTick: tick,
+        conductStance: stance,
+      };
+      ai.conductStance = stance;
+      marker.stance = stance;
+      styled++;
+    }
+    return styled;
+  },
+
+  _conductTick() {
+    const own = ensureOwnState(this.state);
+    const now = Number(this.state.simTime) || 0;
+    for (const [factionId, memory] of Object.entries(own.conduct)) {
+      if (!grudgeLapsed(factionId, memory, now)) continue;
+      forgiveConduct(memory, now);
+      const payload = { factionId, act: 'lapsed', stance: conductStanceFor(this.state, factionId), forgave: true, t: now };
+      pushReceipt(this.state, { kind: 'conduct', ...payload });
+      this.bus.emit('factionPresence:conduct', payload);
+      this._speakConduct(factionId, 'forgive');
+      this._applyConduct(factionId);
+      this._refreshDesks();
+    }
+    this._wakeBerthKeepers();
+    this._watchBerths();
+  },
+
+  /** Keepers ride the authored presence spawn path, materialized once the player nears the berth. */
+  _wakeBerthKeepers() {
+    const state = this.state;
+    const sectorId = state.world && state.world.currentSectorId;
+    if (!sectorId || typeof this.helpers.spawnEntity !== 'function') return;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos) return;
+    const seed = ((state.meta && state.meta.seed) || 1) >>> 0;
+    const own = ensureOwnState(state);
+    for (const keeperPlan of planBerthKeepers({ sectorId, seed })) {
+      const key = spawnKey(keeperPlan);
+      if (own.active[key]) continue;
+      if (Math.hypot(player.pos.x - keeperPlan.pos.x, player.pos.z - keeperPlan.pos.z) > BERTH_KEEPER_WAKE_WU) continue;
+      const carrierId = this._presenceCarrierIndex(sectorId).get(key);
+      if (carrierId !== undefined) {
+        own.active[key] = { entityId: carrierId, sectorId, factionId: keeperPlan.factionId, routeId: null };
+        continue;
+      }
+      const entity = this.helpers.spawnEntity(makePresenceSpec(keeperPlan, state));
+      if (!entity) continue;
+      own.active[key] = { entityId: entity.id || null, sectorId, factionId: keeperPlan.factionId, routeId: null };
+      const receipt = {
+        t: Number(state.simTime) || 0,
+        sectorId,
+        factionId: keeperPlan.factionId,
+        entityId: entity.id || null,
+        shipDefId: keeperPlan.shipDefId,
+        source: 'berthKeeper',
+      };
+      pushReceipt(state, { kind: 'spawned', ...receipt });
+      this.bus.emit('factionPresence:spawned', receipt);
+      this._applyConduct(keeperPlan.factionId);
+    }
+  },
+
+  /** A berth hulk is the faction's property on its rack: towing it off is an act, so is returning it. */
+  // A desk the player already stands at shuts (or reopens) the moment the stance turns.
+  _refreshDesks() {
+    const own = ensureOwnState(this.state);
+    const reps = factionReps(this.state);
+    const stances = conductStances(this.state);
+    for (const stationId of Object.keys(own.servicesByStation)) {
+      const service = presenceServiceForStation(stationId, reps, stances);
+      if (service) own.servicesByStation[stationId] = { ...service };
+    }
+  },
+
+  _watchBerths() {
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    const berths = sectorId ? factionBerthsInSector(sectorId) : [];
+    if (!berths.length) return;
+    const own = ensureOwnState(this.state);
+    const entities = this.state.entities;
+    if (!entities || typeof entities.values !== 'function') return;
+    for (const berth of berths) {
+      if (!berth.hulk || !own.serviceReceipts[berth.receiptKey]) continue;
+      const home = factionBerthHulkHome(berth);
+      if (!home) continue;
+      let hulk = null;
+      for (const entity of entities.values()) {
+        const tag = entity && entity.alive !== false && entity.data && entity.data.berthConsign;
+        if (tag && tag.berthId === berth.id) { hulk = entity; break; }
+      }
+      if (!hulk || !hulk.pos) continue;
+      const watch = own.berthWatch[berth.id] || (own.berthWatch[berth.id] = sanitizeBerthWatch({ row: {} }).row);
+      const watchedByBerth = this._watchedHulkByBerth || (this._watchedHulkByBerth = {});
+      const d = Math.hypot(hulk.pos.x - home.x, hulk.pos.z - home.z);
+      if (!watch.displaced && d > BERTH_DISPLACED_WU) {
+        watch.displaced = true;
+        watch.displacedAt = Number(this.state.simTime) || 0;
+        watchedByBerth[berth.id] = hulk.id;
+        this._watchedHulkId = hulk.id;
+        this.bus.emit('factionPresence:berthRobbed', { berthId: berth.id, factionId: berth.factionId, distance: d });
+        this._speakConduct(berth.factionId, 'robbed', { berth });
+        this._recordAct(berth.factionId, 'berth_robbed', { berthId: berth.id });
+      } else if (watch.displaced && d >= BERTH_RETURNED_WU) {
+        // The stolen hull persists where it was left (reentry, Continue); keep its live id per
+        // berth so hauling that same hull home still counts as the return even when multiple
+        // berths are displaced in the same run.
+        watchedByBerth[berth.id] = hulk.id;
+        this._watchedHulkId = hulk.id;
+      } else if (watch.displaced && (watchedByBerth[berth.id] === hulk.id || this._watchedHulkId === hulk.id)) {
+        // Only the hull that was seen away and hauled back is restitution; a fresh copy that turns
+        // up on the rack is the faction's record, and the theft stays on the books.
+        watch.displaced = false;
+        watch.displacedAt = null;
+        this.bus.emit('factionPresence:berthReturned', { berthId: berth.id, factionId: berth.factionId });
+        this._speakConduct(berth.factionId, 'returned', { berth });
+        this._recordAct(berth.factionId, 'berth_returned', { berthId: berth.id });
+        delete watchedByBerth[berth.id];
+        if (this._watchedHulkId === hulk.id) this._watchedHulkId = null;
+      }
+    }
+  },
+
+  /** Coming back to a berth: the keeper's posture plus one line that cites what the berth holds. */
+  _greetBerths(sectorId) {
+    const own = ensureOwnState(this.state);
+    for (const berth of factionBerthsInSector(sectorId)) {
+      const watch = own.berthWatch[berth.id] || (own.berthWatch[berth.id] = sanitizeBerthWatch({ row: {} }).row);
+      watch.visits += 1;
+      watch.lastVisitAt = Number(this.state.simTime) || 0;
+      const stance = conductStanceFor(this.state, berth.factionId);
+      const count = berthReceiptCount(own, berth);
+      const key = stance === 'known' && count > 0 ? 'kin' : stance;
+      const greeting = {
+        berthId: berth.id, factionId: berth.factionId, stance, count, visits: watch.visits,
+        displaced: watch.displaced === true,
+      };
+      this.bus.emit('factionPresence:berthGreeting', greeting);
+      if (watch.visits > 1 || count > 0 || stance !== 'known') {
+        this._speakConduct(berth.factionId, watch.displaced ? 'robbed' : key, { count, berth });
+      }
+    }
+  },
+
+  _onCombatKill(payload) {
+    if (payload.killerId == null || payload.killerId !== this.state.playerId) return;
+    const targetId = payload.targetId;
+    const own = ensureOwnState(this.state);
+    for (const row of Object.values(own.active)) {
+      if (row && row.entityId === targetId && row.factionId) {
+        this._recordAct(row.factionId, 'killed', { entityId: targetId });
+        return;
+      }
+    }
+  },
+
+  _onRepChanged(payload) {
+    if (!payload.factionId || !conductFor(payload.factionId)) return;
+    this._applyConduct(payload.factionId);
+  },
+
+  _bindCeresRefineryTender(context, own = ensureOwnState(this.state)) {
+    const state = this.state;
+    const records = state.world && state.world.records && state.world.records.byId;
+    const record = records && records[context.recordId];
+    const jobId = `job:${context.recordId}`;
+    const releaseJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
+    if (recordIsTerminal(record)) {
+      if (typeof releaseJob === 'function') releaseJob(jobId);
+      delete own.active[context.activeKey];
+      return null;
+    }
+
+    const live = findLiveEntityForRecord(indexedShipLikeScan(state), context.recordId);
+    // An active durable record without a materialized body belongs to world residency. Never
+    // additive-spawn over it here; world will rematerialize it when the sector reaches FULL.
+    if (record && !live) {
+      delete own.active[context.activeKey];
+      return null;
+    }
+    // A body vanished during this live ownership window before its tombstone settled. Suppress a
+    // same-sector duplicate; ordinary exit clears the row and world records decide the next entry.
+    if (own.active[context.activeKey] && !live) return null;
+
+    const assignJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
+    const activeRow = own.active[context.activeKey];
+    if (live && activeRow && activeRow.entityId === live.id) {
+      // Repeated lifecycle notifications are strict no-ops for live gameplay state. The job seam
+      // itself is idempotent and may need only to restore a missing transient hull marker.
+      if (typeof assignJob === 'function') {
+        assignJob(live, ceresTenderJobSpec(context));
+      }
+      return live;
+    }
+
+    const canonicalSpec = makePresenceSpec(context.plan, state);
+    canonicalSpec.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
+    canonicalSpec.data.recordCreatedTick = deferredEnterTick(state) | 0;
+    stampCeresTenderIdentity(canonicalSpec, context);
+
+    let entity = live;
+    let spawned = false;
+    if (entity) {
+      // World-record rematerialization intentionally builds a generic shell. Restore the canonical
+      // Ironback presentation/loadout/AI fields, while never touching its saved pose or vitals.
+      rehydrateCeresTender(entity, canonicalSpec, context);
+      // stampCeresTenderIdentity stamps data.worldRecordId post-append on this live indexed
+      // entity — register it or the new id stays a miss-memo'd negative / walk-only carrier.
+      registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
+      syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
+      syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
+    } else if (typeof this.helpers.spawnEntity === 'function') {
+      entity = this.helpers.spawnEntity(canonicalSpec);
+      spawned = !!entity;
+      if (entity) {
+        stampCeresTenderIdentity(entity, context);
+        registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
+        syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
+        syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
+      }
+    }
+    if (!entity) return null;
+    // World rematerializes every durable NPC through its generic FULL-extra bag. This tender is
+    // immediately adopted by factionPresence instead, so remove that temporary membership; hard
+    // exit captures/removes it explicitly, while continuous handoff keeps the live local actor.
+    releaseCeresTenderFromWorldExtras(state, entity);
+
+    if (typeof assignJob === 'function') {
+      assignJob(entity, ceresTenderJobSpec(context));
+    }
+
+    own.active[context.activeKey] = {
+      entityId: entity.id || null,
+      sectorId: CERES_ACTIVITY_SECTOR_ID,
+      factionId: context.plan.factionId,
+      routeId: null,
+      activityActorSlotId: context.slot.id,
+      worldRecordId: context.recordId,
+    };
+
+    if (spawned) {
+      const receipt = {
+        t: deferredEnterNow(state) || 0,
+        sectorId: CERES_ACTIVITY_SECTOR_ID,
+        factionId: context.plan.factionId,
+        entityId: entity.id || null,
+        shipDefId: context.plan.shipDefId,
+        source: context.plan.source || 'authoredPresence',
+      };
+      pushReceipt(state, { kind: 'spawned', ...receipt });
+      this.bus.emit('factionPresence:spawned', receipt);
+    }
+    return entity;
+  },
+
+  _onEntitySpawned(payload) {
+    const entity = payload.entity || (payload.id != null && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(payload.id)
+      : null);
+    if (!entity) return;
+    const marker = entity.data && entity.data.factionPresence;
+    if (marker || ['faction_scn', 'faction_pitborn', 'faction_fulfillment'].includes(entity.factionId)) {
+      this._wakePresenceQuiet();
+    }
+    if (!['faction_scn', 'faction_pitborn'].includes(entity.factionId)) return;
+    this._bindPitbornConcordTargets();
+  },
+
+  /** A flipped front leaves wreckage behind: register a durable aftermath field at the pair's
+   *  seeded anchor so the flipped sector reads as fought-over the next time the player enters.
+   *  aftermathWrecks owns wreck state — this only emits its documented wreckField:source seam. */
+  _onConflictFlip(payload) {
+    this._wakePresenceQuiet();
+    const state = this.state;
+    const sectorId = payload && payload.sectorId;
+    const pairKey = payload && payload.pairKey;
+    if (!state || !sectorId || !pairKey) return;
+    const seed = ((state.meta && state.meta.seed) || 1) >>> 0;
+    const pos = conflictAftermathAnchor(pairKey, sectorId, seed);
+    const receipt = {
+      t: state.simTime || 0,
+      sectorId,
+      factionId: payload.newOwner || null,
+      entityId: null,
+      shipDefId: null,
+      source: 'conflictFlip',
+    };
+    pushReceipt(state, { kind: 'conflictFlip', ...receipt, pairKey, pos });
+    this.bus.emit('wreckField:source', {
+      fieldId: `conflict-flip:${payload.flipId || `${pairKey}:${state.simTime || 0}`}`,
+      sectorId,
+      kind: 'aftermath',
+      pos: { x: pos.x, z: pos.z },
+      bornAt: state.simTime || 0,
+      cause: 'territory_flip',
+      losingFactionId: pairKey.split(':').find(id => id !== payload.newOwner) || null,
+    });
+  },
+
+  _boundPitbornConcordIsGone() {
+    for (const entity of indexedShipLikeScan(this.state)) {
+      if (!entity || entity.alive === false) continue;
+      const marker = entity.data && entity.data.factionPresence;
+      const ai = entity.data && entity.data.ai;
+      if (!marker || marker.factionId !== 'faction_pitborn' || !ai || ai.passive) continue;
+      if (ai.retaliationTargetId == null) continue;
+      const target = this.state.entities && this.state.entities.get
+        ? this.state.entities.get(ai.retaliationTargetId)
+        : null;
+      if (!target || target.alive === false) return true;
+    }
+    return false;
+  },
+
+  _bindPitbornConcordTargets() {
+    const entities = indexedShipLikeScan(this.state);
+    const concord = entities
+      .filter((entity) => entity.alive !== false && entity.id !== this.state.playerId && entity.type === 'ship' && entity.factionId === 'faction_scn')
+      .sort((a, b) => comparePresenceEntityIds(a.id, b.id))[0] || null;
+    for (const pitborn of entities) {
+      const marker = pitborn.data && pitborn.data.factionPresence;
+      const ai = pitborn.data && pitborn.data.ai;
+      const profile = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
+      if (!marker || marker.factionId !== 'faction_pitborn' || !ai || ai.passive || !profile) continue;
+      if (!profile.firstFire || !profile.firstFireAgainst.includes('faction_scn')) continue;
+      if (!concord) {
+        delete ai.retaliationTargetId;
+        ai.activity = { ...(ai.activity || {}), targetId: null };
+        continue;
+      }
+      ai.retaliationTargetId = concord.id;
+      ai.activity = {
+        ...(ai.activity || {}),
+        kind: 'attack_run',
+        reason: 'pitborn_disable_and_run',
+        targetId: concord.id,
+      };
+    }
+  },
+
+  _onCombatDamage(payload) {
+    this._wakePresenceQuiet();
+    if (payload.attackerId !== this.state.playerId || payload.targetId == null || !(payload.applied > 0)) return;
+    const target = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(payload.targetId)
+      : null;
+    const marker = target && target.data && target.data.factionPresence;
+    if (marker && conductFor(marker.factionId)) this._recordAct(marker.factionId, 'struck', { entityId: target.id });
+    if (marker && ['faction_understory', 'faction_archive', 'faction_choir'].includes(marker.factionId)) {
+      this._activateDefensivePresence(marker.factionId, this.state.playerId, 'direct_attack');
+      return;
+    }
+    const stationId = target && target.data && target.data.stationId;
+    if (stationId && ['station_drift', 'station_tethys', 'station_helios'].includes(stationId)) {
+      this._activateDefensivePresence('faction_archive', this.state.playerId, 'reading_room_attack');
+      return;
+    }
+    if (!marker || marker.factionId !== 'faction_fulfillment' || !marker.fixedRoute) return;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (sectorId === 'sector_helios_prime') {
+      this.bus.emit('presentation:caption', {
+        text: 'FULFILLMENT ROUTE HELD — STATION PROTECTION ACTIVE',
+        assertive: false,
+        shape: 'administrative-denial',
+      });
+      return;
+    }
+    if (sectorId !== 'sector_tethys_junction') return;
+    this._activateFulfillmentRoute(marker.routeId);
+  },
+
+  _activateDefensivePresence(factionId, targetId, trigger) {
+    let activated = 0;
+    for (const entity of indexedShipLikeScan(this.state)) {
+      const marker = entity && entity.data && entity.data.factionPresence;
+      const ai = entity && entity.data && entity.data.ai;
+      const profile = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
+      if (!marker || marker.factionId !== factionId || !ai || !profile || profile.firstFire) continue;
+      if (trigger === 'reading_room_attack' && !(profile.stationDefenseAggression > 0)) continue;
+      entity.team = 1;
+      if (entity.data) entity.data.team = 1;
+      ai.passive = false;
+      ai.roe = 'weapons_free';
+      ai.retaliationTargetId = targetId;
+      ai.motive = trigger === 'reading_room_attack' ? 'archive_station_defense' : 'self_defense';
+      ai.engagementTrigger = trigger;
+      ai.zoneId = this.state.world && this.state.world.currentSectorId || null;
+      ai.approachTelegraph = factionId === 'faction_archive'
+        ? 'archive_redaction_focus'
+        : 'understory_afterwake_focus';
+      ai.noFireResponseWindowS = 1;
+      ai.activity = {
+        ...(ai.activity || {}),
+        kind: 'attack_run',
+        reason: trigger,
+        startedTick: this.state.tick | 0,
+        targetId,
+      };
+      activated++;
+    }
+    return activated;
+  },
+
+  _activateFulfillmentRoute(routeId, { record = true } = {}) {
+    const playerId = this.state.playerId;
+    let activated = 0;
+    for (const entity of indexedShipLikeScan(this.state)) {
+      const marker = entity && entity.data && entity.data.factionPresence;
+      const ai = entity && entity.data && entity.data.ai;
+      if (!marker || marker.factionId !== 'faction_fulfillment' || marker.routeId !== routeId || !ai) continue;
+      entity.team = 1;
+      if (entity.data) entity.data.team = 1;
+      ai.passive = false;
+      ai.allowPassiveManeuver = true;
+      ai.roe = 'weapons_free';
+      ai.retaliationTargetId = playerId;
+      ai.motive = 'administrative_variance';
+      ai.engagementTrigger = 'player_attack';
+      ai.zoneId = this.state.world && this.state.world.currentSectorId || null;
+      ai.approachTelegraph = 'fulfillment_route_intercept';
+      ai.noFireResponseWindowS = 1;
+      ai.activity = {
+        ...(ai.activity || {}),
+        kind: 'attack_run',
+        reason: 'fulfillment_variance_response',
+        startedTick: deferredEnterTick(this.state) | 0,
+        targetId: playerId,
+      };
+      activated++;
+    }
+    if (activated > 0 && record) {
+      pushReceipt(this.state, {
+        kind: 'fulfillmentProvoked', routeId, t: this.state.simTime || 0,
+      });
+      this.bus.emit('factionPresence:fulfillmentProvoked', { routeId, count: activated, tick: this.state.tick | 0 });
+    }
+    return activated;
+  },
+
+  _resetFulfillmentRoute(routeId) {
+    for (const entity of indexedShipLikeScan(this.state)) {
+      const marker = entity && entity.data && entity.data.factionPresence;
+      const ai = entity && entity.data && entity.data.ai;
+      if (!marker || marker.factionId !== 'faction_fulfillment' || marker.routeId !== routeId || !ai) continue;
+      entity.team = 2;
+      if (entity.data) entity.data.team = 2;
+      ai.passive = true;
+      ai.roe = 'hold_fire';
+      delete ai.retaliationTargetId;
+      delete ai.motive;
+      delete ai.engagementTrigger;
+      delete ai.zoneId;
+      delete ai.approachTelegraph;
+      delete ai.noFireResponseWindowS;
+      ai.activity = {
+        ...(ai.activity || {}),
+        kind: 'transit',
+        reason: 'fulfillment_fixed_route',
+        targetId: null,
+      };
+    }
+  },
+
+  _rehydrateBoardingConvoy() {
+    const boarding = ensureOwnState(this.state).boarding;
+    if (!boarding || !boarding.routeId) return;
+    if (['blackout', 'transit', 'wake_pending'].includes(boarding.phase)) {
+      this._activateFulfillmentRoute(boarding.routeId, { record: false });
+    } else {
+      this._resetFulfillmentRoute(boarding.routeId);
+    }
+  },
+
+  _onSaveLoaded() {
+    this._wakePresenceQuiet();
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+      const seed = ((this.state.meta && this.state.meta.seed) || 1) >>> 0;
+      const tenderPlan = planFactionPresence({ sectorId, seed })
+        .find((plan) => matchesCeresRefineryTender(plan));
+      const context = tenderPlan && ceresTenderContext(tenderPlan, seed, deferredEnterTick(this.state));
+      if (context) this._bindCeresRefineryTender(context, ensureOwnState(this.state));
+    }
+    const boarding = ensureOwnState(this.state).boarding;
+    this._applyConductInSector();
+    this._rehydrateBoardingConvoy();
+    if (boarding) this._emitBoardingPhase(boarding);
+    if (boarding && boarding.phase === 'wake_pending') this._repairBoardingSubsystem(boarding);
+  },
+
+  _onSectorExit(payload) {
+    const sectorId = payload.sectorId || (this.state.world && this.state.world.currentSectorId);
+    if (!sectorId) return;
+    const own = ensureOwnState(this.state);
+    for (const [key, row] of Object.entries(own.active)) {
+      if (!row || row.sectorId !== sectorId) continue;
+      if (row.activityActorSlotId === CERES_REFINERY_TENDER.id
+        && !(payload.continuous || payload.noTeleport)) {
+        const entity = row.entityId != null && this.state.entities && this.state.entities.get
+          ? this.state.entities.get(row.entityId)
+          : null;
+        if (entity && entity.alive !== false) {
+          // Faction presences are not part of world's authored enemy/dressing bags. On a hard exit,
+          // capture this one durable authored actor through the world owner before scoped removal;
+          // otherwise it survives forever beside a REDUCED sector with no active owner. Continuous
+          // corridor handoff deliberately keeps the live hull, matching traffic's locality policy.
+          const world = this.registry && this.registry.get && this.registry.get('world');
+          const captured = world && typeof world.upsertWorldRecord === 'function'
+            ? world.upsertWorldRecord(entity)
+            : null;
+          if (captured) {
+            const remove = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
+            if (typeof remove === 'function') remove(entity.id);
+            else entity.alive = false;
+          }
+        }
+      }
+      delete own.active[key];
+    }
+  },
+
+  _onLossRecorded(payload) {
+    const currentSectorId = this.state.world && this.state.world.currentSectorId;
+    if (!payload.shipDefId || payload.sectorId !== currentSectorId) return;
+    this._onSectorEnter({ sectorId: currentSectorId });
+  },
+
+  _onDocked(payload) {
+    if (dockIntentStatus(this.state, payload) === 'stale') return;
+    const stationId = payload.stationId || payload.id || null;
+    if (!stationId) return;
+    this._serviceBerth = stationId;
+    const service = presenceServiceForStation(stationId, factionReps(this.state), conductStances(this.state));
+    if (!service) return;
+    const own = ensureOwnState(this.state);
+    own.lastDock = { stationId, t: Number(this.state.simTime) || 0 };
+    own.servicesByStation[stationId] = { ...service };
+    const receipt = { ...service, t: this.state.simTime || 0 };
+    pushReceipt(this.state, { kind: 'service', ...receipt });
+    this.bus.emit('factionPresence:service', receipt);
+  },
+
+  _onServiceAction(payload) {
+    const stationId = typeof payload.stationId === 'string' ? payload.stationId : null;
+    const serviceId = typeof payload.serviceId === 'string' ? payload.serviceId : null;
+    if (!stationId || !serviceId) return;
+    // servicesByStation is durable discovery, not permission to operate a remote desk.
+    // The world dock event owns this transient berth even in headless game routes.
+    const berth = this.state.ui?.docked === true
+      ? this.state.ui.dockedStationId : this._serviceBerth;
+    if (berth !== stationId) {
+      this.bus.emit('toast', { text: 'Dock at this berth to use its faction desk.', kind: 'warn', ttl: 3 });
+      return;
+    }
+    const own = ensureOwnState(this.state);
+    const stored = own.servicesByStation[stationId];
+    if (!stored) return;
+    const reps = factionReps(this.state);
+    const current = presenceServiceForStation(stationId, reps, conductStances(this.state));
+    if (!current) return;
+    const available = current.available === true;
+    if (!available) {
+      this.bus.emit('toast', {
+        text: current.closedReason || `Archive access requires ${current.requiredRep} reputation`, kind: 'warn', ttl: 3,
+      });
+      return;
+    }
+
+    let targetTab = null;
+    if (serviceId === 'pitborn_yard' && current.services.includes('yard')) targetTab = 'shipyard';
+    else if (serviceId === 'pitborn_fence' && current.services.includes('fence')) targetTab = 'market';
+    else if (serviceId === 'understory_wreck_buy' && current.services.includes('wreck_buy')) targetTab = null;
+    else if (serviceId === 'directorate_audit' && current.services.includes('directorate_audit')) targetTab = null;
+    else if (serviceId !== 'archive_reading_room' || !current.services.includes('reading_room')) return;
+
+    if (serviceId === 'archive_reading_room') {
+      const seed = (this.state.meta && this.state.meta.seed) || 1;
+      const hasKellPaperTrail = this.state.story && this.state.story.verge
+        && this.state.story.verge.evidence
+        && this.state.story.verge.evidence.kellPaperTrail === true;
+      const evidenceId = hasKellPaperTrail ? 'vale_gate_revocation_file' : null;
+      const readings = [
+        'The redacted lane report lists three arrivals and four departures. The missing ship is the point.',
+        'A margin note records the gate hum before the instruments did. Someone heard it first.',
+        'The Archive preserved the correction, not the original lie. Read the ink pressure.',
+      ];
+      const readingId = `archive_${hash32(seed, stationId, evidenceId || 'reading-room').toString(36)}`;
+      const text = evidenceId
+        ? 'REF 44-C names Vale as the operator of a stolen gate-revocation protocol. The original seal is intact.'
+        : readings[hash32(seed, stationId, 'reading-copy') % readings.length];
+      if (!own.serviceReceipts[readingId]) {
+        const receipt = { kind: 'archiveReading', evidenceId, readingId, stationId, text, t: this.state.simTime || 0 };
+        own.serviceReceipts[readingId] = receipt;
+        pushReceipt(this.state, receipt);
+      }
+      this._rackBerthCopy(stationId, 'berthFolio:', 'berth_folio');
+      this.bus.emit('comms:popup', {
+        id: readingId, sender: 'Archive Reading Room', text, category: 'archive', persist: true,
+      });
+      if (evidenceId) {
+        this.bus.emit('factionPresence:archiveEvidenceRead', { evidenceId, readingId, stationId });
+      }
+    } else if (serviceId === 'understory_wreck_buy') {
+      const sectorId = this.state.world && this.state.world.currentSectorId;
+      const loss = lossesFor(this.state, sectorId)[0] || null;
+      const appraisalId = `understory_${hash32((this.state.meta && this.state.meta.seed) || 1, stationId, loss && loss.lossId || 'empty').toString(36)}`;
+      const text = loss && loss.shipDefId
+        ? `Recorded hull ${loss.shipDefId}. The Understory buyer will appraise what the ledger can prove.`
+        : 'No recorded hull is attached to this berth yet. Bring back a loss the ledger can prove.';
+      if (!own.serviceReceipts[appraisalId]) {
+        const receipt = {
+          kind: 'understoryAppraisal', appraisalId, stationId, lossId: loss && loss.lossId || null,
+          shipDefId: loss && loss.shipDefId || null, text, t: this.state.simTime || 0,
+        };
+        own.serviceReceipts[appraisalId] = receipt;
+        pushReceipt(this.state, receipt);
+      }
+      // CR-BERTH-2 — a fed appraisal is also the feed order: the hull the ledger proved goes
+      // to the slip off the refinery. Only a hull loss feeds it — the desk's own denial text
+      // keys on shipDefId, so an entry with a lossId but no named hull (outpost raid,
+      // unrecognized def) buys nothing physical. count tracks distinct hulls fed, not clicks:
+      // re-appraising the same loss is one feed. world.js reads the row's existence as the
+      // hulk gate.
+      const berth = factionBerthForStation(stationId);
+      if (berth && loss && loss.lossId && loss.shipDefId) {
+        const prior = own.serviceReceipts[berth.receiptKey];
+        const fedLossIds = new Set(Array.isArray(prior && prior.fedLossIds) ? prior.fedLossIds : []);
+        const alreadyFed = fedLossIds.has(loss.lossId);
+        fedLossIds.add(loss.lossId);
+        const feed = {
+          kind: 'berthFeed',
+          berthId: berth.id,
+          stationId,
+          factionId: berth.factionId,
+          // count is distinct hulls the slip has eaten, not desk clicks — a second appraisal
+          // of the same recorded loss is one feed. fedLossIds is the dedupe memory (the desk
+          // always appraises the newest loss, so a bounded tail is the whole reachable set).
+          count: (Number.isFinite(prior && prior.count) ? prior.count : 0) + (alreadyFed ? 0 : 1),
+          fedLossIds: [...fedLossIds].slice(-24),
+          lastLossId: loss.lossId,
+          lastShipDefId: loss.shipDefId,
+          t: this.state.simTime || 0,
+        };
+        own.serviceReceipts[berth.receiptKey] = feed;
+        pushReceipt(this.state, feed);
+        if (!alreadyFed) this._recordAct(berth.factionId, 'berth_feed', { berthId: berth.id });
+      }
+      this.bus.emit('comms:popup', {
+        id: appraisalId, sender: 'Understory Wreck Buyer', text, category: 'salvage', persist: true,
+      });
+    } else if (serviceId === 'directorate_audit') {
+      // The paper faction: one stamped receipt, no credits, no hulls, no ledger writes.
+      const auditId = `helix_${hash32((this.state.meta && this.state.meta.seed) || 1, stationId, 'directorate-audit').toString(36)}`;
+      const text = 'Form 7-V received and reviewed: your paperwork is in order, Captain. '
+        + 'The Directorate thanks you for your meticulous filing. '
+        + 'STAMP: SEDNA-7 // NO VARIANCE. This receipt is your copy.';
+      if (!own.serviceReceipts[auditId]) {
+        const receipt = { kind: 'directorateAudit', auditId, stationId, text, t: this.state.simTime || 0 };
+        own.serviceReceipts[auditId] = receipt;
+        pushReceipt(this.state, receipt);
+      }
+      this._rackBerthCopy(stationId, 'berthFiling:', 'berth_filing');
+      this.bus.emit('comms:popup', {
+        id: auditId, sender: 'Helix Rim Audit', text, category: 'paper', persist: true,
+      });
+    } else {
+      pushReceipt(this.state, {
+        kind: 'pitbornService', stationId, serviceId, targetTab, t: this.state.simTime || 0,
+      });
+    }
+    this.bus.emit('factionPresence:serviceAction', {
+      factionId: current.factionId, stationId, serviceId, targetTab, available: true,
+    });
+  },
+
+  // CR-BERTH-1 — the consignment line's receipt. A redeem_rights payout at a berth station is
+  // the yard desk buying the player's claim on a wreck already in the yards' books: write the
+  // keyed serviceReceipt the berth's strip-line spawn reads, and journal it like every other
+  // faction desk receipt. The body itself materializes on the next sector pass — the yard works
+  // between visits. Repeat payouts update the same keyed row (count accumulates, t refreshes)
+  // rather than minting unstable keys.
+  _onServiceCompleted(payload) {
+    if (!payload || payload.type !== 'redeem_rights') return;
+    const stationId = typeof payload.stationId === 'string' ? payload.stationId : null;
+    const berth = stationId ? factionBerthForStation(stationId) : null;
+    // The redeem_rights payout feeds consignment berths only — a berth keyed to a different
+    // receipt contract (the slip's berthFeed: feed order, written by the appraisal desk)
+    // must not let a foreign payout mint a hulk on the wrong memory.
+    if (!berth || !String(berth.receiptKey).startsWith('berthConsign:')) return;
+    const own = ensureOwnState(this.state);
+    const prior = own.serviceReceipts[berth.receiptKey];
+    const rights = Math.max(1, Math.floor(Number(payload.rights) || 0));
+    const receipt = {
+      kind: 'berthConsign',
+      berthId: berth.id,
+      stationId,
+      factionId: berth.factionId,
+      count: (prior && Number.isFinite(prior.count) ? prior.count : 0) + rights,
+      lastRights: rights,
+      t: Number(this.state.simTime) || 0,
+    };
+    own.serviceReceipts[berth.receiptKey] = receipt;
+    pushReceipt(this.state, receipt);
+    this._recordAct(berth.factionId, 'berth_consign', { berthId: berth.id });
+  },
+
+  // CR-BERTH-3/4 — a desk visit at a berth station racks the faction's copy on the berth: the
+  // Archive's sealed folio, the Directorate's filed duplicate. One copy per dock visit: the count
+  // is how many times you came back and did business, not how many times the button was pressed.
+  _rackBerthCopy(stationId, prefix, act) {
+    const berth = factionBerthForStation(stationId);
+    if (!berth || !String(berth.receiptKey).startsWith(prefix)) return null;
+    const own = ensureOwnState(this.state);
+    const prior = own.serviceReceipts[berth.receiptKey];
+    const dockedAt = own.lastDock && own.lastDock.stationId === stationId ? own.lastDock.t : null;
+    if (prior && dockedAt != null && Number(prior.dockedAt) === dockedAt) return prior;
+    const receipt = {
+      kind: prefix.slice(0, -1),
+      berthId: berth.id,
+      stationId,
+      factionId: berth.factionId,
+      count: (prior && Number.isFinite(prior.count) ? prior.count : 0) + 1,
+      dockedAt,
+      t: Number(this.state.simTime) || 0,
+    };
+    own.serviceReceipts[berth.receiptKey] = receipt;
+    pushReceipt(this.state, receipt);
+    this._recordAct(berth.factionId, act, { berthId: berth.id });
+    return receipt;
+  },
+
+  _updateFulfillmentRoutes() {
+    const simTime = Number(this.state.simTime) || 0;
+    for (const entity of indexedShipLikeScan(this.state)) {
+      const marker = entity && entity.data && entity.data.factionPresence;
+      const ai = entity && entity.data && entity.data.ai;
+      const profile = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
+      if (!marker || !marker.fixedRoute || !marker.routeStart || !marker.routeEnd || !ai
+        || !profile || !profile.fixedRoute) continue;
+      const period = Math.max(1, Number(marker.routePeriodS) || 32);
+      const raw = ((simTime % period) + period) % period / period;
+      const progress = raw <= 0.5 ? raw * 2 : (1 - raw) * 2;
+      const start = marker.routeStart;
+      const end = marker.routeEnd;
+      const dx = end.x - start.x;
+      const dz = end.z - start.z;
+      const length = Math.hypot(dx, dz) || 1;
+      const offset = ((Number(marker.formationIndex) || 0) - ((Number(marker.formationCount) || 1) - 1) / 2)
+        * (Number(marker.formationSpacing) || 52);
+      const anchor = {
+        x: start.x + dx * progress + (-dz / length) * offset,
+        z: start.z + dz * progress + (dx / length) * offset,
+      };
+      // A provoked route member keeps its authored combat activity — including the doctrine
+      // egress posture stand-in (`reposition`, whose authored attack_run is stashed on
+      // `ai.postureBaseActivity` by applyEngagementPosture until the doctrine recommits).
+      // Rewriting that stand-in to `transit` is a one-way downgrade: transit is not an offensive
+      // activity, so the actor silently loses doctrine eligibility and fire authority for good.
+      const postureKind = ai.postureBaseActivity && ai.postureBaseActivity.kind;
+      const offensive = ai.passive === false && ai.activity
+        && (ai.activity.kind === 'attack_run' || postureKind === 'attack_run');
+      ai.activity = {
+        ...(ai.activity || {}),
+        kind: offensive ? ai.activity.kind : 'transit',
+        reason: offensive ? ai.activity.reason : 'fulfillment_fixed_route',
+        routeId: marker.routeId,
+        anchor,
+      };
+    }
+  },
+
+  _onSubsystemDisabled(payload) {
+    this._wakePresenceQuiet();
+    if (payload.dependencyDisabled === true) return;
+    if (payload.targetId !== this.state.playerId) return;
+    if (!['subsystem_drive', 'subsystem_power'].includes(payload.subsystemId)) return;
+    const attacker = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(payload.attackerId)
+      : null;
+    const player = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    const marker = attacker && attacker.data && attacker.data.factionPresence;
+    const attackerAi = attacker && attacker.data && attacker.data.ai;
+    if (!marker || marker.factionId !== 'faction_fulfillment' || !marker.fixedRoute || !player) return;
+    if (!attackerAi || attackerAi.passive !== false || attackerAi.retaliationTargetId !== player.id) return;
+    if (Math.hypot(attacker.pos.x - player.pos.x, attacker.pos.z - player.pos.z) > 900) return;
+    const own = ensureOwnState(this.state);
+    const key = [this.state.tick || 0, payload.attackerId, payload.targetId, payload.subsystemId].join(':');
+    if (own.processedDisable[key] || (own.boarding && own.boarding.phase !== 'holding')) return;
+    own.processedDisable[key] = true;
+    const now = Number(this.state.simTime) || 0;
+    const holdingPos = marker.routeEnd
+      ? { x: marker.routeEnd.x, z: marker.routeEnd.z }
+      : { x: attacker.pos.x, z: attacker.pos.z };
+    own.boarding = {
+      id: `fulfillment_boarding_${hash32((this.state.meta && this.state.meta.seed) || 1, key).toString(36)}`,
+      phase: 'blackout',
+      routeId: marker.routeId,
+      subsystemId: payload.subsystemId,
+      startedAt: now,
+      phaseStartedAt: now,
+      holdingPos,
+      routed: false,
+    };
+    this._boardingRepairRequested = false;
+    pushReceipt(this.state, { kind: 'boardingDisabled', t: now, ...own.boarding });
+    const world = this.registry && this.registry.get && this.registry.get('world');
+    if (world && typeof world.relocatePlayerInSector === 'function') {
+      world.relocatePlayerInSector({ x: player.pos.x, z: player.pos.z, heading: player.rot }, {
+        reason: 'fulfillment_blackout_settle',
+      });
+    }
+    this._emitBoardingPhase(own.boarding);
+    this.bus.emit('presentation:caption', {
+      text: 'FULFILLMENT ROUTING HOLD', assertive: true, shape: 'administrative-blackout',
+    });
+  },
+
+  _updateBoarding() {
+    const own = ensureOwnState(this.state);
+    const boarding = own.boarding;
+    if (!boarding) return;
+    const now = Number(this.state.simTime) || 0;
+    if (boarding.phase === 'blackout' && now - boarding.phaseStartedAt >= 1.25) {
+      boarding.phase = 'transit';
+      boarding.phaseStartedAt = now;
+      this._routeOneCargo(boarding);
+      this._emitBoardingPhase(boarding);
+      this.bus.emit('presentation:caption', {
+        text: 'CARGO REASSIGNED — PROCEED TO HOLDING', assertive: true, shape: 'administrative-transit',
+      });
+    }
+    if (boarding.phase === 'transit' && now - boarding.phaseStartedAt >= 2.5) {
+      this._breakPlayerAttachments();
+      const world = this.registry && this.registry.get && this.registry.get('world');
+      if (!world || typeof world.relocatePlayerInSector !== 'function'
+        || !world.relocatePlayerInSector({ ...boarding.holdingPos }, { reason: 'fulfillment_holding' })) return;
+      boarding.phase = 'wake_pending';
+      boarding.phaseStartedAt = now;
+      this.bus.emit('ui:setCourse', {
+        pos: { ...boarding.holdingPos },
+        label: 'Fulfillment Holding Point',
+        reason: 'Administrative routing complete',
+        waypointKind: 'fulfillment_holding',
+        arrivalRadius: 72,
+      });
+      this.bus.emit('presentation:caption', {
+        text: 'HOLDING POINT ASSIGNED — RESTORING DRIVE', assertive: false, shape: 'administrative-holding',
+      });
+      this._emitBoardingPhase(boarding);
+      this._repairBoardingSubsystem(boarding);
+    }
+  },
+
+  _emitBoardingPhase(boarding) {
+    if (!boarding) return;
+    this.bus.emit('factionPresence:boardingPhase', {
+      boardingId: boarding.id,
+      routeId: boarding.routeId,
+      phase: boarding.phase,
+      tick: this.state.tick | 0,
+    });
+  },
+
+  _combatKernel() {
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    if (!combat) return null;
+    if (typeof combat.ensureKernel === 'function') return combat.ensureKernel();
+    return combat.kernel || null;
+  },
+
+  _breakPlayerAttachments() {
+    const kernel = this._combatKernel();
+    const attachments = kernel && kernel.attachments;
+    if (!attachments || typeof attachments.listForEntity !== 'function'
+      || typeof attachments.breakAttachment !== 'function') return 0;
+    let broken = 0;
+    for (const attachment of attachments.listForEntity(this.state.playerId, true)) {
+      const result = attachments.breakAttachment(attachment, 'fulfillment_relocation', this.state.playerId);
+      if (result && result.ok) broken++;
+    }
+    return broken;
+  },
+
+  _repairBoardingSubsystem(boarding) {
+    if (!boarding || boarding.phase !== 'wake_pending' || this._boardingRepairRequested) return false;
+    const kernel = this._combatKernel();
+    if (!kernel || typeof kernel.repair !== 'function') return false;
+    const result = kernel.repair(
+      this.state.playerId,
+      boarding.subsystemId,
+      1e9,
+      'fulfillment_routing_complete',
+    );
+    this._boardingRepairRequested = !!(result && result.applied > 0);
+    return this._boardingRepairRequested;
+  },
+
+  _onSubsystemEnabled(payload) {
+    const own = ensureOwnState(this.state);
+    const boarding = own.boarding;
+    if (!boarding || boarding.phase !== 'wake_pending') return;
+    if (payload.targetId !== this.state.playerId || payload.subsystemId !== boarding.subsystemId) return;
+    boarding.phase = 'holding';
+    boarding.phaseStartedAt = Number(this.state.simTime) || 0;
+    this._boardingRepairRequested = false;
+    this._resetFulfillmentRoute(boarding.routeId);
+    this._emitBoardingPhase(boarding);
+    this.bus.emit('presentation:caption', {
+      text: 'ROUTING COMPLETE. VARIANCE RESOLVED.',
+      assertive: false,
+      shape: 'administrative-complete',
+    });
+    pushReceipt(this.state, {
+      kind: 'boardingHolding',
+      t: boarding.phaseStartedAt,
+      boardingId: boarding.id,
+      routeId: boarding.routeId,
+    });
+  },
+
+  _routeOneCargo(boarding) {
+    if (boarding.routed) return;
+    const items = this.state.player && this.state.player.cargo && this.state.player.cargo.items || {};
+    const commodityId = Object.keys(items)
+      .filter((id) => Number(items[id]) > 0 && !isPersistentCargo(this.state, id))
+      .sort()[0] || null;
+    const removed = commodityId ? removeCargo(this.state, commodityId, 1) : 0;
+    const route = FULFILLMENT_FIXED_ROUTES.find((row) => row.id === boarding.routeId);
+    const receipt = {
+      factionId: 'faction_fulfillment',
+      routeId: route ? route.id : boarding.routeId,
+      commodityId,
+      requested: commodityId ? 1 : 0,
+      removed,
+      administrative: true,
+      t: this.state.simTime || 0,
+      boardingId: boarding.id,
+      routingCode: `FR-${hash32(boarding.routeId, commodityId || 'empty', boarding.id).toString(16).toUpperCase()}`,
+    };
+    pushReceipt(this.state, { kind: 'administrativeRouting', ...receipt });
+    // Mark the semantic attempt complete only after the deterministic selection, owner-routed
+    // mutation, and durable receipt have settled. Set it before publishing to resist reentrancy.
+    boarding.routed = true;
+    this.bus.emit('factionPresence:administrativeRouting', receipt);
+  },
+
+  serialize() {
+    const own = ensureOwnState(this.state);
+    const boarding = own.boarding ? {
+      id: own.boarding.id,
+      phase: own.boarding.phase,
+      routeId: own.boarding.routeId,
+      subsystemId: own.boarding.subsystemId,
+      startedAt: own.boarding.startedAt,
+      phaseStartedAt: own.boarding.phaseStartedAt,
+      holdingPos: own.boarding.holdingPos ? { ...own.boarding.holdingPos } : null,
+      routed: own.boarding.routed === true,
+    } : null;
+    const receipts = own.receipts.slice(-48).map((receipt) => {
+      const clean = { ...receipt };
+      delete clean.entityId;
+      delete clean.attackerId;
+      delete clean.targetId;
+      return clean;
+    });
+    return {
+      receipts,
+      sequence: own.sequence,
+      boarding,
+      servicesByStation: JSON.parse(JSON.stringify(own.servicesByStation)),
+      serviceReceipts: JSON.parse(JSON.stringify(own.serviceReceipts)),
+      conduct: Object.fromEntries(Object.entries(own.conduct)
+        .filter(([factionId]) => conductFor(factionId))
+        .map(([factionId, memory]) => [factionId, normalizeConductMemory(memory)])),
+      berthWatch: sanitizeBerthWatch(own.berthWatch),
+      lastDock: own.lastDock ? { ...own.lastDock } : null,
+    };
+  },
+
+  deserialize(data) {
+    const source = data && data.boarding && typeof data.boarding === 'object' ? data.boarding : null;
+    const boarding = source && typeof source.id === 'string' && typeof source.routeId === 'string'
+      && ['blackout', 'transit', 'wake_pending', 'holding'].includes(source.phase)
+      && source.holdingPos && Number.isFinite(source.holdingPos.x) && Number.isFinite(source.holdingPos.z)
+      ? {
+          id: source.id,
+          phase: source.phase,
+          routeId: source.routeId,
+          subsystemId: source.subsystemId,
+          startedAt: Number(source.startedAt) || 0,
+          phaseStartedAt: Number(source.phaseStartedAt) || 0,
+          holdingPos: { x: source.holdingPos.x, z: source.holdingPos.z },
+          routed: source.routed === true,
+        }
+      : null;
+    this.state.factionPresence = {
+      active: {},
+      receipts: Array.isArray(data && data.receipts) ? data.receipts.slice(-48) : [],
+      sequence: Math.max(0, Math.floor(Number(data && data.sequence) || 0)),
+      boarding,
+      processedDisable: {},
+      servicesByStation: JSON.parse(JSON.stringify((data && data.servicesByStation) || {})),
+      serviceReceipts: JSON.parse(JSON.stringify((data && data.serviceReceipts) || {})),
+      conduct: Object.fromEntries(Object.entries((data && data.conduct) || {})
+        .filter(([factionId]) => conductFor(factionId))
+        .map(([factionId, memory]) => [factionId, normalizeConductMemory(memory)])),
+      berthWatch: sanitizeBerthWatch(data && data.berthWatch),
+      lastDock: data && data.lastDock && typeof data.lastDock.stationId === 'string'
+        ? { stationId: data.lastDock.stationId, t: Number(data.lastDock.t) || 0 }
+        : null,
+    };
+    this._watchedHulkId = null;
+    this._boardingRepairRequested = false;
+    if (boarding) this._emitBoardingPhase(boarding);
+  },
+
+  destroy() {
+    for (const unsub of this._unsub || []) {
+      if (typeof unsub === 'function') unsub();
+    }
+    this._unsub = [];
+  },
+};
+
+export default factionPresence;

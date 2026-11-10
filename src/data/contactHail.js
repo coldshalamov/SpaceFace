@@ -1,0 +1,2123 @@
+import { playerBearingHyphen } from '../core/playerCompass.js';
+import { lanternWardHailOffer, lanternWardHailResponse } from './lanternWardHail.js';
+import { winnowRecoveryHailLines } from '../world/vestaWinnowRecovery.js';
+import { pallasShiftStatus } from './pallasWorkShift.js';
+import { heliosFreightHailLine } from './heliosFreightHail.js';
+import { charonSupplyPresentation } from '../world/charonSupplyReadout.js';
+import { ANVIL_RETURN_GAS, ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, anvilSpillReturnOffer } from '../world/anvilSpillRecovery.js';
+import { orchardReceiverRepairFacts, orchardReceiverRepairGuidance } from '../world/anvilOrchardShiftEncounter.js';
+import { anvilCollectorWorkStatus, anvilReceiverWorkStatus } from '../systems/anvilWork.js';
+import { TETHYS_TALLY, isTallyCourier } from './tethysTallyPassage.js';
+import { isOrchardReceiver, orchardTowQuote } from '../world/anvilOrchardTowAssist.js';
+// Deterministic contact-hail classification and copy.
+//
+// This module is deliberately read-only. Scanner owns request validation and transient lifetime;
+// pirateParley remains the sole authority for toll choices/payment/escalation.
+import { hash32 } from '../core/rng.js';
+// Leaf import on purpose: namedAces.js reaches scanner.js (and so this file) through encounters.
+import {
+  fightStatusText, grievanceLineFor, grievanceLive, grievanceSeedFor, sectorDisplayName,
+} from './pilotCallsigns.js';
+import { tallyThreeHail } from './tallyThree.js';
+import { RED_KITE } from './redKite.js';
+import { PALLET_JACK } from './palletJack.js';
+import { COMMODITIES } from './commodities.js';
+import { MODULES } from './modules.js';
+import { SHIPS } from './ships.js';
+import {
+  isPassengerLinerItinerary,
+  isPriorityCourierItinerary,
+  PASSENGER_LINER_SERVICE,
+} from './laneContacts.js';
+import { TRAFFIC_ROLES } from './trafficPresentationReads.js';
+import { hailRegistrySlot } from './shipRegistry.js';
+import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
+import { DEED_KINDS, notorietyIn, pickDeedToTell } from '../systems/deedRecord.js';
+import { deedLine } from './deedPhrases.js';
+import { LAWFUL_STATION_FACTIONS } from './factions/index.js';
+import { buildSlotList, fits } from '../systems/ships.js';
+import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
+import { SECTORS } from './sectors.js';
+import {
+  VARIANCE_ADJUSTMENT_BERTH,
+  isVarianceAdjustmentBerthEntity,
+} from './varianceAdjustmentBerth.js';
+import { SLATE_COLUMN } from './slate.js';
+
+// Asteroid subset latched on {entityIndexVersion, state.entities}: hail/status lookups used
+// to walk the whole entity map per call. The subset preserves entities.values() order and
+// every volatile gate (slot stamps, opportunity state) still re-runs per candidate.
+const _hailAsteroids = { version: null, source: null, list: [] };
+// Members are asteroids only — latch the asteroids lane so ship/payload/projectile churn
+// can't rebuild the subset. -1 (index unready) falls back to the whole-version contract.
+const HAIL_ASTEROID_LANES = ['asteroids'];
+function hailAsteroidsOf(state) {
+  const laneVersion = entityIndexLaneVersion(state, HAIL_ASTEROID_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+  const cache = _hailAsteroids;
+  if (version == null || cache.version !== version || cache.source !== state.entities) {
+    cache.version = version;
+    cache.source = state.entities;
+    cache.list.length = 0;
+    const entities = state.entities && typeof state.entities.values === 'function'
+      ? state.entities.values()
+      : Array.isArray(state.entityList) ? state.entityList : [];
+    for (const e of entities) if (e && e.type === 'asteroid') cache.list.push(e);
+  }
+  return cache.list;
+}
+
+export const CONTACT_HAIL_RANGE = 5200;
+export const CONTACT_HAIL_REQUEST_TTL_S = 8;
+export const CONTACT_HAIL_RECEIPT_TTL_S = 4;
+export const CONTACT_HAIL_ACTION_HEAVE_TO = 'heave_to';
+export const CONTACT_HAIL_ACTION_HELP = 'help';
+export const CONTACT_HAIL_ACTION_ESCORT = 'escort';
+export const CONTACT_HAIL_ACTION_RECOVER = 'recover';
+export const CONTACT_HAIL_ACTION_STEAL = 'steal';
+export const CONTACT_HAIL_ACTION_ABANDON = 'abandon';
+export const CONTACT_HAIL_ACTION_ASSIST = 'assist';
+export const CONTACT_HAIL_ACTION_TOW_ASSIST = 'tow_assist';
+const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
+const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
+const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
+const CERES_RICH_SEAM_OBJECT_SLOT_ID = 'ceres_seam_ore_clast';
+const CERES_TENDER_SERVICE_INCIDENT_SCHEMA = 'spaceface.ceresTenderServiceIncident.v1';
+const CERES_TENDER_SERVICE_ACTIVE_STATES = new Set(['impair', 'approach', 'holding', 'repair']);
+const CERES_REFINERY_HAULER_SLOT_ID = 'ceres_refinery_hauler';
+const CERES_MINER_HAULER_HANDOFF_SCHEMA = 'spaceface.ceresMinerHaulerHandoff.v1';
+const CERES_DISABLED_HAULER_INCIDENT_SCHEMA = 'spaceface.ceresDisabledHaulerRecovery.v1';
+const CERES_DISABLED_HAULER_ACTIVE_STATES = new Set([
+  'impair', 'distress', 'player_recovery', 'responder_approach', 'responder_repair',
+]);
+
+const TRADER_ROLES = new Set(['hauler', 'courier', 'miner', 'smuggler', 'express', 'trader']);
+// Working traffic that can answer with living-chain / job phase without being a freighter or patrol.
+const WORK_ROLES = new Set(['miner', 'salvor', 'tender', 'surveyor', 'prospector', 'ore_carrier', 'rescue', 'tug']);
+// The single heave-to authority: which traffic roles answer a heave-to order. traffic.js consumes
+// this for compliance; commsRadial for the unavailable reason. Keep role keys in sync with
+// TRAFFIC_ROLES — 'trader' is an ai archetype, never a role.
+export const HEAVE_TO_COMPLIANT_ROLES = new Set([
+  'hauler',
+  'courier',
+  'miner',
+  'smuggler',
+  'express',
+  'rescue',
+  'surveyor',
+  'salvor',
+  'tender',
+  'ore_carrier',
+  'patrol',
+  'escort',
+  'prospector',
+  'sweeper',
+  'shuttle',
+  'tug',
+  'arclight',
+  'tanker',
+  'customs',
+]);
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((row) => [row.id, row]));
+const COMMODITY_LABEL = new Map(COMMODITIES.map((row) => [row.id, row.name]));
+const MODULE_BY_ID = new Map(MODULES.map((row) => [row.id, row]));
+const SHIP_BY_ID = new Map(SHIPS.map((row) => [row.id, row]));
+
+// Player-language labels for Ceres causal-chain phases and cues (traffic stamps only).
+const CAUSAL_PHASE_LABEL = Object.freeze({
+  mark_run: 'SURVEY RUN',
+  drop_1: 'PLANTING PROBE',
+  drop_2: 'PLANTING PROBE',
+  drop_3_close: 'CLOSING LINE',
+  cutting: 'CUTTING SEAM',
+  strike: 'RICH STRIKE',
+  greed: 'LOADING HOLD',
+  haul_out: 'HAULING OUT',
+  call: 'CALLING HAULER',
+  answer: 'HAULER ANSWERING',
+  transfer: 'ORE TRANSFER',
+  split: 'SPLITTING ROUTE',
+  shadow: 'SHADOWING CONTACT',
+  lock: 'SCAN LOCK',
+  read: 'READING MANIFEST',
+  release: 'RELEASING CONTACT',
+  failure: 'SYSTEM FAILURE',
+  distress: 'DISTRESS',
+  response: 'SERVICE RESPONSE',
+  work: 'SERVICE WORK',
+  resolve: 'RECOVERY BURN',
+  callout: 'SERVICE CALLOUT',
+  hard_stand: 'HARD STAND',
+  first_light: 'FIRST LIGHT',
+  survey_cut: 'SURVEYING WRECK',
+  sever: 'SEVERING HULL',
+  wrangle: 'WRANGLING MASS',
+  stack: 'STACKING SALVAGE',
+  groan: 'SEAM GROANING',
+  calve: 'ROCK CALVING',
+  drift: 'DRIFTING CLEAR',
+  // Vesta Forge "feedstock day" phases.
+  converge: 'CONVERGING',
+  park: 'HELD FOR TRADE',
+  swap: 'TRADING LOADS',
+  join: 'ESCORT JOINING',
+  transit: 'UNDER ESCORT',
+  handoff: 'HANDING OFF',
+  down_tools: 'TOOLS DOWN',
+  huddle: 'ON BREAK',
+  back_to_it: 'BACK ON TOOLS',
+  swoop: 'SWOOPING',
+  strip: 'STRIPPING',
+  scatter: 'SCATTERING',
+});
+const CAUSAL_CUE_LABEL = Object.freeze({
+  reading_the_dark: 'READING THE DARK',
+  blind_cone: 'BLIND CONE',
+  home_under_rock: 'HOME UNDER ROCK',
+  heavy_burn: 'HEAVY BURN',
+  clean_burn: 'CLEAN BURN',
+  mouth_open: 'MOUTH OPEN',
+  on_the_pin: 'ON THE PIN',
+  breaking_the_pattern: 'BREAKING PATTERN',
+  spine_wake: 'SPINE WAKE',
+  hull_open: 'HULL OPEN',
+  picking_the_bones: 'PICKING BONES',
+  spilling_the_count: 'SPILLING COUNT',
+  stacking: 'STACKING',
+});
+
+function entityById(state, id) {
+  if (id == null || !state) return null;
+  if (state.entities && typeof state.entities.get === 'function') return state.entities.get(id) || null;
+  return (state.entityList || []).find((row) => row && row.id === id) || null;
+}
+
+function isLiveVarianceAdjustmentTarget(state, entity, expectedId = entity?.id) {
+  return entity?.id === expectedId
+    && state?.entities && typeof state.entities.get === 'function'
+    && state.entities.get(entity.id) === entity
+    && isVarianceAdjustmentBerthEntity(entity);
+}
+
+function varianceAdjustmentStatusLine(state) {
+  const raw = Number(state?.story?.flags?.[SLATE_COLUMN.spikeFlag]);
+  const spikes = Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0;
+  const count = spikes === 0 ? 'NO WELD-SPIKES LOGGED YET'
+    : `${spikes} WELD-SPIKE${spikes === 1 ? '' : 'S'} LOGGED`;
+  return `${VARIANCE_ADJUSTMENT_BERTH.statusLine} · CURRENT SLATE LEDGER: ${count}.`;
+}
+
+function playerEntity(state) {
+  return entityById(state, state && state.playerId);
+}
+
+function distanceBetween(a, b) {
+  if (!a || !a.pos || !b || !b.pos) return Infinity;
+  return Math.hypot((Number(a.pos.x) || 0) - (Number(b.pos.x) || 0),
+    (Number(a.pos.z) || 0) - (Number(b.pos.z) || 0));
+}
+
+function unresolvedContact(entity) {
+  const data = entity && entity.data || {};
+  return !!(data.isGhost || data.ghost || data.unresolved || data.kind === 'unknown');
+}
+
+function activeTollRecord(state, targetId) {
+  const squads = state && state.pirateParley && state.pirateParley.squads || {};
+  const now = Number(state && state.simTime) || 0;
+  let selected = null;
+  let selectedId = '';
+  for (const squadId in squads) {
+    const rec = squads[squadId];
+    if (!rec || rec.resolved || rec.phase !== 'demand' || !rec.demand) continue;
+    if (!(Number(rec.deadlineAt) > now)) continue;
+    const members = Array.isArray(rec.memberIds) ? rec.memberIds : [];
+    if (rec.hailerId !== targetId && !members.includes(targetId)) continue;
+    if (!selected || String(squadId) < selectedId) {
+      selected = rec;
+      selectedId = String(squadId);
+    }
+  }
+  return selected;
+}
+
+function contactKind(state, entity) {
+  if (isOrchardReceiver(state, entity)) return { kind: 'worker', parley: null };
+  const data = entity && entity.data || {};
+  const ai = data.ai || {};
+  const role = String(data.trafficRole || data.role || entity && entity.role || '').toLowerCase();
+  const parley = activeTollRecord(state, entity && entity.id);
+  if (parley) return { kind: 'toll', parley };
+  const lawfulPatrol = ai.lawful === true
+    && (ai.spawnContext === 'patrol' || role === 'patrol' || role === 'escort');
+  if (lawfulPatrol) return { kind: 'patrol', parley: null };
+  // A returned named ace (or the pilot who took its name) answers the channel: hostile, but a
+  // rival with a record, so the deck opens with the grievance rather than a faction slogan.
+  const aceTag = data.aceMemory;
+  if (aceTag && aceTag.role === 'boss' && aceTag.aceId && entity.team === 1) {
+    return { kind: 'ace', parley: null };
+  }
+  // Living work channel only when a live causal/job stamp is present — otherwise miners stay on
+  // the freighter path so ROUTE/MANIFEST (~CR) still reach ore hulls (U4).
+  const hasLivingStamp = !!((role === 'rescue' && rescueCustodyStatus(state, entity))
+    || data.ceresCausalEventId || data.ceresCausalPhase || data.ceresCausalCue
+    || data.ceresDisabledHauler
+    || data.ceresHandoffStatus || data.jobPhase || (data.jobId && WORK_ROLES.has(role)));
+  if (hasLivingStamp && entity && entity.team === 2
+    && role !== 'pirate' && role !== 'patrol' && role !== 'escort'
+    && (WORK_ROLES.has(role) || TRADER_ROLES.has(role) || ai.passive === true || ai.passive == null)) {
+    return { kind: 'worker', parley: null };
+  }
+  const neutralTrader = entity && entity.team === 2 && ai.passive === true
+    && (TRADER_ROLES.has(role) || ai.archetype === 'fleeing_trader')
+    && role !== 'pirate' && role !== 'patrol' && role !== 'escort';
+  if (neutralTrader) return { kind: 'trader', parley: null };
+  return { kind: null, parley: null };
+}
+
+function contactHeaveToAvailable(state, entity, kind) {
+  const data = entity && entity.data || {};
+  const role = String(data.trafficRole || data.role || entity && entity.role || '').toLowerCase();
+  if (!HEAVE_TO_COMPLIANT_ROLES.has(role)) return false;
+  if (kind === 'patrol') return true;
+  if (data.jobId) return true;
+  const rec = traderRecord(state, entity && entity.id);
+  return !!rec && rec.heaveTo !== false;
+}
+
+function richSeamHelpAvailable(state, entity, kind) {
+  if (!state || kind !== 'worker' || !entity) return false;
+  const data = entity.data || {};
+  const role = String(data.trafficRole || data.role || '').toLowerCase();
+  if (role !== 'ore_carrier' || data.activityActorSlotId !== CERES_SEAM_MINER_SLOT_ID
+    || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID
+    || (state.world && state.world.currentSectorId) !== CERES_ACTIVITY_SECTOR_ID
+    || typeof data.worldRecordId !== 'string' || !data.worldRecordId
+    || data.jobId !== `job:${data.worldRecordId}`) return false;
+  for (const candidate of hailAsteroidsOf(state)) {
+    const opportunity = richSeamOpportunityForEntity(state, candidate);
+    const candidateData = candidate && candidate.data || {};
+    if (candidateData.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
+      || candidateData.sectorId !== CERES_ACTIVITY_SECTOR_ID
+      || candidateData.homeSectorId !== CERES_ACTIVITY_SECTOR_ID
+      || opportunity && opportunity.sectorId !== CERES_ACTIVITY_SECTOR_ID) continue;
+    if (opportunity && opportunity.state === 'open' && !opportunity.reservationId) return true;
+  }
+  return false;
+}
+
+function canonicalDisabledHaulerManifest(manifest) {
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)
+    || typeof manifest.manifestId !== 'string' || !manifest.manifestId
+    || typeof manifest.freighterKey !== 'string' || !manifest.freighterKey
+    || manifest.role !== 'hauler'
+    || typeof manifest.lotId !== 'string' || !manifest.lotId
+    || !Number.isSafeInteger(manifest.totalQty) || manifest.totalQty <= 0
+    || !Array.isArray(manifest.lines) || manifest.lines.length === 0) return null;
+  const lines = [];
+  let totalQty = 0;
+  for (const line of manifest.lines) {
+    if (!line || typeof line.commodityId !== 'string' || !/^[a-z][a-z0-9_.-]*$/.test(line.commodityId)
+      || !Number.isSafeInteger(line.qty) || line.qty <= 0) return null;
+    totalQty += line.qty;
+    if (!Number.isSafeInteger(totalQty)) return null;
+    lines.push({ commodityId: line.commodityId, qty: line.qty });
+  }
+  if (totalQty !== manifest.totalQty) return null;
+  const source = manifest.lotSource;
+  const custody = manifest.custody;
+  if (!source || typeof source !== 'object' || Array.isArray(source)
+    || typeof source.rootLotId !== 'string' || !source.rootLotId
+    || typeof source.handoffId !== 'string' || !source.handoffId
+    || !Number.isSafeInteger(source.transferSeq) || source.transferSeq <= 0
+    || !custody || typeof custody !== 'object' || Array.isArray(custody)
+    || custody.holderKind !== 'traffic'
+    || typeof custody.holderId !== 'string' || !custody.holderId
+    || custody.acquiredBy !== 'traffic:ceresMinerHaulerHandoff'
+    || typeof custody.handoffId !== 'string' || !custody.handoffId
+    || !Number.isSafeInteger(custody.transferSeq) || custody.transferSeq <= 0
+    || typeof custody.rootLotId !== 'string' || !custody.rootLotId) return null;
+  return {
+    manifestId: manifest.manifestId,
+    freighterKey: manifest.freighterKey,
+    role: manifest.role,
+    totalQty: manifest.totalQty,
+    lines,
+    lotId: manifest.lotId,
+    lotSource: {
+      rootLotId: source.rootLotId,
+      handoffId: source.handoffId,
+      transferSeq: source.transferSeq,
+    },
+    custody: {
+      holderKind: custody.holderKind,
+      holderId: custody.holderId,
+      acquiredBy: custody.acquiredBy,
+      handoffId: custody.handoffId,
+      transferSeq: custody.transferSeq,
+      rootLotId: custody.rootLotId,
+    },
+  };
+}
+
+function sameDisabledHaulerManifest(left, right) {
+  const a = canonicalDisabledHaulerManifest(left);
+  const b = canonicalDisabledHaulerManifest(right);
+  return !!a && !!b && JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** One fail-closed identity check shared by traffic actions and every recovery readout. */
+export function ceresDisabledHaulerManifestTruth(state, entity, incident = null, recordManifest = null) {
+  const active = incident || state && state.traffic && state.traffic.ceresDisabledHaulerIncident;
+  const data = entity && entity.data || {};
+  const manifest = data.cargoManifest;
+  const handoff = state && state.traffic && state.traffic.ceresMinerHaulerHandoff;
+  if (!active || active.schema !== CERES_DISABLED_HAULER_INCIDENT_SCHEMA
+    || !entity || entity.alive === false || entity.type !== 'ship'
+    || data.activityActorSlotId !== CERES_REFINERY_HAULER_SLOT_ID
+    || data.worldRecordId !== active.haulerWorldRecordId
+    || data.jobId !== `job:${active.haulerWorldRecordId}`
+    || !handoff || handoff.schema !== CERES_MINER_HAULER_HANDOFF_SCHEMA
+    || handoff.state !== 'in_transit'
+    || handoff.handoffId !== active.handoffId
+    || handoff.haulerWorldRecordId !== active.haulerWorldRecordId
+    || handoff.rootLotId !== active.rootLotId
+    || manifest && manifest.manifestId !== active.manifestId
+    || !sameDisabledHaulerManifest(active.manifest, manifest)
+    || recordManifest != null && !sameDisabledHaulerManifest(recordManifest, manifest)) return null;
+  const canonical = canonicalDisabledHaulerManifest(manifest);
+  const outstandingQty = handoff.transferredQty - handoff.deliveredQty;
+  if (!canonical || canonical.manifestId !== active.manifestId
+    || canonical.freighterKey !== active.haulerWorldRecordId
+    || canonical.totalQty !== outstandingQty
+    || canonical.lotSource.rootLotId !== active.rootLotId
+    || canonical.lotSource.handoffId !== active.handoffId
+    || canonical.lotSource.transferSeq !== handoff.transferSeq
+    || canonical.custody.holderId !== active.haulerWorldRecordId
+    || canonical.custody.handoffId !== active.handoffId
+    || canonical.custody.transferSeq !== handoff.transferSeq
+    || canonical.custody.rootLotId !== active.rootLotId) return null;
+  return { incident: active, handoff, manifest, canonical };
+}
+
+// ── SF-138 — hired tow (read-only view) ─────────────────────────────────────────────────────
+// A working tug/tender/salvor can be leased to drag a loose body to a sink. This module only
+// answers WHICH body a hire would move (the nearest towable in the worker's reach); the actual
+// lease, attachment and billing live in npcJobsRuntime. Same towability gates as the tug's own
+// job: real loose cargo bodies, never authored scenery or pinned mass.
+const TOW_ASSIST_WORKER_KINDS = new Set(['hauler', 'tender', 'salvor']);
+const TOW_ASSIST_REACH = 2600;
+const TOW_ASSIST_PINNED_MASS = 1e6;
+
+function finitePoolQty(pool) {
+  if (!pool || typeof pool !== 'object') return 0;
+  let total = 0;
+  for (const key of Object.keys(pool)) total += Math.max(0, Math.floor(Number(pool[key]) || 0));
+  return total;
+}
+
+function towableAssistBody(entity) {
+  if (!entity || entity.alive === false || (entity.type !== 'payload' && entity.type !== 'wreck')) return false;
+  const data = entity.data || {};
+  if (data.npcTowedByJobId != null) return false;
+  if (data.worldSiteId != null || data.worldObjectId != null) return false;
+  if (Number(entity.mass) >= TOW_ASSIST_PINNED_MASS) return false;
+  const manifestQty = data.cargoManifest && Array.isArray(data.cargoManifest.lines)
+    ? data.cargoManifest.lines.reduce((a, l) => a + Math.max(0, (l && l.qty) | 0), 0) : 0;
+  return finitePoolQty(data.salvagePool) > 0 || (data.towable === true && manifestQty > 0);
+}
+
+/** The live job entry a tow hire would claim, or null when the contact cannot pull a load. */
+export function towAssistWorkerEntry(state, entity) {
+  const data = entity && entity.data || {};
+  const jobId = typeof data.jobId === 'string' ? data.jobId : null;
+  const entry = jobId && state && state.npcJobs && state.npcJobs.byId
+    ? state.npcJobs.byId[jobId] : null;
+  if (!jobId || !entry || !entry.job || !TOW_ASSIST_WORKER_KINDS.has(entry.job.kind)) return null;
+  if (entry.control || entry.towAssist) return null;
+  if (!entity || entity.alive === false || entity.team !== 2 || !entity.pos) return null;
+  return { jobId, entry };
+}
+
+/** Nearest towable body inside the worker's reach — deterministic pick (id tiebreak). */
+export function towAssistBodyFor(state, worker) {
+  if (!towAssistWorkerEntry(state, worker)) return null;
+  const entities = state && state.entities && typeof state.entities.values === 'function'
+    ? state.entities.values() : [];
+  let best = null;
+  let bestD2 = Infinity;
+  let bestId = '';
+  for (const candidate of entities) {
+    if (!candidate || candidate === worker || !candidate.pos || !towableAssistBody(candidate)) continue;
+    const dx = candidate.pos.x - worker.pos.x;
+    const dz = candidate.pos.z - worker.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > TOW_ASSIST_REACH * TOW_ASSIST_REACH) continue;
+    const id = String(candidate.id);
+    if (d2 < bestD2 || (d2 === bestD2 && id < bestId)) {
+      best = candidate;
+      bestD2 = d2;
+      bestId = id;
+    }
+  }
+  return best;
+}
+
+export function ceresDisabledHaulerTruth(state, entity) {
+  const incident = state && state.traffic && state.traffic.ceresDisabledHaulerIncident;
+  const data = entity && entity.data || {};
+  const annotation = data.ceresDisabledHauler;
+  if (!incident || incident.schema !== CERES_DISABLED_HAULER_INCIDENT_SCHEMA
+    || !CERES_DISABLED_HAULER_ACTIVE_STATES.has(incident.state)
+    || !state.world || state.world.currentSectorId !== CERES_ACTIVITY_SECTOR_ID
+    || !entity || entity.alive === false || entity.type !== 'ship' || entity.team !== 2
+    || data.activityActorSlotId !== CERES_REFINERY_HAULER_SLOT_ID
+    || data.worldRecordId !== incident.haulerWorldRecordId
+    || data.jobId !== `job:${incident.haulerWorldRecordId}`
+    || !annotation || annotation.incidentId !== incident.incidentId
+    || annotation.manifestId !== incident.manifestId
+    || !ceresDisabledHaulerManifestTruth(state, entity, incident)
+    || !combatDriveDisabled(state, entity)) return null;
+  return Object.freeze({
+    incidentId: incident.incidentId,
+    state: incident.state,
+    choice: incident.choice || null,
+    manifestId: incident.manifestId,
+    responseAtSimT: incident.responseAtSimT,
+  });
+}
+
+// The plain role labels traffic.js stamps at spawn — the only traffic labels that read as
+// anonymous. A hull wearing one (or none) mints its registry name; a hull wearing an authored
+// line (a route hook, a scanLabel, a writer's callsign) keeps exactly what was written.
+// Keys stay in sync with TRAFFIC_ROLES (trafficPresentationReads.js), which is read directly.
+export const GENERIC_ROLE_LABELS = new Set(
+  Object.values(TRAFFIC_ROLES).map((role) => role && role.label).filter(Boolean),
+);
+
+function saveSeedOf(state) {
+  return state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
+}
+
+function callsign(entity, seed = 0) {
+  const data = entity && entity.data || {};
+  const aceBoss = data.aceMemory && data.aceMemory.role === 'boss' ? data.aceMemory.aceName : null;
+  const authored = data.callsign || data.scanLabel || data.name || aceBoss;
+  if (authored) {
+    return String(authored).replace(/\s+/g, ' ').trim().toUpperCase();
+  }
+  // Contacts stop being anonymous: an unnamed hull answers with the name painted on it and
+  // the captain who signs the manifest (src/data/shipRegistry.js, deterministic per hull).
+  const registry = hailRegistrySlot(entity, seed, GENERIC_ROLE_LABELS);
+  if (registry) return String(registry).replace(/\s+/g, ' ').trim().toUpperCase();
+  return String(data.trafficLabel || 'UNIDENTIFIED VESSEL')
+    .replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+// The title system stamps data.titleName onto every holder — NPC hulls included — but nothing
+// spoke it. The hail headline and the IDENTIFY answer carry it in the name slot so a hull the
+// sector titled answers with the name it earned; Thunderchild's stamp adds its witness marks.
+// Pure read of the stamp the writer already owns — no gameplay state changes.
+function titleSegment(entity) {
+  const data = entity && entity.data || {};
+  const name = typeof data.titleName === 'string' ? data.titleName.replace(/\s+/g, ' ').trim() : '';
+  if (!name) return '';
+  const marks = Number.isSafeInteger(data.titleKillMarks) && data.titleKillMarks > 0
+    ? ` · ${data.titleKillMarks} MARKS`
+    : '';
+  return ` · ${name.toUpperCase()}${marks}`;
+}
+
+// ── NXB-042 rescued-worker memory ─────────────────────────────────────────────────────────────
+// A worker who was pulled out of a survivor pod and returned to their real job remembers the
+// player — once, in their own voice. This read is pure: the durable person record lives in the
+// uniqueWrecks owner bag (rescuedWorkerReturn.js) and the live hull carries the person stamp.
+// The line is earned only when the record proves the SAME person (personKey + worldRecordId)
+// actually returned to work and the one-time acknowledgment has not already played. A lost,
+// ransomed, abandoned, or stale-stamped hull never gets the line (NXI-168).
+const RESCUED_WORKER_VOICE = Object.freeze({
+  miner: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE SEAM — WHAT DO YOU NEED?',
+  hauler: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE LANE — WHAT DO YOU NEED?',
+  ore_carrier: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE ORE RUN — WHAT DO YOU NEED?',
+  salvor: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE WRECKS — WHAT DO YOU NEED?',
+  tender: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON TENDER DUTY — WHAT DO YOU NEED?',
+  courier: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE MAIL RUN — WHAT DO YOU NEED?',
+  patrol: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON WATCH — WHAT DO YOU NEED?',
+  surveyor: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE SURVEY — WHAT DO YOU NEED?',
+});
+const RESCUED_WORKER_VOICE_DEFAULT = 'YOU PULLED MY POD OUT OF THE DARK. BACK AT WORK — WHAT DO YOU NEED?';
+
+export function rescuedWorkerMemoryFor(state, entity) {
+  const data = entity && entity.data || {};
+  const personKey = typeof data.rescuedWorkerPerson === 'string' && data.rescuedWorkerPerson
+    ? data.rescuedWorkerPerson : null;
+  if (!personKey) return null;
+  const record = state && state.player && state.player.uniqueWrecks
+    && state.player.uniqueWrecks.rescuedWorkers
+    && state.player.uniqueWrecks.rescuedWorkers.people
+    && state.player.uniqueWrecks.rescuedWorkers.people[personKey];
+  if (!record || record.personKey !== personKey) return null;
+  if (record.outcome !== 'returned') return null; // dead, ransomed or adrift people never answer
+  if (typeof data.worldRecordId !== 'string' || !data.worldRecordId
+    || record.worldRecordId !== data.worldRecordId) return null; // same durable hull only
+  if (record.hailAcknowledgedAtS != null) return null; // the memory is named exactly once
+  return record;
+}
+
+function rescuedWorkerVoiceLine(record) {
+  return RESCUED_WORKER_VOICE[record && record.role] || RESCUED_WORKER_VOICE_DEFAULT;
+}
+
+function priorityCourierItinerary(state, entity) {
+  const itinerary = entity && entity.data && entity.data.itinerary;
+  if (!isPriorityCourierItinerary(itinerary)) return null;
+  if ((state && state.world && state.world.currentSectorId) !== itinerary.sectorId) return null;
+  return itinerary;
+}
+
+function priorityCourierState(state, entity, itinerary = priorityCourierItinerary(state, entity)) {
+  if (!itinerary) return null;
+  const stamped = String(entity && entity.data && entity.data.priorityCourierState || '').toUpperCase();
+  if (stamped === 'COUNT_HOLD' && isTallyCourier(entity)) return stamped;
+  if (stamped === 'BERTH' || stamped === 'ON_TIME' || stamped === 'LATE' || stamped === 'INTERRUPTED') {
+    return stamped;
+  }
+  const escort = itinerary.escort && typeof itinerary.escort === 'object' ? itinerary.escort : null;
+  const creditS = escort && Number.isFinite(escort.creditS) ? Math.max(0, escort.creditS) : 0;
+  const now = Number(state && state.simTime) || 0;
+  if (now > itinerary.dueAt + creditS) return 'LATE';
+  return now < itinerary.departureAt ? 'BERTH' : 'ON_TIME';
+}
+
+function priorityCourierEscortAvailable(state, entity, itinerary = priorityCourierItinerary(state, entity)) {
+  if (!itinerary) return false;
+  const escort = itinerary.escort && typeof itinerary.escort === 'object' ? itinerary.escort : {};
+  if (escort.usedLegSeq === itinerary.legSeq || escort.active === true) return false;
+  const status = priorityCourierState(state, entity, itinerary);
+  return status === 'LATE' || status === 'INTERRUPTED';
+}
+
+// Traffic remains the authority that starts and completes assistance. This mirrors its compact
+// identity checks so Hail never advertises a stale rematerialized hull as the civic liner.
+function passengerLinerItinerary(state, entity) {
+  const data = entity && entity.data || {};
+  const itinerary = data.itinerary;
+  if (!isPassengerLinerItinerary(itinerary)
+    || data.trafficRole !== 'express'
+    || data.passengerLinerService !== PASSENGER_LINER_SERVICE.id
+    || typeof data.worldRecordId !== 'string' || !data.worldRecordId
+    || itinerary.worldRecordId !== data.worldRecordId
+    || state && state.world && state.world.currentSectorId !== PASSENGER_LINER_SERVICE.sectorId) return null;
+  const record = state ? traderRecord(state, entity.id) : null;
+  if (state && (!record || record.role !== 'express' || record.passengerLinerService !== PASSENGER_LINER_SERVICE.id)) {
+    return null;
+  }
+  const custody = itinerary.custody || {};
+  const root = `${data.worldRecordId}:${itinerary.legSeq}`;
+  if (custody.passengerId !== `passenger:${root}` || custody.ticketId !== `ticket:${root}`
+    || custody.receiptId !== `passenger-liner-receipt:${root}`
+    || custody.originStationId !== itinerary.originStationId
+    || custody.destinationStationId !== itinerary.destinationStationId) return null;
+  const atOrigin = itinerary.state === 'BOARDING' || itinerary.state === 'DELAYED';
+  const aboard = itinerary.state === 'EN_ROUTE' || itinerary.state === 'DIVERTING';
+  if ((atOrigin && custody.state !== 'AT_ORIGIN') || (aboard && custody.state !== 'ONBOARD')) return null;
+  return atOrigin || aboard ? itinerary : null;
+}
+
+function passengerLinerAssistAvailable(state, entity, itinerary = passengerLinerItinerary(state, entity)) {
+  if (!itinerary || itinerary.state !== 'BOARDING' || itinerary.custody.state !== 'AT_ORIGIN') return false;
+  const assist = itinerary.assist && typeof itinerary.assist === 'object' ? itinerary.assist : {};
+  return assist.active !== true && assist.usedLegSeq !== itinerary.legSeq;
+}
+
+function passengerLinerStatusText(state, entity, itinerary = passengerLinerItinerary(state, entity)) {
+  if (!itinerary) return null;
+  const stateLabel = String(itinerary.state || 'SERVICE').replace(/_/g, ' ');
+  return `STATUS · HELIOS CIVIC LINER · ${stateLabel}`;
+}
+
+function playerHasFittedCargoScanner(state) {
+  const player = state && state.player;
+  if (!player || !Array.isArray(player.ownedShips)) return false;
+  const activeShipIndex = Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0;
+  const owned = player.ownedShips[activeShipIndex];
+  const shipDef = owned && SHIP_BY_ID.get(owned.defId);
+  if (!shipDef || !Array.isArray(owned.fittings)) return false;
+  const slots = buildSlotList(shipDef);
+  return slots.some((slot, index) => {
+    const moduleDef = MODULE_BY_ID.get(owned.fittings[index]);
+    return moduleDef && moduleDef.mods && moduleDef.mods.revealCargo === true && fits(slot, moduleDef);
+  });
+}
+
+export function contactHailAvailability(state) {
+  const targetId = state && state.player && state.player.targetId;
+  const target = entityById(state, targetId);
+  const player = playerEntity(state);
+  const unavailable = (reason) => ({ enabled: false, reason, targetId: targetId ?? null, kind: null, label: 'HAIL' });
+  if (!state || state.mode !== 'flight' || state.ui && state.ui.docked) return unavailable('not_in_flight');
+  // The wash eats the channel before a contact can answer. Other hazard discs do not.
+  if (state.world && state.world.hazardPresence && state.world.hazardPresence.nebula === true) {
+    return unavailable('nebula_wash');
+  }
+  if (!target) return unavailable('unresolved_target');
+  if (target.alive === false) return unavailable('dead_target');
+  if (target.data?.redKiteActorId === RED_KITE.actorId || target.data?.redKiteMark === 'poi_red_kite_start') {
+    if (!player?.alive) return unavailable('no_player');
+    if (state.world?.currentSectorId !== RED_KITE.sectorId || distanceBetween(player, target) > RED_KITE.hailRange) return unavailable('out_of_reveal_range');
+    return { enabled: true, reason: null, targetId: target.id, kind: 'red_kite',
+      label: 'HAIL RED KITE', distance: distanceBetween(player, target), entity: target };
+  }
+  if (target.data?.persistenceOwner === PALLET_JACK.owner
+    && (target.data?.palletJackActorId === PALLET_JACK.actorId || target.data?.palletJackCargoId)) {
+    if (!player?.alive) return unavailable('no_player');
+    if (distanceBetween(player, target) > PALLET_JACK.hailRange) return unavailable('out_of_reveal_range');
+    return { enabled: true, reason: null, targetId: target.id, kind: 'pallet_jack',
+      label: 'HAIL PALLET JACK', distance: distanceBetween(player, target), entity: target };
+  }
+  const tally=tallyThreeHail(state,target,player);
+  if(tally)return tally;
+  if (target.type !== 'ship' && target.type !== 'drone') return unavailable('unsupported_target');
+  if (unresolvedContact(target)) return unavailable('unresolved_target');
+  if (!player || player.alive === false) return unavailable('no_player');
+  const distance = distanceBetween(player, target);
+  if (distance > CONTACT_HAIL_RANGE) return unavailable('out_of_reveal_range');
+  if (state.world?.currentSectorId === VARIANCE_ADJUSTMENT_BERTH.sectorId
+    && isLiveVarianceAdjustmentTarget(state, target, targetId)) {
+    return {
+      enabled: true,
+      reason: null,
+      targetId: target.id,
+      kind: 'variance_adjustment',
+      label: `HAIL ${VARIANCE_ADJUSTMENT_BERTH.callsign}`,
+      distance,
+      entity: target,
+      worldRecordId: VARIANCE_ADJUSTMENT_BERTH.worldRecordId,
+      identityKey: VARIANCE_ADJUSTMENT_BERTH.identityKey,
+    };
+  }
+  const classification = contactKind(state, target);
+  if (!classification.kind) return unavailable('unsupported_contact');
+  return {
+    enabled: true,
+    reason: null,
+    targetId: target.id,
+    kind: classification.kind,
+    label: `HAIL ${callsign(target, saveSeedOf(state))}`,
+    distance,
+    entity: target,
+    parley: classification.parley,
+    heaveToAvailable: contactHeaveToAvailable(state, target, classification.kind),
+    richSeamHelpAvailable: richSeamHelpAvailable(state, target, classification.kind),
+    priorityCourierItinerary: priorityCourierItinerary(state, target),
+    priorityCourierEscortAvailable: priorityCourierEscortAvailable(state, target),
+    passengerLinerItinerary: passengerLinerItinerary(state, target),
+    passengerLinerAssistAvailable: passengerLinerAssistAvailable(state, target),
+    manifestAvailable: classification.kind === 'trader'
+      && playerHasFittedCargoScanner(state)
+      && !!traderManifestForTarget(state, target),
+    disabledHauler: ceresDisabledHaulerTruth(state, target),
+    rescuedWorkerMemory: rescuedWorkerMemoryFor(state, target),
+    towAssistBodyId: classification.kind === 'worker'
+      ? (towAssistBodyFor(state, target) || {}).id ?? null
+      : null,
+  };
+}
+
+// ── Faction × stance hail voice ───────────────────────────────────────────────────────────────
+//
+// Every hail offer's second line is the contact's own voice answering the channel. The line is
+// keyed by the target's faction and its stance toward the player (rep band, same thresholds as
+// the band-radio repBand), so a Meridian hostile hail reads nothing like a Quiet allied one.
+// Pure data + deterministic pick: the index is hashed from save seed + target id, so a given
+// ship greets the same way inside one save. One sentence, one consequence.
+
+export const CONTACT_HAIL_STANCES = Object.freeze(['hostile', 'neutral', 'allied']);
+
+export const CONTACT_HAIL_LINES = Object.freeze({
+  faction_scn: Object.freeze({
+    hostile: Object.freeze([
+      'CONCORD CHANNEL. YOUR TRANSPONDER IS FLAGGED — KEEP THIS SHORT.',
+      'CONCORD CHANNEL. STATE YOUR BUSINESS AND DO NOT MANEUVER.',
+      'CONCORD CHANNEL. YOU ARE ON A LIST — TALK.',
+    ]),
+    neutral: Object.freeze([
+      'CONCORD CHANNEL. STATE YOUR BUSINESS PLAINLY.',
+      'CONCORD CHANNEL. THIS CALL IS LOGGED FOR THE RECORD.',
+      'CONCORD CHANNEL. IDENTIFY YOURSELF FOR THE FILE.',
+    ]),
+    allied: Object.freeze([
+      'CONCORD CHANNEL. GOOD STANDING NOTED — WHAT DO YOU NEED?',
+      'CONCORD CHANNEL. YOUR RECORD CLEARS YOU TO SPEAK.',
+      'CONCORD CHANNEL. REGISTERED ALLY — GO AHEAD.',
+    ]),
+  }),
+  faction_mts: Object.freeze({
+    hostile: Object.freeze([
+      'SYNDICATE LINE. THIS CALL IS COSTING YOU ALREADY.',
+      'MERIDIAN LINE. SPEAK — THE METER IS RUNNING.',
+      'SYNDICATE LINE. YOU ARE NOT A CUSTOMER — YET.',
+    ]),
+    neutral: Object.freeze([
+      'MERIDIAN LINE. EVERYTHING IS NEGOTIABLE ON THIS CHANNEL.',
+      'SYNDICATE LINE. TALK — THE RATE IS FAIR TODAY.',
+      'MERIDIAN LINE. STATE YOUR OFFER.',
+    ]),
+    allied: Object.freeze([
+      'MERIDIAN LINE. PREFERRED CLIENT — GO AHEAD.',
+      'SYNDICATE LINE. FRIENDS GET THE GOOD RATE — SPEAK.',
+      'MERIDIAN LINE. YOUR ACCOUNT IS HEALTHY — TALK.',
+    ]),
+  }),
+  faction_dmc: Object.freeze({
+    hostile: Object.freeze([
+      'DRIFT LINE. YOU ARE THE LAST SIGNAL WE WANTED TODAY.',
+      'COLLECTIVE LINE. MAKE IT QUICK — WE ARE ARMED AND TIRED.',
+      'DRIFT LINE. YOU HAVE THIRTY SECONDS OF OUR PATIENCE.',
+      'DRIFT LINE. THE REFINERY ALREADY LOGGED YOUR TRAIL — TALK.',
+    ]),
+    neutral: Object.freeze([
+      'DRIFT LINE. LONG SHIFT — KEEP IT SHORT.',
+      'COLLECTIVE LINE. YOU LOST OR YOU WORKING?',
+      'DRIFT LINE. SPEAK PLAIN AND WE WILL GET ALONG.',
+      'EXPANSE REFINERY — ORE PRICES ARE DOWN, PATIENCE TOO.',
+    ]),
+    allied: Object.freeze([
+      'DRIFT LINE. FRIEND OF THE BELT — WHAT DO YOU NEED?',
+      'COLLECTIVE LINE. THE CREW REMEMBERS YOU — TALK.',
+      'DRIFT LINE. GOOD TO HEAR A FRIENDLY BEACON.',
+      'DRIFT LINE. THE CREW PUT YOUR NAME ON THE GOOD BOARD — SPEAK.',
+    ]),
+  }),
+  faction_reach: Object.freeze({
+    hostile: Object.freeze([
+      'REACH LINE. THIS CALL BETTER BE ABOUT SURRENDER.',
+      'REACH LINE. TALK FAST — WE WEIGH WHILE YOU TALK.',
+      'REACH LINE. YOUR HULL JUST GOT HEAVIER.',
+      'REACH LINE. THE HAVEN DOES NOT OWE YOU A SECOND WARNING.',
+    ]),
+    neutral: Object.freeze([
+      'REACH LINE. STATE YOUR MASS AND YOUR BUSINESS.',
+      'REACH LINE. TALK — WE ARE COUNTING.',
+      'REACH LINE. EVERY WORD COSTS SOMETHING.',
+      'SKER LINE. YOU ARE VOUCHED FOR OR YOU ARE WEIGHED.',
+    ]),
+    allied: Object.freeze([
+      'REACH LINE. FRIENDS TALK FREE — WHAT IS IT?',
+      'REACH LINE. THE PACK REMEMBERS YOU — SPEAK.',
+      'REACH LINE. YOU ARE ON THE GOOD SIDE OF THE SCALES.',
+      'HAVEN LINE. THE BAZAAR KNOWS YOUR NAME — SPEND IT.',
+    ]),
+  }),
+  faction_quiet: Object.freeze({
+    hostile: Object.freeze([
+      'SPEAK ONCE.',
+      'QUIET LINE. LAST WORDS?',
+      'SAY IT. SLOWLY.',
+      'CONTRACT POST. YOUR FILE ARRIVED BEFORE YOU DID.',
+    ]),
+    neutral: Object.freeze([
+      'QUIET CHANNEL. SAY IT.',
+      'SPEAK. BRIEFLY.',
+      'YOU CALLED. ANSWER.',
+      'QUIET CHANNEL. THE OUTPOST READ YOUR STANDING FIRST.',
+    ]),
+    allied: Object.freeze([
+      'KNOWN. SPEAK.',
+      'QUIET LINE. WE OWE YOU WORDS.',
+      'SPEAK. WE KEPT YOUR NAME.',
+      'OUTPOST LINE — YOUR NAME SURVIVED THE VETTING, SPEAK.',
+    ]),
+  }),
+  faction_choir: Object.freeze({
+    hostile: Object.freeze([
+      'THE CHORUS LISTENS. YOUR DISSONANCE IS NOTED.',
+      'SPEAK, AND BE MEASURED.',
+      'THE PATTERN HEARS YOU. CHOOSE THE NOTE.',
+    ]),
+    neutral: Object.freeze([
+      'CHOIR CHANNEL. YOUR WORDS JOIN THE PATTERN.',
+      'SPEAK. THE VERSE MAKES ROOM.',
+      'WE LISTEN. THE PATTERN WEIGHS ALL SOUND.',
+    ]),
+    allied: Object.freeze([
+      'CHOIR CHANNEL. A FRIENDLY VOICE ENTERS THE CHORUS.',
+      'SPEAK, MARKED ONE. THE PATTERN REMEMBERS.',
+      'THE CHORUS OPENS FOR YOU.',
+    ]),
+  }),
+  faction_free: Object.freeze({
+    hostile: Object.freeze([
+      'FRONTIER LINE. YOU HAVE NERVE CALLING AFTER LAST TIME.',
+      'FRONTIER LINE. TALK — OUR FINGER IS NOT FAR FROM THE TRIGGER.',
+      'FRONTIER LINE. MAKE IT GOOD.',
+      'FRONTIER LINE. THE BOARD SAYS YOU COST US LAST WEEK.',
+    ]),
+    neutral: Object.freeze([
+      'FRONTIER LINE. WHAT IS ON YOUR MIND?',
+      'FRONTIER LINE. TALK FREE — IT IS THE LAST CHEAP THING OUT HERE.',
+      'FRONTIER LINE. GO AHEAD, NEIGHBOR.',
+      'REACH LINE. DOCKS FLIP, PRICES DON\u2019T.',
+    ]),
+    allied: Object.freeze([
+      'FRONTIER LINE. GOOD TO HEAR A FRIENDLY VOICE.',
+      'FRONTIER LINE. FRIENDS ALWAYS GET THROUGH — WHAT IS IT?',
+      'FRONTIER LINE. WE OWE YOU A GOOD ANSWER.',
+      'FRONTIER LINE. THE REACH KEEPS ITS FRIENDS — GO AHEAD.',
+      'VEIL LINE. THE STATION SELLS READINGS, NOT ANSWERS — SPEAK.',
+    ]),
+  }),
+  faction_vael: Object.freeze({
+    hostile: Object.freeze([
+      'THIS-VESSEL ANSWERS UNDER PROTEST. STATE YOUR TERM.',
+      'CHANNEL OPEN UNDER DURESS-CLAUSE. SPEAK.',
+      'YOUR CALL IS A BREACH WE PERMIT ONCE.',
+      'CHANNEL OPEN UNDER PENALTY-CLAUSE. EACH WORD IS A FILING.',
+    ]),
+    neutral: Object.freeze([
+      'VAEL CHANNEL. YOUR TRANSMISSION IS BEING ASSESSED.',
+      'CHANNEL OPEN UNDER PROVISIONAL TERMS. STATE YOUR STANDING.',
+      'VAEL CONSENSUS RECEIVES. SPEAK WITHIN THE TERMS.',
+      'VAEL CHANNEL. THE OBELISK PULSE MARKED YOUR ARRIVAL FIRST.',
+    ]),
+    allied: Object.freeze([
+      'VAEL CHANNEL. A PARTY OF RECORD MAY SPEAK FREELY.',
+      'CHANNEL OPEN. YOUR STANDING ADMITS YOU.',
+      'VAEL CONSENSUS WELCOMES A TERM-HOLDER. PROCEED.',
+    ]),
+  }),
+  faction_archive: Object.freeze({
+    hostile: Object.freeze([
+      'ARCHIVE CHANNEL. YOUR FILE IS OPEN AND UNFLATTERING — SPEAK.',
+      'READING ROOM LINE. YOUR ENTRY READS POORLY TODAY.',
+      'ARCHIVE CHANNEL. ONE MORE TRANSGRESSION AND YOUR PAGE CLOSES.',
+    ]),
+    neutral: Object.freeze([
+      'ARCHIVE CHANNEL. YOUR QUESTION JOINS THE CATALOGUE.',
+      'READING ROOM LINE. SPEAK — IT WILL BE FILED.',
+      'ARCHIVE CHANNEL. THE INDEX ALREADY KNOWS YOUR NAME.',
+    ]),
+    allied: Object.freeze([
+      'ARCHIVE CHANNEL. A READER OF STANDING MAY ASK.',
+      'READING ROOM LINE. YOUR ENTRY IS THICK — SPEAK FREELY.',
+      'ARCHIVE CHANNEL. THE STACKS REMEMBER YOU KINDLY.',
+    ]),
+  }),
+  faction_fulfillment: Object.freeze({
+    hostile: Object.freeze([
+      'FULFILLMENT CHANNEL. YOUR TRANSIT PRIVILEGES ARE UNDER REVIEW.',
+      'FULFILLMENT LINE. STATE YOUR BUSINESS — A CORRECTION IS SCHEDULED.',
+      'FULFILLMENT CHANNEL. NON-COMPLIANCE ON RECORD — SPEAK BRIEFLY.',
+    ]),
+    neutral: Object.freeze([
+      'FULFILLMENT CHANNEL. STATE YOUR REQUIREMENT.',
+      'FULFILLMENT LINE. YOUR INQUIRY IS NOW SEQUENCED.',
+      'FULFILLMENT CHANNEL. PROCEED — THE WINDOW IS OPEN.',
+    ]),
+    allied: Object.freeze([
+      'FULFILLMENT CHANNEL. PRIORITY ROUTING NOTED — PROCEED.',
+      'FULFILLMENT LINE. A RELIABLE TRANSIT PARTNER MAY SPEAK.',
+      'FULFILLMENT CHANNEL. YOUR RECORD EXPEDITES THIS CALL.',
+    ]),
+  }),
+  faction_pitborn: Object.freeze({
+    hostile: Object.freeze([
+      'YARD LINE. THIS BETTER BE ABOUT YOUR SURRENDER, KIN.',
+      'PITBORN LINE. TALK FAST — THE FENCE IS LISTENING.',
+      'YARD LINE. YOUR HULL JUST GOT EXPENSIVE.',
+      'YARD LINE. THE BLADE ASKS YOUR NAME ONCE, KIN.',
+    ]),
+    neutral: Object.freeze([
+      'YARD LINE. STATE YOUR BUSINESS AND YOUR SCRAP.',
+      'PITBORN LINE. TALK — THE YARD IS WEIGHING.',
+      'YARD LINE. EVERY WORD COSTS SOMETHING, KIN.',
+    ]),
+    allied: Object.freeze([
+      'YARD LINE. KIN ON THE CHANNEL — WHAT IS IT?',
+      'PITBORN LINE. THE FENCE REMEMBERS YOU — SPEAK.',
+      'YARD LINE. YOU ARE WORTH MORE THAN YOUR HULL TODAY.',
+    ]),
+  }),
+  faction_understory: Object.freeze({
+    hostile: Object.freeze([
+      'THE GARDEN HEARS YOU. IT DOES NOT FORGIVE BRUISES.',
+      'WRECK-LIGHT LINE. YOUR WAKE TASTES OF TROUBLE.',
+      'THE BLOOM TURNS TOWARD YOU. SPEAK SOFTLY.',
+    ]),
+    neutral: Object.freeze([
+      'THE GARDEN RECEIVES. WHAT WILL YOU LEAVE?',
+      'WRECK-LIGHT LINE. SPEAK — THE ROOTS ARE PATIENT.',
+      'THE BLOOM LISTENS. THE TIRED ARE WELCOME HERE.',
+    ]),
+    allied: Object.freeze([
+      'WRECK-LIGHT LINE. A FRIEND OF THE GARDEN RETURNS.',
+      'THE GARDEN REMEMBERS YOU. REST AND SPEAK.',
+      'THE BLOOM OPENS FOR YOU, TRAVELER.',
+    ]),
+  }),
+  faction_verge_layers: Object.freeze({
+    hostile: Object.freeze([
+      'VERGE CHANNEL. YOUR CROSSING IS UNDER AUDIT — SPEAK.',
+      'THE LATTICE REGISTERS DEFIANCE. STATE YOUR INTENT.',
+      'GATE-PRISM LINE. THIS TRANSIT MAY BE YOUR LAST ENTRY.',
+    ]),
+    neutral: Object.freeze([
+      'VERGE CHANNEL. YOUR TRANSIT IS LOGGED — PROCEED.',
+      'THE LATTICE ADMITS YOUR QUERY. SPEAK.',
+      'GATE-PRISM LINE. THE AUDIT NEVER FULLY CLOSES.',
+    ]),
+    allied: Object.freeze([
+      'VERGE CHANNEL. A TRUE CROSSING IS WELCOME HERE.',
+      'THE LATTICE RECALLS YOUR SIGNATURE KINDLY.',
+      'GATE-PRISM LINE. YOUR RECORD PRECEDES YOU — SPEAK.',
+    ]),
+  }),
+  faction_helix: Object.freeze({
+    hostile: Object.freeze([
+      'HELIX CHANNEL — LAWFUL INTERDICTION. READ THE INVOICE FIRST.',
+      'DIRECTORATE LINE — UNDER ORDERS. DO NOT MANEUVER.',
+      'HELIX CHANNEL. YOUR ACCOUNT IS OPEN — SPEAK TO THE INVOICE.',
+    ]),
+    neutral: Object.freeze([
+      'HELIX CHANNEL — LAWFUL INTERDICTION. STATE YOUR BUSINESS.',
+      'DIRECTORATE LINE — UNDER ORDERS. THIS CALL IS ON THE INVOICE.',
+      'HELIX CHANNEL. READ THE INVOICE FIRST, THEN SPEAK.',
+    ]),
+    allied: Object.freeze([
+      'HELIX CHANNEL. YOUR STANDING IS ON THE INVOICE — GO AHEAD.',
+      'DIRECTORATE LINE. UNDER ORDERS, AND THOSE ORDERS FAVOR YOU.',
+      'HELIX CHANNEL — LAWFUL INTERDICTION WAIVED. READ THE INVOICE.',
+    ]),
+  }),
+});
+
+function hailFactionId(entity) {
+  const data = entity && entity.data || {};
+  const id = entity && entity.factionId || data.factionId;
+  return (typeof id === 'string' && CONTACT_HAIL_LINES[id]) ? id : 'faction_free';
+}
+
+/** Stance of the hailed entity toward the player: rep band (−250/+250) or live hostility. */
+export function contactHailStanceFor(state, entity) {
+  const factionId = hailFactionId(entity);
+  const ai = entity && entity.data && entity.data.ai || {};
+  if (ai.securityTargetId != null && ai.securityTargetId === (state && state.playerId)) return 'hostile';
+  const row = state && state.factions && state.factions[factionId];
+  const rep = Number(row && row.rep) || 0;
+  if (rep <= -250) return 'hostile';
+  if (rep >= 250) return 'allied';
+  return 'neutral';
+}
+
+/** Deterministic faction×stance hail line. rng: seeded fn or numeric index; falls back safely. */
+export function contactHailLineFor(factionId, stance, rng) {
+  const cell = (factionId && CONTACT_HAIL_LINES[factionId]) || CONTACT_HAIL_LINES.faction_free;
+  const lines = cell[stance] && cell[stance].length ? cell[stance] : cell.neutral;
+  let idx = 0;
+  if (typeof rng === 'number' && Number.isFinite(rng)) {
+    idx = ((Math.floor(rng) % lines.length) + lines.length) % lines.length;
+  } else if (typeof rng === 'function') {
+    const v = rng();
+    const f = (typeof v === 'number' && Number.isFinite(v)) ? v : 0;
+    idx = Math.floor((f < 0 ? 0 : (f >= 1 ? 0.9999999 : f)) * lines.length);
+  }
+  const line = lines[idx];
+  return (typeof line === 'string' && line.length) ? line : 'CHANNEL OPEN.';
+}
+
+/** The hailed ship's own voice answering the channel, stable per target inside one save. */
+function hailVoiceLine(state, entity) {
+  const factionId = hailFactionId(entity);
+  const stance = contactHailStanceFor(state, entity);
+  const seed = state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 1;
+  const idx = hash32(seed, 'contact-hail-voice', factionId, stance, String(entity && entity.id));
+  return contactHailLineFor(factionId, stance, idx);
+}
+
+/** The rival a returned ace's hull flies for: the record's own name and crew, ace or heir. */
+function aceHailRecord(state, entity) {
+  const tag = entity && entity.data && entity.data.aceMemory;
+  const rec = tag && tag.aceId && state && state.aceMemory && state.aceMemory[tag.aceId];
+  if (!tag || !rec || typeof rec !== 'object') return null;
+  // The record already carries the ace's own name and crew (normalizeRecord stamps them from
+  // the roster), so no roster lookup is needed — and promoted pilots and heirs read the same way.
+  return { ace: { id: tag.aceId, name: rec.name || tag.aceName, crew: rec.crew }, rec };
+}
+
+/** While the grudge is live, the first thing the contact says is the grievance — the same line
+ *  and the same variant the ace spoke when it came back. Otherwise the faction's own voice. */
+function aceHailOpener(state, entity, voice) {
+  const found = aceHailRecord(state, entity);
+  if (!found || !grievanceLive(found.rec)) return voice;
+  const saveSeed = state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
+  const line = grievanceLineFor(
+    found.ace,
+    found.rec,
+    grievanceSeedFor(saveSeed, found.ace, found.rec),
+    sectorDisplayName(found.rec.lastSectorId, state),
+    { bare: true },
+  );
+  return line ? line.toUpperCase() : voice;
+}
+
+function aceHailStatusText(state, entity) {
+  const found = aceHailRecord(state, entity);
+  const status = found && fightStatusText(found.rec, sectorDisplayName(found.rec.lastSectorId, state));
+  return status ? `STATUS · ${status}` : 'STATUS · WEAPONS HOT. NO PARLEY.';
+}
+
+function aceHailIdentifyText(state, entity) {
+  const found = aceHailRecord(state, entity);
+  const crew = String(found && found.ace.crew || 'KNOWN HUNTER').toUpperCase();
+  const tier = found && found.rec.returnTier | 0;
+  return `${callsign(entity, saveSeedOf(state))}${titleSegment(entity)} · ${crew}${tier > 0 ? ` · RETURN TIER ${tier}` : ''}`;
+}
+
+// THE WORLD REMEMBERS (U-E): a lawful patrol hailing a pilot this loud in this sector opens with
+// the loudest local grievance instead of the faction slogan. Pure read — the deed is marked told by
+// the prompt that actually shows the offer (probes build offers too and must not tell anything).
+const HAIL_GRIEVANCE_NOTORIETY = 3;
+const HAIL_GRIEVANCE_MIN_WEIGHT = 2;
+const LAW_GRIEVANCE_KINDS = Object.freeze(Object.keys(DEED_KINDS).filter((k) => DEED_KINDS[k].law < 0));
+
+function patrolGrievanceHail(state, entity) {
+  const sectorId = state && state.world && state.world.currentSectorId;
+  if (!sectorId || notorietyIn(state, sectorId) < HAIL_GRIEVANCE_NOTORIETY) return null;
+  const factionId = hailFactionId(entity);
+  const deed = pickDeedToTell(state, {
+    speakerFactionId: LAWFUL_STATION_FACTIONS.has(factionId) ? factionId : undefined,
+    sectorId,
+    kinds: LAW_GRIEVANCE_KINDS,
+    minWeight: HAIL_GRIEVANCE_MIN_WEIGHT,
+  });
+  if (!deed || deed.told > 0 || deed.sectorId !== sectorId) return null;
+  const text = deedLine(deed, { voice: 'grievance' });
+  return text ? { deedId: deed.id, line: text.toUpperCase() } : null;
+}
+
+export function createContactHailOffer(state, availability, requestId, expiresAt) {
+  if (!availability || !availability.enabled || availability.kind === 'toll') return null;
+  const lantern = lanternWardHailOffer(state, availability, requestId, expiresAt);
+  if (lantern) return lantern;
+  if (availability.kind === 'variance_adjustment') {
+    const target = availability.entity;
+    if (state?.world?.currentSectorId !== VARIANCE_ADJUSTMENT_BERTH.sectorId
+      || !isLiveVarianceAdjustmentTarget(state, target, availability.targetId)) return null;
+    return {
+      requestId,
+      targetId: target.id,
+      kind: 'variance_adjustment',
+      expiresAt,
+      worldRecordId: VARIANCE_ADJUSTMENT_BERTH.worldRecordId,
+      identityKey: VARIANCE_ADJUSTMENT_BERTH.identityKey,
+      lines: [`${VARIANCE_ADJUSTMENT_BERTH.callsign} · YARD REGISTRY`, 'HAIL ACCEPTED · REGISTRY READ ONLY.'],
+      actions: [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }],
+    };
+  }
+  if (isOrchardReceiver(state, availability?.entity)) {
+    const repair = orchardReceiverRepairFacts(state, availability.entity);
+    if (repair?.disabled || repair?.unavailable) return { requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
+      lines: [repair.status, orchardReceiverRepairGuidance(state, availability.entity)],
+      actions: [{ id: 'status', label: 'STATUS' }, { id: 'route', label: 'REPAIR GUIDANCE' }] };
+    const spill = anvilSpillReturnOffer(state, availability.entity);
+    if (spill) {
+      const facts = spill.facts;
+      const towQuote = orchardTowQuote(state, availability.entity);
+      const returnQuote = spill.quote;
+      const service=spill.service, rendezvousQuote=spill.rendezvousQuote;
+      const serviceLine=service.active ? `BRAKING · ${Math.ceil(service.remainingS)}s remaining. Pause/Continue/cut cancels; Close keeps braking.`
+        : rendezvousQuote ? `REQUEST RENDEZVOUS · up to ${Math.ceil(service.remainingS)}s braking budget; Pause/Continue cancels; unused time remains.`
+        : service.remainingS===0 ? 'RENDEZVOUS BUDGET EXHAUSTED; tender resumes its route.' : null;
+      return { requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
+        lines: [serviceLine || (towQuote ? `STORMSHIFT SPILL · Optional tow ${towQuote.feeCr}CR on dispatch; kept on cancellation/loss. Continue refunds. No delivery guarantee.` : 'STORMSHIFT · ORIGINAL GAS SPILL'),
+          returnQuote ? `Return ${returnQuote.amount}u to this tender for its Tethys delivery. No payment; no change to the law record.`
+            : spill.claimed ? 'Original gas is claimed by a salvage crew. Return is unavailable while that claim remains; attaching a line does not clear it.'
+            : facts && !facts.amount ? 'TENDER HOLD FULL. Keep the original pod intact until there is room.'
+            : 'Massline the original loose gas pod to the planet-facing service side of this tender. Match speed, then Hail to RETURN GAS. Keeping or leaving it does not restore the delivery.'],
+        actions: [...(returnQuote ? [{id: ANVIL_RETURN_GAS,label: `RETURN GAS · ${returnQuote.amount}u`}] : []),
+          ...(service.active ? [{id:ANVIL_CANCEL_RENDEZVOUS,label:'CANCEL RENDEZVOUS'}]
+            : rendezvousQuote ? [{id:ANVIL_RENDEZVOUS,label:'REQUEST RENDEZVOUS'}]
+            : towQuote ? [{id:CONTACT_HAIL_ACTION_TOW_ASSIST,label:`HIRE ORCHARD TOW · ${towQuote.feeCr}CR`}] : []),
+          {id:'status',label:'STATUS'}], ...(returnQuote ? {anvilReturnQuote:returnQuote} : {}), ...(rendezvousQuote ? {anvilRendezvousQuote:rendezvousQuote} : {}),
+          ...(towQuote ? {orchardQuote:towQuote} : {}) };
+    }
+    const quote=orchardTowQuote(state,availability.entity);
+    return {requestId,targetId:availability.targetId,kind:'worker',expiresAt,
+      lines:quote
+        ? [`ORCHARD RETRIEVAL · ${quote.amount}u · ${quote.feeCr}CR on dispatch. Fee kept on cancellation or loss.`,
+          'Risk of damage or loss; delivery not guaranteed. Follow the pickup marker and fly close to collect. Continue cancels and refunds.']
+        : ['STORMSHIFT RECEIVING TENDER · ORCHARD RETRIEVAL','NO FREE RELEASED POD IN SAFE REACH · RELEASE A POD FIRST.'],
+      actions:quote?[{id:CONTACT_HAIL_ACTION_TOW_ASSIST,label:`HIRE TOW · ${quote.feeCr}CR`},{id:'status',label:'STATUS'}]:[{id:'status',label:'STATUS'}],
+      ...(quote?{orchardQuote:quote}:{})};
+  }
+
+  if (!availability || !availability.enabled || availability.kind === 'toll') return null;
+  const name = callsign(availability.entity, saveSeedOf(state)) + titleSegment(availability.entity);
+  const voice = hailVoiceLine(state, availability.entity);
+  if (availability.kind === 'ace') {
+    const found = aceHailRecord(state, availability.entity);
+    const crew = String(found && found.ace.crew || 'KNOWN HUNTER').toUpperCase();
+    return {
+      requestId, targetId: availability.targetId, kind: 'ace', expiresAt,
+      lines: [`${name} · ${crew}`, aceHailOpener(state, availability.entity, voice)],
+      actions: [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }],
+    };
+  }
+  if (availability.kind === 'patrol') {
+    const actions = [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }];
+    if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
+    const grievance = patrolGrievanceHail(state, availability.entity);
+    return {
+      requestId, targetId: availability.targetId, kind: 'patrol', expiresAt,
+      lines: [`${name} · LAWFUL PATROL`, grievance ? grievance.line : voice],
+      actions,
+      ...(grievance ? { deedId: grievance.deedId } : {}),
+    };
+  }
+  const heliosFreight = combatDriveDisabled(state, availability.entity)
+    ? null : heliosFreightHailLine(state, availability.entity);
+  if (availability.kind === 'worker') {
+    if (availability.disabledHauler) {
+      return {
+        requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
+        lines: [`${name} · DISABLED ORE HAULER`, 'DISTRESS · DRIVE DEAD · MANIFEST ABOARD.'],
+        actions: [
+          { id: CONTACT_HAIL_ACTION_RECOVER, label: 'RECOVER' },
+          { id: CONTACT_HAIL_ACTION_STEAL, label: 'STEAL' },
+          { id: CONTACT_HAIL_ACTION_ABANDON, label: 'ABANDON' },
+        ],
+      };
+    }
+    const charon = charonSupplyPresentation(state, availability.entity, { detailed: false });
+    const salvorSource = salvorSourceTruth(state, availability.entity);
+    const actions = heliosFreight ? [{ id: 'route', label: 'ROUTE' }]
+      : [{ id: 'status', label: 'STATUS' }];
+    // A source-backed cutter uses the existing, read-only manifest response rather than a new
+    // action type. The compact scanner presenter still receives at most three choices.
+    if (!heliosFreight) actions.push(charon ? { id: 'route', label: 'SUPPLY ROUTE' }
+      : salvorSource ? { id: 'manifest', label: 'MANIFEST' } : { id: 'identify', label: 'IDENTIFY' });
+    if (availability.towAssistBodyId != null) {
+      actions.push({ id: CONTACT_HAIL_ACTION_TOW_ASSIST, label: 'HIRE TOW' });
+    }
+    if (availability.richSeamHelpAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HELP, label: 'HELP' });
+    if (availability.heaveToAvailable && actions.length < 3) {
+      actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
+    }
+    // The voice belongs inside the worker family. Its existing physical assistance owns
+    // the compact action slots before optional private manifest inspection.
+    if (heliosFreight && actions.length < 3 && playerHasFittedCargoScanner(state)
+        && traderManifestForTarget(state, availability.entity)) {
+      actions.push({ id: 'manifest', label: 'MANIFEST' });
+    }
+    const remembered = availability.rescuedWorkerMemory;
+    return {
+      requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
+      lines: charon ? charon.compact : [`${name} · WORKING TRAFFIC`,
+        remembered ? rescuedWorkerVoiceLine(remembered) : heliosFreight || voice],
+      actions,
+    };
+  }
+  const priorityItinerary = availability.priorityCourierItinerary;
+  const passengerItinerary = availability.passengerLinerItinerary;
+  if (passengerItinerary) {
+    const actions = [{ id: 'status', label: 'STATUS' }, { id: 'route', label: 'ROUTE' }];
+    if (availability.passengerLinerAssistAvailable) {
+      actions.push({ id: CONTACT_HAIL_ACTION_ASSIST, label: 'ASSIST BOARDING' });
+    }
+    return {
+      requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
+      lines: [`${name} · HELIOS CIVIC LINER`, 'PASSENGER SERVICE · CHANNEL OPEN.'],
+      actions,
+    };
+  }
+  if (priorityItinerary) {
+    // Scanner/UI deliberately ships three compact choices. A fitted cargo scanner may add manifest
+    // inspection in the normal state; the time-sensitive recovery action takes that third slot.
+    const actions = [{ id: 'status', label: 'STATUS' }, { id: 'route', label: 'ROUTE' }];
+    if (availability.priorityCourierEscortAvailable) {
+      actions.push({ id: CONTACT_HAIL_ACTION_ESCORT, label: 'ESCORT' });
+    } else if (availability.manifestAvailable) {
+      actions.push({ id: 'manifest', label: 'MANIFEST' });
+    }
+    return {
+      requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
+      lines: [`${name} · PRIORITY COURIER`, voice],
+      actions,
+    };
+  }
+  const charon = charonSupplyPresentation(state, availability.entity, { detailed: false });
+  const actions = [{ id: 'route', label: charon ? 'SUPPLY ROUTE' : 'ROUTE' }];
+  if (pallasShiftStatus(state, availability.entity)) actions.unshift({ id: 'status', label: 'STATUS' });
+  if (availability.manifestAvailable) actions.push({ id: 'manifest', label: 'MANIFEST' });
+  if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
+  const remembered = availability.rescuedWorkerMemory;
+  return {
+    requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
+    lines: charon ? charon.compact : [`${name} · CIVILIAN FREIGHT`,
+      remembered ? rescuedWorkerVoiceLine(remembered) : heliosFreight || voice],
+    actions,
+  };
+}
+
+function traderRecord(state, targetId) {
+  return (state && state.traffic && state.traffic.freighters || [])
+    .find((row) => row && row.id === targetId) || null;
+}
+
+function validDeclaredManifest(manifest) {
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.lines) || !manifest.lines.length) {
+    return null;
+  }
+  let totalQty = 0;
+  for (const row of manifest.lines) {
+    const commodityId = row && (row.commodityId || row.id);
+    if (typeof commodityId !== 'string' || !commodityId
+      || typeof row.qty !== 'number' || !Number.isSafeInteger(row.qty) || row.qty <= 0) return null;
+    totalQty += row.qty;
+    if (!Number.isSafeInteger(totalQty)) return null;
+  }
+  if (Object.hasOwn(manifest, 'totalQty')
+    && (typeof manifest.totalQty !== 'number'
+      || !Number.isSafeInteger(manifest.totalQty)
+      || manifest.totalQty !== totalQty)) return null;
+  return manifest;
+}
+
+function traderManifestForTarget(state, target) {
+  const entityManifest = validDeclaredManifest(target && target.data && target.data.cargoManifest);
+  if (entityManifest) return entityManifest;
+  return validDeclaredManifest(traderRecord(state, target && target.id)?.manifest);
+}
+
+function stationLabel(state, id) {
+  const station = entityById(state, id);
+  const data = station && station.data || {};
+  return String(data.name || data.stationName || data.stationId || id || 'LOCAL TRADE LANE')
+    .replace(/_/g, ' ').trim().toUpperCase();
+}
+
+function commodityLabel(id) {
+  return String(COMMODITY_LABEL.get(id) || id || 'CARGO')
+    .replace(/^cmdty_/i, '').replace(/_/g, ' ').trim().toUpperCase();
+}
+
+/**
+ * Estimate declared cargo value from commodity basePrice (equilibrium catalog).
+ * Pure read — does not touch economy credits or station markets.
+ * Returns { totalCredits, totalQty, lineCount } or null when empty.
+ */
+export function estimateManifestBaseValue(manifest) {
+  const lines = manifest && Array.isArray(manifest.lines) ? manifest.lines : [];
+  let totalCredits = 0;
+  let totalQty = 0;
+  let lineCount = 0;
+  for (const row of lines) {
+    if (!row) continue;
+    const qty = Math.floor(Number(row.qty) || 0);
+    if (qty <= 0) continue;
+    const id = row.commodityId || row.id;
+    const def = COMMODITY_BY_ID.get(id);
+    const unit = def && Number.isFinite(def.basePrice) ? def.basePrice : 0;
+    totalCredits += unit * qty;
+    totalQty += qty;
+    lineCount += 1;
+  }
+  if (lineCount === 0) return null;
+  return Object.freeze({
+    totalCredits: Math.round(totalCredits),
+    totalQty,
+    lineCount,
+  });
+}
+
+function manifestText(state, target, manifestOverride = undefined) {
+  const record = traderRecord(state, target.id);
+  const manifest = manifestOverride === undefined
+    ? target.data && target.data.cargoManifest || record && record.manifest
+    : manifestOverride;
+  const lines = (manifest && Array.isArray(manifest.lines) ? manifest.lines : [])
+    .filter((row) => row && Math.floor(Number(row.qty) || 0) > 0);
+  if (!lines.length) return 'MANIFEST · NO DECLARED CARGO';
+  // Rank by catalog value so the two named lines match the ~CR story.
+  const ranked = lines.map((row) => {
+    const qty = Math.floor(Number(row.qty) || 0);
+    const id = row.commodityId || row.id;
+    const def = COMMODITY_BY_ID.get(id);
+    const unit = def && Number.isFinite(def.basePrice) ? def.basePrice : 0;
+    return { qty, id, value: unit * qty };
+  }).sort((a, b) => b.value - a.value || String(a.id).localeCompare(String(b.id)));
+  const shown = ranked.slice(0, 2);
+  const cargo = shown.map((row) => `${row.qty} ${commodityLabel(row.id)}`);
+  const more = ranked.length - shown.length;
+  const moreBit = more > 0 ? ` · +${more} MORE` : '';
+  const value = estimateManifestBaseValue(manifest);
+  const valueBit = value && value.totalCredits > 0
+    ? ` · ~${value.totalCredits.toLocaleString('en-US')} CR`
+    : '';
+  return `MANIFEST · ${cargo.join(' · ')}${moreBit}${valueBit}`;
+}
+
+function liveEntityForWorldRecord(state, worldRecordId) {
+  if (!state || typeof worldRecordId !== 'string' || !worldRecordId) return null;
+  const index = state.entityIndex;
+  // A proven-unique live carrier resolves O(1) — the count gate reproduces the fail-closed
+  // ambiguity rule below: any second carrier keeps the walk (which then returns null).
+  if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && index.byWorldRecordId instanceof Map && index.byWorldRecordIdCount instanceof Map
+    && index.byWorldRecordIdCount.get(worldRecordId) === 1) {
+    const holder = index.byWorldRecordId.get(worldRecordId);
+    if (holder && holder.alive !== false && holder.data
+      && holder.data.worldRecordId === worldRecordId) return holder;
+  }
+  const entities = state.entities && typeof state.entities.values === 'function'
+    ? state.entities.values()
+    : state.entityList || [];
+  let found = null;
+  for (const entity of entities) {
+    if (!entity || entity.alive === false || !entity.data || entity.data.worldRecordId !== worldRecordId) continue;
+    // Ambiguous live identity is not service truth. Traffic's controller fails closed on this same
+    // condition, so readout must not choose one candidate merely because it was encountered first.
+    if (found && found !== entity) return null;
+    found = entity;
+  }
+  return found;
+}
+
+function combatDriveDisabled(state, entity) {
+  const runtime = state && state.combat && state.combat.entities
+    && state.combat.entities[String(entity && entity.id)];
+  const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+  return !!(drive && (drive.destroyed === true || drive.effectiveDisabled === true));
+}
+
+// The tender call is real only when the compact traffic incident agrees with the combat-owned drive
+// state on the one live miner. Causal stamps are presentation candidates, never proof; this keeps a
+// stale stamp after Continue from claiming an inbound tender that no longer exists.
+function ceresTenderServiceTruth(state, target) {
+  const incident = state && state.traffic && state.traffic.ceresTenderServiceIncident;
+  const data = target && target.data || {};
+  if (!incident || incident.schema !== CERES_TENDER_SERVICE_INCIDENT_SCHEMA
+    || !state.world || state.world.currentSectorId !== CERES_ACTIVITY_SECTOR_ID
+    || !CERES_TENDER_SERVICE_ACTIVE_STATES.has(incident.state)
+    || typeof incident.minerWorldRecordId !== 'string' || !incident.minerWorldRecordId
+    || typeof incident.tenderWorldRecordId !== 'string' || !incident.tenderWorldRecordId
+    || incident.minerWorldRecordId === incident.tenderWorldRecordId) return null;
+  const isMiner = data.activityActorSlotId === CERES_SEAM_MINER_SLOT_ID
+    && data.worldRecordId === incident.minerWorldRecordId
+    && data.jobId === `job:${incident.minerWorldRecordId}`
+    && data.ceresActivityCast === true
+    && data.ceresActivityJobOwned === true;
+  const isTender = data.activityActorSlotId === CERES_TENDER_SLOT_ID
+    && data.worldRecordId === incident.tenderWorldRecordId
+    && data.jobId === `job:${incident.tenderWorldRecordId}`
+    && data.durable === true
+    && !!(data.factionPresence && data.factionPresence.yardTender === true);
+  if (!isMiner && !isTender) return null;
+  const miner = isMiner ? target : liveEntityForWorldRecord(state, incident.minerWorldRecordId);
+  if (!miner || miner.alive === false || !combatDriveDisabled(state, miner)) return null;
+  return {
+    role: isMiner ? 'miner' : 'tender',
+    holding: incident.state === 'holding' || incident.state === 'repair',
+  };
+}
+
+function tenderServiceWorkStatus(truth, depth) {
+  if (!truth) return null;
+  if (depth === 'lock') return truth.holding ? 'WORK · SERVICE HOLD' : 'WORK · TENDER INBOUND';
+  if (truth.role === 'miner') {
+    return truth.holding
+      ? 'WORK · SERVICE HOLD · DRIVE REPAIR IN PROGRESS'
+      : 'WORK · DRIVE DISABLED · TENDER INBOUND';
+  }
+  return truth.holding
+    ? 'WORK · SERVICE HOLD · DRIVE REPAIR IN PROGRESS'
+    : 'WORK · TENDER INBOUND · MINER DRIVE DISABLED';
+}
+
+function tenderServiceHailStatus(truth) {
+  if (!truth) return null;
+  if (truth.role === 'miner') {
+    return truth.holding
+      ? 'STATUS · SERVICE HOLD · DRIVE REPAIR IN PROGRESS'
+      : 'STATUS · DRIVE DISABLED · TENDER INBOUND';
+  }
+  return truth.holding
+    ? 'STATUS · SERVICE HOLD · DRIVE REPAIR IN PROGRESS'
+    : 'STATUS · TENDER INBOUND · MINER DRIVE DISABLED';
+}
+
+// ─── Ordinary npcJobs workers (miner / hauler / patrol) ─────────────────────────────────────────
+// CLOUD-03 — a job hull that carries no Ceres causal stamps still deserves a truthful work readout.
+// The source of truth is the npcJobs record itself (state.npcJobs.byId), joined to the hull by both
+// the session entityId and the durable worldRecordId; data.jobPhase is only the runtime's mirror and
+// is read generically when no record exists. A binding that cannot prove itself (stale numeric id,
+// missing/corrupt job, externally controlled or unmaterialized body) reports STATUS UNAVAILABLE —
+// never invented progress and never a completed job that did not happen.
+
+const ORDINARY_JOB_KINDS = new Set(['miner', 'hauler', 'patrol']);
+
+// npcJobs kernel phase vocabulary (npcJobs.js NPC_JOB_PHASE), player-language. Kept separate from
+// CAUSAL_PHASE_LABEL on purpose: those keys name Ceres event phases, and looking up a bare jobPhase
+// in that map mislabels an ordinary transit as UNDER ESCORT.
+const JOB_PHASE_WORD = Object.freeze({
+  commission: 'SIGNING ON',
+  depart: 'CASTING OFF',
+  transit: 'EN ROUTE',
+  approach: 'ON APPROACH',
+  work: 'WORKING',
+  load: 'LOADING',
+  unload: 'DELIVERING',
+  return: 'RETURNING',
+  hold: 'ON STATION',
+  flee: 'INTERRUPTED',
+  complete: 'RUN COMPLETE',
+});
+
+// What each kind's `work` phase physically is.
+const KIND_WORK_WORD = Object.freeze({
+  miner: 'MINING',
+  surveyor: 'SURVEYING',
+  salvor: 'CUTTING',
+  tender: 'ON CALL',
+  hauler: 'WORKING',
+  patrol: 'ON PATROL',
+});
+
+// Waypoint labels that name no real place ('Origin'/'Destination' on generic traffic routes).
+const GENERIC_WAYPOINT_LABELS = new Set(['ORIGIN', 'DESTINATION']);
+
+const _stationCatalogName = { map: null };
+function stationCatalogName(stationId) {
+  let map = _stationCatalogName.map;
+  if (!map) {
+    map = new Map();
+    for (const sector of SECTORS) {
+      for (const station of sector.stations || []) {
+        if (station && typeof station.id === 'string' && !map.has(station.id)) {
+          map.set(station.id, typeof station.name === 'string' ? station.name : station.id);
+        }
+      }
+    }
+    _stationCatalogName.map = map;
+  }
+  return map.get(stationId) || null;
+}
+
+function jobPhaseWord(kind, phase) {
+  if (phase === 'work' && kind && KIND_WORK_WORD[kind]) return KIND_WORK_WORD[kind];
+  if (!phase) return null;
+  return JOB_PHASE_WORD[phase] || String(phase).replace(/_/g, ' ').toUpperCase();
+}
+
+/**
+ * The npcJobs entry the selected hull is bound to, with the provenance checks the readout needs.
+ * Returns { job, entry } when proven, { unavailable:true } when a jobId exists but the binding does
+ * not hold, { unproven:true } when the caller has no game state (the phase mirror may still speak,
+ * generically), or { unbound:true } when the hull simply carries no job.
+ */
+function ordinaryJobTruth(state, entity) {
+  const data = entity && entity.data || {};
+  const jobId = typeof data.jobId === 'string' && data.jobId ? data.jobId : null;
+  if (!jobId || entity.alive === false) return { unbound: true };
+  if (!state) return { unproven: true };
+  const entry = state.npcJobs && state.npcJobs.byId ? state.npcJobs.byId[jobId] : null;
+  const job = entry && entry.job;
+  if (!job || job.corrupt === true) return { unavailable: true };
+  // A job under external control (tow assist, custody pulls) is not the hull's own authority.
+  if (entry.control || entry.towAssist) return { unavailable: true };
+  // The selected hull must be the job's own materialized body: a recycled numeric id, a job with no
+  // live body, or a world-record mismatch after Continue is stale binding, not work truth.
+  if (entry.entityId == null || entry.entityId !== entity.id || job.materialized !== true) {
+    return { unavailable: true };
+  }
+  const worldRecordId = typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
+  if (worldRecordId && entry.worldRecordId && entry.worldRecordId !== worldRecordId) {
+    return { unavailable: true };
+  }
+  return { job, entry };
+}
+
+/** The waypoint this phase is about: the leg target while moving, the current stop when stationary. */
+function jobPhaseWaypoint(job) {
+  const route = job && Array.isArray(job.route) ? job.route : null;
+  const n = route ? route.length : 0;
+  if (!n) return null;
+  const kind = job.kind;
+  const phase = job.phase;
+  const routeIndex = Number.isInteger(job.routeIndex) ? job.routeIndex : 0;
+  if (phase === 'commission' || phase === 'depart' || phase === 'transit' || phase === 'return') {
+    let idx;
+    if (kind === 'miner' || kind === 'salvor' || kind === 'tender') idx = routeIndex === 0 ? 1 : 0;
+    else if (kind === 'patrol' || kind === 'surveyor') idx = (routeIndex + 1) % n;
+    else idx = Math.min(routeIndex + 1, n - 1); // hauler: linear, destination is the final stop
+    return route[idx] || null;
+  }
+  return route[routeIndex] || null;
+}
+
+/** A human-readable place name for a job waypoint: authored station name, else its label. */
+function jobWaypointPlace(wp) {
+  if (!wp || typeof wp !== 'object') return null;
+  const ref = typeof wp.targetRef === 'string' ? wp.targetRef : '';
+  const m = /^(?:station|dest):(.+)$/.exec(ref);
+  if (m) {
+    const name = stationCatalogName(m[1]);
+    if (name) return String(name).replace(/_/g, ' ').trim().toUpperCase();
+  }
+  const label = typeof wp.label === 'string' ? wp.label.trim() : '';
+  if (!label || GENERIC_WAYPOINT_LABELS.has(label.toUpperCase())) return null;
+  return label.toUpperCase();
+}
+
+/** "carrying a known load" — declared cargo aboard, only while the run is underway. */
+function jobCarryPhrase(entity, job) {
+  const manifest = entity.data && entity.data.cargoManifest
+    || (job.payload && job.payload.manifest) || null;
+  const estimate = estimateManifestBaseValue(manifest);
+  if (!estimate || estimate.totalQty <= 0) return null;
+  const lines = (manifest && Array.isArray(manifest.lines) ? manifest.lines : [])
+    .filter((row) => row && Math.floor(Number(row.qty) || 0) > 0);
+  let top = null;
+  for (const row of lines) {
+    const id = row.commodityId || row.id;
+    const qty = Math.floor(Number(row.qty) || 0);
+    if (!top || qty > top.qty) top = { id, qty };
+  }
+  const what = top ? commodityLabel(top.id) : 'CARGO';
+  return `CARRYING ${estimate.totalQty}U ${what}`;
+}
+
+/**
+ * Player-language status parts for an ordinary job hull, or 'unavailable' / null.
+ * Depth 'lock' is one short work phrase; 'full' adds destination/reason when the record supplies them.
+ */
+function ordinaryJobStatusText(entity, depth, state) {
+  const data = entity && entity.data || {};
+  const truth = ordinaryJobTruth(state, entity);
+  if (truth.unavailable) return 'STATUS UNAVAILABLE';
+  if (!truth.job) {
+    // Unbound (no jobId) or unproven (caller without state): a live hull's bare phase mirror can
+    // still speak, but only in its own vocabulary — never a Ceres causal label.
+    const word = entity && entity.alive !== false ? jobPhaseWord(null, data.jobPhase) : null;
+    return word ? `WORK · ${word}` : null;
+  }
+  const job = truth.job;
+  const phase = job.phase;
+  const interrupted = phase === 'flee' || job.interrupted === true;
+  if (depth === 'lock') {
+    return interrupted ? 'WORK · INTERRUPTED' : `WORK · ${jobPhaseWord(job.kind, phase)}`;
+  }
+  const parts = ['WORK'];
+  if (interrupted) {
+    parts.push('INTERRUPTED');
+    const prior = jobPhaseWord(job.kind, job.preInterruptPhase);
+    if (prior) parts.push(`WAS ${prior}`);
+    if (phase !== 'complete' && job.preInterruptPhase) parts.push('RESUMES WHEN CLEAR');
+    return parts.join(' · ');
+  }
+  parts.push(jobPhaseWord(job.kind, phase));
+  if (phase === 'commission' || phase === 'depart' || phase === 'transit' || phase === 'return') {
+    const dest = jobWaypointPlace(jobPhaseWaypoint(job));
+    if (dest) parts.push(`FOR ${dest}`);
+  } else if (phase === 'approach' || phase === 'work' || phase === 'load' || phase === 'unload'
+    || phase === 'hold') {
+    const place = jobWaypointPlace(jobPhaseWaypoint(job));
+    if (place) parts.push(`AT ${place}`);
+  }
+  if ((phase === 'depart' || phase === 'transit' || phase === 'return' || phase === 'approach')
+    && (job.kind === 'hauler' || job.kind === 'miner')) {
+    const carry = jobCarryPhrase(entity, job);
+    if (carry) parts.push(carry);
+  }
+  return parts.join(' · ');
+}
+
+/**
+ * Human-readable living-work status from Ceres causal stamps / job phase.
+ * Pure; safe for hail and target panel.
+ * @param {object} entity
+ * @param {{ depth?: 'lock'|'full', state?: object }} [opts] lock = phase-only (always-on panel); full = phase+cue
+ */
+export function livingWorkStatusText(entity, opts = {}) {
+  if (!entity) return null;
+  const charon = charonSupplyPresentation(opts.state, entity, { detailed: false });
+  if (charon) return charon.status;
+  const orchardWork = anvilCollectorWorkStatus(opts.state, entity) || anvilReceiverWorkStatus(opts.state, entity);
+  if (orchardWork) return `WORK · ${orchardWork}`;
+  const data = entity.data || {};
+  const pallas = pallasShiftStatus(opts.state, entity);
+  if (pallas) return `WORK · ${pallas.label}`;
+  const passengerStatus = passengerLinerStatusText(opts.state || null, entity);
+  if (passengerStatus) return passengerStatus.replace(/^STATUS · /, 'SERVICE · ');
+  const salvorSource = salvorSourceTruth(opts.state || null, entity);
+  if (salvorSource?.state === 'held') return `WORK · SALVAGE HELD · ${salvorSource.qty}u ABOARD · NO YARD INTAKE`;
+  if (salvorSource && salvorSource.state === 'aboard') return 'WORK · SALVAGE ABOARD · FORGE';
+  if (salvorSource && salvorSource.state === 'disputed') return 'WORK · SALVAGE DISPUTED';
+  if (salvorSource && salvorSource.state === 'cutting') return 'WORK · CUTTING';
+  const serviceStatus = tenderServiceWorkStatus(
+    ceresTenderServiceTruth(opts.state || null, entity),
+    opts.depth || 'full',
+  );
+  if (serviceStatus) return serviceStatus;
+  const disabledHauler = ceresDisabledHaulerTruth(opts.state || null, entity);
+  if (disabledHauler) {
+    return opts.depth === 'lock'
+      ? 'DISTRESS · DRIVE DISABLED'
+      : disabledHauler.choice === CONTACT_HAIL_ACTION_RECOVER
+        ? 'DISTRESS · PLAYER RECOVERY CLAIMED'
+        : disabledHauler.state === 'responder_approach' || disabledHauler.state === 'responder_repair'
+          ? 'DISTRESS · TENDER RESPONDING'
+          : 'DISTRESS · RECOVER · STEAL · ABANDON';
+  }
+  // targetIntelReadout's existing call has no game state. A bare timer stamp must not claim a
+  // service outcome there; Hail passes state and can present the combat-backed result above.
+  if (data.ceresCausalEventId === 'ev_tender_services_miner') return null;
+  const handoffStatus = typeof data.ceresHandoffStatus === 'string' && data.ceresHandoffStatus.trim();
+  if (handoffStatus) return `WORK · ${handoffStatus}`;
+  const cue = data.ceresCausalCue || null;
+  const eventId = data.ceresCausalEventId || null;
+  const phase = data.ceresCausalPhase || null;
+  // Prefer explicit causal stamps; a hull with none is an ordinary npcJobs worker whose jobPhase is
+  // kernel vocabulary, never a Ceres causal label (jobPhase='transit' is not UNDER ESCORT).
+  if (!phase && !cue && !eventId) {
+    return ordinaryJobStatusText(entity, opts.depth || 'full', opts.state || null);
+  }
+  const phaseLabel = phase
+    ? (CAUSAL_PHASE_LABEL[phase] || String(phase).replace(/_/g, ' ').toUpperCase())
+    : null;
+  const depth = opts.depth || 'full';
+  if (depth === 'lock') {
+    if (phaseLabel) return `WORK · ${phaseLabel}`;
+    return eventId ? 'WORK · ACTIVE' : null;
+  }
+  const cueLabel = cue
+    ? (CAUSAL_CUE_LABEL[cue] || String(cue).replace(/_/g, ' ').toUpperCase())
+    : null;
+  if (phaseLabel && cueLabel) return `WORK · ${phaseLabel} · ${cueLabel}`;
+  if (phaseLabel) return `WORK · ${phaseLabel}`;
+  if (cueLabel) return `WORK · ${cueLabel}`;
+  return 'WORK · ACTIVE';
+}
+
+// Short tactical means for hail STATUS (opt-in goes deeper than free panel phase-only).
+const CAUSAL_MEANS = Object.freeze({
+  reading_the_dark: 'LISTENING PASS · STEADY RUN',
+  blind_cone: 'SENSORS HALF-BLIND · DO NOT ENTER CUT ARC',
+  home_under_rock: 'HAULING UNDER COVER · HOLD OFF BURN',
+  heavy_burn: 'HARD ACCEL · WIDE WAKE',
+  clean_burn: 'CLEAN TRANSIT BURN',
+  mouth_open: 'HOLD OPEN · TRANSFER WINDOW',
+  on_the_pin: 'LAW LOCK · FLY CLEAN',
+  breaking_the_pattern: 'DRIVE FAILING · SOFT TARGET',
+  spine_wake: 'TENDER INBOUND',
+  hull_open: 'HULL OPEN · SERVICE IN PROGRESS',
+  picking_the_bones: 'SALVAGE CUT HOT · STAND OFF',
+  spilling_the_count: 'STACKING LOOT · HOLD FAT',
+  stacking: 'FIELD APPROACH · GIVE WAY',
+});
+
+// Phase-scoped means override: one cue can mean different things inside different events. The
+// calving borrows breaking_the_pattern's distress-alternate lamp, but the distressed party is the
+// rock, not the healthy miner's drive — the shared row would put a false read on the STATUS channel.
+const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
+  'ev_rock_calving:calve': 'SEAM FAILING · STAND CLEAR OF THE FACE',
+  // The surveyor's closing fix shares the patrol's pin cue but is not a law lock.
+  'ev_surveyor_probe_line:drop_3_close': 'FINAL PROBE · PINNING SEAM',
+  // Helios claim-day chain: the catalog keeps the discord lamp and the spine wake for these
+  // phases, but no hull is failing and no tender is inbound — the shared rows would say so.
+  'ev_prospectors_posture:break': 'STAKE DISPUTED · ONE HULL BREAKING OFF',
+  'ev_claim_jump:yield_or_fight': 'STAKE DISPUTED · JUMPER YIELDING THE ROCK',
+  'ev_customs_pullover:wave_on': 'INSPECTION DONE · RETURNING TO THE LANE',
+  // Tethys quiet-handoff chain: the shared cue rows claim a law lock, a tender, and a clean
+  // transit burn on hulls that are queueing, bolting, or sightseeing — same lamp, different
+  // truth, so the phases carry their own means.
+  'ev_tanker_holds_for_berth:arrive_hold': 'HOLDING FOR BERTH · QUEUE AHEAD',
+  'ev_tanker_holds_for_berth:cleared': 'BERTH CLEARED · RUNNING IN',
+  'ev_patrol_shift_change:pass_the_pin': 'WATCH HANDOFF · PIN PASSING',
+  'ev_criminal_handoff:standoff': 'HOLDING STATION · NO LAMPS',
+  'ev_smuggler_breaks:bolt': 'RUNNER BOLTING · PURSUIT FORMING',
+  'ev_smuggler_breaks:jettison': 'SHEDDING LOAD · EVIDENCE ADRIFT',
+  'ev_smuggler_breaks:resolve': 'SECURING DRIFT · RESUMING BEAT',
+  'ev_observation_stop:linger': 'ON LOOKOUT · STATION-KEEPING',
+  // Vesta feedstock-day chain: the catalog pins the law-lock lamp on a trade hold, an escort
+  // flank, and a lunch huddle; the drive-failure lamp on a voluntary scatter; the tender-callout
+  // lamp on a relight where the tender was already there — same lamps, different truth.
+  'ev_haulers_rendezvous:park': 'HELD FOR THE TRADE · RUNNING LIGHTS ONLY',
+  'ev_hazmat_escort:join': 'ESCORT JOINING · PIN ON THE FLANK',
+  'ev_hazmat_escort:transit': 'UNDER ESCORT · GIVE ROOM',
+  'ev_yard_break:huddle': 'TOOLS DOWN · SHIFT BREAK AT THE YARD',
+  'ev_yard_break:back_to_it': 'BACK ON TOOLS · WORK RESUMING',
+  'ev_scavengers_at_fresh_wreck:scatter': 'LAW CONTACT · SCATTERING OFF THE FACE',
+  // Dione convoy-day chain: the catalog pins the law-lock lamp on the escort's flank join and the
+  // tender-callout lamp on the spine-up ripple — no hull is locked and no tender is inbound; the
+  // convoy is forming and lighting in order.
+  'ev_convoy_forms_up:escort_arrives': 'ESCORT JOINING · PIN ON THE FLANK',
+  'ev_convoy_forms_up:spine_up': 'ENGINES LIT · ROLLING SOON',
+});
+
+// Boarding is pending custody, not a completed rescue. Read the owner's exact live binding;
+// only survivorPod may reconcile a durable carrier onto a newly materialized entity.
+function rescueCustodyStatus(state, target) {
+  const data = target?.data;
+  if (data?.trafficRole !== 'rescue' || target.type !== 'ship' || target.alive === false
+    || state?.entities?.get(target.id) !== target
+    || typeof data.worldRecordId !== 'string' || !data.worldRecordId
+    || typeof data.rescueCustodyId !== 'string' || !data.rescueCustodyId) return null;
+  const receipts = state.survivorPod?.causal?.receipts;
+  if (!Array.isArray(receipts)) return null;
+  const matches = receipts.filter(row => row?.id === data.rescueCustodyId);
+  const row = matches.length === 1 ? matches[0] : null;
+  if (!row || row.outcome !== 'in_transit' || row.carrierWorldRecordId !== data.worldRecordId
+    || row.carrierEntityId !== target.id || row.carrierGeneration == null
+    || row.carrierGeneration !== target.occupantGeneration
+    || row.sectorId !== state.world?.currentSectorId) return null;
+  const rec = traderRecord(state, target.id);
+  const destination = rec?.role === 'rescue' && rec.rescueCustodyId === row.id
+    && rec.carryingSurvivor === true ? entityById(state, rec.targetId) : null;
+  const place = destination?.type === 'station' && destination.alive !== false
+    ? stationLabel(state, destination.id) : null;
+  return `STATUS · SURVIVOR ABOARD${place ? ` · DESTINATION ${place}` : ' · BERTH UNCONFIRMED'}`;
+}
+
+function workerStatusText(target, state = null) {
+  const rescue = rescueCustodyStatus(state, target);
+  if (rescue) return rescue;
+  if (target?.data?.trafficRole === 'prospector') {
+    const truth = ordinaryJobTruth(state, target);
+    const field = truth.job?.payload?.prospectorField;
+    if (field && truth.job.kind === 'surveyor') {
+      const now = Number(state?.simTime) || 0, sector = state?.world?.currentSectorId;
+      if (truth.entry.sectorId !== sector || field.sectorId !== sector) return 'STATUS · FIELD READING UNAVAILABLE';
+      const marks = state.npcJobs?.surveyMarks?.[sector];
+      const mark = Array.isArray(marks) ? marks.find(m => m?.fieldId === field.fieldId
+        && m.jobId === truth.job.id && Number.isFinite(m.measuredAt)
+        && Number.isFinite(field.commissionedAt) && m.measuredAt >= field.commissionedAt && now >= m.measuredAt
+        && now - m.measuredAt <= 420 && Number.isFinite(m.depletion) && m.depletion >= 0 && m.depletion <= 1
+        && Number.isFinite(m.pos?.x) && Number.isFinite(m.pos?.z)) : null;
+      const player = playerEntity(state);
+      if (!mark || !player?.pos) return 'STATUS · NO RECENT COMPLETED FIELD READING';
+      const dx = mark.pos.x - player.pos.x, dz = mark.pos.z - player.pos.z;
+      const distance = Math.hypot(dx, dz);
+      if (!Number.isFinite(distance)) return 'STATUS · FIELD READING UNAVAILABLE';
+      const location = distance < 25 ? 'NEAR YOUR POSITION'
+        : `ABOUT ${Math.round(distance / 25) * 25} WU ${playerBearingHyphen(dx, dz).toUpperCase()} OF YOU`;
+      return `FIELD REPORT · ${Math.round(mark.depletion * 100)}% DEPLETED WHEN MEASURED · ${Math.floor(now - mark.measuredAt)}s AGO · RECORDED POSITION ${location}`;
+    }
+    if (truth.unavailable) return 'STATUS · WORK UNAVAILABLE';
+  }
+  const pallas = pallasShiftStatus(state, target);
+  if (pallas) return `STATUS · ${pallas.text}`;
+  const orchard = orchardReceiverRepairFacts(state, target)?.status;
+  if (orchard) return `STATUS · ${orchard.replace(/^STORMSHIFT · /, '').replace(/ · HULL .*/, '')}`;
+  const data = target && target.data || {};
+  const salvorSource = salvorSourceTruth(state, target);
+  if (salvorSource?.state === 'held') return `STATUS · SALVAGE HELD ABOARD · ${salvorSource.qty}u REMAINING · YARD CANNOT ACCEPT THIS CARGO`;
+  if (salvorSource && salvorSource.state === 'aboard') return 'STATUS · SALVAGE ABOARD · FORGE INBOUND';
+  if (salvorSource && salvorSource.state === 'disputed') return 'STATUS · SALVAGE DISPUTED · WRECK STRIPPED';
+  if (salvorSource && salvorSource.state === 'cutting') return 'STATUS · CUTTING · DEAD FREIGHTER DRIFT';
+  const serviceStatus = tenderServiceHailStatus(ceresTenderServiceTruth(state, target));
+  if (serviceStatus) return serviceStatus;
+  const disabledHauler = ceresDisabledHaulerTruth(state, target);
+  if (disabledHauler) {
+    if (disabledHauler.choice === CONTACT_HAIL_ACTION_RECOVER) return 'STATUS · PLAYER RECOVERY CLAIMED · MASSLINE READY';
+    if (disabledHauler.state === 'responder_approach') return 'STATUS · DRIVE DISABLED · TENDER INBOUND';
+    if (disabledHauler.state === 'responder_repair') return 'STATUS · SERVICE HOLD · DRIVE REPAIR IN PROGRESS';
+    return 'STATUS · DRIVE DISABLED · MANIFEST ABOARD';
+  }
+  if (data.ceresCausalEventId === 'ev_tender_services_miner') {
+    const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
+    return `STATUS · ${role} ON TASK`;
+  }
+  const handoffStatus = typeof data.ceresHandoffStatus === 'string' && data.ceresHandoffStatus.trim();
+  if (handoffStatus) return `STATUS · ${handoffStatus}`;
+  if (state && richSeamHelpAvailable(state, target, 'worker')) {
+    let richOpportunity = null;
+    for (const entity of hailAsteroidsOf(state)) {
+      const data = entity && entity.data || {};
+      if (data.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
+        || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) continue;
+      const opportunity = richSeamOpportunityForEntity(state, entity);
+      if (opportunity && opportunity.sectorId === CERES_ACTIVITY_SECTOR_ID
+        && opportunity.state === 'open' && !opportunity.reservationId) {
+        richOpportunity = opportunity;
+        break;
+      }
+    }
+    return `STATUS · RICH SEAM · +${richOpportunity ? richOpportunity.bonusU : 8}u · HOT CUT · HOLD OFF`;
+  }
+  const phase = data.ceresCausalPhase || null;
+  const cue = data.ceresCausalCue || null;
+  if (!phase && !cue && !data.ceresCausalEventId) {
+    // Ordinary npcJobs worker — the job record itself, never a causal label or a bare "ON TASK".
+    const ordinary = ordinaryJobStatusText(target, 'full', state);
+    if (ordinary) return ordinary.replace(/^WORK · /, 'STATUS · ');
+    const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
+    return `STATUS · ${role} ON TASK`;
+  }
+  const phaseLabel = phase
+    ? (CAUSAL_PHASE_LABEL[phase] || String(phase).replace(/_/g, ' ').toUpperCase())
+    : null;
+  const means = (data.ceresCausalEventId && phase
+    && CAUSAL_PHASE_MEANS_OVERRIDE[`${data.ceresCausalEventId}:${phase}`])
+    || (cue ? CAUSAL_MEANS[cue] : null);
+  if (phaseLabel && means) return `STATUS · ${phaseLabel} · ${means}`;
+  if (means) return `STATUS · ${means}`;
+  if (phaseLabel) return `STATUS · ${phaseLabel}`;
+  const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
+  return `STATUS · ${role} ON TASK`;
+}
+
+// This intentionally reads only traffic stamps plus the salvage-owned ledger.  A generic salvor
+// never receives the Vesta callout merely because it happens to have jobPhase='work'.
+function salvorSourceTruth(state, target) {
+  const data = target && target.data || {};
+  const role = String(data.trafficRole || data.role || '').toLowerCase();
+  if (role !== 'salvor') return null;
+  const manifest = data.cargoManifest && typeof data.cargoManifest === 'object' ? data.cargoManifest : null;
+  const manifestSource = manifest && typeof manifest.salvageSource === 'string' ? manifest.salvageSource : null;
+  const sourceKey = manifestSource || (typeof data.salvageSource === 'string' ? data.salvageSource : null);
+  if (manifest?.salvageIntakeHeld && Number.isSafeInteger(manifest.totalQty) && manifest.totalQty > 0) {
+    return { state: 'held', sourceKey, qty: manifest.totalQty };
+  }
+  if (!sourceKey) return null;
+  const totalQty = manifest && Number.isSafeInteger(manifest.totalQty) ? manifest.totalQty : 0;
+  if (manifestSource && totalQty > 0) return { state: 'aboard', sourceKey };
+  const sources = state && state.salvage && state.salvage.sources;
+  const record = sources && typeof sources === 'object' && !Array.isArray(sources) ? sources[sourceKey] : null;
+  const worldRecordId = typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
+  if (record && record.disputedBy && (!worldRecordId || String(record.disputedBy) !== worldRecordId)) {
+    return { state: 'disputed', sourceKey };
+  }
+  const cuttingStamp = data.jobPhase === 'work' && typeof data.salvageSource === 'string';
+  if (!cuttingStamp) return null;
+  // targetPanel calls this without state; its live job/source stamps are still direct evidence of
+  // a cutter at work. Hail has state and additionally requires a live matching ledger claim.
+  if (!state) return { state: 'cutting', sourceKey };
+  const remaining = record && Object.values(record.remainingPool || {})
+    .reduce((sum, qty) => sum + Math.max(0, Math.floor(Number(qty) || 0)), 0);
+  if (record && record.extracted !== true && remaining > 0 && record.claimId === worldRecordId) {
+    return { state: 'cutting', sourceKey };
+  }
+  return null;
+}
+
+function workerIdentifyText(target, seed = 0) {
+  const data = target && target.data || {};
+  const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
+  const eventId = data.ceresCausalEventId
+    ? String(data.ceresCausalEventId).replace(/^ev_/, '').replace(/_/g, ' ').toUpperCase()
+    : null;
+  const eventBit = eventId ? ` · CHAIN ${eventId}` : '';
+  return `${callsign(target, seed)}${titleSegment(target)} · ${role}${eventBit}`;
+}
+
+function routeText(state, target) {
+  const orchardWork = anvilCollectorWorkStatus(state, target, { detail: true }) || anvilReceiverWorkStatus(state, target);
+  if (orchardWork) return `ROUTE · ${orchardWork}`;
+  const record = traderRecord(state, target.id);
+  const passengerItinerary = passengerLinerItinerary(state, target);
+  if (passengerItinerary) {
+    if (passengerItinerary.state === 'DIVERTING') {
+      const returnStationId = typeof passengerItinerary.diversion?.returnStationId === 'string'
+        && passengerItinerary.diversion.returnStationId.trim()
+        ? passengerItinerary.diversion.returnStationId
+        : (record && record.targetId) || passengerItinerary.originStationId;
+      return `ROUTE · RETURNING TO ${stationLabel(state, returnStationId)}`;
+    }
+    const destinationId = passengerItinerary.destinationStationId || record && record.targetId;
+    return `ROUTE · ${stationLabel(state, destinationId)}`;
+  }
+  const itinerary = target.data && target.data.itinerary;
+  if (isTallyCourier(target) && itinerary.destinationStationId === TETHYS_TALLY.customsId
+    && itinerary.tallyPassage?.id === TETHYS_TALLY.id) {
+    return 'ROUTE · CUSTOMS SCAN GATE → COUNT LANE → CUSTOMS BERTH. Passage does not release impounded cargo.';
+  }
+  const destinationId = itinerary && itinerary.destinationStationId || record && record.targetId;
+  return `ROUTE · ${stationLabel(state, destinationId)}`;
+}
+
+function priorityCourierStatusText(state, target) {
+  const itinerary = priorityCourierItinerary(state, target);
+  if (!itinerary) return null;
+  const status = priorityCourierState(state, target, itinerary);
+  const escort = itinerary.escort && typeof itinerary.escort === 'object' ? itinerary.escort : {};
+  if (isTallyCourier(target) && itinerary.tallyPassage?.id === TETHYS_TALLY.id
+    && itinerary.tallyPassage.reason === 'removed') return 'STATUS · COUNT LANE BODY REMOVED · No safe placement or cargo release recorded.';
+  if (status === 'COUNT_HOLD') return itinerary.tallyPassage?.reason === 'unobserved'
+    ? 'STATUS · COUNT LANE HOLD · KEG POSITION UNCONFIRMED. No clearance or cargo release recorded.'
+    : 'STATUS · COUNT LANE HOLD · DISPUTED KEG IN THE HULL CORRIDOR. Moving it clear is not a cargo release.';
+  if (status === 'INTERRUPTED') return 'STATUS · PRIORITY COURIER INTERRUPTED · ESCORT REQUEST OPEN';
+  if (status === 'LATE') return 'STATUS · PRIORITY COURIER LATE · ESCORT REQUEST OPEN';
+  if (status === 'BERTH') return 'STATUS · PRIORITY COURIER BERTHED · SCHEDULED DEPARTURE';
+  if (itinerary.countRouteId === TETHYS_TALLY.id) return 'STATUS · CUSTOMS RUN · SCAN GATE AND COUNT LANE';
+  if (escort.usedLegSeq === itinerary.legSeq) return 'STATUS · PRIORITY SPRINT · ESCORT CREDIT CONFIRMED';
+  return 'STATUS · PRIORITY SPRINT · ON SCHEDULE';
+}
+
+export function createContactHailResponse(state, offer, choice, authority = {}) {
+  if (offer?.lanternWardHail) return lanternWardHailResponse(state, offer, choice, authority.lanternRepair);
+  if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader' && offer.kind !== 'worker'
+    && offer.kind !== 'ace' && offer.kind !== 'variance_adjustment')) {
+    return null;
+  }
+  const target = entityById(state, offer.targetId);
+  if (!target) return null;
+  const id = String(choice || '').toLowerCase();
+  if (offer.kind === 'variance_adjustment') {
+    if (state?.world?.currentSectorId !== VARIANCE_ADJUSTMENT_BERTH.sectorId
+      || offer.worldRecordId !== VARIANCE_ADJUSTMENT_BERTH.worldRecordId
+      || offer.identityKey !== VARIANCE_ADJUSTMENT_BERTH.identityKey
+      || !isLiveVarianceAdjustmentTarget(state, target, offer.targetId)) return null;
+    const line = id === 'status' ? varianceAdjustmentStatusLine(state)
+      : id === 'identify' ? VARIANCE_ADJUSTMENT_BERTH.identifyLine : null;
+    if (!line) return null;
+    return {
+      requestId: offer.requestId,
+      targetId: offer.targetId,
+      kind: offer.kind,
+      choice: id,
+      expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_RECEIPT_TTL_S,
+      lines: [line],
+    };
+  }
+  let line = null, detailLines = null;
+  const pallas = pallasShiftStatus(state, target);
+  const heliosFreight = combatDriveDisabled(state, target) ? null : heliosFreightHailLine(state, target);
+  if (target.data?.activityActorSlotId === 'helios_starter_ore_carrier'
+      && id === 'route' && (offer.kind === 'trader' || offer.kind === 'worker')
+      && offer.actions?.some(action => action.id === 'route')) {
+    line = routeText(state, target);
+    if (heliosFreight) detailLines = [line, heliosFreight];
+  } else if (pallas && id === 'status' && authority.weaponsAuthorized !== true) {
+    line = `STATUS · ${pallas.text}`;
+  } else if (pallas && id === 'route') {
+    line = 'ROUTE · Sker run marks to Smuggler Den at Hollow Hub.';
+  } else if (offer.kind === 'ace' && id === 'status') {
+    line = aceHailStatusText(state, target);
+  } else if (offer.kind === 'ace' && id === 'identify') {
+    line = aceHailIdentifyText(state, target);
+  } else if (offer.kind === 'patrol' && id === 'status') {
+    line = authority.weaponsAuthorized === true
+      ? 'STATUS · WEAPONS AUTHORIZED. HEAVE TO.'
+      : 'STATUS · HOLD FIRE. FLY CLEAN.';
+  } else if (offer.kind === 'patrol' && id === 'identify') {
+    line = `${callsign(target, saveSeedOf(state))}${titleSegment(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
+  } else if (offer.kind === 'worker' && id === 'status') {
+    line = workerStatusText(target, state);
+    const charon = charonSupplyPresentation(state, target, { detailed: false });
+    if (charon) detailLines = charon.compact;
+    const winnow = winnowRecoveryHailLines(state, target);
+    if (winnow) detailLines = [line, ...winnow];
+  } else if (offer.kind === 'worker' && id === 'route' && charonSupplyPresentation(state, target, { detailed: false })
+    && offer.actions?.some(action => action.id === 'route')) {
+    detailLines = charonSupplyPresentation(state, target).route;
+    line = detailLines[0];
+  } else if (offer.kind === 'worker' && id === 'route' && isOrchardReceiver(state, target)) {
+    const status = orchardReceiverRepairFacts(state, target)?.status;
+    const guidance = orchardReceiverRepairGuidance(state, target);
+    if (status) { line = `ROUTE · ${status}`; detailLines = guidance ? [line, guidance] : [line]; }
+  } else if (offer.kind === 'worker' && id === 'identify') {
+    line = workerIdentifyText(target, saveSeedOf(state));
+  } else if (offer.kind === 'worker' && id === CONTACT_HAIL_ACTION_HELP) {
+    const available = richSeamHelpAvailable(state, target, 'worker');
+    const entities = state.entities && typeof state.entities.values === 'function'
+      ? state.entities.values() : [];
+    const opportunity = available
+      ? [...entities].map((entity) => {
+        const data = entity && entity.data || {};
+        if (!entity || entity.type !== 'asteroid' || data.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
+          || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) return null;
+        return richSeamOpportunityForEntity(state, entity);
+      })
+        .find((candidate) => candidate && candidate.sectorId === CERES_ACTIVITY_SECTOR_ID
+          && candidate.state === 'open' && !candidate.reservationId)
+      : null;
+    line = opportunity ? `HELP · RICH SEAM · +${opportunity.bonusU}u BONUS ON OFFER` : 'HELP · NO OPEN SEAM';
+  } else if (offer.kind === 'worker' && id === ANVIL_RENDEZVOUS) {
+    const r=authority.anvilRendezvous;line=r?.ok ? `RENDEZVOUS · BRAKING FOR UP TO ${Math.ceil(r.remainingS)}s. Tow the original gas to the service side, match speed, then Hail RETURN GAS.` : 'RENDEZVOUS UNAVAILABLE · Hail again with the original unclaimed pod on your line.';
+  } else if (offer.kind === 'worker' && id === ANVIL_CANCEL_RENDEZVOUS) {
+    const r=authority.anvilRendezvous;line=r?.ok ? `RENDEZVOUS CANCELLED · ROUTE RESUMES. ${Math.ceil(r.remainingS)}s braking budget remains.` : 'NO ACTIVE RENDEZVOUS.';
+  } else if (offer.kind === 'worker' && id === ANVIL_RETURN_GAS) {
+    const returned = authority.anvilReturn;
+    line = returned?.ok ? `RETURN GAS · ${returned.qty}u BACK ABOARD FOR TETHYS.${returned.remaining ? ` ${returned.remaining}u STILL ON YOUR LINE.` : ''}`
+      : 'RETURN GAS · NOT TRANSFERRED. Match the original pod to the tender service side and Hail again.';
+  } else if (offer.kind === 'worker' && id === CONTACT_HAIL_ACTION_TOW_ASSIST) {
+    const hire = authority.towAssist || {};
+    if (hire.granted === true) {
+      line = hire.feeCr > 0
+        ? `HIRE TOW · LINE ON THE LOAD · ${hire.feeCr}CR ON THE TAB.`
+        : 'HIRE TOW · LINE ON THE LOAD.';
+    } else if (hire.reason === 'no_load') line = 'HIRE TOW · NOTHING LOOSE IN REACH.';
+    else if (hire.reason === 'claim_refused' || hire.reason === 'already_claimed') line = 'HIRE TOW · CREW ALREADY COMMITTED.';
+    else line = 'HIRE TOW · CREW UNAVAILABLE.';
+  } else if (offer.kind === 'worker'
+    && [CONTACT_HAIL_ACTION_RECOVER, CONTACT_HAIL_ACTION_STEAL, CONTACT_HAIL_ACTION_ABANDON].includes(id)) {
+    const disabled = ceresDisabledHaulerTruth(state, target);
+    if (!disabled) line = 'TOO LATE · THE RECOVERY WINDOW HAS CLOSED.';
+    else if (id === CONTACT_HAIL_ACTION_RECOVER) line = 'RECOVER · MASSLINE THE HULL TO LAWFUL COVER.';
+    else if (id === CONTACT_HAIL_ACTION_STEAL) line = 'STEAL · MANIFEST JETTISON REQUESTED.';
+    else line = 'ABANDON · DISTRESS RELAY CLOSED.';
+  } else if (offer.kind === 'trader' && id === 'status') {
+    line = passengerLinerStatusText(state, target) || priorityCourierStatusText(state, target);
+  } else if (offer.kind === 'trader' && id === CONTACT_HAIL_ACTION_ASSIST) {
+    line = passengerLinerAssistAvailable(state, target)
+      ? 'ASSIST BOARDING · FORM UP AND HOLD THE CIVIC LINER.'
+      : 'ASSIST BOARDING · WINDOW CLOSED.';
+  } else if (offer.kind === 'trader' && id === CONTACT_HAIL_ACTION_ESCORT) {
+    line = priorityCourierEscortAvailable(state, target)
+      ? 'ESCORT · FORM UP AND HOLD THE PRIORITY BURN.'
+      : 'ESCORT · NO RECOVERY WINDOW OPEN.';
+  } else if (offer.kind === 'trader' && id === 'route') {
+    line = routeText(state, target);
+    const charon = charonSupplyPresentation(state, target);
+    if (charon) detailLines = charon.route;
+    const winnow = winnowRecoveryHailLines(state, target);
+    if (winnow) detailLines = [line, ...winnow];
+  } else if (offer.kind === 'trader' && id === 'manifest') {
+    const offered = Array.isArray(offer.actions) && offer.actions.some((action) => action && action.id === 'manifest');
+    const manifest = traderManifestForTarget(state, target);
+    if (offered && playerHasFittedCargoScanner(state) && manifest) {
+      line = manifestText(state, target, manifest);
+    }
+  } else if (offer.kind === 'worker' && id === 'manifest') {
+    // A Helios carrier with a job stamp keeps the same private scanner gate as civilian freight.
+    if (target.data?.activityActorSlotId !== 'helios_starter_ore_carrier'
+        || (offer.actions?.some(action => action.id === 'manifest')
+          && playerHasFittedCargoScanner(state))) line = manifestText(state, target);
+  } else if (id === CONTACT_HAIL_ACTION_HEAVE_TO) {
+    const result = authority.heaveTo || {};
+    if (result.granted === true) line = 'HEAVE TO · COMPLYING.';
+    else if (result.reason === 'ignored') line = 'HEAVE TO · NO COMPLIANCE.';
+    else if (result.reason === 'cooldown') line = 'HEAVE TO · CHANNEL COOLING.';
+    else if (result.reason === 'another_target_active') line = 'HEAVE TO · HOLD ALREADY ACTIVE.';
+    else line = 'HEAVE TO · UNABLE.';
+  }
+  if (!line) return null;
+  return {
+    requestId: offer.requestId,
+    targetId: offer.targetId,
+    kind: offer.kind,
+    choice: id,
+    expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_RECEIPT_TTL_S,
+    lines: detailLines || [line],
+  };
+}
+
+export function pirateParleyDemandForHandoff(record) {
+  if (!record || record.resolved || record.phase !== 'demand' || !record.demand) return null;
+  return {
+    squadId: record.squadId,
+    hailerId: record.hailerId || null,
+    memberIds: Array.isArray(record.memberIds) ? record.memberIds.slice() : [],
+    doctrineId: record.doctrineId,
+    factionId: record.factionId,
+    phase: record.phase,
+    startedAt: record.startedAt,
+    demandAt: record.demandAt,
+    deadlineAt: record.deadlineAt,
+    demand: { ...record.demand },
+    tithe: record.tithe ? { ...record.tithe } : null,
+    choice: record.choice || null,
+    escapeRadius: 1200,
+  };
+}

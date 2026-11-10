@@ -1,0 +1,1044 @@
+{
+  "status": "review-only preservation, no runtime replacement",
+  "rootOwnsCommitAndPR": true,
+  "files": [
+    {
+      "source": "brood-charger-redesign/HANDOFF.md",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/HANDOFF.md",
+      "bytes": 7634,
+      "sha256": "10055124a2414da372dd93d4e697dd44c8802f59ba1812d23d18d1c2381a79f4"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/assemble.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/assemble.log",
+      "bytes": 6568,
+      "sha256": "43f42b1537cea7538a5e322a31229aa3aeafd11fb629e748bd99899552e422f1"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/assembly.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/assembly.json",
+      "bytes": 2585,
+      "sha256": "4d19b7dcbcddbdd2f17ac30ebf52c6d4fdeb4a2154529f212fc05eaa0c3df622"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/brood-charger.dedup-candidate.motion.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/brood-charger.dedup-candidate.motion.json",
+      "bytes": 73456,
+      "sha256": "bd38564b224bcd6ebf1f34aea43a331f7d94e333fb965490600a478e62f53758"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/brood-charger.motion.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/brood-charger.motion.json",
+      "bytes": 76884,
+      "sha256": "e9afa043cda7ebf8fa0be717c63cbc3185d728eead55734d3a15af6752e24da7"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/brood_charger_v01.dedup-candidate.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/brood_charger_v01.dedup-candidate.glb",
+      "bytes": 423260,
+      "sha256": "b9652f016df179441a0f9cde9e69531f4c3a2c07a9ac9a87187c6122a953c43c"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/brood_charger_v01.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/brood_charger_v01.glb",
+      "bytes": 426068,
+      "sha256": "f2a7d59c2e21eb38792404ef25cf4b6c70c827554997e5eba9a9eb5da0eb70cd"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/charger-LOD0-source.blend",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/charger-LOD0-source.blend",
+      "bytes": 853294,
+      "sha256": "6d1a1d583528237215b58f41ed67c9336fa7ecad3f6bdcf6aeb6beefbcdc794c"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/charger-LOD0-source.blend1",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/charger-LOD0-source.blend1",
+      "bytes": 853294,
+      "sha256": "b1f1875378e4c9f1b4c645350a3ebc5af78e0eb1bf912f3f1861f54c810cd237"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/charger-LOD0-source.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/charger-LOD0-source.glb",
+      "bytes": 236196,
+      "sha256": "3eb26130a46dd3cdc9d643d252298b07bc54ce7c5363e8d105297023a1b3b217"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/charger-LOD1-source.blend",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/charger-LOD1-source.blend",
+      "bytes": 776626,
+      "sha256": "71a4f10a6df23848b4e63863fadf1eb386bb275b29b06de409e44e2a4028f95e"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/charger-LOD1-source.blend1",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/charger-LOD1-source.blend1",
+      "bytes": 776626,
+      "sha256": "8c36367eff35b5eae72b934ba87e43d91663a304304ad7202f730cc710ce023f"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/charger-LOD1-source.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/charger-LOD1-source.glb",
+      "bytes": 178180,
+      "sha256": "c605744795cc2ca644342cdd8bb5657795dea7ebe1000b5849dfaf6e3e6fb7be"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/charger-LOD2-source.blend",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/charger-LOD2-source.blend",
+      "bytes": 728386,
+      "sha256": "e6f57e59e697ad4e714b7944d1a62c3e5d32320ac3b3643400b4925dc5d16214"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/charger-LOD2-source.blend1",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/charger-LOD2-source.blend1",
+      "bytes": 728386,
+      "sha256": "02bbbb4df760e9c2757b60bf612cb6264b7d45c9fedb242bc0d048760fed1a30"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/charger-LOD2-source.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/charger-LOD2-source.glb",
+      "bytes": 138120,
+      "sha256": "a1890b7f528cb5df0e4ecc06531957f2fe20e0975465b8268ae24c5f982b8592"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/charger-animated-source.blend",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/charger-animated-source.blend",
+      "bytes": 1092806,
+      "sha256": "250e2a2416543c12e7f9db08d5c632230b772bc206c30cbb1ed680d396f41a2d"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/footprint-check.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/footprint-check.json",
+      "bytes": 99830,
+      "sha256": "3427f7acf817b20be3ea8aa3c533a262419cd433835985c4cff9e489a49b718b"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/footprint.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/footprint.log",
+      "bytes": 145,
+      "sha256": "35e6a6040d40c4010d52ebf127138f255a34fec755e8ad901400e307492e0575"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/gltf-transform-receipt.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/gltf-transform-receipt.json",
+      "bytes": 462,
+      "sha256": "7e94780e6ffa068afa7f2201b55e586564f3da6fa15025a87485c7036281793f"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/lod0-study.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/lod0-study.json",
+      "bytes": 381,
+      "sha256": "accf4b8af0613bcdbeb91d769a8afcb131750489e8a26e19c9a4c5583cba2497"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/lod0.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/lod0.log",
+      "bytes": 2619,
+      "sha256": "562d599051c1c68387e4e8f967e96d63e4ded1b57ed6958766c9628555a4061e"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/lod1-study.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/lod1-study.json",
+      "bytes": 381,
+      "sha256": "c8fc6789867d83b9c29d3802b6b4041120b55dcd7c7bc9f9744c560ea2a1bf2b"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/lod1.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/lod1.log",
+      "bytes": 2618,
+      "sha256": "0680097c8f106287c02effabb11524fb9d1dc06abdffe18957c1809ead885800"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/lod2-study.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/lod2-study.json",
+      "bytes": 381,
+      "sha256": "d007f0b196324ded28200cc0702e3b75ef99401c3aad8aad29360e5f03f5d1db"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/lod2.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/lod2.log",
+      "bytes": 2617,
+      "sha256": "296bd10419686bb8d22b89a042b5e2c18418985db12b06805f5780d332b5ca0e"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/motion.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/motion.log",
+      "bytes": 332,
+      "sha256": "4d987258ddc4ada8f5bc1d849dd143758ff72ba17675ddf99be677fb8418b9f5"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/optimize.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/optimize.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/c6-action-review.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/c6-action-review.png",
+      "bytes": 274773,
+      "sha256": "ae9d03b86442c7a4c117a15ca2758bb5cc3013b67cc32baa9b1a33b95b665346"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/c6-matched-lod-review.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/c6-matched-lod-review.png",
+      "bytes": 873300,
+      "sha256": "a47c2fe548b2836bf65dde2172c9a257d7e931d9527530ca09180128b1a880e8"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/c6-structural-review.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/c6-structural-review.png",
+      "bytes": 340999,
+      "sha256": "1428a15abef9defff4fe4c5de22d2603a5709be84bd253927460608eee3b2395"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod0-approach.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod0-approach.png",
+      "bytes": 507262,
+      "sha256": "d3f10ed6c1d7fb601bd69e13c709b602dfa23b3e2452dcf311dc59d6618de8e5"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod0-attack.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod0-attack.png",
+      "bytes": 506869,
+      "sha256": "24647d7ce451d12b33b5c789bd0f96aa7fb01fb663bd6755e4b7828fae3b215a"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod0-chase60.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod0-chase60.png",
+      "bytes": 553631,
+      "sha256": "f5e94bb81842c45c89c8594ef8bef424aa03bd7c069bc44e3bc6d40f42189574"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod0-fork.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod0-fork.png",
+      "bytes": 599788,
+      "sha256": "5f69dc8e92b8a80ec87afe21a0a13ab7501ee43dd1323b3e41ad9e2b8127dbd3"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod0-recovery.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod0-recovery.png",
+      "bytes": 505391,
+      "sha256": "3e85bc46d14b7f5bde241a2993bc509f88746fdf1a529b853eeeee26e0fd37b1"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod0-side.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod0-side.png",
+      "bytes": 349550,
+      "sha256": "20f6444d9f2e6786cd274681fad463c58cca03d1dbb8510b2c36503c6dcf44ce"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod0-threequarter.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod0-threequarter.png",
+      "bytes": 488139,
+      "sha256": "7a5d898e198da9713e237adfc8fabebaae3cdd96ccb6cbf424b0c139a1357bdc"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod0-top.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod0-top.png",
+      "bytes": 591860,
+      "sha256": "ee2f69800721cc22eb392812c26118124bcf50d77315df1551a11fac2a94ef5d"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod0-underside.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod0-underside.png",
+      "bytes": 420359,
+      "sha256": "53a2319b045ef641ba1448a59920420bf00c1244b21ff564bd89ee3579ee8d44"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod0-untextured-normal-check.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod0-untextured-normal-check.png",
+      "bytes": 486696,
+      "sha256": "a60f15d0f50858cd109172ee9eec5a2790e38f1a667f6755051ea961269a5c3e"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod0-windup.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod0-windup.png",
+      "bytes": 505081,
+      "sha256": "0221a74f46acfe8c320f44aa80828da898763bdff7ba6a2838543a3799fda287"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod1-approach.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod1-approach.png",
+      "bytes": 503686,
+      "sha256": "d5c0738690a317d9fdea3064f57a6e1cb1f2c960a119553a5e143755d7fb6b57"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod1-attack.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod1-attack.png",
+      "bytes": 503562,
+      "sha256": "f194ffea3e5c0db1f814837cbd124bde560c9df862a24cc1656344ffeb4e48f5"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod1-chase60.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod1-chase60.png",
+      "bytes": 554197,
+      "sha256": "1a720d830dc2667a3008a59191ade6f369e89e81dd4613906e069a465ef73ee9"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod1-fork.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod1-fork.png",
+      "bytes": 602015,
+      "sha256": "53aee9859bdaa974786f063e5a3c1c01cffe626fcebd6256612bfa15fa03ee41"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod1-recovery.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod1-recovery.png",
+      "bytes": 502272,
+      "sha256": "0a171ebf6b9b48299a277755414f9b1de95572779b8b83a93cd96b3420151c0e"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod1-side.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod1-side.png",
+      "bytes": 349105,
+      "sha256": "53f5293c843706b68514f6edc9e9ed27ba03d3e714c9a69458d0e0b770dea268"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod1-threequarter.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod1-threequarter.png",
+      "bytes": 487162,
+      "sha256": "727fc66fffa76dc524b27c8e99b5bf00d8122bd8ce3e5d588af9d817cfd183a3"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod1-top.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod1-top.png",
+      "bytes": 592928,
+      "sha256": "9c42271de544c26182c239ce6cb2ffa329e0ef680c614d3b50ccc47cf614360c"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod1-underside.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod1-underside.png",
+      "bytes": 422102,
+      "sha256": "2632bf78f17169fba364433f85b9258b8260caa341854c3145a84e0ddb438671"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod1-windup.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod1-windup.png",
+      "bytes": 501967,
+      "sha256": "48ce12a4775a5d4e07928eb07ba29a625e982e3c51b66cda607685792b6d5546"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod2-approach.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod2-approach.png",
+      "bytes": 500020,
+      "sha256": "1bc2e03ac8788bbbeb789ba0dd061ce2c33d129f023438bb60b8e18f1fc4ce20"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod2-attack.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod2-attack.png",
+      "bytes": 499940,
+      "sha256": "cfafcaa6ef08464238a97d4a85da04af6ac3bd087d4ef50bb32ec6d281c2e708"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod2-chase60.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod2-chase60.png",
+      "bytes": 549573,
+      "sha256": "e7049888444279299eaadef077d3e0a2bb7b7d83680e39d14284866f9e1c3e25"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod2-fork.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod2-fork.png",
+      "bytes": 595111,
+      "sha256": "894de51cb311de982ec2afbf4a26f5306c44170dfa7464f511771ba601174aab"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod2-recovery.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod2-recovery.png",
+      "bytes": 498948,
+      "sha256": "2aa53142767d248a6f495fbe9b685414e0effb25e2d28496bb24c6cccbf65845"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod2-side.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod2-side.png",
+      "bytes": 348413,
+      "sha256": "65cc4b648b4559ebc6c3e7e2e372f4d11b78c2ada3b3414e7332d3190f6258f7"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod2-threequarter.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod2-threequarter.png",
+      "bytes": 483683,
+      "sha256": "986b9dfc7e872ebe1df60213cc5f301a91148d9dc8068bc53bb4eb5121d0e255"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod2-top.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod2-top.png",
+      "bytes": 590664,
+      "sha256": "5d64da55f8cde3dc6577ac93740dbaecd21592558e7eed67ac33dc853de6e1f8"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod2-underside.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod2-underside.png",
+      "bytes": 423621,
+      "sha256": "616bdc547c140c9b6dc155e9cd805068d4faefc8015c70fa8ffc7568b0aeef11"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/lod2-windup.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/lod2-windup.png",
+      "bytes": 498496,
+      "sha256": "24223e9338472172ad48629b1f91e41cdbd32d726fc39d995f6dc3dbc4bcebf0"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review/render-receipts.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review/render-receipts.json",
+      "bytes": 23921,
+      "sha256": "4b1d37190a364dc6d3bd1018bfdc749114c6e35443f39c80024233348a2c7a83"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/review.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/review.log",
+      "bytes": 171683,
+      "sha256": "d3a5938a4fa2994f72fef8228437f5c65e8bfb7fba0fb87201137964c906f8a2"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/source-geometry-check.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/source-geometry-check.json",
+      "bytes": 8209,
+      "sha256": "9493ee2954f494ae613269482185504e6f4c15b0e9925745405f967c8b5fc2fb"
+    },
+    {
+      "source": "brood-charger-redesign/candidate-c6/source-geometry.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/candidate-c6/source-geometry.log",
+      "bytes": 386,
+      "sha256": "d908d023cdd3b1fc04159bfdb23708d522e23c9f98214424367f6c5e0d7932c3"
+    },
+    {
+      "source": "brood-charger-redesign/contracts/contract-diff.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/contracts/contract-diff.json",
+      "bytes": 20344,
+      "sha256": "479c4a806cb7e44fa0b66cbe0a5b257ad5cedee0d35c6c2c3ec579531399e8c7"
+    },
+    {
+      "source": "brood-charger-redesign/contracts/convex-overlay.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/contracts/convex-overlay.png",
+      "bytes": 121916,
+      "sha256": "58f681aad5d54004779f7cb74645263526d41764109ea0af7aaac0191317b4a4"
+    },
+    {
+      "source": "brood-charger-redesign/contracts/convex-proxy-proposal.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/contracts/convex-proxy-proposal.json",
+      "bytes": 13693,
+      "sha256": "7a0da60cc8d0b48781baf7230d1f8f746022eae16b68011e166175126e2b3ca0"
+    },
+    {
+      "source": "brood-charger-redesign/contracts/derive.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/contracts/derive.log",
+      "bytes": 493,
+      "sha256": "11c03db98a9b4b034f31e9697caa887f4a0c8983582e3f801cde0c029d9f7331"
+    },
+    {
+      "source": "brood-charger-redesign/contracts/frozen-charger-attack.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/contracts/frozen-charger-attack.json",
+      "bytes": 115,
+      "sha256": "54e89f4601fa141bd0f1d344be65fc908ae667dee1e23d200736beefde3083da"
+    },
+    {
+      "source": "brood-charger-redesign/contracts/frozen-charger-contract.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/contracts/frozen-charger-contract.json",
+      "bytes": 5158,
+      "sha256": "e98dc3d48874012d87d5763fb803a24c2212ce51957ca59ddb066c54bbf155c8"
+    },
+    {
+      "source": "brood-charger-redesign/contracts/proposed-charger-contract.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/contracts/proposed-charger-contract.json",
+      "bytes": 15751,
+      "sha256": "485dab54319c804ff8c37e3675c9bd93a4a93be9278907e4bf5d32eea6e94fae"
+    },
+    {
+      "source": "brood-charger-redesign/source/assemble_candidate.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/assemble_candidate.py",
+      "bytes": 3269,
+      "sha256": "40f521a4f54d58d9715aa9b577676819457cdf6d4bcc851492956304d4c86ee6"
+    },
+    {
+      "source": "brood-charger-redesign/source/assemble_review_sheets.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/assemble_review_sheets.py",
+      "bytes": 2590,
+      "sha256": "f23ecfca0f005db6a2f1da4551702589d7fb31bd16161adff90c78dcfad4114f"
+    },
+    {
+      "source": "brood-charger-redesign/source/bake_motion.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/bake_motion.py",
+      "bytes": 2613,
+      "sha256": "7a321a6a08190a2d20ab871be8e378774a92259e05f98225d50d7b64ac1dec38"
+    },
+    {
+      "source": "brood-charger-redesign/source/build_charger.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/build_charger.py",
+      "bytes": 11641,
+      "sha256": "a968df8e4134dbc2169f50d50e2d184f6cf7e85d05799820b75ff0051d3c07a3"
+    },
+    {
+      "source": "brood-charger-redesign/source/build_charger_c1.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/build_charger_c1.py",
+      "bytes": 7985,
+      "sha256": "e21f060f966bba53d1f6d6023738e689446061c1d9ccfa8aa59a4e521228043c"
+    },
+    {
+      "source": "brood-charger-redesign/source/build_charger_c2.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/build_charger_c2.py",
+      "bytes": 8939,
+      "sha256": "aa4d8281a73612384d4dd1e5dcc59a84adcab17bc7d39ea739c2707044de4bfa"
+    },
+    {
+      "source": "brood-charger-redesign/source/build_charger_c3.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/build_charger_c3.py",
+      "bytes": 9683,
+      "sha256": "7f3c5054dfbd5c8f003e988c36a0ffbb3c57c9ad3d67cec051ff0986dfb502ee"
+    },
+    {
+      "source": "brood-charger-redesign/source/build_charger_c4.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/build_charger_c4.py",
+      "bytes": 10384,
+      "sha256": "046a9521648862246749857a8a660a1d3ef188c8d325ea0439ae8225a922e2b9"
+    },
+    {
+      "source": "brood-charger-redesign/source/build_charger_c5.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/build_charger_c5.py",
+      "bytes": 11446,
+      "sha256": "b30f51bcdabe08527ca79079fd7d69879ef08db0c6c98aa45037c776b7fce58f"
+    },
+    {
+      "source": "brood-charger-redesign/source/build_contract.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/build_contract.py",
+      "bytes": 1896,
+      "sha256": "173f2f3bcf29f470b244034a1d28b93e420812e9dfb5050d69ea1255092d1d95"
+    },
+    {
+      "source": "brood-charger-redesign/source/check_footprint.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/check_footprint.py",
+      "bytes": 3116,
+      "sha256": "a8ac695f21babe300e55902fa20f0af46b546671d43e3bc55e0c3281dd6bbb22"
+    },
+    {
+      "source": "brood-charger-redesign/source/derive_proxies.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/derive_proxies.py",
+      "bytes": 4549,
+      "sha256": "ace33757366abb0fa01b49ce1ea62aaecff2dc7f5892fed0fc6c4edc0bd2eefa"
+    },
+    {
+      "source": "brood-charger-redesign/source/glb_geometry.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/glb_geometry.py",
+      "bytes": 2360,
+      "sha256": "0b35eecae43bfbe433df85f7f4f018eb73956bdbceb2dfd53427ac6771c810fd"
+    },
+    {
+      "source": "brood-charger-redesign/source/make_checkpoint.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/make_checkpoint.py",
+      "bytes": 896,
+      "sha256": "fbec6ec71debbdf13f87ff8a1bd95bb799255d2d11bcf788ed3b251df1018fe4"
+    },
+    {
+      "source": "brood-charger-redesign/source/optimize_candidate.mjs",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/optimize_candidate.mjs",
+      "bytes": 1704,
+      "sha256": "6a46bebd0b89bf42142280d5dfce0f50cadc98d7b4aac0ce47506a2e471a3395"
+    },
+    {
+      "source": "brood-charger-redesign/source/render_cold_review.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/render_cold_review.py",
+      "bytes": 4190,
+      "sha256": "e43ce246cfd4781501248c4534122bfc0434db067a288fcef714a7e08740c20e"
+    },
+    {
+      "source": "brood-charger-redesign/source/render_diagnostic.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/render_diagnostic.py",
+      "bytes": 2355,
+      "sha256": "23bd04c5f8edc732e659d7a270db7901366260dc402fb489128fcb4578fc3353"
+    },
+    {
+      "source": "brood-charger-redesign/source/seal_handoff.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/seal_handoff.py",
+      "bytes": 973,
+      "sha256": "b39ed8176781b182f31aae1e295a65589bad0c025ae1fb45bcb56e90cdab24b6"
+    },
+    {
+      "source": "brood-charger-redesign/source/verify_source.py",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/source/verify_source.py",
+      "bytes": 944,
+      "sha256": "619efd796b81e53c651ddec0e103971f84899d0d9db5ddbe4d7bf5589df21ba8"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/build.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/build.log",
+      "bytes": 70836,
+      "sha256": "244f8d9e1d0276c9664e55618711a95d6d4bec1e7560d1d1afd5ad3ab41fb903"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/c1-lod0-chase60.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/c1-lod0-chase60.png",
+      "bytes": 570166,
+      "sha256": "57c839f000c36f1e7b657cd1d5d861e481d7c9b18e5bf10fa746b3533f279fae"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/c1-lod0-fork.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/c1-lod0-fork.png",
+      "bytes": 601325,
+      "sha256": "7d2e5cb442a2092065f712ea8a109ed6e1334d81e23a401474db987ba955425d"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/c1-lod0-pose-approach.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/c1-lod0-pose-approach.png",
+      "bytes": 522867,
+      "sha256": "fe62941a39e14543f214d63143059d2de7e10d17b603018d8269e083935a177b"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/c1-lod0-pose-attack.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/c1-lod0-pose-attack.png",
+      "bytes": 522878,
+      "sha256": "a3f9fe3eee31fb45ee76a2794a845e7ca90e9ddbe8d7f9a416e6128cfb1d98ed"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/c1-lod0-pose-recovery.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/c1-lod0-pose-recovery.png",
+      "bytes": 522274,
+      "sha256": "afddf620e190f97816827351682e2eabdc423462588c7186fa6d133accfa26e8"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/c1-lod0-pose-windup.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/c1-lod0-pose-windup.png",
+      "bytes": 522327,
+      "sha256": "280f15e45137be1f642e9d02a03015962cb574cbc04be2887fbe517596e9d00c"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/c1-lod0-side.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/c1-lod0-side.png",
+      "bytes": 354163,
+      "sha256": "a7a083f2108759e6077cb1c603cd134b6c3cca9959a95b44222c2426a0bea980"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/c1-lod0-threequarter.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/c1-lod0-threequarter.png",
+      "bytes": 500066,
+      "sha256": "5d6be63d83236fb35ce8ecd6d5ab12534f5577e2f545c41fcfc26d3a68fb8e68"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/c1-lod0-top.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/c1-lod0-top.png",
+      "bytes": 612028,
+      "sha256": "b97c124909f13b573cee8334162bb618c1d09b51e05916a85db9c37dc395ce1d"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/c1-lod0-underside.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/c1-lod0-underside.png",
+      "bytes": 435755,
+      "sha256": "41437b24ac5efee0d637a6ab1bcabebc3f714c3d84d6e47d406de30876a24950"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/charger-LOD0-source.blend",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/charger-LOD0-source.blend",
+      "bytes": 814298,
+      "sha256": "63873975270f2ac1d3a56841dfec4dc2681333ab464c9a41958232a7ef584b63"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/charger-LOD0-source.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/charger-LOD0-source.glb",
+      "bytes": 200664,
+      "sha256": "9ba33984708a19de81b2f259d6611176491f42378a0ff1233c7549afdf5d6282"
+    },
+    {
+      "source": "brood-charger-redesign/study-c1/lod0-study.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c1/lod0-study.json",
+      "bytes": 377,
+      "sha256": "37e4f05c2f4e6c5c145607f6f73caaf517f3b1d6ee7aaa48c50dbadb8238ad87"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/build.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/build.log",
+      "bytes": 65912,
+      "sha256": "69690bf59599f19de95e957d10f413f47607de74c45d9f53a9cb3d231b82855b"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/c2-lod0-chase60.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/c2-lod0-chase60.png",
+      "bytes": 583375,
+      "sha256": "9e3d0dc1f0e2599b7c96155b0e8f524db748a93d95ca3afa81e98a3460badb45"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/c2-lod0-fork.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/c2-lod0-fork.png",
+      "bytes": 608526,
+      "sha256": "2037d22ca7a46c3e35097ce630107d6aa20d182239db4239a6b1f9d4d5072170"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/c2-lod0-pose-approach.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/c2-lod0-pose-approach.png",
+      "bytes": 532639,
+      "sha256": "67716e7033c27c86c4df147e5b0fa6cf0e52a9c24e5b344de05d6250431ce231"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/c2-lod0-pose-attack.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/c2-lod0-pose-attack.png",
+      "bytes": 533098,
+      "sha256": "b458d1d51afcca01cbdb620119ec9705634654e850a4f5e09dfcada134e005f4"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/c2-lod0-pose-recovery.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/c2-lod0-pose-recovery.png",
+      "bytes": 532252,
+      "sha256": "7808c97f48270d57381b35d3938d2314e9a12d07b9f51a2303db0433a7dacec5"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/c2-lod0-pose-windup.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/c2-lod0-pose-windup.png",
+      "bytes": 532107,
+      "sha256": "e47d51fd5c95f13c6f2ae9c0b5493838e4f5b2b84ecd630ba9375321baa41088"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/c2-lod0-side.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/c2-lod0-side.png",
+      "bytes": 358655,
+      "sha256": "af940cb8c1acdb563c13421f9e751685fb5523c8e04330adabf5efbf67d0a74a"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/c2-lod0-threequarter.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/c2-lod0-threequarter.png",
+      "bytes": 508800,
+      "sha256": "a021ac1ff12972a25e4063ec015681ca80eb635115bee5723fbde61b19361646"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/c2-lod0-top.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/c2-lod0-top.png",
+      "bytes": 622180,
+      "sha256": "1aa3d8690daf7941fa0b7016c1dd14a62fd99ff31efd9f2f514ee754cec7058b"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/c2-lod0-underside.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/c2-lod0-underside.png",
+      "bytes": 429683,
+      "sha256": "15aa0c64a7fd01c3c1b571c0b5edeb16d78b9f1570e25f19d6cf5df2cfdeabed"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/charger-LOD0-source.blend",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/charger-LOD0-source.blend",
+      "bytes": 767850,
+      "sha256": "aa6c79b717bbd0644cd4626a325b39323518f30d8e5d347c09f477025fd44ba5"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/charger-LOD0-source.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/charger-LOD0-source.glb",
+      "bytes": 176900,
+      "sha256": "0c1eec9fee6016428c7a88bd767ac8fbbfd4066beac90f52a31287c998608d04"
+    },
+    {
+      "source": "brood-charger-redesign/study-c2/lod0-study.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c2/lod0-study.json",
+      "bytes": 376,
+      "sha256": "5c6c6b405670f43cc363bfc48789aa948e9105fe4fe8db75673af74e1f89cb0a"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/build.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/build.log",
+      "bytes": 65475,
+      "sha256": "a45c21a7187b31045437c30e4b992570e5987382f036c35504e5b5ac8ff0d940"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/c3-lod0-chase60.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/c3-lod0-chase60.png",
+      "bytes": 583158,
+      "sha256": "0d61ec488cd9f3f9369515d6675a4fd1d2d97281b2bb84549b6b1c722f5eb4dc"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/c3-lod0-fork.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/c3-lod0-fork.png",
+      "bytes": 610574,
+      "sha256": "5f8d08a5d1e3ab3d0c7a49c384fd9a1fca8ee4ec1d125dfd252c98fff1bf79bb"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/c3-lod0-pose-approach.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/c3-lod0-pose-approach.png",
+      "bytes": 535462,
+      "sha256": "8cbec66628f6ff840fae59a2b42b05ac54471f5f69f22582b5e1572c2688e7b5"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/c3-lod0-pose-attack.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/c3-lod0-pose-attack.png",
+      "bytes": 535295,
+      "sha256": "26408e4f945e58a6a78ea1f2ff990b7afdec76390997f36683c6e2cd999d57c6"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/c3-lod0-pose-recovery.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/c3-lod0-pose-recovery.png",
+      "bytes": 534530,
+      "sha256": "3d61517261c69d04ef3ddadf62b03100321e81576355e827ee6080b11c5ae233"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/c3-lod0-pose-windup.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/c3-lod0-pose-windup.png",
+      "bytes": 534125,
+      "sha256": "b12b2a1823d0c752322759f6f894e8328e60ffe66d63b7eda381fc6a3756c10f"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/c3-lod0-side.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/c3-lod0-side.png",
+      "bytes": 359536,
+      "sha256": "75857f4864743ee0ad0fc40d4f50f1ecd00b9f430e5481099c542543285a8e8c"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/c3-lod0-threequarter.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/c3-lod0-threequarter.png",
+      "bytes": 511198,
+      "sha256": "4c33b02aae324dccb8e481f8608412eecf6f8beb72ec5c747cddb2e4ecce6f89"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/c3-lod0-top.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/c3-lod0-top.png",
+      "bytes": 622936,
+      "sha256": "56c650efc212caa43bd485468f0f43e5a5e973a630de9e38e042e9079a65b3e0"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/c3-lod0-underside.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/c3-lod0-underside.png",
+      "bytes": 430459,
+      "sha256": "9204a4101392ecd69ff39f893f127e372e24dc8c17c50e72d83559befbf86eaa"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/charger-LOD0-source.blend",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/charger-LOD0-source.blend",
+      "bytes": 768050,
+      "sha256": "1995cf9f272747753bb753bb3ff679115761c11e4ae2a1e6b79b4063d274bac1"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/charger-LOD0-source.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/charger-LOD0-source.glb",
+      "bytes": 179768,
+      "sha256": "c0a936a1ec078f42bb481e3da63b5fd4fb62d9d60c381b487b29a57a5a908afc"
+    },
+    {
+      "source": "brood-charger-redesign/study-c3/lod0-study.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c3/lod0-study.json",
+      "bytes": 376,
+      "sha256": "2cd33b064df761ec278eb1d850b557b3a0171ce08738425a4d0693c14cc89ca9"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/build.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/build.log",
+      "bytes": 69106,
+      "sha256": "152f203dedafbc4fa47d0d6f3498879295d359bb055b2ca64d77554fd94e39d0"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/c4-lod0-chase60.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/c4-lod0-chase60.png",
+      "bytes": 586002,
+      "sha256": "3ea43d000f67d8e0f07cfa178338f0c91083df68c97be807ebcfc9b6ad196f62"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/c4-lod0-fork.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/c4-lod0-fork.png",
+      "bytes": 622817,
+      "sha256": "b66ddbee797c9e258263c393a657407cb5a33564607a3704c7bcfe4a14fa4533"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/c4-lod0-pose-approach.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/c4-lod0-pose-approach.png",
+      "bytes": 537211,
+      "sha256": "c32154a29ed4ec81eb8d406ee8f8a3dfd5241ac18619e14bf55dfc8c11bc4093"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/c4-lod0-pose-attack.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/c4-lod0-pose-attack.png",
+      "bytes": 537228,
+      "sha256": "f80036c979b14b0cc794912cf7fa8803c058e74efb892820c3c2c5829a2421eb"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/c4-lod0-pose-recovery.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/c4-lod0-pose-recovery.png",
+      "bytes": 536343,
+      "sha256": "1c4f2799a51fa3bbc5d911f668f66ae98a682b9b46b34c299f08b663a397868f"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/c4-lod0-pose-windup.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/c4-lod0-pose-windup.png",
+      "bytes": 536122,
+      "sha256": "2e1d6c4f07fded02895b805696b82e68147d1648e5509c390133c4aa0ee86de1"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/c4-lod0-side.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/c4-lod0-side.png",
+      "bytes": 359851,
+      "sha256": "ee1e0c491b8c0710858f7928b916b001a03eb720c6f9b5b2c26ce0ebd5a5b96e"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/c4-lod0-threequarter.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/c4-lod0-threequarter.png",
+      "bytes": 513516,
+      "sha256": "a68373c8d6220d82c1a2e5e5d209c273851f125543ecfd927098abc614f5d44c"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/c4-lod0-top.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/c4-lod0-top.png",
+      "bytes": 627043,
+      "sha256": "04ac1b6ed7eb81efd06b07dd7b42355329293568e34f2138f915fb043ed73fc6"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/c4-lod0-underside.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/c4-lod0-underside.png",
+      "bytes": 432173,
+      "sha256": "88844725d3eef62068b53bbddfa84ad5914e0df3bf2d92c8071bba57971eb8f2"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/charger-LOD0-source.blend",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/charger-LOD0-source.blend",
+      "bytes": 810778,
+      "sha256": "954be1157605b0b19f0fc773bd199ad6ef19892a5d2953821e91978dc2d44c3d"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/charger-LOD0-source.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/charger-LOD0-source.glb",
+      "bytes": 216828,
+      "sha256": "88e72e80660638fe39b63545953ade3b7c955dec31e4b68d460a3f5ab0e051e2"
+    },
+    {
+      "source": "brood-charger-redesign/study-c4/lod0-study.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c4/lod0-study.json",
+      "bytes": 376,
+      "sha256": "f3ec6cc2f0a49b81c2e80199ab6aad8777a1fb8ee044cc152928e341e16ba472"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/build.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/build.log",
+      "bytes": 73591,
+      "sha256": "ab0e9080e237ac023f4ecea3e00d1c7d653e3590cbd9ea79729974b13b1f266b"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/c3-c5-checkpoint.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/c3-c5-checkpoint.png",
+      "bytes": 615440,
+      "sha256": "5f1eda42fcc66d6d71a170497f76c114a2ad912f93a4a56bf4d396079383f009"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/c5-lod0-chase60.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/c5-lod0-chase60.png",
+      "bytes": 585026,
+      "sha256": "3968e0470293b124aeaa970403df3383204e1812639764d2d525d2acbf32a2b6"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/c5-lod0-fork.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/c5-lod0-fork.png",
+      "bytes": 634741,
+      "sha256": "6a5fc469487003fd61d98394013c7f3d91ecfb97a06317de029f8115ecdff6d9"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/c5-lod0-pose-approach.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/c5-lod0-pose-approach.png",
+      "bytes": 533236,
+      "sha256": "9016deeb98a239ffee7008f26557e1f035db6e603a2d973a8a016a8d0b7c543b"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/c5-lod0-pose-attack.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/c5-lod0-pose-attack.png",
+      "bytes": 532940,
+      "sha256": "863890de0d7012c9417708eea64fb08571cb8e2744c965f55ebacdc3c7926578"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/c5-lod0-pose-recovery.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/c5-lod0-pose-recovery.png",
+      "bytes": 532442,
+      "sha256": "d19d4e3ef83b9befdcfbd95f77bb8f6f65fcbce9cd80a3cb1ffa0eb04a42294b"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/c5-lod0-pose-windup.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/c5-lod0-pose-windup.png",
+      "bytes": 532101,
+      "sha256": "c803b0bbb839486d1771f9c05ca38e8a4a5413ff55f97fa414770e016d8353e0"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/c5-lod0-side.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/c5-lod0-side.png",
+      "bytes": 359158,
+      "sha256": "6cff31892130e2b77e29805e6a395e882c1807cfc7e1b4e783ebb814b08dbf9b"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/c5-lod0-threequarter.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/c5-lod0-threequarter.png",
+      "bytes": 510959,
+      "sha256": "9dc84934d35ba676732afdc50b1aa1edb41a7350c0465fbbce414b187d5ad866"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/c5-lod0-top.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/c5-lod0-top.png",
+      "bytes": 623293,
+      "sha256": "3cc2ddf7e27a188098fbb24bd0a553809a99ece3281f668e45c8883ab88a23a9"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/c5-lod0-underside.png",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/c5-lod0-underside.png",
+      "bytes": 433913,
+      "sha256": "92431c0251ed89dbb7d427fb2ab94f1e16f557d4c0f51184666d67e0abbe1d12"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/charger-LOD0-source.blend",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/charger-LOD0-source.blend",
+      "bytes": 853294,
+      "sha256": "48b5db579f1ac30bfdcd43984df05b695f76358e0a8c9e09914d78f5d8ae781b"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/charger-LOD0-source.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/charger-LOD0-source.glb",
+      "bytes": 236196,
+      "sha256": "fd9ecb4da9d69b4b55066edc4afa24dd54f1f76e049648364cc3d96b6627615b"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/charger-LOD1-source.blend",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/charger-LOD1-source.blend",
+      "bytes": 776626,
+      "sha256": "d94da08f1f484e86161671be933e7ebfc4658e996a45c0233542178d6cb0f8c8"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/charger-LOD1-source.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/charger-LOD1-source.glb",
+      "bytes": 178184,
+      "sha256": "262a1c92caaa6791b449d4aca26987734bee8cdb20bca4c5d4683753b5866799"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/charger-LOD2-source.blend",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/charger-LOD2-source.blend",
+      "bytes": 748246,
+      "sha256": "adb2668649edac18a8d246062844026c7d5a5983f7bd32110fd827c7c1f0df5f"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/charger-LOD2-source.glb",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/charger-LOD2-source.glb",
+      "bytes": 152864,
+      "sha256": "04af3d5ded0e87832fdfd0d419a0a81b56f1b2a3026916a0c94eab2f1421ed10"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/lod0-study.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/lod0-study.json",
+      "bytes": 377,
+      "sha256": "d4fe0b5f6fbfd423a80214b5e1b654251547745664b88d048009f6171de74804"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/lod1-study.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/lod1-study.json",
+      "bytes": 377,
+      "sha256": "2fabc39fa62c7d166b7ae6640c57883a40d9b35dc34dbf37b7f9d6b816dcaa78"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/lod1.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/lod1.log",
+      "bytes": 2614,
+      "sha256": "58202928fd6e35bbda20b9c57ec02a9c939c617727f33e58a4b62cab4f2dadc2"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/lod2-study.json",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/lod2-study.json",
+      "bytes": 377,
+      "sha256": "df7bfd3f4610c4e11e1574a411a9c07251a1563aff35a0a0482112cdb5f90e1d"
+    },
+    {
+      "source": "brood-charger-redesign/study-c5/lod2.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/study-c5/lod2.log",
+      "bytes": 2615,
+      "sha256": "3150c443c2a6580d05021b5113c9d8cc6daae83ec68ba9a59f10d0405791c19f"
+    },
+    {
+      "source": "brood-charger-redesign/tests/charger-candidate.log",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/tests/charger-candidate.log",
+      "bytes": 599,
+      "sha256": "356c376902b39cc47a3b7f9b84b568559609d66c2e64f16871b399bfc16fcc4b"
+    },
+    {
+      "source": "brood-charger-redesign/tests/charger-candidate.test.mjs",
+      "repositoryDestination": "design/visual-assets/brood-charger-unfinished/tests/charger-candidate.test.mjs",
+      "bytes": 4699,
+      "sha256": "613218c4a9aa43585a8c44505eebe5543da1e192d87a0bd1e24aefa133c677e3"
+    }
+  ]
+}

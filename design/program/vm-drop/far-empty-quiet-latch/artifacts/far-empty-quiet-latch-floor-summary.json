@@ -1,0 +1,38 @@
+{
+  "floors": [
+    {
+      "median": 29.423,
+      "min": 24.415,
+      "max": 30.694
+    },
+    {
+      "median": 29.966,
+      "min": 28.856,
+      "max": 30.674
+    },
+    {
+      "median": 29.523,
+      "min": 29.08,
+      "max": 30.664
+    },
+    {
+      "median": 29.745,
+      "min": 26.457,
+      "max": 33.049
+    },
+    {
+      "median": 29.806,
+      "min": 28.244,
+      "max": 30.907
+    }
+  ],
+  "packageFloorMin": 24.415,
+  "packageMedianRange": [
+    29.423,
+    29.966
+  ],
+  "primaryCite": {
+    "median": 29.31,
+    "min": 18.317
+  }
+}

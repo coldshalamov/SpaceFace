@@ -1,0 +1,37 @@
+{
+  "rocks": 800,
+  "queries": 4000,
+  "travel": 160,
+  "radiusCollect": 514.8,
+  "wide": {
+    "label": "wide-shared-disc",
+    "ms": 233.22,
+    "hits": 3174100,
+    "radius": 4694.8,
+    "cellSide": 43
+  },
+  "tight": {
+    "label": "tight-rock-disc",
+    "ms": 24,
+    "hits": 853600,
+    "radius": 1214.8,
+    "cellSide": 12
+  },
+  "decode": {
+    "label": "decode-runway-dead",
+    "ms": 10.61,
+    "hits": 419300,
+    "radius": 640,
+    "cellSide": 6
+  },
+  "deadPer20s": {
+    "label": "decode-runway-20s-ticks",
+    "ms": 3.43,
+    "hits": 125790,
+    "radius": 640,
+    "cellSide": 6
+  },
+  "tightSpeedup": 9.72,
+  "cellsWide": 1849,
+  "cellsTight": 144
+}

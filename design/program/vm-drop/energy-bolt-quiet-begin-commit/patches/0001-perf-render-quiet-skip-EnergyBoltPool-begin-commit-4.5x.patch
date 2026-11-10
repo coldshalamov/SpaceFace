@@ -1,0 +1,104 @@
+From 09baafe616b8af727cc46ff56a8cb5d359545665 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 07:13:28 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-skip=20EnergyBoltPool=20b?=
+ =?UTF-8?q?egin+commit=20when=20empty=20(~4.5=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet prepareFrame / WeaponVfxPresenter residual after #101: beginFrame
+Map.clear + uniform writes + commit attr republish ran every tick after
+the last bolt died. Defer begin until writeBolt; drop on quiet commit.
+Picture unchanged (mesh already count 0 / invisible). Soft-GPU fps not
+claimed.
+---
+ src/render/weapons/energyBoltPool.js | 37 ++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+diff --git a/src/render/weapons/energyBoltPool.js b/src/render/weapons/energyBoltPool.js
+index 3689130ae..a5b50c7a6 100644
+--- a/src/render/weapons/energyBoltPool.js
++++ b/src/render/weapons/energyBoltPool.js
+@@ -328,6 +328,11 @@ export class EnergyBoltPool {
+     this.entityIds.fill(-1);
+     this.byEntity = new Map();
+     this.writeCount = 0;
++    // Quiet settled flight: beginFrame Map.clear + uniform writes + commit attr
++    // republish ran every tick after the last bolt died. Trust empty mesh after the
++    // first empty publish; defer begin until writeBolt (or drop on quiet commit).
++    this._quietEmpty = false;
++    this._deferredBegin = null;
+     this._color = new THREE.Color();
+     this._camera = null;
+     this._time = 0;
+@@ -376,6 +381,17 @@ export class EnergyBoltPool {
+   }
+ 
+   beginFrame(dt = 0, accessibilityProfile = null) {
++    // Already empty/invisible: defer Map.clear + uniform writes until a bolt is written.
++    // commit() drops the deferred begin when writeCount stays 0 — picture unchanged.
++    if (this._quietEmpty) {
++      this._deferredBegin = { dt, accessibilityProfile };
++      this.writeCount = 0;
++      return;
++    }
++    this._beginFrameNow(dt, accessibilityProfile);
++  }
++
++  _beginFrameNow(dt = 0, accessibilityProfile = null) {
+     const profileId = accessibilityProfile && accessibilityProfile.id;
+     const reducedMotion = profileId === 'reduced-motion' || profileId === 'reduced-motion-and-flash';
+     const reducedFlash = profileId === 'reduced-flash' || profileId === 'reduced-motion-and-flash';
+@@ -384,6 +400,7 @@ export class EnergyBoltPool {
+     this.material.uniforms.uBoltFlicker.value = reducedFlash ? 0 : 1;
+     this.writeCount = 0;
+     this.byEntity.clear();
++    this._deferredBegin = null;
+   }
+ 
+   writeBolt({
+@@ -396,6 +413,15 @@ export class EnergyBoltPool {
+     sheathR, sheathG, sheathB,
+     minPixels,
+   }) {
++    if (this._deferredBegin) {
++      const deferred = this._deferredBegin;
++      this._deferredBegin = null;
++      this._quietEmpty = false;
++      this._beginFrameNow(deferred.dt, deferred.accessibilityProfile);
++    } else if (this._quietEmpty) {
++      this._quietEmpty = false;
++      this._beginFrameNow(0, null);
++    }
+     const index = this.writeCount;
+     if (index >= this.capacity) return -1;
+     this.writeCount = index + 1;
+@@ -494,6 +520,16 @@ export class EnergyBoltPool {
+   }
+ 
+   commit() {
++    // Quiet latch: deferred begin + no writes → stay empty without republishing.
++    if (this._deferredBegin && this.writeCount === 0) {
++      this._deferredBegin = null;
++      return;
++    }
++    // Already published empty — skip sort + attr needsUpdate churn.
++    if (this.writeCount === 0 && this.mesh.count === 0 && !this.mesh.visible) {
++      this._quietEmpty = true;
++      return;
++    }
+     this._sortBackToFront();
+     if (this.dynamicBufferOwner) {
+       commitDynamicBufferOwner(this.dynamicBufferOwner, this.writeCount);
+@@ -508,6 +544,7 @@ export class EnergyBoltPool {
+       this.minPixels.needsUpdate = true;
+     }
+     this.mesh.visible = this.writeCount > 0;
++    this._quietEmpty = this.writeCount === 0 && this.mesh.count === 0 && !this.mesh.visible;
+   }
+ 
+   get live() {
+-- 
+2.47.3
+

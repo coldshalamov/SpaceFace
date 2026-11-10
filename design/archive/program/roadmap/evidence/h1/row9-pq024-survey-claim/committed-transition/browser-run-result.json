@@ -1,0 +1,37 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-08-06T07:17:04.042Z",
+  "status": "pass",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 77114,
+  "pidRecord": {
+    "pid": 5156,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq024-asteroid-claim.mjs",
+      "--committed-transition"
+    ],
+    "startedAt": "2026-08-06T07:15:46.928Z",
+    "platform": "win32",
+    "finishedAt": "2026-08-06T07:17:04.042Z",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq024-committed-transition",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 5156
+  },
+  "fixedSeed": 24024,
+  "failureFingerprint": null,
+  "family": null,
+  "routeDigest": "833fc2572e93d42e129d2b87dc068f4edd71e1c4119e54efdef063f61d18bc7c",
+  "regressionDigest": "5649f6ffe562c0badf66b03b8af83c06c36cece622f22babece3fa4c4c5203dd",
+  "candidateDigest": "965e0b46cee6bc1042cd663627d0664a7ae486f8d5ff1de219b496c1556a8f4c"
+}
