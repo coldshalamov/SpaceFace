@@ -8,6 +8,12 @@
 
 **Build first:** Juno in three towns, doing a job the player skipped.
 
+**Director's amendment, 2026-11-10** — see [10 — The game](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/10_THE_GAME.md), decisions D7 and D9. **The spine is canon and stays:** you are Wren in the *Tessera*, carrying Contract 47-A — 12.4 tonnes that the paperwork keeps getting wrong. Kessler, Rook, Slate and Director Vale are the cast; today they are comms lines with no portrait, so give each a face. The mystery is about *weight*, which is also the game's verb and its ladder (EC-G19). Use that. Juno and the Road Cast are additions around this spine, not replacements.
+
+**One voice says what is next.** Twelve systems can currently tell the player what to do: the tracker, the onboarding panel, tutorial voice, comms popups, toasts, first-use hints, the control bar, the Range pointer, act popups, the board badge, the Mission Log and map waypoints. Make one leader — a single "next" line with one marker — and have the others feed it. Known fights: the tutorial holds the map marker while the story job is already tracked (`missionStoryOps.js`); the side-job choice appears while the first story job is still open (`missionShared.js`); the Skim arrives as a popup and a toast at once.
+
+**Build first, replacing the line above:** one "next" line that the tutorial hands straight to the story job.
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
