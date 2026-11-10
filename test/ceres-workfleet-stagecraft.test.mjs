@@ -119,8 +119,8 @@ test('calls are local, re-entry reports current state, and a brief alignment del
   h.player.pos = { ...site.mapAnnotation.coursePos }; h.state.simTime = 10;
   stepCeresWorkfleetStagecraft(h.owner, h.site);
   assert.match(h.events.at(-1).payload.text, /secured.*cradle/i);
-  assert.equal(ceresWorkfleetYardCall({ completedOperations: { cut_long_plate_seam: true } }, null), null,
-    'never call a previously cut plate clamped');
+  assert.equal(ceresWorkfleetYardCall({ completedOperations: { cut_long_plate_seam: true } }, null), 'unbraced_cut',
+    'explain the lost brace opportunity without calling the freed plate clamped');
 });
 
 test('a pilot flying past does not spend the arrival call before slowing at the yard', () => {

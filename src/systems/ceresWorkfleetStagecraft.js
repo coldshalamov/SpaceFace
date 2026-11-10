@@ -7,7 +7,9 @@ const HEARING_RADIUS = 420;
 const CALL_SPACING_S = 8;
 const STALL_S = 5;
 const calls = Object.freeze({
-  awaiting_brace: 'Long plate is still clamped. Use the site beam on the marked long-plate brace: the yard pays 400 credits for the completed brace. You can leave it alone.',
+  awaiting_brace: 'Long plate is still clamped. Use the site beam on the marked long-plate brace: the yard pays 400 credits for the completed brace. Brace before cutting; the support cannot catch a freed plate. You can leave it alone.',
+  unbraced_cut: 'That seam was cut before the brace. The long plate is free, and the support cannot catch it now. This lift cannot start; keep clear of the loose plate.',
+  awaiting_release: 'The seam is cut. The support clamp still holds the long plate. Cut that clamp to release it, then leave the breaker room to take the original plate to the cradle.',
   cutting: 'Brace is in. Cut the long-plate seam and release its clamp yourself to get the breaker moving sooner.',
   lifting: 'The breaker has the plate on its own line. It is too heavy for a small tug; keep the path clear.',
   receiving: 'The plate is at the cradle. Give the breaker room to withdraw.',
@@ -23,19 +25,25 @@ const calls = Object.freeze({
 export function ceresWorkfleetYardCall(record, job, blockedSeconds = 0) {
   if (!record) return null;
   const phase = job?.phase;
+  // A destroyed original outranks a still-visible last job phase during its next tick.
+  if (phase === 'section-destroyed' || record.payloads?.long_plate?.destroyed) return 'destroyed';
   if (phase === 'secured') return 'secured';
   if (phase === 'player-retained') return 'retained';
-  if (phase === 'section-destroyed' || record.payloads?.long_plate?.destroyed) return 'destroyed';
   if (phase === 'worker-disabled' || phase === 'head-disabled') return 'disabled';
   if (phase === 'recovery-interrupted') return 'interrupted';
   if (!record.completedOperations?.brace_long_plate) {
-    // A manually cut or released plate must not be described as still clamped.
-    if (record.completedOperations?.cut_long_plate_seam || record.completedOperations?.release_long_plate_clamp) return null;
+    // The canonical site owner refuses bracing after the seam is cut. The same
+    // saved consequence needs an explanation even though no crew job can start.
+    if (record.completedOperations?.cut_long_plate_seam) return 'unbraced_cut';
+    if (record.completedOperations?.release_long_plate_clamp) return null;
     return 'awaiting_brace';
   }
   if (!job) return null;
   if (record.completedOperations?.release_long_plate_clamp
     && ['head_dock', 'head_out', 'head_cut', 'head_retract', 'tow_attach', 'reacquire'].includes(phase)) return null;
+  if (record.completedOperations?.cut_long_plate_seam
+    && record.components?.long_plate_clamp?.status === 'braced'
+    && ['head_dock', 'head_out', 'head_cut', 'head_retract', 'tow_attach'].includes(phase)) return 'awaiting_release';
   if (phase === 'head_cut' && job.blockedReason === 'physical-cutter-not-ready' && blockedSeconds >= STALL_S) return 'stalled';
   if (['extract', 'seat', 'loaded', 'receiver', 'unshoe'].includes(phase)) return 'lifting';
   if (['withdraw', 'pads'].includes(phase)) return 'receiving';
@@ -51,7 +59,7 @@ export function stepCeresWorkfleetStagecraft(owner, record) {
   if (!visit) { visit = { inside: false, sent: new Set(), lastCall: -Infinity, blockedAt: null }; visits.set(state, visit); }
   const player = state.entities?.get(state.playerId);
   const inside = state.mode === 'flight' && state.world?.currentSectorId === C.sectorId
-    && player?.alive !== false && player?.pos && !player.flags?.docked
+    && player?.alive !== false && player?.pos && !player.flags?.docked && !state.ui?.docked
     && Math.hypot(player.pos.x - C.sitePlacement.pos.x, player.pos.z - C.sitePlacement.pos.z) <= HEARING_RADIUS;
   if (!inside) { visit.inside = false; visit.blockedAt = null; return; }
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
