@@ -18,6 +18,8 @@
 
 **Build first (Slice 1):** The Empty Plinth, with the Slipway, the three faces and your lamp. This is the pilot town: the shared Place Kit (faces, shift, toy, mark, berth board) is built here and lifted out for every other town.
 
+**Written out, 2026-11-10:** this town's jobs, its heist and its street moments are written beat by beat in [13 — Jobs and heists](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/13_JOBS_AND_HEISTS.md). Build those as written; where a job there shares a name with one in the brief below, they are the same job.
+
 ### How to build this town and check your own work
 
 Work in this order. Each step ends with something you looked at.
