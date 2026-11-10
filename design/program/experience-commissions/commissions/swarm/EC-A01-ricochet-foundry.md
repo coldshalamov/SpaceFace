@@ -18,6 +18,8 @@ Then the bank shot and the furnace door. What is built here is lifted out as the
 
 **Written out, 2026-11-10:** the whole of Swarm — the loop, what is on the floor, the drops, the freight lanes, every enemy and its answer, all thirty rounds by name, the bosses and Madame Kiln's lines — is in [12 — Swarm: the Pit](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/12_SWARM_THE_PIT.md). The guns, power bends and mods it hands out are in [11 — The Armory](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/11_THE_ARMORY.md). Build from those; do not invent rounds, enemies or drops.
 
+**Also written out, 2026-11-10:** this arena's floor — where the guns hang, where the freight runs, what the doors open, the traps, the loop a good player runs, the secret and the round-thirty boss — is laid out in [15 — The seven arena floors](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/15_ARENA_FLOORS.md). Build the grey-box loop first.
+
 ### How to build this and check your own work
 
 Swarm has the best fast tools in the project. Use them in this order.
