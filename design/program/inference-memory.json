@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-11-09",
+  "updated": "2026-11-10",
   "runs": [
     {
       "date": "2026-08-12",
@@ -131,71 +131,6 @@
     }
   ],
   "units": [
-    {
-      "id": "inf-dione-convoy",
-      "date": "2026-11-02",
-      "wf": "WF-01",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "The convoy Dione's charts always promised now forms at the relay manifest pod with its toll escort and rolls out south, and a lost escort reads the honest empty-slot line",
-      "fingerprint": "verb=see,subject=npc-convoy-cast,sector=dione,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "8944ff923251",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-market-receipt-lane",
-      "date": "2026-11-02",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "The station's receipt line — sales, tolls, services, the PA — is readable on the market at 1280x720 instead of painting off the top of the glass",
-      "fingerprint": "verb=read,subject=station-receipt-lane,sector=station,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "d9f10637f688",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-radio-kill",
-      "date": "2026-11-02",
-      "wf": "WF-13",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "The radio now mentions the hostile wing you downed yourself: The Margin airs the receipt once, The Static roasts or toasts it by your standing.",
-      "fingerprint": "verb=broadcast,subject=player-kill-receipt,sector=band-radio,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "b414436038b1",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-throw-carries",
-      "date": "2026-11-02",
-      "wf": "WF-02",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "The rock you threw keeps its speed into the next round and the room says so, instead of the buzzer parking every body you aimed",
-      "fingerprint": "verb=carry,subject=thrown debris,sector=crucible rounds,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "e08c9b664dd8",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-wreck-history",
-      "date": "2026-11-02",
-      "wf": "WF-16",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A scanned battlefield wreck reads as a history: the black box names how it died, the manifest names what it carried, and the stamp says how long it has been dead.",
-      "fingerprint": "verb=read,subject=wreck-death-history,sector=target-panel,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "ca1f422ec8b0",
-      "verification": "focused_green"
-    },
     {
       "id": "inf-mortal-blow",
       "date": "2026-11-02",
@@ -1689,6 +1624,71 @@
       "references": [],
       "integration": "live",
       "commit": "9a1c332936db",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-ram-mass-law",
+      "date": "2026-11-10",
+      "wf": "WF-05",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Below the heavy boundary a 130 WU/s ram dealt what a 55 WU/s bump did and the striker's mass never entered - the victim's mass-ratio share of the pre-solve closing speed now feeds the same energy proxy and cap, only ever raising the bounded read: heavy wrecks light, equals crumple both ways, light bounces off hurt.",
+      "fingerprint": "verb=reads-the-masses,subject=craft-ram-damage,sector=flight-collisions,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "2179c3deea9f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-gratitude-parcel",
+      "date": "2026-11-10",
+      "wf": "WF-09",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The freighter you saved in the opening raid was worth one dock hail - its next real delivery now arms one gift pod that lands on its next close pass to you, titled to the player, with the captain's thanks spoken from the hull; dead captains ship nothing and paid debts never pay twice.",
+      "fingerprint": "verb=pays-the-debt,subject=saved-freighter-gift,sector=opening-sector,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "d37d22922d67",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-gate-throat-voice",
+      "date": "2026-11-10",
+      "wf": "WF-13",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Gates spawned as station bodies so the berth approach hum swelled at a jump gate while the gate itself was silent - the approach bed skips gate bodies now and the nearest live gate sings its own throat: a sawtooth ring detuning across the spin-up radius, a wormhole a lower moan, one authored caption per visit.",
+      "fingerprint": "verb=sings-its-throat,subject=jump-gates,sector=gate-approach,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "972999ec6726",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-pilot-personality-drive",
+      "date": "2026-11-10",
+      "wf": "WF-01",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Every ambient pilot flew the same rail - personalities now change the driving itself (spacing, speed, braking per kind), so a cautious pilot hangs back and a cocky one rides your wake, not just a different bark.",
+      "fingerprint": "verb=drives-differently,subject=ambient-pilots,sector=traffic-lanes,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "4b9cd64be0bb",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-massline-bite-read",
+      "date": "2026-11-10",
+      "wf": "WF-12",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The Line's bite looked the same on every catch - the bite now reads what the Line caught (hull class/material informing the contact read), so a rock, a hauler and a drone each answer differently at the latch.",
+      "fingerprint": "verb=names-the-catch,subject=massline-bite,sector=flight,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "c2f370e71685",
       "verification": "focused_green"
     }
   ],
