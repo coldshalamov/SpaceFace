@@ -1,0 +1,515 @@
+<!-- LIFETIME: STABLE -->
+# Feature validation workflow
+
+This is the repository reference for choosing the smallest check that directly answers a claim.
+Root [`AGENTS.md`](../AGENTS.md) §9 and the active program's
+[`README.md`](../design/program/finish/README.md) §2 set current verification scope and cadence.
+Use this file for the validation tools and their limits; do not turn its examples into a checklist.
+For lab implementation work, read
+[`../src/testing/lab/AGENTS.md`](../src/testing/lab/AGENTS.md).
+
+## The short version
+
+1. Reproduce or characterize behavior at the narrow owner seam when it is uncertain.
+2. Run the focused owner check when it directly verifies the change.
+3. Use a deterministic scenario for repeatability, simulation, or continuation claims.
+4. Exercise the affected Browser/Electron route when the claim is ordinary route reachability.
+5. Inspect rendered output for a visual claim; use a matched comparison for a performance claim.
+
+These are choices by claim, not steps every edit must climb. Evidence supports the requested result;
+it is not a deliverable unless requested. Fixed-seed numbers can establish handling and causality, but
+not whether a scene looks good or play feels fun. A missing GPU or capture-harness failure leaves a
+dependent visual/performance claim unmeasured; it does not negate unrelated implementation work.
+
+Never rerun an unchanged expensive failure. Preserve its fingerprint, classify it, reduce it to a
+seconds-scale regression, change the owning source or evidence, and only then request another
+acceptance claim.
+
+## Player-truth route check
+
+There is no fixed player-truth batch cadence. Run the smallest claim-relevant check: a focused owner
+check for an invariant, the ordinary player route for player-facing behaviour, and a matched
+measurement for a performance claim. Use a player-truth run when it directly answers the question
+the change raises, or when an active task names it. A gameplay `FAIL` blocks the affected claim and
+can be an observed failure or a core UNKNOWN promoted by `--gate`; noncore `UNKNOWN`/`INCOMPLETE`
+names what the route did not measure and is not a pass. Handle a FAIL before declaring the claim
+accepted. A verdict or contact sheet is a working artifact unless the active task asks for it.
+
+```
+npm run player-truth -- --mode=swarm --arena=all      # every reachable Crucible arena
+npm run player-truth -- --mode=gauntlet
+npm run player-truth -- --mode=adventure              # default New Game: Hitch, Helios, tutorials on
+npm run player-truth -- --mode=racing                 # Circuits, first course
+npm run player-truth -- --mode=swarm --gate           # idle pass + active pass to round 3
+```
+
+**Gate preset (`--gate`).** Round modes run two passes: an *idle* pass
+(no input: kills, reward and spawn motion before input) and an *active* pass (the scripted fighter
+plays from 3 s and must reach round 3; each round start is checked for ship model/LOD, thrust/yaw
+response, pinning and tumble). A gameplay `FAIL` blocks landing for the affected batch. With `--gate`,
+UNKNOWN on `player_control`, `tumble`, `player_ship`, `round_resolution`, or `round_transitions` is
+promoted to FAIL and must be resolved. Unmeasured noncore visual/performance checks remain
+UNKNOWN/INCOMPLETE; do not report them as PASS. No invulnerability is used.
+The process exits 1 when any arena FAILs, including when another arena is ENVIRONMENT. ENVIRONMENT
+is a harness failure (stale served `assets/`, or a quoted route load error such as "The authored
+starter ship could not be loaded"). It is printed on its own line and is not a gameplay FAIL.
+Exit 4 is used only when no arena FAILed. Exit 2 is INCOMPLETE. Exit 0 only when every arena's
+verdict is PASS. An INCOMPLETE verdict lists each UNKNOWN check that caused it. `--gate=active` or `--gate=idle` runs that one pass; a bare
+`--gate` still runs both. `--evidence` copies the verdict and contact sheet into
+`design/archive/program/player-truth/` and leaves `scratch/player-truth/<label>/frames/` in place for
+review. `--prune-frames` deletes those frames; it is off unless passed.
+`--viewports=960x540,1280x720,1920x1080` and `--hull=all` (every unlocked hull on the preparation
+screen; or `--hull=<starter id>`) repeat the run per combination. `node scripts/player-truth/compare.mjs
+<before dir> <after dir>` compares two existing runs. `vfx_coverage` grades only combat VFX, from a per-pixel diff with the
+combat additive layers hidden; `backdrop_coverage` grades the deep field / nebula / planets apart.
+Those per-pixel splits skip a sample taken while a `#screens` overlay is visible, or before the
+flight phase, and the verdict reports how many were skipped. Swarm preparation that is waiting on
+Launch round 1 fails within about 30 s when a different `#screens` screen stays up, and the route
+line names it (`unexpected screen: REARM`), instead of sitting on the 600 s wait.
+
+The harness (`scripts/player-truth/`) walks the real public route in a rendered Chromium with
+trusted keyboard/mouse input (idle first, then thrust/yaw probes, then a simple fighter or flyer),
+samples live telemetry through the observer-only `src/testing/playerTruth/reader.js`, and writes
+`scratch/player-truth/<mode>[-<arena>]/{verdict.md,contact-sheet.jpg,verdict.json,trace.json.gz,frames/}`.
+`--evidence` copies the compact verdict and sheet into `design/archive/program/player-truth/<label>/`.
+
+Before the browser starts, the harness checks that served `assets/` match `git ls-tree HEAD`
+(every blob's size, plus a content hash of files ≤64KB, every `render-package.json`, and the
+starter-hull `render.glb` files, and one manifest fetched through the bench server). `design/`
+is not fetched by the route, so it is not graded. A mismatch aborts with `HARNESS ENVIRONMENT: assets stale vs HEAD` and exit 4 when that is the only result.
+The same exit quotes a player-facing load error ("The authored starter ship could not be loaded…",
+a prepare/boot failure of the same family) instead of grading it as a route FAIL.
+
+`readability` is PASS or FAIL once any of enemy, asteroid, or projectile has at least 5 on-screen
+samples. It fails when more than half of those samples have ΔL < 8 against the local backdrop, or
+when a pair that both cleared 5 samples separates by less than 1.0. Separation is colour distance
+over spread, plus a silhouette term from the size ratio, plus 1.5 when one class's rim matches the
+declared threat hue `0xff1a3a` (the `swarm:threat-ring` material, Lab L ≈ 54, hue ≈ 30°) and the
+other does not. The hue is the mean of mid-band pixels that clear a chroma floor and differ from
+the local backdrop by ΔE ≥ 12, so an orange backdrop cannot paint an unmarked rock into that hue.
+A bright rim (L ≥ 75) does not buy that credit. The crimson ring is below L 75, so a brightness
+rule does not credit it either. Projectile visibility is the same backdrop-contrast rule.
+UNKNOWN only when no combat class reaches 5 samples. The contact sheet keeps up to four of the
+worst frames for that check.
+
+`loadout` (Swarm and Gauntlet preparation) says whether every fitted or offered item has an
+explanation and is relevant to the mode. Zero armory cards are either "the game offered nothing"
+(empty-shelf sentence and a zero category count) or "the harness failed to read the screen" (a
+count or a name the card selector missed). That sentence leads the measured column, with the
+shelf's own words quoted, so a PASS is not a bare "0 irrelevant". An offer's explanation is the
+sentence the player can read: the card blurb when it is on screen, otherwise the armory reading
+panel when that panel matches the lit row's own blurb. A panel that is up but names a different
+sentence is an offender (`reading panel does not match lit row`), not an explanation. A blurb the
+rail hides on another row counts only once that match holds. A refit contrast the player can see
+counts. A hidden refit contrast counts only when a lit row is showing its own contrast, and the
+verdict prints `row-on-select (inferred)`. A contrast clipped for the screen reader
+(`.orr-hp__contrast--drawn`) is not an explanation. A preparation line that claims a fit count but names no item is a FAIL. A vacuous
+"0 offers read" is not a PASS.
+
+`sim_stalled` fails when sim time advances less than 0.5 s across 60 s of wall time while the run
+phase stays active and the boot overlay is gone (mode is not `loading`). The run stops then. It
+does not sit until `--wall`. `play_interrupted` fails when any screen other than the flight HUD
+opens during that active phase without the script opening it. The line names the screen id, the
+last input, and, when that input was a click, the viewport coordinates and the DOM element under
+them (`document.elementFromPoint`, read before mouseup). A fire click that lands on a HUD control
+is reported. The driver still aims at the hostile. A draft screen that is already up as the phase
+becomes active has 3 s to clear. Both checks are N/A when play never started and UNKNOWN when play
+started but was not watched.
+
+`offscreen_marker` grades the Wave G4 edge chip the player sees (`.sf-threat-halo__slot--arc`), not a second radar and not `weapons.js`. A marker whose center is more than 48 px from every screen edge fails. A marker while every hostile is in frame fails. One off-screen hostile and one marker must name the same side when that hostile is outside on one axis. Off-screen hostiles with no chip stay UNKNOWN: the HUD marks shooters inside the threat halo, and the trace cannot see that. No off-screen hostile is N/A. The check is not gate-strict.
+
+- **GPU (preferred):** add `--headed` on a machine with a real GPU. The verdict records the WebGL
+  renderer string. A `SPACEFACE_QUIET_HOST=1` receipt is required only for claims made by the
+  separate Quiet Host Program. The Finish Program measures on the owner's machine with a matched
+  within-session A/B and reports host contention; do not turn a loaded diagnostic into a quiet-host
+  result or discard a valid local comparison. Verdicts record observer render/readback cadence.
+- **Browser:** Playwright's bundled Chromium first (`npx playwright install chromium`), then
+  `CHROME_PATH`, `/opt/google/chrome/chrome`, or `google-chrome`/`chromium` on PATH.
+- **Software GL (fallback):** the default headless run uses SwiftShader. It plays the same route at a
+  fraction of real speed (sim time is the clock, so bounds still hold) and takes a few minutes of wall
+  time per bounded run. Absolute frame times are labeled `software-renderer evidence` and are not an
+  absolute hardware performance result. Report the renderer and relevant host conditions; an
+  unsuitable comparison remains UNKNOWN for the performance claim. The Finish Program uses its
+  matched within-session comparison on the owner's machine for its performance A/B.
+  Long-task counts are always kept. The verdict says SOFTWARE GL.
+- Bounds are flags: `--rounds` (default 3), `--duration=<sim s>` (Swarm 180, Adventure 300),
+  `--wall=<minutes>`, `--idle=<sim s>`, `--seed` (house seed 4242).
+- Check logic is fixture-tested without a browser: `npm run check:player-truth`. Thresholds live in
+  `THRESHOLDS`/`MODE_DESIGN` in `scripts/player-truth/checks.mjs`; changing one is a reviewed
+  design decision, never a way to turn a verdict green.
+
+## Cost ladder
+
+Choose the smallest layer that can answer the changed behavior's question. Escalate only for a
+named unresolved claim, a failed/conflicting check, or a material risk. Run the lower gates an
+affected route actually requires; the ladder is not a checklist every edit must climb.
+
+| Layer | Proves | Typical surface |
+|---|---|---|
+| L0 | syntax, schema, imports, data shape, changed-doc links | `node --check`, validators, `git diff --check` |
+| L1 | seconds-scale owner behavior | focused `node --test`, pure checks, one lab scenario |
+| L2 | determinism, continuation, ownership, adjacent integration | `sf lab repeat`, `sf lab compare`, focused aggregates |
+| L3 | route claims a unit actually asserts: Browser/Electron behavior, rendered feedback, public input, accessibility | affected public route or validation-broker manifest |
+| L4 | matched performance, soak, held-out, and release claims | packet-declared performance/release cells |
+
+Diagnostic doors, not gates: `npm run probe:heap-verify`, `npm run probe:main-thread`, and `npm run probe:crucible-cpu` name a heap leak, a main-thread owner, and a Crucible CPU owner. They stay out of `check:baseline`.
+
+### When to boot, and when to stay at the owner seam
+
+| Change or claim | Development loop and close |
+|---|---|
+| Planning/docs, routing metadata, or a mechanical edit with no plausible runtime effect | Changed links/schema/dispatch as applicable and `git diff --check`; no game boot |
+| Gameplay tuning or connections expressible in a fixture | Changed-owner test and one focused production-system scenario; repeat/save comparison only for determinism or continuation claims |
+| Startup, registry/import wiring, shipped asset admission, Browser/Electron shell, save-return, or an ordinary UI action/transition | Focused owner checks, then the affected public route; browser success does not certify Electron |
+| Appearance, camera composition, visual feedback, or interaction readability | Mount or set up the affected real surface, inspect its rendered result and changed controls, improve it; boot the whole game only when that surface requires it |
+
+Use `check:playable` for its boot/launch/live-hull/thrust/save-return claims at a coherent gameplay
+integration boundary, or to resolve a failed/conflicting route. It is not required after every leaf
+edit. It does not cover every Adventure or Crucible action: select or extend the existing route
+that actually exercises the changed transition. Batch compatible changes before one route run;
+an unresolved route failure remains red and must be handled, not hidden by batching.
+
+Reuse an already observed result when the relevant owner, fixture, harness, runtime, and route
+inputs are unchanged. Name its scope and say when it predates the current edit. Do not relabel
+focused or detached evidence as a fresh rendered/public-route pass. New changes to a covered owner,
+a conflicting observation, or a candidate-bound release/performance claim need fresh affected
+evidence. For Finish Program performance claims, use the matched local comparison required by its
+README; a diagnostic timing without a comparison can identify a cause but cannot establish a win.
+
+Do not run the repository-wide `npm run check` while a focused owner failure is still red. Do not
+use Browser/Electron as an implementation debugger when a deterministic owner-level reproduction is
+possible.
+
+**Long-horizon session batteries are L4 diagnostic instruments, never per-change gates.** The
+playthrough battery (`scripts/run-actual-game-playthrough.mjs`, multi-hour scripted sessions)
+exists to discover session-SHAPE defects that no shorter proof can express — it found the 2026-09
+hour-3 collapse that way, once. It does not verify ordinary changes: hours of compute and
+log-mountains re-proving what focused fixtures prove in seconds is verification theater, and
+agents imitating each other's battery reruns is how the culture spreads. The rule: default gate
+is L0–L1; run one targeted session only for a session-shape claim (encounter pacing, spawn policy,
+economy phase targets, director cadence, law-event wiring) that no focused fixture can express.
+Use one archetype, one seed, and an explicit affected simulation-time window. A starter-opening
+claim covers that opening; the historical three-hour collapse question does not impose a three-hour
+default on it. Never make a fixed multi-session matrix a routine step.
+
+## Test tiers and versioned references
+
+Three plain manifests under `test/tiers/` are the durable answer to "which suite protects the
+game?" `scripts/test-tier.mjs` reads them, validates every path/command before running, prints the
+exact command, supports `--shard=i/N`, `--json` and `--timeout=<seconds>`, and exits non-zero on a
+failure or a drifted entry.
+
+```powershell
+npm run test:fast                 # measured core behaviour; target < 2 min
+npm run test:route                # real boot / input / station screens / Electron units
+npm run test:reference            # determinism, 47-A gates, save schema/fuzz, baseline
+node scripts/test-tier.mjs all --shard=2/3 --json
+```
+
+`fast.txt` is a 36-file core set plus the guards that keep the tier itself honest. A red file is
+not deleted to make the tier green: fix the stale fixture or report the product defect.
+
+Reference goldens are re-recorded only through `scripts/reference.mjs`, never by editing
+`test/47a.*.expected.json`:
+
+```powershell
+npm run ref:list
+npm run ref:record -- --from test/47a.telemetry.save-v23.expected.json `
+  --reason "why this re-record is intentional and reviewed" --ticket Q5
+npm run ref:diff -- --id 47a-save-v23 --to working
+```
+
+`record` requires `--reason` (>= 20 chars) and `--ticket`, runs
+`sf-sim run ... --hash --repeat <cleanRunCountRequired>`, requires the repeated hashes to agree,
+refuses a mismatched seed/tape/scenario, and refuses moved event counts without
+`--events-changed`. It writes `test/references/<id>/v<N>.expected.json` plus a gzipped canonical
+snapshot, appends `history.jsonl` (`at, hash, prevHash, reason, ticket, cleanRuns, delta`) and
+rewrites `index.json`. Old versions are append-only. `diff` reports the hash and field-class delta
+(motion vs economy/physics/content) from the stored snapshots, so a reviewer can see what moved
+before accepting a new version. A failed run writes nothing.
+
+## Continuous integration: four parallel groups
+
+`.github/workflows/check.yml` runs the repository-wide matrix as **four parallel jobs** instead of
+one. It used to be a single sequential job — ~280 commands behind a Playwright Chromium install,
+under a 35-minute ceiling — so every run ended cancelled or timed out and a PR's `check` was red for
+reasons unrelated to the PR. A gate nobody trusts is the same as no gate.
+
+The matrix source is unchanged: `scripts/check-ci-report.mjs` still expands `package.json`
+`scripts.check`. What is new is that it can run one **group** or one **shard** of that expansion.
+
+| Job | Group | Holds | Installs a browser |
+|---|---|---|---|
+| `static` (sharded) | `static` | pure Node: data refs, schema, source scans, UI/label contracts, asset manifests. Also the thruster-history, visual-continuity, and program-control-plane quick steps | no |
+| `sim` | `sim` | determinism, the 47-A golden envelope, save/reload continuation, massline | no |
+| `feel` | `feel` | the FEEL_CONTRACT handling surface, plus `check:feel:scenarios` and `check:fun-bench` as explicit steps (they are not members of the `check` chain) | no |
+| `browser` | `browser` | every command that launches Playwright/Chromium, or raw Chrome over CDP | **yes — only here** |
+
+A fifth job named `check` depends on all four and is the single status a push or PR reports. It runs
+with `if: ${{ !cancelled() }}` and fails unless every group succeeded, so a failed group reads red
+rather than skipped. Each job uploads its `scratch/check-ci-report/` tree as an artifact even on
+failure, so a red run can be read instead of guessed at.
+
+### Running one group locally
+
+```powershell
+# What is in each group, and whether anything is unclassified. Fast, runs nothing.
+node scripts/check-ci-report.mjs --list-groups
+
+# One whole group.
+node scripts/check-ci-report.mjs --group=static
+
+# One shard of a group — what the `static` job does on each of its runners.
+node scripts/check-ci-report.mjs --group=static --shard=1/3
+
+# Stop at the first failure instead of collecting the whole set.
+node scripts/check-ci-report.mjs --group=sim --fail-fast
+```
+
+`--shard=<i>/<n>` is 1-based and assigns round-robin by position, so `n` shards cover the selected
+list exactly once with no overlap. `--group` and `--shard` compose: the group filter runs first, then
+the shard splits what is left. `--smoke` and `--fail-fast` are unchanged. The report JSON records
+`group`, `shard`, and `matrixCommandCount`, so an artifact says which slice produced it.
+
+Do not run `--group=browser` casually on a workstation that is already driving headed captures;
+those commands each launch a real browser and contend for the machine.
+
+### The partition must stay exact
+
+`test/check-ci-report.test.mjs` asserts the four groups cover the matrix with no overlap and that
+**every** command classifies. A command the classifier cannot place is a hard error, not a warning:
+unplaced, it would run in none of the four jobs while the gate still went green.
+
+So when you add a check to the `check` chain, run `--list-groups`. If it lands in the wrong group —
+or in none — fix the classifier in `scripts/check-ci-report.mjs`, near `COMMAND_GROUPS`. Group
+membership is decided from the **resolved leaf command**, not from the script's name: `check:sg06:live-shadow`
+and `check:47a:live-branch` read browser-ish and are pure Node, while `probe-authored-assets-live`
+launches Chrome without ever mentioning Playwright. Verify by following the leaf script's relative
+imports for `load-playwright`, `from 'playwright'`, `chromium.launch`, or a raw
+`--remote-debugging-port` spawn — never by the name alone.
+
+## Discovery and certification are different jobs
+
+Certifying gates fail fast: once a required invariant is false, the candidate is not admissible.
+Discovery runs optimize for causal information. A route driver may collect independent recoverable
+failures—state comparisons, receipt checks, residency bounds, and other observations that do not
+invalidate later observation—and report them together at the end.
+
+Collect-all diagnostics must:
+
+- label every failure with phase, expected, actual, and the owning observation;
+- continue only when actor control and observer truth remain valid;
+- abort on boot failure, unreachable route, lost actor authority, corrupt state, or broken observer;
+- remain explicitly diagnostic and non-promoting;
+- preserve each failure fingerprint for reduction to a focused regression;
+- never convert one expensive route into an open-ended retry loop.
+
+The current World Site route limitation and extraction boundary are tracked in
+[`../src/testing/lab/KNOWN_GAPS.md`](../src/testing/lab/KNOWN_GAPS.md). Do not copy a packet-specific
+route or introduce a second driver while closing it.
+
+## Deterministic gameplay lab
+
+The public CLI is:
+
+```powershell
+npm run sf -- lab --help
+```
+
+Scenarios use `spaceface.simScenario.v1`. The schema and compiler live at
+[`../src/contracts/simScenarioSchema.js`](../src/contracts/simScenarioSchema.js); runnable examples
+live under [`../src/testing/scenarios/`](../src/testing/scenarios/).
+
+### Choose the executor from the claim
+
+```powershell
+# Validate and compile only.
+npm run sf -- lab validate <scenario>
+
+# One execution arm: metrics, invariants, event/holds assertions.
+npm run sf -- lab run <scenario>
+
+# Same seed and input across repeated executions.
+npm run sf -- lab repeat <scenario> --runs 3
+
+# Uninterrupted versus save/load continuation.
+npm run sf -- lab compare <scenario>
+
+# Node versus focused Chromium host. This launches Chromium and is diagnostic unless
+# invoked through the broker-managed acceptance route.
+npm run sf -- lab compare <scenario> --runtimes node,chromium
+```
+
+Use `run` only when every declared assertion can be decided by one execution arm. Equivalences such
+as `run-eq-repeat`, `uninterrupted-eq-save-load`, and Node/Chromium parity are owned by their parent
+executors. A plain `run` must return incomplete rather than fabricate those results. Use `repeat` or
+`compare` for the corresponding claim.
+
+### Fast setup and useful agent readouts already exist
+
+The compiled scenario supplies the seed, tick budget, sector/fixture, entity profiles, starting
+positions/fittings, parameter overlays, and tick-indexed tape. `sf lab trace <scenario>` exposes
+the executed trajectory; run output names metric values/deltas, the first bad tick, failed
+assertions, live systems, and aliases. Use a short local case to compare the actual input → motion
+→ contact → consequence that changed, rather than rerunning an entire opening to reach it.
+
+[`../src/testing/motionScenarios.js`](../src/testing/motionScenarios.js) already exposes individual
+M1/M2/M3/M8 runs. Its [`motionTelemetry.js`](../src/testing/motionTelemetry.js) reports applied
+controls, body trajectories and phases; handling readouts include onset/settle time, stopping
+distance, overshoot, gates missed, heading/velocity lag, and collision recovery. Existing
+[`verb-bench modules`](../scripts/lib/bench/scenarios/README.md) use production physics and report
+seconds, screen depths, hull lengths, and fractions of cruise/hull. Select the affected scenario
+through the existing runner's `scenarioIds` seam; the whole fun-bench matrix is not a tuning loop.
+Treat those values as observations and design bounds, not a numerical certificate of fun.
+
+The existing [`session observer`](../src/observability/sessionObserver.js) is an opt-in recorder:
+callers invoke its input/sim/event/render hooks and drain its buffer. It can record applied input,
+state samples, tick/time-stamped events, asset exposure, and frame samples; it does not automatically
+observe every live route. Use relevant causal events alongside the changed-owner readout and name
+missing hook/coverage gaps. A motion sample is not evidence that a player understood a cue.
+
+The debug-only [`live-route bridge`](../src/testing/lab/liveRouteBridge.js) already provides paused
+fixed-tick stepping, raw flight-key events, snapshots, checkpoints, and one render update. Its V1
+setup supports player-only flight and explicitly rejects non-player entities, attachments, and
+relations. Detached Chromium parity also supports a limited focused flight bundle. Neither is a
+complete starter-region/public-UI executor. If a concrete development row needs a missing phase
+setup or readout, extend that existing owner narrowly in the same row. State fixture setup and
+observation limits explicitly, execute consequences through production systems, and keep ordinary
+route reachability as its own claim. Do not build another simulator or generic agent platform.
+
+CLI exit classes are stable:
+
+| Exit | Meaning |
+|---:|---|
+| `0` | pass |
+| `1` | product/assertion failure |
+| `2` | blocked |
+| `3` | infrastructure failure |
+| `4` | invalid or incomplete configuration/claim |
+| `5` | nondeterminism/parity failure |
+
+Flags that inject observer or save/load behavior into a direct `run` use an internal
+non-certifying path and cannot return a promoting green result. Prefer authored scenario input and
+the fixed public parent executors.
+
+### Scenario-authoring checklist
+
+- Copy the closest existing scenario; do not invent field names from prose.
+- Use a fixed seed, fixed tick count, tick-indexed input tape, stable aliases, and quantitative
+  assertions.
+- Exercise real production system modules through the admitted focused bundle.
+- Name the smallest system/fixture surface that can prove the behavior.
+- Add at least one assertion that can actually fail; zero-consumption and deferred equivalence fail
+  closed.
+- Use simulation time and seeded RNG. Do not add wall-clock gameplay conditions.
+- Validate the document before diagnosing runtime behavior.
+- Add or update a focused `node --test` contract when introducing a new scenario capability,
+  metric, entity profile, or oracle.
+
+## Evidence classes
+
+Evidence class is derived from what executed, not trusted from the scenario label. The lab may
+demote an authored claim when the runtime used a focused or otherwise weaker path.
+
+| Class | Supports | Does not support |
+|---|---|---|
+| `kernel` | a small pure owner invariant | integrated gameplay or route behavior |
+| `focused-fixture` | named production systems under a deterministic focused scenario | full production-manifest behavior |
+| `production-fixture` | the Node-safe production manifest under the declared profile | rendering, UI, or ordinary player reachability |
+| `browser-parity` | equivalent compiled scenario behavior between Node and a supported Chromium host | rendered presentation or the normal game route |
+| `public-input` | public input grammar over an admitted focused system set | whole-game or visual acceptance |
+| `public-route` | ordinary live route with the required visible semantics | release/performance claims not captured by that cell |
+
+`browser-parity` is not `public-route` when the host runs with rendering detached. Likewise,
+`focused-fixture` cannot claim `production-fixture` merely because its systems are real production
+modules. Consult the live runner and `KNOWN_GAPS.md` for the profiles the CLI currently supports.
+
+Seeded soak/fuzz is an execution method, not automatically a stronger evidence class. It retains the
+class of the systems and host that actually ran while adding longer or broader input coverage. Do
+not claim a new `soak` class until the evidence implementation can derive and enforce it.
+
+When a parent executor returns child-arm detail marked `internal-test`, judge the parent
+`repeat`/`compare` result and its bound digests, not an isolated child narration.
+
+## Authoritative runtime manifest
+
+[`../src/runtime/authoritativeSystemManifest.js`](../src/runtime/authoritativeSystemManifest.js) is
+the source of truth for production system IDs, initialization order, update order, slot markers,
+and Node-safety. Browser registry and authoritative runtime creation resolve from that manifest.
+
+Focused bundles are resolved from
+[`../src/testing/lab/systemBundles.js`](../src/testing/lab/systemBundles.js). Do not describe a
+focused result as full-game proof. See
+[`../src/testing/lab/KNOWN_GAPS.md`](../src/testing/lab/KNOWN_GAPS.md) for the currently available
+profiles, limitations, and reproduction commands.
+
+## Expensive acceptance and the validation broker
+
+Use the broker only when the active task or candidate-bound acceptance route calls for it. Ordinary
+owner checks and route verifications do not need a broker. Broker-managed routes are declared under
+[`../scripts/validation-manifests/`](../scripts/validation-manifests/). Use a package command when
+one exists. Otherwise invoke the named manifest from the active packet:
+
+```powershell
+node scripts/validation-broker-cli.mjs --manifest <manifest-id>
+```
+
+The broker:
+
+- runs manifest-declared fast gates before issuing/consuming acceptance authority;
+- executes `requiresScenario` as a fresh fast gate and includes its path in the scenario digest;
+- binds the claim to candidate, scenario, harness, runtime, and manifest digests;
+- persists a one-use claim and disk ledger;
+- enforces `maxLaunchesPerCandidate` for that broker-managed claim (not a reviewer or progress quota);
+- records failure fingerprints and refuses unchanged repeats;
+- owns process timeout/cleanup and launch accounting.
+
+`blocked_repeat`, `cached_unchanged`, exhausted launch quota, stale claim, and failed fast gate mean
+**no acceptance launch**. Do not bypass them by calling the probe directly, renaming the cell,
+editing unrelated files to perturb a digest, or deleting broker artifacts.
+
+`--diagnostic` is non-promoting. Use it when a diagnostic can materially reduce uncertainty; it does
+not turn a direct probe into a broker acceptance claim. Do not repeat an unchanged failure.
+
+### After an expensive failure
+
+Classify the evidence before another launch:
+
+| Class | Next action |
+|---|---|
+| `PRODUCT` | reproduce at the owner seam, observe fail, repair, observe pass |
+| `HARNESS` | repair the actor/observer/probe and invalidate only affected evidence |
+| `ENVIRONMENT` | prove the environment fault independently; use one clean replacement environment |
+| `NONDETERMINISM` | hard stop; reduce to deterministic evidence before another route run |
+| `STALE_BASELINE` | deliberately update the contract; never rewrite a golden blindly |
+| `OUT_OF_SCOPE` | record a follow-up unless it invalidates the selected route. **Does not apply to a red check** — see below |
+| `INHERITED_RED` | fix a required red check before calling the affected route accepted |
+| `UNKNOWN` | fail closed and collect one discriminating diagnostic |
+
+Root `AGENTS.md` §7 owns how confirmed defects are handled; this table classifies only a brokered
+acceptance failure and does not create a second defect or review process.
+
+An unchanged cell and failure fingerprint cannot authorize another identical attempt. Repetition is
+not investigation.
+
+For a public-route claim, state which ordinary route and visible behavior were exercised, and name
+any material part that remains unmeasured. Do not create a scenario or broker manifest solely to
+make evidence look more complete.
+
+## Adding or changing validation infrastructure
+
+| Change | Start here | Minimum focused proof |
+|---|---|---|
+| Scenario/schema/compiler | `src/contracts/simScenarioSchema.js`, `src/testing/scenarios/` | `test/sim-scenario-schema.test.mjs` plus affected lab tests |
+| Runtime/oracle/checkpoint | `src/testing/lab/` | nearest lab test plus false-positive regression suites |
+| System identity/order/profile | `src/runtime/authoritativeSystemManifest.js` | `test/authoritative-manifest.test.mjs` and registry/sim owner tests |
+| Broker/claim/fingerprint/process control | `scripts/lib/validation*.mjs` | broker/process-control tests and affected manifest tests |
+| New expensive route | `scripts/validation-manifests/` plus a public package command | manifest fast gates, broker claim enforcement, cleanup proof |
+
+Do not create a second simulator, alternate system list, private acceptance launcher, or evidence
+class in feature code. Extend the owning schema/runtime/broker surface and document the limitation
+until its proof path is real.
+
+For a resumed task, refresh the current owner, diff, and required direct check from root `AGENTS.md`
+and the active packet. Preserve prior evidence when relevant code and route inputs are unchanged;
+do not repeat unrelated discovery.

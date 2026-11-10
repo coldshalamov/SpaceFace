@@ -1,0 +1,144 @@
+{
+  "assetId": "hull_leech_attachment_bed",
+  "category": "growth",
+  "description": "hull leech attachment bed; reusable growth assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_HOST_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -1.4,
+          0.2,
+          -0.0
+        ],
+        "size": [
+          0.65,
+          0.2,
+          0.7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          -0.0
+        ],
+        "size": [
+          0.65,
+          0.2,
+          0.7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.3,
+          0.2,
+          -0.0
+        ],
+        "size": [
+          0.65,
+          0.2,
+          0.7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "growth",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -2.067467451095581,
+      -0.09173089265823364,
+      -0.902734100818634
+    ],
+    "max": [
+      2.119826316833496,
+      0.7253894805908203,
+      0.902656614780426
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "hull_leech_attachment_bed_lod0.glb",
+      "triangles": 8948,
+      "draws": 3,
+      "bytes": 393224,
+      "method": "source",
+      "sha256": "d446544e028689167fe6d1a732f2bffb5b3f206389d3c9b13787ea85baa2812d"
+    },
+    {
+      "level": 1,
+      "file": "hull_leech_attachment_bed_lod1.glb",
+      "triangles": 3578,
+      "draws": 3,
+      "bytes": 186468,
+      "method": "Forge-decimation",
+      "sha256": "5e829c07b9ed87099aaba90e3802deb72e71bb47a47c7ecf0e60124e4f732b18"
+    },
+    {
+      "level": 2,
+      "file": "hull_leech_attachment_bed_lod2.glb",
+      "triangles": 1610,
+      "draws": 3,
+      "bytes": 100756,
+      "method": "Forge-decimation",
+      "sha256": "2f203177f2f2a36e73e674a37f811c198dc90b9af86ba1c61a8f1f9b3456fe42"
+    }
+  ]
+}

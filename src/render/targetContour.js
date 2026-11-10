@@ -1,0 +1,58 @@
+// INF-045 — the world-space target-mark SUBJECT POLICY: who gets a mark in the world.
+//
+// This file owns the rule and nothing else. The art is `selectionSigil.js` (the ORRERY selection
+// sigil), which supersedes INF-045's single flat ring. Keeping the rule here — rather than letting
+// the new art module re-derive it — is what guarantees the world marker, the DOM lock bracket and
+// the target panel can never start telling the player different stories about what is locked.
+//
+// The rule: the live SELECTION wins, because selection is also what aims a Massline throw. The
+// engaged gun target only subjects when there is no live selection, so the guns never fire at a
+// ship with no mark anywhere in the world. Dead or positionless bodies never subject.
+//
+// Packet 02: both answers come from the ONE target-truth projection (src/combat/targetTruth.js),
+// not from the weapons-written gunTargetId mirror. That makes the mark generation-safe (a recycled
+// id is not the picked body) and sensor-true (a cloak-hidden hull gets no mark).
+
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
+import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { createTargetTruth, projectTargetTruth } from '../combat/targetTruth.js';
+
+const _truth = createTargetTruth();
+
+/**
+ * The live subject entity, or null when nothing is marked. Consumers that must CLASSIFY the subject
+ * — the selection sigil's emblem and palette — resolve here rather than re-deriving the rule.
+ *
+ * @returns {object|null} the live selection, else the engaged contact, else null.
+ */
+export function resolveTargetContourEntity(state) {
+  const player = (state && state.player) || null;
+  const entities = state && state.entities;
+  if (!player || !entities || typeof entities.get !== 'function') return null;
+  const truth = projectTargetTruth(state, _truth);
+  const selId = truth.selectedId;
+  const selection = selId != null ? resolveWorldPresentationEntity(state, selId) : null;
+  if (selection && selection.alive && selection.pos) return selection;
+  const gunId = truth.effectiveGunTargetId != null && truth.effectiveGunTargetId !== selId
+    ? truth.effectiveGunTargetId : null;
+  const engagedCandidate = gunId != null ? entities.get(gunId) : null;
+  return engagedCandidate && engagedCandidate.alive && engagedCandidate.pos ? engagedCandidate : null;
+}
+
+/**
+ * Flat world-space subject, for callers that only need a position and a hostile read. Mirrors the
+ * target panel's engagedContactReadout subject rule without touching the DOM.
+ *
+ * @returns {{id, x, z, radius, hostile}|null} world-space subject, or null when unmarked.
+ */
+export function resolveTargetContour(state) {
+  const subject = resolveTargetContourEntity(state);
+  if (!subject) return null;
+  return {
+    id: subject.id,
+    x: subject.pos.x,
+    z: subject.pos.z,
+    radius: Math.max(2, Number(subject.radius) || 6),
+    hostile: isHostileToPlayer(subject, state.player.team, state),
+  };
+}

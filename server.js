@@ -1,0 +1,123 @@
+// Zero-dependency static file server for SpaceFace (browser dev path).
+// Dev + local play: `node server.js [port]` (default 8123), then open http://localhost:8123/
+//
+// The HTTP core (MIME table, dev-freshness, static serving, containment check) lives in
+// scripts/lib/gameServer.cjs and is SHARED with electron/main.cjs so the two launchers can never
+// drift (one MIME table, one freshness function, one serving core). This file is a thin wrapper
+// that adds the dev-only /__shot screenshot sink the browser path uses for headless captures.
+// `npm run check:launch-policy` enforces that both launchers share that module.
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import { writeFile, mkdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
+const { createGameServer } = require('./scripts/lib/gameServer.cjs');
+const { resolveMountedPlayerStoreDir } = require('./scripts/lib/playerSaveStore.cjs');
+const { resolveMountedUserContentDir } = require('./scripts/lib/userContentStore.cjs');
+
+const ROOT = fileURLToPath(new URL('.', import.meta.url));
+const PORT = Number(process.argv[2] || process.env.PORT || 8123);
+// Historical source overlays are probe-only. The explicit flag keeps an inherited manifest
+// environment variable from changing an ordinary browser/dev launch.
+const sourceOverlay = process.env.SPACEFACE_PROBE_SOURCE_OVERLAY === '1'
+  ? String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim() || null
+  : null;
+// Development source launches use the measured bundle. Production installs can omit its compiler.
+const devSimWorkerBundleEnabled = (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE === '1'
+  || (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE !== '0' && process.env.NODE_ENV !== 'production'))
+  && process.env.SPACEFACE_PROBE_SOURCE_OVERLAY !== '1'
+  && !String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim()
+  && process.env.SPACEFACE_ELECTRON_TEST_MODE !== 'isolated-evidence'
+  && process.env.SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION !== '1'
+  && process.env.SPACEFACE_EVIDENCE_HIDE_WINDOW !== '1';
+let devSimWorkerBundleProvider = null;
+if (devSimWorkerBundleEnabled && !sourceOverlay) {
+  const { createDevSimWorkerBundleProvider } = await import('./scripts/lib/devSimWorkerBundle.mjs');
+  devSimWorkerBundleProvider = createDevSimWorkerBundleProvider({ root: ROOT });
+  devSimWorkerBundleProvider.prewarm().catch((error) => {
+    console.error('[dev-sim-worker] asynchronous prewarm failed; current requests will rebuild or return 503:', error && (error.stack || error.message) || String(error));
+  });
+}
+
+// Per-user mods home by platform (matching where Electron's userData lands).
+function defaultUserContentPlatformDir() {
+  const home = process.env.HOME || '';
+  if (process.platform === 'darwin') return join(home, 'Library', 'Application Support', 'SpaceFace', 'mods');
+  if (process.platform === 'win32') return join(process.env.APPDATA || join(home, 'AppData', 'Roaming'), 'SpaceFace', 'mods');
+  return join(process.env.XDG_DATA_HOME || join(home, '.local', 'share'), 'SpaceFace', 'mods');
+}
+
+// Dev-only screenshot sink: the page POSTs a data: URL here and we save the bytes to
+// .devshots/<name>.jpg so the dev loop can Read the rendered frame (the headless preview
+// tab can't composite a real screenshot). Local-only, writes within ROOT/.devshots.
+async function handleShot(req, res, { root }) {
+  let raw = '';
+  req.on('data', (c) => { raw += c; if (raw.length > 12 * 1024 * 1024) req.destroy(); });
+  req.on('end', async () => {
+    try {
+      const m = /^data:image\/(png|jpe?g);base64,(.+)$/s.exec(raw.trim());
+      if (!m) { res.writeHead(400); res.end('bad data url'); return; }
+      const ext = m[1] === 'png' ? 'png' : 'jpg';
+      let name = 'shot';
+      try {
+        name = (new URL(req.url, 'http://127.0.0.1').searchParams.get('name') || 'shot').replace(/[^a-z0-9_-]/gi, '');
+      } catch {
+        res.writeHead(400);
+        res.end('bad url');
+        return;
+      }
+      const dir = join(root, '.devshots');
+      await mkdir(dir, { recursive: true });
+      const file = join(dir, `${name}.${ext}`);
+      await writeFile(file, Buffer.from(m[2], 'base64'));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, file }));
+    } catch { res.writeHead(500); res.end('500'); }
+  });
+}
+
+const server = createGameServer({
+  root: ROOT,
+  async: true,
+  devDiagnostics: true,
+  // Default to the real save directory rather than leaving the store unmounted. Previously only
+  // launch-browser.mjs set SPACEFACE_PLAYER_STORE_DIR, so `npm start` served no store: every
+  // /__spaceface_player_store request 404'd and saves silently fell back to origin-scoped
+  // localStorage. That fails soft, which is worse than failing loud -- the two launch paths saw
+  // DIFFERENT SAVE SETS and nothing said so. The env var still overrides for isolated harnesses.
+  playerStoreDir: resolveMountedPlayerStoreDir(process.env) || undefined,
+  // User content ("mods") — PQ-172.00. SPACEFACE_USER_CONTENT_DIR overrides; a repo-local
+  // user-content/ directory mounts when present (dev convenience); otherwise the platform
+  // app-data mods dir is the default home. Isolated harnesses pass SPACEFACE_USER_CONTENT_DIR=''
+  // to boot with no mods mounted.
+  userContentDir: resolveMountedUserContentDir(process.env, {
+    devDir: join(ROOT, 'user-content'),
+    platformDir: defaultUserContentPlatformDir(),
+  }) || undefined,
+  ...(sourceOverlay ? { sourceOverlay } : {}),
+  ...(devSimWorkerBundleProvider ? { devSimWorkerBundleProvider } : {}),
+  extraRoutes: [
+    {
+      test: (method, url) => method === 'POST' && url.startsWith('/__shot'),
+      stateChanging: true,
+      handle: handleShot,
+    },
+    // spaceface-release-build.json is answered by the shared server: packaged bytes when the
+    // bundle receipt exists, a synthesized dev receipt (env/git identity) otherwise — see
+    // scripts/lib/gameServer.cjs. No browser-only route here; the two hosts must not drift.
+  ],
+});
+
+server.on('error', (error) => {
+  if (error && error.code === 'EADDRINUSE') {
+    console.error(`SpaceFace dev server could not start: port ${PORT} is already in use.`);
+    console.error(`If SpaceFace is already running, open http://localhost:${PORT}/ or use scripts/launch-browser.mjs to reuse it.`);
+    process.exit(1);
+  }
+  throw error;
+});
+
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`SpaceFace dev server running -> http://127.0.0.1:${PORT}/`);
+});

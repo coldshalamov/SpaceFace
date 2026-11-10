@@ -1,0 +1,296 @@
+{
+  "bbox": {
+    "dims": [
+      104.3364,
+      95.859,
+      62.5438
+    ],
+    "max": [
+      55.5,
+      47.9295,
+      24.8938
+    ],
+    "min": [
+      -48.8364,
+      -47.9295,
+      -37.65
+    ]
+  },
+  "drawGroups": {
+    "meshes": [
+      {
+        "name": "Cube",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.006",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.025",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.121",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.155",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.197",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.202",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.216",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.323",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.357",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.365",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.370",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.442",
+        "primitives": 1
+      },
+      {
+        "name": "Icosphere.003",
+        "primitives": 1
+      },
+      {
+        "name": "Icosphere.004",
+        "primitives": 1
+      },
+      {
+        "name": "Icosphere.005",
+        "primitives": 1
+      }
+    ],
+    "primitiveCount": 16
+  },
+  "extensionsUsed": [],
+  "file": "place_claim_outpost_relay.glb",
+  "geometry": {
+    "primitives": 16,
+    "tangentPrimitives": 16,
+    "tangentsPresent": true,
+    "uvSets": [
+      0
+    ]
+  },
+  "materials": {
+    "count": 5,
+    "usage": {
+      "Material_Accent": 3,
+      "Material_Glass": 3,
+      "Material_Hull": 3,
+      "Material_Mechanical": 4,
+      "Material_Warm": 3
+    }
+  },
+  "nodeNames": [
+    "COLLISION_HULL",
+    "LOD0_Station_Material_Accent",
+    "LOD0_Station_Material_Glass",
+    "LOD0_Station_Material_Hull",
+    "LOD0_Station_Material_Mechanical",
+    "LOD0_Station_Material_Warm",
+    "LOD1_Station_Material_Accent",
+    "LOD1_Station_Material_Glass",
+    "LOD1_Station_Material_Hull",
+    "LOD1_Station_Material_Mechanical",
+    "LOD1_Station_Material_Warm",
+    "LOD2_Station_Material_Accent",
+    "LOD2_Station_Material_Glass",
+    "LOD2_Station_Material_Hull",
+    "LOD2_Station_Material_Mechanical",
+    "LOD2_Station_Material_Warm",
+    "SF_PLACE_CLAIM_OUTPOST_RELAY_ROOT",
+    "SOCKET_Dock_Approach",
+    "SOCKET_Emissive",
+    "SOCKET_Module_Defense",
+    "SOCKET_Module_Depot",
+    "SOCKET_Module_Refinery",
+    "SOCKET_Module_Teleporter",
+    "SOCKET_Structure_Core"
+  ],
+  "textures": [
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "RelayV2_Accent_BaseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "RelayV2_Accent_Normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "RelayV2_Accent_ORM",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "RelayV2_Glass_BaseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "RelayV2_Glass_Normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "RelayV2_Glass_ORM",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "RelayV2_Hull_BaseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "RelayV2_Hull_Normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "RelayV2_Hull_ORM",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "RelayV2_Mechanical_BaseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "RelayV2_Mechanical_Normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "RelayV2_Mechanical_ORM",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "RelayV2_Warm_BaseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "RelayV2_Warm_Normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "RelayV2_Warm_ORM",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    }
+  ],
+  "transforms": {
+    "nodeCount": 24,
+    "nonAppliedCount": 6,
+    "nonAppliedNodes": [
+      "SOCKET_Dock_Approach",
+      "SOCKET_Emissive",
+      "SOCKET_Module_Defense",
+      "SOCKET_Module_Depot",
+      "SOCKET_Module_Refinery",
+      "SOCKET_Module_Teleporter"
+    ]
+  },
+  "tris": 99012,
+  "verdict": {
+    "budget": null,
+    "class": "scenery",
+    "failures": [],
+    "pass": true,
+    "warnings": []
+  }
+}

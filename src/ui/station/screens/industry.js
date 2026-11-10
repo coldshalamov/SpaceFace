@@ -1,0 +1,760 @@
+import { industryFrameHtml } from '../../views/stationFrames.js';
+import { commodityDisplayName } from '../../commodityNames.js';
+// src/ui/station/screens/industry.js — "Industry" fabrication as a kit panel (Frontend Task C §1.7).
+// Left: the processes under a k-caps per category — each blueprint a row (output × qty, the tier
+// and its one-line readiness as the sub-line, the readiness carried by the row's is-* state class
+// and its why word, never by the name's colour — a blocked recipe is a fact, not a threat).
+// Right: the output's name, the quantity at hero size ("per run"), the time as a hero ("seconds"),
+// the inputs as static rows (have / need at emphasis; a short input keeps a "Source in market"
+// word), the line's state as one sentence, and Fabricate as a word. Reuses the crafting
+// system: ctx.crafting.build(bpId, stationId); a committed timed run scraps through
+// ctx.crafting.cancel(stationId) — the one-slot line only holds timed work, instant refines run
+// beside it. `.sx-ind`, `.sx-ind-row[data-bp]`, `.sx-ind-row__name`, `.sx-ind-row__process`,
+// `[data-source-cmdty]`, `[data-build]`, `[data-ind-scrap]` are hooks.
+import { BLUEPRINTS } from '../../../data/blueprints.js';
+import { COMMODITIES } from '../../../data/commodities.js';
+import { MODULES } from '../../../data/modules.js';
+import { WEAPONS } from '../../../data/weapons.js';
+import { SHIPS } from '../../../data/ships.js';
+import { SECTORS } from '../../../data/sectors.js';
+import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
+import { stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
+import { createChainBeam } from '../../orrery/chainBeam.js';
+import { openGalaxyMap, MAP_FOCUS } from '../../mapAuthority.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
+import { injectOrreryStationIndustry } from '../../orrery/station-industryLayouts.js';
+import { industryPictogram } from '../../orrery/industryGlyphs.js';
+import { dressLampKey } from '../../orrery/lampKey.js';
+import { decrypt } from '../../orrery/text.js';
+import { reducedMotion, stagger } from '../../orrery/motion.js';
+import { buildDuration } from '../../../systems/crafting.js';
+import { sellableCargoQuantity } from '../../../systems/cargo.js';
+import { techDisplayName } from '../../../data/tech.js';
+import { marketStockStatus } from '../../../systems/economy.js';
+
+/** How long FABRICATE is held before the run commits (the process bezel fills over it). */
+export const INDUSTRY_HOLD_MS = 900;
+
+const NAME = new Map();
+for (const c of COMMODITIES) NAME.set('commodity:' + c.id, c.name);
+for (const m of MODULES) NAME.set('module:' + m.id, m.name);
+for (const w of WEAPONS) NAME.set('weapon:' + w.id, w.name);
+for (const s of SHIPS) NAME.set('ship:' + s.id, s.name);
+const CMDTY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
+const CMDTY_CAT = new Map(COMMODITIES.map((c) => [c.id, c.category]));
+/** The pictogram for a thing on the chain: a filled object for a commodity's family, a module, a weapon or a hull. */
+function glyphFor(id, kind) {
+  return industryPictogram(CMDTY_CAT.get(id), kind === 'material' ? 'commodity' : kind);
+}
+const STATIONS = new Map();
+for (const sec of SECTORS) for (const s of (sec.stations || [])) STATIONS.set(s.id, s);
+
+const CAT_LABEL = { refine: 'Refine', assemble: 'Assemble', augment: 'Augment', ship: 'Shipyard' };
+const CAT_ORDER = ['refine', 'assemble', 'augment', 'ship'];
+const FACILITY_LABEL = { refinery: 'refinery station', fab: 'fabrication station' };
+
+function niceName(id, kind) { return NAME.get((kind || 'commodity') + ':' + id) || String(id).replace(/^cmdty_|^mod_|^wpn_|^ship_/, '').replace(/_/g, ' '); }
+function matName(id) { return CMDTY_NAME.get(id) || commodityDisplayName(String(id)); }
+
+// WF-14 — the yard's stock answers the line's demand. A short input used to say only "Short N
+// Name" and punt the player to the market with "Source in market"; whether this berth could
+// actually cover the shortfall was knowable only by walking there and back. The line now names
+// what the local yard stocks against the need — covers it, holds only part, or is dry (with the
+// market's own restock estimate) — on the input row, the ladder word and the chain node alike.
+// Read-only over the economy mirror; the stock count alone still answers if the status read fails.
+
+/** What the docked berth's market holds of one input, plus its restock outlook. Pure read. */
+export function yardStockOf(state, commodityId) {
+  const sid = state && state.ui && state.ui.dockedStationId;
+  const row = sid && state.economy && state.economy.markets
+    && state.economy.markets[sid] && state.economy.markets[sid][commodityId];
+  const stock = Math.max(0, Math.floor(Number(row && row.stock) || 0));
+  let soldOut = false;
+  let restockSeconds = null;
+  try {
+    const status = marketStockStatus(state, sid, commodityId);
+    soldOut = status.soldOut === true;
+    restockSeconds = status.restockSeconds;
+  } catch (_) { /* the stock count alone still answers */ }
+  return { stock, soldOut, restockSeconds };
+}
+
+/** The one honest word for a short input. `null` when nothing is short — no line on a satisfied need. */
+export function yardStockAnswer({ have, need, yardStock, soldOut = false, restockSeconds = null }) {
+  const short = Math.max(0, Math.floor(Number(need) || 0) - Math.floor(Number(have) || 0));
+  if (!(short > 0)) return null;
+  const stock = Math.max(0, Math.floor(Number(yardStock) || 0));
+  const restockAbout = Number.isFinite(restockSeconds) && restockSeconds > 0
+    ? (restockSeconds > 120 ? `${Math.ceil(restockSeconds / 60)}m` : `${Math.max(1, Math.ceil(restockSeconds))}s`)
+    : null;
+  if (stock >= short) return { covers: true, word: `yard holds ${stock}` };
+  if (stock > 0) return { covers: false, word: `yard holds only ${stock}` };
+  if (soldOut && restockAbout) return { covers: false, word: `yard is dry, restock ~${restockAbout}` };
+  return { covers: false, word: 'yard holds none' };
+}
+
+/** Convenience for render paths: the yard word for one input of a blueprint, or '' when not short. */
+function yardWordFor(state, commodityId, have, need) {
+  const yard = yardStockOf(state, commodityId);
+  const answer = yardStockAnswer({ have, need, yardStock: yard.stock, soldOut: yard.soldOut, restockSeconds: yard.restockSeconds });
+  return answer ? answer.word : '';
+}
+// A fabricator output names a catalogue thing; map its kind onto the resolver vocabulary so the
+// name is a door. Weapons and anything off-vocabulary degrade to plain text inside entitySpanHtml.
+const OUTPUT_ENTITY_TYPE = { commodity: 'commodity', module: 'module', ship: 'hull' };
+function outputLink(id, kind, escapedLabel) {
+  const type = OUTPUT_ENTITY_TYPE[kind || 'commodity'];
+  return type ? entitySpanHtml(type + ':' + id, escapedLabel) : escapedLabel;
+}
+function researched(state) { const r = state && state.player && (state.player.researchedNodes || state.player.researched); return new Set(Array.isArray(r) ? r : []); }
+// P02 — the free, cargo-owned quantity: sealed contract freight and persistent story cargo ride
+// in the same hold but can never feed a fabricator, so every "have" the screen prints and the
+// materials gate below count only the units the player may actually spend.
+function freeQty(state, id) { return sellableCargoQuantity(state, id); }
+function stationType(ctx) {
+  const id = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
+  // A named berth's services, not its visual station class, define its actual benches.
+  // Runtime stations can provide the same shape through the station context.
+  return (id && STATIONS.get(id)) || ctx.station || null;
+}
+function facilityName(type) { return FACILITY_LABEL[type] || `${String(type || 'specialist')} station`; }
+function facilityForBlueprint(bp) { return bp.category === 'refine' ? 'refinery' : bp.stationType; }
+
+function supportsBlueprint(bp, station) {
+  if (!station) return true;
+  if (typeof station === 'string') return !bp.stationType || station === bp.stationType;
+  if (Array.isArray(station.services)) {
+    return station.services.includes(bp.category === 'refine' ? 'refine' : 'module_craft');
+  }
+  return !bp.stationType || !station.type || station.type === bp.stationType;
+}
+
+export function industryOwnedFitting(bp, state, station) {
+  if (!bp || !['module', 'weapon'].includes(bp.outputs?.kind)) return false;
+  if (!(state?.player?.moduleInventory || []).some(item => item?.defId === bp.outputs.id && item.instanceId)) return false;
+  return !!(station && typeof station === 'object' && Array.isArray(station.services)
+    && (station.services.includes('shipyard') || station.services.includes('module_craft')));
+}
+
+// Short, single-line readiness reason for the row sub-line and the disabled verb. The full
+// sentence — the industryReadiness label — is the status sentence and the accessible names, so a
+// blocked requirement is stated once per surface.
+function shortBlockLabel(bp, r) {
+  if (r.state === 'station') return 'Needs ' + (facilityForBlueprint(bp) === 'fab' ? 'fabricator' : 'refinery');
+  if (r.state === 'materials') return 'Needs materials';
+  return r.label;
+}
+
+// The readiness is carried by the row's is-ready / is-materials / is-blocked state class and the
+// why sub-line — never by the name's colour: a facility mismatch or a shortfall is a fact, not a
+// threat, so the red channel stays free (ORRERY.md §3.3). The state class is what the station tab
+// layout (src/ui/orrery/stationTabsLayouts.js) tones in bone alphas.
+
+function ownsModule(state, defId) {
+  const player = state && state.player;
+  if (!player || !defId) return false;
+  if ((player.moduleInventory || []).some((module) => module && module.defId === defId)) return true;
+  return (player.ownedShips || []).some((ship) => (ship && ship.fittings || []).includes(defId));
+}
+
+export function industryReadiness(bp, state, stnType) {
+  if (bp.requiresTech && !researched(state).has(bp.requiresTech)) return { state: 'tech', label: 'Tech locked' };
+  if (!supportsBlueprint(bp, stnType)) return { state: 'station', label: `Requires ${facilityName(facilityForBlueprint(bp))}` };
+  if (bp.category === 'augment' && bp.fromModule && !ownsModule(state, bp.fromModule)) {
+    return { state: 'source', label: `Needs ${niceName(bp.fromModule, 'module')}` };
+  }
+  for (const id in (bp.inputs || {})) if (freeQty(state, id) < bp.inputs[id]) return { state: 'materials', label: 'Missing materials' };
+  return { state: 'ready', label: 'Ready to build' };
+}
+
+/** P10 — the chain's blocked plate names the ACTUAL reason and its own remedy. A facility
+ *  mismatch is the only reason that sends the player to the chart; missing research goes to the
+ *  tech tree and a missing source module to Shipworks — never "another station" for a recipe
+ *  this fabricator could otherwise run. `verb` is the data-ind-* hook the click route answers. */
+export function industryBlocker(bp, r) {
+  if (!bp || !r || r.state === 'ready' || r.state === 'materials') return null;
+  const reason = shortBlockLabel(bp, r);
+  if (r.state === 'station') {
+    return {
+      reason,
+      note: 'Not at this station',
+      verb: 'chart',
+      verbLabel: 'Find a ' + (facilityForBlueprint(bp) === 'fab' ? 'fabricator' : 'refinery') + ' on the chart',
+      controlId: 'find-facility',
+    };
+  }
+  if (r.state === 'tech') {
+    return {
+      reason,
+      note: 'Research: ' + techDisplayName(bp.requiresTech),
+      verb: 'tech',
+      verbLabel: 'Open the tech tree',
+      controlId: 'tech-tree',
+    };
+  }
+  // 'source' (or any later blocker): this station can run the recipe once the named input is
+  // owned — modules live at this station's Shipworks counter, not on the sector chart.
+  return {
+    reason,
+    note: 'This station can run it',
+    verb: 'shipworks',
+    verbLabel: 'Find it in Shipworks',
+    controlId: 'shipworks',
+  };
+}
+
+export function createIndustryScreen(ctx) {
+  injectOrreryStationIndustry();
+  const el = document.createElement('div');
+  el.className = 'k-panel sx-ind';
+  el.innerHTML = industryFrameHtml();
+  const listEl = el.querySelector('.sx-ind__list');
+  const stageEl = el.querySelector('.sx-ind__stage');
+  let selectedId = BLUEPRINTS[0] && BLUEPRINTS[0].id;
+  let picked = false; // land on a recipe buildable at THIS station on first open
+  let arriving = false; // the ladder staggers in on show only (ORRERY §4 #25); a re-render is silent
+  // ORRERY (design/frontend/ORRERY.md §6 Industry): the blueprint as a production chain -- inputs
+  // as nodes, beams into the process, one beam out to the product, pulses when the line can run.
+  let chain = null;
+  let footRo = null; // re-seats the key when the rows above the chain reflow without resizing it
+  const stopDecrypt = [];
+  let visible = false, disposed = false, generation = 0, landingTimer = 0;
+
+  // the ladder's window ends on a whole rung: measured after paint, the list's height is snapped to the last rung
+  // that fits, so no rung is ever half-dissolved
+  function fitLadderWindow() {
+    try {
+      listEl.style.maxHeight = '';
+      listEl.removeAttribute('data-snapped');
+      const top = listEl.getBoundingClientRect().top;
+      const limit = top + listEl.clientHeight;
+      let cut = 0;
+      for (const row of listEl.querySelectorAll('.sx-ind-row')) {
+        const r = row.getBoundingClientRect();
+        if (r.bottom <= limit - 2) cut = r.bottom;
+        else { if (cut) { listEl.style.maxHeight = `${Math.round(Math.min(cut + 4, r.top) - top)}px`; listEl.setAttribute('data-snapped', '1'); } return; }
+      }
+    } catch (_) { /* a headless host has no boxes to fit */ }
+  }
+
+  function renderList(state) {
+    renderListBody(state);
+    // the ladder arrives item by item on show (library Stagger: .orr-rise + --orr-delay); a
+    // selection re-render is silent, so the list never replays its entrance
+    if (arriving && !reducedMotion()) {
+      const rows = listEl.querySelectorAll('.sx-ind-row');
+      stagger(rows, { base: 60, step: 22 });
+      for (const row of rows) row.classList.add('orr-rise');
+    }
+    syncScrollExtent(listEl);
+    fitLadderWindow();
+  }
+  function renderListBody(state) {
+    const stn = stationType(ctx);
+    listEl.innerHTML =
+      `<div class="sx-ind-spindle" role="tablist" aria-label="Fabrication process and blueprints">` +
+        CAT_ORDER.map((category) => {
+          const blueprints = BLUEPRINTS.filter((bp) => bp.category === category);
+          if (!blueprints.length) return '';
+          // the group's state in light: how many rungs can be made here now, and the one reason when the station
+          // itself lacks the facility (printed once on the header, never on the rows)
+          const readiness = blueprints.map((bp) => industryReadiness(bp, state, stn));
+          const readyCount = readiness.filter((r) => r.state === 'ready').length;
+          // the group's reason is printed once on the header when at least half its rungs share a facility block
+          const stationBlocked = readiness.filter((r) => r.state === 'station').length;
+          const allStation = readiness.length > 0 && stationBlocked * 2 >= readiness.length;
+          // the header names the facility most of the group's blocked rungs lack; a rung that lacks a different one says so itself
+          const typeCount = {};
+          blueprints.forEach((bp, k) => { const type = facilityForBlueprint(bp); if (readiness[k].state === 'station') typeCount[type] = (typeCount[type] || 0) + 1; });
+          const headType = Object.keys(typeCount).sort((a, b) => typeCount[b] - typeCount[a])[0] || '';
+          const facility = allStation ? (headType === 'fab' ? 'fabricator' : 'refinery') : '';
+          const compactHead = typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth <= 1280;
+          const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(freeQty(state, id)); if (have < bp.inputs[id]) { const yardWord = yardWordFor(state, id, have, bp.inputs[id]); return `Short ${bp.inputs[id] - have} ${matName(id)}${yardWord ? ` · ${yardWord}` : ''}`; } } return 'Needs materials'; };
+          // a rung's own word: the shortfall when short; the tech or the module when locked; nothing when the header said why
+          const whys = blueprints.map((bp, bi) => { const r = readiness[bi]; return r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : r.state === 'station' ? (allStation && facilityForBlueprint(bp) === headType ? '' : shortBlockLabel(bp, r)) : shortBlockLabel(bp, r); });
+          // what the whole group shares is said once on its header: one tier, and one reason when every rung not ready gives the same one
+          const tiers = new Set(blueprints.map((bp) => bp.tier));
+          const groupTier = tiers.size === 1 ? [...tiers][0] : null;
+          const notReady = whys.filter((w, bi) => readiness[bi].state !== 'ready');
+          const sharedWhy = !allStation && notReady.length >= 2 && notReady[0] && notReady.every((w) => w === notReady[0]) ? notReady[0] : '';
+          return `<section class="sx-ind-process${allStation ? ' is-blocked' : ''}" data-process="${category}">` +
+            `<p class="k-caps sx-ind-process__head">${CAT_LABEL[category]}${groupTier ? `<span class="sx-ind-process__tier">T${groupTier}</span>` : ''}<span class="sx-ind-process__count">${compactHead ? `${readyCount}/${blueprints.length}` : `${readyCount} of ${blueprints.length} ready`}</span>${allStation ? `<span class="sx-ind-process__block" style="display:inline-block;white-space:nowrap">No ${facility} here</span>` : sharedWhy ? `<span class="sx-ind-process__block" style="display:inline-block;white-space:nowrap">${escapeHtml(sharedWhy)}</span>` : ''}</p>` +
+            `<ul class="k-rows sx-ind-process__items">` + blueprints.map((bp, bi) => {
+              const r = readiness[bi];
+              const stateCls = r.state === 'ready' ? ' is-ready' : r.state === 'materials' ? ' is-materials' : ' is-blocked';
+              // a rung's own word: the shortfall when short; the tech or the module when locked; nothing when the header said why
+              const why = whys[bi] === sharedWhy ? '' : whys[bi];
+              const selected = bp.id === selectedId;
+              const outputName = niceName(bp.outputs.id, bp.outputs.kind);
+              const output = `${outputName}${bp.outputs.qty > 1 ? ' × ' + bp.outputs.qty : ''}`;
+              const qtyHtml = bp.outputs.qty > 1 ? `<span class="sx-ind-row__qty">×${bp.outputs.qty}</span>` : '';
+              return `<li><button type="button" ${stationControlAttrs('blueprint')} class="sx-ind-row k-row${selected ? ' is-active' : ''}${stateCls}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
+                ` aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
+                `<span class="sx-ind-row__body">` +
+                  `<span class="k-row__name sx-ind-row__name">${escapeHtml(outputName)}${qtyHtml}${bp.category === 'augment' && bp.fromModule ? `<span class="sx-ind-row__from">from ${escapeHtml(niceName(bp.fromModule, 'module'))}</span>` : ''}</span>` +
+                  ((!groupTier || why) ? `<span class="k-row__sub sx-ind-row__tier">${groupTier ? '' : `T${bp.tier}`}${why ? `<span class="sx-ind-row__why">${groupTier ? '' : ' · '}${escapeHtml(why)}</span>` : ''}</span>` : '') +
+                `</span>` +
+                `<span class="k-row__sub sx-ind-row__process">${CAT_LABEL[category]}</span>` +
+              `</button></li>`;
+            }).join('') + `</ul>` +
+          `</section>`;
+        }).join('') +
+      `</div>`;
+  }
+
+  function renderStage(state) {
+    const bp = BLUEPRINTS.find((b) => b.id === selectedId) || BLUEPRINTS[0];
+    if (!bp) { stageEl.innerHTML = ''; return; }
+    const stn = stationType(ctx);
+    const r = industryReadiness(bp, state, stn);
+    const sid = state && state.ui && state.ui.dockedStationId;
+    const queue = state && state.crafting && state.crafting.queues && sid && state.crafting.queues[sid];
+    const queueBp = queue && BLUEPRINTS.find((item) => item.id === queue.bpId);
+    const progress = queue && queue.total > 0 ? Math.max(0, Math.min(1, (Number(queue.elapsed) || 0) / queue.total)) : 0;
+
+    const inputs = Object.keys(bp.inputs || {}).map((id) => {
+      const need = bp.inputs[id]; const have = Math.floor(freeQty(state, id));
+      const ok = have >= need;
+      const yardWord = ok ? '' : yardWordFor(state, id, have, need);
+      return (
+        `<li class="k-row k-row--static sx-fab-in${ok ? ' is-ok' : ' is-missing'}">` +
+          `<span class="k-row__name sx-fab-in__name">${entitySpanHtml('commodity:' + id, escapeHtml(matName(id)))}</span>` +
+          (yardWord ? `<span class="k-row__sub sx-fab-in__yard">Short ${need - have} · ${escapeHtml(yardWord)}</span>` : '') +
+          (ok ? '' : `<button type="button" ${stationControlAttrs('source-market')} class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market${yardWord ? `, ${escapeHtml(yardWord)}` : ''}">${stationControlLabel('source-market')}</button>`) +
+          `<span class="k-row__num sx-fab-in__q">${have} <span class="k-62">/ ${need}</span></span>` +
+        `</li>`
+      );
+    }).join('');
+
+    // Notes that confirm a MATCHING facility, owned source or researched tech; a mismatch is already
+    // the status sentence, so the requirement is never printed three times.
+    const notes = [];
+    // Notes CONFIRM a satisfied requirement (matching facility, owned source, researched tech) —
+    // a lack is the chain's blocked plate's job, which names it once with its own remedy.
+    if (bp.requiresTech && researched(state).has(bp.requiresTech)) notes.push({ ok: true, text: 'Tech: ' + String(bp.requiresTech).replace(/^tech_/, '').replace(/_/g, ' ') });
+    if (bp.stationType && supportsBlueprint(bp, stn)) notes.push({ ok: true, text: `${facilityForBlueprint(bp) === 'fab' ? 'Fabrication' : 'Refining'} service online` });
+    if (bp.category === 'augment' && bp.fromModule && ownsModule(state, bp.fromModule)) {
+      notes.push({ ok: true, text: `${niceName(bp.fromModule, 'module')} ready to augment` });
+    }
+
+    // The one build line holds TIMED work only — the crafting system's busy gate never stops an
+    // instant run (refines commit without entering the queue), so this screen must not either.
+    // A queued job still blocks a timed rung, and says so; an instant rung stays live beside it.
+    const instantRung = buildDuration(bp) <= 0;
+    const ownedFitting = industryOwnedFitting(bp, state, stn);
+    const lineHolds = !!queue && !instantRung;
+    const waitingForHold = !!queue && (queue.waitingForHold === true
+      || (queueBp?.outputs?.kind === 'commodity' && progress >= 1));
+    const status = queue
+      ? (waitingForHold
+        ? `Finished goods are waiting for cargo space. Free room and undock to complete delivery.`
+        : `Fabricator occupied — ${escapeHtml((queueBp && queueBp.name) || queue.bpId || 'job')}, ${Math.round(progress * 100)}%, ${Math.max(0, Math.ceil((queue.total || 0) - (queue.elapsed || 0)))} s remaining. Work pauses at berth and advances in flight.`)
+        + (r.state === 'ready' && instantRung ? ' Instant processes are not queued — this one still runs.' : '')
+      : (r.state === 'ready' ? 'One build slot, idle.' : `${escapeHtml(r.label)}.`);
+    const canBuild = r.state === 'ready' && !lineHolds;
+    // the reason lives on the instrument and on the ladder; the sentence stays only for a running line or a note
+    // — and never restates what the chain's blocked plate already says (one fact, one carrier)
+    const blocker = !queue ? industryBlocker(bp, r) : null;
+    const showStatus = !!queue;
+    const action = bp.category === 'refine' ? 'Refine' : 'Fabricate';
+
+    stageEl.innerHTML =
+      `<div class="sx-fab">` +
+        `<p class="k-caps sx-fab-head__cat">Tier ${bp.tier} blueprint</p>` +
+        `<h2 class="k-display k-t-title sx-fab-head__name">${outputLink(bp.outputs.id, bp.outputs.kind, escapeHtml(niceName(bp.outputs.id, bp.outputs.kind)))}</h2>` +
+        (bp.desc ? `<p class="k-sentence sx-fab-head__desc">${escapeHtml(bp.desc)}</p>` : '') +
+        (!instantRung && !queue ? `<p class="k-sentence sx-fab-flight-note">Work pauses at berth and advances in flight.</p>` : '') +
+        `<div class="sx-fab-heroes">` +
+          `<div class="k-hero k-hero--hero sx-fab-out"><span class="k-hero__n">${bp.outputs.qty || 1}</span><span class="k-hero__w">${escapeHtml(bp.outputs.kind)} per run</span></div>` +
+          `<div class="k-hero sx-fab-time"><span class="k-hero__n">${instantRung ? 'Now' : buildDuration(bp)}</span><span class="k-hero__w">${instantRung ? 'fabrication' : 'seconds'}</span></div>` +
+        `</div>` +
+        `<p class="k-caps sx-fab-col-k">Needs</p>` +
+        (inputs ? `<ul class="k-rows sx-fab-inputs">${inputs}</ul>` : `<p class="k-sentence sx-muted">No inputs.</p>`) +
+        (notes.length ? `<ul class="k-words k-words--row sx-fab-notes">${notes.map((n) => `<li class="k-t-fine ${n.ok ? 'k-62' : ''} sx-fab-note">${escapeHtml(n.text)}</li>`).join('')}</ul>` : '') +
+        (showStatus ? `<p class="k-sentence sx-fab-status">${status}</p>` : '') +
+        `<ul class="k-words k-words--row sx-fab-foot"><li>` +
+          `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? ` aria-label="${action}: hold to run"` : ` disabled aria-disabled="true" aria-label="${action}: ${escapeHtml(lineHolds && r.state === 'ready' ? 'Line occupied' : r.label)}"`}>` +
+            `${lineHolds && r.state === 'ready' ? 'Line occupied' : action}${canBuild ? '<span class="dp-holdring" aria-hidden="true"></span>' : ''}` +
+          `</button>` +
+        `</li>` +
+        (ownedFitting ? `<li><button type="button" ${stationControlAttrs('shipworks')} class="k-word k-word--fine" data-ind-shipworks="1">Fit owned in Shipworks</button></li>` : '') +
+        (queue ? `<li><button type="button" ${stationControlAttrs('scrap-run')} class="k-word k-word--fine k-bad sx-fab-scrap" data-ind-scrap="1" aria-label="Scrap the running fabrication — its committed materials are not returned">${stationControlLabel('scrap-run')}</button></li>` : '') +
+        `</ul>` +
+      `</div>`;
+    composeStage(bp, state, r, canBuild, queue, progress, blocker);
+  }
+
+  /** The chain beside the words, the verb as the Lamp Key, the labels resolving. */
+  function composeStage(bp, state, r, canBuild, queue = null, progress = 0, blocker = null) {
+    if (footRo) { footRo.disconnect(); footRo = null; }
+    if (chain) { chain.dispose(); chain = null; }
+    const fab = stageEl.querySelector('.sx-fab');
+    if (!fab) return;
+    const host = document.createElement('div');
+    host.className = 'orr-ind-chain';
+    host.style.setProperty('--orr-chain-input-count', String(Object.keys(bp.inputs || {}).length));
+    const heroes = fab.querySelector('.sx-fab-heroes');
+    if (heroes && heroes.parentNode) heroes.parentNode.insertBefore(host, heroes); else fab.appendChild(host);
+    // the one verb stands on the product's axis: the chain reports its geometry and the key follows
+    const foot = fab.querySelector('.sx-fab-foot');
+    // the chain only re-lays out when its own box resizes, but the words above it (the name, the
+    // description) can reflow after it measured and move it down; the key then sat on 'per run'
+    let lastG = null;
+    const seatFoot = () => {
+      if (!foot || !lastG || !host.isConnected) return;
+      const fr = fab.getBoundingClientRect(); const hr = host.getBoundingClientRect();
+      fab.style.setProperty('--fab-foot-x', `${Math.round(hr.left - fr.left + lastG.xFoot)}px`);
+      fab.style.setProperty('--fab-foot-y', `${Math.round(hr.top - fr.top + lastG.yFoot)}px`);
+    };
+    if (footRo) { footRo.disconnect(); footRo = null; }
+    if (foot && typeof ResizeObserver === 'function') {
+      footRo = new ResizeObserver(() => seatFoot());
+      for (const el of fab.querySelectorAll(':scope > .sx-fab-head__cat, :scope > .sx-fab-head__name, :scope > .sx-fab-head__desc')) footRo.observe(el);
+    }
+    // Short desktop readings have content-driven rows around the drawing. Move the
+    // chain's existing nodes, so its label lifecycle, live quantity and delegated
+    // remedy actions keep one owner. A redraw removes them through clearLabels;
+    // leaving the compact CSS band therefore restores the ordinary instrument.
+    const seatReadings = () => {
+      const style = typeof globalThis.getComputedStyle === 'function' ? globalThis.getComputedStyle(fab) : null;
+      if (style?.getPropertyValue?.('--orr-ind-flow-readings')?.trim() !== '1') return;
+      const reason = host.querySelector('.orr-chain__label:has(> .orr-chain__reason)');
+      const output = host.querySelector('.orr-chain__label.is-below');
+      if (reason) {
+        reason.classList.add('sx-fab-chain-reason');
+        fab.insertBefore(reason, host);
+      }
+      if (output) {
+        output.classList.add('sx-fab-chain-output');
+        fab.insertBefore(output, host.nextSibling);
+      }
+    };
+    chain = createChainBeam(host, { onLayout: (g) => { lastG = g; seatReadings(); seatFoot(); } });
+    chain.set({
+      inputs: Object.keys(bp.inputs || {}).map((id) => {
+        const have = Math.floor(freeQty(state, id));
+        const need = bp.inputs[id];
+        // a short input carries its own way out: the market, in one word under the count —
+        // and what the yard itself stocks against the need, so the walk is never a guess
+        const yardWord = have < need ? yardWordFor(state, id, have, need) : '';
+        const verbHtml = have < need
+          ? `<button type="button" ${stationControlAttrs('source-market')} class="orr-chain__source" data-source-cmdty="${escapeHtml(id)}">Source in market</button>`
+          : '';
+        return { nameHtml: escapeHtml(matName(id)), have, need, verbHtml, glyph: glyphFor(id, 'material'),
+          noteHtml: yardWord ? escapeHtml(yardWord) : '' };
+      }),
+      process: CAT_LABEL[bp.category] || bp.category,
+      timeLabel: buildDuration(bp) ? `${buildDuration(bp)} s` : 'instant',
+      output: { qty: bp.outputs.qty || 1, unit: `${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))} · per run`, glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
+      live: !!canBuild,
+      // the station's own lack (no refinery, no slot) is drawn on the ring; a shortfall of inputs is already on the nodes
+      blocked: blocker ? { reason: escapeHtml(blocker.reason), verbHtml: `<span class="orr-chain__blocknote">${escapeHtml(blocker.note)}</span><button type="button" ${stationControlAttrs(blocker.controlId)} class="orr-chain__wayout" data-ind-${blocker.verb}="1">${escapeHtml(blocker.verbLabel)}</button>` } : null,
+      // the bezel is the hold ring: dark at rest, lit by a held FABRICATE
+      timeFrac: 0,
+      progress: queue ? progress : null,
+    });
+    const build = fab.querySelector('.sx-fab-build[data-build]');
+    if (build) dressLampKey(build, canBuild ? { hold: true, note: 'hold' } : {});
+    for (const stop of stopDecrypt.splice(0)) stop();
+    if (reducedMotion()) return;
+    const targets = [
+      fab.querySelector('.sx-fab-head__name .sf-entity-link') || fab.querySelector('.sx-fab-head__name'),
+      ...fab.querySelectorAll('.k-caps'),
+    ].filter(Boolean);
+    targets.forEach((node, i) => { const text = node.textContent; if (text) stopDecrypt.push(decrypt(node, text, { duration: 240, delay: 30 + i * 40 })); });
+  }
+
+  // a re-render during a hold (or while a finished run lands) waits for it: rebuilding the chain would drop the run
+  let pendingRender = false;
+  function renderAll(state) {
+    if (!visible || disposed) return;
+    if (hold) { pendingRender = true; return; }
+    pendingRender = false;
+    renderList(state);
+    renderStage(state);
+  }
+
+  // ---- THE SIGNATURE: hold FABRICATE and the chain runs --------------------------------------------------
+  // While the key is held the process bezel fills (it IS the hold ring), one pulse per unit leaves each input
+  // along its beam and the stock gauges drain; at full the run commits through the crafting system (its single
+  // writer), a pulse fires into the product, the product lights and its count rolls in. Let go early and the
+  // run falls back: pulses return, the gauges refill. Pointer, keyboard (Enter/Space) and the pad's A all hold;
+  // a bare activation with nothing held (assistive tech) runs the hold through on its own.
+  let hold = null; // { frac, dir, source, bpId, last, frame, done }
+  const clock = () => (globalThis.performance && performance.now ? performance.now() : Date.now());
+  const buildKey = () => stageEl.querySelector('.sx-fab-build[data-build]:not(:disabled)');
+  function padHeld() {
+    try {
+      const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];
+      for (const p of pads || []) if (p && p.buttons && p.buttons[0] && p.buttons[0].pressed) return true;
+    } catch (_) { /* no pads */ }
+    return false;
+  }
+  function paintHold() {
+    const key = buildKey();
+    const f = hold ? hold.frac : 0;
+    if (key) {
+      const ring = key.querySelector('.dp-holdring');
+      if (ring && ring.style) ring.style.setProperty('--sf-hold-p', String(f));
+      key.classList.toggle('is-holding', !!hold && hold.dir > 0 && !hold.done);
+    }
+    if (chain && hold && !hold.done) chain.run(f);
+  }
+  function endHold() {
+    if (hold && hold.frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(hold.frame);
+    hold = null;
+    paintHold();
+    if (chain) chain.reset();
+    if (pendingRender) renderAll(ctx.state || {});
+  }
+  function stepHold() {
+    if (!hold) return;
+    hold.frame = 0;
+    const t = clock();
+    const dt = Math.min(64, Math.max(0, t - hold.last));
+    hold.last = t;
+    if (hold.source === 'pad' && hold.dir > 0 && !padHeld()) hold.dir = -1;
+    // filling runs at the hold's pace; a released hold falls back twice as fast
+    hold.frac += (dt / INDUSTRY_HOLD_MS) * (hold.dir > 0 ? 1 : -2);
+    if (hold.frac >= 1) { hold.frac = 1; paintHold(); fireHold(); return; }
+    if (hold.frac <= 0 && hold.dir < 0) { endHold(); return; }
+    paintHold();
+    if (typeof requestAnimationFrame === 'function') hold.frame = requestAnimationFrame(stepHold);
+  }
+  function startHold(source) {
+    if (!visible || disposed) return;
+    const key = buildKey();
+    if (!key) return;
+    if (hold && hold.done) return;
+    if (!hold) hold = { frac: 0, dir: 1, source, bpId: key.getAttribute('data-build'), last: clock(), frame: 0, done: false };
+    else { hold.dir = 1; hold.source = source; }
+    if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = clock(); hold.frame = requestAnimationFrame(stepHold); }
+    else if (typeof requestAnimationFrame !== 'function') { hold.frac = 1; fireHold(); }
+  }
+  function releaseHold(source) {
+    if (!hold || hold.done || hold.source === 'auto') return;
+    if (source && hold.source !== source) return;
+    hold.dir = -1;
+    if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = clock(); hold.frame = requestAnimationFrame(stepHold); }
+  }
+  function fireHold() {
+    if (!hold || hold.done) return;
+    hold.done = true;
+    const key = buildKey();
+    if (key) { key.classList.remove('is-holding'); const ring = key.querySelector('.dp-holdring'); if (ring && ring.style) ring.style.setProperty('--sf-hold-p', '0'); }
+    const sid = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
+    const crafting = ctx.crafting || (ctx.registry && ctx.registry.get && ctx.registry.get('crafting'));
+    const fired = hold;
+    const firedGeneration = generation;
+    const firedChain = chain;
+    const isCurrent = () => visible && !disposed && generation === firedGeneration && hold === fired;
+    // attemptIndustryBuild may return a Promise on the worker lane — the cue,
+    // refusal fallback, and landing all await its resolve. Retiring the view does
+    // not cancel an authoritative build; only its obsolete presentation goes away.
+    Promise.resolve(attemptIndustryBuild({ crafting, bpId: fired.bpId, stationId: sid,
+      onError() {
+        if (isCurrent() && ctx.bus) ctx.bus.emit('toast', {
+          text: 'Fabrication could not be confirmed. Check the queue before trying again.',
+          kind: 'warn', ttl: 4,
+        });
+      },
+    })).then((ok) => {
+      if (!isCurrent()) return;
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: ok ? 'ui_accept' : 'ui_back' });
+      // a refused build never plays the landing: the chain falls back and the screen says why
+      if (!ok) { if (hold === fired) hold = null; if (firedChain) firedChain.reset(); renderAll(ctx.state || {}); return; }
+      // the run lands in the product, then the screen shows the hold as it now stands
+      const land = () => {
+        if (!isCurrent()) return;
+        landingTimer = setTimeout(() => {
+          landingTimer = 0;
+          if (!isCurrent()) return;
+          hold = null;
+          renderAll(ctx.state || {});
+        }, reducedMotion() ? 240 : 700);
+      };
+      if (firedChain) firedChain.complete({ onDone: land }); else land();
+    });
+  }
+  // pointer: down arms, up / cancel / leave lets go; the click that follows a pointer hold is the hold's, never a build
+  let pointerAt = -1;
+  let keyAt = -1;
+  const onKey = (ev) => (ev.target && ev.target.closest ? ev.target.closest('.sx-fab-build[data-build]:not(:disabled)') : null);
+  stageEl.addEventListener('pointerdown', (ev) => { if (onKey(ev) && ev.button === 0) { pointerAt = clock(); startHold('pointer'); } });
+  // letting go anywhere (even dragged off the key) falls back; releaseHold only answers a pointer hold
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+    stageEl.addEventListener(type, (ev) => { if (onKey(ev)) pointerAt = clock(); releaseHold('pointer'); }, true);
+  }
+  stageEl.addEventListener('keydown', (ev) => {
+    if (!onKey(ev) || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    ev.preventDefault();
+    keyAt = clock();
+    if (!ev.repeat) startHold('key');
+  });
+  stageEl.addEventListener('keyup', (ev) => {
+    if (!onKey(ev) || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    ev.preventDefault();
+    keyAt = clock();
+    releaseHold('key');
+  });
+  // tabbing away mid-hold falls back instead of firing under a key the player left
+  stageEl.addEventListener('blur', (ev) => { if (onKey(ev)) releaseHold('key'); }, true);
+
+  function select(id, focus) {
+    if (!id) return;
+    if (hold && !hold.done) endHold();
+    selectedId = id;
+    const state = ctx.state || {};
+    renderAll(state);
+    if (focus) {
+      const row = listEl.querySelector(`[data-bp="${CSS.escape(id)}"]`);
+      if (row && typeof row.focus === 'function') row.focus();
+    }
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+  }
+
+  listEl.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-bp]'); if (!b) return;
+    select(b.getAttribute('data-bp'), false);
+  });
+  // Arrow keys walk every blueprint across the categories (one tablist, roving tabindex).
+  listEl.addEventListener('keydown', (ev) => {
+    const rows = [...listEl.querySelectorAll('[data-bp]')];
+    const cur = rows.indexOf(ev.target.closest('[data-bp]'));
+    if (cur < 0 || !rows.length) return;
+    let next = -1;
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowRight') next = (cur + 1) % rows.length;
+    else if (ev.key === 'ArrowUp' || ev.key === 'ArrowLeft') next = (cur - 1 + rows.length) % rows.length;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = rows.length - 1;
+    else return;
+    ev.preventDefault();
+    select(rows[next].getAttribute('data-bp'), true);
+  });
+  stageEl.addEventListener('click', (ev) => {
+    const scrap = ev.target.closest('[data-ind-scrap]');
+    if (scrap) {
+      // The scrap verb owns the running job, not the selected rung — it always names the line.
+      const sid = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
+      const crafting = ctx.crafting || (ctx.registry && ctx.registry.get && ctx.registry.get('crafting'));
+      Promise.resolve(attemptIndustryScrap({ crafting, stationId: sid,
+        onError() {
+          if (disposed || !ctx.bus) return;
+          ctx.bus.emit('toast', {
+            text: 'Fabrication could not be confirmed. Check the queue before trying again.',
+            kind: 'warn', ttl: 4,
+          });
+        },
+      })).then((ok) => {
+        if (disposed || !visible) return;
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: ok ? 'ui_accept' : 'ui_back' });
+        // A clean refusal means the run already left the line — either way, repaint what stands.
+        renderAll(ctx.state || {});
+      });
+      return;
+    }
+    const chart = ev.target.closest('[data-ind-chart]');
+    if (chart) {
+      openGalaxyMap(ctx, { focus: (MAP_FOCUS && (MAP_FOCUS.GALAXY || MAP_FOCUS.SYSTEM)) || undefined, source: 'station-industry:wayout' });
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      return;
+    }
+    // P10 — each blocker verb goes to ITS remedy: the tech tree for missing research,
+    // Shipworks for a missing source module. Only the facility way out rides the chart.
+    if (ev.target.closest('[data-ind-tech]')) {
+      if (!ctx.bus) return;
+      ctx.bus.emit('ui:pushScreen', { id: 'techTree', source: 'station-industry:tech' });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      return;
+    }
+    if (ev.target.closest('[data-ind-shipworks]')) {
+      if (!ctx.bus) return;
+      ctx.bus.emit('station:navigate', { destination: 'shipworks' });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      return;
+    }
+    const source = ev.target.closest('[data-source-cmdty]');
+    if (source) {
+      if (!ctx.bus) return;
+      ctx.bus.emit('station:navigate', {
+        destination: 'market',
+        options: { tradeMode: 'buy', commodityId: source.getAttribute('data-source-cmdty') },
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      return;
+    }
+    const b = ev.target.closest('[data-build]'); if (!b || b.disabled) return;
+    // FABRICATE is held, never clicked: a click after a pointer or key hold belongs to that hold; the pad's A
+    // (a synthetic click) arms a hold that lasts while A stays down; anything else runs the hold through
+    const t = clock();
+    if (t - pointerAt < 1500 || t - keyAt < 1500) return;
+    startHold(padHeld() ? 'pad' : 'auto');
+  });
+  const onCraftChanged = () => renderAll(ctx.state || {});
+  if (ctx.bus && ctx.bus.on) { ctx.bus.on('craft:complete', onCraftChanged); ctx.bus.on('craft:queueChanged', onCraftChanged); }
+
+  function retirePresentation() {
+    generation += 1;
+    if (landingTimer) clearTimeout(landingTimer);
+    landingTimer = 0;
+    for (const stop of stopDecrypt.splice(0)) stop();
+    if (hold && hold.frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(hold.frame);
+    hold = null;
+    pendingRender = false;
+    if (footRo) { footRo.disconnect(); footRo = null; }
+    if (chain) { chain.dispose(); chain = null; }
+  }
+
+  return {
+    el,
+    onShow(c) {
+      if (disposed) return;
+      visible = true;
+      const st = (c || ctx).state || {};
+      if (!picked) {
+        const stn = stationType(ctx);
+        const b = BLUEPRINTS.find((bp) => { const s = industryReadiness(bp, st, stn).state; return s === 'ready' || s === 'materials'; });
+        if (b) selectedId = b.id;
+        picked = true;
+      }
+      arriving = true;
+      renderAll(st);
+      arriving = false;
+    },
+    onHide() { visible = false; retirePresentation(); },
+    refresh(c) { renderAll((c || ctx).state || {}); },
+    dispose() {
+      disposed = true;
+      visible = false;
+      if (ctx.bus && ctx.bus.off) {
+        ctx.bus.off('craft:complete', onCraftChanged);
+        ctx.bus.off('craft:queueChanged', onCraftChanged);
+      }
+      retirePresentation();
+    },
+  };
+}
+
+export function attemptIndustryBuild({ crafting, bpId, stationId, onError }) {
+  if (!crafting || typeof crafting.build !== 'function') return false;
+  const failed = () => { if (typeof onError === 'function') onError(); return false; };
+  try {
+    const out = crafting.build(bpId, stationId);
+    // worker lane: the build commits sim-side and the rpc resolves the verdict
+    if (out && typeof out.then === 'function') return Promise.resolve(out).then((done) => done === true, failed);
+    return out === true;
+  } catch (_) { return failed(); }
+}
+
+// The scrap verb's request path: same sync/async duality as attemptIndustryBuild — a worker-lane
+// cancel resolves by ack while the same-thread owner answers directly.
+export function attemptIndustryScrap({ crafting, stationId, onError }) {
+  if (!crafting || typeof crafting.cancel !== 'function') return false;
+  const failed = () => { if (typeof onError === 'function') onError(); return false; };
+  try {
+    const out = crafting.cancel(stationId);
+    if (out && typeof out.then === 'function') return Promise.resolve(out).then((done) => done === true, failed);
+    return out === true;
+  } catch (_) { return failed(); }
+}

@@ -1,0 +1,151 @@
+{
+  "schema": "spaceface.package0.flightNumbers.v1",
+  "capturedAt": "2026-09-15T05:22:53.764Z",
+  "scope": "focused V3 adapter + real Rapier physics using the shipped starter spec; not a full-game or display-latency measurement; hosts run sequentially",
+  "seed": 47,
+  "source": [
+    {
+      "path": "src/core/flight/propulsionCatalog.js",
+      "sha256": "72da74a5ed76c3a59a4c2bf73e4bc6a5cb8c32f43dc3a17a9112063f8fdd2dda"
+    },
+    {
+      "path": "src/core/flight/propulsionKernel.js",
+      "sha256": "faaaff6f16d36853901ab7b51a3b4d4966779e9e9950dcd3cfd0ddc95d5b5721"
+    },
+    {
+      "path": "src/systems/flightV3.js",
+      "sha256": "184903b8e8382852c5ea104effce3fae47a6808b1ce8ba30f6098b27fea8e8c4"
+    },
+    {
+      "path": "src/core/physicsAuthority.js",
+      "sha256": "0c466a1a5b4998397e5fca02a6c11d5b1dd5412f54be36899bf02fbaaa1a6100"
+    },
+    {
+      "path": "src/core/sg02DynamicBodyOwner.js",
+      "sha256": "09422e810593b698226036af41d2a864b8bf285e37ed98007d4a1546773ec7b6"
+    },
+    {
+      "path": "src/systems/ships.js",
+      "sha256": "23875c2ab49cbd234142efc2d0d8e4f99711643d7e142b19bbb37cff8bdc2ed3"
+    },
+    {
+      "path": "src/data/ships.js",
+      "sha256": "8acdc344de16ab60b00be16a7137f260edbbe14d915a1bc5ff6820127ea67db8"
+    },
+    {
+      "path": "scripts/lib/bench/realPath.mjs",
+      "sha256": "060d91cca47f8c3b7a1bf4e9dbf2b9fb67094567acc55cc4a03d07eef791ee9d"
+    }
+  ],
+  "coast": {
+    "samples": [
+      {
+        "seconds": 0,
+        "speed": 95
+      },
+      {
+        "seconds": 1,
+        "speed": 86.52825927734375
+      },
+      {
+        "seconds": 3,
+        "speed": 71.78380584716797
+      },
+      {
+        "seconds": 10,
+        "speed": 37.33076095581055
+      }
+    ],
+    "proof": {
+      "backend": "rapier-dynamic",
+      "sg02Ready": true,
+      "sg02Bodies": 1,
+      "sg02DynamicBodies": 1,
+      "rapierContacts": 0,
+      "contactCaptureEnabled": true,
+      "featuresOutsideStep": {
+        "tumble": false,
+        "weaponImpulseConsequences": false
+      },
+      "physicsBackend": "rapier-dynamic",
+      "flightBackend": "v3",
+      "aiBackend": "sg06-tactical",
+      "profileId": "production"
+    },
+    "profileId": "drive_reaction_m"
+  },
+  "yawThrusting": {
+    "throttle": 1,
+    "steadyRateRadS": 2.628476858139038,
+    "secondsTo90Percent": 0.13333333333333333,
+    "secondsToStop10Percent": 0.06666666666666667,
+    "proof": {
+      "backend": "rapier-dynamic",
+      "sg02Ready": true,
+      "sg02Bodies": 1,
+      "sg02DynamicBodies": 1,
+      "rapierContacts": 0,
+      "contactCaptureEnabled": true,
+      "featuresOutsideStep": {
+        "tumble": false,
+        "weaponImpulseConsequences": false
+      },
+      "physicsBackend": "rapier-dynamic",
+      "flightBackend": "v3",
+      "aiBackend": "sg06-tactical",
+      "profileId": "production"
+    }
+  },
+  "yawCoasting": {
+    "throttle": 0,
+    "steadyRateRadS": 3.15417218208313,
+    "secondsTo90Percent": 0.13333333333333333,
+    "secondsToStop10Percent": 0.06666666666666667,
+    "proof": {
+      "backend": "rapier-dynamic",
+      "sg02Ready": true,
+      "sg02Bodies": 1,
+      "sg02DynamicBodies": 1,
+      "rapierContacts": 0,
+      "contactCaptureEnabled": true,
+      "featuresOutsideStep": {
+        "tumble": false,
+        "weaponImpulseConsequences": false
+      },
+      "physicsBackend": "rapier-dynamic",
+      "flightBackend": "v3",
+      "aiBackend": "sg06-tactical",
+      "profileId": "production"
+    }
+  },
+  "dash": {
+    "tickBefore": 18,
+    "tickAfter": 19,
+    "eventsInFirstCommandStep": [
+      {
+        "tick": 19,
+        "simTime": 0.31666666666666665,
+        "impulse": 150
+      }
+    ],
+    "speedBefore": 0,
+    "speedAfter": 150,
+    "extraWaitedSimulationSteps": 0,
+    "proof": {
+      "backend": "rapier-dynamic",
+      "sg02Ready": true,
+      "sg02Bodies": 1,
+      "sg02DynamicBodies": 1,
+      "rapierContacts": 0,
+      "contactCaptureEnabled": true,
+      "featuresOutsideStep": {
+        "tumble": false,
+        "weaponImpulseConsequences": false
+      },
+      "physicsBackend": "rapier-dynamic",
+      "flightBackend": "v3",
+      "aiBackend": "sg06-tactical",
+      "profileId": "production"
+    }
+  }
+}

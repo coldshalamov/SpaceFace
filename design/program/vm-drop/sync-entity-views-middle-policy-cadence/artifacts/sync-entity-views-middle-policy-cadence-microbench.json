@@ -1,0 +1,16 @@
+{
+  "label": "syncEntityViews-middle-policy-cadence",
+  "entities": 400,
+  "frames": 240,
+  "middleFraction": 0.72,
+  "before": {
+    "calls": 96000,
+    "ms": 141.587
+  },
+  "after": {
+    "calls": 44376,
+    "ms": 67.473
+  },
+  "callReduction": 0.5377,
+  "speedup": 2.098
+}

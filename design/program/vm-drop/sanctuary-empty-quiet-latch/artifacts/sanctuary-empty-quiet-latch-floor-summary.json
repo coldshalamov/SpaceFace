@@ -1,0 +1,38 @@
+{
+  "name": "sanctuary-empty-quiet-latch-floor",
+  "runs": [
+    {
+      "label": "primary",
+      "medianSpeedup": 14.580543339931538,
+      "minSpeedup": 11.713561751096824,
+      "dirtyWakeOk": true
+    },
+    {
+      "label": "rebench1",
+      "medianSpeedup": 15.740755094551956,
+      "minSpeedup": 11.510632464134195,
+      "dirtyWakeOk": true
+    },
+    {
+      "label": "rebench2",
+      "medianSpeedup": 14.899025906587688,
+      "minSpeedup": 10.343443878978995,
+      "dirtyWakeOk": true
+    },
+    {
+      "label": "rebench3",
+      "medianSpeedup": 15.458175136316717,
+      "minSpeedup": 12.854178253557743,
+      "dirtyWakeOk": true
+    },
+    {
+      "label": "rebench4",
+      "medianSpeedup": 15.870013999239971,
+      "minSpeedup": 13.868608386758925,
+      "dirtyWakeOk": true
+    }
+  ],
+  "floorMinSpeedup": 10.343443878978995,
+  "medianOfMedians": 15.458175136316717,
+  "dirtyWakeOk": true
+}

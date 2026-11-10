@@ -1,0 +1,427 @@
+# Drifter material-truth preflight (PQ-050.02)
+
+Class: player flyable multirole utility. Hitch untouched. Hornet identity not reused.
+
+**2026-09-21 leaf closeout.** Twenty-two chase cycles complete. Hitch-plus PASS at chase cameras (C22 KEEP ×3; TUBE_PADDLE NO; CAGE_READ NO). Parent PQ-050 unproven / not G7. TECHNIQUE_LEDGER filled for mandatory player-flyable rows (bake/map rows `not_applicable` — Principled islands). Old cycle/iter reports deleted; final set is `chase_form_v22`. Drifter is frozen for later leaves.
+
+## C1 chase-form (2026-09-21)
+
+Live authoring source for this leaf is `tools/blender/build_drifter_chase_form.py`
+(`chase_form_v1`), not `build_drifter_mtx.py`. Principled islands only — no 512/1024
+map density trap. Chase cameras only. No seats. Sockets and collision imported from
+the live GLB and asserted unchanged. Hitch/Kestrel never loaded.
+
+Cycle 1 shipped the REVISE from three chase reviews: the cargo well is a rimmed hole
+(not an orange parking-lot lid), the greenhouse glass sits in the cut tub (not a roof
+plate), nacelle stations grow out of the flank. Hitch still wins chase. Parent unproven.
+
+## C2 chase-form (2026-09-21)
+
+`chase_form_v2` on the same live sockets. Principled islands only. Hitch/Hornet untouched.
+
+C1 remaining notes were panel language, hardware density, and stencil. C2 added chase-scale
+flank plates and seam channels, outboard D2 plus starboard/dorsal 02 glyphs, thicker hoses,
+fastener rows, dirt islands. Cargo well stays a rimmed hole; greenhouse stays glass in a cage
+over a cut tub. Three chase reviews returned REVISE: Hitch still wins manufactured density at
+D=144. Stencil now reads at close/abeam. No seats. No megatex. Parent unproven / not G7.
+
+## C3 chase-form (2026-09-21)
+
+`chase_form_v3` on the same live sockets. Principled islands only. Hitch/Hornet untouched.
+
+C2 remaining note was Hitch-plus manufactured density at D=144. C3 enlarged nacelle armor tiles
+and cheek plates, thickened spine/longerons/accent flanks, grew panel plates and seam channels,
+bolts to 0.22, stronger hull/armor value split, split the dorsal cable tray so it no longer
+spans the well mouth, and routed hoses beside the well. Cargo well stays a rimmed hole;
+greenhouse stays glass in a cage over a cut tub. Three chase reviews returned REVISE: Hitch
+still wins manufactured density at D=144. No seats. No megatex. Parent unproven / not G7.
+
+## C4 chase-form (2026-09-21)
+
+`chase_form_v4` on the same live sockets. Principled islands only. Hitch/Hornet untouched.
+
+C3 remaining note was Hitch-plus manufactured density at D=144. C4 added a lower flank plate
+course, more boolean seam channels, larger D2/02 on the winglets plus abeam hull-side D2/02,
+thicker hoses, port+starboard split cable trays, vent banks, and more dirt islands. Cargo well
+stays a rimmed hole; greenhouse stays glass in a cage over a cut tub. Three chase reviews
+returned REVISE: Hitch still wins manufactured density at D=144. Rejected “well is a lid /
+greenhouse missing / rebuild as voxel loft” (close stills show rimmed hole + cage over a cut
+tub). No seats. No megatex. Parent unproven / not G7.
+
+## C5 chase-form (2026-09-21)
+
+`chase_form_v5` on the same live sockets. Principled islands only. Hitch/Hornet untouched.
+
+Packet-minimum Hitch-plus close attempt. C5 cut inset panel channels into dorsal and
+flank skin, added girth seams, replaced the equal-size plate carpet with mixed plate
+sizes and clamp rails, thinned chevrons toward paint, added port dorsal + aft 02 and
+more dirt islands. Cargo well stays a rimmed hole; greenhouse stays glass in a cage
+over a cut tub. Side-by-side play_chase / abeam / close vs frozen Hitch: Hitch still
+wins manufactured density at D=144. Three chase reviews REVISE. Hitch-plus chase is
+not closed. No seats. No megatex. Parent unproven / not G7.
+
+## C6 chase-form (2026-09-21)
+
+`chase_form_v6` on the same live sockets. Principled islands only. Hitch/Hornet untouched.
+
+Plate-stacking stalled. Before modeling, C5 stills vs Hitch named three chase-visible
+failures: (1) silhouette as stacked blocks vs Hitch’s formed shell, (2) cargo well and
+greenhouse not dominating as dark landmarks, (3) orange chevron/D2 bricks louder than
+the hull. C6 rebuilt hull stations (fuller cargo waist, formed bow, faired nacelles),
+enlarged the well and greenhouse as holes, quieted the hull, and cut hardware to three
+clusters. Three chase reviews REVISE. Hitch still wins D=144. Hitch-plus chase is not
+closed. No seats. No megatex. Parent unproven / not G7.
+
+## C7 chase-form (2026-09-21)
+
+`chase_form_v7` on the same live sockets and C6 shell. Principled islands only.
+Hitch/Hornet untouched.
+
+C6 remaining note was formed-shell / skin density at D=144. C7 kept stations, landmark
+wells, and faired nacelles. It cut chase-scale girth and stringer channels into the hull,
+added formed armor courses (not a plate carpet), clamp/fastener language that reads at
+D=144, mixed albedo islands, and selective dirt. Three chase reviews REVISE. Close still:
+well and greenhouse read as holes. Hitch still wins D=144. Hitch-plus chase is not closed.
+No seats. No megatex. Parent unproven / not G7.
+
+## C8 chase-form (2026-09-21)
+
+`chase_form_v8` on the same live sockets and C6 shell. Principled islands only.
+Hitch/Hornet untouched.
+
+Before modeling, C7 `play_chase` vs Hitch named five chase-pixel gaps:
+(1) value split — Drifter light>=0.28 was 26% of ship pixels vs Hitch 6%;
+(2) dark-well area — wells sat in a light teal slab;
+(3) panel seams at D=144 — girth cuts used hull material and vanished;
+(4) unique dark albedo — Hitch ~94% mid+dark, Drifter's dark was the minority;
+(5) hardware clusters — orange D2/02 louder than equipment.
+
+C8 darkened hull/deck, lofted dark girth bands and stringers, armor saddles around
+well+greenhouse, larger gantry/winch/clamps, teal identity on dark plaques. Light
+fraction fell to 8%. Close still: well and greenhouse read as holes. Three chase
+reviews REVISE. Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is
+not closed. No seats. No megatex. Parent unproven / not G7.
+
+## C9 chase-form (2026-09-21)
+
+`chase_form_v9` keeps C8 value split (light ~8%) and well holes. Principled islands
+only. Hitch/Hornet untouched.
+
+Remaining C8 vs Hitch: kitbash silhouette, card-thin teal rails, copper bars
+(8.5% vs 0.6%). C9 densified the hull loft, replaced accent boxes with a formed
+chine, inset girth bands, thicker winglets, framed canopy, darker ceramic/dirt.
+Brown fell to 0.8%. Three chase reviews REVISE. Close still: well and greenhouse
+read as holes. Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is
+not closed. No seats. No megatex. Parent unproven / not G7.
+
+## C10 chase-form (2026-09-21)
+
+`chase_form_v10` is the packet “toward ten” close attempt. Keeps C8/C9 wins:
+value split (light 8.6%), well+greenhouse as holes, copper/brown 0.8%. Principled
+islands only. Hitch/Hornet untouched.
+
+C10 targeted the remaining C9 REVISE list: hull-material chine beam (no teal rail),
+nacelle fairings into a tapering shell, longitudinal panel courses instead of wrapping
+girth belts, rooted wing mass, greenhouse cage over an open tub (glass in openings,
+not a lid). Three chase reviews REVISE. Close still: well and greenhouse read as
+holes. Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is not
+closed after ten cycles. Remaining: dorsal kitbash (gantry/clamps/cage bars),
+Hitch’s mid-value formed skin vs Drifter’s gray tube + dark ladder, wings still
+short of Hitch sponson mass in planform. No seats. No megatex. Parent unproven / not G7.
+
+## C11 chase-form (2026-09-21)
+
+`chase_form_v11` keeps C8–C10 wins: wells as holes, no teal beam rail, brown ~0%.
+Principled islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+C11 targeted the four C10 leftovers: (1) dorsal openings as cuts in a formed
+shell (independent lip rails; a first closed loft bridged the cargo mouth and
+was split), (2) mid-heavy hull (light>=0.28 = 2.2% vs Hitch 5%; armor as plates
+not black bars), (3) slower-taper sponson planform, (4) thin-shell framed
+greenhouse in the tub (small hatch, lofted mullions). Three chase reviews
+REVISE. Close still: well and greenhouse read as holes. Hitch still wins
+formed-shell / skin at D=144. Hitch-plus chase is not closed. Remaining:
+gray-plate skin and kite sponsons vs Hitch’s formed multi-value shell. Parent
+unproven / not G7.
+
+## C12 chase-form (2026-09-21)
+
+`chase_form_v12` keeps C8–C11 wins: wells as holes, no teal beam rail, brown ~0%,
+light near Hitch (2.2% vs Hitch 5.0%), greenhouse as a framed hole. Principled
+islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+C12 targeted the two C11 leftovers: (1) chase-scale dorsal panel bays from well
+lip to chine with mixed deck/armor courses (not clay + black bars), (2)
+constant-chord short sponsons off the hull beam (not a mid-body kite diamond).
+Three chase reviews REVISE. Close still: well and greenhouse read as holes.
+Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is not closed.
+Remaining: inset panel language in the hull loft (not glued gray slabs) and
+Hitch-scale lofted sideboards with root fillet (not short paddles). Parent
+unproven / not G7.
+
+## C13 chase-form (2026-09-21)
+
+`chase_form_v13` keeps C8–C12 wins: wells as holes, no teal beam rail, brown ~0%,
+light near Hitch (1.7% vs Hitch 5.3%), greenhouse as a framed hole. Principled
+islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+C13 is a full-job rebuild of the primary body, not more dorsal plates: (1) one
+continuous multi-station lofted shell with sideboard lobes in the station rings,
+(2) cargo well + greenhouse as boolean cuts (mouths not recut), (3) girth /
+stringer / wing-root seams cut into that shell, hull/armor/deck painted on the
+same mesh. Three chase reviews REVISE. Close still: well and greenhouse read as
+holes (crates/winch/liner in the mouth). **Tube/paddle read is not gone** —
+play still called a pale capsule with dark paddle sponsons; abeam still called
+a central tube with saddlebags split by a hard root crease. Hitch still wins
+formed-shell / skin at D=144. Hitch-plus chase is not closed. Parent unproven /
+not G7.
+
+## C14 chase-form (2026-09-21)
+
+`chase_form_v14` is a reference-first rebuild. Identity frozen. Hitch chase stills
+plus generated workboat planform / chine / well / greenhouse refs before modeling.
+Principled islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+C1–C13 failed as tube/capsule + paddle/saddlebag sponsons. C14 encodes one hard-chine
+workboat beam (sideboards are the gunwale, not a painted |y| Armor lobe). Cargo well
+and greenhouse stay boolean cuts. Three chase reviews REVISE. Close still: well and
+greenhouse read as holes. **Clay `play_chase` tube/paddle is gone** (play+close).
+Abeam still called a raised spine with darker flanking volumes and a hard root crease.
+Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is not closed. Parent
+unproven / not G7.
+
+## C15 chase-form (2026-09-21)
+
+`chase_form_v15` keeps the C14 one-beam identity and wells-as-cuts. The YZ ring
+drops the 1 m vertical slab at `y=beam` (C14 abeam leftover) for a sloped chine.
+MidSeam and GunwaleSeam removed so they cannot split spine from flank. Principled
+islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+Three chase reviews REVISE. Play+close stay `TUBE_PADDLE NO`; wells stay holes.
+**Abeam TUBE_PADDLE is not gone** — reviewer still called a raised spine with
+darker flanking volumes and a hard root crease. Hitch still wins formed-shell /
+skin at D=144. Hitch-plus chase is not closed. Parent unproven / not G7.
+
+## C16 chase-form (2026-09-21)
+
+`chase_form_v16` keeps the C14/C15 play+close wins and wells-as-cuts. The YZ is a
+convex diamond (max beam at mid-height). Separate nacelle body lofts are deleted;
+aft hull stations widen so the drives are throats in the primary shell. No extra
+fairing bands on sponson meshes. Principled islands only. Hitch/Hornet untouched.
+No seats. No megatex.
+
+Three chase reviews REVISE. Play+close stay `TUBE_PADDLE NO`; wells stay holes.
+**Abeam TUBE_PADDLE is not gone** — clay still read as a dark spine with lighter
+flanking volumes and a hard value/seam at the root (shaded closer to one diamond).
+Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is not closed.
+Parent unproven / not G7.
+
+## C17 chase-form (2026-09-21)
+
+`chase_form_v17` keeps the C16 convex-diamond hull (no separate nacelle bodies)
+and the C14–C16 play+close wins. Clay leftover was multiple hull mats plus a
+slot-0-only clay override. C17 overrides every material slot and paints the
+outer diamond one Hull value (Armor stays keel). Principled islands only.
+Hitch/Hornet untouched. No seats. No megatex.
+
+Three chase reviews REVISE. Play+close+abeam `TUBE_PADDLE NO` on clay and
+shaded; wells stay holes. Hitch still wins formed-shell / skin at D=144.
+Hitch-plus chase is not closed. Parent unproven / not G7.
+
+## C18 chase-form (2026-09-21)
+
+`chase_form_v18` keeps the C17 diamond, all-slot clay, and wells-as-cuts.
+C18 cuts chase-scale girth hoops, inset pockets, and athwartship Course
+bands into the one shell, plus recess-cut hardware and pin-light beacons.
+Not plate spam. Not |y| Armor. Not Deck-on-crown. Mouths not recut.
+Principled islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+Three chase reviews REVISE. Play+close+abeam `TUBE_PADDLE NO` on clay and
+shaded; wells stay holes. Hitch still wins formed-shell / skin at D=144
+(pocket fields thin; Hitch midship / color / aft nozzle denser).
+Hitch-plus chase is not closed. Parent unproven / not G7.
+
+## C19 chase-form (2026-09-21)
+
+`chase_form_v19` keeps the C18 diamond, all-slot clay, and wells-as-cuts.
+Mouths not recut. C19 densifies inter-hoop inset fields and short stringers,
+adds midship Mark bands plus hatch/clamp/beacon hardware, and cuts a
+chase-facing circular aft nozzle (not a flat cap). Not plate spam.
+Not |y| Armor. Not Deck-on-crown. Principled islands only. Hitch/Hornet
+untouched. No seats. No megatex.
+
+Three chase reviews REVISE. Play+close+abeam `TUBE_PADDLE NO` on clay and
+shaded; wells stay holes. Hitch still wins formed-shell / skin at D=144
+(interstitial fields still thinner/smoother than Hitch’s continuous skin).
+Hitch-plus chase is not closed. Parent unproven / not G7.
+
+## C20 chase-form (2026-09-21)
+
+`chase_form_v20` keeps the C18 diamond, all-slot clay, wells-as-cuts, and
+C19 circular aft nozzles. Mouths not recut. C20 adds extra girth ribs
+between hoops, longitudinal Course stringers that cross hoops (split
+around mouths), close-scale tiles, and midship fasteners plus a second
+hatch. Not plate spam. Not |y| Armor. Not Deck-on-crown. Principled
+islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+Three chase reviews REVISE. Play+close+abeam `TUBE_PADDLE NO` on clay and
+shaded; wells stay holes; nozzles stay circular. Hitch still wins
+formed-shell / skin at D=144 (open hoop/rib cage with inter-hoop gaps
+versus Hitch’s continuous plated shell and denser midship hardware).
+Hitch-plus chase is not closed. Parent unproven / not G7.
+
+## C21 chase-form (2026-09-21)
+
+`chase_form_v21` keeps the C18 diamond, all-slot clay, wells-as-cuts, and
+C19 circular aft nozzles. Mouths not recut. C21 does **not** add girth
+hoops. The nine C18 stations stay as thin seams in a sheet. Inter-hoop
+bays are shallow plated insets. Midship is formed hardware clusters
+(jboxes, valves, walk plates, rails, pipes, hoses) on that skin.
+Close-scale scores break empty fields. Not plate spam. Not |y| Armor.
+Not Deck-on-crown. Principled islands only. Hitch/Hornet untouched.
+No seats. No megatex.
+
+Three chase reviews REVISE. Play+close+abeam `TUBE_PADDLE NO` on clay and
+shaded; wells stay holes; nozzles stay circular; **cage read is gone**.
+Hitch still wins formed-shell / midship hardware at D=144 (C21 plate
+reads flatter/cheaper beside Hitch’s denser skin).
+Hitch-plus chase is not closed. Parent unproven / not G7.
+
+## C22 chase-form (2026-09-21)
+
+`chase_form_v22` keeps the C21 plated diamond, all-slot clay, wells-as-cuts,
+C19 circular nozzles, and the cage-gone sheet. Mouths not recut. C22 adds
+overlapping dorsal courses and stepped recesses (odd/even bay depths) so
+the skin has panel steps, not a flat cheap face. Midship gets chase-readable
+manifolds, X-pipes, brackets, and an extra hatch. Well/greenhouse lip
+scores and cheeks sit outboard of the mouths. No extra hoops. Not |y|
+Armor. Not Deck-on-crown. Principled islands only. Hitch/Hornet untouched.
+No seats. No megatex.
+
+Three chase reviews KEEP. Play+close+abeam `TUBE_PADDLE NO` and
+`CAGE_READ NO` on clay and shaded; wells stay holes; nozzles stay circular.
+HITCH_WINS NO on all three cameras. Hitch-plus chase is closed at the leaf
+chase cameras. Parent unproven / not G7.
+
+## 0. Frozen identity
+
+~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
+muted teal-grey industrial paint, the eleven factory `SOCKET_*` names, `+X` forward /
+`+Y` up / `+Z` starboard export contract, `SF_DRIFTER_PRODUCTION_V1` / `drifter_production_v1`.
+Socket *positions* follow the hull after the form change; socket *names* and the export
+contract do not move.
+
+## 1. Visible-zone register
+
+Supported review cameras are the live chase camera only — `tools/blender/spaceface_chase_camera.py`,
+50 deg vertical FOV, 60 deg tilt, D=144 (`play_chase`, `play_chase_abeam`) and D=58
+(`play_chase_close`). `drive_rear` is the bounded diagnostic for aft interfaces. Every zone
+below was reclassified for cycle 28; nothing is inherited unreviewed.
+
+| Zone | Class | Dominates a supported view | Fiction | Forbidden read |
+|---|---|---|---|---|
+| Pressure hull (bow → transom) | billed | yes, `play_chase` | One formed shell: rolled plate over ring frames, bow shoulder → flat working deck → cargo-well waist → machinery shoulder → transom | Three boxes; a tube with stuff on it |
+| Nacelle pods + swept fairing roots | billed | yes, `play_chase` | Drive housings grown out of the flank on a continuous fairing; bolted cowl, refractory collar band, tapered aft fairing | Rectangular trailers parked alongside |
+| Nacelle bill cowl + intake grille | billed | yes, `play_chase_close` | Bolted intake cowl over a louvred flank duct | A thin triangular card |
+| Dorsal cargo well | billed | yes, `play_chase` | Skin-breaking two-level hold: lipped mouth, ribbed liner walls, dark lower floor, partial raised grating, deck rails, secured crates, gantry beam | A dark plate painted on the deck |
+| Greenhouse / canopy | billed | yes, `play_chase_close` | Thin dark panes in a heavy alloy cage over a cut tub | A teal brick; a cockpit diorama |
+| Drive throats | billed | yes, `play_chase_close` | True open alloy hoop, neutral fine-grain refractory sleeve, rooted vanes, lined bell behind | An emissive disc; capped cylinder; tan wood ring |
+| Dorsal pod cooling slots | billed | yes, `play_chase` | Recessed fin banks on top of each pod | A painted rectangle |
+| Deck radiator wells | billed | yes, `play_chase` | Fin cassettes in a rimmed deck well with header pipes | A glowing grate |
+| Winglets + root fillet | billed | yes, `play_chase` | Short rooted stabiliser, thick root, separate slotted flap | A card of uniform thickness |
+| Dorsal longerons, frames, spine beam | billed | yes, `play_chase` | The visible load path from bow through the well to the drive bulkhead | Decorative strips |
+| Transom machinery face | billed | no (diagnostic `drive_rear.png` only) | Aft-shell opening with a rounded formed rim, recessed back plate, refractory fins, and header pipes | A blank wall; a rectangular box frame |
+| Keel strake, ventral hatch, belly | outside_supported_view | no; `supportedViews: []` | Rubbing strake and cargo hatch | — |
+| Cabin interior beyond the tub floor / console mass | outside_supported_view | no | — | Modelled seats billed as remaster work |
+
+`allSupportedViewZonesClassified`: true. Independent original-resolution reviews returned
+KEEP for the exact Cycle 28 play, close, and rear evidence listed in section 8.
+
+## 2. Material bill
+
+| Material | Substrate + process | Finish | Value role |
+|---|---|---|---|
+| `Material_Hull` | Rolled alloy plate over frames | Muted teal-grey polyurethane coat, clearcoat 0.34, dielectric; bare alloy only where the coating is lost on plate edges | Mid value, dominant area |
+| `Material_Armor` | Thicker bolted plate / well liners | Dark grey-teal coat, part metallic where worn | Dark value, recesses |
+| `Material_Mechanical` | Machined and brushed alloy | Metallic 0.96, directional tooling along the machine axis | Light value, frames, rims, rails |
+| `Material_Ceramic` | Cast refractory | Neutral grey, non-metal, matte, almost-flat isotropic fine grain with sparse heat freckles | Quiet light ring inside the dark throat |
+| `Material_Accent` | Sprayed faction stripe | Teal enamel, dielectric | Minority colour beat |
+| `Material_Warning` | Sprayed hazard marking | Orange with broken diagonal chevrons, no thickness | Minority colour beat |
+| `Material_Radiator` | Blackened fin stock | Dark, semi-metallic, fin-pitch structure | Dark value |
+| `Material_Canopy` | Laminated dark glazing | Opaque dark dielectric with a coat; no transmission through a solid loft | Darkest value |
+| `Material_Thruster` | Sooted liner inside the bell | Near-black with a recessed ember gradient | Recessed emission only |
+
+Every generator is separate: plate carries seams and edge wear, machined alloy carries
+directional tooling, refractory carries isotropic fine mineral variation, hazard carries
+chevrons, glass carries neither. Plate and tooling periods are specified in **metres** and converted to pixels with
+the measured texel density, so all nine materials share one physical surface scale.
+
+## 3. Shape-grammar and close/rear failures repaired
+
+Cycle 25 built `Cabin`, `Workshop` and `Drive_House` as three separately capped, separately
+solidified lofts, parked two more lofts at `y = ±1.68` as nacelles, and bridged the gap with
+2 m folded-sheet gloves plus a 2.40 m-chord winglet. The failure was construction, not finish.
+
+Cycle 26 replaces the sequence: one continuous twelve-station loft (intermediate stations
+interpolated at LOD0) with `flat` / `box` / `keel` morphing along the run; nacelle lofts whose
+first three stations sit *inside* the hull so the root is a swept fairing; the gloves deleted;
+the winglet cut to a 1.74 m root chord with a flared root fillet; wells cut through both skins
+and lined; plates checkered along the length and around the girth so the shell is plated
+rather than corrugated.
+
+Cycle 28 retains that identity but repairs the actual close/rear causes: the lower aft rings
+are softened while staying above the hull-triangle floor; the delete targets the separated
+aft shell and exposes a rounded recessed machinery grille; thruster caps are true annuli;
+aft deck covers hide the stretched whole-shell projection; and the hold has a lipped second
+depth plane and partial grating. The Cycle 27 rear review still read the refractory map as
+wood, so Cycle 28 reduces it to an almost-flat isotropic grey mineral surface.
+
+## 4. `componentReferenceDecision`
+
+`not_needed` for cycle 28. The four bounded component references generated for cycle 18 —
+`reference/workboat_canopy_tub.png`, `nacelle_housing_fairing.png`, `winglet_root_airfoil.png`,
+`cargo_well_rim_interior.png` — already cover every component this pass rebuilt, and their
+construction logic (fairing into the chine, hoop-and-liner throat, rimmed well with ribbed
+walls and secured cargo, thick root into a fillet, panes in a heavy cage) is what the new
+geometry implements. No new generation was requested, and no generated pixels were used as
+albedo, normal, AO or ORM data.
+
+## 5. Reference-quality parity
+
+Frozen: silhouette envelope class, ~16.5 m length, twin outboard nacelles, winglets, gun
+positions, socket names, runtime role. Judged quality axes: rooted interfaces, section and
+cavity depth, macro/meso/micro hierarchy, material differentiation, causal wear, supported-camera
+surface response. Scored on the exact candidate by the independent reviewer, not here.
+
+## 6. Inherited / retained zones
+
+None. Every camera-visible zone is new geometry in this pass; the cycle-25 mesh was not
+carried forward. The source texture generators were rewritten; nothing inherits a DCC default.
+
+## 7. Working scene and supported cameras
+
+The authoring source is `tools/blender/build_drifter_mtx.py` (deterministic, idempotent).
+Every still in `evidence/drifter/cycles/cycle_28/` is rendered from the **finalised exported
+LOD0 GLB**, re-imported into a clean scene — no working-scene beauty shots. The three
+load-bearing stills are `play_chase`, `play_chase_abeam`, `play_chase_close` from
+`spaceface_chase_camera.py`, at 2400x1800; the same three at the live 16:9 1600x900 aspect are
+in `live_aspect_1600x900/`. Measured frame-width fractions are recorded in `cycle_28.json`.
+
+## 8. Gate scope and evidence
+
+Cycle 28 is the accepted authored candidate. G1/G2/G4 are KEEP on the exact original-resolution
+evidence below. Reviewers had no edit authority; play/chase and close returned KEEP, Cycle 27
+rear returned one mandatory refractory correction, and the corrected Cycle 28 rear returned KEEP.
+
+| Evidence | SHA-256 | Verdict |
+|---|---|---|
+| `cycles/cycle_28/play_chase.png` | `5764C1042664811E0C9F3A197F86319EDF9761702AB49BD901752A1FFC935087` | KEEP |
+| `cycles/cycle_28/play_chase_abeam.png` | `E11DDBEF09B4AE02DA0C79BC9A9619657DD43473BB2950FDF573D25346486B04` | KEEP |
+| `cycles/cycle_28/play_chase_close.png` | `4633916F82B95CB46308428B1860696D9159E839C7739934DC71ED7B480226F3` | KEEP |
+| `cycles/cycle_28/drive_rear.png` | `635295AD691B651F43FF1193386794A61B22D937047F9971D4EF85EF71FC6BCD` | KEEP |
+
+The accepted GLB hashes are `CB3CB57979DB776FC608AC2C083B4000AEC54A8072E3ADC8861458F2A9AC1C41`
+(LOD0), `76AE368D562AD71E0ABF9E548E1F1EF639BBD42A142884AE3C342CF162CEFECE`
+(LOD1), and `E8A28E392CA52BFB1CC6A4416864435744B558406CAA347FDBC87FB65E22E0CB`
+(LOD2). The authored ladder is 102154 / 41178 / 26046 triangles; LOD0 hull geometry is
+56166 triangles, above the 49710 anti-regression floor.

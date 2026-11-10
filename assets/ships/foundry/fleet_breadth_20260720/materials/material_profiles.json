@@ -1,0 +1,251 @@
+{
+  "schema": "sf-foundry-material-profile/1",
+  "spaceUnit": "metre",
+  "batch": "fleet_breadth_20260720",
+  "authored": "2026-07-20 lane C (hand-authored, static; deterministic by construction)",
+  "tintContract": "zones.paint.baseGray is authored near-neutral; runtime faction tint MULTIPLIES over it. Never bake hue into albedo.",
+  "textureContract": { "baseColor": "sRGB", "normal": "tangent OpenGL green-up", "orm": "R=AO G=roughness B=metallic", "resolution": 1024 },
+  "maskVocabulary": {
+    "edgeWear": "textures/mask_edgewear.png",
+    "chips": "textures/mask_chips.png",
+    "grime": ["textures/mask_recessdust.png", "textures/mask_corrosion.png"],
+    "streaks": "textures/mask_streaking.png",
+    "heatStain": ["textures/mask_carbon.png", "textures/mask_heatradial.png"],
+    "patchFade": "textures/mask_panelfade.png",
+    "patchDecals": ["wear_patch_outline", "wear_weld_ring", "wear_scorch_ring", "wear_kill_tally"],
+    "decalAtlas": "textures/decals_atlas.json"
+  },
+  "wearFieldSemantics": {
+    "edgeWear": "0..1 amplitude of edge-highlight mask",
+    "grime": "0..1 amplitude of recess-dust + corrosion masks, distributed by grimePlacement",
+    "chips": "0..1 density of paint-chip clusters at panel edges",
+    "heatStain": "0..1 amplitude of heat masks at heatStain.sites, footprint scaled by heatStain.spreadM",
+    "patchCount": "integer; visible repair artifacts to place (style from repairPractice)"
+  },
+  "factions": {
+    "faction_scn": {
+      "displayName": "Solar Concord Navy",
+      "personality": "lawful",
+      "paletteRef": { "primary": "#3A78FF", "secondary": "#1A3A8F", "accent": "#A0C4FF", "hull": "#C8D8F0", "emissive": "#3A78FF", "thruster": "#88AAFF" },
+      "zones": {
+        "paint":      { "baseGray": [0.24, 0.25, 0.26], "roughness": [0.28, 0.42], "metalness": 0.0, "note": "factory 2-pack polyurethane, robot-sprayed; tint-multiplied; masked two-tone follows split lines" },
+        "bareAlloy":  { "baseColor": [0.52, 0.55, 0.60], "roughness": [0.30, 0.45], "metalness": 0.9, "anisotropyHint": "brushed", "note": "brushed titanium-aluminide, grain fore-aft; nozzle throats, collars, hatch rims only" },
+        "machinery":  { "baseColor": [0.30, 0.32, 0.35], "roughness": [0.45, 0.60], "metalness": 0.85, "anisotropyHint": "cast", "note": "bay interiors, actuator bodies" },
+        "ceramic":    { "baseColor": [0.16, 0.17, 0.19], "roughness": [0.55, 0.70], "metalness": 0.0, "anisotropyHint": "none", "note": "nozzle throat heat tiles" },
+        "glassCanopy":{ "baseColor": [0.08, 0.10, 0.13], "roughness": [0.05, 0.12], "metalness": 0.0, "anisotropyHint": "none", "transmissionHint": 0.9, "note": "optical canopy, kept polished" },
+        "emissive":   { "color": "#3A78FF", "intensity": 1.0, "sites": ["window strips", "running lights", "dorsal formation lights"], "note": "seated on frame lines; emissive traces structure" }
+      },
+      "segmentation": { "plateSizeM": [1.2, 2.4], "pattern": "orthogonal", "gapWidthM": 0.025, "edgeStyle": "chamfer", "edgeDimM": [0.01, 0.02], "overlap": "toward stern", "note": "uniform grid aligned to hull axes; ~6 dorsal plates on a 10 m fighter" },
+      "fasteners": { "style": "recessed", "spacingM": 0.18, "scaleM": 0.022, "note": "flush torx strips, rows parallel to split lines; no exterior welds" },
+      "wearTiers": {
+        "fresh":       { "edgeWear": 0.02, "grime": 0.02, "chips": 0.0,  "heatStain": 0.05, "patchCount": 0 },
+        "serviceWorn": { "edgeWear": 0.10, "grime": 0.08, "chips": 0.02, "heatStain": 0.12, "patchCount": 0 },
+        "patched":     { "edgeWear": 0.16, "grime": 0.12, "chips": 0.04, "heatStain": 0.18, "patchCount": 1 }
+      },
+      "grimePlacement": { "recessBias": 0.55, "streakDirection": "airflow", "concentrations": ["nozzle root", "gear wells", "vent lee"] },
+      "heatStain": { "colorRamp": ["#6A7FA8", "#3E4A66"], "spreadM": 0.6, "sites": ["nozzle rim"], "note": "titanium straw-to-blue temper tint; cleaned at refit" },
+      "noiseScales": { "macro": 0.10, "mid": 5.0, "fine": 24.0 },
+      "decals": { "registrationFormat": "SCN-####", "style": "stencil", "density": 0.40, "killMarks": false, "placement": "portside bow + dorsal spine", "warningDensity": "high at hazards", "atlasRefs": ["fac_scn", "warn_intake_triangle", "warn_high_voltage_bolt", "warn_no_step_frame", "serv_panel_labelframe"] },
+      "repairPractice": "colorMatchedReplacement",
+      "repairNote": "yard swaps the individual plate, resprays to batch code, re-stencils; only tell is mask_panelfade mismatch on the replaced panel",
+      "preferredKitFamilies": ["fastener_recessed", "rail_split", "hatch_frame", "sensor_housing", "armor_spacer", "weapon_collar"]
+    },
+
+    "faction_mts": {
+      "displayName": "Meridian Trade Syndicate",
+      "personality": "corporate",
+      "paletteRef": { "primary": "#F2B233", "secondary": "#8B6020", "accent": "#FFE09A", "hull": "#E8D8A0", "emissive": "#F2B233", "thruster": "#FFCC66" },
+      "zones": {
+        "paint":      { "baseGray": [0.25, 0.25, 0.25], "roughness": [0.18, 0.32], "metalness": 0.1, "note": "robotic ceramic-clearcoat with metallic flake, panel-baked; tint-multiplied; ends at belly parting line" },
+        "bareAlloy":  { "baseColor": [0.58, 0.56, 0.52], "roughness": [0.26, 0.40], "metalness": 0.9, "anisotropyHint": "none", "note": "warm clearcoated cast on belly and bay interiors" },
+        "machinery":  { "baseColor": [0.32, 0.30, 0.28], "roughness": [0.40, 0.55], "metalness": 0.85, "anisotropyHint": "cast", "note": "inside service bays" },
+        "ceramic":    { "baseColor": [0.20, 0.19, 0.17], "roughness": [0.50, 0.62], "metalness": 0.0, "anisotropyHint": "none", "note": "thruster cluster shields" },
+        "glassCanopy":{ "baseColor": [0.07, 0.08, 0.10], "roughness": [0.04, 0.10], "metalness": 0.0, "anisotropyHint": "none", "transmissionHint": 0.92, "note": "panoramic salon glazing" },
+        "emissive":   { "color": "#F2B233", "intensity": 0.9, "sites": ["cabin strip", "logo backlight", "docking guides"], "note": "glows where the customer boards" }
+      },
+      "segmentation": { "plateSizeM": [2.5, 5.0], "pattern": "orthogonal", "gapWidthM": 0.030, "edgeStyle": "round", "edgeDimM": [0.03, 0.06], "overlap": "none (butted clamshells)", "note": "few large clamshells; splits placed on styling lines echoing the brand mark" },
+      "fasteners": { "style": "hidden", "spacingM": 0.30, "scaleM": 0.018, "note": "beneath flush caps; visible seal-heads are serialized tamper evidence with warranty holo" },
+      "wearTiers": {
+        "fresh":       { "edgeWear": 0.01, "grime": 0.03, "chips": 0.0,  "heatStain": 0.04, "patchCount": 0 },
+        "serviceWorn": { "edgeWear": 0.08, "grime": 0.10, "chips": 0.01, "heatStain": 0.10, "patchCount": 0 },
+        "patched":     { "edgeWear": 0.12, "grime": 0.14, "chips": 0.02, "heatStain": 0.14, "patchCount": 2 }
+      },
+      "grimePlacement": { "recessBias": 0.45, "streakDirection": "airflow", "concentrations": ["thruster cluster lee", "belly service bay"] },
+      "heatStain": { "colorRamp": ["#B08A4A", "#6A5230"], "spreadM": 0.5, "sites": ["thruster cluster", "APU vent"], "note": "light amber haze tolerated between scheduled details" },
+      "noiseScales": { "macro": 0.08, "mid": 3.2, "fine": 28.0 },
+      "decals": { "registrationFormat": "MTS-#####", "style": "holo", "density": 0.25, "killMarks": false, "placement": "quarter shell + cargo doors", "warningDensity": "legal minimum, integrated into panel design", "atlasRefs": ["fac_mts", "serv_umbilical_socket", "serv_fuel_port_ring", "serv_panel_labelframe"] },
+      "repairPractice": "colorMatchedReplacement",
+      "repairNote": "whole styled clamshell replaced as one serialized OEM unit; warranty-seal holo decal across the new seam; reads as a newer shinier shell, never an invisible plate swap",
+      "preferredKitFamilies": ["access_panel", "hatch_frame", "sensor_housing", "pipe_clamp", "plate_lip", "vent_grid"]
+    },
+
+    "faction_dmc": {
+      "displayName": "Drift Miners Collective",
+      "personality": "blue-collar",
+      "paletteRef": { "primary": "#C9772E", "secondary": "#7A4010", "accent": "#E8A060", "hull": "#A08050", "emissive": "#C9772E", "thruster": "#FF8844" },
+      "zones": {
+        "paint":      { "baseGray": [0.26, 0.25, 0.23], "roughness": [0.55, 0.75], "metalness": 0.0, "note": "hand-rolled enamel over red-oxide primer, brush laps visible; tint-multiplied" },
+        "bareAlloy":  { "baseColor": [0.42, 0.40, 0.38], "roughness": [0.45, 0.65], "metalness": 0.85, "anisotropyHint": "cast", "note": "cast manganese steel, mill scale flaking; scatters like stone" },
+        "machinery":  { "baseColor": [0.28, 0.27, 0.26], "roughness": [0.50, 0.70], "metalness": 0.8, "anisotropyHint": "cast", "note": "external winches, actuators, ore-gear" },
+        "ceramic":    { "baseColor": [0.22, 0.20, 0.18], "roughness": [0.65, 0.80], "metalness": 0.0, "anisotropyHint": "none", "note": "slag-sprayed torch shields" },
+        "glassCanopy":{ "baseColor": [0.10, 0.10, 0.11], "roughness": [0.08, 0.18], "metalness": 0.0, "anisotropyHint": "none", "transmissionHint": 0.85, "note": "scratched; wiper arcs polished back to ~0.10" },
+        "emissive":   { "color": "#C9772E", "intensity": 0.8, "sites": ["work lamps at service points", "hatch beacons", "ore boom beacon"], "note": "light goes where hands work" }
+      },
+      "segmentation": { "plateSizeM": [0.6, 1.4], "pattern": "orthogonal", "gapWidthM": 0.040, "edgeStyle": "round", "edgeDimM": [0.02, 0.04], "overlap": "outward toward abrasion zones", "note": "sized to frame spacing; doubler plates at ore-loading flank, tether points, engine saddle" },
+      "fasteners": { "style": "rivet", "spacingM": 0.12, "scaleM": 0.045, "note": "hot-driven dome rivets, staggered double rows at structural seams; proud and honest" },
+      "wearTiers": {
+        "fresh":       { "edgeWear": 0.06, "grime": 0.12, "chips": 0.02, "heatStain": 0.15, "patchCount": 0 },
+        "serviceWorn": { "edgeWear": 0.22, "grime": 0.35, "chips": 0.10, "heatStain": 0.40, "patchCount": 1 },
+        "patched":     { "edgeWear": 0.35, "grime": 0.50, "chips": 0.18, "heatStain": 0.55, "patchCount": 3 }
+      },
+      "grimePlacement": { "recessBias": 0.85, "streakDirection": "none", "concentrations": ["all recesses", "ore-loading flank", "actuator roots"] },
+      "heatStain": { "colorRamp": ["#8A6A3A", "#3A3230"], "spreadM": 1.8, "sites": ["nozzle", "ore-torch mounts", "radiator roots"], "note": "straw-to-soot, allowed to accumulate" },
+      "noiseScales": { "macro": 0.18, "mid": 4.2, "fine": 16.0 },
+      "decals": { "registrationFormat": "DMC-####", "style": "stencil", "density": 0.50, "killMarks": false, "placement": "hatch sides + ore-loading flank; crew names hand-stenciled", "warningDensity": "abundant but faded", "atlasRefs": ["fac_dmc", "warn_chevron_strip", "warn_stripe_block", "serv_lift_here_left", "serv_lift_here_right", "serv_tow_brackets"] },
+      "repairPractice": "rivetOverplate",
+      "repairNote": "square galvanized overplate, one row of dome rivets, orange mastic bead thumbed flat; never color-matched, worn proudly",
+      "preferredKitFamilies": ["rivet_strip", "bracket_gusset", "plate_lip", "pipe_clamp", "vent_grid", "heat_shield"]
+    },
+
+    "faction_reach": {
+      "displayName": "Crimson Reach",
+      "personality": "pirate",
+      "paletteRef": { "primary": "#D8334A", "secondary": "#7A1020", "accent": "#FF6680", "hull": "#C06070", "emissive": "#D8334A", "thruster": "#FF4466" },
+      "zones": {
+        "paint":      { "baseGray": [0.23, 0.22, 0.22], "roughness": [0.60, 0.85], "metalness": 0.0, "note": "rattle-can over unprimed steel, prior livery, or rust; tint-multiplied; diagonal war bands ignore seams" },
+        "bareAlloy":  { "baseColor": [0.38, 0.36, 0.35], "roughness": [0.50, 0.80], "metalness": 0.8, "anisotropyHint": "none", "note": "mixed salvage plate, oxidized and oil-blackened" },
+        "machinery":  { "baseColor": [0.25, 0.24, 0.24], "roughness": [0.45, 0.75], "metalness": 0.85, "anisotropyHint": "none", "note": "donor parts, mismatched" },
+        "ceramic":    { "baseColor": [0.15, 0.14, 0.13], "roughness": [0.70, 0.90], "metalness": 0.0, "anisotropyHint": "none", "note": "scorched exhaust shroud wraps, half missing" },
+        "glassCanopy":{ "baseColor": [0.09, 0.09, 0.10], "roughness": [0.10, 0.22], "metalness": 0.0, "anisotropyHint": "none", "transmissionHint": 0.8, "note": "pitted; cracks taped" },
+        "emissive":   { "color": "#D8334A", "intensity": 0.7, "sites": ["jittery tube lamps", "trophy rack floods", "weapon root glow"], "note": "uneven brightness, failing ballasts; flicker in attitude not rhythm" }
+      },
+      "segmentation": { "plateSizeM": [0.4, 2.0], "pattern": "scavenge", "gapWidthM": 0.055, "edgeStyle": "burr", "edgeDimM": [0.005, 0.02], "overlap": "irregular scale overlap", "note": "no grid; big stolen slabs over powerplant and cockpit, thin scrap elsewhere" },
+      "fasteners": { "style": "weldbead", "spacingM": 0.25, "spacingJitterM": [0.15, 0.40], "scaleM": 0.030, "note": "external stitch welds, slag left on; some seams caulk only" },
+      "wearTiers": {
+        "fresh":       { "edgeWear": 0.10, "grime": 0.30, "chips": 0.08, "heatStain": 0.30, "patchCount": 1 },
+        "serviceWorn": { "edgeWear": 0.35, "grime": 0.65, "chips": 0.25, "heatStain": 0.60, "patchCount": 3 },
+        "patched":     { "edgeWear": 0.55, "grime": 0.85, "chips": 0.40, "heatStain": 0.80, "patchCount": 6 }
+      },
+      "grimePlacement": { "recessBias": 0.90, "streakDirection": "airflow", "concentrations": ["weld seams", "weapon roots", "plate laps"] },
+      "heatStain": { "colorRamp": ["#3A2A22", "#120D0B"], "spreadM": 2.5, "sites": ["nozzle", "weapon collars", "boost intakes"], "note": "black carbon plumes; tail disappears into soot" },
+      "noiseScales": { "macro": 0.22, "mid": 5.8, "fine": 13.0 },
+      "decals": { "registrationFormat": "NONE (former owner's reg over-painted, ghost visible)", "style": "handpaint", "density": 0.65, "killMarks": true, "placement": "clan glyph on nose; tallies under canopy in fives", "warningDensity": "painted over or kept as decoration", "atlasRefs": ["fac_reach", "wear_kill_tally", "wear_scorch_ring", "wear_weld_ring"] },
+      "repairPractice": "weldScrapPatch",
+      "repairNote": "torch-cut scrap any shape, stitch-welded, slag on, paint slapped over hot (bubbled); patches stack patch-over-patch",
+      "preferredKitFamilies": ["weld_seam", "plate_lip", "armor_spacer", "weapon_collar", "bracket_gusset", "heat_shield"]
+    },
+
+    "faction_quiet": {
+      "displayName": "The Quiet",
+      "personality": "smuggler",
+      "paletteRef": { "primary": "#7A5FB0", "secondary": "#3A2060", "accent": "#B090E8", "hull": "#706080", "emissive": "#9070D0", "thruster": "#A080D0" },
+      "zones": {
+        "paint":      { "baseGray": [0.19, 0.20, 0.22], "roughness": [0.58, 0.72], "metalness": 0.0, "note": "hand-buffed matte absorbent coating, cross-hatched passes; tint-multiplied; single tone" },
+        "bareAlloy":  { "baseColor": [0.30, 0.31, 0.34], "roughness": [0.40, 0.60], "metalness": 0.9, "anisotropyHint": "none", "note": "dark anodized, dead-dull; sensor apertures and umbilical collar only" },
+        "machinery":  { "baseColor": [0.22, 0.23, 0.26], "roughness": [0.45, 0.62], "metalness": 0.85, "anisotropyHint": "none", "note": "blackened" },
+        "ceramic":    { "baseColor": [0.10, 0.11, 0.13], "roughness": [0.60, 0.75], "metalness": 0.0, "anisotropyHint": "none", "note": "RAM appliqué panels" },
+        "glassCanopy":{ "baseColor": [0.05, 0.06, 0.08], "roughness": [0.06, 0.14], "metalness": 0.0, "anisotropyHint": "none", "transmissionHint": 0.9, "note": "smoked" },
+        "emissive":   { "color": "#9070D0", "intensity": 0.35, "sites": ["shuttered slit running lights", "canopy interior leak"], "note": "dimmest in the game; runs dark as doctrine" }
+      },
+      "segmentation": { "plateSizeM": [1.0, 2.0], "pattern": "orthogonal", "gapWidthM": 0.015, "edgeStyle": "chamfer", "edgeDimM": [0.008, 0.015], "overlap": "flush, gaps sealant-filled", "note": "staggered seams; no two adjacent split lines collinear beyond one plate length" },
+      "fasteners": { "style": "hidden", "spacingM": 0.0, "scaleM": 0.0, "note": "truly fastener-less: bonded plates, internal fasteners; spacing/scale 0 = place nothing" },
+      "wearTiers": {
+        "fresh":       { "edgeWear": 0.02, "grime": 0.08, "chips": 0.0,  "heatStain": 0.02, "patchCount": 0 },
+        "serviceWorn": { "edgeWear": 0.10, "grime": 0.25, "chips": 0.03, "heatStain": 0.06, "patchCount": 1 },
+        "patched":     { "edgeWear": 0.18, "grime": 0.38, "chips": 0.06, "heatStain": 0.10, "patchCount": 2 }
+      },
+      "grimePlacement": { "recessBias": 0.80, "streakDirection": "none", "concentrations": ["recesses only — flats wiped"] },
+      "heatStain": { "colorRamp": ["#4A4A52", "#2A2A30"], "spreadM": 0.4, "sites": ["nozzle rim"], "note": "faint grey bloom; staining wiped as heat-signature discipline" },
+      "noiseScales": { "macro": 0.07, "mid": 2.6, "fine": 30.0 },
+      "decals": { "registrationFormat": "NONE (registration plate removed; removal scar visible as a cleaner rectangle)", "style": "handpaint", "density": 0.08, "killMarks": false, "placement": "single small tag inside cockpit sill", "warningDensity": "none visible", "atlasRefs": ["fac_quiet"] },
+      "repairPractice": "panelBlanking",
+      "repairNote": "flush blank plate bonded over damage, no fasteners, never exactly color-matched and never marked; anonymous on purpose",
+      "preferredKitFamilies": ["sensor_housing", "access_panel", "hatch_frame", "pipe_clamp", "fastener_recessed"]
+    },
+
+    "faction_vael": {
+      "displayName": "The Vael",
+      "personality": "xenophobic",
+      "paletteRef": { "primary": "#2FCFA0", "secondary": "#0A5040", "accent": "#80EED0", "hull": "#204840", "emissive": "#2FCFA0", "thruster": "#40FFB8" },
+      "zones": {
+        "paint":      { "baseGray": [0.21, 0.23, 0.22], "roughness": [0.25, 0.42], "metalness": 0.0, "note": "pigmented nacre laminate with interference sheen; tint-multiplied; no applied paint exists" },
+        "bareAlloy":  { "baseColor": [0.35, 0.42, 0.40], "roughness": [0.30, 0.48], "metalness": 0.1, "anisotropyHint": "brushed", "note": "exposed grown laminate; 'brushed' = growth-aligned sheen along the flow direction" },
+        "machinery":  { "baseColor": [0.30, 0.35, 0.33], "roughness": [0.35, 0.55], "metalness": 0.6, "anisotropyHint": "none", "note": "grown-metal organ mounts (weapon roots, docking probe)" },
+        "ceramic":    { "baseColor": [0.55, 0.58, 0.54], "roughness": [0.50, 0.65], "metalness": 0.0, "anisotropyHint": "none", "note": "calcified suture ridges, bone-matte" },
+        "glassCanopy":{ "baseColor": [0.10, 0.16, 0.14], "roughness": [0.15, 0.25], "metalness": 0.0, "anisotropyHint": "none", "transmissionHint": 0.85, "note": "membrane canopy, slight milkiness; glossier than the plate faces (inverts human convention)" },
+        "emissive":   { "color": "#2FCFA0", "intensity": 1.2, "sites": ["suture vein network", "sensor organ glow", "prow sigil"], "note": "bioluminescence ALONG the sutures; slow pulse; language not lighting" }
+      },
+      "segmentation": { "plateSizeM": [0.3, 1.6], "pattern": "organic", "gapWidthM": 0.020, "edgeStyle": "round", "edgeDimM": [0.025, 0.035], "overlap": "scale-petals along growth flow from keel nodes", "note": "plates graduate small at prow to large amidships; split lines are raised calcified sutures" },
+      "fasteners": { "style": "hidden", "spacingM": 0.60, "scaleM": 0.012, "note": "no discrete fasteners; spacing/scale describe suture nodes (small nacre bumps) as fastener-equivalents" },
+      "wearTiers": {
+        "fresh":       { "edgeWear": 0.01, "grime": 0.03, "chips": 0.0,  "heatStain": 0.03, "patchCount": 0 },
+        "serviceWorn": { "edgeWear": 0.06, "grime": 0.10, "chips": 0.01, "heatStain": 0.08, "patchCount": 0 },
+        "patched":     { "edgeWear": 0.10, "grime": 0.15, "chips": 0.02, "heatStain": 0.12, "patchCount": 1 }
+      },
+      "grimePlacement": { "recessBias": 0.92, "streakDirection": "none", "concentrations": ["growth sutures only"] },
+      "heatStain": { "colorRamp": ["#2A4A44", "#6A8A80"], "spreadM": 0.8, "sites": ["drive suture ring"], "note": "iridescent thin-film deposit, not carbon; drives run cool" },
+      "noiseScales": { "macro": 0.14, "mid": 3.6, "fine": 22.0 },
+      "decals": { "registrationFormat": "SIGIL-## (grown into laminate, no ink)", "style": "stencil", "density": 0.15, "killMarks": true, "placement": "inlaid prow sigil; kill-notches etched into keel spur as geometry, not decal", "warningDensity": "none", "atlasRefs": ["fac_vael"], "note": "stencil pipeline with zero edge, as if under clear nacre" },
+      "repairPractice": "resinRegrowth",
+      "repairNote": "breach sealed with secreted resin; plate re-grows; scar reads paler, smoother, with concentric growth rings, slightly glossier than surroundings",
+      "preferredKitFamilies": ["sensor_housing", "heat_shield", "rail_split", "vent_grid"],
+      "kitNote": "kit pieces must be re-proportioned as grown forms (blisters, gill slits); bolting rectangular human kit onto Vael hulls is a defect"
+    },
+
+    "faction_free": {
+      "displayName": "Free Frontier",
+      "personality": "independent",
+      "paletteRef": { "primary": "#4ECBE0", "secondary": "#206070", "accent": "#A0EEF8", "hull": "#808090", "emissive": "#4ECBE0", "thruster": "#60D8EE" },
+      "zones": {
+        "paint":      { "baseGray": [0.24, 0.25, 0.25], "roughness": [0.48, 0.68], "metalness": 0.0, "note": "factory 2-pack under hand-rolled touch-up generations; primer spots; tint-multiplied" },
+        "bareAlloy":  { "baseColor": [0.45, 0.44, 0.43], "roughness": [0.55, 0.75], "metalness": 0.85, "anisotropyHint": "none", "note": "plain alum-steel, oxidized grey-brown at scratches and chip sites" },
+        "machinery":  { "baseColor": [0.29, 0.29, 0.30], "roughness": [0.48, 0.66], "metalness": 0.8, "anisotropyHint": "cast", "note": "mixed-era spares" },
+        "ceramic":    { "baseColor": [0.18, 0.18, 0.19], "roughness": [0.62, 0.78], "metalness": 0.0, "anisotropyHint": "none", "note": "aftermarket heat wrap over original tiles" },
+        "glassCanopy":{ "baseColor": [0.09, 0.10, 0.12], "roughness": [0.07, 0.16], "metalness": 0.0, "anisotropyHint": "none", "transmissionHint": 0.88, "note": "polished where the pilot looks out, dusty elsewhere" },
+        "emissive":   { "color": "#4ECBE0", "intensity": 0.75, "sites": ["running lights (some wrong-color spares)", "warm cockpit leak"], "note": "nothing matches because matching costs money" }
+      },
+      "segmentation": { "plateSizeM": [0.8, 1.6], "pattern": "orthogonal", "gapWidthM": 0.045, "edgeStyle": "round", "edgeDimM": [0.01, 0.03], "overlap": "factory grid broken by aftermarket overlays", "note": "ghost factory grid under mismatched owner-added plates; dominant edge read worn-round with surviving chamfers and occasional burr" },
+      "fasteners": { "style": "rivet", "spacingM": 0.15, "spacingJitterM": [0.10, 0.22], "scaleM": 0.035, "note": "hand-driven rivets plus self-tappers; at least one seam held by speed tape" },
+      "wearTiers": {
+        "fresh":       { "edgeWear": 0.05, "grime": 0.15, "chips": 0.03, "heatStain": 0.12, "patchCount": 0 },
+        "serviceWorn": { "edgeWear": 0.25, "grime": 0.45, "chips": 0.12, "heatStain": 0.35, "patchCount": 2 },
+        "patched":     { "edgeWear": 0.42, "grime": 0.60, "chips": 0.22, "heatStain": 0.50, "patchCount": 4 }
+      },
+      "grimePlacement": { "recessBias": 0.70, "streakDirection": "airflow", "concentrations": ["engine mounts", "panel gaps", "canopy sills"] },
+      "heatStain": { "colorRamp": ["#4A3A2C", "#1E1712"], "spreadM": 1.5, "sites": ["nozzle", "engine mount roots"], "note": "carbon streaks plus the odd unexplained scorch" },
+      "noiseScales": { "macro": 0.16, "mid": 4.8, "fine": 18.0 },
+      "decals": { "registrationFormat": "FF-#### (usually half-painted-out by the motto)", "style": "handpaint", "density": 0.55, "killMarks": true, "placement": "nose art portside (player Kestrel: BORROWED TIME + ghost mascot + shark mouth); tally below canopy sill", "warningDensity": "moderate, half-legible, sometimes improved by hand", "atlasRefs": ["fac_free", "wear_kill_tally", "warn_no_step_frame", "wear_chips_stamp1"] },
+      "repairPractice": "tapeAndPray",
+      "repairNote": "small breaches: speed tape + filler + hand-rolled paint; bigger: untrimmed scrap-shaped riveted patch with mastic squeeze-out; every repair a different shape, age, and shade",
+      "preferredKitFamilies": ["rivet_strip", "plate_lip", "pipe_clamp", "access_panel", "hatch_frame", "weld_seam"]
+    },
+
+    "faction_choir": {
+      "displayName": "Ascendant Choir",
+      "personality": "zealot",
+      "paletteRef": { "primary": "#E85FD0", "secondary": "#702060", "accent": "#F8A0E8", "hull": "#905080", "emissive": "#E85FD0", "thruster": "#FF80E8" },
+      "zones": {
+        "paint":      { "baseGray": [0.25, 0.24, 0.25], "roughness": [0.30, 0.50], "metalness": 0.0, "note": "polished enamel over gilded primer; masked liturgical two-tone; tint-multiplied" },
+        "bareAlloy":  { "baseColor": [0.50, 0.42, 0.30], "roughness": [0.22, 0.38], "metalness": 0.95, "anisotropyHint": "brushed", "note": "gilded bronze-anodized trim brushed along plate length; bare metal is vestment" },
+        "machinery":  { "baseColor": [0.34, 0.30, 0.26], "roughness": [0.42, 0.58], "metalness": 0.85, "anisotropyHint": "cast", "note": "bronze castings" },
+        "ceramic":    { "baseColor": [0.24, 0.21, 0.18], "roughness": [0.52, 0.66], "metalness": 0.0, "anisotropyHint": "none", "note": "censer vent-shrine stone-composite" },
+        "glassCanopy":{ "baseColor": [0.12, 0.08, 0.12], "roughness": [0.05, 0.13], "metalness": 0.0, "anisotropyHint": "none", "transmissionHint": 0.85, "note": "stained-glass tint" },
+        "emissive":   { "color": "#E85FD0", "intensity": 1.6, "sites": ["lancet slit windows", "organ-pipe vent glow", "spine halo ring"], "note": "brightest faction in the game; glow is the sermon" }
+      },
+      "segmentation": { "plateSizeM": [0.5, 4.0], "pattern": "radial", "gapWidthM": 0.035, "edgeStyle": "weld", "edgeDimM": [0.02, 0.03], "overlap": "upward toward prow like shingles toward the relic core", "note": "tall narrow lancet plates (0.5 m wide x 2-4 m long) in radial fans about the dorsal spine; plateSizeM = [width, length]" },
+      "fasteners": { "style": "rivet", "spacingM": 0.21, "scaleM": 0.028, "note": "ceremonial rivet rows in ritual groupings of 3 and 7, polished bright; prayer-bead read" },
+      "wearTiers": {
+        "fresh":       { "edgeWear": 0.02, "grime": 0.05, "chips": 0.0,  "heatStain": 0.08, "patchCount": 0 },
+        "serviceWorn": { "edgeWear": 0.12, "grime": 0.20, "chips": 0.04, "heatStain": 0.22, "patchCount": 0 },
+        "patched":     { "edgeWear": 0.20, "grime": 0.30, "chips": 0.06, "heatStain": 0.30, "patchCount": 2 }
+      },
+      "grimePlacement": { "recessBias": 0.75, "streakDirection": "none", "concentrations": ["censer vents", "suture seams", "rivet rows"] },
+      "heatStain": { "colorRamp": ["#7A5A2E", "#2E2014"], "spreadM": 1.2, "sites": ["censer vent-shrines", "nozzle"], "note": "votive soot permitted by doctrine at vent-shrines; washed elsewhere" },
+      "noiseScales": { "macro": 0.12, "mid": 2.9, "fine": 26.0 },
+      "decals": { "registrationFormat": "AC-####", "style": "holo", "density": 0.60, "killMarks": false, "placement": "scripture band along spine; marks of office at prow", "warningDensity": "high, reframed as blessings", "atlasRefs": ["fac_choir", "warn_radiation_trefoil", "serv_inspection_tag"] },
+      "repairPractice": "panelBlanking",
+      "repairNote": "engraved votive blanking plate, polished bright, scripture recounting the battle, full ceremonial rivet row; patch meant to be SEEN (inverse of Quiet)",
+      "preferredKitFamilies": ["rail_split", "sensor_housing", "weapon_collar", "plate_lip", "rivet_strip", "heat_shield"]
+    }
+  }
+}

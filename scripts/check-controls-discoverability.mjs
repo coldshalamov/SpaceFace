@@ -1,0 +1,83 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+import { BINDINGS } from '../src/ui/bindings.js';
+import { readOrdnanceModel } from '../src/ui/orrery/hudAdapter.js';
+import { POWER_SLOT } from '../src/ui/powerRail.js';
+
+const settingsSource = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
+const helpSource = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
+const hudSource = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+const clusterSource = readFileSync(new URL('../src/ui/orrery/flightCluster.js', import.meta.url), 'utf8');
+const promptSource = readFileSync(new URL('../src/ui/controlPrompts.js', import.meta.url), 'utf8');
+
+assert.match(settingsSource, /import \{ BINDINGS \} from '\.\.\/bindings\.js';/,
+  'Settings Controls must read fixed interface keys from the shared UI binding registry');
+assert.match(settingsSource, /export const CONTROL_SHORTCUTS = Object\.freeze\(/,
+  'Settings Controls must expose a testable fixed-shortcut roster');
+assert.match(settingsSource, /_renderFixedShortcuts\(pane\)/,
+  'Controls tab must render the fixed ship/system shortcut reference near rebinds');
+assert.match(settingsSource, /sf-controls-fixed-shortcuts/,
+  'Fixed shortcut reference needs a stable style/test hook');
+assert.match(settingsSource, /Ship\/System Shortcuts/,
+  'Fixed shortcut section needs a clear player-facing heading');
+
+for (const action of ['dock', 'missionLog', 'localmap', 'starmap', 'codex', 'techTree', 'cargo', 'comms', 'drill', 'claimBase']) {
+  assert.match(settingsSource, new RegExp(`BINDINGS\\.${action}\\.label`),
+    `Controls shortcut reference must include ${action} from the binding registry`);
+}
+
+const requiredRows = [
+  ['Dock / interact', BINDINGS.dock.label],
+  ['Mission Log', BINDINGS.missionLog.label],
+  ['Local Map', BINDINGS.localmap.label],
+  ['Star Map', BINDINGS.starmap.label],
+  ['Codex', BINDINGS.codex.label],
+  ['Tech Tree', BINDINGS.techTree.label],
+  ['Cargo Hold', BINDINGS.cargo.label],
+  ['Comms Log', BINDINGS.comms.label],
+];
+
+for (const [label] of requiredRows) {
+  assert.match(settingsSource, new RegExp(`label: '${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`),
+    `Controls shortcut reference must label ${label}`);
+}
+
+assert.match(settingsSource, /Fixed shortcuts are listed below/,
+  'Controls intro should explain why fixed shortcuts appear beside rebinds');
+assert.match(settingsSource, /Flight keys above can be rebound here\. These interface shortcuts are for reference\./,
+  'Controls footer should distinguish rebindable flight keys from fixed interface keys');
+assert.match(settingsSource, /Massline: tap latch\/cut; hold line control/,
+  'Settings must name the live Massline tap/hold grammar');
+assert.match(settingsSource, /A\/Cross Massline, B dock when prompted/,
+  'Settings must disclose the gamepad Massline verb and the B dock verb');
+assert.match(settingsSource, /masslineBindingProfile\s*=\s*MASSLINE_BINDING_PROFILE_SPACE/,
+  'Reset to defaults must explicitly adopt the current Space-primary profile');
+assert.match(helpSource, /reel\/pay out\/orbit/,
+  'Help must teach the line-control axes without inventing separate default keys');
+assert.match(helpSource, /resolveActionLabel/,
+  'Help must resolve rebindable keys from src/systems/input.js');
+// TEACH-09 turned the pad sheet from a hand-typed table into a projection of the resolved map, so
+// the Massline cell no longer exists as a source literal. Assert what the sheet actually teaches
+// instead: stronger than matching a string in the file, and it still fails if the projection ever
+// stops naming the verb.
+{
+  const { gamepadControlRows } = await import('../src/ui/screens/help.js');
+  const massline = gamepadControlRows(null).find(row => row[0] === 'Massline');
+  assert.deepEqual(massline, ['Massline', null, 'A / Cross'],
+    'Help must teach the gamepad Massline key');
+}
+assert.match(hudSource, /mountOrreryCluster\(/,
+  'the active flight HUD must mount the shared ORRERY instrument');
+assert.match(clusterSource, /if \(tip\) sk\.el\.setAttribute\('data-why', tip\)/,
+  'the active Line control context must reach the existing hover/focus reveal');
+const line = readOrdnanceModel({ settings: { gameplay: { controlScheme: 'pilot' }, controls: { bindings: {
+  tether: ['KeyP'], forward: ['KeyI'], reverse: ['KeyK'], yawLeft: ['KeyJ'], yawRight: ['KeyL'], boost: ['KeyB'],
+} } }, player: { cargo: { items: {} }, tether: { active: true } }, entities: new Map() }, null)[String(POWER_SLOT.line)];
+assert.equal(line.key, 'P', 'the Line socket must name the actual rebound key');
+assert.match(line.tip, /Hold P.*I REEL.*K PAY OUT.*J\/L ORBIT.*B PUMP/,
+  'the active tether HUD must teach the live line-control axes');
+assert.match(promptSource, /resolveActionLabel/,
+  'Persistent keyboard hints must resolve flight keys from input.js');
+
+console.log('Settings Controls discoverability OK - fixed ship/system shortcuts are visible beside flight rebinds.');

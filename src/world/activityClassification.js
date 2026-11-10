@@ -1,0 +1,256 @@
+// Deterministic activity classification. Pure. Names pins and tiers.
+// activityRuntime applies them to the Rapier/AI active set; this file does not
+// mutate entities or bodies.
+
+export const SIM_TIER = Object.freeze({
+  S0_EXACT: 'S0_EXACT',
+  S1_NEAR: 'S1_NEAR',
+  S2_ABSTRACT: 'S2_ABSTRACT',
+  S3_DORMANT: 'S3_DORMANT',
+  S4_AGGREGATE: 'S4_AGGREGATE',
+});
+
+export const PRESENTATION_TIER = Object.freeze({
+  R0_GLASS: 'R0_GLASS',
+  R1_RUNWAY: 'R1_RUNWAY',
+  R2_METADATA: 'R2_METADATA',
+  R3_UNLOADED: 'R3_UNLOADED',
+});
+
+export const PIN_REASON = Object.freeze({
+  PLAYER: 'PLAYER',
+  CURRENT_TARGET: 'CURRENT_TARGET',
+  RECENTLY_DAMAGED_BY_PLAYER: 'RECENTLY_DAMAGED_BY_PLAYER',
+  RECENTLY_DAMAGED_PLAYER: 'RECENTLY_DAMAGED_PLAYER',
+  HOSTILE_AGGRO: 'HOSTILE_AGGRO',
+  PROJECTILE_THREAT: 'PROJECTILE_THREAT',
+  TETHER_OR_ATTACHMENT_COMPONENT: 'TETHER_OR_ATTACHMENT_COMPONENT',
+  DOCKING_OR_LANDING: 'DOCKING_OR_LANDING',
+  MISSION_CRITICAL: 'MISSION_CRITICAL',
+  ESCORT_OR_FOLLOW_RELATION: 'ESCORT_OR_FOLLOW_RELATION',
+  HAIL_OR_SCRIPTED_CONVERSATION: 'HAIL_OR_SCRIPTED_CONVERSATION',
+  PLAYER_MINING_TARGET: 'PLAYER_MINING_TARGET',
+  PLAYER_SCANNED_AND_TRACKED: 'PLAYER_SCANNED_AND_TRACKED',
+  IMMINENT_COLLISION: 'IMMINENT_COLLISION',
+  VISIBLE_ON_GLASS: 'VISIBLE_ON_GLASS',
+  FIELD_DRIVEN: 'FIELD_DRIVEN',
+  PHYSICAL_INTEREST: 'PHYSICAL_INTEREST',
+});
+
+const PIN_SET = new Set(Object.values(PIN_REASON));
+
+export const COLLISION_LOOKAHEAD_S = 0.75;
+export const PHYSICS_SAFETY_PAD_WU = 24;
+export const NEAR_ENTER_PAD_WU = 80;
+export const NEAR_EXIT_PAD_WU = 140;
+export const DEFAULT_GRACE_S = 2;
+
+function finite(n, fallback = 0) {
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function hypot2(ax, az, bx, bz) {
+  const dx = finite(ax) - finite(bx);
+  const dz = finite(az) - finite(bz);
+  return dx * dx + dz * dz;
+}
+
+/**
+ * The footprint an entity can occupy in the player's frame: the largest of its
+ * collision radius and any authored visual envelopes. Stations draw to
+ * data.dockRadius (60-90) while entity.radius is the small collision proxy
+ * (26-42); glass/runway and discovery tests use this or a big hull whose centre
+ * is off-screen is culled while its body is still on it.
+ */
+export function entityPresenceRadius(entity) {
+  // Hot path (called per candidate per classify pass): no allocation, no variadic Math.max.
+  // Same result as max(0, finite(...) of each envelope field).
+  if (!entity) return 0;
+  let r = entity.radius;
+  r = (typeof r === 'number' && r > 0 && r !== Infinity) ? r : 0;
+  const data = entity.data;
+  if (data) {
+    let v = data.visualRadius;
+    if (typeof v === 'number' && v > r && v !== Infinity) r = v;
+    v = data.placeRadius;
+    if (typeof v === 'number' && v > r && v !== Infinity) r = v;
+    v = data.placeTargetRadius;
+    if (typeof v === 'number' && v > r && v !== Infinity) r = v;
+    if (entity.type === 'station') {
+      v = data.dockRadius;
+      if (typeof v === 'number' && v > r && v !== Infinity) r = v;
+    }
+  }
+  const t = entity.placeTargetRadius;
+  if (typeof t === 'number' && t > r && t !== Infinity) r = t;
+  return r;
+}
+
+export function physicsReachWu(options = {}) {
+  const glassDiag = Math.max(0, finite(options.glassDiagonalWu));
+  const speed = Math.max(0, finite(options.maxRelativeSpeedWu));
+  const look = Math.max(0, finite(options.collisionLookaheadS, COLLISION_LOOKAHEAD_S));
+  const collider = Math.max(0, finite(options.largestColliderRadiusWu));
+  const pad = options.safetyPadWu == null ? PHYSICS_SAFETY_PAD_WU : Math.max(0, finite(options.safetyPadWu));
+  return glassDiag + speed * (look || COLLISION_LOOKAHEAD_S) + collider + pad;
+}
+
+export function normalizePinReasons(list, scratch = null) {
+  const out = scratch && Array.isArray(scratch.out) ? scratch.out : [];
+  if (scratch && Array.isArray(scratch.out)) out.length = 0;
+  const src = Array.isArray(list) ? list : [];
+  const n = src.length;
+  // Quiet classify is dominated by 0–2 pin lists (Ceres rocks / idle traffic).
+  // Skip Set.clear + sort until the rare multi-pin path needs dedupe.
+  if (n === 0) return out;
+  if (n === 1) {
+    const reason = src[0];
+    if (PIN_SET.has(reason)) out.push(reason);
+    return out;
+  }
+  if (n === 2) {
+    const a = src[0];
+    const b = src[1];
+    const aOk = PIN_SET.has(a);
+    const bOk = PIN_SET.has(b);
+    if (aOk && bOk) {
+      if (a === b) {
+        out.push(a);
+        return out;
+      }
+      if (a < b) {
+        out.push(a);
+        out.push(b);
+      } else {
+        out.push(b);
+        out.push(a);
+      }
+      return out;
+    }
+    if (aOk) out.push(a);
+    else if (bOk) out.push(b);
+    return out;
+  }
+  const seen = scratch && scratch.seen instanceof Set ? scratch.seen : new Set();
+  if (scratch && scratch.seen instanceof Set) seen.clear();
+  for (let i = 0; i < n; i++) {
+    const reason = src[i];
+    if (!PIN_SET.has(reason) || seen.has(reason)) continue;
+    seen.add(reason);
+    out.push(reason);
+  }
+  out.sort();
+  return out;
+}
+
+/**
+ * Collect explicit pins. Never infers independently from unrelated systems —
+ * callers pass the facts they already own.
+ */
+export function resolvePins(entity, context = {}) {
+  const pins = context.pinScratch || [];
+  if (context.pinScratch) pins.length = 0;
+  if (!entity) return normalizePinReasons(pins, context.pinNormalizeScratch);
+  const playerId = context.playerId;
+  if (entity.isPlayer === true || entity.id === playerId) pins.push(PIN_REASON.PLAYER);
+  if (context.currentTargetId != null && entity.id === context.currentTargetId) {
+    pins.push(PIN_REASON.CURRENT_TARGET);
+  }
+  if (context.visibleOnGlass === true) pins.push(PIN_REASON.VISIBLE_ON_GLASS);
+  if (context.hostileAggro === true) pins.push(PIN_REASON.HOSTILE_AGGRO);
+  if (context.projectileThreat === true || entity.type === 'projectile') {
+    pins.push(PIN_REASON.PROJECTILE_THREAT);
+  }
+  if (context.tetherOrAttachment === true) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
+  if (context.fieldDriven === true) pins.push(PIN_REASON.FIELD_DRIVEN);
+  if (context.physicalInterest === true) pins.push(PIN_REASON.PHYSICAL_INTEREST);
+  if (context.dockingOrLanding === true) pins.push(PIN_REASON.DOCKING_OR_LANDING);
+  if (context.missionCritical === true) pins.push(PIN_REASON.MISSION_CRITICAL);
+  if (context.escortOrFollow === true) pins.push(PIN_REASON.ESCORT_OR_FOLLOW_RELATION);
+  if (context.hailOrConversation === true) pins.push(PIN_REASON.HAIL_OR_SCRIPTED_CONVERSATION);
+  if (context.playerMiningTarget === true) pins.push(PIN_REASON.PLAYER_MINING_TARGET);
+  if (context.playerScannedAndTracked === true) pins.push(PIN_REASON.PLAYER_SCANNED_AND_TRACKED);
+  if (context.imminentCollision === true) pins.push(PIN_REASON.IMMINENT_COLLISION);
+  const now = finite(context.simTime);
+  const damagedByPlayerUntil = finite(context.damagedByPlayerUntilT, -1);
+  const damagedPlayerUntil = finite(context.damagedPlayerUntilT, -1);
+  if (damagedByPlayerUntil >= 0 && now <= damagedByPlayerUntil) {
+    pins.push(PIN_REASON.RECENTLY_DAMAGED_BY_PLAYER);
+  }
+  if (damagedPlayerUntil >= 0 && now <= damagedPlayerUntil) {
+    pins.push(PIN_REASON.RECENTLY_DAMAGED_PLAYER);
+  }
+  const d = entity.data || {};
+  const flags = entity.flags || {};
+  if (flags.missionPinned || d.missionPinned || d.missionId || d.missionTag || d.jobId
+    // A live convoy's transit cast is mission-critical from data alone — the run must
+    // physically complete regardless of the owner's context fill (check §J).
+    || d.transitCritical === true
+    || d.activityActorSlotId
+    || (typeof d.activityObjectSlotId === 'string' && /[a-z]/i.test(d.activityObjectSlotId))
+    || d.predationRole || (d.ai && (d.ai.predationRole || d.ai.predationStatus))
+    || d.freightCustodyPersistence || d.freightCustody
+    || (d.ai && typeof d.ai.spawnContext === 'string'
+      && d.ai.spawnContext.includes('zone_hostile'))
+    // PQ-138.00: a lawful ship answering an incident — pursuing an aggressor or holding at a
+    // witnessed wreck — is the world reacting to the player. Measured 2026-09-12 on the live route:
+    // reserves launched 800 WU out were classified far, shelved, and crawled at 5 WU/s for twenty
+    // seconds, so "nobody comes after you". A live response stays exact until it is cleared.
+    || (d.ai && (d.ai.securityTargetId != null || d.ai.witnessRole != null))) {
+    pins.push(PIN_REASON.MISSION_CRITICAL);
+  }
+  if (flags.tethered || d.tethered) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
+  return normalizePinReasons(pins, context.pinNormalizeScratch);
+}
+
+export function resolvePresentationTier(options = {}) {
+  if (options.onGlass === true) return PRESENTATION_TIER.R0_GLASS;
+  if (options.onRunway === true) return PRESENTATION_TIER.R1_RUNWAY;
+  if (options.mapOrRadar === true) return PRESENTATION_TIER.R2_METADATA;
+  return PRESENTATION_TIER.R3_UNLOADED;
+}
+
+export function resolveSimTier(entity, pins, context = {}) {
+  const reasons = context.pinsNormalized === true && Array.isArray(pins)
+    ? pins
+    : normalizePinReasons(pins);
+  if (reasons.length > 0) return SIM_TIER.S0_EXACT;
+  if (entity && entity.isPlayer === true) return SIM_TIER.S0_EXACT;
+  if (context.aggregateOnly === true) return SIM_TIER.S4_AGGREGATE;
+  if (context.dormant === true) return SIM_TIER.S3_DORMANT;
+
+  const origin = context.origin;
+  const pos = entity && entity.pos;
+  const dist2 = origin && pos ? hypot2(pos.x, pos.z, origin.x, origin.z) : Infinity;
+  const reach = Math.max(0, finite(context.physicsReachWu));
+  const enter = reach + NEAR_ENTER_PAD_WU;
+  const exit = reach + NEAR_EXIT_PAD_WU;
+  const prior = context.priorSimTier;
+
+  if (prior === SIM_TIER.S0_EXACT || prior === SIM_TIER.S1_NEAR) {
+    if (dist2 <= exit * exit) return SIM_TIER.S1_NEAR;
+  }
+  if (Number.isFinite(dist2) && dist2 <= enter * enter) return SIM_TIER.S1_NEAR;
+  if (context.hasItinerary === true || (entity && entity.data && entity.data.itinerary)) {
+    return SIM_TIER.S2_ABSTRACT;
+  }
+  return SIM_TIER.S3_DORMANT;
+}
+
+export function classifyActivity(entity, context = {}) {
+  const pins = resolvePins(entity, context);
+  if (context) context.pinsNormalized = true;
+  const simTier = resolveSimTier(entity, pins, context);
+  const presentationTier = resolvePresentationTier(context);
+  const out = context && context.classifiedOut ? context.classifiedOut : {
+    pins: null,
+    simTier: null,
+    presentationTier: null,
+    pinnedExact: false,
+  };
+  out.pins = pins;
+  out.simTier = simTier;
+  out.presentationTier = presentationTier;
+  out.pinnedExact = pins.length > 0;
+  return out;
+}

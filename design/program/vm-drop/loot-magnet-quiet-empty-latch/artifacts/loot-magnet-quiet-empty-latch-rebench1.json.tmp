@@ -1,0 +1,13 @@
+{
+  "name": "loot-magnet-quiet-empty-latch",
+  "run": 1,
+  "medianSpeedup": 3.004684388317095,
+  "minSpeedup": 2.6297534904269377,
+  "maxSpeedup": 3.144792029135573,
+  "dirtyWake": {
+    "ok": true,
+    "quietVersion": 3,
+    "skips": 2,
+    "walks": 3
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "spaceface.validation-acceptance-failure.v1",
+  "generatedAt": "2026-07-29T05:54:05.020Z",
+  "pass": false,
+  "runtimeKind": "browser",
+  "primaryAcceptance": true,
+  "artifactKind": "probe-run",
+  "phase": "acceptance-probe",
+  "error": "[pq019-surface-heist] FAIL in heist-plus-fence\n  - page.waitForFunction: Timeout 20000ms exceeded.\n\nexitCode=1",
+  "regressionDigest": "da468be88bda804a6646a6a73aa99b5c4b0a0885dfed7397969b0329ccf9c1a8",
+  "routeDigest": "892435dcae0bb21b388910bd9b00fd24b0070c8cad990af87c1f00aba5636d6c",
+  "candidateDigest": "21afdc13a66d0cb6fa3b729921203e814b98e5115139e949572a7dc7e3896474",
+  "failureFingerprint": "77a503ec7ffe13cc3aaa2fb8e6418d85c06e1ca495df0ac9f9051232cf5bb9e6",
+  "family": "browser/acceptance-probe/pq-surface-heist-fail-in-heist-plus-fence-page-waitforfunction/none/none/timeout-ms-exceeded-exitcode"
+}

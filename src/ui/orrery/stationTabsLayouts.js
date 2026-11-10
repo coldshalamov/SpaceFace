@@ -1,0 +1,2512 @@
+// ORRERY composition for the station's list-and-reading tabs (design/frontend/ORRERY.md §6 Station):
+// Missions (contracts), Bar, Factions, Industry, Ledger. They share one grammar with the Market's
+// Ladder: the offers stand on a ruled rail with a tick each and the shared notched Hand at the chosen
+// one; the reading beside it has no panel (a pool of shade), its figure in warm white, its terms as
+// a ledger of caps and values; the one verb that commits rests in bone and lights amber where the
+// player reaches. It styles the tabs' existing nodes (checks read their classes) and pins nothing.
+import { injectOrrery } from './tokens.js';
+import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
+
+const STYLE_ID = 'sf-orrery-station-tabs';
+const T = 'html body #screens > .sx-berth.orr-station';
+// the desktop berth only: a phone on its side is also short and narrow, but it lays the berth out as one page
+const D = 'html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station';
+const BONE = '236 230 216';
+const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase;';
+const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
+const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%) !important;';
+// WEIGHT (owner 2026-09-25: no thin wireframe): a spine is a 2px line over a 7px faint band (left edge at x);
+// minor ticks are 1.5px, row ticks 2px. `pos` is the layer's position / size.
+const SPINE = (x, a = .55, pos = '0 0 / 100% 100%') => `linear-gradient(90deg, transparent ${x}px, rgb(${BONE} / ${a}) ${x}px, rgb(${BONE} / ${a}) ${x + 2}px, transparent ${x + 2}px) ${pos} no-repeat`;
+const BAND = (x, pos = '0 0 / 100% 100%', a = .27) => `linear-gradient(90deg, transparent ${x - 2.5}px, rgb(${BONE} / ${a}) ${x - 2.5}px, rgb(${BONE} / ${a}) ${x + 4.5}px, transparent ${x + 4.5}px) ${pos} no-repeat`;
+/** The rail of light down a list, a tick on every row, the Hand on the chosen one. */
+const rail = (list, row, chosen) => `
+${T} ${list} { background:${SPINE(7)}, ${BAND(7)},
+    repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
+${T} ${row} { ${PLAIN} position:relative !important; padding-left:44px !important; }
+${T} ${row}::after { display:none !important; }
+${T} ${row}::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important; height:2px !important;
+  margin:0 !important; background:rgb(${BONE} / .55) !important; box-shadow:none !important; transform:none !important; clip-path:none !important; border:0 !important; }
+${T} ${row}:is(${chosen})::before { translate:none !important; scale:none !important; left:31px !important; width:5px !important; height:5px !important; margin-top:-2.5px !important; clip-path:none !important; border-radius:50% !important; background:var(--dp-hand-hot, #ffd98c) !important;
+  box-shadow:0 0 6px 1px rgb(255 217 140 / .7) !important; filter:none !important; }
+${T} ${list}:is(:focus-within, :hover) ${row}:is(${chosen})::before { background:var(--dp-hand-hot, #ffd98c) !important; filter:drop-shadow(0 0 7px rgb(255 217 140 / .75)); }
+${T} ${row}:is(${chosen})::after { content:"" !important; display:block !important; position:absolute !important; left:7px !important; top:50% !important; width:26px !important; height:2px !important; margin:-1px 0 0 !important;
+  translate:none !important; scale:none !important; rotate:none !important;
+  clip-path:none !important; background:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c) 0 3px, var(--dp-hand, #f2b950) 3px) !important; opacity:1; box-shadow:0 0 5px 1px rgb(242 185 80 / .45); pointer-events:none; border:0 !important; box-shadow:none !important; transform:none !important; border-radius:0 !important; }
+${T} ${list}:is(:focus-within, :hover) ${row}:is(${chosen})::after { background:var(--dp-hand-hot, #ffd98c) !important; }
+${T} ${row}:focus-visible { outline:2px solid var(--dp-ink, #e8e2d4) !important; outline-offset:-2px !important; }`;
+/** A verb that commits: a bone word at the reading's weight; amber where the player reaches it. */
+const commit = (sel) => `
+${T} ${sel} { ${PLAIN} min-height:0 !important; min-width:0 !important; height:auto !important; border-radius:0 !important; padding:8px 2px 12px !important;
+  font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125% !important; font-variation-settings:"wdth" 125, "wght" 800 !important;
+  font-size:22px !important; letter-spacing:.1em !important; text-transform:uppercase; color:rgb(248 244 234) !important; }
+${T} ${sel}::before, ${T} ${sel}::after { display:none !important; }
+${T} ${sel}:not(:disabled):is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-shadow:0 0 22px rgb(255 217 140 / .4);
+  background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / 0)) !important; background-size:100% 2px !important;
+  background-position:0 100% !important; background-repeat:no-repeat !important; }
+${T} ${sel}:disabled { color:rgb(${BONE} / .45) !important; }`;
+/** A small verb: a word with its notch. */
+const word = (sel) => `
+${T} ${sel} { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important;
+  letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
+${T} ${sel}::after { display:none !important; }
+${T} ${sel}::before { all:unset !important; content:"›  " !important; color:rgb(${BONE} / .55) !important; }
+${T} ${sel}:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }`;
+
+const CSS = `
+/* ================================ MISSIONS ================================================== */
+/* the hang: the posted jobs on their rail first, the dispatch's choice folded under them, yours last */
+/* one ruled scale runs the whole column, minor ticks every 8px; the rows hang their major ticks on it */
+${T} .sx-ct__hang { position:relative; padding-left:0 !important;
+  background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .22) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
+${T} .sx-ct__hang > .k-caps, ${T} .sx-ct__yours { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; padding-left:26px !important; }
+${T} .sx-ct-dispatch__label { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .5) !important; padding-left:26px !important; }
+${T} .sx-ct__board { display:flex !important; flex-direction:column; align-items:stretch; }
+${T} .sx-ct__board > .sx-ct__rows { order:1; flex:none; background:none !important; }
+${T} .sx-ct__rows > li { display:block !important; }
+/* the dispatch's choice, hung off the job it names: a flagged sub-row under that job */
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub { display:flex !important; flex-direction:row; flex-wrap:wrap; align-items:baseline; gap:2px 10px; padding:0 0 8px 26px !important;
+  margin-top:-3px; min-height:0 !important; height:auto !important; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub::before { display:none !important; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .86) !important; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px !important; line-height:1.4; color:rgb(${BONE} / .6) !important; white-space:normal; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand, #f2b950) !important; }
+${T} .sx-ct__active { padding-left:26px !important; }
+/* the dispatch's choice: a sentence and its offers as verbs, after the ladder */
+${T} .sx-ct__board > .sx-decision { ${PLAIN} order:2; flex:none; padding:0 !important; margin:20px 0 0 !important; }
+${T} .sx-ct__board > .sx-decision > .k-sentence { color:rgb(${BONE} / .66) !important; font-size:12.5px !important; line-height:1.45; margin:0 0 6px !important; max-width:none; }
+${T} .sx-ct-row.sx-decision__opt { ${PLAIN} position:relative !important; display:flex !important; flex-direction:column; align-items:flex-start; gap:2px;
+  padding:5px 0 5px 18px !important; min-height:0 !important; height:auto !important; width:100% !important; text-align:left; }
+${T} .sx-ct-row.sx-decision__opt::after { display:none !important; }
+${T} .sx-ct-row.sx-decision__opt::before { all:unset !important; content:"›" !important; position:absolute !important; left:2px; top:4px; color:rgb(${BONE} / .55) !important; }
+${T} .sx-ct-row.sx-decision__opt .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(248 244 234) !important; }
+${T} .sx-ct-row.sx-decision__opt .k-row__sub { font-size: 12px !important; color:rgb(${BONE} / .58) !important; }
+${T} .sx-ct-row.sx-decision__opt:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand, #f2b950) !important; }
+${T} .sx-ct-row.sx-decision__opt:focus-visible { outline:none !important; }
+/* the posted jobs on the rail */
+${rail('.sx-ct__rows', '.sx-ct__rows .sx-ct-row', '.is-active, .is-selected, [aria-selected="true"]')}
+${T} .sx-ct__rows .sx-ct-row { padding-top:9px !important; padding-bottom:9px !important; min-height:0 !important; height:auto !important;
+  display:grid !important; grid-template-columns:minmax(0, 1fr) 64px; align-items:baseline; column-gap:14px; width:100% !important; text-align:left; }
+${T} .sx-ct__rows .sx-ct-row > .sx-ct-row__rew { grid-column:2; grid-row:1; justify-self:end; text-align:right; }
+${T} .sx-ct__rows .sx-ct-row > .sx-ct-row__title { grid-column:1; grid-row:1; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__crest { display:none !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { font-size:13px !important; font-weight:560; letter-spacing:.02em !important; text-transform:none !important;
+  color:rgb(${BONE} / .86) !important; font-family:var(--dp-face-body, "Instrument Sans") !important; }
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__title { color:rgb(250 247 238) !important; }
+${T} .sx-ct__rows .sx-ct-row:is(:hover, :focus-visible) .sx-ct-row__title { color:rgb(255 250 240) !important; }
+${T} .sx-ct__rows .sx-ct-row:focus-visible:not(.is-active, .is-selected, [aria-selected="true"])::before { height:2px !important; background:rgb(248 244 234) !important; width:11px !important; left:2px !important; }
+${T} .sx-ct__rows .sx-ct-row:focus-visible .sx-ct-row__title { color:rgb(255 255 255) !important; text-shadow:0 0 10px rgb(255 250 236 / .35); }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { font-size:13.5px !important; font-weight:620; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { ${LABEL} display:block; margin-bottom:2px; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .8) !important; background:none !important; }
+/* the Hand's bloom: a soft disc of its own light behind the chevron (a clip-path clips a filter, so it is geometry) */
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { content:"" !important; display:block !important; position:absolute !important; left:-6px !important;
+  top:50% !important; width:28px !important; height:28px !important; margin-top:-14px !important; border-radius:50% !important; pointer-events:none;
+  background:radial-gradient(circle, rgb(242 185 80 / .36), rgb(242 185 80 / 0) 66%) !important; transition:background .18s linear; }
+${T} .sx-ct__rows:is(:focus-within, :hover) .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { background:radial-gradient(circle, rgb(255 217 140 / .55), rgb(255 217 140 / 0) 70%) !important; }
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { filter:none; }
+/* yours: the tracked job as a line and its tag */
+${T} .sx-ct__active, ${T} .sx-ct__jobs, ${T} .sx-job { ${PLAIN} }
+${T} .sx-job { padding:6px 0 !important; min-height:0 !important; }
+${T} .sx-job__title { font-size:13px !important; color:rgb(248 244 234) !important; }
+${T} .sx-job__meta { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-job__track { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important; letter-spacing:.06em !important;
+  color:rgb(${BONE} / .8) !important; }
+${T} .sx-job__track::after { display:none !important; }
+${T} .sx-job__track::before { all:unset !important; content:"●  " !important; font-size: 12px; vertical-align:2px; color:rgb(248 244 234) !important; }
+${T} .sx-job__track:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
+${T} .sx-ct__none { color:rgb(${BONE} / .6) !important; font-size:12.5px !important; }
+/* the dossier: no panel; the reading in the left column, the route orrery standing beside it */
+${T} .sx-dossier { ${PLAIN} position:relative; isolation:isolate; display:grid !important; grid-template-columns:minmax(0, 600px) minmax(280px, 1fr);
+  column-gap:clamp(28px, 4vw, 72px); align-content:start; align-items:start; }
+${T} .sx-dossier > * { grid-column:1; min-width:0; }
+${T} .sx-dossier > .orr-ct-route { grid-column:2; grid-row:1 / span 18; align-self:start; width:100%; height:clamp(320px, 42vh, 460px); margin:6px 0 0 !important; }
+${T} .sx-dossier::before { content:""; position:absolute; z-index:-1; inset:-40px -60px; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(7 8 10 / .8), rgb(7 8 10 / .6) 60%, rgb(7 8 10 / 0)); }
+${T} .sx-dossier > .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-dossier__title, ${T} .sx-dossier__title .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; }
+${T} .sx-dossier__title .sf-entity-link:is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .45) !important; text-underline-offset:6px; outline:none !important; }
+${T} .sx-dossier :is(.sx-dossier__client, .sx-dossier__route) .sf-entity-link { text-decoration:none !important; background-image:none !important;
+  border-bottom:0 !important; color:rgb(248 244 234) !important; }
+${T} .sx-dossier :is(.sx-dossier__client, .sx-dossier__route) .sf-entity-link:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important;
+  text-decoration:underline 1px rgb(242 185 80 / .6) !important; text-underline-offset:4px; outline:none !important; }
+${T} .sx-dossier__client { color:rgb(${BONE} / .72) !important; }
+${T} .sx-dossier__reward .k-hero__n { color:rgb(248 244 234) !important; text-shadow:0 0 24px rgb(0 0 0 / .5) !important;
+  font-variation-settings:"wdth" 100, "wght" 250 !important; font-stretch:100% !important; font-weight:250 !important; letter-spacing:-.02em !important; font-size:clamp(64px, 8.6vh, 96px) !important; }
+${T} .sx-dossier__reward .k-hero__n.orr-counter { height:1em; line-height:1; overflow:hidden; }
+${T} .sx-dossier__reward .k-hero__n.orr-counter .orr-counter__digit { width:.58em; }
+${T} .sx-dossier__reward .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .66) !important; }
+${T} :is(.sx-dossier__summary, .sx-dossier__briefing) { color:rgb(${BONE} / .8) !important; font-size:13px !important; line-height:1.5; }
+${T} :is(.sx-dossier__route, .sx-dossier__risk) { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0); white-space:nowrap; margin:0 !important; }
+/* the consequences as scales: risk on five stops, standing as a gain and a loss round zero */
+${T} .orr-ct-scales { width:100%; max-width:520px; height:66px; margin:14px 0 4px !important; }
+${T} .orr-ct-scales > svg { width:100%; height:100%; overflow:visible; }
+${T} .orr-ct-scales text.orr-ct-scale__key { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.14em; fill:rgb(${BONE} / .6); }
+${T} .orr-ct-scales .orr-ct-scale__rule { stroke:rgb(${BONE} / .32); }
+${T} .orr-ct-scales .orr-ct-scale__tick { stroke:rgb(${BONE} / .5); }
+${T} .orr-ct-scales .orr-ct-scale__fill { stroke:rgb(248 244 234); }
+${T} .orr-ct-scales .orr-ct-scale__fill.is-high { stroke:var(--dp-danger, #ff5038); }
+${T} .orr-ct-scales .orr-ct-scale__loss { stroke:var(--dp-danger, #ff5038); }
+${T} .orr-ct-scales path.orr-ct-scale__cursor { stroke:rgb(248 244 234); }
+${T} .orr-ct-scales .orr-bloom.orr-ct-scale__cursor { stroke:rgb(248 244 234); opacity:.25; }
+${T} .orr-ct-scales text.orr-ct-scale__word { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.12em; fill:rgb(248 244 234); }
+${T} .orr-ct-scales .orr-ct-scale__lossword { fill:var(--dp-danger, #ff5038); }
+${T} .orr-ct-scales .orr-ct-scale__sep { fill:rgb(${BONE} / .4); }
+${T} .orr-ct-scales text.orr-ct-scale__end { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.14em; fill:rgb(${BONE} / .45); }
+${T} .sx-dossier__briefing .sx-dossier__approach { color:rgb(${BONE} / .62); }
+${T} .sx-dossier__gate { color:rgb(${BONE} / .85) !important; font-size:12.5px !important; }
+${T} .sx-dossier__gate.k-bad { color:var(--dp-danger, #ff5038) !important; }
+${T} .sx-dossier__terms { ${PLAIN} max-width:560px; min-width:0; }
+${T} .sx-dossier__terms > li { ${PLAIN} display:grid !important; grid-template-columns:120px minmax(0, 1fr); align-items:baseline; column-gap:18px; padding:7px 0 !important; min-height:0 !important; min-width:0; }
+${T} .sx-dossier__terms > li > .k-62 { ${LABEL} min-width:0; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+/* a forfeit is a loss: the threat channel's red tick on that one term */
+${T} .sx-dossier__terms > li.sx-term--threat { position:relative; }
+${T} .sx-dossier__terms > li.sx-term--threat .sx-term__v { color:var(--dp-danger, #ff5038) !important; }
+${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { content:""; position:absolute; left:-16px; top:.55em; width:9px; height:2px;
+  background:var(--dp-danger, #ff5038); box-shadow:0 0 6px rgb(255 80 56 / .7); }
+${T} .sx-dossier__terms .sx-term__v { display:flex !important; flex-direction:column; align-items:flex-start !important; gap:2px; font-size:13.5px !important; color:rgb(248 244 234) !important;
+  min-width:0; text-align:left !important; justify-self:start !important; margin:0 !important; text-transform:none !important; letter-spacing:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+${T} .sx-dossier__terms .sx-term__sub { justify-self:start !important; text-align:left !important; margin:0 !important; font-size: 12px !important; color:rgb(${BONE} / .6) !important; min-width:0; white-space:normal !important; overflow-wrap:anywhere !important; }
+${T} .sx-dossier__clauses { ${PLAIN} }
+${T} .sx-dossier__clauses .sx-tag { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8) !important; padding:0 !important; }
+${T} .sx-dossier__clauses .sx-tag::before { content:"› "; color:rgb(${BONE} / .5); }
+${T} .sx-dossier__foot { margin-top:26px !important; }
+${commit('.sx-ct-commit:not(.orr-lampkey)')}
+/* Accept is the tab's Lamp Key (src/ui/orrery/lampKey.js): the station's kit words must not repaint it */
+${T} .sx-ct-commit.orr-lampkey { padding:0 26px 0 20px !important; min-height:44px !important; font-size:15px !important; letter-spacing:.14em !important; color:#1c1406 !important;
+  background:none !important; background-image:none !important; text-shadow:none !important; border:0 !important; box-shadow:none !important; border-radius:0 !important; }
+${T} .sx-ct-commit.orr-lampkey:is(:hover, :focus-visible, :active) { color:#1c1406 !important; background-image:none !important; text-shadow:none !important; }
+${T} .sx-ct-commit.orr-lampkey:disabled { color:rgb(${BONE} / .55) !important; }
+${T} .sx-dossier__foot { padding-left:0 !important; }
+${T} .sx-dossier__foot > li { display:flex; align-items:center; gap:16px; }
+${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-ct__hang > * + * { margin-top:8px !important; }
+  ${T} .sx-ct__hang > .sx-ct__yours { margin-top:14px !important; }
+  ${T} .sx-ct__board > .sx-decision { margin-top:12px !important; }
+  ${T} .sx-ct__board > .sx-decision > .k-sentence { display:none !important; }
+  ${T} .sx-ct-row.sx-decision__opt .k-row__sub { display:none !important; }
+  ${T} .sx-ct-row.sx-decision__opt { padding-top:3px !important; padding-bottom:3px !important; }
+  ${T} .sx-ct-row.sx-decision__opt .k-row__name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  ${T} .sx-ct__rows .sx-ct-row { padding-top:5px !important; padding-bottom:5px !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { font-size:12.5px !important; line-height:1.25; }
+  ${T} .sx-job { padding:3px 0 !important; }
+  ${T} .sx-dossier { grid-template-columns:minmax(0, 460px) minmax(240px, 1fr); column-gap:24px; }
+  ${T} .sx-dossier > .orr-ct-route { height:clamp(236px, 37vh, 300px); margin-top:0 !important; }
+  ${T} .sx-dossier > .k-caps { margin-bottom:0 !important; }
+  ${T} .sx-dossier__title { font-size:24px !important; line-height:1.1 !important; margin:4px 0 6px !important; }
+  ${T} .sx-dossier__client { margin:0 !important; font-size:12px !important; }
+  ${T} .sx-dossier__reward { margin:6px 0 4px !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:36px !important; }
+  ${T} :is(.sx-dossier__summary, .sx-dossier__briefing) { display:none !important; }
+  ${T} :is(.sx-dossier__route, .sx-dossier__risk) { font-size: 12px !important; line-height:1.4; margin:3px 0 !important; }
+  ${T} .sx-dossier__terms { margin:4px 0 0 !important; }
+  ${T} .sx-dossier__terms > li { grid-template-columns:96px minmax(0, 1fr); column-gap:12px; padding:2px 0 !important; }
+  ${T} .sx-dossier__terms > li > .k-62 { font-size: 12px !important; }
+  ${T} .sx-dossier__terms .sx-term__v { font-size:12.5px !important; flex-direction:row !important; align-items:baseline !important; gap:8px; flex-wrap:wrap; }
+  ${T} .sx-dossier__terms .sx-term__sub { font-size: 12px !important; }
+  ${T} .sx-dossier__foot { margin-top:8px !important; }
+  ${T} .sx-ct-commit:not(.orr-lampkey) { padding:4px 2px 8px !important; font-size:20px !important; }
+  ${T} .sx-ct-commit.orr-lampkey { min-height:38px !important; font-size:13.5px !important; }
+  ${T} .sx-dossier__reward { margin:4px 0 2px !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:36px !important; }
+  ${T} .orr-ct-scales { height:58px; margin:6px 0 0 !important; }
+  ${T} .sx-dossier__title { font-size:22px !important; }
+  ${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { left:-14px; }
+  ${T} .sx-ct__dossier { padding-bottom:6px !important; }
+}
+/* the dossier in a narrow window (651–800 × ≤800): one column that scrolls, so the title, the reward and ACCEPT read as words, not letters. ≤460 high included — the wrapped two-column flow below 461 left the reading column ~0px and the caps printed over the title and client (700×460 / 760×420). */
+@media (min-width:651px) and (max-width:800px) and (max-height:800px) {
+  ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) clamp(180px, calc(100vw - 470px), 320px) !important; }
+  ${D} .sx-dossier { display:grid !important; grid-template-columns:minmax(0, 1fr) !important; grid-auto-rows:max-content !important; align-content:start !important;
+    height:100% !important; overflow-y:auto !important; overscroll-behavior:contain; row-gap:0 !important; padding-top:6px !important; padding-right:4px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; }
+  ${D} .sx-dossier::after { content:none !important; }
+  ${D} .sx-dossier > * { width:auto !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:2 !important; margin:0 0 8px !important; }
+  ${D} .sx-dossier > .sx-dossier__risk { width:auto !important; }
+  ${D} .sx-dossier__title { font-size:15px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; }
+  ${D} .sx-dossier .k-hero--hero { flex-wrap:wrap !important; margin:0 0 4px !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__w { letter-spacing:.08em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier__terms > li { grid-template-columns:96px minmax(0, 1fr) !important; }
+  ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier > .k-caps { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:.1em !important; line-height:1.3 !important; }
+}
+/* …and in a narrow, tall desktop window (651–900 × 801+): the route orrery's 280px floor left the reading column 40–130px,
+   so the title broke into letters. One column instead: ACCEPT at its head, the reading, then the route orrery under it. */
+@media (min-width:651px) and (max-width:900px) and (min-height:801px) {
+  ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important; grid-auto-rows:max-content !important; row-gap:0 !important; }
+  ${D} .sx-dossier > * { grid-column:1 !important; grid-row:auto !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-1 !important; margin:0 0 10px !important; }
+  ${D} .sx-dossier > .orr-ct-route { order:1 !important; align-self:center !important; justify-self:center !important; width:min(100%, 300px) !important; height:240px !important; margin:14px 0 0 !important; }
+  ${D} .sx-dossier__title { font-size:22px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; }
+  ${D} .sx-dossier .k-hero--hero { flex-wrap:wrap !important; }
+  ${D} .sx-dossier > .sx-dossier__foot > li { flex-wrap:wrap !important; row-gap:4px !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:52px !important; }
+  ${D} .sx-dossier > .orr-ct-scales { position:static !important; inset:auto !important; transform:none !important; width:auto !important; max-width:100% !important; margin:8px 0 0 !important; }
+  ${D} .sx-dossier__terms > li { grid-template-columns:112px minmax(0, 1fr) !important; }
+  ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier > .k-caps { white-space:normal !important; letter-spacing:.1em !important; line-height:1.3 !important; }
+}
+/* …and the same reading column in a narrow, tall desktop window (≤650 × 801+): the board takes the left half, the
+   dossier the right, and the dossier scrolls with ACCEPT at its head. The term label stands over its value. */
+@media (max-width:650px) and (min-height:601px), (max-width:650px) and (max-height:600px) {
+  ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; column-gap:16px !important; height:100% !important; }
+  ${D} .sx-ct__dossier { min-width:0 !important; }
+  ${D} .sx-dossier { display:grid !important; grid-template-columns:minmax(0, 1fr) !important; grid-auto-rows:max-content !important; align-content:start !important;
+    height:100% !important; overflow-y:auto !important; overscroll-behavior:contain; row-gap:0 !important; padding:6px 4px 0 0 !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; }
+  ${D} .sx-dossier::before, ${D} .sx-dossier::after { content:none !important; }
+  ${D} .sx-dossier > * { grid-column:1 !important; grid-row:auto !important; width:auto !important; }
+  ${D} .sx-dossier > .orr-ct-route { display:none !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-1 !important; position:static !important; margin:0 0 8px !important; }
+  ${D} .sx-dossier__title { font-size:16px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; }
+  ${D} .sx-dossier .k-hero--hero { flex-wrap:wrap !important; margin:0 0 4px !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:24px !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__w { letter-spacing:.08em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier > .orr-ct-scales { position:static !important; inset:auto !important; transform:none !important; width:auto !important; max-width:100% !important; margin:8px 0 0 !important; }
+  ${D} .sx-dossier__terms > li { grid-template-columns:minmax(0, 1fr) !important; row-gap:1px !important; }
+  ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier > .k-caps { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:.1em !important; line-height:1.3 !important; }
+  /* YOURS: the title stands over its objective line, each in its own row, TRACK beside them */
+  ${D} .sx-ct__jobs .sx-job { display:grid !important; grid-template-columns:minmax(0, 1fr) auto !important; grid-template-rows:auto auto !important;
+    grid-template-areas:"title track" "meta track" !important; column-gap:8px !important; row-gap:1px !important; align-items:center !important; height:auto !important; }
+  ${D} .sx-ct__jobs .sx-job > .sx-job__title { grid-area:title !important; }
+  ${D} .sx-ct__jobs .sx-job > .sx-job__meta { grid-area:meta !important; }
+  ${D} .sx-ct__jobs .sx-job > :is(.sx-job__title, .sx-job__meta) { position:static !important; display:block !important; max-width:none !important; height:auto !important; min-width:0 !important;
+    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; -webkit-line-clamp:unset !important; line-height:1.3 !important; margin:0 !important; transform:none !important; }
+  ${D} .sx-ct__jobs .sx-job > .sx-job__track { grid-area:track !important; position:static !important; margin:0 !important; }
+}
+/* BAR in the same narrow, tall desktop window: the 360px rail left the reading a ~190px strip, so the contact's
+   name set one syllable a line ("Capt / ain") and the reply and questions fell out of sight. The rail and the reading
+   share the width, each contact's role stands under the name, and the portrait sits beside the name. */
+@media (max-width:650px) and (min-height:601px), (max-width:650px) and (max-height:600px) {
+  ${D} .k-panel.sx-bar { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; column-gap:16px !important; }
+  ${D} .sx-bar__rows .sx-bar-row { display:block !important; }
+  ${D} .sx-bar-row__role { display:block !important; margin-top:1px !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; max-width:100% !important; }
+  ${D} .sx-bar__stage .sx-talk { padding-left:0 !important; }
+  ${D} .sx-talk__head { display:grid !important; grid-template-columns:minmax(0, 1fr) 56px !important; column-gap:10px !important; align-items:start !important; }
+  ${D} .sx-talk__head > .sx-talk__id { display:contents !important; }
+  ${D} .sx-talk__head .sx-talk__role { grid-column:1 !important; grid-row:1 !important; margin:0 0 4px !important; }
+  ${D} .sx-talk__name { grid-column:1 !important; grid-row:2 !important; margin:0 !important; font-size:20px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; hyphens:none !important; }
+  ${D} .sx-talk__head .sx-talk__memory { grid-column:1 / -1 !important; grid-row:3 !important; font-size:13.5px !important; line-height:1.4 !important; max-width:none !important; margin-top:8px !important; }
+  ${D} .sx-talk__reply, ${D} .sx-talk__reply.is-said { font-size:14px !important; line-height:1.45 !important; max-width:none !important; margin-top:10px !important; }
+  ${D} .sx-talk__head > .sx-talk__avatar { grid-column:2 !important; grid-row:1 / span 2 !important; align-self:center !important; position:relative !important; inset:auto !important; width:56px !important; height:56px !important; max-height:none !important; }
+  ${D} .sx-talk__avatar::after { display:none !important; }
+}
+/* …and under 481 two halves cut the roles and the questions: the contacts stand over the reading, each scrolling.
+   The reading gets two thirds, its questions settle at the foot, and the whole reading scrolls as one. */
+@media (max-width:480px) and (min-height:601px) {
+  ${D} .k-panel.sx-bar { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 1fr) minmax(0, 2fr) !important; row-gap:8px !important; }
+  ${D} .sx-bar__stage .sx-talk { display:flex !important; flex-direction:column !important; min-height:100% !important; }
+  ${D} .sx-bar__stage .sx-talk__choices { margin-top:auto !important; padding-top:6px !important; padding-bottom:2px !important; }
+  ${D} .sx-bar__stage .sx-talk__choices > li .sx-choice { padding-top:7px !important; padding-bottom:7px !important; }
+  ${D} .k-panel.sx-bar > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
+  ${D} .sx-bar__hang { overflow-y:auto !important; overscroll-behavior:contain; padding-top:0 !important; }
+  ${D} .sx-bar__rows .sx-bar-row { padding-top:3px !important; padding-bottom:3px !important; }
+  ${D} .sx-bar__stage { padding-top:0 !important; }
+  ${D} .sx-bar__stage .sx-talk > * + * { margin-top:6px !important; }
+  ${D} .sx-talk__head .sx-talk__memory { margin-top:4px !important; }
+  ${D} .sx-talk__head > .sx-talk__avatar { width:44px !important; height:44px !important; }
+}
+/* …the reading there is ~174px tall, so the contact's opener pushed the second and third questions out of sight and an
+   answer pushed out the rest: a tap read as doing nothing. The role (already on the contact's row) and the key hint step
+   aside, the portrait shrinks beside the name, and once a question is answered the answer stands in for the opener. */
+@media (max-width:480px) and (min-height:601px) {
+  ${D} .sx-bar__stage .sx-talk__head { align-self:stretch !important; row-gap:0 !important; grid-template-rows:minmax(26px, auto) auto !important; }
+  ${D} .sx-bar__stage .sx-talk__head .sx-talk__role, ${D} .sx-bar__stage .sx-talk__keys { display:none !important; }
+  ${D} .sx-bar__stage .sx-talk__name { grid-row:1 !important; align-self:center !important; }
+  ${D} .sx-bar__stage .sx-talk__head > .sx-talk__avatar { grid-row:1 !important; width:26px !important; height:26px !important; margin:0 !important; transform:none !important; }
+  ${D} .sx-bar__stage .sx-talk__head .sx-talk__memory { grid-row:2 !important; }
+  ${D} .sx-bar__stage .sx-talk__choices > li .sx-choice { padding-top:4px !important; padding-bottom:4px !important; }
+  ${D} .sx-bar__stage .sx-talk:has(.sx-talk__reply.is-said) .sx-talk__memory { display:none !important; }
+}
+/* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier. At 481–580 and 861+
+   tall (540×900) the halves were ~250px: the posted titles ghosted out and YOURS printed its title over TRACKED, so it stacks too. */
+@media (max-width:480px) and (min-height:601px), (max-width:580px) and (min-height:861px) {
+  ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
+  ${D} .k-panel.sx-ct > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
+  /* each half scrolls once: the board and the dossier plate stop being second scrollers whose fades masked the only row in view */
+  ${D} .sx-ct__hang > .sx-ct__board, ${D} .sx-ct__dossier > .sx-dossier { flex:none !important; height:auto !important; max-height:none !important;
+    overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; }
+  /* the dossier half opens on which job ACCEPT takes: kind and title, then the verbs, then the terms */
+  ${D} .sx-dossier > .k-caps { order:-3 !important; }
+  ${D} .sx-dossier > .sx-dossier__title { order:-2 !important; margin-bottom:8px !important; }
+}
+/* ≤650 wide and only 601–800 tall the head leaves the Missions body 100–200px (640×601: 101, 600×700: 184, 390×700: 182 for board
+   and dossier together): the dossier's 26px pool inset above and below took half of it and cut ACCEPT at the foot (640×601 by 7px,
+   390×700 by 36px). The inset closes to 2px (the screen-reader route and risk lines keep a strip of their own above the kind) and the
+   dossier opens on its verb. */
+@media (max-width:650px) and (min-height:601px) and (max-height:800px) {
+  ${D} .sx-ct__dossier { padding:0 0 0 10px !important; }
+  ${D} .sx-dossier { padding-top:2px !important; }
+}
+/* the board shrinks under a whole row only at 720 tall or less (600×700: a 51px board for 56px rows); at 721–800 it keeps two rows and YOURS */
+@media (max-width:650px) and (min-height:601px) and (max-height:720px) {
+  ${D} .sx-ct__hang { overscroll-behavior:contain; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; }
+  ${D} .sx-ct__hang > .sx-ct__board { flex:none !important; height:auto !important; max-height:none !important;
+    overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; }
+}
+/* …under 481 the dossier is the lower half (~95px at 390×700): it gets three fifths, but the board never drops under the 66px
+   FEATURED row master shows at 420×601 (its text keeps the board labels' 26px inset),
+   kind and title close up, and ACCEPT sits right under the title inside the first screen */
+@media (max-width:480px) and (min-height:601px) and (max-height:800px) {
+  ${D} .k-panel.sx-ct { grid-template-rows:minmax(66px, 2fr) minmax(0, 3fr) !important; row-gap:8px !important; }
+  ${D} .sx-ct__dossier { padding-left:26px !important; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier > .sx-dossier__title { margin:2px 0 6px !important; }
+}
+/* …and at 601–660 tall (420×601: a 90px dossier) the kind steps under the verb so the title and ACCEPT still share the first screen */
+@media (max-width:480px) and (min-height:601px) and (max-height:660px) {
+  ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin-top:0 !important; }
+  ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+}
+/* …481–580 wide the station head runs taller (540×900 leaves board and dossier ~195px): the board keeps its 66px FEATURED floor
+   and the dossier opens on the title with ACCEPT right under it, the kind stepping below, so the verb stays on the first screen */
+@media (min-width:481px) and (max-width:580px) and (min-height:861px) and (max-height:1000px) {
+  ${D} .k-panel.sx-ct { grid-template-rows:minmax(66px, 2fr) minmax(0, 3fr) !important; row-gap:8px !important; }
+  ${D} .sx-ct__dossier { padding-top:0 !important; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier { padding-top:2px !important; }
+  ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin:0 0 6px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+  ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
+}
+/* below 700 the term value column would be under ~70px and split words ("contr/act"): the label stands over its value */
+@media (min-width:651px) and (max-width:699px) and (max-height:800px) {
+  ${D} .sx-dossier__terms > li { grid-template-columns:minmax(0, 1fr) !important; row-gap:1px !important; }
+}
+@media (max-width:1400px) {
+  ${T} .sx-dossier { column-gap:24px; }
+}
+
+/* every figure in these tabs is the thin numeral (ORRERY §3.4) */
+${T} :is(.sx-fac-heroes, .sx-fab-heroes, .sx-ledger__read-hero) .k-hero__n { font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important; }
+
+/* ================================ FACTIONS ================================================== */
+/* the powers on the ladder: a name and its standing; the crests live on the orbit */
+${T} .sx-fac__rail { position:relative; }
+${T} .sx-fac__rail > .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; padding-left:26px !important; }
+${rail('.sx-fac__rows', '.sx-fac__rows .sx-fac-row', '.is-active, [aria-selected="true"]')}
+${T} .sx-fac__rows > li { display:block !important; }
+${T} .sx-fac__rows .sx-fac-row { display:grid !important; grid-template-columns:minmax(0, 1fr) 56px; align-items:baseline; column-gap:10px;
+  padding:7px 0 7px 26px !important; min-height:0 !important; height:auto !important; width:100% !important; text-align:left; }
+${T} .sx-fac-row__body { display:contents !important; }
+${T} .sx-fac-row__crest, ${T} .sx-fac-row__bar { display:none !important; }
+${T} .sx-fac-row__name { font-family:var(--dp-face-body, "Instrument Sans") !important; font-size:13px !important; font-weight:560; letter-spacing:.02em !important;
+  text-transform:none !important; color:rgb(${BONE} / .86) !important; }
+${T} .sx-fac-row__name > .k-62 { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; display:block; margin-bottom:2px; }
+${T} .sx-fac-row:is(.is-active, [aria-selected="true"]) .sx-fac-row__name { color:rgb(250 247 238) !important; }
+${T} .sx-fac-row__tier { text-align:right; font-variant-numeric:tabular-nums; font-size:13px !important; color:rgb(248 244 234) !important; }
+${T} .sx-fac-row__tier.k-bad { color:var(--dp-danger, #ff5038) !important; }
+${T} .sx-fac-row__tier.k-good { color:rgb(248 244 234) !important; }
+/* the stage: the orbit at the left, the reading beside it */
+${T} .sx-fac__stage { display:grid !important; grid-template-columns:minmax(300px, 40%) minmax(0, 1fr); column-gap:clamp(24px, 3vw, 56px); align-items:start; align-content:start; }
+${T} .orr-fac-orbit { position:sticky; top:0; width:100%; height:clamp(320px, 54vh, 560px); }
+${T} .sx-fac-reading { min-width:0; position:relative; isolation:isolate; }
+${T} .sx-fac-reading::before { content:""; position:absolute; z-index:-1; inset:-30px -60px; pointer-events:none; background:radial-gradient(closest-side, rgb(7 8 10 / .82), rgb(7 8 10 / .62) 60%, rgb(7 8 10 / 0)); }
+${T} .sx-fac-overview { padding-right:0 !important; }
+${T} .sx-fac-overview > * + * { margin-top:10px !important; }
+${T} .sx-fac-crest { display:none !important; }
+${T} .sx-fac-overview > .k-caps, ${T} .sx-fac__detail .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-fac-ident__name { max-width:none !important; margin-top:6px !important; }
+${T} .sx-fac-ident__name .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; color:inherit !important; }
+${T} .sx-fac-ident__name .sf-entity-link:is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .45) !important; text-underline-offset:6px; outline:none !important; }
+${T} .sx-fac-ident__flag { font-size:13px !important; color:rgb(${BONE} / .72) !important; }
+${T} .sx-fac-heroes { display:flex !important; flex-wrap:wrap; gap:14px 40px !important; margin-top:14px !important; }
+${T} .sx-fac-heroes .k-hero { ${PLAIN} padding:0 !important; min-height:0 !important; }
+${T} .sx-fac-heroes .k-hero__n { font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 300 !important; font-weight:300 !important;
+  font-size:clamp(28px, 3.6vh, 40px) !important; line-height:1 !important; letter-spacing:-.01em !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
+${T} .sx-fac-heroes .k-hero__n.k-bad { color:var(--dp-danger, #ff5038) !important; }
+${T} .sx-fac-heroes .k-hero__n.k-good { color:rgb(248 244 234) !important; }
+${T} .sx-fac-heroes .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .62) !important; max-width:30ch !important; line-height:1.45; margin-top:5px; }
+${T} .sx-fac__detail { display:grid !important; grid-template-columns:1fr !important; gap:14px !important; margin-top:16px !important; }
+${T} .sx-fac-ladder:not(.sx-fac-contracts) .sx-ladder { display:none !important; }
+${T} .orr-standing { margin-top:10px; max-width:600px; }
+${T} .sx-fac-contracts .sx-ladder, ${T} .sx-fac-network__rows { ${PLAIN} }
+${T} .sx-fac-contracts .sx-ladder__step { ${PLAIN} display:grid !important; grid-template-columns:56px minmax(0, 1fr); column-gap:14px; align-items:baseline; padding:5px 0 !important; min-height:0 !important; }
+${T} .sx-fac-contracts .sx-ladder__min { order:-1; ${LABEL} font-size: 12px !important; letter-spacing:.08em !important; text-align:left !important; color:rgb(${BONE} / .55) !important; font-variant-numeric:tabular-nums; }
+${T} .sx-fac-contracts .sx-ladder__step.is-reached .sx-ladder__min { color:rgb(248 244 234) !important; }
+${T} .sx-fac-contracts .sx-ladder__name { font-size:12.5px !important; color:rgb(${BONE} / .8) !important; }
+${T} .sx-fac-contracts .sx-ladder__step.is-reached .sx-ladder__name { color:rgb(248 244 234) !important; }
+${T} .sx-fac-contracts .k-row__sub { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .5) !important; }
+${T} .sx-fac-intent .k-sentence { font-size:13px !important; color:rgb(${BONE} / .8) !important; }
+${T} .sx-fac-network__rows > li { display:block !important; }
+${T} .sx-fac-node { ${PLAIN} display:grid !important; grid-template-columns:minmax(0, 1fr) 56px 80px; column-gap:12px; align-items:baseline; padding:5px 0 !important; min-height:0 !important;
+  width:100% !important; text-align:left; font-size:12.5px !important; color:rgb(${BONE} / .86) !important; }
+${T} .sx-fac-node::after { display:none !important; }
+${T} .sx-fac-node .k-row__name { font-size:12.5px !important; color:rgb(248 244 234) !important; }
+${T} .sx-fac-node__kind { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; }
+${T} .sx-fac-node__kind.k-good { color:rgb(248 244 234) !important; }
+${T} .sx-fac-node__kind.k-bad { color:rgb(${BONE} / .6) !important; }
+${T} .sx-fac-node .k-row__num { text-align:right; font-variant-numeric:tabular-nums; color:rgb(${BONE} / .8) !important; }
+${T} .sx-fac-node .k-row__num .k-row__sub { color:rgb(${BONE} / .55) !important; }
+${T} .sx-fac-node:is(:hover, :focus-visible) { outline:none !important; }
+${T} .sx-fac-node:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand, #f2b950) !important; }
+${T} .sx-fac-network__empty { font-size:12.5px !important; color:rgb(${BONE} / .6) !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-fac__stage { grid-template-columns:minmax(260px, 36%) minmax(0, 1fr); column-gap:20px; }
+  ${T} .orr-fac-orbit { height:clamp(260px, 44vh, 320px); }
+  ${T} .sx-fac-overview > * + * { margin-top:6px !important; }
+  ${T} .sx-fac-ident__name { font-size:26px !important; }
+  ${T} .sx-fac-heroes { gap:8px 24px !important; margin-top:8px !important; }
+  ${T} .sx-fac-heroes .k-hero__n { font-size:26px !important; }
+  ${T} .sx-fac-heroes .k-hero__w { font-size: 12px !important; margin-top:3px; }
+  ${T} .sx-fac__detail { gap:12px !important; margin-top:12px !important; }
+  ${T} .sx-fac-contracts .sx-ladder__step { padding:3px 0 !important; }
+  ${T} .sx-fac__rows .sx-fac-row { padding-top:5px !important; padding-bottom:5px !important; }
+}
+
+/* ================================ INDUSTRY ================================================== */
+${T} .sx-ind__list { position:relative; }
+${T} .sx-ind-process__head { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; padding-left:26px !important; margin:0 0 6px !important; white-space:normal !important; }
+${T} .sx-ind-process + .sx-ind-process { margin-top:18px !important; }
+${rail('.sx-ind-process__items', '.sx-ind-process__items .sx-ind-row', '.is-active, [aria-selected="true"]')}
+${T} .sx-ind-process__items > li { display:block !important; }
+${T} .sx-ind-process__items .sx-ind-row { display:flex !important; padding:6px 0 6px 26px !important; min-height:0 !important; height:auto !important; width:100% !important; text-align:left; }
+${T} .sx-ind-row__process { display:none !important; }
+${T} .sx-ind-row__body { gap:1px !important; }
+${T} .sx-ind-row__name, ${T} .sx-ind-row__name:is(.k-good, .k-signal, .k-bad) { font-family:var(--dp-face-body, "Instrument Sans") !important; font-size:13px !important; font-weight:560;
+  letter-spacing:.02em !important; text-transform:none !important; color:rgb(${BONE} / .86) !important; }
+${T} .sx-ind-row:is(.is-active, [aria-selected="true"]) .sx-ind-row__name { color:rgb(250 247 238) !important; }
+${T} .sx-ind-process__items .sx-ind-row:is(:hover, :focus-visible) .sx-ind-row__name { color:rgb(255 250 240) !important; text-shadow:0 0 10px rgb(255 250 236 / .3); }
+${T} .sx-ind-process__items .sx-ind-row:not(.is-active, [aria-selected="true"]):is(:hover, :focus-visible)::before { left:2px !important; width:11px !important; height:2px !important; background:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(${BONE} / .45) !important; }
+${T} .sx-ind-process__items .sx-ind-row:active::before { background:var(--dp-hand, #f2b950) !important; box-shadow:0 0 8px rgb(242 185 80 / .55) !important; }
+
+${T} .sx-ind-row__tier { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+/* the reading: the chain is the instrument; the inputs a ledger under it; Fabricate the Lamp Key */
+${T} .sx-fab { padding-right:0 !important; max-width:780px; }
+${T} .sx-fab > * + * { margin-top:10px !important; }
+${T} .sx-fab-head__cat, ${T} .sx-fab-col-k { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-fab-head__name { margin-top:6px !important; }
+${T} .sx-fab-head__name .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; color:inherit !important; }
+${T} .sx-fab-head__name .sf-entity-link:is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .45) !important; text-underline-offset:6px; outline:none !important; }
+${T} .sx-fab-head__desc { font-size:13px !important; color:rgb(${BONE} / .78) !important; max-width:60ch; }
+${T} .orr-ind-chain { height:clamp(150px, 22vh, 190px); margin:16px 0 4px !important; }
+${T} .sx-fab-heroes { display:none !important; }
+${T} .sx-fab-col-k { margin-top:12px !important; }
+${T} .sx-fab-inputs { ${PLAIN} max-width:560px !important; margin-top:6px !important; }
+${T} .sx-fab-in { ${PLAIN} display:grid !important; grid-template-columns:minmax(0, 1fr) auto auto; column-gap:18px; align-items:baseline; padding:5px 0 !important; min-height:0 !important; }
+${T} .sx-fab-in__name, ${T} .sx-fab-in__name.k-bad { font-size:13px !important; color:rgb(248 244 234) !important; }
+${T} .sx-fab-in.is-missing .sx-fab-in__name { color:rgb(${BONE} / .78) !important; }
+${T} .sx-fab-in__name .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; color:inherit !important; }
+${T} .sx-fab-in__name .sf-entity-link:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
+${T} .sx-fab-in__q, ${T} .sx-fab-in__q.k-bad { font-size:13px !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
+${T} .sx-fab-in.is-missing .sx-fab-in__q { color:rgb(${BONE} / .8) !important; }
+${T} .sx-fab-in__q .k-62 { color:rgb(${BONE} / .55) !important; }
+${T} .sx-fab-in__q { display:none !important; }
+${T} .sx-fab-in { grid-template-columns:minmax(0, 1fr) auto; }
+${word('.sx-fab-in__source')}
+${T} .sx-fab-notes { ${PLAIN} gap:4px 18px !important; margin-top:8px !important; }
+${T} .sx-fab-note, ${T} .sx-fab-note.k-bad { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-fab-status, ${T} .sx-fab-status:is(.k-good, .k-signal, .k-bad) { font-size:12.5px !important; color:rgb(${BONE} / .72) !important; }
+${T} .sx-fab-foot { ${PLAIN} margin-top:16px !important; }
+${T} .sx-fab-build.orr-lampkey { padding:0 26px 0 20px !important; min-height:44px !important; font-size:15px !important; letter-spacing:.14em !important; color:#1c1406 !important;
+  background:none !important; background-image:none !important; text-shadow:none !important; border:0 !important; box-shadow:none !important; border-radius:0 !important; }
+${T} .sx-fab-build.orr-lampkey:is(:hover, :focus-visible, :active) { color:#1c1406 !important; background-image:none !important; text-shadow:none !important; }
+${T} .sx-fab-build.orr-lampkey:disabled { color:rgb(${BONE} / .55) !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-fab > * + * { margin-top:6px !important; }
+  ${T} .sx-fab-head__name { font-size:26px !important; }
+  ${T} .orr-ind-chain { height:clamp(120px, 20vh, 150px); margin:8px 0 0 !important; }
+  ${T} .sx-fab-in { padding:3px 0 !important; }
+  ${T} .sx-fab-build.orr-lampkey { min-height:38px !important; font-size:13.5px !important; }
+  ${T} .sx-ind-process__items .sx-ind-row { padding-top:4px !important; padding-bottom:4px !important; }
+  ${T} .sx-ind-process + .sx-ind-process { margin-top:10px !important; }
+}
+
+/* ================================ BAR ======================================================= */
+/* who is here, on the ladder */
+${T} .sx-bar__rail > .k-caps, ${T} .sx-bar__leads > .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; padding-left:26px !important; }
+${rail('.sx-bar__rows', '.sx-bar__rows .sx-bar-row', '.is-active, [aria-selected="true"], [aria-current="true"]')}
+${T} .sx-bar__rows { border:0 !important; box-shadow:none !important; clip-path:none !important; }
+${T} .sx-bar__rows > li { display:block !important; }
+${T} .sx-bar__rows .sx-bar-row { ${PLAIN} display:flex !important; flex-direction:column !important; align-items:flex-start !important; gap:2px !important; padding:7px 0 7px 26px !important;
+  min-height:0 !important; height:auto !important; width:100% !important; text-align:left; font-family:var(--dp-face-body, "Instrument Sans") !important; font-size:13px !important;
+  font-weight:560 !important; font-variation-settings:normal !important; letter-spacing:.02em !important; text-transform:none !important; color:rgb(${BONE} / .86) !important; }
+${T} .sx-bar__rows .sx-bar-row::after { display:none !important; }
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"]) { color:rgb(250 247 238) !important; }
+${T} .sx-bar__rows .sx-bar-row:is(:hover, :focus-visible) { color:rgb(255 250 240) !important; outline:none !important; }
+${T} .sx-bar-row__role { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+/* leads and intel: ledgers, and words that go */
+${T} .sx-bar__leads > .k-caps { margin-top:18px !important; }
+${T} .sx-lead__rows, ${T} .sx-intel__rows, ${T} .sx-bar__foot { ${PLAIN} }
+${T} .sx-lead { ${PLAIN} display:grid !important; grid-template-columns:minmax(0, 1fr) auto; column-gap:12px; align-items:baseline; padding:6px 0 6px 26px !important; min-height:0 !important; }
+${T} .sx-lead__body { display:flex !important; flex-direction:column; gap:1px; min-width:0; overflow:visible; }
+${T} .sx-lead__t { display:block !important; font-size:12.5px !important; line-height:1.3; color:rgb(248 244 234) !important; white-space:normal !important; overflow:visible !important;
+  text-overflow:clip !important; max-width:none !important; }
+${T} .sx-lead__t .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; color:inherit !important; }
+${T} .sx-lead__t .sf-entity-link:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
+${T} .sx-lead__s { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+${word('.sx-lead__go')}
+${word('.sx-bar__log')}
+${T} .sx-bar__foot { padding-left:26px !important; margin-top:6px !important; }
+${T} .sx-intel { ${PLAIN} display:grid !important; grid-template-columns:76px minmax(0, 1fr); column-gap:12px; align-items:baseline; padding:5px 0 5px 26px !important; min-height:0 !important; }
+${T} .sx-intel .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-intel .k-row__sub { font-size:12px !important; color:rgb(${BONE} / .82) !important; }
+${T} .sx-bar__leads .sx-muted { font-size:12.5px !important; color:rgb(${BONE} / .6) !important; padding-left:26px; }
+/* the talk: the portrait is the cinema behind the words; the waveform breathes under the name */
+${T} .sx-bar__stage { position:relative; overflow:hidden auto; }
+${T} .sx-bar__stage .sx-talk { position:relative; display:block !important; padding-right:0 !important; min-height:100%; }
+${T} .sx-bar__stage .sx-talk > * + * { margin-top:14px !important; }
+${T} .sx-talk__head { display:block !important; }
+${T} .sx-talk__id { position:relative; z-index:2; max-width:min(52%, 620px); }
+${T} .sx-talk__id > * + * { margin-top:10px !important; }
+${T} .sx-talk__role { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-talk__name { font-size:clamp(34px, 4.6vh, 52px) !important; line-height:.95 !important; margin-top:6px !important; }
+${T} .orr-bar-wave { width:210px; margin:12px 0 0 !important; }
+${T} .sx-talk__memory { font-size:12.5px !important; color:rgb(${BONE} / .62) !important; max-width:44ch; }
+${T} .sx-talk__avatar { position:absolute !important; z-index:1; right:-6% !important; top:-4% !important; width:min(58%, 760px) !important; height:auto !important; aspect-ratio:1; pointer-events:none; }
+${T} .sx-talk__avatar :is(img, canvas, .sx-portrait) { width:100% !important; height:100% !important; object-fit:cover; border-radius:0 !important; border:0 !important;
+  -webkit-mask-image:radial-gradient(ellipse 58% 60% at 52% 46%, #000 34%, transparent 72%); mask-image:radial-gradient(ellipse 58% 60% at 52% 46%, #000 34%, transparent 72%); }
+${T} .sx-talk__reply { position:relative; z-index:2; font-size:17px !important; line-height:1.45 !important; max-width:46ch !important; color:rgb(248 244 234) !important; margin-top:22px !important;
+  text-shadow:0 0 18px rgb(0 0 0 / .8); }
+${T} .sx-talk__reply.is-idle { color:rgb(${BONE} / .72) !important; }
+${T} .sx-talk__choices { position:relative; z-index:2; ${PLAIN} display:flex !important; flex-direction:column; align-items:flex-start; gap:6px; margin-top:22px !important; }
+${T} .sx-talk__choices > li { display:block; }
+${T} .sx-choice { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:4px 0 !important; font-size:12px !important; letter-spacing:.16em !important;
+  color:rgb(${BONE} / .86) !important; text-align:left; text-shadow:0 0 14px rgb(0 0 0 / .8); }
+${T} .sx-choice::after { display:none !important; }
+${T} .sx-choice::before { all:unset !important; content:"›  " !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-choice:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
+${T} .sx-choice:is(:hover, :focus-visible)::before { color:var(--dp-hand, #f2b950) !important; }
+${T} .sx-talk .sx-muted { font-size:12.5px !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-bar-offer { ${PLAIN} position:relative; z-index:2; padding:0 !important; max-width:52%; }
+${T} .sx-bar-offer__verb, ${T} .sx-bar-offer .k-word { ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; padding:4px 0 !important; min-height:0 !important; }
+${T} .sx-bar-offer__verb::before { all:unset !important; content:"›  " !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-bar-offer__verb:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
+${T} .sx-bar-offer__stakes, ${T} .sx-bar-offer__state, ${T} .sx-bar-offer__warning, ${T} .sx-bar-offer__blocker { font-size:12.5px !important; color:rgb(${BONE} / .75) !important; }
+${T} .sx-bar-offer__chips { ${PLAIN} }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-bar__stage .sx-talk > * + * { margin-top:8px !important; }
+  ${T} .sx-talk__name { font-size:30px !important; }
+  ${T} .sx-talk__reply { font-size:14.5px !important; margin-top:12px !important; }
+  ${T} .sx-talk__choices { margin-top:12px !important; gap:2px; }
+  ${T} .sx-talk__avatar { width:min(60%, 520px) !important; right:-8% !important; top:-6% !important; }
+  ${T} .sx-bar__leads > .k-caps { margin-top:8px !important; }
+  ${T} .sx-lead, ${T} .sx-intel { padding-top:3px !important; padding-bottom:3px !important; }
+  ${T} .sx-lead__s { display:none !important; }
+  ${T} .sx-bar__leads > .k-caps { margin-top:10px !important; }
+  ${T} .sx-bar__rows .sx-bar-row { padding-top:4px !important; padding-bottom:4px !important; }
+}
+
+/* ================================ LEDGER ==================================================== */
+${T} .sx-ledger { grid-template-columns:minmax(0, 560px) minmax(0, 1fr) !important; column-gap:clamp(28px, 4vw, 72px) !important; }
+${T} .sx-ledger .st-sub-h { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800 !important; font-weight:800 !important;
+  font-size:clamp(28px, 3.4vh, 40px) !important; letter-spacing:.005em !important; line-height:1 !important; color:rgb(248 244 234) !important; text-transform:none; text-shadow:none !important; }
+${T} .sx-ledger .st-ledger-intro { font-size:13px !important; color:rgb(${BONE} / .7) !important; font-family:var(--dp-face-body, "Instrument Sans") !important; letter-spacing:0 !important;
+  text-transform:none !important; font-weight:400 !important; margin-top:8px !important; }
+${T} .sx-ledger .st-ledger-status { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; margin-top:14px !important; }
+${T} .sx-ledger .st-ledger-empty:not([hidden]) { ${PLAIN} display:block !important; flex:none !important; align-self:flex-start !important; min-height:0 !important; height:auto !important; padding:0 !important;
+  font-family:var(--dp-face-body, "Instrument Sans") !important; font-size:13px !important; font-weight:400 !important; letter-spacing:0 !important;
+  text-transform:none !important; color:rgb(${BONE} / .66) !important; margin-top:10px !important; max-width:44ch; }
+${rail('.st-ledger-list', '.st-ledger-list .st-ledger-entry', '[aria-selected="true"]')}
+${T} .sx-ledger .st-ledger-list { margin-top:14px !important; grid-row:4; }
+${T} .sx-ledger .st-ledger-empty { grid-row:4; align-self:start; }
+${T} .sx-ledger .st-ledger-list[hidden] { display:none !important; }
+${T} .sx-ledger .st-ledger-entry { ${PLAIN} display:block !important; padding:8px 0 8px 26px !important; min-height:0 !important; height:auto !important; }
+${T} .sx-ledger .st-ledger-entry-body { grid-template-columns:auto minmax(0, 1fr) auto !important; column-gap:14px !important; }
+${T} .sx-ledger .st-ledger-cycle { ${LABEL} font-family:var(--dp-face-label, "Archivo") !important; font-size: 12px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .55) !important; font-variant-numeric:tabular-nums; }
+${T} .sx-ledger .st-ledger-type { ${PLAIN} ${LABEL} font-family:var(--dp-face-label, "Archivo") !important; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; padding:0 !important; }
+${T} .sx-ledger .st-ledger-type.k-signal { color:rgb(${BONE} / .8) !important; }
+${T} .sx-ledger .st-ledger-line { font-size:13px !important; color:rgb(248 244 234) !important; }
+${T} .sx-ledger .st-ledger-annotation { font-size: 12px !important; color:rgb(${BONE} / .66) !important; }
+${T} .sx-ledger .st-ledger-nav { ${PLAIN} gap:0 18px !important; margin-top:10px !important; padding-left:26px; }
+${word('.st-ledger-nav [data-ledger-page]')}
+${word('.st-ledger-evidence-btn')}
+${T} .sx-ledger__read { ${PLAIN} padding-right:0 !important; position:relative; isolation:isolate; }
+${T} .sx-ledger__read::before { content:""; position:absolute; z-index:-1; inset:-40px -60px; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(7 8 10 / .8), rgb(7 8 10 / .6) 60%, rgb(7 8 10 / 0)); }
+${T} .sx-ledger__read-kicker { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-ledger__read-hero { ${PLAIN} padding:0 !important; }
+${T} .sx-ledger__read-num { font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important;
+  font-size:clamp(56px, 8vh, 96px) !important; line-height:1 !important; letter-spacing:-.02em !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
+${T} .sx-ledger__read-unit { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; }
+${T} .sx-ledger__read-title { font-size:clamp(22px, 2.6vh, 30px) !important; }
+${T} .sx-ledger__read-line { font-size:15px !important; line-height:1.5; color:rgb(248 244 234) !important; max-width:52ch; }
+${T} .sx-ledger__read-hand { font-size:13px !important; color:rgb(${BONE} / .72) !important; max-width:52ch; }
+${T} .sx-ledger .st-ledger-detail { ${PLAIN} padding:0 !important; }
+
+
+/* ================================ ROUND 2: FACTIONS ========================================= */
+/* the figures stand under the rim names now; the ladder is the index and takes a bone cursor (the Hand is the arm) */
+${T} .sx-fac__rows .sx-fac-row:is(.is-active, [aria-selected="true"])::before { background:rgb(248 244 234) !important; filter:none !important; }
+${T} .sx-fac__rows:is(:focus-within, :hover) .sx-fac-row:is(.is-active, [aria-selected="true"])::before { background:rgb(255 250 240) !important; filter:drop-shadow(0 0 5px rgb(248 244 234 / .6)) !important; }
+${T} .sx-fac-row__name > .k-62 { display:block; margin-bottom:1px; }
+/* the standing figure: its tier as the label above the number; the two readings smaller; captions one line */
+${T} .sx-fac-heroes { align-items:flex-start !important; gap:16px 44px !important; }
+${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:clamp(48px, 7vh, 80px) !important; }
+${T} .sx-fac-heroes .k-hero__n .sx-fac-tier { ${LABEL} display:block; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; margin-bottom:6px; }
+${T} .sx-fac-heroes .k-hero__n.k-bad .sx-fac-tier { color:var(--dp-danger, #ff5038) !important; }
+${T} .sx-fac-heroes .k-hero__w { font-family:var(--dp-face-body, "Instrument Sans") !important; font-stretch:100%; font-variation-settings:normal !important; font-weight:400 !important;
+  font-size:12.5px !important; letter-spacing:0 !important; text-transform:none !important; max-width:30ch !important; color:rgb(${BONE} / .66) !important; }
+${T} .sx-fac-heroes .k-hero__w::first-letter { text-transform:uppercase; }
+/* the contract ledger says where you stand: a light rule above the first rung not yet reached */
+${T} .sx-fac-contracts .sx-ladder__step.is-next { position:relative; margin-top:9px !important; }
+${T} .sx-fac-contracts .sx-ladder__step.is-next::before { content:"" !important; display:block !important; position:absolute !important; left:0 !important; right:0 !important; top:-5px !important;
+  width:auto !important; height:1px !important; margin:0 !important; background:linear-gradient(90deg, rgb(248 244 234 / .7), rgb(248 244 234 / 0)) !important; clip-path:none !important; }
+${T} .sx-fac-contracts .sx-ladder__step.is-next::after { content:"you are here" !important; display:block !important; position:absolute !important; left:0; top:-13px; width:auto !important; height:auto !important;
+  ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; background:none !important; }
+/* a short screen: the index folds into the ring (every crest is a button); the ring takes the width */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-fac { grid-template-columns:minmax(0, 1fr) !important; }
+  ${T} .sx-fac__rail { display:none !important; }
+  ${T} .sx-fac__stage { grid-template-columns:minmax(420px, 48%) minmax(0, 1fr) !important; column-gap:28px !important; }
+  ${T} .orr-fac-orbit { height:clamp(330px, 56vh, 420px) !important; }
+  ${T} .sx-fac-heroes { flex-wrap:nowrap !important; gap:10px 26px !important; }
+  ${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:44px !important; }
+  ${T} .sx-fac-heroes .k-hero__n { font-size:30px !important; }
+  ${T} .sx-fac-heroes .k-hero__w { font-size: 12px !important; max-width:20ch !important; }
+  ${T} .sx-fac-ident__name { font-size:24px !important; }
+  ${T} .sx-fac-ident__flag { font-size:12px !important; }
+  ${T} .sx-fac__detail { gap:10px !important; margin-top:10px !important; }
+  ${T} .orr-standing { max-width:520px; }
+  ${T} .sx-fac-contracts .sx-ladder__step { padding:2px 0 !important; }
+  ${T} .sx-fac-contracts .sx-ladder__name { font-size: 12px !important; }
+}
+
+/* ================================ ROUND 2: INDUSTRY ========================================= */
+/* the reading is three bands: the words, the chain taking every free pixel, the needs and the key */
+${T} .sx-fab { display:grid !important; grid-template-rows:auto auto auto minmax(140px, 1fr) auto auto auto auto auto; height:100%; align-content:stretch; }
+${T} .sx-fab-head__cat { grid-row:1; }
+${T} .sx-fab-head__name { grid-row:2; }
+${T} .sx-fab-head__desc { grid-row:3; }
+${T} .orr-ind-chain { grid-row:4; }
+${T} .sx-fab-col-k { grid-row:5; }
+${T} .sx-fab-inputs { grid-row:6; }
+${T} .sx-fab-notes { grid-row:7; }
+${T} .sx-fab-status { grid-row:8; }
+${T} .sx-fab-foot { grid-row:9; }
+${T} .sx-fab > .sx-muted { grid-row:6; }
+${T} .sx-fab > * + * { margin-top:0 !important; }
+${T} .sx-fab-head__name { margin-top:4px !important; }
+${T} .sx-fab-head__desc { margin-top:8px !important; }
+${T} .orr-ind-chain { height:auto !important; min-height:140px; margin:10px 0 6px !important; align-self:stretch; }
+${T} .sx-fab-heroes { display:none !important; }
+${T} .sx-fab-col-k { margin-top:4px !important; }
+/* needs: one line per material -- the name, the count, the way to source it */
+${T} .sx-fab-inputs { margin-top:2px !important; }
+${T} .sx-fab-in { grid-template-columns:minmax(0, 1fr) auto auto !important; column-gap:16px !important; padding:3px 0 !important; }
+${T} .sx-fab-in__q { display:inline-block !important; color:var(--dp-phos, #dfeeff) !important; font-size:12.5px !important; }
+${T} .sx-fab-in.is-missing .sx-fab-in__q { color:rgb(${BONE} / .85) !important; }
+${T} .sx-fab-in.is-missing .sx-fab-in__source { order:3; }
+${T} .sx-fab-notes { margin-top:4px !important; }
+${T} .sx-fab-status { margin-top:8px !important; }
+/* System reduced motion can disable the entrance animation without setting the in-game class. */
+@media (prefers-reduced-motion: reduce) {
+  ${T} .orr-ind-chain .orr-chain__rise { animation:none !important; opacity:1 !important; }
+}
+${T} .sx-fab-foot { margin-top:12px !important; align-self:end; }
+/* the ladder: the reason only on the chosen row; the tier alone on the rest */
+${T} .sx-ind-row:not(.is-active, [aria-selected="true"]) .sx-ind-row__why { display:none !important; }
+${T} .sx-ind-row__tier { font-size: 12px !important; color:rgb(${BONE} / .45) !important; }
+${T} .sx-ind-row:is(.is-active, [aria-selected="true"]) .sx-ind-row__tier { color:rgb(${BONE} / .6) !important; }
+${T} .sx-ind-process__items .sx-ind-row { padding-top:5px !important; padding-bottom:5px !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-fab { grid-template-rows:auto auto auto minmax(100px, 1fr) auto auto auto auto auto; }
+  ${T} .orr-ind-chain { min-height:100px; margin:4px 0 2px !important; }
+  ${T} .sx-fab-head__desc { display:none !important; }
+  ${T} .sx-fab-notes { display:none !important; }
+  ${T} .sx-fab-status { margin-top:4px !important; font-size: 12px !important; }
+  ${T} .sx-fab-foot { margin-top:6px !important; }
+  ${T} .sx-ind-process__items .sx-ind-row { padding-top:3px !important; padding-bottom:3px !important; }
+}
+
+/* ================================ ROUND 2: BAR ============================================== */
+/* the portrait is the full height of the bay, its face kept, only its edges dissolved; the words sit against it */
+${T} .sx-talk__avatar { right:-3% !important; top:-2% !important; width:auto !important; height:104% !important; aspect-ratio:1 !important; max-height:none !important; }
+${T} .sx-talk__avatar :is(img, canvas, .sx-portrait) { -webkit-mask-image:radial-gradient(ellipse 50% 50% at 52% 46%, #000 60%, transparent 84%) !important; mask-image:radial-gradient(ellipse 50% 50% at 52% 46%, #000 60%, transparent 84%) !important; }
+@media (min-width:1500px) {
+  ${T} .sx-bar__stage .sx-talk { padding-left:clamp(0px, calc(100% - 1100px), 300px) !important; }
+}
+/* the character's own words are the line; the stage direction steps back once spoken */
+${T} .sx-talk__memory { font-size:17px !important; line-height:1.45 !important; color:rgb(248 244 234) !important; max-width:40ch !important; text-shadow:0 0 18px rgb(0 0 0 / .8); }
+${T} .sx-talk__reply.is-idle { font-size:12.5px !important; color:rgb(${BONE} / .6) !important; margin-top:12px !important; }
+${T} .sx-talk__reply.is-said { font-size:17px !important; }
+/* the waveform spans the name; each bar carries its bloom */
+${T} .orr-bar-wave { width:min(100%, 460px) !important; height:24px !important; gap:4px !important; }
+${T} .orr-bar-wave .orr-wave__bar { width:2px; box-shadow:0 0 5px 1px rgb(236 230 216 / .3); }
+/* what you can ask is its own short ladder: a rail, sentence case, a bone cursor on the first reply */
+${T} .sx-talk__choices { padding-left:0 !important; gap:2px !important;
+  background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .2) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
+${T} .sx-talk__choices > li { position:relative; }
+${T} .sx-choice { ${PLAIN} font-family:var(--dp-face-body, "Instrument Sans") !important; font-stretch:100% !important; font-variation-settings:normal !important; font-weight:500 !important;
+  font-size:15px !important; letter-spacing:0 !important; text-transform:none !important; color:rgb(${BONE} / .88) !important; padding:6px 0 6px 26px !important; min-height:0 !important; }
+${T} .sx-choice::before { all:unset !important; content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important; height:1px !important;
+  background:rgb(${BONE} / .38) !important; }
+${T} .sx-talk__choices > li:first-child .sx-choice::before { left:2px !important; width:11px !important; height:14px !important; margin-top:-7px !important; ${HAND} background:rgb(248 244 234) !important; }
+${T} .sx-choice:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
+${T} .sx-choice:is(:hover, :focus-visible)::before { background:var(--dp-hand, #f2b950) !important; }
+${T} .sx-choice:focus-visible::before { left:2px !important; width:11px !important; height:14px !important; margin-top:-7px !important; ${HAND} }
+/* a short screen: one row per contact, and each lead on one line with its pay */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-bar__rows .sx-bar-row { flex-direction:row !important; justify-content:flex-start !important; align-items:baseline !important; gap:10px !important; padding-top:4px !important; padding-bottom:4px !important; text-align:left !important; }
+  ${T} .sx-lead__body { display:contents !important; }
+  ${T} .sx-lead { grid-template-columns:minmax(0, 1fr) auto auto !important; column-gap:12px !important; }
+  ${T} .sx-lead__s { display:block !important; font-family:var(--dp-face-numeral, "Archivo") !important; font-size:12px !important; letter-spacing:0 !important; text-transform:none !important;
+    color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
+  ${T} .sx-talk__avatar { height:100% !important; right:-6% !important; top:0 !important; }
+  ${T} .sx-talk__memory { font-size:14px !important; }
+  ${T} .sx-talk__reply.is-said { font-size:14px !important; }
+  ${T} .sx-choice { font-size:13.5px !important; padding-top:4px !important; padding-bottom:4px !important; }
+}
+
+/* ================================ ROUND 3b / 2b ============================================= */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  /* a posted title wraps rather than ellipsising (the badge row above it counted as a line) */
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; -webkit-line-clamp:unset !important; max-height:none !important; display:block !important; }
+}
+
+/* ================================ ROUND 3: BAR ============================================== */
+/* the mask sits on the face: a tight oval, solid through the head and shoulders, gone before the photo's own room shows */
+${T} .sx-talk__avatar :is(img, canvas, .sx-portrait) { -webkit-mask-image:radial-gradient(ellipse 40% 54% at 61% 47%, #000 50%, transparent 86%) !important;
+  mask-image:radial-gradient(ellipse 40% 54% at 61% 47%, #000 50%, transparent 86%) !important; }
+/* the photo's own room (a lamp up and right of the face) fades on the wrapper, so the two masks nest instead of composing */
+${T} .sx-talk__avatar { -webkit-mask-image:radial-gradient(circle at 73% 36%, transparent 7%, #000 17%) !important; mask-image:radial-gradient(circle at 73% 36%, transparent 7%, #000 17%) !important; }
+/* the portrait comes in from the edge so the face meets the words; nothing pads the words away from it */
+${T} .sx-talk__avatar { right:8% !important; }
+@media (min-width:1500px) { ${T} .sx-bar__stage .sx-talk { padding-left:0 !important; } }
+/* leads hang on the same rail as everything else on the tab: title, pay as a numeral, the verb */
+${rail('.sx-lead__rows', '.sx-lead__rows .sx-lead', '.is-chosen-never')}
+${T} .sx-lead { display:grid !important; grid-template-columns:minmax(0, 1fr) auto auto !important; column-gap:12px !important; align-items:baseline !important; padding:6px 0 6px 26px !important; }
+${T} .sx-lead__body { display:contents !important; }
+${T} .sx-lead__s { display:block !important; font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 500 !important; font-weight:500 !important;
+  font-size:12.5px !important; letter-spacing:0 !important; text-transform:none !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; text-align:right; }
+/* the choices carry no rest cursor: the mark answers the pointer or the focus, in bone, so the contacts' Hand stays the one Hand */
+${T} .sx-talk__choices > li:first-child .sx-choice::before { left:4px !important; width:8px !important; height:1px !important; margin-top:0 !important; clip-path:none !important; background:rgb(${BONE} / .38) !important; }
+${T} .sx-choice:is(:hover, :focus-visible) { color:rgb(255 250 240) !important; text-shadow:0 0 14px rgb(0 0 0 / .8), 0 0 12px rgb(255 250 236 / .3) !important; }
+${T} .sx-talk__choices > li .sx-choice:is(:hover, :focus-visible)::before { left:2px !important; width:11px !important; height:14px !important; margin-top:-7px !important; ${HAND} background:rgb(248 244 234) !important; }
+${T} .sx-bar-offer__verb:is(:hover, :focus-visible) { color:rgb(255 250 240) !important; }
+${T} .sx-lead__go:is(:hover, :focus-visible) { color:rgb(255 250 240) !important; }
+/* the waveform is as wide as the name (bar.js sizes the host off the glyph run) */
+${T} .orr-bar-wave { width:auto !important; max-width:100%; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  /* a short screen: intel yields (the Missions tab holds the same facts); a lead's verb is its chevron */
+  ${T} .sx-intel__head, ${T} .sx-intel__rows, ${T} .sx-intel__head + .sx-muted { display:none !important; }
+  ${T} .sx-lead { column-gap:8px !important; }
+  ${T} .sx-lead__go { font-size:0 !important; letter-spacing:0 !important; }
+  ${T} .sx-lead__go::before { font-size:14px !important; }
+}
+
+/* ================================ ROUND 4: MISSIONS ========================================= */
+/* the Hand is the orrery's arm (the amber beam to the berth); the ladder's chosen row carries a bone light cursor */
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { background:rgb(248 244 234) !important; filter:none !important; }
+${T} .sx-ct__rows:is(:focus-within, :hover) .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { background:rgb(255 250 240) !important; filter:none !important; }
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { background:radial-gradient(circle, rgb(248 244 234 / .2), rgb(248 244 234 / 0) 66%) !important; }
+${T} .sx-ct__rows:is(:focus-within, :hover) .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { background:radial-gradient(circle, rgb(255 250 240 / .28), rgb(255 250 240 / 0) 70%) !important; }
+/* ticks, cursor and bloom sit on a row's first line, where its price is */
+${T} .sx-ct__rows .sx-ct-row::before { top:17px !important; margin-top:0 !important; }
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { top:17px !important; margin-top:-7px !important; }
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { top:17px !important; margin-top:-14px !important; }
+${T} .sx-ct__rows .sx-ct-row:focus-visible:not(.is-active, .is-selected, [aria-selected="true"])::before { width:16px !important; height:2px !important; box-shadow:0 0 6px rgb(248 244 234 / .6) !important; }
+/* FEATURED: a word over the row under a rule of light; the price stays on the title's line */
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:26px !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { position:absolute !important; left:26px !important; right:0 !important; top:6px !important; margin:0 !important; padding-top:4px !important;
+  display:block !important; color:rgb(248 244 234) !important; background:linear-gradient(90deg, rgb(248 244 234 / .7), rgb(248 244 234 / .15)) 0 0 / 100% 1.5px no-repeat !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::before { top:34px !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::before { top:34px !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:34px !important; }
+/* the dispatch's alternative hangs off its own minor tick: the verb and its terms on one line */
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:9px !important;
+  width:8px !important; height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .42) !important; clip-path:none !important; transform:none !important; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub { padding:2px 0 8px 26px !important; margin-top:-2px; flex-wrap:nowrap !important; align-items:baseline !important; gap:0 6px !important; min-width:0; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { flex:none; }
+/* the tradeoff facts are a status, not a preview: they wrap to two lines (STATION_STANDARD §6 —
+   never clip a status with an ellipsis; the accessible name still carries the whole tradeoff) */
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; min-width:0; line-height:1.3; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub::before { content:"· "; color:rgb(${BONE} / .4); }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:focus-visible::before { width:16px !important; height:2px !important; box-shadow:0 0 6px rgb(248 244 234 / .6) !important; background:rgb(248 244 234) !important; }
+/* the rail ends with its last row: each block carries its own length of scale, edge to edge */
+${T} .sx-ct__hang { background:none !important; }
+${T} .sx-ct__hang > * { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat, repeating-linear-gradient(180deg, rgb(${BONE} / .22) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
+${T} .sx-ct__hang > * + * { margin-top:0 !important; padding-top:12px !important; }
+${T} .sx-ct__hang > .sx-ct__yours { margin-top:0 !important; padding-top:26px !important; }
+${T} .sx-ct__board { flex:0 1 auto !important; }
+${T} .sx-ct__board > .sx-ct__rows { background:none !important; }
+/* the scales: readable end words on a longer rule */
+${T} .orr-ct-scales { height:84px; margin:16px 0 6px !important; }
+${T} .orr-ct-scales text.orr-ct-scale__end { font-size: 12px; letter-spacing:.12em; fill:rgb(${BONE} / .62); }
+${T} .orr-ct-scales text.orr-ct-scale__key { font-size: 12px; }
+${T} .orr-ct-scales path.orr-ct-scale__cursor.is-high { stroke:var(--dp-danger, #ff5038); }
+${T} .orr-ct-scales .orr-bloom.orr-ct-scale__cursor.is-high { stroke:var(--dp-danger, #ff5038); opacity:.3; }
+/* the terms keep their floor, so the key stands in one place from mission to mission */
+${T} .sx-dossier__terms { min-height:186px; }
+${T} .sx-dossier__terms > li { padding:5px 0 !important; }
+${T} .sx-dossier__foot { margin-top:18px !important; }
+${T} .sx-dossier__reward .k-hero__n { font-size:clamp(60px, 7.6vh, 84px) !important; }
+${T} .orr-ct-scales { margin:12px 0 4px !important; }
+${T} .sx-dossier__terms > li.sx-term--none .sx-term__v { color:rgb(${BONE} / .48) !important; }
+/* the reading stands nearer its orrery, and the orrery larger, on a wide screen */
+@media (min-width:1500px) {
+  ${T} .sx-dossier { grid-template-columns:minmax(0, 560px) minmax(360px, 1fr) !important; column-gap:32px !important; }
+  ${T} .sx-dossier > .orr-ct-route { height:clamp(380px, 52vh, 560px) !important; }
+}
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-ct__rows .sx-ct-row::before, ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before, ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { top:13px !important; }
+  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:22px !important; }
+  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::before, ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::before, ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:30px !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { top:4px !important; }
+  ${T} .sx-ct__hang > * + * { padding-top:8px !important; }
+  ${T} .sx-ct__hang > .sx-ct__yours { padding-top:14px !important; }
+  ${T} .sx-ct-row.sx-decision__opt .k-row__sub { display:block !important; }
+  ${T} .sx-dossier__terms { min-height:0; }
+  ${T} .orr-ct-scales { height:70px; margin:10px 0 2px !important; }
+}
+
+/* ================================ ROUND 3: FACTIONS ========================================= */
+/* the contract rungs hang off the standing scale; their ladder stays for the reader, folded from sight */
+${T} .sx-fac-contracts .sx-ladder, ${T} .sx-fac-contracts > .k-caps { display:none !important; }
+${T} .sx-fac-rung-next { font-size:12.5px !important; line-height:1.45; color:rgb(${BONE} / .8) !important; margin-top:4px !important; max-width:62ch; }
+/* relations fold into a word; no rule under the last one */
+${word('.sx-fac-network__toggle')}
+${T} .sx-fac-network__toggle[aria-expanded="true"] { color:var(--dp-hand, #f2b950) !important; }
+${T} .sx-fac-network__rows[hidden], ${T} .sx-fac-network__empty[hidden] { display:none !important; }
+${T} .sx-fac-network__rows > li:last-child > .k-row { border-bottom:0 !important; }
+${T} .sx-fac-network { margin-top:12px !important; }
+/* the chosen power's crest stands beside its name */
+${T} .sx-fac-overview { position:relative; padding-right:150px !important; }
+${T} .sx-fac-crest { display:block !important; position:absolute; right:0; top:0; width:124px; height:124px; pointer-events:none; }
+${T} .sx-fac-crest img { display:block; width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 0 18px rgb(0 0 0 / .7)); }
+${T} .sx-fac-row__nil { color:rgb(${BONE} / .35) !important; }
+/* the powers rail on a wide screen: the figure flush after the name, no void between them */
+@media (min-width:1500px) {
+  ${T} .sx-fac { grid-template-columns:300px minmax(0, 1fr) !important; column-gap:32px !important; }
+  ${T} .sx-fac__rows .sx-fac-row { grid-template-columns:max-content 52px !important; justify-content:start !important; column-gap:14px !important; }
+}
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-fac-heroes { margin-top:8px !important; gap:8px 24px !important; }
+  ${T} .sx-fac__detail { margin-top:10px !important; }
+  ${T} .sx-fac__detail > * + * { margin-top:8px !important; }
+  ${T} .sx-fac-crest { width:84px; height:84px; }
+  ${T} .sx-fac-overview { padding-right:96px !important; }
+  ${T} .sx-fac-rung-next { font-size:12px !important; }
+  /* a short screen: the descriptor and the two section words yield; the instruments say it */
+  ${T} .sx-fac-ident__flag, ${T} .sx-fac-ladder > .k-caps, ${T} .sx-fac-intent > .k-caps { display:none !important; }
+  ${T} .sx-fac-heroes .k-hero__n { font-size:40px !important; }
+  ${T} .sx-fac-heroes { margin-top:4px !important; }
+}
+
+/* ================================ ROUND 3: INDUSTRY ========================================= */
+/* At the 651px edge the split-work column leaves the chain at 319px, below its authored
+   minimum. Bound this tab's gutter by the shared rhythm so the stage retains drawable width. */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+  ${T} .sx-ind { column-gap:calc(var(--dp-rhythm) - 2px) !important; }
+}
+/* the chain is the reading: the needs ledger under it says nothing the drawing does not, so it yields while the chain stands */
+${T} .sx-fab:has(.orr-chain:not(.is-off)) .sx-fab-inputs, ${T} .sx-fab:has(.orr-chain:not(.is-off)) .sx-fab-col-k { display:none !important; }
+${T} .sx-ind-row__tier { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-ind-row__qty { color:rgb(${BONE} / .45); font-variant-numeric:tabular-nums; margin-left:6px; font-weight:500; }
+/* a disabled Lamp Key keeps its void (a kit rule on fh-key had hidden the pseudo, leaving a slab) */
+${T} .orr-lampkey:disabled::after { display:block !important; }
+@media (min-width:1500px) {
+  /* on a wide screen the chain takes the stage: a ring you can read the verb in, the beams with room to run */
+  ${T} .sx-fab { max-width:none !important; }
+  ${T} .orr-ind-chain { height:clamp(220px, 36vh, 360px) !important; }
+}
+
+/* ================================ ROUND 2: LEDGER =========================================== */
+/* the tape stands above the reading in the right column; the reading hangs beneath the Hand's tick */
+${T} .sx-ledger { grid-template-rows:auto auto auto minmax(0, 1fr) auto !important; }
+/* the panel's rows flow as a block (the split grid gave the list a squeezed track); the right column stands beside it */
+${T} .sx-ledger { position:relative !important; display:block !important; }
+${T} .sx-ledger > .st-ledger { display:block !important; max-width:min(560px, 46%); }
+${T} .sx-ledger .st-ledger-list { max-height:min(46vh, 520px) !important; }
+${T} .sx-ledger .st-ledger-nav { margin-top:10px !important; }
+${T} .sx-ledger > .sx-ledger__right { position:absolute; left:calc(min(560px, 46%) + clamp(28px, 4vw, 72px)); right:0; top:0; bottom:0; display:flex; flex-direction:column; gap:14px; min-width:0; overflow:hidden; }
+${T} .sx-ledger__right > .orr-ledger-tape { flex:none; width:100%; height:clamp(150px, 22vh, 210px); margin-top:8px; }
+${T} .sx-ledger__right > .sx-ledger__read { position:static !important; padding-right:0 !important; margin:0 !important; }
+/* a narrow, tall desktop window (651–1000 × 801+): the 46% list left the reading 12–130px, so its words broke into
+   letters. The tape and reading stack under the list; the reading keeps the purse beside it. */
+@media (min-width:651px) and (max-width:1000px) and (min-height:801px) {
+  ${T} .sx-ledger > .st-ledger { max-width:none; }
+  ${T} .sx-ledger > .sx-ledger__right { position:relative; left:auto; top:auto; bottom:auto; width:100%; margin-top:18px; overflow:visible; }
+  ${T} .sx-ledger__right > .orr-ledger-tape { height:200px; }
+  ${T} .sx-ledger__right > .sx-ledger__row { gap:32px; }
+}
+/* a narrow window (not the phone sheet): the 46% column broke the title mid-word, so the tape and reading stack under it */
+@media (max-width:520px) {
+  ${T} .sx-ledger > .st-ledger { max-width:none; }
+  ${T} .sx-ledger > .sx-ledger__right { position:relative; left:auto; top:auto; bottom:auto; width:100%; margin-top:18px; overflow:visible; }
+  ${T} .sx-ledger__right > .orr-ledger-tape { height:180px; }
+  ${T} .sx-ledger__right > .sx-ledger__row { flex-direction:column; align-items:stretch; gap:16px; }
+  ${T} .sx-ledger__row > .sx-ledger__read { align-self:stretch; }
+  ${T} .sx-ledger__row > .orr-ledger-purse { align-self:center; margin:0; }
+}
+/* …and a 521–650 window (up to where the 651+ desktop bands start): the same 46% column left the reading 12px wide,
+   so it broke into letters. The tape and reading stack under the list; the reading keeps the purse beside it. */
+@media (min-width:521px) and (max-width:650px) {
+  ${T} .sx-ledger > .st-ledger { max-width:none; }
+  ${T} .sx-ledger > .sx-ledger__right { position:relative; left:auto; top:auto; bottom:auto; width:100%; margin-top:18px; overflow:visible; }
+  ${T} .sx-ledger__right > .orr-ledger-tape { height:180px; }
+  ${T} .sx-ledger__right > .sx-ledger__row { gap:24px; }
+}
+/* the empty state is one line, and the tape waits with it */
+${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows:auto auto auto auto auto !important; }
+${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) .st-ledger-status { display:none !important; }
+${T} .sx-ledger .st-ledger-empty:not([hidden]) { margin-top:14px !important; font-size:13px !important; color:rgb(${BONE} / .7) !important; }
+/* the reading: the thing the entry is about is the second-brightest word after the figure */
+${T} .sx-ledger__read-title { display:block !important; font-family:var(--dp-face-body, "Instrument Sans") !important; font-stretch:100% !important; font-variation-settings:normal !important;
+  font-weight:500 !important; font-size:20px !important; letter-spacing:0 !important; text-transform:none !important; color:rgb(248 244 234) !important; margin-top:8px !important; }
+${T} .sx-ledger__read-title[hidden] { display:none !important; }
+${T} .sx-ledger__read-line { font-size:14px !important; color:rgb(${BONE} / .8) !important; margin-top:8px !important; }
+${T} .sx-ledger__read-line[hidden] { display:none !important; }
+${T} .sx-ledger__read-num { font-size:clamp(64px, 8.6vh, 96px) !important; }
+/* the entries: the cycle and the type on one line, the sentence full width beneath — no third column, no widows */
+${T} .sx-ledger .st-ledger-entry-body { grid-template-columns:auto auto minmax(0, 1fr) !important; grid-template-areas:"time type ." "line line line" "note note note" !important; column-gap:12px !important; row-gap:2px !important; }
+${T} .sx-ledger .st-ledger-type { text-align:left !important; }
+${T} .sx-ledger .st-ledger-cycle, ${T} .sx-ledger .st-ledger-type { font-size: 12px !important; }
+${T} .sx-ledger .st-ledger-line { font-size:13.5px !important; line-height:1.4; }
+${T} .sx-ledger .st-ledger-status { font-size: 12px !important; }
+/* a short list never squeezes its rows: they keep their two lines and the list scrolls */
+${T} .sx-ledger .st-ledger-list > li, ${T} .sx-ledger .st-ledger-entry { flex:none !important; min-height:0 !important; }
+${T} .sx-ledger .st-ledger-list { overflow:hidden auto !important; min-height:0 !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-ledger__right > .orr-ledger-tape { height:clamp(120px, 24vh, 150px); margin-top:0; }
+  ${T} .sx-ledger > .sx-ledger__right { gap:8px; }
+  ${T} .sx-ledger__read-num { font-size:64px !important; }
+  ${T} .sx-ledger__read-title { font-size:17px !important; margin-top:4px !important; }
+}
+
+/* ================================ ROUND 4: INDUSTRY ========================================= */
+/* the one verb stands under the product it makes (the chain places it); the fab is its frame */
+${T} .sx-fab { position:relative !important; padding-top:0 !important; }
+${T} .sx-fab-foot { position:absolute !important; left:var(--fab-foot-x, 0) !important; top:var(--fab-foot-y, auto) !important; margin:0 !important; z-index:2; }
+${T} .sx-fab-status { margin-top:8px !important; }
+/* a per-run yield is a reading: it clears the gate */
+${T} .sx-ind-row__qty { color:rgb(${BONE} / .54) !important; }
+/* the ladder's band word and the stage's eyebrow share a size and a line */
+${T} .sx-ind-process__head, ${T} .sx-fab-head__cat { font-size: 12px !important; line-height:1.2 !important; }
+${T} .sx-fab-head__cat { margin-top:0 !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-fab-foot { left:auto !important; right:0 !important; top:auto !important; bottom:0 !important; }
+}
+
+/* the Ladder's light cursor on every scrolling rail */
+${SCROLL_EXTENT_CSS}
+${T} :is(.sx-ct__board, .sx-ind__list, .sx-fac__rows)[data-overflow="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
+
+/* ================================ ROUND 5: MISSIONS ========================================= */
+/* the ladder's ticks read at 1x: row ticks 8px at 40%, the rail's minor ticks 5px at 30%; a block gap you can see */
+${T} .sx-ct__hang > * { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat, linear-gradient(90deg, transparent 5px, rgb(${BONE} / .07) 5px, rgb(${BONE} / .07) 10px, transparent 10px) 0 0 / 100% 100% no-repeat, repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 4px 0 / 5px 100% no-repeat !important; }
+${T} .sx-ct__rows .sx-ct-row::before { width:8px !important; background:rgb(${BONE} / .42) !important; }
+${T} .sx-ct__hang > * + * { padding-top:22px !important; }
+${T} .sx-ct__hang > .sx-ct__yours { padding-top:30px !important; }
+/* FEATURED: a major tick and a word beside it, at the standard pitch; no rule */
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { background:none !important; padding-top:0 !important; top:8px !important; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:24px !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after { content:"" !important; display:block !important; position:absolute !important; left:2px !important; top:14px !important; width:11px !important; height:2px !important;
+  margin:0 !important; border-radius:0 !important; background:rgb(248 244 234 / .8) !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:14px !important; margin:0 !important; width:11px !important; height:2px !important; border-radius:0 !important; background:rgb(248 244 234 / .8) !important; }
+/* DISPATCH is a verb on its own rung: a chevron word in the light, the terms after it */
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { color:rgb(248 244 234) !important; font-size: 12px !important; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name::before { content:"› "; color:rgb(${BONE} / .5); }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:is(:hover, :focus-visible) .k-row__name { color:rgb(255 250 240) !important; }
+/* the terms are rungs on one ladder with the two scales: a rail down the label column, a tick per term */
+${T} .sx-dossier__terms { position:relative; padding-left:16px !important; background:linear-gradient(90deg, transparent 3px, rgb(${BONE} / .24) 3px, rgb(${BONE} / .24) 4px, transparent 4px) 0 0 / 100% 100% no-repeat; }
+${T} .sx-dossier__terms > li { position:relative; }
+${T} .sx-dossier__terms > li::before { content:""; position:absolute; left:-16px; top:.55em; width:9px; height:1.5px; background:rgb(${BONE} / .46); }
+${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { left:-16px; top:.55em; }
+${T} .orr-ct-scales { position:relative; padding-left:16px !important; box-sizing:border-box; background:${SPINE(3, .55)}, ${BAND(3)}; }
+${T} .orr-ct-scales::before, ${T} .orr-ct-scales::after { content:""; position:absolute; left:0; width:9px; height:1.5px; background:rgb(${BONE} / .46); }
+${T} .orr-ct-scales::before { top:20px; }
+${T} .orr-ct-scales::after { top:62px; }
+/* the title is one line under the numeral; the ladder column gives its titles room */
+@media (min-width:1500px) {
+  ${T} .sx-dossier__title { font-size:28px !important; line-height:1.15 !important; }
+  /* one flat ink on the one-line title: the kit's title gradient read as a fade across the words */
+  ${T} .sx-dossier__title, ${T} .sx-dossier__title .sf-entity-link { color:rgb(248 244 234) !important; background:none !important; -webkit-background-clip:border-box !important; background-clip:border-box !important; -webkit-text-fill-color:currentColor !important; text-shadow:0 0 18px rgb(0 0 0 / .6) !important; }
+  ${T} .sx-ct { grid-template-columns:minmax(0, 470px) minmax(0, 1fr) !important; }
+  ${T} .sx-dossier > .orr-ct-route { height:clamp(420px, 62vh, 680px) !important; }
+}
+/* glass under the orrery: a dissolved disc that keeps the lit truss from reading as part of the rings */
+${T} .sx-dossier > .orr-ct-route::before { content:""; position:absolute; inset:-4% -4% 6% -4%; border-radius:50%; pointer-events:none; z-index:0;
+  background:radial-gradient(circle, rgb(7 8 10 / .62), rgb(7 8 10 / .48) 58%, rgb(7 8 10 / 0) 72%); }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  /* the board fits its rows at 720: no fold through a line; the tracked job yields first */
+  ${T} .sx-ct__rows .sx-ct-row { padding-top:4px !important; padding-bottom:4px !important; }
+  ${T} .sx-ct__board { -webkit-mask-image:none !important; mask-image:none !important; padding-bottom:0 !important; }
+  ${T} .sx-ct__active { flex:0 1 auto; min-height:0; overflow:hidden; }
+  ${T} .sx-ct__hang > * + * { padding-top:10px !important; }
+  ${T} .sx-ct__hang > .sx-ct__yours { padding-top:16px !important; }
+  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:20px !important; }
+  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after, ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:11px !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { top:5px !important; }
+  /* the orrery has the room for its names at 720 */
+  ${T} .sx-dossier > .orr-ct-route { height:clamp(280px, 42vh, 320px) !important; }
+  ${T} .orr-ct-scales::after { top:52px; }
+}
+
+/* ================================ ROUND 4: FACTIONS ========================================= */
+/* the chosen power is the hero: its crest large beside its name, the authority's sun dimmed to a pivot behind the arm */
+${T} .sx-fac-overview { padding-left:0 !important; padding-right:200px !important; }
+${T} .sx-fac-overview > .k-caps, ${T} .sx-fac-ident__name, ${T} .sx-fac-ident__flag { margin-left:0 !important; padding-left:0 !important; }
+${T} .sx-fac-crest { left:auto; right:0; top:-10px; width:170px; height:170px; }
+${T} .sx-fac-crest img { filter:grayscale(1) drop-shadow(0 0 18px rgb(0 0 0 / .7)); }
+${T} .sx-fac-crest.is-authority { display:none !important; }
+${T} .sx-fac-overview:has(.sx-fac-crest.is-authority) { padding-right:0 !important; }
+/* the hero cluster on one baseline; the rail's figures on one axis, nothing for zero */
+${T} .sx-fac-heroes { align-items:last baseline !important; }
+${T} .sx-fac__rows .sx-fac-row { grid-template-columns:minmax(0, 1fr) 52px !important; justify-content:stretch !important; }
+${T} .sx-fac-row__tier { justify-self:end; }
+${T} .orr-standing text.orr-standing__name { font-size: 12px !important; letter-spacing:.12em; }
+${T} .orr-standing text.orr-standing__rung { font-size: 12px !important; }
+${T} .sx-fac-rung-next { max-width:64ch; }
+@media (min-width:1500px) {
+  ${T} .sx-fac-overview { padding-right:0 !important; }
+  ${T} .sx-fac-crest { left:440px; right:auto; }
+}
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  /* the orbit is the selector at 720: the rim names yield to the crests, and speak only for the chosen or hovered one */
+  ${T} .orr-fac-orbit .orr-crest__words { display:none !important; }
+  ${T} .orr-fac-orbit .orr-crest:is(.is-chosen, :hover, :focus-visible) .orr-crest__words { display:flex !important; }
+  ${T} .sx-fac-rung-next__more, ${T} .sx-fac-intent { display:none !important; }
+  ${T} .sx-fac-crest { width:110px; height:110px; top:-6px; }
+  ${T} .sx-fac-overview { padding-right:130px !important; }
+}
+
+/* ================================ ROUND 5: FACTIONS ========================================= */
+/* one figure, at the size of a reading: the standing; its tier above it; nothing captions it */
+${T} .sx-fac-heroes { display:block !important; }
+${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:clamp(72px, 10vh, 112px) !important; line-height:.92 !important; }
+${T} .sx-fac-heroes .k-hero__w { display:none !important; }
+/* one left edge: the name, kicker and descriptor stand on the reading's axis */
+${T} .sx-fac-overview > .k-caps, ${T} .sx-fac-ident__name, ${T} .sx-fac-ident__flag, ${T} .sx-fac-ident__name .sf-entity-link { margin-inline:0 !important; padding-inline:0 !important; text-indent:0 !important; transform:none !important; translate:none !important; left:auto !important; }
+/* the hero crest sits on the reading's right axis at every width */
+@media (min-width:1500px) {
+  ${T} .sx-fac-overview { padding-right:200px !important; }
+  ${T} .sx-fac-overview:has(.sx-fac-crest.is-authority) { padding-right:0 !important; }
+  ${T} .sx-fac-crest { left:auto !important; right:0 !important; }
+}
+/* the scale is as wide as the reading (measured live); no cap */
+${T} .orr-standing { max-width:none !important; }
+${T} .orr-crest__name, ${T} .orr-crest__rep { white-space:nowrap !important; hyphens:none !important; word-break:keep-all !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:64px !important; }
+  /* the figures stay under the crests at 720 (the names yield); the arc reads against its zero tick */
+  ${T} .orr-fac-orbit .orr-crest__words { display:flex !important; }
+  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { display:none !important; }
+  ${T} .orr-fac-orbit .orr-crest:is(.is-chosen, :hover, :focus-visible) .orr-crest__name { display:block !important; }
+  ${T} .orr-standing text.orr-standing__name { font-size: 12px !important; letter-spacing:.1em !important; }
+  ${T} .sx-fac__detail { gap:6px !important; margin-top:6px !important; }
+  ${T} .sx-fac-rung-next { margin-top:2px !important; }
+  ${T} .sx-fac-network { margin-top:6px !important; }
+  ${T} .sx-fac-overview > * + * { margin-top:4px !important; }
+}
+
+/* ================================ ROUND 4: BAR ============================================== */
+/* the world dims and softens under the portrait, so the face is the brightest thing on the right and the hull a shape behind the shoulder */
+${T} .sx-talk__avatar { -webkit-mask-image:none !important; mask-image:none !important; }
+${T} .sx-talk__avatar::before { content:""; position:absolute; inset:-6%; z-index:0; pointer-events:none;
+  background:radial-gradient(ellipse 50% 66% at 61% 47%, rgb(6 8 11 / .82), rgb(6 8 11 / .66) 44%, rgb(6 8 11 / .3) 66%, rgb(6 8 11 / 0) 82%);
+  -webkit-backdrop-filter:blur(6px) brightness(.55) saturate(.7); backdrop-filter:blur(6px) brightness(.55) saturate(.7);
+  -webkit-mask-image:radial-gradient(ellipse 50% 66% at 61% 47%, #000 40%, transparent 82%); mask-image:radial-gradient(ellipse 50% 66% at 61% 47%, #000 40%, transparent 82%); }
+${T} .sx-talk__avatar :is(img, canvas, .sx-portrait) { position:relative; z-index:1; opacity:1 !important;
+  -webkit-mask-image:radial-gradient(ellipse 40% 54% at 61% 47%, #000 44%, transparent 90%) !important; mask-image:radial-gradient(ellipse 40% 54% at 61% 47%, #000 44%, transparent 90%) !important; }
+/* the photo's own lamp (up and right of the face) goes under a shadow instead of a hole, so nothing shows through the hair */
+${T} .sx-talk__avatar::after { content:""; position:absolute; z-index:2; left:56%; top:19%; width:34%; height:34%; pointer-events:none; border-radius:50%;
+  background:radial-gradient(circle, rgb(6 8 11 / .96) 0 30%, rgb(6 8 11 / .7) 48%, rgb(6 8 11 / 0) 70%); }
+/* the words sit on the eyeline on a tall screen: the column drops so name and face share one axis */
+@media (min-width:1500px) and (min-height:900px) {
+  ${T} .sx-talk__id { padding-top:clamp(0px, calc((100vh - 900px) * .85), 150px) !important; }
+}
+/* the leads ladder has the width of its titles at 1920; a title never wraps (INSPECT holds the full one) */
+@media (min-width:1500px) { ${T} .sx-bar { grid-template-columns:560px minmax(0, 1fr) !important; } }
+${T} .sx-lead__t { display:block !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; min-width:0 !important; }
+${T} .sx-lead__t .sf-entity-link { white-space:nowrap !important; }
+/* the replies are focus plates: dissolved glass, a numeral key at the left, the cursor answering pointer or focus */
+${T} .sx-talk__choices { background:none !important; counter-reset:sx-reply; gap:4px !important; }
+${T} .sx-talk__choices > li { counter-increment:sx-reply; }
+${T} .sx-choice { display:block !important; width:min(100%, 52ch) !important; text-align:left !important; padding:9px 22px 9px 44px !important; color:rgb(${BONE} / .9) !important;
+  background:linear-gradient(90deg, rgb(6 8 11 / .58), rgb(6 8 11 / .42) 55%, rgb(6 8 11 / 0)) !important; }
+${T} .sx-choice::after { content:counter(sx-reply) !important; display:block !important; position:absolute !important; left:12px !important; top:50% !important; bottom:auto !important; transform:translateY(-50%) !important;
+  width:12px !important; height:auto !important; text-align:center !important; ${LABEL} font-size: 12px !important; letter-spacing:0 !important; color:rgb(${BONE} / .55) !important; background:none !important; box-shadow:none !important; }
+${T} .sx-choice::before { left:30px !important; }
+${T} .sx-talk__choices > li:first-child .sx-choice::before { left:30px !important; }
+${T} .sx-choice:is(:hover, :focus-visible) { background:linear-gradient(90deg, rgb(12 15 20 / .78), rgb(12 15 20 / .55) 55%, rgb(12 15 20 / 0)) !important; }
+${T} .sx-choice:is(:hover, :focus-visible)::after { color:rgb(248 244 234) !important; }
+${T} .sx-talk__choices > li .sx-choice:is(:hover, :focus-visible)::before { left:28px !important; }
+/* the folded facts: the board's count rides the verb */
+${T} .sx-bar__intel { display:none !important; }
+${T} .sx-bar__log-n { font-family:var(--dp-face-numeral, "Archivo") !important; font-size: 12px !important; letter-spacing:.04em !important; color:rgb(${BONE} / .72) !important; font-variant-numeric:tabular-nums; }
+/* the small caps clear the legibility gate */
+${T} .sx-bar-row__role { font-size: 12px !important; color:rgb(${BONE} / .68) !important; }
+${T} .sx-talk__reply.is-idle { font-size:13px !important; color:rgb(${BONE} / .74) !important; }
+${T} .orr-bar-wave { height:24px !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-talk__avatar::after { left:56%; top:19%; }
+  ${T} .sx-choice { padding:5px 18px 5px 40px !important; }
+  ${T} .sx-choice::after { left:10px !important; }
+  ${T} .sx-choice::before { left:27px !important; }
+  ${T} .sx-talk__choices > li:first-child .sx-choice::before { left:27px !important; }
+}
+
+/* ================================ ROUND 3: LEDGER =========================================== */
+/* the reading hangs off the Hand's leader: no gap between tape and reading, the leader's last inch is the reading's own stub, one left edge */
+${T} .sx-ledger > .sx-ledger__right { gap:0 !important; }
+${T} .sx-ledger__right > .orr-ledger-tape { margin-top:-4px !important; }
+${T} .sx-ledger__right > .sx-ledger__read { position:relative !important; padding:14px 0 0 0 !important; }
+${T} .sx-ledger__read::after { content:""; position:absolute; left:0; top:0; width:2px; height:14px; background:rgb(${BONE} / .6); pointer-events:none; }
+${T} .sx-ledger__read::before { inset:-24px -60px -40px -40px; }
+/* the unit sits on the numeral's baseline as a suffix; one label above says the direction */
+${T} .sx-ledger__read-hero { display:flex !important; flex-direction:row !important; align-items:baseline !important; gap:10px !important; }
+${T} .sx-ledger__read-unit { font-size:12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .66) !important; }
+/* the ladder's cursor is bone here: the tape's Hand is the one amber; the read entry is the bright one */
+${T} .st-ledger-list .st-ledger-entry[aria-selected="true"]::before { background:rgb(248 244 234) !important; filter:none !important; }
+${T} .st-ledger-list:is(:focus-within, :hover) .st-ledger-entry[aria-selected="true"]::before { background:rgb(255 250 240) !important; filter:drop-shadow(0 0 5px rgb(248 244 234 / .6)) !important; }
+${T} .st-ledger-list .st-ledger-entry[aria-selected="true"]::after { display:none !important; }
+${T} .sx-ledger .st-ledger-line { color:rgb(${BONE} / .74) !important; }
+${T} .sx-ledger .st-ledger-entry[aria-selected="true"] .st-ledger-line { color:rgb(248 244 234) !important; }
+${T} .sx-ledger .st-ledger-entry[aria-selected="true"] :is(.st-ledger-cycle, .st-ledger-type) { color:rgb(${BONE} / .85) !important; }
+/* the keys at the ladder's foot */
+${T} .sx-ledger__keys { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; margin-top:8px !important; padding-left:26px; }
+${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) .sx-ledger__keys { display:none !important; }
+/* the empty sentence stands where the count stands when the book is filled: right under the intro */
+${T} .sx-ledger .st-ledger-empty:not([hidden]) { margin-top:14px !important; margin-bottom:0 !important; order:0; position:static !important; }
+${T} .sx-ledger .st-ledger-list[hidden] ~ .st-ledger-empty:not([hidden]) { margin-top:14px !important; }
+${T} .sx-ledger .st-ledger-nav[hidden], ${T} .sx-ledger .st-ledger-nav:not(:has([data-ledger-page]:not([disabled]))) { margin-top:0 !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-ledger__right > .sx-ledger__read { padding-top:10px !important; }
+  ${T} .sx-ledger__read::after { height:10px; }
+  ${T} .sx-ledger__keys { display:none !important; }
+}
+
+/* ================================ ROUND 10b ================================================= */
+/* the Industry key: an absolutely placed grid child takes its grid area as its containing block; the seat is the plate */
+${T} .sx-fab-foot { grid-area:auto !important; }
+/* the Factions overview was a two-column grid (crest | words): one column, one left edge */
+${T} .sx-fac-overview { display:block !important; }
+${T} .sx-fac-crest img { mix-blend-mode:screen; }
+@media (min-width:1500px) {
+  /* the scale and the rungs take the reading's full width under the crest */
+  ${T} .sx-fac-overview > .sx-fac__detail { margin-right:-200px !important; }
+  ${T} .sx-fac-overview:has(.sx-fac-crest.is-authority) > .sx-fac__detail { margin-right:0 !important; }
+}
+/* the Missions title is flat ink at every width */
+${T} .sx-dossier__title, ${T} .sx-dossier__title .sf-entity-link { color:rgb(248 244 234) !important; background:none !important; -webkit-text-fill-color:currentColor !important; text-shadow:0 0 18px rgb(0 0 0 / .6) !important; }
+/* the Bar's reply plates share one width; the leads column keeps its titles at 1280 */
+${T} .sx-talk__choices { align-items:stretch !important; max-width:min(100%, 52ch); }
+${T} .sx-talk__choices > li { display:block !important; width:100%; }
+${T} .sx-choice { width:100% !important; }
+@media (max-width:1499px) { ${T} .sx-bar { grid-template-columns:360px minmax(0, 1fr) !important; } }
+
+/* the orrery's glass disc stays under the orrery: its own stacking context, the disc beneath its rings, never over the dossier's words */
+${T} .sx-dossier > .orr-ct-route { z-index:0; isolation:isolate; }
+/* the library disc is 118% wide and translated by half of itself: with the inset box that translate slid it 420px left over the title */
+${T} .sx-dossier > .orr-ct-route::before { z-index:-1 !important; inset:-4% -4% 6% -4% !important; width:auto !important; height:auto !important; transform:none !important; }
+
+/* the arm follows the bone cursors where the Hand lives elsewhere (Missions beam, Factions arm, Ledger tape) */
+${T} :is(.sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::after { content:"" !important; display:block !important; left:7px !important; top:50% !important; width:26px !important; height:2px !important; margin:-1px 0 0 !important; border-radius:0 !important; clip-path:none !important; opacity:1 !important; background:rgb(248 244 234) !important; filter:drop-shadow(0 0 4px rgb(248 244 234 / .5)) !important; }
+${T} :is(.sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::before { left:31px !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important; }
+${T} :is(.sx-ct__rows, .sx-fac__rows, .st-ledger-list):is(:focus-within, :hover) :is(.sx-ct-row, .sx-fac-row, .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::after { background:rgb(255 250 240) !important; }
+
+/* ================================ ROUND 5: BAR ============================================== */
+/* the face is whole: the solid region reaches past the temple, the world dims under the whole head */
+${T} .sx-talk__avatar :is(img, canvas, .sx-portrait) { -webkit-mask-image:radial-gradient(ellipse 47% 58% at 56% 47%, #000 54%, transparent 90%) !important; mask-image:radial-gradient(ellipse 47% 58% at 56% 47%, #000 54%, transparent 90%) !important; }
+${T} .sx-talk__avatar::before { inset:-10%; background:radial-gradient(ellipse 60% 76% at 56% 47%, rgb(6 8 11 / .92), rgb(6 8 11 / .82) 44%, rgb(6 8 11 / .5) 64%, rgb(6 8 11 / 0) 84%);
+  -webkit-backdrop-filter:blur(8px) brightness(.38) saturate(.6); backdrop-filter:blur(8px) brightness(.38) saturate(.6);
+  -webkit-mask-image:radial-gradient(ellipse 60% 76% at 56% 47%, #000 42%, transparent 84%); mask-image:radial-gradient(ellipse 60% 76% at 56% 47%, #000 42%, transparent 84%); }
+${T} .sx-talk__avatar::after { left:54%; top:16%; width:40%; height:40%; }
+/* the name in the numeral voice: thin, bright, expensive; the shell's one heavy word keeps its rank */
+${T} .sx-talk__name { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important;
+  font-size:clamp(48px, 6.6vh, 70px) !important; letter-spacing:-.01em !important; line-height:.95 !important; }
+/* the leads stand at the foot of the ladder column on a tall screen; the reply keys never share their band */
+@media (min-height:801px), (max-width:650px) and (min-height:601px) {
+  ${T} .sx-bar__hang { display:flex !important; flex-direction:column !important; }
+  ${T} .sx-bar__leads { margin-top:auto !important; padding-bottom:4px; }
+}
+/* a reply hangs off a short scale: a tick per reply, the current one a bone chevron at rest */
+${T} .sx-choice::before { left:30px !important; width:1px !important; height:12px !important; margin-top:-6px !important; top:50% !important; background:rgb(${BONE} / .42) !important; clip-path:none !important; }
+${T} .sx-talk__choices > li:first-child .sx-choice::before { left:30px !important; width:1px !important; height:12px !important; margin-top:-6px !important; clip-path:none !important; background:rgb(${BONE} / .42) !important; }
+${T} .sx-talk__choices > li .sx-choice.is-current::before, ${T} .sx-talk__choices > li .sx-choice:is(:hover, :focus-visible)::before { left:26px !important; width:10px !important; height:13px !important; margin-top:-6.5px !important; ${HAND} background:rgb(248 244 234) !important; }
+${T} .sx-choice.is-current { color:rgb(255 250 240) !important; }
+${T} .sx-choice.is-current::after { color:rgb(248 244 234) !important; }
+/* the verb never vanishes: INSPECT stays a word at 720 */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-lead__go { font-size: 12px !important; letter-spacing:.14em !important; }
+  ${T} .sx-lead__go::before { font-size: 12px !important; }
+}
+/* glass under the words: the crate wall behind the ladder dissolves into tone */
+${T} .sx-bar__hang { position:relative; isolation:isolate; }
+${T} .sx-bar__hang::before { content:""; position:absolute; z-index:-1; left:-40px; right:-30px; top:-10px; bottom:-10px; pointer-events:none;
+  background:radial-gradient(ellipse 70% 60% at 40% 45%, rgb(6 8 11 / .72), rgb(6 8 11 / .5) 55%, rgb(6 8 11 / 0) 85%); }
+${T} .sx-talk__id { isolation:isolate; }
+${T} .sx-talk__id::before { content:""; position:absolute; z-index:-1; left:-60px; right:-40px; top:-30px; bottom:-40px; pointer-events:none;
+  background:radial-gradient(ellipse 70% 70% at 40% 50%, rgb(6 8 11 / .6), rgb(6 8 11 / .4) 55%, rgb(6 8 11 / 0) 85%); }
+
+/* ================================ ROUND 4: LEDGER =========================================== */
+/* the tape owns the middle band: the height its ticks need; the reading and the purse share the row beneath */
+${T} .sx-ledger__right > .orr-ledger-tape { height:clamp(230px, 32vh, 360px) !important; }
+${T} .sx-ledger__row { display:flex; align-items:flex-start; gap:40px; min-width:0; }
+${T} .sx-ledger__row > .sx-ledger__read { flex:1 1 auto; min-width:0; }
+${T} .orr-ledger-purse { flex:none; width:230px; height:210px; margin-left:auto; margin-top:10px; position:relative; isolation:isolate; }
+${T} .orr-ledger-purse::before { content:""; position:absolute; z-index:-1; inset:-16px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, rgb(6 8 11 / .8), rgb(6 8 11 / .6) 50%, rgb(6 8 11 / 0) 74%); }
+/* the key hint is the ladder's foot at every size */
+${T} .sx-ledger__keys { display:block !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-ledger__right > .orr-ledger-tape { height:clamp(150px, 27vh, 195px) !important; }
+  ${T} .orr-ledger-purse { width:180px; height:160px; margin-top:0; }
+  ${T} .sx-ledger__row { gap:20px; }
+  ${T} .sx-ledger__keys { display:block !important; margin-top:4px !important; }
+  ${T} .sx-ledger .st-ledger-list { max-height:min(40vh, 300px) !important; }
+}
+/* the empty ladder keeps its rail with one empty rung where the first receipt will land */
+${T} .sx-ledger .st-ledger-empty:not([hidden]) { position:relative !important; margin-top:36px !important; padding:8px 0 8px 26px !important;
+  background:${SPINE(7, .55)}, ${BAND(7)},
+    repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
+${T} .sx-ledger .st-ledger-empty:not([hidden])::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; background:rgb(${BONE} / .46); }
+
+/* ================================ ROUND 6: MISSIONS ========================================= */
+/* the open contract keeps a quiet mark: a 16px full-ink tick on the rail and its price in ink; no arrowhead */
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { display:none !important; }
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { left:4px !important; width:16px !important; height:2px !important; filter:none !important; }
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(248 244 234) !important; }
+${T} .sx-ct__rows .sx-ct-row:not(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(${BONE} / .72) !important; }
+/* focus is the light cursor: a 16px tick with its bloom, the name lifted to full ink and weight */
+${T} .sx-ct__rows .sx-ct-row:focus-visible::before { display:block !important; left:4px !important; width:16px !important; height:2px !important; margin-top:-1px !important; top:50% !important; clip-path:none !important;
+  background:rgb(255 250 240) !important; box-shadow:0 0 7px 1px rgb(248 244 234 / .55) !important; }
+${T} .sx-ct__rows .sx-ct-row:focus-visible::after { display:none !important; }
+${T} .sx-ct__rows .sx-ct-row:focus-visible .sx-ct-row__title { color:rgb(255 255 255) !important; font-weight:700 !important; }
+/* the rail's ticks read at 1x: row ticks 8px at 55%, major ticks 16px at 60%, the rail at 30% */
+${T} .sx-ct__rows .sx-ct-row::before { width:8px !important; height:2px !important; background:rgb(${BONE} / .55) !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after { width:16px !important; height:2px !important; background:rgb(248 244 234 / .6) !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:38px !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { top:12px !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after, ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:19px !important; }
+/* the slash sublabel retires; POSTED HERE says it */
+${T} .sx-ct-dispatch__label { display:none !important; }
+/* one rail from RISK to READINESS, ticks on one pitch; sublines inline in ink-dim; one value column */
+${T} .orr-ct-scales { margin-bottom:0 !important; }
+${T} .sx-dossier__terms { margin-top:0 !important; padding-top:2px !important; display:grid !important; grid-template-columns:minmax(92px, max-content) minmax(0, 1fr); column-gap:14px; }
+${T} .sx-dossier__terms > li { grid-column:1 / -1; grid-template-columns:subgrid !important; column-gap:14px !important; padding:9px 0 !important; }
+${T} .sx-dossier__terms .sx-term__v { flex-direction:row !important; align-items:baseline !important; gap:10px !important; flex-wrap:wrap; }
+${T} .sx-dossier__terms .sx-term__sub { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-dossier__terms > li::before { top:50% !important; margin-top:-.5px; }
+${T} .sx-dossier > .sx-dossier__foot { position:sticky !important; bottom:0; z-index:2; padding:14px 0 6px !important; background:linear-gradient(0deg, rgb(0 0 0 / .9) calc(100% - 14px), rgb(0 0 0 / 0)) !important;
+  -webkit-mask-image:linear-gradient(90deg, #000 55%, transparent); mask-image:linear-gradient(90deg, #000 55%, transparent); }
+/* a narrow desktop window (≤650 × 601+) sets the foot in flow at the dossier's head, where that sticky backing's fade to
+   the right only dissolved ACCEPT's "hold to accept" note — it sat past the 55% stop in a 230-300px column — and cut the
+   key's hold track down to its right edge. The track stands 9px round the key, so the foot leaves it that room (the key
+   closes up a little to pay for it, so the two-line note still clears the column at 560 wide). */
+@media (max-width:650px) and (min-height:601px) {
+  ${D} .sx-dossier > .sx-dossier__foot { background:none !important; -webkit-mask-image:none !important; mask-image:none !important;
+    padding:6px 0 0 10px !important; margin:0 0 14px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot .sx-ct-commit.orr-lampkey { padding-left:14px !important; padding-right:18px !important; }
+}
+/* the jump reading hangs under the ring's foot with its own room */
+${T} .sx-dossier > .orr-ct-route .orr-route__caption { bottom:-14px !important; }
+/* the dispatch facts at a size the decision needs */
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px !important; color:rgb(${BONE} / .66) !important; }
+/* a short screen: the key stays above the fold; the scale captions fold; names hold one line with a dissolved edge */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-dossier .k-hero--hero .k-hero__n { font-size:44px !important; }
+  ${T} .sx-dossier__title { font-size:20px !important; }
+  ${T} .orr-ct-scales { height:46px !important; margin-top:4px !important; }
+  ${T} .orr-ct-scales text.orr-ct-scale__end { display:none; }
+  ${T} .sx-dossier__terms > li { padding:2px 0 !important; }
+  ${T} .sx-dossier__terms { padding-top:0 !important; }
+  ${T} .sx-dossier > .k-words.sx-dossier__acts, ${T} .sx-dossier > .k-words:last-of-type { margin-top:6px !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { white-space:nowrap !important; overflow:hidden !important; text-overflow:clip !important; font-size:12px !important;
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 24px), transparent) !important; mask-image:linear-gradient(90deg, #000 calc(100% - 24px), transparent) !important; }
+  ${T} .sx-dossier > .orr-ct-route .orr-route__caption { bottom:auto !important; top:0 !important; left:auto !important; right:0 !important; justify-content:flex-end !important; }
+  /* sticky ACCEPT in a ~192px dossier covered the title and clipped the reward (960×540) — keep it in flow */
+  ${T} .sx-dossier > .sx-dossier__foot { position:static !important; margin-top:8px !important; padding:6px 0 2px !important;
+    background:none !important; -webkit-mask-image:none !important; mask-image:none !important; }
+  ${T} .sx-dossier__reward { margin:4px 0 2px !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:28px !important; }
+  ${T} .sx-dossier__title { font-size:18px !important; line-height:1.15 !important; margin:2px 0 4px !important; }
+  ${T} .sx-ct-commit.orr-lampkey { min-height:34px !important; font-size:13px !important; }
+}
+/* …but a wide, short desktop (1101+ × ≤720) has a dossier too short to carry the key under the reward
+   (ACCEPT at y≈610 in a 600px window at 1366×600, y≈721 at 1101×480): ACCEPT takes the top of the route
+   column, beside the title, and the route ring follows beneath it — nothing rides over the terms.
+   Up to 800 tall: at 1366×768 a job with PAYLOAD and a blocked READINESS pushed the in-flow key under
+   the station tab bar, where a mouse missed it. The key's reason wraps beneath it, not off the edge */
+@media (min-width:1101px) and (max-height:800px) {
+  ${T} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 4 !important; align-self:start !important; margin:0 !important; padding:0 !important; }
+  ${T} .sx-dossier > .orr-ct-route { grid-row:4 / span 18 !important; }
+  ${T} .sx-dossier > .sx-dossier__foot > li { flex-wrap:wrap !important; row-gap:4px !important; }
+  ${T} .sx-dossier > .sx-dossier__foot .k-word-sub { flex-basis:100% !important; min-width:0 !important; white-space:normal !important; }
+}
+/* even tighter (960×540, dossier ~192px): the terms stay on the board — a second column beside the
+   title, reward and ACCEPT — and the dossier scrolls for the route; a player never accepts blind */
+@media (min-width:651px) and (max-width:1100px) and (max-height:800px), (max-width:1100px) and (max-height:600px) {
+  /* two columns without new markup: the dossier flows down and wraps, and ::after is the column
+     break — title, client, reward and ACCEPT on the left; the risk sentence and the terms on the right */
+  ${T} .sx-dossier { display:flex !important; flex-direction:column !important; flex-wrap:wrap !important; align-content:flex-start !important;
+    height:100% !important; column-gap:8px !important; row-gap:0 !important; padding-top:8px !important; padding-bottom:4px !important; }
+  ${T} .sx-dossier > * { order:1; width:calc(50% - 8px) !important; max-width:none !important; flex:none !important; }
+  ${T} .sx-dossier::after { content:""; order:2; flex-basis:100%; width:0; }
+  ${T} .sx-dossier > :is(.sx-dossier__risk, .sx-dossier__terms) { order:3; }
+  ${T} .sx-dossier > .sx-dossier__risk { position:static !important; clip:auto !important; clip-path:none !important; width:calc(50% - 8px) !important;
+    height:auto !important; overflow:visible !important; white-space:normal !important; margin:2px 0 6px !important; padding:0 !important;
+    font-size:12px !important; line-height:1.35 !important; color:rgb(${BONE} / .82) !important; }
+  /* at this size the scales' words would be 5px and the route map a postage stamp; the risk sentence
+     says both readings in words, and the title names the destination */
+  ${T} .sx-dossier > :is(.orr-ct-scales, .orr-ct-route) { display:none !important; }
+  ${T} .sx-dossier > .sx-dossier__terms { margin:0 !important; }
+  ${T} .sx-dossier__terms > li { grid-template-columns:84px minmax(0, 1fr) !important; column-gap:8px !important; padding:2px 0 !important; }
+  ${T} .sx-dossier__terms > li > .k-62 { min-width:0 !important; font-size:12px !important; letter-spacing:.1em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${T} .sx-dossier__terms .sx-term__v { font-size:12px !important; gap:0 6px !important; line-height:1.35 !important; }
+  ${T} .sx-dossier__terms .sx-term__sub { font-size:12px !important; line-height:1.35 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${T} .sx-dossier__terms .sx-term__v { min-width:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { left:-10px; width:6px; }
+  ${T} .sx-dossier > .k-caps { margin:0 0 2px !important; font-size:12px !important; letter-spacing:.14em !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+  ${T} .sx-dossier__title { font-size:16px !important; line-height:1.2 !important; margin:0 0 2px !important; }
+  ${T} .sx-dossier__client { margin:0 0 2px !important; font-size:12px !important; }
+  ${T} .sx-dossier .k-hero--hero { display:flex !important; flex-direction:row !important; align-items:baseline !important; gap:8px !important; margin:2px 0 8px !important; }
+  ${T} .sx-dossier .k-hero--hero .k-hero__n { font-size:26px !important; }
+  ${T} .sx-dossier .k-hero--hero .k-hero__w { font-size:12px !important; letter-spacing:.1em !important; margin-top:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${T} .sx-dossier > ul.sx-dossier__foot.k-words { margin-top:4px !important; padding:2px 0 !important; }
+  ${T} .sx-ct-commit.orr-lampkey { min-height:30px !important; font-size:12px !important; padding:0 14px 0 12px !important; }
+  ${T} .sx-ct__dossier { padding-top:0 !important; }
+  /* the board: legends close up, the scrolling list fades out instead of slicing a row, and the
+     tracked job shows whole */
+  ${T} .sx-ct__hang > * + * { margin-top:4px !important; }
+  ${T} .sx-ct__hang > .sx-ct__yours { margin-top:6px !important; padding-top:0 !important; padding-bottom:0 !important; min-height:0 !important; }
+  ${T} .sx-ct__board { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 18px), transparent) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 18px), transparent) !important; padding-bottom:14px !important; }
+  ${T} .sx-ct__active { overflow:visible !important; height:auto !important; max-height:none !important; padding-top:0 !important; }
+  /* the tracked job: one line, its TRACKED word beside the name (its route line lives in the dossier) */
+  ${T} .sx-ct__jobs .sx-job { grid-template-areas:"title track" !important; align-items:center !important; }
+  ${T} .sx-ct__jobs .sx-job .sx-job__meta { display:none !important; }
+}
+/* …and on short desktops (801-1100 × ≤460) the dossier is ~150-200px tall, so the wrapped column
+   flow spilled into a third, off-frame column (the risk sentence cut at the right edge @844×390) and
+   ACCEPT sat under the fold. Two fixed columns instead: what the job is and pays on the left; ACCEPT,
+   the risk sentence and the terms on the right, where the terms scroll. ACCEPT is on first paint. */
+@media (min-width:801px) and (max-width:1100px) and (max-height:460px) {
+  ${T} .sx-dossier { display:grid !important; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-rows:repeat(4, max-content) 1fr !important; grid-auto-rows:max-content !important;
+    align-content:start !important; column-gap:16px !important; overflow-y:auto !important; overscroll-behavior:contain; }
+  ${T} .sx-dossier::after { content:none !important; }
+  ${T} .sx-dossier > * { grid-column:1 !important; width:auto !important; }
+  ${T} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 3 !important; align-self:start !important; margin:0 !important; }
+  ${T} .sx-dossier > .sx-dossier__risk { grid-column:2 !important; grid-row:3 / 6 !important; width:auto !important; align-self:start !important; }
+  ${T} .sx-dossier > .sx-dossier__terms { grid-column:2 !important; grid-row:6 !important; }
+  ${T} .sx-dossier > .k-caps { margin:0 !important; }
+  ${T} .sx-dossier__title { font-size:15px !important; }
+  ${T} .sx-dossier .k-hero--hero { margin:0 0 4px !important; }
+  ${T} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; }
+}
+/* …and in a mid-size desktop window (801–1100 × 461–800) the same wrapped flow ran into a third column past the
+   frame's right edge (the risk sentence and terms cut to "E / p / C"), the reward words broke "DELIVER / Y" and the
+   legend read "PASSENGER TRANSPO…". 901–1100 takes the short desktop's two fixed columns (what the job is and pays;
+   ACCEPT, the risk sentence and the terms), 801–900 the narrow window's one column with ACCEPT under the reward.
+   The dossier scrolls under a 16px fade; labels and words break only at spaces. Desktop only. */
+@media (min-width:801px) and (max-width:1100px) and (min-height:461px) and (max-height:800px) {
+  ${D} .sx-dossier { display:grid !important; grid-auto-rows:max-content !important; align-content:start !important; row-gap:0 !important;
+    height:100% !important; overflow:hidden auto !important; overscroll-behavior:contain; padding-right:4px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; }
+  ${D} .sx-dossier::after { content:none !important; }
+  /* the backdrop's 40px bleed would be 40px of empty scroll in a scrolling dossier */
+  ${D} .sx-dossier::before { inset:0 !important; }
+  ${D} .sx-dossier > * { width:auto !important; }
+  ${D} .sx-dossier > .sx-dossier__risk { width:auto !important; }
+  ${D} .sx-dossier > .k-caps { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:.1em !important; line-height:1.3 !important; }
+  ${D} .sx-dossier__title { overflow-wrap:normal !important; word-break:normal !important; }
+  ${D} .sx-dossier .k-hero--hero { flex-wrap:wrap !important; column-gap:8px !important; row-gap:0 !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__w { letter-spacing:.08em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier__terms > li { grid-template-columns:max-content minmax(0, 1fr) !important; column-gap:10px !important; }
+  ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier__terms :is(.sx-term__v, .sx-term__sub) { overflow-wrap:break-word !important; }
+  /* a blocked job's RESOLVE READINESS keeps its reason under it instead of past the frame's edge */
+  ${D} .sx-dossier__foot > li { flex-wrap:wrap !important; row-gap:2px !important; }
+  ${D} .sx-dossier__foot .k-word-sub { min-width:0 !important; white-space:normal !important; }
+}
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:800px) {
+  ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; grid-template-rows:none !important; column-gap:16px !important; }
+  ${D} .sx-dossier > * { grid-column:1 !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 3 !important; align-self:start !important; margin:0 0 4px !important; }
+  ${D} .sx-dossier > .sx-dossier__risk { grid-column:2 !important; grid-row:3 / 5 !important; align-self:start !important; margin:0 0 4px !important; }
+  ${D} .sx-dossier > .sx-dossier__terms { grid-column:2 !important; grid-row:5 / span 4 !important; align-self:start !important; }
+  /* 960×540: the ~120px dossier faded the reward out under its fold (the left column ran caps, a two-line title, client and
+     a 26px figure), and ACCEPT's two-line "hold to accept" note ended on the frame's right edge. The left column closes up so
+     the reward reads on first paint; the key and its note give back ~11px so the note stands inside the frame. */
+  ${D} .sx-dossier { padding-top:0 !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier > .k-caps { margin:0 !important; line-height:1.2 !important; }
+  ${D} .sx-dossier__title { font-size:15px !important; line-height:1.12 !important; margin:0 0 1px !important; }
+  ${D} .sx-dossier__client { margin:0 !important; line-height:1.25 !important; }
+  ${D} .sx-dossier .k-hero--hero { margin:2px 0 0 !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; line-height:1 !important; }
+  ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey { padding:0 9px 0 8px !important; }
+  ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey .orr-lampkey__note { margin-left:14px !important; letter-spacing:.04em !important; }
+}
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important; padding-top:6px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:2 !important; margin:0 0 8px !important; }
+  ${D} .sx-dossier__title { font-size:15px !important; line-height:1.15 !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; }
+}
+/* a mid-width, tall desktop window (901–1149 × 801+) kept the route orrery's column, so the reading column ran 230–420px:
+   a 36px title in four lines and the terms pushed ACCEPT ~300px under the dossier's fold. ACCEPT stands at the head of the
+   reading column instead, and the title takes the size it has at 1280. */
+@media (min-width:901px) and (max-width:1149px) and (min-height:801px) {
+  ${D} .sx-dossier > .sx-dossier__foot { order:-1 !important; position:static !important; background:none !important; -webkit-mask-image:none !important; mask-image:none !important; margin:0 0 40px !important; padding:6px 0 0 !important; }
+  ${D} .sx-dossier > .sx-dossier__foot > li { flex-wrap:wrap !important; row-gap:4px !important; }
+  ${D} .sx-dossier__title { font-size:26px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; }
+}
+/* the Ledger's purse has the width of its words */
+${T} .orr-ledger-purse { width:260px; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .orr-ledger-purse { width:230px; } }
+
+/* every rail's words and sub-lines keep their new left edge */
+${T} :is(.sx-bar__rail, .sx-bar__leads) > .k-caps, ${T} .sx-bar__foot, ${T} .sx-bar__leads .sx-muted, ${T} .st-ledger-nav, ${T} .sx-ledger__keys, ${T} .sx-ct__hang > * > .k-caps { padding-left:44px !important; }
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { width:26px !important; }
+${T} .sx-ct__rows .sx-ct-row:focus-visible::before { width:26px !important; }
+
+/* ================================ ROUND 6: BAR ============================================== */
+/* LEADS at the foot of the ladder column at every size; the contacts tighten (role inline) so the ladder ends above the replies */
+${T} .sx-bar__hang { display:flex !important; flex-direction:column !important; }
+${T} .sx-bar__leads { margin-top:auto !important; padding-bottom:4px; }
+${T} .sx-bar__rows .sx-bar-row { flex-direction:row !important; justify-content:flex-start !important; align-items:baseline !important; gap:10px !important; padding-top:5px !important; padding-bottom:5px !important; text-align:left !important; }
+/* the ladder's top line meets the dialogue's top line on a tall screen */
+@media (min-width:1500px) and (min-height:900px) {
+  ${T} .sx-bar__hang { padding-top:clamp(0px, calc((100vh - 900px) * .85), 150px) !important; }
+}
+/* the name clears the face: a size that ends short of the feather; the portrait holds its place at three quarters of the width */
+${T} .sx-talk__name { font-size:clamp(44px, 5.8vh, 60px) !important; }
+${T} .sx-talk__avatar { right:5% !important; }
+/* the dim layer dissolves inside its own bounds: no edge ever reaches full alpha */
+${T} .sx-talk__avatar::before { -webkit-mask-image:radial-gradient(ellipse 42% 60% at 56% 47%, #000 40%, transparent 84%); mask-image:radial-gradient(ellipse 42% 60% at 56% 47%, #000 40%, transparent 84%);
+  background:radial-gradient(ellipse 42% 60% at 56% 47%, rgb(6 8 11 / .92), rgb(6 8 11 / .82) 42%, rgb(6 8 11 / .5) 62%, rgb(6 8 11 / 0) 84%); }
+/* the replies hang off a spine: ticks cross it, the current reply is a light cursor on it, no triangle */
+${T} .sx-talk__choices { background:linear-gradient(90deg, transparent 30px, rgb(${BONE} / .22) 30px, rgb(${BONE} / .22) 31px, transparent 31px) 0 8px / 100% calc(100% - 16px) no-repeat !important; padding:8px 0 !important; }
+${T} .sx-choice::before, ${T} .sx-talk__choices > li:first-child .sx-choice::before { left:27px !important; width:8px !important; height:2px !important; margin-top:0 !important; top:50% !important; clip-path:none !important; background:rgb(${BONE} / .42) !important; }
+${T} .sx-talk__choices > li .sx-choice.is-current::before, ${T} .sx-talk__choices > li .sx-choice:is(:hover, :focus-visible)::before { left:29px !important; width:4px !important; height:18px !important; margin-top:-9px !important; clip-path:none !important;
+  background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .55) !important; }
+/* the keys read as keys */
+${T} .sx-choice::after { font-size:12px !important; color:rgb(${BONE} / .7) !important; }
+${T} .sx-talk__keys, ${T} .sx-bar__keys { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; margin:8px 0 0 !important; }
+${T} .sx-talk__keys { padding-left:44px; }
+${T} .sx-bar__keys { padding-left:44px !important; }
+/* one target per lead: the title at full width with its price as a reading; the verb answers the current row */
+${T} .sx-lead { grid-template-columns:minmax(0, 1fr) auto !important; column-gap:12px !important; position:relative !important; }
+${T} .sx-lead__t { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+${T} .sx-lead__t .sf-entity-link { white-space:normal !important; }
+${T} .sx-lead__go { position:absolute !important; right:0; top:50%; transform:translateY(-50%); opacity:0; pointer-events:none; }
+${T} .sx-lead:is(:hover, :focus-within) .sx-lead__go { opacity:1; pointer-events:auto; }
+${T} .sx-lead:is(:hover, :focus-within) .sx-lead__s { visibility:hidden; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-lead__t { font-size:12px !important; } }
+
+/* ================================ ROUND 6: FACTIONS ========================================= */
+/* the hero crest is a watermark the numeral and brackets stand against: large, bone, quiet, no gold */
+${T} .sx-fac-crest { display:block !important; position:absolute; right:0 !important; left:auto !important; top:-16px; width:300px; height:300px; pointer-events:none; z-index:0; opacity:.34;
+  filter:grayscale(1) brightness(1.1); mix-blend-mode:screen; }
+${T} .sx-fac-crest img, ${T} .sx-fac-crest svg, ${T} .sx-fac-crest * { filter:grayscale(1) !important; }
+${T} .sx-fac-overview { padding-right:0 !important; }
+${T} .sx-fac-overview > :not(.sx-fac-crest) { position:relative; z-index:1; }
+@media (min-width:1500px) { ${T} .sx-fac-overview > .sx-fac__detail { margin-right:0 !important; } }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-fac-crest { width:200px; height:200px; top:-10px; } }
+/* rim words at the label floor; a dim zero is a zero */
+${T} .orr-crest__name { font-size: 12px !important; }
+${T} .orr-crest__rep { font-size: 12px !important; }
+${T} .sx-fac__rows .sx-fac-row__tier.is-zero { color:rgb(${BONE} / .32) !important; }
+
+/* every ladder row keeps the arm's room whatever its own sheet said */
+${T} :is(.sx-bar__rows .sx-bar-row, .sx-lead__rows .sx-lead, .sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry, .sx-ind__list .sx-ind-row) { padding-left:44px !important; }
+${T} .sx-ct__active { padding-left:44px !important; }
+
+/* ================================ ROUND 7: MISSIONS ========================================= */
+/* focus is a cursor that rides the rail: a vertical bloomed segment the height of the row; the open mark stays a tick; section majors 12px */
+${T} .sx-ct__rows .sx-ct-row:focus-visible::before { left:6px !important; top:5px !important; bottom:5px !important; width:2px !important; height:auto !important; margin:0 !important;
+  background:rgb(255 250 240) !important; box-shadow:0 0 7px 1px rgb(248 244 234 / .6) !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after, ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { width:12px !important; }
+/* one red mark for the collateral: its rung and its figure; no stray tick above it */
+${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { display:none !important; }
+${T} .sx-dossier__terms > li.sx-term--threat::before { background:var(--dp-danger, #ff5038) !important; width:12px !important; }
+/* a short screen: the scales stay on the rail at 1:1; the price rides the row's sub-line so the name has the ladder's width; the featured word shows */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .orr-ct-scales { height:60px !important; max-width:400px !important; }
+  ${T} .orr-ct-scales::before { top:14px !important; }
+  ${T} .orr-ct-scales::after { top:44px !important; }
+  ${T} .sx-ct__rows .sx-ct-row { display:block !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; white-space:nowrap !important; display:block !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { display:block !important; text-align:left !important; font-size: 12px !important; margin-top:1px; color:rgb(${BONE} / .7) !important; }
+  ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(248 244 234) !important; }
+  ${T} .sx-ct__rows .sx-ct-row { padding-top:3px !important; padding-bottom:3px !important; }
+  ${T} .sx-dossier > .orr-ct-route .orr-route__caption { top:auto !important; bottom:-26px !important; left:0 !important; right:0 !important; justify-content:center !important; }
+}
+/* the route-column key placement (1101+ × ≤800) sits ACCEPT above the ring, so the key→ring tether (and the
+   jump reading it carries) has no run and hides. The ring's own "1 JUMP · TO …" caption comes back over the
+   ring, between the key and the ring, which steps down and in to make the room above the tab bar */
+@media (min-width:1101px) and (max-height:800px) {
+  ${T} .sx-dossier > .orr-ct-route { margin-top:34px !important; height:clamp(206px, calc(37vh - 34px), 266px) !important; }
+  ${T} .sx-dossier > .orr-ct-route.is-tether:not(.is-off) > .orr-route__caption { display:flex !important; top:-28px !important; bottom:auto !important; left:0 !important; right:0 !important; justify-content:center !important; }
+}
+/* from 721 tall the narrower ring would otherwise set its right-hand names past the dossier's edge (TETHYS JUNCTIC) */
+@media (min-width:1101px) and (min-height:721px) and (max-height:800px) {
+  ${T} .sx-dossier > .orr-ct-route { width:calc(100% - 32px) !important; }
+}
+
+/* ================================ ROUND 5: LEDGER =========================================== */
+/* the reading's left edge is the axis; the ladder's read mark is light on the rail, no arrowhead */
+${T} .sx-ledger__right > .sx-ledger__read, ${T} .sx-ledger__read > *, ${T} .sx-ledger__read .k-hero { padding-left:0 !important; margin-left:0 !important; }
+${T} .st-ledger-list .st-ledger-entry[aria-selected="true"]::before { display:none !important; }
+${T} .st-ledger-list .st-ledger-entry[aria-selected="true"]::after { width:18px !important; height:2px !important; margin-top:-1px !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .5) !important; }
+${T} .orr-ledger-purse { width:270px; height:224px; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .orr-ledger-purse { width:240px; height:190px; } }
+
+/* a short screen: a posted name wraps rather than clips once the price rides the sub-line */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { white-space:normal !important; line-height:1.25 !important; } }
+/* the reading stands on the axis */
+${T} .sx-ledger__read .k-caps, ${T} .sx-ledger__read-kicker, ${T} .sx-ledger__read-title, ${T} .sx-ledger__read-line, ${T} .sx-ledger__read-hand { padding-left:0 !important; margin-left:0 !important; text-indent:0 !important; }
+
+${T} .sx-ledger__read.fh-plate, ${T} .sx-ledger__row > .sx-ledger__read { padding-left:0 !important; }
+
+/* ================================ ROUND 7: BAR ============================================== */
+/* one column: the contacts open their pitch on a tall screen and the leads follow at a fixed gap, so one spine reads from HERE TONIGHT to the board */
+@media (min-width:1500px) and (min-height:900px) {
+  ${T} .sx-bar__leads { margin-top:44px !important; }
+  ${T} .sx-bar__rows .sx-bar-row { padding-top:11px !important; padding-bottom:11px !important; }
+  ${T} .sx-talk__choices > li .sx-choice { padding-top:13px !important; padding-bottom:13px !important; }
+}
+/* the reply spine and its ticks at rest light */
+${T} .sx-talk__choices { background:${SPINE(30, .55, '0 8px / 100% calc(100% - 16px)')}, ${BAND(30, '0 8px / 100% calc(100% - 16px)')} !important; }
+${T} .sx-choice::before, ${T} .sx-talk__choices > li:first-child .sx-choice::before { background:rgb(${BONE} / .55) !important; }
+/* the reply keys are keys, not list numbers: dim unless current */
+${T} .sx-choice::after { font-size: 12px !important; font-weight:600 !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-choice.is-current::after { color:rgb(248 244 234) !important; }
+/* the stage direction says nothing the keys do not */
+${T} .sx-talk__reply.is-idle { display:none !important; }
+/* the feather ends at the hairline; the world under it is deep; the portrait fades before the tab rail */
+${T} .sx-talk__avatar :is(img, canvas, .sx-portrait) { -webkit-mask-image:radial-gradient(ellipse 47% 58% at 56% 47%, #000 62%, transparent 86%) !important; mask-image:radial-gradient(ellipse 47% 58% at 56% 47%, #000 62%, transparent 86%) !important; }
+${T} .sx-talk__avatar::before { background:radial-gradient(ellipse 42% 60% at 56% 47%, rgb(6 8 11 / .94), rgb(6 8 11 / .9) 56%, rgb(6 8 11 / .55) 68%, rgb(6 8 11 / 0) 84%); }
+${T} .sx-talk__avatar { -webkit-mask-image:linear-gradient(180deg, #000 76%, transparent 95%) !important; mask-image:linear-gradient(180deg, #000 76%, transparent 95%) !important; }
+/* a lead's price is a reading on the column's edge; the first lead is current at rest */
+${T} .sx-lead__rows .sx-lead { margin-right:0 !important; }
+${T} .sx-lead__s { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 300 !important; font-weight:300 !important; font-size:15px !important; color:rgb(${BONE} / .85) !important; }
+${T} .sx-lead__rows .sx-lead.is-current::before { left:6px !important; top:5px !important; bottom:5px !important; width:4px !important; height:auto !important; margin:0 !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .55) !important; }
+${T} .sx-lead__rows .sx-lead.is-current .sx-lead__t { color:rgb(248 244 234) !important; }
+${T} .sx-bar__leadkeys { margin-top:6px !important; }
+
+/* ================================ ROUND 5: INDUSTRY ========================================= */
+/* the chain has the height of a hero instrument at 1920 (ring r≈130) and drops toward the stage's centre */
+${T} .orr-ind-chain { height:clamp(240px, 42vh, 420px) !important; margin-top:clamp(0px, 3vh, 36px); }
+/* In a short wide berth the reason above the ring and the Fabricate key below it share the
+   same narrow stage. Lift the chain and its key together so the reason, disabled explanation,
+   and action remain visible without changing the button's live/disabled semantics. */
+@media (min-width:1101px) and (min-height:641px) and (max-height:800px) {
+  /* Keep the dial compact and reserve real flow space for its action and live queue status. */
+  ${T} .sx-fab { display:block !important; height:auto !important; }
+  ${T} .orr-ind-chain { height:max(180px, calc(var(--orr-chain-input-count, 1) * 70px + 40px)) !important; margin:0 0 28px !important; }
+  ${T} .sx-fab > .sx-fab-foot { position:static !important; transform:none !important; margin:12px 0 0 !important; }
+}
+/* the block note under the reason; the disabled key's outline is enough */
+${T} .orr-chain__blocknote { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+${T} .orr-chain__verb > .orr-chain__blocknote::before { content:"" !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .45) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::after { display:none !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::before { background:transparent !important; }
+/* the ladder ends on a whole rung: the fold is a rung deep; the extent cursor rides at rest light */
+${T} .sx-ind__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 46px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 46px), transparent) !important; }
+${T} .sx-ind__list > .orr-extent::before { opacity:.55 !important; }
+
+/* ================================ ROUND 6: INDUSTRY ========================================= */
+${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .66) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::after { display:block !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::before { background:rgb(${BONE} / .36) !important; }
+${T} .orr-chain__label.is-below { z-index:2; }
+${T} .orr-chain__process.is-blocked { font-size:12px !important; letter-spacing:.06em !important; opacity:.6; }
+${T} .orr-chain__blocknote { display:block; margin-top:6px; }
+
+/* ================================ ROUND 8: MISSIONS ========================================= */
+/* focus is a vertical light segment on the rail at every specificity the earlier rules used */
+${T} .sx-ct__rows .sx-ct-row:focus-visible:not(.is-active, .is-selected, [aria-selected="true"])::before, ${T} .sx-ct__rows .sx-ct-row:focus-visible::before { left:6px !important; top:5px !important; bottom:5px !important; width:2px !important; height:auto !important; margin:0 !important;
+  background:rgb(255 250 240) !important; box-shadow:0 0 7px 1px rgb(248 244 234 / .6) !important; clip-path:none !important; }
+${T} .sx-ct__rows .sx-ct-row:focus-visible:not(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__title { color:rgb(${BONE} / .88) !important; font-weight:600 !important; }
+/* the standing loss at rest is a ghost, not a threat: red belongs to the collateral alone */
+${T} .orr-ct-scale__loss { stroke:rgb(${BONE} / .45) !important; }
+${T} .orr-ct-scale__lossword { fill:rgb(${BONE} / .72) !important; }
+${T} .orr-ct-scale__word { fill:rgb(248 244 234); }
+/* the key is the dossier's last rung, not a button placed under it */
+${T} .sx-dossier > .k-words:last-of-type { margin-top:10px !important; }
+/* a short screen: the ladder scrolls under a dissolved edge with its extent cursor; rows tighter */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-ct__board[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; overflow:hidden auto !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { font-size:12.5px !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { font-size: 12px !important; }
+  ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px !important; }
+}
+
+/* ================================ ROUND 8: BAR ============================================== */
+/* one lit cursor at rest: the replies; the leads' current row waits at a third until Tab lands on it */
+${T} .sx-lead__rows .sx-lead.is-current::before { opacity:.35; }
+${T} .sx-lead__rows:focus-within .sx-lead.is-current::before { opacity:1; }
+${T} .sx-lead__rows .sx-lead.is-current .sx-lead__t { color:rgb(${BONE} / .88) !important; }
+${T} .sx-bar__leadkeys { opacity:.55; }
+${T} .sx-bar__leads:focus-within .sx-bar__leadkeys { opacity:1; }
+/* the Hand's run meets its bead; the pivot is a ring on the spine; the name column gives the arm room */
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, .is-selected, [aria-selected="true"])::after { width:27px !important; background:linear-gradient(90deg, rgb(255 217 140 / 0) 0 1px, var(--dp-hand-hot, #ffd98c) 1px 4px, var(--dp-hand, #f2b950) 4px) !important; }
+${T} .sx-bar__rows .sx-bar-row, ${T} .sx-lead__rows .sx-lead { padding-left:52px !important; }
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, .is-selected, [aria-selected="true"])::before { left:33px !important; }
+/* the world under the portrait's feather: a wash reaching 320px left of the face */
+${T} .sx-talk__avatar::before { inset:-10% -10% -10% -44%; background:radial-gradient(ellipse 50% 60% at 62% 47%, rgb(6 8 11 / .94), rgb(6 8 11 / .9) 50%, rgb(6 8 11 / .6) 66%, rgb(6 8 11 / 0) 84%);
+  -webkit-mask-image:radial-gradient(ellipse 50% 60% at 62% 47%, #000 44%, transparent 84%); mask-image:radial-gradient(ellipse 50% 60% at 62% 47%, #000 44%, transparent 84%); }
+/* the tall screen's columns start nearer the content's top: the eyeline padding halves and the pitch grows */
+@media (min-width:1500px) and (min-height:900px) {
+  ${T} .sx-talk__id { padding-top:clamp(0px, calc((100vh - 900px) * .45), 84px) !important; }
+  ${T} .sx-bar__hang { padding-top:clamp(0px, calc((100vh - 900px) * .45), 84px) !important; }
+  ${T} .sx-bar__rows .sx-bar-row { padding-top:14px !important; padding-bottom:14px !important; }
+}
+/* one spine through the break: the contacts' foot hint sits beside the spine */
+${T} .sx-bar__hang { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .16) 7px, rgb(${BONE} / .16) 8.5px, transparent 8.5px) 0 0 / 100% 100% no-repeat; }
+/* three sizes of one voice: hints, section labels, the verb */
+${T} .sx-bar__keys, ${T} .sx-talk__keys { font-size: 12px !important; font-weight:500 !important; color:rgb(${BONE} / .45) !important; }
+${T} .sx-bar__log { color:rgb(248 244 234) !important; }
+/* a lead's title clamps with a dissolved edge before its price at 720 */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-lead__t { white-space:nowrap !important; overflow:hidden !important; -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 24px), transparent) !important; mask-image:linear-gradient(90deg, #000 calc(100% - 24px), transparent) !important; }
+  ${T} .sx-bar { grid-template-columns:340px minmax(0, 1fr) !important; }
+}
+/* the trace under the spoken line */
+${T} .orr-bar-wave { margin-top:8px !important; margin-bottom:2px !important; }
+
+/* ================================ ROUND 6: LEDGER =========================================== */
+/* the axis becomes the reading's left rule: one continuous line from the ceiling to the price line */
+${T} .sx-ledger__read::after { height:100% !important; background:rgb(${BONE} / .42) !important; }
+${T} .sx-ledger__right > .sx-ledger__read { padding-left:12px !important; }
+/* one line per entry: cycle prefix, item, the signed figure on a common right edge; the kind folds; every rung ticks */
+${T} .sx-ledger .st-ledger-entry-body { grid-template-columns:auto minmax(0, 1fr) !important; grid-template-areas:"time line" "note note" !important; column-gap:12px !important; align-items:baseline !important; }
+${T} .sx-ledger .st-ledger-type { display:none !important; }
+${T} .sx-ledger .st-ledger-line { display:flex !important; justify-content:space-between !important; gap:14px !important; min-width:0; }
+${T} .sx-ledger .st-ledger-line .sx-ledger__item { min-width:0; overflow:visible; overflow-wrap:anywhere; text-overflow:clip; white-space:normal; }
+${T} .sx-ledger .st-ledger-line .sx-ledger__fig { flex:none; font-family:var(--dp-face-numeral, "Archivo") !important; font-variant-numeric:tabular-nums; font-weight:500; color:rgb(${BONE} / .85); }
+${T} .sx-ledger .st-ledger-entry[aria-selected="true"] .sx-ledger__fig { color:rgb(248 244 234); }
+${T} .sx-ledger .st-ledger-entry { padding-top:8px !important; padding-bottom:8px !important; }
+${T} .st-ledger-list .st-ledger-entry::before { display:block !important; }
+${T} .sx-ledger .st-ledger-line { color:rgb(${BONE} / .8) !important; }
+/* the purse group right-aligns to the tape's end and its feet sit on the price line's baseline */
+${T} .orr-ledger-purse { width:280px; height:236px; margin-right:-6px; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-ledger__right > .orr-ledger-tape { height:clamp(176px, 27vh, 240px) !important; }
+  ${T} .sx-ledger .st-ledger-list { max-height:min(34vh, 250px) !important; }
+  ${T} .orr-ledger-purse { width:220px; height:172px; }
+  ${T} .sx-ledger__right > .sx-ledger__read { padding-top:8px !important; }
+}
+
+/* ================================ ROUND 7: FACTIONS ========================================= */
+/* the watermark stands behind the numeral, not off in the corner */
+${T} .sx-fac-crest { left:-64px !important; right:auto !important; top:12px !important; width:340px !important; height:340px !important; opacity:.2 !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-fac-crest { width:220px !important; height:220px !important; left:-40px !important; top:0 !important; } }
+
+/* ================================ ROUND 9: MISSIONS ========================================= */
+/* the price is a fact on the title's line, twelve px after it, in the numeral face at 62%; the chosen row lifts it */
+${T} .sx-ct__rows .sx-ct-row { display:block !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { display:inline !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { display:inline !important; float:none !important; margin:0 0 0 12px !important; padding:0 !important; text-align:left !important; justify-self:auto !important;
+  font-family:var(--dp-face-numeral, "Archivo") !important; font-weight:600 !important; font-size:12.5px !important; letter-spacing:.02em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap; }
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(248 244 234) !important; }
+/* the bead sits at the rail junction (on the spine), the arm runs from it to the words */
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { left:5px !important; width:6px !important; height:6px !important; margin-top:-3px !important; border-radius:50% !important;
+  background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important; }
+/* a sub-verb (Dispatch this job) is quieter than the job it hangs off until its row is chosen */
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:not(.is-active, .is-selected, [aria-selected="true"]) .k-row__name { color:rgb(${BONE} / .62) !important; font-weight:500 !important; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:not(.is-active, .is-selected, [aria-selected="true"]) .k-row__sub { color:rgb(${BONE} / .5) !important; }
+/* one spine through the terms: the scales' rule continues down the ladder; the dashes are its ticks; the key is the last rung */
+${T} .sx-dossier__terms { position:relative !important; padding-bottom:0 !important; margin-bottom:0 !important; min-height:0 !important; }
+${T} .sx-dossier__terms::before { content:""; position:absolute; left:0; top:-2px; bottom:6px; width:8px; background:${SPINE(3, .55)}, ${BAND(3)}; pointer-events:none; }
+${T} .sx-dossier__terms > li:last-child { margin-bottom:0 !important; }
+${T} .sx-dossier__foot { margin-top:6px !important; }
+/* the glass under the route orrery: the instrument is not part of the set */
+${T} .sx-dossier > .orr-ct-route::before { background:radial-gradient(circle, rgb(7 8 10 / .8), rgb(7 8 10 / .68) 60%, rgb(7 8 10 / 0) 76%) !important; -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px);
+  -webkit-mask-image:radial-gradient(circle, #000 60%, transparent 76%); mask-image:radial-gradient(circle, #000 60%, transparent 76%); }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  /* the RISK rung breathes under the numeral's caption */
+  ${T} .orr-ct-scales { margin-top:10px !important; }
+  /* the ladder window dissolves inside the inter-row gap only (the height is snapped to a row boundary by the screen) */
+  ${T} .sx-ct__board[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 12px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 12px), transparent) !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { font-size: 12px !important; margin-left:8px !important; }
+}
+
+/* ================================ ROUND 9b: MISSIONS — the tether ============================= */
+${T} .sx-dossier { position:relative !important; }
+${T} .sx-dossier > .sx-ct-tether { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:1; grid-area:auto; }
+${T} .sx-ct-tether__bloom { fill:none; stroke:rgb(${BONE}); stroke-width:9; opacity:.09; stroke-linejoin:round; }
+${T} .sx-ct-tether__core { fill:none; stroke:rgb(${BONE} / .5); stroke-width:2; stroke-linejoin:miter; }
+${T} .sx-ct-tether__bead { fill:rgb(248 244 234); filter:drop-shadow(0 0 3px rgb(248 244 234 / .7)); }
+${T} .sx-ct-tether__pulse-bloom { fill:rgb(143 203 255 / .28); }
+${T} .sx-ct-tether__pulse-dot { fill:rgb(223 238 255); }
+html.sf-reduce-motion ${T} .sx-ct-tether__pulse { display:none; }
+${T} .sx-dossier > .sx-ct-tether__caption { position:absolute; margin:0; padding:0; display:flex; align-items:baseline; gap:10px; pointer-events:none; z-index:2; white-space:nowrap; grid-area:auto; }
+${T} .sx-ct-tether__caption > .orr-route__jumps { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:300; font-size:26px; line-height:1; letter-spacing:0; color:rgb(248 244 234); }
+${T} .sx-ct-tether__caption > .orr-route__via { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size: 12px; font-weight:650; letter-spacing:.16em; color:rgb(${BONE} / .66); }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-ct-tether__caption > .orr-route__jumps { font-size:20px; }
+  ${T} .sx-ct-tether__caption > .orr-route__via { font-size: 12px; }
+}
+
+/* ================================ ROUND 7: INDUSTRY ========================================= */
+/* the key is centred on the product's axis at every size */
+${T} .sx-fab-foot { transform:translateX(-50%) !important; }
+@media (min-width:1101px) and (min-height:641px) and (max-height:800px) {
+  /* Keep the authored centered alignment while lifting the action clear of the short stage edge. */
+  ${T} .sx-fab-foot { transform:translate(-50%, -4px) !important; }
+}
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-fab-foot { left:var(--fab-foot-x, 0) !important; right:auto !important; top:var(--fab-foot-y, auto) !important; bottom:auto !important; }
+}
+/* the ladder's extent cursor is quieter than the instrument */
+${T} .sx-ind__list > .orr-extent::before { opacity:.4 !important; }
+
+/* ================================ ROUND 7: LEDGER =========================================== */
+/* the reading stands off its rule; unread cycle prefixes read as one column with the tape's */
+${T} .sx-ledger .sx-ledger__read.fh-plate, ${T} .sx-ledger__right > .sx-ledger__read { padding-left:12px !important; }
+${T} .sx-ledger .st-ledger-entry:not([aria-selected="true"]) .st-ledger-cycle { color:rgb(${BONE} / .62) !important; }
+${T} .sx-ledger__read::after { background:rgb(${BONE} / .5) !important; }
+
+/* the watermark IS the authority's crest: the old "no second authority mark" rule hid it; it paints currentColor */
+${T} .sx-fac-overview > .sx-fac-crest, ${T} .sx-fac-overview > .sx-fac-crest.is-authority { display:block !important; color:rgb(236 230 216); }
+${T} .sx-fac-overview > .sx-fac-crest .dp-mark, ${T} .sx-fac-overview > .sx-fac-crest svg { display:block; width:100%; height:100%; color:rgb(236 230 216); }
+
+/* a short screen's tier names at 9px: nine bands of ~63px hold ACCEPTED only at this size */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .orr-standing text.orr-standing__name, ${T} svg.orr-svg.is-compact text.orr-standing__name { font-size: 12px !important; letter-spacing:.08em !important; }
+  ${T} .orr-standing text.orr-standing__val { font-size: 12px !important; }
+}
+
+/* ================================ ROUND 8: INDUSTRY ========================================= */
+${T} .sx-fab-foot .orr-lampkey:disabled { opacity:1 !important; color:rgb(${BONE} / .5) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::before { background:transparent !important; box-shadow:none !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::after { display:none !important; }
+${T} .sx-ind .orr-extent::before, ${T} .sx-ind__list .orr-extent::before, ${T} .sx-fab .orr-extent::before { opacity:.4 !important; }
+
+/* ================================ ROUND 10: MISSIONS ======================================== */
+/* the junction bead: on the spine where the arm leaves it, at every spelling of "chosen" */
+${T} .sx-ct__rows .sx-ct-row.is-active::before, ${T} .sx-ct__rows .sx-ct-row.is-selected::before, ${T} .sx-ct__rows .sx-ct-row[aria-selected="true"]::before {
+  content:"" !important; display:block !important; position:absolute !important; left:5px !important; top:50% !important; width:6px !important; height:6px !important;
+  margin:-3px 0 0 !important; border-radius:50% !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important;
+  clip-path:none !important; transform:none !important; opacity:1 !important; filter:none !important; }
+/* the ladder window's extent cursor is a rail mark, not a selection */
+${T} .sx-ct__board > .orr-extent::before, ${T} .sx-ct__board .orr-extent::before { opacity:.3 !important; }
+
+/* ================================ ROUND 9: BAR ============================================== */
+/* the old comb is gone; the voice lives on the portrait */
+${T} .orr-bar-wave { display:none !important; }
+${T} .sx-bar__stage { position:relative !important; }
+/* B1: the Hand touches its bead — the row paints no lamp of its own; the arm runs spine to bead centre */
+${T} .sx-bar__rows .sx-bar-row.fh-key--legend, ${T} .sx-bar__rows .sx-bar-row.is-active { background:none !important; background-image:none !important; box-shadow:none !important; }
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, .is-selected, [aria-selected="true"])::after { display:block !important; left:7px !important; width:29px !important; opacity:1 !important; visibility:visible !important; z-index:2; clip-path:none !important;
+  background:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c) 0 3px, var(--dp-hand, #f2b950) 3px) !important; }
+/* B2: the leads' marker sleeps at rest (a third of the focus cursor's lift, no bloom) and wakes when Tab lands */
+${T} .sx-lead__rows .sx-lead.is-current::before { opacity:1 !important; background:rgb(${BONE} / .42) !important; box-shadow:none !important; }
+${T} .sx-lead__rows:focus-within .sx-lead.is-current::before { background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .55) !important; }
+/* B3: one spine at one rest light from the first contact to the last lead; the lists keep their ticks only */
+${T} .sx-bar__hang { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .36) 7px, rgb(${BONE} / .36) 8.5px, transparent 8.5px) 0 0 / 100% 100% no-repeat !important;
+  -webkit-mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent) !important; mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent) !important; }
+${T} .sx-bar__rows, ${T} .sx-lead__rows { background:repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
+/* B4: three hints, one voice */
+${T} .sx-talk__keys, ${T} .sx-bar__keys, ${T} .sx-bar__leadkeys { font-size: 12px !important; letter-spacing:.14em !important; color:rgb(119 112 104) !important; opacity:1 !important; }
+${T} .sx-bar__leads:focus-within .sx-bar__leadkeys { color:rgb(${BONE} / .6) !important; }
+/* the ladder's prices stop short of the dialogue column */
+@media (min-width:1500px) { ${T} .sx-bar__rows .sx-bar-row, ${T} .sx-lead__rows .sx-lead { max-width:528px !important; } }
+/* B5: a short screen gives LEADS its air */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-bar__leads > .k-caps { margin-top:30px !important; } }
+
+/* ================================ ROUND 8: FACTIONS ========================================= */
+/* the watermark stays inside its column and fades out above the scale row */
+${T} .sx-fac-crest { left:0 !important; top:6px !important; width:320px !important; height:320px !important;
+  -webkit-mask-image:linear-gradient(180deg, #000 0, #000 58%, transparent 80%) !important; mask-image:linear-gradient(180deg, #000 0, #000 58%, transparent 80%) !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-fac-crest { width:200px !important; height:200px !important; } }
+/* the legend: who the chosen power stands with and against, one line, rivals red */
+${T} .sx-fac-legend { margin:0 0 6px !important; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; }
+${T} .sx-fac-legend__k { color:rgb(248 244 234); }
+${T} .sx-fac-legend .is-hostile { color:rgb(255 80 56 / .85) !important; }
+/* a short screen carries the rim names outside the ring at 8px */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { display:block !important; font-size: 12px !important; letter-spacing:.08em !important; }
+  ${T} .orr-fac-orbit .orr-crest__words { display:flex !important; }
+}
+
+/* ================================ ROUND 9: LEDGER =========================================== */
+/* the reading's rule sits on the same column as the axis */
+${T} .sx-ledger__read::after { left:1px !important; }
+
+/* ================================ ROUND 9: INDUSTRY ========================================= */
+/* the ladder's rungs carry their state in light: makeable full with a long tick, short of stock at 70%, facility-blocked at 45% */
+${T} .sx-ind-process__items .sx-ind-row.is-ready:not(.is-active, [aria-selected="true"])::before { width:14px !important; background:rgb(${BONE} / .85) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-materials .sx-ind-row__why { display:inline !important; }
+${T} .sx-ind-process__head .sx-ind-process__count { margin-left:10px; color:rgb(${BONE} / .45) !important; letter-spacing:.12em; }
+${T} .sx-ind-process__head .sx-ind-process__block { margin-left:10px; color:rgb(${BONE} / .66) !important; letter-spacing:.12em; }
+${T} .sx-ind-process__head .sx-ind-process__block::before { content:"·  "; color:rgb(${BONE} / .4); }
+/* the ladder ends on a whole rung: the fold is a rung deep and an overflowing list keeps that much
+   pad, so at scroll end the fade lands on empty column and the last module reads whole (RC-49) */
+${T} .sx-ind__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 24px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 24px), transparent) !important; padding-bottom:24px !important; }
+
+/* ================================ ROUND 11: MISSIONS ======================================== */
+/* the rail runs through the seam between the board and YOURS: one scale with a block gap, ticks and all */
+${T} .sx-ct__yours { position:relative !important; }
+${T} .sx-ct__yours::before { content:""; position:absolute; left:7px; width:1.5px; top:calc(-1 * var(--ct-seam, 0px)); height:var(--ct-seam, 0px); pointer-events:none;
+  background:linear-gradient(180deg, rgb(${BONE} / .32), rgb(${BONE} / .32)) 0 0 / 100% 100% no-repeat, repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) -3px 0 / 4px 100% no-repeat; }
+/* the ladder window's extent is a bead at the proportional height, never a second rail along a block */
+${T} .sx-ct__board .orr-extent::before { top:calc(var(--orr-ext-top, 0px) + var(--orr-ext-h, 0px) / 2 - 3px) !important; height:6px !important; opacity:.6 !important; border-radius:1px; }
+/* the hold's commit stretch is a ghost of the track, not a second head in the trace's amber */
+${T} .orr-lampkey .orr-lampkey__commit { stroke:rgb(${BONE} / .7) !important; stroke-width:1 !important; }
+${T} .orr-lampkey .orr-lampkey__commit-bloom { display:none !important; }
+
+/* ================================ ROUND 9: FACTIONS ========================================= */
+/* while a relation set shows, a bystander's name is no brighter than its ghosted emblem; a related name lifts */
+${T} .orr-crestorbit.has-relations .orr-crest:not(.is-related):not(.is-chosen) .orr-crest__name { opacity:.85 !important; }
+${T} .orr-crestorbit.has-relations .orr-crest.is-related .orr-crest__name { color:rgb(${BONE} / .86) !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { font-size: 12px !important; }
+}
+
+/* the tape (and the leader's run into the reading) stands above the reading's glass */
+${T} .sx-ledger__right > .orr-ledger-tape { position:relative; z-index:2; }
+
+/* ================================ ROUND 10: INDUSTRY ======================================== */
+/* the ladder's state light clears the contrast floor: blocked 55%, short 70%, sub-labels 45%; the chosen rung under the Hand at its state + 25% */
+${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__tier { color:rgb(${BONE} / .5) !important; }
+${T} .sx-ind-process__head .sx-ind-process__count { color:rgb(${BONE} / .62) !important; }
+/* one spine for the whole ladder, drawn once at 40%; the group lists keep their ticks; the extent cursor retires (the window ends on a whole rung) */
+${T} .sx-ind__list { position:relative !important; }
+/* (the spine is the scroller's own background since round 12: it cannot scroll away and shares the cursor's box) */
+${T} .sx-ind-process__items { background:repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
+/* (the ladder's light cursor rides the one spine again: see ROUND 11) */
+@media (max-width:1280px) { ${T} .sx-ind-process__head { white-space:normal !important; } ${T} .sx-ind-process__head .sx-ind-process__count, ${T} .sx-ind-process__head .sx-ind-process__block { margin-left:8px; } }
+
+/* ================================ ROUND 10: BAR ============================================= */
+/* every chosen-row arm on every rail: the kit's individual translate/scale never apply */
+${T} :is(.sx-bar__rows .sx-bar-row, .sx-lead__rows .sx-lead, .sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry, .sx-ind__list .sx-ind-row)::after,
+${T} :is(.sx-bar__rows .sx-bar-row, .sx-lead__rows .sx-lead, .sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry, .sx-ind__list .sx-ind-row)::before { translate:none !important; scale:none !important; }
+/* the spine is its own layer with its own fade: the column's content is never masked (labels and keys stay whole) */
+${T} .sx-bar__hang { background:none !important; -webkit-mask-image:none !important; mask-image:none !important; }
+${T} .sx-bar__hang::after { content:""; position:absolute; left:7px; top:0; bottom:0; width:1.5px; background:rgb(${BONE} / .36); pointer-events:none; z-index:0;
+  -webkit-mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
+/* C4: three hints, one voice; the leads' hint lifts only with the same condition that lights the leads' marker */
+${T} .sx-bar__hang .sx-bar__keys, ${T} .sx-bar__hang .sx-bar__leadkeys, ${T} .sx-talk .sx-talk__keys { font-size: 12px !important; letter-spacing:.16em !important; color:rgb(119 112 104) !important; opacity:1 !important; }
+${T} .sx-bar__leads:focus-within .sx-bar__leadkeys { color:rgb(119 112 104) !important; }
+${T} .sx-bar__leads:has(.sx-lead__rows:focus-within) .sx-bar__leadkeys { color:rgb(${BONE} / .6) !important; }
+/* C5: a short screen fits its column: the TAB LEAD hint folds (the key carries the verb) and the contacts close up */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-bar__hang .sx-bar__leadkeys { display:none !important; }
+  ${T} .sx-bar__rows .sx-bar-row { padding-top:6px !important; padding-bottom:6px !important; min-height:0 !important; }
+}
+
+${T} .sx-ind__list[data-snapped="1"] { -webkit-mask-image:none !important; mask-image:none !important; }
+
+/* ================================ ROUND 10: FACTIONS ======================================== */
+/* the next rung's clause lives under its rung on the scale; the separate row retires there */
+${T} .sx-fac-rung-next.is-on-scale { display:none !important; }
+/* ...unless the scale was too narrow to hang its rung words and drew them as ticks */
+${T} .sx-fac__detail:has(.orr-standing.is-rung-ticks) .sx-fac-rung-next.is-on-scale { display:block !important; }
+/* a tall screen under 1700 wide: the rail gives the ring room, so its west names (FULFILLMENT,
+   UNDERSTORY) stand inside the stage instead of under its edge, and the rim names track as a short screen's */
+@media (min-width:1101px) and (max-width:1700px) and (min-height:801px) {
+  ${T} .sx-fac { grid-template-columns:290px minmax(0, 1fr) !important; column-gap:24px !important; }
+  ${T} .sx-fac__stage { grid-template-columns:minmax(440px, 50%) minmax(0, 1fr) !important; column-gap:32px !important; }
+  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { letter-spacing:.08em !important; }
+}
+/* ...and under 1400 the rail cannot spare that room: the index folds into the ring, as on a short screen */
+@media (min-width:1101px) and (max-width:1400px) and (min-height:801px) {
+  ${T} .sx-fac { grid-template-columns:minmax(0, 1fr) !important; }
+  ${T} .sx-fac__rail { display:none !important; }
+  ${T} .sx-fac__stage { grid-template-columns:minmax(420px, 48%) minmax(0, 1fr) !important; }
+}
+/* a short screen's tier words keep their gaps */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .orr-standing text.orr-standing__name, ${T} svg.orr-svg.is-compact text.orr-standing__name { letter-spacing:.04em !important; } }
+
+/* rolling headline numerals keep the thin face's own proportion */
+${T} :is(.sx-ledger__read-num, .sx-fac-num).orr-counter .orr-counter__digit { width:.56em; }
+${T} .sx-fac-num.orr-counter { vertical-align:baseline; }
+
+/* ================================ ROUND 12: MISSIONS ======================================== */
+/* the seam is drawn with the rail's own stroke: a 1.5px spine, its faint band, its 4px ticks on the ladder's pitch */
+${T} .sx-ct__yours::before { left:4px !important; width:6px !important;
+  background:linear-gradient(90deg, transparent 3px, rgb(${BONE} / .32) 3px, rgb(${BONE} / .32) 4.5px, transparent 4.5px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, transparent 1px, rgb(${BONE} / .07) 1px, rgb(${BONE} / .07) 6px, transparent 6px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 0 var(--ct-seam-phase, 0px) / 4px 100% no-repeat !important; }
+/* YOURS hangs off the ruler with a major tick like FEATURED; the tracked row carries its row tick */
+${T} .sx-ct__yours::after { content:""; position:absolute; left:2px; top:50%; width:12px; height:1.5px; margin-top:-.75px; background:rgb(${BONE} / .7); pointer-events:none; }
+${T} .sx-ct__jobs .sx-job { position:relative !important; }
+${T} .sx-ct__jobs .sx-job::before { content:""; position:absolute; left:-40px; top:.75em; width:8px; height:2px; background:rgb(${BONE} / .6); pointer-events:none; }
+/* the featured row's tick sits on its title, not on its badge */
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::before { top:48px !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:48px !important; }
+/* the board window's fade never cuts the spine: the window already ends on a whole row */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-ct__board[data-overflow="1"] { -webkit-mask-image:none !important; mask-image:none !important; }
+  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::before { top:52px !important; }
+  /* a wider ladder measure and one-line YOURS rows so the tracked row lands above the tether */
+  ${T} .k-panel.sx-ct { grid-template-columns:345px minmax(0, 1fr) !important; }
+  ${T} .sx-ct__jobs .sx-job .k-row__name, ${T} .sx-ct__jobs .sx-job .k-row__sub { display:block; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; max-width:215px; }
+}
+
+/* ================================ ROUND 11: INDUSTRY ======================================== */
+/* the state light lives on the words, not on the row (a row's opacity dimmed its own Hand and compounded into its sub-line) */
+${T} .sx-ind-process__items .sx-ind-row { opacity:1 !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-blocked .sx-ind-row__name { color:rgb(${BONE} / .6) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-materials .sx-ind-row__name { color:rgb(${BONE} / .72) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-ready .sx-ind-row__name { color:rgb(250 247 238) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-blocked:is(.is-active, [aria-selected="true"]) .sx-ind-row__name { color:rgb(250 247 238 / .82) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-materials:is(.is-active, [aria-selected="true"]) .sx-ind-row__name { color:rgb(250 247 238 / .95) !important; }
+${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__tier, ${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__qty { color:rgb(${BONE} / .52) !important; }
+${T} .sx-ind-process__items .sx-ind-row:is(.is-active, [aria-selected="true"]) .sx-ind-row__tier { color:rgb(${BONE} / .66) !important; }
+/* every rung not ready says why on its own line (the header carries the group's shared reason) */
+${T} .sx-ind-process__items .sx-ind-row:is(.is-materials, .is-blocked) .sx-ind-row__why { display:inline !important; }
+/* the ladder's light cursor rides the one spine: a 3px bar at 60% with an end tick */
+${T} .sx-ind__list .orr-extent { display:block !important; }
+${T} .sx-ind__list .orr-extent::before { left:6px !important; width:4px !important; background:rgb(${BONE} / .45) !important; box-shadow:none !important; opacity:1 !important; }
+${T} .sx-ind__list .orr-extent::after { content:""; position:absolute; left:3px; width:10px; height:2px; top:calc(var(--orr-ext-top, 0px) + var(--orr-ext-h, 0px) - 2px); background:rgb(${BONE} / .6); }
+${T} .sx-ind__list[data-overflow="0"] .orr-extent::after { display:none; }
+
+/* ================================ ROUND 11: BAR ============================================= */
+/* K1: the Hand stops at its bead's rim (the core stays on top) and carries a bloom */
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, .is-selected, [aria-selected="true"])::after { width:26px !important; box-shadow:0 0 3px 1px rgb(242 185 80 / .28) !important; }
+/* K2: one 1px spine from the first heading to twelve px under the board key; the leads' marker opaque and asleep */
+${T} .sx-bar__hang::after { left:4px !important; width:8px !important; background:${SPINE(3, .55)}, ${BAND(3)} !important; top:var(--bar-spine-top, 0px) !important; bottom:auto !important; height:var(--bar-spine-h, 100%) !important;
+  -webkit-mask-image:linear-gradient(180deg, transparent, #000 16px, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, transparent, #000 16px, #000 calc(100% - 16px), transparent) !important; }
+${T} .sx-lead__rows .sx-lead.is-current::before { background:rgb(124 120 112) !important; }
+/* K5: every lead title at full light (the marker alone says current); at 720 a long title takes a second line */
+${T} .sx-lead__rows .sx-lead .sx-lead__t, ${T} .sx-lead__rows .sx-lead.is-current .sx-lead__t { color:rgb(248 244 234) !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-lead__t { white-space:normal !important; -webkit-mask-image:none !important; mask-image:none !important; overflow:visible !important; max-width:222px !important; }
+  ${T} .sx-lead__t .sf-entity-link { white-space:normal !important; }
+  ${T} .sx-bar__rows .sx-bar-row { padding-top:4px !important; padding-bottom:4px !important; }
+  ${T} .sx-bar__leads { padding-bottom:16px !important; }
+}
+
+/* ================================ ROUND 13: MISSIONS ======================================== */
+/* one tick series: every block's minor ticks tile at 8px from the phase the screen measured off the ladder's first tick */
+${T} .sx-ct__hang > * { background:${SPINE(7, .55)}, ${BAND(7)},
+    linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px) 4px var(--ct-tick-y, 0px) / 6px 8px repeat-y !important; }
+/* the seam takes the blocks' measured stroke: a 1px spine at .24, its band, 5px ticks on the same series */
+${T} .sx-ct__yours::before { left:3px !important; width:9px !important;
+  background:${SPINE(4, .55)}, ${BAND(4)},
+    linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px) 1px var(--ct-seam-phase, 0px) / 6px 8px repeat-y !important; }
+/* section and row ticks sit on the series, on their words */
+${T} .sx-ct__yours::after { top:var(--ct-yours-major, 50%) !important; margin-top:0 !important; height:2px !important; }
+${T} .sx-ct__jobs .sx-job::before { top:var(--ct-row-y, .75em) !important; margin-top:0 !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  /* the ladder's measure: row text runs to x 420 so no reward orphans; the dossier keeps its place */
+  ${T} .k-panel.sx-ct { grid-template-columns:388px minmax(0, 1fr) !important; column-gap:16px !important; }
+  /* the player's own contract is never cut: the title whole, TRACKED after it */
+  ${T} .sx-ct__jobs .sx-job .k-row__name { max-width:none !important; overflow:visible !important; text-overflow:clip !important; }
+  ${T} .sx-ct__jobs .sx-job .k-row__sub { max-width:250px !important; }
+}
+
+/* ================================ ROUND 12: INDUSTRY ======================================== */
+/* the spine belongs to the scroller's own box: the cursor maps to the same box, so they share a top and an end */
+${T} .sx-ind__list { background:${SPINE(7, .55)}, ${BAND(7, '0 0 / 100% 100%', .31)} !important; }
+/* the group's shared tier on its header, after the process word */
+${T} .sx-ind-process__head .sx-ind-process__tier { margin-left:10px; color:rgb(${BONE} / .62) !important; letter-spacing:.12em; }
+${T} .sx-ind-process__head .sx-ind-process__tier::before { content:"·  "; color:rgb(${BONE} / .4); }
+
+/* ================================ ROUND 12: BAR ============================================= */
+/* the lead marker paints above the spine; one tick weight: every row tick one pixel on a whole pixel */
+${T} .sx-lead__rows .sx-lead.is-current::before { z-index:1 !important; }
+${T} :is(.sx-bar__rows .sx-bar-row, .sx-lead__rows .sx-lead)::before { height:2px !important; margin-top:0 !important; top:round(down, 50%, 1px) !important; }
+/* the contacts' minor ticks are phased so one lands on the Hand's row, never 2px under it */
+${T} .sx-bar__rows { background:linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px) 4px var(--bar-tick-y, 0px) / 6px 8px repeat-y !important; }
+/* one rhythm down the rail on a tall screen: the contacts at the leads' kind of pitch */
+@media (min-width:1500px) and (min-height:900px) { ${T} .sx-bar__rows .sx-bar-row { padding-top:8px !important; padding-bottom:8px !important; } }
+
+/* ================================ ROUND 13b: MISSIONS ======================================= */
+/* at 720 a title and its reward (glued by their last word) fit one line: the row gives up its right pad, the column 12px more */
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-ct__rows .sx-ct-row { padding-right:0 !important; } ${T} .k-panel.sx-ct { grid-template-columns:400px minmax(0, 1fr) !important; } }
+
+/* ================================ ROUND 13: BAR ============================================= */
+/* N1: the Hand's arm and bead on one whole row: the arm one pixel on it, the bead's five rows centred on it */
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::after { top:var(--bar-arm-y, round(down, 50%, 1px)) !important; margin-top:0 !important; height:2px !important; }
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::before { top:calc(var(--bar-arm-y, round(down, 50%, 1px)) - 2px) !important; margin-top:0 !important; width:6px !important; height:6px !important; }
+/* N2: the key hints at the label size: 11px caps about 5:1 */
+${T} .sx-bar__hang .sx-bar__keys, ${T} .sx-bar__hang .sx-bar__leadkeys, ${T} .sx-talk .sx-talk__keys { font-size: 12px !important; letter-spacing:.12em !important; color:rgb(138 132 122) !important; }
+/* N3: at 720 the leads keep room under the key so the spine's fade ends inside the box */
+/* N4: one rhythm on a tall screen: the section break closes to about 60px */
+@media (min-width:1500px) and (min-height:900px) { ${T} .sx-bar__leads { margin-top:28px !important; } }
+
+/* ================================ ROUND 13: INDUSTRY ======================================== */
+/* a list that fits reports that it fits: the screen's snap already ends on whole rungs, so no bottom pad */
+${T} .sx-ind__list { padding-bottom:0 !important; }
+/* one separator grammar on the header: a dot before the count when the tier leads it */
+${T} .sx-ind-process__head .sx-ind-process__tier + .sx-ind-process__count::before { content:"·  "; color:rgb(${BONE} / .4); }
+/* every rung's tick (and the Hand) hangs on its name's line, not the middle of a two-line rung */
+${T} .sx-ind-process__items .sx-ind-row::before, ${T} .sx-ind-process__items .sx-ind-row::after { top:var(--ind-name-y, 14.5px) !important; }
+/* an augment rung says what it consumes, in the sub-line's voice, after its name */
+${T} .sx-ind-row__name .sx-ind-row__from { margin-left:12px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wght" 600, "wdth" 112;
+  font-size: 12px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .52) !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-ind-row__name .sx-ind-row__from { display:block; margin-left:0; margin-top:2px; } ${T} .sx-ind-process__items .sx-ind-row { --ind-name-y:12.5px; } }
+/* phone: the consumed module keeps the rung's one line by drawing in its tracking, so the ladder head stays in view */
+@media (max-width:650px) and (min-height:601px) { ${T} .sx-ind-row__name .sx-ind-row__from { margin-left:8px; letter-spacing:.05em; font-stretch:100%; font-variation-settings:"wght" 600, "wdth" 100; } }
+
+/* ================================ WEIGHT: THE BAND LIFTS WHERE THE PLAYER IS ========================== */
+/* a ladder under the pointer or holding focus lifts its band (~.27 -> .38 bone) and its line */
+/* the reading's rule continues the tape's axis: the same 2px line on the same column, over the same band */
+${T} .sx-ledger__read::after { left:-2px !important; width:8px !important; background:${SPINE(3, .5)}, ${BAND(3)} !important; }
+/* the reply spine repaints over each reply's veil, so it reads as one band from the first reply to the last */
+${T} .sx-talk__choices .sx-choice { background:${SPINE(30)}, ${BAND(30)}, linear-gradient(90deg, rgb(6 8 11 / .58), rgb(6 8 11 / .42) 55%, rgb(6 8 11 / 0)) !important; }
+${T} .sx-talk__choices .sx-choice:is(:hover, :focus-visible) { background:${SPINE(30, .62)}, ${BAND(30, '0 0 / 100% 100%', .38)}, linear-gradient(90deg, rgb(12 15 20 / .78), rgb(12 15 20 / .55) 55%, rgb(12 15 20 / 0)) !important; }
+${T} :is(.sx-fac__rows, .st-ledger-list):is(:hover, :focus-within) { background:${SPINE(7, .62)}, ${BAND(7, '0 0 / 100% 100%', .38)},
+    repeating-linear-gradient(180deg, rgb(${BONE} / .44) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
+${T} .sx-ct__hang:is(:hover, :focus-within) > * { background:${SPINE(7, .62)}, ${BAND(7, '0 0 / 100% 100%', .38)},
+    linear-gradient(180deg, rgb(${BONE} / .44) 0 1.5px, transparent 1.5px) 4px var(--ct-tick-y, 0px) / 6px 8px repeat-y !important; }
+${T} .sx-ct__hang:is(:hover, :focus-within) > .sx-ct__yours::before { background:${SPINE(4, .62)}, ${BAND(4, '0 0 / 100% 100%', .38)},
+    linear-gradient(180deg, rgb(${BONE} / .44) 0 1.5px, transparent 1.5px) 1px var(--ct-seam-phase, 0px) / 6px 8px repeat-y !important; }
+/* Industry: the hovered rung says where the hand is: its name lifts and a light segment stands on the spine beside it */
+${T} .sx-ind-process__items .sx-ind-row:is(:hover, :focus-visible):not(.is-active, [aria-selected="true"]) .sx-ind-row__name { color:rgb(248 244 234 / .9) !important; }
+${T} .sx-ind-process__items .sx-ind-row:is(:hover, :focus-visible):not(.is-active, [aria-selected="true"]) .sx-ind-row__tier { color:rgb(${BONE} / .72) !important; }
+${T} .sx-ind-process__items .sx-ind-row:is(:hover, :focus-visible):not(.is-active, [aria-selected="true"])::before { left:6.5px !important; width:3px !important; top:4px !important; height:calc(100% - 8px) !important; margin:0 !important;
+  background:rgb(${BONE} / .7) !important; box-shadow:0 0 6px rgb(${BONE} / .35) !important; }
+/* a disabled FABRICATE is an unlit lamp: the key's field in bone near a third, the verb in bone on it (lampKey.js;
+   other tabs read the same library rule directly, so no cross-tab selectors here) */
+${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .9) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::before { background:rgb(${BONE} / .3) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::after { display:none !important; }
+${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)}, ${BAND(3, '0 0 / 100% 100%', .38)} !important; }
+
+/* ================================ THE 960 BERTH: INDUSTRY, FACTIONS, BAR ======================= */
+/* at ≤1100 wide the berth head keeps its vitals, so a short screen leaves each tab ~190px (960×540);
+   every tab's working parts stand inside that body instead of falling under the foot rail */
+@media (min-width:651px) and (max-width:1100px) and (max-height:800px), (max-width:1100px) and (max-height:600px) {
+  /* Industry: the ladder's head reads in two lines (the process, then why it is shut) */
+  ${D} .sx-ind-process__head .sx-ind-process__block { display:block !important; margin:2px 0 0 !important; }
+  ${D} .sx-ind-process__head .sx-ind-process__block::before { content:none !important; }
+  /* Factions: the ring's west names (FULFILLMENT) stand past the orbit's box; the stage gives them room */
+  ${D} .sx-fac__stage { padding-left:22px !important; }
+  /* Bar: the name is one line; the words stop short of the voice arc and its reply dial */
+  ${D} .sx-talk__name { font-size:24px !important; line-height:1.05 !important; white-space:nowrap !important; }
+  ${D} .sx-talk__id { max-width:calc(100% - 330px) !important; }
+  /* her portrait stands at the bay's right edge and no taller than 300px, so the arc keeps clear of her words */
+  ${D} .sx-talk__avatar { height:min(104%, 300px) !important; right:-4% !important; }
+  ${D} .sx-talk__memory { font-size:13px !important; line-height:1.4 !important; max-width:none !important; }
+  ${D} .sx-talk__reply { max-width:calc(100% - 330px) !important; }
+}
+/* Bar in a short laptop window (801–1100 × 461–600, e.g. 960×540): the stage is ~160px, so her words take two
+   lines (the arc and its dial still clear them) and the reply scale closes up; all three replies read without a scroll */
+@media (min-width:801px) and (max-width:1100px) and (min-height:461px) and (max-height:600px) {
+  ${D} .sx-talk__id { max-width:calc(100% - 250px) !important; }
+  ${D} .sx-talk__id > * + * { margin-top:4px !important; }
+  ${D} .sx-talk__memory { line-height:1.3 !important; }
+  ${D} .sx-talk__choices { padding-top:0 !important; margin-top:2px !important; gap:0 !important; }
+  ${D} .sx-talk__choices > li .sx-choice { padding-top:2px !important; padding-bottom:2px !important; line-height:16px !important; }
+}
+/* …and in a narrow window (651–800 × ≤800): the 330px reserve left her words a 38px column ("HUL / L / GHO / ST");
+   the portrait steps down to 140px so the words keep ~170px clear of the arc's reply dial, and the arc follows the smaller face */
+@media (min-width:651px) and (max-width:800px) and (max-height:800px) {
+  ${D} .sx-talk__avatar { width:140px !important; height:140px !important; right:-2% !important; top:0 !important; }
+  ${D} .sx-talk__id { max-width:calc(100% - 200px) !important; }
+  ${D} .sx-talk__reply { max-width:calc(100% - 200px) !important; }
+  ${D} .sx-talk__name { white-space:normal !important; }
+}
+/* at 651–760 that column is under 120px whatever the face's size, so the portrait (and the arc drawn on it) stands down
+   and her words and the replies take the stage's whole width; the ladder still names her */
+@media (min-width:651px) and (max-width:760px) and (max-height:800px) {
+  ${D} .sx-talk__avatar { display:none !important; }
+  ${D} :is(.sx-talk__id, .sx-talk__reply) { max-width:none !important; }
+}
+@media (max-width:1100px) and (max-height:640px) {
+  /* Industry: every material keeps room for its name, count and wrapped Source verb.
+     Dense recipes extend the existing scrollable stage instead of crushing the input labels. */
+  ${D} .sx-fab-head__cat { display:none !important; }
+  ${D} .sx-fab-head__name { font-size:20px !important; margin-top:0 !important; }
+  ${D} .sx-fab { grid-template-rows:auto auto auto minmax(0, 1fr) auto auto auto auto auto !important; height:auto !important; min-height:100%; padding-bottom:48px !important; }
+  ${D} .orr-ind-chain { height:max(170px, calc(var(--orr-chain-input-count, 2) * 88px + 20px)) !important; min-height:0 !important; margin:-10px 0 0 !important; }
+  /* the chain's right side is one column -- why it cannot run, what a run makes, the key -- since the
+     reason's twelve o'clock slot and the key's place under the product both fall outside a 190px body */
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { left:auto !important; right:0 !important; top:-12px !important; width:auto !important; max-width:46% !important; white-space:normal !important; overflow-wrap:anywhere !important; text-align:right !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb { align-items:flex-end !important; text-align:right !important; }
+  ${D} .orr-ind-chain .orr-chain__reason { font-size:17px !important; letter-spacing:.12em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) :is(.orr-chain__verb, .orr-chain__verb > *) { white-space:normal !important; overflow-wrap:anywhere !important; font-size:12px !important; line-height:14px !important; letter-spacing:.1em !important; }
+  ${D} .orr-ind-chain .orr-chain__verb > .orr-chain__wayout { margin-top:2px !important; }
+  /* a way-out that wraps keeps both lines inside its outline, balanced and set right like the note above it */
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:15em !important; margin-left:auto !important; margin-top:0 !important; padding:0 10px !important; line-height:13px !important; text-align:right !important; text-wrap:balance; overflow-wrap:normal !important; word-break:keep-all !important; hyphens:none !important; }
+  ${D} .orr-ind-chain .orr-chain__reason-leader { display:none !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(136px, -50px) !important; width:auto !important; text-align:left !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }
+  ${D} .orr-ind-chain .orr-chain__qty { font-size:30px !important; line-height:1 !important; }
+  ${D} .sx-fab:has(.orr-chain.is-blocked) .sx-fab-status { display:none !important; }
+  ${D} .sx-fab-foot { left:auto !important; right:0 !important; top:auto !important; bottom:0 !important; transform:none !important; }
+  /* The label's own height centres it on its input node even when the source verb wraps. */
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) { transform:translateY(calc(16px - 50%)); max-width:46% !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__name { font-size:13px !important; line-height:15px !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__count { font-size:12px !important; line-height:14px !important; margin:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb { line-height:14px !important; margin:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb > * { font-size:12px !important; line-height:14px !important; padding:0 !important; min-height:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .sx-fab-build.orr-lampkey { min-height:34px !important; font-size:13px !important; }
+  /* Factions: a ring of fourteen crests would be ~27px a crest here, so the powers stand on the
+     ladder like every other tab's index, and the reading keeps the standing scale */
+  ${D} .sx-fac { grid-template-columns:260px minmax(0, 1fr) !important; column-gap:28px !important; }
+  /* the rail keeps the authored column flex (station.css): as block the rows' list could not
+     shrink, the rail's own scroll took over, and the extent cursor and fold fade bound to the
+     list never showed — fourteen powers read as four with the rest clipped under the fold. */
+  ${D} .sx-fac__rail { display:flex !important; flex-direction:column !important; }
+  ${D} .sx-fac__stage { grid-template-columns:minmax(0, 1fr) !important; }
+  ${D} .orr-fac-orbit { display:none !important; }
+  ${D} .sx-fac__rows .sx-fac-row { padding-top:3px !important; padding-bottom:3px !important; }
+  /* a power's name is read whole, like a contract rung: at 260px the lane wraps the name onto a
+     second line rather than cutting "Meridian Trade Syndicate" mid-word */
+  ${D} .sx-fac__rows .sx-fac-row__name { white-space:normal !important; }
+  /* the reading's head is one band: who holds the station on the left, your standing and their crest
+     on the right; the standing scale runs the full width under it */
+  ${D} .sx-fac-overview { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; column-gap:16px; align-items:end; padding-right:0 !important; }
+  ${D} .sx-fac-overview > * + * { margin-top:0 !important; }
+  ${D} .sx-fac-overview > .k-caps { grid-column:1; grid-row:1; margin:0 !important; }
+  ${D} .sx-fac-ident__name { grid-column:1; grid-row:2; font-size:20px !important; margin-top:2px !important; }
+  ${D} .sx-fac-heroes { grid-column:2; grid-row:1 / 3; margin:0 !important; }
+  ${D} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:30px !important; text-align:right; }
+  ${D} .sx-fac-heroes .k-hero__n .sx-fac-tier { margin-bottom:0 !important; }
+  ${D} .sx-fac__detail > .sx-fac-ladder:first-child { margin:0 !important; padding:0 !important; }
+  /* the scale's svg keeps a rung band under its values that sleeps at this size; the next rung reads in it */
+  ${D} .sx-fac-rung-next { margin-top:-16px !important; }
+  /* the authority's watermark stands behind your standing, as it does on a wide screen */
+  ${D} .sx-fac-overview > :is(.sx-fac-crest, .sx-fac-crest.is-authority) { position:absolute !important; left:auto !important; right:-4px !important; top:0 !important; width:72px !important; height:72px !important; }
+  ${D} .sx-fac__detail { grid-column:1 / -1; grid-row:3; margin-top:2px !important; }
+  ${D} .orr-standing { margin-top:-4px !important; max-width:none !important; }
+  ${D} .sx-fac__detail { row-gap:2px !important; }
+  /* Bar: the replies stay on glass under her line */
+  ${D} .sx-bar__stage .sx-talk > * + * { margin-top:6px !important; }
+  ${D} .sx-talk__id > * + * { margin-top:4px !important; }
+  ${D} .sx-talk__choices { margin-top:6px !important; }
+  ${D} .sx-choice { font-size:13px !important; padding-top:3px !important; padding-bottom:3px !important; }
+  ${D} .sx-talk__keys { display:none !important; }
+}
+/* Industry fab-chain at 651–1100 × ≤640: the short-body tuck above parks the product's
+   "1 · REFINED METALS per run" with translate(136px), which fits a wider reading but at
+   801–960-wide the stage is only ~429–553px — the unit hangs ~33–60px past stage right under
+   NEEDS REFINERY / Iron Ore / REFINE. Keep it within the stage width and below the reason/action block, with enough
+   separation for its multiline route button. The unit may wrap inside its own column. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:640px) {
+  ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(72px, -20px) !important; width:auto !important; max-width:38% !important; text-align:left !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below .orr-chain__unit { max-width:100% !important; line-height:1.15 !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { max-width:42% !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:12em !important; }
+}
+/* Factions at 700×460-class (≤800 wide, ≤640 tall): the one-band head let the standing column sit
+   beside the authority kicker, and at this width the two printed on each other (D223). The kicker
+   takes the whole first row; the standing keeps the right corner of the name's row, under the
+   watermark crest. */
+@media (max-width:800px) and (max-height:640px) {
+  ${D} .sx-fac-overview > .k-caps { grid-column:1 / -1 !important; }
+  ${D} .sx-fac-heroes { grid-row:2 !important; }
+}
+/* Ledger at 960×540-class (651–1100 wide, ≤640 tall): the ~192px body held the tape (176px) and put the
+   reading and the purse under it, so BOUGHT / SOLD / NET and the entry's reading were clipped away. The
+   purse stands beside the tape at its full height; the reading sits under a shorter tape. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:640px) {
+  ${D} .sx-ledger > .st-ledger { max-width:40%; }
+  ${D} .sx-ledger > .st-ledger .st-sub-h { font-size:24px !important; }
+  /* the list owns what the ~192px body leaves under the title: the intro and the narrator's line yield, and
+     the rows scroll under the list's fade instead of running under the destination foot (only the first of
+     three showed). The count (and archive page) line stays. */
+  ${D} .sx-ledger > .st-ledger { display:flex !important; flex-direction:column !important; gap:0 !important; height:100% !important; min-height:0 !important; padding-top:20px !important; padding-bottom:0 !important; }
+  ${D} .sx-ledger > .st-ledger > * { flex:none; }
+  ${D} .sx-ledger:has(.st-ledger-list:not([hidden])) :is(.st-ledger-intro, .st-ledger-story) { display:none !important; }
+  ${D} .sx-ledger .st-ledger-status { margin-top:8px !important; }
+  ${D} .sx-ledger .st-ledger-list { flex:1 1 auto !important; min-height:0 !important; max-height:none !important; margin:6px 0 0 !important; }
+  ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:6px !important; padding-bottom:6px !important; }
+  ${D} .sx-ledger .sx-ledger__keys { display:none !important; }
+  /* #sx-panel clamps the panel to the body height (~60px at 460 tall) and hides overflow, so a
+     trapped panel is unreachable by wheel: scrollIntoView moves overflow:hidden boxes but a user
+     cannot. The panel becomes the one scroll surface (the dp-frame__scroll contract its sibling
+     tabs already carry), the left column takes its content height inside it, and the right column
+     unpins its bottom edge so tape / purse / reading ride the same scroll instead of clipping. */
+  ${D} .sx-ledger { overflow:hidden auto !important; scrollbar-width:thin !important; overscroll-behavior:contain !important;
+    /* the one scroll surface wears the same dissolved fold every tab's list does — without it the
+       case board's first line sliced mid-glyph at the viewport edge; the bottom pad lands the
+       fade on empty space once the scroll reaches its end */
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 24px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 24px), transparent) !important;
+    padding-bottom:24px !important; }
+  ${D} .sx-ledger > .st-ledger { height:auto !important; min-height:100% !important; }
+  ${D} .sx-ledger > .sx-ledger__right { bottom:auto !important; }
+  /* the purse needs ~220px so its ring (radius = half its box less 60, as at 1280) clears NET · CR */
+  ${D} .sx-ledger > .sx-ledger__right { left:calc(40% + 22px) !important; display:grid !important; grid-template-columns:minmax(0, 1fr) 220px; grid-template-rows:auto minmax(0, 1fr); column-gap:8px; row-gap:0 !important; }
+  /* the tape keeps the height its axis figures need (~176px: majors ~21px apart, as before); the reading rises into
+     the strip under its stems that a wide screen keeps for the leader, so the leader sleeps here */
+  ${D} .sx-ledger__right > .orr-ledger-tape { grid-column:1; grid-row:1; height:176px !important; margin-top:-6px !important; }
+  ${D} .sx-ledger__right > .orr-ledger-tape .orr-ltape__leader { display:none !important; }
+  ${D} .sx-ledger__right:has(> .sx-ledger__row > .sx-ledger__read[hidden]) > .orr-ledger-tape { grid-row:1 / 3; height:auto !important; align-self:stretch; }
+  ${D} .sx-ledger__right > .sx-ledger__row { display:contents !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { grid-column:2; grid-row:1 / 3; align-self:stretch; width:auto !important; height:auto !important; min-height:150px; margin:0 !important; }
+  /* the reading is one band under the tape: the kicker, then the figure beside what and where */
+  ${D} .sx-ledger__row > .sx-ledger__read:not([hidden]) { grid-column:1; grid-row:2; align-self:start; display:grid !important; grid-template-columns:auto minmax(0, 1fr);
+    grid-template-rows:auto auto auto; column-gap:14px; row-gap:0; margin-top:-44px !important; padding-top:4px !important; position:relative; z-index:3; }
+  ${D} .sx-ledger__read > .sx-ledger__read-kicker { grid-column:1 / -1; grid-row:1; }
+  ${D} .sx-ledger__read > .sx-ledger__read-hero { grid-column:1; grid-row:2 / 4; align-self:center; margin:0 !important; }
+  ${D} .sx-ledger__read > .sx-ledger__read-title { grid-column:2; grid-row:2; align-self:end; margin:0 !important; font-size:14.5px !important; line-height:1.2 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${D} .sx-ledger__read > .sx-ledger__read-line { grid-column:2; grid-row:3; align-self:start; margin:0 !important; font-size:12.5px !important; line-height:1.3 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${D} .sx-ledger__read-num { font-size:30px !important; line-height:1 !important; }
+  ${D} .sx-ledger__read-hand { display:none !important; }
+  /* the ~42px ring here is narrower than NET · CR at the label's .14em tracking, so the key's ends
+     printed across the ring's lower bends; the key tightens and lifts into the ring's wider middle */
+  ${D} .sx-ledger .orr-ltape__purse text.orr-ltape__net-key { letter-spacing:.06em; font-stretch:100%; transform:translateY(-3px); }
+}
+
+/* Ledger at 1101–1440 wide × 461–720 tall (ui-polish-124): the purse sat under the tape, so at 1101×700 its
+   BOUGHT / SOLD keys ran under the foot rail and at 1280×540 the whole gauge fell below the panel. The purse
+   stands beside the tape at the tape's height; the reading keeps the full column under the tape. */
+@media (min-width:1101px) and (max-width:1440px) and (min-height:461px) and (max-height:720px) {
+  ${D} .sx-ledger > .sx-ledger__right { display:grid !important; grid-template-columns:minmax(0, 1fr) 230px; grid-template-rows:auto minmax(0, 1fr); column-gap:16px; row-gap:6px !important; align-content:start; }
+  ${D} .sx-ledger__right > .orr-ledger-tape { grid-column:1; grid-row:1; }
+  ${D} .sx-ledger__right > .sx-ledger__row { display:contents !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { grid-column:2; grid-row:1; align-self:stretch; width:auto !important; height:auto !important; min-height:180px; margin:0 !important; }
+  ${D} .sx-ledger__row > .sx-ledger__read { grid-column:1 / -1; grid-row:2; min-width:0; }
+}
+
+/* Ledger eligibility card at 1101–1440 × 461–720 (ui-polish-287): the card stacked eight lines in a 34ch column
+   under the tape, so at 1280×720 everything past Net worth fell below the panel. The tape gives up what the frame
+   lacks (172px at 720 tall, 140px floor), and the card spans the tape and purse as one hairline strip: the head beside its note, the three gates side by side, the footnote under them. The panel
+   scrolls (as its 651–1100 frames do) so an open reading never buries the card. */
+@media (min-width:1101px) and (max-width:1440px) and (min-height:461px) and (max-height:720px) {
+  ${D} .sx-ledger { overflow:hidden auto !important; scrollbar-width:thin !important; overscroll-behavior:contain !important; }
+  ${D} .sx-ledger > .sx-ledger__right { bottom:auto !important; overflow:visible; }
+  ${D} .sx-ledger__right > .orr-ledger-tape { height:clamp(140px, calc(100vh - 550px), 172px) !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { min-height:clamp(140px, calc(100vh - 550px), 172px); }
+  ${D} .sx-ledger__right > .dust-em { grid-column:1 / -1; align-self:start; max-width:none; margin:0; padding:8px 14px;
+    display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:14px; align-items:baseline; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__note { margin:0; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__rows { grid-column:1 / -1; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0 18px;
+    margin-top:6px; padding-top:6px; border-top:1px solid color-mix(in srgb, var(--dp-ink, #e8e4d8) 12%, transparent); }
+  ${D} .sx-ledger__right > .dust-em .dust-em__row { grid-template-columns:minmax(0, 1fr); row-gap:2px; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__fig { text-align:left; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__foot { grid-column:1 / -1; margin-top:5px; font-size:12px; }
+}
+
+/* Ledger at 1441+ wide × 721+ tall (ui-polish-240): the purse hung under the tape's lower edge at the panel's far
+   right, ~350px below its axis, so with no entry open the gauge stood alone in an empty field. It stands beside the
+   tape, centred on the tape's height, as 1101–1440 does; the reading keeps the full column under both. */
+@media (min-width:1441px) and (min-height:721px) {
+  ${D} .sx-ledger > .sx-ledger__right { display:grid !important; grid-template-columns:minmax(0, 1fr) 280px; grid-template-rows:auto minmax(0, 1fr); column-gap:24px; row-gap:6px !important; align-content:start; }
+  ${D} .sx-ledger__right > .orr-ledger-tape { grid-column:1; grid-row:1; }
+  ${D} .sx-ledger__right > .sx-ledger__row { display:contents !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { grid-column:2; grid-row:1; align-self:center; margin:0 !important; }
+  ${D} .sx-ledger__row > .sx-ledger__read { grid-column:1 / -1; grid-row:2; min-width:0; }
+}
+/* the case-board head broke one word, TOGETHER, onto its own line at 960–1920; the two lines now split evenly */
+${T} .sx-ledger .st-ledger-board-head { text-wrap:balance; }
+
+/* Ledger at 800×600-class (651–900 wide, ≤640 tall): the prior 140px purse starved the ring so
+   BOUGHT / SOLD / NET · CR clipped. Restore ~200px for the purse and narrow the list to ~34%
+   so the reading column still holds title+cargo beside a trimmed figure; CYCLE stays above the
+   line so list items share the row. Parent 651–1100 (40% / 220px) and 960+ stay unchanged. */
+@media (min-width:651px) and (max-width:900px) and (max-height:640px) {
+  /* list yields ~6% so reading + ~200px purse clear BOUGHT/SOLD/NET without crushing cargo */
+  ${D} .sx-ledger > .st-ledger { max-width:34%; }
+  ${D} .sx-ledger > .sx-ledger__right { left:calc(34% + 22px) !important; grid-template-columns:minmax(0, 1fr) 200px !important; column-gap:6px !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { min-height:0 !important; }
+  /* reading stays one band under the tape: figure | title+line */
+  ${D} .sx-ledger__row > .sx-ledger__read:not([hidden]) { grid-template-columns:auto minmax(0, 1fr) !important;
+    column-gap:6px !important; margin-top:-44px !important; }
+  ${D} .sx-ledger__read > .sx-ledger__read-kicker { grid-column:1 / -1 !important; grid-row:1 !important; }
+  ${D} .sx-ledger__read > .sx-ledger__read-hero { grid-column:1 !important; grid-row:2 / 4 !important; align-self:center !important; }
+  ${D} .sx-ledger__read > .sx-ledger__read-title { grid-column:2 !important; grid-row:2 !important; align-self:end !important;
+    margin:0 !important; font-size:13.5px !important; line-height:1.2 !important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  ${D} .sx-ledger__read > .sx-ledger__read-line { grid-column:2 !important; grid-row:3 !important; align-self:start !important;
+    margin:0 !important; font-size:12px !important; line-height:1.3 !important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  /* smaller figure so "~56 cr per unit · Vesta-Forge" fits beside it (~150px+) */
+  ${D} .sx-ledger__read-num { font-size:24px !important; line-height:1 !important; }
+  ${D} .sx-ledger__read-unit { font-size:12px !important; letter-spacing:.1em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  /* list: CYCLE above the item so the line owns the full row width (three entries still fit) */
+  ${D} .sx-ledger .st-ledger-entry-body { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-areas:"time" "line" "note" !important; row-gap:1px !important; column-gap:0 !important; }
+  ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:4px !important; padding-bottom:4px !important; }
+  ${D} .sx-ledger .st-ledger-cycle { font-size:12px !important; letter-spacing:.1em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .sx-ledger .st-ledger-line { font-size:12.5px !important; }
+  /* with no entry open the reading hides and the tape spans both rows, but the purse's min-height:0 above left the grid
+     nothing to stand on: tape and purse fell to ~40px, the axis figures printed on each other and BOUGHT / SOLD were cut.
+     The purse keeps the 150px the 960 class gives it, so the tape stands with it. */
+  ${D} .sx-ledger__right:has(> .sx-ledger__row > .sx-ledger__read[hidden]) > .sx-ledger__row > .orr-ledger-purse { min-height:150px !important; }
+}
+
+/* After a trade, the TRADE CLEARED line (~480px) stood over the comms words, ~340px from the right edge,
+   so on every tab but the Market (which #446 handles in marketLayouts.js) it ran off the right edge, and at
+   651–1100 wide it pushed the whole berth sideways: the page scrolled and "HELIOS STATION" lost its first
+   letters. It now ends just left of COMMS, above the destination words, on a solid strip so it reads over a scrolled list.
+   The destination words also fit: at 801–900 × 461–800 the rail takes the row's free width (it was capped
+   and cut MISSIONS … LEDGER); 651–800 × 461–800 is left to #451's foot rules in stationLayouts.js
+   (the receipt hangs off the foot there); at 901–999 the words close up so LEDGER is not cut. Desktop only. */
+@media (min-width:801px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:auto !important; right:calc(100% + 24px) !important; bottom:calc(100% - 4px) !important; max-width:none !important; padding:0 !important; }
+}
+/* ≤460 tall the destination words ride level with the comms box, so the line (and its strip, 5px below the text) sits 12px over it,
+   clear of the words; at +2px the strip blanked the top half of MARKET … LEDGER while it showed (Code Work review) */
+@media (min-width:801px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { bottom:calc(100% + 12px) !important; }
+}
+/* 651–800 × 461–800 is #451's foot (stationLayouts.js): there the receipt hangs off the foot above UNDOCK, so neither the strip nor
+   the click-through below applies (Code Work review, master merge) */
+@media (max-width:650px) and (max-height:800px), (min-width:801px) and (max-height:800px), (max-height:460px) {
+  /* it now stands over list rows for its 3.6s, so clicks go through it to the row beneath (Code Work review) */
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { pointer-events:none !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt::before { left:-36px !important; right:-36px !important; top:-5px !important; bottom:-5px !important;
+    background:linear-gradient(90deg, rgb(7 8 10 / 0), rgb(7 8 10 / .92) 32px, rgb(7 8 10 / .92) calc(100% - 32px), rgb(7 8 10 / 0)) !important; }
+}
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops { column-gap:12px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .of-facility-rail { max-width:none !important; flex:1 1 auto !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-dock__group--nav { gap:0 5px !important; padding-left:2px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-tile { padding:4px 1px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-tile__label { letter-spacing:0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-comms { margin-left:0 !important; display:flex !important; flex-direction:column !important; align-items:flex-start !important; align-self:center !important; gap:0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops :is(.sx-comms__toggle, .sxb-help) { letter-spacing:.06em !important; min-height:0 !important; padding-block:0 !important; line-height:18px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-launch > .so-icon { display:none !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-launch { gap:10px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-launch__label { font-size:18px !important; letter-spacing:.08em !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { bottom:calc(100% + 16px) !important; }
+  /* the stacked COMMS/HELP box is taller, so #446's Market line (100% − 4px) fell onto the destination words and took their
+     clicks; on the Market too it rides 16px over the box (one class more than #446's rule, which is injected later) (Code Work review) */
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-comms > .sx-receipt { bottom:calc(100% + 16px) !important; }
+}
+@media (min-width:651px) and (max-width:800px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:not(:has(.sx-mkt.orr-market)) .sxb-ops .sx-receipt { left:0 !important; right:auto !important; bottom:calc(100% + 60px) !important; max-width:none !important; padding:0 !important; }
+}
+@media (min-width:901px) and (max-width:999px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
+}
+/* Industry at 720×800-class (651–900 wide, 641–800 tall): #501's side-by-side station signs gave the body
+   ~330px, but the chain kept its 42vh (336px) and ran past the stage, so FABRICATE, seated under the
+   product's "per run", fell off the body's foot. The chain stands 264px tall and the
+   run's count takes the short-body 30px size: the key clears the foot's fade and the reason still clears the title. */
+@media (min-width:651px) and (max-width:900px) and (min-height:641px) and (max-height:800px) {
+  ${D} .orr-ind-chain { height:264px !important; min-height:0 !important; }
+  ${D} .orr-ind-chain .orr-chain__qty { font-size:30px !important; line-height:1 !important; }
+}
+/* At 700×461 the variable-height remedy was pinned over the output node and
+   the translated product reading ran into the stage fade. Let those existing DOM
+   readings reserve their own rows around the drawing; the stage remains the one
+   detail scroller, with its terminal action above the 20px fold at maximum scroll. */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:640px) {
+  ${D} .sx-ind__stage { padding-bottom:24px !important; scroll-padding-block:12px 24px; }
+  ${D} .sx-fab { --orr-ind-flow-readings:1; display:flex !important; flex-direction:column; gap:0;
+    height:auto !important; min-height:100%; min-width:0; box-sizing:border-box; padding-bottom:0 !important; }
+  ${D} .sx-fab > .orr-ind-chain { flex:none; margin:12px 0 !important; }
+  ${D} .sx-fab > :is(.sx-fab-chain-reason, .sx-fab-chain-output) {
+    position:static !important; inset:auto !important; transform:none !important; flex:none;
+    width:auto !important; max-width:100% !important; min-width:0; align-self:stretch;
+    white-space:normal !important; overflow-wrap:anywhere !important; text-align:left !important;
+  }
+  ${D} .sx-fab > .sx-fab-chain-reason { align-items:flex-start; gap:4px; margin:8px 0 0 !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__reason { font-size:17px !important; line-height:1.2 !important;
+    white-space:normal !important; overflow-wrap:anywhere !important; text-align:left !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__verb { max-width:100%; margin:0 !important; text-align:left !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__blocknote { font-size:12px !important; line-height:1.3 !important; white-space:normal !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__wayout { min-height:28px !important; max-width:100% !important;
+    margin:6px 0 0 !important; padding:4px 8px !important; box-sizing:border-box;
+    font-size:12px !important; line-height:1.3 !important; white-space:normal !important; text-align:left !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__wayout:focus-visible { outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px !important; }
+  ${D} .sx-fab > .sx-fab-chain-output { flex-direction:row; align-items:baseline; gap:12px; margin:0 !important; }
+  ${D} .sx-fab-chain-output .orr-chain__qty { font-size:30px !important; line-height:1 !important; text-align:left !important; }
+  ${D} .sx-fab-chain-output .orr-chain__unit { min-width:0; font-size:12px !important; line-height:1.3 !important;
+    white-space:normal !important; overflow-wrap:anywhere !important; text-align:left !important; }
+  ${D} .sx-fab > .sx-fab-foot { position:static !important; inset:auto !important; transform:none !important;
+    align-self:stretch; margin:12px 0 0 !important; }
+}
+/* Taller narrow windows retain the reason above the process ring. */
+@media (min-width:651px) and (max-width:800px) and (min-height:641px) and (max-height:800px) {
+  ${D} .orr-ind-chain { height:296px !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { top:4px !important; width:min(320px, calc(100% - 40px)) !important; max-width:none !important; transform:translateX(-50%) !important; }
+  ${D} .orr-ind-chain .orr-chain__reason { white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) :is(.orr-chain__name, .orr-chain__count, .orr-chain__verb, .orr-chain__verb > *) { max-width:100% !important; box-sizing:border-box; white-space:normal !important; overflow-wrap:anywhere !important; }
+}
+/* Missions on short desktops: the tracked job is the one row the player chose, so it keeps its height and
+   the board window above (which already scrolls and snaps to a whole row) is the part that yields. */
+@media (min-width:1101px) and (max-height:800px) {
+  ${T} .sx-ct__hang > .sx-ct__active { flex:none !important; }
+  ${T} .sx-ct__hang > .sx-ct__board { min-height:0 !important; }
+}
+/* Missions on 801-1140px-tall desktops (1920x1080, 1600x900): the dossier scrolls under its sticky ACCEPT band, and
+   a four-term offer ran ~120px past it, so COLLATERAL / FOLLOW-UP / READINESS sat under the key. With the
+   station signs on one band (stationLayouts.js) the reading also closes up (a smaller reward, tighter term rows). */
+@media (min-width:1101px) and (min-height:801px) and (max-height:1140px) {
+  ${T} .sx-ct__dossier { padding-top:10px !important; }
+  ${T} .sx-dossier__title { margin-top:4px !important; }
+  ${T} .sx-dossier__client { margin-top:8px !important; }
+  ${T} .sx-dossier__reward { margin-top:12px !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:clamp(56px, 7vh, 80px) !important; }
+  ${T} .sx-dossier > .orr-ct-scales { margin-top:6px !important; }
+  ${T} .sx-dossier__terms > li { padding:6px 0 !important; }
+}
+/* …and under 1500 wide the 32px title wrapped to two lines in the dossier's column (1440x900) */
+@media (min-width:1101px) and (max-width:1499px) and (min-height:801px) and (max-height:1140px) {
+  ${T} .sx-dossier__title { font-size:26px !important; line-height:1.15 !important; }
+}
+/* …and at 801-1000 tall (1440x900, 1600x900) a live berth's head carries the arrival notice too, so a
+   five-term offer still ran two rows (FOLLOW-UP, READINESS) under ACCEPT: the reward, its margins and the
+   term rows close up again (the scales keep their height: shorter, their SVG
+   words shrank under 12px), and the five terms stand above the key. */
+@media (min-width:1101px) and (min-height:801px) and (max-height:1000px) {
+  ${T} .sx-dossier__client { margin-top:4px !important; }
+  ${T} .sx-dossier__reward { margin-top:6px !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:48px !important; }
+  ${T} .sx-dossier > .orr-ct-scales { margin-top:0 !important; }
+  ${T} .sx-dossier__terms > li { padding:2px 0 !important; }
+}
+/* A first-hour row's destination tag ("RECOMMENDED → CERES REFINERY · CERES BELT") wrapped inside the
+   one-line badge slot and its last word printed on the job title below (1366x600, 1280x720, 960x540,
+   phones). The badge holds to its one line: the tag's tracking tightens so the whole route fits the
+   ladder's measure, and a longer one ends in an ellipsis rather than spilling (the full route is in the
+   row's label and the dossier). Giving the tag a second line pushed the job itself out of the short
+   board window at 960x540. Rows without a tag are unchanged. */
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge:has(.sx-ct-row__dest) { white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge .sx-ct-row__dest { letter-spacing:.02em; }
+
+/* ===================== craft-critic journey2 — appended last to win ties ===================== */
+/* F2 — a missing market quote is a state, not a numeral. The em dash at display weight painted
+   a solid slab beside "YOU PAY · ONE UNIT NOW"; the slot now carries "SOLD OUT" at label size
+   (or a thin dim dash for a sell-side no-quote), and the caption dims with it. */
+html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero .k-hero__n .sx-mkt__hero-na {
+  display: inline-block; font: 650 15px/1.15 var(--dp-face-label, "Archivo") !important;
+  font-variation-settings: "wdth" 100, "wght" 650 !important; letter-spacing: .22em !important;
+  text-transform: uppercase !important; color: rgb(${BONE} / .62) !important; text-shadow: none !important;
+}
+html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero.sx-mkt__hero--na .k-hero__w { color: rgb(${BONE} / .42) !important; }
+/* F3 — the contacts ladder ran single-line rows inside a 360px column and the "· NEW ARRIVAL"
+   badge hard-clipped mid-word (a width defect the critic photographed at 1280×720, but it bit
+   at every height in the 1101–1499px band). The rail widens to 400px across the band, and the
+   role dissolves to an ellipsis rather than ever cutting a glyph. */
+@media (min-width:1101px) and (max-width:1499px) {
+  ${T} .sx-bar { grid-template-columns: 400px minmax(0, 1fr) !important; }
+}
+@media (max-width:1499px) {
+  ${T} .sx-bar__rows .sx-bar-row .sx-bar-row__role { min-width: 0 !important; max-width: 100% !important; overflow: hidden !important; white-space: nowrap !important; text-overflow: ellipsis !important; }
+}
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  /* F4 — the board verb used to sit under the hang's fold with the third lead. At ≤800px the
+     hang's rhythm shortens (shallower leads margin, tighter row pitch, the keys hint stands
+     down) so the whole column — three leads and the foot — clears at rest, and the fade mask
+     that was eating the foot is retired. */
+  ${T} .sx-bar__hang { -webkit-mask-image: none !important; mask-image: none !important; }
+  ${T} .sx-bar__leads { margin-top: 10px !important; }
+  ${T} .sx-bar__leads > .k-caps { margin-top: 0 !important; }
+  ${T} .sx-bar__rail > .k-caps + .k-words, ${T} .sx-bar__leads > .k-caps + .k-rows { margin-top: 6px !important; }
+  ${T} .sx-bar__rows { row-gap: 0 !important; }
+  ${T} .sx-bar__rows .sx-bar-row { padding-top: 2px !important; padding-bottom: 2px !important; line-height: 1.3 !important; }
+  ${T} .sx-bar__keys { display: none !important; }
+  ${T} .sx-lead { padding-top: 2px !important; padding-bottom: 2px !important; }
+  ${T} .sx-bar__foot { margin-top: 8px !important; padding-top: 7px !important; padding-bottom: 4px !important;
+    background: linear-gradient(0deg, rgb(${BONE} / .14), rgb(${BONE} / .14)) 0 0 / 100% 1px no-repeat !important; }
+}
+/* Ledger — an empty book reads as one dashed well (the shared empty-state card: hairline dash,
+   radius 8, faint fill) instead of a half-drawn ruled page whose margin rule and stray rung
+   looked broken. The well sizes to its sentence; the panel keeps its rows. */
+${T} .sx-ledger .st-ledger-empty:not([hidden]) {
+  align-self: start !important; min-height: 0 !important; max-width: min(100%, 440px); box-sizing: border-box;
+  margin-top: 24px !important; padding: 12px 16px !important;
+  border: 1px dashed rgb(${BONE} / .22) !important; border-radius: 8px !important; background: rgb(${BONE} / .025) !important;
+}
+${T} .sx-ledger .st-ledger-empty:not([hidden])::before { display: none !important; }
+/* F9 — the FIND A SERVICE trigger wore a bordered kbd pill; it stands as a bare caps word with
+   a quiet field rule instead. The market search answers focus with a tick on its underline. */
+${T} .so-command-trigger { border: 0 !important; border-radius: 0 !important; background: none !important; background-image: none !important; box-shadow: inset 0 -1px 0 rgb(${BONE} / .16) !important; clip-path: none !important; padding: 0 0 4px !important; min-height: 0 !important; }
+${T} .so-command-trigger .dp-kbd { border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; }
+${T} .so-command-trigger:is(:hover, :focus-visible) { box-shadow: inset 0 -1px 0 rgb(${BONE} / .45) !important; color: rgb(252 249 240) !important; outline: none !important; }
+${T} .sx-mkt-search { box-shadow: inset 0 -1px 0 rgb(${BONE} / .28) !important; }
+${T} .sx-mkt-search:focus { outline: none !important; box-shadow: inset 0 -1.5px 0 rgb(${BONE} / .72) !important;
+  background: linear-gradient(90deg, rgb(${BONE} / .9) 0 9px, transparent 9px) 0 100% / 100% 2px no-repeat !important; }
+`;
+
+export function injectOrreryStationTabs(doc = globalThis.document) {
+  if (!doc?.head || typeof doc.createElement !== 'function' || typeof doc.getElementById !== 'function') return;
+  injectOrrery(doc);
+  if (doc.getElementById(STYLE_ID)) return;
+  const style = doc.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = CSS;
+  doc.head.appendChild(style);
+}
+export { rail as orreryRailCss, commit as orreryCommitCss, word as orreryWordCss };

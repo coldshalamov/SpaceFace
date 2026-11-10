@@ -1,0 +1,286 @@
+import { appendCombatTrace } from './trace.js';
+import { cloneData } from './runtime.js';
+
+export function createStatusService(context) {
+  const { state, catalog, bus } = context;
+
+  function schedule(targetEntity, runtime, application, source = {}) {
+    const def = catalog.statuses.get(application && application.id);
+    if (!def) return { ok: false, reason: 'unknown_status' };
+    // A corpse or an immune hull must not queue a later cue. The damage owner still
+    // decides accepted packets; this refusal publishes nothing.
+    if (isDestroyedBody(targetEntity)) return { ok: false, reason: 'destroyed' };
+    if (isStatusImmune(def, runtime)) {
+      appendCombatTrace(state.combat, state.tick, 'status.immune', {
+        actorId: source.attackerId == null ? null : source.attackerId,
+        targetId: targetEntity.id,
+        statusId: def.id,
+      });
+      return { ok: false, reason: 'immune' };
+    }
+    const stacks = Math.max(1, Math.floor(application.stacks || 1));
+    const applyTick = Number.isInteger(application.applyTick) ? application.applyTick : state.tick + 1;
+    if (!Number.isInteger(state.combat.statusNextPendingSeq) || state.combat.statusNextPendingSeq < 1) {
+      state.combat.statusNextPendingSeq = 1;
+    }
+    const pending = {
+      seq: state.combat.statusNextPendingSeq++,
+      id: def.id,
+      stacks,
+      durationTicks: Number.isInteger(application.durationTicks) ? application.durationTicks : def.durationTicks,
+      applyTick: Math.max(state.tick, applyTick),
+      attackerId: source.attackerId == null ? null : source.attackerId,
+      actionId: source.actionId || null,
+    };
+    if (hasOwn(application, 'data') && application.data !== undefined) pending.data = cloneData(application.data);
+    runtime.pendingStatuses.push(pending);
+    runtime.pendingStatuses.sort((a, b) => a.applyTick - b.applyTick || a.seq - b.seq);
+    appendCombatTrace(state.combat, state.tick, 'status.scheduled', {
+      actorId: source.attackerId == null ? null : source.attackerId,
+      targetId: targetEntity.id,
+      statusId: def.id,
+      stacks,
+      applyTick: Math.max(state.tick, applyTick),
+    });
+    return { ok: true };
+  }
+
+  // Quiet combatants dominate prePhysics: empty statuses + empty pending still paid
+  // Object.keys().sort() twice and a fresh due[] every tick. for-in emptiness is O(1) on {}.
+  function hasActiveStatusKeys(statuses) {
+    if (!statuses) return false;
+    for (const _ in statuses) return true;
+    return false;
+  }
+
+  const dueScratch = [];
+
+  function advance(targetEntity, runtime, routeDamage) {
+    const tick = state.tick >>> 0;
+    if (isDestroyedBody(targetEntity)) {
+      // Drop queued applications and park periodic clocks. Time spent destroyed must not
+      // catch up as a burst of hits if the body is alive again later.
+      if (runtime && Array.isArray(runtime.pendingStatuses) && runtime.pendingStatuses.length) {
+        runtime.pendingStatuses.length = 0;
+      }
+      parkPeriodicClocks(runtime, tick);
+      return false;
+    }
+    const statuses = runtime.statuses || (runtime.statuses = {});
+    const pending = Array.isArray(runtime.pendingStatuses)
+      ? runtime.pendingStatuses
+      : (runtime.pendingStatuses = []);
+    let changed = runtime.statusModifiersDirty === true;
+    // Quiet empty path: no dirty flag, no pending apply, no active keys → return.
+    if (!changed && pending.length === 0 && !hasActiveStatusKeys(statuses)) {
+      return false;
+    }
+    if (changed) delete runtime.statusModifiersDirty;
+
+    if (hasActiveStatusKeys(statuses)) {
+      for (const statusId of Object.keys(statuses).sort()) {
+        const active = statuses[statusId];
+        if (active.expiresTick > tick) continue;
+        delete statuses[statusId];
+        changed = true;
+        appendCombatTrace(state.combat, tick, 'status.expired', { targetId: targetEntity.id, statusId });
+        // `data` rides the receipt: owners that keep their own end-of-life clock on status
+        // metadata (tumbleStates' stabilization transition) lose the record the moment the
+        // kernel deletes it, and this event is where their transition must run.
+        if (bus) bus.emit('combat:statusExpired', { targetId: targetEntity.id, statusId, data: active.data || null });
+      }
+    }
+
+    const due = dueScratch;
+    due.length = 0;
+    while (pending.length && pending[0].applyTick <= tick) due.push(pending.shift());
+    for (let i = 0; i < due.length; i++) {
+      if (applyActive(targetEntity, runtime, due[i])) changed = true;
+    }
+
+    if (hasActiveStatusKeys(statuses)) {
+      for (const statusId of Object.keys(statuses).sort()) {
+        if (isDestroyedBody(targetEntity)) break;
+        const active = statuses[statusId];
+        const def = catalog.statuses.get(statusId);
+        if (!active || !def || !def.periodic || !(def.periodic.everyTicks > 0)) continue;
+        while (active.nextPeriodicTick != null && active.nextPeriodicTick <= tick && active.expiresTick > active.nextPeriodicTick) {
+          if (isDestroyedBody(targetEntity)) break;
+          const dueTick = active.nextPeriodicTick;
+          let accepted = typeof routeDamage !== 'function';
+          if (typeof routeDamage === 'function') {
+            const packet = scalePacket(def.periodic.packet, Math.max(1, active.stacks || 1));
+            packet.flags = { ...(packet.flags || {}), ignoreFriendlyFire: true, statusPeriodic: true };
+            packet.source = { statusId, attackerId: active.attackerId };
+            const routed = routeDamage({
+              attackerId: active.attackerId,
+              targetId: targetEntity.id,
+              packet,
+              origin: { kind: 'status', id: statusId },
+            });
+            accepted = !routed || routed.ok !== false;
+          }
+          // A rejected packet is not a hit. The clock still moves so this tick cannot spin.
+          if (accepted) {
+            appendCombatTrace(state.combat, dueTick, 'status.periodic', {
+              actorId: active.attackerId,
+              targetId: targetEntity.id,
+              statusId,
+              stacks: active.stacks,
+            });
+          }
+          active.nextPeriodicTick += def.periodic.everyTicks;
+          if (isDestroyedBody(targetEntity)) break;
+        }
+      }
+    }
+    return changed;
+  }
+
+  function clear(targetEntity, runtime, statusId, reason = 'cleared') {
+    const active = !!(runtime.statuses && runtime.statuses[statusId]);
+    const pending = Array.isArray(runtime.pendingStatuses) ? runtime.pendingStatuses : [];
+    const remaining = pending.filter((status) => !status || status.id !== statusId);
+    const pendingCleared = remaining.length !== pending.length;
+    if (!active && !pendingCleared) return false;
+    if (active) {
+      delete runtime.statuses[statusId];
+      runtime.statusModifiersDirty = true;
+    }
+    if (pendingCleared) runtime.pendingStatuses = remaining;
+    appendCombatTrace(state.combat, state.tick, 'status.cleared', { targetId: targetEntity.id, statusId, reason });
+    return true;
+  }
+
+  function applyActive(targetEntity, runtime, pending) {
+    const def = catalog.statuses.get(pending.id);
+    if (!def) return false;
+    // Immunity can arrive between schedule and apply. Interactions call applyActive
+    // directly, so the cue gate has to live here — not only on schedule.
+    if (isDestroyedBody(targetEntity)) return false;
+    if (isStatusImmune(def, runtime)) {
+      appendCombatTrace(state.combat, state.tick, 'status.immune', {
+        actorId: pending.attackerId == null ? null : pending.attackerId,
+        targetId: targetEntity.id,
+        statusId: def.id,
+      });
+      return false;
+    }
+    const existing = runtime.statuses[def.id];
+    const maxStacks = Math.max(1, Math.floor(def.stacking && def.stacking.maxStacks || 1));
+    const duration = Math.max(1, Math.floor(pending.durationTicks || def.durationTicks || 1));
+    const mode = def.stacking && def.stacking.mode || 'refresh';
+    let active = existing;
+    if (!active) {
+      active = runtime.statuses[def.id] = {
+        id: def.id,
+        stacks: Math.min(maxStacks, pending.stacks),
+        appliedTick: state.tick,
+        expiresTick: state.tick + duration,
+        nextPeriodicTick: def.periodic ? state.tick + def.periodic.everyTicks : null,
+        attackerId: pending.attackerId,
+        actionId: pending.actionId,
+      };
+    } else if (mode === 'ignore') {
+      return false;
+    } else if (mode === 'replace') {
+      active.stacks = Math.min(maxStacks, pending.stacks);
+      active.appliedTick = state.tick;
+      active.expiresTick = state.tick + duration;
+      active.nextPeriodicTick = def.periodic ? state.tick + def.periodic.everyTicks : null;
+      active.attackerId = pending.attackerId;
+      active.actionId = pending.actionId;
+    } else if (mode === 'stack') {
+      active.stacks = Math.min(maxStacks, active.stacks + pending.stacks);
+      active.expiresTick = Math.max(active.expiresTick, state.tick + duration);
+      if (active.attackerId == null) active.attackerId = pending.attackerId;
+    } else {
+      active.stacks = Math.min(maxStacks, Math.max(active.stacks, pending.stacks));
+      active.expiresTick = state.tick + duration;
+      if (active.attackerId == null) active.attackerId = pending.attackerId;
+    }
+    replaceStatusData(active, pending);
+
+    appendCombatTrace(state.combat, state.tick, 'status.applied', {
+      actorId: pending.attackerId,
+      targetId: targetEntity.id,
+      statusId: def.id,
+      stacks: active.stacks,
+      expiresTick: active.expiresTick,
+      cueId: def.cueId || null,
+    });
+    if (bus) bus.emit('combat:statusApplied', {
+      attackerId: pending.attackerId,
+      targetId: targetEntity.id,
+      statusId: def.id,
+      stacks: active.stacks,
+      expiresTick: active.expiresTick,
+      cueId: def.cueId || null,
+    });
+
+    for (const interaction of def.interactions || []) {
+      if (!runtime.statuses[interaction.with]) continue;
+      if (interaction.consumeWith) delete runtime.statuses[interaction.with];
+      if (interaction.apply && interaction.apply !== def.id) {
+        const interactionDef = catalog.statuses.get(interaction.apply);
+        if (interactionDef) {
+          applyActive(targetEntity, runtime, {
+            id: interaction.apply,
+            stacks: 1,
+            durationTicks: interactionDef.durationTicks,
+            attackerId: pending.attackerId,
+            actionId: pending.actionId,
+          });
+        }
+      }
+    }
+    return true;
+  }
+
+  return Object.freeze({ schedule, advance, clear });
+}
+
+function isDestroyedBody(targetEntity) {
+  return !targetEntity || targetEntity.alive === false || targetEntity.destroyed === true;
+}
+
+function parkPeriodicClocks(runtime, tick) {
+  const statuses = runtime && runtime.statuses;
+  if (!statuses) return;
+  for (const statusId in statuses) {
+    const active = statuses[statusId];
+    if (!active || active.nextPeriodicTick == null) continue;
+    if (active.nextPeriodicTick < tick) active.nextPeriodicTick = tick;
+  }
+}
+
+function isStatusImmune(def, runtime) {
+  const tags = def && def.immunityTags;
+  const have = runtime && runtime.immunityTags;
+  if (!tags || tags.length === 0 || !have || have.length === 0) return false;
+  for (let i = 0; i < tags.length; i++) {
+    if (have.indexOf(tags[i]) !== -1) return true;
+  }
+  return false;
+}
+
+function replaceStatusData(active, pending) {
+  if (hasOwn(pending, 'data') && pending.data !== undefined) active.data = cloneData(pending.data);
+  else delete active.data;
+}
+
+function hasOwn(value, key) {
+  return !!value && Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function scalePacket(packet, scale) {
+  const out = {
+    channels: {},
+    penetration: Number(packet && packet.penetration) || 0,
+    impulse: packet && packet.impulse ? { ...packet.impulse } : null,
+    heat: (Number(packet && packet.heat) || 0) * scale,
+    statuses: (packet && packet.statuses || []).map((status) => ({ ...status })),
+  };
+  for (const [channel, amount] of Object.entries(packet && packet.channels || {})) out.channels[channel] = (Number(amount) || 0) * scale;
+  return out;
+}

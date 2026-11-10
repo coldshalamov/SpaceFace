@@ -1,0 +1,514 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.skid-quad",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "60c571c550b06d6f34504b9c4f5adf88597762e5b07a273f47ee5fbfe87374c4",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.2606217861175537,
+          1.8194848389705878,
+          1.3634360125040805
+        ],
+        "min": [
+          -0.060621779412031174,
+          1.1805151610294122,
+          -1.3634360125040805
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "76de1e71eaf827ab7a1f43c866ebcb816dced7e22b62de36b593e5f3a2e4a413",
+      "id": "sf.render.skid-quad.mesh.skid-quad-material-accent-merged.primitive.0",
+      "indexCount": 6912,
+      "indexed": true,
+      "materialHash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "materialPipelineKey": "opaque",
+      "meshName": "skid_quad_Material_Accent_Merged",
+      "nodeId": "sf.render.skid-quad.mesh.skid-quad-material-accent-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 1920
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7750000953674316,
+          1.6249434846023705,
+          1.8000984567245355
+        ],
+        "min": [
+          -0.574999988079071,
+          -0.03994347625772021,
+          -1.8000984567245355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "14de981d13c78386d7a485334add5944a1b9889c513e2bb2846d03f5e4f42e65",
+      "id": "sf.render.skid-quad.mesh.skid-quad-material-hull-merged.primitive.0",
+      "indexCount": 1620,
+      "indexed": true,
+      "materialHash": "c1ee96606c87c237dac98ac547fa41f8714219a88fd32bf2d882106c5d7eff38",
+      "materialPipelineKey": "opaque",
+      "meshName": "skid_quad_Material_Hull_Merged",
+      "nodeId": "sf.render.skid-quad.mesh.skid-quad-material-hull-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 670
+    },
+    {
+      "bounds": {
+        "max": [
+          3.4325716495513916,
+          1.6153104068921103,
+          1.6672503996268564
+        ],
+        "min": [
+          -0.23257167637348175,
+          0.13468959310788975,
+          -1.6672503996268564
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9588439720ac88696b26fbd349de42eaf3c56777aed2ad91d2c3faffc334f6b7",
+      "id": "sf.render.skid-quad.mesh.skid-quad-material-mechanical-merged.primitive.0",
+      "indexCount": 2016,
+      "indexed": true,
+      "materialHash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "materialPipelineKey": "opaque",
+      "meshName": "skid_quad_Material_Mechanical_Merged",
+      "nodeId": "sf.render.skid-quad.mesh.skid-quad-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 536
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "id": "material:0d612528a03bab333df5b88a",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "id": "material:26ac8e79234691141b934c6c",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "c1ee96606c87c237dac98ac547fa41f8714219a88fd32bf2d882106c5d7eff38",
+      "id": "material:c1ee96606c87c237dac98ac5",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.skid-quad.mesh.skid-quad-material-accent-merged",
+      "localTransform": [
+        1.6606217827647924,
+        0,
+        0,
+        0,
+        0,
+        1.6606217827647924,
+        0,
+        0,
+        0,
+        0,
+        1.6606217827647924,
+        0,
+        1.6000000033527613,
+        1.5,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "skid_quad_Material_Accent_Merged",
+      "nodeName": "skid_quad_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.skid-quad.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skid-quad.body",
+      "worldTransform": [
+        1.6606217827647924,
+        0,
+        0,
+        0,
+        0,
+        1.6606217827647924,
+        0,
+        0,
+        0,
+        0,
+        1.6606217827647924,
+        0,
+        1.6000000033527613,
+        1.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skid-quad.mesh.skid-quad-material-hull-merged",
+      "localTransform": [
+        2.1750000417232513,
+        0,
+        0,
+        0,
+        0,
+        2.1750000417232513,
+        0,
+        0,
+        0,
+        0,
+        2.1750000417232513,
+        0,
+        1.6000000536441803,
+        0.7925000041723251,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "skid_quad_Material_Hull_Merged",
+      "nodeName": "skid_quad_Material_Hull_Merged",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.skid-quad.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skid-quad.body",
+      "worldTransform": [
+        2.1750000417232513,
+        0,
+        0,
+        0,
+        0,
+        2.1750000417232513,
+        0,
+        0,
+        0,
+        0,
+        2.1750000417232513,
+        0,
+        1.6000000536441803,
+        0.7925000041723251,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skid-quad.mesh.skid-quad-material-mechanical-merged",
+      "localTransform": [
+        1.8325716629624367,
+        0,
+        0,
+        0,
+        0,
+        1.8325716629624367,
+        0,
+        0,
+        0,
+        0,
+        1.8325716629624367,
+        0,
+        1.599999986588955,
+        0.875,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "skid_quad_Material_Mechanical_Merged",
+      "nodeName": "skid_quad_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.skid-quad.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skid-quad.body",
+      "worldTransform": [
+        1.8325716629624367,
+        0,
+        0,
+        0,
+        0,
+        1.8325716629624367,
+        0,
+        0,
+        0,
+        0,
+        1.8325716629624367,
+        0,
+        1.599999986588955,
+        0.875,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skid-quad.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "skid_quad",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skid-quad.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "43bb44df74ebdbb8f038aef27cb8dca3ba79648397aa2c8a78449ba28e6d9e2e"
+    },
+    "sourceGlb": {
+      "bytes": 254480,
+      "sha256": "41fff3b98701f80d26f51604530e51020b2b9e047181a18e97129dd258d0db29",
+      "uri": "skid_quad.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 245216,
+    "sha256": "0f0a7093d563d17ed0e7dfe5e111d86e5910619a0ad46a51d1d18c8a508868c9",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.6000000536441803,
+        0.8897706813564338,
+        0
+      ],
+      "max": [
+        3.7750000953674316,
+        1.8194848389705878,
+        1.8000984567245355
+      ],
+      "min": [
+        -0.574999988079071,
+        -0.03994347625772021,
+        -1.8000984567245355
+      ],
+      "size": [
+        4.350000083446503,
+        1.859428315228308,
+        3.600196913449071
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 18,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.6606217827647924,
+          0,
+          0,
+          0,
+          0,
+          1.6606217827647924,
+          0,
+          0,
+          0,
+          0,
+          1.6606217827647924,
+          0,
+          1.6000000033527613,
+          1.5,
+          0,
+          1
+        ],
+        "name": "skid_quad_Material_Accent_Merged",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.1750000417232513,
+          0,
+          0,
+          0,
+          0,
+          2.1750000417232513,
+          0,
+          0,
+          0,
+          0,
+          2.1750000417232513,
+          0,
+          1.6000000536441803,
+          0.7925000041723251,
+          0,
+          1
+        ],
+        "name": "skid_quad_Material_Hull_Merged",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.8325716629624367,
+          0,
+          0,
+          0,
+          0,
+          1.8325716629624367,
+          0,
+          0,
+          0,
+          0,
+          1.8325716629624367,
+          0,
+          1.599999986588955,
+          0.875,
+          0,
+          1
+        ],
+        "name": "skid_quad_Material_Mechanical_Merged",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "gear",
+    "url": "assets/ships/release/parts/gear/skid_quad.glb"
+  },
+  "runtimeHash": "cb637eb1201985860993e577a618c47706fe41268fd5ebfe7c28c07b7d04293b",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.7750000953674316,
+          1.8194848389705878,
+          1.8000984567245355
+        ],
+        "min": [
+          -0.574999988079071,
+          -0.03994347625772021,
+          -1.8000984567245355
+        ]
+      },
+      "id": "sf.render.skid-quad.body",
+      "nodeIds": [
+        "sf.render.skid-quad.mesh.skid-quad-material-accent-merged",
+        "sf.render.skid-quad.mesh.skid-quad-material-hull-merged",
+        "sf.render.skid-quad.mesh.skid-quad-material-mechanical-merged",
+        "sf.render.skid-quad.root"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "docking-corridor-far-quiet-latch",
+  "iters": 60000,
+  "stations": 3,
+  "stationR": 1800,
+  "medianSpeedup": 18.232,
+  "minSpeedup": 7.902,
+  "maxSpeedup": 19.37,
+  "pairs": [
+    7.902,
+    14.041,
+    15.632,
+    15.827,
+    18.072,
+    18.232,
+    18.454,
+    18.815,
+    18.863,
+    18.983,
+    19.37
+  ],
+  "latched": true,
+  "wake": {
+    "beforeWake": true,
+    "afterApproachLatched": false,
+    "distCenter": 60,
+    "dirtyWakeOk": true
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "answers": [
+    {
+      "q": 1,
+      "question": "Can I tell what the player did from the frames alone?",
+      "answer": "yes",
+      "frameIndex": 8,
+      "note": "Large blue engine plume and acceleration clearly show forward throttle and boost engagement."
+    },
+    {
+      "q": 2,
+      "question": "Did the world answer within a third of a second (motion, light, or a visible receipt)?",
+      "answer": "yes",
+      "frameIndex": 4,
+      "note": "Within 0.033s of forward input, engine lights ignite and player speed jumps from 0.45 to 36.11."
+    },
+    {
+      "q": 3,
+      "question": "Did something the player did not directly touch change because of it?",
+      "answer": "yes",
+      "frameIndex": 17,
+      "note": "Nearby hostile craft in the perimeter explode and scatter debris as the player surges through."
+    },
+    {
+      "q": 4,
+      "question": "Would the vision's sentence for this verb be true here? (quote the sentence)",
+      "answer": "no",
+      "frameIndex": 64,
+      "note": "\"Thrusters have a cap; physics-earned speed does not get eaten by the brakes.\" fails as speed decays to 83.63 under held throttle."
+    },
+    {
+      "q": 5,
+      "question": "Is the ship a controllable mass (turns inside the screen, stops when braked, keeps earned speed)?",
+      "answer": "no",
+      "frameIndex": 64,
+      "note": "The ship stops when braked, but fails to keep earned speed, dropping from 120 to 83.63 WU/s while holding forward."
+    },
+    {
+      "q": 6,
+      "question": "Are the light ships ammunition here, rather than only targets?",
+      "answer": "no",
+      "frameIndex": 23,
+      "note": "Light hostiles are obstacle targets rather than projectiles; rammed ships do not damage others and hostilesAlive stays 10."
+    },
+    {
+      "q": 7,
+      "question": "Is anything on screen a glowing sphere standing in for a designed event?",
+      "answer": "no",
+      "frameIndex": 17,
+      "note": "Explosions and collisions show structured polygonal models, fire, and particle bursts rather than placeholder glowing spheres."
+    },
+    {
+      "q": 8,
+      "question": "Did anyone flee, choose, or arrive because of the violence?",
+      "answer": "no",
+      "frameIndex": 160,
+      "note": "No NPCs flee, arrive, or make tactical choices during combat; all 10 hostiles persist on predefined swarm paths."
+    },
+    {
+      "q": 9,
+      "question": "Would a stranger tell a \"so then\" story about these twelve seconds?",
+      "answer": "yes",
+      "frameIndex": 8,
+      "note": "A stranger would describe boosting into the swarm, ramming through hostile fighters, and braking to a dead halt."
+    }
+  ],
+  "fundamental": {
+    "rule": "speed governor overspeed brake in assisted flight",
+    "file": "src/core/flight/propulsionKernel.js",
+    "does": "brakes the ship when speed exceeds combatSpeed while holding forward throttle instead of coasting",
+    "breaksSentence": "Thrusters have a cap; physics-earned speed does not get eaten by the brakes.",
+    "frameIndex": 64
+  }
+}

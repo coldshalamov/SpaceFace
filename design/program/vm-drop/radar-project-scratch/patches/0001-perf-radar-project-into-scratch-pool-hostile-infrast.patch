@@ -1,0 +1,258 @@
+From 77064b0b55b570caf17783eb5f86493143731b6d Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 23:51:26 -0400
+Subject: [PATCH] perf(radar): project into scratch; pool
+ hostile/infrastructure marks
+
+radar.draw was Object.freeze-allocating a projection record per contact and
+a fresh mark object per hostile/station. Optional out-param on
+projectRadarPoint plus retained mark rows copy x/y/angle/offRange so the
+priority/glyph passes keep the same picture without per-draw alloc.
+Skip unchanged aria-label writes. Picture unchanged.
+---
+ src/ui/map/tacticalMapGrammar.js | 17 +++++-
+ src/ui/radar.js                  | 95 +++++++++++++++++++++++---------
+ 2 files changed, 85 insertions(+), 27 deletions(-)
+
+diff --git a/src/ui/map/tacticalMapGrammar.js b/src/ui/map/tacticalMapGrammar.js
+index 943bc4f92..5a0460740 100644
+--- a/src/ui/map/tacticalMapGrammar.js
++++ b/src/ui/map/tacticalMapGrammar.js
+@@ -77,7 +77,7 @@ function finiteCoordinate(value) {
+   return Number.isFinite(n) ? n : null;
+ }
+ 
+-export function projectRadarPoint(playerPos, targetPos, range, metrics = COMPACT_METRICS) {
++export function projectRadarPoint(playerPos, targetPos, range, metrics = COMPACT_METRICS, out = null) {
+   if (!playerPos || !targetPos || !metrics) return null;
+   const px = finiteCoordinate(playerPos.x);
+   const pz = finiteCoordinate(playerPos.z);
+@@ -98,6 +98,21 @@ export function projectRadarPoint(playerPos, targetPos, range, metrics = COMPACT
+   const y = offRange
+     ? metrics.center + Math.sin(angle) * metrics.radius
+     : metrics.center - dz * scale;
++  // Optional out-param: radar.draw projects every contact each tick. Returning a fresh
++  // Object.freeze({}) per call dominated radar alloc (cpu-profile-flight). One-shot callers
++  // (tests, planObjectiveCue) still get a frozen object when out is omitted.
++  if (out) {
++    out.x = x;
++    out.y = y;
++    out.dx = dx;
++    out.dz = dz;
++    out.distance = distance;
++    out.offRange = offRange;
++    out.angle = angle;
++    out.scale = scale;
++    out.resolved = true;
++    return out;
++  }
+   return Object.freeze({ x, y, dx, dz, distance, offRange, angle, scale, resolved: true });
+ }
+ 
+diff --git a/src/ui/radar.js b/src/ui/radar.js
+index d1c3cb4c3..7484753dc 100644
+--- a/src/ui/radar.js
++++ b/src/ui/radar.js
+@@ -599,6 +599,46 @@ export function createRadar(ctx) {
+   const nearRockSlots = Array.from({ length: ASTEROID_DOT_LIMIT }, () => ({ x: 0, y: 0, distanceSq: Infinity }));
+   const hostileMarks = [];
+   const infrastructureMarks = [];
++  // Retained projection + mark slots: projectRadarPoint used to Object.freeze a fresh record
++  // per contact, and each mark held that record. Scratch + pooled mark rows keep picture
++  // identical (x/y/angle/offRange copied into the mark) without per-draw alloc.
++  const projectScratch = {
++    x: 0, y: 0, dx: 0, dz: 0, distance: 0, offRange: false, angle: 0, scale: 0, resolved: true,
++  };
++  // Second scratch for the lead-line path: aim point and target point are both projected in one
++  // stroke, so they cannot share a single out record.
++  const projectScratchB = {
++    x: 0, y: 0, dx: 0, dz: 0, distance: 0, offRange: false, angle: 0, scale: 0, resolved: true,
++  };
++  const hostileMarkPool = [];
++  const infrastructureMarkPool = [];
++  function pushHostileMark(entity, projected, distanceSq) {
++    let mark = hostileMarkPool[hostileMarks.length];
++    if (!mark) {
++      mark = { entity: null, x: 0, y: 0, distanceSq: 0 };
++      hostileMarkPool[hostileMarks.length] = mark;
++    }
++    mark.entity = entity;
++    mark.x = projected.x;
++    mark.y = projected.y;
++    mark.distanceSq = distanceSq;
++    hostileMarks.push(mark);
++  }
++  function pushInfrastructureMark(entity, projected, gate, distanceSq) {
++    let mark = infrastructureMarkPool[infrastructureMarks.length];
++    if (!mark) {
++      mark = { entity: null, x: 0, y: 0, gate: false, offRange: false, angle: 0, distanceSq: 0 };
++      infrastructureMarkPool[infrastructureMarks.length] = mark;
++    }
++    mark.entity = entity;
++    mark.x = projected.x;
++    mark.y = projected.y;
++    mark.gate = gate;
++    mark.offRange = projected.offRange;
++    mark.angle = projected.angle;
++    mark.distanceSq = distanceSq;
++    infrastructureMarks.push(mark);
++  }
+   // Reused option records for the glyph draw calls. The draw functions destructure and read
+   // only; nothing retains these between contacts.
+   const neutralOpts = { selected: false, named: false, playerTeam: null, state: null };
+@@ -606,6 +646,7 @@ export function createRadar(ctx) {
+   const glyphOpts = { offRange: false, angle: 0 };
+   const zeroVel = { x: 0, z: 0 };
+   let trailPruneCountdown = 0;
++  let lastAriaLabel = '';
+   const unsubscribers = [];
+ 
+   function markContactsDirty() {
+@@ -936,13 +977,13 @@ export function createRadar(ctx) {
+           nearestOffRangeHostile = entity;
+         }
+         if (station) {
+-          const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
+-          if (projected) infrastructureMarks.push({ entity, projected, gate, distanceSq });
++          const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
++          if (projected) pushInfrastructureMark(entity, projected, gate, distanceSq);
+         }
+         continue;
+       }
+ 
+-      const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
++      const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
+       if (!projected) continue;
+       const x = projected.x;
+       const y = projected.y;
+@@ -957,11 +998,11 @@ export function createRadar(ctx) {
+ 
+       if (hostile) {
+         hostileCount += 1;
+-        hostileMarks.push({ entity, projected, distanceSq });
++        pushHostileMark(entity, projected, distanceSq);
+         continue; // drawn in the crisp priority pass below
+       }
+       if (station) {
+-        infrastructureMarks.push({ entity, projected, gate, distanceSq });
++        pushInfrastructureMark(entity, projected, gate, distanceSq);
+         continue; // drawn in the glyph pass below
+       }
+ 
+@@ -1016,22 +1057,22 @@ export function createRadar(ctx) {
+       const selected = mark.entity.id === targetId;
+       hostileOpts.selected = selected;
+       hostileOpts.capital = isCapitalContact(mark.entity);
+-      drawHostileGlyph(g, mark.projected.x, mark.projected.y, entityHeading(mark.entity), hostileOpts);
++      drawHostileGlyph(g, mark.x, mark.y, entityHeading(mark.entity), hostileOpts);
+       if (selected || !swarmQuiet) {
+         drawContactThreatPulse(
+           g,
+-          mark.projected.x,
+-          mark.projected.y,
++          mark.x,
++          mark.y,
+           selected,
+           now,
+           reducedMotion,
+         );
+       }
+-      if (selected) drawTargetRing(g, mark.projected.x, mark.projected.y, center);
++      if (selected) drawTargetRing(g, mark.x, mark.y, center);
+     }
+ 
+     if (nearestOffRangeHostile) {
+-      const projected = projectRadarPoint(player.pos, nearestOffRangeHostile.pos, range, metrics);
++      const projected = projectRadarPoint(player.pos, nearestOffRangeHostile.pos, range, metrics, projectScratch);
+       if (projected) {
+         drawHostileEdgeMarker(g, projected.x, projected.y, projected.angle, nearestOffRangeHostile.id === targetId);
+       }
+@@ -1040,15 +1081,15 @@ export function createRadar(ctx) {
+     const infrastructureMarkCount = Math.min(infrastructureMarks.length, MAX_SEMANTIC_INFRASTRUCTURE);
+     for (let i = 0; i < infrastructureMarkCount; i += 1) {
+       const mark = infrastructureMarks[i];
+-      glyphOpts.offRange = mark.projected.offRange;
+-      glyphOpts.angle = mark.projected.angle;
++      glyphOpts.offRange = mark.offRange;
++      glyphOpts.angle = mark.angle;
+       if (mark.gate) {
+-        drawGateGlyph(g, mark.projected.x, mark.projected.y, glyphOpts);
++        drawGateGlyph(g, mark.x, mark.y, glyphOpts);
+       } else {
+-        drawStationGlyph(g, mark.projected.x, mark.projected.y, glyphOpts);
++        drawStationGlyph(g, mark.x, mark.y, glyphOpts);
+       }
+-      if (mark.entity.id === targetId && !mark.projected.offRange) {
+-        drawTargetRing(g, mark.projected.x, mark.projected.y, center);
++      if (mark.entity.id === targetId && !mark.offRange) {
++        drawTargetRing(g, mark.x, mark.y, center);
+       }
+     }
+ 
+@@ -1067,7 +1108,7 @@ export function createRadar(ctx) {
+       if (Array.isArray(pings)) {
+         for (const ping of pings) {
+           if (!ping || !ping.pos) continue;
+-          const projected = projectRadarPoint(player.pos, ping.pos, range, metrics);
++          const projected = projectRadarPoint(player.pos, ping.pos, range, metrics, projectScratch);
+           if (!projected || projected.offRange) continue;
+           g.strokeText('?', projected.x, projected.y);
+         }
+@@ -1075,7 +1116,7 @@ export function createRadar(ctx) {
+       for (const entity of contacts) {
+         if (!entity || !entity.pos || !entity.alive || entity === player) continue;
+         if (!(entity.data && entity.data.pingedUntil > (state.simTime || 0))) continue;
+-        const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
++        const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
+         if (!projected || projected.offRange) continue;
+         g.strokeText('?', projected.x, projected.y);
+       }
+@@ -1093,7 +1134,7 @@ export function createRadar(ctx) {
+           playerProjSpeed(player),
+         );
+         if (lead) {
+-          const leadPoint = projectRadarPoint(player.pos, lead.aimPoint, range, metrics);
++          const leadPoint = projectRadarPoint(player.pos, lead.aimPoint, range, metrics, projectScratch);
+           if (leadPoint) {
+             g.save();
+             g.strokeStyle = 'rgba(255,220,90,0.92)';
+@@ -1105,7 +1146,7 @@ export function createRadar(ctx) {
+             g.lineTo(leadPoint.x, leadPoint.y + 3.5);
+             g.stroke();
+             if (!leadPoint.offRange) {
+-              const targetPoint = projectRadarPoint(player.pos, target.pos, range, metrics);
++              const targetPoint = projectRadarPoint(player.pos, target.pos, range, metrics, projectScratchB);
+               if (targetPoint) {
+                 g.setLineDash([2, 2]);
+                 g.beginPath();
+@@ -1162,6 +1203,7 @@ export function createRadar(ctx) {
+           { x: beacon.x, z: beacon.z },
+           range,
+           metrics,
++          projectScratch,
+         );
+         if (!projected || projected.offRange) continue;
+         g.globalAlpha = 0.5 + beaconPulse * 0.4;
+@@ -1185,12 +1227,13 @@ export function createRadar(ctx) {
+     drawThreatRing(g, metrics, hostileCount, now, reducedMotion);
+     drawRangePlate(g, metrics, range, expanded);
+ 
+-    canvas.setAttribute(
+-      'aria-label',
+-      waypoint
+-        ? `Local tactical radar. You are the lit centre hull. Objective ${label}, ${formatRadarDistance(cue && cue.distance)}.`
+-        : 'Local tactical radar. You are the lit centre hull. Hostiles are red chevrons, stations are pale berth hexagons, and gates are steel double rings.',
+-    );
++    const ariaLabel = waypoint
++      ? `Local tactical radar. You are the lit centre hull. Objective ${label}, ${formatRadarDistance(cue && cue.distance)}.`
++      : 'Local tactical radar. You are the lit centre hull. Hostiles are red chevrons, stations are pale berth hexagons, and gates are steel double rings.';
++    if (ariaLabel !== lastAriaLabel) {
++      lastAriaLabel = ariaLabel;
++      canvas.setAttribute('aria-label', ariaLabel);
++    }
+   }
+ 
+   function invalidate() {
+-- 
+2.47.3
+

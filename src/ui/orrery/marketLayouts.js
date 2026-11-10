@@ -1,0 +1,1129 @@
+// ORRERY composition for the station Market (design/frontend/ORRERY.md §6 Station, Market): the
+// price instrument — commodities on a Ladder (a ruled rail with a tick per good, its pictogram and
+// the Hand at the chosen one), the trace as light with its band, BUY/SELL beads on a right-edge
+// scale and a crosshair Lens, and the quantity as a rotary dial of light round the number you type.
+// It styles the Market's existing nodes (checks read their classes and roles) and draws the dial;
+// every rule is scoped to the station's `.orr-market`.
+import { injectOrrery } from './tokens.js';
+import { arcD, polar } from './svg.js';
+
+const STYLE_ID = 'sf-orrery-market';
+const f = (n) => Math.round(n * 100) / 100;
+
+// The dial: 270 degrees open at the foot, a tick every 5 degrees (majors every 45), the fill as a
+// unit-length dash, the Hand (a bead on a short needle) turning about the centre to the amount.
+// Widths are dial units (150 across 200px, so 1.5 units read as 2px): the track is an 8px band at
+// bone .28 under a 2px edge, minors 1.5px, majors 2px, the fill a 3px lit core over a 10px bloom.
+const QD = { size: 150, c: 75, r: 60, from: -135, to: 135 };
+const clampFrac = (qty, limit) => {
+  const q = Math.max(0, Number(qty) || 0);
+  const l = Math.max(0, Number(limit) || 0);
+  return l > 0 ? Math.min(1, q / l) : 0;
+};
+
+/** The dial's ticks as two paths, so minors (1.5px) and majors (2px) carry their own weight. */
+function qdialTickPaths() {
+  const { c, r, from, to } = QD;
+  const minor = [];
+  const major = [];
+  const steps = Math.round((to - from) / 5);
+  for (let i = 0; i <= steps; i += 1) {
+    const a = from + i * 5;
+    const isMajor = i % 9 === 0;
+    const len = isMajor ? 7 : 3;
+    const [x0, y0] = polar(c, c, r + 5, a);
+    const [x1, y1] = polar(c, c, r + 5 + len, a);
+    (isMajor ? major : minor).push(`M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`);
+  }
+  return { minor: minor.join(' '), major: major.join(' ') };
+}
+
+export function qtyDialSvg({ qty = 0, limit = 0 } = {}) {
+  const { size, c, r, from, to } = QD;
+  const v = clampFrac(qty, limit);
+  const d = arcD(c, c, r, from, to);
+  const ticks = qdialTickPaths();
+  const [x0, y0] = polar(c, c, r + 17, from);
+  const [x1, y1] = polar(c, c, r + 17, to);
+  const lim = Math.max(0, Math.floor(Number(limit) || 0));
+  return `<svg class="orr-qdial" viewBox="0 0 ${size} ${size}" aria-hidden="true" focusable="false">`
+    + `<path class="orr-qdial__band" d="${d}"/>`
+    + `<path class="orr-qdial__track" d="${d}"/>`
+    + `<path class="orr-qdial__ticks-min" d="${ticks.minor}"/>`
+    + `<path class="orr-qdial__ticks-maj" d="${ticks.major}"/>`
+    + `<path class="orr-qdial__fillbloom" d="${d}" pathLength="1" stroke-dasharray="${f(v)} 1"/>`
+    + `<path class="orr-qdial__fill" d="${d}" pathLength="1" stroke-dasharray="${f(v)} 1"/>`
+    + `<g class="orr-qdial__hand" style="transform:rotate(${f(from + (to - from) * v)}deg)">`
+    + `<path class="orr-qdial__needle" d="M ${c} ${c - r + 7} L ${c} ${c - r - 9}"/>`
+    + `<circle class="orr-qdial__bead" cx="${c}" cy="${c - r}" r="3"/></g>`
+    + `<text class="orr-qdial__end" x="${f(x0)}" y="${f(y0 + 3)}" text-anchor="middle">0</text>`
+    + `<text class="orr-qdial__end orr-qdial__end--max" x="${f(x1)}" y="${f(y1 + 3)}" text-anchor="middle">${lim}</text>`
+    + `</svg>`;
+}
+
+/** Turn an existing dial to a new amount in place (fill, bloom and Hand glide together). */
+export function setQtyDial(root, qty, limit) {
+  const svgEl = root && root.querySelector ? root.querySelector('.orr-qdial') : null;
+  if (!svgEl) return false;
+  const v = clampFrac(qty, limit);
+  const fill = svgEl.querySelector('.orr-qdial__fill');
+  const bloom = svgEl.querySelector('.orr-qdial__fillbloom');
+  const hand = svgEl.querySelector('.orr-qdial__hand');
+  if (fill) fill.style.strokeDasharray = `${f(v)} 1`;
+  if (bloom) bloom.style.strokeDasharray = `${f(v)} 1`;
+  if (hand) hand.style.transform = `rotate(${f(QD.from + (QD.to - QD.from) * v)}deg)`;
+  const max = svgEl.querySelector('.orr-qdial__end--max');
+  const lim = String(Math.max(0, Math.floor(Number(limit) || 0)));
+  if (max && max.textContent !== lim) max.textContent = lim;
+  return true;
+}
+
+/** Where on the dial a pointer is, as an amount: straight up is half, the foot's ends are 0 and all. */
+export function qtyFromDialPoint(svgEl, clientX, clientY, limit) {
+  if (!svgEl || typeof svgEl.getBoundingClientRect !== 'function') return null;
+  const box = svgEl.getBoundingClientRect();
+  if (!box.width) return null;
+  const dx = clientX - (box.left + box.width / 2);
+  const dy = clientY - (box.top + box.height / 2);
+  let deg = (Math.atan2(dx, -dy) * 180) / Math.PI; // 0 = up, clockwise
+  deg = Math.max(QD.from, Math.min(QD.to, deg));
+  const lim = Math.max(0, Math.floor(Number(limit) || 0));
+  return Math.round(lim * ((deg - QD.from) / (QD.to - QD.from)));
+}
+
+const M = 'html body #screens > .sx-berth.orr-station .sx-mkt.orr-market';
+/* desktop only (phones carry data-sf-mobile and their own sheet) */
+const MD = 'html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sx-mkt.orr-market';
+/* phone only: the station berth holding the Market (outranks the phone sheet's #screens#screens#screens) */
+const MP = 'html:root[data-sf-mobile="1"] body #screens#screens#screens > .screen.orr-station:has(.sx-mkt.orr-market)';
+const BONE = '236 230 216';
+const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase;';
+const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
+const NUMERAL = 'font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100%; font-variant-numeric:tabular-nums;';
+// A spine is a 2px line over a 7px faint band; a horizontal rule the same, bottom-anchored.
+const SPINE_V = (x, a = .55) => `linear-gradient(90deg, transparent ${x}px, rgb(${BONE} / ${a}) ${x}px, rgb(${BONE} / ${a}) ${x + 2}px, transparent ${x + 2}px) 0 0 / 100% 100% no-repeat`;
+const BAND_V = (x, a = .27) => `linear-gradient(90deg, transparent ${x - 2.5}px, rgb(${BONE} / ${a}) ${x - 2.5}px, rgb(${BONE} / ${a}) ${x + 4.5}px, transparent ${x + 4.5}px) 0 0 / 100% 100% no-repeat`;
+const MINORS_V = 'repeating-linear-gradient(180deg, rgb(236 230 216 / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat';
+const RULE_H = 'repeating-linear-gradient(90deg, rgb(236 230 216 / .34) 0 1.5px, transparent 1.5px 8px) 0 100% / 100% 5px no-repeat,'
+  + ' linear-gradient(rgb(236 230 216 / .55), rgb(236 230 216 / .55)) 0 100% / 100% 2px no-repeat,'
+  + ' linear-gradient(rgb(236 230 216 / .27), rgb(236 230 216 / .27)) 0 100% / 100% 7px no-repeat';
+
+const CSS = `
+/* ---- the Ladder: the exchange as a rail of goods, the Hand at the chosen one ------------------- */
+${M} .sx-mkt-browser { position:relative; }
+${M} .sx-mkt-browser__mode { margin:0 !important; padding-right:min(46%, 230px) !important; min-height:30px; display:flex !important; align-items:flex-end; }
+${M} .sx-mkt-browser__mode { ${LABEL} font-size:12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
+${M} .sx-mkt-browser__count { color:rgb(${BONE} / .5) !important; font-weight:600 !important; white-space:nowrap !important; }
+/* the families stand on a ruled scale, each a stop with its tick; the chosen stop's tick stands taller in bone (the Hand lives on the ladder) */
+/* the scale wraps before it hides: a stop a stranger cannot see is a stop that does not exist
+   (D170) — so the ruled line lives on each stop itself, and a second row of stops rules a
+   second line. No scroll, no fade, every family on the board. */
+${M} .sx-mkt-browser__filters { position:relative; flex-wrap:wrap !important; overflow-x:visible; scrollbar-width:none;
+  -webkit-mask-image:none; mask-image:none;
+  gap:8px 20px !important; margin:10px 0 12px !important; padding:0 0 6px 0 !important; background:none !important; }
+${M} .sx-mkt-browser__filters::-webkit-scrollbar { display:none; }
+${M} .sx-mkt-browser__filters li { flex:none; position:relative; padding-bottom:16px; background:${RULE_H} !important; }
+${M} .sx-mkt-filter { ${PLAIN} ${LABEL} position:relative; min-height:0 !important; min-width:0 !important; height:auto !important; padding:4px 0 2px !important;
+  font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .58) !important; }
+${M} .sx-mkt-filter::before { display:none !important; }
+${M} .sx-mkt-filter::after { content:"" !important; display:block !important; position:absolute !important; left:50% !important; top:100% !important;
+  width:2px !important; height:8px !important; margin:5px 0 0 -1px !important; padding:0 !important; background:rgb(${BONE} / .55) !important;
+  border:0 !important; box-shadow:none !important; clip-path:none !important; translate:none !important; scale:none !important; rotate:none !important; }
+${M} .sx-mkt-filter.is-on { color:rgb(250 247 238) !important; background:none !important; }
+${M} .sx-mkt-filter.is-on::after { height:10px !important; margin-top:3px !important; background:rgb(250 247 238) !important;
+  box-shadow:0 0 6px 1px rgb(248 244 234 / .5) !important; }
+${M} .sx-mkt-filter:is(:hover, :focus-visible) { color:rgb(${BONE} / .92) !important; outline:none !important; }
+/* the find is a scale line with a cursor, not an underlined input */
+${M} .orr-mkt-find { position:absolute !important; top:0; right:0; display:block !important; width:min(44%, 220px) !important;
+  margin:0 !important; padding:0 0 12px !important; background:${RULE_H} !important; }
+${M} .orr-mkt-find__cursor { position:absolute; left:0; bottom:13px; width:2px; height:14px; background:rgb(${BONE} / .5); pointer-events:none; }
+${M} .orr-mkt-find:focus-within .orr-mkt-find__cursor { background:rgb(248 244 234); box-shadow:0 0 6px 1px rgb(248 244 234 / .5); }
+${M} .sx-mkt-search { ${PLAIN} position:static !important; display:block !important; width:100% !important; margin:0 !important;
+  border-radius:0 !important; padding:7px 0 7px 10px !important; min-height:0 !important; height:auto !important;
+  font-size:13px !important; color:rgb(248 244 234) !important; caret-color:var(--dp-hand, #f2b950); }
+${M} .sx-mkt-search::placeholder { color:rgb(${BONE} / .48); }
+${M} .sx-mkt-search:focus { outline:none !important; }
+/* The frame column clips its contents; the commodity table's inner rail is the only vertical
+   scroller, so wheel/touch movement and the extent cue follow the same rows. */
+${M} .sx-mkt__list { overflow:hidden !important; }
+${M} .sx-mkt-browser__rail { overflow:auto !important; scrollbar-width:thin !important; overscroll-behavior:contain; }
+/* The register ends on a whole good. While the inner rail overflows, a row-deep fold marks the
+   continuation and the scroll keeps that much pad, so the last good reads whole at scroll end. */
+${M} .sx-mkt-browser__rail[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent); padding-bottom:28px !important; }
+${M} .sx-mkt-browser__rail { ${PLAIN} }
+${M} .sx-mkt-table { ${PLAIN} border-collapse:separate !important; border-spacing:0 !important; table-layout:fixed !important; width:100% !important; }
+${M} .sx-mkt-table thead th:nth-child(2), ${M} .sx-mkt-row td:nth-child(2) { width:86px; }
+${M} .sx-mkt-table thead th:nth-child(3), ${M} .sx-mkt-row td:nth-child(3) { width:60px; }
+${M} .sx-mkt-table thead th:nth-child(4), ${M} .sx-mkt-row td:nth-child(4) { width:92px; }
+${M} .sx-mkt-table thead th:nth-child(5) { display:none !important; }
+${M} .sx-mkt-table thead th:nth-child(1) { color:transparent !important; }
+${M} .sx-mkt-table thead, ${M} .sx-mkt-table thead tr { background:none !important; box-shadow:none !important; position:static !important; }
+${M} .sx-mkt-table thead th { ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .5) !important;
+  padding:0 8px 8px !important; }
+${M} .sx-mkt-table thead th:first-child { padding-left:46px !important; }
+/* the rail: the shared spine (2px at .55 over a 7px band at .27) with 1.5px minor ticks */
+${M} .sx-mkt-table tbody { background:${SPINE_V(7)}, ${BAND_V(7)}, ${MINORS_V} !important; }
+${M} .sx-mkt-row, ${M} .sx-mkt-row td { ${PLAIN} }
+${M} .sx-mkt-row::before, ${M} .sx-mkt-row::after { display:none !important; }
+${M} .sx-mkt-row { outline:none !important; cursor:pointer; height:auto !important; min-height:0 !important; block-size:auto !important; }
+${M} .sx-mkt-row td { height:auto !important; block-size:auto !important; }
+${M} .sx-mkt-row td { padding:8px 8px !important; font-size:13px !important; font-variant-numeric:tabular-nums; color:rgb(${BONE} / .62) !important; }
+${M} .sx-mkt-row .sx-mkt-row__name { position:relative; padding-left:46px !important; color:rgb(${BONE} / .86) !important; font-weight:560; }
+${M} .sx-mkt-row .sx-mkt-row__name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* a 2px tick on the rail for every good */
+${M} .sx-mkt-row .sx-mkt-row__name::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; margin-top:-1px; background:rgb(${BONE} / .55); }
+${M} .sx-mkt-row:not(.is-active):is(:hover, :focus-visible) .sx-mkt-row__name::before { left:2px !important; width:11px !important; height:2px !important; background:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(${BONE} / .45) !important; }
+${M} .sx-mkt-row:is(:hover, :focus-visible) .sx-mkt-row__name { color:rgb(255 250 240) !important; text-shadow:0 0 10px rgb(255 250 236 / .3); }
+${M} .sx-mkt-row:active:not(.is-active) .sx-mkt-row__name::before { background:var(--dp-hand, #f2b950) !important; box-shadow:0 0 8px rgb(242 185 80 / .55) !important; }
+/* the Hand: the shared arm and bead at the chosen good; the one amber at rest */
+${M} .sx-mkt-row.is-active .sx-mkt-row__name::before { left:31px !important; width:5px !important; height:5px !important; margin-top:-2.5px !important;
+  border-radius:50% !important; background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 6px 1px rgb(255 217 140 / .7) !important; }
+${M} .sx-mkt-row.is-active .sx-mkt-row__name::after { content:""; position:absolute; left:7px; top:50%; width:26px; height:2px; margin-top:-1px;
+  background:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c) 0 3px, var(--dp-hand, #f2b950) 3px) !important; box-shadow:0 0 5px 1px rgb(242 185 80 / .45); pointer-events:none; }
+${M} .sx-mkt-table tbody:is(:focus-within, :hover) .sx-mkt-row.is-active .sx-mkt-row__name::after { background:var(--dp-hand-hot, #ffd98c) !important; }
+${M} .sx-mkt-row.is-active td { color:rgb(${BONE} / .9) !important; }
+${M} .sx-mkt-row.is-active .sx-mkt-row__name { color:rgb(250 247 238) !important; }
+${M} .sx-mkt-row:hover td { color:rgb(${BONE} / .88) !important; }
+/* the pictograms stand on the ticks at 16px, bone .8, the chosen one lit (the arm is the amber) */
+${M} .sx-mkt-row .sx-mkt-row__commodity { display:inline-block !important; width:16px !important; height:16px !important; margin-right:8px !important;
+  vertical-align:-3px !important; color:rgb(${BONE} / .8) !important; }
+${M} .sx-mkt-row .of-commodity-icon { display:inline-block !important; width:16px !important; height:16px !important; vertical-align:-3px !important; }
+${M} .sx-mkt-row .sx-mkt-row__name > .of-commodity-icon { margin-right:8px !important; color:rgb(${BONE} / .8) !important; }
+${M} .sx-mkt-row.is-active .sx-mkt-row__commodity, ${M} .sx-mkt-row.is-active .sx-mkt-row__name > .of-commodity-icon { color:rgb(250 247 238) !important;
+  filter:drop-shadow(0 0 4px rgb(248 244 234 / .55)) !important; }
+${M} .sx-mkt-row .sx-mkt-row__price { color:rgb(248 244 234) !important; font-weight:620; white-space:nowrap; }
+${M} .sx-mkt-row .sx-mkt-row__tr { font-size:12px !important; margin-left:6px; color:rgb(${BONE} / .7) !important; font-variant-numeric:tabular-nums; }
+${M} .sx-mkt-row .sx-mkt-row__tr.is-up { color:rgb(248 244 234) !important; }
+${M} .sx-mkt-row .sx-mkt-row__tr.is-down { color:rgb(${BONE} / .55) !important; }
+/* an unmoved price says nothing: the flat 0% keeps its words for readers, off the glass */
+${M} .sx-mkt-row .sx-mkt-row__tr:is(.is-flat, [aria-label='History unavailable']) { visibility:hidden; }
+${M} .sx-mkt-row .sx-mkt-row__stock { color:rgb(${BONE} / .48) !important; }
+${M} .sx-mkt-row .sx-mkt-row__held { color:rgb(${BONE} / .7) !important; }
+${M} .sx-mkt-row :is(.sx-mkt-row__flag, .sx-mkt-row__profit) { color:rgb(248 244 234) !important; background:none !important; border:0 !important; }
+${M} .sx-mkt-row .sx-mkt-row__profit { ${LABEL} font-size:12px !important; letter-spacing:.14em !important; margin-left:8px; color:rgb(${BONE} / .8) !important; }
+/* unknown stock prints no column of dashes: the column yields */
+${M} .sx-mkt__list.is-stockless .sx-mkt-table thead th:nth-child(4),
+${M} .sx-mkt__list.is-stockless .sx-mkt-row td:nth-child(4) { display:none !important; }
+/* the held column never adds a reading: held cargo already shows as a tag in the stock cell,
+   and otherwise it prints a dash the header (already hidden) cannot explain. It yields always. */
+${M} .sx-mkt-row td:nth-child(5) { display:none !important; }
+
+
+/* ---- the reading: the good's name as a door, its price a thin numeral on the scale's end ------ */
+${M} .sx-mkt-cat-inline { ${LABEL} font-size:12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .66) !important; }
+${M} .sx-mkt-title, ${M} .sx-mkt-title .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; }
+${M} .sx-mkt-title .sf-entity-link:is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .45) !important; text-underline-offset:6px; outline:none !important; }
+${M} .sx-mkt__hero { grid-column:2 !important; align-self:center !important; text-align:right !important; margin:0 !important; padding:0 0 0 24px !important; min-width:0; }
+${M} .sx-mkt__hero .k-hero__n { ${NUMERAL} font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important;
+  font-size:clamp(56px, 9vh, 96px) !important; line-height:.95 !important; letter-spacing:-.02em !important;
+  color:rgb(248 244 234) !important; text-shadow:0 0 24px rgb(0 0 0 / .5) !important; }
+${M} .sx-mkt__hero .k-hero__w { ${LABEL} font-size:12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .7) !important; margin-top:8px !important; }
+${M} .sx-mkt-tracked { color:rgb(${BONE} / .85) !important; }
+${M} .sx-mkt-tracked b { color:rgb(248 244 234) !important; }
+/* the drivers dissolve onto the instrument: spread rides the scale's bracket, the rest the foot key */
+${M} .sx-mkt-drivers { display:none !important; }
+${M} .orr-mkt-subkey { display:flex !important; flex-wrap:wrap; gap:6px 22px; margin:10px 0 0 44px !important; padding:0 !important; }
+${M} .orr-mkt-subkey__bit { ${LABEL} font-size:12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; white-space:nowrap; }
+${M} .orr-mkt-subkey__bit b { color:rgb(248 244 234) !important; font-weight:650 !important; }
+/* the trace is the instrument: a band under the line, beads on a right-edge scale, a Lens on hover */
+${M} .sx-mkt-instrument { grid-column:1 !important; min-width:0; }
+${M} .sx-mkt-chart .of-chart-area { display:none !important; }
+${M} .sx-mkt-instrument__plot { height:clamp(96px, 12vh, 170px) !important; border-bottom:0 !important; cursor:crosshair; }
+@media (min-height:881px) and (max-height:960px) { ${M} .sx-mkt-instrument__plot { height:clamp(80px, calc(12vh - 20px), 150px) !important; } }
+${M} .sx-mkt-instrument__plot::before { content:""; position:absolute; right:0; top:0; bottom:0; width:9px; pointer-events:none;
+  background:repeating-linear-gradient(180deg, rgb(${BONE} / .4) 0 1.5px, transparent 1.5px 8px) 100% 0 / 5px 100% no-repeat,
+    linear-gradient(rgb(${BONE} / .6), rgb(${BONE} / .6)) 100% 0 / 2px 100% no-repeat,
+    linear-gradient(rgb(${BONE} / .27), rgb(${BONE} / .27)) 100% 0 / 7px 100% no-repeat !important; }
+${M} .sx-mkt__quote > .sx-mkt-drivers { margin-top:14px !important; }
+${M} .sx-mkt__quote > .sx-mkt-instrument { margin-top:14px !important; }
+${M} .sx-mkt__quote > .sx-mkt-readouts { margin-top:12px !important; }
+${M} .sx-mkt__quote > .sx-mkt-sale { margin-top:8px !important; }
+${M} .sx-mkt-chart .sx-mkt-band { fill:none !important; stroke:rgb(${BONE} / .26) !important; stroke-width:6 !important;
+  stroke-linejoin:round !important; stroke-linecap:round !important; }
+${M} .sx-mkt-chart .sx-mkt-line { stroke:rgb(248 244 234) !important; stroke-width:2 !important; }
+${M} .sx-mkt-chart .sx-mkt-ghost { fill:none !important; stroke:rgb(${BONE} / .8) !important; stroke-width:3 !important;
+  stroke-dasharray:5 3 !important; stroke-linecap:round !important; }
+${M} .sx-mkt-chart .sx-mkt-ghostbead { fill:rgb(${BONE} / .85) !important; stroke:none !important; }
+/* BUY/SELL are beads on the scale, not text flags: bright for what you pay, dimmer for what it pays */
+${M} :is(.sx-mkt-instrument__tick--buy, .sx-mkt-instrument__tick--sell) { display:block !important; right:1px !important;
+  font-size:0 !important; letter-spacing:0 !important; transform:translateY(-50%) !important; }
+${M} .sx-mkt-instrument__tick i { display:block !important; width:7px !important; height:7px !important; border-radius:50% !important;
+  background:rgb(248 244 234) !important; box-shadow:0 0 8px 1px rgb(248 244 234 / .5) !important; }
+${M} .sx-mkt-instrument__tick--sell i { background:rgb(${BONE} / .6) !important; box-shadow:0 0 6px 1px rgb(${BONE} / .3) !important; }
+/* the spread is a bracket on the scale between the beads, its margin the value */
+${M} .orr-mkt-spread { position:absolute !important; right:14px !important; width:110px !important; pointer-events:none; }
+${M} .orr-mkt-spread::before { content:""; position:absolute; right:0; top:0; bottom:0; width:2px; background:rgb(${BONE} / .6) !important; }
+${M} .orr-mkt-spread::after { content:""; position:absolute; right:0; top:0; bottom:0; width:8px;
+  background:linear-gradient(rgb(${BONE} / .6), rgb(${BONE} / .6)) 100% 0 / 8px 2px no-repeat,
+    linear-gradient(rgb(${BONE} / .6), rgb(${BONE} / .6)) 100% 100% / 8px 2px no-repeat !important; }
+/* SPREAD sits just above its bracket (right of the scale), never across the price trace */
+${M} .orr-mkt-spread__v { position:absolute; right:12px; top:0; transform:translateY(-100%); text-align:right; padding-bottom:3px;
+  ${NUMERAL} font-size:15px !important; font-weight:520 !important; line-height:1.15 !important; color:rgb(248 244 234) !important;
+  text-shadow:0 1px 8px rgb(0 0 0 / .95), 0 0 12px rgb(0 0 0 / .85) !important; white-space:nowrap; }
+${M} .orr-mkt-spread__k { display:block; ${LABEL} font-size:12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${M} .sx-mkt-instrument__plot { overflow:visible !important; }
+${M} .sx-mkt-instrument { overflow:visible !important; }
+${M} .sx-mkt-instrument__dot { background:rgb(248 244 234) !important; box-shadow:0 0 0 3px rgb(7 8 10 / .8) !important; }
+/* the crosshair Lens: a ring round the sample, crosshairs through it, the reading beside it */
+${M} .sx-mkt-instrument__cursor i { left:var(--cx, 0%) !important; width:1.5px !important; margin-left:-.75px !important;
+  background:rgb(${BONE} / .55) !important; }
+${M} .sx-mkt-instrument__cursor i::after { content:""; position:absolute; top:var(--cy, 50%); left:50%; width:34px; height:1.5px;
+  margin:-.75px 0 0 -17px; background:rgb(${BONE} / .55) !important; }
+${M} .sx-mkt-instrument__cursor::after { left:var(--cx, 0%) !important; top:var(--cy, 50%) !important; width:30px !important; height:30px !important;
+  margin:-15px 0 0 -15px !important; border-radius:50% !important; background:transparent !important;
+  border:2px solid rgb(248 244 234 / .85) !important;
+  box-shadow:0 0 10px rgb(248 244 234 / .25), inset 0 0 8px rgb(248 244 234 / .12) !important; }
+${M} .sx-mkt-instrument__cursor b { background:none !important; color:rgb(248 244 234) !important;
+  text-shadow:0 1px 6px rgb(0 0 0 / .9), 0 0 12px rgb(0 0 0 / .8) !important; }
+/* the readings live on the instrument now; their grid yields to the one demand arc */
+${M} .sx-mkt-readouts { display:flex !important; align-items:flex-end; gap:0 clamp(16px, 2vw, 40px) !important;
+  margin:18px 0 0 !important; padding:0 !important; }
+${M} .sx-mkt-readouts__item:is(.sx-mkt-readouts__item--buy, .sx-mkt-readouts__item--sell, .sx-mkt-readouts__item--avg, .sx-mkt-readouts__item--margin) { position:absolute !important; width:1px !important; height:1px !important;
+  overflow:hidden !important; clip:rect(0 0 0 0) !important; }
+${M} .sx-mkt-readouts__item--demand { margin:0 !important; }
+${M} .sx-mkt-readouts__item--demand dt { ${LABEL} font-size:12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .6) !important; }
+${M} .sx-mkt-readouts__item--demand dd { margin:6px 0 0 !important; }
+${M} .orr-mkt-demand { display:inline-flex; align-items:center; gap:10px; }
+${M} .orr-mkt-demand svg { width:64px; height:40px; overflow:visible; display:block; }
+${M} .orr-mkt-demand__w { font-size:15px !important; font-weight:520; color:rgb(248 244 234) !important; }
+${M} .sx-mkt-instrument__avg { color:rgb(${BONE} / .72) !important; }
+${M} .sx-mkt__analysis { -webkit-mask-image:none !important; mask-image:none !important; border:0 !important; box-shadow:none !important; }
+${M} .so-route-disclosure { border-top:0 !important; border-bottom:0 !important; margin-top:22px !important; padding-top:0 !important; }
+${M} .sx-trade, ${M} .sx-mkt__console { border-top:0 !important; }
+${M} .sx-mkt-sale { color:rgb(${BONE} / .75) !important; }
+${M} .sx-mkt-chart-key { position:relative; padding-top:10px !important;
+  background:repeating-linear-gradient(90deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 0 0 / 100% 5px no-repeat,
+    linear-gradient(rgb(${BONE} / .55), rgb(${BONE} / .55)) 0 0 / 100% 2px no-repeat,
+    linear-gradient(rgb(${BONE} / .27), rgb(${BONE} / .27)) 0 0 / 100% 7px no-repeat !important; }
+${M} .sx-mkt-chart-key, ${M} .sx-mkt-chart-key [data-history-key] { color:rgb(${BONE} / .7) !important; }
+${M} .so-route-disclosure > summary { ${LABEL} font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; list-style:none; cursor:pointer; }
+${M} .so-route-disclosure > summary::-webkit-details-marker { display:none; }
+${M} .so-route-disclosure > summary::before { content:"›  "; }
+${M} .so-route-disclosure[open] > summary::before { content:"‹  "; }
+${M} .so-route-disclosure > summary:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none; }
+/* the tape: the ladder's prices streaming under the analysis — one ruled line, names dim, prices lit, movers in ice */
+${M} .orr-mkt-tape { position:relative; overflow:hidden; margin:14px 0 0 !important; padding:9px 0 11px !important;
+  background:repeating-linear-gradient(90deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 0 0 / 100% 5px no-repeat,
+    linear-gradient(rgb(${BONE} / .55), rgb(${BONE} / .55)) 0 0 / 100% 2px no-repeat !important;
+  -webkit-mask-image:linear-gradient(90deg, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+  mask-image:linear-gradient(90deg, transparent, #000 48px, #000 calc(100% - 48px), transparent); }
+${M} .orr-mkt-tape__run { display:flex !important; width:max-content; animation:orr-mkt-tape 48s linear infinite; }
+${M} .orr-mkt-tape__half { display:inline-flex !important; align-items:baseline; white-space:nowrap; }
+${M} .orr-mkt-tape__it { ${LABEL} font-size:12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; padding:0 4px 0 22px !important; }
+${M} .orr-mkt-tape__p { ${NUMERAL} color:rgb(248 244 234) !important; letter-spacing:.02em !important; }
+${M} .orr-mkt-tape__t { color:rgb(${BONE} / .7) !important; }
+${M} .sx-mkt-chain__dock { color:rgb(${BONE} / .72) !important; }
+${M} .sx-mkt-instrument__y { color:rgb(${BONE} / .6) !important; }
+${M} .sx-mkt-instrument__avg { color:rgb(${BONE} / .6) !important; }
+@keyframes orr-mkt-tape { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+${M} .orr-mkt-tape:hover .orr-mkt-tape__run { animation-play-state:paused; }
+html.sf-reduce-motion ${M} .orr-mkt-tape__run { animation:none; flex-wrap:wrap; width:auto; }
+html.sf-reduce-motion ${M} .orr-mkt-tape__half { display:contents !important; }
+html.sf-reduce-motion ${M} .orr-mkt-tape__half + .orr-mkt-tape__half { display:none !important; }
+
+/* ---- the trade: a dial of light round the amount, the total rolling, the verb a Lamp Key ------ */
+${M} .sx-mkt__console, ${M} .sx-mkt__trade { ${PLAIN} padding:0 !important; }
+${M} .sx-mkt__console::before, ${M} .sx-mkt__console::after, ${M} .sx-trade::before, ${M} .sx-trade::after { display:none !important; }
+${M} .sx-trade { ${PLAIN} padding:0 !important; display:grid !important;
+  grid-template-columns:212px minmax(0, 1fr); grid-template-rows:1fr auto auto auto auto 1fr;
+  grid-template-areas:"dial ." "dial total" "dial note" "dial verb" "dial breakdown" "dial ."; column-gap:32px; row-gap:6px; align-items:center; }
+${M} .sx-trade > .sx-qty { grid-area:dial; position:relative; display:block !important; width:212px; height:236px; ${PLAIN} padding:0 !important; }
+${M} .sx-qty .orr-qdial { position:absolute; left:6px; top:0; width:200px; height:200px; overflow:visible; cursor:grab; touch-action:none; }
+${M} .sx-qty.is-turning .orr-qdial { cursor:grabbing; }
+${M} .orr-qdial path, ${M} .orr-qdial circle { fill:none; }
+${M} .orr-qdial__band { stroke:rgb(${BONE} / .28); stroke-width:6; }
+${M} .orr-qdial__track { stroke:rgb(${BONE} / .6); stroke-width:1.5; }
+${M} .orr-qdial__ticks-min { stroke:rgb(${BONE} / .4); stroke-width:1.1; }
+${M} .orr-qdial__ticks-maj { stroke:rgb(${BONE} / .65); stroke-width:1.5; }
+${M} .orr-qdial__fillbloom { stroke:rgb(248 244 234 / .22); stroke-width:7.5; transition:stroke-dasharray .35s cubic-bezier(.3, 1.2, .5, 1); }
+${M} .orr-qdial__fill { stroke:rgb(248 244 234); stroke-width:2.4; transition:stroke-dasharray .35s cubic-bezier(.3, 1.2, .5, 1); }
+${M} .orr-qdial__hand { transform-box:view-box; transform-origin:75px 75px; transition:transform .35s cubic-bezier(.3, 1.2, .5, 1); }
+${M} .orr-qdial__needle { stroke:rgb(248 244 234); stroke-width:1.5; }
+${M} .orr-qdial circle.orr-qdial__bead { fill:rgb(248 244 234); }
+${M} .sx-qty:is(:focus-within, :hover, .is-turning) :is(.orr-qdial__needle) { stroke:rgb(250 247 238); }
+${M} .sx-qty:is(:focus-within, :hover, .is-turning) circle.orr-qdial__bead { fill:rgb(250 247 238); }
+${M} .sx-qty:is(:focus-within, :hover, .is-turning) .orr-qdial__fill { stroke:rgb(250 247 238); }
+${M} .sx-qty:is(:focus-within, :hover, .is-turning) .orr-qdial__fillbloom { stroke:rgb(248 244 234 / .3); }
+${M} .sx-qty.is-turning :is(.orr-qdial__fill, .orr-qdial__fillbloom, .orr-qdial__hand) { transition:none; }
+${M} .orr-qdial__end { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:12px; letter-spacing:.08em; fill:rgb(${BONE} / .55); }
+${M} .sx-qty .sx-qty__k { position:absolute; left:6px; width:200px; top:60px; text-align:center; margin:0 !important; padding:0 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.24em !important; color:rgb(${BONE} / .55) !important; background:none !important; pointer-events:none; }
+${M} .sx-qty .sx-qty__in { position:absolute !important; left:46px; width:120px !important; top:76px; height:54px !important; margin:0 !important; padding:0 !important;
+  ${PLAIN} border-radius:0 !important; text-align:center; font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100%;
+  font-variation-settings:"wdth" 100, "wght" 560 !important; font-size:44px !important; line-height:54px !important; color:rgb(248 244 234) !important;
+  font-variant-numeric:tabular-nums; caret-color:var(--dp-hand, #f2b950); cursor:ew-resize; }
+${M} .sx-qty .sx-qty__in:focus { outline:none !important; color:rgb(255 244 222) !important; }
+${M} .sx-qty .sx-qty__words { position:absolute !important; left:0; right:0; top:208px; display:flex !important; justify-content:space-between !important;
+  gap:0 !important; margin:0 !important; padding:0 !important; }
+${M} .sx-qty .sx-qty__words li { margin:0 !important; }
+${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 2px !important;
+  font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .75) !important; }
+${M} .sx-qty :is(.sx-qty__b, .sx-qty__max)::before, ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max)::after { display:none !important; }
+${M} .sx-qty .sx-qty__b[data-q="-1"]::before { content:"‹  " !important; display:inline !important; position:static !important; width:auto !important;
+  height:auto !important; background:none !important; transform:none !important; }
+${M} .sx-qty .sx-qty__b[data-q="1"]::after { content:"  ›" !important; display:inline !important; position:static !important; width:auto !important;
+  height:auto !important; background:none !important; transform:none !important; }
+${M} .sx-qty :is(.sx-qty__b, .sx-qty__max):is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
+${M} .so-trade-total { grid-area:total; display:flex !important; flex-direction:column; gap:6px; ${PLAIN} padding:0 !important; }
+${M} .so-trade-total > span { ${LABEL} font-size:12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .65) !important; }
+${M} .so-trade-total > strong { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 560 !important;
+  font-size:clamp(28px, 3.2vh, 40px) !important; line-height:1 !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
+${M} [data-trade-total] .orr-mkt-totalsuf { color:rgb(${BONE} / .7) !important; }
+/* the hold arc: what the hold looks like after this trade */
+${M} .orr-mkt-holdarc { display:flex; align-items:center; gap:10px; margin-top:8px !important; }
+${M} .orr-mkt-holdarc[hidden] { display:none !important; }
+${M} .orr-mkt-holdarc svg { width:104px; height:60px; overflow:visible; display:block; }
+${M} .orr-mkt-holdarc__t { ${LABEL} font-size:12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${M} .orr-mkt-holdarc__t b { display:block; ${NUMERAL} font-size:15px !important; font-weight:520 !important; letter-spacing:0 !important;
+  text-transform:none !important; color:rgb(248 244 234) !important; margin-top:3px; }
+${M} .sx-trade__note { grid-area:note; min-width:0; max-width:240px; margin:0 !important; white-space:normal !important; overflow-wrap:anywhere; font-size:12.5px !important; color:rgb(${BONE} / .8) !important; }
+${M} .so-trade-breakdown { grid-area:breakdown; ${PLAIN} padding:0 !important; }
+${M} .so-trade-breakdown > summary { ${LABEL} font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; cursor:pointer; list-style:none; }
+${M} .so-trade-breakdown > summary::-webkit-details-marker { display:none; }
+${M} .so-trade-breakdown > summary::before { content:"›  "; }
+${M} .so-trade-breakdown > summary span { display:none; }
+${M} .so-trade-breakdown[open] > summary::before { content:"‹  "; }
+${M} .sx-trade__words { grid-area:verb; display:flex !important; flex-direction:row; align-items:center; justify-content:flex-start; gap:26px !important;
+  margin:4px 0 0 !important; padding:0 !important; }
+${M} .sx-trade__words li { margin:0 !important; }
+${M} .sx-trade__words li:has([data-go]) { order:-1; }
+/* the commit is the tab's Lamp Key; the kit's words must not repaint it */
+${M} .sx-trade__go.orr-lampkey { min-height:46px !important; font-size:16px !important; padding:0 26px 0 20px !important; color:#1c1406 !important;
+  background:none !important; background-image:none !important; text-shadow:none !important; border:0 !important; box-shadow:none !important; border-radius:0 !important; }
+${M} .sx-trade__go.orr-lampkey:is(:hover, :focus-visible, :active) { color:#1c1406 !important; background-image:none !important; text-shadow:none !important; }
+${M} .sx-trade__go.orr-lampkey:disabled { color:rgb(${BONE} / .76) !important; }
+/* the verb morphs between BUY and SELL */
+${M} .orr-lampkey__word.orr-mkt-morph { display:inline-block; animation:orr-mkt-morph-in .3s var(--dp-ease-out, ease-out); }
+@keyframes orr-mkt-morph-in { from { opacity:0; transform:translateY(7px); filter:blur(3px); } to { opacity:1; transform:none; filter:none; } }
+/* the other side only switches mode: a word */
+${M} .sx-trade__go:not([data-go]) { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; border-radius:0 !important;
+  font-size:12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .66) !important; padding:4px 2px !important; }
+${M} .sx-trade__go:not([data-go])::before, ${M} .sx-trade__go:not([data-go])::after { all:unset !important; display:inline !important; color:inherit !important; }
+${M} .sx-trade__go:not([data-go])::before { display:none !important; }
+${M} .sx-trade__go:not([data-go])::after { content:"  ›" !important; }
+${M} .sx-trade__go:not([data-go]):is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
+
+/* ---- the decision under the trade: a sentence and its verbs, no rows ------------------------- */
+@media (min-width:1500px) { ${M} { grid-template-columns:minmax(0, 540px) minmax(0, 1fr) !important; } }
+${M} .sx-mkt__stage { display:grid !important; grid-template-columns:minmax(0, 520px) minmax(0, 1fr); grid-template-rows:minmax(0, 1fr) auto;
+  column-gap:clamp(28px, 3vw, 56px); }
+${M} .sx-mkt__analysis { grid-column:1 / -1; grid-row:1; }
+${M} .sx-mkt__console { grid-column:1; grid-row:2; }
+${M} .sx-mkt__decision:empty { display:none; }
+${M} .sx-mkt__decision { grid-column:2; grid-row:2; align-self:center; margin:0; flex:0 0 auto !important; }
+${M} .sx-mkt__analysis { min-height:0; }
+${M} .sx-decision { ${PLAIN} padding:0 !important; margin:0 !important; display:flex !important; flex-direction:column !important; flex-wrap:nowrap !important;
+  align-items:flex-start !important; gap:8px !important; min-height:0 !important; height:auto !important; }
+${M} .sx-decision > .k-sentence { margin:0 0 4px !important; color:rgb(${BONE} / .8) !important; font-size:13.5px !important; max-width:52ch; }
+${M} .sx-decision__opt { ${PLAIN} display:inline-flex !important; flex-direction:row !important; flex:none !important; align-items:baseline !important; gap:10px !important;
+  padding:2px 0 !important; margin:0 !important; min-height:0 !important; height:auto !important; width:auto !important; }
+${M} .sx-decision__opt::before { content:"›" !important; display:inline !important; position:static !important; background:none !important; width:auto !important;
+  height:auto !important; color:rgb(${BONE} / .55); }
+${M} .sx-decision__opt .k-row__name { ${LABEL} font-size:12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; white-space:nowrap; flex:none; }
+${M} .sx-decision__opt .k-row__sub { font-size:12px !important; color:rgb(${BONE} / .7) !important; }
+${M} .sx-decision__opt:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand, #f2b950) !important; }
+${M} .sx-decision__opt:is(:hover, :focus-visible) { outline:none !important; }
+html.sf-reduce-motion ${M} :is(.orr-qdial__fill, .orr-qdial__fillbloom, .orr-qdial__hand) { transition:none; }
+html.sf-reduce-motion ${M} .orr-lampkey__word.orr-mkt-morph { animation:none; }
+html body #screens > .sx-berth.orr-station .sx-comms__count:not([hidden]) { font-size:0 !important; width:6px; height:6px; padding:0 !important; margin-left:2px;
+  border-radius:50% !important; background:rgb(248 244 234) !important; display:inline-block !important; vertical-align:middle; }
+html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-ice, #8fcbff) !important; }
+@media (max-height:880px) {
+  ${M} .sx-mkt__stage { display:grid !important; grid-template-columns:minmax(0, 1fr) 244px !important; grid-template-rows:minmax(0, 1fr) auto; column-gap:28px; }
+  ${M} .sx-mkt__analysis { grid-column:1 !important; }
+  /* the hero yields width to the trace: a smaller numeral, its words sleep (the verb says it),
+     so the plot keeps ~300px */
+  ${M} .sx-mkt__hero .k-hero__n { font-size:44px !important; }
+  ${M} .sx-mkt__hero .k-hero__w { display:none !important; }
+  ${M} .sx-mkt__hero { padding-left:12px !important; }
+  ${M} .sx-trade > .sx-qty { width:210px; height:204px; }
+  ${M} .sx-qty .orr-qdial { left:20px; width:170px; height:170px; }
+  ${M} .sx-qty .sx-qty__k { left:20px; width:170px; top:50px; }
+  ${M} .sx-qty .sx-qty__in { left:55px; width:100px !important; top:64px; height:44px !important; font-size:36px !important; line-height:44px !important; }
+  ${M} .sx-qty .sx-qty__words { top:176px; left:4px; right:4px; }
+  ${M} .sx-mkt-instrument__plot { height:80px !important; }
+  ${M} .sx-mkt-chart-key { display:flex !important; flex-wrap:wrap !important; gap:2px 10px !important; margin-top:4px !important; font-size:12px !important;
+    letter-spacing:.06em !important; margin-left:12px !important; max-width:100% !important; }
+  ${M} .sx-mkt-chart-key > span { white-space:nowrap !important; flex:none !important; }
+  ${M} .orr-mkt-subkey { margin-left:20px !important; }
+  ${M} .sx-qty .orr-qdial { filter:drop-shadow(0 0 6px rgb(7 8 10 / .9)); }
+  ${M} .sx-mkt__quote > .sx-mkt-chain { display:none !important; }
+  ${M} .sx-mkt__quote > :is(.sx-mkt-readouts, .sx-mkt-sale) { display:none !important; }
+  ${M} .sx-mkt__analysis { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent) !important; }
+  ${M} .sx-decision__opt { flex-direction:column !important; gap:1px !important; }
+  ${M} .sx-decision__opt { position:relative !important; padding-left:16px !important; align-items:flex-start !important; }
+  ${M} .sx-decision__opt::before { position:absolute !important; left:0; top:1px; }
+  ${M} .sx-decision { gap:4px !important; }
+  ${M} .sx-mkt-row td { padding-top:5px !important; padding-bottom:5px !important; }
+  ${M} .sx-mkt-browser__filters { margin:6px 0 6px !important; }
+  ${M} .sx-mkt-table thead th { padding-bottom:4px !important; }
+  ${M} .sx-decision > .k-sentence { max-width:none; }
+  ${M} .sx-mkt__analysis { grid-column:1; grid-row:1; min-height:0; }
+  ${M} .sx-mkt__console { grid-column:2; grid-row:1 / span 2; align-self:start; }
+  ${M} .sx-mkt__decision { grid-column:1 !important; grid-row:2 !important; margin-top:8px; align-self:start; }
+  ${M} .sx-trade { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"dial" "total" "note" "verb" "breakdown" !important; justify-items:center; row-gap:4px; }
+  ${M} .so-trade-total { align-items:center; display:grid !important; grid-template-columns:auto auto !important; justify-content:center; align-items:center; column-gap:14px; }
+  ${M} .so-trade-total > span { grid-column:1 / -1; text-align:center; }
+  ${M} .so-trade-total > strong { grid-column:1; white-space:nowrap !important; }
+  ${M} .orr-mkt-holdarc { grid-column:1 / -1; margin-top:0 !important; }
+  ${M} .orr-mkt-holdarc svg { width:84px; height:48px; }
+  ${M} .sx-trade__words { margin-top:0 !important; }
+  ${M} .sx-trade__note { text-align:center; }
+  ${M} .sx-trade__words { justify-content:center; }
+  ${M} .orr-mkt-holdarc { justify-content:center; }
+}
+`;
+/* The compact berth (dial, total, verbs and a slim console beside the analysis) was written for
+   ≤1100 × ≤800. Desktop ≤650 wide × ≥801 tall (600×844, 390×844) has the same ~300–345px tab body,
+   where the stacked 244px console stood past the right edge (BUY/SELL and the dial off the glass),
+   so it runs there too, desktop-scoped (phones keep their own sheet). M is the scope selector. */
+/* …601–650 wide × 601–800 tall (620×700, 650×780) fell between the two: the 146px console beside
+   the analysis left the reading ~20px wide (RAW ORE · LEGAL one letter per line) and "Iron Ore"
+   broke mid-word in a ~140px register. It takes the same one-column stage as 600 wide (ui-polish-191). */
+const NARROW_TALL = '(max-width:650px) and (min-height:601px)';
+const compactBerth = (M, MQ) => `
+/* ---- 960×540 berth: body ~192px — every part of the trade stays on the board, just smaller ---- */
+@media ${MQ} {
+  ${M.replace(' .sx-mkt.orr-market', ' .sx-screen__body > .sx-mkt.orr-market')} {
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; column-gap:14px !important; }
+  /* the browser: legend + find share one line (the find's rule is that line's foot); the families
+     stand as a vertical ladder beside the register, so every family stays visible (D170) and the
+     names get the width */
+  ${M} .sx-mkt-browser { display:grid !important; grid-template-columns:max-content minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) !important;
+    column-gap:24px !important; row-gap:6px !important; }
+  ${M} .sx-mkt-browser__mode { grid-column:1 / -1; grid-row:1; padding-right:min(50%, 190px) !important; min-height:24px !important; margin:0 !important;
+    font-size:12px !important; letter-spacing:.18em !important; }
+  ${M} .orr-mkt-find { width:min(48%, 180px) !important; padding:0 0 6px !important; }
+  ${M} .orr-mkt-find__cursor { bottom:9px; height:11px; }
+  ${M} .sx-mkt-search { padding:2px 0 2px 9px !important; font-size:12px !important; }
+  /* family ladder owns its max-content width; 20px gutter keeps RAW & RARE / RESTRICTED
+     clear of the register spine (was ~4px — the find never overlapped, the rail did) */
+  ${M} .sx-mkt-browser__filters { grid-column:1; grid-row:2; align-self:start; flex-direction:column !important; flex-wrap:nowrap !important;
+    overflow:visible !important; gap:0 !important; margin:0 !important; padding:0 4px 0 9px !important; z-index:1; margin-right:0 !important;
+    width:max-content !important; max-width:none !important; min-width:max-content !important;
+    background:linear-gradient(rgb(${BONE} / .3), rgb(${BONE} / .3)) 0 4px / 1px calc(100% - 8px) no-repeat !important; }
+  ${M} .sx-mkt-browser__filters { align-items:flex-start !important; }
+  ${M} .sx-mkt-browser__filters li { display:flex !important; justify-content:flex-start !important; padding:0 !important; background:none !important; }
+  ${M} .sx-mkt-filter { padding:2px 0 !important; font-size:12px !important; letter-spacing:.08em !important; line-height:13px !important; text-align:left !important;
+    justify-content:flex-start !important; min-width:max-content !important; white-space:nowrap !important; }
+  ${M} .sx-mkt-filter::after { left:-9px !important; top:50% !important; width:5px !important; height:1.5px !important; margin:-.75px 0 0 !important; }
+  ${M} .sx-mkt-filter.is-on::after { width:8px !important; height:2px !important; margin:-1px 0 0 !important; }
+  ${M} .sx-mkt-browser__rail { grid-column:2; grid-row:2; min-height:0 !important; }
+  ${M} .sx-mkt-browser__empty { grid-column:2; }
+  ${M} .sx-mkt__list { min-height:0 !important; }
+  /* the register: the name column takes what the numbers do not need */
+  ${M} .sx-mkt-table { table-layout:fixed !important; width:100% !important; }
+  ${M} .sx-mkt-table thead th:nth-child(2) { width:64px !important; }
+  ${M} .sx-mkt-table thead th:nth-child(3) { width:38px !important; }
+  ${M} .sx-mkt-table thead th:nth-child(4) { width:46px !important; }
+  ${M} .sx-mkt-row__name { overflow:hidden !important; text-overflow:ellipsis !important; }
+  ${M} .sx-mkt-table :is(th, td):first-child { padding-left:30px !important; }
+  ${M} .sx-mkt-row td { padding-top:3px !important; padding-bottom:3px !important; font-size:12px !important; }
+  ${M} .sx-mkt-table :is(th, td):nth-child(n+2) { padding-left:8px !important; padding-right:0 !important; white-space:nowrap !important; }
+  ${M} .sx-mkt-table thead th { font-size:12px !important; letter-spacing:.12em !important; }
+  ${M} .sx-mkt-row__price :is(i, em, small, span) { font-size:12px !important; }
+  /* stage: the analysis column and a slim console beside it */
+  ${M} .sx-mkt__stage { display:grid !important; grid-template-columns:minmax(0, 1fr) 138px !important;
+    grid-template-rows:minmax(0, 1fr) !important; column-gap:10px !important; row-gap:0 !important; }
+  ${M} .sx-mkt__analysis { grid-column:1 !important; grid-row:1 !important; min-height:0 !important; overflow:auto !important; }
+  ${M} .sx-mkt__console { grid-column:2 !important; grid-row:1 !important; align-self:start !important; width:138px !important;
+    min-height:0 !important; max-height:100% !important; overflow-x:hidden !important; overflow-y:auto !important; scrollbar-width:none; }
+  /* the decision stays on the board: its sentence, then one line per verb with its terms, right
+     under the analysis (the console keeps the full height). On a short berth the four readings
+     yield while it waits, so the trace keeps its floor. */
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) { grid-template-rows:minmax(0, max-content) minmax(auto, 1fr) !important; }
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__console { grid-row:1 / -1 !important; }
+  ${M} .sx-mkt__decision:not(:empty) { display:block !important; grid-column:1 !important; grid-row:2 !important; margin:0 !important;
+    padding:5px 0 0 8px !important; border-top:1px solid rgb(${BONE} / .16); align-self:start !important; min-width:0; min-height:0 !important;
+    max-height:100% !important; overflow:auto !important; }
+  ${M} .sx-mkt__decision .sx-decision { gap:0 !important; }
+  ${M} .sx-mkt__decision .sx-decision > .k-sentence { margin:0 0 1px !important; font-size:12px !important; line-height:15px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; color:rgb(${BONE} / .72) !important; }
+  ${M} .sx-mkt__decision .sx-decision__opt { flex-direction:row !important; align-items:baseline !important; gap:10px !important; padding:2px 0 2px 12px !important;
+    min-width:0; max-width:100%; }
+  ${M} .sx-mkt__decision .sx-decision__opt::before { top:2px !important; }
+  ${M} .sx-mkt__decision .sx-decision__opt .k-row__name { font-size:12px !important; letter-spacing:.14em !important; }
+  ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { min-width:0; font-size:12px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${M} .sx-mkt-chart-key { display:none !important; }
+  /* analysis: the price keeps its words; the readings sit two-up so the last one is not cut */
+  ${M} .sx-mkt__hero { padding-left:8px !important; }
+  ${M} .sx-mkt__hero .k-hero__n { font-size:30px !important; }
+  ${M} .sx-mkt__hero .k-hero__w { display:block !important; max-width:72px; margin-top:2px !important; font-size:12px !important;
+    letter-spacing:.1em !important; line-height:1.25 !important; white-space:normal !important; }
+  ${M} .sx-mkt__quote > .sx-mkt-title { font-size:20px !important; margin-top:0 !important; }
+  ${M} .sx-mkt__quote > .sx-mkt-cause { font-size:12px !important; }
+  ${M} .sx-mkt__quote > .sx-mkt-instrument { margin-top:18px !important; }
+  ${M} .orr-mkt-spread__v { padding-bottom:2px; font-size:13px !important; }
+  ${M} .orr-mkt-spread__k { display:inline !important; margin-left:5px; font-size:12px !important; }
+  ${M} .sx-mkt-instrument__plot { height:56px !important; }
+  ${M} .orr-mkt-tape { display:none !important; }
+  ${M} .orr-mkt-subkey { display:grid !important; grid-template-columns:repeat(2, max-content); margin:4px 0 0 2px !important; gap:3px 20px !important; }
+  ${M} .orr-mkt-subkey__bit { font-size:12px !important; letter-spacing:.08em !important; }
+  /* console: dial, the three dial words under it, the total, the quote breakdown, the verbs */
+  ${M} .sx-trade { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:none !important;
+    grid-template-areas:"dial" "total" "note" "breakdown" "verb" !important; justify-items:center; row-gap:3px !important; }
+  ${M} .sx-trade > .sx-qty { width:138px; height:106px; }
+  ${M} .sx-qty .orr-qdial { left:21px; top:0; width:96px; height:96px; }
+  ${M} .orr-qdial__end { font-size:18.75px; }
+  ${M} .sx-qty .sx-qty__in { left:34px; width:70px !important; top:28px; height:28px !important; font-size:24px !important; line-height:28px !important; }
+  ${M} .sx-qty .sx-qty__k { left:21px; width:96px; top:58px; font-size:12px !important; letter-spacing:.16em !important; }
+  ${M} .sx-qty .sx-qty__words { top:91px; left:0; right:0; }
+  ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { font-size:12px !important; letter-spacing:.1em !important; padding:1px 0 !important; }
+  ${M} .so-trade-total > span { display:none !important; }
+  ${M} .so-trade-total > strong { font-size:16px !important; }
+  ${M} .orr-mkt-holdarc { display:none !important; }
+  ${M} .sx-trade__note:not([hidden]) { display:block !important; width:138px; text-align:left; line-height:1.3 !important; }
+  ${M} .so-trade-breakdown { display:block !important; justify-self:stretch; text-align:center; }
+  ${M} .so-trade-breakdown > summary { font-size:12px !important; letter-spacing:.08em !important; line-height:1.2 !important; white-space:normal !important; overflow-wrap:anywhere; }
+  ${M} .so-trade-breakdown[open] { text-align:left; }
+  ${M} .so-trade-breakdown .sx-trade__rows { margin:4px 0 0 !important; font-size:12px !important; line-height:1.2 !important; white-space:normal !important; overflow-wrap:anywhere; }
+  ${M} .sx-trade__words { flex-wrap:wrap !important; justify-content:center !important; gap:2px 8px !important; margin:0 !important; width:138px; }
+  ${M} .sx-trade__go.orr-lampkey { min-height:26px !important; min-width:0 !important; width:auto !important; font-size:12px !important;
+    padding:0 14px 0 9px !important; line-height:1.2 !important; white-space:normal !important; }
+  ${M} .sx-trade__go:not([data-go]) { font-size:12px !important; letter-spacing:.12em !important; padding:2px 0 !important; line-height:1.2 !important; white-space:normal !important; }
+  ${M} .sx-qty .sx-qty__k { line-height:1.15 !important; white-space:normal !important; overflow-wrap:anywhere; }
+  ${M} .sx-qty .sx-qty__words { flex-wrap:wrap !important; justify-content:center !important; gap:2px 6px !important; }
+  ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { line-height:1.2 !important; white-space:normal !important; }
+}
+/* …the dial's three words (FEWER, MORE, MAX) needed ~170px with their chevrons in a 138px console,
+   so MAX wrapped to a second row and printed over the "36 cr" total. The console takes 146px (the
+   gap beside it gives back 6px, so the analysis keeps its width to within 2px) and the words sit
+   on one row, spaced apart; the chevrons step aside (the words say it). */
+@media ${MQ} {
+  ${M} .sx-mkt__stage { grid-template-columns:minmax(0, 1fr) 146px !important; column-gap:4px !important; }
+  ${M} .sx-mkt__console { width:146px !important; }
+  ${M} .sx-trade > .sx-qty { width:146px; }
+  ${M} .sx-qty .orr-qdial { left:25px; }
+  ${M} .sx-qty .sx-qty__in { left:38px; }
+  ${M} .sx-qty .sx-qty__k { left:25px; }
+  ${M} .sx-trade__words { width:146px; }
+  ${M} .sx-qty .sx-qty__words { flex-wrap:nowrap !important; justify-content:space-between !important; gap:0 4px !important; top:89px; }
+  ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { letter-spacing:.06em !important; white-space:nowrap !important; }
+  ${M} .sx-qty .sx-qty__b[data-q]::before, ${M} .sx-qty .sx-qty__b[data-q]::after { content:none !important; }
+}
+`;
+const CSS_TAIL = `
+/* …in that 96px dial QUANTITY (~95px at the label's width and tracking) sat across the ring's lower
+   arc, and "› QUOTE BREAKDOWN" took two lines, so at 960×540 the console ran 14px past the stage and
+   BUY 1 / SELL were cut off under it. The number rides 4px higher and QUANTITY sets at the plain
+   width (~60px) under it, inside the ring; QUOTE BREAKDOWN sets the same way on one line. Desktop only. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:800px), ${NARROW_TALL} {
+  ${MD} .sx-qty .sx-qty__in { top:24px; }
+  ${MD} :is(.sx-qty .sx-qty__k, .so-trade-breakdown > summary) { font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 650 !important;
+    letter-spacing:.03em !important; white-space:nowrap !important; }
+  ${MD} .sx-qty .sx-qty__k { top:53px; line-height:13px !important; }
+}
+/* …and after a trade at ≤800 tall, the TRADE CLEARED line stood over the comms words, which on the
+   Market is straight across BUY / SELL and the quantity readout, and ran off the right edge (it is
+   ~480px wide; the comms sit ~340px from the edge). On the Market only, it now ends just left of
+   COMMS, above the destination words, in the band under the register, whole and clear of BUY.
+   Desktop only; the phone layout keeps its own receipt. */
+@media (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { left:auto !important; right:calc(100% + 24px) !important;
+    bottom:calc(100% - 4px) !important; padding:0 !important;
+    /* It ends 24px left of COMMS and grows left — but a berth-session line is longer than the
+       ~480px TRADE CLEARED this anchor was tuned for, and past ~900 wide the unbounded box
+       starts off the left edge of the glass (D248: a 1328px line began at -535). Bound it to
+       the room the rail actually leaves, and let the sentence wrap into that room. */
+    width:max-content !important; max-width:min(58vw, calc(100vw - 414px), 720px) !important; white-space:normal !important; }
+}
+/* ≤460 tall the destination words ride 5px above the comms box, so the line sits 2px over it */
+@media (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { bottom:calc(100% + 2px) !important; }
+}
+/* …and the register: in the 117–149px name column a long commodity ran under its price ("Refined
+   Metals" into "100" at 960×540, "Machine Control Unit" into "176" at 1024×768) and was cut with an
+   ellipsis everywhere else; the SELL and STOCK heads ran together ("SELLSTOC"). The name column takes
+   ~24px back (the family ladder's gutter 24 → 10px, slimmer number columns that still hold "136 ▲1%",
+   "308" and "789u"), and a name that still does not fit wraps to a second line under its own first
+   letter, never under the price. The heads sit apart over their numbers, and STOCK (tracking 0, 3px
+   lead) ends inside the rail's scroll box instead of losing its K. */
+@media (max-width:1100px) and (max-height:800px), ${NARROW_TALL} {
+  ${MD} .sx-mkt-browser { column-gap:10px !important; }
+  ${MD} .sx-mkt-browser__filters { padding-right:0 !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(2) { width:60px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(3) { width:36px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(4) { width:44px !important; }
+  ${MD} .sx-mkt-table :is(th, td):nth-child(n+2) { padding-left:4px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(n+2) { letter-spacing:.02em !important; padding-left:0 !important; text-align:right !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(2) { padding-right:6px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(3) { padding-right:3px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(4) { padding-left:3px !important; letter-spacing:0 !important; text-align:left !important; }
+  ${MD} .sx-mkt-table .sx-mkt-row > .sx-mkt-row__name:first-child { white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+    padding-left:52px !important; padding-right:4px !important; text-indent:-22px; line-height:14px !important; }
+  ${MD} .sx-mkt-row .sx-mkt-row__name * { text-indent:0 !important; }
+  ${MD} .sx-mkt-row :is(.sx-mkt-row__commodity, .sx-mkt-row__name > .of-commodity-icon) { margin-right:6px !important; }
+}
+/* The short desktop register needs the width of a five-digit Sell figure; the tall-phone band
+   keeps its own narrower columns and two-line commodity rows. */
+/* Keep the five-digit Sell column on short landscape screens and narrow desktops. Portrait phone
+   headings retain the 36px stock geometry; widening there collapsed SELL and STOCK together. */
+@media (max-width:650px) and (max-height:600px) and (orientation:landscape), (min-width:651px) and (max-width:1100px) and (max-height:800px) {
+  ${MD} .sx-mkt-table thead th:nth-child(3) { width:44px !important; }
+}
+/* 641–800px tall (e.g. 1024×768) has the height: the terms wrap instead of losing the armor reading */
+@media (max-width:1100px) and (min-height:641px) and (max-height:800px) {
+  ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+}
+@media (max-width:1100px) and (max-height:640px) {
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .orr-mkt-subkey { display:none !important; }
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__analysis { -webkit-mask-image:none !important; mask-image:none !important; }
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-instrument { margin-top:14px !important; }
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt-instrument__plot { height:48px !important; }
+  /* too short for the terms to wrap under one another: the verbs sit side by side, each with its
+     terms under it, so the whole reading (armor included) shows in the same height */
+  ${M} .sx-mkt__decision .sx-decision { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important; column-gap:12px !important; }
+  ${M} .sx-mkt__decision .sx-decision > .k-sentence { grid-column:1 / -1; }
+  ${M} .sx-mkt__decision .sx-decision__opt { flex-direction:column !important; align-items:flex-start !important; gap:1px !important; text-align:left; }
+  ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { font-size:12px !important; line-height:13px !important;
+    white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+}
+/* ---- 651–1100 × 461–600 desktop (e.g. 960×540): the stage is ~157px tall and the console's
+   dial, total, QUOTE BREAKDOWN and verbs stood 190px, so BUY 1 / SELL sat 33px below it, under the
+   berth's UNDOCK key and out of reach. The dial sets at 84px, the total and the breakdown on single
+   lines, and the rows close up, so the verbs end inside the stage. */
+@media (min-width:651px) and (max-width:1100px) and (min-height:461px) and (max-height:600px) {
+  ${MD} .sx-trade { row-gap:2px !important; }
+  ${MD} .sx-trade > .sx-qty { height:94px; }
+  ${MD} .sx-qty .orr-qdial { left:31px; width:84px; height:84px; }
+  ${MD} .sx-qty .sx-qty__in { top:19px; height:26px !important; font-size:22px !important; line-height:26px !important; }
+  ${MD} .sx-qty .sx-qty__k { left:31px; width:84px; top:46px; letter-spacing:0 !important; }
+  ${MD} .sx-qty .sx-qty__words { top:76px; }
+  ${MD} .so-trade-total { line-height:16px !important; height:17px; align-content:center; }
+  ${MD} .so-trade-total > strong { line-height:16px !important; }
+  ${MD} .so-trade-breakdown > summary { line-height:15px !important; padding:0 !important; margin:0 !important; }
+  ${MD} .sx-trade__go.orr-lampkey { min-height:24px !important; }
+  /* the family ladder stood 8 × 17px = 136px in a ~109px rail cell, so MILITARY was sliced in half
+     and RESTRICTED sat under the tab strip, out of reach. The rows close to 13px (still 12px type, all caps),
+     so all eight end inside the cell. */
+  ${MD} .sx-mkt-filter { padding:0 !important; line-height:13px !important; }
+  /* the trace here is ~119px wide and 48–56px tall, so SPREAD (over its bracket, whose top is at
+     most h−40px down) and AVG (over its line) shared the band over the plot: "AVG 215" printed
+     across "14 SPREAD" on Machine Control Unit, and SPREAD rode into the "Last move" line. SPREAD
+     sets on one 13px line, and an average in the upper ~62% of the plot reads just under its line
+     instead, clear of the SPREAD band; lower down it stays above its line, still under that band. */
+  ${MD} .orr-mkt-spread__v { line-height:13px !important; padding-bottom:1px !important; }
+  ${MD} .sx-mkt-instrument__avg { line-height:14px !important; transform:translateY(calc(-100% - 3px)) !important; }
+  ${MD} .sx-mkt-instrument__avg--upper { transform:translateY(3px) !important; }
+}
+/* ---- 651–1100 × ≤460 desktop (e.g. 844×390): the panel's rows sized to the 345px list, so the
+   index and the stage ran ~110px past the berth's tab cell and a pending decision (REPAIR NOW / FLY
+   DAMAGED) sat below it, out of reach. The row now fits the cell (no gap to an empty second row);
+   each side scrolls in it. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sx-screen__body > .sx-mkt.orr-market { grid-template-rows:minmax(0, 1fr) 0 !important; row-gap:0 !important; }
+  ${MD} > .sx-mkt__list { height:auto !important; max-height:100% !important; }
+  /* keyboard focus scrolls the berth to the decision with block:nearest, which parked REPAIR NOW / FLY
+     DAMAGED behind the pinned foot (73px) and its 12px fade: the choice keeps that much clear below it.
+     (A scroll-padding on the berth would also catch the foot's own tiles, which the station focuses on
+     open, and scroll the head away.) */
+  ${MD} .sx-mkt__decision .sx-decision__opt { scroll-margin-bottom:88px; }
+}
+/* ---- 651–900 × ≤800 desktop: beside the family ladder the register's name column was 0–25px (rows
+   read as an icon and numbers; at 700×600 "Iron Ore" sat under its own price). The families wrap
+   into a strip over the register instead, every one still on the board, and the names get ~100px. */
+@media (min-width:651px) and (max-width:900px) and (max-height:800px), ${NARROW_TALL} {
+  ${MD} .sx-mkt-browser { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) !important; row-gap:4px !important; }
+  ${MD} .sx-mkt-browser__filters { grid-column:1; grid-row:2; flex-direction:row !important; flex-wrap:wrap !important; width:auto !important; min-width:0 !important;
+    gap:0 14px !important; padding:0 0 0 9px !important; background:none !important; }
+  ${MD} .sx-mkt-filter { padding:1px 0 !important; line-height:12px !important; }
+  ${MD} .sx-mkt-browser__rail, ${MD} .sx-mkt-browser__empty { grid-column:1; grid-row:3; }
+  /* the two verbs share ~190px: their names close up so REPAIR NOW and FLY DAMAGED keep a gap */
+  ${MD} .sx-mkt__decision .sx-decision__opt .k-row__name { font-size:12px !important; letter-spacing:.06em !important; white-space:nowrap; }
+}
+/* ---- 651–720 × ≤800: two verb columns were ~59–72px, so REPAIR NOW / FLY DAMAGED terms ran
+   four–six lines and ate the stage. One column at the analysis width; each verb keeps its name
+   on one line and its terms wrap under it at the full width (two–three lines). The terms are the
+   price and hull/armor numbers being chosen between, and the buttons carry no title, so they are
+   never ellipsized. */
+@media (min-width:651px) and (max-width:720px) and (max-height:800px), ${NARROW_TALL} {
+  ${MD} .sx-mkt__decision .sx-decision {
+    display:flex !important; flex-direction:column !important; gap:2px !important;
+    grid-template-columns:none !important;
+  }
+  ${MD} .sx-mkt__decision .sx-decision > .k-sentence {
+    margin:0 0 2px !important; font-size:12px !important; line-height:14px !important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  ${MD} .sx-mkt__decision .sx-decision__opt {
+    flex-direction:column !important; align-items:flex-start !important; gap:0 !important;
+    padding:1px 0 1px 12px !important; width:100% !important; max-width:100% !important;
+    min-width:0 !important;
+  }
+  ${MD} .sx-mkt__decision .sx-decision__opt .k-row__name {
+    font-size:12px !important; letter-spacing:.08em !important; white-space:nowrap !important;
+    line-height:12px !important;
+  }
+  ${MD} .sx-mkt__decision .sx-decision__opt .k-row__sub {
+    font-size:12px !important; line-height:13px !important; max-width:100% !important;
+    white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+  }
+  /* stacked, the next verb sits under the focused one: focus keeps room for it above the pinned
+     foot (88px) as well, so Tab to REPAIR NOW doesn't park FLY DAMAGED under the foot */
+  ${MD} .sx-mkt__decision .sx-decision__opt:not(:last-child) { scroll-margin-bottom:144px; }
+}
+/* ---- 651–900 × ≤800 desktop (e.g. 760×420, 844×390, 700×600, 900×600): the analysis is ~160–260px
+   wide, so the reading is one column: the kind line, the name and the last move, then the price with its words
+   beside it, then the trace at the full width (beside the name the price left ~65px for both and
+   squeezed the trace to ~20px; at 700×600 the title stood one letter wide). From ~1000 wide the
+   two-column reading fits as it is. */
+@media (min-width:651px) and (max-width:900px) and (max-height:800px), ${NARROW_TALL} {
+  ${MD} .sx-mkt__quote { grid-template-columns:minmax(0, 1fr) max-content !important; column-gap:8px !important; align-items:start !important; }
+  ${MD} .sx-mkt__quote > :is(.sx-mkt-cat-inline, .sx-mkt-title, .sx-mkt-cause) { grid-column:1 / -1 !important; }
+  ${MD} .sx-mkt__quote > .sx-mkt-cat-inline { grid-row:1 !important; margin:0 !important; font-size:12px !important; letter-spacing:.16em !important; white-space:nowrap; }
+  ${MD} .sx-mkt__quote > .sx-mkt-title { grid-row:2 !important; font-size:19px !important; line-height:1.1 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${MD} .sx-mkt__quote > .sx-mkt-cause { grid-row:3 !important; margin-top:1px !important; font-size:12px !important; line-height:14px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${MD} .sx-mkt__quote > .sx-mkt__hero { grid-column:1 / -1 !important; grid-row:4 !important; display:flex !important; flex-direction:row !important; align-items:center !important; gap:10px !important;
+    justify-self:start !important; text-align:left !important; margin:4px 0 0 !important; padding:0 !important; }
+  ${MD} .sx-mkt__hero .k-hero__n { font-size:28px !important; }
+  ${MD} .sx-mkt__hero .k-hero__w { flex:0 1 auto; min-width:0; margin:0 !important; max-width:none !important; text-align:left !important; }
+  ${MD} .sx-mkt__quote > .sx-mkt-instrument { grid-column:1 / -1 !important; grid-row:5 !important; margin-top:24px !important; }
+  ${MD} .sx-mkt-instrument__plot { height:42px !important; }
+  /* while a decision waits it takes ~80px of the ~215–235px stage: the last-move line yields (the
+     register's ▲/▼ still says it) so the whole trace stays above the decision */
+  ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-cause { display:none !important; }
+  ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-instrument { margin-top:18px !important; }
+  /* ROUTE INTELLIGENCE closes up so it reads on one line from ~760 wide (at .08em it wrapped under
+     ~800); narrower, its column (~113px at 651) cannot hold the ~158px line, so it still wraps whole */
+  ${MD} .so-route-disclosure > summary { letter-spacing:.02em !important; }
+}
+/* …and after a trade the TRADE CLEARED line, which ends 24px left of COMMS (~402px from the right
+   edge here), was one ~480px line: under ~880 wide its start ("TRADE CLEARED BOUGHT…") ran off the
+   left edge. It wraps into the room left of COMMS instead, growing upward, whole and on glass. */
+@media (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt {
+    flex-wrap:wrap !important; white-space:normal !important; width:max-content !important; max-width:calc(100vw - 414px) !important; row-gap:2px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt > * { white-space:nowrap; }
+  /* wrapped, it stands over the register's rows for its 3.6s, so its dark falloff covers the whole
+     block (the 26px radial fade under a one-line receipt left the rows reading through its words) */
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt::before {
+    left:-16px !important; right:-16px !important; top:-16px !important; bottom:-3px !important;
+    background:linear-gradient(to bottom, rgb(7 8 10 / 0), rgb(7 8 10 / .86) 14px, rgb(7 8 10 / .86) calc(100% - 3px), rgb(7 8 10 / 0)) !important;
+    -webkit-mask-image:linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
+    mask-image:linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent); }
+}
+/* ≤460 tall at 651–800 the berth sets COMMS · HELP at the left edge, so the line that ends 24px left
+   of COMMS started ~470px off-screen (only its last letter showed). Here it starts 24px right of
+   COMMS instead, in the empty band between HELP and UNDOCK, and wraps in that room. */
+@media (min-width:651px) and (max-width:800px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { left:calc(100% + 24px) !important; right:auto !important; top:-2px !important; bottom:auto !important;
+    flex-wrap:wrap !important; white-space:normal !important; width:max-content !important; max-width:calc(100vw - 350px) !important; row-gap:2px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt > * { white-space:nowrap; }
+}
+/* …and past ~900 wide at 461–800 tall, the strip "under the register" that the line was meant to
+   read in turned out to be the foot itself: a bottom-strip receipt is 24–38px tall over a 14px
+   gap, so it rode up onto the dock rail, the collision resolver answered with the
+   above-the-rail anchor, and — the receipt being fixed there — that anchor resolved against the
+   viewport, painting the line off the top of the glass (measured 1280×720: receipt y −48..−10).
+   The honest lane is the one the narrow band already proved (stationLayouts "a live receipt needs
+   its own measured row"): flow. The comms aside dissolves while a receipt is live, the line takes
+   its own full-width row at the foot's head, and the controls keep their row below — nothing
+   covered, nothing off-glass, whatever the sentence wraps to. */
+@media (min-width:901px) and (min-height:461px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { position:static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important;
+    max-width:100% !important; z-index:4 !important; }
+  /* The resting rail never wraps (the sheet's nowrap is the composition). While a receipt is
+     live the dissolved comms words join the row, so the foot must be allowed to break — the
+     receipt's own row takes the break and the dock keeps every tile on-glass. */
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops:has(> .sx-comms > .sx-receipt:not([hidden])) { flex-wrap:wrap !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops:has(> .sx-comms > .sx-receipt:not([hidden])) > .sx-comms { display:contents !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops > .sx-comms > .sx-receipt:not([hidden]) { order:-1 !important;
+    flex:1 0 100% !important; width:100% !important; box-sizing:border-box;
+    flex-wrap:wrap !important; white-space:normal !important; gap:2px 10px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops > .sx-comms > .sx-receipt:not([hidden]) > * { min-width:0; overflow-wrap:anywhere; }
+}
+/* ---- 651–760 × ≤800: the analysis column is ~120–150px, so the kind line ("RAW ORE · LEGA"), the
+   readings ("SECTOR NO CONF", with SPREAD and TREND in a second column past the edge) and ROUTE
+   INTELLIGENCE ran under its clipped edge. The readings stand in one column, and the lines close up
+   and wrap at word breaks; each reading's value stays whole. */
+@media (min-width:651px) and (max-width:760px) and (max-height:800px), ${NARROW_TALL} {
+  ${MD} .sx-mkt__quote > .sx-mkt-cat-inline { letter-spacing:.06em !important; white-space:normal !important; line-height:14px !important; }
+  ${MD} .orr-mkt-subkey { grid-template-columns:minmax(0, 1fr) !important; row-gap:2px !important; }
+  ${MD} .orr-mkt-subkey__bit { letter-spacing:.04em !important; white-space:normal !important; line-height:14px; }
+  ${MD} .orr-mkt-subkey__bit b { white-space:nowrap; }
+  ${MD} .so-route-disclosure > summary { letter-spacing:.02em !important; white-space:normal !important; line-height:14px; }
+}
+/* 760x420 and 844x390: BUY/SELL must fit beside the analysis on arrival. The compact
+   dial leaves the total and both verbs ahead of the expandable quote, which still scrolls. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:430px) {
+  ${MD} .sx-trade { grid-template-areas:"dial" "total" "verb" "breakdown" !important; row-gap:1px !important; }
+  ${MD} .sx-trade > .sx-qty { height:96px; }
+  ${MD} .sx-qty .orr-qdial { left:33px; width:80px; height:80px; }
+  ${MD} .sx-qty .sx-qty__in { top:18px; }
+  ${MD} .sx-qty .sx-qty__k { top:43px; }
+  ${MD} .sx-qty .sx-qty__words { top:78px; }
+}
+/* ---- 1101+ wide × 461–719 tall (ui-polish-125): the console ran 375px tall (dial 204, total 71,
+   BUY 46, breakdown 33) into a body of only H − 355px, so at 1152×648 BUY/SELL sat under UNDOCK and
+   at 1280×540 they fell below the glass. The dial now stands beside the total, its three words run
+   across under both, and BUY/SELL and the quote breakdown follow — ~210px at 601–719 tall, ~170px
+   at ≤600 tall. 720 tall and up keep the stacked console. */
+@media (min-width:1101px) and (min-height:461px) and (max-height:719px) {
+  ${MD} .sx-trade { grid-template-columns:auto auto !important; grid-template-rows:none !important;
+    grid-template-areas:"dial total" "note note" "verb verb" "breakdown breakdown" !important;
+    justify-content:center !important; justify-items:center; align-items:start !important; column-gap:14px !important; row-gap:4px !important; }
+  ${MD} .sx-trade > .sx-qty { width:108px; height:136px; justify-self:start; }
+  ${MD} .sx-qty .orr-qdial { left:0; top:0; width:108px; height:108px; }
+  ${MD} .sx-qty .sx-qty__k { left:0; width:108px; top:33px; font-size:12px !important; letter-spacing:.1em !important; line-height:13px !important; }
+  ${MD} .sx-qty .sx-qty__in { left:19px; width:70px !important; top:47px; height:32px !important; font-size:28px !important; line-height:32px !important; }
+  ${MD} .sx-qty .sx-qty__words { top:113px; left:0; right:auto; width:216px; }
+  ${MD} .so-trade-total { display:flex !important; flex-direction:column !important; align-items:flex-start !important; justify-self:start; gap:2px !important; padding-top:12px !important; }
+  ${MD} .so-trade-total > span { text-align:left; white-space:nowrap; }
+  ${MD} .so-trade-total > strong { white-space:nowrap !important; }
+  ${MD} .orr-mkt-holdarc { margin-top:2px !important; justify-content:flex-start; }
+  ${MD} .orr-mkt-holdarc svg { display:none !important; }
+  ${MD} .orr-mkt-holdarc__t { white-space:nowrap; }
+  ${MD} .orr-mkt-holdarc__t b { display:inline !important; margin-left:6px; }
+  ${MD} .sx-trade__words { margin:0 !important; justify-content:center; }
+  ${MD} .so-trade-breakdown > summary { line-height:16px !important; }
+}
+@media (min-width:1101px) and (min-height:461px) and (max-height:600px) {
+  ${MD} .sx-trade { row-gap:2px !important; }
+  ${MD} .sx-trade > .sx-qty { width:88px; height:108px; }
+  ${MD} .sx-qty .orr-qdial { width:88px; height:88px; }
+  ${MD} .sx-qty .sx-qty__k { display:none !important; }
+  ${MD} .sx-qty .sx-qty__in { left:14px; width:60px !important; top:28px; height:30px !important; font-size:26px !important; line-height:30px !important; }
+  ${MD} .sx-qty .sx-qty__words { top:88px; }
+  ${MD} .so-trade-total { padding-top:2px !important; }
+  ${MD} .so-trade-total > strong { font-size:24px !important; }
+  ${MD} .sx-trade__go.orr-lampkey { min-height:36px !important; }
+  /* a refusal line ("Not enough credits, stock, or hold space.") must not push the breakdown under UNDOCK */
+  ${MD} .sx-trade__note { line-height:14px !important; margin:0 !important; }
+  ${MD} .so-trade-breakdown > summary { padding:2px 0 !important; }
+}
+/* ---- ≤650 wide × ≥801 tall desktop (600×844, 520×900, 390×844; ui-polish-148): the compact berth
+   above put the analysis and a 146px console side by side in a stage only ~130–280px wide, so the
+   reading stood one letter wide and the register lost its names. The stage is one 150px column
+   instead: the console (dial, total, BUY / SELL) on top, a pending decision under it, then the
+   reading, scrolling together; the register keeps the rest of the width. */
+@media ${NARROW_TALL} {
+  ${MD.replace(' .sx-mkt.orr-market', ' .sx-screen__body > .sx-mkt.orr-market')} { grid-template-columns:minmax(0, 1fr) 150px !important; column-gap:12px !important;
+    grid-template-rows:minmax(0, 1fr) 0 !important; row-gap:0 !important; }
+  ${MD} > .sx-mkt__list { height:auto !important; max-height:100% !important; }
+  ${MD} .sx-mkt__stage, ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:max-content max-content max-content !important; align-content:start !important; row-gap:10px !important; overflow:hidden auto !important; scrollbar-width:none; }
+  ${MD} .sx-mkt__console, ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__console { grid-column:1 !important; grid-row:1 !important;
+    justify-self:center !important; max-height:none !important; overflow:visible !important; }
+  ${MD} .sx-mkt__analysis { grid-column:1 !important; grid-row:3 !important; overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important;
+    padding-top:8px !important; border-top:1px solid rgb(${BONE} / .16) !important; }
+  ${MD} .sx-mkt__decision:not(:empty) { grid-column:1 !important; grid-row:2 !important; max-height:none !important; overflow:visible !important; }
+  /* This stage scrolls: keep the situation that gives the tradeoff meaning readable in full. */
+  ${MD} .sx-mkt__decision .sx-decision > .k-sentence { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+  ${MD} .sx-trade__go.orr-lampkey { white-space:nowrap !important; }
+  /* the column's scroll window cut the decision's terms mid-line ("Pay 22 cr. Hull 86 → 100," with
+     its lower half sliced off): its foot fades over 20px instead, and 20px of padding lets the last
+     line scroll clear of the fade (ui-polish-155) */
+  ${MD} .sx-mkt__stage { padding-bottom:20px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent) !important; }
+  /* the family strip's wrapped lines touched (0 lead); 3px between them */
+  ${MD} .sx-mkt-browser__filters { row-gap:3px !important; }
+}
+/* …and under 481 wide (390×844) the register beside that column is ~165px: its three numbers left
+   the name ~0px. Each good reads on two lines there, its name across the whole register and its
+   BUY / SELL / STOCK under it, and the families close up so they take four lines, not seven. */
+@media (max-width:480px) and (min-height:601px) {
+  /* the find stood beside the legend at ~70px ("Find a com", legend on two lines): it takes its
+     own full-width line under the legend instead */
+  ${MD} .sx-mkt-browser { grid-template-rows:auto auto auto minmax(0, 1fr) !important; }
+  ${MD} .sx-mkt-browser__mode { padding-right:0 !important; min-height:0 !important; letter-spacing:.12em !important; white-space:nowrap; flex-wrap:wrap !important; row-gap:2px; }
+  ${MD} .orr-mkt-find { position:relative !important; top:auto; right:auto; grid-column:1; grid-row:2; width:100% !important; }
+  ${MD} .sx-mkt-browser__filters { grid-row:3; }
+  ${MD} .sx-mkt-browser__rail, ${MD} .sx-mkt-browser__empty { grid-row:4; }
+  ${MD} .sx-mkt-browser__filters { column-gap:10px !important; }
+  ${MD} .sx-mkt-filter { letter-spacing:.04em !important; }
+  ${MD} .sx-mkt-table, ${MD} .sx-mkt-table > :is(thead, tbody) { display:block !important; width:100% !important; }
+  ${MD} .sx-mkt-table tr { display:grid !important; grid-template-columns:minmax(0, 1fr) 38px 44px !important; align-items:baseline; }
+  ${MD} .sx-mkt-table thead th:first-child { display:none !important; }
+  ${MD} .sx-mkt-table .sx-mkt-row > .sx-mkt-row__name:first-child { grid-column:1 / -1; padding-bottom:0 !important; }
+  ${MD} .sx-mkt-table :is(th, td):nth-child(2) { grid-column:1; width:auto !important; padding-left:30px !important; text-align:left !important;
+    overflow:visible !important; text-overflow:clip !important; white-space:nowrap !important; }
+  ${MD} .sx-mkt-table thead th { letter-spacing:.04em !important; }
+  ${MD} .sx-mkt-row td { line-height:15px !important; }
+  ${MD} .sx-mkt-table :is(th, td):nth-child(3) { grid-column:2; width:auto !important; padding-right:0 !important; text-align:right !important; }
+  ${MD} .sx-mkt-table :is(th, td):nth-child(4) { grid-column:3; width:auto !important; padding-right:0 !important; text-align:right !important; }
+  ${MD} .sx-mkt-row td:nth-child(n+2) { padding-top:0 !important; }
+  /* the two lines of a good stood 12px apart, with nothing between one good's numbers and the next
+     good's name, so "32 ▼11% 29 32u" read as Silicate Rock's. Name and numbers close to 1px, a
+     hairline parts the goods, and the register shows a third good at 420×700 (ui-polish-205) */
+  ${MD} .sx-mkt-table .sx-mkt-row { row-gap:1px !important; padding:0 !important; align-content:center !important; }
+  ${MD} .sx-mkt-table .sx-mkt-row + .sx-mkt-row { border-top:1px solid rgb(${BONE} / .08) !important; }
+}
+/* …and on short windows (≤650 × 601–800, e.g. 375×667, 620×700) the berth's dials leave the Market ~160px:
+   the eight families stood one per line and filled it, so no good showed, and BUY 1 sat under the
+   tabs. The families ride one line that scrolls sideways (fading at its right edge), and the dial
+   sets at 84px so the verbs end in the column. */
+@media (max-width:650px) and (min-height:601px) and (max-height:800px) {
+  ${MD} .sx-mkt-browser__filters { flex-wrap:nowrap !important; overflow-x:auto !important; overflow-y:hidden !important; column-gap:12px !important;
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 18px), transparent) !important; mask-image:linear-gradient(90deg, #000 calc(100% - 18px), transparent) !important; }
+  ${MD} .sx-mkt-browser__filters li { flex:none !important; }
+  ${MD} .sx-mkt-filter { white-space:nowrap !important; }
+  ${MD} .sx-trade { row-gap:2px !important; }
+  ${MD} .sx-qty .orr-qdial { left:31px; width:84px; height:84px; }
+  ${MD} .sx-qty .sx-qty__in { top:19px; height:26px !important; font-size:22px !important; line-height:26px !important; }
+  ${MD} .sx-qty .sx-qty__k { left:31px; width:84px; top:46px; letter-spacing:0 !important; }
+  ${MD} .sx-qty .sx-qty__words { top:72px; }
+  ${MD} .sx-trade > .sx-qty { height:88px; }
+  ${MD} .so-trade-total { line-height:16px !important; height:17px; align-content:center; }
+  ${MD} .so-trade-total > strong { line-height:16px !important; }
+  ${MD} .so-trade-breakdown > summary { line-height:15px !important; padding:0 !important; margin:0 !important; }
+  ${MD} .sx-trade__go.orr-lampkey { min-height:24px !important; }
+  ${MD} .sx-mkt__stage { padding-bottom:8px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 8px), transparent) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 8px), transparent) !important; }
+}
+/* under 390 wide the register is ~165px and the price's 30px indent pushed "33 ▼11%" into the SELL
+   number ("▼1129"); it indents 14px instead, still clear of the name's icon column */
+@media (max-width:389px) and (min-height:601px) {
+  ${MD} .sx-mkt-table :is(th, td):nth-child(2) { padding-left:14px !important; }
+}
+/* …and on a tall narrow window (≤480 × ≥801, e.g. 390×844) the families closed up still took four
+   lines, so the register under them showed one good and half of the next. They ride the same
+   sideways strip as the short windows above, and the goods get those three lines back. */
+@media (max-width:480px) and (min-height:801px) {
+  ${MD} .sx-mkt-browser__filters { flex-wrap:nowrap !important; overflow-x:auto !important; overflow-y:hidden !important; column-gap:12px !important;
+    scrollbar-width:none; -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 18px), transparent) !important;
+    mask-image:linear-gradient(90deg, #000 calc(100% - 18px), transparent) !important; }
+  ${MD} .sx-mkt-browser__filters li { flex:none !important; }
+  ${MD} .sx-mkt-filter { white-space:nowrap !important; }
+}
+/* Real phones (data-sf-mobile) carry their own Market sheet, where the families already ride one
+   swiped line and the register stacks full width. On a short portrait phone (≤600 × 561–800, e.g.
+   375×667) the berth header left that sheet a ~128px slit that scrolled on its own under the header,
+   so BUY 1 and the goods sat behind it. The berth scrolls as one page there instead (as it already
+   does on a phone on its side): header, dials and Market read in order, and the tabs and Undock stay
+   pinned at the foot. */
+@media (max-width:600px) and (min-height:561px) and (max-height:800px) {
+  ${MP} { overflow-x:hidden !important; overflow-y:auto !important; padding-bottom:0 !important; scroll-padding-bottom:0 !important; }
+  ${MP} .dp-frame__body--station, ${MP} .dp-frame__body--station > .sx-screen__body { flex:none !important; overflow:visible !important; }
+  ${MP} footer.sxb-ops { position:sticky !important; bottom:0 !important; z-index:2; background:rgb(5 7 10) !important; }
+}
+/* ---- ≤650 × ≤400 desktop (phone landscape, e.g. 568×320 or 640×360): the tab body is ~120–200px tall. The family
+   ladder stood beside the register and pushed the names down to ~50px ("Iron / Ore"), the analysis column got ~20px
+   and printed "RAW ORE · LEGAL" one letter per line, and the stacked console (dial, total, breakdown, verbs) ran 60px
+   past the body, so BUY 1 / SELL could not be reached. The families now run as a strip over the register, and the
+   console sits on its side: dial on the left, with the words, total and verbs beside it, all inside the body. */
+@media (max-width:650px) and (max-height:400px) {
+  ${MD.replace(' .sx-mkt.orr-market', ' .sx-screen__body > .sx-mkt.orr-market')} {
+    box-sizing:border-box !important; grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr) !important;
+    grid-template-rows:minmax(0, 1fr) 0 !important; row-gap:0 !important; column-gap:8px !important;
+    height:100% !important; min-height:0 !important; overflow:hidden !important; }
+  /* The station body has a fixed viewport track at this height. Keep both columns inside it and
+     let the list/stage scroll locally; a 232px panel minimum pushed the stage and controls below
+     the pinned dock on 568x320. */
+  ${MD} .sx-mkt__list, ${MD} .sx-mkt__stage { box-sizing:border-box !important; min-width:0 !important; min-height:0 !important;
+    height:100% !important; max-height:100% !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  ${MD} > .sx-mkt__list { max-height:100% !important; }
+  /* the register: the 'Station exchange' heading with the find box beside it, then the families as one strip over the
+     table (it scrolls sideways and fades at its end), so the rows get the whole column */
+  ${MD} .sx-mkt-browser { box-sizing:border-box !important; min-width:0 !important; min-height:0 !important; height:100% !important;
+    grid-template-columns:minmax(0, 1fr) minmax(0, min(48%, 150px)) !important;
+    grid-template-rows:24px 20px minmax(34px, 1fr) !important; row-gap:1px !important; }
+  ${MD} .sx-mkt-browser__mode { position:static !important; grid-column:1 !important; grid-row:1 !important; display:flex !important;
+    box-sizing:border-box !important; min-width:0 !important; min-height:24px !important; height:24px !important;
+    padding:0 !important; overflow:hidden !important; white-space:nowrap !important; line-height:24px !important; }
+  ${MD} .orr-mkt-find { position:static !important; grid-column:2 !important; grid-row:1 !important; justify-self:stretch !important; align-self:center !important;
+    display:block !important; box-sizing:border-box !important; width:100% !important; min-width:0 !important; height:24px !important; min-height:24px !important;
+    padding:0 !important; line-height:22px !important; }
+  ${MD} .orr-mkt-find .sx-mkt-search { box-sizing:border-box !important; width:100% !important; min-width:0 !important; height:22px !important; min-height:22px !important;
+    padding:2px 0 2px 6px !important; line-height:18px !important; }
+  ${MD} .sx-mkt-browser__rail { min-height:34px !important; min-width:0 !important; height:100% !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  ${MD} .sx-mkt-browser__filters { grid-column:1 !important; grid-row:2 !important; flex-direction:row !important; flex-wrap:nowrap !important;
+    width:auto !important; min-width:0 !important; max-width:100% !important; overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:none; gap:0 12px !important; padding:0 24px 2px 9px !important; background:none !important;
+    -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 24px), transparent); mask-image:linear-gradient(to right, #000 calc(100% - 24px), transparent); }
+  ${MD} .sx-mkt-browser__filters li { flex:none !important; }
+  ${MD} .sx-mkt-filter { padding:3px 0 !important; line-height:14px !important; letter-spacing:.05em !important; }
+  ${MD} .sx-mkt-browser__filters { position:static !important; grid-column:1 / -1 !important; grid-row:2 !important;
+    box-sizing:border-box !important; display:flex !important; height:20px !important; min-height:20px !important; max-height:20px !important;
+    margin:0 !important; transform:none !important; z-index:auto !important; }
+  ${MD} .sx-mkt-browser__rail { grid-column:1 / -1 !important; grid-row:3 !important; }
+  /* Short-landscape table: readable prices and wrapping names stay tappable inside the existing rail scroll. */
+  ${MD} .sx-mkt-browser__rail .sx-mkt-table { table-layout:auto !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-table :is(th, td):first-child { width:auto !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-table :is(th, td):nth-child(n+2) { width:1% !important; padding-left:4px !important; padding-right:4px !important; white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row > td { height:30px !important; padding-top:1px !important; padding-bottom:1px !important; vertical-align:middle !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row__price { line-height:14px !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row__price > .sx-mkt-row__tr { display:block !important; margin-left:0 !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row > td.sx-mkt-row__name { min-width:0 !important; max-width:none !important; white-space:normal !important; overflow:visible !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row__none { white-space:normal !important; line-height:14px !important; }
+  ${MD} .sx-mkt-browser__rail thead th { padding-top:0 !important; padding-bottom:2px !important; line-height:14px !important; height:auto !important; }
+  /* the stage is one column: the console first, then the decision and the reading under it in the stage's own scroll */
+  ${MD} .sx-mkt__stage.dp-work__stage { min-width:0 !important; min-height:0 !important; grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:max-content max-content max-content !important; align-content:start !important; row-gap:4px !important; overflow-y:auto !important; overflow-x:hidden !important; }
+  ${MD} .sx-mkt__stage.dp-work__stage > .sx-mkt__console { grid-column:1 !important; grid-row:1 !important; width:100% !important; min-width:0 !important; max-width:100% !important; max-height:none !important; overflow-x:hidden !important; overflow-y:visible !important; }
+  ${MD} .sx-mkt__stage.dp-work__stage > .sx-mkt__decision:not(:empty) { grid-column:1 !important; grid-row:2 !important; max-height:none !important; }
+  ${MD} .sx-mkt__stage.dp-work__stage > .sx-mkt__analysis { grid-column:1 !important; grid-row:3 !important; overflow:visible !important; }
+  /* the console: an 80px dial, with its three words, the total, BUY / SELL and the breakdown stacked beside it */
+  ${MD} .sx-trade { grid-template-columns:80px minmax(0, 1fr) !important;
+    grid-template-rows:18px auto auto auto !important; grid-template-areas:"dial ." "dial total" "dial verb" "dial breakdown" !important; column-gap:10px !important; row-gap:4px !important; justify-items:start !important; align-items:center !important; }
+  ${MD} .sx-trade > .sx-qty { width:80px !important; height:80px !important; align-self:start !important; }
+  ${MD} .sx-qty .orr-qdial { left:0; top:0; width:80px; height:80px; }
+  ${MD} .sx-qty .sx-qty__in { left:5px; top:18px; }
+  ${MD} .sx-qty .sx-qty__k { left:0; width:80px; top:46px; }
+  ${MD} .sx-qty .sx-qty__words { top:0 !important; left:90px !important; right:auto !important; width:max-content !important; justify-content:flex-start !important; gap:0 8px !important; }
+  ${MD} .sx-qty :is(.sx-qty__b, .sx-qty__max) { letter-spacing:.02em !important; }
+  ${MD} .sx-trade__words { width:auto !important; justify-content:flex-start !important; flex-wrap:nowrap !important; gap:0 12px !important; }
+  ${MD} .so-trade-breakdown { justify-self:start !important; text-align:left !important; }
+  ${MD} :is(.sx-qty .sx-qty__k, .so-trade-breakdown > summary) { font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 650 !important; letter-spacing:.03em !important; white-space:nowrap !important; }
+  ${MD} .sx-trade__go.orr-lampkey { white-space:nowrap !important; }
+}
+/* Quote breakdown, opened: one column of figures, read in place. The kit laid the eleven rows in
+   two columns inside the trade console (~146-244px wide), so labels broke mid-word ("Cr/ed/its") and
+   values ran under the next column; at 901+ it floated up as a sheet that the scrolling stage clipped.
+   It now opens in the console's own flow, a label and its figure per row, and a figure that cannot fit
+   beside its label drops to its own right-aligned line instead of breaking a word. */
+${M} .so-trade-breakdown[open] .sx-trade__rows { position:static !important; width:auto !important; max-width:none !important; max-height:none !important;
+  overflow:visible !important; display:block !important; margin:6px 0 4px !important; padding:4px 0 !important; background:none !important;
+  border:0 !important; border-top:1px solid rgb(${BONE} / .12) !important; border-radius:0 !important; box-shadow:none !important; text-align:left !important; }
+${M} .so-trade-breakdown[open] .sx-trade__rows > li { display:flex !important; flex-wrap:wrap !important; align-items:baseline !important;
+  justify-content:space-between !important; column-gap:12px !important; row-gap:0 !important; min-height:26px !important; padding:4px 0 !important;
+  margin:0 !important; border-bottom:1px solid rgb(${BONE} / .07) !important; }
+${M} .so-trade-breakdown[open] .sx-trade__rows > li:last-child { border-bottom:0 !important; }
+${M} .so-trade-breakdown[open] .sx-trade__rows > li > span { flex:none !important; white-space:nowrap !important; overflow-wrap:normal !important;
+  font-size:12px !important; color:rgb(${BONE} / .72) !important; }
+${M} .so-trade-breakdown[open] .sx-trade__rows > li > .k-row__num { flex:1 1 auto !important; min-width:0 !important; text-align:right !important;
+  white-space:normal !important; overflow-wrap:normal !important; font-size:13px !important; }
+/* ---- 651–900 × 461–480 desktop (e.g. 700×461, 801×461): Station Standard's Fewer/qty/More/Max
+   stepper + 36px SELL sit in a ~146px console beside the analysis, but the Market body is only
+   ~175–180px tall here — BUY 1 clears by ~5–10px while SELL loses its lower half under the glass
+   (measured Sell oyB 11→16 against .sx-mkt; Buy oyB 5→10). Close the idle spacing while keeping
+   the Quote disclosure and a usable commit target. The existing console scroll owner takes any
+   extra content, including an opened quote or a wrapped action, instead of hiding it. */
+@media (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:480px) {
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade {
+    row-gap:1px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade > .sx-qty {
+    gap:2px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-qty__k {
+    margin:0 0 1px !important; line-height:12px !important; font-size:12px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-qty__in {
+    height:28px !important; min-height:28px !important; line-height:28px !important; font-size:18px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market :is(.sx-qty__b, .sx-qty__max) {
+    min-height:28px !important; height:28px !important; padding:0 6px !important; font-size:12px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .so-trade-total {
+    height:15px !important; min-height:15px !important; line-height:14px !important; margin:0 !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-mkt__console {
+    box-sizing:border-box; min-height:0 !important; max-height:100% !important;
+    overflow-y:auto !important; overscroll-behavior:contain; scrollbar-width:thin;
+    padding:4px !important; scroll-padding-block:8px; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market :is(.sx-trade__go, .so-trade-breakdown > summary) {
+    scroll-margin-block:8px; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade__words {
+    margin:0 !important; gap:0 4px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade__go,
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade__words > li > .sx-trade__go {
+    min-height:44px !important; height:auto !important; padding:6px 8px !important; font-size:12px !important;
+    line-height:1.25 !important; white-space:normal !important; overflow-wrap:anywhere; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade__go.orr-lampkey {
+    min-height:44px !important; height:auto !important; padding:6px 12px 6px 8px !important; }
+}
+`;
+
+export function injectOrreryMarket(doc = globalThis.document) {
+  if (!doc?.head || typeof doc.createElement !== 'function' || typeof doc.getElementById !== 'function') return;
+  injectOrrery(doc);
+  if (typeof doc.getElementById === 'function' && doc.getElementById(STYLE_ID)) return;
+  const style = doc.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = CSS + compactBerth(M, '(max-width:1100px) and (max-height:800px)') + compactBerth(MD, NARROW_TALL) + CSS_TAIL;
+  doc.head.appendChild(style);
+}

@@ -1,0 +1,12 @@
+{
+  "crowd": 2500,
+  "activeBuckets": 748,
+  "fields": 24,
+  "gongs": 12,
+  "projectiles": 48,
+  "iters": 400,
+  "withHashMs": 1481.288,
+  "noHashMs": 5921.318,
+  "speedup": 3.997,
+  "pass": true
+}

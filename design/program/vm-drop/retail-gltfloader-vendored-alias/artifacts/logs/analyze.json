@@ -1,0 +1,73 @@
+{
+ "name": "master",
+ "jsFiles": 166,
+ "jsBytes": 17596660,
+ "jsGzipBytes": 5433130,
+ "gltfInputs": [
+  "../../spaceface/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js",
+  "../../spaceface/node_modules/three/examples/jsm/utils/SkeletonUtils.js",
+  "../../spaceface/node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+  "../../spaceface/node_modules/three/examples/jsm/libs/meshopt_decoder.module.js",
+  "src/render/GLTFLoader.js"
+ ],
+ "markers": {
+  "KHR_binary_glTF": [
+   "GLTFLoader-NVOIVSBQ.js"
+  ]
+ },
+ "owners": [
+  "GLTFLoader-NVOIVSBQ.js exports=[GLTFLoader] bytesFromLoader=../../spaceface/node_modules/three/examples/jsm/loaders/GLTFLoader.js:42392"
+ ]
+}
+{
+ "name": "p168",
+ "jsFiles": 166,
+ "jsBytes": 17596660,
+ "jsGzipBytes": 5433130,
+ "gltfInputs": [
+  "../../spaceface/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js",
+  "../../spaceface/node_modules/three/examples/jsm/utils/SkeletonUtils.js",
+  "../../spaceface/node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+  "../../spaceface/node_modules/three/examples/jsm/libs/meshopt_decoder.module.js",
+  "src/render/GLTFLoader.js"
+ ],
+ "markers": {
+  "KHR_binary_glTF": [
+   "GLTFLoader-NVOIVSBQ.js"
+  ]
+ },
+ "owners": [
+  "GLTFLoader-NVOIVSBQ.js exports=[GLTFLoader] bytesFromLoader=../../spaceface/node_modules/three/examples/jsm/loaders/GLTFLoader.js:42392"
+ ]
+}
+{
+ "name": "p170",
+ "jsFiles": 165,
+ "jsBytes": 17597946,
+ "jsGzipBytes": 5433067,
+ "gltfInputs": [
+  "../../spaceface/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js",
+  "vendor/addons/utils/BufferGeometryUtils.js",
+  "vendor/addons/utils/SkeletonUtils.js",
+  "vendor/addons/loaders/GLTFLoader.js",
+  "../../spaceface/node_modules/three/examples/jsm/libs/meshopt_decoder.module.js",
+  "src/render/GLTFLoader.js"
+ ],
+ "markers": {
+  "glbBodyRange": [
+   "GLTFLoader-N622CPRW.js"
+  ],
+  "glbBodySliceRange": [
+   "GLTFLoader-N622CPRW.js"
+  ],
+  "bodyByteOffset": [
+   "GLTFLoader-N622CPRW.js"
+  ],
+  "KHR_binary_glTF": [
+   "GLTFLoader-N622CPRW.js"
+  ]
+ },
+ "owners": [
+  "GLTFLoader-N622CPRW.js exports=[GLTFLoader] bytesFromLoader=vendor/addons/loaders/GLTFLoader.js:43966"
+ ]
+}

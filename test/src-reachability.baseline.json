@@ -1,0 +1,52 @@
+{
+  "schema": "spaceface.srcReachability.baseline.v1",
+  "note": "Ratchet, not a cleanup mandate. knownOrphans records what was already unreachable under ratchetRoots when this gate landed; each needs a concrete reason, and an entry that becomes reachable is STALE and must be deleted. New orphans under ratchetRoots fail the build.",
+  "toolingRoots": [
+    "src/testing/",
+    "src/contracts/",
+    "src/balance/",
+    "src/observability/"
+  ],
+  "ratchetRoots": [
+    "src/systems/",
+    "src/ui/",
+    "src/render/"
+  ],
+  "knownOrphans": {
+    "src/render/graphicsLab.js": "Developer technique gap-map served on its own route; intentionally not part of the game bundle graph.",
+    "src/render/thruster/textures/encodePng.js": "Build-time PNG encoder for thruster atlas generation; not a runtime path.",
+    "src/render/thruster/textures/sample.js": "Build-time CPU texture sampler for thruster/RCS atlases; not a runtime path.",
+    "src/systems/signatureAdapters.js": "Adapter layer for the unwired site signature model; blocked on the same wiring.",
+    "src/ui/kit/lab.js": "Renders the kit page (_kitlab.html, KIT_SPEC.md §10) — a dev harness served from the repo root, not a game screen; the kit itself (index.js) is on the route via src/ui/screens/mainMenu.js and uiRoot.js.",
+    "src/render/backendDecision.js": "PQ-044 (PERF-10 conditional WebGPU/TSL) is DEFERRED, so nothing on the default route selects a backend yet. Gated by scripts/check-backend-decision.mjs and scripts/check-render-path-parity.mjs; landed 2026-08-07.",
+    "src/render/webgpuPresent.js": "Present half of the same deferred PQ-044 slice; the WebGL present path is the only one wired. Gated by scripts/check-render-path-parity.mjs; landed 2026-08-21.",
+    "src/render/batchedInstanceRenderer.js": "Perf-rescue candidate held out of the default route until its own acceptance runs. Gated by scripts/check-batched-instance-renderer.mjs; landed 2026-08-07.",
+    "src/render/presentPhaseTimers.js": "Instrumentation staged for the hitch campaign, not yet on the player path. Gated by test/present-phase-timers.test.mjs; landed 2026-08-14.",
+    "src/render/renderPackageDigestWorker.js": "Worker loaded via new URL() from renderPackageDigest.js; the static import graph cannot see that wire.",
+    "src/ui/commandDeckRefit.js": "Off-route additive presentation lab; production does not import or auto-mount. Tests and commandDeckRefitHooks remain on the station path.",
+    "src/ui/orrery/flightInstruments.js": "ORRERY flight-instrument cluster staged by the live frontend refactor (Title/Bar/Industry rows landing on master); wire to the default route when the cluster mounts.",
+    "src/ui/orrery/flightPreview.js": "ORRERY flight preview staged alongside flightInstruments.js by the same live refactor; wire with the cluster or retire it.",
+    "src/render/thimbleDoorVisuals.js": "Inactive Thimble door rig visuals preserved by checkpoint 11f12f596 alongside thimbleDoorBody.js; stays quiet until a gameplay owner activates the door body.",
+    "src/ui/virtualList.js": "PQ-184.01 list windowing kernel; long screens have not mounted it yet. Keep until that leaf wires market/contracts/ledger/codex or retires the component.",
+    "src/render/glbPrepassWorker.js": "Worker loaded via new URL() from glbPrepass.js (defaultWorkerUrl); the static import graph cannot see that wire. Batch-decodes meshopt bufferViews off-thread for the GLB prepass.",
+    "src/ui/bootEntry.js": "The dev page's module entry: index.html's <script src> loads it before main.js so the boot instrument paints first; the static import graph cannot see the HTML wire. Bootstraps the game via import('../main.js'), so it must stay OUTSIDE the main.js graph. Gated by scripts/check-smooth-boot-integration.mjs entry-wiring asserts.",
+    "src/ui/introSignalRemixBoot.js": "Optional intro-video optics, dynamically imported by src/ui/bootEntry.js (itself an index.html-wired orphan); the static graph cannot see either wire. Landed with PR #180 wired from the index.html inline script.",
+    "src/ui/introSignalRemix.js": "Reached only through introSignalRemixBoot.js (itself HTML-wired); the static graph never traverses into it. Landed with PR #180.",
+    "src/ui/bootStartupFailure.js": "The boot shell's startup-failure responder, imported statically by src/ui/bootEntry.js (itself an index.html-wired orphan the static graph cannot traverse — same shape as introSignalRemix.js). index.html modulepreloads it beside the entry; runs whenever the game module graph fails to load. Landed with D185 hardening (d112727e6b); gated by test/boot-startup-failure.test.mjs and scripts/check-smooth-boot-integration.mjs's bootEntry asserts.",
+    "src/render/reactiveMatter/pass.js": "Optional gameplay-camera marker layer for reactive cargo. src/matter/reactive/ADAPTER.md names marker rendering optional — the shipped presentation is the authored release models cargo and yard equipment already select. The impulse-queue rewrite (718e6be3e9) landed the pass with tests but no renderer mount; mount it into the scene pass sequence or retire it when the marker layer gets an owner.",
+    "src/render/wreckCourt/present.js": "Picture composer for a dedicated wreck-court viewer (own camera and light) that no screen mounts. The live system presents in-world via spawned entities (src/systems/wreckCourt.js spawn/spawnAssay) with scan verbs on the default route; pinned by test/wreck-court-present.test.mjs. Wire to a court viewer screen or retire it.",
+    "src/ui/deckplate/components.js": "Build-time Deckplate CSS fragment composed into styles/deckplate.generated.css; not a runtime JS path.",
+    "src/ui/deckplate/css.js": "Build-time Deckplate stylesheet composition; product pages link the generated CSS sidecar.",
+    "src/ui/deckplate/hardware.js": "Build-time Deckplate CSS fragment composed into the generated sidecar.",
+    "src/ui/deckplate/layout.js": "Build-time Deckplate CSS fragment composed into the generated sidecar.",
+    "src/ui/deckplate/light.js": "Build-time Deckplate CSS fragment composed into the generated sidecar.",
+    "src/ui/deckplate/materials.js": "Build-time Deckplate CSS fragment composed into the generated sidecar.",
+    "src/ui/deckplate/screens.js": "Build-time Deckplate screen CSS fragment composed into the generated sidecar.",
+    "src/ui/deckplate/tokens.js": "Build-time Deckplate token CSS composed into the generated sidecar.",
+    "src/ui/orrery/mobileFlightLayouts.js": "Build-time mobile flight CSS fragment composed into styles/hud-flight.generated.css.",
+    "src/ui/views/hudStyles.js": "Build-time HUD CSS source; the runtime links styles/hud-flight.generated.css through hudStylesheet.js.",
+    "src/ui/station/moduleCardMetrics.js": "Wave G11 metric admission plus tests; the P1 sheet replaced its UI consumer. Q4 decides delete or rewire; recorded here so the reachability gate is honest.",
+    "src/ui/ship/partVisuals.js": "P4 socket/mount contract, deliberately data-only until the renderer consumes it; one call site is the next P4 step."
+  },
+  "recordedAt": "2026-09-16"
+}

@@ -1,0 +1,21 @@
+{
+  "master": "59df2a08ed9684e947f79d88e1d41f5c59acbee0",
+  "probe": "probe:smooth-flight:crucible --seed=4242",
+  "gpu": "software/SwiftShader",
+  "launchToFlightSec": 13.1,
+  "hitchCallbacks": "65/342",
+  "gameSpeedPct": 56.9,
+  "worstFrameMs": 783,
+  "p50_p95_p99_ms": [
+    83.3,
+    133.3,
+    183.4
+  ],
+  "microbench": {
+    "entities": 64,
+    "ticks": 120,
+    "transformCount": 7680,
+    "coalesceCount": 0,
+    "writeSequence": 7744
+  }
+}

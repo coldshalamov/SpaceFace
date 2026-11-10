@@ -1,0 +1,310 @@
+// simEventBridge.mjs — stage 2 deep-flat event bridge.
+//
+// Every sim-emitted event projected onto the wire must be structuredClone-safe.
+// The bridge applies a depth-bounded flat projection: cloneable scalars pass
+// through (undefined included — structuredClone preserves it), arrays/objects
+// flatten recursively to depth EVENT_BRIDGE_DEPTH, and live sim objects
+// (entities/rows — a live flag or a pose AND velocity plus a numeric id)
+// collapse to { entityRef: <id> } tokens the main-side read model resolves.
+// Payloads whose live members don't project cleanly (non-plain objects like the
+// cargo singleton's Map-backed store) get explicit per-type adapters; a payload
+// that still can't flatten is dropped — classified 'unintentional' only when
+// nothing explains the rejection (adapter-fallback is always unintentional:
+// the adapter exists and still failed).
+
+import { SHIPBREAKING_YARD_EVENT_BRIDGE_ADAPTERS } from '../../src/features/shipbreakingYard/bridge.js';
+import { SWARM_FORTIFY_EVENT_BRIDGE_ADAPTERS } from '../../src/data/swarmFortifyView.js';
+
+export const EVENT_BRIDGE_DEPTH = 4;
+
+// Presentation-lane types: on the real architecture these drain through main's
+// presentationQueue rather than dispatching synchronously at tick receipt.
+export const PRESENTATION_LANE_TYPES = new Set([
+  'presentation:cue', 'presentation:cueApplied', 'presentation:cueSuppressed',
+  'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
+  'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
+  'camera:shake',
+  'survivalArena:stormWarning', 'survivalArena:stormResolve', 'survivalArena:stormCancel',
+]);
+
+const REJECT = Symbol('sf.bridge.reject');
+
+export function isSimObjectRef(value) {
+  return !!(value && typeof value === 'object'
+    && Number.isFinite(value.id)
+    && ('alive' in value || ('pos' in value && 'vel' in value)));
+}
+
+// A receipt can outlive its entity's numeric slot. Never turn an old-life reference into the
+// slot's new occupant after the reply applies its destroy/spawn journal ahead of its events.
+export function resolveEventEntityRef(value, entities) {
+  if (!value || typeof value !== 'object' || !Number.isFinite(value.entityRef)) return value;
+  const entity = entities && typeof entities.get === 'function' ? entities.get(value.entityRef) : null;
+  if (!entity) return value;
+  if (Number.isSafeInteger(value.occupantGeneration)
+    && entity.occupantGeneration !== value.occupantGeneration) return value;
+  return entity;
+}
+
+function isPlainObject(value) {
+  if (!value || typeof value !== 'object') return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+// Wave plans cross from the sim lane into the main presentation lane. Keep the
+// player-facing objective and the exact hull identities used by the renderer's
+// decode runway, without putting the planner's full schedule/ledger on the wire.
+const waveText = value => typeof value === 'string' ? value.slice(0, 160) : null;
+const waveNumber = value => Number.isFinite(value) ? value : null;
+const waveIdFields = Object.freeze(['enemyId', 'factionId', 'trafficRole']);
+function wavePoint(value) {
+  if (!value || typeof value !== 'object'
+    || !Number.isFinite(value.x) || !Number.isFinite(value.z)
+    || !Number.isFinite(value.radius) || value.radius < 0) return null;
+  return { x: value.x, z: value.z, radius: value.radius };
+}
+function waveRows(value, cap = 256) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, cap).map((row) => {
+    if (!row || typeof row !== 'object') return null;
+    const out = {};
+    for (const key of waveIdFields) {
+      if (typeof row[key] === 'string') out[key] = row[key].slice(0, 160);
+    }
+    for (const key of ['role', 'gateGroup']) {
+      if (typeof row[key] === 'string') out[key] = row[key].slice(0, 80);
+    }
+    for (const key of ['count', 'atTick', 'packageIndex']) {
+      if (Number.isSafeInteger(row[key])) out[key] = row[key];
+    }
+    for (const key of ['champion', 'debut']) {
+      if (typeof row[key] === 'boolean') out[key] = row[key];
+    }
+    return out;
+  }).filter(Boolean);
+}
+
+function projectSurvivalWavePlan(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.plan || !isPlainObject(raw.plan)) return undefined;
+  const plan = raw.plan;
+  const objective = plan.objective && typeof plan.objective === 'object' ? {
+    kind: waveText(plan.objective.kind),
+    population: waveText(plan.objective.population),
+    supplementalPopulation: waveText(plan.objective.supplementalPopulation),
+  } : null;
+  const sourceSwarm = plan.swarm && typeof plan.swarm === 'object' ? plan.swarm : null;
+  let swarm = null;
+  if (sourceSwarm) {
+    const newcomer = sourceSwarm.newcomer && typeof sourceSwarm.newcomer === 'object'
+      ? { enemyId: waveText(sourceSwarm.newcomer.enemyId), name: waveText(sourceSwarm.newcomer.name) }
+      : null;
+    const circuitSource = sourceSwarm.circuit && typeof sourceSwarm.circuit === 'object'
+      ? sourceSwarm.circuit : null;
+    const circuit = circuitSource ? {
+      stage: waveNumber(circuitSource.stage), localRound: waveNumber(circuitSource.localRound),
+      kind: waveText(circuitSource.kind), commanderName: waveText(circuitSource.commanderName),
+      zone: wavePoint(circuitSource.zone), gate: wavePoint(circuitSource.gate),
+    } : null;
+    const actSource = sourceSwarm.act && typeof sourceSwarm.act === 'object' ? sourceSwarm.act : null;
+    swarm = {
+      killTarget: waveNumber(sourceSwarm.killTarget), boss: sourceSwarm.boss === true,
+      bossLabel: waveText(sourceSwarm.bossLabel), bossLine: waveText(sourceSwarm.bossLine),
+      bossScoreId: waveText(sourceSwarm.bossScoreId), newcomer,
+      pressureLine: waveText(sourceSwarm.pressureLine), wallLine: waveText(sourceSwarm.wallLine),
+      act: actSource ? { question: waveText(actSource.question) } : null,
+      circuit,
+      roster: waveRows(sourceSwarm.roster),
+    };
+  }
+  return {
+    wave: Number.isSafeInteger(raw.wave) ? raw.wave : null,
+    tick: Number.isSafeInteger(raw.tick) ? raw.tick : null,
+    plan: {
+      ok: plan.ok !== false,
+      mode: waveText(plan.mode),
+      heaviesOnly: plan.heaviesOnly === true,
+      openingLesson: !!plan.openingLesson,
+      objective,
+      packages: waveRows(plan.packages),
+      schedule: waveRows(plan.schedule),
+      swarm,
+    },
+  };
+}
+
+export function flattenEventPayload(value, depth = 0, hits = null, path = '') {
+  if (value === null || value === undefined) return value;
+  const t = typeof value;
+  if (t === 'number') return Number.isFinite(value) ? value : 0;
+  if (t === 'string' || t === 'boolean' || t === 'bigint') return value;
+  if (isSimObjectRef(value)) return {
+    entityRef: value.id,
+    ...(Number.isSafeInteger(value.occupantGeneration) ? { occupantGeneration: value.occupantGeneration } : {}),
+  };
+  if (t === 'object' && depth >= EVENT_BRIDGE_DEPTH) {
+    if (hits) { hits.depth += 1; hits.path = hits.path || path || '(root)'; }
+    return REJECT;
+  }
+  if (Array.isArray(value)) {
+    const out = new Array(value.length);
+    for (let i = 0; i < value.length; i++) {
+      const flat = flattenEventPayload(value[i], depth + 1, hits, `${path}[${i}]`);
+      if (flat === REJECT) return REJECT;
+      out[i] = flat;
+    }
+    return out;
+  }
+  if (t === 'object') {
+    if (!isPlainObject(value)) {
+      // Vector-like leaf (THREE.Vector2/3/4 and friends): a non-plain object
+      // whose only keys are numeric x/y/z/w — project to plain coords. The
+      // semantic is a point/quat, which is cloneable.
+      const keys = Object.keys(value);
+      const veclike = keys.length >= 2 && keys.length <= 4
+        && keys.every((k) => (k === 'x' || k === 'y' || k === 'z' || k === 'w') && Number.isFinite(value[k]));
+      if (veclike) {
+        const v = {};
+        for (const k of keys) v[k] = value[k];
+        return v;
+      }
+      if (hits) {
+        hits.typed += 1;
+        hits.path = hits.path || path || '(root)';
+        hits.ctor = value.constructor && value.constructor.name || '(anonymous)';
+      }
+      return REJECT;
+    }
+    const out = {};
+    for (const key of Object.keys(value)) {
+      const flat = flattenEventPayload(value[key], depth + 1, hits, path ? `${path}.${key}` : key);
+      if (flat === REJECT) return REJECT;
+      out[key] = flat;
+    }
+    return out;
+  }
+  if (hits) { hits.typed += 1; hits.path = hits.path || path || '(root)'; hits.ctor = `typeof:${t}`; }
+  return REJECT;
+}
+
+// Per-type adapters for payloads that carry non-entity live objects the generic
+// projection cannot flatten. Adapters return the complete wire shape; returning
+// undefined falls back to the generic deep-flat path.
+export const EVENT_BRIDGE_ADAPTERS = {
+  ...SHIPBREAKING_YARD_EVENT_BRIDGE_ADAPTERS,
+  ...SWARM_FORTIFY_EVENT_BRIDGE_ADAPTERS,
+  'run:wavePlanned': projectSurvivalWavePlan,
+  // The full Cinderglass view is a worker-owned mirrored domain. Its nested
+  // contact/actions do not fit the generic event depth; this wakes the panel
+  // after that mirror has been applied without shipping the view twice.
+  'cinderglassJob:view': (p) => p && typeof p === 'object' && typeof p.token === 'string'
+    ? { token: p.token.slice(0, 200), revision: Number.isSafeInteger(p.revision) ? p.revision : 0 }
+    : undefined,
+  // Chain receipts have a small scalar wire contract; do not project live entities.
+  'combat:chainKill': (p) => p && typeof p === 'object' ? {
+    firstId: typeof p.firstId === 'string' ? p.firstId.slice(0, 120) : Number.isSafeInteger(p.firstId) ? p.firstId : null,
+    secondId: typeof p.secondId === 'string' ? p.secondId.slice(0, 120) : Number.isSafeInteger(p.secondId) ? p.secondId : null,
+    cause: typeof p.cause === 'string' ? p.cause.slice(0, 40) : null,
+    at: Number.isFinite(p.at) ? p.at : null, windowS: Number.isFinite(p.windowS) ? p.windowS : null,
+    pos: Number.isFinite(p.pos?.x) && Number.isFinite(p.pos?.z) ? { x: p.pos.x, z: p.pos.z } : null,
+  } : undefined,
+  // The full result, including wreck and replay, travels in the authoritative
+  // survivalResultsPublic snapshot before this wakeup. Deep wreck scars cannot
+  // fit the event bridge's bounded generic projection.
+  'run:resultsReady': (p) => (p && typeof p === 'object' ? {
+    outcome: p.outcome ?? null,
+    stopReason: p.stopReason ?? null,
+    seed: Number.isInteger(p.seed) ? p.seed : null,
+    arenaId: p.arenaId ?? null,
+    wave: Number.isInteger(p.wave) ? p.wave : null,
+    endedAtTick: Number.isInteger(p.endedAt?.tick) ? p.endedAt.tick : null,
+  } : undefined),
+  // entity:spawned carries the live entity — consumers resolve it via the
+  // main-side read model by entityId (the spawn already rode the journal).
+  'entity:spawned': (p) => (p && typeof p === 'object'
+    ? { id: p.id ?? null, type: p.type ?? null, entityId: (p.entity && p.entity.id) ?? null,
+      ...(Number.isSafeInteger(p.entity?.occupantGeneration)
+        ? { occupantGeneration: p.entity.occupantGeneration } : {}) }
+    : undefined),
+  // cargo:changed carries the live cargo singleton (Map-backed; not
+  // deep-flattenable). The volume/mass scalars are what listeners read.
+  'cargo:changed': (p) => (p && typeof p === 'object'
+    ? { usedU: Number.isFinite(p.usedU) ? p.usedU : 0, massT: Number.isFinite(p.massT) ? p.massT : 0 }
+    : undefined),
+  // save:loaded carries the tensionDirector arc snapshot — deeper than
+  // EVENT_BRIDGE_DEPTH. Its only consumer is the tension director inside the
+  // sim realm; the wire keeps the receipt fields (slot/flags/skip receipt).
+  'save:loaded': (p) => {
+    if (!p || typeof p !== 'object') return undefined;
+    const economy = p.restoredEconomy;
+    const sourceItems = economy?.cargoItems;
+    const restoredEconomy = economy && Number.isFinite(economy.credits)
+      && sourceItems && typeof sourceItems === 'object' && !Array.isArray(sourceItems)
+      ? {
+        credits: economy.credits,
+        cargoItems: Object.fromEntries(Object.entries(sourceItems)
+          .filter(([id, quantity]) => typeof id === 'string' && typeof quantity === 'number' && Number.isFinite(quantity))
+          .sort(([a], [b]) => a.localeCompare(b))),
+      }
+      : null;
+    const flat = flattenEventPayload({
+      slot: p.slot ?? null,
+      visualGatePending: p.visualGatePending === true,
+      recovered: p.recovered === true,
+      skippedNewer: p.skippedNewer ?? null,
+      ...(restoredEconomy ? { restoredEconomy } : {}),
+      tensionDirector: null,
+    }, 0);
+    return flat === REJECT ? undefined : flat;
+  },
+  // sector:enter carries the whole sector object (stations/services exceed
+  // depth). Main-side listeners read sectorId plus name/seed for display;
+  // deep sector state still reaches them through the world mirror.
+  'sector:enter': (p) => {
+    if (!p || typeof p !== 'object') return undefined;
+    const s = p.sector;
+    const flat = flattenEventPayload({
+      sectorId: p.sectorId ?? null,
+      sector: s && typeof s === 'object'
+        ? { id: s.id ?? null, name: s.name ?? null, seed: s.seed ?? null }
+        : null,
+      entryPoint: p.entryPoint ?? null,
+      firstVisit: p.firstVisit,
+      continuous: p.continuous,
+      noTeleport: p.noTeleport,
+    }, 0);
+    return flat === REJECT ? undefined : flat;
+  },
+};
+
+/**
+ * Project one emitted event onto the wire.
+ * Returns { flat, lane, dropped, unintentional, reason, hits } — flat is the
+ * cloneable payload (or null when dropped). reason is 'adapter' | 'flat' on
+ * success and 'unflattenable' | 'adapter-fallback' on a drop. unintentional is
+ * true when the payload rejected with no classified cause (or an adapter fell
+ * back) — the stage-2 gate requires unintentional === 0 across a run.
+ */
+export function projectBridgeEvent(type, payload) {
+  const lane = PRESENTATION_LANE_TYPES.has(type) ? 'presentation' : 'sim';
+  const adapter = EVENT_BRIDGE_ADAPTERS[type];
+  if (adapter) {
+    const adapted = adapter(payload);
+    if (adapted !== undefined) return { flat: adapted, lane, dropped: false, unintentional: false, reason: 'adapter', hits: null };
+  }
+  const hits = { depth: 0, typed: 0, path: null, ctor: null };
+  const flat = flattenEventPayload(payload, 0, hits);
+  if (flat === REJECT) {
+    // A drop is unintentional only when nothing explains it: an adapter that
+    // fell through to the generic path, or a rejection with no classified
+    // leaf (defensive — the flattener always stamps a cause on REJECT).
+    const unintentional = !!adapter || (hits.depth === 0 && hits.typed === 0);
+    return {
+      flat: null, lane, dropped: true,
+      unintentional,
+      reason: adapter ? 'adapter-fallback' : 'unflattenable',
+      hits,
+    };
+  }
+  return { flat: flat === undefined ? null : flat, lane, dropped: false, unintentional: false, reason: 'flat', hits };
+}

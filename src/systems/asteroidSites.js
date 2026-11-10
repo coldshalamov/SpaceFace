@@ -1,0 +1,3086 @@
+import { asteroidSiteReadMethods } from './asteroidSiteReadModel.js';
+export { getAsteroidSiteFromState, findAsteroidSiteFromState, projectAsteroidSiteFromState, canInstallAsteroidSiteFromState } from './asteroidSiteReadModel.js';
+import { readOrchardSaveSection } from '../data/anvilOrchard.js';
+import { validateCeresWorkfleetOperation, ceresWorkfleetContactRetained, CERES_WORKFLEET_REQUEST_STREAM, CERES_WORKFLEET_JOB_ID } from './ceresWorkfleet.js';
+import { CERES_WORKFLEET_CONTRACT as CERES_FLEET } from '../data/ceresWorkfleet.js';
+const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
+// Asteroid sites — durable machine-design surface grown inside drilled asteroids.
+// Design: design/ASTEROID_SITES_BRIEF.md. Owns ONLY state.sites (plus the documented
+// tile.structure stamp on live drill fields and site markers under asteroid ent.data).
+//
+// Ownership contract (root AGENTS.md §6):
+//   • Credits: NEVER written here. Courier sale gross funnels through the automation system's
+//     creditPassive() token bucket — the single anti-idle passive-income cap — which itself only
+//     emits economy:grantCredits intents.
+//   • Player cargo: moved only through the canonical cargo writers (addCargo/removeCargo).
+//   • Determinism: state.simTime cadence + drawSeeded(state.sites.meta) streams. No wall clock,
+//     no Math.random. Courier losses are seeded-stochastic (brief §6).
+//
+// Durability model (PQ-145.01): the first machine is the claim. Installing anything stakes the
+// rock — freeze the bore, record the physical anchor, commit the survey — so a sector reroll
+// cannot erase the factory. The Massline Core remains the unique power/command housing, not the
+// persistence gate. Legacy unanchored records (pre-this leaf) still die with their rock.
+//
+// Excavation stays owned by systems/drill.js. This system reads the same field math
+// (generateDrillField + cleared list) to recompute machine contact rings with no live session —
+// the contact ring (brief §1) is sacred: hollowing a neighbor permanently costs that contact.
+import { generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, normalizeClearedTiles, tileIndex, drillSessionTarget, DRILL_CONST, EMPTY_TILE } from './drill.js';
+import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
+import { addCargo, removeCargo } from './cargo.js';
+import {
+  addToShipment,
+  commitShipmentSale,
+  ensureShipment,
+  shipmentQty,
+  shipmentUsed,
+  takeFromShipment,
+} from './cargoCustody.js';
+import {
+  SITE_MACHINES, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE,
+} from '../data/sites.js';
+import {
+  contactProfile, machineCapability, stepContinuousRecipe, stepFabricator, clamp01, round3,
+  RING_OFFSETS,
+} from './siteProduction.js';
+import {
+  stepSiteStructure, normalizeSiteStructure, paintStructuralFalls, paintStructuralFracture,
+} from './siteStructuralModel.js';
+import { stepSiteThermal, THERMAL_BANDS } from './siteThermalModel.js';
+import { buildSiteSignature } from './siteSignatureModel.js';
+import {
+  buildComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, podLossChance, podTravelS,
+  previewStoreReconciliation, wouldOwnComponent, storePressure,
+} from './siteLogistics.js';
+import { SECTORS, dangerIndex } from '../data/sectors.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { asteroidMass } from '../data/sectorPhysical.js';
+import { drawSeeded, hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization, deferredEnterTick } from '../core/sectorEnterDefer.js';
+import { presentationOwnerAdmissionForWorldRecord } from '../core/presentationAdmission.js';
+import { WORLD_SITE_MANIFESTS, worldSiteManifestById } from '../data/worldSiteManifests.js';
+import {
+  createWorldSiteRecord, normalizeWorldSiteRecord, applyWorldSiteOperation,
+  applyWorldSiteFailure, operationForWorldSiteComponent, projectWorldSite, retainCeresWorkfleetPayload,
+} from './worldSiteKernel.js';
+import {
+  syncWorldSiteMaterialization, removeWorldSiteMaterialization, captureWorldSitePayloadState,
+  reconcileWorldSiteResidency, stepExteriorRadiators,
+} from './worldSiteRuntime.js';
+import { normalizeRadiatorFins, radiatorFinIntact, RADIATOR_SHEARED } from './radiatorFins.js';
+import {
+  SURVEY_LIMITS, selectSurveyTarget, surveyRevealFrontier, validateSurveyTarget,
+  normalizeSurveyRecord,
+} from './siteSurvey.js';
+import { getDressingRow, insertDressingRow } from '../world/dressingTable.js';
+import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+import { handleWarmHeatAction, invalidateWarmHeatOffer, reconcileWarmHeatTerminalSource, WARM_HEAT_INTERACTION } from './alienEcology.js';
+import { WARM_FREIGHTER_HOST } from '../data/warmFreighter.js';
+import { handleFoundryProtocolAction, offerFoundryProtocol } from './machineWork.js';
+import {
+  handleMotionFossilAction, tickMotionFossil, interruptMotionFossil, copyMotionFossilState, captureMotionFossilState,
+  MOTION_FOSSIL_SITE,
+} from '../world/motionFossil.js';
+
+const WORLD_SITE_PAYLOAD_CAPTURE_TICKS = 15;
+
+const { COLS, ROWS } = DRILL_CONST;
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+
+function commoditySpoken(id) {
+  const row = COMMODITY_BY_ID.get(id);
+  const name = row && typeof row.name === 'string' ? row.name.trim() : '';
+  if (name) return name;
+  return String(id || 'cargo').replace(/^cmdty_/, '').replaceAll('_', ' ');
+}
+
+/** Player phrase for a would-spill preview: "4u Stellarite Ore and 6u Iron Ore". */
+export function spillGoodsPhrase(spill) {
+  const goods = {};
+  const rows = spill && Array.isArray(spill.spilled) ? spill.spilled : [];
+  for (const row of rows) {
+    const store = row && row.store;
+    if (!store || typeof store !== 'object') continue;
+    for (const id of Object.keys(store)) {
+      const q = Math.max(0, Number(store[id]) || 0);
+      if (q > 0) goods[id] = (goods[id] || 0) + q;
+    }
+  }
+  const parts = Object.keys(goods).sort().map((id) => `${Math.floor(goods[id])}u ${commoditySpoken(id)}`);
+  if (parts.length === 0) {
+    const total = Math.floor(Number(spill && spill.spilledTotal) || 0);
+    return `${total}u of stored goods`;
+  }
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+}
+
+/** The sentence the claim screen reads before a second click confirms the loss. */
+export function spillConfirmWarning(spill, kind) {
+  const phrase = spillGoodsPhrase(spill);
+  if (kind === 'machine') {
+    return `Dismantling this machine would spill ${phrase} — dismantle it again to confirm the loss.`;
+  }
+  return `Clearing this lane would spill ${phrase} — clear it again to confirm the loss.`;
+}
+
+const SITES_SCHEMA_VERSION = 1;
+
+function makeDefaultSites() {
+  return {
+    schemaVersion: SITES_SCHEMA_VERSION,
+    nextSiteNum: 1,
+    order: [],
+    byId: {},
+    worldOrder: [],
+    worldById: {},
+    meta: { rngSeed: 0 },
+  };
+}
+
+// The shared read vocabulary is implemented in asteroidSiteReadModel.js.
+
+const EMPTY_MACHINE_STATUS = Object.freeze({});
+
+function makeLedgerEntry(t, kind, text) {
+  return { t: Math.round((Number(t) || 0) * 10) / 10, kind, text };
+}
+
+/** Display names only. Two of a kind read as "Refinery beside Refinery". */
+function harmonicGroanLine(names) {
+  const a = names && typeof names[0] === 'string' ? names[0] : '';
+  const b = names && typeof names[1] === 'string' ? names[1] : '';
+  if (a && b) return `${a} beside ${b} — the ceiling is groaning.`;
+  return 'The ceiling is groaning.';
+}
+
+function worldSiteFailureActorMatches(actorPolicy, entity, state) {
+  if (!entity || entity.alive === false) return false;
+  if (actorPolicy === 'player-contact') return entity.id === state.playerId;
+  return false;
+}
+
+// Borrowed per-event scratches — _onWorldSiteImpact consumes them before returning.
+const _siteImpactParticipants = [null, null];
+const _siteImpactMatched = { record: null, manifest: null, live: null, trigger: null };
+
+export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) {
+  return {
+    id,
+    createdT: Number(createdT) || 0,
+    sectorId: sectorId || null,
+    fieldId: fieldId || null,
+    anchored: false,
+    asteroidId: asteroidId ?? null,
+    boreSeed: null,           // frozen at first install; until then the live entity id seeds the bore
+    anchor: null,             // { x, z, radius, typeId, yieldU } — physical re-spawn recipe
+    cleared: [],
+    machines: [],
+    productionStep: 0,
+    workbenchRemainderS: 0,
+    nextMachineNum: 1,
+    overlays: { power: [], lane: [] },
+    laneStores: [],           // [{ cells:[idx], store:{goodId:qty} }] — persisted per lane network
+    exportOff: Object.fromEntries(SITE_BALANCE.exportDefaultOff.map((id) => [id, true])),
+    podDestinationId: null,   // null = the auto lane (the sector's first station)
+    exportBuffer: {},
+    fleet: {
+      podsReady: 0,
+      podTarget: SITE_BALANCE.defaultPodTarget,
+      inFlight: [],           // [{ launchT, arriveT, cargo:{goodId:qty}, lost, stationId }]
+      launches: 0, delivered: 0, lost: 0, lastLaunchT: -1e9,
+    },
+    ledger: [],
+    stats: { grossCr: 0, creditedCr: 0, exportedU: 0 },
+  };
+}
+
+/** Copy the live bore's unpaid vein and pool onto the claim, so a respawned rock is the same rock. */
+function copyDrillSessionAccounting(site, data) {
+  if (!site || !data || typeof data !== 'object') return;
+  const raw = Array.isArray(data.drillVeinRemainders) ? data.drillVeinRemainders : null;
+  if (raw) {
+    const next = [];
+    for (const rec of raw) {
+      if (!rec) continue;
+      const idx = Math.trunc(Number(rec.idx));
+      const yieldU = Math.floor(Number(rec.yieldU) || 0);
+      if (!Number.isFinite(idx) || idx < 0 || yieldU <= 0) continue;
+      next.push({ idx, yieldU, ore: rec.ore || null });
+    }
+    site.drillVeinRemainders = next;
+  }
+  if (data.drillDepletion != null && Number.isFinite(Number(data.drillDepletion))) {
+    site.drillDepletion = Math.min(1, Math.max(0, Number(data.drillDepletion)));
+  }
+  if (data.drillYieldMax != null && Number.isFinite(Number(data.drillYieldMax)) && Number(data.drillYieldMax) > 0) {
+    site.drillYieldMax = Math.floor(Number(data.drillYieldMax));
+  }
+  if (data.lastDrillT != null && Number.isFinite(Number(data.lastDrillT))) {
+    site.lastDrillT = Number(data.lastDrillT);
+  }
+  // Layered bore flags and the ordnance rack live on the asteroid record too — and that
+  // record is disposable (a respawned rock is stamped fresh), so the claim keeps copies.
+  for (const key of ['drillVented', 'drillScars', 'drillFaults', 'drillRubble']) {
+    if (Array.isArray(data[key])) site[key] = normalizeClearedTiles(data[key]);
+  }
+  if (data.chargeStock != null && Number.isFinite(Number(data.chargeStock))) {
+    site.chargeStock = Math.max(0, Math.floor(Number(data.chargeStock)));
+  }
+}
+
+function drillAccountingStamp(site) {
+  const stamp = {};
+  if (!site) return stamp;
+  if (Array.isArray(site.drillVeinRemainders)) {
+    stamp.drillVeinRemainders = site.drillVeinRemainders.map((rec) => ({
+      idx: rec.idx,
+      yieldU: rec.yieldU,
+      ore: rec.ore || null,
+    }));
+  }
+  if (site.drillDepletion != null && Number.isFinite(Number(site.drillDepletion))) {
+    stamp.drillDepletion = Math.min(1, Math.max(0, Number(site.drillDepletion)));
+  }
+  if (site.drillYieldMax != null && Number.isFinite(Number(site.drillYieldMax)) && Number(site.drillYieldMax) > 0) {
+    stamp.drillYieldMax = Math.floor(Number(site.drillYieldMax));
+  }
+  if (site.lastDrillT != null && Number.isFinite(Number(site.lastDrillT))) {
+    stamp.lastDrillT = Number(site.lastDrillT);
+  }
+  for (const key of ['drillVented', 'drillScars', 'drillFaults', 'drillRubble']) {
+    const list = normalizeClearedTiles(site[key]);
+    if (list.length) stamp[key] = list;
+  }
+  if (Number.isFinite(Number(site.chargeStock)) && Number(site.chargeStock) > 0) {
+    stamp.chargeStock = Math.floor(Number(site.chargeStock));
+  }
+  return stamp;
+}
+
+// ---------------------------------------------------------------------------
+// SF-273/SF-274 durable-record repair. `state.sites.byId` arrives verbatim from arbitrary saves:
+// the owner below validates custody + machinery fields to a conserved, explicitly-safe state
+// before any system resumes work on them. Every repair fails CLOSED toward the player —
+// goods return to a current owner (buffer/store), a handoff that cannot prove its identity is
+// never re-sold, and an unrecoverable machine phase resolves to the same safe idle the live
+// "abandoned batch" rule already uses. Nothing here mints units, credits, or progress.
+// ---------------------------------------------------------------------------
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function finiteNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Clean a {goodId: qty} map. Fractional stock is legal in buffers/lanes; shipment lots are ints. */
+function normalizeSiteStoreMap(store, { integers = false } = {}) {
+  const out = {};
+  if (!isPlainObject(store)) return out;
+  for (const [goodId, qty] of Object.entries(store)) {
+    if (typeof goodId !== 'string' || !goodId) continue;
+    const n = integers ? Math.floor(Number(qty)) : Number(qty);
+    if (Number.isFinite(n) && n > 0) out[goodId] = n;
+  }
+  return out;
+}
+
+/** Return an unrecoverable pod's goods to the launch buffer — the lot's previous owner. */
+function refundSitePodCargo(site, cargo) {
+  let moved = 0;
+  if (!isPlainObject(site.exportBuffer)) site.exportBuffer = {};
+  for (const [goodId, qty] of Object.entries(isPlainObject(cargo) ? cargo : {})) {
+    const n = Math.floor(Number(qty));
+    if (typeof goodId !== 'string' || !goodId || !(n > 0)) continue;
+    site.exportBuffer[goodId] = (Number(site.exportBuffer[goodId]) || 0) + n;
+    moved += n;
+  }
+  return moved;
+}
+
+/**
+ * Machine records are durable authorship: placement, mode, fractional carry and a committed
+ * fabricator batch all survive a save boundary. Repair drops only records that can never run
+ * again (unknown housing, off-grid or duplicated cell, corrupt id) — they are invisible,
+ * untouchable phantoms otherwise. A `job` whose recipe/progress cannot resume resolves to null:
+ * identical to the deliberate mode-swap outcome, inputs stay consumed, the machine idles safe.
+ */
+function normalizeSiteMachines(site) {
+  const machines = Array.isArray(site.machines) ? site.machines : [];
+  const kept = [];
+  const seenIds = new Set();
+  const seenCells = new Set();
+  let dropped = 0;
+  for (const m of machines) {
+    if (!isPlainObject(m)) { dropped += 1; continue; }
+    const def = SITE_MACHINE_BY_ID.get(m.defId);
+    const id = typeof m.id === 'string' && m.id ? m.id : null;
+    const col = Number(m.col);
+    const row = Number(m.row);
+    const cellOk = Number.isInteger(col) && Number.isInteger(row)
+      && col >= 0 && col < COLS && row >= 0 && row < ROWS;
+    if (!def || !id || seenIds.has(id) || !cellOk || seenCells.has(`${col},${row}`)) {
+      dropped += 1;
+      continue;
+    }
+    seenIds.add(id);
+    seenCells.add(`${col},${row}`);
+    m.col = col;
+    m.row = row;
+    // A mode outside the machine's authored list idles it forever; restore the authored default.
+    if (Array.isArray(def.modes) && !def.modes.includes(m.mode)) m.mode = def.defaultMode || null;
+    const carry = isPlainObject(m.carry) ? m.carry : {};
+    m.carry = {};
+    for (const [key, qty] of Object.entries(carry)) {
+      if (typeof key !== 'string' || !key) continue;
+      const n = Number(qty);
+      // Honest carries are strictly sub-unit accruals; a value at/over a whole unit is
+      // corruption that would mint output next tick — drop it rather than clamp to ~1.
+      if (Number.isFinite(n) && n > 0 && n < 1) m.carry[key] = n;
+    }
+    const job = isPlainObject(m.job) ? m.job : null;
+    m.job = null;
+    if (job && typeof job.recipeId === 'string' && job.recipeId
+      && Number.isFinite(Number(job.progressS)) && Number(job.progressS) >= 0) {
+      m.job = { recipeId: job.recipeId, progressS: Number(job.progressS) };
+      const recipe = SITE_RECIPE_BY_ID.get(job.recipeId);
+      if (recipe && isPlainObject(job.loading)) {
+        m.job.loading = {};
+        for (const [goodId, required] of Object.entries(recipe.inputs)) {
+          const paid = Number(job.loading[goodId]);
+          if (Number.isFinite(paid) && paid > 0) m.job.loading[goodId] = Math.min(required, paid);
+        }
+        m.job.progressS = 0;
+      }
+      if (recipe && !m.job.loading && Number.isFinite(Number(job.outputDelivered))) {
+        const [goodId, qty] = Object.entries(recipe.output)[0];
+        if (goodId !== 'pod') m.job.outputDelivered = Math.max(0, Math.min(qty, Number(job.outputDelivered)));
+      }
+    }
+    kept.push(m);
+  }
+  if (dropped > 0) {
+    console.warn(`[asteroidSites] save repaired: dropped ${dropped} unrecoverable machine record(s) on ${site.id}`);
+  }
+  site.machines = kept;
+  // A corrupt machine counter must never mint an id a surviving machine already owns.
+  let maxNum = 0;
+  for (const m of kept) {
+    const match = /^m(\d+)$/.exec(m.id);
+    if (match) maxNum = Math.max(maxNum, Number(match[1]));
+  }
+  site.nextMachineNum = Math.max(maxNum + 1, Math.trunc(Number(site.nextMachineNum)) || 1, 1);
+}
+
+/**
+ * Custody + fleet repair (SF-273). An in-flight courier pod IS the interrupted handoff:
+ * goods already left the launch buffer and live in `shipment._pod` until one seal converts them
+ * into exactly one receipt. Honest saves satisfy `_pod === Σ pod cargo` exactly; the seal path
+ * itself only launches whole units. Repair enforces that invariant instead of letting residue
+ * sell later or a deficit stall the pod: kept pods own `_pod`; anything unrecoverable refunds
+ * to the buffer; anything whose intent already settled is dropped WITHOUT a refund (the lot was
+ * already paid once — a refund would clone it).
+ */
+function normalizeSiteCustody(site) {
+  site.exportBuffer = normalizeSiteStoreMap(site.exportBuffer);
+  const exportOff = {};
+  for (const [goodId, off] of Object.entries(isPlainObject(site.exportOff) ? site.exportOff : {})) {
+    if (off) exportOff[goodId] = true;
+  }
+  site.exportOff = exportOff;
+  // A pod destination must name a station that exists in the site's CURRENT sector — a stale id
+  // (rerolled chart, moved claim) degrades to the auto lane instead of selling into a ghost.
+  const destSector = SECTOR_BY_ID.get(site.sectorId);
+  const destStations = destSector && Array.isArray(destSector.stations) ? destSector.stations : [];
+  if (!destStations.some((st) => st && st.id === site.podDestinationId)) site.podDestinationId = null;
+
+  const laneStores = [];
+  for (const entry of Array.isArray(site.laneStores) ? site.laneStores : []) {
+    if (!isPlainObject(entry)) continue;
+    const cells = (Array.isArray(entry.cells) ? entry.cells : [])
+      .filter((c) => Number.isInteger(c) && c >= 0 && c < COLS * ROWS);
+    const store = normalizeSiteStoreMap(entry.store);
+    if (!cells.length) {
+      // No surviving cells means reconcile() would silently spill this stock next rebuild;
+      // move it to the port buffer instead so the lot survives.
+      for (const [goodId, qty] of Object.entries(store)) {
+        site.exportBuffer[goodId] = (Number(site.exportBuffer[goodId]) || 0) + qty;
+      }
+      continue;
+    }
+    laneStores.push({ cells, store });
+  }
+  site.laneStores = laneStores;
+
+  const fleet = isPlainObject(site.fleet) ? site.fleet : {};
+  const receipts = isPlainObject(site.saleReceipts) ? site.saleReceipts : {};
+  const inFlight = [];
+  const seenIntents = new Set();
+  let droppedPods = 0;
+  const rawPods = Array.isArray(fleet.inFlight) ? fleet.inFlight : [];
+  for (let i = 0; i < rawPods.length; i += 1) {
+    const pod = rawPods[i];
+    if (!isPlainObject(pod)) { droppedPods += 1; continue; }
+    const cargo = normalizeSiteStoreMap(pod.cargo, { integers: true });
+    const launchT = Number(pod.launchT);
+    const arriveT = Number(pod.arriveT);
+    if (!Number.isFinite(launchT) || !Number.isFinite(arriveT) || !Object.keys(cargo).length) {
+      // The record cannot name when it launched or what it carries — its honest remainder goes
+      // back to the launch buffer, which owns it until a fresh launch commits a new intent.
+      refundSitePodCargo(site, cargo);
+      droppedPods += 1;
+      continue;
+    }
+    const intentId = typeof pod.intentId === 'string' && pod.intentId
+      ? pod.intentId
+      : `site-sale:${site.id}:${launchT}:${i}`;
+    if (seenIntents.has(intentId) || receipts[intentId]) {
+      // This lot already settled (or is a ghost of a kept record). Dropping without refund is
+      // the conservation rule: the same intent must never pay twice.
+      droppedPods += 1;
+      continue;
+    }
+    seenIntents.add(intentId);
+    inFlight.push({
+      launchT,
+      arriveT,
+      cargo,
+      lost: pod.lost === true,
+      stationId: typeof pod.stationId === 'string' && pod.stationId ? pod.stationId : null,
+      stationName: typeof pod.stationName === 'string' && pod.stationName
+        ? pod.stationName
+        : (typeof pod.stationId === 'string' && pod.stationId ? pod.stationId : 'the freight lane'),
+      intentId,
+      worldRecordId: typeof pod.worldRecordId === 'string' && pod.worldRecordId
+        ? pod.worldRecordId
+        : `site:${site.id}:pod:${launchT}:${i}`,
+    });
+  }
+  if (droppedPods > 0) {
+    console.warn(`[asteroidSites] save repaired: retired ${droppedPods} unrecoverable courier record(s) on ${site.id}`);
+  }
+  site.fleet = {
+    podsReady: Math.max(0, Math.trunc(finiteNumber(fleet.podsReady, 0))),
+    podTarget: Number.isFinite(Number(fleet.podTarget))
+      ? Math.max(0, Math.min(SITE_BALANCE.maxPodTarget, Math.trunc(Number(fleet.podTarget))))
+      : SITE_BALANCE.defaultPodTarget,
+    inFlight,
+    launches: Math.max(0, Math.trunc(finiteNumber(fleet.launches, 0))),
+    delivered: Math.max(0, Math.trunc(finiteNumber(fleet.delivered, 0))),
+    lost: Math.max(0, Math.trunc(finiteNumber(fleet.lost, 0))),
+    lastLaunchT: Number.isFinite(Number(fleet.lastLaunchT)) ? Number(fleet.lastLaunchT) : -1e9,
+  };
+
+  // Custody objects are created ONLY when the lot needs a home — stamping empty shipment/
+  // receipt objects onto sites that never launched would break save byte-identity (A10).
+  let podCustody = 0;
+  for (const pod of inFlight) podCustody += storeTotal(pod.cargo);
+  if (isPlainObject(site.shipment) || podCustody > 0) {
+    const shipment = ensureShipment(site);
+    shipment.items = normalizeSiteStoreMap(shipment.items, { integers: true });
+    // The in-flight custody account is exactly the surviving pods' cargo — no more, no less.
+    if (podCustody > 0) shipment.items._pod = podCustody;
+    else delete shipment.items._pod;
+    shipment.deliveryState = shipmentUsed(site) > 0 ? 'loading' : 'delivered';
+  } else if (site.shipment != null) {
+    delete site.shipment;
+  }
+  if (isPlainObject(site.saleReceipts)) {
+    for (const [intentId, entry] of Object.entries(site.saleReceipts)) {
+      if (!isPlainObject(entry)) delete site.saleReceipts[intentId];
+    }
+  } else if (site.saleReceipts != null) {
+    delete site.saleReceipts;
+  }
+  // A persisted half-committed intent is never resumable truth — the receipt ledger is.
+  delete site.pendingSale;
+
+  site.stats = isPlainObject(site.stats) ? site.stats : {};
+  site.stats.grossCr = Math.max(0, finiteNumber(site.stats.grossCr, 0));
+  site.stats.creditedCr = Math.max(0, finiteNumber(site.stats.creditedCr, 0));
+  site.stats.exportedU = Math.max(0, finiteNumber(site.stats.exportedU, 0));
+  site.ledger = (Array.isArray(site.ledger) ? site.ledger : [])
+    .filter((entry) => isPlainObject(entry))
+    .slice(0, SITE_BALANCE.ledgerMax);
+  if (site.returnBaseline != null && !isPlainObject(site.returnBaseline)) delete site.returnBaseline;
+}
+
+export const asteroidSites = {
+  name: 'asteroidSites',
+  // serialize() JSON-clones each site record and normalizes world records into fresh trees;
+  // saveSystem must not clonePlain the whole payload a second time during autosave capture.
+  saveSnapshotOwned: true,
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.ctx = ctx;
+    this._registry = ctx.registry || null;
+    ctx.asteroidSites = this;
+
+    const state = this.state;
+    if (!state.sites) state.sites = makeDefaultSites();
+    this._normalize(state.sites);
+    this._ensureWorldSiteRecords();
+
+    this._accum = 0;
+    this._rt = new Map(); // siteId -> transient runtime caches (field, networks, geo, status)
+    // asteroidId -> VOLATILE claim-survey session (PQ-024). Pre-Core assay knowledge: target
+    // selection + progressive reveal. Never serialized, never written into state.sites — it dies
+    // with the drill session (drill:end), on save restore, and on adoption. The Core commitment
+    // is the ONLY path that turns it into durable truth.
+    this._surveyByAsteroid = new Map();
+    this._worldSyncWanted = true;
+    this._worldRestoreActive = false;
+    this._worldAdmissionBySite = new Map();
+    this._worldPayloadCaptureTicks = new Map();
+    this._worldSectionGenerations = new Map();
+
+    // Subscriptions are idempotent per bus: a second init(ctx) against the SAME bus (a re-boot
+    // path re-entering init) must not double every listener — doubled drill:break handlers would
+    // double-record cleared cells' side effects. A fresh bus (new simulation) wires fresh.
+    if (this._wiredBus === this.bus) return;
+    this._wiredBus = this.bus;
+
+    // Producer sessions carry a captured entity reference and generation. This site's historical
+    // numeric-id fallback is only for untracked generation-less event/session fixtures; it does
+    // not restore an authoritative drill session or authorize drill's rock-persistence writes.
+    // Tracked sessions whose target disappeared or was recycled never take the fallback.
+    const drillTarget = (session) => {
+      const target = drillSessionTarget(state, session);
+      if (target !== undefined) return target;
+      if (!session || Object.hasOwn(session, 'asteroidGeneration')) return null;
+      return state.entities?.get?.(session.asteroidId) || null;
+    };
+
+    // Site evidence uses the existing decision deck and the real world's coordinate
+    // conversion. Keep these operations on the sim side in worker and main modes.
+    this.bus.on('siteEvidence:action', (request = {}) => {
+      const world = this._registry?.get('world');
+      if (request.interactionId === WARM_HEAT_INTERACTION) {
+        const result = !world || this._worldRestoreActive
+          ? { ok: false, reason: 'Standby is unavailable while the world is restoring. Scan again.' }
+          : handleWarmHeatAction(world, request);
+        this.bus.emit('siteEvidence:result', { siteId: request.siteId, interactionId: request.interactionId,
+          requestId: request.requestId, ...result });
+        return;
+      }
+      if (!world || this._worldRestoreActive) return;
+      const result = handleFoundryProtocolAction(world, request) || handleMotionFossilAction(world, request);
+      if (result) this.bus.emit('siteEvidence:result', { siteId: request.siteId, ...result });
+    });
+    for (const event of ['save:restoring', 'game:new', 'game:load', 'sector:exit', 'game:exitToMenu']) {
+      this.bus.on(event, () => invalidateWarmHeatOffer(this.state));
+    }
+    for (const event of ['aftermathWreck:retired', 'aftermathWreck:completed']) {
+      this.bus.on(event, payload => {
+        if (payload?.markerId === WARM_FREIGHTER_HOST.markerId) reconcileWarmHeatTerminalSource(this.state);
+      });
+    }
+    this.bus.on('save:loaded', () => reconcileWarmHeatTerminalSource(this.state));
+    this.bus.on('scan:pulse', () => {
+      const world = this._registry?.get('world');
+      if (!world || this._worldRestoreActive) return;
+      offerFoundryProtocol(world, true);
+      if (this.state.world?.currentSectorId === 'sector_charon_expanse') {
+        handleMotionFossilAction(world, { siteId: MOTION_FOSSIL_SITE, verb: 'observe' });
+      }
+    });
+    this.bus.on('combat:fire', payload => {
+      const world = this._registry?.get('world');
+      if (world) interruptMotionFossil(world, payload);
+    });
+
+    // Stamp machine housings onto the live drill field the moment a session opens, so the rover
+    // is blocked by them and the screen can draw them. tile.structure is the ONE documented write
+    // this system makes into state.drill (co-ownership noted in drill.js).
+    this.bus.on('drill:start', ({ asteroidId }) => {
+      if (state.drill?.asteroidId !== asteroidId || !drillTarget(state.drill)) return;
+      const site = this.siteForAsteroid(asteroidId);
+      if (site) this._stampStructures(site);
+    });
+
+    // Mirror excavation into the durable record: every broken tile is a permanently hollow cell
+    // (and a permanently destroyed contact for any machine beside it — the whole game).
+    this.bus.on('drill:break', ({ col, row }) => {
+      this._accessCache = null;
+      const d = state.drill;
+      const rockEnt = d && drillTarget(d);
+      if (!rockEnt) return;
+      const site = this.siteForAsteroid(d.asteroidId);
+      if (!site) return;
+      const idx = tileIndex(col, row);
+      if (!site.cleared.includes(idx)) site.cleared.push(idx);
+      // Drilling out a fallen slab is the bore again. Leave it cleared; do not
+      // drop a second slab on the next tick (fractured stays true).
+      this._releaseFallenSlab(site, col, row);
+      // Blast scars + friends are recorded on the rock's data mid-session; keep the
+      // claim's mirror current so an abandoned session never strands them on the entity.
+      if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
+      this._markDirty(site.id, { field: true });
+    });
+
+    // A cave-in puts rock back: dropped rubble cells leave the cleared record, fell roof cells
+    // entered it through their own drill:break events. Everything else still mirrors forward.
+    this.bus.on('drill:caveIn', ({ dropped }) => {
+      this._accessCache = null;
+      const d = state.drill;
+      const rockEnt = d && drillTarget(d);
+      if (!rockEnt) return;
+      const site = this.siteForAsteroid(d.asteroidId);
+      if (!site || !Array.isArray(dropped)) return;
+      const idxs = new Set(dropped.map((c) => tileIndex(c.col, c.row)));
+      site.cleared = site.cleared.filter((i) => !idxs.has(i));
+      if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
+      this._markDirty(site.id, { field: true });
+    });
+
+    // A vented seam is still an empty cell in the cleared record — but a gas tap needs the
+    // residue flag mirrored onto the site's field view before it can quote the pocket.
+    this.bus.on('drill:gasVent', () => {
+      this._accessCache = null;
+      const d = state.drill;
+      const rockEnt = d && drillTarget(d);
+      if (!rockEnt) return;
+      const site = this.siteForAsteroid(d.asteroidId);
+      if (!site) return;
+      if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
+      this._markDirty(site.id, { field: true });
+    });
+
+    // Charge events move no tile — but they still write the rock's record: planting spends a
+    // puck off ent.data.chargeStock, and a seismic detonation lands drillFaults without ever
+    // emitting drill:break. Without these mirrors a mid-session save reloads a stale claim
+    // (the spent puck returns on rematerialize, the fracture field is forgotten).
+    const syncChargeMirror = () => {
+      const d = state.drill;
+      const rockEnt = d && drillTarget(d);
+      if (!rockEnt) return;
+      const site = this.siteForAsteroid(d.asteroidId);
+      if (!site) return;
+      if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
+      this._markDirty(site.id, { field: true });
+    };
+    this.bus.on('drill:chargePlanted', syncChargeMirror);
+    this.bus.on('drill:chargeBlast', syncChargeMirror);
+
+    this.bus.on('drill:end', (result) => {
+      const { asteroidId } = result;
+      // The volatile claim survey is session-bound, exactly like the pulse's tile.surveyed marks:
+      // leaving the bore discards uncommitted assay knowledge (the UI warns before the player
+      // commits). Committed records live on the site and are untouched here.
+      this._surveyByAsteroid.delete(asteroidId);
+      const ent = drillTarget(result);
+      if (!ent) return;
+      const site = this.siteForAsteroid(asteroidId);
+      if (!site) return;
+      if (ent && ent.data) {
+        if (Array.isArray(ent.data.drillCleared)) {
+          site.cleared = normalizeClearedTiles(ent.data.drillCleared);
+          this._markDirty(site.id, { field: true });
+        }
+        // A preserved vein is not a cleared cell. The claim has to remember the unpaid yield
+        // and the pool, or the next rock is a fresh seed with a full budget.
+        copyDrillSessionAccounting(site, ent.data);
+      }
+    });
+
+    // PQ-024: an effective Survey pulse (drill.js already gated cooldown — no event, no advance)
+    // progressively reveals the ONE deterministic interior formation while the rock is cold
+    // (no anchored site). Anchored rocks keep vanilla pulse geology; their survey is committed.
+    this.bus.on('drill:scanPulse', () => {
+      const d = state.drill;
+      if (!d || !d.active || !d.field || d.asteroidId == null) return;
+      if (!drillTarget(d)) return;
+      const site = this.siteForAsteroid(d.asteroidId);
+      if (site && site.anchored) return;
+      this._advanceClaimSurvey(d);
+    });
+
+    // Anchored sites re-materialize their rock on every sector visit (self-healing in _repairTick,
+    // this listener just makes it prompt). Unanchored sites die with their re-rolled rock.
+    this.bus.on('sector:enter', (p = {}) => {
+      const { sectorId, enterEpoch } = p;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — syncing
+      // its sites mints home-keyed bodies nothing removes. Synthetic payloads (tests, the
+      // census cook) carry no epoch and always run.
+      const staleEnter = enterEpoch != null && !!state.world
+        && state.world.enterSerial != null && enterEpoch !== state.world.enterSerial;
+      // Arm the sweep after the guard — a stale payload must not mutate live state at all.
+      if (!staleEnter) this._repairSweepWanted = true;
+      // Live GPU + flight + hard enter: defer the materialization pair into the cook's
+      // FIFO (the provider's steps twin covers both sync + repair) — the census drains
+      // them under its slice clock in listener order.
+      if (!this._worldRestoreActive && !staleEnter
+          && deferSectorEnterMaterialization(state, p, this._enterCookProvider)) return;
+      // Save restore clears the old entities, enters the saved sector, and only then calls this
+      // owner's deserialize. Never rematerialize the pre-load record in that ordering window.
+      if (!this._worldRestoreActive && !staleEnter) this._syncWorldSites(sectorId);
+      // The 1s accumulator deferral exists to amortize per-frame cost, but an anchored rock
+      // that died since the last visit belongs inside the enter census window — the respawn
+      // is idempotent, so the accumulator's later pass is a no-op rescan. A stale payload
+      // pays nothing: its sweep would only re-scan the live sector and emit inside the
+      // presented frame.
+      if (!this._worldRestoreActive && !staleEnter) this._repairAnchors();
+    });
+    this.bus.on('sector:exit', ({ sectorId } = {}) => {
+      // SF-294: snapshot each anchored claim's consequence counters as the player leaves — the
+      // return line on rematerialize diffs against this so it reports what actually changed
+      // while they were away, never a standing inventory restated as news.
+      for (const siteId of (state.sites && state.sites.order) || []) {
+        const site = state.sites.byId[siteId];
+        if (site && site.anchored && site.sectorId === sectorId) this._snapshotReturnBaseline(site);
+      }
+      this._unmaterializeWorldSector(sectorId);
+    });
+    this.bus.on('save:restoring', () => {
+      this._captureWorldSitePayloads(null, { force: true });
+      this._worldRestoreActive = true;
+      this._worldSyncWanted = true;
+      this._worldAdmissionBySite.clear();
+      this._worldPayloadCaptureTicks.clear();
+      this._worldSectionGenerations.clear();
+      this._surveyByAsteroid.clear(); // volatile assay knowledge never crosses a load
+    });
+    this.bus.on('save:loaded', () => {
+      this._worldRestoreActive = false;
+      this._worldAdmissionBySite.clear();
+      this._worldPayloadCaptureTicks.clear();
+      this._worldSectionGenerations.clear();
+      this._rt.clear();
+      this._repairSweepWanted = true;
+      this._worldSyncWanted = true;
+      this._syncWorldSites();
+    });
+    this.bus.on('save:error', () => { this._worldRestoreActive = false; });
+    this.bus.on('physics:impact', (payload = {}) => this._onWorldSiteImpact(payload));
+
+    // Census mount (vesper pattern): register a cook provider so anchored-site rows
+    // materialize inside the renderer's deterministic sector census (jump + opening)
+    // instead of relying on this listener's emit position. syncWorldSiteMaterialization
+    // dedupes by world record, so the emit listener's own call later in the slice is a
+    // no-op — the provider is ordering insurance, not a second spawn path.
+    if (this.ctx && this.ctx.helpers) {
+      this._enterCookProvider = (sector) => this._enterCookSteps(sector);
+      (this.ctx.helpers.sectorCookProviders
+        || (this.ctx.helpers.sectorCookProviders = []))
+        // Chunked cook provider: the census drives the steps across its slice clock; the
+        // emit listener drains the same steps synchronously.
+        .push(this._enterCookProvider);
+    }
+    this.bus.on('combat:damage', (payload = {}) => {
+      this._captureRadiatorDamage(this.state.entities.get(payload.targetId));
+    });
+    this.bus.on('entity:killed', (payload = {}) => {
+      this._captureRadiatorDamage(this.state.entities.get(payload.id), true);
+      this._onWorldSiteSectionKilled(payload);
+    });
+    this.bus.on('entity:destroyed', (payload = {}) => {
+      if (payload.entity?.hull <= 0) this._onWorldSiteSectionKilled(payload);
+    });
+  },
+
+  newGame() {
+    this.state.sites = makeDefaultSites();
+    this._ensureWorldSiteRecords();
+    this._rt = new Map();
+    this._surveyByAsteroid = new Map();
+    this._accum = 0;
+    this._worldSyncWanted = true;
+    this._worldRestoreActive = false;
+    this._worldAdmissionBySite = new Map();
+    this._worldPayloadCaptureTicks = new Map();
+    this._worldSectionGenerations = new Map();
+  },
+
+  serialize() {
+    this._captureWorldSitePayloads(null, { force: true });
+    const src = this.state.sites || makeDefaultSites();
+    const byId = {};
+    const order = [];
+    for (const id of src.order) {
+      const site = src.byId[id];
+      // Unanchored sites are physically tied to a transient rock: they survive in-session saves
+      // only if their entity does, and entity links can't be trusted across arbitrary loads.
+      // First-machine claims are anchored; ship those. Legacy pre-claim work still dies with the rock.
+      if (!site || !site.anchored) continue;
+      // The save boundary is a witnessed moment: everything already accrued was last seen
+      // now, so a post-load return line must not re-report it (SF-294).
+      this._snapshotReturnBaseline(site);
+      byId[id] = JSON.parse(JSON.stringify(site));
+      order.push(id);
+    }
+    const worldById = {};
+    const worldOrder = [];
+    for (const id of src.worldOrder || []) {
+      const manifest = worldSiteManifestById(id);
+      const record = src.worldById && src.worldById[id];
+      if (!manifest || !record || worldById[id]) continue;
+      worldById[id] = normalizeWorldSiteRecord(manifest, record);
+      worldOrder.push(id);
+    }
+    return {
+      schemaVersion: SITES_SCHEMA_VERSION,
+      nextSiteNum: src.nextSiteNum,
+      order,
+      byId,
+      worldOrder,
+      worldById,
+      ...(src.motionFossil ? { motionFossil: copyMotionFossilState(captureMotionFossilState(this.state)) } : {}),
+      anvilOrchard: readOrchardSaveSection(src),
+      meta: { rngSeed: src.meta && src.meta.rngSeed || 0 },
+    };
+  },
+
+  deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each site clone and each manifest normalize is record-atomic, so yields sit
+  // only at record and section boundaries — order and RNG consumption stay identical.
+  *deserializeChunked(data) {
+    const next = makeDefaultSites();
+    next.anvilOrchard = readOrchardSaveSection(data);
+    const fossil = copyMotionFossilState(data?.motionFossil);
+    // Fauna are rematerialized by ecology after load. Re-run a controlled observation
+    // rather than compare a pre-load baseline against newly materialized bodies.
+    if (fossil?.status === 'observing') { fossil.status = 'interrupted'; fossil.observedFor = 0; }
+    if (fossil) next.motionFossil = fossil;
+    if (data && typeof data === 'object') {
+      next.nextSiteNum = Math.max(1, Math.trunc(Number(data.nextSiteNum) || 1));
+      if (data.meta && Number.isFinite(data.meta.rngSeed)) next.meta.rngSeed = data.meta.rngSeed >>> 0;
+      const order = Array.isArray(data.order) ? data.order : Object.keys(data.byId || {}).sort();
+      for (const id of order) {
+        const site = data.byId && data.byId[id];
+        if (!site || typeof site !== 'object' || next.byId[id]) continue;
+        next.byId[id] = JSON.parse(JSON.stringify(site));
+        next.order.push(id);
+        yield 'sites-record';
+      }
+      for (const manifest of WORLD_SITE_MANIFESTS) {
+        const prior = data.worldById && data.worldById[manifest.id];
+        next.worldById[manifest.id] = normalizeWorldSiteRecord(manifest, prior);
+        next.worldOrder.push(manifest.id);
+        yield 'sites-world-record';
+      }
+    }
+    this.state.sites = next;
+    yield 'sites-assigned';
+    this._normalize(next);
+    this._ensureWorldSiteRecords();
+    this._rt = new Map();
+    this._surveyByAsteroid = new Map();
+    this._repairSweepWanted = true;
+    this._worldSyncWanted = true;
+    this._worldAdmissionBySite = new Map();
+    this._worldPayloadCaptureTicks = new Map();
+    this._worldSectionGenerations = new Map();
+  },
+
+  _normalize(sites) {
+    if (!sites.byId) sites.byId = {};
+    if (!Array.isArray(sites.order)) sites.order = Object.keys(sites.byId).sort();
+    if (!sites.meta) sites.meta = { rngSeed: 0 };
+    if (!sites.worldById || typeof sites.worldById !== 'object' || Array.isArray(sites.worldById)) sites.worldById = {};
+    if (!Array.isArray(sites.worldOrder)) sites.worldOrder = [];
+    let maxSiteNum = 0;
+    for (const id of sites.order) {
+      const site = sites.byId[id];
+      if (!site) continue;
+      // The map key is the durable identity; a record claiming a different id could detach
+      // itself from its own lookups (or worse, shadow a sibling claim).
+      site.id = id;
+      const siteNumMatch = /^site_(\d+)$/.exec(id);
+      if (siteNumMatch) maxSiteNum = Math.max(maxSiteNum, Number(siteNumMatch[1]));
+      site.cleared = normalizeClearedTiles(site.cleared);
+      if (site.drillVeinRemainders != null && !Array.isArray(site.drillVeinRemainders)) {
+        site.drillVeinRemainders = [];
+      }
+      copyDrillSessionAccounting(site, site);
+      if (!site.overlays) site.overlays = { power: [], lane: [] };
+      site.overlays.power = normalizeClearedTiles(site.overlays.power);
+      site.overlays.lane = normalizeClearedTiles(site.overlays.lane);
+      if (!Array.isArray(site.machines)) site.machines = [];
+      site.productionStep = Math.max(0, Math.trunc(finiteNumber(site.productionStep))) % 1_000_000_000;
+      site.workbenchRemainderS = Math.max(0, Math.min(SITE_BALANCE.tickS, finiteNumber(site.workbenchRemainderS)));
+      if (!Array.isArray(site.laneStores)) site.laneStores = [];
+      if (!site.exportOff) site.exportOff = {};
+      if (!site.exportBuffer) site.exportBuffer = {};
+      if (!site.fleet) site.fleet = makeSiteRecord({}).fleet;
+      if (!Array.isArray(site.fleet.inFlight)) site.fleet.inFlight = [];
+      if (!Array.isArray(site.ledger)) site.ledger = [];
+      if (site.structure != null) {
+        const structure = normalizeSiteStructure(site.structure, COLS, ROWS);
+        if (structure) site.structure = structure;
+        else delete site.structure;
+      }
+      if (site.radiatorFins != null) site.radiatorFins = normalizeRadiatorFins(site.radiatorFins);
+      if (!site.stats) site.stats = { grossCr: 0, creditedCr: 0, exportedU: 0 };
+      // PQ-024: the durable survey record rides the EXISTING anchored-site save path. Harden it
+      // here (malformed formation drops the record; an unprovable producing demotes to committed)
+      // so a corrupt save fails closed to a playable path instead of inventing terminal truth.
+      if (site.survey != null) site.survey = normalizeSurveyRecord(site.survey, COLS, ROWS);
+      for (const m of site.machines) {
+        if (!isPlainObject(m)) continue; // unrecoverable entries are dropped by the deep repair below
+        if (!m.carry) m.carry = {};
+        if (m.job === undefined) m.job = null;
+      }
+      // SF-273/SF-274: deep repair of the durable machinery + custody fields. Runs after the
+      // shape guards above so each pass sees real objects; both are fixed points on honest data.
+      normalizeSiteMachines(site);
+      normalizeSiteCustody(site);
+      // A save taken inside a sealed bore may still list the mouth as open.
+      // Continue has to put that cell back in the rock before the field is rebuilt.
+      applySealedDeadDropCap(site, null);
+    }
+    // A corrupt site counter must never mint an id a surviving claim already owns.
+    sites.nextSiteNum = Math.max(maxSiteNum + 1, Math.trunc(Number(sites.nextSiteNum)) || 1, 1);
+  },
+
+  _ensureWorldSiteRecords() {
+    const sites = this.state.sites;
+    if (!sites.worldById || typeof sites.worldById !== 'object' || Array.isArray(sites.worldById)) sites.worldById = {};
+    const nextOrder = [];
+    const nextById = {};
+    for (const manifest of WORLD_SITE_MANIFESTS) {
+      const prior = sites.worldById[manifest.id];
+      nextById[manifest.id] = prior
+        ? normalizeWorldSiteRecord(manifest, prior)
+        : createWorldSiteRecord(manifest, { tick: this.state.tick });
+      nextOrder.push(manifest.id);
+    }
+    sites.worldOrder = nextOrder;
+    sites.worldById = nextById;
+  },
+
+  _syncWorldSites(sectorId = null) {
+    for (const _ of this._syncWorldSitesSteps(sectorId)) { /* sync lane: inline */ }
+  },
+
+  *_syncWorldSitesSteps(sectorId = null) {
+    const currentSectorId = sectorId || (this.state.world && this.state.world.currentSectorId) || null;
+    if (!currentSectorId) return;
+    this._captureWorldSitePayloads(currentSectorId);
+    this._worldSyncWanted = false;
+    const sites = this.state.sites;
+    for (const siteId of sites.worldOrder || []) {
+      const manifest = worldSiteManifestById(siteId);
+      const record = sites.worldById && sites.worldById[siteId];
+      if (!manifest || !record || record.sectorId !== currentSectorId) continue;
+      const result = syncWorldSiteMaterialization({
+        state: this.state, helpers: this.ctx && this.ctx.helpers, manifest, record,
+      });
+      this._worldAdmissionBySite.set(siteId, result.admissionState);
+      for (const payload of manifest.payloads) {
+        if (payload.structural) this._worldAdmissionBySite.set(payload.worldObjectId,
+          presentationOwnerAdmissionForWorldRecord(payload.worldObjectId, this.state));
+      }
+      for (const entity of result.entities) {
+        if (entity.data?.worldSiteStructural) this._worldSectionGenerations.set(entity.data.worldRecordId, entity);
+      }
+      yield;
+    }
+  },
+
+  _unmaterializeWorldSector(sectorId) {
+    const sites = this.state.sites;
+    if (!sites) return;
+    this._captureWorldSitePayloads(sectorId, { force: true });
+    for (const siteId of sites.worldOrder || []) {
+      const record = sites.worldById && sites.worldById[siteId];
+      if (!record || record.sectorId !== sectorId) continue;
+      removeWorldSiteMaterialization({ state: this.state, helpers: this.ctx && this.ctx.helpers, siteId, sectorId });
+      this._worldAdmissionBySite.delete(siteId);
+    }
+  },
+
+  _pollWorldSiteAdmission() {
+    if (this._worldRestoreActive) return;
+    const currentSectorId = this.state.world && this.state.world.currentSectorId;
+    const sites = this.state.sites;
+    if (!currentSectorId || !sites || !sites.worldById) return;
+    for (const siteId of sites.worldOrder || []) {
+      const record = sites.worldById[siteId];
+      if (!record || record.sectorId !== currentSectorId) continue;
+      const admission = presentationOwnerAdmissionForWorldRecord(`${record.worldObjectId}/root`, this.state);
+      if (this._worldAdmissionBySite.get(siteId) !== admission) {
+        this._syncWorldSites(currentSectorId);
+        return;
+      }
+      const manifest = worldSiteManifestById(record.manifestId);
+      for (const payload of manifest?.payloads || []) {
+        if (!payload.structural) continue;
+        const ownAdmission = presentationOwnerAdmissionForWorldRecord(payload.worldObjectId, this.state);
+        if (this._worldAdmissionBySite.get(payload.worldObjectId) !== ownAdmission) {
+          this._syncWorldSites(currentSectorId);
+          return;
+        }
+      }
+    }
+  },
+
+  getWorldSite(siteId) {
+    return this.state.sites && this.state.sites.worldById && this.state.sites.worldById[siteId] || null;
+  },
+
+  worldSiteProjection(siteId) {
+    const record = this.getWorldSite(siteId);
+    const manifest = record && worldSiteManifestById(record.manifestId);
+    return record && manifest ? projectWorldSite(manifest, record) : null;
+  },
+
+  worldSiteTrafficHooks(sectorId) {
+    const sites = this.state.sites;
+    if (!sites || !sites.worldById) return Object.freeze([]);
+    const hooks = [];
+    for (const siteId of [...(sites.worldOrder || [])].sort()) {
+      const record = sites.worldById[siteId];
+      const manifest = record && worldSiteManifestById(record.manifestId);
+      if (!manifest || record.sectorId !== sectorId || !manifest.trafficHook) continue;
+      hooks.push(projectWorldSite(manifest, record).traffic);
+    }
+    return Object.freeze(hooks);
+  },
+
+  _captureWorldSitePayloads(sectorId = null, { force = false } = {}) {
+    const sites = this.state.sites;
+    if (!sites || !sites.worldById) return;
+    const tick = Math.max(0, Math.trunc(Number(deferredEnterTick(this.state)) || 0));
+    const captureTicks = this._worldPayloadCaptureTicks || (this._worldPayloadCaptureTicks = new Map());
+    for (const siteId of sites.worldOrder || []) {
+      const manifest = worldSiteManifestById(siteId);
+      const record = sites.worldById[siteId];
+      if (!manifest || !record || sectorId && record.sectorId !== sectorId) continue;
+      const lastTick = captureTicks.get(siteId);
+      if (!force && lastTick != null && tick >= lastTick
+        && tick - lastTick < WORLD_SITE_PAYLOAD_CAPTURE_TICKS) continue;
+      const captured = captureWorldSitePayloadState({
+        state: this.state,
+        manifest,
+        record,
+        tick,
+        force,
+      });
+      captureTicks.set(siteId, tick);
+      if (captured.changed) sites.worldById[siteId] = captured.record;
+    }
+  },
+
+  _worldSiteDeliveryEvidence(manifest, operation) {
+    if (!operation.receiverId || !operation.payloadId) return null;
+    const payloadDef = manifest.payloads.find((payload) => payload.id === operation.payloadId);
+    const receiverDef = manifest.receivers.find((receiver) => receiver.id === operation.receiverId);
+    if (!payloadDef || !receiverDef) return null;
+    // Called every beam tick — two worldRecordId lookups, not an O(entities) walk. When the
+    // byWorldRecordId index holds both holders, re-verify the site stamps on the hits and
+    // accept the indexed entity; transient duplicate holders (respawn repair windows) resolve
+    // to the index's holder, per the helper's documented contract. An unready index or a
+    // verification miss falls through to the old walk, which keeps the uniqueness guard.
+    const receiverWorldRecordId = `${manifest.worldObjectId}/component/${receiverDef.componentId}`;
+    const index = this.state.entityIndex;
+    const byWorldRecord = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+    // The map holds the FIRST carrier — provably the only candidate only when the
+    // count is exactly one; a multi-carrier id falls back to the walk so a later
+    // carrier satisfying the compound predicate is not missed.
+    const wrCounts = index && index.byWorldRecordIdCount instanceof Map
+      ? index.byWorldRecordIdCount : null;
+    let payloadEntity = null;
+    let receiverEntity = null;
+    if (byWorldRecord && wrCounts
+      && wrCounts.get(payloadDef.worldObjectId) === 1
+      && wrCounts.get(receiverWorldRecordId) === 1) {
+      const payloadHit = indexedWorldRecordEntity(this.state, payloadDef.worldObjectId);
+      const receiverHit = indexedWorldRecordEntity(this.state, receiverWorldRecordId);
+      if (payloadHit && payloadHit.data && payloadHit.data.worldSiteId === manifest.id
+        && payloadHit.data.worldSitePayloadId === payloadDef.id) payloadEntity = payloadHit;
+      if (receiverHit && receiverHit.data && receiverHit.data.worldSiteId === manifest.id
+        && receiverHit.data.worldSiteComponentId === receiverDef.componentId) receiverEntity = receiverHit;
+      if (!payloadEntity || !receiverEntity) return null;
+      return {
+        payloadId: payloadDef.id,
+        payloadWorldObjectId: payloadDef.worldObjectId,
+        receiverId: receiverDef.id,
+        payloadPos: { x: payloadEntity.pos.x, z: payloadEntity.pos.z },
+        receiverPos: { x: receiverEntity.pos.x, z: receiverEntity.pos.z },
+      };
+    }
+    const payloadEntities = [];
+    const receiverEntities = [];
+    const idx = this.state.entityIndex;
+    const siteBucket = idx && idx.ready === true && idx.byWorldSiteId instanceof Map
+      && idx._indexedIds && idx._indexedIds.size === this.state.entities.size
+      ? idx.byWorldSiteId.get(manifest.id) : null;
+    const candidates = siteBucket || this.state.entities.values();
+    for (const entity of candidates) {
+      if (!entity || entity.alive === false || !entity.data || entity.data.worldSiteId !== manifest.id) continue;
+      if (entity.data.worldRecordId === payloadDef.worldObjectId
+        && entity.data.worldSitePayloadId === payloadDef.id) payloadEntities.push(entity);
+      if (entity.data.worldSiteComponentId === receiverDef.componentId
+        && entity.data.worldRecordId === receiverWorldRecordId) receiverEntities.push(entity);
+    }
+    if (payloadEntities.length !== 1 || receiverEntities.length !== 1) return null;
+    payloadEntity = payloadEntities[0];
+    receiverEntity = receiverEntities[0];
+    return {
+      payloadId: payloadDef.id,
+      payloadWorldObjectId: payloadDef.worldObjectId,
+      receiverId: receiverDef.id,
+      payloadPos: { x: payloadEntity.pos.x, z: payloadEntity.pos.z },
+      receiverPos: { x: receiverEntity.pos.x, z: receiverEntity.pos.z },
+    };
+  },
+
+  applyWorldSiteBeamOperation({ siteId, componentId, verb, amount, requestStreamId, requestSequence, tick, ceresAuthority } = {}) {
+    if(requestStreamId===CERES_WORKFLEET_REQUEST_STREAM&&ceresAuthority!==CERES_NPC_AUTHORITY)return {ok:false,reason:'npc-authority-required',moved:0};
+    this._captureWorldSitePayloads();
+    const record = this.getWorldSite(siteId);
+    const manifest = record && worldSiteManifestById(record.manifestId);
+    if (!record || !manifest) return { ok: false, duplicate: false, reason: 'site-missing', moved: 0, intents: [] };
+    const operation = operationForWorldSiteComponent(manifest, record, componentId, verb)
+      || manifest.operations.find((candidate) => candidate.componentId === componentId
+        && (!verb || candidate.verb === verb)
+        && record.completedOperations && record.completedOperations[candidate.id]);
+    if (!operation) return { ok: false, duplicate: false, reason: 'operation-unavailable', moved: 0, intents: [] };
+    const result = applyWorldSiteOperation(manifest, record, {
+      operationId: operation.id,
+      amount,
+      requestStreamId,
+      requestSequence,
+      tick: tick == null ? this.state.tick : tick,
+      earnedAtS: Number.isFinite(this.state.simTime)
+        ? this.state.simTime
+        : Math.max(0, Number(tick == null ? this.state.tick : tick) || 0) / 60,
+      delivery: this._worldSiteDeliveryEvidence(manifest, operation),
+    });
+    if (!result.ok || result.duplicate) {
+      return { ...result, moved: result.receipt && result.receipt.amountApplied || 0, operationId: operation.id };
+    }
+    this.state.sites.worldById[siteId] = result.record;
+    for (const intent of result.intents) this.bus.emit(intent.type, intent.payload);
+    this.bus.emit('worldSite:operationReceipt', {
+      siteId,
+      componentId,
+      operationId: operation.id,
+      receipt: result.receipt,
+      stageId: result.record.stageId,
+    });
+    if (result.materializationChanged
+      && this.state.world && this.state.world.currentSectorId === result.record.sectorId) this._syncWorldSites(result.record.sectorId);
+    return { ...result, moved: result.receipt && result.receipt.amountApplied || 0, operationId: operation.id };
+  },
+
+  applyCeresWorkfleetOperation(request={}) {
+    if(!validateCeresWorkfleetOperation(this.state,request)||request.requestSequence!==this.state.tick
+      ||!(request.amount>0&&request.amount<=1.8))return {ok:false,reason:'physical-cutter-not-ready'};
+    const operation=worldSiteManifestById(CERES_FLEET.siteId).operations.find(o=>o.id===request.operationId);
+    return this.applyWorldSiteBeamOperation({siteId:CERES_FLEET.siteId,componentId:operation.componentId,verb:operation.verb,
+      amount:request.amount,requestStreamId:CERES_WORKFLEET_REQUEST_STREAM,requestSequence:request.requestSequence,
+      ceresAuthority:CERES_NPC_AUTHORITY});
+  },
+
+  retainCeresWorkfleetSection(request={}) {
+    const state=this.state,job=state.npcJobs?.ceresWorkfleet,section=state.entities.get(request.sectionId),cradle=state.entities.get(request.cradleId);
+    if(!job||job.id!==CERES_WORKFLEET_JOB_ID||request.jobId!==job.id||job.phase!=='pads'
+      ||cradle?.data?.worldRecordId!==CERES_FLEET.identities.cradle
+      ||!ceresWorkfleetContactRetained(cradle,section,state,'cradle'))return {ok:false,reason:'receiver-not-physically-retained'};
+    const line=this._registry?.get('combat')?.kernel?.attachments?.get(job.receiverId);
+    const worker=state.entities.get(request.workerId);
+    if(line?.state!=='active'||line.ownerId!==cradle.id||line.targetId!==section.id
+      ||worker?.data?.worldRecordId!==CERES_FLEET.identities.worker
+      ||Math.hypot(worker.pos.x-cradle.pos.x,worker.pos.z-cradle.pos.z)<200)return {ok:false,reason:'receiver-coupling-invalid'};
+    this._captureWorldSitePayloads(CERES_FLEET.sectorId,{force:true});
+    const record=this.getWorldSite(CERES_FLEET.siteId),manifest=worldSiteManifestById(CERES_FLEET.siteId);
+    const result=retainCeresWorkfleetPayload(manifest,record,{receiverWorldRecordId:CERES_FLEET.identities.cradle,
+      payloadWorldObjectId:section.data.worldRecordId,tick:state.tick,motion:{pos:{x:section.pos.x,z:section.pos.z},
+        vel:{x:section.vel.x,z:section.vel.z},rot:section.rot,angVel:section.angVel}});
+    if(result.ok)this.state.sites.worldById[CERES_FLEET.siteId]=result.record;
+    return result;
+  },
+
+  releaseCeresWorkfleetRetention(jobId) {
+    const job=this.state.npcJobs?.ceresWorkfleet,record=this.getWorldSite(CERES_FLEET.siteId);
+    if(jobId!==CERES_WORKFLEET_JOB_ID||job?.id!==jobId||job.phase!=='player-retained'||!record?.payloads?.long_plate?.retained)return false;
+    const next={...record,payloads:{...record.payloads,long_plate:{...record.payloads.long_plate}}};
+    delete next.payloads.long_plate.retained;next.revision++;this.state.sites.worldById[CERES_FLEET.siteId]=next;return true;
+  },
+
+  _onWorldSiteSectionKilled({ id, entity: retiredEntity = null } = {}) {
+    if (this._worldRestoreActive) return;
+    const entity = retiredEntity || this.state.entities?.get(id);
+    const data = entity?.data;
+    if (!data?.worldSiteStructural || this._worldSectionGenerations.get(data.worldRecordId) !== entity) return;
+    if (entity.alive !== false && !(entity.hull <= 0)) return;
+    const record = this.getWorldSite(data.worldSiteId);
+    const manifest = record && worldSiteManifestById(record.manifestId);
+    const payload = manifest?.payloads.find((entry) => entry.structural
+      && entry.id === data.worldSitePayloadId && entry.worldObjectId === data.worldRecordId);
+    const durable = payload && record.payloads[payload.id];
+    if (!durable || durable.destroyed) return;
+    // Commit before entity cleanup removes the only physical witness. The cadence capture is
+    // insufficient here: combat may kill and remove a body between its 15-tick snapshots.
+    this.state.sites.worldById[record.manifestId] = {
+      ...record, revision: record.revision + 1, updatedTick: Math.max(record.updatedTick, this.state.tick || 0),
+      payloads: { ...record.payloads, [payload.id]: { ...durable, destroyed: true, remainingHull: 0 } },
+    };
+    this._worldSyncWanted = true;
+  },
+
+  _onWorldSiteImpact(payload = {}) {
+    const participants = _siteImpactParticipants;
+    participants[0] = this.state.entities && this.state.entities.get(payload.aId);
+    participants[1] = this.state.entities && this.state.entities.get(payload.bId);
+    let matched = null;
+    for (let index = 0; index < participants.length && !matched; index += 1) {
+      const componentEntity = participants[index];
+      const impactComponentId = componentEntity?.data?.worldSiteComponentId
+        || componentEntity?.data?.worldSiteImpactComponentId;
+      if (!componentEntity || componentEntity.alive === false
+        || !componentEntity.data?.worldSiteId || !impactComponentId) continue;
+      const data = componentEntity.data;
+      const record = this.getWorldSite(data.worldSiteId);
+      const manifest = record && worldSiteManifestById(record.manifestId);
+      const live = record && record.components && record.components[impactComponentId];
+      const otherEntity = participants[index === 0 ? 1 : 0];
+      if (!manifest || !live) continue;
+      const triggers = manifest.failureTriggers || [];
+      let trigger = null;
+      for (const candidate of triggers) {
+        if (candidate.event === 'physics:impact'
+          && candidate.componentId === impactComponentId
+          && candidate.from.includes(live.status)
+          && Number(payload.dp) >= candidate.minDp
+          && worldSiteFailureActorMatches(candidate.actorPolicy, otherEntity, this.state)) {
+          trigger = candidate;
+          break;
+        }
+      }
+      if (trigger) {
+        matched = _siteImpactMatched;
+        matched.record = record;
+        matched.manifest = manifest;
+        matched.live = live;
+        matched.trigger = trigger;
+      }
+    }
+    if (!matched) return null;
+    const { record, manifest, live, trigger } = matched;
+    const result = applyWorldSiteFailure(manifest, record, {
+      componentId: trigger.componentId,
+      failureId: trigger.id,
+      expectedCycle: live.cycle,
+      tick: payload.tick == null ? this.state.tick : payload.tick,
+    });
+    if (!result.ok || result.duplicate) return result;
+    this.state.sites.worldById[manifest.id] = result.record;
+    this.bus.emit('worldSite:failureReceipt', {
+      siteId: manifest.id,
+      componentId: trigger.componentId,
+      triggerId: trigger.id,
+      receipt: result.receipt,
+      stageId: result.record.stageId,
+    });
+    if (this.state.world && this.state.world.currentSectorId === result.record.sectorId) {
+      this._syncWorldSites(result.record.sectorId);
+    }
+    return result;
+  },
+
+  // ------------------------------------------------------------------ lookups
+
+  siteForAsteroid: asteroidSiteReadMethods.siteForAsteroid,
+
+  getSite: asteroidSiteReadMethods.getSite,
+
+  machineAt: asteroidSiteReadMethods.machineAt,
+
+  hasCore: asteroidSiteReadMethods.hasCore,
+
+  // ------------------------------------------------------------ runtime caches
+
+  /** Field + networks + geo caches, rebuilt lazily on the flags set by _markDirty. */
+  _runtime: asteroidSiteReadMethods._runtime,
+
+  _markDirty(siteId, { field = false, net = false } = {}) {
+    this._accessCache = null;
+    const rt = this._rt.get(siteId);
+    if (!rt) return;
+    if (field) { rt.fieldDirty = true; rt.geoDirty = true; }
+    if (net) rt.netDirty = true;
+  },
+
+  /** The bore just sealed a mouth. Drop it from the durable list and rebuild the field cache. */
+  noteDeadDropSealed(site) {
+    if (!site || !site.id) return;
+    const state = this.state;
+    const ent = state.entities && state.entities.get ? state.entities.get(site.asteroidId) : null;
+    const live = state.drill;
+    const field = live && live.field && live.asteroidId === site.asteroidId ? live.field : null;
+    applySealedDeadDropCap(site, field, ent && ent.data);
+    this._markDirty(site.id, { field: true });
+  },
+
+  /** Stamp machine housings onto the LIVE drill session field (documented co-write). */
+  _stampStructures(site) {
+    const d = this.state.drill;
+    if (!d || !d.field) return;
+    for (const m of site.machines) {
+      const tile = d.field[m.col] && d.field[m.col][m.row];
+      if (tile && tile.type === 'empty') tile.structure = m.id;
+    }
+    // Same co-write as housings: the slab has to be in the field the rover walks.
+    paintStructuralFalls(d.field, site.structure);
+    const ent = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(site.asteroidId) : null;
+    const mouth = site.deadDrop && site.deadDrop.sealed === true ? site.deadDrop.mouth : null;
+    const avatar = d.avatar;
+    applySealedDeadDropCap(site, d.field, ent && ent.data);
+    // Re-entry can spawn the rig in a mouth the old cleared list had left empty.
+    if (!mouth || !avatar) return;
+    const col = Math.trunc(Number(mouth.col));
+    const row = Math.trunc(Number(mouth.row));
+    if (avatar.col !== col || avatar.row !== row) return;
+    const approach = site.deadDrop.approach;
+    const ac = approach ? Math.trunc(Number(approach.col)) : NaN;
+    const ar = approach ? Math.trunc(Number(approach.row)) : NaN;
+    const tile = Number.isFinite(ac) && Number.isFinite(ar) && d.field[ac] && d.field[ac][ar];
+    if (!tile || tile.type !== 'empty') return;
+    avatar.col = ac;
+    avatar.row = ar;
+    avatar.fromCol = ac;
+    avatar.fromRow = ar;
+  },
+
+  // ------------------------------------------------------------ player intents
+
+  /**
+   * Validate a machine placement without committing it (the screen's ghost preview).
+   * @returns {{ ok:boolean, reason:string|null, missing:Object, profile:Object|null }}
+   */
+  canInstall: asteroidSiteReadMethods.canInstall,
+
+  /**
+   * What a seated geology machine loses if this still-solid cell is bored out. Pure read.
+   * The sacrifice the leaf names: cut the face now, or keep it for the machine.
+   */
+  previewBreak: asteroidSiteReadMethods.previewBreak,
+
+  /**
+   * The persisted lane stores CONSTRUCTION AT (col,row) MAY DRAW FROM — the A10 ownership ruling.
+   * Only the lane component that would own/reach the installation cell after the hypothetical
+   * machine is inserted may fund the build (machines conduct, so the new cell can bridge lanes);
+   * a disconnected network's stock is physically elsewhere and must never silently pay for it.
+   * No lane reaching the cell -> [] -> ship cargo only.
+   */
+  _fundingStoresFor: asteroidSiteReadMethods._fundingStoresFor,
+
+  /** What part of `cost` cannot be covered by the ELIGIBLE lane stores + ship hold right now. */
+  _missingMaterials: asteroidSiteReadMethods._missingMaterials,
+
+  /** Consume install materials: the OWNING network's stores first (physically here), then ship hold. */
+  _consumeMaterials(site, cost, fundingStores) {
+    const stores = Array.isArray(fundingStores) ? fundingStores : [];
+    for (const goodId of Object.keys(cost || {}).sort()) {
+      let need = cost[goodId];
+      for (const ls of stores) {
+        if (need <= 0) break;
+        const have = Math.floor(Math.max(0, Number(ls.store[goodId]) || 0));
+        const take = Math.min(have, need);
+        if (take > 0) { ls.store[goodId] = (Number(ls.store[goodId]) || 0) - take; need -= take; }
+      }
+      if (need > 0) removeCargo(this.state, goodId, need);
+    }
+  },
+
+  /**
+   * Install a machine. Creates the site record on first install and stakes the claim immediately
+   * (PQ-145.01): the rock is a permanent site from the first housing, not from the Core.
+   */
+  installMachine({ asteroidId, defId, col, row }) {
+    const check = this.canInstall({ asteroidId, defId, col, row });
+    if (!check.ok) return check;
+    const def = SITE_MACHINE_BY_ID.get(defId);
+    const state = this.state;
+    const ent = state.entities.get(asteroidId);
+
+    let site = this.siteForAsteroid(asteroidId);
+    if (!site) {
+      const sites = state.sites;
+      const id = `site_${sites.nextSiteNum++}`;
+      site = makeSiteRecord({
+        id,
+        asteroidId,
+        sectorId: (state.world && state.world.currentSectorId) || null,
+        fieldId: (ent.data && ent.data.fieldId) || null,
+        createdT: state.simTime,
+      });
+      site.cleared = normalizeClearedTiles(ent.data && ent.data.drillCleared);
+      copyDrillSessionAccounting(site, ent && ent.data);
+      sites.byId[id] = site;
+      sites.order.push(id);
+      ent.data.siteId = id;
+      this.bus.emit('site:created', { siteId: id, asteroidId });
+      this._ledger(site, 'info', 'Claim opened — the first machine stakes this rock.');
+    }
+
+    this._consumeMaterials(site, def.cost, this._fundingStoresFor(site, col, row));
+
+    const machine = {
+      id: `m${site.nextMachineNum++}`,
+      defId,
+      col, row,
+      mode: def.defaultMode || null,
+      installT: state.simTime,
+      job: null,
+      carry: {},
+    };
+    site.machines.push(machine);
+    this._markDirty(site.id, { field: false, net: true });
+    const rt = this._rt.get(site.id);
+    if (rt) rt.geoDirty = true;
+
+    if (!site.anchored) this._anchorSite(site, ent, { reason: defId === 'sm_massline_core' ? 'core' : 'first-install' });
+    else if (defId === 'sm_massline_core') {
+      this._ledger(site, 'good', 'Massline Core online — command and power are live.');
+    }
+    if (defId === 'sm_cargo_port' && (site.fleet.podsReady | 0) < 1) {
+      site.fleet.podsReady = 1;
+      this._ledger(site, 'info', 'Starter courier berthed — the port can launch without a fabricator.');
+    }
+
+    this._stampStructures(site);
+    this._ledger(site, 'good', `${def.name} installed at ${col},${row}.`);
+    this.bus.emit('site:machineInstalled', { siteId: site.id, machineId: machine.id, defId, col, row });
+    return { ok: true, reason: null, machineId: machine.id, siteId: site.id };
+  },
+
+  _anchorSite(site, ent, { reason } = {}) {
+    const state = this.state;
+    site.anchored = true;
+    // Freeze the interior from the live rock id that has been seeding this bore all along.
+    // Do not inherit a recycled runtime id stamped on ent.data after a later rematerialize.
+    if (!Number.isFinite(site.boreSeed)) {
+      site.boreSeed = (site.asteroidId >>> 0) || 1;
+    }
+    ent.data.boreSeed = site.boreSeed;
+    ent.data.siteAnchored = true;
+    site.anchor = {
+      x: Math.round(ent.pos.x * 10) / 10,
+      z: Math.round(ent.pos.z * 10) / 10,
+      radius: ent.radius || 8,
+      typeId: (ent.data && ent.data.typeId) || 'ast_common_rock',
+      yieldU: (ent.data && ent.data.yieldU) || 0,
+    };
+    site.sectorId = (state.world && state.world.currentSectorId) || site.sectorId;
+    // PQ-024: the same transaction that anchors the site also commits the claim survey — either
+    // adopting the volatile session assay EXACTLY (no reroll) or, when no survey was ever pulsed,
+    // deriving the same deterministic target from the field just frozen. One record, one
+    // truth: no durable survey without an anchored site, no anchored site without its survey.
+    this._commitClaimSurvey(site);
+    const line = reason === 'core'
+      ? 'Massline Core online — this asteroid is now a permanent site.'
+      : 'Claim staked — this rock will be here when you come back.';
+    this._ledger(site, 'good', line);
+    this.bus.emit('site:anchored', { siteId: site.id, asteroidId: site.asteroidId, sectorId: site.sectorId, reason: reason || 'first-install' });
+    // The anchor moment is witnessed, so it becomes the return baseline.
+    this._snapshotReturnBaseline(site);
+    // The exterior relay is deliberately NOT projected here: it is the producing site's visible
+    // industrial consequence (PQ-024 lifecycle cold -> committed -> producing) and appears only
+    // with the first real positive output. See _acceptProductionReceipt/_repairAnchors.
+  },
+
+  /**
+   * SF-294. The durable numbers a quiet return can honestly diff: production ticks and courier
+   * flights resolve while the player is elsewhere, so the delta against this snapshot is what
+   * the claim did unwitnessed. Snapshot at anchor (witnessed), at sector exit (last seen), and
+   * after each return line (just reported). Plain fields — they ride the site's JSON-cloned
+   * save path like every other record field.
+   */
+  _snapshotReturnBaseline(site) {
+    if (!site) return;
+    site.returnBaseline = {
+      exportedU: Number(site.stats && site.stats.exportedU) || 0,
+      delivered: site.fleet && Number(site.fleet.delivered) || 0,
+      lost: site.fleet && Number(site.fleet.lost) || 0,
+      bufferU: Object.keys(site.exportBuffer || {})
+        .reduce((sum, id) => sum + (Number(site.exportBuffer[id]) || 0), 0),
+    };
+  },
+
+  /** One concise comms line on rematerialize: what the claim did since the player last saw it. */
+  _returnVisitLine(site, sectorId) {
+    if (!site || !this.bus || typeof this.bus.emit !== 'function') return;
+    const sector = (this.state.world && this.state.world.sectors
+      && this.state.world.sectors[sectorId]) || SECTOR_BY_ID.get(sectorId);
+    const place = (sector && sector.name) || 'the belt';
+    const base = site.returnBaseline || null;
+    const parts = [];
+    // No baseline means the player never witnessed a reference state (pre-packet saves,
+    // restored records) — diffing against zero would restate lifetime totals as fresh work,
+    // so the only honest line is continuity.
+    if (base) {
+      const delta = (cur, key) => Math.max(0, Math.round((Number(cur) || 0) - (Number(base[key]) || 0)));
+      const bufferU = Object.keys(site.exportBuffer || {})
+        .reduce((sum, id) => sum + (Number(site.exportBuffer[id]) || 0), 0);
+      const shipped = delta(site.stats && site.stats.exportedU, 'exportedU');
+      const delivered = delta(site.fleet && site.fleet.delivered, 'delivered');
+      const lost = delta(site.fleet && site.fleet.lost, 'lost');
+      const waiting = Math.max(0, Math.round(bufferU - (Number(base.bufferU) || 0)));
+      if (shipped > 0) parts.push(`${shipped}u shipped`);
+      if (delivered > 0) parts.push(`${delivered} courier${delivered === 1 ? '' : 's'} home`);
+      if (lost > 0) parts.push(`${lost} courier${lost === 1 ? '' : 's'} lost`);
+      if (waiting > 0) parts.push(`${waiting}u in the hopper`);
+    }
+    const machines = Array.isArray(site.machines) ? site.machines.length : 0;
+    const text = parts.length
+      ? `Your claim at ${place} kept working — ${parts.join(', ')}.`
+      : `Your claim at ${place} still stands — ${machines} machine${machines === 1 ? '' : 's'} on the face.`;
+    this.bus.emit('comms:log', { from: 'CLAIM', text, kind: 'site' });
+  },
+
+  // ------------------------------------------------------------ claim survey (PQ-024)
+
+  _isProducing(site) {
+    return !!(site && site.survey && site.survey.lifecycle === 'producing');
+  },
+
+  /** Advance (or found) the VOLATILE claim survey for a live drill session's rock. */
+  _advanceClaimSurvey(d) {
+    const asteroidId = d.asteroidId;
+    let sv = this._surveyByAsteroid.get(asteroidId);
+    if (!sv) {
+      const target = selectSurveyTarget(d.field, COLS, ROWS, SURVEY_LIMITS);
+      if (!target) return; // no solid interior cell — nothing assayable on this rock
+      sv = {
+        asteroidId,
+        seed: (asteroidId >>> 0) || 1,
+        targetId: target.targetId,
+        material: target.material,
+        cells: target.cells.slice(),
+        revealed: [],
+        pulses: 0,
+        startedT: Number(this.state.simTime) || 0,
+      };
+      this._surveyByAsteroid.set(asteroidId, sv);
+      this.bus.emit('site:surveyDetected', {
+        asteroidId, targetId: sv.targetId, material: sv.material, cellsTotal: sv.cells.length,
+      });
+    }
+    if (sv.revealed.length >= sv.cells.length) return; // fully assayed — later pulses stay vanilla
+    const next = surveyRevealFrontier(sv.cells, sv.revealed, SURVEY_LIMITS.revealBudget, COLS);
+    if (!next.length) return;
+    sv.revealed = sv.revealed.concat(next).sort((a, b) => a - b);
+    sv.pulses++;
+    if (sv.revealed.length >= sv.cells.length) {
+      this.bus.emit('site:surveyComplete', {
+        asteroidId, targetId: sv.targetId, material: sv.material, cellsTotal: sv.cells.length,
+      });
+    }
+  },
+
+  /**
+   * Preflight the Core's adoption of the volatile survey against the current field.
+   * 'adopt' = take the session record exactly; 'derive' = no session record (the Core derives the
+   * same deterministic target at commit); 'stale' = a session record exists but no longer matches
+   * the rock — the caller must refuse visibly, never reroll.
+   */
+  _surveyAdoption: asteroidSiteReadMethods._surveyAdoption,
+
+  /** Atomic Core-time commitment of the durable survey record (idempotent — never a reroll). */
+  _commitClaimSurvey(site) {
+    if (!site || site.survey) return false;
+    const d = this.state.drill;
+    const sessionHere = !!(d && d.active && d.asteroidId === site.asteroidId && d.field);
+    const field = sessionHere ? d.field : this._runtime(site).field;
+    const adoption = this._surveyAdoption(site, site.asteroidId, field);
+    let target = null;
+    let revealedCells = [];
+    if (adoption.status === 'stale') return false;
+    if (adoption.status === 'adopt') {
+      target = adoption.survey;
+      revealedCells = adoption.survey.revealed.filter((idx) => adoption.survey.cells.includes(idx));
+    } else {
+      // No session survey: derive the SAME deterministic target from the field just frozen.
+      // canInstall already refused a genuinely stale record, so this is the documented
+      // reconstruction path (and the pre-PQ-024 save convergence), never a silent reroll.
+      target = selectSurveyTarget(field, COLS, ROWS, SURVEY_LIMITS);
+    }
+    if (!target) return false; // fully hollow interior — no formation exists to record
+    const tick = Math.max(0, Math.trunc(Number(this.state.tick) || 0));
+    site.survey = {
+      version: 1,
+      targetId: target.targetId,
+      material: target.material,
+      cells: target.cells.slice(),
+      revealedCells,
+      seed: site.boreSeed,
+      committedTick: tick,
+      committedT: Number(this.state.simTime) || 0,
+      lifecycle: 'committed',
+      receipt: null,
+    };
+    this._surveyByAsteroid.delete(site.asteroidId);
+    this._ledger(site, 'info', `Survey committed — ${site.survey.cells.length} formation cells recorded to the claim.`);
+    this.bus.emit('site:surveyCommitted', {
+      siteId: site.id,
+      targetId: site.survey.targetId,
+      material: site.survey.material,
+      cellsTotal: site.survey.cells.length,
+      revealed: site.survey.revealedCells.length,
+    });
+    return true;
+  },
+
+  /**
+   * Production-owner seam: report a REAL positive-output mutation (landed whole units into a
+   * lane store or the fleet). Mints the stable unique receipt and submits it to the site owner.
+   * Never fires for the Core, for non-positive amounts, or for unanchored (volatile) sites, and
+   * stays silent once producing — replays are idempotent by construction.
+   */
+  _emitProductionReceipt(site, machine, { outputId, qty, recipeId } = {}) {
+    if (!site || !site.anchored || !machine || machine.defId === 'sm_massline_core') return false;
+    if (!(Number(qty) > 0)) return false;
+    if (!site.survey) {
+      // Pre-PQ-024 anchored save: reconstruct the committed record byte-identically from the
+      // frozen bore seed at the first real output, so the receipt has durable truth to land on.
+      if (!this._commitClaimSurvey(site)) return false;
+    }
+    if (site.survey.lifecycle !== 'committed') return false;
+    const tick = Math.max(0, Math.trunc(Number(this.state.tick) || 0));
+    return this._acceptProductionReceipt(site, {
+      receiptId: `prod_${site.id}_${tick}_${machine.id}`,
+      siteId: site.id,
+      producerId: machine.id,
+      defId: machine.defId,
+      recipeId: recipeId || null,
+      outputId,
+      positiveQuantity: qty,
+      committedTick: tick,
+      sourceMutationId: `tick:${tick}:${machine.id}:${outputId}`,
+    }).ok;
+  },
+
+  /**
+   * Site-owner seam: validate one production receipt (belongs to this site, positive, authentic
+   * non-Core producer, well-formed tick) and monotonically record `producing`. The accepted
+   * transition is also the ONLY projector of the exterior relay (PQ-024: cold 0, committed 0,
+   * producing 1). Replays of the accepted receipt are idempotent no-ops.
+   */
+  _acceptProductionReceipt(site, receipt) {
+    if (!site || !site.anchored || !site.survey) {
+      return { ok: false, duplicate: false, reason: 'not-committed' };
+    }
+    const survey = site.survey;
+    if (survey.lifecycle === 'producing') {
+      const same = !!(receipt && survey.receipt && receipt.receiptId === survey.receipt.receiptId);
+      return { ok: same, duplicate: same, reason: same ? null : 'already-producing' };
+    }
+    if (!receipt || receipt.siteId !== site.id) {
+      return { ok: false, duplicate: false, reason: 'site-mismatch' };
+    }
+    if (!(Number(receipt.positiveQuantity) > 0)) {
+      return { ok: false, duplicate: false, reason: 'not-positive' };
+    }
+    const tick = Math.max(0, Math.trunc(Number(this.state.tick) || 0));
+    if (!Number.isFinite(receipt.committedTick) || receipt.committedTick < 0 || receipt.committedTick > tick) {
+      return { ok: false, duplicate: false, reason: 'receipt-stale' };
+    }
+    const machine = site.machines.find((m) => m.id === receipt.producerId);
+    const def = machine && SITE_MACHINE_BY_ID.get(machine.defId);
+    if (!machine || !def || machine.defId === 'sm_massline_core' || machine.defId !== receipt.defId) {
+      return { ok: false, duplicate: false, reason: 'producer-invalid' };
+    }
+    survey.receipt = {
+      receiptId: String(receipt.receiptId),
+      siteId: site.id,
+      producerId: machine.id,
+      defId: machine.defId,
+      recipeId: typeof receipt.recipeId === 'string' && receipt.recipeId ? receipt.recipeId : null,
+      outputId: String(receipt.outputId),
+      positiveQuantity: Number(receipt.positiveQuantity),
+      committedTick: Math.trunc(receipt.committedTick),
+      sourceMutationId: typeof receipt.sourceMutationId === 'string' ? receipt.sourceMutationId : null,
+    };
+    survey.lifecycle = 'producing';
+    this._ledger(site, 'good', `First real output — ${receipt.positiveQuantity} ${receipt.outputId} landed. The site is producing.`);
+    this.bus.emit('site:producing', { siteId: site.id, receipt: { ...survey.receipt } });
+    if (this._workbenchRunning) this._repairSweepWanted = true;
+    else this._ensureBeacon(site);
+    return { ok: true, duplicate: false, reason: null };
+  },
+
+  // -------------------------------------------------------- claim survey reads (UI)
+
+  /**
+   * One merged read of the claim survey for the inspector/status surfaces: the VOLATILE session
+   * assay while cold, the durable record once committed. Null when neither exists.
+   */
+  surveyStatusFor: asteroidSiteReadMethods.surveyStatusFor,
+
+  /** Membership read for one field cell (hover context): the survey role it plays, if any. */
+  surveyCellRole: asteroidSiteReadMethods.surveyCellRole,
+
+  /**
+   * NON-MUTATING preflight for dismantling a machine: machines CONDUCT, so removing one can
+   * orphan a lane store exactly like clearing a lane cell can (the round-3 review lost 25u this
+   * way). Same A10 ruling, same preview shape as previewOverlayRemoval.
+   */
+  previewMachineRemoval: asteroidSiteReadMethods.previewMachineRemoval,
+
+  /**
+   * Dismantle a machine: the control unit comes back, the structural mass does not. A removal
+   * whose reconciliation would spill network stock is REFUSED unless { confirmSpill: true } —
+   * the A10 destructive-removal ruling applies to conducting machines exactly as to lane cells.
+   */
+  removeMachine(siteId, machineId, opts) {
+    const site = this.getSite(siteId);
+    if (!site) return { ok: false, reason: 'no-site' };
+    const idx = site.machines.findIndex((m) => m.id === machineId);
+    if (idx === -1) return { ok: false, reason: 'no-machine' };
+    const machine = site.machines[idx];
+    const def = SITE_MACHINE_BY_ID.get(machine.defId);
+    if (machine.defId === 'sm_massline_core') {
+      // Tearing out the core un-anchors everything built on top of it. Refuse; dismantling a
+      // whole site is a deliberate future verb, not an accidental click.
+      return { ok: false, reason: 'core-locked' };
+    }
+
+    let confirmedSpill = null;
+    {
+      const preview = this.previewMachineRemoval(siteId, machineId);
+      if (preview.spilledTotal > 0) {
+        if (!(opts && opts.confirmSpill)) {
+          return {
+            ok: false,
+            reason: 'would-spill',
+            spill: preview,
+            warning: spillConfirmWarning(preview, 'machine'),
+          };
+        }
+        confirmedSpill = preview;
+      }
+    }
+
+    const refundU = def?.cost?.cmdty_control_unit || 0;
+    if (refundU > 0) {
+      const cargo = this.state.player?.cargo;
+      // Match cargo's active-content lookup and positive volume floor: a content pack
+      // can change the footprint, but dismantling must still admit the whole refund.
+      const commodities = this.state.content?.commodities;
+      const unit = (Array.isArray(commodities)
+        ? commodities.find(row => row.id === 'cmdty_control_unit')
+        : commodities?.cmdty_control_unit) || COMMODITY_BY_ID.get('cmdty_control_unit');
+      const requiredVolume = refundU * (unit?.volPerU > 0 ? unit.volPerU : 1);
+      const freeVolume = cargo ? cargo.capVolume - cargo.usedVolume : NaN;
+      if (!Number.isFinite(freeVolume) || freeVolume < requiredVolume) {
+        this.bus.emit('toast', { kind: 'warn', ttl: 4,
+          text: `Make room for ${refundU} control unit${refundU === 1 ? '' : 's'} before dismantling.` });
+        return { ok: false, reason: 'refund-hold-full', requiredVolume };
+      }
+    }
+
+    // Salvage: half the non-controller kit comes back onto the machine's own lane as stock —
+    // reclaiming a machine room is re-planning, not a write-off. Lane key is read BEFORE the
+    // splice because the network forgets the machine the moment it leaves the list. Read it
+    // through _runtime(), not the raw cache: a netDirty rt still points at the PREVIOUS
+    // laneStores objects, and salvage written to a store reconcileStores already orphaned
+    // would vanish with it.
+    const rtPre = this._runtime(site);
+    const salvageLaneKey = rtPre && rtPre.laneCompByMachine ? rtPre.laneCompByMachine[machine.id] : null;
+    const salvageStore = salvageLaneKey != null && rtPre ? rtPre.stores[salvageLaneKey] : null;
+    const salvaged = [];
+    if (def && def.cost && salvageStore) {
+      for (const [goodId, qty] of Object.entries(def.cost)) {
+        if (goodId === 'cmdty_control_unit') continue;
+        const back = Math.floor(Number(qty) * SITE_BALANCE.salvageRefundFraction);
+        if (back > 0) {
+          salvageStore[goodId] = (Number(salvageStore[goodId]) || 0) + back;
+          salvaged.push(`${back}u ${goodId.replace('cmdty_', '')}`);
+        }
+      }
+    }
+
+    site.machines.splice(idx, 1);
+
+    if (salvaged.length) {
+      this._ledger(site, 'good', `Salvage reclaimed — ${salvaged.join(', ')} back on the lane.`);
+    }
+
+    if (confirmedSpill) {
+      const goods = {};
+      for (const s of confirmedSpill.spilled) {
+        for (const g of Object.keys(s.store).sort()) {
+          const q = Math.max(0, Number(s.store[g]) || 0);
+          if (q > 0) goods[g] = (goods[g] || 0) + q;
+        }
+      }
+      const summary = spillGoodsPhrase(confirmedSpill);
+      this._ledger(site, 'warn', `${def ? def.name : machine.defId} dismantled under load — spilled ${summary}.`);
+      this.bus.emit('site:laneSpilled', {
+        siteId, machineId, spilledTotal: confirmedSpill.spilledTotal, goods,
+      });
+    }
+    if (def && def.cost && def.cost.cmdty_control_unit) {
+      addCargo(this.state, 'cmdty_control_unit', def.cost.cmdty_control_unit);
+    }
+    // Unstamp from a live session field.
+    const d = this.state.drill;
+    if (d && d.field && d.asteroidId === site.asteroidId) {
+      const tile = d.field[machine.col] && d.field[machine.col][machine.row];
+      if (tile && tile.structure === machineId) delete tile.structure;
+    }
+    this._markDirty(site.id, { net: true });
+    const rt = this._rt.get(site.id);
+    if (rt) rt.geoDirty = true;
+    this._ledger(site, 'warn', `${def ? def.name : machine.defId} dismantled — control unit recovered, castings lost.`);
+    this.bus.emit('site:machineRemoved', { siteId, machineId, defId: machine.defId });
+    return { ok: true, reason: null };
+  },
+
+  /**
+   * NON-MUTATING preflight for clearing one lane cell: exactly what stock would spill if the
+   * removal went ahead. The A10 destructive-removal ruling's read side — UI and automation call
+   * this (or receive the same preview from a refused setOverlay) before asking for confirmation.
+   */
+  previewOverlayRemoval: asteroidSiteReadMethods.previewOverlayRemoval,
+
+  /**
+   * Paint or clear one overlay cell (kind: 'power' | 'lane'). Painting is free — the corridor was
+   * the cost. CLEARING a lane cell whose removal would spill network stock is REFUSED unless the
+   * caller passes { confirmSpill: true } after seeing the preview (A10 ruling: destructive lane
+   * removal must never silently spill; a confirmed loss gets a deterministic receipt).
+   */
+  setOverlay(siteId, kind, col, row, on, opts) {
+    const site = this.getSite(siteId);
+    if (!site || (kind !== 'power' && kind !== 'lane')) return { ok: false, reason: 'bad-args' };
+    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return { ok: false, reason: 'out-of-bounds' };
+    const rt = this._runtime(site);
+    const tile = rt.field[col] && rt.field[col][row];
+    if (!tile || tile.type !== 'empty') return { ok: false, reason: 'not-hollow' };
+    if (this.machineAt(site, col, row)) return { ok: false, reason: 'occupied' };
+    const idx = tileIndex(col, row);
+    const list = site.overlays[kind];
+    const has = list.includes(idx);
+
+    let confirmedSpill = null;
+    if (!on && has && kind === 'lane') {
+      const preview = this.previewOverlayRemoval(siteId, kind, col, row);
+      if (preview.spilledTotal > 0) {
+        if (!(opts && opts.confirmSpill)) {
+          return {
+            ok: false,
+            reason: 'would-spill',
+            spill: preview,
+            warning: spillConfirmWarning(preview, 'lane'),
+          };
+        }
+        confirmedSpill = preview;
+      }
+    }
+
+    if (on && !has) list.push(idx);
+    else if (!on && has) list.splice(list.indexOf(idx), 1);
+    else return { ok: true, reason: 'no-change' };
+    site.overlays[kind] = normalizeClearedTiles(list);
+
+    if (confirmedSpill) {
+      // Deterministic receipt BEFORE the reconcile executes the drop: exact goods, exact cells.
+      const goods = {};
+      for (const s of confirmedSpill.spilled) {
+        for (const g of Object.keys(s.store).sort()) {
+          const q = Math.max(0, Number(s.store[g]) || 0);
+          if (q > 0) goods[g] = (goods[g] || 0) + q;
+        }
+      }
+      const summary = spillGoodsPhrase(confirmedSpill);
+      this._ledger(site, 'warn', `Lane dismantled under load — spilled ${summary}.`);
+      this.bus.emit('site:laneSpilled', {
+        siteId, col, row, spilledTotal: confirmedSpill.spilledTotal, goods,
+      });
+    }
+
+    this._markDirty(site.id, { net: true });
+    return { ok: true, reason: null, spilled: confirmedSpill ? confirmedSpill.spilledTotal : 0 };
+  },
+
+  setMachineMode(siteId, machineId, mode) {
+    const site = this.getSite(siteId);
+    const machine = site && site.machines.find((m) => m.id === machineId);
+    const def = machine && SITE_MACHINE_BY_ID.get(machine.defId);
+    if (!def || !Array.isArray(def.modes) || !def.modes.includes(mode)) return { ok: false, reason: 'bad-mode' };
+    if (machine.mode === mode) return { ok: true, reason: 'no-change' };
+    machine.mode = mode;
+    // Committed fabricator batches die with a mode swap (inputs already spent) — stepFabricator
+    // enforces it; the ledger makes the cost visible instead of silent.
+    if (machine.job && machine.job.recipeId !== mode) {
+      this._ledger(site, 'warn', `${def.name} retooled — the committed batch was scrapped.`);
+    }
+    this.bus.emit('site:machineMode', { siteId, machineId, mode });
+    return { ok: true, reason: null };
+  },
+
+  setExportFlag(siteId, goodId, exported) {
+    const site = this.getSite(siteId);
+    if (!site) return { ok: false, reason: 'no-site' };
+    if (exported) delete site.exportOff[goodId];
+    else site.exportOff[goodId] = true;
+    return { ok: true, reason: null };
+  },
+
+  setPodTarget(siteId, target) {
+    const site = this.getSite(siteId);
+    if (!site) return { ok: false, reason: 'no-site' };
+    site.fleet.podTarget = Math.max(0, Math.min(SITE_BALANCE.maxPodTarget, Math.trunc(Number(target) || 0)));
+    return { ok: true, reason: null };
+  },
+
+  setPodDestination(siteId, stationId) {
+    const site = this.getSite(siteId);
+    if (!site) return { ok: false, reason: 'no-site' };
+    if (stationId == null) {
+      site.podDestinationId = null; // the auto lane: the sector's first station
+      return { ok: true, reason: null };
+    }
+    const sector = SECTOR_BY_ID.get(site.sectorId);
+    const stations = sector && Array.isArray(sector.stations) ? sector.stations : [];
+    if (!stations.some((st) => st && st.id === stationId)) return { ok: false, reason: 'bad-station' };
+    if (site.podDestinationId === stationId) return { ok: true, reason: 'no-change' };
+    site.podDestinationId = stationId;
+    return { ok: true, reason: null };
+  },
+
+  /**
+   * Move goods between ship hold and a machine's lane-network store while tethered (the rover
+   * carries it). dir: 'deposit' (ship → site) | 'withdraw' (site → ship).
+   */
+  transferGoods(siteId, machineId, goodId, qty, dir) {
+    const site = this.getSite(siteId);
+    if (!site) return { ok: false, moved: 0, reason: 'no-site' };
+    const d = this.state.drill;
+    if (!d || !d.active || d.asteroidId !== site.asteroidId) return { ok: false, moved: 0, reason: 'not-tethered' };
+    const rt = this._runtime(site);
+    const compKey = rt.laneCompByMachine[machineId];
+    const store = compKey != null ? rt.stores[compKey] : null;
+    if (!store) return { ok: false, moved: 0, reason: 'no-network' };
+    const want = Math.max(0, Math.trunc(Number(qty) || 0));
+    if (!want) return { ok: false, moved: 0, reason: 'zero' };
+    if (dir === 'deposit') {
+      const room = Math.max(0, rt.capacity[compKey] - storeTotal(store));
+      const take = Math.min(want, Math.floor(room));
+      const removed = take > 0 ? removeCargo(this.state, goodId, take) : 0;
+      if (removed > 0) store[goodId] = (Number(store[goodId]) || 0) + removed;
+      return { ok: removed > 0, moved: removed, reason: removed > 0 ? null : 'no-room-or-cargo' };
+    }
+    const have = Math.floor(Math.max(0, Number(store[goodId]) || 0));
+    const take = Math.min(want, have);
+    const added = take > 0 ? addCargo(this.state, goodId, take) : 0;
+    if (added > 0) store[goodId] = (Number(store[goodId]) || 0) - added;
+    return { ok: added > 0, moved: added, reason: added > 0 ? null : 'no-stock-or-hold' };
+  },
+
+  // ------------------------------------------------------------------ sim tick
+
+  /** The paused bore has an explicit local workbench clock, like drill.tickInput.
+   * Only this active site's machinery runs; travel, sales and world actors keep sim time.
+   * Fractional cadence is saved with the site, so closing or Continue never mints a tick.
+   */
+  tickWorkbench(dt, siteId) {
+    const d = this.state.drill;
+    const site = this.getSite(siteId);
+    if (!site || this.state.timeScale !== 0 || !d?.active || d.asteroidId !== site.asteroidId
+      || !Number.isFinite(dt) || dt <= 0) return false;
+    site.workbenchRemainderS = (site.workbenchRemainderS || 0) + Math.min(dt, 0.25);
+    if (site.workbenchRemainderS + 1e-9 < SITE_BALANCE.tickS) return false;
+    site.workbenchRemainderS = Math.max(0, site.workbenchRemainderS - SITE_BALANCE.tickS);
+    this._workbenchRunning = true;
+    try { this._tickSite(site, SITE_BALANCE.tickS, this.state, { workbench: true }); }
+    finally { this._workbenchRunning = false; }
+    return true;
+  },
+
+  update(dt, state) {
+    if (!Number.isFinite(dt) || dt <= 0 || state.timeScale === 0) return;
+    const world = this._registry?.get('world');
+    if (world && state.mode === 'flight' && !this._worldRestoreActive) tickMotionFossil(world, dt);
+    this._pollWorldSiteAdmission();
+    this._captureWorldSitePayloads();
+    if (this._worldSyncWanted) this._syncWorldSites();
+    reconcileWorldSiteResidency(state, this.ctx && this.ctx.helpers);
+    this._accum += dt;
+    if (this._accum < SITE_BALANCE.tickS) return;
+    const step = SITE_BALANCE.tickS;
+    this._accum -= step;
+    // A long stall (screen pause ends, save hop) collapses to one step: production is linear and
+    // the accumulator is transient, so no burst catch-up — same policy as other cadence systems.
+    if (this._accum > step * 4) this._accum = 0;
+
+    if (this._repairSweepWanted) {
+      this._repairSweepWanted = false;
+      this._repairAnchors();
+    }
+
+    const sites = state.sites;
+    if (!sites || !sites.order.length) return;
+    for (const siteId of sites.order.slice()) {
+      const site = sites.byId[siteId];
+      if (!site) continue;
+      if (!this._checkLiveness(site)) continue;
+      this._tickSite(site, step, state);
+      this._resolvePods(site, state);
+    }
+  },
+
+  /** Unanchored sites die with their rock (id recycling guarded by the siteId stamp). */
+  _checkLiveness(site) {
+    if (site.anchored) return true;
+    const ent = this.state.entities.get(site.asteroidId);
+    const alive = !!(ent && ent.alive !== false && ent.type === 'asteroid'
+      && ent.data && ent.data.siteId === site.id);
+    if (alive) return true;
+    const sites = this.state.sites;
+    delete sites.byId[site.id];
+    const at = sites.order.indexOf(site.id);
+    if (at !== -1) sites.order.splice(at, 1);
+    this._rt.delete(site.id);
+    this._surveyByAsteroid.delete(site.asteroidId); // a lost claim keeps no assay residue
+    this.bus.emit('site:lost', {
+      siteId: site.id,
+      reason: 'unanchored',
+      machines: site.machines.length,
+    });
+    return false;
+  },
+
+  /** Anchored sites in the CURRENT sector re-materialize their rock if it is missing. */
+  _repairAnchors() {
+    for (const _ of this._repairAnchorsSteps()) { /* sync lane: inline */ }
+  },
+
+  *_repairAnchorsSteps() {
+    if (this._worldRestoreActive) return;
+    const state = this.state;
+    const sectorId = state.world && state.world.currentSectorId;
+    if (!sectorId) return;
+    const spawnEntity = this.ctx && this.ctx.helpers && this.ctx.helpers.spawnEntity;
+    for (const siteId of state.sites.order) {
+      const site = state.sites.byId[siteId];
+      if (!site || !site.anchored || site.sectorId !== sectorId || !site.anchor) continue;
+      const ent = state.entities.get(site.asteroidId);
+      const linked = ent && ent.alive !== false && ent.type === 'asteroid' && ent.data && ent.data.siteId === site.id;
+      if (linked) { ent.data.siteAnchored = true; continue; }
+      if (typeof spawnEntity !== 'function') continue;
+      const rock = spawnEntity({
+        type: 'asteroid',
+        pos: { x: site.anchor.x, z: site.anchor.z },
+        radius: site.anchor.radius,
+        mass: asteroidMass(site.sectorId, site.anchor.radius),
+        angVel: 0,
+        hull: 1e9, hullMax: 1e9,
+        collides: true,
+        physicsBody: { radius: asteroidColliderRadius(site.anchor.typeId, site.anchor.radius) },
+        data: {
+          typeId: site.anchor.typeId,
+          yieldU: site.anchor.yieldU,
+          oreHP: 1e9, oreHPMax: 1e9,
+          siteId: site.id,
+          siteAnchored: true,
+          boreSeed: site.boreSeed,
+          drillCleared: site.cleared.slice(),
+          fieldId: site.fieldId,
+          size: site.anchor.radius,
+          pctEjected: 0,
+          ...drillAccountingStamp(site),
+        },
+      });
+      if (rock) {
+        site.asteroidId = rock.id;
+        this._rt.delete(site.id);
+        this.bus.emit('site:rematerialized', { siteId: site.id, asteroidId: rock.id, sectorId });
+        this._returnVisitLine(site, sectorId);
+        this._snapshotReturnBaseline(site);
+      }
+      yield;
+    }
+    for (const siteId of state.sites.order) {
+      const site = state.sites.byId[siteId];
+      // Only a PRODUCING site wears the exterior relay (PQ-024): committed claims stay
+      // visually unmarked until real output lands; re-entry re-ensures exactly one.
+      if (site && site.anchored && site.sectorId === sectorId && this._isProducing(site)) this._ensureBeacon(site);
+      yield;
+    }
+  },
+
+  // Cook-provider twin: the sliced census drives one site/anchor per slice boundary.
+  *_enterCookSteps(sector) {
+    if (!this._worldRestoreActive) yield* this._syncWorldSitesSteps(sector && sector.id);
+    if (!this._worldRestoreActive) yield* this._repairAnchorsSteps();
+  },
+
+  /**
+   * The north-star payoff seam (brief §8): an anchored asteroid is VISIBLY modified in the
+   * flight world. v1 reuses the shipped claim-relay place asset as an exterior massline relay
+   * bolted beside the rock; it despawns with the sector like any dressing and is re-ensured on
+   * every visit. Purely visual — an fx entity, no gameplay writes.
+   */
+  _ensureBeacon(site) {
+    const state = this.state;
+    const rt = this._rt.get(site.id) || {};
+    if (rt.beaconId != null) {
+      const existing = (state.entities && state.entities.get(rt.beaconId))
+        || getDressingRow(state, rt.beaconId);
+      if (existing && existing.alive !== false && existing.data && existing.data.siteBeacon === site.id) return;
+    }
+    const rock = state.entities.get(site.asteroidId);
+    if (!rock) return;
+    const ang = ((hash32(site.id) % 628) / 100);
+    const dist = (rock.radius || 8) + 7;
+    const beacon = insertDressingRow(state, {
+      type: 'fx',
+      pos: { x: rock.pos.x + Math.cos(ang) * dist, z: rock.pos.z + Math.sin(ang) * dist },
+      rot: ang + Math.PI,
+      radius: 6,
+      homeSectorId: site.sectorId,
+      data: {
+        placeId: 'place_claim_outpost_relay',
+        // The relay GLB is authored at outpost scale (automation spawns it full-size as a
+        // standalone node); bolted to a rock it reads right at roughly one-sixth.
+        placeScale: 0.16,
+        worldDressing: true,
+        siteBeacon: site.id,
+        sectorId: site.sectorId,
+        homeSectorId: site.sectorId,
+        name: 'Massline Site Relay',
+        visualRadius: 6,
+        placeRadius: 6,
+        factionId: 'faction_player',
+      },
+    });
+    if (beacon) {
+      if (!this._rt.has(site.id)) this._runtime(site);
+      const rtNow = this._rt.get(site.id);
+      if (rtNow) rtNow.beaconId = beacon.id;
+    }
+  },
+
+  _tickSite(site, dtS, state, { workbench = false } = {}) {
+    if (!site.machines.length) return;
+    const rt = this._runtime(site);
+    const dtMin = dtS / 60;
+
+    // --- Power: per component, gen vs demand → one legible ratio (brief §2). ---
+    rt.compRatio = {};
+    const compPower = {};
+    for (const comp of rt.powerComps) {
+      let gen = 0;
+      let draw = 0;
+      for (const mid of comp.machineIds) {
+        const m = site.machines.find((x) => x.id === mid);
+        const def = m && SITE_MACHINE_BY_ID.get(m.defId);
+        if (!def) continue;
+        const cap = machineCapability(def, rt.geo[m.id], m.mode);
+        gen += cap.powerGen;
+        draw += cap.powerDraw;
+      }
+      const ratio = draw > 0 ? clamp01(gen / draw) : 1;
+      rt.compRatio[comp.key] = ratio;
+      compPower[comp.key] = { gen: round3(gen), draw: round3(draw), ratio: round3(ratio) };
+    }
+    rt.compPower = compPower;
+
+    // --- Thermal pass (siteThermalModel): heat per machine derives from its live contact ring
+    // and served power; stored heat persists on the machine record. Bands derate the power a
+    // machine is actually served this tick — a faulting machine protects itself by slowing. ---
+    const thermalIn = site.machines.map((m) => {
+      const def = SITE_MACHINE_BY_ID.get(m.defId);
+      const powerKey = rt.powerCompByMachine[m.id];
+      const baseRatio = powerKey != null ? (rt.compRatio[powerKey] ?? 0) : (def && def.power > 0 ? 1 : 0);
+      return {
+        id: m.id, defId: m.defId, profile: rt.geo[m.id], powerRatio: baseRatio,
+        mode: m.mode, storedHeat: Number(m.storedHeat) || 0, coolingRate: 0,
+      };
+    });
+    rt.thermal = stepSiteThermal({ dtS, machines: thermalIn, radiatorFins: site.radiatorFins });
+    // The plain-words band name rides the runtime view so readers (the site drawer) never
+    // import the thermal kernel — same owner translation worldSiteRuntime does for the scanner.
+    rt.thermalLabel = (THERMAL_BANDS.find((b) => b.id === rt.thermal.worstBand) || {}).label || '';
+    const thermById = {};
+    for (const rec of rt.thermal.machines || []) {
+      thermById[rec.id] = rec;
+      const m = site.machines.find((x) => x.id === rec.id);
+      if (m) m.storedHeat = rec.step.storedAfter;
+    }
+    const THERMAL_DERATE = { nominal: 1, warm: 1, throttle: 0.55, fault: 0 };
+
+    // --- Lane throughput budgets: shared per network, spent as machines move goods. ---
+    const laneBudget = {};
+    for (const comp of rt.laneComps) {
+      laneBudget[comp.key] = laneThroughput(comp, (mid) => rt.machineDefs.get(mid), SITE_BALANCE,
+        (mid) => rt.compRatio[rt.powerCompByMachine[mid]] || 0) * dtMin;
+    }
+
+    // Rotate deterministic priority so a saturated lane cannot permanently starve machines
+    // installed later. The cursor is site-owned and saved across both factory clocks.
+    const first = (site.productionStep || 0) % site.machines.length;
+    site.productionStep = ((site.productionStep || 0) + 1) % 1_000_000_000;
+    const machineOrder = [...site.machines.slice(first), ...site.machines.slice(0, first)];
+    // Units actually moved into the launch buffer this step — the signature pass reads it
+    // as the transport loudness term (a real rate, not a buffer snapshot).
+    let stagedU = 0;
+    // PQ-130.10a: a per-machine status TRANSITION is the mine's machine-state event (law §5
+    // "Machine starved/unpowered" — one soft chime, once). The status map is rebuilt from scratch
+    // every tick, so last tick's map is kept as the only reference for "what changed". Nothing
+    // else reads it, no durable state is added (`_rt` is a transient runtime cache) and the
+    // production path below is byte-for-byte what it was.
+    const prevStatus = rt.status || EMPTY_MACHINE_STATUS;
+    const statusTransitions = [];
+    rt.status = {};
+    for (const m of machineOrder) {
+      const def = SITE_MACHINE_BY_ID.get(m.defId);
+      if (!def) continue;
+      const powerKey = rt.powerCompByMachine[m.id];
+      let powerRatio = powerKey != null ? (rt.compRatio[powerKey] ?? 0) : (def.power > 0 ? 1 : 0);
+      // Thermal derate is a power-service haircut: 'throttle' sags the feed, 'fault' cuts it.
+      const therm = thermById[m.id];
+      const thermalLimit = therm ? (THERMAL_DERATE[therm.band] ?? 1) : 1;
+      powerRatio *= thermalLimit;
+      const laneKey = rt.laneCompByMachine[m.id];
+      const store = laneKey != null ? rt.stores[laneKey] : null;
+      const capacity = laneKey != null ? rt.capacity[laneKey] : 0;
+      const roomFor = () => (store ? Math.max(0, capacity - storeTotal(store)) : 0);
+      const status = { state: 'idle', limit: null, ratePerMin: {}, powerRatio: round3(powerRatio) };
+
+      if (def.id === 'sm_extractor' || def.id === 'sm_gas_tap') {
+        const cap = machineCapability(def, rt.geo[m.id], m.mode);
+        if (def.usesGeology && !cap.geologyLive && cap.powerGen <= 0) {
+          status.state = 'no-geology';
+        } else if (cap.powerDraw > 0 && powerRatio <= 0) {
+          status.state = 'no-power';
+          status.limit = 'power';
+        } else {
+          let produced = false;
+          let blocked = false;
+          for (const goodId of Object.keys(cap.outputsPerMin).sort()) {
+            if (!store) { blocked = true; continue; }
+            const want = cap.outputsPerMin[goodId] * dtMin * clamp01(powerRatio || (cap.powerDraw > 0 ? 0 : 1));
+            const carryKey = `out:${goodId}`;
+            const carried = Number(m.carry[carryKey]) || 0;
+            const room = Math.max(0, roomFor() - carried);
+            const budget = laneBudget[laneKey];
+            const grant = Math.max(0, Math.min(want, room, budget));
+            if (grant > 0) {
+              const raw = grant + carried;
+              const whole = Math.floor(raw + 1e-9);
+              m.carry[carryKey] = Math.max(0, raw - whole);
+              if (whole > 0) {
+                store[goodId] = (Number(store[goodId]) || 0) + whole;
+                // PQ-024: a real positive output mutation — the production owner reports it to
+                // the receipt seam (no self-minted capability claims; only landed whole units).
+                this._emitProductionReceipt(site, m, { outputId: goodId, qty: whole, recipeId: null });
+              }
+              laneBudget[laneKey] = Math.max(0, budget - grant);
+              produced = true;
+              status.ratePerMin[goodId] = round3(grant / dtMin);
+            } else if (want > 0) blocked = true;
+          }
+          if (produced) status.state = powerRatio < 1 && cap.powerDraw > 0 ? 'throttled' : 'running';
+          else if (blocked) { status.state = store ? 'backlogged' : 'no-network'; status.limit = store ? 'export' : 'lane'; }
+          else if (cap.powerGen > 0) status.state = 'running'; // pure generator
+          if (def.id === 'sm_gas_tap' && cap.powerGen > 0) status.genMW = round3(cap.powerGen);
+        }
+      } else if (def.id === 'sm_refinery') {
+        if (!store) { status.state = 'no-network'; status.limit = 'lane'; }
+        else {
+          const res = stepContinuousRecipe({
+            recipeId: m.mode,
+            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier,
+            dtMin,
+            powerRatio,
+            store,
+            roomFor,
+            carry: m.carry,
+            throughputBudget: laneBudget[laneKey],
+          });
+          for (const outId of Object.keys(res.produced || {}).sort()) {
+            if (res.produced[outId] > 0) {
+              this._emitProductionReceipt(site, m, { outputId: outId, qty: res.produced[outId], recipeId: m.mode });
+            }
+          }
+          laneBudget[laneKey] = Math.max(0, laneBudget[laneKey] - res.moved);
+          status.state = res.status;
+          status.limit = res.limit;
+          const recipe = SITE_RECIPE_BY_ID.get(m.mode);
+          if (recipe && res.moved > 0) {
+            const [outId] = Object.keys(recipe.output);
+            const inputPerBatch = Object.values(recipe.inputs).reduce((s, q) => s + q, 0);
+            const consumed = Object.values(res.consumed).reduce((s, q) => s + q, 0);
+            status.ratePerMin[outId] = round3(consumed / inputPerBatch * recipe.output[outId] / dtMin);
+          }
+        }
+      } else if (def.id === 'sm_fabricator') {
+        if (!store) { status.state = 'no-network'; status.limit = 'lane'; }
+        else {
+          const recipe = SITE_RECIPE_BY_ID.get(m.mode);
+          const buildingPods = recipe && recipe.output && recipe.output.pod;
+          const reservedPods = site.machines.filter((other) => other.job?.recipeId === 'sr_fab_courier').length;
+          const wantsBuild = buildingPods
+            ? site.fleet.podsReady + reservedPods < Math.min(site.fleet.podTarget, SITE_BALANCE.maxPodTarget)
+            : true;
+          const res = stepFabricator({
+            machine: m,
+            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier,
+            recipeId: m.mode,
+            dtS,
+            powerRatio,
+            store,
+            roomFor,
+            wantsBuild,
+            throughputBudget: laneBudget[laneKey],
+          });
+          laneBudget[laneKey] = Math.max(0, laneBudget[laneKey] - res.moved);
+          status.state = res.status === 'completed' ? 'building' : res.status;
+          status.limit = res.limit;
+          status.progress = res.progress || (m.job ? m.job.progressS / (recipe ? recipe.buildS : 1) : 0);
+          if (buildingPods && !wantsBuild && !m.job) {
+            status.state = 'fleet-full';
+          }
+          if (res.completed && res.completed.outputId === 'pod') {
+            site.fleet.podsReady += res.completed.qty;
+            this._ledger(site, 'good', `Courier pod assembled — ${site.fleet.podsReady} ready.`);
+            this.bus.emit('site:podBuilt', { siteId: site.id, podsReady: site.fleet.podsReady });
+          }
+          for (const [outputId, qty] of Object.entries(res.produced || {})) {
+            this._emitProductionReceipt(site, m, { outputId, qty, recipeId: m.mode });
+          }
+          if (res.completed && res.completed.outputId === 'pod') {
+            // A committed fabricator batch finishing IS real positive output (goods into the lane
+            // store, or a pod into the fleet) — the production owner reports the landed mutation.
+            this._emitProductionReceipt(site, m, {
+              outputId: res.completed.outputId, qty: res.completed.qty, recipeId: m.mode,
+            });
+          }
+        }
+      } else if (def.id === 'sm_cargo_port') {
+        if (!store) { status.state = 'no-network'; status.limit = 'lane'; }
+        else if (powerRatio <= 0) { status.state = 'no-power'; status.limit = 'power'; }
+        else {
+          // Stage export-flagged goods into the launch buffer, throughput-bounded.
+          let staged = 0;
+          const bufferTotal = storeTotal(site.exportBuffer);
+          let bufferRoom = Math.max(0, SITE_BALANCE.podCapacity * 3 - bufferTotal);
+          for (const goodId of Object.keys(store).sort()) {
+            if (site.exportOff[goodId]) continue;
+            const have = Math.max(0, Number(store[goodId]) || 0);
+            if (have <= 1e-9) continue;
+            // Fractional staging on purpose: per-tick throughput slices are well under one unit,
+            // and flooring here starves the launch buffer forever. Pod loading floors at launch.
+            const grant = Math.max(0, Math.min(have, laneBudget[laneKey], bufferRoom));
+            if (grant <= 1e-9) continue;
+            store[goodId] = (Number(store[goodId]) || 0) - grant;
+            site.exportBuffer[goodId] = (Number(site.exportBuffer[goodId]) || 0) + grant;
+            laneBudget[laneKey] = Math.max(0, laneBudget[laneKey] - grant);
+            bufferRoom -= grant;
+            staged += grant;
+          }
+          status.state = staged > 0 ? 'running' : (storeTotal(site.exportBuffer) > 0 ? 'staged' : 'idle');
+          stagedU += staged;
+          if (!workbench) this._tryLaunch(site, state, status);
+        }
+      } else if (def.id === 'sm_charge_press') {
+        // Discrete press batches — a charge_puck lands on the rock's ordnance rack
+        // (ent.data.chargeStock), not in a lane store. The recipe never asks a lane for room.
+        if (!store) { status.state = 'no-network'; status.limit = 'lane'; }
+        else {
+          // The rack's home is the rock's record while it is resident; the claim's own
+          // chargeStock mirror carries it off-sector (re-stamped on rematerialize). A job
+          // committed before the rock left must still be able to land — never deref a
+          // missing entity here.
+          const rockEnt = state.entities && state.entities.get ? state.entities.get(site.asteroidId) : null;
+          const entRack = rockEnt && rockEnt.data ? Number(rockEnt.data.chargeStock) : NaN;
+          const rack = Math.max(0, Math.floor(Number.isFinite(entRack) ? entRack : (Number(site.chargeStock) || 0)));
+          const wantsCharge = rack < SITE_BALANCE.chargeRackMax;
+          const res = stepFabricator({
+            machine: m,
+            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier,
+            recipeId: m.mode,
+            dtS,
+            powerRatio,
+            store,
+            roomFor,
+            wantsBuild: wantsCharge,
+            throughputBudget: laneBudget[laneKey],
+          });
+          laneBudget[laneKey] = Math.max(0, laneBudget[laneKey] - res.moved);
+          status.state = res.status === 'completed' ? 'building' : res.status;
+          status.limit = res.limit;
+          const recipe = SITE_RECIPE_BY_ID.get(m.mode);
+          status.progress = res.progress || (m.job ? m.job.progressS / (recipe ? recipe.buildS : 1) : 0);
+          if (!wantsCharge && !m.job) status.state = 'racked';
+          if (res.completed && res.completed.outputId === 'charge_puck') {
+            const stocked = rack + Math.max(1, Math.floor(res.completed.qty));
+            if (rockEnt && rockEnt.data) rockEnt.data.chargeStock = stocked;
+            site.chargeStock = stocked;
+            this._ledger(site, 'good', `Charge pressed — ${stocked} on the rack.`);
+            this.bus.emit('site:chargePressed', { siteId: site.id, stock: stocked });
+            this._emitProductionReceipt(site, m, { outputId: 'charge_puck', qty: res.completed.qty, recipeId: m.mode });
+          }
+        }
+      } else if (def.id === 'sm_auto_drill') {
+        // The head chews one matrix/basalt face per bite of served power — it never opens a
+        // vein or a pocket; judgment calls stay the pilot's. The bite clock is a SECONDS
+        // accumulator on the machine record, not a fractional-output carry — m.carry is
+        // normalized to strictly sub-unit values on restore, so anything ≥ 1 would silently
+        // reset at every save boundary.
+        if (powerRatio <= 0) { status.state = 'no-power'; status.limit = 'power'; }
+        else {
+          m.biteS = Math.max(0, finiteNumber(m.biteS, 0)) + dtS * clamp01(powerRatio);
+          status.state = 'running';
+          if (m.biteS >= SITE_BALANCE.autoDrillBiteS) {
+            if (this._autoDrillBite(site, m, rt, state)) {
+              m.biteS = 0;
+            } else {
+              status.state = 'no-geology';
+              status.limit = 'geology';
+              // A ready bite with nowhere to chew stays ready — the clock is a charge on the
+              // head, not a savings account; don't let it grow unbounded in the record.
+              m.biteS = SITE_BALANCE.autoDrillBiteS;
+            }
+          }
+          status.ratePerMin.bite = round3(clamp01(powerRatio) * 60 / SITE_BALANCE.autoDrillBiteS);
+        }
+      } else if (def.id === 'sm_relay') {
+        // The mast's work is presence: signature loudness in the pass below, courier turnaround
+        // in _tryLaunch. Powered it simply runs.
+        status.state = powerRatio > 0 || def.power >= 0 ? 'running' : 'no-power';
+        if (status.state === 'no-power') status.limit = 'power';
+      } else if (def.id === 'sm_massline_core') {
+        status.state = 'running';
+        status.genMW = def.power;
+      }
+      if (therm) {
+        status.thermalBand = therm.band;
+        if (therm.band === 'fault' && status.state !== 'no-power') {
+          status.state = 'overheat';
+          status.limit = 'thermal';
+        }
+      }
+      rt.status[m.id] = status;
+      // A FIRST observation is an initial condition, not a transition. Emitting for every machine
+      // on the first tick after `_rt` is built would fire N simultaneous starved chimes on entry
+      // (audioSystem chimes on `starved && prev !== true`, and `drill:start` wipes its own
+      // memory), against law §5 "once" and §8 "one voice at a time". Only a machine that was
+      // already being watched, and whose state actually moved, speaks. Collected here and emitted
+      // BELOW the loop so no listener can read a half-built `rt.status` through projection().
+      const before = prevStatus[m.id];
+      if (before && before.state !== status.state) {
+        statusTransitions.push({ machineId: m.id, state: status.state, prev: before.state });
+      }
+      // A first watch is not news for ordinary idle or starved — but a machine that is
+      // already in thermal fault on that first watch has cut its output, and the board
+      // used to leave the claim log empty. Say it once, on the entry.
+      if (status.state === 'overheat' && (!before || before.state !== 'overheat')) {
+        const line = `${def.name} overheated — output is cut until it cools.`;
+        this._ledger(site, 'warn', line);
+        if (this.bus) this.bus.emit('toast', { text: line, kind: 'warn', ttl: 3.2 });
+      }
+    }
+    for (const t of statusTransitions) {
+      this.bus.emit('site:machineStatus', {
+        siteId: site.id, machineId: t.machineId, state: t.state, prev: t.prev,
+      });
+    }
+
+    // Signature pass (siteSignatureModel): geology exposure, power, machinery and transport
+    // resolve to one loudness the site drawer names and events can key on. A live relay reads
+    // louder through the machinery source on its own.
+    rt.signature = buildSiteSignature({
+      cleared: site.cleared,
+      contacts: site.machines.map((m) => rt.geo[m.id]).filter(Boolean),
+      power: Object.values(compPower),
+      machines: site.machines.map((m) => ({
+        id: m.id, defId: m.defId,
+        powerRatio: rt.status[m.id] ? rt.status[m.id].powerRatio : 0,
+        status: rt.status[m.id] || { state: 'idle' },
+      })),
+      transport: {
+        exportRatePerMin: stagedU / Math.max(1e-9, dtMin),
+        inFlightCount: site.fleet && Array.isArray(site.fleet.inFlight) ? site.fleet.inFlight.length : 0,
+      },
+      radiatorFins: site.radiatorFins,
+      background: (state.entities && state.entities.get
+        && Number(state.entities.get(site.asteroidId)?.data?.sensorSignature)) || 0,
+    });
+    const sigClass = rt.signature.signatureClass;
+    // The plain-words class name is part of the durable mirror — a drawer reading the claim
+    // record off-tick shows 'Blazing', never the bare class id, and never imports the kernel.
+    site.signatureLabel = rt.signature.signatureLabel;
+    if (site.signatureClass !== sigClass) {
+      const order = { quiet: 0, faint: 1, bright: 2, blazing: 3 };
+      // A FIRST observation is an initial condition, not a rise — the same law the machine
+      // status transitions just above enforce. Only a recorded previous class can climb.
+      const rising = typeof site.signatureClass === 'string'
+        && (order[sigClass] || 0) > (order[site.signatureClass] || 0);
+      site.signatureClass = sigClass;
+      if (rising && this.bus) {
+        this.bus.emit('site:signatureBand', { siteId: site.id, class: sigClass, total: rt.signature.total });
+        this._ledger(site, 'warn', `Site signature is now ${rt.signature.signatureLabel} — the whole sky can hear this claim.`);
+      }
+    }
+    // A blazing claim draws rival interest, once. Deterministic — the first crossing only —
+    // so the warning is a fact of the record, not a random patrol roll.
+    if (sigClass === 'blazing' && !site.claimContested) {
+      site.claimContested = true;
+      if (this.bus) this.bus.emit('site:claimContested', { siteId: site.id, total: rt.signature.total });
+      this._ledger(site, 'bad', 'A rival survey crew is charting this claim — the signature gave it away.');
+    }
+    // Site aging: the claim's clock is also how old the ground is. The ledger and any dust
+    // dressing read the same number.
+    site.ageS = (Number(site.ageS) || 0) + dtS;
+    rt.siteAgeS = site.ageS;
+
+    // Harmonic stress rides this same step and keeps its own record. It never
+    // writes heat, cargo, credits, or a machine's derived stats.
+    this._stepHarmonicStress(site, state, rt, dtS);
+    // Exterior vanes: a faulting hall welds one, a shot vane brings the fault back.
+    this._stepExteriorRadiators(site, state, rt, dtS);
+  },
+
+  /**
+   * Heavy housings shaking an unbraced bay. The groan is the existing rock-groan
+   * cue; the fall is one ceiling tile landing in the bore. A pillar (solid cell
+   * on the line between them) never loads. Off in another sector: the ledger
+   * still records it, the cockpit stays quiet.
+   */
+  _stepHarmonicStress(site, state, rt, dtS) {
+    const live = state.drill;
+    const liveField = live && live.active && live.field && live.asteroidId === site.asteroidId
+      ? live.field : null;
+    const field = liveField || (rt && rt.field);
+    if (!field) return;
+    const avatar = liveField && live.avatar && Number.isInteger(live.avatar.col)
+      ? { col: live.avatar.col, row: live.avatar.row } : null;
+    const machines = [];
+    for (const m of site.machines) {
+      const powerKey = rt.powerCompByMachine[m.id];
+      // "Actually running" means actually SERVED — the machine loop's status row already
+      // carries the thermal-derated ratio, so a machine in fault (served 0) stops loading
+      // the bay instead of cracking a roof while protecting itself.
+      const status = rt.status && rt.status[m.id];
+      const powerRatio = status && Number.isFinite(status.powerRatio) ? status.powerRatio
+        : (powerKey != null ? (rt.compRatio[powerKey] ?? 0) : 0);
+      machines.push({
+        id: m.id, defId: m.defId, col: m.col, row: m.row, powerRatio,
+      });
+    }
+    const result = stepSiteStructure({
+      dtS, cols: COLS, rows: ROWS, machines, field, avatar, structure: site.structure || null,
+    });
+    const next = result.structure;
+    const prev = site.structure;
+    const changed = !prev
+      ? next.stressS > 0 || next.warned || next.fractured || next.falls.length > 0
+      : prev.stressS !== next.stressS || prev.warned !== next.warned
+        || prev.fractured !== next.fractured || (prev.falls ? prev.falls.length : 0) !== next.falls.length;
+    if (changed) site.structure = next;
+    if (!result.rumble && !result.fracture) return;
+
+    const audible = !!liveField || (
+      state.world && site.sectorId && state.world.currentSectorId === site.sectorId
+    );
+    if (result.rumble) {
+      const text = harmonicGroanLine(result.rumble.names);
+      this._ledger(site, 'warn', text);
+      if (audible && this.bus) {
+        this._emitHarmonicCue('presentation.mining.fracture_warning', site, 0.72);
+        this.bus.emit('presentation:caption', { text, assertive: false });
+      }
+    }
+    if (result.fracture) {
+      const idx = tileIndex(result.fracture.fromCol, result.fracture.fromRow);
+      if (!site.cleared.includes(idx)) site.cleared.push(idx);
+      // The slab lands on what WAS a bore cell: it is rock again, so it leaves the cleared
+      // record exactly like a cave-in's dropped fill (the falls list repaints the body).
+      const landed = tileIndex(result.fracture.col, result.fracture.row);
+      site.cleared = site.cleared.filter((i) => i !== landed);
+      const ent = state.entities && state.entities.get ? state.entities.get(site.asteroidId) : null;
+      if (ent && ent.data) {
+        if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
+        if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+        ent.data.drillCleared = ent.data.drillCleared.filter((i) => Math.trunc(Number(i)) !== landed);
+      }
+      if (liveField) paintStructuralFracture(liveField, result.fracture);
+      if (rt && rt.field && rt.field !== liveField) paintStructuralFracture(rt.field, result.fracture);
+      this._markDirty(site.id, { field: true });
+      this._ledger(site, 'warn', 'A ceiling slab fell and blocked the bore.');
+      if (audible && this.bus) this._emitHarmonicCue('presentation.mining.fracture_break', site, 0.85);
+    }
+  },
+
+  _captureRadiatorDamage(entity, killed = false) {
+    const data = entity?.data;
+    if (!data?.radiatorFin || this._worldRestoreActive) return;
+    const site = this.getSite(data.siteId);
+    const fin = site?.radiatorFins?.find((row) => row.id === data.finId);
+    if (!radiatorFinIntact(fin) || !Number.isFinite(entity.hull)) return;
+    // Damage receipts fire synchronously, before combat's death and the corpse sweep.
+    // An alive:false body alone can be a residency retirement, never durable destruction.
+    fin.hull = killed ? 0 : Math.max(0, entity.hull);
+    if (fin.hull > 0) return;
+    fin.intact = false;
+    this._announceRadiator(site, this.state, 'warn', RADIATOR_SHEARED);
+  },
+
+  _stepExteriorRadiators(site, state, rt, dtS) {
+    const helpers = this.ctx && this.ctx.helpers;
+    const notes = stepExteriorRadiators({
+      site,
+      state,
+      rt,
+      dtS,
+      spawnEntity: helpers && helpers.spawnEntity,
+      removeEntity: helpers && helpers.removeEntity,
+    });
+    if (!notes) return;
+    if (notes.welded) this._announceRadiator(site, state, 'info', notes.welded);
+    if (notes.sheared) this._announceRadiator(site, state, 'warn', notes.sheared);
+  },
+
+  _announceRadiator(site, state, kind, text) {
+    this._ledger(site, kind, text);
+    const here = !!(state && state.world && state.world.currentSectorId
+      && site && state.world.currentSectorId === site.sectorId);
+    if (here && this.bus) this.bus.emit('presentation:caption', { text, assertive: kind === 'warn' });
+  },
+
+  _emitHarmonicCue(id, site, gain) {
+    const rock = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(site.asteroidId) : null;
+    const pos = rock && rock.pos;
+    this.bus.emit('audio:cue', {
+      id,
+      gain,
+      ...(pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? { position: { x: pos.x, z: pos.z } } : {}),
+    });
+  },
+
+  // One bite of an auto-bore head: the first matrix/basalt face in the ring goes open — veins,
+  // pockets and housings are never machine judgment. Live sessions see the same drill:break a
+  // pilot bore emits; off-session writes go straight to the durable record.
+  _autoDrillBite(site, m, rt, state) {
+    const live = state.drill && state.drill.active && state.drill.asteroidId === site.asteroidId
+      ? state.drill : null;
+    const field = (live && live.field) || rt.field;
+    if (!field) return false;
+    for (const [dc, dr] of RING_OFFSETS) {
+      const c = m.col + dc;
+      const r = m.row + dr;
+      if (c < 0 || c >= COLS || r < 0 || r >= ROWS) continue;
+      const t = field[c] && field[c][r];
+      if (!t || t.structure || (t.type !== 'dirt' && t.type !== 'rock')) continue;
+      field[c][r] = EMPTY_TILE();
+      const idx = tileIndex(c, r);
+      if (!site.cleared.includes(idx)) site.cleared.push(idx);
+      // Boring out a fallen slab is the bore again — the drill:break listener releases it for
+      // live sessions, but off-session bites emit nothing: drop the falls record here or every
+      // field rebuild re-paints an immortal slab the head chews forever.
+      this._releaseFallenSlab(site, c, r);
+      this._accessCache = null;
+      const ent = state.entities && state.entities.get ? state.entities.get(site.asteroidId) : null;
+      if (ent && ent.data) {
+        if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
+        if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+        // Same exclusivity as recordClearedTile: a re-opened cell is neither rubble nor a
+        // standing fault — a softened slab chewed by the head is gone for good.
+        for (const key of ['drillRubble', 'drillFaults']) {
+          if (Array.isArray(ent.data[key])) {
+            ent.data[key] = ent.data[key].filter((i) => Math.trunc(Number(i)) !== idx);
+          }
+        }
+      }
+      // The claim's mirrors move the same way — a re-cleared cell is never rubble or fault.
+      for (const key of ['drillRubble', 'drillFaults']) {
+        if (Array.isArray(site[key])) {
+          site[key] = site[key].filter((i) => Math.trunc(Number(i)) !== idx);
+        }
+      }
+      rt.geoDirty = true;
+      if (live) {
+        this.bus.emit('drill:break', {
+          col: c, row: r, type: t.type, ore: null, wasVein: false, wasGas: false, auto: true,
+        });
+        const drillSys = this._registry && this._registry.get ? this._registry.get('drill') : null;
+        if (drillSys && typeof drillSys._structCheck === 'function') drillSys._structCheck(live, c, r);
+      }
+      this._ledger(site, 'info', 'The auto-bore head opened another face.');
+      return true;
+    }
+    return false;
+  },
+
+  _releaseFallenSlab(site, col, row) {
+    const structure = site && site.structure;
+    if (!structure || !Array.isArray(structure.falls) || !structure.falls.length) return;
+    const falls = structure.falls.filter((fall) => fall.col !== col || fall.row !== row);
+    if (falls.length === structure.falls.length) return;
+    site.structure = { ...structure, falls };
+  },
+
+  _tryLaunch(site, state, portStatus) {
+    const fleet = site.fleet;
+    const bufferTotal = storeTotal(site.exportBuffer);
+    if (bufferTotal + 1e-9 < SITE_BALANCE.podCapacity) return;
+    if (fleet.podsReady <= 0) {
+      portStatus.state = 'no-pods';
+      portStatus.limit = 'pods';
+      return;
+    }
+    if (state.simTime - fleet.lastLaunchT < SITE_BALANCE.podLaunchCooldownS) return;
+
+    // Load the pod in sorted-good order (deterministic).
+    const cargo = {};
+    let loaded = 0;
+    for (const goodId of Object.keys(site.exportBuffer).sort()) {
+      if (loaded >= SITE_BALANCE.podCapacity) break;
+      const have = Math.floor(Math.max(0, Number(site.exportBuffer[goodId]) || 0));
+      const take = Math.min(have, SITE_BALANCE.podCapacity - loaded);
+      if (take <= 0) continue;
+      cargo[goodId] = take;
+      site.exportBuffer[goodId] = (Number(site.exportBuffer[goodId]) || 0) - take;
+      if (site.exportBuffer[goodId] <= 1e-9) delete site.exportBuffer[goodId];
+      loaded += take;
+    }
+    if (loaded <= 0) return;
+
+    fleet.podsReady -= 1;
+    fleet.launches += 1;
+    fleet.lastLaunchT = state.simTime;
+
+    const sector = SECTOR_BY_ID.get(site.sectorId);
+    const danger = sector ? dangerIndex(sector) : 0.2;
+    // The player's addressed customer wins; null (or a stale id — normalized away) keeps the
+    // auto lane, the sector's first station.
+    const stations = sector && Array.isArray(sector.stations) ? sector.stations : [];
+    const station = stations.find((st) => st && st.id === site.podDestinationId) || stations[0] || null;
+    // Loss decided at launch (seeded), revealed at arrival — long-run converges on the odds,
+    // individual runs stay dramatic (brief §6).
+    const roll = drawSeeded(state.sites.meta, 'rngSeed', hash32(state.meta && state.meta.seed || 1, site.id, fleet.launches));
+    const lost = roll < podLossChance(danger);
+    // A POWERED relay mast tightens the courier turnaround — faster handshakes both ways.
+    // Status rows exist only for machines the rotation already visited this tick, so a
+    // relay queued behind this port has no row yet — an absent row must never read as
+    // live. Recompute from the same inputs the machine loop uses (served power + thermal
+    // fault) instead of assuming presence means running.
+    const rt = this._rt && this._rt.get(site.id);
+    const relayUp = !!(rt && site.machines.some((m) => {
+      if (m.defId !== 'sm_relay') return false;
+      const st = rt.status && rt.status[m.id];
+      if (st) return st.state === 'running';
+      const pk = rt.powerCompByMachine ? rt.powerCompByMachine[m.id] : null;
+      if (pk == null) return false;
+      if (!((rt.compRatio && rt.compRatio[pk]) > 0)) return false;
+      const rec = rt.thermal && Array.isArray(rt.thermal.machines)
+        ? rt.thermal.machines.find((r) => r && r.id === m.id) : null;
+      return !(rec && rec.band === 'fault');
+    }));
+    const travel = podTravelS(danger) * (relayUp ? SITE_BALANCE.relayPodTravelFactor : 1);
+    const intentId = `site-sale:${site.id}:${fleet.launches}`;
+    ensureShipment(site);
+    addToShipment(site, '_pod', loaded, 9999);
+    const worldRecordId = `site:${site.id}:pod:${fleet.launches}`;
+    fleet.inFlight.push({
+      launchT: state.simTime,
+      arriveT: state.simTime + travel,
+      cargo,
+      lost,
+      stationId: station ? station.id : null,
+      stationName: station ? station.name : 'the freight lane',
+      intentId,
+      worldRecordId,
+    });
+    this._ledger(site, 'info', `Courier pod away — ${loaded}u for ${station ? station.name : 'the freight lane'}.`);
+    this.bus.emit('site:courierLaunched', {
+      siteId: site.id,
+      asteroidId: site.asteroidId,
+      sectorId: site.sectorId,
+      cargoUnits: loaded,
+      destinationStationId: station ? station.id : null,
+      arriveT: state.simTime + travel,
+      intentId,
+      worldRecordId,
+    });
+    const jobs = this._registry && this._registry.get ? this._registry.get('npcJobs') : null;
+    if (jobs && typeof jobs.noteSiteCourier === 'function') {
+      jobs.noteSiteCourier({
+        worldRecordId,
+        siteId: site.id,
+        intentId,
+        sectorId: site.sectorId,
+        destinationId: station ? station.id : null,
+        cargo,
+        launchT: state.simTime,
+        arriveT: state.simTime + travel,
+      });
+    }
+    this._spawnCourierVisual(site, state, worldRecordId);
+  },
+
+  /**
+   * Player-present launches are physical (brief §8): a small drone entity rises off the site
+   * rock and coasts toward the lane until the matching in-flight pod arrives. Visual only — the
+   * economics resolved in _tryLaunch/_resolvePods regardless of who is watching. Coasting uses
+   * plain vel integration. A pod with no finite arrival keeps the short 14s picture.
+   */
+  _spawnCourierVisual(site, state, worldRecordId) {
+    if (!state.world || state.world.currentSectorId !== site.sectorId) return;
+    const rock = state.entities.get(site.asteroidId);
+    const spawnEntity = this.ctx && this.ctx.helpers && this.ctx.helpers.spawnEntity;
+    if (!rock || typeof spawnEntity !== 'function') return;
+    const ang = ((hash32(site.id, site.fleet.launches) % 628) / 100);
+    const dist = (rock.radius || 8) + 4;
+    const speed = 90;
+    const recordId = worldRecordId || `site:${site.id}:pod:${site.fleet.launches}`;
+    let despawnAt = state.simTime + 14;
+    const pods = site.fleet && site.fleet.inFlight;
+    if (Array.isArray(pods)) {
+      for (let i = 0; i < pods.length; i++) {
+        const pod = pods[i];
+        if (!pod || pod.worldRecordId !== recordId) continue;
+        if (Number.isFinite(pod.arriveT)) despawnAt = pod.arriveT;
+        break;
+      }
+    }
+    spawnEntity({
+      type: 'drone',
+      team: 0,
+      factionId: 'faction_player',
+      pos: { x: rock.pos.x + Math.cos(ang) * dist, z: rock.pos.z + Math.sin(ang) * dist },
+      rot: ang,
+      vel: { x: Math.cos(ang) * speed, z: Math.sin(ang) * speed },
+      radius: 2.2,
+      mass: 4,
+      collides: false,
+      drag: 0,
+      maxSpeed: speed,
+      data: {
+        kind: 'site_courier',
+        siteId: site.id,
+        sectorId: site.sectorId,
+        homeSectorId: site.sectorId,
+        worldRecordId: recordId,
+        despawnAt,
+      },
+    });
+  },
+
+  _resolvePods(site, state) {
+    const fleet = site.fleet;
+    if (!fleet.inFlight.length) return;
+    const remaining = [];
+    for (const pod of fleet.inFlight) {
+      if (pod.arriveT > state.simTime) { remaining.push(pod); continue; }
+      const sealed = this._sealPodOutcome(site, pod);
+      if (sealed && sealed.duplicate) continue;
+      // SF-273: a seal that cannot complete must never crash the site tick, erase the lot, or
+      // fabricate a sale. The cargo goes back to the launch buffer (the lot's previous owner)
+      // and custody is debited to match — the pod itself retires so the failure cannot loop.
+      if (!sealed || sealed.ok !== true || !isPlainObject(sealed.receipt)) {
+        const returned = refundSitePodCargo(site, pod.cargo);
+        takeFromShipment(site, '_pod', storeTotal(pod.cargo));
+        this._ledger(site, 'warn',
+          `Courier handoff could not settle — ${returned}u returned to the launch buffer.`);
+        continue;
+      }
+      if (pod.lost) {
+        fleet.lost += 1;
+        const units = storeTotal(pod.cargo);
+        this._ledger(site, 'bad', `Courier lost en route to ${pod.stationName} — ${units}u of cargo gone.`);
+        this.bus.emit('site:courierLost', {
+          siteId: site.id,
+          cargo: pod.cargo,
+          stationId: pod.stationId,
+          receipt: sealed && sealed.receipt,
+        });
+        continue;
+      }
+      fleet.delivered += 1;
+      const units = Number.isFinite(sealed.receipt.quantity)
+        ? sealed.receipt.quantity
+        : storeTotal(pod.cargo);
+      const returnedU = Number(sealed.receipt.returned) || 0;
+      const credited = Number.isFinite(sealed.receipt.credited) ? sealed.receipt.credited : 0;
+      this._ledger(site, 'good', `Courier delivered ${units}u to ${pod.stationName} — ${credited} cr banked.`
+        + (returnedU > 0 ? ` ${returnedU}u unlisted there rode back to the buffer.` : ''));
+      this.bus.emit('site:courierDelivered', {
+        siteId: site.id,
+        stationId: pod.stationId,
+        units,
+        grossCr: sealed ? sealed.receipt.realisedTotal : 0,
+        creditedCr: credited,
+        operatingCost: sealed ? sealed.receipt.operatingCost : 0,
+        loss: 0,
+        receipt: sealed && sealed.receipt,
+      });
+    }
+    fleet.inFlight = remaining;
+  },
+
+  _sealPodOutcome(site, pod) {
+    ensureShipment(site);
+    const intentId = pod.intentId || `site-sale:${site.id}:${pod.launchT}`;
+    const prior = site.saleReceipts && site.saleReceipts[intentId];
+    if (prior) return { ok: true, duplicate: true, receipt: prior.receipt };
+    const units = storeTotal(pod.cargo);
+    if (pod.lost) {
+      takeFromShipment(site, '_pod', units);
+      const receipt = {
+        id: intentId,
+        stationId: pod.stationId || null,
+        quantity: units,
+        destination: pod.stationName || pod.stationId || null,
+        realisedPrice: 0,
+        realisedTotal: 0,
+        operatingCost: 0,
+        loss: units,
+        credited: 0,
+      };
+      site.saleReceipts[intentId] = { fingerprint: `lost:${intentId}`, receipt };
+      return { ok: true, duplicate: false, receipt };
+    }
+    // Sale and freight must agree unit for unit: only goods the destination market actually
+    // lists can be sold there and land there (INF-econ critic round). A good with no listing
+    // banks nothing — it rides back to the launch buffer below, the lot's previous owner.
+    const { traded, returned } = this._podSaleSplit(pod);
+    const soldUnits = storeTotal(traded);
+    let rawGross = 0;
+    for (const goodId of Object.keys(traded).sort()) {
+      rawGross += traded[goodId] * this._salePrice(pod.stationId, goodId);
+    }
+    const realisedTotal = Math.round(rawGross * SITE_BALANCE.podSalvageMult);
+    const realisedPrice = soldUnits > 0 ? realisedTotal / soldUnits : 0;
+    const operatingCost = Math.max(0, Math.round(rawGross) - realisedTotal);
+    const have = shipmentQty(site, '_pod');
+    if (have < units) addToShipment(site, '_pod', units - have, 9999);
+    const plan = {
+      intentId,
+      stationId: pod.stationId || null,
+      good: '_pod',
+      quantity: units,
+      unitPrice: realisedPrice,
+      total: realisedTotal,
+      quoteVersion: realisedPrice,
+    };
+    const result = commitShipmentSale(site, plan, () => this._creditPassive(realisedTotal));
+    if (result && result.ok && result.receipt) {
+      result.receipt.destination = pod.stationName || pod.stationId || null;
+      result.receipt.quantity = soldUnits; // what the sale actually sold; custody debited the whole pod
+      result.receipt.realisedPrice = realisedPrice;
+      result.receipt.realisedTotal = realisedTotal;
+      result.receipt.operatingCost = operatingCost;
+      result.receipt.loss = 0;
+      result.receipt.returned = storeTotal(returned);
+      result.receipt.credited = result.receipt.credited | 0;
+      if (!result.duplicate) {
+        // The goods land where the sale claims to sell — before the stats row so a reader of the
+        // receipt already finds the intake committed. Duplicate seals re-land nothing.
+        this._landPodFreight(pod, traded);
+        if (storeTotal(returned) > 0) refundSitePodCargo(site, returned);
+        site.stats.grossCr += realisedTotal;
+        site.stats.exportedU += soldUnits;
+        site.stats.creditedCr += result.receipt.credited;
+      }
+    }
+    return result;
+  },
+
+  /**
+   * Split the pod's goods into what the destination market lists (sellable, landable) and what
+   * it does not (banked at the basePrice fallback while the freight bounces 'untraded' — the
+   * residual teleport this path exists to end). Strictly read-only over the economy's markets.
+   * With no destination ("the freight lane") or no economy in the harness there is no market to
+   * disagree with, so every good rides as it always has.
+   */
+  _podSaleSplit(pod) {
+    const traded = {};
+    const returned = {};
+    const econ = this._registry && this._registry.get ? this._registry.get('economy') : null;
+    const markets = econ && econ.state && econ.state.economy && econ.state.economy.markets;
+    const market = pod && pod.stationId && markets ? markets[pod.stationId] : null;
+    for (const goodId of Object.keys((pod && pod.cargo) || {}).sort()) {
+      const qty = Math.floor(Number(pod.cargo[goodId]) || 0);
+      if (qty <= 0) continue;
+      if (!market || market[goodId]) traded[goodId] = qty;
+      else returned[goodId] = qty;
+    }
+    return { traded, returned };
+  },
+
+  /**
+   * The courier handoff is a REAL delivery (INF-econ, WF-06): each SOLD good lands in the
+   * destination market through the canonical freight fact (cargo:delivered → economy
+   * applyFreightDelivery — deduped by receiptId, stock write, shortageRelieved cue). The sale
+   * above was priced at the pre-intake quote; the NEXT pod prices against the market this one
+   * fed, so sustained site output moves the price it sells at instead of minting credits
+   * against a market that never saw a unit. No station ("sold to the freight lane") has no
+   * market to feed and lands nothing. Lost pods never reach here.
+   * @param {object} traded the pod's sold goods only — unlisted goods are not sold here and
+   *   ride back to the launch buffer instead (see _podSaleSplit).
+   */
+  _landPodFreight(pod, traded) {
+    // A stable receiptId is what makes the intake deduped rather than replayable. Restored pods
+    // carry one — the save-repair path assigns a synthetic intentId to old-save pods — so they
+    // land and dedupe exactly like live launches; only a malformed in-memory pod lacks one, and
+    // a handoff that cannot be receipted must not write stock either. Land nothing.
+    if (!pod || !pod.stationId || typeof pod.intentId !== 'string' || !pod.intentId) return;
+    for (const goodId of Object.keys(traded || {}).sort()) {
+      const qty = Math.floor(Number(traded[goodId]) || 0);
+      if (qty <= 0) continue;
+      this.bus.emit('cargo:delivered', {
+        commodityId: goodId,
+        qty,
+        stationId: pod.stationId,
+        receiptId: `${pod.intentId}:${goodId}`,
+      });
+    }
+  },
+
+  _salePrice(stationId, goodId) {
+    const econ = this._registry && this._registry.get ? this._registry.get('economy') : null;
+    if (stationId && econ && typeof econ.priceOf === 'function') {
+      const p = econ.priceOf(stationId, goodId, 'sell');
+      if (Number.isFinite(p) && p > 0) return p;
+    }
+    const c = COMMODITY_BY_ID.get(goodId);
+    return (c && c.basePrice) || 0;
+  },
+
+  /** Route sale gross through automation's passive cap. Returns credited amount (post-cap). */
+  _creditPassive(gross) {
+    if (!(gross > 0)) return 0;
+    const automationSys = this._registry && this._registry.get ? this._registry.get('automation') : null;
+    if (automationSys && typeof automationSys.creditPassive === 'function') {
+      const credited = automationSys.creditPassive(gross, 'site:courier');
+      return Number.isFinite(credited) ? Math.max(0, credited) : 0;
+    }
+    // No automation system (minimal harnesses): drop the income rather than bypass the cap.
+    return 0;
+  },
+
+  _ledger(site, kind, text) {
+    site.ledger.unshift(makeLedgerEntry(this.state.simTime, kind, text));
+    if (site.ledger.length > SITE_BALANCE.ledgerMax) site.ledger.length = SITE_BALANCE.ledgerMax;
+  },
+
+  // ------------------------------------------------------------- projections
+
+  /**
+   * Instant "what will this site do" readout for the screen: per-machine status/rates, per-network
+   * power + store summaries, and the §6 fleet sentence inputs. Pure read — no store mutation.
+   * While the sim is paused under the site screen this is the honest live feedback.
+   */
+  projection: asteroidSiteReadMethods.projection,
+};

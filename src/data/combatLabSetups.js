@@ -1,0 +1,334 @@
+// Combat Lab catalogs — starter hull/loadout packages, enemy packages, and arena prototypes.
+// Pure frozen data. No systems imports and no runtime writes after module init.
+// Arena geometry is intentionally sector/position mapping only (authored arenas are later work).
+
+function freezeDeep(value) {
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    for (const item of value) freezeDeep(item);
+  } else {
+    for (const key of Object.keys(value)) freezeDeep(value[key]);
+  }
+  return Object.freeze(value);
+}
+
+export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
+  {
+    id: 'web_weaver', label: 'Web Weaver', hullId: 'ship_hornet',
+    blurb: 'Stitch pursuers together, then shove the knot into cover. The pack becomes its own obstacle.',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_m' },
+      { slotIndex: 1, defId: 'wpn_snarl_s' },
+      { slotIndex: 2, defId: 'wpn_concussion_cannon_m' },
+      { slotIndex: 5, defId: 'mod_repulsion_trap_s' },
+    ],
+  },
+  {
+    id: 'ricochet_runner',
+    label: 'Ricochet Runner',
+    blurb: 'Bank a stream of bullets around cover. Shove the pack into the rocks, then boost through.',
+    hullId: 'ship_hornet',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_bank_stream_m' },
+      { slotIndex: 1, defId: 'wpn_concussion_cannon_m' },
+      { slotIndex: 5, defId: 'mod_bank_shot' },
+      { slotIndex: 6, defId: 'mod_repulsion_trap_s' },
+    ],
+  },
+  {
+    id: 'energy_baseline',
+    label: 'Baseline Energy',
+    hullId: 'ship_kestrel',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+    ],
+  },
+  {
+    id: 'veil_step',
+    label: 'Veil Step',
+    blurb: 'Hold Shift to place a phase shadow. Release to cross the gap; the step spends the boost capacitor.',
+    hullId: 'ship_kestrel',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+      { slotIndex: 5, defId: 'mod_veil_step' },
+    ],
+  },
+  {
+    id: 'boomerang_bomb_run',
+    label: 'Boomerang Bomb Run',
+    blurb: 'Lock a hostile and press Bomb: carve a physical bank, release one loaded bomb, then phase back to the clear start point.',
+    hullId: 'ship_kestrel',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+      { slotIndex: 5, defId: 'mod_boomerang_run' },
+    ],
+  },
+  {
+    id: 'pinball_rush',
+    label: 'Pinball Rush',
+    blurb: 'Hold Boost while lining up a live hostile, then release for a charged physical dash. Contacts stay under normal collision damage and rewards.',
+    hullId: 'ship_kestrel',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+      { slotIndex: 5, defId: 'mod_pinball_rush' },
+    ],
+  },
+  {
+    id: 'kinetic_baseline',
+    label: 'Baseline Kinetic',
+    hullId: 'ship_hornet',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_autocannon_m' },
+    ],
+  },
+  {
+    id: 'physics_toolkit',
+    label: 'Physics Toolkit',
+    hullId: 'ship_hornet',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_concussion_cannon_m' },
+      { slotIndex: 1, defId: 'wpn_gravity_marker_s' },
+      { slotIndex: 2, defId: 'wpn_momentum_sink_s' },
+    ],
+  },
+  // THE MASSLINE RIG (PQ-135). The Drifter is the only ungated hull with TWO M-size utility slots,
+  // which is the only place the massline heads — Elastic Whip, Monofilament Sweep, Transverse
+  // Snare, Tractor — can actually be fitted. Every other starter can carry the physics WEAPONS but
+  // not the physics ROPE, so the whole "latch it and sling it into a rock" half of the game had no
+  // door into the Crucible at all. It also mounts a rear gun, which is a different flying problem
+  // in a room where the swarm is behind you as often as in front.
+  {
+    id: 'massline_rig',
+    label: 'Massline Rig',
+    hullId: 'ship_drifter',
+    // The Drifter's weapon capacity is 16 and two M guns cost 18, so the rear mount takes the S
+    // marker rather than a second heavy — which is also the better rig: the thing you want pointing
+    // backwards in a swarm is a tag on whatever is chasing you, not a slower gun.
+    // IT NEEDS THE ENGINE. Derived, the bare Drifter tops out at 134 — and the Corsair Raider that
+    // joins the roster at wave 10 does 147. On the hull built for the rope you could not break away
+    // from the fastest thing in the game: no disengage, no repositioning, no reaching a repair cell
+    // that dropped across the room. A Fusion Drive puts it at 196, comfortably clear of the whole
+    // roster, and still inside the hull's own outfit budget.
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_concussion_cannon_m' },
+      { slotIndex: 1, defId: 'wpn_gravity_marker_s' },
+      { slotIndex: 3, defId: 'mod_engine_fusion_m' },
+      { slotIndex: 7, defId: 'mod_elastic_whip_m' },
+    ],
+  },
+  // THE SYNTHESIS FORGE (CRU-038 / PQ-133.07). The Ranger is the smallest hull that can
+  // hold all three Storm Carom parts at once AND still fly the room — Bank Shot, Relay
+  // Arc and Ion Payload side by side in its survey bay. In the swarm armory the named
+  // synthesis then offers its conversion, three held parts for one evolved item and two
+  // freed hardpoints. The lab package is the reversible door: launch it, take the trade
+  // (or refuse it), read the new gun law, and leave — nothing persists.
+  //
+  // It launched on the Hawser because that tug was the smallest hull with three utility
+  // slots. The tug's envelope made the package a trap: even with its best legal fit
+  // (Fusion M + Vernier M) the Hawser derives 97 speed and a 1.47 s turn-about — slower
+  // than every body the swarm fields and unable to face a threat behind it inside the
+  // one-second surround bound (D147). A starter kit that cannot disengage is not a
+  // starter kit. The Ranger's deep utility bay is the same authored idea on a hull that
+  // can move: three parts fitted, a Fusion drive and Vernier bells, and it derives
+  // ~279 speed with a ~0.40 s turn-about — inside the pack, not ahead of it.
+  // Ranger slot order: weapon M x2 front (0,1) + M turret (2) | shield M x2 (3,4) |
+  // engine L (5) | cargo M x2 (6,7) | utility L x4 (8,9,10,11) | thruster M (12).
+  // S parts sit in the L utility bays legally, and the M drive sits in the L engine bay.
+  {
+    id: 'storm_carom_forge',
+    label: 'Storm Carom Forge',
+    hullId: 'ship_ranger',
+    blurb: 'Three loose laws held at once. The armory will offer to weld them into one.',
+    // The forge gun is the honest starter bolt rather than the ricochet stream — Bank Shot
+    // is the part that bends it anyway. The drive and the bells are not optional: they are
+    // what let a parts-hauler disengage, the same lesson the Massline Rig taught.
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_m' },
+      { slotIndex: 5, defId: 'mod_engine_fusion_m' },
+      { slotIndex: 8, defId: 'mod_bank_shot' },
+      { slotIndex: 9, defId: 'mod_relay_arc' },
+      { slotIndex: 10, defId: 'mod_ion_payload' },
+      { slotIndex: 12, defId: 'mod_thruster_vernier_m' },
+    ],
+  },
+  // PQ-176.01 — the drive/thruster split, as two kits you can actually launch.
+  //
+  // Same hull. Same gun. The ONLY difference is which half of the propulsion the credits went to,
+  // and the two ships do not feel remotely alike: one arrives first and cannot turn when it gets
+  // there, the other cannot run away from anything and never loses a knife fight. If a player can
+  // pick between these two and mean it, the split is real.
+  //
+  // Hornet slot order: weapon M x3 (0,1,2) | shield M (3) | engine L (4) | utility S x2 (5,6) |
+  // thruster M (7).
+  {
+    id: 'hornet_fast_clumsy',
+    label: 'Bolt (fast, clumsy)',
+    blurb: 'Everything in the drive, nothing in the bells. Crosses the room first and regrets it.',
+    hullId: 'ship_hornet',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_concussion_cannon_m' },
+      { slotIndex: 4, defId: 'mod_engine_warp_l' },
+      { slotIndex: 7, defId: 'mod_thruster_stripped_s' },
+    ],
+  },
+  {
+    id: 'hornet_nimble_slow',
+    label: 'Hinge',
+    blurb: 'The nimble, slow Hornet. Same gun, different bells.',
+    hullId: 'ship_hornet',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_concussion_cannon_m' },
+      { slotIndex: 4, defId: 'mod_engine_ion_m' },
+      { slotIndex: 7, defId: 'mod_thruster_vernier_m' },
+    ],
+  },
+  // PQ-133.04 R4 — THE MIRROR DEMONSTRATOR (CRU-027). The public route's honest teaching kit:
+  // ONE Pulse Laser S, and the two modifiers that turn its shots into the bank demonstration —
+  // Bank Shot gives the shot a ricochet lineage, Smart Bank aims the rebound. No autocannon, no
+  // concussion, no trap: on the Foundry Block every bank you see is THIS gun's, off the room's
+  // plates and off the Foreman's authored mirror prow. Slot plan follows the massline_rig
+  // precedent: the Drifter's utility bays (7, 8) carry the modifiers beside a single front gun.
+  // Schema-validated against spaceface.combatLabSetup.v1 on ship_drifter.
+  // IT NEEDS THE ENGINE — the same Drifter lesson the Massline Rig was built on. Bare,
+  // this hull derives ~141 while the Corsair Raider joining the roster at wave 10 does
+  // 147: a teaching kit the swarm can run down teaches the wrong lesson (D147). A Fusion
+  // Drive puts it at ~206 with a ~0.80 s turn-about, inside the same envelope the Rig
+  // holds, and still inside the hull's own outfit budget.
+  {
+    id: 'mirror_demonstrator',
+    label: 'Mirror Demonstrator',
+    blurb: 'One pulse gun, every shot able to bank. The kit the Foundry teaches with.',
+    hullId: 'ship_drifter',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+      { slotIndex: 3, defId: 'mod_engine_fusion_m' },
+      { slotIndex: 7, defId: 'mod_bank_shot' },
+      { slotIndex: 8, defId: 'mod_smart_bank' },
+    ],
+  },
+]);
+
+export const COMBAT_LAB_ENEMY_PACKAGES = freezeDeep([
+  {
+    id: 'physics_swarm',
+    label: 'Physics Swarm',
+    // Parity with today's Sandbox physics_swarm: 10 lights + 2 mediums (1 reaver + 1 corsair).
+    entries: [
+      { enemyId: 'wasp_swarmer', count: 10, level: 1 },
+      { enemyId: 'reaver_pirate', count: 1, level: 2 },
+      { enemyId: 'corsair_raider', count: 1, level: 2 },
+    ],
+    maxConcurrent: 12,
+    spawnDistance: 230,
+  },
+  {
+    id: 'wasp_flight',
+    label: 'Wasp Flight',
+    entries: [
+      { enemyId: 'wasp_swarmer', count: 6, level: 1 },
+    ],
+    maxConcurrent: 6,
+    spawnDistance: 260,
+  },
+  {
+    id: 'mixed_screen',
+    label: 'Mixed Screen',
+    entries: [
+      { enemyId: 'wasp_swarmer', count: 4, level: 1 },
+      { enemyId: 'lancer_sniper', count: 2, level: 2 },
+      { enemyId: 'reaver_pirate', count: 2, level: 2 },
+    ],
+    maxConcurrent: 8,
+    spawnDistance: 280,
+  },
+  {
+    id: 'sniper_pair',
+    label: 'Lancer Pair',
+    entries: [
+      { enemyId: 'lancer_sniper', count: 2, level: 3 },
+    ],
+    maxConcurrent: 2,
+    spawnDistance: 700,
+  },
+]);
+
+export const COMBAT_LAB_ARENAS = freezeDeep([
+  {
+    id: 'helios_core',
+    label: 'Helios Core',
+    sectorId: 'sector_helios_prime',
+    // THE ARENA IS SOMEWHERE ELSE NOW (PQ-135).
+    //
+    // (400, 0) is the tutorial spawn: 230 units from a wreck and a beacon, 970 from Helios Station,
+    // on the authored POI corridor, inside the starter asteroid seam, and in the middle of the
+    // sector's ambient freight lane. A live screenshot of wave one had a ringed planet filling a
+    // quarter of the screen, a station, eighteen ambient ships in the contact list and POI
+    // discovery toasts firing over the fight. The Crucible was being played in somebody's front
+    // garden.
+    //
+    // This corner is empty by measurement: 3,000+ units from every station, gate and authored
+    // asteroid field, and still well inside the sector's 3,500 world radius. The arena's own
+    // geometry (swarmArena.js) is then the only thing in it, which is the point — the room the
+    // player fights in should be the room this mode built.
+    spawnPos: { x: -1900, z: -2200 },
+  },
+  {
+    id: 'ceres_belt',
+    label: 'Ceres Mining Belt',
+    sectorId: 'sector_ceres_belt',
+    spawnPos: { x: 500, z: -700 },
+  },
+  {
+    id: 'tethys_hub',
+    label: 'Tethys Exchange',
+    sectorId: 'sector_tethys_junction',
+    spawnPos: { x: 1050, z: 380 },
+  },
+  {
+    id: 'lagrange_crucible',
+    label: 'Lagrange Crucible',
+    sectorId: 'sector_helios_prime',
+    spawnPos: { x: -500, z: 800 },
+  },
+  {
+    id: 'cinder_sluice',
+    label: 'Cinder Sluice',
+    sectorId: 'sector_ceres_belt',
+    spawnPos: { x: -300, z: 200 },
+  },
+  {
+    id: 'cryo_drift',
+    label: 'Cryo Drift',
+    sectorId: 'sector_vesta_forge',
+    spawnPos: { x: 680, z: 320 },
+  },
+  {
+    id: 'storm_lattice',
+    label: 'Storm Lattice',
+    sectorId: 'sector_tethys_junction',
+    spawnPos: { x: -640, z: -1180 },
+  },
+  // SWARM-07 B4 — the Mill is an ore seam out in the belt's own territory, far enough
+  // from the Ceres rooms that its dense rock band is the only geometry in frame.
+  {
+    id: 'asteroid_mill',
+    label: 'Asteroid Mill',
+    sectorId: 'sector_ceres_belt',
+    spawnPos: { x: 1400, z: 900 },
+  },
+  // SWARM-07 B4 — the Hive grows in a quiet pocket of Vesta space: no stations, no
+  // gates, nothing living except the room itself.
+  {
+    id: 'the_hive',
+    label: 'The Hive',
+    sectorId: 'sector_vesta_forge',
+    spawnPos: { x: -1100, z: -450 },
+  },
+]);
+
+// S9 — "the round looks like the arena's picture." Arenas whose fiction is a room you're
+// INSIDE (living walls that close around the fight, a sluice channel with a mouth that
+// eats it) do not show the open-sector ringed planet: the generic sky is the wrong
+// picture for an interior. Render reads this list; open-space arenas keep the authored
+// ARENA_BACKDROP_FOCUS dim.
+export const ENCLOSED_SKY_ARENA_IDS = new Set(['the_hive', 'cinder_sluice']);

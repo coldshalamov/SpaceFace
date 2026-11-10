@@ -1,0 +1,695 @@
+// Pure presenter for a compact dock-arrival strip. It consumes receipts from existing owners and
+// deliberately emits no voice, toast, mission, economy, faction, heat, or traffic mutations.
+
+import { activeHullIdentity } from '../data/hullIdentity.js';
+import { factionBerthForStation } from '../data/factionBerths.js';
+import { canLaunderSalvageAtStation } from '../data/salvageLegality.js';
+import { leftoverMechanicCard } from '../story/mechanicVoice.js';
+import { leftoverLedgerCard } from '../story/storyLedger.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { isPlayerWanted } from '../systems/heat.js';
+import { cardsForStation } from './marketNews.js';
+import { formatOfflineReceiptLine, isOfflineReceiptShowable } from './automationPayoff.js';
+import { CHRONICLER_DIGEST_WEEK_S, chroniclerDigestWeek, selectWeeklyDigest } from '../systems/chronicler.js';
+import { LONG_BERTH_STATION_ID, BERTH_STAGES } from '../data/longBerth.js';
+import { crewVetRankLabel } from '../data/crew.js';
+
+/** One sim day. A loaded save older than this may speak the offline summary. */
+const SIM_DAY_S = 600;
+
+function offlineSummaryReceipt(state) {
+  const noted = state && state.ui && state.ui.offlineSummary;
+  if (noted && typeof noted === 'object') return noted;
+  const meta = state && state.automation && state.automation.meta;
+  return (meta && meta.lastOfflineReceipt) || null;
+}
+
+/**
+ * The berth keeper remembers your last visit (inf-berth-remembers). The stamps live on the
+ * persisted player berth-memory row (economy stamps only physical arrivals). The existing
+ * player serializer retains it; market refreshes never stand in for presence. A
+ * first visit, a same-day return, and a station you have never berthed at all stay quiet.
+ * Pure read.
+ */
+export function berthVisitLine(state, stationId) {
+  const memory = state && state.player && state.player.berthMemory;
+  const stationMemory = memory && memory[stationId];
+  const prior = stationMemory?.priorVisitAt;
+  const arrival = stationMemory?.visitedAt;
+  if (!Number.isFinite(prior) || !Number.isFinite(arrival) || arrival <= prior) return null;
+  const days = Math.floor((arrival - prior) / SIM_DAY_S);
+  if (days < 1) return null;
+  return days === 1
+    ? 'The berth keeper nods — you were here yesterday.'
+    : `The berth keeper nods — ${days} days since your last visit.`;
+}
+
+/**
+ * The quiet berth tells its tiny story (inf-quiet-berth). A berth with no news, no traffic,
+ * no deed and no rumor is where the world breathes out, and the card speaks the one true
+ * thing a quiet place can say — whether its boards have moved since you last read them.
+ * Reads the arrival comparison recorded by the economy owner. Pure read.
+ */
+export function quietBerthLine(state, stationId) {
+  const memory = state && state.player && state.player.berthMemory;
+  const board = memory?.[stationId]?.berthBoard;
+  if (!board || !Number.isFinite(board.arrivalAt) || !Number.isFinite(board.observedAt)) return null;
+  const days = Math.floor(Math.max(0, board.arrivalAt - board.observedAt) / SIM_DAY_S);
+  const ago = days >= 1 ? (days === 1 ? ', a day ago' : `, ${days} days ago`) : '';
+  return board.moved
+    ? `Quiet berth — prices have crept since you last read these boards${ago}.`
+    : `Quiet berth — the boards have not moved since you last read them${ago}.`;
+}
+
+/** TEACH-07 — one line for a loaded save older than a sim day. A fresh save stays quiet. */
+export function returningPilotLine(state) {
+  const ui = state && state.ui;
+  if (ui && ui.returnSummaryHeard) return null;
+  if (ui && ui.returnSummaryVisible) return ui.returnSummaryVisible;
+  const slot = state && state.save && state.save.currentSlot;
+  if (!slot) return null;
+  const receipt = offlineSummaryReceipt(state);
+  if (!isOfflineReceiptShowable(receipt)) return null;
+  const elapsed = Number(receipt.elapsedSec) || 0;
+  if (!(elapsed > SIM_DAY_S)) return null;
+  return formatOfflineReceiptLine(receipt) || null;
+}
+
+export function noteReturnSummaryPainted(state, line) {
+  if (!state || !line) return;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (state.ui.returnSummaryHeard) return;
+  state.ui.returnSummaryVisible = line;
+}
+
+/** The berth calls this when the visit ends, so the next dock does not repeat the line. */
+export function finishReturnSummary(state) {
+  if (!state || !state.ui) return;
+  if (state.ui.returnSummaryVisible) state.ui.returnSummaryHeard = true;
+  state.ui.returnSummaryVisible = null;
+}
+
+/** STORY-08 — one cited digest line for a week with new history. Pure read; never a screen. */
+export function weeklyDigestLine(state) {
+  const selection = selectWeeklyDigest(state);
+  if (!selection) return null;
+  const summary = String(selection.summary == null ? '' : selection.summary).replace(/\s+/g, ' ').trim();
+  if (!summary) return null;
+  return `WEEKLY DIGEST: ${summary} [${selection.factId}]`;
+}
+
+/** The digest selection behind the line, for tests and callers that consume it. */
+export function weeklyDigestSelection(state) {
+  return selectWeeklyDigest(state);
+}
+
+/**
+ * Record a docked digest so the same week stays silent and old facts never replay.
+ * Pass the selection the line was built from when the caller already holds it; otherwise
+ * the current selection is consumed. Returns the cited fact id, or null when silent.
+ */
+export function noteWeeklyDigestDocked(state, selection = null) {
+  if (!state) return null;
+  const now = Math.max(0, Number(state.simTime) || 0);
+  const week = chroniclerDigestWeek(now);
+  if (week < 1) return null;
+  const picked = selection || selectWeeklyDigest(state);
+  if (!picked || !picked.factId) return null;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  const record = state.ui.dockDigest && typeof state.ui.dockDigest === 'object'
+    ? state.ui.dockDigest
+    : (state.ui.dockDigest = {});
+  if (Number.isInteger(record.lastWeek) && record.lastWeek === week) return null;
+  record.lastWeek = week;
+  if (!Array.isArray(record.citedFactIds)) record.citedFactIds = [];
+  if (!record.citedFactIds.includes(picked.factId)) record.citedFactIds.push(picked.factId);
+  if (record.citedFactIds.length > 128) {
+    record.citedFactIds.splice(0, record.citedFactIds.length - 128);
+  }
+  void CHRONICLER_DIGEST_WEEK_S;
+  return picked.factId;
+}
+
+export function berthArrivalNews(view, fallbackNews = '') {
+  const summary = view && view.returnSummary ? String(view.returnSummary) : '';
+  const news = (view && view.news) || fallbackNews || '';
+  if (summary && news && !String(news).includes(summary)) return `${summary} ${news}`.trim();
+  return summary || String(news || '');
+}
+
+export function noteOfflineSummary(state, receipt) {
+  if (!state || !receipt || typeof receipt !== 'object') return null;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  state.ui.offlineSummary = receipt;
+  return receipt;
+}
+
+export function bindReturningPilotSummary(bus, state) {
+  if (!bus || typeof bus.on !== 'function' || !state) return () => {};
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (state.ui._returnSummaryBound) return () => {};
+  state.ui._returnSummaryBound = true;
+  return bus.on('automation:offlineSummary', (receipt) => noteOfflineSummary(state, receipt));
+}
+
+const RESTRICTED_CARGO_IDS = new Set(
+  COMMODITIES
+    .filter((def) => def.legality === 'contraband' || def.legality === 'restricted')
+    .map((def) => def.id),
+);
+
+function usedCargo(state) {
+  const cargo = state && state.player && state.player.cargo;
+  return Number(cargo && cargo.usedVolume) || 0;
+}
+
+function hasRestrictedCargo(state) {
+  const items = state && state.player && state.player.cargo && state.player.cargo.items || {};
+  return Object.entries(items).some(([id, qty]) => RESTRICTED_CARGO_IDS.has(id) && Number(qty) > 0);
+}
+
+function primaryActionFor(state) {
+  if (usedCargo(state) > 0) return { label: 'Sell carried cargo', target: 'hold' };
+  const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  if (!active.length) return { label: 'Take a local contract', target: 'missions' };
+  return { label: 'Review departure and undock', target: 'undock' };
+}
+
+function localNews(state, stationId) {
+  const model = state && state.ui && state.ui.marketNews;
+  const log = model && Array.isArray(model.log) ? model.log : [];
+  const rec = log.find((entry) => entry && entry.stationId === stationId && entry.text);
+  if (rec) return String(rec.text).replace(/\s+/g, ' ').trim();
+  const card = model && model.lastCard;
+  if (card && card.stationId === stationId && card.headline) return String(card.headline).replace(/\s+/g, ' ').trim();
+  return null;
+}
+
+/**
+ * The pocket's own deed news (stationContacts keeps the latest notable lane event per
+ * sector). Fresher than it is loud: the berth line speaks it as "the station heard", once
+ * the sector's event is still inside its news window. Read-only, like every dock line.
+ */
+function localDeedLine(state) {
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const deed = sectorId && state.stationLife && state.stationLife.deeds
+    ? state.stationLife.deeds[sectorId] : null;
+  if (!deed || !deed.text) return null;
+  const simTime = Number(state.simTime) || 0;
+  if (simTime - (Number(deed.simTime) || 0) > DEED_NEWS_TTL_S) return null;
+  return `DOCK LOG: ${String(deed.text).replace(/\s+/g, ' ').trim()}`;
+}
+
+const DEED_NEWS_TTL_S = 1800;
+
+function leftoverCardFields(card) {
+  if (!card || !card.badge || !card.title || !card.body) return null;
+  return {
+    badge: String(card.badge).replace(/\s+/g, ' ').trim(),
+    title: String(card.title).replace(/\s+/g, ' ').trim(),
+    body: String(card.body).replace(/\s+/g, ' ').trim(),
+    eventId: card.eventId ? String(card.eventId) : null,
+    kind: card.kind ? String(card.kind) : null,
+    tone: card.tone ? String(card.tone) : null,
+  };
+}
+
+function currentSectorId(state) {
+  return state && state.world && state.world.currentSectorId || null;
+}
+
+function liveStationFor(state, stationId) {
+  if (!stationId || !state) return null;
+  const byStationId = state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && byStationId.get && byStationId.get(stationId);
+  if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+  const stations = state.entityIndex && state.entityIndex.stations;
+  const list = Array.isArray(stations) ? stations : state.entityList;
+  if (Array.isArray(list)) {
+    for (const entity of list) {
+      if (!entity || entity.alive === false || entity.type !== 'station') continue;
+      if (entity.data && entity.data.stationId === stationId) return entity;
+    }
+  }
+  return null;
+}
+
+function leftoverLine(value) {
+  const next = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+  return next || null;
+}
+
+function leftoverRumorMatchesBerth(rec, state) {
+  if (!rec) return false;
+  const sectorId = currentSectorId(state);
+  if (rec.sectorId && sectorId && rec.sectorId !== sectorId) return false;
+  return true;
+}
+
+/** Leftover pirate rumor the Ceres incident already wrote — lastCard, else lastHeadline. */
+export function leftoverRumorCard(state, _stationId) {
+  const stored = state && state.ui && state.ui.pirateRumor && state.ui.pirateRumor.lastCard;
+  if (stored && stored.body && leftoverRumorMatchesBerth(stored, state)) {
+    const eventId = stored.eventId
+      || (stored.sectorId && stored.zoneId ? `pirateRumor:${stored.sectorId}:${stored.zoneId}` : null);
+    return leftoverCardFields({
+      badge: 'PIRACY',
+      title: stored.title || 'Pirate rumor',
+      body: stored.body,
+      eventId,
+      kind: stored.kind || 'piracy',
+      tone: 'danger',
+    });
+  }
+  const zones = state && state.pirateRumor && state.pirateRumor.zones;
+  if (!zones || typeof zones !== 'object') return null;
+  let best = null;
+  for (const rec of Object.values(zones)) {
+    if (!rec || !rec.lastHeadline || !leftoverRumorMatchesBerth(rec, state)) continue;
+    if (!best || (rec.lastHeadlineAt || 0) > (best.lastHeadlineAt || 0)) best = rec;
+  }
+  if (!best) return null;
+  return leftoverCardFields({
+    badge: 'PIRACY',
+    title: 'Pirate rumor',
+    body: best.lastHeadline,
+    eventId: `pirateRumor:${best.sectorId}:${best.zoneId}`,
+    kind: 'piracy',
+    tone: 'danger',
+  });
+}
+
+export function leftoverRumorLine(state, stationId) {
+  const card = leftoverRumorCard(state, stationId);
+  if (card && card.body) return card.body;
+  const log = state && state.ui && state.ui.marketNews && Array.isArray(state.ui.marketNews.log)
+    ? state.ui.marketNews.log : [];
+  const rec = log.find((entry) => (
+    entry
+    && entry.kind === 'piracy'
+    && entry.source === 'pirateRumor:headline'
+    && leftoverRumorMatchesBerth(entry, state)
+    && leftoverLine(entry.text)
+  ));
+  return rec ? leftoverLine(rec.text) : null;
+}
+
+function leftoverPatchedReceipt(data) {
+  if (!data || typeof data !== 'object') return null;
+  const patch = data.structurePatch
+    || (Array.isArray(data.receipts)
+      && data.receipts.find((row) => row && (row.kind === 'patched' || (row.data && row.data.receiptId))));
+  if (!patch || patch.kind !== 'patched') return null;
+  const receiptId = patch.receiptId || (patch.data && patch.data.receiptId) || null;
+  const text = leftoverLine(patch.text);
+  if (!receiptId || !text) return null;
+  return { receiptId: String(receiptId), text, kind: 'patched' };
+}
+
+/** Leftover yard patch already stamped on the live station entity. */
+export function leftoverStructurePatch(state, station = {}) {
+  const stationId = station.id || station.stationId || (station.data && station.data.stationId) || '';
+  const fromArg = leftoverPatchedReceipt(station.data);
+  if (fromArg) return fromArg;
+  const live = liveStationFor(state, stationId);
+  return leftoverPatchedReceipt(live && live.data);
+}
+
+function stationIdForFreighter(state, rec, ent) {
+  if (ent && ent.data && ent.data.stationId) return ent.data.stationId;
+  if (rec && rec.targetId != null && state && state.entities && typeof state.entities.get === 'function') {
+    const target = state.entities.get(rec.targetId);
+    if (target && target.data && target.data.stationId) return target.data.stationId;
+  }
+  return null;
+}
+
+/** Leftover routeDisrupted + leftover live hull count. No traffic.js write. */
+export function leftoverRouteLine(state, stationId) {
+  if (!stationId) return null;
+  const list = state && state.traffic && Array.isArray(state.traffic.freighters)
+    ? state.traffic.freighters : [];
+  const entities = state && state.entities;
+  let remain = 0;
+  let disrupted = 0;
+  for (const rec of list) {
+    if (!rec) continue;
+    const ent = entities && typeof entities.get === 'function' ? entities.get(rec.id) : null;
+    if (!ent || ent.alive === false) continue;
+    if (stationIdForFreighter(state, rec, ent) !== stationId) continue;
+    remain += 1;
+    if (rec.routeDisrupted || (ent.data && ent.data.routeDisrupted)) disrupted += 1;
+  }
+  if (!disrupted) return null;
+  return remain === 1
+    ? 'One hull remains on this disrupted approach.'
+    : `${remain} hulls remain on this disrupted approach.`;
+}
+
+/** Leftover dock card for this station: stored lastCard, else leftover cardsForStation, else leftover rumor. */
+export function leftoverEventCard(state, stationId) {
+  if (!stationId) return leftoverRumorCard(state, stationId);
+  const stored = state && state.ui && state.ui.marketNews && state.ui.marketNews.lastCard;
+  if (stored && stored.stationId === stationId) {
+    const fields = leftoverCardFields(stored);
+    if (fields) return fields;
+  }
+  const liveCards = cardsForStation(state, stationId);
+  const live = leftoverCardFields(liveCards && liveCards[0]);
+  if (live) return live;
+  return leftoverRumorCard(state, stationId);
+}
+
+function setNodeText(node, value) {
+  const next = String(value == null ? '' : value);
+  if (node && node.textContent !== next) node.textContent = next;
+}
+
+/**
+ * Paint leftover card fields onto the berth article stationApp mounts.
+ * Returns the painted fields, or null when the host is hidden.
+ */
+export function paintBerthEventCard(cardEl, card) {
+  if (!cardEl) return null;
+  const painted = leftoverCardFields(card);
+  cardEl.hidden = !painted;
+  if (cardEl.removeAttribute) {
+    if (!painted || !painted.eventId) cardEl.removeAttribute('data-event-id');
+    if (!painted || !painted.kind) cardEl.removeAttribute('data-kind');
+    if (!painted || !painted.tone) cardEl.removeAttribute('data-tone');
+  }
+  if (!painted) {
+    setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__badge'), '');
+    setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__title'), '');
+    setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__body'), '');
+    if (cardEl.removeAttribute) cardEl.removeAttribute('aria-label');
+    return null;
+  }
+  if (painted.eventId && cardEl.setAttribute) cardEl.setAttribute('data-event-id', painted.eventId);
+  if (painted.kind && cardEl.setAttribute) cardEl.setAttribute('data-kind', painted.kind);
+  if (painted.tone && cardEl.setAttribute) cardEl.setAttribute('data-tone', painted.tone);
+  setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__badge'), painted.badge);
+  setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__title'), painted.title);
+  setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__body'), painted.body);
+  if (cardEl.setAttribute) {
+    cardEl.setAttribute('aria-label', `${painted.badge}. ${painted.title}. ${painted.body}`);
+  }
+  return painted;
+}
+
+function leftoverTraceHost(targets) {
+  const from = targets && (targets.patchEl || targets.routeEl || targets.ledgerEl
+    || targets.mechanicEl || targets.newsEl || targets.cardEl);
+  const root = from && from.parentElement ? from.parentElement : null;
+  const query = (sel) => (root && root.querySelector ? root.querySelector(sel) : null);
+  return {
+    patchEl: (targets && targets.patchEl) || query('.sxb-berth__patch'),
+    routeEl: (targets && targets.routeEl) || query('.sxb-berth__route'),
+    ledgerEl: (targets && targets.ledgerEl) || query('.sxb-berth__ledger'),
+    mechanicEl: (targets && targets.mechanicEl) || query('.sxb-berth__mechanic'),
+  };
+}
+
+function paintLeftoverLine(el, text) {
+  const next = leftoverLine(text);
+  if (el) {
+    el.hidden = !next;
+    setNodeText(el, next || '');
+  }
+  return next;
+}
+
+/** The article that speaks the line also names the hull that line was read from. */
+function bindBerthHull(el, hull) {
+  if (!el || typeof el.setAttribute !== 'function') return;
+  const defId = hull && hull.defId ? String(hull.defId) : '';
+  const name = hull && hull.name ? String(hull.name) : '';
+  if (!defId) {
+    if (typeof el.removeAttribute === 'function') {
+      el.removeAttribute('data-hull');
+      el.removeAttribute('data-hull-name');
+    }
+    return;
+  }
+  el.setAttribute('data-hull', defId);
+  if (name) el.setAttribute('data-hull-name', name);
+  else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-hull-name');
+}
+
+/** The writer stationApp uses: ticker line stays; leftover card fields go on the berth article. */
+export function writeBerthArrival(targets, view, fallbackNews = '') {
+  const newsEl = targets && targets.newsEl;
+  const cardEl = targets && targets.cardEl;
+  const host = leftoverTraceHost(targets);
+  const summary = view && view.returnSummary;
+  if (summary) noteReturnSummaryPainted(targets && targets.state, summary);
+  const news = berthArrivalNews(view, fallbackNews);
+  setNodeText(newsEl, news);
+  const eventCard = paintBerthEventCard(cardEl, view && view.eventCard);
+  if (newsEl) {
+    const duplicate = !!(eventCard && news && (news === eventCard.body || news === eventCard.title));
+    newsEl.hidden = !news || duplicate;
+  }
+  const mechanic = paintBerthEventCard(host.mechanicEl, view && view.mechanic);
+  bindBerthHull(host.mechanicEl, view && view.hull);
+  const route = paintLeftoverLine(host.routeEl, view && view.route);
+  const berthLine = view && view.berthLine;
+  if (berthLine) {
+    paintLeftoverLine(host.routeEl, [berthLine, route].filter(Boolean).join(' '));
+  }
+  return {
+    news,
+    eventCard,
+    patch: paintLeftoverLine(host.patchEl, view && view.patch),
+    route,
+    berthLine: berthLine || null,
+    ledger: paintBerthEventCard(host.ledgerEl, view && view.ledger),
+    mechanic,
+  };
+}
+
+function localTraffic(state, stationId) {
+  const receipts = state && state.stationLife && Array.isArray(state.stationLife.traffic)
+    ? state.stationLife.traffic
+    : [];
+  const rec = receipts.find((entry) => entry && entry.stationId === stationId && entry.text);
+  return rec ? String(rec.text).replace(/\s+/g, ' ').trim() : null;
+}
+
+function paperworkFor(state, station) {
+  if (isPlayerWanted(state)) return 'Wanted status flagged at this berth.';
+  if (hasRestrictedCargo(state)) {
+    const stationKey = (station && (station.id || station.stationId)) || '';
+    return (canLaunderSalvageAtStation(station) || canLaunderSalvageAtStation(stationKey))
+      ? 'Papers service in Market: choose a hot pod within 200 units and review its cut before washing. Ownership stays unchanged.'
+      : 'Restricted cargo may draw a customs scan.';
+  }
+  return null;
+}
+
+/**
+ * Shared exterior faction-berth status for dockArrival and the galaxy chart station inspector.
+ * Reports only when the player has moored a record or opened a displacement variance at this berth.
+ */
+export function factionBerthStatusLine(state, stationId) {
+  const berth = stationId ? factionBerthForStation(stationId) : null;
+  if (!berth) return null;
+  const own = state && state.factionPresence;
+  if (!own || typeof own !== 'object') return null;
+  const receipt = own.serviceReceipts && own.serviceReceipts[berth.receiptKey];
+  const watch = own.berthWatch && own.berthWatch[berth.id];
+  if (!receipt && !(watch && watch.displaced === true)) return null;
+  if (watch && watch.displaced === true) {
+    return `${berth.name}: moored record missing from the apron — variance open.`;
+  }
+  const rawName = berth.hulk && typeof berth.hulk.name === 'string' ? berth.hulk.name : 'Moored hulk';
+  const shortName = rawName.split(' — ')[0].trim() || 'Moored hulk';
+  const count = Math.max(1, Math.floor(Number(receipt && receipt.count) || 1));
+  return `${berth.name}: ${shortName} moored on the apron${count > 1 ? ` (×${count})` : ''}.`;
+}
+
+/**
+ * The yard record `station:berthAssigned` / `station:holding` already write.
+ * An undecided pad (no index, no hold stamp) stays quiet.
+ */
+function yardBerthLine(state, stationId) {
+  if (!stationId) return null;
+  const services = state && state.stationServices;
+  const player = services && services.player;
+  if (!player || player.stationId !== stationId) return null;
+  const pad = Number(player.padIdx);
+  if (Number.isFinite(pad) && pad >= 0) return `Berth assigned to pad ${pad + 1}.`;
+  // The yard writes this stamp only when it emits station:holding. -Infinity means it has not.
+  if (!Number.isFinite(player._lastHoldingEmit)) return null;
+  const station = services.stations && services.stations[stationId];
+  const waiting = station && Number(station.waitingClients);
+  if (Number.isFinite(waiting) && waiting > 0) return `Holding for a pad. ${waiting} ahead.`;
+  return 'Holding for a pad.';
+}
+
+// The berth-truth rule every surface shares: which essential services this station
+// cannot provide. The dock card words it as a berth notice; the galaxy chart says the
+// same at the point where the player decides whether to fly there at all.
+const ESSENTIAL_SERVICES = ['refuel', 'repair'];
+
+export function stationServiceGaps(station) {
+  return Array.isArray(station && station.services) && station.services.length > 0
+    ? ESSENTIAL_SERVICES.filter((req) => !station.services.includes(req))
+    : [];
+}
+
+// GOLD-HOME: docking the claimed berth reads like home — the hull in the bay, the crew aboard,
+// and the trophy yard, all read from the longBerth slice the system owns.
+function longBerthHomeCard(state) {
+  const lb = state && state.longBerth;
+  if (!lb || lb.claimed !== true) return null;
+  const hull = activeHullIdentity(state);
+  const hullName = (hull && (hull.name || hull.defId)) || 'your ship';
+  const crew = Array.isArray(lb.crew) ? lb.crew.filter(Boolean) : [];
+  const crewSlice = state && state.crew;
+  const roster = (crewSlice && Array.isArray(crewSlice.members) ? crewSlice.members : [])
+    .filter(Boolean);
+  const striking = crewSlice && Number.isFinite(crewSlice.strikeSince);
+  const crewNames = (roster.length ? roster : crew)
+    .map((c) => {
+      if (!c) return null;
+      // The fallback rows are bare ids; the live roster carries the people fields.
+      const name = (typeof c === 'string' ? c : (c.name || c.id));
+      if (name == null) return null;
+      if (c.status === 'injured') return `${name} (hurt)`;
+      if (striking && c.loyalty !== 1) return `${name} (out)`;
+      if (c.demandPending === true) return `${name} (wants pay)`;
+      const tags = [];
+      if (Number.isFinite(c.vet) && c.vet >= 2) tags.push(crewVetRankLabel(c.vet));
+      if (Number.isFinite(c.morale) && c.morale <= 2) tags.push('unhappy');
+      if (c.loyalty === 1 || c.loyalty === true) tags.push('◆');
+      return tags.length ? `${name} (${tags.join(' · ')})` : name;
+    }).filter(Boolean).slice(0, 4);
+  const trophies = Array.isArray(lb.trophies) ? lb.trophies.filter(Boolean) : [];
+  const trophyNames = trophies.map((t) => t && t.label).filter(Boolean).slice(-3);
+  const stage = Number(lb.stage) || 0;
+  const stageDef = BERTH_STAGES.find((row) => row.stage === stage);
+  const stageLine = stageDef ? stageDef.label : 'Freshly claimed';
+  const parts = [`${hullName} on the rail`, stageLine];
+  parts.push(crewNames.length ? `crew: ${crewNames.join(', ')}` : 'no crew aboard');
+  parts.push(trophies.length
+    ? `yard: ${trophies.length} ${trophies.length === 1 ? 'trophy' : 'trophies'} — ${trophyNames.join(', ')}`
+    : 'the yard stands empty');
+  return {
+    badge: 'HOME',
+    title: 'The Long Berth',
+    body: parts.join(' · ') + '.',
+    eventId: `longBerth:home:${stage}:${trophies.length}`,
+    kind: 'home',
+    tone: 'gain',
+  };
+}
+
+export function buildDockArrival(state = {}, station = {}) {
+  const stationId = station.id || station.stationId || '';
+  const action = primaryActionFor(state);
+  const rumor = leftoverRumorLine(state, stationId);
+  const news = rumor || localNews(state, stationId) || localDeedLine(state);
+  const route = leftoverRouteLine(state, stationId);
+  const traffic = localTraffic(state, stationId) || route;
+  // A berth with nothing to say still says one true thing (inf-quiet-berth) — but only when
+  // the world's louder voices (rumor, news, deed, traffic) are all silent here.
+  const quietLine = (news || traffic) ? null : quietBerthLine(state, stationId);
+  const paperwork = paperworkFor(state, station);
+  const factionBerth = factionBerthStatusLine(state, stationId);
+  const homeCard = stationId === LONG_BERTH_STATION_ID ? longBerthHomeCard(state) : null;
+  const eventCard = homeCard || leftoverEventCard(state, stationId);
+  const ledgerCard = leftoverLedgerCard(state);
+  const mechanicCard = leftoverMechanicCard(state);
+  // One berth mechanic, one header (PQ-207.01): when the hull card and the ledger recap
+  // would both paint "Mechanic", the hull article carries the recap as a second sentence
+  // instead of stacking a second name plate. The ledger article still paints when it is
+  // the only voice on the berth.
+  const mechanic = (ledgerCard && mechanicCard)
+    ? {
+      ...mechanicCard,
+      badge: `${mechanicCard.badge} · ${ledgerCard.badge}`,
+      body: `${mechanicCard.body} ${ledgerCard.body}`,
+    }
+    : mechanicCard;
+  const ledger = mechanic ? null : ledgerCard;
+  const patch = leftoverStructurePatch(state, station);
+  const serviceCount = Array.isArray(station.services) ? station.services.length : 0;
+  const serviceGaps = stationServiceGaps(station);
+  const serviceNotice = serviceGaps.length
+    ? `Berth notice: no ${serviceGaps.join(' or ')} on site`
+    : null;
+  const identity = String(station.name || stationId || 'Station');
+  const ident = [station.typeLabel, station.factionName].filter(Boolean).join(' · ') || null;
+  const patchText = patch && patch.text ? patch.text : null;
+  const ledgerLine = ledger && ledger.body ? ledger.body : null;
+  const mechanicLine = mechanic && mechanic.body ? mechanic.body : null;
+  const berthLine = [yardBerthLine(state, stationId), factionBerth].filter(Boolean).join(' ') || null;
+  const returnSummary = returningPilotLine(state);
+  const visitLine = berthVisitLine(state, stationId);
+  const digest = weeklyDigestLine(state);
+  const hull = activeHullIdentity(state);
+  // serviceNotice rides position 4: the seven-line slice must never spend the berth's
+  // missing-refuel/repair warning on flavor cards. A station with news, traffic and
+  // paperwork still shows it; patch/ledger/mechanic dressing falls off first. The visit
+  // memory rides beside the return summary — both are recognition, and a keeper who
+  // remembers you outranks the weekly digest.
+  const lines = [action.label, berthLine, returnSummary, visitLine, serviceNotice, news, digest, traffic, quietLine, paperwork, patchText, ledgerLine, mechanicLine]
+    .filter(Boolean)
+    .slice(0, 7);
+  return {
+    identity,
+    ident,
+    primaryAction: action.label,
+    primaryTarget: action.target,
+    returnSummary,
+    visitLine,
+    digest,
+    digestLine: digest,
+    news,
+    quietLine,
+    eventCard,
+    rumor,
+    patch: patchText,
+    patchReceiptId: patch && patch.receiptId ? patch.receiptId : null,
+    route,
+    berthLine,
+    factionBerth,
+    ledger,
+    ledgerLine,
+    mechanic,
+    mechanicLine,
+    hull,
+    traffic,
+    paperwork,
+    serviceGaps,
+    serviceNotice,
+    serviceState: serviceCount ? `${serviceCount} berth services listed` : 'No berth services listed',
+    lines,
+  };
+}
+
+const BERTH_FALLBACK_HULL = 'ship_kestrel';
+
+/** Def the bay seats. The mechanic's hull wins; a bay with no owned hull keeps the starter mesh. */
+export function berthSeatDefId(state, hull) {
+  if (hull && hull.defId) return String(hull.defId);
+  const identity = activeHullIdentity(state);
+  if (identity && identity.defId) return String(identity.defId);
+  return BERTH_FALLBACK_HULL;
+}
+
+/**
+ * Home berth, one object: the mechanic's line about this hull, and the hull the bay seats.
+ * Reader only. Living-hull state stays with its owner.
+ */
+export function berthModel(state = {}, station = {}) {
+  const view = buildDockArrival(state, station);
+  const hull = view.hull || null;
+  return {
+    mechanicLine: view.mechanicLine || null,
+    mechanic: view.mechanic || null,
+    hull,
+    seatDefId: berthSeatDefId(state, hull),
+  };
+}

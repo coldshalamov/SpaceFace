@@ -1,0 +1,242 @@
+{
+  "scenarios": {
+    "quiet-120ships-0atk": {
+      "medianFramingSpeedup": 11.745027804462854,
+      "floorMinSpeedup": 10.925697258965945,
+      "medianBeforeFramingMs": 24.92033999999998,
+      "medianAfterFramingMs": 2.104806999999994,
+      "medianPairSpeedup": 1.0582733264467115,
+      "pairs": [
+        {
+          "beforeFramingMs": 23.26176000000001,
+          "afterFramingMs": 2.1290869999999984,
+          "framingSpeedup": 10.925697258965945,
+          "beforePairMs": 69.338008,
+          "afterPairMs": 70.07266499999997,
+          "pairSpeedup": 0.9895157833657394,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 24.117549999999994,
+          "afterFramingMs": 2.104806999999994,
+          "framingSpeedup": 11.458318981265297,
+          "beforePairMs": 73.04338900000002,
+          "afterPairMs": 68.61739499999999,
+          "pairSpeedup": 1.0645025069809197,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 24.92033999999998,
+          "afterFramingMs": 2.0958530000000053,
+          "framingSpeedup": 11.890309100876788,
+          "beforePairMs": 90.74381299999999,
+          "afterPairMs": 71.556286,
+          "pairSpeedup": 1.2681459320009982,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 25.262425000000007,
+          "afterFramingMs": 2.1495859999999993,
+          "framingSpeedup": 11.752228103458068,
+          "beforePairMs": 71.33762700000003,
+          "afterPairMs": 74.264093,
+          "pairSpeedup": 0.9605937959815927,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 39.27487000000002,
+          "afterFramingMs": 1.9957910000000254,
+          "framingSpeedup": 19.678849138010705,
+          "beforePairMs": 113.406361,
+          "afterPairMs": 70.95028299999998,
+          "pairSpeedup": 1.5983919472174626,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 24.06076999999999,
+          "afterFramingMs": 2.048591999999985,
+          "framingSpeedup": 11.745027804462854,
+          "beforePairMs": 72.36156900000003,
+          "afterPairMs": 68.377013,
+          "pairSpeedup": 1.0582733264467115,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 25.10781399999999,
+          "afterFramingMs": 2.158738999999997,
+          "framingSpeedup": 11.630777968063775,
+          "beforePairMs": 71.38733200000001,
+          "afterPairMs": 70.859127,
+          "pairSpeedup": 1.0074542973130336,
+          "beforeHits": 0,
+          "afterHits": 0
+        }
+      ]
+    },
+    "quiet-80ships-0atk": {
+      "medianFramingSpeedup": 9.311062668552832,
+      "floorMinSpeedup": 7.179524828389233,
+      "medianBeforeFramingMs": 18.588679999999982,
+      "medianAfterFramingMs": 2.047744000000023,
+      "medianPairSpeedup": 0.9782179260044891,
+      "pairs": [
+        {
+          "beforeFramingMs": 16.763751999999982,
+          "afterFramingMs": 2.1158729999999935,
+          "framingSpeedup": 7.922853592819623,
+          "beforePairMs": 80.38992599999997,
+          "afterPairMs": 87.97926900000002,
+          "pairSpeedup": 0.9137371441447184,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 27.67192399999999,
+          "afterFramingMs": 2.047744000000023,
+          "framingSpeedup": 13.51337081197634,
+          "beforePairMs": 57.39841900000002,
+          "afterPairMs": 55.90054599999999,
+          "pairSpeedup": 1.0267953196736224,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 17.870269999999977,
+          "afterFramingMs": 2.0734250000000145,
+          "framingSpeedup": 8.618720233430123,
+          "beforePairMs": 54.758354,
+          "afterPairMs": 65.046514,
+          "pairSpeedup": 0.8418337991179665,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 23.239866000000006,
+          "afterFramingMs": 1.9966930000000218,
+          "framingSpeedup": 11.63917838145361,
+          "beforePairMs": 58.74271999999996,
+          "afterPairMs": 55.244888,
+          "pairSpeedup": 1.0633150346870095,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 20.49661499999999,
+          "afterFramingMs": 2.0242140000000006,
+          "framingSpeedup": 10.125715462890774,
+          "beforePairMs": 54.86557000000002,
+          "afterPairMs": 56.087267,
+          "pairSpeedup": 0.9782179260044891,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 18.588679999999982,
+          "afterFramingMs": 1.996407999999974,
+          "framingSpeedup": 9.311062668552832,
+          "beforePairMs": 56.70373300000003,
+          "afterPairMs": 60.597611,
+          "pairSpeedup": 0.9357420542535914,
+          "beforeHits": 0,
+          "afterHits": 0
+        },
+        {
+          "beforeFramingMs": 17.079586999999975,
+          "afterFramingMs": 2.378929999999997,
+          "framingSpeedup": 7.179524828389233,
+          "beforePairMs": 59.203529,
+          "afterPairMs": 56.04272399999999,
+          "pairSpeedup": 1.0563999173202219,
+          "beforeHits": 0,
+          "afterHits": 0
+        }
+      ]
+    },
+    "combat-80ships-3atk": {
+      "medianFramingSpeedup": 4.341196388049128,
+      "floorMinSpeedup": 3.3561575066915625,
+      "medianBeforeFramingMs": 9.18391299999999,
+      "medianAfterFramingMs": 2.093703999999974,
+      "medianPairSpeedup": 1.1324427659270428,
+      "pairs": [
+        {
+          "beforeFramingMs": 7.710779000000002,
+          "afterFramingMs": 2.162169000000006,
+          "framingSpeedup": 3.5662240093165622,
+          "beforePairMs": 148.88965699999997,
+          "afterPairMs": 110.753187,
+          "pairSpeedup": 1.3443374500816845,
+          "beforeHits": 20000,
+          "afterHits": 20000
+        },
+        {
+          "beforeFramingMs": 9.213268999999997,
+          "afterFramingMs": 2.1222879999999975,
+          "framingSpeedup": 4.341196388049128,
+          "beforePairMs": 111.10993400000001,
+          "afterPairMs": 110.95647199999999,
+          "pairSpeedup": 1.001383082908404,
+          "beforeHits": 20000,
+          "afterHits": 20000
+        },
+        {
+          "beforeFramingMs": 9.18391299999999,
+          "afterFramingMs": 2.0636570000000063,
+          "framingSpeedup": 4.450309814082457,
+          "beforePairMs": 124.03593299999997,
+          "afterPairMs": 108.064258,
+          "pairSpeedup": 1.147797942590787,
+          "beforeHits": 20000,
+          "afterHits": 20000
+        },
+        {
+          "beforeFramingMs": 10.249995000000013,
+          "afterFramingMs": 2.093703999999974,
+          "framingSpeedup": 4.8956275576682,
+          "beforePairMs": 115.88339500000001,
+          "afterPairMs": 107.94179299999999,
+          "pairSpeedup": 1.0735730042950093,
+          "beforeHits": 20000,
+          "afterHits": 20000
+        },
+        {
+          "beforeFramingMs": 7.253680000000003,
+          "afterFramingMs": 2.1613049999999987,
+          "framingSpeedup": 3.3561575066915625,
+          "beforePairMs": 110.24801099999999,
+          "afterPairMs": 110.17387399999998,
+          "pairSpeedup": 1.000672909078245,
+          "beforeHits": 20000,
+          "afterHits": 20000
+        },
+        {
+          "beforeFramingMs": 7.979323999999991,
+          "afterFramingMs": 2.0610929999999996,
+          "framingSpeedup": 3.871404153039185,
+          "beforePairMs": 121.05051600000002,
+          "afterPairMs": 106.89327499999999,
+          "pairSpeedup": 1.1324427659270428,
+          "beforeHits": 20000,
+          "afterHits": 20000
+        },
+        {
+          "beforeFramingMs": 9.262029000000013,
+          "afterFramingMs": 2.0504999999999995,
+          "framingSpeedup": 4.516961228968551,
+          "beforePairMs": 121.45065799999998,
+          "afterPairMs": 104.69255300000003,
+          "pairSpeedup": 1.1600696947375038,
+          "beforeHits": 20000,
+          "afterHits": 20000
+        }
+      ]
+    }
+  },
+  "floorMinSpeedup": 3.3561575066915625
+}

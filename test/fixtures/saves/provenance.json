@@ -1,0 +1,51 @@
+{
+  "purpose": "Real SaveSystem captures for the old-version Continue matrix",
+  "seed": 4242,
+  "producer": "createSimulation with ships, cargo, combat, tetherGameplay, physics and save; prepareBackend uses real Rapier; save.serialize creates each unmodified envelope",
+  "captureScript": ".devshots/delegates/oct17/build-c/capture-fixtures.mjs",
+  "archiveScript": ".devshots/delegates/oct17/build-c/archive-fixtures.mjs",
+  "dependencyResolution": "Archived sources use the checkout's installed node_modules through a junction; Rapier 0.19.3",
+  "scenario": {
+    "simTime": 2,
+    "tick": 120,
+    "ship": "ship_kestrel with ships.newGame default fittings",
+    "cargo": { "cmdty_refined_metals": 4, "cmdty_scrap_metal": 3 },
+    "cargoMass": 5.5,
+    "shipMass": 40.5,
+    "hull": 37,
+    "shield": 3,
+    "capacitor": 9,
+    "playerPose": { "x": 80, "z": 40, "yaw": 0, "vx": 6, "vz": 0 },
+    "targetPose": { "x": 80, "z": 100, "vx": 0, "vz": 0 },
+    "idRemap": "The crate is created first (id 1), a dead fx consumes id 2, and the player is created as id 3. Continue creates player 1, forcing the crate to remap to 2.",
+    "attachment": "The tether variant uses combat.kernel.attachments.create and tetherGameplay.update; the free variant creates no line.",
+    "contactEpisode": "A recent 4-unit debt at tick 120 is seeded on the real native player record before SaveSystem captures it. This is authored persistence input, not an observed collision."
+  },
+  "sources": [
+    {
+      "version": 15,
+      "commit": "2e2f2d661afee3a1487557e680cb484ed26bc782",
+      "nativeSchema": 3,
+      "files": ["continue-v15-free.json", "continue-v15-tether.json"]
+    },
+    {
+      "version": 16,
+      "commit": "7c46b0ced576f82b9bb1b28347a9c16e597945fc",
+      "nativeSchema": 4,
+      "files": ["continue-v16-free.json", "continue-v16-tether.json"]
+    },
+    {
+      "version": 17,
+      "commit": "ffb7dff92b8be65fef65d231488881670c998ae0",
+      "nativeSchema": 4,
+      "files": ["continue-v17-free.json", "continue-v17-tether.json"]
+    },
+    {
+      "version": 18,
+      "source": "Live shared working tree based on f653fbf7a8d037a95c7ab5faaae0b63f530ac378; foreign edits preserved. This is a current-producer capture, not a pristine historical archive.",
+      "nativeSchema": 4,
+      "files": ["continue-v18-free.json", "continue-v18-tether.json"]
+    }
+  ],
+  "derivedTestInputs": "The test uses encodeSavePayloadFinal to remove only native snapshot bytes for scalar fallback or the physics payload for missing-snapshot compatibility. Committed fixture envelopes are never rewritten by the tests."
+}

@@ -1,0 +1,87 @@
+{
+  "label": "chase-lookat-retain-pos-quantize",
+  "scenario": "quiet-chase-drift",
+  "iters": 200000,
+  "pairs": [
+    {
+      "beforeMs": 100.47343599999999,
+      "afterMs": 51.911129999999986,
+      "speedup": 1.9354892871721348,
+      "beforeRanLookAt": 199999,
+      "afterRanLookAt": 0
+    },
+    {
+      "beforeMs": 139.165012,
+      "afterMs": 56.66063199999999,
+      "speedup": 2.4561147147105595,
+      "beforeRanLookAt": 199999,
+      "afterRanLookAt": 0
+    },
+    {
+      "beforeMs": 129.340196,
+      "afterMs": 48.642292999999995,
+      "speedup": 2.6590069674552557,
+      "beforeRanLookAt": 199999,
+      "afterRanLookAt": 0
+    },
+    {
+      "beforeMs": 142.68385899999998,
+      "afterMs": 74.789938,
+      "speedup": 1.9077948560406612,
+      "beforeRanLookAt": 199999,
+      "afterRanLookAt": 0
+    },
+    {
+      "beforeMs": 148.72298899999998,
+      "afterMs": 78.53857200000004,
+      "speedup": 1.8936299096449054,
+      "beforeRanLookAt": 199999,
+      "afterRanLookAt": 0
+    },
+    {
+      "beforeMs": 97.06644500000002,
+      "afterMs": 51.415801000000016,
+      "speedup": 1.887871882030973,
+      "beforeRanLookAt": 199999,
+      "afterRanLookAt": 0
+    },
+    {
+      "beforeMs": 87.956489,
+      "afterMs": 45.701277999999974,
+      "speedup": 1.9245958285893023,
+      "beforeRanLookAt": 199999,
+      "afterRanLookAt": 0
+    },
+    {
+      "beforeMs": 88.52032100000002,
+      "afterMs": 39.593828,
+      "speedup": 2.2357100960280984,
+      "beforeRanLookAt": 199999,
+      "afterRanLookAt": 0
+    },
+    {
+      "beforeMs": 90.14003,
+      "afterMs": 51.046424,
+      "speedup": 1.7658441656951327,
+      "beforeRanLookAt": 199999,
+      "afterRanLookAt": 0
+    },
+    {
+      "beforeMs": 87.083911,
+      "afterMs": 40.00966500000001,
+      "speedup": 2.1765718608241276,
+      "beforeRanLookAt": 199999,
+      "afterRanLookAt": 0
+    },
+    {
+      "beforeMs": 87.73533100000003,
+      "afterMs": 46.98926500000002,
+      "speedup": 1.8671356319363581,
+      "beforeRanLookAt": 199999,
+      "afterRanLookAt": 0
+    }
+  ],
+  "medianSpeedup": 1.9245958285893023,
+  "floorMinSpeedup": 1.7658441656951327,
+  "note": "Before=retain+bit-identical (drift miss); After=retain+0.25WU quantize (drift hit). Soft-GPU fps not claimed."
+}

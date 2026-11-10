@@ -1,0 +1,16 @@
+{
+  "label": "fields-npc-plan-cadence",
+  "ships": 80,
+  "wrecks": 30,
+  "iters": 6000,
+  "period": 4,
+  "before": {
+    "ms": 22.171,
+    "plans": 480000
+  },
+  "after": {
+    "ms": 8.305,
+    "plans": 120000
+  },
+  "speedup": 2.669
+}

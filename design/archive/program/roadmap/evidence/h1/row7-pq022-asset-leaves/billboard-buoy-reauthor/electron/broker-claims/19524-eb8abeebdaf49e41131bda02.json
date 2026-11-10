@@ -1,0 +1,41 @@
+{
+  "schema": "spaceface.validation-broker-claim.v1",
+  "claimId": "19524-eb8abeebdaf49e41131bda02",
+  "manifestId": "pq022-billboard-buoy-reauthor-electron",
+  "mode": "acceptance",
+  "runtimeKind": "electron",
+  "issuedAt": "2026-09-07T14:30:49.049Z",
+  "expiresAt": "2026-09-07T15:00:49.049Z",
+  "consumed": true,
+  "receipt": {
+    "routeDigest": "d6b12d3186db18f6275013dbd05eec96d7cded51c82bf4efa86a78e2004ecbd0",
+    "regressionDigest": "8bd64ec83a7f22736bcaedd7b89ba81ad8d8d9a271a5a864ee841fcbbd934be3",
+    "candidateDigest": "43b6df2f6dbf64e8abade141c546c36804dd71c1b38034f69f3a3a650660954c",
+    "productionDigest": "d6b12d3186db18f6275013dbd05eec96d7cded51c82bf4efa86a78e2004ecbd0",
+    "acknowledgesFailureFingerprint": null
+  },
+  "digests": {
+    "routeDigest": "d6b12d3186db18f6275013dbd05eec96d7cded51c82bf4efa86a78e2004ecbd0",
+    "regressionDigest": "8bd64ec83a7f22736bcaedd7b89ba81ad8d8d9a271a5a864ee841fcbbd934be3",
+    "productionDigest": "d6b12d3186db18f6275013dbd05eec96d7cded51c82bf4efa86a78e2004ecbd0",
+    "harnessDigest": "c1bcd6c2b2578572d4f3f447ce49b4cb2b467110ca9340bf06ed516537ab3aa4",
+    "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "inputDigest": "f749e1bf43c495fa6af64ee47ba23881d7f76335e4dcea66f14984800849c3dc",
+    "profileDigest": "072927bc0e9e7479124b45825e433d4d335cb12ba61909219e77b8e7d177d9aa",
+    "manifestDigest": "fdda6875a8a9ea9ec8ed242fffee94120d8e17153cf75c448137be26dbe8daee",
+    "candidateDigest": "43b6df2f6dbf64e8abade141c546c36804dd71c1b38034f69f3a3a650660954c",
+    "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+    "sourceCandidateDigest": null,
+    "worktreeDigest": null,
+    "worktreeHead": null,
+    "worktreeBranch": null,
+    "worktreeChangedFileCount": null,
+    "scenarioManifestDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "saveDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "inputTapeDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "cameraManifestDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "candidateSourceDigestMode": "all-src-js",
+    "candidateSourcePathCount": 1017
+  },
+  "consumedAt": "2026-09-07T14:30:49.842Z"
+}

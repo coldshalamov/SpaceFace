@@ -1,0 +1,1517 @@
+import { orchardAttachmentRefusal } from '../world/anvilOrchardTowAssist.js';
+import { entityLocalPointToWorld, socketLocalPosition, socketWorldPosition, worldPointToEntityLocal } from './geometry.js';
+import { ensureCombatant, entityKey } from './runtime.js';
+import { appendCombatTrace } from './trace.js';
+import { occupantGenerationOf } from '../core/entity.js';
+import { createMasslineRuntime, stepMassline } from '../core/constraints/masslineController.js';
+import { SIM_DT } from '../core/sim.js';
+import { massline2Flag } from '../data/featureFlags.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+
+// Production action_attach envelope. Its ordinary endpoints share the fail-closed durability
+// contract; only 47-A's explicitly marked false-mass spindle uses this legacy break envelope.
+// The tuning is the authored 47-A contract: the scenario's measured peak tension must cross the
+// 75% near-break warning without reaching the break, so the line groans under the false mass and
+// holds. The original 140/90 envelope bracketed the 2026-07 measured peak (~119, ratio 0.85);
+// the +25% production-def retune (175/112.5) pushed the warning band above the authored load and
+// silently removed tether.near_break from the trace, which is why 140 was restored.
+// 2026-09-30 eb1869826 (per-object physics materials, solid contacts) reshaped the tow and the
+// measured peak dropped to ~69 (ratio unchanged in kind, load halved). The envelope is
+// re-derived to the new measured peak at the same 0.85 proportion: 81 breaks where the old
+// physics needed 140, the 75% warning (60.75) fires again, and the line still holds (69 < 81).
+// 2026-10 physics drift reshaped the tow again: measured tension now humps twice — ~59.8 at
+// tick ~240, then a sustained climb peaking ~71.2 at tick ~1180. The envelope is re-derived to
+// sit between them: 76 breaks above the global peak (71.2 < 76), and the 75% warning (57) trips
+// on the early groan (~tick 233) inside the 720-tick smoke window.
+const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 76, maxImpulse: 90, graceTicks: 1 });
+const STANDARD_TETHER_STRENGTH_REVISION = 2;
+const STANDARD_TETHER_PAYOUT_REVISION = 1;
+const BROKEN_ATTACHMENT_HISTORY_LIMIT = 128;
+const PREVIOUS_STANDARD_TETHER_BREAK = Object.freeze({
+  maxTension: 1_050_000,
+  maxImpulse: 19_000,
+  maxYank: 15_000,
+});
+// PQ-029 Tractor head. This remains a rope: the SG-02 owner applies only one-sided radial tension.
+// The head changes that tension profile to an overdamped, finite-force tow so it settles a payload
+// without becoming a position/velocity controller. Standard lines retain the catalog spring.
+const TRACTOR_TETHER_SPRING = Object.freeze({
+  K: 110,
+  zeta: 1.35,
+  captureS: 0.45,
+  maxForce: 4_200,
+});
+// PQ-029 Elastic Whip head. Higher stiffness and low damping turn extension the pilot physically
+// earns into a lively return stroke. There is no release impulse or control writer here: SG-02
+// still applies only equal/opposite radial rope tension, and cutting simply preserves real velocity.
+const ELASTIC_WHIP_TETHER_SPRING = Object.freeze({
+  K: 260,
+  zeta: 0.28,
+  captureS: 0.20,
+});
+// PQ-029 Frame Coupler head. SG-02 interprets this snapshotted mode as a bounded momentum
+// exchange while the line is taut. It never seeks a position, assigns velocity, or steers a body.
+const FRAME_COUPLER_TETHER_SPRING = Object.freeze({
+  mode: 'frame_coupler',
+  K: 640,
+  zeta: 1.05,
+  velocityGain: 8,
+  captureS: 0.35,
+  maxForce: 24_000,
+});
+const SPECIALIZED_TETHER_HEADS = Object.freeze({
+  tractor: Object.freeze({ flag: 'masslineHeadTractor', spring: TRACTOR_TETHER_SPRING }),
+  elastic_whip: Object.freeze({ flag: 'masslineHeadElasticWhip', spring: ELASTIC_WHIP_TETHER_SPRING }),
+  frame_coupler: Object.freeze({ flag: 'masslineHeadFrameCoupler', spring: FRAME_COUPLER_TETHER_SPRING }),
+  // PQ-030 Monofilament Sweep changes only the consequence of a taut line crossing a hostile.
+  // Its empty override deliberately snapshots the ordinary rope spring unchanged.
+  monofilament_sweep: Object.freeze({ flag: 'masslineHeadMonofilamentSweep', spring: Object.freeze({}) }),
+  // PQ-030 Transverse Snare diverts the press into a remote line transaction. The empty override
+  // keeps a defensive/legacy ordinary latch physically ordinary if it reaches this policy path.
+  transverse_snare: Object.freeze({ flag: 'masslineHeadTransverseSnare', spring: Object.freeze({}) }),
+  // PQ-031 Twin Bridle is created from a dedicated world-to-world definition. A defensive ordinary
+  // latch remains the ordinary player rope and cannot smuggle the ship in as a third endpoint.
+  twin_bridle: Object.freeze({ flag: 'masslineHeadTwinBridle', spring: Object.freeze({}) }),
+});
+
+// One fail-closed bound for every tether rating lane — live spool/reel multipliers and the
+// persisted-policy rebase below share it so they cannot drift. An unbounded multiplier moves
+// the joint hundreds of WU in one tick (teleport + solver destabilization); authored ratings
+// max-fold at 1.8x, so only corrupt data ever reaches the cap.
+const TETHER_RATING_MULT_MIN = 1;
+const TETHER_RATING_MULT_MAX = 6;
+
+function clampTetherRatingMult(raw) {
+  return typeof raw === 'number' && Number.isFinite(raw) && raw > 0
+    ? Math.max(TETHER_RATING_MULT_MIN, Math.min(TETHER_RATING_MULT_MAX, raw))
+    : TETHER_RATING_MULT_MIN;
+}
+
+function standardTetherSpoolMultiplier(owner) {
+  const raw = owner && owner.data && owner.data.derived && owner.data.derived.tetherSpoolMult;
+  return clampTetherRatingMult(raw);
+}
+
+// Trophy-head break ceiling (ships.js derives it from a fitted module's loadCapacityMult). Only the
+// two lines a Massline head throws read it; a malformed or absent value is exactly 1, and the
+// multiplier is clamped to the same fail-closed band as every other tether rating lane.
+// RW-01 winch brace (build_map §30.1): latched to a massive anchor with the reel run taut, the
+// Massline is a stance, not a reach. The along-line component of a weapon's recoil impulse is
+// routed into line load instead of hull velocity — the momentum transfers to the anchor, the
+// load rides the same ordered warning/lease/snap channel as any other overload, and the brace
+// can always snap. Authored against the emergent mass driver (slug momentum 9 × 340 = 3060 per
+// shot): loadPerImpulse 12 puts one shot at ~36.7k load, so a sustained volley crosses the 75%
+// near-break warning around the sixth shot and the snap ceiling shortly after, while the decay
+// returns a released line to cold in a few seconds. The envelope is brace-specific on purpose:
+// the ordinary tether_standard break rating stays near-unbreakable, and brace load only exists
+// while a pilot deliberately fires through a taut line, so the fail-closed automatic-break
+// policy for ordinary piloting mistakes is untouched.
+const WINCH_BRACE = Object.freeze({
+  // A line within 2 WU of its rest length is taut enough to brace.
+  slackWu: 2,
+  loadPerImpulse: 12,
+  decayPerTick: 0.99423,
+  nearBreakRatio: 0.75,
+  snapLoad: 260_000,
+});
+export { WINCH_BRACE };
+
+function isWinchBraceAnchor(entity) {
+  if (!entity || entity.alive === false || !entity.pos) return false;
+  const anchorType = entity.type === 'asteroid' || entity.type === 'station'
+    || entity.data?.masslineAnchor === true;
+  if (!anchorType) return false;
+  const mass = Number(entity.physicsBody && entity.physicsBody.mass) || Number(entity.mass) || 0;
+  return mass >= 1800;
+}
+
+/** Resolve the winch brace for a hull about to take a recoil impulse: its live tether_standard
+ *  running taut to a massive anchor (rock, station frame, or Mass Seed). Returns the
+ *  attachment, the anchor, and the unit line axis (hull -> anchor); null when not braced. */
+export function resolveWinchBrace(state, hullId) {
+  const map = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!map) return null;
+  const hull = state.entities && state.entities.get ? state.entities.get(hullId) : null;
+  if (!hull || !hull.pos || hull.alive === false) return null;
+  for (const attachment of Object.values(map)) {
+    if (attachment.state !== 'active' || attachment.defId !== 'tether_standard') continue;
+    const anchorId = attachment.ownerId === hullId
+      ? attachment.targetId
+      : attachment.targetId === hullId ? attachment.ownerId : null;
+    if (anchorId == null) continue;
+    const anchor = state.entities.get(anchorId);
+    if (!isWinchBraceAnchor(anchor)) continue;
+    const dx = anchor.pos.x - hull.pos.x;
+    const dz = anchor.pos.z - hull.pos.z;
+    const distance = Math.hypot(dx, dz);
+    if (!(distance > 1e-6) || distance < attachment.restLength - WINCH_BRACE.slackWu) continue;
+    return { attachment, anchor, axisX: dx / distance, axisZ: dz / distance };
+  }
+  return null;
+}
+
+/** Split a recoil impulse against a resolved brace: the along-line component becomes line load
+ *  plus a real impulse on the anchor; the perpendicular remainder still shoves the hull. */
+export function routeRecoilThroughWinchBrace(state, hullId, impulse) {
+  const brace = resolveWinchBrace(state, hullId);
+  if (!brace) return null;
+  const jx = Number.isFinite(impulse && impulse.x) ? impulse.x : 0;
+  const jz = Number.isFinite(impulse && impulse.z) ? impulse.z : 0;
+  const along = jx * brace.axisX + jz * brace.axisZ;
+  const routedX = along * brace.axisX;
+  const routedZ = along * brace.axisZ;
+  if (along !== 0) {
+    brace.attachment.braceLoadN = Math.min(
+      WINCH_BRACE.snapLoad * 2,
+      finiteOrZero(brace.attachment.braceLoadN) + Math.abs(along) * WINCH_BRACE.loadPerImpulse,
+    );
+    queuePhysicsImpulse(brace.anchor, { x: routedX, z: routedZ },
+      { tag: 'winch_brace_transfer', tick: state.tick, externalEffect: true });
+  }
+  return { brace, appliedX: jx - routedX, appliedZ: jz - routedZ, routedX, routedZ };
+}
+
+const HEAD_LOAD_CAPACITY_DEF_IDS = Object.freeze(['tether_standard', 'attachment_twin_bridle']);
+export function headLoadCapacityMultiplier(def, owner) {
+  if (!def || !HEAD_LOAD_CAPACITY_DEF_IDS.includes(def.id)) return 1;
+  const raw = owner && owner.data && owner.data.derived && owner.data.derived.masslineLoadCapacityMult;
+  return clampTetherRatingMult(raw);
+}
+function baseTetherMaxLength(def) {
+  return Number.isFinite(def && def.maxLength) && def.maxLength > 0 ? def.maxLength : null;
+}
+
+function effectiveTetherMaxLength(def, owner) {
+  const base = baseTetherMaxLength(def);
+  if (!(base > 0) || !def || def.id !== 'tether_standard') return base;
+  const scaled = base * standardTetherSpoolMultiplier(owner);
+  return Number.isFinite(scaled) && scaled >= base ? scaled : base;
+}
+
+/** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;
+ *  this layer scales only the standard tether's break policy and never mutates the catalog. */
+export function effectiveTetherBreak(def, owner) {
+  const base = def && def.break ? def.break : null;
+  if (!base) return null;
+  // TOY CHEST T13 - an ace's trophy head holds heavier loads: the SAME break law (tension, impulse
+  // and yank legs against one envelope), a higher ceiling. It touches only the two lines a Massline
+  // head throws, never release impulse, spring or any stock-head number.
+  const capacity = headLoadCapacityMultiplier(def, owner);
+  if (!def || def.id !== 'tether_standard') {
+    return capacity === 1 ? { ...base } : scaleBreakEnvelope(base, capacity);
+  }
+  return scaleBreakEnvelope(base, standardTetherSpoolMultiplier(owner) * capacity);
+}
+
+function scaleBreakEnvelope(base, mult) {
+  return {
+    ...base,
+    maxTension: Number.isFinite(base.maxTension) ? base.maxTension * mult : base.maxTension,
+    maxImpulse: Number.isFinite(base.maxImpulse) ? base.maxImpulse * mult : base.maxImpulse,
+    maxYank: Number.isFinite(base.maxYank) ? base.maxYank * mult : base.maxYank,
+  };
+}
+
+/** Resolve every player-facing tether capability from immutable catalog data. Strength, payout,
+ * and reel rate are independent max-folded ratings; active attachments snapshot this policy at
+ * creation so a refit cannot silently rewrite an already-deployed line. */
+export function effectiveTetherPolicy(def, owner, features = null) {
+  const baseReelRate = Number.isFinite(def && def.reelRate) ? def.reelRate : 0;
+  if (!def || def.id !== 'tether_standard') {
+    const maxLength = baseTetherMaxLength(def);
+    return {
+      break: effectiveTetherBreak(def, owner),
+      reelRate: baseReelRate,
+      ...(maxLength == null ? {} : { maxLength }),
+    };
+  }
+  const rawReel = owner && owner.data && owner.data.derived && owner.data.derived.tetherReelRateMult;
+  // Fail-closed symmetric with the spool cap above (1..6): an unbounded reel multiplier lets a
+  // stacked/load-derived mult move the joint hundreds of WU in one tick, which reads as a teleport
+  // and destabilizes the solver. Ships max-fold reel at 1.8x today; the cap binds only corrupt data.
+  const reelMult = clampTetherRatingMult(rawReel);
+  const policy = {
+    break: effectiveTetherBreak(def, owner),
+    reelRate: baseReelRate * reelMult,
+    maxLength: effectiveTetherMaxLength(def, owner),
+    strengthRevision: STANDARD_TETHER_STRENGTH_REVISION,
+    payoutRevision: STANDARD_TETHER_PAYOUT_REVISION,
+  };
+  const headId = owner && owner.data && owner.data.derived && owner.data.derived.masslineHeadId;
+  const head = SPECIALIZED_TETHER_HEADS[headId];
+  if (!head || !massline2Flag(head.flag, features)) return policy;
+  return {
+    ...policy,
+    headId,
+    spring: {
+      ...((def && def.spring) || {}),
+      ...head.spring,
+    },
+  };
+}
+
+/** Preserve a deployed line's snapshotted spool rating across Continue while rebasing saves made
+ * before the normal-play durability contract. This prevents an old 1.05M policy from surviving in
+ * a save as misleading strain telemetry, without letting a mid-deployment refit change its rating. */
+export function rebasePersistedTetherPolicy(def, policy) {
+  if (!def || def.id !== 'tether_standard' || !policy || typeof policy !== 'object') return policy;
+  let rebased = policy;
+  if (!(Number(policy.strengthRevision) >= STANDARD_TETHER_STRENGTH_REVISION)) {
+    const savedBreak = policy.break && typeof policy.break === 'object' ? policy.break : {};
+    const ratios = [
+      Number(savedBreak.maxTension) / PREVIOUS_STANDARD_TETHER_BREAK.maxTension,
+      Number(savedBreak.maxImpulse) / PREVIOUS_STANDARD_TETHER_BREAK.maxImpulse,
+      Number(savedBreak.maxYank) / PREVIOUS_STANDARD_TETHER_BREAK.maxYank,
+    ].filter((value) => Number.isFinite(value) && value > 0);
+    const savedRating = clampTetherRatingMult(ratios.length ? Math.max(...ratios) : 1);
+    rebased = {
+      ...rebased,
+      break: {
+        ...(def.break || {}),
+        ...savedBreak,
+        maxTension: Number(def.break && def.break.maxTension) * savedRating,
+        maxImpulse: Number(def.break && def.break.maxImpulse) * savedRating,
+        maxYank: Number(def.break && def.break.maxYank) * savedRating,
+      },
+      strengthRevision: STANDARD_TETHER_STRENGTH_REVISION,
+    };
+  }
+
+  const baseMaxLength = baseTetherMaxLength(def);
+  if (baseMaxLength > 0) {
+    const savedMaxLength = rebased.maxLength;
+    const maximumSupportedLength = baseMaxLength * TETHER_RATING_MULT_MAX;
+    const validSavedLength = typeof savedMaxLength === 'number'
+      && Number.isFinite(savedMaxLength)
+      && savedMaxLength >= baseMaxLength
+      && savedMaxLength <= maximumSupportedLength;
+    const normalizedMaxLength = validSavedLength ? savedMaxLength : baseMaxLength;
+    if (savedMaxLength !== normalizedMaxLength
+        || rebased.payoutRevision !== STANDARD_TETHER_PAYOUT_REVISION) {
+      rebased = {
+        ...rebased,
+        maxLength: normalizedMaxLength,
+        payoutRevision: STANDARD_TETHER_PAYOUT_REVISION,
+      };
+    }
+  }
+  // The reel-rate snapshot has the same persisted hole payout had: a save written before the
+  // multiplier clamp (a48a898fc) carries an unbounded rate that survives Continue forever — and
+  // no revision bump marks it, so the implied multiplier re-derives unconditionally through the
+  // same fail-closed bound. In-envelope snapshots pass through bitwise, keeping the rebase an
+  // identity no-op for current saves; malformed or out-of-envelope rates fold to base..cap.
+  const baseReelRate = Number.isFinite(def.reelRate) && def.reelRate > 0 ? def.reelRate : null;
+  if (baseReelRate != null) {
+    const impliedMult = Number(rebased.reelRate) / baseReelRate;
+    const withinEnvelope = Number.isFinite(impliedMult)
+      && impliedMult >= TETHER_RATING_MULT_MIN
+      && impliedMult <= TETHER_RATING_MULT_MAX;
+    if (!withinEnvelope) {
+      rebased = {
+        ...rebased,
+        reelRate: baseReelRate * clampTetherRatingMult(impliedMult),
+      };
+    }
+  }
+  return rebased;
+}
+
+/** Automatic load breakage is fail-closed for every controller-backed Massline. Ordinary ships,
+ * asteroids, payloads, and structures cannot turn a piloting mistake into a severed line. Both the
+ * definition and a future station/singularity-scale endpoint must opt in explicitly; manual pilot
+ * cut and subsystem-owned severing remain separate attachment-service paths. */
+export function automaticMasslineBreakAllowed(def, owner, target) {
+  if (entitySuppressesMasslineAutoBreak(owner) || entitySuppressesMasslineAutoBreak(target)) return false;
+  const massline = def && def.massline;
+  if (!massline || massline.enabled !== true) return true;
+  if (massline.automaticBreakPolicy === 'extreme_load_only') {
+    return entityEnablesExtremeMasslineBreak(owner) || entityEnablesExtremeMasslineBreak(target);
+  }
+  // A Massline definition must name an explicit supported failure policy. Omission is never
+  // permission to restore the old load-induced snap behavior.
+  return false;
+}
+
+// Builds the winch/heat/overload policy def that masslineController.stepMassline consumes. The
+// physical envelope comes from the attachment def's `break` block (authored in combatDefs); the
+// winch/heat/reel policy comes from the generated DEFAULT_MASSLINE_DEF. Heavy targets still stall
+// the winch through mass-ratio physics. Automatic overload failure is enabled only by the explicit
+// endpoint policy passed below, never inferred from ordinary load.
+function masslineDefFor(def, tetherPolicy = null, automaticBreak = true) {
+  const breakPolicy = tetherPolicy && tetherPolicy.break;
+  const brk = breakPolicy || (def && def.break) || {};
+  const reelRate = Number.isFinite(tetherPolicy && tetherPolicy.reelRate)
+    ? tetherPolicy.reelRate
+    : (Number.isFinite(def && def.reelRate) ? def.reelRate : null);
+  const maxLength = Number.isFinite(tetherPolicy && tetherPolicy.maxLength)
+    ? tetherPolicy.maxLength
+    : (Number.isFinite(def && def.maxLength) ? def.maxLength : null);
+  // Authored massline.overloadGraceS controls failure-capable extreme operations. Ordinary standard
+  // lines pass automaticBreak=false and keep the controller's load/heat telemetry without cutting.
+  const authoredGrace = def && def.massline && Number(def.massline.overloadGraceS);
+  const overloadGraceS = Number.isFinite(authoredGrace) && authoredGrace > 0 ? authoredGrace : 0.22;
+  const authoredCat = def && def.massline && Number(def.massline.catastrophicRatio);
+  const catastrophicRatio = Number.isFinite(authoredCat) && authoredCat > 1 ? authoredCat : 1.75;
+  return {
+    minLength: Number.isFinite(def && def.minLength) ? def.minLength : undefined,
+    maxLength: maxLength == null ? undefined : maxLength,
+    reelInSpeed: reelRate == null ? undefined : reelRate,
+    reelOutSpeed: reelRate == null ? undefined : reelRate,
+    maxTension: Number.isFinite(brk.maxTension) ? brk.maxTension : 140,
+    maxImpulse: Number.isFinite(brk.maxImpulse) ? brk.maxImpulse : 90,
+    maxYank: Number.isFinite(brk.maxYank) ? brk.maxYank : 420,
+    overloadGraceS,
+    catastrophicRatio,
+    automaticBreak: automaticBreak !== false,
+  };
+}
+
+export function createAttachmentService(context) {
+  const { state, catalog, helpers, bus } = context;
+
+  // Ordered attachment view. The byId map is materialized + re-sorted in several
+  // per-tick passes; keep one sorted array instead. Rebuilt when a service write
+  // marks it dirty, when the combat.attachments container is replaced (save
+  // restore), or when an external poke changes the key count.
+  let orderedCache = null;
+  let orderedFor = null;
+  let orderedMap = null;
+  let orderedKeys = -1;
+  let orderedDirty = true;
+
+  function markOrderedDirty() {
+    orderedDirty = true;
+  }
+
+  function orderedAttachments() {
+    const container = state.combat && state.combat.attachments;
+    const map = container && container.byId;
+    if (!map || typeof map !== 'object') return EMPTY_ATTACHMENTS;
+    let count = 0;
+    for (const id in map) {
+      if (Object.prototype.hasOwnProperty.call(map, id)) count++;
+    }
+    if (orderedCache && !orderedDirty && orderedFor === container
+      && orderedMap === map && orderedKeys === count) {
+      return orderedCache;
+    }
+    orderedCache = Object.values(map).sort(byId);
+    orderedFor = container;
+    orderedMap = map;
+    orderedKeys = count;
+    orderedDirty = false;
+    return orderedCache;
+  }
+
+  // Telemetry probed by reconcilePhysics is reused by updateTelemetryAndBreak so a
+  // healthy attachment pays one physics query per tick, not two.
+  const tickTelemetry = new Map();
+  let telemetryTick = -1;
+
+  function get(attachmentId) {
+    return state.combat.attachments.byId[String(attachmentId)] || null;
+  }
+
+  function breakPolicy(attachmentId) {
+    const attachment = get(attachmentId);
+    if (!attachment) return null;
+    const def = catalog.attachments.get(attachment.defId);
+    if (!def) return null;
+    return breakForAttachment(def, entity(attachment.ownerId), entity(attachment.targetId), attachment);
+  }
+
+  function reelPolicy(attachmentId) {
+    const attachment = get(attachmentId);
+    if (!attachment) return null;
+    const def = catalog.attachments.get(attachment.defId);
+    if (!def) return null;
+    return policyForAttachment(def, entity(attachment.ownerId), attachment);
+  }
+
+  // Read-only save validation uses the same effective inputs as reconstruction. Policy
+  // rebasing may replace tetherPolicy, so resolve against a scratch semantic record.
+  function physicsContract(attachmentId) {
+    const attachment = get(attachmentId);
+    if (!attachment || attachment.state !== 'active') return null;
+    const def = catalog.attachments.get(attachment.defId);
+    const owner = entity(attachment.ownerId), target = entity(attachment.targetId);
+    if (!def || !owner || owner.alive === false || !target || target.alive === false
+      || owner === target || occupantMismatch(owner, attachment.ownerGeneration)
+      || occupantMismatch(target, attachment.targetGeneration)) return null;
+    const sourceAnchor = validLocalPoint(attachment.sourceAnchorLocal);
+    const targetAnchor = validLocalPoint(attachment.targetAnchorLocal);
+    if (!sourceAnchor || !targetAnchor) return null;
+    const sourceWorld = entityLocalPointToWorld(owner, sourceAnchor);
+    const targetWorld = entityLocalPointToWorld(target, targetAnchor);
+    const scratch = { ...attachment, tetherPolicy: cloneSerializableRecord(attachment.tetherPolicy) };
+    return physicsPolicy(scratch, def, owner, target,
+      Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z));
+  }
+
+  function create(spec) {
+    const def = catalog.attachments.get(spec && spec.defId);
+    const owner = entity(spec && spec.ownerId);
+    const target = entity(spec && spec.targetId);
+    const controllerId = spec && spec.controllerId != null ? spec.controllerId : null;
+    const controller = controllerId == null ? null : entity(controllerId);
+    const physics = combatPhysics();
+    if (!def) return fail('unknown_attachment_def');
+    if (!owner || !owner.alive) return fail('owner_missing');
+    if (!target || !target.alive || target.id === owner.id) return fail('target_missing');
+    if (controllerId != null && (!controller || controller.alive === false)) return fail('controller_missing');
+    if (!physics || typeof physics.createAttachment !== 'function') return fail('physics_port_unavailable');
+
+    const orchardRefusal = orchardAttachmentRefusal(state, owner, target, spec);
+    if (orchardRefusal) return fail(orchardRefusal);
+    const ownerRuntime = ensureCombatant(state, owner, catalog);
+    const targetRuntime = ensureCombatant(state, target, catalog);
+    const sourceSocket = selectSocket(ownerRuntime, def.sourceSocketTags, spec.sourceSocketId, owner.id);
+    const targetSocket = selectSocket(targetRuntime, def.targetSocketTags, spec.targetSocketId, target.id);
+    if (!sourceSocket) return fail('source_socket_unavailable');
+    if (!targetSocket) return fail('target_socket_unavailable');
+
+    const activeOwned = orderedAttachments()
+      .filter((attachment) => attachment.state === 'active' && attachment.ownerId === owner.id && attachment.defId === def.id).length;
+    if (def.limits && Number.isInteger(def.limits.maxPerOwner) && activeOwned >= def.limits.maxPerOwner) return fail('owner_attachment_limit');
+
+    const id = `att_${String(state.combat.attachments.nextId++).padStart(6, '0')}`;
+    const requestedSourceWorld = validWorldPoint(spec && spec.sourceWorld);
+    const requestedTargetWorld = validWorldPoint(spec && spec.targetWorld);
+    const sourceWorld = requestedSourceWorld || socketWorldPosition(owner, sourceSocket);
+    const targetWorld = requestedTargetWorld || socketWorldPosition(target, targetSocket);
+    const restLength = Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z);
+    const attachment = {
+      id,
+      defId: def.id,
+      ownerId: owner.id,
+      targetId: target.id,
+      ...(controller ? { controllerId: controller.id } : {}),
+      ...(typeof (spec && spec.controlMode) === 'string' ? { controlMode: spec.controlMode } : {}),
+      // Occupant-generation stamps pin each endpoint to the body that held the id at create
+      // time. Entity ids recycle through freeIds, so a bare numeric id can name a replacement
+      // one tick later; these tokens are what let the orphan sweep and deferred destruction
+      // receipts distinguish "the endpoint is gone" from "the id moved to a new occupant".
+      // Null means the body was never stamped (fixture-authored) — treated as unprovable, so
+      // pre-fixtures and legacy records keep their existing id-only behavior.
+      ownerGeneration: occupantGenerationOf(owner),
+      targetGeneration: occupantGenerationOf(target),
+      controllerGeneration: controller ? occupantGenerationOf(controller) : null,
+      sourceSocketId: sourceSocket.id,
+      targetSocketId: targetSocket.id,
+      sourceAnchorLocal: requestedSourceWorld
+        ? worldPointToEntityLocal(owner, sourceWorld)
+        : socketLocalPosition(owner, sourceSocket),
+      targetAnchorLocal: requestedTargetWorld
+        ? worldPointToEntityLocal(target, targetWorld)
+        : socketLocalPosition(target, targetSocket),
+      physicsHandle: null,
+      state: 'active',
+      createdTick: state.tick,
+      brokenTick: null,
+      breakReason: null,
+      restLength,
+      lastTension: 0,
+      lastImpulse: 0,
+      braceLoadN: 0,
+      nearBreakWarned: false,
+      actionInstanceId: spec.actionInstanceId || null,
+      tetherPolicy: effectiveTetherPolicy(def, controller || owner, state.runtime && state.runtime.features),
+    };
+    const physicsResult = createPhysicsAttachment(attachment, def);
+    if (!physicsResult.ok) return fail(physicsResult.reason, physicsResult.error);
+    attachment.physicsHandle = serializableHandle(physicsResult.physicsHandle);
+    state.combat.attachments.byId[id] = attachment;
+    markOrderedDirty();
+    appendCombatTrace(state.combat, state.tick, 'attachment.created', {
+      actorId: owner.id,
+      ...(controller ? { controllerId: controller.id } : {}),
+      ...(typeof (spec && spec.controlMode) === 'string' ? { controlMode: spec.controlMode } : {}),
+      targetId: target.id,
+      attachmentId: id,
+      attachmentDefId: def.id,
+      sourceSocketId: sourceSocket.id,
+      targetSocketId: targetSocket.id,
+      restLength,
+      cueId: def.cues && def.cues.created,
+    });
+    if (bus) bus.emit('tether:attached', {
+      actorId: owner.id,
+      ...(controller ? { controllerId: controller.id } : {}),
+      ...(typeof (spec && spec.controlMode) === 'string' ? { controlMode: spec.controlMode } : {}),
+      targetId: target.id,
+      attachmentId: id,
+      attachmentDefId: def.id,
+      sourceSocketId: sourceSocket.id,
+      targetSocketId: targetSocket.id,
+      restLength,
+      cueId: def.cues && def.cues.created,
+    });
+    return { ok: true, attachment };
+  }
+
+  function reel(attachmentId, restLengthDelta, minRestLength = 0) {
+    const attachment = get(attachmentId);
+    const physics = combatPhysics();
+    if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
+    if (!physics || typeof physics.setAttachmentReel !== 'function') return fail('physics_port_unavailable');
+    const next = Math.max(Math.max(0, Number(minRestLength) || 0), attachment.restLength + (Number(restLengthDelta) || 0));
+    const nextReelRevision = Math.max(0, Math.trunc(Number(attachment.reelRevision) || 0)) + 1;
+    try {
+      const accepted = physics.setAttachmentReel({
+        attachmentId: attachment.id,
+        physicsHandle: attachment.physicsHandle,
+        restLength: next,
+        previousRestLength: attachment.restLength,
+        reelRevision: nextReelRevision,
+        springState: attachment.physicsSpringState,
+        tick: state.tick,
+      });
+      if (accepted === false) return fail('physics_reel_rejected');
+      const acceptedRestLength = accepted && typeof accepted === 'object' && Number.isFinite(accepted.restLength)
+        ? accepted.restLength
+        : next;
+      const before = attachment.restLength;
+      attachment.restLength = acceptedRestLength;
+      attachment.reelRevision = nextReelRevision;
+      attachment.lastReelTick = state.tick;
+      if (attachment.masslineRuntime) {
+        attachment.masslineRuntime.restLength = acceptedRestLength;
+        attachment.masslineRuntime.targetLength = acceptedRestLength;
+        attachment.masslineRuntime.reelVelocity = 0;
+      }
+      appendCombatTrace(state.combat, state.tick, 'attachment.reel', {
+        actorId: attachment.ownerId,
+        targetId: attachment.targetId,
+        attachmentId: attachment.id,
+        before,
+        after: acceptedRestLength,
+      });
+      if (bus) bus.emit('tether:reel', {
+        actorId: attachment.ownerId,
+        targetId: attachment.targetId,
+        attachmentId: attachment.id,
+        before,
+        after: acceptedRestLength,
+      });
+      return { ok: true, attachment };
+    } catch (error) {
+      return fail('physics_reel_failed', error);
+    }
+  }
+
+  function cut(attachmentId, actorId, reason = 'cut') {
+    const attachment = get(attachmentId);
+    if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
+    if (actorId != null && !actorControlsAttachment(attachment, actorId)) return fail('not_attachment_owner');
+    return breakAttachment(attachment, reason, actorId);
+  }
+
+  function breakAttachment(attachmentOrId, reason = 'break', actorId = null, telemetry = null) {
+    const attachment = typeof attachmentOrId === 'string' ? get(attachmentOrId) : attachmentOrId;
+    const physics = combatPhysics();
+    if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
+    if (physics && typeof physics.cutAttachment === 'function') {
+      try {
+        physics.cutAttachment({
+          attachmentId: attachment.id,
+          physicsHandle: attachment.physicsHandle,
+          reason,
+          tick: state.tick,
+        });
+      } catch (error) {
+        // Do NOT leave the record 'active' when the physics cut throws (typically a stale body
+        // after the target despawned). An active record with an ungovernable joint is the
+        // immortal-ghost-tether bug: reconcilePhysics resurrects the joint every tick, the
+        // owner-limit then blocks all future latches, and no input can ever cut it. Mark broken,
+        // trace the failure, and let reconcile/liveness sweeps skip broken records.
+        appendCombatTrace(state.combat, state.tick, 'attachment.physicsCutFailed', {
+          actorId: actorId == null ? attachment.ownerId : actorId,
+          attachmentId: attachment.id,
+          reason,
+          error: error && error.message ? String(error.message) : 'unknown',
+        });
+      }
+    } else if (reason !== 'physics_break') {
+      return fail('physics_port_unavailable');
+    }
+    attachment.state = 'broken';
+    attachment.brokenTick = state.tick;
+    attachment.breakReason = reason;
+    if (telemetry) {
+      attachment.lastTension = finiteOrZero(telemetry.tension);
+      attachment.lastImpulse = finiteOrZero(telemetry.impulse);
+      attachment.lastYank = Math.abs(finiteOrZero(telemetry.yank));
+    }
+    const def = catalog.attachments.get(attachment.defId);
+    appendCombatTrace(state.combat, state.tick, 'attachment.broken', {
+      actorId: actorId == null ? attachment.ownerId : actorId,
+      targetId: attachment.targetId,
+      attachmentId: attachment.id,
+      reason,
+      tension: attachment.lastTension,
+      impulse: attachment.lastImpulse,
+      cueId: def && def.cues && def.cues.broken,
+    });
+    if (bus) bus.emit('tether:broken', {
+      actorId: actorId == null ? attachment.ownerId : actorId,
+      ownerId: attachment.ownerId != null ? attachment.ownerId : null,
+      controllerId: attachment.controllerId != null ? attachment.controllerId : null,
+      targetId: attachment.targetId,
+      attachmentId: attachment.id,
+      reason,
+      tension: attachment.lastTension,
+      impulse: attachment.lastImpulse,
+      cueId: def && def.cues && def.cues.broken,
+    });
+    pruneBrokenAttachmentHistory(state.combat.attachments.byId);
+    markOrderedDirty();
+    return { ok: true, attachment };
+  }
+
+  function breakOwnedBy(ownerId, reason = 'owner_disabled') {
+    const broken = [];
+    for (const attachment of orderedAttachments()) {
+      if (attachment.state !== 'active'
+          || (attachment.ownerId !== ownerId && attachment.controllerId !== ownerId)) continue;
+      const result = breakAttachment(attachment, reason, ownerId);
+      if (result.ok) broken.push(attachment.id);
+    }
+    return broken;
+  }
+
+  // Liveness sweep: an attachment whose owner or target no longer exists (despawned pickup,
+  // mined-out asteroid, killed ship) must break — never persist as an invisible anchor. Runs
+  // before physics reconcile so a dead-ended joint is cut instead of resurrected.
+  function breakOrphans() {
+    let broken = 0;
+    for (const attachment of orderedAttachments()) {
+      if (!attachment || attachment.state !== 'active') continue;
+      const owner = entity(attachment.ownerId);
+      const target = entity(attachment.targetId);
+      const controller = attachment.controllerId == null ? null : entity(attachment.controllerId);
+      // Orphaned = the entity is GONE (despawned) or explicitly dead (alive === false). An entity
+      // without an `alive` field (harness stubs, minimal records) is NOT an orphan — only a
+      // positive death signal or a missing record may break a line. A recorded generation that
+      // no longer matches the live occupant is the same kind of loss: the id was recycled and
+      // the body this record binds is gone even though a replacement sits in the map.
+      const ownerLost = !owner || owner.alive === false || occupantMismatch(owner, attachment.ownerGeneration);
+      const targetLost = !target || target.alive === false || occupantMismatch(target, attachment.targetGeneration);
+      const controllerLost = attachment.controllerId != null
+        && (!controller || controller.alive === false || occupantMismatch(controller, attachment.controllerGeneration));
+      if (!ownerLost && !targetLost && !controllerLost) continue;
+      // Owner death is an endpoint loss, not a target loss — keep the reason inside the
+      // recognized endpoint vocabulary so cues/labels stay honest about which side died.
+      const reason = ownerLost ? 'endpoint_lost' : (targetLost ? 'target_lost' : 'controller_lost');
+      const result = breakAttachment(attachment, reason, attachment.controllerId ?? attachment.ownerId);
+      if (result.ok) broken++;
+    }
+    return broken;
+  }
+
+  function reconcilePhysics() {
+    // Quiet Ceres never deploys a line — byId stays {}. Skip orphan walk, Map.clear,
+    // and orderedAttachments materialize until something is actually attached.
+    if (!hasAttachmentKeys(state.combat && state.combat.attachments && state.combat.attachments.byId)) {
+      return { recreated: 0, pending: 0 };
+    }
+    const physics = combatPhysics();
+    if (!physics || typeof physics.createAttachment !== 'function' || typeof physics.getAttachmentTelemetry !== 'function') {
+      return { recreated: 0, pending: 0 };
+    }
+    breakOrphans();
+    tickTelemetry.clear();
+    telemetryTick = state.tick;
+    let recreated = 0;
+    let pending = 0;
+    for (const attachment of orderedAttachments()) {
+      if (!attachment || attachment.state !== 'active') continue;
+      let telemetry = null;
+      try {
+        telemetry = physics.getAttachmentTelemetry({
+          attachmentId: attachment.id,
+          physicsHandle: attachment.physicsHandle,
+          tick: state.tick,
+        });
+      } catch (_) {
+        telemetry = null;
+      }
+      // Only live reads are shared: a null probe means reconcile may recreate the
+      // joint, and the new joint must be queried fresh by updateTelemetryAndBreak.
+      if (telemetry) tickTelemetry.set(attachment.id, telemetry);
+      if (telemetry) continue;
+      const def = catalog.attachments.get(attachment.defId);
+      if (!def) { pending++; continue; }
+      const result = createPhysicsAttachment(attachment, def);
+      if (!result.ok) {
+        // endpoint_stale is terminal, not retryable: the id still maps to a live occupant but
+        // it is a different body than this record binds. Break it now — next tick's orphan
+        // sweep would catch it anyway, but leaving it active for a tick lets reconcile and
+        // telemetry treat the replacement as the line's endpoint in the meantime.
+        if (result.reason === 'endpoint_stale') {
+          breakAttachment(attachment, 'endpoint_lost', attachment.controllerId ?? attachment.ownerId);
+          continue;
+        }
+        pending++;
+        continue;
+      }
+      attachment.physicsHandle = serializableHandle(result.physicsHandle);
+      recreated++;
+      appendCombatTrace(state.combat, state.tick, 'attachment.physicsReconciled', {
+        actorId: attachment.ownerId,
+        targetId: attachment.targetId,
+        attachmentId: attachment.id,
+        attachmentDefId: attachment.defId,
+      });
+    }
+    return { recreated, pending };
+  }
+
+  function transfer(attachmentId, fromOwnerId, toOwnerId) {
+    const attachment = get(attachmentId);
+    const def = attachment && catalog.attachments.get(attachment.defId);
+    if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
+    if (attachment.ownerId !== fromOwnerId) return fail('not_attachment_owner');
+    if (!def || !def.ownership || !def.ownership.transferable) return fail('ownership_not_transferable');
+    const nextOwner = entity(toOwnerId);
+    if (!nextOwner || nextOwner.alive === false) return fail('new_owner_missing');
+    const orchardRefusal = orchardAttachmentRefusal(state,entity(attachment.ownerId),entity(attachment.targetId),{})
+      || orchardAttachmentRefusal(state,nextOwner,entity(attachment.targetId),{});
+    if (orchardRefusal) return fail(orchardRefusal);
+    const nextRuntime = ensureCombatant(state, nextOwner, catalog);
+    const nextSocket = selectSocket(nextRuntime, def.sourceSocketTags, null, nextOwner.id, attachment.id);
+    if (!nextSocket) return fail('source_socket_unavailable');
+    const physics = combatPhysics();
+    if (!physics || typeof physics.cutAttachment !== 'function' || typeof physics.createAttachment !== 'function') {
+      return fail('physics_port_unavailable');
+    }
+    const previous = {
+      ownerId: attachment.ownerId,
+      ownerGeneration: attachment.ownerGeneration,
+      sourceSocketId: attachment.sourceSocketId,
+      sourceAnchorLocal: attachment.sourceAnchorLocal && { ...attachment.sourceAnchorLocal },
+    };
+    try {
+      const released = physics.cutAttachment({
+        attachmentId: attachment.id,
+        physicsHandle: attachment.physicsHandle,
+        reason: 'owner_transfer',
+        tick: state.tick,
+      });
+      if (released === false) return fail('physics_transfer_cut_rejected');
+    } catch (error) {
+      return fail('physics_transfer_cut_failed', error);
+    }
+    attachment.ownerId = toOwnerId;
+    attachment.ownerGeneration = occupantGenerationOf(nextOwner);
+    attachment.sourceSocketId = nextSocket.id;
+    attachment.sourceAnchorLocal = socketLocalPosition(nextOwner, nextSocket);
+    attachment.physicsHandle = null;
+    const rebound = createPhysicsAttachment(attachment, def);
+    if (!rebound.ok) {
+      attachment.ownerId = previous.ownerId;
+      attachment.ownerGeneration = previous.ownerGeneration;
+      attachment.sourceSocketId = previous.sourceSocketId;
+      attachment.sourceAnchorLocal = previous.sourceAnchorLocal;
+      const rollback = createPhysicsAttachment(attachment, def);
+      if (!rollback.ok) {
+        attachment.physicsHandle = null;
+        breakAttachment(attachment, 'physics_transfer_rollback_failed', previous.ownerId);
+        return fail('physics_transfer_rollback_failed', rollback.error || rebound.error);
+      }
+      attachment.physicsHandle = serializableHandle(rollback.physicsHandle);
+      return fail('physics_transfer_rebind_failed', rebound.error);
+    }
+    attachment.physicsHandle = serializableHandle(rebound.physicsHandle);
+    appendCombatTrace(state.combat, state.tick, 'attachment.ownerTransferred', {
+      actorId: fromOwnerId,
+      targetId: toOwnerId,
+      attachmentId,
+    });
+    return { ok: true, attachment };
+  }
+
+  /** Atomically retopologize an existing line through the same SG-02 attachment authority.
+   *
+   * This is the transaction primitive used by player-commanded remote Massline heads. It changes
+   * only the two constraint endpoints and immutable deployment metadata. It never writes a body
+   * pose, velocity, thrust, facing, or reel command. Both replacement endpoints and their sockets
+   * are revalidated before the old joint is released; a rejected replacement recreates the exact
+   * prior joint or fails closed as a broken attachment if even that rollback is unavailable. */
+  function rebind(attachmentId, actorId, spec = {}) {
+    const attachment = get(attachmentId);
+    if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
+    if (actorId != null && !actorControlsAttachment(attachment, actorId)) return fail('not_attachment_owner');
+
+    const nextDef = catalog.attachments.get(spec.defId || attachment.defId);
+    const nextOwner = entity(spec.ownerId == null ? attachment.ownerId : spec.ownerId);
+    const nextTarget = entity(spec.targetId == null ? attachment.targetId : spec.targetId);
+    const nextControllerId = Object.prototype.hasOwnProperty.call(spec, 'controllerId')
+      ? spec.controllerId
+      : attachment.controllerId;
+    const nextController = nextControllerId == null ? null : entity(nextControllerId);
+    const physics = combatPhysics();
+    if (!nextDef) return fail('unknown_attachment_def');
+    if (!nextOwner || nextOwner.alive === false) return fail('owner_missing');
+    if (!nextTarget || nextTarget.alive === false || nextTarget.id === nextOwner.id) return fail('target_missing');
+    if (nextControllerId != null && (!nextController || nextController.alive === false)) return fail('controller_missing');
+    if (!physics || typeof physics.cutAttachment !== 'function' || typeof physics.createAttachment !== 'function') {
+      return fail('physics_port_unavailable');
+    }
+
+    const orchardRefusal = orchardAttachmentRefusal(state,entity(attachment.ownerId),entity(attachment.targetId),{})
+      || orchardAttachmentRefusal(state,nextOwner,nextTarget,spec);
+    if (orchardRefusal) return fail(orchardRefusal);
+    const ownerRuntime = ensureCombatant(state, nextOwner, catalog);
+    const targetRuntime = ensureCombatant(state, nextTarget, catalog);
+    const sourceSocket = selectSocket(
+      ownerRuntime,
+      nextDef.sourceSocketTags,
+      spec.sourceSocketId || null,
+      nextOwner.id,
+      attachment.id,
+    );
+    const targetSocket = selectSocket(
+      targetRuntime,
+      nextDef.targetSocketTags,
+      spec.targetSocketId || null,
+      nextTarget.id,
+      attachment.id,
+    );
+    if (!sourceSocket) return fail('source_socket_unavailable');
+    if (!targetSocket) return fail('target_socket_unavailable');
+
+    const activeOwned = orderedAttachments()
+      .filter((candidate) => candidate.id !== attachment.id
+        && candidate.state === 'active'
+        && candidate.ownerId === nextOwner.id
+        && candidate.defId === nextDef.id).length;
+    if (nextDef.limits && Number.isInteger(nextDef.limits.maxPerOwner)
+        && activeOwned >= nextDef.limits.maxPerOwner) return fail('owner_attachment_limit');
+
+    const sourceWorld = validWorldPoint(spec.sourceWorld) || socketWorldPosition(nextOwner, sourceSocket);
+    const targetWorld = validWorldPoint(spec.targetWorld) || socketWorldPosition(nextTarget, targetSocket);
+    const previous = attachmentRebindSnapshot(attachment);
+    try {
+      const released = physics.cutAttachment({
+        attachmentId: attachment.id,
+        physicsHandle: attachment.physicsHandle,
+        reason: 'endpoint_rebind',
+        tick: state.tick,
+      });
+      if (released === false) return fail('physics_rebind_cut_rejected');
+    } catch (error) {
+      return fail('physics_rebind_cut_failed', error);
+    }
+
+    attachment.defId = nextDef.id;
+    attachment.ownerId = nextOwner.id;
+    attachment.targetId = nextTarget.id;
+    attachment.ownerGeneration = occupantGenerationOf(nextOwner);
+    attachment.targetGeneration = occupantGenerationOf(nextTarget);
+    attachment.controllerGeneration = nextController ? occupantGenerationOf(nextController) : null;
+    if (nextController) attachment.controllerId = nextController.id;
+    else delete attachment.controllerId;
+    if (typeof spec.controlMode === 'string') attachment.controlMode = spec.controlMode;
+    attachment.sourceSocketId = sourceSocket.id;
+    attachment.targetSocketId = targetSocket.id;
+    attachment.sourceAnchorLocal = validWorldPoint(spec.sourceWorld)
+      ? worldPointToEntityLocal(nextOwner, sourceWorld)
+      : socketLocalPosition(nextOwner, sourceSocket);
+    attachment.targetAnchorLocal = validWorldPoint(spec.targetWorld)
+      ? worldPointToEntityLocal(nextTarget, targetWorld)
+      : socketLocalPosition(nextTarget, targetSocket);
+    attachment.restLength = Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z);
+    attachment.physicsHandle = null;
+    attachment.reelRevision = 0;
+    attachment.lastReelTick = null;
+    attachment.lastTension = 0;
+    attachment.lastImpulse = 0;
+    attachment.lastYank = 0;
+    attachment.braceLoadN = 0;
+    attachment.nearBreakWarned = false;
+    attachment.breakWarningUntilTick = null;
+    attachment.physicsSpringState = null;
+    attachment.masslineRuntime = null;
+    attachment.masslineTelemetry = null;
+    attachment.tetherPolicy = effectiveTetherPolicy(
+      nextDef,
+      nextController || nextOwner,
+      state.runtime && state.runtime.features,
+    );
+
+    const rebound = createPhysicsAttachment(attachment, nextDef);
+    if (!rebound.ok) {
+      restoreAttachmentRebindSnapshot(attachment, previous);
+      const previousDef = catalog.attachments.get(previous.defId);
+      const rollback = previousDef ? createPhysicsAttachment(attachment, previousDef) : null;
+      if (!rollback || !rollback.ok) {
+        attachment.physicsHandle = null;
+        breakAttachment(attachment, 'physics_rebind_rollback_failed', actorId);
+        return fail('physics_rebind_rollback_failed', (rollback && rollback.error) || rebound.error);
+      }
+      attachment.physicsHandle = serializableHandle(rollback.physicsHandle);
+      return fail('physics_rebind_rejected', rebound.error);
+    }
+
+    attachment.physicsHandle = serializableHandle(rebound.physicsHandle);
+    appendCombatTrace(state.combat, state.tick, 'attachment.rebound', {
+      actorId: actorId == null ? attachment.controllerId ?? attachment.ownerId : actorId,
+      attachmentId: attachment.id,
+      attachmentDefId: attachment.defId,
+      previousOwnerId: previous.ownerId,
+      previousTargetId: previous.targetId,
+      ownerId: attachment.ownerId,
+      targetId: attachment.targetId,
+      controllerId: attachment.controllerId,
+      controlMode: attachment.controlMode,
+      restLength: attachment.restLength,
+    });
+    if (bus) bus.emit('tether:rebound', {
+      actorId: actorId == null ? attachment.controllerId ?? attachment.ownerId : actorId,
+      attachmentId: attachment.id,
+      attachmentDefId: attachment.defId,
+      previousOwnerId: previous.ownerId,
+      previousTargetId: previous.targetId,
+      ownerId: attachment.ownerId,
+      targetId: attachment.targetId,
+      controllerId: attachment.controllerId,
+      controlMode: attachment.controlMode,
+      restLength: attachment.restLength,
+    });
+    return { ok: true, attachment };
+  }
+
+  function updateTelemetryAndBreak() {
+    // Same quiet empty-byId gate as reconcilePhysics — no active or historic lines.
+    if (!hasAttachmentKeys(state.combat && state.combat.attachments && state.combat.attachments.byId)) {
+      return;
+    }
+    const physics = combatPhysics();
+    if (!physics || typeof physics.getAttachmentTelemetry !== 'function') return;
+    for (const attachment of orderedAttachments()) {
+      if (attachment.state !== 'active') continue;
+      const def = catalog.attachments.get(attachment.defId);
+      if (!def) continue;
+      const owner = entity(attachment.ownerId);
+      const target = entity(attachment.targetId);
+      const breakPolicy = breakForAttachment(def, owner, target, attachment);
+      let telemetry;
+      const probed = telemetryTick === state.tick && tickTelemetry.has(attachment.id)
+        ? tickTelemetry.get(attachment.id)
+        : undefined;
+      if (probed !== undefined) {
+        telemetry = probed;
+      } else {
+        try {
+          telemetry = physics.getAttachmentTelemetry({ attachmentId: attachment.id, physicsHandle: attachment.physicsHandle, tick: state.tick });
+        } catch (_) {
+          continue;
+        }
+      }
+      if (!telemetry) continue;
+      attachment.lastTension = finiteOrZero(telemetry.tension);
+      attachment.lastImpulse = finiteOrZero(telemetry.impulse);
+      attachment.lastYank = Math.abs(finiteOrZero(telemetry.yank));
+      attachment.physicsSpringState = telemetry.springState && typeof telemetry.springState === 'object'
+        ? { ...telemetry.springState }
+        : null;
+      const grace = Math.max(0, Number(breakPolicy && breakPolicy.graceTicks) || 0);
+
+      // Warning is an ordered, player-visible receipt, not post-break decoration. Detect it before
+      // stepping the cut authority; the bounded warning lease below then keeps the line recoverable
+      // for presentation and pilot counterplay before `tether:broken` may be emitted.
+      const automaticBreak = attachment.controlMode === 'bounty_contest'
+        || attachment.controlMode === 'wingman_brace'
+        || attachment.controlMode === 'squad_rescue'
+        || automaticMasslineBreakAllowed(def, owner, target);
+      if (state.tick - attachment.createdTick >= grace && breakPolicy && automaticBreak) {
+        const tensionRatio = breakPolicy.maxTension > 0 ? attachment.lastTension / breakPolicy.maxTension : 0;
+        const impulseRatio = breakPolicy.maxImpulse > 0 ? attachment.lastImpulse / breakPolicy.maxImpulse : 0;
+        // The controller's effective yank budget can only be wider than maxYank due to battle
+        // hardening. Therefore raw yank/maxYank > .75 safely catches every yank-dominant cut while
+        // allowing an intentionally conservative early warning.
+        const yankRatio = breakPolicy.maxYank > 0 ? attachment.lastYank / breakPolicy.maxYank : 0;
+        const nearBreakRatio = Math.max(tensionRatio, impulseRatio, yankRatio);
+        if (nearBreakRatio > 0.75 && !attachment.nearBreakWarned) {
+          attachment.nearBreakWarned = true;
+          // Fifteen fixed ticks is a visible 250 ms counterplay window at 60 Hz. Catastrophic loads
+          // still fail promptly, but never before presentation has rendered at least one warning.
+          attachment.breakWarningUntilTick = state.tick + 15;
+          if (bus) bus.emit('tether:nearBreak', {
+            actorId: attachment.ownerId,
+            targetId: attachment.targetId,
+            attachmentId: attachment.id,
+            attachmentDefId: attachment.defId,
+            tension: attachment.lastTension,
+            impulse: attachment.lastImpulse,
+            yank: attachment.lastYank,
+            ratio: nearBreakRatio,
+            warningUntilTick: attachment.breakWarningUntilTick,
+          });
+        }
+      }
+
+      // RW-01 brace leg: stored winch-brace load follows the same ordered warning -> lease ->
+      // snap contract as every other overload, on its own authored envelope. Brace load only
+      // exists while a pilot deliberately routes recoil through a taut line, so this leg never
+      // touches the fail-closed automatic-break policy that protects ordinary piloting.
+      if (attachment.braceLoadN > 0) {
+        const braceRatio = attachment.braceLoadN / WINCH_BRACE.snapLoad;
+        if (braceRatio >= WINCH_BRACE.nearBreakRatio && !attachment.nearBreakWarned) {
+          attachment.nearBreakWarned = true;
+          attachment.breakWarningUntilTick = state.tick + 15;
+          if (bus) bus.emit('tether:nearBreak', {
+            actorId: attachment.ownerId,
+            targetId: attachment.targetId,
+            attachmentId: attachment.id,
+            attachmentDefId: attachment.defId,
+            tension: attachment.lastTension,
+            impulse: attachment.lastImpulse,
+            yank: attachment.lastYank,
+            ratio: braceRatio,
+            warningUntilTick: attachment.breakWarningUntilTick,
+            brace: true,
+            braceLoad: attachment.braceLoadN,
+          });
+        } else if (braceRatio < WINCH_BRACE.nearBreakRatio * 0.5 && attachment.nearBreakWarned) {
+          // A released line cools: re-arm the warning once the load has decayed well clear.
+          attachment.nearBreakWarned = false;
+        }
+        if (braceRatio >= 1
+            && Number.isFinite(attachment.breakWarningUntilTick)
+            && state.tick >= attachment.breakWarningUntilTick) {
+          breakAttachment(attachment, 'brace_overload', attachment.ownerId, {
+            tension: attachment.lastTension,
+            braceLoad: attachment.braceLoadN,
+          });
+          continue;
+        }
+        attachment.braceLoadN *= WINCH_BRACE.decayPerTick;
+        if (attachment.braceLoadN < 1) attachment.braceLoadN = 0;
+      }
+
+      // Massline controller: run the winch/heat/overload policy (spec §8) one step per fixed tick
+      // and apply its rest-length command to the Rapier joint. Rapier still owns momentum exchange
+      // (mass-ratio-driven swing/reel); the controller only owns the winch + break policy. This is
+      // what turns the scripted tether into a physical mass-ratio-driven Massline.
+      // Massline controller (spec §8): run the winch/heat/overload policy one step per fixed tick
+      // and apply its rest-length command to the Rapier joint. Opt-in per attachment def via a
+      // `massline: { enabled: true }` block, so existing scenario tethers keep their proven
+      // dynamics until a def deliberately adopts the controller. When enabled, Rapier still owns
+      // momentum exchange (mass-ratio-driven swing/reel); the controller only owns the winch +
+      // break policy. Joint rebuilds are conservative (only on a meaningful length change) to
+      // avoid destabilizing the solver with per-tick joint recreation.
+      const masslinePolicy = def.massline && def.massline.enabled;
+      if (masslinePolicy && state.tick - attachment.createdTick >= grace) {
+        const activePolicy = policyForAttachment(def, owner, attachment);
+        const masslineDef = masslineDefFor(def, { ...activePolicy, break: breakPolicy }, automaticBreak);
+        if (!attachment.masslineRuntime) {
+          // Seed the winch from the ACTUAL attachment rest length, not the def's defaultLength,
+          // so a neutral (no-reel) command holds the engagement distance rather than drifting the
+          // ships toward an arbitrary 70-unit separation. The controller only moves the joint when
+          // a reel command is issued or physics stretches the line.
+          const runtime = createMasslineRuntime(masslineDef);
+          const seed = attachment.restLength > 0 ? attachment.restLength : runtime.restLength;
+          runtime.restLength = seed;
+          runtime.targetLength = seed;
+          attachment.masslineRuntime = runtime;
+        }
+        const ml = stepMassline({
+          dt: SIM_DT,
+          def: masslineDef,
+          runtime: attachment.masslineRuntime,
+          telemetry: {
+            attachmentId: attachment.id,
+            restLength: telemetry.restLength,
+            distance: telemetry.distance,
+            stretch: telemetry.stretch,
+            relativeSpeed: telemetry.relativeSpeed,
+            yank: telemetry.yank,
+            tension: telemetry.tension,
+            impulse: telemetry.impulse,
+          },
+          command: { reel: 0, hold: true, cut: false },
+          ownerBody: owner && { mass: finiteOrZero(owner.physicsBody && owner.physicsBody.mass) || finiteOrZero(owner.mass) || 1 },
+          targetBody: target && { mass: finiteOrZero(target.physicsBody && target.physicsBody.mass) || finiteOrZero(target.mass) || 1 },
+        });
+        attachment.masslineRuntime = ml.runtime;
+        attachment.masslineTelemetry = ml.telemetry;
+        // Apply the controller's rest length only on a meaningful change (>= 2 units). Rebuilding
+        // a Rapier rope joint every tick resets solver contact state and destabilizes the tether;
+        // the winch is a slow actuator, so a coarse threshold is physically appropriate.
+        if (ml.action.restLength > 0 && Math.abs(ml.action.restLength - attachment.restLength) >= 2.0) {
+          try {
+            if (physics.setAttachmentReel) {
+              const accepted = physics.setAttachmentReel({
+                attachmentId: attachment.id,
+                physicsHandle: attachment.physicsHandle,
+                restLength: ml.action.restLength,
+                previousRestLength: attachment.restLength,
+                tick: state.tick,
+              });
+              attachment.restLength = accepted && typeof accepted === 'object' && Number.isFinite(accepted.restLength)
+                ? accepted.restLength
+                : ml.action.restLength;
+            }
+          } catch (_) { /* joint update is best-effort; the next tick retries */ }
+        }
+        // The controller's overload cut is still the authored threshold break at the SG-03
+        // boundary: checks and AI consume the public 'threshold' reason while the controller keeps
+        // its internal cut reason for telemetry/debugging.
+        if (ml.action.cut) {
+          if (Number.isFinite(attachment.breakWarningUntilTick)
+            && state.tick < attachment.breakWarningUntilTick) {
+            attachment.masslineRuntime = {
+              ...ml.runtime,
+              state: 'holding',
+              cutReason: null,
+            };
+            attachment.masslineTelemetry = { ...ml.telemetry, state: 'holding' };
+            continue;
+          }
+          const rawCutReason = ml.runtime.cutReason || 'overload';
+          const cutReason = rawCutReason === 'catastrophic-overload' || rawCutReason === 'sustained-overload' || rawCutReason === 'snap'
+            ? 'threshold'
+            : rawCutReason;
+          breakAttachment(attachment, cutReason, attachment.ownerId, {
+            tension: ml.telemetry.tension,
+            impulse: ml.telemetry.impulse,
+          });
+          continue;
+        }
+      }
+
+      if (state.tick - attachment.createdTick < grace) continue;
+      const thresholdExceeded = (breakPolicy && attachment.lastTension > breakPolicy.maxTension)
+        || (breakPolicy && attachment.lastImpulse > breakPolicy.maxImpulse);
+      if (!thresholdExceeded) continue;
+      // Controller-backed ordinary Masslines stay fail-closed. Extreme endpoints that opted
+      // into automatic break still snap on the authored envelope after the ordered warning
+      // lease, even when oscillating load never reaches the controller's catastrophic cut.
+      if (masslinePolicy && !automaticBreak) continue;
+      // The warning lease is universal: any def that armed breakWarningUntilTick promised the
+      // pilot 15 ticks of counterplay, not just massline-controlled lines — a same-tick slam
+      // used to emit tether:nearBreak and tether:broken together for snare/snarl/bridle defs.
+      if (Number.isFinite(attachment.breakWarningUntilTick)
+        && state.tick < attachment.breakWarningUntilTick) {
+        continue;
+      }
+      breakAttachment(attachment, 'threshold', attachment.ownerId, telemetry);
+    }
+  }
+
+  function listForEntity(entityId, activeOnly = true) {
+    return orderedAttachments()
+      .filter((attachment) => (!activeOnly || attachment.state === 'active') && (attachment.ownerId === entityId || attachment.targetId === entityId));
+  }
+
+  function listControlledBy(controllerId, activeOnly = true) {
+    return orderedAttachments()
+      .filter((attachment) => (!activeOnly || attachment.state === 'active')
+        && attachment.controllerId === controllerId);
+  }
+
+  return Object.freeze({ get, breakPolicy, reelPolicy, physicsContract, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, rebind, updateTelemetryAndBreak, listForEntity, listControlledBy });
+
+  function combatPhysics() {
+    return helpers && helpers.combatPhysics;
+  }
+
+  function createPhysicsAttachment(attachment, def) {
+    const physics = combatPhysics();
+    if (!physics || typeof physics.createAttachment !== 'function') return { ok: false, reason: 'physics_port_unavailable' };
+    const owner = entity(attachment.ownerId);
+    const target = entity(attachment.targetId);
+    if (!owner || !owner.alive) return { ok: false, reason: 'owner_missing' };
+    if (!target || !target.alive || target.id === owner.id) return { ok: false, reason: 'target_missing' };
+    // A recorded generation that no longer matches the live occupant means the endpoint id was
+    // recycled: the body this record binds is gone and a different occupant owns the number.
+    // Recreating physics for it would weld the line onto the replacement — fail closed so
+    // reconcilePhysics breaks the record instead of resurrecting it on the wrong body.
+    if (occupantMismatch(owner, attachment.ownerGeneration)
+        || occupantMismatch(target, attachment.targetGeneration)) {
+      return { ok: false, reason: 'endpoint_stale' };
+    }
+    const ownerRuntime = ensureCombatant(state, owner, catalog);
+    const targetRuntime = ensureCombatant(state, target, catalog);
+    const sourceSocket = selectSocket(ownerRuntime, def.sourceSocketTags, attachment.sourceSocketId, owner.id, attachment.id);
+    const targetSocket = selectSocket(targetRuntime, def.targetSocketTags, attachment.targetSocketId, target.id, attachment.id);
+    if (!sourceSocket) return { ok: false, reason: 'source_socket_unavailable' };
+    if (!targetSocket) return { ok: false, reason: 'target_socket_unavailable' };
+    const sourceAnchorLocal = validLocalPoint(attachment.sourceAnchorLocal) || socketLocalPosition(owner, sourceSocket);
+    const targetAnchorLocal = validLocalPoint(attachment.targetAnchorLocal) || socketLocalPosition(target, targetSocket);
+    const sourceWorld = entityLocalPointToWorld(owner, sourceAnchorLocal);
+    const targetWorld = entityLocalPointToWorld(target, targetAnchorLocal);
+    const fallbackRestLength = Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z);
+    const policy = physicsPolicy(attachment, def, owner, target, fallbackRestLength);
+    try {
+      const physicsHandle = physics.createAttachment({
+        attachmentId: attachment.id,
+        defId: def.id,
+        ownerId: owner.id,
+        targetId: target.id,
+        sourceSocketId: sourceSocket.id,
+        targetSocketId: targetSocket.id,
+        sourceAnchorLocal,
+        targetAnchorLocal,
+        sourceWorld,
+        targetWorld,
+        ...policy,
+        tick: state.tick,
+      });
+      if (physicsHandle === false || physicsHandle == null) return { ok: false, reason: 'physics_create_rejected' };
+      attachment.sourceSocketId = sourceSocket.id;
+      attachment.targetSocketId = targetSocket.id;
+      attachment.sourceAnchorLocal = sourceAnchorLocal;
+      attachment.targetAnchorLocal = targetAnchorLocal;
+      attachment.restLength = policy.restLength;
+      return { ok: true, physicsHandle };
+    } catch (error) {
+      return { ok: false, reason: 'physics_create_failed', error };
+    }
+  }
+
+  function physicsPolicy(attachment, def, owner, target, fallbackRestLength) {
+    const requestedRestLength = Number.isFinite(attachment.restLength) && attachment.restLength >= 0
+      ? attachment.restLength : fallbackRestLength;
+    const tetherPolicy = policyForAttachment(def, owner, attachment);
+    const minLength = Number.isFinite(def && def.minLength) && def.minLength > 0 ? def.minLength : 0;
+    const policyMaxLength = tetherPolicy && typeof tetherPolicy.maxLength === 'number'
+      && Number.isFinite(tetherPolicy.maxLength) && tetherPolicy.maxLength > 0
+      ? tetherPolicy.maxLength : baseTetherMaxLength(def);
+    const maxLength = policyMaxLength == null ? Infinity : Math.max(minLength, policyMaxLength);
+    return {
+      restLength: Math.min(maxLength, Math.max(minLength, requestedRestLength)),
+      break: breakForAttachment(def, owner, target, attachment) || {},
+      spring: springForAttachment(def, owner, target, attachment),
+      forceScale: masslineForceScale(attachment),
+      reelRevision: attachment.reelRevision,
+      springState: attachment.physicsSpringState,
+    };
+  }
+
+  function selectSocket(runtime, requiredTags, explicitId, entityId, ignoreAttachmentId = null) {
+    const sockets = runtime && runtime.sockets ? Object.values(runtime.sockets).sort(byId) : [];
+    const required = new Set(requiredTags || []);
+    for (const socket of sockets) {
+      if (explicitId && socket.id !== explicitId) continue;
+      if (![...required].some((tag) => socket.tags.includes(tag))) continue;
+      const used = Object.values(state.combat.attachments.byId).filter((attachment) =>
+        attachment.id !== ignoreAttachmentId &&
+        attachment.state === 'active' && ((attachment.ownerId === entityId && attachment.sourceSocketId === socket.id) ||
+        (attachment.targetId === entityId && attachment.targetSocketId === socket.id))).length;
+      if (used < socket.maxAttachments) return socket;
+    }
+    return null;
+  }
+
+  function entity(id) {
+    return state.entities && state.entities.get ? state.entities.get(id) || null : null;
+  }
+
+  function masslineForceScale(attachment) {
+    const ownerScale = entityMasslineForceScale(entity(attachment && attachment.ownerId));
+    const targetScale = entityMasslineForceScale(entity(attachment && attachment.targetId));
+    return Math.min(ownerScale, targetScale);
+  }
+
+  function springForAttachment(def, owner, target, attachment = null) {
+    const legacyMassline = uses47aLegacyMassline(def, owner, target, state);
+    const canonicalizeReplay = legacyMassline
+      && Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0)) > 0;
+    if (legacyMassline) {
+      const reelRevision = Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0));
+      if (reelRevision <= 0) return { mode: 'legacy_rope' };
+    }
+    const policy = policyForAttachment(def, owner, attachment);
+    if (policy && policy.headId && policy.spring && typeof policy.spring === 'object') {
+      return { ...policy.spring, canonicalizeReplay };
+    }
+    return { ...((def && def.spring) || {}), canonicalizeReplay };
+  }
+
+  function breakForAttachment(def, owner, target, attachment = null) {
+    if (uses47aLegacyMassline(def, owner, target, state)) {
+      const reelRevision = Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0));
+      if (reelRevision <= 0) return { ...LEGACY_47A_MASSLINE_BREAK };
+    }
+    return policyForAttachment(def, owner, attachment).break;
+  }
+
+  function policyForAttachment(def, owner, attachment = null) {
+    if (attachment && attachment.tetherPolicy && typeof attachment.tetherPolicy === 'object') {
+      const rebased = rebasePersistedTetherPolicy(def, attachment.tetherPolicy);
+      if (rebased !== attachment.tetherPolicy) attachment.tetherPolicy = rebased;
+      return rebased;
+    }
+    const policy = effectiveTetherPolicy(def, owner, state.runtime && state.runtime.features);
+    if (attachment) attachment.tetherPolicy = policy;
+    return policy;
+  }
+
+  function fail(reason, error = null) {
+    appendCombatTrace(state.combat, state.tick, 'attachment.rejected', {
+      reason,
+      error: error && error.message ? String(error.message) : null,
+    });
+    return { ok: false, reason };
+  }
+}
+
+export function otherAttachmentEndpoint(attachment, actorId) {
+  if (!attachment) return null;
+  if (attachment.ownerId === actorId) return attachment.targetId;
+  if (attachment.targetId === actorId) return attachment.ownerId;
+  return null;
+}
+
+function actorControlsAttachment(attachment, actorId) {
+  return !!attachment && (attachment.ownerId === actorId || attachment.controllerId === actorId);
+}
+
+function attachmentRebindSnapshot(attachment) {
+  return {
+    __hadControllerId: Object.prototype.hasOwnProperty.call(attachment, 'controllerId'),
+    __hadControlMode: Object.prototype.hasOwnProperty.call(attachment, 'controlMode'),
+    defId: attachment.defId,
+    ownerId: attachment.ownerId,
+    targetId: attachment.targetId,
+    ownerGeneration: attachment.ownerGeneration ?? null,
+    targetGeneration: attachment.targetGeneration ?? null,
+    controllerGeneration: attachment.controllerGeneration ?? null,
+    controllerId: attachment.controllerId ?? null,
+    controlMode: attachment.controlMode || null,
+    sourceSocketId: attachment.sourceSocketId,
+    targetSocketId: attachment.targetSocketId,
+    sourceAnchorLocal: attachment.sourceAnchorLocal && { ...attachment.sourceAnchorLocal },
+    targetAnchorLocal: attachment.targetAnchorLocal && { ...attachment.targetAnchorLocal },
+    physicsHandle: attachment.physicsHandle,
+    restLength: attachment.restLength,
+    reelRevision: attachment.reelRevision,
+    lastReelTick: attachment.lastReelTick,
+    lastTension: attachment.lastTension,
+    lastImpulse: attachment.lastImpulse,
+    lastYank: attachment.lastYank,
+    nearBreakWarned: attachment.nearBreakWarned,
+    breakWarningUntilTick: attachment.breakWarningUntilTick,
+    physicsSpringState: attachment.physicsSpringState && { ...attachment.physicsSpringState },
+    masslineRuntime: cloneSerializableRecord(attachment.masslineRuntime),
+    masslineTelemetry: cloneSerializableRecord(attachment.masslineTelemetry),
+    tetherPolicy: cloneSerializableRecord(attachment.tetherPolicy),
+  };
+}
+
+function restoreAttachmentRebindSnapshot(attachment, snapshot) {
+  for (const key of Object.keys(snapshot)) {
+    if (key.startsWith('__had')) continue;
+    attachment[key] = snapshot[key];
+  }
+  if (!snapshot.__hadControllerId) delete attachment.controllerId;
+  if (!snapshot.__hadControlMode) delete attachment.controlMode;
+  attachment.physicsHandle = null;
+}
+
+function cloneSerializableRecord(value) {
+  if (value == null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(cloneSerializableRecord);
+  const out = {};
+  for (const [key, item] of Object.entries(value)) out[key] = cloneSerializableRecord(item);
+  return out;
+}
+
+function serializableHandle(handle) {
+  if (handle == null) return null;
+  if (typeof handle === 'string' || typeof handle === 'number' || typeof handle === 'boolean') return handle;
+  if (typeof handle === 'object' && (typeof handle.id === 'string' || typeof handle.id === 'number')) return { id: handle.id };
+  return { external: true };
+}
+
+const EMPTY_ATTACHMENTS = Object.freeze([]);
+
+/** Own enumerable key probe — O(1) empty, avoids Object.keys alloc on the quiet path. */
+function hasAttachmentKeys(map) {
+  if (!map || typeof map !== 'object') return false;
+  for (const _ in map) return true;
+  return false;
+}
+
+function byId(a, b) {
+  return compareText(String(a.id), String(b.id));
+}
+
+function pruneBrokenAttachmentHistory(byId) {
+  const broken = Object.values(byId || {}).filter((attachment) => attachment && attachment.state === 'broken');
+  if (broken.length <= BROKEN_ATTACHMENT_HISTORY_LIMIT) return;
+  broken.sort((a, b) => {
+    const aTick = Number.isInteger(a.brokenTick) ? a.brokenTick : -1;
+    const bTick = Number.isInteger(b.brokenTick) ? b.brokenTick : -1;
+    return aTick - bTick || compareText(String(a.id), String(b.id));
+  });
+  const remove = broken.length - BROKEN_ATTACHMENT_HISTORY_LIMIT;
+  for (let i = 0; i < remove; i++) delete byId[broken[i].id];
+}
+
+function finiteOrZero(value) {
+  return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * A recorded occupant generation proves which body an id named when the record was written.
+ * Mismatch = the id was recycled and a different occupant holds it now — the record is stale.
+ * A null recording (fixture-authored endpoints, legacy records) cannot prove identity, so it
+ * never mismatches: unprovable stays unprovable rather than guessing either way.
+ */
+function occupantMismatch(entity, recordedGeneration) {
+  return recordedGeneration != null && occupantGenerationOf(entity) !== recordedGeneration;
+}
+
+/**
+ * Does this record bind `generation` of `entityId`? Kernel-side destruction receipts are
+ * deferred and ids recycle, so when the id already belongs to a replacement occupant this is
+ * the check that separates the dead body's lines (break them) from the replacement's (keep).
+ * Returns false when either side cannot prove identity — never claim a binding on a guess.
+ */
+export function attachmentBindsOccupant(attachment, entityId, generation) {
+  if (!attachment || generation == null) return false;
+  return (attachment.ownerId === entityId && attachment.ownerGeneration === generation)
+    || (attachment.targetId === entityId && attachment.targetGeneration === generation)
+    || (attachment.controllerId === entityId && attachment.controllerGeneration === generation);
+}
+
+function entitySuppressesMasslineAutoBreak(value) {
+  const data = value && value.data;
+  return !!data && (data.masslineAutoBreak === false || data.masslineBreakPolicy === 'manual_cut_only');
+}
+
+function entityEnablesExtremeMasslineBreak(value) {
+  const data = value && value.data;
+  return !!data && (data.masslineExtremeLoad === true || data.masslineBreakPolicy === 'extreme_overload');
+}
+
+function entityMasslineForceScale(value) {
+  const data = value && value.data;
+  const scale = data && Number(data.masslineForceScale);
+  if (!Number.isFinite(scale)) return 1;
+  return scale < 0 ? 0 : scale > 4 ? 4 : scale;
+}
+
+function validWorldPoint(value) {
+  if (!value || !Number.isFinite(value.x) || !Number.isFinite(value.z)) return null;
+  return { x: value.x, y: Number.isFinite(value.y) ? value.y : 0, z: value.z };
+}
+
+function validLocalPoint(value) {
+  if (!value || !Number.isFinite(value.x) || !Number.isFinite(value.z)) return null;
+  return { x: value.x, z: value.z };
+}
+
+function uses47aLegacyMassline(def, owner, target, state = null) {
+  if (!def || def.id !== 'attachment_massline') return false;
+  if (state && state.settings && state.settings.gameplay && state.settings.gameplay.flightBackend === 'v3') return false;
+  const targetData = target && target.data;
+  return !!targetData && targetData.scenarioActorId === 'evidence_spindle_47a';
+}
+
+function compareText(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}

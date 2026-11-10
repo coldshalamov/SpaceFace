@@ -1,0 +1,3678 @@
+{
+  "seeds": [
+    101,
+    409,
+    1601
+  ],
+  "demonstrations": [
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_heavy_anchor_grappler",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "anchor_spool",
+      "phaseTrace": "spool>swing>done",
+      "telegraphTicks": 38,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.949,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 309.297,
+      "opponentPath": 123.823,
+      "driveDelta": null,
+      "detail": {
+        "flankDist": 7.378,
+        "minFlank": 0.964,
+        "anchorTicks": 310,
+        "flankRadius": 36
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -5.527,
+          "z": -309.248
+        },
+        "opponent": {
+          "x": 186.172,
+          "z": -0.164
+        },
+        "anchor": {
+          "x": 124.476,
+          "z": 7.017
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "c1ddadda"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_heavy_anchor_grappler",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "anchor_spool",
+      "phaseTrace": "spool>swing>done",
+      "telegraphTicks": 38,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 189.579,
+      "opponentPath": 172.311,
+      "driveDelta": null,
+      "detail": {
+        "flankDist": 21.471,
+        "minFlank": 3.88,
+        "anchorTicks": 0,
+        "flankRadius": 36
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 189.505,
+          "z": 5.268
+        },
+        "opponent": {
+          "x": 198.156,
+          "z": -9.532
+        },
+        "anchor": {
+          "x": 124.476,
+          "z": 7.017
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "251839c0"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_heavy_anchor_grappler",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "anchor_spool",
+      "phaseTrace": "spool>swing>done",
+      "telegraphTicks": 38,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.948,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 274.808,
+      "opponentPath": 123.67,
+      "driveDelta": null,
+      "detail": {
+        "flankDist": 7.483,
+        "minFlank": 1.029,
+        "anchorTicks": 310,
+        "flankRadius": 36
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -52.634,
+          "z": -269.72
+        },
+        "opponent": {
+          "x": 171.803,
+          "z": -15.077
+        },
+        "anchor": {
+          "x": 109.901,
+          "z": -7.84
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "e0a0019e"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_heavy_anchor_grappler",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "anchor_spool",
+      "phaseTrace": "spool>swing>done",
+      "telegraphTicks": 38,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 240.115,
+      "opponentPath": 235.396,
+      "driveDelta": null,
+      "detail": {
+        "flankDist": 118.435,
+        "minFlank": 1.34,
+        "anchorTicks": 0,
+        "flankRadius": 36
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 222.084,
+          "z": -91.289
+        },
+        "opponent": {
+          "x": 237.792,
+          "z": -104.885
+        },
+        "anchor": {
+          "x": 109.901,
+          "z": -7.84
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "8bae7f1e"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_heavy_anchor_grappler",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "anchor_spool",
+      "phaseTrace": "spool>swing>done",
+      "telegraphTicks": 38,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.95,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 265.352,
+      "opponentPath": 123.62,
+      "driveDelta": null,
+      "detail": {
+        "flankDist": 7.254,
+        "minFlank": 1.108,
+        "anchorTicks": 310,
+        "flankRadius": 36
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -50.185,
+          "z": -260.563
+        },
+        "opponent": {
+          "x": 172.972,
+          "z": -13.628
+        },
+        "anchor": {
+          "x": 111.129,
+          "z": -6.611
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "0c1fd077"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_heavy_anchor_grappler",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "anchor_spool",
+      "phaseTrace": "spool>swing>done",
+      "telegraphTicks": 38,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 156.662,
+      "opponentPath": 167.605,
+      "driveDelta": null,
+      "detail": {
+        "flankDist": 26.589,
+        "minFlank": 2.069,
+        "anchorTicks": 0,
+        "flankRadius": 36
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 156.22,
+          "z": -11.767
+        },
+        "opponent": {
+          "x": 196.611,
+          "z": -14.203
+        },
+        "anchor": {
+          "x": 111.129,
+          "z": -6.611
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "2e7d9d38"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_feint_break_courier",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_mule",
+      "silhouette": "ship_mule",
+      "telegraphKind": "feint_burn",
+      "phaseTrace": "feint>break>disengage>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.077,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 304.947,
+      "opponentPath": 542.441,
+      "driveDelta": null,
+      "detail": {
+        "gateDist": 193.854,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.706
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 155.612,
+          "z": 323.458
+        },
+        "opponent": {
+          "x": 156.335,
+          "z": 340.472
+        },
+        "buoy": {
+          "x": 6.876,
+          "z": 217.017
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "077006ae"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_feint_break_courier",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_mule",
+      "silhouette": "ship_mule",
+      "telegraphKind": "feint_burn",
+      "phaseTrace": "feint>break",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.469,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 158.049,
+      "opponentPath": 600.1,
+      "driveDelta": null,
+      "detail": {
+        "gateDist": 111.6,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.684
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -2.771,
+          "z": 202.26
+        },
+        "opponent": {
+          "x": 9.159,
+          "z": 328.593
+        },
+        "buoy": {
+          "x": 6.876,
+          "z": 217.017
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "de9809d9"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_feint_break_courier",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_mule",
+      "silhouette": "ship_mule",
+      "telegraphKind": "feint_burn",
+      "phaseTrace": "feint>break>disengage>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.063,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 306.383,
+      "opponentPath": 548.623,
+      "driveDelta": null,
+      "detail": {
+        "gateDist": 196.737,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.706
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 140.755,
+          "z": 310.314
+        },
+        "opponent": {
+          "x": 141.311,
+          "z": 330.618
+        },
+        "buoy": {
+          "x": -7.699,
+          "z": 202.16
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "d7352946"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_feint_break_courier",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_mule",
+      "silhouette": "ship_mule",
+      "telegraphKind": "feint_burn",
+      "phaseTrace": "feint>break",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.469,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 158.049,
+      "opponentPath": 600.1,
+      "driveDelta": null,
+      "detail": {
+        "gateDist": 111.6,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.684
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -17.346,
+          "z": 187.403
+        },
+        "opponent": {
+          "x": -5.417,
+          "z": 313.737
+        },
+        "buoy": {
+          "x": -7.699,
+          "z": 202.16
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "fc23a089"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_feint_break_courier",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_mule",
+      "silhouette": "ship_mule",
+      "telegraphKind": "feint_burn",
+      "phaseTrace": "feint>break>disengage>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.06,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 307.594,
+      "opponentPath": 543.19,
+      "driveDelta": null,
+      "detail": {
+        "gateDist": 197.379,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.706
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 146.181,
+          "z": 310.909
+        },
+        "opponent": {
+          "x": 146.749,
+          "z": 327.817
+        },
+        "buoy": {
+          "x": -6.471,
+          "z": 203.389
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "85b5a6ed"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_feint_break_courier",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_mule",
+      "silhouette": "ship_mule",
+      "telegraphKind": "feint_burn",
+      "phaseTrace": "feint>break",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.469,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 158.049,
+      "opponentPath": 600.1,
+      "driveDelta": null,
+      "detail": {
+        "gateDist": 111.6,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.684
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -16.118,
+          "z": 188.632
+        },
+        "opponent": {
+          "x": -4.188,
+          "z": 314.965
+        },
+        "buoy": {
+          "x": -6.471,
+          "z": 203.389
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "8b44bd16"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_corridor_pack_leader",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "corridor_open",
+      "phaseTrace": "show_lane>hold_park",
+      "telegraphTicks": 70,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.276,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 215.92,
+      "opponentPath": 203.226,
+      "driveDelta": null,
+      "detail": {
+        "exitDist": 221.277
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 175.342,
+          "z": -126.492
+        },
+        "opponent": {
+          "x": 66.326,
+          "z": 168.782
+        },
+        "packmate": {
+          "x": 106.782,
+          "z": -35.838
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "1bc09ef3"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_corridor_pack_leader",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "corridor_open",
+      "phaseTrace": "show_lane>hold_park>disengage",
+      "telegraphTicks": 70,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.211,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 0,
+      "opponentPath": 207.173,
+      "driveDelta": null,
+      "detail": {
+        "exitDist": 241.276
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 176.876,
+          "z": -12.983
+        },
+        "opponent": {
+          "x": 64.422,
+          "z": 165.074
+        },
+        "packmate": {
+          "x": 85.599,
+          "z": -12.97
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "2701e4c4"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_corridor_pack_leader",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "corridor_open",
+      "phaseTrace": "show_lane>hold_park",
+      "telegraphTicks": 67,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.416,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 159.042,
+      "opponentPath": 239.229,
+      "driveDelta": null,
+      "detail": {
+        "exitDist": 171.712
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 22.464,
+          "z": 155.653
+        },
+        "opponent": {
+          "x": 59.376,
+          "z": 155.095
+        },
+        "packmate": {
+          "x": 141.1,
+          "z": -14.6
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "a6354ab9"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_corridor_pack_leader",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "corridor_open",
+      "phaseTrace": "show_lane>hold_park>disengage",
+      "telegraphTicks": 67,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.191,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 0,
+      "opponentPath": 196.694,
+      "driveDelta": null,
+      "detail": {
+        "exitDist": 237.891
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 162.301,
+          "z": -27.84
+        },
+        "opponent": {
+          "x": 47.716,
+          "z": 148.977
+        },
+        "packmate": {
+          "x": 74.41,
+          "z": -28.376
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "8f6b4081"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_corridor_pack_leader",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "corridor_open",
+      "phaseTrace": "show_lane>hold_park",
+      "telegraphTicks": 67,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.279,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 168.462,
+      "opponentPath": 252.857,
+      "driveDelta": null,
+      "detail": {
+        "exitDist": 212.806
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 29.249,
+          "z": 164.347
+        },
+        "opponent": {
+          "x": 59.612,
+          "z": 153.994
+        },
+        "packmate": {
+          "x": 101.216,
+          "z": -12.129
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "d55b81c8"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_corridor_pack_leader",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "corridor_open",
+      "phaseTrace": "show_lane>hold_park>disengage",
+      "telegraphTicks": 67,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.19,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 0,
+      "opponentPath": 199.746,
+      "driveDelta": null,
+      "detail": {
+        "exitDist": 238.813
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 163.529,
+          "z": -26.611
+        },
+        "opponent": {
+          "x": 49.359,
+          "z": 149.175
+        },
+        "packmate": {
+          "x": 74.725,
+          "z": -24.59
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "df4976be"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_rescue_tow",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "tow_spool",
+      "phaseTrace": "spool>tow>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.895,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 263.902,
+      "opponentPath": 260.582,
+      "driveDelta": null,
+      "detail": {
+        "gateDist": 21.088,
+        "towTicks": 310
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 263.567,
+          "z": -13.298
+        },
+        "opponent": {
+          "x": 292.948,
+          "z": -10.607
+        },
+        "patient": {
+          "x": 250.913,
+          "z": 15.096
+        },
+        "buoy": {
+          "x": 271.375,
+          "z": 10
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "5bec10da"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_rescue_tow",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "tow_spool",
+      "phaseTrace": "spool>tow>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 209.136,
+      "opponentPath": 202.266,
+      "driveDelta": 0,
+      "detail": {
+        "gateDist": 178.426,
+        "towTicks": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 205.8,
+          "z": 37.21
+        },
+        "opponent": {
+          "x": 235.415,
+          "z": 37.926
+        },
+        "patient": {
+          "x": 93.293,
+          "z": -1.074
+        },
+        "buoy": {
+          "x": 271.375,
+          "z": 10
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "8fbe6cf5"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_rescue_tow",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "tow_spool",
+      "phaseTrace": "spool>tow>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.813,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 250.419,
+      "opponentPath": 242.232,
+      "driveDelta": 0,
+      "detail": {
+        "gateDist": 37.446,
+        "towTicks": 310
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 249.006,
+          "z": -26.567
+        },
+        "opponent": {
+          "x": 255.631,
+          "z": -41.964
+        },
+        "patient": {
+          "x": 281.577,
+          "z": -25.074
+        },
+        "buoy": {
+          "x": 268.46,
+          "z": 10
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "97869396"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_rescue_tow",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "tow_spool",
+      "phaseTrace": "spool>tow>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 216.16,
+      "opponentPath": 212.724,
+      "driveDelta": 0,
+      "detail": {
+        "gateDist": 179.204,
+        "towTicks": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 213.315,
+          "z": 34.957
+        },
+        "opponent": {
+          "x": 243.793,
+          "z": 33.562
+        },
+        "patient": {
+          "x": 89.557,
+          "z": -0.37
+        },
+        "buoy": {
+          "x": 268.46,
+          "z": 10
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "ce19e1c4"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_rescue_tow",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "tow_spool",
+      "phaseTrace": "spool>tow>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.892,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 266.405,
+      "opponentPath": 264.725,
+      "driveDelta": null,
+      "detail": {
+        "gateDist": 21.65,
+        "towTicks": 310
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 266.246,
+          "z": -9.221
+        },
+        "opponent": {
+          "x": 292.538,
+          "z": -0.22
+        },
+        "patient": {
+          "x": 247.382,
+          "z": 13.741
+        },
+        "buoy": {
+          "x": 268.706,
+          "z": 10
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "8b5dc21b"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_rescue_tow",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_hawser",
+      "silhouette": "ship_hawser",
+      "telegraphKind": "tow_spool",
+      "phaseTrace": "spool>tow>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 215.547,
+      "opponentPath": 211.772,
+      "driveDelta": 0,
+      "detail": {
+        "gateDist": 178.167,
+        "towTicks": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 212.558,
+          "z": 35.771
+        },
+        "opponent": {
+          "x": 242.546,
+          "z": 34.191
+        },
+        "patient": {
+          "x": 90.882,
+          "z": -1.052
+        },
+        "buoy": {
+          "x": 268.706,
+          "z": 10
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "fef5aed4"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_prize_runner",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_hornet",
+      "silhouette": "ship_hornet",
+      "telegraphKind": "prize_match",
+      "phaseTrace": "search>match>show_match>latched",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 1,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 256.58,
+      "opponentPath": 418.319,
+      "driveDelta": null,
+      "detail": {
+        "matchedTicks": 88
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 178.433,
+          "z": 132.657
+        },
+        "opponent": {
+          "x": 363.543,
+          "z": -83.97
+        },
+        "prize": {
+          "x": 398.715,
+          "z": -92.1
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "9b0ba51b"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_prize_runner",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_hornet",
+      "silhouette": "ship_hornet",
+      "telegraphKind": "prize_match",
+      "phaseTrace": "search>match>show_match>latched>disengage>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 1123.082,
+      "opponentPath": 1141.155,
+      "driveDelta": null,
+      "detail": {
+        "matchedTicks": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 1102.834,
+          "z": -53.566
+        },
+        "opponent": {
+          "x": 1082.28,
+          "z": -141.59
+        },
+        "prize": {
+          "x": 1129.057,
+          "z": -51.925
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "901af381"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_prize_runner",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_hornet",
+      "silhouette": "ship_hornet",
+      "telegraphKind": "prize_match",
+      "phaseTrace": "search>match>show_match>latched",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 1,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 256.911,
+      "opponentPath": 414.4,
+      "driveDelta": null,
+      "detail": {
+        "matchedTicks": 86
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 179.669,
+          "z": 131.664
+        },
+        "opponent": {
+          "x": 347.085,
+          "z": -107.406
+        },
+        "prize": {
+          "x": 379.928,
+          "z": -121.389
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "08c63658"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_prize_runner",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_hornet",
+      "silhouette": "ship_hornet",
+      "telegraphKind": "prize_match",
+      "phaseTrace": "search>match>show_match>latched",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 1201.138,
+      "opponentPath": 1176.474,
+      "driveDelta": null,
+      "detail": {
+        "matchedTicks": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 1177.917,
+          "z": -117.909
+        },
+        "opponent": {
+          "x": 1127.58,
+          "z": -113.394
+        },
+        "prize": {
+          "x": 1218.838,
+          "z": -118.327
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "d451ecbd"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_prize_runner",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_hornet",
+      "silhouette": "ship_hornet",
+      "telegraphKind": "prize_match",
+      "phaseTrace": "search>match>show_match>latched",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 1,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 256.98,
+      "opponentPath": 414.323,
+      "driveDelta": null,
+      "detail": {
+        "matchedTicks": 87
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 179.834,
+          "z": 131.571
+        },
+        "opponent": {
+          "x": 348.892,
+          "z": -99.168
+        },
+        "prize": {
+          "x": 381.545,
+          "z": -120.467
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "97b21470"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_prize_runner",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_hornet",
+      "silhouette": "ship_hornet",
+      "telegraphKind": "prize_match",
+      "phaseTrace": "search>match>show_match>latched",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 1020.093,
+      "opponentPath": 1030.894,
+      "driveDelta": null,
+      "detail": {
+        "matchedTicks": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 936.556,
+          "z": -384.388
+        },
+        "opponent": {
+          "x": 890.986,
+          "z": -358.499
+        },
+        "prize": {
+          "x": 964.907,
+          "z": -396.291
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "f6a2d46b"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_release_orbit_hunter",
+      "pilotId": "evasive",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_ranger",
+      "silhouette": "ship_ranger",
+      "telegraphKind": "release_mark",
+      "phaseTrace": "search>mark>station>fallback",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.596,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 316.802,
+      "opponentPath": 490.09,
+      "driveDelta": null,
+      "detail": {
+        "hunterDist": 1.806,
+        "bodyDist": 50.89
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 11.819,
+          "z": 35.925
+        },
+        "opponent": {
+          "x": 23.794,
+          "z": 129.25
+        },
+        "orbit_body": {
+          "x": 70.908,
+          "z": -109.72
+        },
+        "orbit_anchor": {
+          "x": 99.375,
+          "z": 1.403
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "2de50e14"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_release_orbit_hunter",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_ranger",
+      "silhouette": "ship_ranger",
+      "telegraphKind": "release_mark",
+      "phaseTrace": "search>mark>station>fallback",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.329,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 639.389,
+      "opponentPath": 319.296,
+      "driveDelta": null,
+      "detail": {
+        "hunterDist": 10.91,
+        "bodyDist": 81.396
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 302.171,
+          "z": 188.992
+        },
+        "opponent": {
+          "x": 314.4,
+          "z": 206.868
+        },
+        "orbit_body": {
+          "x": 321.001,
+          "z": 242.011
+        },
+        "orbit_anchor": {
+          "x": 99.375,
+          "z": 1.403
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "f4ec88d9"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_release_orbit_hunter",
+      "pilotId": "evasive",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_ranger",
+      "silhouette": "ship_ranger",
+      "telegraphKind": "release_mark",
+      "phaseTrace": "search>mark>station>fallback",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.654,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 413.044,
+      "opponentPath": 229.51,
+      "driveDelta": null,
+      "detail": {
+        "hunterDist": 1.841,
+        "bodyDist": 43.21
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 49.889,
+          "z": 132.673
+        },
+        "opponent": {
+          "x": 204.589,
+          "z": -16.785
+        },
+        "orbit_body": {
+          "x": 195.37,
+          "z": -55.811
+        },
+        "orbit_anchor": {
+          "x": 96.46,
+          "z": -1.568
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "b9e37c15"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_release_orbit_hunter",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_ranger",
+      "silhouette": "ship_ranger",
+      "telegraphKind": "release_mark",
+      "phaseTrace": "search>mark>station>fallback",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.322,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 634.147,
+      "opponentPath": 315.269,
+      "driveDelta": null,
+      "detail": {
+        "hunterDist": 11.693,
+        "bodyDist": 81.866
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 299.541,
+          "z": 183.62
+        },
+        "opponent": {
+          "x": 311.73,
+          "z": 202.179
+        },
+        "orbit_body": {
+          "x": 319.682,
+          "z": 239.356
+        },
+        "orbit_anchor": {
+          "x": 96.46,
+          "z": -1.568
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "3bf37cab"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_release_orbit_hunter",
+      "pilotId": "evasive",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_ranger",
+      "silhouette": "ship_ranger",
+      "telegraphKind": "release_mark",
+      "phaseTrace": "search>mark>station>fallback",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.667,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 369.313,
+      "opponentPath": 230.152,
+      "driveDelta": null,
+      "detail": {
+        "hunterDist": 1.695,
+        "bodyDist": 41.561
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 138.692,
+          "z": -92.067
+        },
+        "opponent": {
+          "x": 213.499,
+          "z": -10.866
+        },
+        "orbit_body": {
+          "x": 199.952,
+          "z": -43.646
+        },
+        "orbit_anchor": {
+          "x": 96.706,
+          "z": -1.322
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "5064f7b8"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_release_orbit_hunter",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_ranger",
+      "silhouette": "ship_ranger",
+      "telegraphKind": "release_mark",
+      "phaseTrace": "search>mark>station>fallback",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.323,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 631.708,
+      "opponentPath": 313.73,
+      "driveDelta": null,
+      "detail": {
+        "hunterDist": 11.473,
+        "bodyDist": 81.887
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 298.482,
+          "z": 180.876
+        },
+        "opponent": {
+          "x": 311.318,
+          "z": 202.115
+        },
+        "orbit_body": {
+          "x": 319.78,
+          "z": 239.712
+        },
+        "orbit_anchor": {
+          "x": 96.706,
+          "z": -1.322
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "df61e85e"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_tether_bait_decoy",
+      "pilotId": "rope_manipulator",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_pelican",
+      "silhouette": "ship_pelican",
+      "telegraphKind": "bait_drift",
+      "phaseTrace": "drift>burn>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 1,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 313.362,
+      "opponentPath": 522.943,
+      "driveDelta": null,
+      "detail": {
+        "endDist": 228.381,
+        "longTether": true,
+        "closest": 24.202
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 50.218,
+          "z": 309.312
+        },
+        "opponent": {
+          "x": 197.291,
+          "z": 484.033
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "1ab2a326"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_tether_bait_decoy",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_pelican",
+      "silhouette": "ship_pelican",
+      "telegraphKind": "bait_drift",
+      "phaseTrace": "drift",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 256.594,
+      "opponentPath": 9.975,
+      "driveDelta": null,
+      "detail": {
+        "endDist": 356.335,
+        "longTether": false,
+        "closest": 20.378
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -69.977,
+          "z": -246.867
+        },
+        "opponent": {
+          "x": 186.025,
+          "z": 0.999
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "2a37bd59"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_tether_bait_decoy",
+      "pilotId": "rope_manipulator",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_pelican",
+      "silhouette": "ship_pelican",
+      "telegraphKind": "bait_drift",
+      "phaseTrace": "drift>burn>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 1,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 307.728,
+      "opponentPath": 575.645,
+      "driveDelta": null,
+      "detail": {
+        "endDist": 252.606,
+        "longTether": true,
+        "closest": 49.6
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -186.236,
+          "z": 244.974
+        },
+        "opponent": {
+          "x": -89.498,
+          "z": 478.323
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "2a18d661"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_tether_bait_decoy",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_pelican",
+      "silhouette": "ship_pelican",
+      "telegraphKind": "bait_drift",
+      "phaseTrace": "drift",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 256.597,
+      "opponentPath": 9.975,
+      "driveDelta": null,
+      "detail": {
+        "endDist": 356.417,
+        "longTether": false,
+        "closest": 20.269
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -69.972,
+          "z": 246.872
+        },
+        "opponent": {
+          "x": 186.025,
+          "z": -1.116
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "76179ff7"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_tether_bait_decoy",
+      "pilotId": "rope_manipulator",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_pelican",
+      "silhouette": "ship_pelican",
+      "telegraphKind": "bait_drift",
+      "phaseTrace": "drift>burn>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 1,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 307.719,
+      "opponentPath": 575.639,
+      "driveDelta": null,
+      "detail": {
+        "endDist": 251.959,
+        "longTether": true,
+        "closest": 49.407
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -186.502,
+          "z": 244.761
+        },
+        "opponent": {
+          "x": -90.72,
+          "z": 477.805
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "dab5e5b4"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_tether_bait_decoy",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_pelican",
+      "silhouette": "ship_pelican",
+      "telegraphKind": "bait_drift",
+      "phaseTrace": "drift",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 256.587,
+      "opponentPath": 9.975,
+      "driveDelta": null,
+      "detail": {
+        "endDist": 356.291,
+        "longTether": false,
+        "closest": 20.431
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -69.978,
+          "z": 246.86
+        },
+        "opponent": {
+          "x": 186.025,
+          "z": -0.941
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "86fe1f9a"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_collateral_hold",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "clear_lane",
+      "phaseTrace": "search>show_flank>show_clear_lane>fire",
+      "telegraphTicks": 102,
+      "fireRequests": 17,
+      "fireAuthorized": 17,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.35,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 6.992,
+      "projectiles": 1,
+      "playerShift": 524.67,
+      "opponentPath": 506.291,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 6.992,
+        "shots": 17
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 452.338,
+          "z": 268.635
+        },
+        "opponent": {
+          "x": 466.24,
+          "z": 281.041
+        },
+        "civilian": {
+          "x": 80.443,
+          "z": 3.228
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "60d885b5"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_collateral_hold",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "clear_lane",
+      "phaseTrace": "search>show_flank>show_clear_lane>fire>show_flank>show_clear_lane>fire>show_flank>show_clear_lane>fire",
+      "telegraphTicks": 305,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 49.195,
+      "opponentPath": 232.941,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 0,
+        "shots": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 35.003,
+          "z": -34.529
+        },
+        "opponent": {
+          "x": 299.47,
+          "z": -23.6
+        },
+        "civilian": {
+          "x": 80.443,
+          "z": 3.228
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "9eb5587f"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_collateral_hold",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "clear_lane",
+      "phaseTrace": "search>show_flank>show_clear_lane>fire",
+      "telegraphTicks": 66,
+      "fireRequests": 107,
+      "fireAuthorized": 107,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 1,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 20.976,
+      "projectiles": 6,
+      "playerShift": 244.772,
+      "opponentPath": 138.414,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 20.976,
+        "shots": 107
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 243.494,
+          "z": -8.968
+        },
+        "opponent": {
+          "x": 178.431,
+          "z": -87.398
+        },
+        "civilian": {
+          "x": 73.771,
+          "z": -3.654
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "977e6ab8"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_collateral_hold",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "clear_lane",
+      "phaseTrace": "search>show_flank>disengage>done",
+      "telegraphTicks": 262,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 12.906,
+      "opponentPath": 1090.755,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 0,
+        "shots": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 10.05,
+          "z": -7.579
+        },
+        "opponent": {
+          "x": 1144.544,
+          "z": 119.506
+        },
+        "civilian": {
+          "x": 73.738,
+          "z": -3.606
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "2a2b6101"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_collateral_hold",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "clear_lane",
+      "phaseTrace": "search>show_flank>show_clear_lane>fire",
+      "telegraphTicks": 67,
+      "fireRequests": 80,
+      "fireAuthorized": 80,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.699,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 13.984,
+      "projectiles": 5,
+      "playerShift": 237.72,
+      "opponentPath": 196.846,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 13.984,
+        "shots": 80
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 235.203,
+          "z": -28.069
+        },
+        "opponent": {
+          "x": 187.439,
+          "z": -110.1
+        },
+        "civilian": {
+          "x": 74.347,
+          "z": -3.103
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "538686e6"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_collateral_hold",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_wasp",
+      "silhouette": "ship_wasp",
+      "telegraphKind": "clear_lane",
+      "phaseTrace": "search>show_flank>disengage>done",
+      "telegraphTicks": 262,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 13.183,
+      "opponentPath": 1090.374,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 0,
+        "shots": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 10.522,
+          "z": -7.45
+        },
+        "opponent": {
+          "x": 1145.01,
+          "z": 120.664
+        },
+        "civilian": {
+          "x": 74.304,
+          "z": -3.041
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "3e72ef29"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_cover_peel",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_drifter",
+      "silhouette": "ship_drifter",
+      "telegraphKind": "peel_side",
+      "phaseTrace": "probe_peel>show_peel>fire",
+      "telegraphTicks": 64,
+      "fireRequests": 6,
+      "fireAuthorized": 6,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 1,
+      "playerShift": 456.484,
+      "opponentPath": 661.92,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 0,
+        "shots": 6
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -227.174,
+          "z": 365.068
+        },
+        "opponent": {
+          "x": 97.435,
+          "z": 552.149
+        },
+        "cover": {
+          "x": 136.876,
+          "z": 0
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "e3f7011f"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_cover_peel",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_drifter",
+      "silhouette": "ship_drifter",
+      "telegraphKind": "peel_side",
+      "phaseTrace": "probe_peel>show_peel>fire>show_peel>probe_peel",
+      "telegraphTicks": 125,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 110.816,
+      "opponentPath": 320.262,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 0,
+        "shots": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 110.134,
+          "z": -90.986
+        },
+        "opponent": {
+          "x": 109.768,
+          "z": 35.99
+        },
+        "cover": {
+          "x": 136.876,
+          "z": 0
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "64c1afa7"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_cover_peel",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_drifter",
+      "silhouette": "ship_drifter",
+      "telegraphKind": "peel_side",
+      "phaseTrace": "probe_peel>show_peel>fire",
+      "telegraphTicks": 64,
+      "fireRequests": 6,
+      "fireAuthorized": 6,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 1,
+      "playerShift": 456.484,
+      "opponentPath": 661.905,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 0,
+        "shots": 6
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -241.749,
+          "z": 365.068
+        },
+        "opponent": {
+          "x": 82.835,
+          "z": 552.141
+        },
+        "cover": {
+          "x": 122.301,
+          "z": 0
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "55664de0"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_cover_peel",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_drifter",
+      "silhouette": "ship_drifter",
+      "telegraphKind": "peel_side",
+      "phaseTrace": "probe_peel>show_peel>fire>show_peel>probe_peel",
+      "telegraphTicks": 125,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 110.832,
+      "opponentPath": 320.26,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 0,
+        "shots": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 95.563,
+          "z": -91.003
+        },
+        "opponent": {
+          "x": 95.194,
+          "z": 35.991
+        },
+        "cover": {
+          "x": 122.301,
+          "z": 0
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "110c4ca7"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_cover_peel",
+      "pilotId": "close_booster",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_drifter",
+      "silhouette": "ship_drifter",
+      "telegraphKind": "peel_side",
+      "phaseTrace": "probe_peel>show_peel>fire",
+      "telegraphTicks": 64,
+      "fireRequests": 6,
+      "fireAuthorized": 6,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 1,
+      "playerShift": 456.484,
+      "opponentPath": 661.92,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 0,
+        "shots": 6
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -240.52,
+          "z": 365.068
+        },
+        "opponent": {
+          "x": 84.088,
+          "z": 552.148
+        },
+        "cover": {
+          "x": 123.529,
+          "z": 0
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "ff4e88b1"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_cover_peel",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_drifter",
+      "silhouette": "ship_drifter",
+      "telegraphKind": "peel_side",
+      "phaseTrace": "probe_peel>show_peel>fire>show_peel>probe_peel",
+      "telegraphTicks": 125,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 110.818,
+      "opponentPath": 320.261,
+      "driveDelta": null,
+      "detail": {
+        "playerDamage": 0,
+        "shots": 0
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": 96.787,
+          "z": -90.99
+        },
+        "opponent": {
+          "x": 96.421,
+          "z": 35.99
+        },
+        "cover": {
+          "x": 123.529,
+          "z": 0
+        }
+      },
+      "opponentWeapons": 1,
+      "hash": "43ee0dfd"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_field_mechanic",
+      "pilotId": "evasive",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_ironback",
+      "silhouette": "ship_ironback",
+      "telegraphKind": "repair_work",
+      "phaseTrace": "show_work>work>fallback",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 1,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 99.646,
+      "opponentPath": 259.97,
+      "driveDelta": 30.25,
+      "detail": {
+        "driveDelta": 30.25
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -51.51,
+          "z": 59.964
+        },
+        "opponent": {
+          "x": -142.287,
+          "z": -30.737
+        },
+        "patient": {
+          "x": 122.584,
+          "z": 0.628
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "eafbcb22"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 101,
+      "doctrineId": "cp_field_mechanic",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_ironback",
+      "silhouette": "ship_ironback",
+      "telegraphKind": "repair_work",
+      "phaseTrace": "show_work>work>fallback>disengage>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.208,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 11,
+      "playerShift": 305.158,
+      "opponentPath": 303.302,
+      "driveDelta": 2.5,
+      "detail": {
+        "driveDelta": 2.5
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -205.514,
+          "z": 198.718
+        },
+        "opponent": {
+          "x": -144.182,
+          "z": 164.597
+        },
+        "patient": {
+          "x": 117.091,
+          "z": -9.138
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "cf286430"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_field_mechanic",
+      "pilotId": "evasive",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_ironback",
+      "silhouette": "ship_ironback",
+      "telegraphKind": "repair_work",
+      "phaseTrace": "show_work>work>fallback",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 1,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 102.128,
+      "opponentPath": 200.256,
+      "driveDelta": 30.25,
+      "detail": {
+        "driveDelta": 30.25
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -54.586,
+          "z": 59.42
+        },
+        "opponent": {
+          "x": -106.027,
+          "z": 32.471
+        },
+        "patient": {
+          "x": 98.167,
+          "z": 9.409
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "86a57513"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 409,
+      "doctrineId": "cp_field_mechanic",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_ironback",
+      "silhouette": "ship_ironback",
+      "telegraphKind": "repair_work",
+      "phaseTrace": "show_work>work>fallback>disengage>done",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 0.208,
+      "goalComplete": false,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 16,
+      "playerShift": 379.467,
+      "opponentPath": 268.252,
+      "driveDelta": 2.5,
+      "detail": {
+        "driveDelta": 2.5
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -264.087,
+          "z": -220.497
+        },
+        "opponent": {
+          "x": -172.816,
+          "z": -10.067
+        },
+        "patient": {
+          "x": 110.058,
+          "z": 5.337
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "bebd4f06"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_field_mechanic",
+      "pilotId": "evasive",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "resists",
+      "ticks": 340,
+      "hullId": "ship_ironback",
+      "silhouette": "ship_ironback",
+      "telegraphKind": "repair_work",
+      "phaseTrace": "show_work>work>fallback",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 1,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 0,
+      "playerShift": 103.367,
+      "opponentPath": 257.621,
+      "driveDelta": 30.25,
+      "detail": {
+        "driveDelta": 30.25
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -64.584,
+          "z": 36.372
+        },
+        "opponent": {
+          "x": -146.706,
+          "z": 17.418
+        },
+        "patient": {
+          "x": 111.475,
+          "z": -1.913
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "35ac08ad"
+    },
+    {
+      "schema": "spaceface.counterplay.receipt.v1",
+      "seed": 1601,
+      "doctrineId": "cp_field_mechanic",
+      "pilotId": "counter",
+      "mass": "canonical",
+      "range": "authored",
+      "terrain": "open",
+      "tape": "counter",
+      "ticks": 340,
+      "hullId": "ship_ironback",
+      "silhouette": "ship_ironback",
+      "telegraphKind": "repair_work",
+      "phaseTrace": "show_work>work>fallback",
+      "telegraphTicks": 30,
+      "fireRequests": 0,
+      "fireAuthorized": 0,
+      "fireDenied": 0,
+      "unexpectedFire": 0,
+      "goalProgress": 1,
+      "goalComplete": true,
+      "engagementTicks": 340,
+      "playerDamage": 0,
+      "projectiles": 10,
+      "playerShift": 168.904,
+      "opponentPath": 268,
+      "driveDelta": 30.25,
+      "detail": {
+        "driveDelta": 30.25
+      },
+      "systems": [
+        "flightV3",
+        "aiPorts",
+        "weapons",
+        "combat",
+        "collisionConsequences",
+        "physics"
+      ],
+      "tacticalAI": false,
+      "physicsBackend": "rapier-dynamic",
+      "sg02Ready": true,
+      "end": {
+        "player": {
+          "x": -126.652,
+          "z": -34.05
+        },
+        "opponent": {
+          "x": -157.88,
+          "z": -39.684
+        },
+        "patient": {
+          "x": 115.666,
+          "z": 2.8
+        }
+      },
+      "opponentWeapons": 0,
+      "hash": "5fcee0c7"
+    }
+  ],
+  "tournamentSummary": {
+    "cp_heavy_anchor_grappler": {
+      "runs": 16,
+      "meanProgress": 0.495,
+      "minProgress": 0.313,
+      "maxProgress": 0.851,
+      "unexpectedFire": 0,
+      "telegraphRuns": 16,
+      "complete": 2
+    },
+    "cp_feint_break_courier": {
+      "runs": 16,
+      "meanProgress": 0,
+      "minProgress": 0,
+      "maxProgress": 0,
+      "unexpectedFire": 0,
+      "telegraphRuns": 16,
+      "complete": 0
+    },
+    "cp_corridor_pack_leader": {
+      "runs": 16,
+      "meanProgress": 0.002,
+      "minProgress": 0,
+      "maxProgress": 0.004,
+      "unexpectedFire": 0,
+      "telegraphRuns": 16,
+      "complete": 0
+    },
+    "cp_rescue_tow": {
+      "runs": 16,
+      "meanProgress": 0.273,
+      "minProgress": 0,
+      "maxProgress": 0.836,
+      "unexpectedFire": 0,
+      "telegraphRuns": 16,
+      "complete": 2
+    },
+    "cp_prize_runner": {
+      "runs": 16,
+      "meanProgress": 0,
+      "minProgress": 0,
+      "maxProgress": 0,
+      "unexpectedFire": 0,
+      "telegraphRuns": 9,
+      "complete": 0
+    },
+    "cp_release_orbit_hunter": {
+      "runs": 16,
+      "meanProgress": 0,
+      "minProgress": 0,
+      "maxProgress": 0,
+      "unexpectedFire": 0,
+      "telegraphRuns": 16,
+      "complete": 0
+    },
+    "cp_tether_bait_decoy": {
+      "runs": 16,
+      "meanProgress": 0,
+      "minProgress": 0,
+      "maxProgress": 0,
+      "unexpectedFire": 0,
+      "telegraphRuns": 16,
+      "complete": 0
+    },
+    "cp_collateral_hold": {
+      "runs": 16,
+      "meanProgress": 0,
+      "minProgress": 0,
+      "maxProgress": 0,
+      "unexpectedFire": 0,
+      "telegraphRuns": 16,
+      "complete": 0
+    },
+    "cp_cover_peel": {
+      "runs": 16,
+      "meanProgress": 0,
+      "minProgress": 0,
+      "maxProgress": 0,
+      "unexpectedFire": 0,
+      "telegraphRuns": 16,
+      "complete": 0
+    },
+    "cp_field_mechanic": {
+      "runs": 16,
+      "meanProgress": 1,
+      "minProgress": 1,
+      "maxProgress": 1,
+      "unexpectedFire": 0,
+      "telegraphRuns": 16,
+      "complete": 16
+    }
+  },
+  "tournamentRuns": 160
+}

@@ -1,0 +1,780 @@
+// src/systems/shipCapabilities.js — PQ-142.00 "capabilities, not percentages".
+//
+// An upgrade should make the player imagine a possibility, not compare a percentage. This module
+// turns the fit into four PHYSICAL VERBS, each a sentence with a number behind it, each computed
+// from the law the simulation actually runs — never from a table invented for the screen:
+//
+//   TOW CLASS      the heaviest hull you can put under way on your line   (coupled mass + drive force)
+//   SLAM SURVIVAL  the closing speed this hull walks away from            (TERRAIN_CRUMPLE_LAW)
+//   LINE LOAD      the swing speed your line carries at its rated load    (the live tether policy)
+//   FIELD DEPLOY   whether you can put a field in the water, and how big  (the countermeasure catalog)
+//
+// Nothing here is a writer. `ships` remains the sole authority for derived stats; this reads the
+// derived block it already publishes plus the frozen catalogs, and returns words and numbers. It is
+// deliberately synchronous and allocation-light: the fit screen calls it on every hover.
+//
+// Each verb is a PREDICTION of a live law, so each is falsifiable: the deterministic scenario
+// `scripts/lib/bench/scenarios/fit.capability_verbs.mjs` drives the real kernels at the predicted
+// speed minus one and plus one and shows the verb flipping.
+
+import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
+import { MODULES } from '../data/modules.js';
+import { SHIPS } from '../data/ships.js';
+import { massLoadFactor } from './ships.js';
+import { PLAYER_TRANSLATION_RESPONSIVENESS, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
+import {
+  HEAVY_AS_TERRAIN_MASS,
+  TERRAIN_CRUMPLE_LAW,
+  resolveCollisionConsequence,
+} from '../combat/impulseKernel.js';
+import { effectiveTetherBreak } from '../combat/attachments.js';
+import { massline2Flag } from '../data/featureFlags.js';
+
+const SHIP_BY_ID = new Map(SHIPS.map((row) => [row.id, row]));
+const MODULE_BY_ID = new Map(MODULES.map((row) => [row.id, row]));
+const ATTACHMENT_BY_ID = new Map(ATTACHMENT_DEFS.map((row) => [row.id, row]));
+
+/** The player's Massline is the standard tether (src/systems/tetherGameplay.js). */
+const PLAYER_TETHER_DEF_ID = 'tether_standard';
+
+export const CAPABILITY_LAW = Object.freeze({
+  // The steady-state tow rating is solved against this acceleration: sixty world units a second
+  // inside a second and a half. The sentence names the resulting MASS rating in tonnes, never the
+  // speed, because the speed is the bar the rating was solved at and not a second claim.
+  towUnderWaySpeed: 60,
+  towUnderWaySeconds: 1.5,
+  // FEEL_CONTRACT B7's own reference swing: a 100 WU line around an anchor heavy enough to be a
+  // fixed point. Quoting the contract's geometry keeps the line-load number comparable to its bar.
+  lineSwingRadiusWu: 100,
+  // The closing-speed search for slam survival. The crumple law is monotone in closing speed above
+  // its threshold, so a bisection on the live kernel is exact to the printed resolution.
+  slamSearchMaxWuPerS: 2000,
+  slamSearchSteps: 40,
+});
+
+const TOW_UNDER_WAY_ACCEL = CAPABILITY_LAW.towUnderWaySpeed / CAPABILITY_LAW.towUnderWaySeconds;
+
+function finite(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function round(value, digits = 1) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  const f = 10 ** digits;
+  return Math.round(n * f) / f;
+}
+
+/** "a Mule" / "an Ironback" — the sentence names a ship, so it has to read like one. */
+export function withArticle(name) {
+  const word = String(name || '');
+  return /^[AEIOU]/i.test(word) ? `an ${word}` : `a ${word}`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// TOW CLASS — what mass the line can put under way.
+//
+// A tow is one coupled body: the drive's force has to move your hull AND the load. The force the
+// drive makes is the acceleration the profile publishes times the mass it is publishing it for
+// (this is exactly what the kernel reconstructs: `force = acceleration * body.mass`). The player
+// flight tick then multiplies that translation accel by PLAYER_TRANSLATION_RESPONSIVENESS, so the
+// tow the fit screen names is the force the stick actually makes. A fit that is heavier than its
+// rating both accelerates worse AND tows less — the same mass law, felt twice.
+//
+// THE ONE RATING. `towClassMassFor` is the steady-state partner mass this line is rated for; the
+// Ship Sheet prints it as Muscle and the capability band names the heaviest roster hull at or
+// under it. The 1.5 s kernel (`underwayTowSpeed`) stays a live measurement of the same drive, but
+// it is not a second rating: a band that picked a different hull than the printed rating would
+// contradict the sheet on the same screen.
+// ---------------------------------------------------------------------------------------------
+
+/** The forward force this fit's drive actually makes, in the kernel's own units. */
+export function driveForceFor(derived) {
+  if (!derived) return 0;
+  const profile = derived.propulsion || {};
+  const accel = finite(profile.mainAccel, 0)
+    || finite(profile.maxAccel, 0)
+    || finite(profile.rcsForwardAccel, 0)
+    || finite(profile.fieldAccel, 0);
+  const mass = finite(derived.operationalMass, finite(derived.mass, 0));
+  return Math.max(0, accel * mass);
+}
+
+// ---------------------------------------------------------------------------------------------
+// LIVE PROFILE READS — the numbers the flight kernel actually obeys.
+//
+// The derived block still publishes legacy spec fields (`turnRate`, `maxSpeed`, `thrust`) for
+// compatibility consumers, but they are not what the tick runs: `computeYawControl` commands
+// `propulsion.maxYawRate`, the governor caps fight speed at `propulsion.combatSpeed`, and full
+// throttle commands `propulsion.mainAccel` — each already carrying the drive, the thruster bay
+// and the mass law. Comparison surfaces must quote THESE, so a row can never advertise a turn,
+// speed or thrust advantage the kernel would not produce (NXB-030). The flight model stays the
+// fallback for a hull with no propulsion profile, exactly as handlingProfile.js reads it.
+// ---------------------------------------------------------------------------------------------
+
+/** The yaw-rate ceiling the kernel commands at full helm, in rad/s (governed — cargo does not move it). */
+export function governedYawRateFor(derived) {
+  const profile = derived && derived.propulsion;
+  const live = finite(profile && profile.maxYawRate, NaN);
+  if (Number.isFinite(live) && live > 0) return live;
+  const model = derived && derived.flightModel;
+  const fallback = finite(model && model.maxYawRate, NaN);
+  if (Number.isFinite(fallback) && fallback > 0) return fallback;
+  return finite(derived && derived.turnRate, 0);
+}
+
+/** The turn response the thruster bay delivers at this mass, in rad/s² (the part loading the hold does move). */
+export function yawResponseFor(derived) {
+  const profile = derived && derived.propulsion;
+  const live = finite(profile && profile.yawAccel, NaN);
+  if (Number.isFinite(live) && live > 0) return live;
+  const model = derived && derived.flightModel;
+  const fallback = finite(model && model.angularAccel, NaN);
+  if (Number.isFinite(fallback) && fallback > 0) return fallback;
+  return finite(derived && derived.turnRate, 0);
+}
+
+/** The governed fight-speed cap in WU/s — what `combatSpeed` means when the governor is on. */
+export function governedFightSpeedFor(derived) {
+  const profile = derived && derived.propulsion;
+  const live = finite(profile && profile.combatSpeed, NaN);
+  if (Number.isFinite(live) && live > 0) return live;
+  const alt = finite(profile && profile.maxSpeed, NaN);
+  if (Number.isFinite(alt) && alt > 0) return alt;
+  const model = derived && derived.flightModel;
+  const fallback = finite(model && model.maxSpeed, NaN);
+  if (Number.isFinite(fallback) && fallback > 0) return fallback;
+  return finite(derived && derived.maxSpeed, 0);
+}
+
+/** The travel-burn ceiling in WU/s — the fastest this fit can actually run between fights. */
+export function travelSpeedFor(derived) {
+  const profile = derived && derived.propulsion;
+  const live = finite(profile && profile.travelCeiling, NaN);
+  if (Number.isFinite(live) && live > 0) return live;
+  return governedFightSpeedFor(derived);
+}
+
+/** Forward acceleration at this fit's printed mass, in WU/s² — what full throttle commands. */
+export function forwardAccelFor(derived) {
+  const profile = derived && derived.propulsion;
+  for (const key of ['mainAccel', 'maxAccel', 'rcsForwardAccel', 'fieldAccel']) {
+    const live = finite(profile && profile[key], NaN);
+    if (Number.isFinite(live) && live > 0) return live;
+  }
+  const model = derived && derived.flightModel;
+  const fallback = finite(model && model.mainAccel, NaN);
+  if (Number.isFinite(fallback) && fallback > 0) return fallback;
+  return finite(derived && derived.thrust, 0);
+}
+
+/** The forward force the player flight tick makes: published force times the translation feel. */
+export function playerTowForceFor(derived) {
+  return driveForceFor(derived) * PLAYER_TRANSLATION_RESPONSIVENESS;
+}
+
+function towSelfMass(derived) {
+  return finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+}
+
+/**
+ * The force the LINE is rated at: the drive's force at the hull's dry mass, at the dry mass's own
+ * load factor. A profile that keeps a constant acceleration at a heavier mass would otherwise make
+ * the live force grow with cargo and hand a full hold a better tow rating. Rating the line at dry
+ * mass and charging it the operational mass is what makes "a heavier fit tows less" true by
+ * construction: the first term is flat, the subtracted term is rising.
+ */
+function dryLoadFactorFor(derived, dryMass) {
+  const designMass = finite(derived && derived.designMass, 0);
+  if (designMass > 0) return massLoadFactor({ designMass, mass: dryMass }, dryMass);
+  return 1;
+}
+
+function towRatedForce(derived) {
+  const force = playerTowForceFor(derived);
+  const self = towSelfMass(derived);
+  const dry = Math.max(0, finite(derived && derived.dryMass, self));
+  if (!(force > 0) || !(self > 0) || !(dry > 0)) return force;
+  const liveLoad = Math.max(0.01, Math.min(1, finite(derived && derived.massLoadFactor,
+    finite(derived && derived.propulsion && derived.propulsion.massLoadFactor, 1))));
+  const dryLoad = dryLoadFactorFor(derived, dry);
+  return force * (dry / self) * (dryLoad / liveLoad);
+}
+
+/** The heaviest partner mass this fit can put under way, in tonnes. Zero means "nothing". */
+export function towClassMassFor(derived) {
+  const force = towRatedForce(derived);
+  const self = towSelfMass(derived);
+  if (!(force > 0) || !(self > 0)) return 0;
+  return Math.max(0, force / TOW_UNDER_WAY_ACCEL - self);
+}
+
+/**
+ * The rating the HULL was built with: the dry-rated force against the dry mass. This is the
+ * number `hasTowRating` reads, and it stays flat as cargo changes — a loaded fit does not lose
+ * the rating, it just has less of it left to spend.
+ */
+export function dryTowClassMassFor(derived) {
+  const force = towRatedForce(derived);
+  const dry = Math.max(0, finite(derived && derived.dryMass, finite(derived && derived.mass, 0)));
+  if (!(force > 0) || !(dry > 0)) return 0;
+  return Math.max(0, force / TOW_UNDER_WAY_ACCEL - dry);
+}
+
+/**
+ * True when the HULL publishes a real tow rating at its dry mass. This deliberately does not read
+ * the current load: an overloaded tug still has a rating, it just cannot use it right now. The dry
+ * rating carries the dry mass's OWN load factor (`towRatedForce` normalises the live profile back
+ * to it), so a full hold cannot erase the rating the hull was built with.
+ */
+export function hasTowRating(derived) {
+  return dryTowClassMassFor(derived) > 0;
+}
+
+const TOW_PICK_CACHE = new WeakMap();
+const TOW_SAMPLE_DT = 1 / 60;
+
+/**
+ * Speed of a coupled tow after the under-way window, on the player flight tick.
+ * The drive force is whatever stepPropulsion emits for the tug's own mass. That
+ * force accelerates tug + load. Speed is fed back so a governor sees the tow,
+ * not a ship nailed to the origin. Peak thrust after a torch finishes spooling
+ * is not this number — the window is 1.5 s, and a spool that ends at 2.8 s has
+ * not arrived yet.
+ */
+export function underwayTowSpeed(derived, loadMass) {
+  const self = towSelfMass(derived);
+  const load = Math.max(0, finite(loadMass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'tow-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'tow-predict', seed: 4242 });
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  let runtime = createPropulsionRuntime(profile);
+  let speed = 0;
+  const ticks = Math.max(1, Math.round(CAPABILITY_LAW.towUnderWaySeconds / TOW_SAMPLE_DT));
+  const coupled = self + load;
+  for (let i = 0; i < ticks; i += 1) {
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: TOW_SAMPLE_DT,
+      body,
+      input: { throttle: 1, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    speed += (finite(step.force.x, 0) / coupled) * TOW_SAMPLE_DT;
+    if (speed < 0) speed = 0;
+  }
+  return speed;
+}
+
+function towPickFor(derived) {
+  const key = derived && derived.propulsion;
+  const signature = [
+    finite(derived && derived.operationalMass, 0),
+    finite(derived && derived.dryMass, 0),
+    finite(derived && derived.designMass, 0),
+    finite(derived && derived.massLoadFactor,
+      finite(derived && derived.propulsion && derived.propulsion.massLoadFactor, 1)),
+  ].join('|');
+  if (key && typeof key === 'object') {
+    const hit = TOW_PICK_CACHE.get(key);
+    if (hit && hit.signature === signature) return hit.pick;
+  }
+  const rated = hasTowRating(derived);
+  const rating = rated ? towClassMassFor(derived) : 0;
+  let hull = null;
+  let coversRoster = false;
+  let heaviest = null;
+  if (rated && rating > 0) {
+    for (const shipDef of SHIPS) {
+      const m = finite(shipDef.mass, 0);
+      if (!(m > 0)) continue;
+      if (!heaviest || m > finite(heaviest.mass, 0)
+        || (m === finite(heaviest.mass, 0) && shipDef.id < heaviest.id)) heaviest = shipDef;
+    }
+    coversRoster = !!heaviest && rating + 1e-9 >= finite(heaviest.mass, 0);
+    if (!coversRoster) hull = heaviestHullWithin(rating);
+  }
+  const pick = { hull, coversRoster, rated, rating, heaviest };
+  if (key && typeof key === 'object') TOW_PICK_CACHE.set(key, { signature, pick });
+  return pick;
+}
+
+/**
+ * The heaviest roster hull at or under the line's printed rating. This is the same
+ * `towClassMassFor` number the Ship Sheet prints as Muscle, so the band's lead and the sheet's
+ * Muscle rank can never disagree.
+ */
+export function towableHullFor(derived) {
+  return towPickFor(derived).hull;
+}
+
+/** True when the printed rating covers the heaviest roster hull. */
+export function towCoversRoster(derived) {
+  return towPickFor(derived).coversRoster;
+}
+
+/** The heaviest ROSTER hull at or under `massT`, so the sentence can name a ship the player knows. */
+export function heaviestHullWithin(massT) {
+  let best = null;
+  for (const shipDef of SHIPS) {
+    const m = finite(shipDef.mass, 0);
+    if (m <= 0 || m > massT) continue;
+    if (!best || m > finite(best.mass, 0) || (m === finite(best.mass, 0) && shipDef.id < best.id)) best = shipDef;
+  }
+  return best;
+}
+
+/** The lightest hull the line canNOT get under way — the thing just out of reach. */
+export function lightestHullAbove(massT) {
+  let best = null;
+  for (const shipDef of SHIPS) {
+    const m = finite(shipDef.mass, 0);
+    if (m <= massT) continue;
+    if (!best || m < finite(best.mass, 0) || (m === finite(best.mass, 0) && shipDef.id < best.id)) best = shipDef;
+  }
+  return best;
+}
+
+// ---------------------------------------------------------------------------------------------
+// SLAM SURVIVAL — the closing speed this hull walks away from.
+//
+// The live rule is TERRAIN_CRUMPLE_LAW, run through the real consequence kernel so this number can
+// never drift from the damage the game deals. The kernel is pure and monotone in closing speed
+// above the crumple threshold, so a bisection finds the exact speed at which one slam is worth the
+// hull's whole structure.
+//
+// The pool is STRUCTURE — hull, not hull plus shield. Crumple is what the wall does to the frame;
+// a deflector buffers the bill but does not change the speed at which the frame is written off, and
+// pricing the verb in shields would make the sentence swing on a difficulty buffer instead of on the
+// ship. Damage reduction from hardeners IS applied, because combat applies it.
+//
+// The law is inverse in mass twice over — the crumple term and its cap both fall as the ship gets
+// heavier — so this is the verb that pays you back for being loaded, and the one place in the fit
+// screen where a full hold is an advantage. Past HEAVY_AS_TERRAIN_MASS the hull stops being a
+// victim of the law and becomes its instrument: anything light that meets you takes the wall's own
+// arithmetic (PQ-140.01).
+// ---------------------------------------------------------------------------------------------
+
+function crumpleDamageAt(closingSpeed, massT) {
+  const receipt = resolveCollisionConsequence({
+    tick: 0,
+    target: { id: 'fit', type: 'ship', mass: massT, alive: true },
+    other: { id: 'rock', type: 'asteroid', mass: 1e6 },
+    exchangedMomentum: massT * Math.max(1, closingSpeed),
+    preSolveClosingSpeed: closingSpeed,
+  });
+  return receipt ? finite(receipt.impactDamage, 0) : 0;
+}
+
+/**
+ * The closing speed at which one rock slam is worth this hull's whole structure.
+ * `unbreakable` is true when the law's own mass-scaled damage cap can never reach that structure —
+ * a real outcome for a heavy or heavily loaded hull, and the sentence says so instead of printing a
+ * search ceiling.
+ */
+export function slamSurvivalSpeedFor(derived) {
+  if (!derived) return { speedWuPerS: 0, unbreakable: false };
+  const massT = Math.max(0.001, finite(derived.operationalMass, finite(derived.mass, 1)));
+  const structure = Math.max(1, finite(derived.hullMax, 0));
+  const reduction = Math.max(0.01, Math.min(1, finite(derived.damageReductionMult, 1)));
+  const ceiling = CAPABILITY_LAW.slamSearchMaxWuPerS;
+  if (crumpleDamageAt(ceiling, massT) * reduction < structure) {
+    return { speedWuPerS: ceiling, unbreakable: true };
+  }
+  let low = TERRAIN_CRUMPLE_LAW.threshold;
+  let high = ceiling;
+  for (let i = 0; i < CAPABILITY_LAW.slamSearchSteps; i += 1) {
+    const mid = (low + high) * 0.5;
+    if (crumpleDamageAt(mid, massT) * reduction >= structure) high = mid;
+    else low = mid;
+  }
+  return { speedWuPerS: low, unbreakable: false };
+}
+
+// ---------------------------------------------------------------------------------------------
+// LINE LOAD — the swing speed your line carries at its rated load.
+//
+// SG-02 grades the rope by force against the fitted attachment's `break.maxTension`
+// (`sg02DynamicBodyOwner`: "a line BREAKS by its load rating, never by how far it happens to be
+// stretched"). A steady swing around an anchor heavy enough to be a fixed point carries
+// m * v^2 / r, so the rated swing speed is sqrt(maxTension * r / m): it RISES with a bigger spool
+// and FALLS with everything you are carrying. The standard Massline's rating is deliberately far
+// above ordinary play (combatDefs: automatic overload breaks are off for the standard line), so the
+// honest sentence for an unfitted hull says the line holds anything you can build; a fitted
+// specialist head has a real, reachable number and the sentence names it.
+// ---------------------------------------------------------------------------------------------
+
+const SPECIALIST_HEAD_ATTACHMENT = Object.freeze({
+  transverse_snare: 'attachment_transverse_snare',
+  monofilament_sweep: 'attachment_snarl',
+  twin_bridle: 'attachment_massline',
+  elastic_whip: 'attachment_massline',
+});
+
+/** The attachment definition whose rating grades this fit's line, and how it was chosen. */
+export function ratedLineFor(derived) {
+  const headId = derived && derived.masslineHeadId;
+  const specialistId = headId ? SPECIALIST_HEAD_ATTACHMENT[headId] : null;
+  const specialist = specialistId ? ATTACHMENT_BY_ID.get(specialistId) : null;
+  if (specialist) return { def: specialist, specialist: true };
+  return { def: ATTACHMENT_BY_ID.get(PLAYER_TETHER_DEF_ID) || null, specialist: false };
+}
+
+/** The rated swing speed of this fit's line, in WU/s, on FEEL_CONTRACT B7's 100 WU reference line. */
+export function lineLoadSpeedFor(derived) {
+  const { def, specialist } = ratedLineFor(derived);
+  if (!def) return { speedWuPerS: 0, maxTension: 0, specialist: false };
+  const owner = { data: { derived } };
+  const rating = effectiveTetherBreak(def, owner);
+  const maxTension = finite(rating && rating.maxTension, 0);
+  const massT = Math.max(0.001, finite(derived && derived.operationalMass, finite(derived && derived.mass, 1)));
+  const r = CAPABILITY_LAW.lineSwingRadiusWu;
+  const speed = maxTension > 0 ? Math.sqrt((maxTension * r) / massT) : 0;
+  return { speedWuPerS: speed, maxTension, specialist };
+}
+
+// ---------------------------------------------------------------------------------------------
+// FIELD DEPLOY — whether you can put a field in the water at all.
+//
+// The one genuinely binary verb of the four: `src/systems/countermeasures.js` reads the fitted
+// module's `mods.countermeasure` block and will not deploy anything without one. No module, no
+// field — the keybind does nothing. This is the unlock the packet describes: not a bigger number,
+// a thing you could not do before.
+//
+// One press throws ONE countermeasure — the first one fitted. The deployment owner
+// (`countermeasures.js` `equippedCountermeasure`, read by `_tryDeploy` and
+// `countermeasureReadiness` alike) walks the fittings array in order and fires the first
+// `mods.countermeasure` block it finds, so a bigger buoy bolted on BEHIND a chaff dispenser
+// never reaches the key. The capability rows name what the key actually throws — never the
+// largest field aboard — or a scan door could promise a decoy the press refuses to deploy.
+// ---------------------------------------------------------------------------------------------
+
+const FIELD_KIND_WORD = Object.freeze({
+  chaff: 'a chaff cloud',
+  ecm: 'a jamming bubble',
+  decoy: 'a decoy buoy',
+});
+
+/** The field this fit's countermeasure key deploys — the FIRST fitted one — or `{ available: false }`. */
+export function fieldDeployFor(fittings) {
+  const list = Array.isArray(fittings) ? fittings : [];
+  for (const id of list) {
+    const def = id ? MODULE_BY_ID.get(id) : null;
+    const cm = def && def.mods && def.mods.countermeasure;
+    if (!cm) continue;
+    return {
+      available: true,
+      kind: String(cm.kind || 'field'),
+      moduleId: def.id,
+      moduleName: def.name,
+      radiusWu: finite(cm.radius, 0),
+      durationS: finite(cm.durationS, 0),
+      cooldownS: finite(cm.cooldownS, 0),
+    };
+  }
+  return { available: false, kind: null, moduleId: null, moduleName: null, radiusWu: 0, durationS: 0, cooldownS: 0 };
+}
+
+// ---------------------------------------------------------------------------------------------
+// CAPABILITY DOORS — a revisitNeed row on an authored one-off is a door the live fit either opens
+// or does not. The scan layer quotes this verdict to tell the player "not yet" / "ready"; it must
+// read the same law the fit screen prints, never a second table, so each kind just calls the verb
+// above and compares against the authored bar.
+//
+// `need` shapes:
+//   tow   { kind:'tow',   massT }        — the heaviest partner mass the line can put under way
+//   slam  { kind:'slam',  speedWuPerS }  — the closing speed this hull walks away from
+//   line  { kind:'line',  speedWuPerS, headId? } — the swing speed the fitted line is rated to
+//         carry, optionally qualified to a named Massline head that must be fitted AND admitted
+//         by the runtime's own feature flags
+//   field { kind:'field', fieldKind?, radiusWu? } — a field in the water, optionally of a kind/size
+// A bare `{ massT }` (no kind) is a legacy tow door — the form the first revisitNeed rows used.
+// ---------------------------------------------------------------------------------------------
+
+export const REVISIT_DOOR_KINDS = Object.freeze(['tow', 'slam', 'line', 'field']);
+
+export function revisitDoorState({ derived, fittings, features } = {}, need) {
+  if (!need || typeof need !== 'object') return null;
+  const kind = typeof need.kind === 'string' && need.kind
+    ? need.kind
+    : (finite(need.massT, 0) > 0 ? 'tow' : null);
+  switch (kind) {
+    case 'tow': {
+      const required = finite(need.massT, 0);
+      if (!(required > 0)) return null;
+      const have = towClassMassFor(derived);
+      return { kind, required, have, ready: have + 1e-9 >= required };
+    }
+    case 'slam': {
+      const required = finite(need.speedWuPerS, 0);
+      if (!(required > 0)) return null;
+      const slam = slamSurvivalSpeedFor(derived);
+      // `unbreakable` is a real verdict of the crumple law, not a shortcut: a hull the law can
+      // never total at any speed opens every slam door.
+      return {
+        kind, required,
+        have: slam.speedWuPerS,
+        unbreakable: slam.unbreakable === true,
+        ready: slam.unbreakable === true || slam.speedWuPerS + 1e-9 >= required,
+      };
+    }
+    case 'line': {
+      const required = finite(need.speedWuPerS, 0);
+      if (!(required > 0)) return null;
+      const load = lineLoadSpeedFor(derived);
+      const combatSpeed = finite(derived && derived.propulsion && derived.propulsion.combatSpeed, 0);
+      const reachable = combatSpeed > 0 ? load.speedWuPerS <= combatSpeed * 4 : true;
+      // A line whose rating is past anything the hull can reach is the verbs row's "holds any
+      // swing you can build": no authored swing requirement can refuse it — but a door fails
+      // closed without a real fit to quote (derived null → not yet, never a phantom ready).
+      const door = {
+        kind, required,
+        have: load.speedWuPerS,
+        reachable,
+        ready: derived != null && (!reachable || load.speedWuPerS + 1e-9 >= required),
+      };
+      // A head-qualified line door names a real head, not a rating: the numeric "holds any
+      // swing" verdict of the ordinary line is not the answer. The only admitted qualifier
+      // today is the Elastic Whip — the fitted head id AND the runtime's own feature flag
+      // must both say it. Any other nonempty qualifier fails closed.
+      const requiredHeadId = typeof need.headId === 'string' && need.headId ? need.headId : null;
+      if (requiredHeadId) {
+        const haveHeadId = (derived && typeof derived.masslineHeadId === 'string' && derived.masslineHeadId)
+          || null;
+        const headReady = requiredHeadId === 'elastic_whip'
+          && haveHeadId === 'elastic_whip'
+          && massline2Flag('masslineHeadElasticWhip', features) === true;
+        door.requiredHeadId = requiredHeadId;
+        door.haveHeadId = haveHeadId;
+        door.headReady = headReady;
+        door.ready = door.ready && headReady;
+      }
+      return door;
+    }
+    case 'field': {
+      const fieldKind = typeof need.fieldKind === 'string' && need.fieldKind ? need.fieldKind : null;
+      const requiredRadiusWu = finite(need.radiusWu, 0);
+      const field = fieldDeployFor(fittings);
+      const ready = field.available === true
+        && (!fieldKind || field.kind === fieldKind)
+        && (!(requiredRadiusWu > 0) || field.radiusWu + 1e-9 >= requiredRadiusWu);
+      return {
+        kind,
+        required: fieldKind,
+        requiredRadiusWu,
+        requiredLabel: (fieldKind && FIELD_KIND_WORD[fieldKind]) || 'a field',
+        have: field,
+        ready,
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The four sentences.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The four physical verbs for one fit, each as a sentence and a number.
+ *
+ * @param {object} args
+ * @param {object} args.derived a derived-stat block from `getDerivedStats`
+ * @param {Array<string|null>} [args.fittings] the fit those stats came from (field deploy reads it)
+ * @returns {{tow:object, slam:object, line:object, field:object, rows:Array<object>}}
+ */
+export function shipCapabilityVerbs({ derived, fittings = [] } = {}) {
+  if (!derived) return { tow: null, slam: null, line: null, field: null, rows: [] };
+
+  const towPick = towPickFor(derived);
+  const towMassT = towPick.rating;
+  const towHull = towPick.hull;
+  const coversRoster = towPick.coversRoster;
+  const rated = towPick.rated;
+  const noRosterHull = rated && !coversRoster && !towHull;
+  const tow = {
+    id: 'tow_class',
+    massT: round(towMassT, 1),
+    hullId: towHull ? towHull.id : null,
+    hullName: towHull ? towHull.name : null,
+    coversRoster,
+    hasTowRating: rated,
+    verb: towHull
+      ? `Can tow ${withArticle(towHull.name)}`
+      : coversRoster
+        ? 'Can tow anything on the roster'
+        : !rated
+          ? 'No Line load — this hull rams instead'
+          : noRosterHull
+            ? 'Nothing on the roster is light enough'
+            : 'Too loaded to tow anything',
+    sub: towHull
+      ? `${Math.floor(towHull.mass)} t on the line`
+      : coversRoster
+        ? 'any hull'
+        : !rated
+          ? 'rams instead'
+          : noRosterHull ? 'no hull in reach' : 'no tow',
+    // The number in this sentence is the same rating the Ship Sheet prints as Muscle: the line is
+    // rated for a partner MASS, and the named hull is the heaviest roster hull at or under it. The
+    // old band named a hull from a separate 1.5 s kernel window, so two tow laws could disagree on
+    // one screen (a higher Muscle bar naming a lighter hull).
+    why: towHull
+      ? `Your line is rated for ${round(towMassT, 1)} t, so the ${towHull.name} (${round(towHull.mass, 0)} t) `
+        + 'is the heaviest hull on the roster it can take under way. Everything you carry pulls that rating down.'
+      : coversRoster
+        ? `Your line is rated for ${round(towMassT, 1)} t — past `
+          + `${towPick.heaviest ? `${towPick.heaviest.name} at ${round(towPick.heaviest.mass, 0)} t` : 'the heaviest hull on the roster'}. `
+          + 'Everything you carry pulls that rating down.'
+        : !rated
+          ? `This hull publishes no Line rating (${round(finite(derived.dryMass, 0), 0)} t dry against the drive's force), so it rams instead of towing.`
+          : noRosterHull
+            ? `Your line is rated for ${round(towMassT, 1)} t — lighter than every hull on the roster. `
+              + 'You can still take cargo and wrecks; nothing crewed is in reach.'
+            : `At ${round(finite(derived.operationalMass, 0), 0)} t this fit is past its own Line rating. `
+              + 'Drop cargo or fit a stronger drive.',
+  };
+
+  const slamResult = slamSurvivalSpeedFor(derived);
+  const massT = finite(derived.operationalMass, 0);
+  const isWall = massT >= HEAVY_AS_TERRAIN_MASS;
+  const slam = {
+    id: 'slam_survival',
+    speedWuPerS: round(slamResult.speedWuPerS, 0),
+    unbreakable: slamResult.unbreakable === true,
+    isWall,
+    verb: slamResult.unbreakable
+      ? 'No rock can break this hull'
+      : `Survives rock up to ${round(slamResult.speedWuPerS, 0)} WU/s`,
+    sub: isWall
+      ? 'and you are the wall now'
+      : (slamResult.unbreakable ? 'rock-proof' : `${round(slamResult.speedWuPerS, 0)} WU/s into rock`),
+    why: (slamResult.unbreakable
+      ? `Rock crumples a hull above ${TERRAIN_CRUMPLE_LAW.threshold} WU/s closing, and the harder it bites the `
+        + `lighter you are. At ${round(massT, 0)} t the crumple can never reach `
+        + `${round(finite(derived.hullMax, 0), 0)} points of structure at any speed.`
+      : `Rock crumples a hull above ${TERRAIN_CRUMPLE_LAW.threshold} WU/s closing, and the harder it bites the `
+        + `lighter you are. At ${round(massT, 0)} t, ${round(finite(derived.hullMax, 0), 0)} points of structure `
+        + `go at ${round(slamResult.speedWuPerS, 0)} WU/s. Your shields buffer the bill; they do not move the speed.`)
+      + (isWall
+        ? ` Past ${HEAVY_AS_TERRAIN_MASS} t your hull IS terrain: anything light that meets you takes the wall's arithmetic.`
+        : ''),
+  };
+
+  const lineLoad = lineLoadSpeedFor(derived);
+  const combatSpeed = finite(derived.propulsion && derived.propulsion.combatSpeed, 0);
+  const reachable = combatSpeed > 0 ? lineLoad.speedWuPerS <= combatSpeed * 4 : true;
+  const line = {
+    id: 'line_load',
+    speedWuPerS: round(lineLoad.speedWuPerS, 0),
+    specialist: lineLoad.specialist === true,
+    reachable,
+    verb: reachable
+      ? `Line holds a ${round(lineLoad.speedWuPerS, 0)} WU/s swing`
+      : 'Line holds any swing you can build',
+    // When the rating is past anything the hull can reach, printing the figure beside a verb that
+    // already says "any swing" only draws the eye to a number that means nothing. The figure stays
+    // in the why, where a player who wants it can read it with its geometry.
+    sub: reachable ? `${round(lineLoad.speedWuPerS, 0)} WU/s on a 100 m line` : 'past anything you can fly',
+    why: `On a ${CAPABILITY_LAW.lineSwingRadiusWu} m line around a heavy anchor your line reaches its rated load at `
+      + `${round(lineLoad.speedWuPerS, 0)} WU/s. Everything you carry pulls that number down; a bigger spool pushes it up.`,
+  };
+
+  const fieldRow = fieldDeployFor(fittings);
+  const field = {
+    id: 'field_deploy',
+    ...fieldRow,
+    verb: fieldRow.available
+      ? `Can deploy ${FIELD_KIND_WORD[fieldRow.kind] || 'a field'} ${round(fieldRow.radiusWu, 0)} m across`
+      : 'Cannot deploy a field',
+    sub: fieldRow.available ? `${round(fieldRow.radiusWu, 0)} m for ${round(fieldRow.durationS, 1)} s` : 'no launcher',
+    why: fieldRow.available
+      ? `${fieldRow.moduleName} puts ${FIELD_KIND_WORD[fieldRow.kind] || 'a field'} ${round(fieldRow.radiusWu, 0)} m across `
+        + `into the water for ${round(fieldRow.durationS, 1)} s, every ${round(fieldRow.cooldownS, 0)} s.`
+      : 'Nothing fitted throws a field. Fit a chaff dispenser or an ECM jammer and the countermeasure key does something.',
+  };
+
+  return { tow, slam, line, field, rows: [tow, slam, line, field] };
+}
+
+const CARGO_BASIS = new Set(['empty', 'current', 'specified']);
+
+function cargoBasisName(derived, basis) {
+  const cargoMass = finite(derived && derived.cargoMass, 0);
+  const asked = CARGO_BASIS.has(basis) ? basis : 'current';
+  if (!(cargoMass > 0)) return 'empty';
+  if (asked === 'empty') return 'current';
+  return asked;
+}
+
+/**
+ * Name the cargo the derived block was computed for, and read the turn the
+ * propulsion profile already publishes — the SAME governed yaw cap and fight
+ * speed the radius is divided out of. Tow, slam and line are copied from
+ * the verbs for this same block. Mass is not a cargo cap.
+ *
+ * @param {object} args
+ * @param {object} args.derived a derived-stat block from `getDerivedStats`
+ * @param {'empty'|'current'|'specified'} [args.basis]
+ * @param {Array<string|null>} [args.fittings]
+ */
+export function estimateAtCargoBasis({ derived, basis, fittings = [] } = {}) {
+  if (!derived) return null;
+  const cargoMass = finite(derived.cargoMass, 0);
+  // Zero cargo is an empty hold, even if the caller asked for a full load.
+  // A loaded block is not relabeled empty.
+  const named = cargoBasisName(derived, basis);
+  const verbs = shipCapabilityVerbs({ derived, fittings });
+  const propulsion = derived.propulsion || {};
+  const fightSpeed = governedFightSpeedFor(derived);
+  const yawCap = governedYawRateFor(derived);
+  const turnRadiusWu = fightSpeed > 0 && yawCap > 0 ? fightSpeed / yawCap : null;
+  const meters = turnRadiusWu == null ? null : Math.round(turnRadiusWu);
+  const sentence = named === 'specified'
+    ? (meters == null ? 'Loaded-hold turn is not available.' : `Loaded hold: the turn radius at fight speed is ${meters} m.`)
+    : named === 'current'
+      ? (meters == null ? 'Turn with the cargo aboard is not available.' : `With the cargo aboard, the turn radius at fight speed is ${meters} m.`)
+      : (meters == null ? 'Empty-hold turn is not available.' : `Empty hold: the turn radius at fight speed is ${meters} m.`);
+  return {
+    basis: named,
+    cargoMass,
+    fullHold: named === 'specified',
+    turnRadiusWu,
+    // The rate the sentence's radius is divided out of — the kernel's yaw ceiling, not the
+    // legacy `turnRate` spec field (which keeps scaling with mass the live law does not apply).
+    turnRate: yawCap > 0 ? yawCap : 0,
+    tow: verbs.tow,
+    slam: verbs.slam,
+    line: verbs.line,
+    sentence,
+  };
+}
+
+/**
+ * The Shipworks turn row: the governed yaw ceiling the kernel commands at full helm
+ * (`propulsion.maxYawRate`), named by the hold it was computed for. Loading the hold moves the
+ * turn RESPONSE (yawAccel) and the operational mass, not this cap — NXB-030: the row used to
+ * print the legacy `turnRate` field, which kept mass-scaling after the live law stopped, so the
+ * Kestrel advertised a 60% turn advantage over the Pelican that the flight kernel never produced.
+ */
+export function turnRecordText(derived) {
+  const rate = Math.round(governedYawRateFor(derived) * 100) / 100;
+  const named = cargoBasisName(derived, finite(derived && derived.cargoMass, 0) > 0 ? 'current' : 'empty');
+  const word = named === 'empty' ? 'empty hold' : named === 'specified' ? 'loaded hold' : 'cargo aboard';
+  return `${rate} · ${word}`;
+}

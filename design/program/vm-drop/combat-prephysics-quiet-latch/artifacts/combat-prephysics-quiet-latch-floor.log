@@ -1,0 +1,39 @@
+floor round 0: median=24.762 min=22.628 absBefore=33.184
+floor round 1: median=25.322 min=22.204 absBefore=33.196
+floor round 2: median=25.413 min=24.544 absBefore=32.482
+floor round 3: median=25.37 min=23.873 absBefore=32.487
+floor round 4: median=25.142 min=21.265 absBefore=32.678
+{
+  "rounds": 5,
+  "medians": [
+    24.762,
+    25.322,
+    25.413,
+    25.37,
+    25.142
+  ],
+  "mins": [
+    22.628,
+    22.204,
+    24.544,
+    23.873,
+    21.265
+  ],
+  "absBefores": [
+    33.184,
+    33.196,
+    32.482,
+    32.487,
+    32.678
+  ],
+  "floorMin": 21.265,
+  "medianRange": [
+    24.762,
+    25.413
+  ],
+  "absBeforeRange": [
+    32.482,
+    33.196
+  ],
+  "dirtyWakeOk": true
+}

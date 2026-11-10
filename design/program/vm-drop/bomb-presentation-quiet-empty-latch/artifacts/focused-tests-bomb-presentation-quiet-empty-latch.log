@@ -1,0 +1,55 @@
+TAP version 13
+# Subtest: quiet empty latch skips after first empty publish and wakes on entityIndexVersion
+ok 1 - quiet empty latch skips after first empty publish and wakes on entityIndexVersion
+  ---
+  duration_ms: 5.489192
+  ...
+# Subtest: quiet latch refuses without entity index version (entityList fallback stays live)
+ok 2 - quiet latch refuses without entity index version (entityList fallback stays live)
+  ---
+  duration_ms: 1.25687
+  ...
+# Subtest: presentation is lazy, shares one mesh, and disposes on route and scene changes
+ok 3 - presentation is lazy, shares one mesh, and disposes on route and scene changes
+  ---
+  duration_ms: 4.287829
+  ...
+# Subtest: field geometry is bounded, finite and stable in memory under maximum occupancy
+ok 4 - field geometry is bounded, finite and stable in memory under maximum occupancy
+  ---
+  duration_ms: 110.479456
+  ...
+# Subtest: telegraphs occupy volume and gravity/tar are distinct structures
+ok 5 - telegraphs occupy volume and gravity/tar are distinct structures
+  ---
+  duration_ms: 1.321671
+  ...
+# Subtest: cook warmup uses the live telegraph program recipe
+ok 6 - cook warmup uses the live telegraph program recipe
+  ---
+  duration_ms: 0.369852
+  ...
+# Subtest: moving fields follow interpolation and floating origin without writing simulation state
+ok 7 - moving fields follow interpolation and floating origin without writing simulation state
+  ---
+  duration_ms: 0.645052
+  ...
+# Subtest: reduced motion freezes travelling marks and reduced flash keeps the same danger extent
+ok 8 - reduced motion freezes travelling marks and reduced flash keeps the same danger extent
+  ---
+  duration_ms: 1.984058
+  ...
+# Subtest: offscreen field bounds are culled before geometry is emitted
+ok 9 - offscreen field bounds are culled before geometry is emitted
+  ---
+  duration_ms: 1.987936
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 305.525912

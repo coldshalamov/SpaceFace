@@ -1,0 +1,1314 @@
+import { SHIPS } from '../../data/ships.js';
+import { MODULES } from '../../data/modules.js';
+import { TECH_NODES } from '../../data/tech.js';
+import {
+  LIVING_HULL_HEAT_SCORCH_MAX,
+  LIVING_HULL_KILL_TALLY_MAX,
+  LIVING_HULL_REPAIR_PATCH_MAX,
+  livingHullCyclesSinceWash,
+  livingHullGrimeAt,
+  normalizeLivingHull,
+} from '../../core/livingHull.js';
+import { resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
+import { createPropulsionRuntime, stepPropulsion } from '../../core/flight/propulsionKernel.js';
+import { getDerivedStats } from '../../systems/ships.js';
+import { shipCapabilityVerbs, withArticle } from '../../systems/shipCapabilities.js';
+import { handlingProfileForShip } from '../panels/handlingProfile.js';
+import { describeTechNodeReadiness } from '../screens/techTree.js';
+import {
+  moduleSentencesForFittings,
+  reversalSentence,
+  sustainedFireForFit,
+} from './fitReadout.js';
+
+const SHIP_BY_ID = new Map(SHIPS.map((shipDef) => [shipDef.id, shipDef]));
+const MODULE_BY_ID = new Map(MODULES.map((moduleDef) => [moduleDef.id, moduleDef]));
+// One plain-words verb per hull-burst type (the type is the build): what the nose does when you press the burst key.
+const BURST_VERB = Object.freeze({
+  gravity: 'Throw whatever the nose touches',
+  lance: 'Burn whatever the nose touches',
+  grip: 'Carry what the nose catches',
+});
+
+/**
+ * The six derived figures the shipworks gauge rack shows, in rack order. Moved here from the
+ * the retired engineering-stage module (Frontend Task D §4.5); the rack itself is kit rows now.
+ */
+export const SHIP_ENGINEERING_GAUGE_DEFS = Object.freeze([
+  { key: 'mass', label: 'Mass', kind: 'warn', suffix: 't' },
+  { key: 'capMax', label: 'Energy', kind: 'energy', suffix: '' },
+  { key: 'shieldMax', label: 'Shield', kind: 'shield', suffix: '' },
+  { key: 'cargoCap', label: 'Cargo', kind: 'cargo', suffix: 'u' },
+  { key: 'thrust', label: 'Thrust', kind: 'accent', suffix: '' },
+  { key: 'continuousDrain', label: 'Heat', kind: 'heat', suffix: '' },
+]);
+
+const MASSLINE_BANK = Object.freeze({
+  tractor: Object.freeze({ id: 'tractor', verb: 'Tow things that do not want to be towed', sub: 'TRACTOR' }),
+  elastic_whip: Object.freeze({ id: 'elastic_whip', verb: 'Store a swing and give it back', sub: 'SPRING' }),
+  frame_coupler: Object.freeze({ id: 'frame_coupler', verb: 'Hold two hulls together without tearing', sub: 'COUPLER' }),
+  monofilament_sweep: Object.freeze({ id: 'monofilament_sweep', verb: 'Cut a hostile line', sub: 'SWEEP' }),
+  transverse_snare: Object.freeze({ id: 'transverse_snare', verb: 'Snare something crossing your path', sub: 'SNARE' }),
+  twin_bridle: Object.freeze({ id: 'twin_bridle', verb: 'Anchor to two points at once', sub: 'BRIDLE' }),
+});
+
+const PATCH_ANCHORS = Object.freeze([
+  Object.freeze([-0.30, 0.335, 0.23]),
+  Object.freeze([0.32, 0.326, -0.22]),
+  Object.freeze([-0.06, 0.35, -0.31]),
+  Object.freeze([-0.48, 0.295, -0.06]),
+]);
+
+const SCORCH_ANCHORS = Object.freeze([
+  Object.freeze([-0.42, 0.372, 0.18]),
+  Object.freeze([-0.56, 0.34, -0.18]),
+  Object.freeze([-0.28, 0.36, -0.30]),
+]);
+
+const KILL_ANCHOR = Object.freeze([0.12, 0.37, 0.19]);
+const GRIME_ANCHOR = Object.freeze([-0.08, 0.366, 0]);
+const GRAFFITI_ANCHOR = Object.freeze([-0.20, 0.382, -0.05]);
+
+const TECH_NODE_BY_ID = new Map(TECH_NODES.map((node) => [node.id, node]));
+const NODE_DEPTH_BY_ID = new Map();
+
+function nodeDepth(nodeId, visited = new Set()) {
+  if (NODE_DEPTH_BY_ID.has(nodeId)) return NODE_DEPTH_BY_ID.get(nodeId);
+  if (visited.has(nodeId)) return 0;
+  visited.add(nodeId);
+  const node = TECH_NODE_BY_ID.get(nodeId);
+  if (!node || !Array.isArray(node.prereqs) || !node.prereqs.length) {
+    NODE_DEPTH_BY_ID.set(nodeId, 0);
+    visited.delete(nodeId);
+    return 0;
+  }
+  let depth = 0;
+  for (const prereq of node.prereqs) {
+    depth = Math.max(depth, nodeDepth(prereq, visited) + 1);
+  }
+  visited.delete(nodeId);
+  NODE_DEPTH_BY_ID.set(nodeId, depth);
+  return depth;
+}
+
+function shortestNodeForModule(moduleId) {
+  let best = null;
+  for (const node of TECH_NODES) {
+    const modules = (node && node.unlocks && node.unlocks.modules) || [];
+    if (!modules.includes(moduleId)) continue;
+    const depth = nodeDepth(node.id);
+    if (!best || depth < best.depth || (depth === best.depth && byCost(node, best.node) < 0)) {
+      best = { node, depth };
+    }
+  }
+  return best;
+}
+
+const AGILITY_MEDIAN = (() => {
+  const values = [];
+  for (const shipDef of SHIPS) {
+    const profile = handlingProfileForShip(shipDef.id, { fittings: [], player: null });
+    const axis = profile && Array.isArray(profile.axes)
+      ? profile.axes.find((row) => row.id === 'agility')
+      : null;
+    if (axis && Number.isFinite(Number(axis.raw))) values.push(Number(axis.raw));
+  }
+  if (!values.length) return 1;
+  values.sort((a, b) => a - b);
+  const mid = Math.floor(values.length / 2);
+  return values.length % 2 ? values[mid] : ((values[mid - 1] + values[mid]) * 0.5);
+})();
+
+function finite(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function round1(value) {
+  return Math.round(finite(value, 0) * 10) / 10;
+}
+
+function roundInt(value) {
+  return Math.round(finite(value, 0));
+}
+
+function signedPercent(value) {
+  const rounded = Math.round(Math.abs(finite(value, 0)));
+  return `${rounded}%`;
+}
+
+function ratioFor(derived, shipDef) {
+  const base = Math.max(0.001, finite(shipDef && shipDef.mass, 1));
+  const feelMass = finite(
+    derived && (derived.operationalFeelMass != null ? derived.operationalFeelMass : derived.operationalMass),
+    finite(derived && derived.operationalMass, base),
+  );
+  return feelMass / base;
+}
+
+function percentDelta(after, before) {
+  const b = finite(before, 0);
+  if (Math.abs(b) < 1e-6) return 0;
+  return ((finite(after, 0) / b) - 1) * 100;
+}
+
+function withCargoMass(player, usedMass) {
+  const source = player && typeof player === 'object' ? player : {};
+  return {
+    ...source,
+    cargo: {
+      ...(source.cargo && typeof source.cargo === 'object' ? source.cargo : {}),
+      usedMass: Math.max(0, finite(usedMass, 0)),
+    },
+  };
+}
+
+function formatMass(value) {
+  return `${Math.round(Math.max(0, finite(value, 0))).toLocaleString('en-US')} t`;
+}
+
+function formatUnits(value, suffix = '') {
+  const rounded = roundInt(value).toLocaleString('en-US');
+  return `${rounded}${suffix}`;
+}
+
+// words-ship-sheet-counts: the capability verb counts one drone in the singular — the fit
+// receipt now reads this verb aloud the moment a drone bay lands, so "1 drone(s)" was a leak.
+function droneVerb(count) {
+  return roundInt(count) === 1 ? 'Put 1 drone in the water' : `Put ${formatUnits(count)} drones in the water`;
+}
+
+function formatMultiplier(value) {
+  const n = round1(value);
+  return Number.isInteger(n) ? String(n) : String(n.toFixed(1));
+}
+
+function conditionToneForRatio(ratio) {
+  if (ratio == null) return 'calm';
+  if (ratio >= 0.95) return 'calm';
+  if (ratio >= 0.75) return 'calm';
+  if (ratio >= 0.45) return 'goal';
+  return 'foe';
+}
+
+export function conditionFromEntity(entity) {
+  if (!entity) {
+    return {
+      verb: 'STOWED',
+      tone: 'calm',
+      ratio: null,
+      percentText: '',
+      why: '',
+    };
+  }
+  const hullMax = Math.max(0, finite(entity.hullMax, 0));
+  const hullNow = clamp(finite(entity.hull, 0), 0, hullMax);
+  const ratio = hullMax > 0 ? hullNow / hullMax : 0;
+  let verb = 'WRECKED';
+  if (ratio >= 0.95) verb = 'SOUND';
+  else if (ratio >= 0.75) verb = 'SCRAPED';
+  else if (ratio >= 0.45) verb = 'HURT';
+  else if (ratio >= 0.20) verb = 'BADLY HURT';
+  else if (ratio > 0) verb = 'FAILING';
+  const shieldNow = Math.round(Math.max(0, finite(entity.shield, 0)));
+  const shieldMax = Math.round(Math.max(0, finite(entity.shieldMax, 0)));
+  const armorMax = Math.round(Math.max(0, finite(entity.armorMax, 0)));
+  const armorNow = Math.round(Math.max(0, finite(entity.armorHp, 0)));
+  const pieces = [
+    `Hull ${Math.round(hullNow)}/${Math.round(hullMax)}`,
+    `Shield ${shieldNow}/${shieldMax}`,
+  ];
+  if (armorMax > 0) pieces.push(`Armour ${armorNow}/${armorMax}`);
+  return {
+    verb,
+    tone: conditionToneForRatio(ratio),
+    ratio,
+    percentText: `${Math.round(ratio * 100)}%`,
+    why: pieces.join(' | '),
+  };
+}
+
+/** The fit-screen line that names the hull this fit's printed Line rating covers. */
+export function towSentence(predictions) {
+  const name = predictions && predictions.towableHullName;
+  if (name) return `Can tow ${withArticle(name)}.`;
+  if (predictions && predictions.towCoversRoster) return 'Can tow anything on the roster.';
+  return '';
+}
+
+/** True when the heavier fit actually turns or stops worse than the lighter one. */
+function fliesWorse(heavier, lighter) {
+  if (!heavier || !lighter) return false;
+  const yawH = finite(heavier.propulsion && heavier.propulsion.yawAccel, 0);
+  const yawL = finite(lighter.propulsion && lighter.propulsion.yawAccel, 0);
+  if (yawL > 0 && (yawL - yawH) / yawL >= 0.005) return true;
+  if (liveStopDistance(heavier) - liveStopDistance(lighter) > 2) return true;
+  const turnH = liveTurnCircle(heavier);
+  const turnL = liveTurnCircle(lighter);
+  return turnH.radius > 0 && turnL.radius > 0 && (turnH.radius - turnL.radius) > 2;
+}
+
+let ROSTER_STOP_MEDIAN = null;
+let ROSTER_TURN_MEDIAN = null;
+
+/** Middle flown turn radius on the bare roster, in metres. An unsteady circle is left out. */
+function rosterTurnMedian() {
+  if (ROSTER_TURN_MEDIAN != null) return ROSTER_TURN_MEDIAN;
+  const radii = [];
+  for (const ship of SHIPS) {
+    const metres = Math.round(liveTurnCircle(getDerivedStats(ship.id, [], null)).radius);
+    if (metres > 0) radii.push(metres);
+  }
+  radii.sort((a, b) => a - b);
+  if (!radii.length) {
+    ROSTER_TURN_MEDIAN = 0;
+    return 0;
+  }
+  const mid = Math.floor(radii.length / 2);
+  ROSTER_TURN_MEDIAN = radii.length % 2 ? radii[mid] : (radii[mid - 1] + radii[mid]) / 2;
+  return ROSTER_TURN_MEDIAN;
+}
+
+/** Crest turn word from the circle, not the yaw bar one fast hull pins. */
+function turnClause(derived) {
+  const metres = Math.round(liveTurnCircle(derived).radius);
+  if (!(metres > 0)) return '';
+  const median = rosterTurnMedian();
+  if (!(median > 0)) return '';
+  if (metres < median * 0.5) return 'Turns hard.';
+  if (metres > median * 1.2) return 'Turns wide.';
+  return 'Turns steadily.';
+}
+
+/** Middle flown stop on the bare roster, in metres. A ship that does not stop is left out. */
+function rosterStopMedian() {
+  if (ROSTER_STOP_MEDIAN != null) return ROSTER_STOP_MEDIAN;
+  const stops = [];
+  for (const ship of SHIPS) {
+    const metres = Math.round(liveStopDistance(getDerivedStats(ship.id, [], null)));
+    if (metres > 0) stops.push(metres);
+  }
+  stops.sort((a, b) => a - b);
+  if (!stops.length) {
+    ROSTER_STOP_MEDIAN = 0;
+    return 0;
+  }
+  const mid = Math.floor(stops.length / 2);
+  ROSTER_STOP_MEDIAN = stops.length % 2 ? stops[mid] : (stops[mid - 1] + stops[mid]) / 2;
+  return ROSTER_STOP_MEDIAN;
+}
+
+/** Half the mark when the number is the roster middle. One huge hull no longer pins the rest at the bottom. */
+function medianFill(value, median) {
+  if (!(median > 0) || !(value > 0)) return 0;
+  return clamp(Math.round((50 * value) / median), 0, 100);
+}
+
+function agilityFill(derived) {
+  const yaw = finite(derived && derived.propulsion && derived.propulsion.yawAccel, 0);
+  return medianFill(yaw, AGILITY_MEDIAN);
+}
+
+let ROSTER_CEILING_MEDIAN = null;
+
+function rosterCeilingMedian() {
+  if (ROSTER_CEILING_MEDIAN != null) return ROSTER_CEILING_MEDIAN;
+  const ceilings = [];
+  for (const ship of SHIPS) {
+    const stats = getDerivedStats(ship.id, [], null);
+    const ceiling = Math.round(publishedSpeed(stats && stats.propulsion, 'travel'));
+    if (ceiling > 0) ceilings.push(ceiling);
+  }
+  ceilings.sort((a, b) => a - b);
+  if (!ceilings.length) {
+    ROSTER_CEILING_MEDIAN = 0;
+    return 0;
+  }
+  const mid = Math.floor(ceilings.length / 2);
+  ROSTER_CEILING_MEDIAN = ceilings.length % 2 ? ceilings[mid] : (ceilings[mid - 1] + ceilings[mid]) / 2;
+  return ROSTER_CEILING_MEDIAN;
+}
+
+function ceilingFill(derived) {
+  return medianFill(publishedSpeed(derived && derived.propulsion, 'travel'), rosterCeilingMedian());
+}
+
+let ROSTER_MASS_MEDIAN = null;
+
+function movingMass(derived) {
+  return finite(derived && (derived.operationalMass != null ? derived.operationalMass : derived.mass), 0);
+}
+
+function rosterMassMedian() {
+  if (ROSTER_MASS_MEDIAN != null) return ROSTER_MASS_MEDIAN;
+  const masses = [];
+  for (const ship of SHIPS) {
+    const mass = Math.round(movingMass(getDerivedStats(ship.id, [], null)));
+    if (mass > 0) masses.push(mass);
+  }
+  masses.sort((a, b) => a - b);
+  if (!masses.length) {
+    ROSTER_MASS_MEDIAN = 0;
+    return 0;
+  }
+  const mid = Math.floor(masses.length / 2);
+  ROSTER_MASS_MEDIAN = masses.length % 2 ? masses[mid] : (masses[mid - 1] + masses[mid]) / 2;
+  return ROSTER_MASS_MEDIAN;
+}
+
+function inertiaFill(derived) {
+  return medianFill(movingMass(derived), rosterMassMedian());
+}
+
+/**
+ * The brake bar and the crest word. Reverse acceleration is not the stop: one hull's
+ * huge number pins everyone else at the bottom of that scale. The bar fills from how
+ * the flown stop compares with the middle of the roster.
+ */
+function brakePresentation(derived) {
+  const stop = Math.round(liveStopDistance(derived));
+  if (!(stop > 0)) return { bar: 0, clause: '' };
+  const median = rosterStopMedian();
+  if (!(median > 0)) return { bar: 0, clause: '' };
+  const bar = clamp(Math.round((100 * median) / stop), 0, 100);
+  return { bar, clause: bar >= 55 ? 'Stops clean.' : 'Stops badly.' };
+}
+
+function handlingSentence(profile, derived, emptyDerived, bareDerived) {
+  if (!profile || !Array.isArray(profile.axes) || !profile.axes.length) return '';
+  const clauses = [];
+  const turnWord = turnClause(derived);
+  if (turnWord) clauses.push(turnWord);
+  const shipDef = SHIP_BY_ID.get(profile.shipId);
+  const massRatio = ratioFor(derived, shipDef);
+  // Heavier than the catalog hull is not itself a worse ship. A bumper under the
+  // drive rating keeps the same yaw, stop, and circle, and must not be called sluggish.
+  if (fliesWorse(derived, emptyDerived) || fliesWorse(derived, bareDerived)) {
+    clauses.push('Sluggish under load.');
+  } else if (massRatio < 0.9) clauses.push('Light on the stick.');
+  const stopClause = brakePresentation(derived).clause;
+  if (stopClause) clauses.push(stopClause);
+  const cargoMass = finite(derived && derived.cargoMass, 0);
+  if (cargoMass > 0) {
+    const extra = Math.max(0, Math.round(liveStopDistance(derived) - liveStopDistance(emptyDerived)));
+    if (extra > 0) clauses.push(`Loaded, it stops ${extra} m later.`);
+  }
+  return clauses.join(' ');
+}
+
+const BRAKE_STOP_CACHE = new WeakMap();
+const BRAKE_SAMPLE_DT = 1 / 60;
+const BRAKE_SAMPLE_CAP_TICKS = 60 * 20;
+
+/**
+ * Metres a held assisted brake uses from fight speed.
+ *
+ * v²/2a is not this. The pilot brake is a proportional null, clamped to the brake the drive
+ * can actually spend. A torch that is already at fight speed is spooled; cutting the throttle
+ * to brake lets that spool die, and the stop is neither the cold-torch distance nor the
+ * closed-form preview that pretends the main drive stays fully lit. A sail whose speed does
+ * not fall does not get a made-up distance. The mass-delta arrival estimator stays on its own.
+ */
+function liveStopDistance(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = BRAKE_STOP_CACHE.get(key);
+    if (hit != null) return hit;
+  }
+  const metres = heldBrakeStopMetres(derived);
+  if (key && typeof key === 'object') BRAKE_STOP_CACHE.set(key, metres);
+  return metres;
+}
+
+function heldBrakeStopMetres(derived) {
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'stop-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'stop-predict', seed: 4242 });
+  if (!profile) return 0;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return 0;
+  const dead = finite(profile.assist && profile.assist.deadSpeed, 0.18);
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted' },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+      if (speed < 0) speed = 0;
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  let speed = speed0;
+  let dist = 0;
+  let ticks = 0;
+  while (speed > dead && ticks < BRAKE_SAMPLE_CAP_TICKS) {
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: 0, brake: true, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    const v0 = speed;
+    speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    if (speed < 0) speed = 0;
+    dist += ((v0 + speed) / 2) * BRAKE_SAMPLE_DT;
+    ticks += 1;
+  }
+  if (!(speed <= dead)) return 0;
+  return dist;
+}
+
+const REVERSAL_CACHE = new WeakMap();
+const REVERSAL_CAP_TICKS = 60 * 40;
+
+/**
+ * Seconds a held reverse thrust takes to go from fight speed ahead to the same
+ * speed astern. 2v/a is the constant-accel guess: a lit torch and a field sail
+ * are not that guess, and a sail whose reverseAccel is unpublished still reverses.
+ */
+function liveReversalSeconds(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = REVERSAL_CACHE.get(key);
+    if (hit != null) return hit;
+  }
+  const seconds = heldReversalSeconds(derived);
+  if (key && typeof key === 'object') REVERSAL_CACHE.set(key, seconds);
+  return seconds;
+}
+
+function heldReversalSeconds(derived) {
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'reversal-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'reversal-predict', seed: 4242 });
+  if (!profile) return 0;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return 0;
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted' },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+      if (speed < 0) speed = 0;
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  let speed = speed0;
+  let ticks = 0;
+  while (speed > -speed0 && ticks < REVERSAL_CAP_TICKS) {
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: -1, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    ticks += 1;
+  }
+  if (!(speed <= -speed0)) return 0;
+  return ticks * BRAKE_SAMPLE_DT;
+}
+
+const COAST_CACHE = new WeakMap();
+const COAST_CAP_TICKS = 60 * 180;
+const COAST_CRAWL = 1;
+const COAST_STALL_DROP = 1e-4;
+
+/**
+ * Seconds a hands-off assisted ship keeps moving after fight speed.
+ * 1/linearDrag is the legacy flight model. The live assist eases you down,
+ * and a sail that never slows does not get a made-up time. A pulse plate
+ * that sticks in a crawl counts as still once the crawl stops falling.
+ */
+function liveCoastSeconds(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = COAST_CACHE.get(key);
+    if (hit != null) return hit;
+  }
+  const seconds = heldCoastSeconds(derived);
+  if (key && typeof key === 'object') COAST_CACHE.set(key, seconds);
+  return seconds;
+}
+
+function heldCoastSeconds(derived) {
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'coast-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'coast-predict', seed: 4242 });
+  if (!profile) return 0;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return 0;
+  const dead = finite(profile.assist && profile.assist.deadSpeed, 0.18);
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  const advance = (speed, step) => {
+    let next = speed + (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    if (step.impulse) next += finite(step.impulse.x, 0) / self;
+    return next < 0 ? 0 : next;
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted' },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed = advance(speed, step);
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  let speed = speed0;
+  let ticks = 0;
+  while (ticks < COAST_CAP_TICKS) {
+    const prev = speed;
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: 0, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    speed = advance(speed, step);
+    ticks += 1;
+    if (speed <= dead) return ticks * BRAKE_SAMPLE_DT;
+    if (speed <= COAST_CRAWL && speed > prev - COAST_STALL_DROP) return ticks * BRAKE_SAMPLE_DT;
+  }
+  return 0;
+}
+
+const TURN_CACHE = new WeakMap();
+const TURN_HOLD_TICKS = 60 * 12;
+const TURN_WINDOW = 60 * 2;
+const TURN_STEADY = 0.15;
+
+/**
+ * The circle a held turn actually flies, with the default velocity-vectoring
+ * assist on. Fight speed divided by the yaw ceiling is the nose rate, and the
+ * assist does not let the nose run away from the path. A sail that keeps going
+ * straight, or a plate that never holds one circle, gets no number.
+ */
+function liveTurnCircle(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = TURN_CACHE.get(key);
+    if (hit) return hit;
+  }
+  const circle = heldTurnCircle(derived);
+  if (key && typeof key === 'object') TURN_CACHE.set(key, circle);
+  return circle;
+}
+
+function heldTurnCircle(derived) {
+  const none = { radius: 0, atFightSpeed: false };
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return none;
+  const entity = { id: 'turn-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'turn-predict', seed: 4242 });
+  if (!profile) return none;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return none;
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  const advance = (step) => {
+    body.vel.x += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    body.vel.z += (finite(step.force && step.force.z, 0) / self) * BRAKE_SAMPLE_DT;
+    if (step.impulse) {
+      body.vel.x += finite(step.impulse.x, 0) / self;
+      body.vel.z += finite(step.impulse.z, 0) / self;
+    }
+    body.angVel += finite(step.telemetry && step.telemetry.angularAcceleration, 0) * BRAKE_SAMPLE_DT;
+    body.rot += body.angVel * BRAKE_SAMPLE_DT;
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted', velocityVectoring: true },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+      if (speed < 0) speed = 0;
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  body.vel.x = speed0;
+  body.vel.z = 0;
+  body.rot = 0;
+  body.angVel = 0;
+  const radii = [];
+  const speeds = [];
+  let heading = 0;
+  for (let i = 0; i < TURN_HOLD_TICKS; i += 1) {
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: 1, turn: 1, assistMode: 'assisted', velocityVectoring: true },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    advance(step);
+    const nextHeading = Math.atan2(body.vel.z, body.vel.x);
+    let dHead = nextHeading - heading;
+    while (dHead > Math.PI) dHead -= Math.PI * 2;
+    while (dHead < -Math.PI) dHead += Math.PI * 2;
+    heading = nextHeading;
+    if (i < TURN_HOLD_TICKS - TURN_WINDOW) continue;
+    const speed = Math.hypot(body.vel.x, body.vel.z);
+    const pathRate = dHead / BRAKE_SAMPLE_DT;
+    speeds.push(speed);
+    if (Math.abs(pathRate) > 1e-6) radii.push(speed / Math.abs(pathRate));
+  }
+  if (radii.length < TURN_WINDOW / 2) return none;
+  const mean = radii.reduce((sum, n) => sum + n, 0) / radii.length;
+  const variance = radii.reduce((sum, n) => sum + (n - mean) ** 2, 0) / radii.length;
+  if (!(mean > 0) || Math.sqrt(variance) / mean > TURN_STEADY) return none;
+  const meanSpeed = speeds.reduce((sum, n) => sum + n, 0) / speeds.length;
+  return {
+    radius: mean,
+    atFightSpeed: Math.abs(meanSpeed - speed0) / speed0 <= TURN_STEADY,
+  };
+}
+
+function liveTurnSentence(derived) {
+  const flown = liveTurnCircle(derived);
+  if (!(flown.radius > 0)) return '';
+  const metres = Math.round(flown.radius);
+  if (!(metres > 0)) return '';
+  return flown.atFightSpeed
+    ? `At fight speed the turn radius is ${metres} m.`
+    : `Holding the turn, the turn radius is ${metres} m.`;
+}
+
+function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
+  const cargoMass = finite(derived && derived.cargoMass, 0);
+  const moduleMass = Math.max(0, finite(derived && derived.dryMass, finite(shipDef && shipDef.mass, 0)) - finite(shipDef && shipDef.mass, 0));
+  // The bar's own number. Cargo and fitted mass use that same yaw acceleration.
+  // A mass curve blamed a bumper for a turn loss the yaw number never took.
+  const yawAccel = finite(derived && derived.propulsion && derived.propulsion.yawAccel, 0);
+  const dryYaw = finite(dryDerived && dryDerived.propulsion && dryDerived.propulsion.yawAccel, yawAccel);
+  const bareYaw = finite(bareDerived && bareDerived.propulsion && bareDerived.propulsion.yawAccel, dryYaw);
+  const hullShift = percentDelta(dryYaw, AGILITY_MEDIAN);
+  const cargoPenalty = cargoMass > 0 ? percentDelta(yawAccel, dryYaw) : 0;
+  const modulePenalty = moduleMass > 0 ? percentDelta(dryYaw, bareYaw) : 0;
+  const rows = [];
+  if (cargoMass > 0) {
+    rows.push({
+      key: 'cargo',
+      magnitude: Math.abs(cargoPenalty),
+      why: `${formatMass(cargoMass)} of cargo. That is why you turn ${signedPercent(cargoPenalty)} slower than empty.`,
+    });
+  }
+  if (moduleMass > 0 && Math.abs(modulePenalty) >= 0.5) {
+    rows.push({
+      key: 'modules',
+      magnitude: Math.abs(modulePenalty),
+      why: `${formatMass(moduleMass)} of fitted modules. That is why you turn ${signedPercent(modulePenalty)} slower than bare.`,
+    });
+  }
+  rows.push({
+    key: 'hull',
+    magnitude: Math.abs(hullShift),
+    why: Math.abs(hullShift) < 0.5
+      ? 'This frame turns with the middle of the roster.'
+      : `This frame turns ${signedPercent(hullShift)} ${hullShift >= 0 ? 'faster' : 'slower'} than the roster median.`,
+  });
+  // PQ-176.01: the manoeuvring bay owns turning, so when it is refitted it is the loudest reason
+  // this hull turns the way it does — louder than the hull, the modules or the hold.
+  const bay = bayFor(derived);
+  if (bay && bay.turn !== 1) {
+    const shift = (bay.turn - 1) * 100;
+    // A refitted bay always wins the line. The hull's standing against the roster is a fact the
+    // player already knows; the bay is the thing they just changed, and turning is what it owns.
+    return `${bay.name} in the manoeuvring bay. That is why you turn ${signedPercent(shift)} `
+      + `${shift >= 0 ? 'harder' : 'lazier'} than this hull's stock set.`;
+  }
+  rows.sort((left, right) => right.magnitude - left.magnitude);
+  return rows.length ? rows[0].why : '';
+}
+
+/** The manoeuvring bay this fit is flying on, from the derived propulsion the kernel reads. */
+function bayFor(derived) {
+  const p = derived && derived.propulsion;
+  if (!p) return null;
+  const def = p.thrusterId ? MODULE_BY_ID.get(p.thrusterId) : null;
+  return {
+    id: p.thrusterId || null,
+    name: (def && def.name) || 'The stock RCS cluster',
+    turn: finite(p.thrusterTurnMult, 1),
+    strafe: finite(p.thrusterStrafeMult, 1),
+    brake: finite(p.thrusterBrakeMult, 1),
+  };
+}
+
+function inertiaWhy(derived) {
+  const mass = finite(derived && (derived.operationalMass != null ? derived.operationalMass : derived.mass), 0);
+  const coast = liveCoastSeconds(derived);
+  const coastLine = coast > 0
+    ? `Let go and you are still moving for ${round1(coast)} s.`
+    : '';
+  // PQ-176.00: over the hull's drive rating, mass is the law and the screen has to say so in
+  // tonnes and in what it costs, not as a hidden coefficient. The coast is the hands-off
+  // settle, not a cost of the overload: loading the Hitch does not change that time.
+  const load = finite(derived && derived.massLoadFactor, 1);
+  const design = finite(derived && derived.designMass, 0);
+  if (load < 0.995 && design > 0) {
+    const lost = Math.round((1 - load) * 100);
+    const head = `${formatMass(mass)} moving on a drive rated for ${formatMass(design)}. `
+      + `That overload costs you ${lost}% of your push.`;
+    return coastLine ? `${head} ${coastLine}` : head;
+  }
+  const head = `${formatMass(mass)} moving.`;
+  return coastLine ? `${head} ${coastLine}` : head;
+}
+
+function publishedSpeed(propulsion, key) {
+  const block = propulsion || {};
+  if (key === 'fight') {
+    return finite(block.combatSpeed != null ? block.combatSpeed : block.maxSpeed, 0);
+  }
+  return finite(block.travelCeiling, 0);
+}
+
+/** How many percent the published ceiling fell. A rise, or a missing dry number, is zero. */
+function ceilingFellPct(loaded, dry) {
+  const base = finite(dry, 0);
+  if (!(base > 0)) return 0;
+  const drop = (1 - finite(loaded, 0) / base) * 100;
+  return drop > 0 ? drop : 0;
+}
+
+function topSpeedWhy(profile, derived, dryDerived) {
+  // PQ-176.01: a fitted drive buys speed ABOVE the fight cap, never at it (FEEL_CONTRACT B3 is
+  // measured at the cap). So the sentence has to name the burn, not the fight: saying "holds you
+  // at 84 in a fight, 86 % over this hull's own motor" was a straight lie once the cap stopped
+  // being for sale, because the hull's own motor already holds you at 84.
+  const driveSpeed = finite(derived && derived.propulsion && derived.propulsion.driveSpeedMult, 1);
+  if (driveSpeed !== 1) {
+    const travelMult = finite(derived.propulsion.driveTravelMult, driveSpeed);
+    const shift = Math.round((travelMult - 1) * 100);
+    const governed = Math.round(publishedSpeed(derived.propulsion, 'fight'));
+    const burn = Math.round(publishedSpeed(derived.propulsion, 'travel'));
+    return `You still fight at ${governed}. The drive you fitted buys the run: ${burn} on the burn, `
+      + `${signedPercent(shift)} ${shift >= 0 ? 'over' : 'under'} this hull's own motor.`;
+  }
+  // Cargo loads the drive's push. It does not move the travel ceiling or the fight cap.
+  // The old line invented a percent from a mass ratio the kernel never applies to speed.
+  const cargoMass = finite(derived && derived.cargoMass, 0);
+  if (cargoMass > 0) {
+    const loadedProp = derived && derived.propulsion;
+    const dryProp = dryDerived && dryDerived.propulsion;
+    const fell = Math.max(
+      ceilingFellPct(publishedSpeed(loadedProp, 'travel'), publishedSpeed(dryProp, 'travel')),
+      ceilingFellPct(publishedSpeed(loadedProp, 'fight'), publishedSpeed(dryProp, 'fight')),
+    );
+    if (fell > 1) return `Mass costs you ${Math.round(fell)}% of your ceiling.`;
+    return 'The ceiling holds with this load.';
+  }
+  if (profile && profile.driveLabel) return `The ${profile.driveLabel} sets your ceiling.`;
+  return '';
+}
+
+function brakeWhy(derived) {
+  const stop = Math.round(liveStopDistance(derived));
+  const bay = bayFor(derived);
+  if (bay && bay.brake !== 1) {
+    const shift = Math.round((bay.brake - 1) * 100);
+    const tail = stop > 0 ? ` From flat out you need ${stop} m to stop.` : '';
+    return `${bay.name} brakes ${signedPercent(shift)} ${shift >= 0 ? 'harder' : 'softer'} than stock.${tail}`;
+  }
+  if (stop <= 0) return '';
+  return `From flat out you need ${stop} m to stop.`;
+}
+
+export function handlingBandModel({ shipId, fittings = [], player = null, domain = null }) {
+  const shipDef = SHIP_BY_ID.get(shipId);
+  if (!shipDef) return null;
+  const profile = handlingProfileForShip(shipId, { fittings, player, domain });
+  if (!profile) return null;
+  const derived = getDerivedStats(shipId, fittings, player);
+  const dryPlayer = withCargoMass(player, 0);
+  const dryDerived = getDerivedStats(shipId, fittings, dryPlayer);
+  const bareDerived = getDerivedStats(shipId, [], dryPlayer);
+  const bars = [];
+  for (const axis of profile.axes) {
+    let why = '';
+    let bar = clamp(Math.round(finite(axis.bar, 0)), 0, 100);
+    if (axis.id === 'agility') {
+      why = agilityWhy({ shipDef, derived, dryDerived, bareDerived });
+      bar = agilityFill(derived);
+    }
+    else if (axis.id === 'inertia') {
+      why = inertiaWhy(derived);
+      bar = inertiaFill(derived);
+    }
+    else if (axis.id === 'topSpeed') {
+      why = topSpeedWhy(profile, derived, dryDerived);
+      bar = ceilingFill(derived);
+    }
+    else if (axis.id === 'brake') {
+      why = brakeWhy(derived);
+      bar = brakePresentation(derived).bar;
+    }
+    bars.push({
+      id: axis.id,
+      label: axis.label,
+      raw: finite(axis.raw, 0),
+      bar,
+      why,
+    });
+  }
+  const turnSentence = liveTurnSentence(derived);
+  const reversalLine = reversalSentence({ reversalTimeS: liveReversalSeconds(derived) });
+  const sustainedFire = sustainedFireForFit(shipId, fittings, player);
+  const towLine = towSentence(profile.predictions);
+  // The crest is the sentence the fit screen prints under the hull name. The hull this
+  // fit can tow leads, so a short nameplate still names it. Turn, stop, and the burst follow.
+  const crestSentence = [
+    towLine,
+    handlingSentence(profile, derived, dryDerived, bareDerived),
+    turnSentence,
+    reversalLine,
+    sustainedFire.sentence,
+  ].filter(Boolean).join(' ');
+  return {
+    shipId,
+    profile,
+    derived,
+    bars,
+    crestSentence,
+    turnSentence,
+    reversalSentence: reversalLine,
+    towSentence: towLine,
+    sustainedFire,
+    moduleSentences: moduleSentencesForFittings(fittings),
+  };
+}
+
+function subFromDerivedChip(chipId, derived, moduleDef = null) {
+  switch (chipId) {
+    case 'tractor':
+    case 'elastic_whip':
+    case 'frame_coupler':
+    case 'monofilament_sweep':
+    case 'transverse_snare':
+    case 'twin_bridle':
+      return MASSLINE_BANK[chipId === 'elastic_whip' ? 'elastic_whip' : chipId].sub;
+    case 'spool':
+      return `x${formatMultiplier(derived.tetherSpoolMult)} line`;
+    case 'reel':
+      return `x${formatMultiplier(derived.tetherReelRateMult)} reel`;
+    case 'magnet':
+      return `${formatUnits(derived.magnetRange, ' u')}`;
+    case 'drone':
+      return `${formatUnits(derived.droneBayCount)} bay`;
+    case 'jump': {
+      const tier = String(derived.jumpDriveTier || '').replace(/^jump_/, '').toUpperCase();
+      return tier || 'T1';
+    }
+    case 'repair':
+      return `${formatUnits(derived.hullRepairOOC, '/s')}`;
+    case 'hidden':
+      return `${formatUnits(Math.round(finite(derived.hiddenCargoPct, 0) * 100), '% hidden')}`;
+    case 'cloak':
+      return `${formatUnits(Math.round(finite(derived.scannerCloak, 0) * 100), '%')}`;
+    case 'ram':
+      return `x${formatMultiplier(derived.ramDamageDealtMult)}`;
+    case 'burst':
+      return String(derived.hullBurstKind || '');
+    case 'dash':
+      return `${formatUnits(derived.boost && derived.boost.dashImpulse, ' impulse')}`;
+    case 'tough': {
+      const cut = Math.max(0, 1 - finite(derived.damageReductionMult, 1));
+      return `-${formatUnits(Math.round(cut * 100), '%')}`;
+    }
+    case 'range': {
+      const plus = Math.max(0, Math.round((finite(derived.weaponRangeMult, 1) - 1) * 100));
+      return `+${formatUnits(plus, '%')}`;
+    }
+    case 'radar':
+      return `${formatUnits(derived.radarRange, ' u')}`;
+    case 'cargo':
+      return `${formatUnits(derived.cargoCap, ' u')}`;
+    default:
+      if (moduleDef && moduleDef.mods && moduleDef.mods.masslineHeadId && MASSLINE_BANK[moduleDef.mods.masslineHeadId]) {
+        return MASSLINE_BANK[moduleDef.mods.masslineHeadId].sub;
+      }
+      return '';
+  }
+}
+
+export function capabilityDefinitions(derived) {
+  const defs = [];
+  if (derived.masslineHeadId && MASSLINE_BANK[derived.masslineHeadId]) {
+    const row = MASSLINE_BANK[derived.masslineHeadId];
+    defs.push({ id: row.id, verb: row.verb, tone: 'you' });
+  }
+  if (finite(derived.tetherSpoolMult, 1) > 1) defs.push({ id: 'spool', verb: 'Swing off things further away', tone: 'you' });
+  if (finite(derived.tetherReelRateMult, 1) > 1) defs.push({ id: 'reel', verb: 'Reel in faster than they can pull away', tone: 'you' });
+  if (finite(derived.magnetRange, 0) > 0) defs.push({ id: 'magnet', verb: 'Scoop cargo without stopping', tone: 'you' });
+  if (finite(derived.droneBayCount, 0) > 0) defs.push({ id: 'drone', verb: droneVerb(derived.droneBayCount), tone: 'you' });
+  if (String(derived.jumpDriveTier || '') !== 'jump_t1') defs.push({ id: 'jump', verb: 'Reach further out', tone: 'you' });
+  if (finite(derived.hullRepairOOC, 0) > 0) defs.push({ id: 'repair', verb: 'Heal between fights', tone: 'you' });
+  if (finite(derived.hiddenCargoPct, 0) > 0) defs.push({ id: 'hidden', verb: 'Carry what you should not be carrying', tone: 'foe' });
+  if (finite(derived.scannerCloak, 0) > 0) defs.push({ id: 'cloak', verb: 'Read quieter than you are', tone: 'foe' });
+  if (finite(derived.ramDamageDealtMult, 0) > 0) defs.push({ id: 'ram', verb: 'Use your own hull as the weapon', tone: 'you' });
+  if (derived.hullBurstKind) defs.push({ id: 'burst', verb: BURST_VERB[derived.hullBurstKind] || 'Throw whatever the nose touches', tone: 'you' });
+  if (derived.boost && finite(derived.boost.dashImpulse, 0) > 0) defs.push({ id: 'dash', verb: 'Break away instantly', tone: 'you' });
+  if (finite(derived.damageReductionMult, 1) < 1) defs.push({ id: 'tough', verb: 'Take the hit and keep going', tone: 'you' });
+  if (finite(derived.weaponRangeMult, 1) > 1) defs.push({ id: 'range', verb: 'Reach them before they reach you', tone: 'you' });
+  if (finite(derived.radarRangeMult, 1) > 1) defs.push({ id: 'radar', verb: 'See them first', tone: 'you' });
+  if (finite(derived.cargoCap, 0) > 0) defs.push({ id: 'cargo', verb: `Carry ${formatUnits(derived.cargoCap)} units`, tone: 'calm' });
+  const unique = [];
+  const seen = new Set();
+  for (const row of defs) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    unique.push(row);
+  }
+  return unique;
+}
+
+function capabilityFromModule(moduleId) {
+  const moduleDef = MODULE_BY_ID.get(moduleId);
+  if (!moduleDef) return null;
+  const mods = moduleDef.mods || {};
+  if (mods.masslineHeadId && MASSLINE_BANK[mods.masslineHeadId]) {
+    const entry = MASSLINE_BANK[mods.masslineHeadId];
+    return { id: entry.id, verb: entry.verb };
+  }
+  if (finite(mods.tetherSpoolMult, 1) > 1) return { id: 'spool', verb: 'Swing off things further away' };
+  if (finite(mods.tetherReelRateMult, 1) > 1) return { id: 'reel', verb: 'Reel in faster than they can pull away' };
+  if (finite(mods.magnetRange, 0) > 0) return { id: 'magnet', verb: 'Scoop cargo without stopping' };
+  if (finite(mods.droneBay, 0) > 0) return { id: 'drone', verb: droneVerb(mods.droneBay) };
+  if (finite(mods.jumpDriveTier, 1) > 1) return { id: 'jump', verb: 'Reach further out' };
+  if (finite(mods.hullRepairOOC, 0) > 0) return { id: 'repair', verb: 'Heal between fights' };
+  if (finite(mods.hiddenCargoPct, 0) > 0) return { id: 'hidden', verb: 'Carry what you should not be carrying' };
+  if (finite(mods.scannerCloak, 0) > 0) return { id: 'cloak', verb: 'Read quieter than you are' };
+  if (finite(mods.ramDamageDealtMult, 0) > 0) return { id: 'ram', verb: 'Use your own hull as the weapon' };
+  if (mods.hullBurst) return { id: 'burst', verb: BURST_VERB[mods.hullBurst] || 'Throw whatever the nose touches' };
+  if (finite(mods.damageReductionPct, 0) > 0) return { id: 'tough', verb: 'Take the hit and keep going' };
+  if (finite(mods.weaponRangePct, 0) > 0) return { id: 'range', verb: 'Reach them before they reach you' };
+  if (finite(mods.radarRangePct, 0) > 0) return { id: 'radar', verb: 'See them first' };
+  if (finite(mods.cargoFlat, 0) > 0 || finite(mods.cargoCapPct, 0) > 0) return { id: 'cargo', verb: 'Carry more units' };
+  return null;
+}
+
+function byCost(left, right) {
+  const leftRp = finite(left && left.cost && left.cost.rp, 0);
+  const rightRp = finite(right && right.cost && right.cost.rp, 0);
+  if (leftRp !== rightRp) return leftRp - rightRp;
+  const leftCr = finite(left && left.cost && left.cost.credits, 0);
+  const rightCr = finite(right && right.cost && right.cost.credits, 0);
+  if (leftCr !== rightCr) return leftCr - rightCr;
+  return String(left && left.id || '').localeCompare(String(right && right.id || ''));
+}
+
+function readinessPhrase(readiness) {
+  if (!readiness || !readiness.state) return '';
+  if (readiness.state === 'available') return 'Ready to research.';
+  if (readiness.state === 'funding') {
+    const missing = Array.isArray(readiness.missingCost) ? readiness.missingCost.filter(Boolean) : [];
+    return missing.length ? `Short ${missing.join(' and ')}.` : '';
+  }
+  if (readiness.state === 'locked') {
+    const prereqs = Array.isArray(readiness.missingPrereqs) ? readiness.missingPrereqs.filter(Boolean) : [];
+    if (prereqs.length === 1) return `Needs ${prereqs[0]} first.`;
+    if (prereqs.length > 1) return `Needs ${prereqs.length} earlier steps.`;
+  }
+  return '';
+}
+
+function pickNextNode(state) {
+  const available = [];
+  const funding = [];
+  const locked = [];
+  for (const node of TECH_NODES) {
+    const modules = (node && node.unlocks && node.unlocks.modules) || [];
+    if (!modules.length) continue;
+    const moduleId = modules[0];
+    const cap = capabilityFromModule(moduleId);
+    if (!cap) continue;
+    const readiness = describeTechNodeReadiness(node, state, TECH_NODES);
+    const packet = { node, moduleId, capability: cap, readiness, depth: nodeDepth(node.id) };
+    if (readiness.state === 'available') available.push(packet);
+    else if (readiness.state === 'funding') funding.push(packet);
+    else if (readiness.state === 'locked') locked.push(packet);
+  }
+  available.sort((a, b) => byCost(a.node, b.node));
+  funding.sort((a, b) => byCost(a.node, b.node));
+  locked.sort((a, b) => (a.depth - b.depth) || byCost(a.node, b.node));
+  return available[0] || funding[0] || locked[0] || null;
+}
+
+/**
+ * PQ-142.00 — the four physical verbs, first and unconditional.
+ *
+ * Everything below them is "you fitted a thing that does a thing". These four are the answers to
+ * "what can I do now?": what mass the line will move, what wall the hull walks away from, what
+ * swing the line carries, whether you can put a field in the water. They are always present, they
+ * always carry a number, and the number moves when the fit moves — including when the only thing
+ * that changed is what is in the hold. `depth` puts them ahead of the module chips in the rack.
+ */
+function physicalVerbChips(verbs) {
+  const rows = Array.isArray(verbs.rows) ? verbs.rows : [];
+  return rows.map((row, index) => ({
+    id: row.id,
+    verb: row.verb,
+    sub: row.sub,
+    tone: row.id === 'field_deploy' && row.available === false ? 'calm' : 'you',
+    depth: -100 + index,
+    why: row.why,
+  }));
+}
+
+export function capabilityBandModel({ derived, state, fittings = [] }) {
+  if (!derived) return { chips: [], next: null };
+  const verbs = shipCapabilityVerbs({ derived, fittings });
+  const verbChips = physicalVerbChips(verbs);
+  const baseChips = capabilityDefinitions(derived).map((row) => {
+    const source = row.id;
+    let depth = 0;
+    if (row.id === 'cargo') depth = 0;
+    else if (row.id === 'dash') depth = 0;
+    else {
+      const modCandidate = MODULES.find((moduleDef) => {
+        const mapped = capabilityFromModule(moduleDef.id);
+        return mapped && mapped.id === row.id;
+      });
+      const techNode = modCandidate ? shortestNodeForModule(modCandidate.id) : null;
+      depth = techNode ? techNode.depth : 0;
+    }
+    return {
+      id: row.id,
+      verb: row.verb,
+      sub: subFromDerivedChip(source, derived),
+      tone: row.tone,
+      depth,
+      why: row.verb,
+    };
+  });
+  baseChips.sort((a, b) => (a.depth - b.depth) || a.verb.localeCompare(b.verb));
+  const nextPacket = pickNextNode(state);
+  const next = nextPacket
+    ? {
+      id: `next:${nextPacket.node.id}`,
+      verb: nextPacket.capability.verb,
+      sub: 'NEXT',
+      tone: 'goal',
+      nodeId: nextPacket.node.id,
+      why: readinessPhrase(nextPacket.readiness),
+    }
+    : null;
+  return {
+    chips: verbChips.concat(baseChips),
+    // The hero that opens this band has to advertise what is behind it. It used to read the cargo
+    // cap ("250 / hold") while the band underneath held four capability sentences, so nothing on
+    // the screen gave the player a reason to open it. The lead is the tow verb, because it is the
+    // one capability that names another SHIP -- the most legible thing this rack can say.
+    lead: leadFromTow(verbs.tow),
+    next,
+  };
+}
+
+/**
+ * The capability band's hero: what this hull can pick up, as a verb at hero size and the object as
+ * its word. The first cut put the hull NAME at hero size with "can tow" underneath, and on the live
+ * screen (2026-09-12, Helios, 1280x800) "PELICAN / can tow" read as the player's own ship being a
+ * Pelican, next to a nameplate that said Hitch. The verb is the thing that changes with the fit,
+ * so it is the thing that gets the size; the noun reads under it like every other hero's word.
+ */
+function leadFromTow(tow) {
+  const hullName = tow && tow.hullName ? String(tow.hullName) : null;
+  if (tow && tow.hasTowRating === false) {
+    return {
+      value: 'no Line load',
+      word: 'rams instead',
+      why: (tow && tow.why) || (tow && tow.verb) || '',
+    };
+  }
+  if (hullName) {
+    return {
+      value: 'can tow',
+      word: withArticle(hullName),
+      why: (tow && tow.why) || (tow && tow.verb) || '',
+    };
+  }
+  if (tow && tow.coversRoster) {
+    return {
+      value: 'can tow',
+      word: 'any hull',
+      why: (tow && tow.why) || (tow && tow.verb) || '',
+    };
+  }
+  if (tow && !(tow.massT > 0) && tow.hasTowRating === true) {
+    return {
+      value: 'no tow',
+      word: 'too loaded',
+      why: (tow && tow.why) || (tow && tow.verb) || '',
+    };
+  }
+  return {
+    value: 'no hull',
+    word: 'in reach',
+    why: (tow && tow.why) || (tow && tow.verb) || '',
+  };
+}
+
+export function scarCalloutsForHull({ shipId, livingHull, simTime }) {
+  const shipDef = SHIP_BY_ID.get(shipId);
+  const anchorKind = shipDef && shipDef.id === 'ship_kestrel' ? 'authored' : 'approx';
+  const anchorLabel = anchorKind === 'authored' ? 'AUTHORED' : 'APPROX';
+  const approxSuffix = anchorKind === 'approx'
+    ? ' Marked approximately - this hull has no authored plate for it.'
+    : '';
+  const record = normalizeLivingHull(livingHull, simTime);
+  const rows = [];
+  const killTally = clamp(Math.floor(finite(record.killTally, 0)), 0, LIVING_HULL_KILL_TALLY_MAX);
+  if (killTally > 0) {
+    rows.push({
+      id: 'kills',
+      label: killTally === 1 ? '1 KILL' : `${killTally} KILLS`,
+      sub: anchorLabel,
+      kind: anchorKind,
+      local: KILL_ANCHOR,
+      why: killTally === 1
+        ? `1 confirmed kill painted on the nose.${approxSuffix}`
+        : `${killTally} confirmed kills painted on the nose.${approxSuffix}`,
+    });
+  }
+  const weldCount = clamp(Math.floor(finite(record.repairPatches, 0)), 0, LIVING_HULL_REPAIR_PATCH_MAX);
+  for (let i = 0; i < weldCount; i += 1) {
+    rows.push({
+      id: `weld:${i}`,
+      label: 'WELD',
+      sub: anchorLabel,
+      kind: anchorKind,
+      local: PATCH_ANCHORS[i],
+      why: `A heavy repair left this plate.${approxSuffix}`,
+    });
+  }
+  const scorchCount = clamp(Math.floor(finite(record.heatScorch, 0)), 0, LIVING_HULL_HEAT_SCORCH_MAX);
+  for (let i = 0; i < scorchCount; i += 1) {
+    rows.push({
+      id: `scorch:${i}`,
+      label: 'SCORCH',
+      sub: anchorLabel,
+      kind: anchorKind,
+      local: SCORCH_ANCHORS[i],
+      why: `A weapon vent burned this panel.${approxSuffix}`,
+    });
+  }
+  const grime = livingHullGrimeAt(record, simTime);
+  if (grime > 0.01) {
+    const cycles = Math.max(0, livingHullCyclesSinceWash(record, simTime));
+    rows.push({
+      id: 'grime',
+      label: cycles === 1 ? 'GRIMY | 1 CYCLE' : `GRIMY | ${cycles} CYCLES`,
+      sub: anchorLabel,
+      kind: anchorKind,
+      local: GRIME_ANCHOR,
+      why: cycles === 1
+        ? `1 cycle since the last wash.${approxSuffix}`
+        : `${cycles} cycles since the last wash.${approxSuffix}`,
+    });
+  }
+  if (record.graffitiLine) {
+    rows.push({
+      id: 'graffiti',
+      label: record.graffitiLine,
+      sub: record.graffitiAuthor ? `- ${record.graffitiAuthor}` : anchorLabel,
+      kind: anchorKind,
+      local: GRAFFITI_ANCHOR,
+      why: record.graffitiLine + approxSuffix,
+    });
+  }
+  return rows;
+}

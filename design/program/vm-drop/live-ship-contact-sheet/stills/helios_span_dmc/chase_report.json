@@ -1,0 +1,744 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/helios_span_dmc.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_span_dmc",
+  "focus": [
+    -0.0875,
+    0.0,
+    0.6303
+  ],
+  "boundsMin": [
+    -14.325,
+    -4.625,
+    -2.3
+  ],
+  "boundsMax": [
+    14.15,
+    4.625,
+    3.5606
+  ],
+  "size": [
+    28.475,
+    9.25,
+    5.8606
+  ],
+  "lightScale": 2.6366,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "triangles": 1440,
+      "materials": [
+        "Material_BrushedMetal_RemasterNickel"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
+      "triangles": 168,
+      "materials": [
+        "Material_Mechanical_RemasterOxidized"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_EngineCeramic_RemasterGlazed",
+      "triangles": 3960,
+      "materials": [
+        "Material_EngineCeramic_RemasterGlazed"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "triangles": 360,
+      "materials": [
+        "Material_Mechanical_RemasterHeatCopper"
+      ]
+    },
+    {
+      "name": "LOD0_Gun_Assembly",
+      "triangles": 44,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "triangles": 272,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "triangles": 288,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Cyan",
+      "triangles": 348,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Glass",
+      "triangles": 188,
+      "materials": [
+        "Material_Glass"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Hull",
+      "triangles": 7328,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Mechanical",
+      "triangles": 19416,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Warm",
+      "triangles": 4092,
+      "materials": [
+        "Material_Warm"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_port_aft_0",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_port_aft_1",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_port_aft_2",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_port_aft_3",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_port_fwd_0",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_port_fwd_1",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_port_fwd_2",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_port_fwd_3",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_stbd_aft_0",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_stbd_aft_1",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_stbd_aft_2",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_stbd_aft_3",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_stbd_fwd_0",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_stbd_fwd_1",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_stbd_fwd_2",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_doubler_stbd_fwd_3",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_lamp_head_0",
+      "triangles": 36,
+      "materials": [
+        "KitMat_Emissive"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_lamp_head_1",
+      "triangles": 36,
+      "materials": [
+        "KitMat_Emissive"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_lamp_stanchion_0",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_lamp_stanchion_1",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_orebox_port_aft",
+      "triangles": 532,
+      "materials": [
+        "Material_Hull",
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_orebox_port_fwd",
+      "triangles": 684,
+      "materials": [
+        "Material_Hull",
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_orebox_stbd_aft",
+      "triangles": 532,
+      "materials": [
+        "Material_Hull",
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_orebox_stbd_fwd",
+      "triangles": 684,
+      "materials": [
+        "Material_Hull",
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_piperun",
+      "triangles": 28,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_-1_00",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_-1_01",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_-1_02",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_-1_03",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_-1_04",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_-1_05",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_-1_06",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_1_00",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_1_01",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_1_02",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_1_03",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_1_04",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_1_05",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_aft_1_06",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_-1_00",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_-1_01",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_-1_02",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_-1_03",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_-1_04",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_-1_05",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_-1_06",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_1_00",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_1_01",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_1_02",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_1_03",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_1_04",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_1_05",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_port_fwd_1_06",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_-1_00",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_-1_01",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_-1_02",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_-1_03",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_-1_04",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_-1_05",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_-1_06",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_1_00",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_1_01",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_1_02",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_1_03",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_1_04",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_1_05",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_aft_1_06",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_-1_00",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_-1_01",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_-1_02",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_-1_03",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_-1_04",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_-1_05",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_-1_06",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_1_00",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_1_01",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_1_02",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_1_03",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_1_04",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_1_05",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_rivet_stbd_fwd_1_06",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_saddleclamp_00",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_saddleclamp_01",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_saddleclamp_02",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_saddleclamp_03",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_saddleclamp_04",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_saddleclamp_05",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_DMC_saddleclamp_06",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    }
+  ],
+  "triangles": 42976,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_span_dmc/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_span_dmc/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_span_dmc/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

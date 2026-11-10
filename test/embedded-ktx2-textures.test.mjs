@@ -1,0 +1,301 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+import {
+  EmbeddedKtx2TexturePlugin,
+  registerEmbeddedKtx2Textures,
+} from '../src/render/embeddedKtx2Textures.js';
+import { resetImageSourceDedupeForTests } from '../src/render/imageSourceDedupe.js';
+
+function fakeParser({ images, textures, samplers, ktx2Loader, extensionsRequired } = {}) {
+  const bufferViews = new Map();
+  const parser = {
+    json: { images, textures, samplers, extensionsRequired },
+    options: { ktx2Loader },
+    textureCache: {},
+    sourceCache: {},
+    associations: new Map(),
+    dependencyCalls: [],
+    delegated: [],
+    getDependency(type, index) {
+      parser.dependencyCalls.push([type, index]);
+      if (!bufferViews.has(index)) bufferViews.set(index, new Uint8Array([0xab, 0x4b, 0x54, 0x58, index]).buffer);
+      return Promise.resolve(bufferViews.get(index));
+    },
+    loadTextureImage(textureIndex, sourceIndex, loader) {
+      parser.delegated.push({ textureIndex, sourceIndex, loader });
+      return Promise.resolve('stock-path');
+    },
+    cachedBufferView: (index) => bufferViews.get(index),
+  };
+  return parser;
+}
+
+function fakeKtx2Loader() {
+  const parsed = [];
+  return {
+    parsed,
+    parse(buffer, onLoad) {
+      parsed.push(buffer.byteLength);
+      // The real loader transfers the buffer to its worker, which detaches it on this thread.
+      structuredClone(buffer, { transfer: [buffer] });
+      // A real transcode always resolves with a populated mipmap chain — an empty one would be
+      // indistinguishable from a CPU-detached package texture (imageSourceDedupe treats empty
+      // payloads as dead and re-decodes), so the fixture carries a real level.
+      onLoad(new THREE.CompressedTexture([{ data: new Uint8Array(16), width: 4, height: 4 }], 4, 4));
+    },
+  };
+}
+
+test('an embedded KTX2 image goes straight to KTX2Loader.parse with the stock texture settings', async () => {
+  const ktx2Loader = fakeKtx2Loader();
+  const parser = fakeParser({
+    ktx2Loader,
+    images: [{ bufferView: 3, mimeType: 'image/ktx2', extras: { role: 'hull' } }],
+    textures: [{ source: 0, sampler: 0, name: 'hull_basecolor', extensions: { KHR_texture_basisu: { source: 0 } } }],
+    samplers: [{ magFilter: 9729, minFilter: 9987, wrapS: 33071, wrapT: 10497 }],
+  });
+  const plugin = new EmbeddedKtx2TexturePlugin(parser);
+
+  const texture = await plugin.loadTexture(0);
+
+  assert.ok(texture instanceof THREE.CompressedTexture);
+  assert.deepEqual(parser.dependencyCalls, [['bufferView', 3]]);
+  assert.deepEqual(ktx2Loader.parsed, [5], 'the transcoder received the bufferView bytes');
+  assert.equal(parser.cachedBufferView(3).byteLength, 5, 'the parser-cached bufferView is not detached');
+  assert.equal(texture.flipY, false);
+  assert.equal(texture.name, 'hull_basecolor');
+  assert.equal(texture.magFilter, THREE.LinearFilter);
+  assert.equal(texture.minFilter, THREE.LinearMipmapLinearFilter);
+  assert.equal(texture.wrapS, THREE.ClampToEdgeWrapping);
+  assert.equal(texture.wrapT, THREE.RepeatWrapping);
+  assert.equal(texture.generateMipmaps, false, 'compressed textures never generate mipmaps');
+  assert.equal(texture.userData.mimeType, 'image/ktx2');
+  assert.equal(texture.userData.role, 'hull');
+  assert.deepEqual(parser.associations.get(texture), { textures: 0 });
+  assert.equal(parser.delegated.length, 0, 'no Blob/object-URL stock path for embedded bytes');
+});
+
+test('texture and source caches behave like the stock parser', async () => {
+  const ktx2Loader = fakeKtx2Loader();
+  const parser = fakeParser({
+    ktx2Loader,
+    images: [{ bufferView: 1, mimeType: 'image/ktx2' }],
+    textures: [
+      { source: 0, sampler: 0, extensions: { KHR_texture_basisu: { source: 0 } } },
+      { source: 0, sampler: 1, extensions: { KHR_texture_basisu: { source: 0 } } },
+    ],
+    samplers: [{}, { magFilter: 9728, minFilter: 9728 }],
+  });
+  const plugin = new EmbeddedKtx2TexturePlugin(parser);
+
+  const first = plugin.loadTexture(0);
+  assert.equal(plugin.loadTexture(0), first, 'same image and sampler share one texture promise');
+  const [a, b] = await Promise.all([first, plugin.loadTexture(1)]);
+
+  assert.deepEqual(ktx2Loader.parsed, [5], 'one image source is transcoded once');
+  assert.notEqual(a, b, 'a second sampler gets a clone of the decoded source');
+  assert.equal(b.magFilter, THREE.NearestFilter);
+  assert.equal(b.minFilter, THREE.NearestFilter);
+  assert.equal(a.minFilter, THREE.LinearMipmapLinearFilter);
+});
+
+test('non-basisu textures, URI images and a missing loader follow the stock rules', async () => {
+  const ktx2Loader = fakeKtx2Loader();
+  const parser = fakeParser({
+    ktx2Loader,
+    images: [{ uri: 'hull.ktx2', mimeType: 'image/ktx2' }],
+    textures: [
+      { source: 0 },
+      { source: 0, extensions: { KHR_texture_basisu: { source: 0 } } },
+    ],
+  });
+  const plugin = new EmbeddedKtx2TexturePlugin(parser);
+
+  assert.equal(plugin.loadTexture(0), null, 'textures without the extension are not ours');
+  assert.equal(await plugin.loadTexture(1), 'stock-path', 'URI images keep the stock loader');
+  assert.equal(parser.delegated[0].loader, ktx2Loader);
+
+  const noLoader = new EmbeddedKtx2TexturePlugin(fakeParser({
+    images: [{ bufferView: 0, mimeType: 'image/ktx2' }],
+    textures: [{ source: 0, extensions: { KHR_texture_basisu: { source: 0 } } }],
+  }));
+  assert.equal(noLoader.loadTexture(0), null, 'optional extension without a loader falls back');
+  const required = new EmbeddedKtx2TexturePlugin(fakeParser({
+    extensionsRequired: ['KHR_texture_basisu'],
+    images: [{ bufferView: 0, mimeType: 'image/ktx2' }],
+    textures: [{ source: 0, extensions: { KHR_texture_basisu: { source: 0 } } }],
+  }));
+  assert.throws(() => required.loadTexture(0), /setKTX2Loader must be called/);
+});
+
+test('preverified external KTX2 bytes use the existing transcoder and texture-source dedupe path', async () => {
+  resetImageSourceDedupeForTests();
+  const payload = new Uint8Array([0xab, 0x4b, 0x54, 0x58, 4, 5, 6]);
+  const ktx2Loader = fakeKtx2Loader();
+  ktx2Loader.parse = (buffer, onLoad) => {
+    assert.deepEqual([...new Uint8Array(buffer)], [...payload]);
+    structuredClone(buffer, { transfer: [buffer] });
+    onLoad(new THREE.CompressedTexture([{ data: new Uint8Array(16), width: 4, height: 4 }], 4, 4));
+  };
+  const uri = '../_shared/images/abc.ktx2';
+  const parser = fakeParser({
+    ktx2Loader,
+    images: [{ uri, mimeType: 'image/ktx2', extras: { shared: true } }],
+    textures: [{ name: 'sharedAtlas', sampler: 0, extensions: { KHR_texture_basisu: { source: 0 } } }],
+    samplers: [{ magFilter: 9728, minFilter: 9728, wrapS: 33071, wrapT: 33648 }],
+  });
+  parser.verifiedExternalKtx2Resources = new Map([[uri, payload]]);
+  const texture = await new EmbeddedKtx2TexturePlugin(parser).loadTexture(0);
+  assert.equal(texture.name, 'sharedAtlas');
+  assert.equal(texture.magFilter, THREE.NearestFilter);
+  assert.equal(texture.wrapS, THREE.ClampToEdgeWrapping);
+  assert.equal(texture.wrapT, THREE.MirroredRepeatWrapping);
+  assert.equal(texture.userData.shared, true);
+  assert.deepEqual(ktx2Loader.parsed, []);
+});
+
+test('registered on the vendored GLTFLoader it replaces the built-in KHR_texture_basisu handler', async () => {
+  const loader = new GLTFLoader();
+  loader.register(registerEmbeddedKtx2Textures);
+  loader.register(registerEmbeddedKtx2Textures);
+  assert.equal(
+    loader.pluginCallbacks.filter((callback) => callback === registerEmbeddedKtx2Textures).length,
+    1,
+    'repeated registration from each runtime is de-duplicated',
+  );
+  const gltf = await loader.parseAsync(JSON.stringify({ asset: { version: '2.0' } }), '');
+  assert.ok(
+    gltf.parser.plugins.KHR_texture_basisu instanceof EmbeddedKtx2TexturePlugin,
+    'the parser resolves KHR_texture_basisu to this plugin',
+  );
+});
+
+test('a plain bufferView is sliced once straight off the GLB body, without touching the bufferView cache', async () => {
+  const ktx2Loader = fakeKtx2Loader();
+  const body = new Uint8Array(64);
+  for (let i = 0; i < body.length; i += 1) body[i] = (i * 7 + 3) & 0xff;
+  const parser = fakeParser({
+    ktx2Loader,
+    images: [{ bufferView: 1, mimeType: 'image/ktx2' }],
+    textures: [{ source: 0, extensions: { KHR_texture_basisu: { source: 0 } } }],
+  });
+  parser.json.bufferViews = [
+    { buffer: 0, byteOffset: 0, byteLength: 8 },
+    { buffer: 0, byteOffset: 17, byteLength: 21 },
+  ];
+  const received = [];
+  ktx2Loader.parse = (buffer, onLoad) => {
+    received.push(new Uint8Array(buffer.slice(0)));
+    structuredClone(buffer, { transfer: [buffer] });
+    onLoad(new THREE.CompressedTexture([], 4, 4));
+  };
+  parser.getDependency = (type, index) => {
+    parser.dependencyCalls.push([type, index]);
+    assert.equal(type, 'buffer', 'only the binary body is requested');
+    return Promise.resolve(body.buffer);
+  };
+
+  await new EmbeddedKtx2TexturePlugin(parser).loadTexture(0);
+
+  assert.deepEqual(parser.dependencyCalls, [['buffer', 0]]);
+  assert.deepEqual(received, [body.slice(17, 38)], 'the transcoder gets exactly body[byteOffset, byteOffset + byteLength)');
+  assert.equal(body.buffer.byteLength, 64, 'the parser-cached GLB body is not detached');
+});
+
+test('extension-decoded bufferViews keep the parser bufferView path and its copy', async () => {
+  const ktx2Loader = fakeKtx2Loader();
+  const parser = fakeParser({
+    ktx2Loader,
+    images: [{ bufferView: 0, mimeType: 'image/ktx2' }],
+    textures: [{ source: 0, extensions: { KHR_texture_basisu: { source: 0 } } }],
+  });
+  parser.json.bufferViews = [
+    { buffer: 0, byteLength: 5, extensions: { EXT_meshopt_compression: { buffer: 1, byteLength: 5 } } },
+  ];
+
+  await new EmbeddedKtx2TexturePlugin(parser).loadTexture(0);
+
+  assert.deepEqual(parser.dependencyCalls, [['bufferView', 0]]);
+  assert.deepEqual(ktx2Loader.parsed, [5]);
+  assert.equal(parser.cachedBufferView(0).byteLength, 5, 'the parser-cached bufferView is not detached');
+});
+
+test('real render package: KTX2 bytes handed to the transcoder are identical with the direct slice on and off', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { setEmbeddedKtx2DirectSliceForBench } = await import('../src/render/embeddedKtx2Textures.js');
+  const glbUrl = new URL('../assets/ships/release/render-packages/aftermath-aft-weapon-spar/render.glb', import.meta.url);
+  const glb = readFileSync(glbUrl);
+  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+  await MeshoptDecoder.ready;
+
+  async function collect(on) {
+    setEmbeddedKtx2DirectSliceForBench(on);
+    // Identical image bytes already decoded this process dedupe to a shared source and skip the
+    // transcoder — reset so both passes observe a real parse.
+    resetImageSourceDedupeForTests();
+    const seen = [];
+    const ktx2Loader = {
+      parse(buffer, onLoad) {
+        seen.push(Buffer.from(buffer.slice(0)).toString('base64'));
+        structuredClone(buffer, { transfer: [buffer] });
+        onLoad(new THREE.CompressedTexture([], 4, 4));
+      },
+    };
+    const loader = new GLTFLoader();
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.register(registerEmbeddedKtx2Textures);
+    loader.setKTX2Loader(ktx2Loader);
+    const ab = glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength);
+    await loader.parseAsync(ab, '');
+    return seen.sort();
+  }
+  try {
+    const off = await collect(false);
+    const on = await collect(true);
+    assert.ok(off.length > 0, 'the package carries embedded KTX2 images');
+    assert.deepEqual(on, off);
+  } finally {
+    setEmbeddedKtx2DirectSliceForBench(true);
+  }
+});
+
+test('on the vendored loader (#168 in-place GLB body) the direct slice reads the fetched GLB and never materializes the body', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { setEmbeddedKtx2DirectSliceForBench } = await import('../src/render/embeddedKtx2Textures.js');
+  const { GLTFLoader: VendoredGLTFLoader } = await import('../vendor/addons/loaders/GLTFLoader.js');
+  const glb = readFileSync(new URL('../assets/ships/release/render-packages/aftermath-aft-weapon-spar/render.glb', import.meta.url));
+  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+  await MeshoptDecoder.ready;
+
+  async function collect(Loader, on) {
+    setEmbeddedKtx2DirectSliceForBench(on);
+    resetImageSourceDedupeForTests();
+    const seen = [];
+    let parser = null;
+    const loader = new Loader();
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.register(registerEmbeddedKtx2Textures);
+    loader.register((p) => { parser = p; return { name: 'ktx2-168-probe' }; });
+    loader.setKTX2Loader({
+      parse(buffer, onLoad) {
+        seen.push(Buffer.from(buffer.slice(0)).toString('base64'));
+        structuredClone(buffer, { transfer: [buffer] });
+        onLoad(new THREE.CompressedTexture([], 4, 4));
+      },
+    });
+    await loader.parseAsync(glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength), '');
+    return { seen: seen.sort(), binary: parser.extensions.KHR_binary_glTF };
+  }
+  try {
+    const stockOff = await collect(GLTFLoader, false);
+    const vendoredOn = await collect(VendoredGLTFLoader, true);
+    assert.ok(stockOff.seen.length > 0);
+    assert.deepEqual(vendoredOn.seen, stockOff.seen);
+    assert.equal(vendoredOn.binary._body, null, 'the GLB body is never copied out');
+  } finally {
+    setEmbeddedKtx2DirectSliceForBench(true);
+  }
+});

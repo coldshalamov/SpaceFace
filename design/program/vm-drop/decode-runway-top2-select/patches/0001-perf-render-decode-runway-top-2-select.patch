@@ -1,0 +1,344 @@
+From d510451c0b56497bcd8c870e16b8b19f7d6475e9 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 02:29:54 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20decode-runway=20top-2=20select?=
+ =?UTF-8?q?=20(~4.09=C3=97=20glass=20timing)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+kickDecodeRunwayAssets no longer slice+sorts the full presentation list by
+entityTimeToGlassSeconds. Select the two earliest (wave-first) eligible
+ship/station starts in one pass. Also: hold-exempt type-gates dressing before
+tGlass; reconcileMeshResidency caches time-to-glass across classify/sort/rehoist.
+
+Portable microbench primary ~4.09× (400 entities / 24 ships); glass calls
+2174→24 per iter. Focused decode/hold/wave/residency 42/42.
+---
+ src/render/renderer.js | 265 ++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 234 insertions(+), 31 deletions(-)
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index 591ef8a78..461a35706 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -1442,6 +1442,15 @@ function isHoldExemptMeshBuild(entity, state, glassIds) {
+   // Wave-planned hull keys (Choice B) are next-contact by schedule — owe their mesh under
+   // the hold even when spawn distance sits on the glass lip (~165 WU vs ~163 halfX).
+   if (entityMatchesWaveHullRunway(entity, state)) return true;
++  // Approach-time exemption is for hulls and ledger rocks — the populations the
++  // hold historically starved. Dressing/props that failed the readable-glass test
++  // stay deferred; paying time-to-glass across the whole presentation list was the
++  // quiet-CPU owner under kickDecode's sibling collect.
++  const typ = entity.type;
++  if (typ !== 'ship' && typ !== 'station' && typ !== 'wreck' && typ !== 'drone'
++      && typ !== 'asteroid' && !isPresentationLedgerRow(entity)) {
++    return false;
++  }
+   const env = renderAdmissionEnv(state);
+   const horizon = isPresentationLedgerRow(entity)
+     ? TABLE_COLLECT_HORIZON_SECONDS
+@@ -1662,6 +1671,204 @@ function syncResolvingMarker(mesh) {
+   marker.visible = isAuthoredPendingStatus(mesh.userData.authoredAssetState);
+ }
+ 
++/**
++ * Bench-only strategy toggle for decode-runway start selection.
++ * Production stays on `top2`. `sort` restores the legacy full-list
++ * slice+sort that recomputed entityTimeToGlassSeconds on every compare.
++ */
++let _decodeRunwaySelectStrategy = 'top2';
++
++export function setDecodeRunwaySelectStrategyForBench(strategy) {
++  _decodeRunwaySelectStrategy = strategy === 'sort' ? 'sort' : 'top2';
++  return _decodeRunwaySelectStrategy;
++}
++
++export function getDecodeRunwaySelectStrategyForBench() {
++  return _decodeRunwaySelectStrategy;
++}
++
++/**
++ * Pick up to `limit` ship/station decode-runway starts from a presentation list.
++ * Priority matches the historical kickDecode order: wave-planned hulls first,
++ * then earliest time-to-glass. `top2` (default) does one O(n) pass over eligible
++ * candidates; `sort` rebuilds the legacy full-list comparator (bench / oracle).
++ *
++ * Eligibility (same as kickDecodeRunwayAssets):
++ * - alive ship/station that still needs authored decode and is not already pending
++ * - wave-planned OR authored-upgrade-relevant OR time-to-glass within the decode runway
++ */
++export function selectDecodeRunwayPrefetchStarts(
++  list,
++  state,
++  env,
++  decodePad,
++  {
++    limit = 2,
++    needsDecode = null,
++    isPending = null,
++    strategy = null,
++    glassCalls = null,
++  } = {},
++) {
++  const mode = strategy || _decodeRunwaySelectStrategy;
++  const horizon = TABLE_DECODE_RUNWAY_SECONDS;
++  const pad = Number(decodePad) || 0;
++  const maxStarts = Math.max(0, limit | 0);
++  if (!Array.isArray(list) || maxStarts === 0 || !state || !env) return [];
++
++  const decodeSeconds = (entity) => {
++    if (glassCalls) glassCalls.count += 1;
++    return entityTimeToGlassSeconds(entity, env, state, horizon, pad);
++  };
++
++  const eligible = (entity) => {
++    if (!entity || entity.alive === false) return false;
++    if (entity.type !== 'ship' && entity.type !== 'station') return false;
++    if (typeof needsDecode === 'function' && !needsDecode(entity)) return false;
++    if (typeof isPending === 'function' && isPending(entity.id)) return false;
++    if (entityMatchesWaveHullRunway(entity, state)) return true;
++    if (isEntityAuthoredUpgradeRelevant(entity, state)) return true;
++    return decodeSeconds(entity) <= horizon;
++  };
++
++  if (mode === 'sort') {
++    // Legacy: sort the entire presentation list by (wave, time-to-glass), then
++    // walk until `limit` eligible starts are collected. Pays glass timing on
++    // every comparator call — including rocks/dressing that can never start.
++    const ordered = list.length > 1
++      ? list.slice().sort((a, b) => {
++        const aw = entityMatchesWaveHullRunway(a, state) ? 0 : 1;
++        const bw = entityMatchesWaveHullRunway(b, state) ? 0 : 1;
++        if (aw !== bw) return aw - bw;
++        return decodeSeconds(a) - decodeSeconds(b);
++      })
++      : list.slice();
++    const out = [];
++    for (let i = 0; i < ordered.length && out.length < maxStarts; i++) {
++      const entity = ordered[i];
++      if (!eligible(entity)) continue;
++      out.push(entity);
++    }
++    return out;
++  }
++
++  // Production: single pass, track the best `limit` eligible candidates.
++  // Wave rank 0 outranks rank 1; within a rank, lower time-to-glass wins.
++  // Glass timing runs at most once per eligible ship/station (plus the
++  // eligibility probe for non-wave / non-authored-relevant rows).
++  const best = []; // { entity, wave, t }
++  for (let i = 0; i < list.length; i++) {
++    const entity = list[i];
++    if (!entity || entity.alive === false) continue;
++    if (entity.type !== 'ship' && entity.type !== 'station') continue;
++    if (typeof needsDecode === 'function' && !needsDecode(entity)) continue;
++    if (typeof isPending === 'function' && isPending(entity.id)) continue;
++    const wave = entityMatchesWaveHullRunway(entity, state) ? 0 : 1;
++    // Wave-planned starts are always eligible; others need authored relevance or a
++    // decode-runway deadline. Compute time-to-glass once for ranking + eligibility.
++    const t = decodeSeconds(entity);
++    if (wave !== 0
++        && !isEntityAuthoredUpgradeRelevant(entity, state)
++        && !(t <= horizon)) continue;
++    // Insert into sorted best[] (ascending wave, then t). Length stays <= limit.
++    let placed = false;
++    for (let b = 0; b < best.length; b++) {
++      const cur = best[b];
++      if (wave < cur.wave || (wave === cur.wave && t < cur.t)) {
++        best.splice(b, 0, { entity, wave, t });
++        placed = true;
++        break;
++      }
++    }
++    if (!placed) best.push({ entity, wave, t });
++    if (best.length > maxStarts) best.length = maxStarts;
++  }
++  const out = [];
++  for (let i = 0; i < best.length; i++) out.push(best[i].entity);
++  return out;
++}
++
++/**
++ * Portable microbench for decode-runway start selection.
++ * Builds a quiet presentation-shaped list (many rocks + a few inbound ships)
++ * and compares legacy full-list sort vs top-2 select.
++ */
++export function runDecodeRunwaySelectMicrobench(options = {}) {
++  const entityCount = Math.max(8, options.entityCount | 0 || 400);
++  const shipCount = Math.max(2, options.shipCount | 0 || 24);
++  const iterations = Math.max(1, options.iterations | 0 || 200);
++  const strategy = options.strategy === 'sort' ? 'sort' : 'top2';
++  const state = {
++    mode: 'flight',
++    simTime: 30,
++    tick: 1800,
++    playerId: 1,
++    camera: { zoom: 144, liveZoom: 144, fov: 50, tilt: 60, aspect: 16 / 9, focus: { x: 0, z: 0 } },
++    settings: { video: { fov: 50 } },
++    world: { frameOrigin: { x: 0, z: 0 }, currentSectorId: 'sector_ceres_belt' },
++    render: {},
++  };
++  const player = {
++    id: 1, type: 'ship', alive: true, isPlayer: true,
++    pos: { x: 0, z: 0 }, vel: { x: 40, z: 0 }, radius: 8, maxSpeed: 220,
++  };
++  const entities = new Map([[player.id, player]]);
++  state.entities = entities;
++  // Presentation-shaped crowd: mostly static rocks, plus inbound/outbound ships.
++  const list = [];
++  for (let i = 0; i < entityCount; i++) {
++    const isShip = i < shipCount;
++    const ang = (i * 2.399963) % (Math.PI * 2);
++    const dist = isShip ? (180 + (i % 7) * 90) : (400 + (i % 97) * 35);
++    const inbound = isShip && (i % 3) !== 0;
++    const entity = {
++      id: 1000 + i,
++      type: isShip ? 'ship' : 'asteroid',
++      alive: true,
++      pos: { x: Math.cos(ang) * dist, z: Math.sin(ang) * dist },
++      vel: isShip
++        ? { x: inbound ? -Math.cos(ang) * 160 : Math.cos(ang) * 40, z: inbound ? -Math.sin(ang) * 160 : Math.sin(ang) * 40 }
++        : { x: 0, z: 0 },
++      radius: isShip ? 10 : 18,
++      data: isShip ? { trafficRole: 'hauler' } : { rock: true },
++    };
++    list.push(entity);
++    entities.set(entity.id, entity);
++  }
++
++  const env = renderAdmissionEnv(state);
++  const decodePad = approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state));
++  const glassCalls = { count: 0 };
++  const needsDecode = () => true;
++  const isPending = () => false;
++
++  // Warm
++  selectDecodeRunwayPrefetchStarts(list, state, env, decodePad, {
++    limit: 2, needsDecode, isPending, strategy, glassCalls: { count: 0 },
++  });
++
++  glassCalls.count = 0;
++  const t0 = performance.now();
++  let selected = 0;
++  for (let n = 0; n < iterations; n++) {
++    const picks = selectDecodeRunwayPrefetchStarts(list, state, env, decodePad, {
++      limit: 2, needsDecode, isPending, strategy, glassCalls,
++    });
++    selected += picks.length;
++  }
++  const ms = performance.now() - t0;
++  return {
++    strategy,
++    entityCount,
++    shipCount,
++    iterations,
++    ms,
++    glassCalls: glassCalls.count,
++    selected,
++    avgGlassCallsPerIter: glassCalls.count / iterations,
++  };
++}
++
+ function kickDecodeRunwayAssets(owner, entities) {
+   const state = owner && owner.state;
+   const renderer = owner && owner.renderer;
+@@ -1670,35 +1877,18 @@ function kickDecodeRunwayAssets(owner, entities) {
+   const list = Array.isArray(entities) ? entities : [];
+   const env = renderAdmissionEnv(state);
+   const decodePad = approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state));
+-  const decodeSeconds = (entity) => entityTimeToGlassSeconds(
+-    entity, env, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad);
+   // Prefer planned wave hulls so spawn-cohort decode finishes before a rim pop, then
+   // the earliest glass deadline: the plan decode lane is serial, so the hull closest
+-  // to contact always claims it first.
+-  const ordered = list.length > 1
+-    ? list.slice().sort((a, b) => {
+-      const aw = entityMatchesWaveHullRunway(a, state) ? 0 : 1;
+-      const bw = entityMatchesWaveHullRunway(b, state) ? 0 : 1;
+-      if (aw !== bw) return aw - bw;
+-      return decodeSeconds(a) - decodeSeconds(b);
+-    })
+-    : list;
++  // to contact always claims it first. Select top-2 in one pass — do not sort the
++  // full presentation list (that recomputed time-to-glass on every compare).
++  const picks = selectDecodeRunwayPrefetchStarts(list, state, env, decodePad, {
++    limit: 2,
++    needsDecode: (entity) => meshNeedsAuthoredDecode(owner, entity),
++    isPending: (id) => pending.has(id),
++  });
+   let started = 0;
+-  for (let i = 0; i < ordered.length && started < 2; i++) {
+-    const entity = ordered[i];
+-    if (!entity || entity.alive === false) continue;
+-    if (entity.type !== 'ship' && entity.type !== 'station') continue;
+-    if (!meshNeedsAuthoredDecode(owner, entity)) continue;
+-    if (pending.has(entity.id)) continue;
+-    // Wave-planned keys are next-contact; do not wait for the ordinary decode disc
+-    // once the schedule has named them. Other hulls earn a start either through the
+-    // ordinary admission policy or through the longer decode runway: the authored
+-    // GLB decode is the long pole on first contact and the canonical library dedupes
+-    // by file, so a hull closing inside the decode window gets its plan warm while
+-    // it is still off the glass rather than reaching contact as a resolving marker.
+-    if (!entityMatchesWaveHullRunway(entity, state)
+-        && !isEntityAuthoredUpgradeRelevant(entity, state)
+-        && !(decodeSeconds(entity) <= TABLE_DECODE_RUNWAY_SECONDS)) continue;
++  for (let i = 0; i < picks.length; i++) {
++    const entity = picks[i];
+     pending.add(entity.id);
+     started += 1;
+     const opts = entityMatchesWaveHullRunway(entity, state)
+@@ -11794,6 +11984,21 @@ export const render = {
+       || (this._meshResidencyUrgentShipCandidates = []);
+     const urgentOthers = this._meshResidencyUrgentOtherCandidates
+       || (this._meshResidencyUrgentOtherCandidates = []);
++    // One time-to-glass per candidate for classify + sort + re-hoist — the comparator
++    // used to re-solve the quadratic on every compare.
++    const tGlassCache = this._meshResidencyTGlassCache
++      || (this._meshResidencyTGlassCache = new Map());
++    tGlassCache.clear();
++    const tGlassOf = (entity) => {
++      const id = entity && entity.id;
++      if (id == null) return entityTimeToGlassSeconds(entity, env, state);
++      let t = tGlassCache.get(id);
++      if (t === undefined) {
++        t = entityTimeToGlassSeconds(entity, env, state);
++        tGlassCache.set(id, t);
++      }
++      return t;
++    };
+     urgentShips.length = 0;
+     urgentOthers.length = 0;
+     for (let index = 0; index < presentationList.length; index++) {
+@@ -11803,7 +12008,7 @@ export const render = {
+           || this._sectorBoundaryPreparations?.has(entity.id)
+           || !isEntityRenderRelevant(entity, state)) continue;
+       // Candidates about to cross the glass drain ahead of ordinary runway filler.
+-      const urgent = entityTimeToGlassSeconds(entity, env, state) <= TABLE_BUILD_URGENT_SECONDS;
++      const urgent = tGlassOf(entity) <= TABLE_BUILD_URGENT_SECONDS;
+       if (entity.type === 'ship') (urgent ? urgentShips : shipCandidates).push(entity);
+       else (urgent ? urgentOthers : otherCandidates).push(entity);
+     }
+@@ -11811,9 +12016,7 @@ export const render = {
+     // of several same-tier candidates spent the bounded per-frame build budget — a distant
+     // prop collected early could outrank a hull crossing the runway. Order every tier by
+     // predicted time-to-glass so the nearest deadline always drains first.
+-    const byTimeToGlass = (a, b) => (
+-      entityTimeToGlassSeconds(a, env, state) - entityTimeToGlassSeconds(b, env, state)
+-    );
++    const byTimeToGlass = (a, b) => tGlassOf(a) - tGlassOf(b);
+     urgentShips.sort(byTimeToGlass);
+     urgentOthers.sort(byTimeToGlass);
+     shipCandidates.sort(byTimeToGlass);
+@@ -11873,7 +12076,7 @@ export const render = {
+       restNow.length = 0;
+       for (let index = this._meshBuildQueueHead; index < pendingBuilds.length; index++) {
+         const entity = resolveWorldPresentationEntity(state, pendingBuilds[index]);
+-        if (entity && entityTimeToGlassSeconds(entity, env, state) <= TABLE_BUILD_URGENT_SECONDS) {
++        if (entity && tGlassOf(entity) <= TABLE_BUILD_URGENT_SECONDS) {
+           urgentNow.push(pendingBuilds[index]);
+         } else {
+           restNow.push(pendingBuilds[index]);
+-- 
+2.47.3
+

@@ -1,0 +1,233 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  classifyRuntimeWitness,
+  collectRuntimeWitnessSample,
+  createRuntimeWitness,
+  formatRuntimeWitnessReport,
+} from '../src/core/runtimeWitness.js';
+
+function series(overrides = {}, count = 8) {
+  return Array.from({ length: count }, (_, index) => ({
+    simTime: index,
+    executedFrames: index * 60,
+    renderUpdates: index * 60,
+    rendererFrame: index * 60,
+    rendererFrameObserved: true,
+    hasPos: true,
+    posX: index * 4,
+    posZ: 0,
+    speed: 40,
+    clockScale: 1,
+    mode: 'flight',
+    suspended: false,
+    documentHidden: false,
+    contextLost: false,
+    hitch: false,
+    frameErrorCount: 0,
+    lastFrameError: null,
+    topPhase: 'render',
+    topPhaseP95: 8,
+    ...overrides,
+  }));
+}
+
+test('picture and worker-lane blocks surface the native contract and apply tail', () => {
+  const samples = series();
+  const last = samples[samples.length - 1];
+  last.picture = {
+    native: true, bufferWidth: 1600, bufferHeight: 900, cssWidth: 1280, cssHeight: 720,
+    devicePixelRatio: 1.25, pixelRatio: 1.25, renderScale: 1, dynResScale: 1,
+    hitchReliefLevel: 0, contentScale: 1, effectiveSceneScale: 1, activePath: 'bloom',
+    bloomSelected: true, bloomLevels: 2, bloomStrength: 0.4, casSharpenActive: false,
+    casReconstruction: 'bypass', particleQuality: 'medium', skyTier: 'mid',
+    sharpen: false, frameCap: 30, contentNative: true,
+  };
+  last.lane = {
+    workerApplyMaxMs: 224.7, appliesOver100ms: 2, msSinceLastAppliedReply: 16,
+    freezeActive: false, commandInFlightWallMs: 12, replyCount: 99,
+    lastReplyWork: { applyFoldMs: 3, applyReconcileMs: 8, applyEventsMs: 2 },
+  };
+  const text = formatRuntimeWitnessReport({ verdict: classifyRuntimeWitness(samples), samples });
+  assert.match(text, /## Picture contract/);
+  assert.match(text, /native: yes/);
+  assert.match(text, /content: 1:1/);
+  assert.match(text, /particles medium \| sky mid/);
+  assert.match(text, /## Worker lane/);
+  assert.match(text, /apply max: 224\.7 ms/);
+  assert.match(text, /reconcile 8\.0 ms/);
+});
+
+test('a sub-native buffer is reported as a picture failure, not silently accepted', () => {
+  const samples = series();
+  samples[samples.length - 1].picture = {
+    native: false, bufferWidth: 1280, bufferHeight: 720, cssWidth: 1280, cssHeight: 720,
+    devicePixelRatio: 1.25, pixelRatio: 1,
+  };
+  const text = formatRuntimeWitnessReport({ verdict: classifyRuntimeWitness(samples), samples });
+  assert.match(text, /native: NO/);
+});
+
+test('a native buffer with a 0.9 content scale is soft-picture, not presenting', () => {
+  const samples = series();
+  const last = samples[samples.length - 1];
+  last.picture = {
+    native: true, contentNative: false, effectiveSceneScale: 0.9, contentScale: 0.9,
+    casSharpenActive: true,
+  };
+  const verdict = classifyRuntimeWitness(samples);
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.kind, 'soft-picture');
+  assert.equal(verdict.facts.contentNative, false);
+});
+
+test('a presented world that repeats a moment is world-hold, not presenting', () => {
+  const samples = series();
+  for (let i = 0; i < samples.length; i++) {
+    samples[i].presented = { maxHeldMs: i === samples.length - 1 ? 400 : 0, gapsOver100: 0 };
+  }
+  const verdict = classifyRuntimeWitness(samples);
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.kind, 'world-hold');
+  assert.equal(verdict.facts.maxHeldPresentDeltaMs, 400);
+});
+
+test('a moving sim clock with a stuck GPU frame is draw-dead, not healthy', () => {
+  const verdict = classifyRuntimeWitness(series({ rendererFrame: 12 }));
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.kind, 'draw-dead');
+});
+
+test('warm-up GPU draws cannot hide stopped world submissions', () => {
+  const verdict = classifyRuntimeWitness(series({ worldSubmissionsObserved: true, worldSubmittedFrames: 10 }));
+  assert.equal(verdict.kind, 'draw-dead');
+});
+
+test('successful world submissions take precedence over an intermediate render counter', () => {
+  const samples = series({ worldSubmissionsObserved: true, rendererFrame: 12 })
+    .map((row, index) => ({ ...row, worldSubmittedFrames: index * 60 }));
+  assert.equal(classifyRuntimeWitness(samples).kind, 'presenting');
+});
+
+test('short callback work does not hide a long interval between callbacks', () => {
+  const sample = collectRuntimeWitnessSample({ perfRuntime: {
+    readFrameSample: () => ({ callbackMs: 4, callbackIntervalMs: 150 }),
+  } });
+  assert.equal(sample.hitch, true);
+  assert.equal(sample.callbackIntervalMs, 150);
+});
+
+test('unchanged canvas hashes are draw-dead even when sim and rAF counters move', () => {
+  const verdict = classifyRuntimeWitness(series(), {
+    canvasHashes: ['aaaa', 'aaaa', 'aaaa'],
+  });
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.kind, 'draw-dead');
+});
+
+test('sim, rAF, and GPU frames advancing is presenting', () => {
+  const verdict = classifyRuntimeWitness(series());
+  assert.equal(verdict.ok, true);
+  assert.equal(verdict.kind, 'presenting');
+  assert.match(verdict.headline, /render/);
+});
+
+test('stopped rAF and stopped sim is loop-dead', () => {
+  const verdict = classifyRuntimeWitness(series({
+    simTime: 10,
+    executedFrames: 10,
+    rendererFrame: 10,
+  }));
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.kind, 'loop-dead');
+});
+
+test('repeated frame errors are draw-throwing', () => {
+  const samples = series().map((row, index) => ({
+    ...row,
+    frameErrorCount: index + 3,
+    lastFrameError: 'contact-shadow unsolicited upload',
+  }));
+  const verdict = classifyRuntimeWitness(samples);
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.kind, 'draw-throwing');
+});
+
+test('GPU context lost wins over moving counters', () => {
+  const verdict = classifyRuntimeWitness(series({ contextLost: true }));
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.kind, 'gpu-lost');
+});
+
+test('hitching names the top phase instead of declaring the game healthy', () => {
+  const verdict = classifyRuntimeWitness(series({ hitch: true, topPhase: 'admission', topPhaseP95: 40 }));
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.kind, 'hitching');
+  assert.match(verdict.next, /admission/);
+});
+
+test('missing GPU observation cannot false-green a Node-only sample', () => {
+  const verdict = classifyRuntimeWitness(series({ rendererFrameObserved: false, rendererFrame: 0 }));
+  assert.equal(verdict.ok, null);
+  assert.equal(verdict.kind, 'inconclusive');
+});
+
+test('collect reads player pose and renderer frame without throwing', () => {
+  const state = {
+    mode: 'flight',
+    simTime: 12,
+    tick: 720,
+    clockScale: 1,
+    playerId: 1,
+    entities: new Map([[1, { pos: { x: 3, z: 4 }, vel: { x: 10, z: 0 } }]]),
+    render: {
+      renderer: { info: { render: { frame: 44, calls: 120 } } },
+    },
+  };
+  const sample = collectRuntimeWitnessSample(state, {
+    diagnostics: { executedFrames: 90, renderUpdates: 90, lifecycleState: 'foreground-visible' },
+    lifecycleState: 'foreground-visible',
+  });
+  assert.equal(sample.hasPos, true);
+  assert.equal(sample.speed, 10);
+  assert.equal(sample.rendererFrame, 44);
+  assert.equal(sample.rendererFrameObserved, true);
+  assert.equal(sample.drawCalls, 120);
+});
+
+test('collect uses the completed-frame diagnostics mirror after renderer counters reset', () => {
+  const state = {
+    playerId: 1,
+    entities: new Map([[1, { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } }]]),
+    render: {
+      renderer: { info: { render: { frame: 45, calls: 0 } } },
+      diagnostics: { info: { calls: 87, triangles: 14000 } },
+    },
+  };
+  const sample = collectRuntimeWitnessSample(state);
+  assert.equal(sample.rendererFrame, 45);
+  assert.equal(sample.drawCalls, 87);
+});
+
+test('witness ring throttles to one sample per period', () => {
+  const witness = createRuntimeWitness({ nowMs: () => 1000 });
+  const state = { simTime: 1, mode: 'flight', timeScale: 1 };
+  const extras = { diagnostics: { executedFrames: 1 }, wallMs: 1000 };
+  assert.ok(witness.observe(state, extras));
+  assert.equal(witness.observe(state, extras), null);
+  assert.ok(witness.observe(state, { ...extras, wallMs: 2000 }));
+  assert.equal(witness.recent().length, 2);
+});
+
+test('plain-language report includes verdict and ranked costs', () => {
+  const samples = series({
+    costs: [{ name: 'render', p95: 12, avg: 8, max: 20 }],
+  });
+  const text = formatRuntimeWitnessReport({
+    verdict: classifyRuntimeWitness(samples),
+    samples,
+  });
+  assert.match(text, /Verdict: presenting/);
+  assert.match(text, /render: p95 12/);
+});

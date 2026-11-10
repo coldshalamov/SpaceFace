@@ -1,0 +1,17 @@
+{
+  "name": "jump_to_tab_by_name",
+  "description": "\nSwitch the active workspace tab to *name*.\n",
+  "inputSchema": {
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "jump_to_tab_by_nameArguments",
+    "type": "object"
+  }
+}

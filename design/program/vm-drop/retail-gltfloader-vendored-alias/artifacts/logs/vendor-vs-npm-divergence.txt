@@ -1,0 +1,46 @@
+# vendor/ vs node_modules/three@0.184.0 on bare master 97c88f92b
+# file | status | SpaceFace-marked lines | imported by src (retail resolves from node_modules unless aliased)
+vendor/three.core.js | identical | 0 | three (bare)
+vendor/three.module.js | DIFF | 2 | three (bare)
+vendor/addons/libs/basis/basis_transcoder.js | identical | 0 | src importers: 0
+vendor/addons/libs/basis/basis_transcoder.worker.js | vendor-only | 0 | src importers: 0
+vendor/addons/libs/draco/gltf/draco_decoder.js | identical | 0 | src importers: 0
+vendor/addons/libs/draco/gltf/draco_wasm_wrapper.js | identical | 0 | src importers: 0
+vendor/addons/libs/ktx-parse.module.js | identical | 0 | src importers: 0
+vendor/addons/libs/meshopt_decoder.module.js | identical | 0 | src importers: 2
+vendor/addons/libs/zstddec.module.js | identical | 0 | src importers: 0
+vendor/addons/loaders/DRACOLoader.js | identical | 0 | src importers: 1
+vendor/addons/loaders/GLTFLoader.js | identical | 0 | src importers: 3
+vendor/addons/loaders/HDRLoader.js | identical | 0 | src importers: 1
+vendor/addons/loaders/KTX2Loader.js | DIFF | 0 | src importers: 1
+vendor/addons/math/ColorSpaces.js | identical | 0 | src importers: 0
+vendor/addons/math/SimplexNoise.js | DIFF | 0 | src importers: 0
+vendor/addons/objects/Lensflare.js | DIFF | 0 | src importers: 0
+vendor/addons/postprocessing/EffectComposer.js | DIFF | 0 | src importers: 1
+vendor/addons/postprocessing/LUTPass.js | DIFF | 0 | src importers: 0
+vendor/addons/postprocessing/MaskPass.js | DIFF | 0 | src importers: 0
+vendor/addons/postprocessing/OutputPass.js | DIFF | 0 | src importers: 1
+vendor/addons/postprocessing/Pass.js | DIFF | 0 | src importers: 0
+vendor/addons/postprocessing/RenderPass.js | DIFF | 0 | src importers: 1
+vendor/addons/postprocessing/SSAOPass.js | DIFF | 0 | src importers: 0
+vendor/addons/postprocessing/ShaderPass.js | DIFF | 0 | src importers: 0
+vendor/addons/postprocessing/UnrealBloomPass.js | DIFF | 0 | src importers: 1
+vendor/addons/shaders/CopyShader.js | DIFF | 0 | src importers: 0
+vendor/addons/shaders/LuminosityHighPassShader.js | DIFF | 0 | src importers: 0
+vendor/addons/shaders/LuminosityShader.js | DIFF | 0 | src importers: 0
+vendor/addons/shaders/OutputShader.js | DIFF | 0 | src importers: 0
+vendor/addons/shaders/SSAOShader.js | DIFF | 0 | src importers: 0
+vendor/addons/utils/BufferGeometryUtils.js | identical | 0 | src importers: 6
+vendor/addons/utils/SkeletonUtils.js | identical | 0 | src importers: 0
+vendor/addons/utils/WorkerPool.js | identical | 0 | src importers: 0
+loaders/KTX2Loader.js CODE DIFF (27301 vs 24108 minified chars)
+postprocessing/EffectComposer.js CODE DIFF (3537 vs 3530 minified chars)
+postprocessing/OutputPass.js CODE DIFF (1910 vs 2138 minified chars)
+postprocessing/RenderPass.js CODE DIFF (1379 vs 1425 minified chars)
+postprocessing/UnrealBloomPass.js CODE DIFF (9714 vs 9931 minified chars)
+postprocessing/Pass.js code-identical (comments only)
+postprocessing/ShaderPass.js CODE DIFF (1122 vs 1146 minified chars)
+postprocessing/MaskPass.js code-identical (comments only)
+shaders/CopyShader.js code-identical (comments only)
+shaders/LuminosityHighPassShader.js CODE DIFF (1005 vs 930 minified chars)
+shaders/OutputShader.js CODE DIFF (1326 vs 1526 minified chars)

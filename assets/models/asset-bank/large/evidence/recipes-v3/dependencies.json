@@ -1,0 +1,1262 @@
+{
+  "assetCount": 47,
+  "assets": [
+    "cargo-bagged-regolith-pallet",
+    "cargo-biological-containment-cage",
+    "cargo-cryogenic-dewar",
+    "cargo-gas-bottle-cluster",
+    "cargo-habitat-panel-pack",
+    "cargo-inert-reactor-core-cask",
+    "cargo-insulated-medical-carrier",
+    "cargo-machine-tool-skid",
+    "cargo-ore-skip",
+    "cargo-sealed-custody-safe",
+    "docking_collar",
+    "large_agricultural_cylinder",
+    "large_capital_berth_outrigger",
+    "large_drydock_side_wall",
+    "large_fabrication_hall_shell",
+    "large_ice_anchoring_terrace",
+    "large_launch_trench_bank",
+    "large_ore_transfer_terrace",
+    "large_pressure_dome_habitat",
+    "large_relay_dish_backframe",
+    "large_ring_spoke",
+    "matched_removable_wedge",
+    "measuring_rail",
+    "ops_camera_pod",
+    "ops_coolant_fin_cassette",
+    "ops_docking_light_bar",
+    "ops_exclusion_baffle",
+    "ops_fire_suppression_head",
+    "ops_gantry_swivel_pedestal",
+    "ops_optical_rangefinder",
+    "ops_paired_capture_jaws",
+    "ops_rail_carriage",
+    "ops_rectangular_solar_wing",
+    "ops_solar_hinge_mast_adapter",
+    "pressure_corridor_straight",
+    "pressure_pipe_elbow_90",
+    "pressure_pipe_straight",
+    "pressure_pipe_valve",
+    "pump_skid",
+    "seam_bearing_quarried_parent_rock",
+    "terminal_cap",
+    "threshold_jamb",
+    "threshold_lintel",
+    "truss_cross",
+    "truss_long",
+    "truss_short",
+    "truss_tee"
+  ],
+  "recipes": {
+    "customs_inspection_pen": [
+      "cargo-sealed-custody-safe",
+      "large_drydock_side_wall",
+      "ops_optical_rangefinder"
+    ],
+    "salvage_custody_court": [
+      "cargo-ore-skip",
+      "large_drydock_side_wall",
+      "large_ore_transfer_terrace",
+      "ops_paired_capture_jaws"
+    ],
+    "relief_berth": [
+      "cargo-insulated-medical-carrier",
+      "docking_collar",
+      "large_capital_berth_outrigger",
+      "large_pressure_dome_habitat",
+      "ops_docking_light_bar",
+      "pressure_corridor_straight"
+    ],
+    "open_repair_quay": [
+      "cargo-machine-tool-skid",
+      "large_drydock_side_wall",
+      "ops_gantry_swivel_pedestal"
+    ],
+    "screened_illicit_intake": [
+      "cargo-gas-bottle-cluster",
+      "large_fabrication_hall_shell",
+      "ops_exclusion_baffle"
+    ],
+    "solar_orchard_hub": [
+      "large_drydock_side_wall",
+      "large_ring_spoke",
+      "ops_rectangular_solar_wing",
+      "ops_solar_hinge_mast_adapter",
+      "terminal_cap",
+      "truss_cross",
+      "truss_long",
+      "truss_short",
+      "truss_tee"
+    ],
+    "bulk_coolant_exchange": [
+      "cargo-cryogenic-dewar",
+      "large_agricultural_cylinder",
+      "ops_coolant_fin_cassette",
+      "pressure_pipe_elbow_90",
+      "pressure_pipe_straight",
+      "pressure_pipe_valve",
+      "pump_skid"
+    ],
+    "freight_rail_transfer_yard": [
+      "cargo-habitat-panel-pack",
+      "large_launch_trench_bank",
+      "large_ore_transfer_terrace",
+      "ops_rail_carriage"
+    ],
+    "survey_cut_face_worksite": [
+      "cargo-bagged-regolith-pallet",
+      "large_ice_anchoring_terrace",
+      "matched_removable_wedge",
+      "ops_optical_rangefinder",
+      "seam_bearing_quarried_parent_rock"
+    ],
+    "quarantine_transfer_platform": [
+      "cargo-biological-containment-cage",
+      "large_pressure_dome_habitat",
+      "ops_fire_suppression_head"
+    ],
+    "derelict_rib_corridor": [
+      "cargo-inert-reactor-core-cask",
+      "large_capital_berth_outrigger",
+      "large_relay_dish_backframe",
+      "ops_camera_pod"
+    ],
+    "ancient_service_threshold": [
+      "measuring_rail",
+      "threshold_jamb",
+      "threshold_lintel"
+    ]
+  },
+  "files": [
+    {
+      "assetId": "cargo-bagged-regolith-pallet",
+      "path": "cargo/cargo-bagged-regolith-pallet.json",
+      "bytes": 3745,
+      "sha256": "cc52ff25e57fb54483698eafa31077845c0a70209172a62f75c1365342df2254"
+    },
+    {
+      "assetId": "cargo-bagged-regolith-pallet",
+      "path": "cargo/cargo-bagged-regolith-pallet_lod0.glb",
+      "bytes": 724748,
+      "sha256": "2402517133c4e546c9b1b82d64545d67ec7434c0c2ad3c305ea3f0f4aabfda8b"
+    },
+    {
+      "assetId": "cargo-bagged-regolith-pallet",
+      "path": "cargo/cargo-bagged-regolith-pallet_lod1.glb",
+      "bytes": 489344,
+      "sha256": "8d2a559abf86715c19ea9056bc63566b26c8cc223dc0ee493089b773d54984d7"
+    },
+    {
+      "assetId": "cargo-bagged-regolith-pallet",
+      "path": "cargo/cargo-bagged-regolith-pallet_lod2.glb",
+      "bytes": 403124,
+      "sha256": "2d7bc07c9ea45acf6a731705f091ccf182ea9a47c315996052e4df7ffa9fd570"
+    },
+    {
+      "assetId": "cargo-biological-containment-cage",
+      "path": "cargo/cargo-biological-containment-cage.json",
+      "bytes": 3780,
+      "sha256": "2b749a4d083358efd5c3ceef4d2750d8d46c4148510524feff070f7a4871f402"
+    },
+    {
+      "assetId": "cargo-biological-containment-cage",
+      "path": "cargo/cargo-biological-containment-cage_lod0.glb",
+      "bytes": 768080,
+      "sha256": "7e713ea8d51c644002ca2e94d8986a71fd9bd40751014d3ebcfaa7d3bafc0063"
+    },
+    {
+      "assetId": "cargo-biological-containment-cage",
+      "path": "cargo/cargo-biological-containment-cage_lod1.glb",
+      "bytes": 334256,
+      "sha256": "f53e75318ab00ed16894dae42d4d29c0af7838b86bb4c9dd1bc5eb2d2bfb2b3d"
+    },
+    {
+      "assetId": "cargo-biological-containment-cage",
+      "path": "cargo/cargo-biological-containment-cage_lod2.glb",
+      "bytes": 297368,
+      "sha256": "01bb255152020327140fa1f339f8ed9c61a8fbb0a6163046725346a780a762b1"
+    },
+    {
+      "assetId": "cargo-cryogenic-dewar",
+      "path": "cargo/cargo-cryogenic-dewar.json",
+      "bytes": 3740,
+      "sha256": "892390805a0f0e49baba799fd8ddb4469b2a23e4cf39ca92123e782376023162"
+    },
+    {
+      "assetId": "cargo-cryogenic-dewar",
+      "path": "cargo/cargo-cryogenic-dewar_lod0.glb",
+      "bytes": 650400,
+      "sha256": "62febed5e9df2aabfdfcdcc16ec03ee584d0a767cc3b07e8c995c4f7e68257fd"
+    },
+    {
+      "assetId": "cargo-cryogenic-dewar",
+      "path": "cargo/cargo-cryogenic-dewar_lod1.glb",
+      "bytes": 321708,
+      "sha256": "579b877b347b879a794ef705e4f36fc4d05c76a11724f650cac28a1924c2d06e"
+    },
+    {
+      "assetId": "cargo-cryogenic-dewar",
+      "path": "cargo/cargo-cryogenic-dewar_lod2.glb",
+      "bytes": 293100,
+      "sha256": "88bdf30010574bb035d58dfe1d6af9331a43a3c4f5eb33fcde041d12018f1a04"
+    },
+    {
+      "assetId": "cargo-gas-bottle-cluster",
+      "path": "cargo/cargo-gas-bottle-cluster.json",
+      "bytes": 5068,
+      "sha256": "160987532d6b033567cd3142ae62e7d7e9279b9235bdc0411aa82c919c8d39b2"
+    },
+    {
+      "assetId": "cargo-gas-bottle-cluster",
+      "path": "cargo/cargo-gas-bottle-cluster_lod0.glb",
+      "bytes": 957568,
+      "sha256": "569f138257b357c1b87cb9ac1fb3dcd3c56fcd2162b68f4d4b776aee4ae74480"
+    },
+    {
+      "assetId": "cargo-gas-bottle-cluster",
+      "path": "cargo/cargo-gas-bottle-cluster_lod1.glb",
+      "bytes": 355784,
+      "sha256": "63c527765d6b89050a7c26f719ee8dce57bc0fa1d2b648d85ee38e1faaad9a5b"
+    },
+    {
+      "assetId": "cargo-gas-bottle-cluster",
+      "path": "cargo/cargo-gas-bottle-cluster_lod2.glb",
+      "bytes": 325252,
+      "sha256": "0cd54cf874d99ff03893d00ab7b453f0ae0a191c123293676ad76efa527a8d63"
+    },
+    {
+      "assetId": "cargo-habitat-panel-pack",
+      "path": "cargo/cargo-habitat-panel-pack.json",
+      "bytes": 3695,
+      "sha256": "6e13a7d19114466c74f3d50690838e5448af7ce8e0f3460992f3aa6fdf1d90fb"
+    },
+    {
+      "assetId": "cargo-habitat-panel-pack",
+      "path": "cargo/cargo-habitat-panel-pack_lod0.glb",
+      "bytes": 538072,
+      "sha256": "c45c17a6b1d111901a01c97859d4757d55b1ff9cea6f1ca4c868b91847ea2ac3"
+    },
+    {
+      "assetId": "cargo-habitat-panel-pack",
+      "path": "cargo/cargo-habitat-panel-pack_lod1.glb",
+      "bytes": 275296,
+      "sha256": "fb81766640de24822775600fa5f2c23cb0ba91f57600a261b36d320962bdae44"
+    },
+    {
+      "assetId": "cargo-habitat-panel-pack",
+      "path": "cargo/cargo-habitat-panel-pack_lod2.glb",
+      "bytes": 260208,
+      "sha256": "2eb4b56d4f558538e2e29762675aaf562347f0e8f6daf7c51b1c56fba26bd1f8"
+    },
+    {
+      "assetId": "cargo-inert-reactor-core-cask",
+      "path": "cargo/cargo-inert-reactor-core-cask.json",
+      "bytes": 3206,
+      "sha256": "e432c8f7da1bdc448287868775e72e871b186d743b33b2a48fd1abc55159e3ab"
+    },
+    {
+      "assetId": "cargo-inert-reactor-core-cask",
+      "path": "cargo/cargo-inert-reactor-core-cask_lod0.glb",
+      "bytes": 610352,
+      "sha256": "1deda0db0111cc80c8dbf409318bc8d3ed62499e25ae0d9b24897e6ec08d76bb"
+    },
+    {
+      "assetId": "cargo-inert-reactor-core-cask",
+      "path": "cargo/cargo-inert-reactor-core-cask_lod1.glb",
+      "bytes": 355420,
+      "sha256": "1919caac0ec496038672bbf2d7fff3c38b80b8ec7fd069563a9e606ce329bd61"
+    },
+    {
+      "assetId": "cargo-inert-reactor-core-cask",
+      "path": "cargo/cargo-inert-reactor-core-cask_lod2.glb",
+      "bytes": 320200,
+      "sha256": "0eb16d17dce892deb30b713342b360192c6330bfdd6f826398d478dfa8450309"
+    },
+    {
+      "assetId": "cargo-insulated-medical-carrier",
+      "path": "cargo/cargo-insulated-medical-carrier.json",
+      "bytes": 3241,
+      "sha256": "915d6f3f4da58530168464bb73f49279d9393b41f64e8f12b0d073f595ce757f"
+    },
+    {
+      "assetId": "cargo-insulated-medical-carrier",
+      "path": "cargo/cargo-insulated-medical-carrier_lod0.glb",
+      "bytes": 429480,
+      "sha256": "f62070ae2802a83ac1168af8f352d2467fcd6cf1b97981de06b7e09ea429ff32"
+    },
+    {
+      "assetId": "cargo-insulated-medical-carrier",
+      "path": "cargo/cargo-insulated-medical-carrier_lod1.glb",
+      "bytes": 273532,
+      "sha256": "e4f1447b1eca7b385616ac1cf7e92a2a5e969c957a84161ea6c4192f875a8d30"
+    },
+    {
+      "assetId": "cargo-insulated-medical-carrier",
+      "path": "cargo/cargo-insulated-medical-carrier_lod2.glb",
+      "bytes": 268348,
+      "sha256": "3ac16c907fc72e1285079e0bc38fa32d073fc1e4cd16ded1c1b18684bcba4dfc"
+    },
+    {
+      "assetId": "cargo-machine-tool-skid",
+      "path": "cargo/cargo-machine-tool-skid.json",
+      "bytes": 4249,
+      "sha256": "3fbdf031731b3d2341e10e9d28001b3d00b48edaaa46d4ac707e85709e2241ff"
+    },
+    {
+      "assetId": "cargo-machine-tool-skid",
+      "path": "cargo/cargo-machine-tool-skid_lod0.glb",
+      "bytes": 1017264,
+      "sha256": "422e7d30f5cebe8a2e8fbf7a6cb9e9e50c61ee712d84a2dcc99ea81d78e21306"
+    },
+    {
+      "assetId": "cargo-machine-tool-skid",
+      "path": "cargo/cargo-machine-tool-skid_lod1.glb",
+      "bytes": 410572,
+      "sha256": "b14c36d0b973a4f8f6f3841fc7bd86637185a1b3f4364487082b3ca8851e8641"
+    },
+    {
+      "assetId": "cargo-machine-tool-skid",
+      "path": "cargo/cargo-machine-tool-skid_lod2.glb",
+      "bytes": 359400,
+      "sha256": "b4d68b03f0f139fa8683814b94e5cfbb2fc802b83d426c27dc0436d0ddd170b1"
+    },
+    {
+      "assetId": "cargo-ore-skip",
+      "path": "cargo/cargo-ore-skip.json",
+      "bytes": 3715,
+      "sha256": "e763db7d636ed43d25045d4c041b005f2c7a3900a888a843557febe7eaa8e567"
+    },
+    {
+      "assetId": "cargo-ore-skip",
+      "path": "cargo/cargo-ore-skip_lod0.glb",
+      "bytes": 487696,
+      "sha256": "faaa656006c76ecf1487aad48016a9edafdb1edb3798a4f8fb64e51996e9847d"
+    },
+    {
+      "assetId": "cargo-ore-skip",
+      "path": "cargo/cargo-ore-skip_lod1.glb",
+      "bytes": 271088,
+      "sha256": "64d54ec2e341fd48bc2ba4e505f093c64e4c875d17e5a69ad7abbbbd3bbf422a"
+    },
+    {
+      "assetId": "cargo-ore-skip",
+      "path": "cargo/cargo-ore-skip_lod2.glb",
+      "bytes": 255824,
+      "sha256": "887871a71be0a87e78d0e07e21bbf4c2480dd781a7f5dea75d7d79111948af84"
+    },
+    {
+      "assetId": "cargo-sealed-custody-safe",
+      "path": "cargo/cargo-sealed-custody-safe.json",
+      "bytes": 3149,
+      "sha256": "1a5199ba13b4e491700131dbb0216710fd9c1937eb46d6c90d37311608f79163"
+    },
+    {
+      "assetId": "cargo-sealed-custody-safe",
+      "path": "cargo/cargo-sealed-custody-safe_lod0.glb",
+      "bytes": 459768,
+      "sha256": "20e07e30f401c317b68cc75576dfaa983ee6aca67738ff94a8290339f0d7b74c"
+    },
+    {
+      "assetId": "cargo-sealed-custody-safe",
+      "path": "cargo/cargo-sealed-custody-safe_lod1.glb",
+      "bytes": 267200,
+      "sha256": "2a185a740c4c5ed237e18caeaf6c41b142a3afb9765fed5dd839df6552f2b110"
+    },
+    {
+      "assetId": "cargo-sealed-custody-safe",
+      "path": "cargo/cargo-sealed-custody-safe_lod2.glb",
+      "bytes": 255904,
+      "sha256": "4cfb083bc66b9c0aa27be1bb7da37ea33c117fa372cebbe18c66534d852e8c4e"
+    },
+    {
+      "assetId": "docking_collar",
+      "path": "structure/docking_collar.json",
+      "bytes": 11269,
+      "sha256": "755d9caf0c23e8892e43ac6084141b25313e2f22b98dad4f706c7e691e8686d3"
+    },
+    {
+      "assetId": "docking_collar",
+      "path": "structure/docking_collar_lod0.glb",
+      "bytes": 761200,
+      "sha256": "366e1df14a5fcbdd6dc7284ad79a234114d8c4c83c2ad88cb89e218a3697fe2e"
+    },
+    {
+      "assetId": "docking_collar",
+      "path": "structure/docking_collar_lod1.glb",
+      "bytes": 484896,
+      "sha256": "7611174065ab970b79863225d0914a7ca74cc7961e28401865b3b0d3beced144"
+    },
+    {
+      "assetId": "docking_collar",
+      "path": "structure/docking_collar_lod2.glb",
+      "bytes": 377816,
+      "sha256": "be2b0b3ce3f5a50b669d98c060f66793f1ec1b5a92e4075a2a5c88b373b334ac"
+    },
+    {
+      "assetId": "large_agricultural_cylinder",
+      "path": "large/large_agricultural_cylinder.json",
+      "bytes": 7735,
+      "sha256": "f57ce52b7b7d2f3ce65d56823945b5f199d3d5495574f0e2ded6a7edd7a3c3d4"
+    },
+    {
+      "assetId": "large_agricultural_cylinder",
+      "path": "large/large_agricultural_cylinder_lod0.glb",
+      "bytes": 1354252,
+      "sha256": "60806e2f26af3ca89acb27d7ab4045824548d26f9b78723215bbdbe8a62d898d"
+    },
+    {
+      "assetId": "large_agricultural_cylinder",
+      "path": "large/large_agricultural_cylinder_lod1.glb",
+      "bytes": 1124260,
+      "sha256": "af4d13aacd301e8e2199a51e94d3dd6f8d0318c748ff46cbef226a275e42ae2e"
+    },
+    {
+      "assetId": "large_agricultural_cylinder",
+      "path": "large/large_agricultural_cylinder_lod2.glb",
+      "bytes": 665548,
+      "sha256": "09787d5414639c863c260431c6737d9bd362d72a610a01c7d6abfe59387ddce0"
+    },
+    {
+      "assetId": "large_capital_berth_outrigger",
+      "path": "large/large_capital_berth_outrigger.json",
+      "bytes": 11265,
+      "sha256": "9999da9f4eaf38c09f48ad2391cc0627380a47247f11e899e2eeee0ba9703cc4"
+    },
+    {
+      "assetId": "large_capital_berth_outrigger",
+      "path": "large/large_capital_berth_outrigger_lod0.glb",
+      "bytes": 982852,
+      "sha256": "7c6740bf5daec4e2fcee465d42ac2fe37bd5ac2a303b1bf94b2b23fe21bbab6f"
+    },
+    {
+      "assetId": "large_capital_berth_outrigger",
+      "path": "large/large_capital_berth_outrigger_lod1.glb",
+      "bytes": 743704,
+      "sha256": "2ac52b2a49cbfe833750c375f6f43bbe901fe4c069193530c3358108b41041f3"
+    },
+    {
+      "assetId": "large_capital_berth_outrigger",
+      "path": "large/large_capital_berth_outrigger_lod2.glb",
+      "bytes": 436912,
+      "sha256": "bb0d1c7faa365e714e0fc165a375eb13b34283daec1aabbd4da1cbcf5614a96c"
+    },
+    {
+      "assetId": "large_drydock_side_wall",
+      "path": "large/large_drydock_side_wall.json",
+      "bytes": 33293,
+      "sha256": "1812d17fc76b3c2c605bc7509872783fe9f02707b3178b03c71b1ab2e6721fda"
+    },
+    {
+      "assetId": "large_drydock_side_wall",
+      "path": "large/large_drydock_side_wall_lod0.glb",
+      "bytes": 1982660,
+      "sha256": "dbd70e030ac7e55b530cf474e092338c5286ddd06f17bcbe21b05aeef41fc352"
+    },
+    {
+      "assetId": "large_drydock_side_wall",
+      "path": "large/large_drydock_side_wall_lod1.glb",
+      "bytes": 1450056,
+      "sha256": "2b51c375c260e2353615bbcb6b31beceff82d7e4552d4982799ab03881fd56bd"
+    },
+    {
+      "assetId": "large_drydock_side_wall",
+      "path": "large/large_drydock_side_wall_lod2.glb",
+      "bytes": 492552,
+      "sha256": "7a9284a97c9ef65724e3b4dd9a72c295999e22451f35540aa7045ab4d74f7caa"
+    },
+    {
+      "assetId": "large_fabrication_hall_shell",
+      "path": "large/large_fabrication_hall_shell.json",
+      "bytes": 42474,
+      "sha256": "3fe84e00e98ddef8c5e1a3651d50920d0a1939672a2493611bd1422edaf5bfd9"
+    },
+    {
+      "assetId": "large_fabrication_hall_shell",
+      "path": "large/large_fabrication_hall_shell_lod0.glb",
+      "bytes": 1876648,
+      "sha256": "31a518922d77c2fb8ffb916b2b5acd80b72174207866b142f984909927303783"
+    },
+    {
+      "assetId": "large_fabrication_hall_shell",
+      "path": "large/large_fabrication_hall_shell_lod1.glb",
+      "bytes": 1588356,
+      "sha256": "fde362b2f0670caa2cf644eced58577f2389d9f9a0bca90a7320cf28132cb06c"
+    },
+    {
+      "assetId": "large_fabrication_hall_shell",
+      "path": "large/large_fabrication_hall_shell_lod2.glb",
+      "bytes": 505740,
+      "sha256": "0f82c5777bd99ab8fe5372466d4f4573cf1c484648264c535365933ba3d9cea8"
+    },
+    {
+      "assetId": "large_ice_anchoring_terrace",
+      "path": "large/large_ice_anchoring_terrace.json",
+      "bytes": 15981,
+      "sha256": "df559513d2c681747905edb52a09e1ba45d7c082e1e8066f2b40aa921de7733d"
+    },
+    {
+      "assetId": "large_ice_anchoring_terrace",
+      "path": "large/large_ice_anchoring_terrace_lod0.glb",
+      "bytes": 1805596,
+      "sha256": "03a4a724a52564d704485c20c06e4fa5d7d3db2ea105e7656403f7918b5075cb"
+    },
+    {
+      "assetId": "large_ice_anchoring_terrace",
+      "path": "large/large_ice_anchoring_terrace_lod1.glb",
+      "bytes": 1271076,
+      "sha256": "e513808eb9ec2b35b45a667bdcaae3ed9b8b9695fee2e30c593c6ed40d5ef70d"
+    },
+    {
+      "assetId": "large_ice_anchoring_terrace",
+      "path": "large/large_ice_anchoring_terrace_lod2.glb",
+      "bytes": 582456,
+      "sha256": "7e9a4ccafc0d433e7ad36cd001f3179ce66997429746abb9036c7e6e7b45642f"
+    },
+    {
+      "assetId": "large_launch_trench_bank",
+      "path": "large/large_launch_trench_bank.json",
+      "bytes": 13352,
+      "sha256": "6dc9b83e5f07bcecb70665a6a1b101f21f6eafa7bc36d5b73e4589c92e969a0f"
+    },
+    {
+      "assetId": "large_launch_trench_bank",
+      "path": "large/large_launch_trench_bank_lod0.glb",
+      "bytes": 1721220,
+      "sha256": "451d88ad05ce72e99dcc15045f22c9b3e864c5778e8725affd8f278bf5352ee9"
+    },
+    {
+      "assetId": "large_launch_trench_bank",
+      "path": "large/large_launch_trench_bank_lod1.glb",
+      "bytes": 1179144,
+      "sha256": "6978e5e526ade8046db59dd394a3701339e7f90c91074a82a76c047a24c3dbef"
+    },
+    {
+      "assetId": "large_launch_trench_bank",
+      "path": "large/large_launch_trench_bank_lod2.glb",
+      "bytes": 416496,
+      "sha256": "17f20c7ab79f920c3f72a71948eeed3b74530ab32f4f5d584d0920a6cb5c1c80"
+    },
+    {
+      "assetId": "large_ore_transfer_terrace",
+      "path": "large/large_ore_transfer_terrace.json",
+      "bytes": 12354,
+      "sha256": "f68c5a1d5b186e19db1ebfcfddf43cafa69ddc21f8d693916a5cd8012b26525f"
+    },
+    {
+      "assetId": "large_ore_transfer_terrace",
+      "path": "large/large_ore_transfer_terrace_lod0.glb",
+      "bytes": 1634360,
+      "sha256": "18fd6ebfb8712d98b823fe02b143c7c3b711b507f136e8a1b4e35677612a799d"
+    },
+    {
+      "assetId": "large_ore_transfer_terrace",
+      "path": "large/large_ore_transfer_terrace_lod1.glb",
+      "bytes": 1110104,
+      "sha256": "6e599ff4f9a1f787b8f2d9cc78b76ef9a141c307622f9b156ff4b8f43fd4812d"
+    },
+    {
+      "assetId": "large_ore_transfer_terrace",
+      "path": "large/large_ore_transfer_terrace_lod2.glb",
+      "bytes": 444212,
+      "sha256": "3bb66c4cdb6d76a32399fa7a5bba004f780fcf4e76e7ecc3f70f62a7e119117b"
+    },
+    {
+      "assetId": "large_pressure_dome_habitat",
+      "path": "large/large_pressure_dome_habitat.json",
+      "bytes": 17331,
+      "sha256": "3e702d2c907a1bc6fcc5d7a7a39791d51123141b284eec3cba3be88f3b23ee61"
+    },
+    {
+      "assetId": "large_pressure_dome_habitat",
+      "path": "large/large_pressure_dome_habitat_lod0.glb",
+      "bytes": 1710368,
+      "sha256": "6488916f2983e5ce2faa1ecc6153500573afd0b7ff8a2ec109df1a6494c85f30"
+    },
+    {
+      "assetId": "large_pressure_dome_habitat",
+      "path": "large/large_pressure_dome_habitat_lod1.glb",
+      "bytes": 1597188,
+      "sha256": "916731e8c8143db3edc43d8c0d3d761955413f7c8e460b7c5c4277f24a8ed56e"
+    },
+    {
+      "assetId": "large_pressure_dome_habitat",
+      "path": "large/large_pressure_dome_habitat_lod2.glb",
+      "bytes": 608892,
+      "sha256": "082b3a25b86c4e473c2ba02e01a12187712340743cc12af0cd6391d5e98e49c2"
+    },
+    {
+      "assetId": "large_relay_dish_backframe",
+      "path": "large/large_relay_dish_backframe.json",
+      "bytes": 27469,
+      "sha256": "bdad9adc1182b302cf155261dd3f1817074a8d17394b9ca95dfc027ddd2cc222"
+    },
+    {
+      "assetId": "large_relay_dish_backframe",
+      "path": "large/large_relay_dish_backframe_lod0.glb",
+      "bytes": 1204584,
+      "sha256": "fe8dfac18f6553d2b72ce984ca7e5bee45af96818c3cc69168badabbf8b2a525"
+    },
+    {
+      "assetId": "large_relay_dish_backframe",
+      "path": "large/large_relay_dish_backframe_lod1.glb",
+      "bytes": 1095064,
+      "sha256": "7f7c4610aff4c6090aebb4a84e1728e98896bad8a94de0419f126b83c9a26eff"
+    },
+    {
+      "assetId": "large_relay_dish_backframe",
+      "path": "large/large_relay_dish_backframe_lod2.glb",
+      "bytes": 511828,
+      "sha256": "b0ad4a445330e28ec7bf15b0648388ee6d04080b059bba4e9ad7915a575974fc"
+    },
+    {
+      "assetId": "large_ring_spoke",
+      "path": "large/large_ring_spoke.json",
+      "bytes": 7558,
+      "sha256": "05cab30eb622bf2567a6dbd9da2ccbee2feb181daa14afd5972c311dad39352e"
+    },
+    {
+      "assetId": "large_ring_spoke",
+      "path": "large/large_ring_spoke_lod0.glb",
+      "bytes": 829640,
+      "sha256": "89109998bc60ef168fa6de9f09c47b9727d7bfb206b4406b5cbc1a8ecd1a2a3c"
+    },
+    {
+      "assetId": "large_ring_spoke",
+      "path": "large/large_ring_spoke_lod1.glb",
+      "bytes": 610388,
+      "sha256": "39a03907ad4763401d2b991be8fb2db461a856e6363729a66edaea959fd2f03a"
+    },
+    {
+      "assetId": "large_ring_spoke",
+      "path": "large/large_ring_spoke_lod2.glb",
+      "bytes": 496908,
+      "sha256": "133ba9c9fbb21b3b57bd613873e01d96229e6d9608ea07e6865976e504c3b8c5"
+    },
+    {
+      "assetId": "matched_removable_wedge",
+      "path": "natural/matched_removable_wedge.json",
+      "bytes": 2813,
+      "sha256": "8a6a7545db88dcfaa7d65a75df9f1e4e99156039109b48a32ab07b65e679c99f"
+    },
+    {
+      "assetId": "matched_removable_wedge",
+      "path": "natural/matched_removable_wedge_lod0.glb",
+      "bytes": 80608,
+      "sha256": "12823de16b70d502253c197606f93bbae29cec426cf06424e50b3e54790132ce"
+    },
+    {
+      "assetId": "matched_removable_wedge",
+      "path": "natural/matched_removable_wedge_lod1.glb",
+      "bytes": 38192,
+      "sha256": "832f2dc1d576889b97aa88190eec10c159b41831fda1585ca30fbcd102772cb2"
+    },
+    {
+      "assetId": "matched_removable_wedge",
+      "path": "natural/matched_removable_wedge_lod2.glb",
+      "bytes": 22096,
+      "sha256": "ed44ec10ccb85407520358671864aa7decd97c1df2b6acb4a277f9620a576991"
+    },
+    {
+      "assetId": "measuring_rail",
+      "path": "natural/measuring_rail.json",
+      "bytes": 5582,
+      "sha256": "7221955fbe4044708d1e94fcc497c82cf7b5e7d96c30acb329dd152d1e4defa8"
+    },
+    {
+      "assetId": "measuring_rail",
+      "path": "natural/measuring_rail_lod0.glb",
+      "bytes": 281316,
+      "sha256": "9ca695f177b2579104ae2147064b7f323492feefdbdf2cc0bfccb374dd27ab8e"
+    },
+    {
+      "assetId": "measuring_rail",
+      "path": "natural/measuring_rail_lod1.glb",
+      "bytes": 105324,
+      "sha256": "11a8861f0cdfc0b72d6f34f4bca415ff48a997d2e63beadac650265e2c8cde14"
+    },
+    {
+      "assetId": "measuring_rail",
+      "path": "natural/measuring_rail_lod2.glb",
+      "bytes": 105324,
+      "sha256": "7f5bda4faa51ac53a39d98c87cfa6a6ccf221f73828b9131674da24aeb32ce01"
+    },
+    {
+      "assetId": "ops_camera_pod",
+      "path": "operations/ops_camera_pod.json",
+      "bytes": 7390,
+      "sha256": "97bd27e8629ffa8a654b320399807ce6260f8ce5ad23e8cbd3eb5fdcd001d99b"
+    },
+    {
+      "assetId": "ops_camera_pod",
+      "path": "operations/ops_camera_pod_lod0.glb",
+      "bytes": 670160,
+      "sha256": "50714182dcf1c5debe00c8799496433db4535a0f6d7cd773c947dd6758ab666a"
+    },
+    {
+      "assetId": "ops_camera_pod",
+      "path": "operations/ops_camera_pod_lod1.glb",
+      "bytes": 341664,
+      "sha256": "bf3fb957d800aed35f6b069ba30e8ab8d71939980fa9f6fb92adc925d81e2e3e"
+    },
+    {
+      "assetId": "ops_camera_pod",
+      "path": "operations/ops_camera_pod_lod2.glb",
+      "bytes": 289324,
+      "sha256": "e76e38beebe75edf3dda2273dea3f7141e32e99913df43f66aaff567cf4b2ed2"
+    },
+    {
+      "assetId": "ops_coolant_fin_cassette",
+      "path": "operations/ops_coolant_fin_cassette.json",
+      "bytes": 9573,
+      "sha256": "d1d3498679fcef1773f185609f155d1a37f0597d6e8f9e0894a60bafd118ec96"
+    },
+    {
+      "assetId": "ops_coolant_fin_cassette",
+      "path": "operations/ops_coolant_fin_cassette_lod0.glb",
+      "bytes": 637900,
+      "sha256": "abeb9ac968ec190d4396fe650f05a031aed68922e628fea5864b5033c47a9beb"
+    },
+    {
+      "assetId": "ops_coolant_fin_cassette",
+      "path": "operations/ops_coolant_fin_cassette_lod1.glb",
+      "bytes": 331852,
+      "sha256": "d9788cb4b42646abba4fc789b7f9302b9070713fd76d650de047b8233852c303"
+    },
+    {
+      "assetId": "ops_coolant_fin_cassette",
+      "path": "operations/ops_coolant_fin_cassette_lod2.glb",
+      "bytes": 275592,
+      "sha256": "05f7bd43221a3fe7a4d2eb37cf7d8c3a400723290f1617b7e0358d5a1580325d"
+    },
+    {
+      "assetId": "ops_docking_light_bar",
+      "path": "operations/ops_docking_light_bar.json",
+      "bytes": 5184,
+      "sha256": "8eeae0bf9d78b9de0f2109afb8dabe1ce5d80c7d8d5b6d63c772682f69ad55d2"
+    },
+    {
+      "assetId": "ops_docking_light_bar",
+      "path": "operations/ops_docking_light_bar_lod0.glb",
+      "bytes": 463428,
+      "sha256": "7b765c7633a2ca31490a8143dc18563c5ab3873969baf1f852f9f9adba303fb1"
+    },
+    {
+      "assetId": "ops_docking_light_bar",
+      "path": "operations/ops_docking_light_bar_lod1.glb",
+      "bytes": 304136,
+      "sha256": "9926fb458fbb83ce061aac371b9c22b1fb33a4c93a3ddbf4647f3f9a323fdac9"
+    },
+    {
+      "assetId": "ops_docking_light_bar",
+      "path": "operations/ops_docking_light_bar_lod2.glb",
+      "bytes": 244588,
+      "sha256": "f69dd2ff4064473d5197efb0183582c6f4a516ba4fe08f5a43a0173c6b26ba75"
+    },
+    {
+      "assetId": "ops_exclusion_baffle",
+      "path": "operations/ops_exclusion_baffle.json",
+      "bytes": 5192,
+      "sha256": "5e2caa8e4b84d52877f685cd6b7a14ccc8c9074537c1334d205d8f6b6ea7a4ec"
+    },
+    {
+      "assetId": "ops_exclusion_baffle",
+      "path": "operations/ops_exclusion_baffle_lod0.glb",
+      "bytes": 377888,
+      "sha256": "90635982f0a374cd84aa6eafce8fa37ceb0bbf11d7e7853d8ae67305b3a25bf5"
+    },
+    {
+      "assetId": "ops_exclusion_baffle",
+      "path": "operations/ops_exclusion_baffle_lod1.glb",
+      "bytes": 303928,
+      "sha256": "27a37743d5713d79f8e6a3623d44b51c46cbf963d34fbe95144ead002f893618"
+    },
+    {
+      "assetId": "ops_exclusion_baffle",
+      "path": "operations/ops_exclusion_baffle_lod2.glb",
+      "bytes": 267008,
+      "sha256": "0d39517812a64035657af5b23cc23db868224be1d6d6331729d48e9ed265ea5e"
+    },
+    {
+      "assetId": "ops_fire_suppression_head",
+      "path": "operations/ops_fire_suppression_head.json",
+      "bytes": 8206,
+      "sha256": "9a10fe489623154009132dc7c47975002c627a4675f9a6066529b21e70d98859"
+    },
+    {
+      "assetId": "ops_fire_suppression_head",
+      "path": "operations/ops_fire_suppression_head_lod0.glb",
+      "bytes": 608724,
+      "sha256": "fc696d7ff2ff1f42ce40ef55b23e229094fcb814fadaf1fca75975473669fba0"
+    },
+    {
+      "assetId": "ops_fire_suppression_head",
+      "path": "operations/ops_fire_suppression_head_lod1.glb",
+      "bytes": 312492,
+      "sha256": "9b1873caa0289403de3b084a55ce9f53390a0b755d6522b9b21bf50cd64466e9"
+    },
+    {
+      "assetId": "ops_fire_suppression_head",
+      "path": "operations/ops_fire_suppression_head_lod2.glb",
+      "bytes": 264992,
+      "sha256": "39f662bca7ba68861c3993841502055be386d4aec9c3436dfa8d43911ad0c3d1"
+    },
+    {
+      "assetId": "ops_gantry_swivel_pedestal",
+      "path": "operations/ops_gantry_swivel_pedestal.json",
+      "bytes": 8899,
+      "sha256": "c9e9cd7ed1a83605ef0c8d05c4576b4789c539c6424cea879d4c89efc251ab16"
+    },
+    {
+      "assetId": "ops_gantry_swivel_pedestal",
+      "path": "operations/ops_gantry_swivel_pedestal_lod0.glb",
+      "bytes": 703264,
+      "sha256": "d5d9385219a353bcae12fe4d555c8fc155bd177e19dfb22572a9d9b367db2b87"
+    },
+    {
+      "assetId": "ops_gantry_swivel_pedestal",
+      "path": "operations/ops_gantry_swivel_pedestal_lod1.glb",
+      "bytes": 281192,
+      "sha256": "ea957120dd9bb38b528b9039de3bf310b9ac866dd7477b9b56654b741afdc68b"
+    },
+    {
+      "assetId": "ops_gantry_swivel_pedestal",
+      "path": "operations/ops_gantry_swivel_pedestal_lod2.glb",
+      "bytes": 261776,
+      "sha256": "1b1c935a0f9b4080f42861f046b733be328343dfe12cbf03882ccadca6803c8f"
+    },
+    {
+      "assetId": "ops_optical_rangefinder",
+      "path": "operations/ops_optical_rangefinder.json",
+      "bytes": 7617,
+      "sha256": "c8473a01e1b361537b904b4b1ee3a56f262b0cc36419d20d88b43c8c14f6840e"
+    },
+    {
+      "assetId": "ops_optical_rangefinder",
+      "path": "operations/ops_optical_rangefinder_lod0.glb",
+      "bytes": 672024,
+      "sha256": "b81f34de23de629099be0ce1bee080e9baf9370a79f5cb3df1d751322cbf3d7f"
+    },
+    {
+      "assetId": "ops_optical_rangefinder",
+      "path": "operations/ops_optical_rangefinder_lod1.glb",
+      "bytes": 341448,
+      "sha256": "ded54a03dc152617769ebd2e4a4b743ad639016dfb55b6a0ef915758cb04faed"
+    },
+    {
+      "assetId": "ops_optical_rangefinder",
+      "path": "operations/ops_optical_rangefinder_lod2.glb",
+      "bytes": 295572,
+      "sha256": "b6f491bf9b1e8f6b4554b6b999049d1bd91923dc0ffe7c14a669c790df7b5c0d"
+    },
+    {
+      "assetId": "ops_paired_capture_jaws",
+      "path": "operations/ops_paired_capture_jaws.json",
+      "bytes": 10139,
+      "sha256": "14ddf70c12ad4f572e477d2290a5d23c68712cd95c3fa35a4eed433a0bc8a023"
+    },
+    {
+      "assetId": "ops_paired_capture_jaws",
+      "path": "operations/ops_paired_capture_jaws_lod0.glb",
+      "bytes": 711180,
+      "sha256": "fa2c29ab0b4f1b94e169c30579a7dece5b98ae5ee16382b869244fcf15160064"
+    },
+    {
+      "assetId": "ops_paired_capture_jaws",
+      "path": "operations/ops_paired_capture_jaws_lod1.glb",
+      "bytes": 362540,
+      "sha256": "3cccb421f0e086aba74f2d435ad723ac3389faad8ac8adcb2feffea663b6b493"
+    },
+    {
+      "assetId": "ops_paired_capture_jaws",
+      "path": "operations/ops_paired_capture_jaws_lod2.glb",
+      "bytes": 284364,
+      "sha256": "4cc5b15756ed58bfbce0c3cdb41309cc5c31a53e99f53823735115120fff7750"
+    },
+    {
+      "assetId": "ops_rail_carriage",
+      "path": "operations/ops_rail_carriage.json",
+      "bytes": 7517,
+      "sha256": "a7830d928651e8841d76be37039337b3f4baeaa79b9260b868d49b8eca6f2d89"
+    },
+    {
+      "assetId": "ops_rail_carriage",
+      "path": "operations/ops_rail_carriage_lod0.glb",
+      "bytes": 561828,
+      "sha256": "8907b7a4ffa19fb221d59feb8a712c5fdbb7e72af571b1296097cf76f24f1b67"
+    },
+    {
+      "assetId": "ops_rail_carriage",
+      "path": "operations/ops_rail_carriage_lod1.glb",
+      "bytes": 294756,
+      "sha256": "2bc7a501d75a01b2d0fbc7803ab2668967dc4f39fd1813cf60afe577898955bf"
+    },
+    {
+      "assetId": "ops_rail_carriage",
+      "path": "operations/ops_rail_carriage_lod2.glb",
+      "bytes": 266716,
+      "sha256": "f77b5cf0b266b71c264c607bbecc7cbb9320f3615ca3ce8b35454065032f16f1"
+    },
+    {
+      "assetId": "ops_rectangular_solar_wing",
+      "path": "operations/ops_rectangular_solar_wing.json",
+      "bytes": 3622,
+      "sha256": "2db2dce3ceff7ccfbfa5ecd437b0681c94c8f3235a735b60dfc9f8a661c2a1b7"
+    },
+    {
+      "assetId": "ops_rectangular_solar_wing",
+      "path": "operations/ops_rectangular_solar_wing_lod0.glb",
+      "bytes": 789220,
+      "sha256": "17d263fc5b0fb787ad150d6b6c0590487d66d29be7cbcefac5ed0bce452c2e84"
+    },
+    {
+      "assetId": "ops_rectangular_solar_wing",
+      "path": "operations/ops_rectangular_solar_wing_lod1.glb",
+      "bytes": 322192,
+      "sha256": "205061dfbe0ac6dc48165a64d08731d297ee801e59cf773d824cf81a9da8cdfb"
+    },
+    {
+      "assetId": "ops_rectangular_solar_wing",
+      "path": "operations/ops_rectangular_solar_wing_lod2.glb",
+      "bytes": 273276,
+      "sha256": "16c144876089f2ca0d2dff9eedb1c7c5c0b16e5e3534247be0b8e08d0e368bcf"
+    },
+    {
+      "assetId": "ops_solar_hinge_mast_adapter",
+      "path": "operations/ops_solar_hinge_mast_adapter.json",
+      "bytes": 7895,
+      "sha256": "87ed7c9c0b00621e9522b5fb5181932980d00d4b41d76c53fad89740a062774f"
+    },
+    {
+      "assetId": "ops_solar_hinge_mast_adapter",
+      "path": "operations/ops_solar_hinge_mast_adapter_lod0.glb",
+      "bytes": 660024,
+      "sha256": "98189756d7a6d7e72df9ae4e7c98f838fb22b6dd58f5dfb6d82177bf1f290da0"
+    },
+    {
+      "assetId": "ops_solar_hinge_mast_adapter",
+      "path": "operations/ops_solar_hinge_mast_adapter_lod1.glb",
+      "bytes": 299708,
+      "sha256": "e1a010b1991c14cd8dcb1e1ef59d593e82256e3328ccfb4d857c79aa0ba4b864"
+    },
+    {
+      "assetId": "ops_solar_hinge_mast_adapter",
+      "path": "operations/ops_solar_hinge_mast_adapter_lod2.glb",
+      "bytes": 272496,
+      "sha256": "5658ead5020ff3048b50ccdc84e118e8023c6760e4cc6dc9703bc7120164bc6d"
+    },
+    {
+      "assetId": "pressure_corridor_straight",
+      "path": "structure/pressure_corridor_straight.json",
+      "bytes": 8021,
+      "sha256": "c3cde723929e6cf1c0111be35b0ca77839b8d6129b1c6166974f704c2ffbc9b1"
+    },
+    {
+      "assetId": "pressure_corridor_straight",
+      "path": "structure/pressure_corridor_straight_lod0.glb",
+      "bytes": 582756,
+      "sha256": "80f4ef96580e1c792759a2c825266ff7a50e42d935fcb504ed8dbf9c625a7f6a"
+    },
+    {
+      "assetId": "pressure_corridor_straight",
+      "path": "structure/pressure_corridor_straight_lod1.glb",
+      "bytes": 398844,
+      "sha256": "c4a2ca0e42d51f46f43a970ff262deac9037e9dc0924d25fd2ca1c9dde29ad66"
+    },
+    {
+      "assetId": "pressure_corridor_straight",
+      "path": "structure/pressure_corridor_straight_lod2.glb",
+      "bytes": 329012,
+      "sha256": "1baa9b3c14d66aafa74207133fd71b242fdbd5c0657514427e4c8477d9430901"
+    },
+    {
+      "assetId": "pressure_pipe_elbow_90",
+      "path": "structure/pressure_pipe_elbow_90.json",
+      "bytes": 8352,
+      "sha256": "e251655556096e6b564916b0dbb0ff151587c832f3d37f0032c94db40159569a"
+    },
+    {
+      "assetId": "pressure_pipe_elbow_90",
+      "path": "structure/pressure_pipe_elbow_90_lod0.glb",
+      "bytes": 321864,
+      "sha256": "aada35e66a3e60721b990ca5fce836703b10f38b377d0467c57ba11344a24ba5"
+    },
+    {
+      "assetId": "pressure_pipe_elbow_90",
+      "path": "structure/pressure_pipe_elbow_90_lod1.glb",
+      "bytes": 257448,
+      "sha256": "73e74dcfec4e3b51b2af655c8a3785f32621cf6ef9d97701fe0e9bc4df242e07"
+    },
+    {
+      "assetId": "pressure_pipe_elbow_90",
+      "path": "structure/pressure_pipe_elbow_90_lod2.glb",
+      "bytes": 222164,
+      "sha256": "19862d00ad004b0560475fd5392d250228ab6fcd3415354c4d92793a55a84825"
+    },
+    {
+      "assetId": "pressure_pipe_straight",
+      "path": "structure/pressure_pipe_straight.json",
+      "bytes": 2813,
+      "sha256": "c6aaa939977eea6d91d0526904b8560246f50e3878aee0dc9ccadbd4f0dc974f"
+    },
+    {
+      "assetId": "pressure_pipe_straight",
+      "path": "structure/pressure_pipe_straight_lod0.glb",
+      "bytes": 255932,
+      "sha256": "e6866767ed727c9b330109dfac787e5073a649d127d22af7c66eab8fc23f54ee"
+    },
+    {
+      "assetId": "pressure_pipe_straight",
+      "path": "structure/pressure_pipe_straight_lod1.glb",
+      "bytes": 207712,
+      "sha256": "794db6d2848aa79ae9275ec2bd88f8538de0f53eae6733aad6cb4a01aedc371d"
+    },
+    {
+      "assetId": "pressure_pipe_straight",
+      "path": "structure/pressure_pipe_straight_lod2.glb",
+      "bytes": 181344,
+      "sha256": "0774ed35308c4f2db222c44ac68339ceef5e4be4e332cab4b513d89d909a656d"
+    },
+    {
+      "assetId": "pressure_pipe_valve",
+      "path": "structure/pressure_pipe_valve.json",
+      "bytes": 5444,
+      "sha256": "f8eb40191ee8dd0d70c06fba2c8b3ac8ae2751c703508c14ffc53b85ca7c63d8"
+    },
+    {
+      "assetId": "pressure_pipe_valve",
+      "path": "structure/pressure_pipe_valve_lod0.glb",
+      "bytes": 499040,
+      "sha256": "b9dbe7350b7a030d7b8c5797e9727e9e8ebbfb306896780a25a77db47860d8ad"
+    },
+    {
+      "assetId": "pressure_pipe_valve",
+      "path": "structure/pressure_pipe_valve_lod1.glb",
+      "bytes": 352192,
+      "sha256": "47206b31fc44595384774f12ab22ad84f9ce1c580c32837b4e7d290c455bd03f"
+    },
+    {
+      "assetId": "pressure_pipe_valve",
+      "path": "structure/pressure_pipe_valve_lod2.glb",
+      "bytes": 291796,
+      "sha256": "f11af9cb3c22b050fd7d85490b1d2c67978322c8b6f0418571e56a4934de9269"
+    },
+    {
+      "assetId": "pump_skid",
+      "path": "structure/pump_skid.json",
+      "bytes": 5640,
+      "sha256": "cd6780ae29f276ec68d080d372c67ac0bfc260fb88606f51dad9d5b25fdaef9b"
+    },
+    {
+      "assetId": "pump_skid",
+      "path": "structure/pump_skid_lod0.glb",
+      "bytes": 570932,
+      "sha256": "46e94de8901a314e3757892544761a5a7cf6af6d90087b3d5191f2ad20d83056"
+    },
+    {
+      "assetId": "pump_skid",
+      "path": "structure/pump_skid_lod1.glb",
+      "bytes": 395812,
+      "sha256": "b35e66376b688a8a62c186d4d672b0b9e85549642f8a99540e2bbb9ad42fbf6d"
+    },
+    {
+      "assetId": "pump_skid",
+      "path": "structure/pump_skid_lod2.glb",
+      "bytes": 317124,
+      "sha256": "2b3727d81192d7f96d1e9704ad1d5dba08d6924df7142cdee125b98f2065ce05"
+    },
+    {
+      "assetId": "seam_bearing_quarried_parent_rock",
+      "path": "natural/seam_bearing_quarried_parent_rock.json",
+      "bytes": 2865,
+      "sha256": "81b7e9e67f73bd9170be8f33b5c814b4ee85bbbef85acf6ada0a023d63441a19"
+    },
+    {
+      "assetId": "seam_bearing_quarried_parent_rock",
+      "path": "natural/seam_bearing_quarried_parent_rock_lod0.glb",
+      "bytes": 194708,
+      "sha256": "cf98116bb243a8bf6aabfb71a400a47b22107c9cd6e56de943e690affc74a695"
+    },
+    {
+      "assetId": "seam_bearing_quarried_parent_rock",
+      "path": "natural/seam_bearing_quarried_parent_rock_lod1.glb",
+      "bytes": 88448,
+      "sha256": "5f74a2a9c84d69ed84170f31a98b78a6592531e157b919431db747e69051f9fd"
+    },
+    {
+      "assetId": "seam_bearing_quarried_parent_rock",
+      "path": "natural/seam_bearing_quarried_parent_rock_lod2.glb",
+      "bytes": 45168,
+      "sha256": "8eff58374d67ff08527f6828cd266529b03738e93cebcc833d1e53f285b3b606"
+    },
+    {
+      "assetId": "terminal_cap",
+      "path": "structure/terminal_cap.json",
+      "bytes": 2416,
+      "sha256": "2589a98f1d7a3f3bd1ab59e8f740a48d0eddba6014711ddcd8111cd7f0db26b4"
+    },
+    {
+      "assetId": "terminal_cap",
+      "path": "structure/terminal_cap_lod0.glb",
+      "bytes": 320996,
+      "sha256": "d155c7c4cf73fe818abc8393cd0526fc8080140eddc86bd1d14ce594c4ca83d4"
+    },
+    {
+      "assetId": "terminal_cap",
+      "path": "structure/terminal_cap_lod1.glb",
+      "bytes": 309876,
+      "sha256": "c61b6bd438fc7385c7775fb55dd4d06b73a2dbbecb65ee258d6ffa150fcd96b0"
+    },
+    {
+      "assetId": "terminal_cap",
+      "path": "structure/terminal_cap_lod2.glb",
+      "bytes": 293844,
+      "sha256": "438360ac241129e661bef064fb8592fd13519f1865a7cd18b4fc50d73b654c00"
+    },
+    {
+      "assetId": "threshold_jamb",
+      "path": "natural/threshold_jamb.json",
+      "bytes": 5129,
+      "sha256": "5bc5ecdae32333edfda63bf93d32cbfa49a057011b9700739e7287c23de42762"
+    },
+    {
+      "assetId": "threshold_jamb",
+      "path": "natural/threshold_jamb_lod0.glb",
+      "bytes": 397220,
+      "sha256": "a6b5618955d159a898e03125443998c2834b39ea6ec928132fb085c4659bc59f"
+    },
+    {
+      "assetId": "threshold_jamb",
+      "path": "natural/threshold_jamb_lod1.glb",
+      "bytes": 332900,
+      "sha256": "c0c96d63cc36630fbe087dea7c4959909d255e0b5175889962db07fcd6327df6"
+    },
+    {
+      "assetId": "threshold_jamb",
+      "path": "natural/threshold_jamb_lod2.glb",
+      "bytes": 303500,
+      "sha256": "c4a2e39263de8b636b36ff847c005aa4f86eaf7fc33b9c9447db829bbc14de35"
+    },
+    {
+      "assetId": "threshold_lintel",
+      "path": "natural/threshold_lintel.json",
+      "bytes": 5581,
+      "sha256": "ddcdab750d4873f915a0ec85d2d30ce11224b00158ac0fd987a33d299b091259"
+    },
+    {
+      "assetId": "threshold_lintel",
+      "path": "natural/threshold_lintel_lod0.glb",
+      "bytes": 170756,
+      "sha256": "0d853b8dc3976053099dabfec3be4c2f5bdf1af080e178b862d4b17f40df1ee4"
+    },
+    {
+      "assetId": "threshold_lintel",
+      "path": "natural/threshold_lintel_lod1.glb",
+      "bytes": 170812,
+      "sha256": "2c95312870cdf77fa1760b0cbe1227c1ceede7e850953d98ce0028cfbeb2d4b2"
+    },
+    {
+      "assetId": "threshold_lintel",
+      "path": "natural/threshold_lintel_lod2.glb",
+      "bytes": 170812,
+      "sha256": "758b7381dbde2567280ac843efd7742ba2a493036de715b2b5ac1472feb059a8"
+    },
+    {
+      "assetId": "truss_cross",
+      "path": "structure/truss_cross.json",
+      "bytes": 31260,
+      "sha256": "a5cf47941af96de56276ac5d2cb4780b0b6cab5878e187ef575c859da9cbf4fa"
+    },
+    {
+      "assetId": "truss_cross",
+      "path": "structure/truss_cross_lod0.glb",
+      "bytes": 700172,
+      "sha256": "8d72202c4e9beda9950654a07affc696ba257cb7b0c461d2841a23401371a7e4"
+    },
+    {
+      "assetId": "truss_cross",
+      "path": "structure/truss_cross_lod1.glb",
+      "bytes": 637968,
+      "sha256": "448a4adf750a1b7f47236acc2509ca3b3f491766a939cefe25a3a4ac7a1a568a"
+    },
+    {
+      "assetId": "truss_cross",
+      "path": "structure/truss_cross_lod2.glb",
+      "bytes": 560000,
+      "sha256": "d2f10b8e38f2556a10ab480d7632dda704a2593115f838bc7f99a413e8c8dc39"
+    },
+    {
+      "assetId": "truss_long",
+      "path": "structure/truss_long.json",
+      "bytes": 15319,
+      "sha256": "38419736d5a30c53db0f6cfc6a58ed92e268ba3e8300ca1754e57cfb0b7fa941"
+    },
+    {
+      "assetId": "truss_long",
+      "path": "structure/truss_long_lod0.glb",
+      "bytes": 539292,
+      "sha256": "11df2240cf9ef9bc93f43757d48c29a640a2e285a5bfdf5db20d729b07e7d314"
+    },
+    {
+      "assetId": "truss_long",
+      "path": "structure/truss_long_lod1.glb",
+      "bytes": 503496,
+      "sha256": "71eedd8d5b00aed38c7a4e347ce40bc4f6c4bb0c451d942ff740c560d59a4a8c"
+    },
+    {
+      "assetId": "truss_long",
+      "path": "structure/truss_long_lod2.glb",
+      "bytes": 474504,
+      "sha256": "95fe5e1450f9f5344026930ac3cc9d78ca9cad40caaff28bd5b5f39b592bb0fe"
+    },
+    {
+      "assetId": "truss_short",
+      "path": "structure/truss_short.json",
+      "bytes": 9807,
+      "sha256": "10bd6848104303e42e5b9b60faa931450c59f6f91aa9c77dc4a30fc17adbbf9a"
+    },
+    {
+      "assetId": "truss_short",
+      "path": "structure/truss_short_lod0.glb",
+      "bytes": 515176,
+      "sha256": "bd6e40e74ac788eaf7ab3408da2d4f4b42c3a778e960c6ac7c25563916e60f5e"
+    },
+    {
+      "assetId": "truss_short",
+      "path": "structure/truss_short_lod1.glb",
+      "bytes": 489948,
+      "sha256": "1facff0e89fa0821ea50cf14fe2c102c4212ae3086d3af74df86da2d44da5c3d"
+    },
+    {
+      "assetId": "truss_short",
+      "path": "structure/truss_short_lod2.glb",
+      "bytes": 461140,
+      "sha256": "857a3a0aa38a41764a7a9a440a9fb7c51b0a60061f4f97e24d047a557566a354"
+    },
+    {
+      "assetId": "truss_tee",
+      "path": "structure/truss_tee.json",
+      "bytes": 23763,
+      "sha256": "fa648a0589a741ef91e2962e33872ddffa438cd5fc1f5cf6a6264588ebafc4a5"
+    },
+    {
+      "assetId": "truss_tee",
+      "path": "structure/truss_tee_lod0.glb",
+      "bytes": 567612,
+      "sha256": "379f3e47dff7f6657f68144a8c8bb98e7625b0b65cb14aed4d3eb30efe406453"
+    },
+    {
+      "assetId": "truss_tee",
+      "path": "structure/truss_tee_lod1.glb",
+      "bytes": 521052,
+      "sha256": "0844ff2586bec82acaab0fb5a52e4118769302a56d53c99985920667694f961d"
+    },
+    {
+      "assetId": "truss_tee",
+      "path": "structure/truss_tee_lod2.glb",
+      "bytes": 462672,
+      "sha256": "908c83d8819a566611bde28877410a02af6a8f5e93bd33026b9a50a444e905bf"
+    }
+  ]
+}

@@ -1,0 +1,654 @@
+// Research E (build_map §1C row 277 / CONTRACT-IDENTITY, P04) — the Contracts tab commits the
+// exact offer that was held, never a different one the drain window happened to paint.
+//
+// The defect: `drainAndCommit` ran a ~260 ms rAF retract, then accepted through
+// `key.isConnected ? key : acceptKey()` — a detached A key fell back to the dossier's CURRENT
+// accept node, so remove-A/paint-B inside the drain committed B. The repair captures the held
+// offer's identity and stated terms at fire time; the commit lands only on that still-valid
+// offer. Selection/context change, hide and dispose retire the pending commit; an unchanged
+// repainted offer still accepts exactly once; the accept owner revalidates the intent as usual.
+//
+// No jsdom in this repo — the screen is mounted on a scoped fake DOM whose dossier parses the
+// accept node out of the real dossier markup (the pq024/probe pattern), and a fake clock + rAF
+// queue drives the hold and the drain deterministically.
+import assert from 'node:assert/strict';
+
+let clockNow = 10_000;
+
+function makeClassList(node) {
+  return {
+    add(...names) { for (const n of names) node._classes.add(n); },
+    remove(...names) { for (const n of names) node._classes.delete(n); },
+    toggle(name, force) {
+      const want = force === undefined ? !node._classes.has(name) : !!force;
+      if (want) node._classes.add(name); else node._classes.delete(name);
+    },
+    contains(name) { return node._classes.has(name); },
+  };
+}
+
+class CtNode {
+  constructor(tagName, doc) {
+    this.ownerDocument = doc;
+    this.tagName = String(tagName || 'div').toUpperCase();
+    this._classes = new Set();
+    this.classList = makeClassList(this);
+    this.attributes = {};
+    this.dataset = {};
+    this.style = { setProperty() {}, removeProperty() {}, cssText: '' };
+    this.listeners = {};
+    this.children = [];
+    this.parentNode = null;
+    this.isConnected = true;
+    this.disabled = false;
+    this.hidden = false;
+    this.value = '';
+    this._innerHTML = '';
+    this._textContent = '';
+  }
+  set innerHTML(html) { this._innerHTML = String(html); if (this._onHtml) this._onHtml(this._innerHTML); }
+  get innerHTML() { return this._innerHTML; }
+  set textContent(v) { this._textContent = String(v); }
+  get textContent() { return this._textContent; }
+  setAttribute(name, value) { this.attributes[name] = String(value); }
+  getAttribute(name) { return name in this.attributes ? this.attributes[name] : null; }
+  removeAttribute(name) { delete this.attributes[name]; }
+  addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); }
+  removeEventListener() {}
+  fire(type, event = {}) {
+    const ev = {
+      target: this, currentTarget: this, button: 0, repeat: false,
+      preventDefault() { this.defaultPrevented = true; }, stopPropagation() {}, ...event,
+    };
+    for (const fn of [...(this.listeners[type] || [])]) fn(ev);
+    return ev;
+  }
+  get firstChild() { return this.children[0] || null; }
+  get childNodes() { return this.children; }
+  appendChild(child) { child.parentNode = this; this.children.push(child); return child; }
+  removeChild(child) {
+    this.children = this.children.filter((node) => node !== child);
+    child.parentNode = null; child.isConnected = false;
+    return child;
+  }
+  append(...kids) { for (const k of kids) this.appendChild(k); }
+  insertBefore(node, ref) {
+    const i = ref ? this.children.indexOf(ref) : -1;
+    node.parentNode = this;
+    if (i < 0) this.children.push(node); else this.children.splice(i, 0, node);
+    return node;
+  }
+  insertAdjacentElement(_pos, node) { return this.appendChild(node); }
+  remove() { this.isConnected = false; }
+  querySelector() { return null; }
+  querySelectorAll() { return []; }
+  closest() { return null; }
+  focus() { this.ownerDocument.activeElement = this; }
+  contains(node) {
+    for (let current = node; current; current = current.parentNode) if (current === this) return true;
+    return false;
+  }
+  getBoundingClientRect() { return { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 }; }
+}
+
+class AcceptNode extends CtNode {
+  constructor(doc, missionId, disabled) {
+    super('button', doc);
+    this.attributes['data-accept'] = missionId;
+    this.disabled = !!disabled;
+    this._classes.add('sx-ct-commit');
+  }
+  closest(sel) {
+    if (typeof sel !== 'string') return null;
+    if (!sel.includes('data-accept') && !sel.includes('sx-ct-commit')) return null;
+    if (sel.includes(':not(:disabled)') && this.disabled) return null;
+    return this;
+  }
+  querySelector() { return null; }
+}
+
+// The fake document: every element that receives the Contracts frame markup gets the four mounted
+// regions wired in; the dossier region parses each repainted markup for the real accept node so a
+// repaint detaches the key a hold armed on — the exact P04 window.
+function makeContractsDom() {
+  const doc = {
+    activeElement: null,
+    head: null,
+    body: null,
+    visibilityState: 'visible',
+    documentElement: {
+      dataset: {},
+      _classes: new Set(),
+      classList: null,
+    },
+    getElementById() { return null; },
+    querySelector() { return null; },
+    listeners: {},
+    addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); },
+    removeEventListener(type, fn) { this.listeners[type] = (this.listeners[type] || []).filter((f) => f !== fn); },
+    fire(type, ev = {}) { for (const fn of [...(this.listeners[type] || [])]) fn(ev); },
+    createElement(tag) {
+      const node = new CtNode(tag, doc);
+      node._onHtml = (html) => { if (html.includes('sx-ct__dossier')) wireScreen(node); };
+      return node;
+    },
+    createElementNS(ns, tag) { return new CtNode(tag, doc); },
+  };
+  doc.head = new CtNode('head', doc);
+  doc.body = new CtNode('body', doc);
+  doc.documentElement.classList = makeClassList(doc.documentElement);
+
+  const screens = [];
+  function wireScreen(root) {
+    const regions = {};
+    // Parsed markup always carries parents: the screen pins the standing-orders sentence under
+    // the dispatch label via parentNode.appendChild, so bare region nodes must not be parentless.
+    const frame = new CtNode('div', doc);
+    for (const sel of ['.sx-ct-dispatch__label', '.sx-ct__board', '.sx-ct__dossier', '.sx-ct__active']) {
+      const region = new CtNode('div', doc);
+      frame.appendChild(region);
+      regions[sel] = region;
+    }
+    const dossier = regions['.sx-ct__dossier'];
+    let accept = null;
+    dossier._onHtml = (html) => {
+      if (accept) accept.isConnected = false; // a repaint detaches the key the hold armed on
+      accept = null;
+      const tag = html.match(/<button[^>]*\bdata-accept="([^"]*)"[^>]*>/);
+      if (tag) accept = new AcceptNode(doc, tag[1], /\sdisabled(?:\s|=|>)/.test(tag[0]));
+    };
+    dossier.querySelector = (sel) => {
+      if (typeof sel !== 'string') return null;
+      // Run real dossier composition, including hold retirement and Lamp Key dressing.
+      if (sel === '.sx-dossier') return dossier;
+      if (sel.includes('sx-ct-commit')) {
+        if (!accept) return null;
+        if (sel.includes(':not(:disabled)') && accept.disabled) return null;
+        return accept;
+      }
+      return null;
+    };
+    dossier.currentAccept = () => accept;
+    root.querySelector = (sel) => regions[sel] || null;
+    root.querySelectorAll = () => [];
+    screens.push({ root, regions, board: regions['.sx-ct__board'], dossier });
+  }
+  return { doc, screens, last: () => screens[screens.length - 1] };
+}
+
+function makeCtx(offersList) {
+  const emitted = [];
+  const handlers = {};
+  const state = {
+    simTime: 120,
+    mode: 'flight',
+    settings: {},
+    playerId: 'player',
+    player: { id: 'player', credits: 5_000_000, cargo: { capVolume: 100, usedVolume: 0, items: {} } },
+    ui: { dockedStationId: 'station_alpha' },
+    missions: {
+      config: { maxActive: 8 },
+      active: [],
+      boards: { station_alpha: { slots: offersList, dispatchLabel: 'LIVE DISPATCH' } },
+    },
+  };
+  const ctx = {
+    state,
+    station: { name: 'Alpha Station' },
+    bus: {
+      emit(type, payload = {}) { emitted.push({ type, payload }); },
+      on(type, fn) { (handlers[type] = handlers[type] || []).push(fn); return () => {}; },
+      off() {},
+    },
+  };
+  return { ctx, state, emitted, handlers };
+}
+
+const offer = (id, title, reward, extra = {}) => ({
+  id, title, type: 'delivery', reward,
+  destStationId: 'station_beta', destSectorId: 'sector_beta',
+  factionId: null, clauses: [], ...extra,
+});
+
+async function main() {
+  // fake clock + rAF BEFORE the module is imported: the hold clock and the drain both read these.
+  const rafState = { queue: [] };
+  globalThis.requestAnimationFrame = (fn) => { rafState.queue.push(fn); return rafState.queue.length; };
+  globalThis.cancelAnimationFrame = () => {};
+  const priorPerformance = globalThis.performance;
+  globalThis.performance = { now: () => clockNow };
+  const windowListeners = {};
+
+  const dom = makeContractsDom();
+  const reduceMotion = { flag: false };
+  const realContains = dom.doc.documentElement.classList.contains.bind(dom.doc.documentElement.classList);
+  dom.doc.documentElement.classList.contains = (name) => (name === 'sf-reduce-motion' ? reduceMotion.flag : realContains(name));
+  globalThis.document = dom.doc;
+  globalThis.window = {
+    devicePixelRatio: 1, innerHeight: 900,
+    addEventListener(type, fn) { (windowListeners[type] ||= []).push(fn); },
+    removeEventListener(type, fn) { windowListeners[type] = (windowListeners[type] || []).filter((f) => f !== fn); },
+    fire(type, event = {}) { for (const fn of [...(windowListeners[type] || [])]) fn({ target: this, ...event }); },
+  };
+
+  const { createContractsScreen } = await import('../src/ui/station/screens/contracts.js');
+
+  const stepFrame = (dtMs = 16) => {
+    clockNow += dtMs;
+    const q = rafState.queue;
+    rafState.queue = [];
+    for (const fn of q) if (fn) fn(clockNow);
+  };
+  const advance = (totalMs, stepMs = 16) => {
+    for (let t = 0; t < totalMs; t += stepMs) stepFrame(stepMs);
+  };
+  const settleAsync = async () => {
+    // The frame driver is synchronous; let promise-backed mission-lane commands finish before
+    // checking their emitted events.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  };
+  const acceptEmits = (emitted) => emitted.filter((e) => e.type === 'ui:acceptMission').map((e) => e.payload.missionId);
+
+  try {
+    // The clock keeps the authored hold + retract duration when frames are delayed.
+    // A compositor stall cannot turn one activation into a minimum frame count.
+    for (const source of ['auto', 'pointer', 'key']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      sc.root.fire(source === 'auto' ? 'click' : source === 'pointer' ? 'pointerdown' : 'keydown',
+        { target: sc.dossier.currentAccept(), button: 0, key: 'Enter' });
+      stepFrame(200);
+      assert.deepEqual(acceptEmits(emitted), [], `${source} still requires the full hold`);
+      stepFrame(6000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} catches up elapsed hold and retract`);
+      advance(1000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} never repeats the completed acceptance`);
+      screen.dispose();
+    }
+
+    // A continuous physical hold completes from monotonic elapsed time even if no RAF runs until
+    // after release (the measured GPU/compositor stall case). The release path can commit once,
+    // and later frames or duplicate release events cannot repeat it.
+    for (const source of ['pointer', 'key']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      sc.root.fire(source === 'pointer' ? 'pointerdown' : 'keydown',
+        { target: key, button: 0, key: 'Enter' });
+      clockNow += 1_100; // deliberately do not service the queued animation frame
+      dom.doc.fire(source === 'pointer' ? 'pointerup' : 'keyup', { target: key, key: 'Enter' });
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} accepts after a qualified RAF gap`);
+      dom.doc.fire(source === 'pointer' ? 'pointerup' : 'keyup', { target: key, key: 'Enter' });
+      advance(1000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} qualified hold fires exactly once`);
+      screen.dispose();
+    }
+
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      const holdText = new CtNode('span', dom.doc);
+      const holdRing = new CtNode('span', dom.doc);
+      holdText.closest = () => key;
+      holdRing.closest = () => key;
+      key.appendChild(holdText);
+      key.appendChild(holdRing);
+      sc.root.fire('pointerdown', { target: holdText, button: 0 });
+      sc.root.fire('pointerleave', { target: holdText, relatedTarget: holdRing });
+      clockNow += 1_100; // a child-to-child move inside Accept must leave the physical hold armed
+      dom.doc.fire('pointerup', { target: holdRing });
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'child pointerleave within Accept does not cancel its hold');
+      screen.dispose();
+    }
+
+    // A quick re-arm may continue the visible spring, but wall time after the first release is not
+    // counted as pressed time toward the second activation.
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      let key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      stepFrame(200);
+      dom.doc.fire('pointerup', { target: key });
+      clockNow += 5_000; // no frame paints the retract during this released interval
+      key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      clockNow += 100;
+      dom.doc.fire('pointerup', { target: key });
+      advance(800);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], 'released wall time cannot finish a re-armed hold');
+      screen.dispose();
+    }
+
+    // A duplicate pointerup after a short release cannot turn elapsed released time into a
+    // qualified hold; a deliberate re-arm still continues from the retained spring fraction.
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      let key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      stepFrame(200);
+      dom.doc.fire('pointerup', { target: key });
+      clockNow += 5_000; // the pointer is released throughout this RAF gap
+      dom.doc.fire('pointerup', { target: key }); // duplicate capture/bubble-style notification
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], 'duplicate release cannot finish an ended press');
+      key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      clockNow += 260; // retained progress plus this fresh press exceeds the threshold
+      dom.doc.fire('pointerup', { target: key });
+      advance(400);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'a deliberate re-arm resumes the spring once');
+      screen.dispose();
+    }
+
+    // Cancellation still wins over elapsed time when the first frame is delayed: leaving the key,
+    // pointercancel, focus loss, Escape, and pagehide all retire the uncompleted physical hold.
+    for (const cancel of ['pointerleave', 'pointercancel', 'blur', 'escape', 'hidden', 'pagehide']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      clockNow += 1_100; // exceed the threshold without letting the visual RAF run
+      if (cancel === 'pointerleave') sc.root.fire('pointerleave', { target: key });
+      else if (cancel === 'pointercancel') dom.doc.fire('pointercancel', { target: key });
+      else if (cancel === 'escape') dom.doc.fire('keydown', { key: 'Escape' });
+      else if (cancel === 'hidden') { dom.doc.visibilityState = 'hidden'; dom.doc.fire('visibilitychange'); }
+      else globalThis.window.fire(cancel);
+      advance(600);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], `${cancel} cancels a stalled hold`);
+      screen.dispose();
+      dom.doc.visibilityState = 'visible';
+    }
+
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      globalThis.window.fire('blur', { target: key }); // bubbled descendant blur during focus transfer
+      clockNow += 1_100; // qualify without an animation frame
+      dom.doc.fire('pointerup', { target: key });
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'descendant blur does not cancel a pointer hold');
+      screen.dispose();
+    }
+
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      sc.root.fire('keydown', { target: key, key: 'Enter' });
+      sc.root.fire('focusout', { target: key, relatedTarget: dom.doc.body });
+      clockNow += 1_100;
+      dom.doc.fire('keyup', { key: 'Enter' });
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], 'keyboard focus leaving Accept cancels its hold');
+      screen.dispose();
+    }
+
+    for (const source of ['pointer', 'key']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      sc.root.fire(source === 'pointer' ? 'pointerdown' : 'keydown', { target: key, button: 0, key: 'Enter' });
+      stepFrame(200);
+      dom.doc.fire(source === 'pointer' ? 'pointerup' : 'keyup', { key: 'Enter' });
+      stepFrame(6000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], `${source} release wins before the delayed frame`);
+      screen.dispose();
+    }
+
+    // ── arm A → complete hold → remove A / paint B → the drain commits NOTHING ─────────────
+    {
+      const { ctx, state, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx);
+      const sc = dom.last();
+      screen.onShow(ctx);
+      const keyA = sc.dossier.currentAccept();
+      assert(keyA && keyA.getAttribute('data-accept') === 'm_alpha', 'dossier A paints an armed Accept');
+
+      sc.root.fire('pointerdown', { target: keyA, button: 0 });
+      advance(600); // 450 ms hold fills and fires; the ~260 ms drain is still in flight
+      state.missions.boards.station_alpha.slots = [offer('m_beta', 'Beta Haul', 9000)];
+      screen.refresh(ctx); // remove A / paint B mid-drain — the classic P04 swap
+      const keyB = sc.dossier.currentAccept();
+      assert(keyB && keyB.getAttribute('data-accept') === 'm_beta' && keyB !== keyA,
+        'the repaint detached A and painted B');
+      assert.equal(keyA.isConnected, false, 'the armed key is detached');
+      advance(600);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], 'no mission accepted — the drain never falls back to B');
+      screen.dispose();
+    }
+
+    // ── same-ID repaint: the unchanged offer still accepts exactly once ────────────────────
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx);
+      const sc = dom.last();
+      screen.onShow(ctx);
+      const keyA = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: keyA, button: 0 });
+      advance(600);
+      screen.refresh(ctx); // identical offer repainted (duplicate updates, mission:updated churn)
+      screen.refresh(ctx);
+      const keyA2 = sc.dossier.currentAccept();
+      assert(keyA2 && keyA2.getAttribute('data-accept') === 'm_alpha' && keyA2 !== keyA,
+        'the same offer repainted under a new node');
+      advance(600);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'the held offer commits once through its fresh node');
+      screen.dispose();
+    }
+
+    // ── changed terms: same id, different stated terms — nothing commits ───────────────────
+    {
+      const { ctx, state, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx);
+      const sc = dom.last();
+      screen.onShow(ctx);
+      const keyA = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: keyA, button: 0 });
+      advance(600);
+      state.missions.boards.station_alpha.slots = [offer('m_alpha', 'Alpha Run', 9000, { collateral: 1200 })];
+      screen.refresh(ctx); // same id, repriced — not the contract the player held
+      advance(600);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], 'changed terms refuse the commit');
+      screen.dispose();
+    }
+
+    // ── selection change retires the drain ────────────────────────────────────────────────
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000), offer('m_beta', 'Beta Haul', 9000)]);
+      const screen = createContractsScreen(ctx);
+      const sc = dom.last();
+      screen.onShow({ ...ctx, missionId: 'm_alpha' });
+      const keyA = sc.dossier.currentAccept();
+      assert(keyA && keyA.getAttribute('data-accept') === 'm_alpha', 'the focused offer is armed');
+      sc.root.fire('keydown', { target: keyA, key: 'Enter' });
+      advance(600);
+      // the player picks another row before the drain lands — a selection change is a context change
+      const rowB = { closest: (sel) => (sel === '[data-mid]' ? rowB : null), getAttribute: () => 'm_beta', focus() {} };
+      sc.board.fire('click', { target: rowB });
+      advance(600);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], 'a mid-drain selection change commits nothing');
+      screen.dispose();
+    }
+
+    // ── screen hide / dispose retires the drain ──────────────────────────────────────────
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx);
+      const sc = dom.last();
+      screen.onShow(ctx);
+      const keyA = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: keyA, button: 0 });
+      advance(600);
+      screen.onHide();
+      advance(600);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], 'a hidden screen never commits behind the player');
+      screen.dispose();
+    }
+
+    // ── assistive (bare click) activation under reduced motion commits truthfully ────────
+    {
+      reduceMotion.flag = true;
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx);
+      const sc = dom.last();
+      screen.onShow(ctx);
+      const keyA = sc.dossier.currentAccept();
+      sc.root.fire('click', { target: keyA }); // no pointer/key held — assistive activation self-arms
+      advance(800); // the auto hold still fills for 450 ms, then the motionless drain commits at once
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'reduced motion commits the held offer at once');
+      screen.dispose();
+      reduceMotion.flag = false;
+    }
+
+    // ── key-held activation, unchanged A: exactly one accept ────────────────────────────
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx);
+      const sc = dom.last();
+      screen.onShow(ctx);
+      const keyA = sc.dossier.currentAccept();
+      sc.root.fire('keydown', { target: keyA, key: 'Enter' });
+      advance(1400);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'unchanged A accepts exactly once');
+      sc.root.fire('keyup', { target: keyA, key: 'Enter' });
+      screen.dispose();
+    }
+
+    // An unchanged repaint retains an active hold for every ordinary activation route.
+    for (const source of ['auto', 'pointer', 'key']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const initial = sc.dossier.currentAccept();
+      assert.equal(initial.getAttribute('data-hold'), '1', 'real composeDossier dressed the held key');
+      sc.root.fire(source === 'auto' ? 'click' : source === 'pointer' ? 'pointerdown' : 'keydown',
+        { target: initial, button: 0, key: 'Enter' });
+      advance(250);
+      screen.refresh(ctx);
+      assert.equal(initial.isConnected, false, 'the active hold outlives its original DOM node');
+      advance(120);
+      screen.refresh(ctx);
+      advance(700);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} accepts exactly once through unchanged repaints`);
+      screen.dispose();
+    }
+
+    // Changed identity, terms or eligibility never inherit the previous active hold.
+    for (const change of ['selection', 'replacement', 'removal', 'terms', 'eligibility']) {
+      const { ctx, state, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000,
+        change === 'eligibility' ? { collateral: 1000 } : {}), offer('m_beta', 'Beta Haul', 9000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow({ ...ctx, missionId: 'm_alpha' });
+      sc.root.fire('click', { target: sc.dossier.currentAccept() });
+      advance(250);
+      if (change === 'selection') screen.refresh({ ...ctx, missionId: 'm_beta' });
+      else {
+        state.missions.boards.station_alpha.slots = change === 'removal' ? []
+          : change === 'replacement' ? [offer('m_beta', 'Beta Haul', 9000)]
+            : [offer('m_alpha', 'Alpha Run', change === 'terms' ? 7000 : 5000,
+              change === 'eligibility' ? { collateral: 1000 } : {})];
+        if (change === 'eligibility') state.player.credits = 0;
+        screen.refresh(ctx);
+      }
+      if (change === 'eligibility') {
+        assert.equal(sc.dossier.currentAccept().disabled, true, 'new readiness gate disables the fresh key');
+        state.player.credits = 5_000_000;
+        screen.refresh(ctx); // eligibility returning is not a new user activation
+      }
+      advance(10000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], `${change} cancels the old active hold`);
+      screen.dispose();
+    }
+
+    // A repaint cannot turn a released or cancelled physical input into an automatic accept.
+    for (const release of ['pointerup', 'pointercancel', 'pointerleave', 'keyup']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      sc.root.fire(release === 'keyup' ? 'keydown' : 'pointerdown',
+        { target: sc.dossier.currentAccept(), button: 0, key: 'Enter' });
+      advance(250);
+      screen.refresh(ctx);
+      sc.root.fire(release, { target: sc.dossier.currentAccept(), key: 'Enter' });
+      advance(1000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], `${release} still retracts the retained hold`);
+      screen.dispose();
+    }
+
+    // Detached focus / pointer-capture targets release on the document, not the replaced key.
+    for (const release of ['pointerup', 'pointercancel', 'keyup']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const pressed = sc.dossier.currentAccept();
+      sc.root.fire(release === 'keyup' ? 'keydown' : 'pointerdown',
+        { target: pressed, button: 0, key: 'Enter' });
+      advance(250);
+      screen.refresh(ctx);
+      assert.equal(pressed.isConnected, false);
+      dom.doc.fire(release, { target: dom.doc.body, key: 'Enter' });
+      advance(1000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], `${release} on the document cancels the retained hold`);
+      screen.dispose();
+      assert.equal((dom.doc.listeners[release] || []).length, 0, 'disposal removes release listeners');
+    }
+
+    for (const stop of ['hide', 'dispose']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      sc.root.fire('click', { target: sc.dossier.currentAccept() });
+      advance(250);
+      screen.refresh(ctx);
+      if (stop === 'hide') screen.onHide(); else screen.dispose();
+      advance(1000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], `${stop} cancels a repainted active hold`);
+      if (stop === 'hide') screen.dispose();
+    }
+
+    console.log('contract-hold-identity-p04: OK');
+  } finally {
+    globalThis.performance = priorPerformance;
+    delete globalThis.requestAnimationFrame;
+    delete globalThis.cancelAnimationFrame;
+  }
+}
+
+await main();

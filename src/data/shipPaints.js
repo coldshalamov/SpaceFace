@@ -1,0 +1,104 @@
+// Authored ship paint catalog — the Shipworks paint rack (src/ui/station/screens/shipworks.js).
+//
+// The appearance model in src/core/shipAppearance.js (hull/accent hex, finish, wear) is the live
+// owner: ships.setShipAppearance writes it, the save pipeline persists it, and the render pipeline
+// (visualFactory palette + partsLibrary appearance signature) paints hulls from it. This catalog is
+// the authored swatch stock the yard carries; pure data, no runtime side effects.
+//
+// hex: null means "back to the factory coat" — the hull's own palette colors (no override).
+// Decals ARE stocked below: decalId has a renderer consumer since hull stencils shipped
+// (src/render/illustratedStencils.js) — the picture answers.
+
+export const SHIP_HULL_PAINTS = Object.freeze([
+  { id: 'bare', name: 'Bare hull', hex: null, sentence: 'The factory coat the hull was delivered in.' },
+  { id: 'graphite', name: 'Graphite', hex: '#33383f', sentence: 'Field primer. Hides the rock dust, not the dents.' },
+  { id: 'concord_white', name: 'Concord white', hex: '#d6dae0', sentence: 'Patrol-standard white. Reads official at any dock.' },
+  { id: 'signal_orange', name: 'Signal orange', hex: '#e06428', sentence: 'Salvage-crew orange. Everyone sees you coming.' },
+  { id: 'hazard_yellow', name: 'Hazard yellow', hex: '#d8a018', sentence: 'Industrial yellow — the color machinery is required to wear.' },
+  { id: 'oxblood', name: 'Oxblood', hex: '#6a2430', sentence: 'Old-hauler red, cured dark in engine heat.' },
+  { id: 'harbor_blue', name: 'Harbor blue', hex: '#2c4a6e', sentence: 'Berth-side blue. The station crews paint their tugs this.' },
+  { id: 'belt_green', name: 'Belt green', hex: '#2e5a40', sentence: 'Ceres quartz-green, matched to the seam glare.' },
+  { id: 'reactor_teal', name: 'Reactor teal', hex: '#1e6e68', sentence: 'Coolant teal. Vesta fabricators run it year-round.' },
+  { id: 'deep_plum', name: 'Deep plum', hex: '#5a3a78', sentence: 'Charon night-freight livery. For hulls that move at odd hours.' },
+  { id: 'dune_sand', name: 'Dune sand', hex: '#a89060', sentence: 'Ashfall dust baked into a permanent coat.' },
+  // ATT-H-01 — more work coats: colors a hull earns a living in, not showroom inventory.
+  { id: 'liner_white', name: 'Liner white', hex: '#c8c2b4', sentence: 'Passenger-line cream, gone grey at the seals. Dignity with dock rash.' },
+  { id: 'toll_grey', name: 'Toll grey', hex: '#5c6066', sentence: 'The color of every booth on the lane. Blends into the queue it refuses to join.' },
+  { id: 'ore_ochre', name: 'Ore ochre', hex: '#8a5f2a', sentence: 'Drift-claim ochre. The dust never fully washes out of this one.' },
+  { id: 'impound_red', name: 'Impound red', hex: '#7e3226', sentence: 'Seizure-yard red. The last owner\'s livery, kept as a warning or a boast.' },
+  { id: 'patna_buff', name: 'Patna buff', hex: '#b5a284', sentence: 'The pale coat of a liner her crew filed as lost. Somewhere she is still floating.' },
+  { id: 'lock_stock', name: 'Lock stock', hex: '#43484e', sentence: 'Two barrels of smoked primer. The yard sells them as a pair or not at all.' },
+]);
+
+export const SHIP_ACCENT_PAINTS = Object.freeze([
+  { id: 'factory', name: 'Factory trim', hex: null, sentence: 'The accent the hull was built with.' },
+  { id: 'trim_white', name: 'White trim', hex: '#e8eaec', sentence: 'Registry-white spines and rails.' },
+  { id: 'trim_ink', name: 'Ink trim', hex: '#1a1c20', sentence: 'Black-out trim. Hard corners read harder.' },
+  { id: 'trim_red', name: 'Signal red', hex: '#d83028', sentence: 'One hot stripe the whole lane recognizes.' },
+  { id: 'trim_amber', name: 'Amber trim', hex: '#f0a028', sentence: 'Caution amber, the yard crews’ favorite.' },
+  { id: 'trim_cyan', name: 'Cyan trim', hex: '#3ec8d8', sentence: 'Instrument cyan, like a fresh sensor sweep.' },
+  { id: 'trim_lime', name: 'Lime trim', hex: '#98c838', sentence: 'Quarry-marking lime for hulls that work the rock.' },
+  { id: 'trim_ice', name: 'Ice trim', hex: '#a8d8f0', sentence: 'Eunomia ice-blue, cold under running lights.' },
+  // ATT-H-01 — working accents: the stripe colors crews actually paint on.
+  { id: 'trim_claim_gold', name: 'Claim gold', hex: '#c8963c', sentence: 'Belt claim-marker gold. The seam number usually rides beside it.' },
+  { id: 'trim_loom_blue', name: 'Loom blue', hex: '#3a6ea0', sentence: 'Cable-loom blue, the yard electrician\'s mark. Means the harness was redone right.' },
+  { id: 'trim_deadlight', name: 'Dead-light amber', hex: '#a87c28', sentence: 'The amber of a berth lamp left burning. Old crews paint it where the plate thins.' },
+]);
+
+export const SHIP_FINISH_STOCK = Object.freeze([
+  { id: 'worn', name: 'Worn', sentence: 'Matte where rock dust has sanded it. The yard leaves the scars showing.' },
+  { id: 'satin', name: 'Satin', sentence: 'The standard yard cure — an even sheen and honest reflections.' },
+  { id: 'polished', name: 'Polished', sentence: 'Show-floor gloss. Every dent on the hull now reads twice.' },
+]);
+
+export const SHIP_WEAR_STOCK = Object.freeze([
+  { id: 'fresh', wear: 0.05, name: 'Factory fresh', sentence: 'Straight from the yard crane. Nothing has touched it yet.' },
+  { id: 'working', wear: 0.25, name: 'Working hull', sentence: 'Dock rash and line scuffs. A hull with a job.' },
+  { id: 'weathered', wear: 0.5, name: 'Weathered', sentence: 'Seasons of belt work baked into the coat.' },
+  { id: 'veteran', wear: 0.75, name: 'Veteran', sentence: 'Every mark a story. The yard only dusts it off.' },
+]);
+
+// Hull markings — the stencil deck (src/render/illustratedStencils.js draws them in code). The ids
+// are the persisted SHIP_DECALS vocabulary; 'bare' is the absence the other rows paint over.
+export const SHIP_DECAL_STOCK = Object.freeze([
+  { id: 'bare', decalId: 'none', name: 'Bare deck', sentence: 'No marks. Just the coat and the dents.' },
+  { id: 'borrowed_time', decalId: 'borrowed_time', name: 'Borrowed time', sentence: 'A spray tag, a ghost, thirteen tallies. The old crowd still says hello.' },
+  { id: 'concord', decalId: 'concord', name: 'Patrol registry', sentence: 'Crisp serials and the inspection roundel. Reads official at any dock.' },
+  { id: 'industrial', decalId: 'industrial', name: 'Yard hazard', sentence: 'Lift points, hazard glyphs, the yard serial in safety yellow.' },
+  { id: 'frontier', decalId: 'frontier', name: 'Frontier brand', sentence: 'A hand-painted star and route tallies, faded honest by the sun.' },
+  { id: 'probate', decalId: 'probate', name: 'Toll ledger', sentence: 'EVERY MAN PAYS TWICE, stamped and dated. First in flesh. Then in coin.' },
+  { id: 'addendum', decalId: 'addendum', name: 'Vael terms', sentence: 'Voluntary — standard terms. The addendum is now painted full scale. Read page 9.' },
+  { id: 'heavy_is_honest', decalId: 'heavy_is_honest', name: 'Yard chant', sentence: 'The Pitborn chant over a scale and a tally block. Nobody paints over the tally.' },
+  { id: 'dead_schedule', decalId: 'dead_schedule', name: 'Dead schedule', sentence: 'ON SCHEDULE, says the decal. The company that set these routes is a filing.' },
+  { id: 'gate_law', decalId: 'gate_law', name: 'Gate law', sentence: 'Three directives and a measure band, drawn to tolerance. Verge tags never lie.' },
+]);
+
+/** The next appearance object the rack emits for one swatch selection: patch exactly one field of
+ * the current appearance and let ships.js normalize the whole record (version, wear clamp,
+ * decal default). `current` may be null — the hull's default appearance is the baseline. */
+export function buildPaintAppearance(current, patch) {
+  const base = current && typeof current === 'object' ? current : {};
+  const next = {
+    hullColor: base.hullColor != null ? base.hullColor : null,
+    accentColor: base.accentColor != null ? base.accentColor : null,
+    finish: base.finish != null ? base.finish : 'satin',
+    wear: Number.isFinite(Number(base.wear)) ? Number(base.wear) : 0.25,
+    decalId: base.decalId != null ? base.decalId : null,
+    // Paint changes the coat, not the captured hull's authored identity. The ship owner
+    // still normalizes this optional variant against the actual hull definition.
+    ...(base.variantId ? { variantId: base.variantId } : {}),
+  };
+  if (!patch || typeof patch !== 'object') return next;
+  if (patch.hullColor !== undefined) next.hullColor = patch.hullColor;
+  if (patch.accentColor !== undefined) next.accentColor = patch.accentColor;
+  if (patch.finish !== undefined) next.finish = patch.finish;
+  if (patch.wear !== undefined) next.wear = Number(patch.wear);
+  if (patch.decalId !== undefined) next.decalId = patch.decalId;
+  return next;
+}
+
+/** Find a catalog row by id in one of the racks; null when the id is not stocked. */
+export function shipPaintRow(list, id) {
+  if (!Array.isArray(list)) return null;
+  return list.find((row) => row && row.id === id) || null;
+}

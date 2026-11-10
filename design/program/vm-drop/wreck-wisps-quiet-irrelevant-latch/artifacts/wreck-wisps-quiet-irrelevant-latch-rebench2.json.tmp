@@ -1,0 +1,14 @@
+{
+  "medianSpeedup": 3.644839086373057,
+  "minSpeedup": 2.904924930544255,
+  "maxSpeedup": 4.90807976861233,
+  "dirtyWake": {
+    "ok": true,
+    "latched": true,
+    "woke": true,
+    "relatch": true,
+    "walks": 3,
+    "skips": 2,
+    "clears": 2
+  }
+}

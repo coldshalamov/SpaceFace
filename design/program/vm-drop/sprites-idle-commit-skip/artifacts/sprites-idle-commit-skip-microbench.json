@@ -1,0 +1,97 @@
+{
+  "name": "sprites-idle-commit-skip",
+  "primary": "quiet-sprites-idle-commit-skip",
+  "iterations": 200000,
+  "runs": 11,
+  "buckets": 4,
+  "bindingsPerBucket": 7,
+  "pairs": [
+    {
+      "beforeMs": 33.923817,
+      "afterMs": 3.4091609999999974,
+      "speedup": 9.950781731927599,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 29.489270999999988,
+      "afterMs": 2.9071019999999947,
+      "speedup": 10.143872144837038,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 18.22244599999999,
+      "afterMs": 2.780272999999994,
+      "speedup": 6.5541930594585605,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 19.651001000000008,
+      "afterMs": 2.9638199999999983,
+      "speedup": 6.630295024664123,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 19.17766900000001,
+      "afterMs": 2.6779479999999865,
+      "speedup": 7.161329868989281,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 19.189385,
+      "afterMs": 2.6803469999999976,
+      "speedup": 7.159291315639362,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 19.243313,
+      "afterMs": 3.0097609999999975,
+      "speedup": 6.393634909881555,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 19.349384,
+      "afterMs": 3.240241999999995,
+      "speedup": 5.971586072892096,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 19.103663999999995,
+      "afterMs": 2.9985730000000075,
+      "speedup": 6.370918433534867,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 18.888242000000005,
+      "afterMs": 2.877003000000002,
+      "speedup": 6.565249323688572,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 19.47108700000001,
+      "afterMs": 2.841224000000004,
+      "speedup": 6.853062975675266,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    }
+  ],
+  "median": 6.630295024664123,
+  "minSpeedup": 5.971586072892096,
+  "dirtyWake": {
+    "ok": true,
+    "quietOk": true,
+    "woke": true,
+    "relatch": true,
+    "published": 3,
+    "skipped": 4
+  }
+}

@@ -1,0 +1,1179 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { LOOP_FIXED_DT, startLoop } from '../src/core/loop.js';
+import { createPresentationJournal } from '../src/core/presentationJournal.js';
+import { createPresentationRuntimeCloser } from '../src/core/presentationRunner.js';
+import { createSnapshotFence } from '../src/render/snapshotFence.js';
+
+function createRaf() {
+  let nextId = 1;
+  const pending = new Map();
+  return {
+    requestFrame(callback) {
+      const id = nextId++;
+      pending.set(id, callback);
+      return id;
+    },
+    cancelFrame(id) {
+      pending.delete(id);
+    },
+    flushOne(now) {
+      const entry = pending.entries().next().value;
+      assert.ok(entry, 'expected one presentation callback');
+      pending.delete(entry[0]);
+      entry[1](now);
+    },
+    count: () => pending.size,
+  };
+}
+
+// OWNER, 2026-09-20: "the main ship I fly keeps jigging back and forth like it doesn't know its own
+// location ... the ship must fly smooth and the player have complete control." The loop has ONE
+// order — simulate the time that passed, then present that moment. Tests here used to pin the
+// opposite (draw the stale snapshot first on any frame over 33 ms, and starve the sim to one step
+// after a slow draw); that is the defect, so they now assert what the pilot needs.
+function createStubSimulationRunner(order, caps, stepsFor = () => 0) {
+  return {
+    fixedDt: LOOP_FIXED_DT,
+    maxSteps: 4,
+    advance(frameDt, timeScale, cap) {
+      order.push('advance');
+      caps.push(cap);
+      return { steps: stepsFor(cap), shedBacklog: false, shedSteps: 0, accumulator: 0 };
+    },
+    prepareWithoutAdvance() {
+      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+    },
+    consumeLatestCompletedTick() { return 0; },
+    interpolationAlpha() { return 0; },
+    setLifecycleGeneration() {},
+    close() { return true; },
+    getDiagnostics() { return {}; },
+  };
+}
+
+test('restore stamps the worker pause boundary with the new lifecycle generation', () => {
+  const raf = createRaf();
+  let visibilityState = 'visible';
+  let visibilityListener = null;
+  const visibilityTarget = {
+    get visibilityState() { return visibilityState; },
+    addEventListener(type, listener) {
+      if (type === 'visibilitychange') visibilityListener = listener;
+    },
+    removeEventListener(type, listener) {
+      if (type === 'visibilitychange' && visibilityListener === listener) visibilityListener = null;
+    },
+    set(next) {
+      visibilityState = next;
+      visibilityListener?.();
+    },
+  };
+  const calls = [];
+  let generation = null;
+  const simulationRunner = {
+    fixedDt: LOOP_FIXED_DT,
+    maxSteps: 4,
+    clockOwner: 'worker-local',
+    advance() { return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 }; },
+    prepareWithoutAdvance() {
+      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+    },
+    consumeLatestCompletedTick() { return 0; },
+    interpolationAlpha() { return 0; },
+    setLifecycleGeneration(value) {
+      generation = value;
+      calls.push({ type: 'generation', value });
+    },
+    setClockActive(active, reason) {
+      calls.push({ type: 'clock', active, reason, generation });
+    },
+    close() { return true; },
+    getDiagnostics() { return {}; },
+  };
+  const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
+  const registry = {
+    renderUpdate() {},
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget,
+    lifecyclePort: null,
+  });
+
+  visibilityTarget.set('hidden');
+  const beforeRestore = calls.length;
+  visibilityTarget.set('visible');
+  assert.deepEqual(calls.slice(beforeRestore), [
+    { type: 'generation', value: 1 },
+    {
+      type: 'clock',
+      active: false,
+      reason: 'document-visibility',
+      generation: 1,
+    },
+  ], 'the restore pause must belong to the new lifecycle generation');
+
+  raf.flushOne(1000);
+  assert.deepEqual(calls.at(-1), {
+    type: 'clock',
+    active: true,
+    reason: 'restore-frame-complete',
+    generation: 1,
+  });
+  controller.destroy();
+});
+
+test('every callback simulates the time that passed and then presents it; the order never flips', () => {
+  const raf = createRaf();
+  const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
+  const caps = [];
+  const order = [];
+  let clockMs = 0;
+  const presentationCosts = [40, 0, 0, 0];
+  const registry = {
+    renderUpdate() {
+      order.push('render');
+      clockMs += presentationCosts.shift() || 0;
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner: createStubSimulationRunner(order, caps),
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    perfNow: () => clockMs,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  let now = 1000 + LOOP_FIXED_DT * 1000;
+  raf.flushOne(now);            // healthy 60 Hz frame whose draw then costs 40 ms
+  raf.flushOne(now += 50);      // a slow 20 fps frame right after that slow draw
+  raf.flushOne(now += 33.4);    // a 30 fps frame a hair over two ticks
+  raf.flushOne(now += 120);     // a real hitch
+
+  assert.deepEqual(order, [
+    'advance', 'render',
+    'advance', 'render',
+    'advance', 'render',
+    'advance', 'render',
+  ], 'the ship must fly smooth: no frame may draw before it simulates, whatever the frame cost');
+  assert.deepEqual(caps, [4, 4, 4, 2],
+    'a slow frame rate keeps the full catch-up ceiling so the game runs in real time; only a hitch sheds to two steps');
+  assert.equal(controller.getDiagnostics().hitchCappedFrameCount, 1);
+  assert.equal(controller.getDiagnostics().presentFirst, 'restore-only');
+  controller.destroy();
+});
+
+test('a 30 Hz cap accumulates present elapsed so the playout clock runs at wall speed', () => {
+  const raf = createRaf();
+  const presented = [];
+  const state = {
+    accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} },
+    settings: { video: { frameCap: 30, vsync: true } },
+    render: { displayHz: 60, frameCap: 30 },
+  };
+  const registry = {
+    renderUpdate(alpha, frameDt, frame) { presented.push(frame.presentElapsedS); },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner: createStubSimulationRunner([], []),
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    perfNow: () => 0,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  let now = 1000 + LOOP_FIXED_DT * 1000;
+  for (let i = 0; i < 10; i++) {
+    raf.flushOne(now);
+    now += 1000 / 60;
+  }
+  assert.ok(presented.length >= 4, 'the 30 Hz cap still presents frames');
+  // Every presented frame after the first must carry two callbacks of wall time, not one. Feeding
+  // half the elapsed made the playout fence run at 0.9x wall speed and pin to its oldest pack.
+  for (let i = 1; i < presented.length - 1; i++) {
+    assert.ok(Math.abs(presented[i] - (1 / 30)) < 0.006,
+      `present ${i} carried ${presented[i]}s, expected ~0.0333s`);
+  }
+  controller.destroy();
+});
+
+test('a repeated presented moment is wall-time held, not a long present interval', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} },
+    settings: { video: { frameCap: 30, vsync: true } },
+    render: { displayHz: 60, frameCap: 30 },
+  };
+  const registry = {
+    renderUpdate() {},
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner: createStubSimulationRunner([], []),
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    perfNow: () => 0,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  let now = 1000 + LOOP_FIXED_DT * 1000;
+  for (let i = 0; i < 24; i++) {
+    raf.flushOne(now);
+    now += 1000 / 60;
+  }
+  const diagnostics = controller.getDiagnostics();
+  assert.ok(diagnostics.duplicateMomentPresents > 0, 'the same presented moment is detected');
+  assert.ok(diagnostics.maxHeldPresentMs > 100,
+    `a repeated moment accumulates wall-time hold, got ${diagnostics.maxHeldPresentMs} ms`);
+  assert.equal(diagnostics.presentedGapsOver100, 0,
+    'a cap hold is a repeated moment, not a >=100 ms present interval');
+  controller.destroy();
+});
+
+test('after-present compile waits for both the sim and the picture on every frame', () => {
+  const raf = createRaf();
+  const order = [];
+  const offered = [];
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+    render: {
+      drainAfterPresentCompile({ leftoverMs }) { order.push('compile'); offered.push(leftoverMs); },
+    },
+  };
+  let clockMs = 0;
+  const registry = {
+    renderUpdate() { order.push('render'); clockMs += 3; },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner: createStubSimulationRunner(order, [], () => 1),
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    perfNow: () => clockMs,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000);
+  assert.deepEqual(order, ['advance', 'render', 'compile'],
+    'a healthy frame simulates, presents, then compiles with leftover present budget');
+  order.length = 0;
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 + 50);
+  assert.deepEqual(order, ['advance', 'render', 'compile'],
+    'a slow frame keeps the same order: the picture never goes out before its sim');
+  assert.ok(offered.every((ms) => ms >= 2 && ms <= LOOP_FIXED_DT * 1000),
+    'the compile drain is only ever offered time that is left inside one frame budget');
+  controller.destroy();
+});
+
+test('PresentationRunner consumes completed ticks without owning simulation order', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: {
+      moveX: 0,
+      moveZ: 0,
+      turnIntent: 0,
+      aimWorld: { x: 0, z: 0 },
+      mouseNdc: { x: 0, y: 0 },
+      pointerScreen: { x: 0, y: 0, active: false },
+      actions: {},
+    },
+  };
+  const order = [];
+  const frames = [];
+  const registry = {
+    step(dt, tickBoundary) {
+      order.push(`step:${state.tick + 1}`);
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+    },
+    renderUpdate(alpha, frameDt, presentationFrame) {
+      order.push(`render:${state.tick}`);
+      frames.push({
+        alpha,
+        frameDt,
+        completedTickCount: presentationFrame.completedTickCount,
+        completedTick: presentationFrame.completedTick && { ...presentationFrame.completedTick },
+      });
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 3.25);
+  assert.deepEqual(order, ['step:1', 'step:2', 'step:3', 'render:3'],
+    'a slow frame owes three ticks: it simulates all three, then presents the newest — never the stale snapshot');
+  assert.equal(frames[0].completedTickCount, 3);
+  assert.equal(frames[0].completedTick.tick, 3);
+  assert.equal(frames[0].completedTick.inputSequence, 3,
+    'the picture reflects the input consumed by the tick completed in this same callback');
+  assert.ok(Math.abs(frames[0].alpha - 0.25) < 1e-9, 'the sub-tick remainder drives the blend');
+  assert.equal(controller.getDiagnostics().skippedPresentationTicks, 2);
+  assert.equal(controller.getDiagnostics().stepsThisFrame, 3);
+  assert.equal(controller.getDiagnostics().lastLeftoverStepCap, 4);
+
+  order.length = 0;
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 3.25 + 4);
+  assert.deepEqual(order, ['render:3'],
+    'a 4 ms frame owes no tick, so it presents the same ticks further along the blend');
+  assert.equal(frames[1].completedTickCount, 0);
+  assert.ok(frames[1].alpha > frames[0].alpha, 'time passed, so the drawn moment moved on');
+  assert.equal(controller.getDiagnostics().duplicateMomentPresents, 0,
+    'while time passes, the world is never drawn at the same moment twice');
+  assert.equal(raf.count(), 1);
+  controller.destroy();
+});
+
+test('a hitch resumes the world two ticks on instead of replaying the frozen time', () => {
+  const raf = createRaf();
+  const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
+  const order = [];
+  const registry = {
+    step(dt, tickBoundary) {
+      order.push(`step:${state.tick + 1}`);
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+    },
+    renderUpdate() { order.push(`render:${state.tick}`); },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  raf.flushOne(1000 + 200);
+  assert.deepEqual(order, ['step:1', 'step:2', 'render:2'],
+    'the pilot could not steer during a 200 ms freeze, so the ship must not be flown 12 ticks blind');
+  assert.equal(controller.getDiagnostics().stepsThisFrame, 2);
+  assert.equal(controller.getDiagnostics().hitchCappedFrameCount, 1);
+  assert.equal(controller.getDiagnostics().shedBacklogFrames, 1);
+  assert.equal(controller.getDiagnostics().lastLeftoverStepCap, 2);
+  controller.destroy();
+});
+
+test('PresentationRunner retains an unacknowledged journal range across render failure', () => {
+  const raf = createRaf();
+  const ship = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    bank: 0,
+    pitch: 0,
+  };
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    entityList: [ship],
+    input: {
+      moveX: 0,
+      moveZ: 0,
+      turnIntent: 0,
+      aimWorld: { x: 0, z: 0 },
+      mouseNdc: { x: 0, y: 0 },
+      pointerScreen: { x: 0, y: 0, active: false },
+      actions: {},
+    },
+  };
+  const journal = createPresentationJournal(4);
+  journal.recordSpawn(0, ship);
+  const frames = [];
+  let renderCalls = 0;
+  const registry = {
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+    },
+    renderUpdate(alpha, frameDt, presentationFrame) {
+      renderCalls++;
+      frames.push({
+        start: presentationFrame.journalStart,
+        end: presentationFrame.journalEnd,
+        records: presentationFrame.journalRecordCount,
+        valid: presentationFrame.journalValid,
+      });
+      if (renderCalls === 1) throw new Error('intentional render failure');
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    presentationJournal: journal,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  // A healthy frame simulates first, so tick 1 commits the spawn record before the (failing)
+  // present offers it; the range must stay pending for the next picture.
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1);
+  } finally {
+    console.error = originalError;
+  }
+  assert.equal(frames.length, 1, 'a healthy frame presents once, after its leftover sim');
+  assert.equal(journal.getPendingCount(), 1);
+  assert.deepEqual(frames[0], { start: 0, end: 1, records: 1, valid: true });
+
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1 + 4);
+  assert.deepEqual(frames[1], frames[0]);
+  assert.equal(journal.getPendingCount(), 0);
+  assert.equal(controller.getDiagnostics().journalRetainedFrameCount, 1);
+  assert.equal(controller.getDiagnostics().journalAcknowledgementCount, 1);
+  assert.equal(controller.getDiagnostics().journalRecordsAcknowledged, 1);
+  controller.destroy();
+});
+
+test('consecutive render throws still schedule the next 3D frame', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+  };
+  let renderCalls = 0;
+  const registry = {
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+    },
+    renderUpdate() {
+      renderCalls++;
+      throw new Error('persistent draw failure');
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    for (let i = 0; i < 5; i++) {
+      assert.equal(raf.count(), 1, `frame ${i} must still have a scheduled rAF`);
+      raf.flushOne(1000 + i * 16);
+    }
+  } finally {
+    console.error = originalError;
+  }
+  assert.equal(renderCalls, 5);
+  assert.ok(state.tick > 0, 'a draw throw must not skip leftover 60 Hz simulation');
+  assert.equal(raf.count(), 1, 'the loop must still be alive after repeated draw failures');
+  controller.destroy();
+});
+
+test('PresentationRunner replaces invalid ranges with an explicit full rebuild boundary', () => {
+  const raf = createRaf();
+  const first = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 1, y: 0, z: 0 },
+    rot: 0,
+    bank: 0,
+    pitch: 0,
+  };
+  const second = {
+    id: 2,
+    type: 'station',
+    alive: true,
+    pos: { x: 2, y: 0, z: 0 },
+    rot: 0,
+    bank: 0,
+    pitch: 0,
+  };
+  const state = {
+    accumulator: 0,
+    timeScale: 0,
+    tick: 0,
+    simTime: 0,
+    entityList: [first, second],
+    input: { actions: {} },
+  };
+  const journal = createPresentationJournal(2);
+  journal.recordSpawn(0, first);
+  journal.recordSpawn(0, second);
+  assert.equal(journal.recordVisual(0, first), 0);
+  assert.equal(journal.needsRebuild(), true);
+
+  let observed = null;
+  const registry = {
+    step() { throw new Error('paused simulation must not step'); },
+    renderUpdate(alpha, frameDt, presentationFrame) {
+      observed = {
+        start: presentationFrame.journalStart,
+        end: presentationFrame.journalEnd,
+        records: presentationFrame.journalRecordCount,
+        fullRebuild: presentationFrame.journalFullRebuild,
+        rebuildGeneration: presentationFrame.journalRebuildGeneration,
+        valid: presentationFrame.journalValid,
+      };
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    presentationJournal: journal,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  raf.flushOne(1000);
+  assert.deepEqual(observed, {
+    start: 2,
+    end: 4,
+    records: 2,
+    fullRebuild: true,
+    rebuildGeneration: 1,
+    valid: true,
+  });
+  assert.equal(journal.needsRebuild(), false);
+  assert.equal(journal.getPendingCount(), 0);
+  assert.equal(controller.getDiagnostics().journalRebuildCount, 1);
+  assert.equal(controller.getDiagnostics().simulation.committedJournalSequence, 4);
+  assert.equal(controller.getDiagnostics().simulation.journalCursorAlignmentCount, 1);
+  controller.destroy();
+});
+
+test('PresentationRunner stops external callbacks before closing its bounded simulation queue', () => {
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+  };
+  let frameCallback = null;
+  let requestedFrames = 0;
+  let cancelCalls = 0;
+  let removeCalls = 0;
+  let unsubscribeCalls = 0;
+  let visibilityListener = null;
+  let shellListener = null;
+  let audioOwnerCalls = 0;
+  let steps = 0;
+  const registry = {
+    step(dt, tickBoundary) {
+      steps++;
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+    },
+    renderUpdate() {},
+    get(name) {
+      if (name !== 'audio') return null;
+      return {
+        suspendForLifecycle() { audioOwnerCalls++; },
+        resumeFromLifecycle() { audioOwnerCalls++; },
+      };
+    },
+  };
+  const visibilityTarget = {
+    visibilityState: 'visible',
+    addEventListener(type, listener) {
+      if (type === 'visibilitychange') visibilityListener = listener;
+    },
+    removeEventListener() {
+      removeCalls++;
+      throw new Error('remove failed');
+    },
+  };
+  const lifecyclePort = {
+    subscribe(listener) {
+      shellListener = listener;
+      return () => {
+        unsubscribeCalls++;
+        throw new Error('unsubscribe failed');
+      };
+    },
+  };
+  const controller = startLoop(state, registry, {
+    requestFrame(callback) {
+      requestedFrames++;
+      frameCallback = callback;
+      return 7;
+    },
+    cancelFrame() {
+      cancelCalls++;
+      throw new Error('cancel failed');
+    },
+    nowMs: () => 1000,
+    visibilityTarget,
+    lifecyclePort,
+  });
+
+  assert.throws(() => controller.stop(), AggregateError);
+  assert.deepEqual([cancelCalls, removeCalls, unsubscribeCalls], [1, 1, 1]);
+  assert.equal(controller.getDiagnostics().destroyed, true);
+  assert.equal(controller.getDiagnostics().teardownErrorCount, 3);
+  frameCallback(2000);
+  assert.equal(steps, 0, 'a retained late rAF callback must observe the terminal stop flag');
+  assert.equal(requestedFrames, 1, 'a late callback must not schedule another frame');
+
+  assert.equal(controller.close(), true);
+  const terminalDiagnostics = controller.getDiagnostics();
+  visibilityTarget.visibilityState = 'hidden';
+  assert.doesNotThrow(() => visibilityListener());
+  visibilityTarget.visibilityState = 'visible';
+  assert.doesNotThrow(() => visibilityListener());
+  assert.doesNotThrow(() => shellListener({
+    state: 'system-suspended',
+    sequence: 1,
+    reason: 'late-shell-callback',
+  }));
+  assert.deepEqual(controller.getDiagnostics(), terminalDiagnostics,
+    'retained external callbacks cannot mutate terminal lifecycle diagnostics');
+  assert.equal(audioOwnerCalls, 0, 'retained callbacks cannot reacquire destroyed audio ownership');
+  assert.equal(requestedFrames, 1, 'retained callbacks cannot reschedule presentation');
+  assert.equal(steps, 0, 'retained callbacks cannot advance the closed simulation');
+  assert.equal(controller.close(), false);
+  assert.equal(controller.getDiagnostics().transportClosed, true);
+  assert.equal(controller.simulationRunner.getDiagnostics().closed, true);
+});
+
+test('PresentationRunner does not claim transport closure until SimulationRunner close succeeds', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+  };
+  let closeFails = true;
+  let closeCalls = 0;
+  const simulationRunner = {
+    fixedDt: LOOP_FIXED_DT,
+    advance() { throw new Error('frame must remain stopped'); },
+    setLifecycleGeneration() {},
+    close() {
+      closeCalls++;
+      if (closeFails) throw new Error('input queue retained');
+      return true;
+    },
+    getDiagnostics: () => ({ closed: true, closeComplete: !closeFails }),
+  };
+  const registry = {
+    step() {},
+    renderUpdate() {},
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  assert.throws(() => controller.close(), /PresentationRunner close failed/);
+  assert.equal(controller.getDiagnostics().destroyed, true);
+  assert.equal(controller.getDiagnostics().transportClosed, false);
+  assert.equal(closeCalls, 1);
+  closeFails = false;
+  assert.equal(controller.close(), true);
+  assert.equal(controller.getDiagnostics().transportClosed, true);
+  assert.equal(closeCalls, 2);
+  assert.equal(controller.close(), false);
+});
+
+test('runtime closer preserves stop, producer-detach, simulation, journal order and is one-shot', () => {
+  const order = [];
+  const closeRuntime = createPresentationRuntimeCloser({
+    stopPresentation() { order.push('stop'); },
+    detachProducers() {
+      order.push('detach');
+      throw new Error('producer detach failed');
+    },
+    closeSimulation() { order.push('simulation'); },
+    closeJournal() { order.push('journal'); },
+  });
+
+  const receipt = closeRuntime();
+  assert.deepEqual(order, ['stop', 'detach', 'simulation', 'journal']);
+  assert.equal(receipt.closed, true);
+  assert.equal(receipt.presentationStopped, true);
+  assert.equal(receipt.producersDetached, false);
+  assert.equal(receipt.simulationClosed, true);
+  assert.equal(receipt.journalClosed, true);
+  assert.equal(receipt.errorCount, 1);
+  assert.deepEqual(receipt.errors, [{
+    stage: 'detachProducers',
+    message: 'producer detach failed',
+  }]);
+  assert.equal(closeRuntime(), receipt, 'repeated close returns the stable receipt');
+  assert.deepEqual(order, ['stop', 'detach', 'simulation', 'journal'], 'no phase may repeat');
+});
+
+test('runtime closer retries only failed simulation and defers journal close until it succeeds', () => {
+  const order = [];
+  let simulationFails = true;
+  const closeRuntime = createPresentationRuntimeCloser({
+    stopPresentation() { order.push('stop'); },
+    detachProducers() { order.push('detach'); },
+    closeSimulation() {
+      order.push('simulation');
+      if (simulationFails) throw new Error('queue lease still consuming');
+    },
+    closeJournal() { order.push('journal'); },
+  });
+
+  const first = closeRuntime();
+  assert.deepEqual(order, ['stop', 'detach', 'simulation']);
+  assert.equal(first.closed, false);
+  assert.equal(first.presentationStopped, true);
+  assert.equal(first.producersDetached, true);
+  assert.equal(first.simulationClosed, false);
+  assert.equal(first.journalClosed, false);
+  assert.deepEqual(first.errors, [{
+    stage: 'closeSimulation',
+    message: 'queue lease still consuming',
+  }]);
+
+  simulationFails = false;
+  const second = closeRuntime();
+  assert.notEqual(second, first, 'an incomplete attempt cannot become the final cached receipt');
+  assert.deepEqual(order, ['stop', 'detach', 'simulation', 'simulation', 'journal']);
+  assert.equal(second.closed, true);
+  assert.equal(second.presentationStopped, true);
+  assert.equal(second.producersDetached, true);
+  assert.equal(second.simulationClosed, true);
+  assert.equal(second.journalClosed, true);
+  assert.equal(second.errorCount, 0);
+  assert.equal(closeRuntime(), second, 'the fully closed receipt is stable');
+  assert.deepEqual(order, ['stop', 'detach', 'simulation', 'simulation', 'journal']);
+});
+
+test('runtime closer retries the real terminal transport before closing its journal', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+  };
+  const journal = createPresentationJournal(2);
+  const ship = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    bank: 0,
+    pitch: 0,
+  };
+  journal.recordSpawn(0, ship);
+
+  let allowCancel = false;
+  let pending = 1;
+  const inputCommandSnapshots = {
+    capacity: 1,
+    reserve() {},
+    capture() {},
+    consume() {},
+    getPendingCount: () => pending,
+    cancel(sequence) {
+      if (!allowCancel || pending === 0 || sequence !== 1) return false;
+      pending = 0;
+      return true;
+    },
+    getDiagnostics: () => ({
+      capacity: 1,
+      pending,
+      lastReservedSequence: 1,
+    }),
+  };
+  const order = [];
+  const registry = {
+    step() { throw new Error('terminal close must not step'); },
+    renderUpdate() {},
+    get() { return null; },
+    destroy() { order.push('detach'); },
+  };
+  const controller = startLoop(state, registry, {
+    presentationJournal: journal,
+    inputCommandSnapshots,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  const closeRuntime = createPresentationRuntimeCloser({
+    stopPresentation() {
+      order.push('stop');
+      return controller.stop();
+    },
+    detachProducers() { return registry.destroy(); },
+    closeSimulation() {
+      order.push('simulation');
+      return controller.close();
+    },
+    closeJournal() {
+      order.push('journal');
+      return journal.close();
+    },
+  });
+
+  const first = closeRuntime();
+  assert.deepEqual(order, ['stop', 'detach', 'simulation']);
+  assert.equal(first.closed, false);
+  assert.equal(first.simulationClosed, false);
+  assert.equal(first.journalClosed, false);
+  assert.equal(controller.getDiagnostics().destroyed, true);
+  assert.equal(controller.getDiagnostics().transportClosed, false);
+  assert.equal(journal.isClosed(), false);
+  assert.equal(journal.getPendingCount(), 1);
+
+  allowCancel = true;
+  const second = closeRuntime();
+  assert.deepEqual(order, ['stop', 'detach', 'simulation', 'simulation', 'journal']);
+  assert.equal(second.closed, true);
+  assert.equal(second.simulationClosed, true);
+  assert.equal(second.journalClosed, true);
+  assert.equal(second.errorCount, 0);
+  assert.equal(controller.getDiagnostics().transportClosed, true);
+  assert.equal(controller.simulationRunner.getDiagnostics().closeComplete, true);
+  assert.equal(journal.isClosed(), true);
+  assert.equal(journal.getPendingCount(), 0);
+  assert.equal(raf.count(), 0);
+  assert.equal(closeRuntime(), second);
+});
+
+test('runtime closer drains real pending presentation transport after producer detachment', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+  };
+  const journal = createPresentationJournal(4);
+  const ship = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    bank: 0,
+    pitch: 0,
+  };
+  journal.recordSpawn(0, ship);
+  const order = [];
+  const registry = {
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+    },
+    renderUpdate() {},
+    get() { return null; },
+    destroy() { order.push('detach'); },
+  };
+  const controller = startLoop(state, registry, {
+    presentationJournal: journal,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  controller.simulationRunner.advance(LOOP_FIXED_DT, 1);
+  assert.equal(controller.simulationRunner.getPendingCompletedTickCount(), 1);
+
+  const closeRuntime = createPresentationRuntimeCloser({
+    stopPresentation() { order.push('stop'); return controller.stop(); },
+    detachProducers() { return registry.destroy(); },
+    closeSimulation() { order.push('simulation'); return controller.close(); },
+    closeJournal() { order.push('journal'); return journal.close(); },
+  });
+  const receipt = closeRuntime();
+
+  assert.deepEqual(order, ['stop', 'detach', 'simulation', 'journal']);
+  assert.equal(receipt.errorCount, 0);
+  assert.equal(raf.count(), 0);
+  assert.equal(controller.simulationRunner.getPendingCompletedTickCount(), 0);
+  assert.equal(controller.simulationRunner.getDiagnostics().closed, true);
+  assert.equal(journal.getPendingCount(), 0);
+  assert.equal(journal.getDiagnostics().closed, true);
+  assert.throws(() => controller.simulationRunner.advance(LOOP_FIXED_DT, 1), /closed/);
+  assert.throws(() => journal.recordVisual(state.tick, ship), /closed/);
+});
+
+test('PresentationRunner never acknowledges a journal closed from renderUpdate', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0,
+    timeScale: 0,
+    tick: 0,
+    simTime: 0,
+    entityList: [],
+    input: { actions: {} },
+  };
+  const journal = createPresentationJournal(2);
+  const ship = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    bank: 0,
+    pitch: 0,
+  };
+  state.entityList.push(ship);
+  journal.recordSpawn(0, ship);
+  const registry = {
+    step() { throw new Error('paused simulation must not step'); },
+    renderUpdate() {
+      journal.close();
+      return true;
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    presentationJournal: journal,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  raf.flushOne(1000);
+  assert.equal(journal.getDiagnostics().closed, true);
+  assert.equal(journal.getDiagnostics().discardedOnClose, 1);
+  assert.equal(controller.getDiagnostics().journalAcknowledgementCount, 0);
+  assert.equal(controller.getDiagnostics().journalRecordsAcknowledged, 0);
+  controller.destroy();
+});
+
+test('terminal close inside a restoring render cannot resume destroyed audio ownership', () => {
+  const raf = createRaf();
+  let visibilityState = 'visible';
+  let visibilityListener = null;
+  const visibilityTarget = {
+    get visibilityState() { return visibilityState; },
+    addEventListener(type, listener) {
+      if (type === 'visibilitychange') visibilityListener = listener;
+    },
+    removeEventListener(type, listener) {
+      if (type === 'visibilitychange' && visibilityListener === listener) {
+        visibilityListener = null;
+      }
+    },
+    set(next) {
+      visibilityState = next;
+      visibilityListener?.();
+    },
+  };
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    entityList: [],
+    input: { actions: {} },
+  };
+  const journal = createPresentationJournal(2);
+  const audioTransitions = [];
+  let closeRuntime = null;
+  const registry = {
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+    },
+    renderUpdate() {
+      closeRuntime();
+      return true;
+    },
+    get(name) {
+      if (name !== 'audio') return null;
+      return {
+        suspendForLifecycle: (reason) => audioTransitions.push(['suspend', reason]),
+        resumeFromLifecycle: (reason) => audioTransitions.push(['resume', reason]),
+      };
+    },
+    destroy() {},
+  };
+  const controller = startLoop(state, registry, {
+    presentationJournal: journal,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget,
+    lifecyclePort: null,
+  });
+  closeRuntime = createPresentationRuntimeCloser({
+    stopPresentation: () => controller.stop(),
+    detachProducers: () => registry.destroy(),
+    closeSimulation: () => controller.close(),
+    closeJournal: () => journal.close(),
+  });
+
+  visibilityTarget.set('hidden');
+  visibilityTarget.set('visible');
+  assert.equal(controller.getLifecycleState(), 'restoring');
+  raf.flushOne(1016.667);
+
+  assert.deepEqual(audioTransitions, [['suspend', 'document-visibility']]);
+  assert.equal(controller.getDiagnostics().destroyed, true);
+  assert.equal(controller.getDiagnostics().transportClosed, true);
+  assert.equal(controller.getDiagnostics().restoreFrameCount, 0);
+  assert.equal(controller.getDiagnostics().postRestoreFrameCount, 0);
+  assert.equal(controller.getLifecycleState(), 'restoring');
+  assert.equal(raf.count(), 0);
+});
+
+test('the simGap harness withholds completed packs for the requested wall time', () => {
+  const raf = createRaf();
+  const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
+  let clockMs = 0;
+  let consumes = 0;
+  const runner = {
+    fixedDt: LOOP_FIXED_DT,
+    maxSteps: 4,
+    advance() { return { steps: 1, shedBacklog: false, shedSteps: 0, accumulator: 0 }; },
+    prepareWithoutAdvance() {
+      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+    },
+    consumeLatestCompletedTick() { consumes++; return 0; },
+    interpolationAlpha() { return 0; },
+    setLifecycleGeneration() {},
+    close() { return true; },
+    getDiagnostics() { return {}; },
+  };
+  const registry = { renderUpdate() {}, get() { return null; } };
+  const previousLocation = globalThis.location;
+  globalThis.location = { search: '?simGap=400@0' };
+  const controller = startLoop(state, registry, {
+    simulationRunner: runner,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => clockMs,
+    perfNow: () => clockMs,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  try {
+    clockMs = 1000;
+    raf.flushOne(1000);
+    clockMs = 1200;
+    raf.flushOne(1200);
+    assert.equal(consumes, 0,
+      'completed packs are withheld while the gap gate is open, independent of worker work');
+    assert.ok(controller.getDiagnostics().simGapHeldFrames >= 1);
+    clockMs = 1400;
+    raf.flushOne(1400);
+    assert.equal(consumes, 1, 'the runner consumes the held pack once the gap elapses');
+    assert.equal(controller.getDiagnostics().simGapApplications, 1);
+    // The exported file proves the gate fired: the counters ride the frame-truth trace, not
+    // only the live diagnostics object.
+    const trace = state.frameTruth.exportJSON({ download: false });
+    assert.equal(trace.simGap.applications, 1);
+    assert.ok(trace.simGap.heldFrames >= 1);
+  } finally {
+    controller.destroy();
+    if (previousLocation === undefined) delete globalThis.location;
+    else globalThis.location = previousLocation;
+  }
+});
+
+test('the loop forwards the unclamped raw frame delta to the fence for a hidden-tab re-seat', () => {
+  const raf = createRaf();
+  let clockMs = 1000;
+  const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
+  const fence = createSnapshotFence({ capacity: 4 });
+  for (let tick = 0; tick < 10; tick++) {
+    const snapshot = fence.beginPack(1, tick * LOOP_FIXED_DT, 0);
+    snapshot.write(1, 0, tick * 2, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0);
+    fence.commit();
+  }
+  // Establish a presented sample before the re-entry so the gap detector is armed.
+  fence.samplePresentationAlpha(LOOP_FIXED_DT, 0, LOOP_FIXED_DT, 1, LOOP_FIXED_DT);
+  const observed = [];
+  const registry = {
+    renderUpdate(alpha, frameDt, presentationFrame) {
+      observed.push({ frameDt, rawFrameDt: presentationFrame.rawFrameDt });
+      fence.samplePresentationAlpha(
+        frameDt * state.timeScale, 0, LOOP_FIXED_DT, alpha, presentationFrame.rawFrameDt,
+      );
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner: createStubSimulationRunner([], []),
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => clockMs,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  try {
+    clockMs = 1016.7;
+    raf.flushOne(clockMs);
+    clockMs = 3016.7; // a 2 s hidden-tab callback: raw 2 s, loop-clamped 0.25 s
+    raf.flushOne(clockMs);
+    assert.equal(observed.length, 2);
+    assert.ok(Math.abs(observed[0].rawFrameDt - 0.0167) < 1e-9);
+    assert.equal(observed[1].frameDt, 0.25, 'the loop clamps the presented delta');
+    assert.ok(Math.abs(observed[1].rawFrameDt - 2) < 1e-9,
+      'the unclamped raw delta reaches presentation');
+    assert.equal(fence.getPlayoutDiagnostics().gapResets, 1,
+      'the fence re-seats from the production-path raw delta');
+  } finally {
+    controller.destroy();
+  }
+});

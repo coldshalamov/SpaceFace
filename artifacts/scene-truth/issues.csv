@@ -1,0 +1,2 @@
+scenarioId,tick,seed,zoom,qualityTier,kind,confidence,failBuild,objectIds,summary
+fixture.production-canary,2,47,144,low,surface-identity-omitted,review,false,checkpoint-surface,"The lab checkpoint keeps defId only. These entities have no package id on that surface, so a missing model is not claimed. ADAPTER.md names the live hook that would copy it."

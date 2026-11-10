@@ -1,0 +1,526 @@
+// Deterministic frontier rumor cards.
+//
+// A card is knowledge, not navigation authority: it names a real regional target but exposes only
+// an approximate global_v1 search circle. World owns purchased/resolved records; bar and map code
+// consume the pure offer/read helpers here.
+
+import { playerBearingLetter } from '../core/playerCompass.js';
+import { hash32 } from '../core/rng.js';
+import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
+import { DOCK_DENY_REASONS, dockDenyReason, stationMinRepFor } from './dockDeny.js';
+import { SECTORS } from './sectors.js';
+import { stationGrudge, stationGrudgeRefusal } from '../economy/stationConditions.js';
+
+export const FRONTIER_RUMOR_DAY_SECONDS = 600;
+export const FRONTIER_RUMOR_SCHEMA_VERSION = 1;
+export const FRONTIER_RUMOR_RECEIPT_LIMIT = 48;
+
+// A local, no-card bar lead for the authored physical tug already beside Ceres Refinery.
+// The existing bar contact reply presents this copy; the regular purchasable frontier card
+// remains available on the same screen.
+export const AUTHORED_DOCK_RUMORS = Object.freeze({
+  // The starter bar's own lead (every lesser station had one; Helios did not). Names the two
+  // real things a new pilot can fly to from here: the Candle Fleet's relighting shift and the
+  // drift line off its dark side — poi_memorial and poi_helios_pit_line.
+  station_helios: 'The Fleet tenders walk the relight run past the weigh-point most shifts — twenty-four candles for the convoy, the twenty-fifth plinth kept dark on purpose. Out past the Fleet, on its dark side, something still holds formation. The seal tags read older than the toll ledger.',
+  station_ceres: 'The Long Berth is an abandoned yard tug still turning beside Ceres Refinery. She is loose: Massline her and pull her clear of the hauler approach.',
+  // Charon Expanse hunter exchange: the bar lead names the sector's real distress site —
+  // poi_charon_tether_wreck (Snapped-Tether Hab-Pod, survivorPod + recoveryEncounter) — so
+  // the writ wall's own bar can send a hunter at something the writ does not pay for.
+  // CR-TEXTURE-1 appended the sector's texture one-off: the hunters' tag post beside the
+  // Lung marker (oneoff_tag_post in worldOneOffs.js).
+  station_expanse: 'A tether snapped on a deep-belt haul-out and a hab-pod is still squawking distress out on the radiation lane, past the Lung. The writ wall pays for bodies, not saves. Go anyway. While you are out there: the hunters hang a hull plate for every paid writ on a post beside the Lung marker. Fly the radiation lane and count them.',
+  // CR-TEXTURE-1 coverage: one authored lead per named sector that lacked a reachable one-off.
+  // Each names a real prop cluster from worldOneOffs.js at the sector's own station — a
+  // stranger docks, asks for rumors, and gets a direction she can fly, not a mission.
+  station_smuggler: 'Somebody paid the Den to lose a hull. A stripped freighter bow is still being dragged into the fog east of here, on a salvage clamp that never sleeps. Find her before the nebula does — or Massline her back out and ruin the cleaner\'s month.',
+  station_sker: 'Off the bazaar approach the Reach keeps an impound shelf: everything they ever seized, welded to a rack and sorted by insult. Seized pods, a cargo rack, one customs pylon nobody admits to taking. The shelf itself is heavy enough to Massline, if you have the nerve.',
+  station_veil: 'The researchers welded a memorial to a comms mast out in the fog, south of the storm\u2019s heart, so the surge could ring it like a bell. It rings. Ask anyone here about the Surge Shrine and they will point into the murk. If you are here to watch, leave the instrument run clear.',
+  station_ashcache: 'Ask Kurtz what he counts and he will tell you without looking up: the dead liner on the debris floor. Nothing else out here has moved in eleven years, so the locals named the count after her ledger.',
+  station_nyx_march: 'Past the market, on the open march floor, a jump ring sits welded into a memorial and never once spun. The locals call it the False Gate. Pilots leave fuel pellets on the rim and nobody says why.',
+  station_hyperion_cut: 'South-east of the refinery a drill platform died mid-bite on a seamed rock. The crusher still holds the grip, the mast still holds the bite. The crews call it the Half-Cut and steer wide.',
+  station_kepler_scar: 'On the irradiated floor there is a pirate sensor mast still standing inside a ring of dead corvettes. Whatever that battle was about, the mast won. They call it the Unbroken and nobody salvages the ring.',
+  station_orcus_shadow: 'Debris pins itself in a slow ring out on the anomaly\'s rim — a tide nobody put there and nobody can stop. A transponder gate marks where to watch it turn. The regulars just call it the Tide.',
+  station_rhea_cinder: 'South-east of the claim a slurry tank tipped mid-pour and the pour just stopped — stream, spill, tank and all, sitting there in the dark. The tank is ropeable. It is heavier than it looks.',
+  station_haumea_rift: 'A worklight is still burning on the fissure lip, and the extraction mast is still seated in the seam. The shift left mid-bite and the fissure kept the tools. We call it the Seam-Light.',
+  station_eris_margin: 'Inside the west fog, dead habitat pods hang on an old tether line like laundry — crews call it the Drift Choir. The line is older than the writs. Nobody reels it in, but the last pod would come off easy.',
+  station_phoebe_echo: 'North-west of here a comms array still repeats her last transmission on a channel the network retired years ago. The nav buoy beside her answers anyway. It is the most reliable signal in the Reach.',
+  station_nereid: 'North-east of the market a tanker coupling sits mid-dock with nothing docked — freight platform, hull rack, handshake still out. The tanker that was supposed to take it broke up a decade ago.',
+  station_proteus: 'North-east of here, in the well, a stash rack sits parked in a dead boatbay\'s shadow. First crew through named it the Double Take. Second crew agreed and left it there.',
+  station_triton: 'Pilots leave offerings on the anomaly\'s rim — pods, tally plates, the occasional whistle. They call it the Watcher\'s Tithe. Take one if you like. Nobody does.',
+  station_eunomia: 'Beside the old ledger there is a freight platform still holding a container addressed to a crew that died two contracts ago. Delivered, signed, never collected. The note stays pinned.',
+  station_sedna: 'Out near the cadence there is a lane pin that points at nothing — a survey marker for a route the dark never let anyone finish. It still points the way.',
+  station_dione_customs: 'Between the gate and the market there is a bulk container neither crew will carry — customs tagged it, the lane crew tagged it back, and now it has two liens and no manifest. It is ropeable. Officially, so are you.',
+  // CR-BERTH-1 — the Pitborn consignment line. The bar lead names the strip-line's real
+  // address (the breaking-apron south-east of the foundry, off the Helios inbound leg) and
+  // sells the loop: redeem claim rights at the yard desk and the wreck your paper covered
+  // parks on their line a visit later — still hull, still ropeable.
+  station_forge: 'The Pitborn rent a breaking-apron off the foundry, south-east toward the Helios inbound leg — they call it the Consignment Line. Sell them claim rights at the yard desk and the wreck your paper covered turns up parked on their strip a visit later, already under the cutters. What is parked is still hull, and the Massline never once read a receipt.',
+  // Trade-signature lead (station trade personalities): heard at the dear end of the cell run.
+  // The claim crews burn fuel cells by mid-shift; Ceres Refinery's crackers over-run the belt.
+  // Names two real stations — buy at the glut, dock back here and sell into the shortage.
+  station_hyperion_claim: 'The crews here burn their cell ration by mid-shift, and the desk still prices the tanks like the pumps run uphill. Back up-lane the Ceres Refinery cracks more cells than its own belt can carry away, and lets them go near scrap. Run an empty rack out through the Ceres gate, fill it at the refinery, and dock it back here — the scale pays without asking what took you so long.',
+  // The ration run, taught at its cheap end: the only four-factor arbitrage with no lead.
+  // The hydroponics racks sell what their vault cannot hold; the Belt Outpost's rock crews
+  // pay dear for exactly that crate (station_beltout cmdty_food 0.1, sectors.js).
+  station_drift: 'Hydroponics over-run the Drift three crates to one — the racks sell ration stock near cost because the vault cannot hold another tray. The Belt Outpost\'s rock crews eat same-shift and pay dear for exactly that crate. Fill a hold here, dock it there; the scale does not ask why the labels are still wet.',
+  // The last four bar-station leads (coalition, beltout, tethys, customs) — each names real,
+  // reachable content: the Coalition capital price and Checkpoint Niner, the ration run's
+  // dear end and the Kettle ledger, the breakaway yard, the weigh clamp and its witness desk.
+  station_coalition: 'The Coalition desk does not buy stories; it buys outcomes — a capital-scale problem crossed this chord last month and nobody has claimed the standing price yet. You will pass Checkpoint Niner on the way out; the lamp there has been green eleven months, and the scale weighs everything twice. Do not carry what you cannot declare.',
+  station_beltout: 'Ration crates come up-lane dear and leave faster than the skiff can stack them — the Drift sells what its own vault cannot hold, if you are heading that way. And if the night shift asks: the convoy that never logged is still a one-line hole in our ledger, and the clerk keeps the page open.',
+  station_tethys: 'Two yards share this junction and only one admits what it launches — the breakaway rig out on the near lane still fires payloads nobody files flight plans for. Mind the weigh clamp on the through-line: it holds any hull that drifts off that route, and it has been holding more of them lately.',
+  station_customs: 'Weigh-and-release runs the whole junction through our clamp — every hull pays its second on the line, no exceptions we admit to. The witness desk buys clean testimony about what the breakaway yard drops when it thinks the clamp is looking away. Clean means clean; the clamp remembers every hull it ever held.',
+});
+
+// PQ-048.11: this is a remembered physical discovery, not a new contact or mission authority.
+// World owns its acquired -> contacted transition after scanner investigation of the existing buoy.
+export const TETHYS_BLACK_MARKET_DISCOVERY = Object.freeze({
+  rumorId: 'frontier-rumor:station_tethys:tethys-black-market',
+  stationId: 'station_tethys',
+  sectorId: 'sector_tethys_junction',
+  poiId: 'poi_blackmkt',
+  contactId: 'quiet:tethys-black-market',
+  opportunityType: 'heist_intercept',
+});
+
+export const TETHYS_BLACK_MARKET_RUN = Object.freeze({
+  runId: 'tethys:pallas-entrance:1',
+  parcelId: 'tethys:pallas-entrance:parcel',
+  scannerId: 'tethys:pallas-entrance:customs',
+  receiverId: 'tethys:pallas-entrance:receiver',
+  sectorId: 'sector_pallas_drift',
+  stationId: 'station_smuggler',
+  commodityId: 'cmdty_narcotics',
+  amount: 8,
+});
+
+export function tethysBlackMarketRun(state) {
+  const record = state?.world?.frontierRumors?.byId?.[TETHYS_BLACK_MARKET_DISCOVERY.rumorId];
+  return record?.phase === 'contacted' && record.contactId === TETHYS_BLACK_MARKET_DISCOVERY.contactId
+    ? record.entranceRun || null : null;
+}
+
+export function hasTethysBlackMarketAccess(state) {
+  const run = tethysBlackMarketRun(state);
+  return run?.runId === TETHYS_BLACK_MARKET_RUN.runId && run.phase === 'delivered';
+}
+
+/**
+ * The full berth-admission contract for a station RECORD (or a derived info record —
+ * either carries id + the resolved floor): every structural refusal `dockDenyReason`
+ * reads on a record must hold false, standing must clear the dock gate's own minimum,
+ * AND every dynamic access rule must hold. Today the only dynamic rule is the
+ * Smuggler's Den entrance run — world.js stamps `dockDeny: 'private'` on that berth
+ * until the parcel lands, so any picker that names a dock from catalog data must make
+ * the same read or it writes a contract the world cannot settle. The record-level
+ * flags mirror the live gate's so a future authored `private`/`quarantine` record is
+ * refused here before the entity ever spawns.
+ *
+ * @param {object} st    station record or station-info record
+ * @param {number} rep   pilot standing with the station's resolved faction
+ * @param {object} state live game state (may be null; treats access as unearned)
+ */
+export function stationBerthAdmits(st, rep, state) {
+  return !!st
+    && !(typeof st.dockDeny === 'string' && DOCK_DENY_REASONS.includes(st.dockDeny))
+    && st.abandoned !== true
+    && st.underConstruction !== true && st.commissioned !== false
+    && st.quarantine !== true && st.quarantined !== true
+    && st.hostile !== true
+    && st.militaryOnly !== true
+    && st.private !== true && st.public !== false
+    && !(st.id === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state))
+    // THE WORLD REMEMBERS: a berth holding a grudge over unpaid slam fines refuses the hull.
+    && !(state && st.id && stationGrudge(state, st.id))
+    && !(Number.isFinite(rep) && rep < stationMinRepFor(st));
+}
+
+/**
+ * WHY a berth refuses, structured for the surfaces that must answer in words (the accept
+ * gate's toast, the dossier's blocker): `standing` carries the resolved floor so the caller
+ * can name the number; `structural` carries the authored denial voice `dockDenyReason`
+ * already speaks at the dock — a quarantined hold says quarantine, a military berth says
+ * uniforms, not "does not take this freight"; `closed` is the record-clean refusal the
+ * reason oracle cannot see (the Den's entrance-run door). Returns null when the berth
+ * admits — the same predicate, so a caller cannot show a refusal the world would not issue.
+ *
+ * @param {object} st    station record or station-info record
+ * @param {number} rep   pilot standing with the station's resolved faction
+ * @param {object} state live game state (may be null; treats access as unearned)
+ * @returns {{kind:'standing', floor:number}|{kind:'structural', reason:string, text:string}|{kind:'closed'}|null}
+ */
+export function stationBerthRefusal(st, rep, state) {
+  if (stationBerthAdmits(st, rep, state)) return null;
+  if (state && st && st.id && stationGrudge(state, st.id)) {
+    return { kind: 'structural', reason: 'grudge', text: stationGrudgeRefusal(state, st.id) };
+  }
+  const deny = dockDenyReason(st, { rep });
+  const floor = stationMinRepFor(st);
+  if (deny && deny.reason === 'hostile_rep' && Number.isFinite(rep) && rep < floor) return { kind: 'standing', floor };
+  return deny ? { kind: 'structural', reason: deny.reason, text: deny.text } : { kind: 'closed' };
+}
+
+function normalizeEntranceRun(value) {
+  const row = value && typeof value === 'object' ? value : {};
+  const phase = row.phase === 'in_progress' || row.phase === 'delivered' ? row.phase : 'available';
+  const parcel = row.parcel && finitePoint(row.parcel.pos) ? {
+    pos: finitePoint(row.parcel.pos),
+    vel: finitePoint(row.parcel.vel) || { x: 0, z: 0 },
+    hull: Math.max(0, finite(row.parcel.hull, 100)),
+    data: clonePlain(row.parcel.data || {}),
+  } : null;
+  return {
+    ...TETHYS_BLACK_MARKET_RUN, phase, parcel,
+    suppliedAt: Math.max(0, finite(row.suppliedAt)),
+    deliveredAt: Math.max(0, finite(row.deliveredAt)),
+  };
+}
+
+export const FRONTIER_RUMOR_KINDS = Object.freeze([
+  Object.freeze({ id: 'hunter', label: 'Hunter Location', price: 260 }),
+  Object.freeze({ id: 'vein', label: 'Vein Whisper', price: 220 }),
+  Object.freeze({ id: 'anomaly', label: 'Anomaly Bearing', price: 320 }),
+  Object.freeze({ id: 'cache', label: 'Cache Coordinate', price: 280 }),
+]);
+
+const KIND_BY_ID = new Map(FRONTIER_RUMOR_KINDS.map((row) => [row.id, row]));
+const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
+const STATION_SOURCE = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    STATION_SOURCE.set(station.id, { station, sector });
+  }
+}
+
+const FIELD_LABELS = Object.freeze({
+  ast_common_rock: 'common-rock',
+  ast_metallic: 'metallic',
+  ast_crystalline: 'crystalline',
+  ast_icy: 'ice',
+  ast_rare_exotic: 'exotic',
+  ast_gas_cloud: 'gas-cloud',
+});
+
+function clonePlain(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(Number(value)) ? Number(value) : fallback;
+}
+
+function finitePoint(value) {
+  if (!value || !Number.isFinite(Number(value.x)) || !Number.isFinite(Number(value.z))) return null;
+  return { x: Number(value.x), z: Number(value.z) };
+}
+
+function dayIndexFor(state) {
+  return Math.max(0, Math.floor(finite(state && state.simTime, 0) / FRONTIER_RUMOR_DAY_SECONDS));
+}
+
+function regionalSectors(sourceSectorId, hops = 2) {
+  const source = SECTOR_BY_ID.get(sourceSectorId);
+  if (!source) return [];
+  const seen = new Set([source.id]);
+  let frontier = [source.id];
+  for (let depth = 0; depth < hops; depth++) {
+    const next = [];
+    for (const sectorId of frontier) {
+      const sector = SECTOR_BY_ID.get(sectorId);
+      for (const neighborId of sector && sector.neighbors || []) {
+        if (seen.has(neighborId) || !SECTOR_BY_ID.has(neighborId)) continue;
+        seen.add(neighborId);
+        next.push(neighborId);
+      }
+    }
+    frontier = next;
+  }
+  return Array.from(seen, (id) => SECTOR_BY_ID.get(id)).filter(Boolean);
+}
+
+function pseudoHunterPos(seed, sectorId) {
+  const angle = (hash32(seed, sectorId, 'hunter-angle') / 0x100000000) * Math.PI * 2;
+  const radius = 720 + (hash32(seed, sectorId, 'hunter-radius') % 780);
+  return { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius };
+}
+
+function candidatesForKind(kind, sectors, seed) {
+  const candidates = [];
+  for (const sector of sectors) {
+    if (kind === 'hunter') {
+      if (finite(sector.security, 1) >= 0.7) continue;
+      candidates.push({
+        kind,
+        sector,
+        targetId: `hunter:${sector.id}`,
+        targetName: 'hunter patrol',
+        localPos: pseudoHunterPos(seed, sector.id),
+        targetRadius: 260,
+      });
+      continue;
+    }
+    if (kind === 'vein') {
+      for (const field of sector.fields || []) {
+        const localPos = finitePoint(field.center);
+        if (!field || !field.id || !localPos) continue;
+        candidates.push({
+          kind,
+          sector,
+          targetId: field.id,
+          targetName: `${FIELD_LABELS[field.type] || 'ore'} vein`,
+          localPos,
+          targetRadius: Math.max(120, finite(field.clusterRadius, 260)),
+          fieldType: field.type || null,
+        });
+      }
+      continue;
+    }
+    const wantedType = kind === 'anomaly' ? 'anomaly' : 'cache';
+    for (const poi of sector.pois || []) {
+      const localPos = finitePoint(poi && poi.pos);
+      if (!poi || poi.type !== wantedType || !poi.id || !localPos) continue;
+      candidates.push({
+        kind,
+        sector,
+        targetId: poi.id,
+        targetName: poi.name || (kind === 'anomaly' ? 'anomaly return' : 'unregistered cache'),
+        localPos,
+        targetRadius: kind === 'anomaly' ? 300 : 220,
+      });
+    }
+  }
+  return candidates;
+}
+
+function candidateStillUnknown(state, candidate) {
+  const discovery = state && state.world && state.world.discovery;
+  const sector = discovery && discovery[candidate.sector.id];
+  if (!sector) return true;
+  if (candidate.kind === 'vein') {
+    return !(sector.fieldsDepleted && finite(sector.fieldsDepleted[candidate.targetId], 0) > 0);
+  }
+  if (candidate.kind === 'anomaly' || candidate.kind === 'cache') {
+    const poi = sector.pois && sector.pois[candidate.targetId];
+    return !(poi && (poi.discovered || poi.identified || poi.investigated || poi.defeated));
+  }
+  return true;
+}
+
+function octantFor(point) {
+  // Player compass: +z is north, same function as the scan line and the chart.
+  return playerBearingLetter(finite(point && point.x), finite(point && point.z));
+}
+
+function offerCopy(candidate, radius) {
+  const sectorName = candidate.sector.name || candidate.sector.id;
+  const bearing = octantFor(candidate.localPos);
+  if (candidate.kind === 'hunter') {
+    return `A contract hunter's drive was logged ${bearing} of ${sectorName}. The card marks a ${radius} WU patrol search, not a live transponder.`;
+  }
+  if (candidate.kind === 'vein') {
+    return `Shift crews are whispering about a ${candidate.targetName} ${bearing} of ${sectorName}. The card marks the working patch, not a rock lock.`;
+  }
+  if (candidate.kind === 'anomaly') {
+    return `An unstable return is bending traffic ${bearing} of ${sectorName}. The card carries only a coarse bearing; pulse from inside the ring.`;
+  }
+  return `A cargo tally points to an unclaimed cache ${bearing} of ${sectorName}. The coordinate is deliberately blurred until you search it in person.`;
+}
+
+function sourceForStation(stationId) {
+  return STATION_SOURCE.get(String(stationId || '')) || null;
+}
+
+export function createFrontierRumorState() {
+  return { schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION, byId: {}, receipts: [] };
+}
+
+export function normalizeFrontierRumorState(value) {
+  const input = value && typeof value === 'object' ? value : {};
+  const out = createFrontierRumorState();
+  const rows = input.byId && typeof input.byId === 'object' ? input.byId : {};
+  for (const [key, row] of Object.entries(rows)) {
+    if (!row || typeof row !== 'object') continue;
+    const id = String(row.id || key || '').trim();
+    const kind = String(row.kind || '').trim();
+    const sectorId = String(row.sectorId || '').trim();
+    const center = finitePoint(row.bearingCenter);
+    const radius = finite(row.radius, 0);
+    if (!id || !KIND_BY_ID.has(kind) || !SECTOR_BY_ID.has(sectorId) || !center || radius <= 0) continue;
+    out.byId[id] = {
+      ...clonePlain(row),
+      id,
+      kind,
+      sectorId,
+      bearingCenter: center,
+      radius,
+      phase: row.phase === 'resolved' || row.phase === 'contacted' ? row.phase : 'rumored',
+    };
+    if (id === TETHYS_BLACK_MARKET_DISCOVERY.rumorId && row.phase === 'contacted'
+        && row.contactId === TETHYS_BLACK_MARKET_DISCOVERY.contactId) {
+      out.byId[id].entranceRun = normalizeEntranceRun(row.entranceRun);
+    }
+  }
+  if (Array.isArray(input.receipts)) {
+    out.receipts = input.receipts.slice(-FRONTIER_RUMOR_RECEIPT_LIMIT).map(clonePlain);
+  }
+  return out;
+}
+
+export function frontierRumorRecords(state, sectorId = null) {
+  const byId = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId;
+  if (!byId || typeof byId !== 'object') return [];
+  const wanted = sectorId == null ? null : String(sectorId);
+  return Object.values(byId)
+    .filter((row) => row && (!wanted || row.sectorId === wanted))
+    .map(clonePlain)
+    .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+}
+
+export function frontierRumorOwned(state, rumorId) {
+  const byId = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId;
+  return !!(byId && byId[String(rumorId || '')]);
+}
+
+function buildRumorOffer(state, source) {
+  const dayIndex = dayIndexFor(state);
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const regional = regionalSectors(source.sourceSectorId, source.hops);
+  const firstKind = hash32(seed, source.sourceKey, dayIndex, 'frontier-rumor-kind') % FRONTIER_RUMOR_KINDS.length;
+  let kindDef = null;
+  let candidates = [];
+  for (let step = 0; step < FRONTIER_RUMOR_KINDS.length; step++) {
+    const proposed = FRONTIER_RUMOR_KINDS[(firstKind + step) % FRONTIER_RUMOR_KINDS.length];
+    const regionalCandidates = candidatesForKind(proposed.id, regional, seed)
+      .filter((candidate) => candidateStillUnknown(state, candidate));
+    const fallback = regionalCandidates.length || !source.allowGlobalFallback
+      ? regionalCandidates
+      : candidatesForKind(proposed.id, SECTORS, seed)
+        .filter((candidate) => candidateStillUnknown(state, candidate));
+    if (!fallback.length) continue;
+    kindDef = proposed;
+    candidates = fallback;
+    break;
+  }
+  if (!kindDef || !candidates.length) return null;
+
+  const pick = hash32(seed, source.sourceKey, dayIndex, kindDef.id, 'frontier-rumor-target') % candidates.length;
+  const candidate = candidates[pick];
+  const targetGlobal = sectorLocalToGlobalForSector(candidate.localPos, candidate.sector.id);
+  const offsetAngle = (hash32(seed, source.sourceKey, dayIndex, candidate.targetId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offsetDistance = 120 + (hash32(seed, source.sourceKey, dayIndex, candidate.targetId, 'bearing-offset-distance') % 221);
+  const bearingCenter = {
+    x: targetGlobal.x + Math.cos(offsetAngle) * offsetDistance,
+    z: targetGlobal.z + Math.sin(offsetAngle) * offsetDistance,
+  };
+  const radius = Math.ceil((Math.max(360, candidate.targetRadius + offsetDistance + 120)) / 20) * 20;
+  const id = `${source.idPrefix}:${dayIndex}:${kindDef.id}:${candidate.targetId}`;
+  if (frontierRumorOwned(state, id)) return null;
+
+  const tier = Math.max(0, finite(candidate.sector.tier, 0));
+  const price = source.free ? 0 : kindDef.price + tier * 35;
+  return {
+    id,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: source.source,
+    sourceStationId: source.sourceStationId || null,
+    sourceBodyId: source.sourceBodyId || null,
+    sourceSectorId: source.sourceSectorId,
+    dayIndex,
+    kind: kindDef.id,
+    kindLabel: kindDef.label,
+    targetId: candidate.targetId,
+    targetName: candidate.targetName,
+    sectorId: candidate.sector.id,
+    sectorName: candidate.sector.name || candidate.sector.id,
+    fieldType: candidate.fieldType || null,
+    coordSpace: 'global_v1',
+    bearingCenter,
+    radius,
+    price,
+    phase: 'rumored',
+    text: offerCopy(candidate, radius),
+  };
+}
+
+function tethysBlackMarketOffer(state, stationSource) {
+  const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+  if (!stationSource || stationSource.station.id !== discovery.stationId) return null;
+  if (frontierRumorOwned(state, discovery.rumorId)) return null;
+  const sector = SECTOR_BY_ID.get(discovery.sectorId);
+  const poi = sector && (sector.pois || []).find((row) => row && row.id === discovery.poiId);
+  const localPos = finitePoint(poi && poi.pos);
+  if (!sector || !poi || !localPos || !candidateStillUnknown(state, {
+    kind: 'cache', sector, targetId: poi.id,
+  })) return null;
+
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const targetGlobal = sectorLocalToGlobalForSector(localPos, sector.id);
+  const offsetAngle = (hash32(seed, discovery.rumorId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offsetDistance = 360 + (hash32(seed, discovery.rumorId, 'bearing-offset-distance') % 241);
+  const radius = 880;
+  return {
+    id: discovery.rumorId,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'bar',
+    sourceStationId: discovery.stationId,
+    sourceBodyId: null,
+    sourceSectorId: discovery.sectorId,
+    dayIndex: dayIndexFor(state),
+    kind: 'cache',
+    kindLabel: 'Quiet Traffic Lead',
+    targetId: discovery.poiId,
+    targetName: 'unresolved drive echoes',
+    sectorId: discovery.sectorId,
+    sectorName: sector.name || sector.id,
+    fieldType: null,
+    coordSpace: 'global_v1',
+    bearingCenter: {
+      x: targetGlobal.x + Math.cos(offsetAngle) * offsetDistance,
+      z: targetGlobal.z + Math.sin(offsetAngle) * offsetDistance,
+    },
+    radius,
+    price: KIND_BY_ID.get('cache').price + Math.max(0, finite(sector.tier, 0)) * 35,
+    phase: 'rumored',
+    text: 'A sealed Tethys tally catches unresolved drive echoes inside a broad amber search. It is not a transponder or a waypoint; pulse from inside the ring and decide what the traffic return really is.',
+  };
+}
+
+/**
+ * Build the one bar rumor available at a station for the current 10-minute sector-day.
+ * The selection is stable and never mutates state. Purchased cards return null until the next day.
+ */
+export function frontierRumorOffer(state, stationId) {
+  const stationSource = sourceForStation(stationId);
+  if (!stationSource) return null;
+  const blackMarket = tethysBlackMarketOffer(state, stationSource);
+  if (blackMarket) return blackMarket;
+  return buildRumorOffer(state, {
+    source: 'bar',
+    sourceKey: stationSource.station.id,
+    sourceStationId: stationSource.station.id,
+    sourceSectorId: stationSource.sector.id,
+    hops: 2,
+    allowGlobalFallback: true,
+    free: false,
+    idPrefix: `frontier-rumor:${stationSource.station.id}`,
+  });
+}
+
+/** One free, strictly local card for an owned Sensor Post. */
+export function sensorPostRumorOffer(state, body) {
+  if (!body || body.owned === false || !body.id || !body.sectorId
+    || !Array.isArray(body.modules) || !body.modules.includes('mod_sensor_post')) return null;
+  return buildRumorOffer(state, {
+    source: 'sensor_post',
+    sourceKey: body.id,
+    sourceBodyId: body.id,
+    sourceSectorId: body.sectorId,
+    hops: 0,
+    allowGlobalFallback: false,
+    free: true,
+    idPrefix: `frontier-rumor:sensor-post:${body.id}`,
+  });
+}
+
+export default frontierRumorOffer;

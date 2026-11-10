@@ -1,0 +1,60 @@
+{
+  "ok": true,
+  "asset": "ship_ranger",
+  "revision": "chase_form_v4a",
+  "lod": 0,
+  "source": "/workspace/spaceface/assets/ships/parts/wholeships/ranger_production_v1.glb",
+  "output": "/workspace/spaceface/assets/ships/fleet_player_bodies_v1/ranger/source/wholeships/ranger_production_v1_lod0.glb",
+  "greenhouse": {
+    "tub": true,
+    "windshield": true
+  },
+  "surveyWell": {
+    "mouth": true
+  },
+  "nacelle": {
+    "throat_Port": true,
+    "slot_Port": true,
+    "throat_Stbd": true,
+    "slot_Stbd": true
+  },
+  "drive": {
+    "Port": true,
+    "Stbd": true
+  },
+  "size": [
+    15.77,
+    6.906,
+    2.851
+  ],
+  "boundsMin": [
+    -8.62,
+    -3.453,
+    -0.971
+  ],
+  "boundsMax": [
+    7.15,
+    3.453,
+    1.88
+  ],
+  "triangles": 24744,
+  "hullTriangles": 19646,
+  "objects": [
+    "COLLISION_HULL",
+    "LOD0_Beacon_Aft",
+    "LOD0_Beacon_Fore",
+    "LOD0_Bell_Bore_Port",
+    "LOD0_Bell_Bore_Stbd",
+    "LOD0_Bell_Nozzle_Port",
+    "LOD0_Bell_Nozzle_Stbd",
+    "LOD0_Bell_Port",
+    "LOD0_Bell_Stbd",
+    "LOD0_Collar_Port",
+    "LOD0_CoolFin_Port_0",
+    "LOD0_Dish_Fore",
+    "LOD0_Glass",
+    "LOD0_GunAft_Port",
+    "LOD0_Hull"
+  ],
+  "bytes": 3125096
+}

@@ -1,0 +1,75 @@
+From 8007735e1c117611c6736981f64225988b146c7a Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Wed, 23 Sep 2026 00:38:13 -0400
+Subject: [PATCH] perf(dock): reuse proxy-diag out/seen + station key cache
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+_publishProxyDiagnostics rebuilt out[]/Set and template keys every tick.
+Reuse module scratch arrays and cache the key on settled stations.
+Offline microbench ~3.7×.
+---
+ src/systems/dockingCorridor.js | 34 +++++++++++++++++++++++++++++-----
+ 1 file changed, 29 insertions(+), 5 deletions(-)
+
+diff --git a/src/systems/dockingCorridor.js b/src/systems/dockingCorridor.js
+index 1b2ace567..55daabe13 100644
+--- a/src/systems/dockingCorridor.js
++++ b/src/systems/dockingCorridor.js
+@@ -119,14 +119,38 @@ export const dockingCorridor = {
+   _publishProxyDiagnostics(state) {
+     const runtime = state.physicsRuntime || (state.physicsRuntime = {});
+     const stations = (state.entityIndex && (state.entityIndex.dockStations || state.entityIndex.stations)) || state.entityList || [];
+-    const out = [];
+-    const seen = new Set();
++    // Reuse the publish scratch every tick. Stations rarely move; cache the template-key on the
++    // station so settled flight stops rebuilding `${proxy}|x|z|rot|bearing` strings and allocating
++    // a fresh out[]/Set (fresh profile: _publishProxyDiagnostics ~20 ms self / 60 s).
++    const out = this._proxyDiagOut || (this._proxyDiagOut = []);
++    out.length = 0;
++    const seen = this._proxyDiagSeen || (this._proxyDiagSeen = new Set());
++    seen.clear();
+     for (const station of stations) {
+       if (!station || !station.alive || station.type !== 'station') continue;
+       const manifest = resolveCollisionProxyManifest(station);
+       if (!manifest) continue;
+       const data = station.data || {};
+-      const key = `${data.collisionProxy}|${finite(station.pos && station.pos.x)}|${finite(station.pos && station.pos.z)}|${finite(station.rot)}|${data.corridorBearingDeg}`;
++      const px = finite(station.pos && station.pos.x);
++      const pz = finite(station.pos && station.pos.z);
++      const rot = finite(station.rot);
++      const bearing = data.corridorBearingDeg;
++      const proxyId = data.collisionProxy;
++      let key = station._sfProxyDiagKey;
++      if (!key
++        || station._sfProxyDiagPx !== px
++        || station._sfProxyDiagPz !== pz
++        || station._sfProxyDiagRot !== rot
++        || station._sfProxyDiagBearing !== bearing
++        || station._sfProxyDiagProxy !== proxyId) {
++        key = `${proxyId}|${px}|${pz}|${rot}|${bearing}`;
++        station._sfProxyDiagKey = key;
++        station._sfProxyDiagPx = px;
++        station._sfProxyDiagPz = pz;
++        station._sfProxyDiagRot = rot;
++        station._sfProxyDiagBearing = bearing;
++        station._sfProxyDiagProxy = proxyId;
++      }
+       let entry = this._proxyGeometryCache.get(station.id);
+       if (!entry || entry.key !== key) {
+         entry = {
+@@ -136,8 +160,8 @@ export const dockingCorridor = {
+             stationId: data.stationId || null,
+             proxyId: manifest.id,
+             flags: manifest.flags,
+-            pos: { x: finite(station.pos && station.pos.x), z: finite(station.pos && station.pos.z) },
+-            rot: finite(station.rot),
++            pos: { x: px, z: pz },
++            rot,
+             corridorBearingDeg: manifest.docking ? effectiveCorridorBearingDeg(manifest, station) : null,
+             berth: manifest.docking ? resolveBerthWorld(station, manifest) : null,
+             corridor: manifest.docking ? Object.freeze({
+-- 
+2.47.3
+

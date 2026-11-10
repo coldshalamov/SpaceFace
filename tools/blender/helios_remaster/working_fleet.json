@@ -1,0 +1,170 @@
+{
+  "schema": "spaceface.heliosRemaster.workingFleet.v1",
+  "scope": [
+    "repair_tender",
+    "rescue_lifter",
+    "prospector_skiff",
+    "scrap_sweeper",
+    "apron_shuttle",
+    "salvage_cutter",
+    "yard_tug",
+    "ore_barge"
+  ],
+  "canon": "design/fiction/THE_WORKING_FLEET.md",
+  "source": "assets/ships/parts/wholeships/{id}.glb",
+  "candidate": ".devshots/helios-remaster/working-fleet/{id}.glb",
+  "editableScene": ".devshots/helios-remaster/working-fleet/{id}.blend",
+  "componentReferenceDecision": "not_needed",
+  "supportedViews": [
+    "play_chase_D144",
+    "play_chase_abeam_D144",
+    "play_chase_close_D58"
+  ],
+  "frozenIdentity": [
+    "working trade",
+    "fore-aft envelope",
+    "forward +X",
+    "metre scale",
+    "socket positions",
+    "drive hooks",
+    "collision hull"
+  ],
+  "fictionDevelopmentAgreement": "ART EXTRAPOLATION: existing occupational hulls acquire replaceable formed enamel shoulder skins, visible maintenance wells and small machined interfaces. Existing trade hardware remains the silhouette protagonist. No new manufacturer or canonical history is invented.",
+  "visibleZones": [
+    {
+      "zone": "primary shell and dorsal plating",
+      "state": "billed",
+      "substance": "formed alloy with enamel coating",
+      "construction": "sectioned shoulder skins around actual cut-through service wells, folded lips and small removable access plates",
+      "optical": "broad satin highlights, cool deep cavities, clean rest areas",
+      "forbidden": "solid blank boxes, painted-on cavities, uniformly noisy metal"
+    },
+    {
+      "zone": "canopy and passenger glazing",
+      "state": "billed",
+      "substance": "dark coated pressure glass in machined coaming",
+      "construction": "recessed glazing, edge seals and mullions",
+      "optical": "dark jewel with small restrained reflection",
+      "forbidden": "opaque bright canopy roof"
+    },
+    {
+      "zone": "occupational machinery and cargo",
+      "state": "billed",
+      "substance": "machined graphite alloy, heat-treated work edges, coated pressure cases",
+      "construction": "hinges, clevises, receiver wells and load-path braces; expose actual mechanisms",
+      "optical": "legible purposeful assembly separated from quiet painted shell",
+      "forbidden": "random surface greeble or unrooted rods"
+    },
+    {
+      "zone": "existing engines and keel",
+      "state": "retained_reviewed",
+      "substance": "existing authored machinery with enamel cowls",
+      "construction": "retain throat cavities, separate drive hooks and structural keel",
+      "review": "Review entire retained assembly alongside new shells in supported views; retain original sockets and collision exactly."
+    },
+    {
+      "zone": "lamps and trade signals",
+      "state": "retained_reviewed",
+      "substance": "existing recessed optical fixtures",
+      "construction": "retain canonical cyan and amber trade apertures",
+      "review": "Emission remains localized to equipment and fixture; inspect against final renderer."
+    }
+  ],
+  "allSupportedViewZonesClassified": true,
+  "gateScope": "whole_asset",
+  "gateState": "model_art_review_accepted_pending_root_release_integration",
+  "independentReviewer": "root controller after candidate generation",
+  "openValidation": [
+    "root source/release promotion",
+    "normal-route performance verification"
+  ],
+  "review": {
+    "reviewer": "root controller",
+    "scope": "whole_asset",
+    "verdict": "keep",
+    "changedAndRetainedZonesReviewed": true,
+    "summary": "Controller reviewed all eight exact exported candidates in the game renderer. Distinct work assemblies are visible from above; existing hull identities retained. Shared lighting of deep cavities remains controller-owned.",
+    "candidates": [
+      {
+        "id": "repair_tender",
+        "sha256": "b3f9f3c84efc88c2c30a0bfff120bda2f832018660a8a8b27c07d092fa5a3edb",
+        "lodTriangles": [
+          9960,
+          6110,
+          2420
+        ],
+        "lod0Draws": 7
+      },
+      {
+        "id": "rescue_lifter",
+        "sha256": "387643e302be6aecc536d67cc15179681595bfdf931da4d3664dbd1406591aba",
+        "lodTriangles": [
+          10432,
+          6406,
+          2826
+        ],
+        "lod0Draws": 7
+      },
+      {
+        "id": "prospector_skiff",
+        "sha256": "174ec7a3aae0b474c35af62d02cdf969a7b650a25cafe21e2501ddaa3277ba5e",
+        "lodTriangles": [
+          6448,
+          3962,
+          1824
+        ],
+        "lod0Draws": 7
+      },
+      {
+        "id": "scrap_sweeper",
+        "sha256": "00a42690db0d28d8b50fa400c6a1cfff9344387927ad4a952872ac8363fdf328",
+        "lodTriangles": [
+          6876,
+          4202,
+          1826
+        ],
+        "lod0Draws": 6
+      },
+      {
+        "id": "apron_shuttle",
+        "sha256": "3a7781811fa1b9b1e959f6074cdd8bb2eab20c0cf81e07b5d0d8abc18f965d82",
+        "lodTriangles": [
+          6384,
+          3924,
+          1882
+        ],
+        "lod0Draws": 7
+      },
+      {
+        "id": "salvage_cutter",
+        "sha256": "3348aac5847ff13eccdc3d088c1a271ef846b0786be93504010e9509c5bf2d1a",
+        "lodTriangles": [
+          7474,
+          4572,
+          1906
+        ],
+        "lod0Draws": 7
+      },
+      {
+        "id": "yard_tug",
+        "sha256": "996ef155c165fee7b69452c5d97a29316a3e1927edcb854c02fcf283cbd69c40",
+        "lodTriangles": [
+          12932,
+          7972,
+          3643
+        ],
+        "lod0Draws": 7
+      },
+      {
+        "id": "ore_barge",
+        "sha256": "605c10a5c7e476a2a6f3f2ab55afea73fca95294bc882ed63fdb8a81955cf07c",
+        "lodTriangles": [
+          11896,
+          7310,
+          1990
+        ],
+        "lod0Draws": 7
+      }
+    ]
+  }
+}

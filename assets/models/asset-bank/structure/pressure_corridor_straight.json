@@ -1,0 +1,489 @@
+{
+  "assetId": "pressure_corridor_straight",
+  "category": "habitat-dock",
+  "description": "pressure corridor straight",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_PASSAGE_-1_0",
+      "position": [
+        -2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_PASSAGE_1_0",
+      "position": [
+        2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          4,
+          0.18,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          4,
+          0.18,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          4,
+          3.6,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          4,
+          3.6,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          -2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          -2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -2.140000104904175,
+      -1.9399999380111694,
+      -2.140000104904175
+    ],
+    "max": [
+      2.140000104904175,
+      2.1575000286102295,
+      2.140000104904175
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "pressure_corridor_straight_lod0.glb",
+      "triangles": 6464,
+      "draws": 7,
+      "bytes": 582756,
+      "method": "source",
+      "sha256": "80f4ef96580e1c792759a2c825266ff7a50e42d935fcb504ed8dbf9c625a7f6a"
+    },
+    {
+      "level": 1,
+      "file": "pressure_corridor_straight_lod1.glb",
+      "triangles": 2584,
+      "draws": 7,
+      "bytes": 398844,
+      "method": "Forge-decimation",
+      "sha256": "c4a2ca0e42d51f46f43a970ff262deac9037e9dc0924d25fd2ca1c9dde29ad66"
+    },
+    {
+      "level": 2,
+      "file": "pressure_corridor_straight_lod2.glb",
+      "triangles": 1162,
+      "draws": 7,
+      "bytes": 329012,
+      "method": "Forge-decimation",
+      "sha256": "1baa9b3c14d66aafa74207133fd71b242fdbd5c0657514427e4c8477d9430901"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "notion-fetch",
+  "description": "Retrieve the content of a Notion page, database, or data source by its ID or URL.\nProvide a URL or ID in the `id` parameter. Make multiple calls to fetch multiple entities.\n\n## Valid `id` formats (use ONLY these)\n\n1. A full Notion page URL (must include the https:// domain):\n   `https://www.notion.so/workspace/Page-Title-35c5913a695980d0868dc416007da734`\n   `https://www.notion.so/35c5913a695980d0868dc416007da734`\n2. A Notion Sites URL:\n   `https://myspace.notion.site/Page-Title-abc123def456`\n3. A raw UUID (with or without dashes) -- 32 hex characters only, no text prefix:\n   `35c5913a-6959-80d0-868d-c416007da734`\n   `35c5913a695980d0868dc416007da734`\n4. A data source URL for database collections:\n   `collection://12345678-90ab-cdef-1234-567890abcdef`\n\n## INVALID `id` values -- these WILL return a validation_error\n\nDo NOT pass any of the following as `id`:\n- Page titles or names: \"Verwendete Geraete\", \"Nihilistic Stoicism\", \"GaiaBuilder Notion Hub\"\n- URL slug fragments (title-hexchars without the domain): \"Story-Timeline-35c5913a69598081b59cc7c87e4161a9\", \"Character-Bios-35c5913a695980d0868dc416007da734\". These look like they contain a UUID but they are NOT valid -- you must pass either the full URL (https://www.notion.so/...) or just the UUID portion alone.\n- Resource URIs: \"notion://docs/enhanced-markdown-spec\" -- the notion:// scheme is for MCP resources, not for this tool's id parameter.\n- Markdown-formatted URLs: \"<https://www.notion.so/page>\" -- do not wrap URLs in angle brackets or markdown syntax. Pass the raw URL string.\n- Made-up or guessed UUIDs that were not returned by a previous tool call.\n\n## When you only have a page name\n\nIf the user asks about a page by name or topic (e.g. \"show me my meeting notes\"), do NOT pass the name to notion-fetch. Instead:\n1. Call notion-search with the page name as the query.\n2. From the search results, take the `id` field of the matching result.\n3. Call notion-fetch with that `id`.\n\n## Error recovery\n\nIf notion-fetch returns a validation_error, do NOT retry with the same id in a different format. Instead, call notion-search to find the correct page ID and then retry with the ID from the search results.\n\n## Parameters\n\n- `id` (required): The URL, UUID, or data source URL to fetch.\n- `include_discussions`: Set to true to see discussion counts and inline discussion markers. The output will include a `<page-discussions>` summary with `discussion://` URLs usable with notion-get-comments.\n\n## What this returns\n\n- **Pages**: Content in enhanced Markdown format with Notion-specific extensions.\n- **Databases**: All data sources (collections). Each data source has a unique ID shown in `<data-source url=\"collection://...\">` tags. Pass a data source ID to this tool to get its schema and properties. Use data source IDs with notion-update-data-source and query tools. Database responses also include available templates for each data source, which can be used with notion-create-pages and notion-update-page.\n\n<example description=\"Fetch by full URL\">{\"id\": \"https://www.notion.so/workspace/Page-a1b2c3d4e5f67890\"}</example>\n<example description=\"Fetch by UUID\">{\"id\": \"12345678-90ab-cdef-1234-567890abcdef\"}</example>\n<example description=\"Fetch Notion Sites page\">{\"id\": \"https://myspace.notion.site/Page-Title-abc123def456\"}</example>\n<example description=\"Fetch with discussions\">{\"id\": \"12345678-90ab-cdef-1234-567890abcdef\", \"include_discussions\": true}</example>\n<example description=\"Fetch database data source\">{\"id\": \"collection://12345678-90ab-cdef-1234-567890abcdef\"}</example>\n\n## Presenting results to the user\n\n- Summarize the page content naturally based on the user's question.\n- Use the page title and structure to organize the response.\n- NEVER fabricate or invent content -- only use what the tool returns.\n- If the tool returns an error, tell the user and suggest trying a search to find the correct page.",
+  "inputSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "The ID or URL of the Notion page, database, or data source to fetch. Supports notion.so URLs, Notion Sites URLs (*.notion.site), raw UUIDs, and data source URLs (collection://...). Pass \"self\" to fetch the connected workspace and user identity."
+      },
+      "include_transcript": {
+        "description": "Whether to include meeting note transcripts. Defaults to false. When true, full transcripts are included; when false, a placeholder with the meeting note URL is shown instead.",
+        "type": "boolean"
+      },
+      "include_discussions": {
+        "description": "Whether to include discussion/comment indicators in the page output. When true, adds a <page-discussions> summary with discussion count, preview snippets, and discussion:// URLs. Use with the get_comments tool to retrieve full discussion content. Defaults to false.",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "id"
+    ],
+    "additionalProperties": {}
+  }
+}

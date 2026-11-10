@@ -1,0 +1,305 @@
+From 73995d8ae3e82a5fd94ed9f00594535e6e98d042 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 13:57:51 -0400
+Subject: [PATCH] =?UTF-8?q?perf(parley):=20quiet-latch=20empty=20toll=20sh?=
+ =?UTF-8?q?ipLike=20census=20(~21=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet flight still paid pirateParley.update's full shipLike walk
+(eligiblePlan / robberyEligibility / Map alloc) every tick while no
+toll-doctrine squads and no unresolved parley records remained. Quiet
+latch short-circuits the census when empty; wakes on membership, toll
+spawn/tag (noteParleyWake), or 0.5 s rescan. Soft-GPU fps not claimed.
+Picture unchanged.
+
+Fresh combat residual after #150 pirateDisengage. Outside held clusters.
+Isolated median ~21.0–21.9× / floorMin ≥13.27×; abs before ~2.1 µs/call;
+dirtyWakeOk (toll spawn → scan); focused 61/61.
+---
+ src/systems/pirateParley.js                   | 102 ++++++++++++++-
+ test/pirate-parley-empty-quiet-latch.test.mjs | 122 ++++++++++++++++++
+ 2 files changed, 223 insertions(+), 1 deletion(-)
+ create mode 100644 test/pirate-parley-empty-quiet-latch.test.mjs
+
+diff --git a/src/systems/pirateParley.js b/src/systems/pirateParley.js
+index 4fce31163..72156a13c 100644
+--- a/src/systems/pirateParley.js
++++ b/src/systems/pirateParley.js
+@@ -11,7 +11,39 @@ import { hash32 } from '../core/rng.js';
+ import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+ import { protectedStationAt } from '../ai/engagementAuthority.js';
+ import { effectiveLawSecurity } from './lawSecurity.js';
+-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
++import { entityIndexVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
++
++
++/** Bench A/B: production default ON. Quiet latch skips pirateParley shipLike
++ * census (eligiblePlan / robberyEligibility) when no toll-doctrine squads and
++ * no unresolved parley records remain. Soft-GPU fps not claimed. Fresh combat
++ * residual after #150 pirateDisengage (not pirateDisengage / bounty / salvage /
++ * sanctuary / cones / catch-nets). */
++let PIRATE_PARLEY_EMPTY_QUIET_LATCH = true;
++export function setPirateParleyEmptyQuietLatchForBench(enabled) {
++  PIRATE_PARLEY_EMPTY_QUIET_LATCH = enabled !== false;
++}
++export function getPirateParleyEmptyQuietLatchForBench() {
++  return PIRATE_PARLEY_EMPTY_QUIET_LATCH !== false;
++}
++
++/** Membership rescan while latched (0.5 s @ 60 Hz). */
++const PIRATE_PARLEY_EMPTY_QUIET_RESCAN_TICKS = 30;
++
++function publishPirateParleyQuiet(state, latched) {
++  if (!state) return;
++  const rt = state.pirateParleyRuntime || (state.pirateParleyRuntime = {});
++  rt.emptyQuietLatched = !!latched;
++}
++
++function hasUnresolvedParleySquads(own) {
++  if (!own || !own.squads) return false;
++  for (const squadId of Object.keys(own.squads)) {
++    const rec = own.squads[squadId];
++    if (rec && !rec.resolved) return true;
++  }
++  return false;
++}
+ 
+ const SCAN_TO_DEMAND_S = 2.0;
+ // Eight seconds is long enough to read a concrete demand and make one deliberate flight decision,
+@@ -37,10 +69,32 @@ export const pirateParley = {
+     this.bus = ctx.bus || null;
+     this.helpers = ctx.helpers || {};
+     this.registry = ctx.registry || null;
++    this._subs = [];
++    this._parleyQuiet = null;
++    this._parleyWakeSeq = 0;
+     this._onChoice = (p) => this._choose(p);
+     if (this.bus && typeof this.bus.on === 'function') {
+       this.bus.on('pirateParley:choose', this._onChoice);
+     }
++    this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
++  },
++
++  /** External wake when a toll doctrine is stamped without a fresh spawn index bump. */
++  noteParleyWake() {
++    this._parleyWakeSeq = (this._parleyWakeSeq | 0) + 1;
++    this._parleyQuiet = null;
++  },
++
++  _onEntitySpawned(payload) {
++    const entity = payload && payload.entity;
++    if (!eligiblePlan(entity)) return;
++    this.noteParleyWake();
++  },
++
++  _listen(evt, fn) {
++    if (!this.bus || typeof this.bus.on !== 'function') return;
++    const off = this.bus.on(evt, fn);
++    if (typeof off === 'function') this._subs.push(off);
+   },
+ 
+   newGame() {
+@@ -51,6 +105,28 @@ export const pirateParley = {
+     if (state.mode && state.mode !== 'flight') return;
+     const own = ensureState(state);
+     const now = state.simTime || 0;
++    // Quiet open flight: no toll-doctrine / unresolved parley squads still paid a
++    // full shipLike census (eligiblePlan / robberyEligibility / Map alloc) every
++    // tick. Latch when both stay empty; wake on membership, toll spawn/tag, or
++    // 0.5 s rescan. Soft-GPU fps not claimed. Fresh combat residual after #150.
++    if (PIRATE_PARLEY_EMPTY_QUIET_LATCH !== false) {
++      const membership = entityIndexVersion(state);
++      const tick = state.tick | 0;
++      const wakeSeq = this._parleyWakeSeq | 0;
++      const quiet = this._parleyQuiet;
++      if (quiet
++        && membership != null
++        && quiet.membership === membership
++        && quiet.wakeSeq === wakeSeq
++        && !hasUnresolvedParleySquads(own)
++        && ((tick - (quiet.armedTick | 0)) < PIRATE_PARLEY_EMPTY_QUIET_RESCAN_TICKS)) {
++        publishPirateParleyQuiet(state, true);
++        return;
++      }
++    } else if (this._parleyQuiet) {
++      this._parleyQuiet = null;
++    }
++
+     const groups = collectParleySquads(state);
+ 
+     for (const [squadId, members] of groups) {
+@@ -105,6 +181,25 @@ export const pirateParley = {
+         if (now >= rec.deadlineAt) this._escalate(rec, 'timeout');
+       }
+     }
++
++    if (PIRATE_PARLEY_EMPTY_QUIET_LATCH !== false) {
++      const emptyGroups = !groups || groups.size === 0;
++      const unresolved = hasUnresolvedParleySquads(own);
++      if (emptyGroups && !unresolved) {
++        const membership = entityIndexVersion(state);
++        if (membership != null) {
++          this._parleyQuiet = {
++            membership,
++            wakeSeq: this._parleyWakeSeq | 0,
++            armedTick: state.tick | 0,
++          };
++          publishPirateParleyQuiet(state, true);
++        }
++      } else {
++        this._parleyQuiet = null;
++        publishPirateParleyQuiet(state, false);
++      }
++    }
+   },
+ 
+   _choose(payload) {
+@@ -260,10 +355,15 @@ export const pirateParley = {
+   },
+ 
+   destroy() {
++    for (const off of this._subs || []) {
++      try { off(); } catch (err) { /* cleanup must not throw */ }
++    }
++    this._subs = [];
+     if (this.bus && this._onChoice && typeof this.bus.off === 'function') {
+       this.bus.off('pirateParley:choose', this._onChoice);
+     }
+     this._onChoice = null;
++    this._parleyQuiet = null;
+   },
+ };
+ 
+diff --git a/test/pirate-parley-empty-quiet-latch.test.mjs b/test/pirate-parley-empty-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..21bd96691
+--- /dev/null
++++ b/test/pirate-parley-empty-quiet-latch.test.mjs
+@@ -0,0 +1,122 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  pirateParley,
++  setPirateParleyEmptyQuietLatchForBench,
++  getPirateParleyEmptyQuietLatchForBench,
++} from '../src/systems/pirateParley.js';
++
++function boot(opts = {}) {
++  const state = createGameState(1511);
++  state.mode = 'flight';
++  state.tick = 0;
++  state.simTime = 0;
++  if (opts.withCargo) {
++    state.player = { cargo: { items: { cmdty_refined_metals: 12 } } };
++  }
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 0, data: {},
++  });
++  state.playerId = player.id;
++  const ships = [player];
++  for (let i = 0; i < 48; i++) {
++    ships.push(helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: 80 + i * 15, z: 40 },
++      vel: { x: 0, z: 0 },
++      radius: 8, mass: 12, hull: 80, hullMax: 80, collides: true, team: 1,
++      data: { ai: { passive: true } },
++    }));
++  }
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    state.entityIndex.__spacefaceEntityIndexV1 = true;
++    state.entityIndex.ships = ships;
++    state.entityIndex.shipLike = ships;
++    state.entityIndex.version = 1;
++  }
++  pirateParley.init({ state, bus, helpers, registry: null });
++  return { state, helpers, ships, bus, player };
++}
++
++test('pirate parley empty quiet latch arms and skips census', () => {
++  assert.equal(getPirateParleyEmptyQuietLatchForBench(), true);
++  const { state } = boot();
++  setPirateParleyEmptyQuietLatchForBench(true);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    pirateParley.update(1 / 60, state);
++  }
++  assert.equal(state.pirateParleyRuntime?.emptyQuietLatched, true);
++  assert.ok(pirateParley._parleyQuiet);
++  const membership = pirateParley._parleyQuiet.membership;
++  for (let i = 0; i < 10; i++) {
++    state.tick++;
++    pirateParley.update(1 / 60, state);
++  }
++  assert.equal(state.pirateParleyRuntime?.emptyQuietLatched, true);
++  assert.equal(pirateParley._parleyQuiet.membership, membership);
++});
++
++test('pirate parley empty quiet latch wakes on toll spawn and starts scan', () => {
++  const { state, helpers, ships } = boot({ withCargo: true });
++  setPirateParleyEmptyQuietLatchForBench(true);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    pirateParley.update(1 / 60, state);
++  }
++  assert.equal(state.pirateParleyRuntime?.emptyQuietLatched, true);
++
++  const toll = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 400, z: 400 },
++    vel: { x: 0, z: 0 },
++    radius: 8, mass: 12, hull: 80, hullMax: 80, collides: true, team: 1,
++    factionId: 'faction_reach',
++    data: {
++      ai: {
++        doctrine: 'toll',
++        motive: 'cargo_extortion',
++        squadId: 'sq-toll-wake',
++        passive: false,
++      },
++    },
++  });
++  ships.push(toll);
++  if (state.entityIndex) {
++    state.entityIndex.ships = ships;
++    state.entityIndex.shipLike = ships;
++    state.entityIndex.version = (state.entityIndex.version | 0) + 1;
++  }
++  pirateParley.noteParleyWake();
++  state.tick++;
++  pirateParley.update(1 / 60, state);
++  assert.equal(state.pirateParleyRuntime?.emptyQuietLatched, false);
++  const rec = state.pirateParley?.squads?.['sq-toll-wake'];
++  assert.ok(rec);
++  assert.equal(rec.phase, 'scan');
++  assert.equal(rec.resolved, false);
++});
++
++test('pirate parley empty quiet latch bench toggle restores census', () => {
++  const { state } = boot();
++  setPirateParleyEmptyQuietLatchForBench(true);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    pirateParley.update(1 / 60, state);
++  }
++  assert.equal(state.pirateParleyRuntime?.emptyQuietLatched, true);
++  setPirateParleyEmptyQuietLatchForBench(false);
++  state.tick++;
++  pirateParley.update(1 / 60, state);
++  assert.equal(pirateParley._parleyQuiet, null);
++  // Restore production default for other suites.
++  setPirateParleyEmptyQuietLatchForBench(true);
++});
+-- 
+2.47.3
+

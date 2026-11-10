@@ -1,0 +1,64 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "borrowed_voice_b_controls",
+  "sourceAssetId": "SF_PROP_BORROWED_VOICE_B",
+  "sourceGlbSha256": "220b46e1dbf42515d41431f83f63aa6295de57463b3306420f32ea53f148fa64",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "borrowed_voice_receiver",
+      "node": "MOTION_BORROWED_VOICE_RECEIVER",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          1.0499999523162842,
+          1.149999976158142,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "borrowed_voice_receiver",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}

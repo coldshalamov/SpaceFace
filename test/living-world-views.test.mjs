@@ -1,0 +1,139 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  forEachJobInteractable,
+  forEachLivingWorldActor,
+  indexedShipLikeScan,
+  isLivingWorldActor,
+  livingWorldActorSeenTypes,
+} from '../src/world/livingWorldViews.js';
+import { barkDirector } from '../src/systems/barkDirector.js';
+import { lawWitnessesNear } from '../src/systems/lawSecurity.js';
+
+function fatState() {
+  const ship = {
+    id: 1, type: 'ship', alive: true, isPlayer: true, team: 0,
+    pos: { x: 0, z: 0 }, data: { ai: {} }, flags: {},
+  };
+  const station = {
+    id: 2, type: 'station', alive: true, pos: { x: 10, z: 0 },
+    data: { stationId: 'station_test', lawful: true }, flags: {},
+  };
+  const rock = {
+    id: 3, type: 'asteroid', alive: true, pos: { x: 4, z: 0 }, radius: 8,
+    data: { oreHP: 10, lawWitness: true }, flags: {},
+  };
+  const fx = {
+    id: 4, type: 'fx', alive: true, pos: { x: 5, z: 0 },
+    data: { poi: true }, flags: {},
+  };
+  const wreck = {
+    id: 5, type: 'wreck', alive: true, pos: { x: 6, z: 0 }, data: {}, flags: {},
+  };
+  const list = [ship, station, rock, fx, wreck];
+  const map = new Map(list.map((e) => [e.id, e]));
+  return {
+    tick: 1,
+    simTime: 1,
+    mode: 'flight',
+    playerId: 1,
+    entities: map,
+    entityList: list,
+    ship, station, rock, fx, wreck,
+  };
+}
+
+test('living-world helper never yields asteroids or dressing FX', () => {
+  const state = fatState();
+  const seen = [];
+  forEachLivingWorldActor(state, (entity) => seen.push(entity.type));
+  assert.deepEqual(seen.sort(), ['ship', 'station', 'wreck']);
+  assert.deepEqual(livingWorldActorSeenTypes(state), ['ship', 'station', 'wreck']);
+  assert.equal(isLivingWorldActor(state.rock), false);
+  assert.equal(isLivingWorldActor(state.fx), false);
+  const jobSeen = [];
+  forEachJobInteractable(state, (entity) => jobSeen.push(entity.type));
+  assert.ok(!jobSeen.includes('asteroid'));
+  assert.ok(!jobSeen.includes('fx'));
+});
+
+test('law witnesses skip rocks and dressing on a fat list', () => {
+  const state = fatState();
+  const witnesses = lawWitnessesNear(state, { pos: { x: 0, z: 0 }, radius: 1000 });
+  const types = new Set();
+  for (const row of witnesses) {
+    const entity = state.entities.get(row.entityId);
+    types.add(entity && entity.type);
+  }
+  assert.equal(types.has('asteroid'), false, 'rocks never witness even if marked');
+  assert.equal(types.has('fx'), false, 'ordinary dressing is not a witness');
+});
+
+test('bark director update does not walk rocks or dressing', () => {
+  const state = fatState();
+  const visited = [];
+  const original = state.entityList[Symbol.iterator].bind(state.entityList);
+  // Presence of entityIndex buckets is the production path; fat master list still exists.
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    shipLike: [state.ship],
+    stations: [state.station],
+    wrecks: [state.wreck],
+    payloads: [],
+    pickups: [],
+    asteroids: [state.rock],
+  };
+  Object.defineProperty(state.entityList, Symbol.iterator, {
+    configurable: true,
+    value: function* () {
+      visited.push('master-list');
+      yield* original();
+    },
+  });
+  barkDirector.init({
+    state,
+    bus: { on() { return () => {}; }, emit() {} },
+    helpers: {},
+  });
+  barkDirector.update(1 / 60, state);
+  assert.deepEqual(visited, []);
+});
+
+test('indexed ship-like scan prefers the compact bucket over the fat master list', () => {
+  const state = fatState();
+  const npc = {
+    id: 9, type: 'ship', alive: true, team: 1,
+    pos: { x: 8, z: 0 }, data: { ai: { combatant: true } }, flags: {},
+  };
+  state.entityList.push(npc);
+  state.entities.set(npc.id, npc);
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    ready: true,
+    shipLike: [state.ship, npc],
+    stations: [state.station],
+    wrecks: [state.wreck],
+    asteroids: [state.rock],
+  };
+  const scan = indexedShipLikeScan(state);
+  assert.equal(scan, state.entityIndex.shipLike);
+  assert.equal(scan.includes(state.rock), false);
+  assert.equal(scan.includes(state.fx), false);
+  assert.deepEqual(indexedShipLikeScan({ entityList: state.entityList }), state.entityList);
+
+  let masterReads = 0;
+  const list = state.entityList;
+  Object.defineProperty(state, 'entityList', {
+    configurable: true,
+    get() { masterReads += 1; return list; },
+  });
+  barkDirector.init({
+    state,
+    bus: { on() { return () => {}; }, emit() {} },
+    helpers: {},
+  });
+  const witness = barkDirector._nearestWitness();
+  assert.equal(witness && witness.id, npc.id);
+  assert.equal(masterReads, 0, 'witness search must not read the fat entityList');
+});

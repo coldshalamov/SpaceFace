@@ -1,0 +1,1886 @@
+// Star-map navigation + live sector-field intelligence.
+//
+// This screen is a read-only projection of sectorSim's public signal contract. It does not infer
+// danger/economy/influence from private save fields, and it does not own simulation math. The same
+// transit forecast shown here is the function used by sectorSim on jump arrival.
+import { SECTORS, dangerTier } from '../../data/sectors.js';
+import { commodityDisplayName } from '../commodityNames.js';
+import { COMMODITIES } from '../../data/commodities.js';
+import { FACTION_META } from '../../data/factions.js';
+import {
+  effectiveSectorFor,
+  sectorSignalFor,
+  forecastTransitFor,
+} from '../../systems/sectorSim.js';
+import { BINDINGS } from '../bindings.js';
+import { enhanceSelects } from '../uiPrimitives.js';
+import { entitySpanHtml } from '../entityResolver.js';
+import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { canvasFont, canvasFontScaled, invalidateCanvasFonts } from '../canvasFonts.js';
+import { drawGlyph, glyphSvg } from '../glyphs.js';
+import { injectOrrery } from '../orrery/tokens.js';
+import { dressLampKey } from '../orrery/lampKey.js';
+
+const FACTION_NAME = Object.create(null);
+const FACTION_COLOR = Object.create(null);
+const SECTOR_NAME = new Map(SECTORS.map((s) => [s.id, s.name]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const DEFAULT_MEMORY_COMMODITY = 'cmdty_ore_iron';
+
+// INF-057 star-map context memory. The screen read a camera bag from state.ui on open, but
+// nothing ever WROTE it — a dead read, so every close forgot the pan/zoom the player had set.
+// The camera now rides the screenMemory contract like every other screen's remembered state:
+// flat primitives, authored defaults on restore-first, written on hide. The galaxy camera is
+// location-independent (it spans the topology, not one sector), so unlike the local map there
+// is no sector reframe here — the selection already re-frames to the current sector each show.
+const CAMERA_DEFAULT = Object.freeze({ cx: 0, cy: 0, zoom: 1 });
+
+export function restoreStarMapCamera(bag) {
+  if (!bag) return { ...CAMERA_DEFAULT };
+  const cx = Number(bag.camCx);
+  const cy = Number(bag.camCy);
+  const zoom = Number(bag.camZoom);
+  return {
+    cx: Number.isFinite(cx) ? cx : CAMERA_DEFAULT.cx,
+    cy: Number.isFinite(cy) ? cy : CAMERA_DEFAULT.cy,
+    zoom: Number.isFinite(zoom) && zoom > 0 ? Math.min(3, Math.max(0.5, zoom)) : CAMERA_DEFAULT.zoom,
+  };
+}
+for (const f of FACTION_META) {
+  FACTION_NAME[f.id] = f.short || f.name || f.id;
+  FACTION_COLOR[f.id] = f.color || '#84a0c8';
+}
+
+// Canvas 2D cannot resolve CSS variables. Same seven grammar hexes as localmap / drill.
+export const ROLE_FALLBACK = {
+  you: '#4fbf8f',
+  foe: '#ff5470',
+  goal: '#ffb347',
+  calm: '#84a0c8',
+  paper: '#d3e6ff',
+  surface: '#0b1220',
+  edge: '#1d3350',
+};
+
+export function canvasRoles() {
+  const fallback = ROLE_FALLBACK;
+  if (typeof document === 'undefined' || !document.documentElement) return fallback;
+  let cs;
+  try { cs = getComputedStyle(document.documentElement); } catch { return fallback; }
+  const read = (name, fb) => ((cs.getPropertyValue(name) || '').trim() || fb);
+  return {
+    // ORRERY roles (design/frontend/ORRERY.md §3.3), deckplate tokens first, the seven grammar
+    // hexes behind them for headless probes: readings are phosphor, the course is the Hand's
+    // amber, threat is danger, rest light is warm bone, data in motion is ice.
+    you: read('--dp-phos', read('--sf-you', fallback.you)),
+    foe: read('--dp-danger', read('--sf-foe', fallback.foe)),
+    goal: read('--dp-lamp', read('--sf-goal', fallback.goal)),
+    calm: read('--dp-ink-dim', read('--sf-calm', fallback.calm)),
+    paper: read('--dp-ink', read('--sf-paper', fallback.paper)),
+    surface: read('--dp-void', read('--sf-surface', fallback.surface)),
+    edge: read('--dp-line', read('--sf-edge', fallback.edge)),
+    motion: read('--dp-ice', fallback.calm),
+  };
+}
+
+function paint(hex, a) {
+  if (a == null || a >= 1) return hex;
+  const n = String(hex || '').replace('#', '');
+  if (n.length < 6) return hex;
+  const r = parseInt(n.slice(0, 2), 16);
+  const g = parseInt(n.slice(2, 4), 16);
+  const b = parseInt(n.slice(4, 6), 16);
+  if (![r, g, b].every(Number.isFinite)) return hex;
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+
+function prefersReducedMotion() {
+  if (typeof document !== 'undefined' && document.documentElement
+    && document.documentElement.classList.contains('sf-reduce-motion')) return true;
+  try { return !!(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  catch { return false; }
+}
+
+function token(role) { return 'var(--sf-' + role + ')'; }
+
+const HAZARD_LABEL = Object.freeze({
+  dense_asteroid: 'Asteroids', nebula: 'Nebula', radiation: 'Radiation', debris: 'Debris',
+});
+const DRIVER_LABEL = Object.freeze({
+  structural_baseline: 'structural equilibrium',
+  graph_flow: 'neighboring-lane diffusion',
+  concord_patrols: 'Concord patrol suppression',
+  reach_pressure: 'Reach predation pressure',
+  vael_frontier: 'Vael frontier closure',
+  contested_space: 'contested-space heating',
+  market_balance: 'market mean reversion',
+  meridian_transmission: 'Meridian trade transmission',
+  route_scarcity: 'route scarcity',
+  route_surplus: 'route surplus',
+  territorial_anchor: 'territorial anchoring',
+  contested_influence: 'contested influence',
+  territorial_shift: 'territorial shift',
+  trade_shock: 'player-created trade shock',
+  combat_suppression: 'hostile-force attrition',
+  combat_disruption: 'lawful-force disruption',
+  combat_attrition: 'combat attrition',
+  infrastructure_disruption: 'infrastructure loss',
+  interdiction_wave: 'interdiction activity',
+  transit_incident: 'transit incident',
+  ore_flood: 'ore flood from a shattered seam',
+  dock_slam: 'a wrecked docking ring',
+  lane_disruption: 'a hauler dragged off its lane',
+  territory_flip: 'resolved territory flip',
+});
+
+const STYLE_ID = 'sf-starmap-style';
+/* ORRERY composition (design/frontend/ORRERY.md): the chart is a full-bleed instrument over the
+   world — no floating panel, no borders, no box shadows, no backdrop blur over the live sim.
+   Glass carries corner ticks; the head and foot stand on dissolving veils; the one amber leader
+   is the course (Lamp Key + goal kicker + route line); red stays threat; readings are phosphor. */
+const CSS = `
+#sf-starmap {
+  position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden;
+  pointer-events: auto; font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-paper);
+}
+#sf-starmap .sf-fig,
+#sf-starmap .sm-stats b,
+#sf-starmap .sm-kv b,
+#sf-starmap .sm-influence-row b,
+#sf-starmap .sm-market-row b,
+#sf-starmap .sm-route-total,
+#sf-starmap .sm-objective-meta,
+#sf-starmap .sm-risk-head b {
+  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
+  font-size: 13px; letter-spacing: 0;
+}
+#sf-starmap .sm-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--dp-veil-head, linear-gradient(180deg, rgb(8 9 12 / .78) 0%, rgb(8 9 12 / .34) 46%, transparent 86%));
+}
+#sf-starmap .sm-title {
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm));
+  display: flex; align-items: center; gap: 8px;
+}
+#sf-starmap .sm-title::before {
+  content: ''; display: inline-block; width: 3px; height: 12px; background: var(--dp-line-hi, var(--sf-calm)); border-radius: 1px;
+}
+#sf-starmap .sm-head-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-3); flex-wrap: wrap; }
+#sf-starmap .sm-commodity {
+  display: flex; align-items: center; gap: var(--sp-2);
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm));
+}
+#sf-starmap .sm-commodity .sf-select__field {
+  max-width: 190px; background: transparent; border: 0; border-bottom: 1px solid var(--dp-rule, var(--sf-edge));
+  color: var(--dp-ink, var(--sf-paper)); border-radius: 0; padding: var(--sp-1) var(--sp-2);
+  font-family: var(--sf-body-face); font-size: 13px; text-transform: none; letter-spacing: 0;
+}
+#sf-starmap .sm-commodity .sf-select__field:focus-visible {
+  outline: 2px solid var(--dp-line-hi, var(--sf-calm)); outline-offset: 2px; border-bottom-color: var(--dp-line-hi, var(--sf-calm)); box-shadow: none;
+}
+#sf-starmap .sm-stats { font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+#sf-starmap .sm-stats b { color: var(--dp-phos, var(--sf-paper)); }
+#sf-starmap .sm-close {
+  /* Demoted (2026-10-31 wayfinding audit): a ghost word, not a field — the course CTA is the
+     loud verb on this screen. Rest is dim ink on nothing; hover/focus raise ink and one hairline
+     underline. The key hint stays so the binding remains discoverable. */
+  background: transparent; border: 0; border-bottom: 1px solid transparent; color: var(--dp-ink-mute, var(--sf-calm));
+  min-height: 28px; padding: var(--sp-1) var(--sp-2); border-radius: 0; cursor: pointer;
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+  transition: color 160ms var(--dp-ease-out, ease-out), border-color 160ms var(--dp-ease-out, ease-out);
+}
+#sf-starmap .sm-close:hover, #sf-starmap .sm-close:focus-visible {
+  color: var(--dp-ink, var(--sf-paper));
+  border-bottom-color: var(--dp-rule-hi, var(--sf-edge));
+}
+#sf-starmap .sm-close:active {
+  translate: 0 1px;
+}
+#sf-starmap .sm-close:focus-visible {
+  outline: 2px solid var(--dp-line-hi, var(--sf-calm)); outline-offset: 2px;
+}
+#sf-starmap .sm-body { flex: 1; display: flex; min-height: 0; }
+#sf-starmap .sm-canvas-wrap { flex: 1; position: relative; min-width: 0; }
+#sf-starmap canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; display: block; }
+/* The inspector: one glass column, its left edge dissolved into the chart — no border. It is a
+   pinned rail, not a scroller: the reading (objective) holds the top, the verb (actions) holds
+   the foot, and only the field ladder between them scrolls. The old single-scroll column put
+   the Lamp Key below the fold and buried the transit rows under the foot veil. */
+#sf-starmap .sm-side {
+  width: 340px;
+  background: var(--dp-glass-deep, color-mix(in srgb, var(--sf-surface) 84%, transparent));
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, rgb(0 0 0) 20px); mask-image: linear-gradient(90deg, transparent 0, rgb(0 0 0) 20px);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) calc(var(--sp-3) + 18px); display: flex; flex-direction: column; gap: var(--sp-2);
+}
+/* The field ladder: the only scrolling part of the column. Its bottom edge dissolves (the mask,
+   not a rule), so a row cut by the fold reads as continuation — and the last row, fully scrolled,
+   clears the fade over padding, never dying inside it. */
+#sf-starmap .sm-side > [data-sel] {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--dp-rule-hi, color-mix(in srgb, var(--sf-calm) 25%, transparent)) transparent;
+  padding-bottom: 26px;
+  -webkit-mask-image: linear-gradient(180deg, rgb(0 0 0) 0, rgb(0 0 0) calc(100% - 26px), transparent 100%);
+  mask-image: linear-gradient(180deg, rgb(0 0 0) 0, rgb(0 0 0) calc(100% - 26px), transparent 100%);
+}
+#sf-starmap .sm-sel-head { padding-left: var(--sp-2); }
+#sf-starmap .sm-sel-name {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2);
+  font-family: var(--dp-face-display, var(--sf-display-face)); font-stretch: 118%; font-weight: 750; font-size: 19px; color: var(--dp-ink, var(--sf-paper));
+  padding-bottom: var(--sp-2); margin-bottom: var(--sp-2); border-bottom: 1px solid var(--dp-rule, var(--sf-edge));
+}
+#sf-starmap .sm-sel-name > span { min-width: 0; overflow-wrap: anywhere; }
+#sf-starmap .sm-sel-fac {
+  font-family: var(--sf-body-face); font-size: 13px; margin-top: var(--sp-1); color: var(--dp-ink-mute, var(--sf-calm));
+}
+#sf-starmap .sm-section { margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 1px solid var(--dp-rule, var(--sf-edge)); }
+#sf-starmap .sm-section-title {
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+  color: var(--dp-ink-dim, var(--sf-calm)); margin-bottom: var(--sp-1);
+}
+#sf-starmap .sm-kv {
+  display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2);
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); padding: 2px 0;
+}
+/* Long values (hazard lists, security strings, entity names) wrap inside the column instead of
+   clipping past the rail's edge — a reading the pilot cannot read is not shown (2026-10-31 audit). */
+#sf-starmap .sm-kv b { color: var(--dp-ink, var(--sf-paper)); font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+#sf-starmap .sm-driver { font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); line-height: 1.35; margin: var(--sp-1) 0 var(--sp-2); }
+#sf-starmap .sm-hint { font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); line-height: 1.5; }
+#sf-starmap .sm-objective {
+  border: 0; border-radius: 0; padding: var(--sp-2) var(--sp-3);
+  background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 88%, transparent));
+}
+#sf-starmap .sm-objective[hidden] { display: none; }
+#sf-starmap .sm-objective-k {
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-lamp, var(--sf-goal));
+}
+#sf-starmap .sm-objective-title {
+  margin-top: var(--sp-1); font-family: var(--dp-face-display, var(--sf-display-face)); font-weight: 800; font-stretch: 125%; font-size: 28px;
+  line-height: 1.05; color: var(--dp-ink, var(--sf-paper)); letter-spacing: -0.01em; text-transform: none; overflow-wrap: anywhere;
+}
+#sf-starmap .sm-objective-body {
+  margin-top: var(--sp-1); font-family: var(--sf-body-face); font-size: 14px; color: var(--dp-ink-dim, var(--sf-calm)); line-height: 1.45;
+}
+#sf-starmap .sm-objective-meta { display: flex; flex-wrap: wrap; column-gap: var(--sp-3); row-gap: var(--sp-1); margin-top: var(--sp-2); color: var(--dp-ink-mute, var(--sf-calm)); }
+#sf-starmap .sm-objective-meta .hot { color: var(--dp-phos, var(--sf-goal)); }
+/* The objective's own verb is a quiet word; the screen's Lamp Key is the course (sm-actions). */
+#sf-starmap .sm-objective button {
+  min-height: 40px; margin-top: var(--sp-2); padding: var(--sp-2) var(--sp-1);
+  border: 0; border-radius: 0; color: var(--dp-ink-dim, var(--sf-goal));
+  background: transparent;
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; cursor: pointer;
+  transition: color 160ms var(--dp-ease-out, ease-out);
+}
+#sf-starmap .sm-objective button:hover {
+  color: var(--dp-ink, var(--sf-paper));
+  background: linear-gradient(90deg, var(--dp-line-hi, var(--sf-goal)) 0 2px, transparent 2px) 0 50% / 2px 70% no-repeat;
+}
+#sf-starmap .sm-objective button:focus-visible {
+  outline: 2px solid var(--dp-line-hi, var(--sf-calm)); outline-offset: 2px; color: var(--dp-ink, var(--sf-paper));
+}
+#sf-starmap .sm-objective button:active {
+  translate: 0 1px;
+}
+#sf-starmap .sm-route {
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-lamp, var(--sf-you)); margin-top: var(--sp-2);
+}
+#sf-starmap .sm-route-leg {
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm));
+  padding: 2px 0 2px var(--sp-2);
+}
+#sf-starmap .sm-route-leg b { color: var(--dp-ink, var(--sf-paper)); font-weight: 600; }
+#sf-starmap .sm-route-leg .sm-interdict { color: var(--dp-danger, var(--sf-foe)); }
+#sf-starmap .sm-route-total { color: var(--dp-lamp, var(--sf-you)); padding: var(--sp-1) 0; }
+/* A quantity is a lit band over a ghost track — no bordered bar. */
+#sf-starmap .sm-bar {
+  height: 3px; border-radius: 0;
+  background: var(--dp-field-ink, color-mix(in srgb, var(--sf-calm) 18%, transparent)); overflow: hidden; margin: var(--sp-1) 0;
+  border: 0;
+}
+#sf-starmap .sm-bar > i { display: block; height: 100%; border-radius: 0; background: var(--dp-phos-dim, var(--sf-calm)); }
+#sf-starmap .sm-influence-row {
+  display: grid; grid-template-columns: 1fr 42px; gap: var(--sp-2); align-items: center;
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); margin: var(--sp-1) 0;
+}
+#sf-starmap .sm-influence-row > span { min-width: 0; overflow-wrap: anywhere; }
+#sf-starmap .sm-influence-row b { text-align: right; color: var(--dp-ink, var(--sf-paper)); }
+/* the rail separates by structure, not by washes: the transit-consequence rungs hang on a 2px
+   left rule like every other block's hairline, never a filled slab (the no-box grammar) */
+#sf-starmap .sm-risk {
+  border: 0; border-radius: 0; padding: var(--sp-2); margin-top: var(--sp-1);
+  border-left: 2px solid var(--dp-rule-hi, var(--sf-edge));
+  background: none;
+}
+#sf-starmap .sm-risk-head { display: flex; justify-content: space-between; font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); }
+#sf-starmap .sm-risk-note { font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); line-height: 1.35; margin-top: var(--sp-1); }
+#sf-starmap .sm-pips { display: inline-flex; gap: 3px; align-items: center; }
+#sf-starmap .sm-pip {
+  width: 7px; height: 7px; border-radius: 50%; display: inline-block;
+  border: 1.2px solid currentColor; box-sizing: border-box;
+}
+#sf-starmap .sm-pip--on { background: currentColor; }
+#sf-starmap .sm-pips--you { color: var(--dp-phos, var(--sf-you)); }
+#sf-starmap .sm-pips--calm { color: var(--dp-ink-dim, var(--sf-calm)); }
+/* LOW security reads bright bone: the filled-pip count and the word carry the band, and the Hand's
+   amber is never spent on a security tier (ORRERY §3.3 — one amber leader, the course). */
+#sf-starmap .sm-pips--goal { color: var(--dp-ink, var(--sf-paper)); }
+#sf-starmap .sm-pips--foe { color: var(--dp-danger, var(--sf-foe)); }
+#sf-starmap .sm-pips-word {
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm));
+}
+#sf-starmap .sm-market-memory { display: flex; flex-direction: column; gap: var(--sp-1); }
+#sf-starmap .sm-market-row {
+  display: flex; justify-content: space-between; gap: var(--sp-2);
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm));
+}
+#sf-starmap .sm-market-row > span { min-width: 0; overflow-wrap: anywhere; }
+#sf-starmap .sm-market-row.fresh { color: var(--dp-phos, var(--sf-you)); }
+#sf-starmap .sm-market-row.mid { color: var(--dp-ink, var(--sf-paper)); }
+#sf-starmap .sm-market-row.old { color: var(--dp-ink-mute, var(--sf-calm)); font-style: italic; }
+#sf-starmap .sm-actions { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-2); padding-top: var(--sp-2); }
+/* The apron is a dissolving veil ON the chart (the localmap legend's grammar), not a flow bar:
+   it spans the canvas it describes, never the dossier column, so no reading is ever laid under it.
+   .sf-apron's column direction is overridden — the legend and the key hint share one row. */
+#sf-starmap .sm-foot {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; pointer-events: none;
+  display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--dp-veil-foot, linear-gradient(0deg, rgb(8 9 12 / .86) 0%, rgb(8 9 12 / .46) 42%, transparent 88%));
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm));
+}
+#sf-starmap .sm-legend { display: flex; gap: var(--sp-3); flex-wrap: wrap; font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px; letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm)); }
+#sf-starmap .sm-legend span { display: inline-flex; align-items: center; gap: var(--sp-1); }
+#sf-starmap .sm-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--dp-ink-dim, var(--sf-calm)); }
+#sf-starmap .sm-dot--foe { background: var(--dp-danger, var(--sf-foe)); }
+#sf-starmap .sm-dot--ice { background: var(--dp-ice, var(--sf-calm)); }
+#sf-starmap .sm-dot--you { background: var(--dp-ink, var(--sf-paper)); }
+/* Legend samples that decode the chart's own marks (2026-10-31 audit: the legend lists only what
+   the canvas actually draws): the amber course beam, the dashed one-jump range ring, the paper
+   you-are-here ring. Tokens only — no second colour system. */
+#sf-starmap .sm-line { width: 16px; height: 0; border-top: 2px solid var(--dp-lamp, var(--sf-goal)); display: inline-block; flex: none; }
+#sf-starmap .sm-ring {
+  width: 8px; height: 8px; box-sizing: border-box; border-radius: 50%; display: inline-block; flex: none;
+  border: 1.4px dashed var(--dp-phos, var(--sf-you)); background: transparent;
+}
+#sf-starmap .sm-legend .sm-legend-glyph { width: 12px; height: 12px; color: var(--dp-danger, var(--sf-foe)); flex: none; }
+@media (max-width: 820px) {
+  #sf-starmap .sm-side { width: 288px; }
+  #sf-starmap .sm-stats { gap: var(--sp-2); }
+}
+/* Narrow window: the 288px inspector left the chart a ~100px sliver and the legend and key hint
+   printed over the dossier text. Stack instead: chart on top, inspector below, legend only. */
+@media (max-width: 560px) {
+  #sf-starmap .sm-body { flex-direction: column; }
+  #sf-starmap .sm-canvas-wrap { flex: 0 0 38%; min-height: 200px; }
+  #sf-starmap .sm-side {
+    width: auto; flex: 1 1 0; min-height: 0;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, rgb(0 0 0) 14px); mask-image: linear-gradient(180deg, transparent 0, rgb(0 0 0) 14px);
+    padding: var(--sp-3) var(--sp-4);
+  }
+  #sf-starmap .sm-foot { padding: var(--sp-1) var(--sp-3); }
+  #sf-starmap .sm-foot > :not(.sm-legend) { display: none; }
+  #sf-starmap .sm-legend { gap: var(--sp-1) var(--sp-3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #sf-starmap, #sf-starmap * { animation: none; transition: none; }
+}
+html.sf-reduce-motion #sf-starmap .orr-rise { animation: none; }
+@media (forced-colors: active) {
+  #sf-starmap, #sf-starmap .sm-objective, #sf-starmap .sm-side, #sf-starmap .sm-risk {
+    background: Canvas; color: CanvasText; border-color: CanvasText;
+  }
+}
+`;
+
+function injectStyle() {
+  if (document.getElementById(STYLE_ID)) return;
+  const el = document.createElement('style');
+  el.id = STYLE_ID;
+  el.textContent = CSS;
+  document.head.appendChild(el);
+}
+
+function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function pct(v) { return `${Math.round(clamp(Number(v) || 0, 0, 1) * 100)}%`; }
+function signed(v, digits = 1) {
+  const n = Number(v) || 0;
+  return `${n > 0 ? '+' : ''}${n.toFixed(digits)}`;
+}
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function factionName(id) { return FACTION_NAME[id] || (id ? id.replace(/^faction_/, '') : 'Unaffiliated'); }
+function factionColor(id) { return FACTION_COLOR[id] || '#84a0c8'; }
+
+/** Three meaning bands: a gain (safe), what you are heading into, against you. */
+export function dangerRole(v) {
+  if (v < 0.28) return 'you';
+  if (v < 0.72) return 'goal';
+  return 'foe';
+}
+export function dangerColor(v) { return token(dangerRole(v)); }
+
+/** Surplus is a gain; scarcity is what you are heading for; balanced is at rest. */
+export function pressureRole(v) {
+  if (v > 0.08) return 'goal';
+  if (v < -0.08) return 'you';
+  return 'calm';
+}
+export function pressureColor(v) { return token(pressureRole(v)); }
+function pressureLabel(v) {
+  const a = Math.abs(v);
+  if (a < 0.06) return 'balanced';
+  const strength = a > 0.45 ? 'severe' : a > 0.22 ? 'strong' : 'mild';
+  return v > 0 ? `${strength} scarcity` : `${strength} surplus`;
+}
+function trendGlyph(v, eps = 0.002) { return v > eps ? '↑' : v < -eps ? '↓' : '→'; }
+export function trendRole(v, goodWhenPositive = false) {
+  if (Math.abs(v) < 0.002) return 'calm';
+  const positiveGood = goodWhenPositive ? v > 0 : v < 0;
+  return positiveGood ? 'you' : 'goal';
+}
+export function trendColor(v, goodWhenPositive = false) { return token(trendRole(v, goodWhenPositive)); }
+/* What the SCREEN paints for a meaning role (ORRERY §3.3): a safe reading is phosphor, a caution
+   is bright bone ink, a threat is danger-red — never the kit's legacy green, and never the Hand's
+   amber (the course is this screen's one amber leader). dangerColor()/pressureColor()/
+   trendColor() keep their pinned kit-contract strings for the instrument-hierarchy test; the
+   dossier and the tooltip apply the dp tokens through this map instead. */
+const DP_ROLE_COLOR = {
+  you: 'var(--dp-phos, var(--sf-you))',
+  goal: 'var(--dp-ink, var(--sf-paper))',
+  calm: 'var(--dp-ink-mute, var(--sf-calm))',
+  foe: 'var(--dp-danger, var(--sf-foe))',
+};
+function dpColor(role) { return DP_ROLE_COLOR[role] || DP_ROLE_COLOR.calm; }
+function driverLabel(id) { return DRIVER_LABEL[id] || String(id || '').replace(/_/g, ' '); }
+function securityLabel(sec) { return sec >= 0.7 ? 'High' : sec >= 0.4 ? 'Mid' : sec >= 0.15 ? 'Low' : 'Null'; }
+function securityPips(sec) {
+  // CSS-drawn pips, not unicode ●/○: three marks, filled vs hollow carries the band beside the
+  // word, so the read survives colorblind viewing (count + fill state, hue is reinforcement).
+  const pip = (on) => `<i class="sm-pip${on ? ' sm-pip--on' : ''}"></i>`;
+  if (sec >= 0.7) return `<span class="sm-pips sm-pips--you" aria-hidden="true">${pip(true)}${pip(true)}${pip(true)}</span> <span class="sm-pips-word">HIGH</span>`;
+  if (sec >= 0.4) return `<span class="sm-pips sm-pips--calm" aria-hidden="true">${pip(true)}${pip(true)}${pip(false)}</span> <span class="sm-pips-word">MID</span>`;
+  if (sec >= 0.15) return `<span class="sm-pips sm-pips--goal" aria-hidden="true">${pip(true)}${pip(false)}${pip(false)}</span> <span class="sm-pips-word">LOW</span>`;
+  return `<span class="sm-pips sm-pips--foe" aria-hidden="true">${pip(false)}${pip(false)}${pip(false)}</span> <span class="sm-pips-word">NULL</span>`;
+}
+function enemyDensityLabel(d) { return d <= 0.15 ? 'Low' : d <= 0.35 ? 'Medium' : d <= 0.55 ? 'High' : 'Extreme'; }
+
+// Local stroke marks for the two node features no shared glyphs.js glyph carries — same language
+// (24 grid, 1.6 stroke, round caps/joins, Path2D cached per mark, stroked at px/24 scale). The
+// blackmarket mark is the no-entry circle + slash; the wormhole mark is the portal double-ring,
+// the same two-ring geometry the tactical grammar gives gates. Path2Ds are built lazily so the
+// module keeps importing clean under Node probes.
+const SM_MARK_DEFS = {
+  blackmarket: [['M12 3.5A8.5 8.5 0 1 0 12 20.5A8.5 8.5 0 1 0 12 3.5Z'], ['M6.2 6.2 17.8 17.8']],
+  wormhole: [['M12 3.5A8.5 8.5 0 1 0 12 20.5A8.5 8.5 0 1 0 12 3.5Z'], ['M12 8.4A3.6 3.6 0 1 0 12 15.6A3.6 3.6 0 1 0 12 8.4Z']],
+};
+const smMarkPathCache = new Map();
+function smMarkStrokes(mark) {
+  let strokes = smMarkPathCache.get(mark);
+  if (!strokes) {
+    strokes = SM_MARK_DEFS[mark].map(([d]) => ({ p: new Path2D(d) }));
+    smMarkPathCache.set(mark, strokes);
+  }
+  return strokes;
+}
+function strokeMark(g, mark, x, y, px) {
+  const scale = px / 24;
+  g.save();
+  g.translate(x - px / 2, y - px / 2);
+  g.scale(scale, scale);
+  g.lineWidth = 1.6;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  for (const { p } of smMarkStrokes(mark)) g.stroke(p);
+  g.restore();
+}
+function sectorName(id) { return SECTOR_NAME.get(id) || id || 'target sector'; }
+function appendSentence(base, sentence) {
+  const head = String(base || '').trim();
+  const tail = String(sentence || '').trim();
+  if (!head) return tail;
+  if (!tail) return head;
+  return /[.!?]$/.test(head) ? `${head} ${tail}.` : `${head}. ${tail}.`;
+}
+function hashText(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+function commodityName(id) {
+  const c = COMMODITY_BY_ID.get(id);
+  return c ? c.name : commodityDisplayName(id);
+}
+
+function stationSectorCatalog(state) {
+  const out = new Map();
+  const addSector = (sector) => {
+    if (!sector || !sector.id) return;
+    for (const st of sector.stations || []) {
+      if (!st || !st.id) continue;
+      out.set(st.id, {
+        stationId: st.id,
+        stationName: st.name || st.id,
+        sectorId: sector.id,
+        sectorName: sector.name || sector.id,
+      });
+    }
+  };
+  const worldSectors = state && state.world && state.world.sectors;
+  if (worldSectors) {
+    const list = Array.isArray(worldSectors) ? worldSectors : Object.values(worldSectors);
+    for (const sector of list) addSector(sector);
+  }
+  for (const sector of SECTORS) addSector(sector);
+  return out;
+}
+
+function memoryTint(ageS) {
+  if (ageS < 600) return { key: 'fresh', color: 'you', italic: false };
+  if (ageS < 3600) return { key: 'mid', color: 'paper', italic: false };
+  return { key: 'old', color: 'calm', italic: true };
+}
+
+function ageText(ageS) {
+  if (ageS < 60) return 'fresh';
+  return Math.max(1, Math.round(ageS / 60)) + ' min';
+}
+
+export function marketMemoryStationOverlays(state, commodityId) {
+  const memory = state && state.player && state.player.marketMemory;
+  if (!memory || !commodityId) return [];
+  const stations = stationSectorCatalog(state);
+  const now = Math.max(0, Number(state && state.simTime) || 0);
+  const out = [];
+  for (const stationId in memory) {
+    const quote = memory[stationId] && memory[stationId][commodityId];
+    if (!quote || !Number.isFinite(Number(quote.sell))) continue;
+    const meta = stations.get(stationId);
+    if (!meta) continue;
+    const ageS = Math.max(0, now - Math.max(0, Number(quote.seenAt) || 0));
+    const tint = memoryTint(ageS);
+    out.push({
+      stationId,
+      stationName: meta.stationName,
+      sectorId: meta.sectorId,
+      sectorName: meta.sectorName,
+      commodityId,
+      sell: Math.round(Number(quote.sell) || 0),
+      buy: Math.round(Number(quote.buy) || 0),
+      seenAt: Number(quote.seenAt) || 0,
+      ageS,
+      ageLabel: ageText(ageS),
+      tint: tint.key,
+      tintColor: tint.color,
+      italic: tint.italic,
+    });
+  }
+  out.sort((a, b) => (a.sectorId || '').localeCompare(b.sectorId || '') ||
+    (b.sell - a.sell) || a.stationName.localeCompare(b.stationName));
+  return out;
+}
+
+function activeTrackedMission(state) {
+  const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  if (trackedId) {
+    const tracked = active.find((m) => m && m.id === trackedId && m.status === 'active');
+    if (tracked) return tracked;
+  }
+  return active.find((m) => m && m.status === 'active') || null;
+}
+
+function missionSummary(mission) {
+  if (!mission) return 'Proceed to the objective';
+  const progress = Math.max(0, Number(mission.objectiveProgress) || 0);
+  const target = Math.max(1, Number(mission.objectiveTarget) || 1);
+  if (mission.type === 'mining_quota') return `Mine ${progress}/${target} units`;
+  if (mission.type === 'bulk_haul') return `Haul ${progress}/${target} bulk units`;
+  if (mission.type === 'bulk_trade') return `Sell ${progress}/${target} units`;
+  if (mission.type === 'patrol_clear') return `Clear ${progress}/${target} hostiles`;
+  if (mission.type === 'recon_scan') return `Scan ${progress}/${target} sites`;
+  return mission.objectiveProgress ? `${progress}/${target}` : 'Proceed to the objective';
+}
+
+function objectiveKindFor(waypoint) {
+  if (!waypoint) return 'mission';
+  if (waypoint.onboarding) return 'onboarding';
+  return waypoint.kind || 'waypoint';
+}
+
+function objectiveKicker(kind) {
+  if (kind === 'mission') return 'Tracked Mission';
+  if (kind === 'trade') return 'Trade Route';
+  if (kind === 'story') return 'Story Objective';
+  if (kind === 'onboarding') return 'Tutorial Objective';
+  return 'Waypoint';
+}
+
+function objectiveFromWaypoint(waypoint, mission = null) {
+  const kind = objectiveKindFor(waypoint);
+  return {
+    kind,
+    kicker: objectiveKicker(kind),
+    title: (mission && mission.title) || waypoint.label || waypoint.reason || waypoint.sectorName || 'Objective',
+    detail: waypoint.reason || missionSummary(mission) || waypoint.label || 'Set course for the active objective.',
+    missionId: waypoint.missionId || (mission && mission.id) || null,
+    missionType: waypoint.missionType || (mission && mission.type) || null,
+    stationId: waypoint.stationId || null,
+    commodityId: waypoint.commodityId || null,
+    sectorId: waypoint.sectorId || null,
+    sectorName: waypoint.sectorName || sectorName(waypoint.sectorId),
+    hasLocalFix: !!waypoint.pos,
+  };
+}
+
+function objectiveFromMission(mission) {
+  return {
+    kind: 'mission',
+    kicker: objectiveKicker('mission'),
+    title: mission.title || mission.name || 'Mission',
+    detail: missionSummary(mission),
+    missionId: mission.id || null,
+    missionType: mission.type || null,
+    stationId: mission.destStationId || null,
+    commodityId: mission.params && mission.params.cmdtyId || null,
+    sectorId: mission.destSectorId || null,
+    sectorName: sectorName(mission.destSectorId),
+    hasLocalFix: false,
+  };
+}
+
+export function resolveStarmapObjective(state) {
+  if (!state) return null;
+  const waypoint = state.nav && state.nav.waypoint;
+  const mission = activeTrackedMission(state);
+  if (waypoint) {
+    const waypointMission = waypoint.missionId && mission && waypoint.missionId === mission.id ? mission : null;
+    return objectiveFromWaypoint(waypoint, waypointMission);
+  }
+  if (mission) return objectiveFromMission(mission);
+  return null;
+}
+
+export function describeStarmapObjectiveRoute(state, objective, nameOf = sectorName) {
+  if (!state || !objective) return null;
+  const targetSectorId = objective.sectorId;
+  if (!targetSectorId && objective.hasLocalFix) {
+    return {
+      state: 'local-fix',
+      next: `Use ${BINDINGS.localmap.label} Local Map`,
+      summary: 'local fix acquired',
+      canPlot: false,
+      canOpenLocalMap: true,
+      actionLabel: 'Open Local Map',
+    };
+  }
+  if (!targetSectorId) {
+    return {
+      state: 'missing',
+      next: 'No sector fix yet',
+      summary: 'Open Mission Log',
+      canPlot: false,
+      actionLabel: '',
+    };
+  }
+  const route = state.nav && state.nav.route;
+  const legs = route && Array.isArray(route.legs) ? route.legs : [];
+  const first = legs[0];
+  const last = legs[legs.length - 1];
+  const currentSectorId = state.world && state.world.currentSectorId || first && first.from || null;
+  if (currentSectorId && currentSectorId === targetSectorId) {
+    return {
+      state: 'local',
+      next: `In ${nameOf(targetSectorId)}`,
+      summary: `Use ${BINDINGS.localmap.label} Local Map`,
+      canPlot: false,
+      canOpenLocalMap: true,
+      actionLabel: 'Open Local Map',
+    };
+  }
+  if (first && last && (!currentSectorId || first.from === currentSectorId) && last.to === targetSectorId) {
+    const hops = route.totalHops || legs.length;
+    const fuel = Math.round(route.totalFuel || legs.reduce((sum, leg) => sum + (Number(leg.fuel) || 0), 0));
+    return {
+      state: 'plotted',
+      next: `Next jump: ${nameOf(first.to)}`,
+      summary: `${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F`,
+      canPlot: true,
+      actionLabel: 'Refresh Objective Route',
+    };
+  }
+  return {
+    state: 'needed',
+    next: `Plot route to ${nameOf(targetSectorId)}`,
+    summary: `${BINDINGS.starmap.label} route needed`,
+    canPlot: !!targetSectorId,
+    actionLabel: 'Plot Objective Route',
+  };
+}
+
+function closeScreen(ctx) {
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  const mgr = (ctx && (ctx.screenManager || ctx.screens)) || (ui && (ui.screenManager || ui.manager));
+  if (mgr && typeof mgr.popScreen === 'function') mgr.popScreen();
+  else if (ctx && ctx.bus) ctx.bus.emit('ui:popScreen', {});
+}
+
+function pushScreen(ctx, screenId) {
+  if (!ctx || !screenId) return;
+  const ui = ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  const mgr = (ctx.screenManager || ctx.screens) || (ui && (ui.screenManager || ui.manager));
+  if (mgr && typeof mgr.pushScreen === 'function') mgr.pushScreen(screenId);
+  else if (ctx.bus) ctx.bus.emit('ui:pushScreen', { id: screenId });
+}
+
+function drawHexPath(g, cx, cy, r) {
+  g.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI / 3 * i - Math.PI / 2;
+    const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+    if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+  }
+  g.closePath();
+}
+
+function pointOnLine(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
+function pointOnPolyline(points, t) {
+  if (points.length < 2) return points[0] || { x: 0, y: 0 };
+  const lengths = [];
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    const d = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+    lengths.push(d); total += d;
+  }
+  if (total < 1e-6) return points[0];
+  let target = clamp(t, 0, 1) * total;
+  for (let i = 0; i < lengths.length; i++) {
+    if (target <= lengths[i] || i === lengths.length - 1) return pointOnLine(points[i], points[i + 1], lengths[i] ? target / lengths[i] : 0);
+    target -= lengths[i];
+  }
+  return points[points.length - 1];
+}
+
+export const starmapScreen = {
+  id: 'starmap',
+  _ctx: null,
+  _root: null,
+  _canvas: null,
+  _g: null,
+  _els: null,
+  _nodes: [],
+  _selectedId: null,
+  _hoverId: null,
+  _hoverInfo: null,
+  _mouseX: 0,
+  _mouseY: 0,
+  _dpr: 1,
+  _ro: null,
+  _cam: { cx: 0, cy: 0, zoom: 1 },
+  _dragging: false,
+  _dragStart: null,
+  _didDrag: false,
+  _visible: false,
+  _animFrame: null,
+  _lastDrawTime: 0,
+  _drawSig: '',
+  _sidebarSig: '',
+  _layoutPad: 68,
+  _commodityId: DEFAULT_MEMORY_COMMODITY,
+  _previewRoute: null,
+  _previewRouteKey: null,
+  _previewRouteStatus: 'unavailable',
+
+  mount(rootEl, ctx) {
+    injectStyle();
+    // The instrument composes the ORRERY library: .orr-rise arrival, the Lamp Key, and the --dp
+    // light tokens this sheet speaks (ORRERY.md §4 — screens compose, never hand-roll chrome).
+    injectOrrery();
+    this._ctx = ctx;
+    this._root = rootEl;
+    rootEl.id = 'sf-starmap';
+    rootEl.innerHTML = `
+      <div class="sm-head sf-crest orr-rise">
+        <div class="sm-title">NAV CHART</div>
+        <div class="sm-head-actions">
+          <label class="sm-commodity">Intel <select data-commodity></select></label>
+          <div class="sm-stats">
+            <div>FUEL <b class="sf-fig" data-fuel>--/--</b></div>
+            <div>JUMP <b class="sf-fig" data-jstate>IDLE</b></div>
+            <div>RANGE <b class="sf-fig" data-range>adjacent</b></div>
+            <div>FIELD <b class="sf-fig" data-epoch>0.0d</b></div>
+          </div>
+          <button class="sm-close" type="button" aria-label="Close Star Map">Close (${BINDINGS.starmap.label})</button>
+        </div>
+      </div>
+      <div class="sm-body">
+        <div class="sm-canvas-wrap sf-stage" data-centerpiece="map-command-table"><canvas></canvas>
+          <div class="sm-foot sf-apron orr-rise" style="--orr-delay:180ms">
+            <div class="sm-legend">
+              <span><i class="sm-line"></i>course</span>
+              <span><i class="sm-ring"></i>one-jump range</span>
+              <span><i class="sm-dot sm-dot--you"></i>your sector</span>
+              <span><i class="sm-dot sm-dot--foe"></i>danger field</span>
+              <span><i class="sm-dot sm-dot--ice"></i>commodity flow</span>
+              <span>${glyphSvg('err', 12, 'sm-legend-glyph')} contested</span>
+            </div>
+            <div>${BINDINGS.starmap.label} close · scroll zoom · drag pan · beads flow toward scarcity</div>
+          </div>
+        </div>
+        <div class="sm-side orr-rise" style="--orr-delay:60ms">
+          <div class="sm-objective" data-objective hidden></div>
+          <div data-sel><div class="sm-hint">Select a sector to inspect the live danger, market, and influence fields.</div></div>
+          <div class="sm-actions" data-actions></div>
+        </div>
+      </div>`;
+
+    this._canvas = rootEl.querySelector('canvas');
+    this._g = this._canvas.getContext('2d');
+    // The chart is pointer-driven today; the label states that honestly instead of leaving a
+    // bare unlabeled canvas for assistive tech. Keyboard users reach Close and the sidebar CTAs.
+    this._canvas.setAttribute('aria-label',
+      'Sector chart. Click a sector to inspect it and set a course; drag to pan, scroll to zoom.');
+    this._els = {
+      fuel: rootEl.querySelector('[data-fuel]'),
+      jumpState: rootEl.querySelector('[data-jstate]'),
+      range: rootEl.querySelector('[data-range]'),
+      epoch: rootEl.querySelector('[data-epoch]'),
+      commodity: rootEl.querySelector('[data-commodity]'),
+      objective: rootEl.querySelector('[data-objective]'),
+      selected: rootEl.querySelector('[data-sel]'),
+      actions: rootEl.querySelector('[data-actions]'),
+      close: rootEl.querySelector('.sm-close'),
+    };
+
+    const commodityOptions = COMMODITIES
+      .filter((c) => c && c.legality === 'legal')
+      .map((c) => '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.name) + '</option>')
+      .join('');
+    this._els.commodity.innerHTML = commodityOptions;
+    // Styled sf-select replaces the native <select> (no OS dropdown chrome on screens); re-query
+    // because enhanceSelects swaps the node in place.
+    enhanceSelects(rootEl);
+    this._els.commodity = rootEl.querySelector('[data-commodity]');
+    if (!COMMODITY_BY_ID.has(this._commodityId)) this._commodityId = DEFAULT_MEMORY_COMMODITY;
+    this._els.commodity.value = this._commodityId;
+    this._els.commodity.addEventListener('change', () => {
+      this._commodityId = this._els.commodity.value || DEFAULT_MEMORY_COMMODITY;
+      this._sidebarSig = '';
+      this._drawSig = '';
+      this.refresh(this._ctx);
+    });
+
+    this._els.close.addEventListener('click', () => closeScreen(this._ctx));
+    this._canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
+    this._canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
+    this._canvas.addEventListener('mouseup', () => this._onMouseUp());
+    this._canvas.addEventListener('mouseleave', () => this._onMouseLeave());
+    this._canvas.addEventListener('click', (e) => this._onCanvasClick(e));
+    this._canvas.addEventListener('dblclick', (e) => this._onDblClick(e));
+    this._canvas.addEventListener('wheel', (e) => this._onWheel(e), { passive: false });
+    this._els.actions.addEventListener('click', (e) => {
+      const button = e.target.closest('button[data-act]');
+      if (button) this._onAction(button.dataset.act);
+    });
+    this._els.objective.addEventListener('click', (e) => {
+      const button = e.target.closest('button[data-act]');
+      if (button) this._onAction(button.dataset.act);
+    });
+
+    this._ensureResizeObserver();
+    this._ensureFieldLive(ctx);
+  },
+
+  // INF-094: the map's live observers are owned here, not orphaned. The resize observer and
+  // the two field subscriptions are created once per mount and released by dispose(), so a
+  // remount (releaseScreen rebuilds from scratch) returns to baseline instead of stacking
+  // observers on detached roots.
+  _ensureResizeObserver() {
+    if (this._ro || typeof ResizeObserver === 'undefined') return !!this._ro;
+    const wrap = this._root && this._root.querySelector
+      ? this._root.querySelector('.sm-canvas-wrap') : null;
+    if (!wrap) return false;
+    this._ro = new ResizeObserver(() => this._resize());
+    this._ro.observe(wrap);
+    return true;
+  },
+
+  _releaseResizeObserver() {
+    if (this._ro) {
+      try { this._ro.disconnect(); } catch (_) { /* observer already gone */ }
+      this._ro = null;
+    }
+  },
+
+  _ensureFieldLive(ctx) {
+    if (this._fieldLiveUnsubs || !ctx || !ctx.bus || typeof ctx.bus.on !== 'function') {
+      return !!(this._fieldLiveUnsubs && this._fieldLiveUnsubs.length);
+    }
+    if (!this._fieldListener) {
+      this._fieldListener = () => { if (this._visible) this.refresh(this._ctx); };
+    }
+    const offA = ctx.bus.on('sectorsim:fieldAdvanced', this._fieldListener);
+    const offB = ctx.bus.on('sectorsim:transitOutcome', this._fieldListener);
+    this._fieldLiveUnsubs = [offA, offB].filter((off) => typeof off === 'function');
+    return true;
+  },
+
+  _releaseFieldLive() {
+    if (this._fieldLiveUnsubs) {
+      for (const off of this._fieldLiveUnsubs) { try { off(); } catch (_) {} }
+      this._fieldLiveUnsubs = null;
+    }
+  },
+
+  dispose() {
+    this._visible = false;
+    this._stopAnimLoop();
+    this._releaseResizeObserver();
+    this._releaseFieldLive();
+    this._root = null;
+    this._canvas = null;
+    this._g = null;
+    this._els = null;
+    this._nodes = [];
+  },
+
+  onShow(ctx) {
+    if (ctx) this._ctx = ctx;
+    const state = this._ctx.state;
+    this._selectedId = state.world && state.world.currentSectorId || null;
+    this._hoverId = null;
+    this._hoverInfo = null;
+    // The world moved while the chart was closed — a memoised preview from the previous open
+    // would describe a stale graph.
+    this._previewRouteKey = null;
+    this._previewRoute = null;
+    this._previewRouteStatus = 'unavailable';
+    // INF-057: authored defaults first (singleton rule — never merge over a previous session's
+    // camera), then the remembered camera from the screenMemory contract, written on hide.
+    this._cam = { ...CAMERA_DEFAULT };
+    const mem = this._ctx.screenMemory;
+    if (mem) this._cam = restoreStarMapCamera(mem.get('starmap'));
+    this._visible = true;
+    invalidateCanvasFonts();
+    this._resize();
+    this.refresh(this._ctx);
+    this._startAnimLoop();
+  },
+
+  onHide() {
+    const mem = this._ctx && this._ctx.screenMemory;
+    if (mem && this._cam) {
+      mem.set('starmap', { camCx: this._cam.cx, camCy: this._cam.cy, camZoom: this._cam.zoom });
+    }
+    this._visible = false;
+    this._stopAnimLoop();
+  },
+
+  onKey(event, ctx) {
+    if (event && (event.key === BINDINGS.starmap.key || event.key === BINDINGS.starmap.label)) {
+      closeScreen(ctx || this._ctx);
+      return true;
+    }
+    return false;
+  },
+
+  refresh(ctx, opts = {}) {
+    if (ctx) this._ctx = ctx;
+    if (!this._root) return;
+    this._syncHeader();
+    const sideSig = this._sidebarSignature();
+    if (!opts.periodic || sideSig !== this._sidebarSig) {
+      this._sidebarSig = sideSig;
+      this._syncSidebar();
+    }
+    const drawSig = this._drawSignature();
+    if (!opts.periodic || drawSig !== this._drawSig) {
+      this._drawSig = drawSig;
+      this._draw();
+    }
+  },
+
+  _sectors() {
+    const content = this._ctx.state.content && this._ctx.state.content.sectors;
+    return content && (Array.isArray(content) ? content.length : Object.keys(content).length)
+      ? (Array.isArray(content) ? content : Object.values(content)) : SECTORS;
+  },
+
+  _sectorById(id) { return this._sectors().find((s) => s.id === id) || null; },
+  _currentId() { return this._ctx.state.world && this._ctx.state.world.currentSectorId || null; },
+  _discovery(id) { return this._ctx.state.world && this._ctx.state.world.discovery && this._ctx.state.world.discovery[id] || null; },
+  _isDiscovered(id) { return id === this._currentId() || !!(this._discovery(id) && this._discovery(id).discovered); },
+  _isNeighbor(a, b) {
+    const sector = this._sectorById(a);
+    return !!(sector && (sector.neighbors || []).includes(b));
+  },
+  // One jump = a lane neighbour, or the wormhole edge out of the origin sector. This is the same
+  // pair test world's jump validation accepts (`_onRequestJump`: neighbor, or wormholeTo) — the
+  // map only ever describes the rule the sim enforces, never a second opinion.
+  _isJumpableFrom(fromId, toId) {
+    if (!fromId || !toId || fromId === toId) return false;
+    if (this._isNeighbor(fromId, toId)) return true;
+    const sector = this._sectorById(fromId);
+    return !!(sector && sector.wormholeTo && sector.wormholeTo.sectorId === toId);
+  },
+  // The sector the chart should mark as the objective (the galaxy map's GOAL cue): the resolved
+  // starmap objective first, else the armed waypoint. Pure read of the same owners the sidebar
+  // already consults — no second waypoint writer.
+  _objectiveSectorId() {
+    const state = this._ctx && this._ctx.state;
+    if (!state) return null;
+    const objective = resolveStarmapObjective(state);
+    if (objective && objective.sectorId) return objective.sectorId;
+    const wp = state.nav && state.nav.waypoint;
+    return (wp && wp.sectorId) || null;
+  },
+  // Preview route to the SELECTED node, shown only while nothing is plotted — a laid course
+  // always outranks intent (the galaxy map's rule, mirrored). Deliberately `world.computeRoute`
+  // and nothing else: ADR D6 forbids new planning math in a map, and a second planner here could
+  // disagree with the one that actually flies the ship. Pure read, memoised per
+  // {origin, destination, charted count}; calling it cannot move the simulation.
+  _previewRouteTo(destSectorId) {
+    const state = this._ctx && this._ctx.state;
+    if (!state || !destSectorId) return null;
+    const here = this._currentId();
+    if (!here || here === destSectorId) return null;
+    if (!this._isDiscovered(destSectorId)) return null;
+    const discovery = state.world && state.world.discovery;
+    const charted = discovery ? Object.keys(discovery).length : 0;
+    const key = `${here}>${destSectorId}#${charted}`;
+    if (this._previewRouteKey === key) return this._previewRoute;
+    this._previewRouteKey = key;
+    this._previewRoute = null;
+    this._previewRouteStatus = 'unavailable';
+    const world = this._ctx.registry && typeof this._ctx.registry.get === 'function'
+      ? this._ctx.registry.get('world') : null;
+    if (world && typeof world.computeRoute === 'function') {
+      try {
+        this._previewRoute = world.computeRoute(destSectorId, 'fuel') || null;
+        this._previewRouteStatus = this._previewRoute ? 'ready' : 'unreachable';
+      } catch {
+        this._previewRoute = null;
+        this._previewRouteStatus = 'unavailable';
+      }
+    }
+    return this._previewRoute;
+  },
+  _selectionPreviewRoute() {
+    if (this._route()) return null; // a plotted course outranks selection intent
+    const dest = this._selectedId;
+    if (!dest || dest === this._currentId()) return null;
+    return this._previewRouteTo(dest);
+  },
+  _route() { const r = this._ctx.state.nav && this._ctx.state.nav.route; return r && r.legs ? r : null; },
+  _signal(id) { return sectorSignalFor(this._ctx.state, id); },
+  _effective(id) { return effectiveSectorFor(this._ctx.state, id) || this._sectorById(id); },
+
+  _startAnimLoop() {
+    if (this._animFrame) return;
+    const tick = () => {
+      if (!this._visible) { this._animFrame = null; return; }
+      const now = Date.now();
+      if (now - this._lastDrawTime >= 64) {
+        this._lastDrawTime = now;
+        // Animated content (route march, commodity flow) still redraws every beat; a static
+        // frame — reduced motion or a map with no live animation — only repaints when the
+        // data signature moves.
+        const still = prefersReducedMotion() || !this._animates;
+        if (!still || this._drawSignature() !== this._drawSig) this._draw();
+      }
+      this._animFrame = requestAnimationFrame(tick);
+    };
+    this._animFrame = requestAnimationFrame(tick);
+  },
+
+  _stopAnimLoop() {
+    if (this._animFrame) cancelAnimationFrame(this._animFrame);
+    this._animFrame = null;
+  },
+
+  _resize() {
+    if (!this._canvas || !this._root) return;
+    const wrap = this._root.querySelector('.sm-canvas-wrap');
+    const rect = wrap.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return;
+    this._dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this._canvas.width = Math.round(rect.width * this._dpr);
+    this._canvas.height = Math.round(rect.height * this._dpr);
+    this._draw();
+  },
+
+  _worldToScreen(x, y) {
+    const w = this._canvas.width / this._dpr, h = this._canvas.height / this._dpr;
+    return { x: (x - this._cam.cx) * this._cam.zoom + w / 2, y: (y - this._cam.cy) * this._cam.zoom + h / 2 };
+  },
+
+  _screenToWorld(x, y) {
+    const w = this._canvas.width / this._dpr, h = this._canvas.height / this._dpr;
+    return { x: (x - w / 2) / this._cam.zoom + this._cam.cx, y: (y - h / 2) / this._cam.zoom + this._cam.cy };
+  },
+
+  _layout() {
+    const sectors = this._sectors();
+    const w = this._canvas.width / this._dpr, h = this._canvas.height / this._dpr;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const s of sectors) {
+      const p = s.position || { x: 0, y: 0 };
+      minX = Math.min(minX, p.x || 0); maxX = Math.max(maxX, p.x || 0);
+      minY = Math.min(minY, p.y || 0); maxY = Math.max(maxY, p.y || 0);
+    }
+    const spanX = maxX - minX || 1, spanY = maxY - minY || 1;
+    const scale = Math.min((w - this._layoutPad * 2) / spanX, (h - this._layoutPad * 2) / spanY);
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    this._nodes = sectors.map((sector) => {
+      const p = sector.position || { x: 0, y: 0 };
+      return {
+        sector,
+        x: ((p.x || 0) - cx) * scale,
+        y: ((p.y || 0) - cy) * scale,
+        r: Math.min(10 + (sector.stations || []).length * 2, 20),
+      };
+    });
+    return this._nodes;
+  },
+
+  _hitTest(mx, my) {
+    const p = this._screenToWorld(mx, my);
+    for (const n of this._nodes) {
+      const r = n.r + 8 / this._cam.zoom;
+      if ((p.x - n.x) ** 2 + (p.y - n.y) ** 2 <= r * r) return n;
+    }
+    return null;
+  },
+
+  _onMouseDown(e) {
+    if (e.button !== 0) return;
+    const rect = this._canvas.getBoundingClientRect();
+    this._dragging = true;
+    this._didDrag = false;
+    this._dragStart = { mx: e.clientX - rect.left, my: e.clientY - rect.top, cx: this._cam.cx, cy: this._cam.cy };
+  },
+
+  _onMouseMove(e) {
+    const rect = this._canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    this._mouseX = mx; this._mouseY = my;
+    if (this._dragging && this._dragStart) {
+      const dx = mx - this._dragStart.mx, dy = my - this._dragStart.my;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this._didDrag = true;
+      this._cam.cx = this._dragStart.cx - dx / this._cam.zoom;
+      this._cam.cy = this._dragStart.cy - dy / this._cam.zoom;
+      this._canvas.style.cursor = 'grabbing';
+      this._draw();
+      return;
+    }
+    const hit = this._hitTest(mx, my);
+    const id = hit && hit.sector.id;
+    if (id !== this._hoverId) {
+      this._hoverId = id || null;
+      this._hoverInfo = hit && this._isDiscovered(id) ? { node: hit, mx, my } : null;
+      this._draw();
+    } else if (this._hoverInfo) {
+      this._hoverInfo.mx = mx; this._hoverInfo.my = my;
+    }
+    this._canvas.style.cursor = hit && this._isDiscovered(id) ? 'pointer' : 'crosshair';
+  },
+
+  _onMouseUp() {
+    this._dragging = false;
+    this._dragStart = null;
+    if (!this._didDrag) this._canvas.style.cursor = 'crosshair';
+  },
+
+  _onMouseLeave() {
+    this._dragging = false;
+    this._dragStart = null;
+    this._hoverId = null;
+    this._hoverInfo = null;
+    this._draw();
+  },
+
+  _onCanvasClick(e) {
+    if (this._didDrag) { this._didDrag = false; return; }
+    const rect = this._canvas.getBoundingClientRect();
+    const hit = this._hitTest(e.clientX - rect.left, e.clientY - rect.top);
+    if (!hit || !this._isDiscovered(hit.sector.id)) return;
+    this._selectedId = hit.sector.id;
+    this._syncSidebar();
+    this._draw();
+  },
+
+  _onDblClick(e) {
+    e.preventDefault();
+    this._cam = { cx: 0, cy: 0, zoom: 1 };
+    this._draw();
+  },
+
+  _onWheel(e) {
+    e.preventDefault();
+    const rect = this._canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const before = this._screenToWorld(mx, my);
+    this._cam.zoom = clamp(this._cam.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12), 0.5, 3);
+    const w = this._canvas.width / this._dpr, h = this._canvas.height / this._dpr;
+    this._cam.cx = before.x - (mx - w / 2) / this._cam.zoom;
+    this._cam.cy = before.y - (my - h / 2) / this._cam.zoom;
+    this._draw();
+  },
+
+  _draw() {
+    const g = this._g, canvas = this._canvas;
+    if (!g || !canvas || canvas.width < 2) return;
+    this._drawSig = this._drawSignature();
+    g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
+    const w = canvas.width / this._dpr, h = canvas.height / this._dpr;
+    const roles = canvasRoles();
+    g.clearRect(0, 0, w, h);
+    // No plate: a deep veil of the void over the world, the instrument drawn on top (the chart's
+    // own law — the sky is the ground). Deep enough that lanes and readings hold contrast over a
+    // bright station plate.
+    g.fillStyle = paint(roles.surface, 0.74); g.fillRect(0, 0, w, h);
+
+    const nodes = this._layout();
+    const byId = Object.fromEntries(nodes.map((n) => [n.sector.id, n]));
+    const reduced = prefersReducedMotion();
+    const now = reduced ? 0 : Date.now();
+    g.save();
+    g.translate(w / 2, h / 2);
+    g.scale(this._cam.zoom, this._cam.zoom);
+    g.translate(-this._cam.cx, -this._cam.cy);
+    const flows = this._drawEdges(g, nodes, byId, now, roles);
+    this._drawWormholes(g, nodes, byId, roles);
+    const route = this._route();
+    // A plotted course always outranks intent; with nothing plotted, the selection previews its
+    // own route through the SAME shipped planner that flies the ship (world.computeRoute).
+    const preview = this._selectionPreviewRoute();
+    const routed = route
+      ? this._drawRoute(g, route, byId, now, roles, reduced)
+      : (preview ? this._drawRoute(g, preview, byId, now, roles, reduced, { preview: true }) : false);
+    // The anim loop consults this: frames carrying live motion redraw every beat; static
+    // frames repaint only when the signature changes.
+    this._animates = !!(flows || routed);
+    this._drawNodes(g, nodes, this._currentId(), roles);
+    g.restore();
+    if (this._hoverInfo && this._hoverId) this._drawTooltip(g, w, h, roles);
+  },
+
+  _drawEdges(g, nodes, byId, now, roles) {
+    const zoom = this._cam.zoom;
+    let animated = false;
+    for (const n of nodes) {
+      const a = n.sector;
+      for (const id of (a.neighbors || [])) {
+        if (a.id > id) continue;
+        const b = byId[id];
+        if (!b) continue;
+        const bothKnown = this._isDiscovered(a.id) && this._isDiscovered(id);
+        const sa = this._signal(a.id), sb = this._signal(id);
+        const averageDanger = bothKnown && sa && sb ? (sa.danger + sb.danger) * 0.5 : 0;
+        g.beginPath(); g.moveTo(n.x, n.y); g.lineTo(b.x, b.y);
+        // Lanes are rest light (bone) whose WEIGHT carries danger; only a truly dangerous lane
+        // turns threat-red. Amber is never spent on structure.
+        g.strokeStyle = bothKnown
+          ? (averageDanger > 0.72
+            ? paint(roles.foe, 0.30 + averageDanger * 0.25)
+            : paint(roles.paper, 0.14 + averageDanger * 0.12))
+          : paint(roles.calm, 0.12);
+        g.lineWidth = (bothKnown ? 1.2 + averageDanger * 1.1 : 0.8) / zoom;
+        g.setLineDash(bothKnown ? [] : [4 / zoom, 5 / zoom]);
+        g.stroke(); g.setLineDash([]);
+
+        if (!bothKnown || !sa || !sb) continue;
+        const gradient = sb.pricePressure - sa.pricePressure;
+        if (Math.abs(gradient) < 0.025) continue;
+        // Commodity flow is drawn from surplus (lower pressure) toward scarcity (higher pressure).
+        const from = gradient > 0 ? n : b;
+        const to = gradient > 0 ? b : n;
+        const phase = (hashText(`${a.id}|${id}`) % 1000) / 1000;
+        animated = true;
+        for (let k = 0; k < 2; k++) {
+          const t = ((now / 2600 + phase + k * 0.5) % 1 + 1) % 1;
+          const p = pointOnLine(from, to, t);
+          g.beginPath(); g.arc(p.x, p.y, (1.8 + Math.abs(gradient) * 2.2) / zoom, 0, Math.PI * 2);
+          // the beads ARE data in motion — ice, whatever the pressure sign (ORRERY §3.3)
+          g.fillStyle = roles.motion;
+          g.globalAlpha = 0.45 + Math.abs(gradient) * 0.45;
+          g.fill(); g.globalAlpha = 1;
+        }
+      }
+    }
+    return animated;
+  },
+
+  _drawWormholes(g, nodes, byId, roles) {
+    for (const n of nodes) {
+      const wh = n.sector.wormholeTo;
+      if (!wh || !byId[wh.sectorId] || !this._isDiscovered(n.sector.id)) continue;
+      const b = byId[wh.sectorId];
+      g.beginPath(); g.moveTo(n.x, n.y); g.lineTo(b.x, b.y);
+      // a wormhole is structure at rest — bone, not the Hand's amber
+      g.strokeStyle = paint(roles.calm, 0.55);
+      g.lineWidth = 1.5 / this._cam.zoom;
+      g.setLineDash([2 / this._cam.zoom, 6 / this._cam.zoom]);
+      g.stroke(); g.setLineDash([]);
+    }
+  },
+
+  _drawRoute(g, route, byId, now, roles, reduced, opts = {}) {
+    if (!route.legs || !route.legs.length) return false;
+    const preview = !!(opts && opts.preview);
+    const points = [];
+    for (let i = 0; i < route.legs.length; i++) {
+      const leg = route.legs[i];
+      if (i === 0 && byId[leg.from]) points.push(byId[leg.from]);
+      if (byId[leg.to]) points.push(byId[leg.to]);
+    }
+    if (points.length < 2) return false;
+    const z = this._cam.zoom;
+    g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(points[0].x, points[0].y); for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y);
+    // The plotted route IS the course — the one amber beam, bloom as a second wider stroke. A
+    // preview is the same beam at intent weight: thinner, dimmer, slower march — readable as
+    // "this is what Plot Route would lay", never as an armed course.
+    g.lineWidth = (preview ? 4.5 : 6) / z; g.strokeStyle = paint(roles.goal, preview ? 0.10 : 0.18); g.stroke();
+    g.lineWidth = (preview ? 1.8 : 3) / z;
+    g.strokeStyle = preview ? paint(roles.goal, 0.8) : roles.goal;
+    g.setLineDash([(preview ? 5 : 8) / z, 6 / z]);
+    g.lineDashOffset = reduced ? 0 : -(now * (preview ? 0.025 : 0.04));
+    g.stroke();
+    g.setLineDash([]);
+    g.restore();
+    // The travelling pip is the direction affordance: it rides from the player's sector toward
+    // the destination. Preview's pip is amber (intent), the armed course's is paper (a reading).
+    const p = pointOnPolyline(points, reduced ? 0 : (now % 3000) / 3000);
+    g.beginPath(); g.arc(p.x, p.y, (preview ? 3 : 4) / z, 0, Math.PI * 2);
+    g.fillStyle = preview ? paint(roles.goal, 0.9) : roles.paper; g.fill();
+    return !reduced;
+  },
+
+  _drawNodes(g, nodes, currentId, roles) {
+    const z = this._cam.zoom;
+    const goalId = this._objectiveSectorId();
+    // Price memory is keyed by STATION id (economy.recordMarketMemory), never by sector — so the
+    // node tag reads the same station→sector overlay table the sidebar does, one best-sell
+    // quote per sector (the overlay sort is sector, then sell descending).
+    const quoteBySector = new Map();
+    for (const overlay of marketMemoryStationOverlays(this._ctx && this._ctx.state, this._commodityId)) {
+      if (!quoteBySector.has(overlay.sectorId)) quoteBySector.set(overlay.sectorId, overlay);
+    }
+    for (const n of nodes) {
+      const s = n.sector;
+      const known = this._isDiscovered(s.id);
+      if (!known) {
+        g.beginPath(); g.arc(n.x, n.y, 8, 0, Math.PI * 2); g.fillStyle = paint(roles.edge, 0.55); g.fill();
+        g.strokeStyle = paint(roles.calm, 0.4); g.lineWidth = 1 / z; g.stroke();
+        // Uncharted mark: the shared dashed unknown glyph, not a '???' font stand-in.
+        drawGlyph(g, 'unknown', n.x, n.y + 17 / z, 12 / z, { color: paint(roles.calm, 0.7) });
+        continue;
+      }
+      const signal = this._signal(s.id);
+      const danger = signal ? signal.danger : 0;
+      const pressure = signal ? signal.pricePressure : 0;
+      const dominant = signal && signal.dominantFactionId || s.factionId;
+      const core = factionColor(dominant);
+      const selected = s.id === this._selectedId;
+      const hover = s.id === this._hoverId;
+      const current = s.id === currentId;
+      const reachable = !current && this._isJumpableFrom(currentId, s.id);
+      const goalHere = !current && goalId === s.id;
+
+      if (selected || hover) {
+        g.beginPath(); g.arc(n.x, n.y, n.r + 8 / z, 0, Math.PI * 2); g.fillStyle = paint(roles.paper, 0.12); g.fill();
+      }
+      // Hover reads as "this node is a control": the soft fill plus a bone stroke ring — the
+      // promise the pointer cursor already makes (2026-10-31 audit: nodes did not look clickable).
+      if (hover && !selected) {
+        g.beginPath(); g.arc(n.x, n.y, n.r + 8 / z, 0, Math.PI * 2);
+        g.strokeStyle = paint(roles.paper, 0.5); g.lineWidth = 1.4 / z; g.stroke();
+      }
+      // One-jump range: a phosphor dashed ring — a READING (what the drive can reach this
+      // minute), bright enough to read as a class. The old calm ring read as texture.
+      if (reachable) {
+        g.beginPath(); g.arc(n.x, n.y, n.r + 5 / z, 0, Math.PI * 2); g.strokeStyle = paint(roles.you, 0.7);
+        g.lineWidth = 1.7 / z; g.setLineDash([3 / z, 3 / z]); g.stroke(); g.setLineDash([]);
+      }
+      if (signal && signal.contestMargin < 0.16) {
+        g.beginPath(); g.arc(n.x, n.y, n.r + 9 / z, 0, Math.PI * 2); g.strokeStyle = paint(roles.foe, 0.78);
+        g.lineWidth = 1.5 / z; g.setLineDash([2 / z, 4 / z]); g.stroke(); g.setLineDash([]);
+      }
+
+      drawHexPath(g, n.x, n.y, n.r + 2.8 / z);
+      // The hex edge's WEIGHT carries danger; its hue turns threat-red only when danger is real.
+      g.lineWidth = (2.2 + danger * 1.2) / z;
+      g.strokeStyle = danger > 0.72 ? roles.foe : paint(roles.paper, 0.55); g.stroke();
+      drawHexPath(g, n.x, n.y, n.r);
+      g.fillStyle = current ? roles.paper : selected ? roles.paper : paint(core, 0.62); g.fill();
+      g.lineWidth = 1 / z; g.strokeStyle = paint(roles.paper, 0.25); g.stroke();
+
+      if (Math.abs(pressure) > 0.035) {
+        g.beginPath();
+        const extent = clamp(Math.abs(pressure), 0.08, 1) * Math.PI * 1.65;
+        g.arc(n.x, n.y, n.r + 5.5 / z, -Math.PI / 2, -Math.PI / 2 + extent);
+        g.strokeStyle = paint(roles.paper, 0.8); g.lineWidth = 2.1 / z; g.stroke();
+      }
+
+      if (current) {
+        g.beginPath(); g.arc(n.x, n.y, n.r + 11 / z, 0, Math.PI * 2);
+        g.strokeStyle = roles.paper; g.lineWidth = 2 / z; g.stroke();
+        // Centre pip drawn as a filled arc, not a '●' font glyph — a drawn mark, zoom-stable.
+        g.beginPath(); g.arc(n.x, n.y, 3.4 / z, 0, Math.PI * 2);
+        g.fillStyle = roles.paper; g.fill();
+      }
+
+      // The course's endpoints carry the Hand: the selected node (the course candidate) gets
+      // amber corner brackets, and the objective's sector adds the GOAL word — the galaxy map's
+      // proven cue, in this chart's drawn-mark grammar. Amber stays the course's one family.
+      if ((selected && !current) || goalHere) {
+        const gr = n.r + 12 / z;
+        const tick = 5 / z;
+        g.save();
+        g.strokeStyle = roles.goal; g.lineWidth = 1.6 / z; g.lineCap = 'round';
+        for (const [qx, qy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+          g.beginPath();
+          g.moveTo(n.x + qx * gr, n.y + qy * (gr - tick));
+          g.lineTo(n.x + qx * gr, n.y + qy * gr);
+          g.lineTo(n.x + qx * (gr - tick), n.y + qy * gr);
+          g.stroke();
+        }
+        if (goalHere) {
+          g.font = canvasFontScaled('700', 12, z, 'data');
+          g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+          g.lineJoin = 'round'; g.lineWidth = 3; g.strokeStyle = paint(roles.surface, 0.8);
+          g.strokeText('GOAL', n.x, n.y - gr - 5 / z);
+          g.fillStyle = roles.goal; g.fillText('GOAL', n.x, n.y - gr - 5 / z);
+        }
+        g.restore();
+      }
+
+      const labelY = n.y + n.r + 5 / z;
+      g.font = canvasFontScaled(current ? '700' : '500', 13, z, 'body');
+      g.textAlign = 'center'; g.textBaseline = 'top';
+      // a dark knockout under the name, so it survives a bright world behind it (geometry, not a filter)
+      g.lineJoin = 'round'; g.lineWidth = 3;
+      g.strokeStyle = paint(roles.surface, 0.8);
+      g.strokeText(s.name, n.x, labelY);
+      g.fillStyle = selected ? roles.paper : paint(roles.paper, 0.9);
+      g.fillText(s.name, n.x, labelY);
+
+      const commQuote = quoteBySector.get(s.id);
+      if (commQuote) {
+        g.save();
+        g.font = canvasFontScaled('500', 12, z, 'data');
+        g.textAlign = 'left';
+        g.textBaseline = 'middle';
+        const priceText = `${Math.round(commQuote.buy || 0)}/${Math.round(commQuote.sell || 0)}`;
+        g.strokeStyle = paint(roles.surface, 0.8);
+        g.strokeText(priceText, n.x + n.r + 5 / z, n.y);
+        // a price memory is a reading — phosphor
+        g.fillStyle = roles.you;
+        g.fillText(priceText, n.x + n.r + 5 / z, n.y);
+        g.restore();
+      }
+
+      if (signal) {
+        const glyph = trendGlyph(signal.trend.danger);
+        const dangerText = `${Math.round(signal.danger * 100)}${glyph}`;
+        g.font = canvasFontScaled('700', 12, z, 'data');
+        g.strokeStyle = paint(roles.surface, 0.8);
+        g.strokeText(dangerText, n.x, labelY + 13 / z);
+        g.fillStyle = signal.danger > 0.72 ? roles.foe : roles.you;
+        g.fillText(dangerText, n.x, labelY + 13 / z);
+      }
+      this._drawFeatureIcons(g, n, s, z, roles);
+    }
+  },
+
+  _drawFeatureIcons(g, n, s, z, roles) {
+    // Node feature marks are drawn paths, never font text (markPaths.js law: a glyph where a mark
+    // exists is a defect). Shared shapes come from glyphs.js; the two marks it does not carry use
+    // the local cached Path2Ds above. Colors and slots match the pre-drawn-mark layout exactly.
+    const icons = [];
+    if (s.hazards && s.hazards.length) icons.push({ glyph: 'warn', color: paint(roles.calm, 0.9) });
+    if (s.fields && s.fields.some((f) => f.type === 'ast_rare_exotic' || f.type === 'ast_crystalline')) icons.push({ glyph: 'dense_asteroid', color: roles.motion });
+    if (s.stations && s.stations.some((st) => st.type === 'blackmarket')) icons.push({ mark: 'blackmarket', color: roles.foe });
+    if (s.stations && s.stations.some((st) => st.contested)) icons.push({ glyph: 'err', color: roles.foe });
+    if (s.wormholeTo) icons.push({ mark: 'wormhole', color: roles.calm });
+    if (!icons.length) return;
+    const spacing = 12 / z, start = n.x - (icons.length - 1) * spacing / 2;
+    const px = 12 / z, cy = n.y - n.r - 8 / z;
+    for (let i = 0; i < icons.length; i++) {
+      const icon = icons[i];
+      if (icon.mark) strokeMark(g, icon.mark, start + i * spacing, cy, px);
+      else drawGlyph(g, icon.glyph, start + i * spacing, cy, px, { color: icon.color });
+    }
+  },
+
+  _drawTooltip(g, canvasW, canvasH, roles) {
+    const s = this._hoverInfo.node.sector;
+    const signal = this._signal(s.id);
+    const eff = this._effective(s.id);
+    if (!signal || !eff) return;
+    // The tooltip reads the same application map as the dossier: a caution is bright bone,
+    // never the Hand's amber; only a real threat turns danger-red.
+    const roleInk = (role) => role === 'foe' ? roles.foe : role === 'you' ? roles.you : role === 'goal' ? roles.paper : roles.calm;
+    const lines = [
+      { text: s.name, color: roles.paper, font: canvasFont('700', 15, 'subhead') },
+      { text: `${factionName(signal.dominantFactionId)} influence ${pct(signal.dominantInfluence)}`, color: roles.calm, font: canvasFont('600', 12, 'data') },
+      { text: `DANGER ${Math.round(signal.danger * 100)}% ${trendGlyph(signal.trend.danger)}  · encounter ×${signal.encounterLoad.toFixed(2)}`, color: roleInk(dangerRole(signal.danger)), font: canvasFont('600', 12, 'data') },
+      { text: `MARKET ${pressureLabel(signal.pricePressure)} ${trendGlyph(signal.trend.pricePressure)}`, color: roleInk(pressureRole(signal.pricePressure)), font: canvasFont('600', 12, 'data') },
+      { text: `Security ${eff.security.toFixed(2)} · enemies ${enemyDensityLabel(eff.enemyDensity || 0)}`, color: roleInk(dangerRole(signal.danger)), font: canvasFont('500', 12, 'data') },
+    ];
+    if (s.hazards && s.hazards.length) lines.push({ text: `Hazards: ${s.hazards.map((h) => HAZARD_LABEL[h.type] || h.type).join(', ')}`, color: roles.paper, font: canvasFont('500', 12, 'data') });
+    const lineH = 17, padX = 12, padY = 10;
+    let maxW = 0;
+    for (const line of lines) { g.font = line.font; maxW = Math.max(maxW, g.measureText(line.text).width); }
+    const boxW = maxW + padX * 2, boxH = lines.length * lineH + padY * 2;
+    let x = this._mouseX + 16, y = this._mouseY - boxH / 2;
+    if (x + boxW > canvasW - 8) x = this._mouseX - boxW - 16;
+    y = clamp(y, 8, canvasH - boxH - 8);
+    // borderless glass: the void's own depth carries the box, no stroke, no radius card
+    g.fillStyle = paint(roles.surface, 0.9);
+    roundedRect(g, x, y, boxW, boxH, 2); g.fill();
+    let ly = y + padY + 12;
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    g.lineJoin = 'round'; g.lineWidth = 3; g.strokeStyle = paint(roles.surface, 0.85);
+    for (const line of lines) {
+      g.font = line.font;
+      g.strokeText(line.text, x + padX, ly);
+      g.fillStyle = line.color; g.fillText(line.text, x + padX, ly); ly += lineH;
+    }
+  },
+
+  _syncHeader() {
+    const state = this._ctx.state;
+    const fuel = state.fuel || { current: 0, max: 0 };
+    setText(this._els.fuel, `${Math.round(fuel.current)}/${Math.round(fuel.max)}`);
+    setText(this._els.jumpState, state.jump && state.jump.state || 'IDLE');
+    // tech_advanced_navigation was folded into tech_long_range_survey; accept either id so saves
+    // made before the fold keep their earned multi-hop range readout.
+    const researched = (state.player && state.player.researchedNodes) || [];
+    const longRange = researched.includes('tech_long_range_survey') || researched.includes('tech_advanced_navigation');
+    setText(this._els.range, longRange ? 'multi-hop' : 'adjacent');
+    const epoch = state.sectorSim && state.sectorSim.field && state.sectorSim.field.epochDays || 0;
+    setText(this._els.epoch, `${epoch.toFixed(1)}d`);
+  },
+
+  _syncSidebar() {
+    const selected = this._els.selected, actions = this._els.actions;
+    if (!selected || !actions) return;
+    this._sidebarSig = this._sidebarSignature();
+    this._syncObjective();
+    const routeHtml = this._routeHtml();
+    if (!this._selectedId) {
+      selected.innerHTML = `<div class="sm-hint">Select a sector to inspect the live danger, market, and influence fields.</div>${routeHtml}`;
+      actions.innerHTML = '';
+      return;
+    }
+    const s = this._sectorById(this._selectedId);
+    const signal = this._signal(this._selectedId);
+    const eff = this._effective(this._selectedId);
+    if (!s || !signal || !eff) {
+      selected.innerHTML = `<div class="sm-hint">No field solution for this sector.</div>${routeHtml}`;
+      actions.innerHTML = '';
+      return;
+    }
+    const currentId = this._currentId();
+    const isCurrent = s.id === currentId;
+    const reachable = this._isJumpableFrom(currentId, s.id);
+    const route = this._route();
+    const routeDest = route && route.legs && route.legs.length ? route.legs[route.legs.length - 1].to : null;
+    const discovery = this._discovery(s.id);
+    const topInfluence = Object.entries(signal.influence || {}).sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0])).slice(0, 3);
+    const influenceHtml = topInfluence.map(([id, value]) => `
+      <div class="sm-influence-row"><span>${entitySpanHtml('faction:' + id, escapeHtml(factionName(id)))}</span><b class="sf-fig">${pct(value)}</b></div>
+      <div class="sm-bar"><i style="width:${pct(value)}"></i></div>`).join('');
+    const fromSectorId = isCurrent ? undefined : currentId;
+    const gate = forecastTransitFor(this._ctx.state, s.id, { fromSectorId, via: 'gate' });
+    const drive = forecastTransitFor(this._ctx.state, s.id, { fromSectorId, via: 'drive' });
+    const marketFlow = signal.marketFlowUnitsPerDay;
+    const marketFlowText = marketFlow < 0 ? `${Math.abs(marketFlow)} stock/day drained`
+      : marketFlow > 0 ? `${marketFlow} stock/day supplied` : 'no net stock flow';
+    const dangerTrend = signal.trend.danger * 100;
+    const priceTrend = signal.trend.pricePressure * 100;
+    const hazards = s.hazards && s.hazards.length ? s.hazards.map((h) => HAZARD_LABEL[h.type] || h.type).join(', ') : 'None';
+    const memoryHtml = this._marketMemoryHtml(s.id);
+    // Wayfinding answer for a far selection: the shipped planner's own numbers, shown as intent
+    // only (never assigned to nav.route). When the planner says no path exists, the hint says so.
+    const previewRoute = (!isCurrent && !reachable) ? this._previewRouteTo(s.id) : null;
+    const noPath = !previewRoute && this._previewRouteStatus === 'unreachable';
+    const hops = previewRoute ? (previewRoute.totalHops || previewRoute.legs.length) : 0;
+    const fuel = previewRoute ? Math.round(previewRoute.totalFuel || 0) : 0;
+
+    selected.innerHTML = `
+      <div class="sm-sel-head${isCurrent ? ' is-here' : ''}">
+      <div class="sm-sel-name">
+        <span>${entitySpanHtml('sector:' + s.id, escapeHtml(s.name))}</span>
+        <div>${securityPips(eff.security)}</div>
+      </div>
+      <div class="sm-sel-fac">
+        ${entitySpanHtml('faction:' + signal.dominantFactionId, escapeHtml(factionName(signal.dominantFactionId)))} field · <i class="sm-dot" style="background:${factionColor(signal.ownerId)}"></i> owner ${entitySpanHtml('faction:' + signal.ownerId, escapeHtml(factionName(signal.ownerId)))}
+      </div>
+      </div>
+
+      <div class="sm-section">
+        <div class="sm-section-title">Danger field</div>
+        <div class="sm-kv"><span>Exposure</span><b class="sf-fig" style="color:${dpColor(dangerRole(signal.danger))}">${pct(signal.danger)} ${trendGlyph(signal.trend.danger)} ${signed(dangerTrend)}%/day</b></div>
+        <div class="sm-kv"><span>Encounter load</span><b class="sf-fig">×${signal.encounterLoad.toFixed(2)}</b></div>
+        <div class="sm-kv"><span>Security / density</span><b class="sf-fig">${eff.security.toFixed(2)} ${securityLabel(eff.security)} / ${enemyDensityLabel(eff.enemyDensity || 0)}</b></div>
+        <div class="sm-driver">Driven by ${escapeHtml(driverLabel(signal.driver.danger))}. This field feeds live enemy population and offscreen asset-loss risk.</div>
+      </div>
+
+      <div class="sm-section">
+        <div class="sm-section-title">Trade pressure</div>
+        <div class="sm-kv"><span>Market state</span><b style="color:${dpColor(pressureRole(signal.pricePressure))}">${escapeHtml(pressureLabel(signal.pricePressure))}</b></div>
+        <div class="sm-kv"><span>Pressure trend</span><b class="sf-fig" style="color:${dpColor(pressureRole(signal.trend.pricePressure))}">${trendGlyph(signal.trend.pricePressure)} ${signed(priceTrend)}%/day</b></div>
+        <div class="sm-kv"><span>Stock consequence</span><b>${escapeHtml(marketFlowText)}</b></div>
+        <div class="sm-driver">Driven by ${escapeHtml(driverLabel(signal.driver.pricePressure))}. Moving edge beads show modeled commodity flow toward scarcity.</div>
+      </div>
+
+      <div class="sm-section">
+        <div class="sm-section-title">${entitySpanHtml('commodity:' + this._commodityId, escapeHtml(commodityName(this._commodityId)))} memory</div>
+        ${memoryHtml}
+      </div>
+
+      <div class="sm-section">
+        <div class="sm-section-title">Faction influence</div>
+        ${influenceHtml}
+        <div class="sm-kv"><span>Contest margin</span><b>${pct(signal.contestMargin)}</b></div>
+        <div class="sm-driver">Driven by ${escapeHtml(driverLabel(signal.driver.influence))}. Low margin raises conflict tension. It does not change who owns the sector.</div>
+      </div>
+
+      <div class="sm-section">
+        <div class="sm-section-title">Transit consequence · your ship</div>
+        ${this._riskHtml('Gate', gate)}
+        ${this._riskHtml('Drive', drive)}
+        <div class="sm-driver">Speed reduces exposure probability. Shield, armor, and hull determine whether the modeled impact is survivable.</div>
+      </div>
+
+      <div class="sm-section">
+        <div class="sm-kv"><span>Sector tier</span><b>T${s.tier}</b></div>
+        <div class="sm-kv"><span>Danger tier</span><b>${dangerTier(eff)}/5</b></div>
+        <div class="sm-kv"><span>Stations / hazards</span><b>${(s.stations || []).length} / ${escapeHtml(hazards)}</b></div>
+        <div class="sm-kv"><span>Visited</span><b>${discovery && discovery.visitedCount ? `${discovery.visitedCount}×` : '—'}</b></div>
+      </div>
+
+      ${isCurrent ? '<div class="sm-route">▸ Current sector</div>'
+        : reachable ? '<div class="sm-route">▸ Reachable in one jump</div>'
+          : previewRoute ? `<div class="sm-route">▸ ${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F available path</div>`
+            : noPath ? '<div class="sm-hint">No charted route leads there yet.</div>'
+              : '<div class="sm-hint">Not directly reachable — plot a multi-hop route.</div>'}
+      ${routeHtml}`;
+
+    // The verb ladder: an armed route to this sector ENGAGEs (the route follower's own trigger,
+    // the same intent the galaxy map emits); a neighbour SETS COURSE & JUMPS; anything else
+    // PLOTs. One primary verb at a time, and it is always the screen's Lamp Key.
+    if (isCurrent) actions.innerHTML = '';
+    else if (routeDest === s.id) actions.innerHTML = '<button class="sm-course" data-act="engage">⟫ Engage Route</button>';
+    else if (reachable) actions.innerHTML = '<button class="sm-course" data-act="jump">⟫ Set Course &amp; Jump</button>';
+    else actions.innerHTML = '<button class="sm-course" data-act="route">⟫ Plot Route</button>';
+    // The course is the screen's one primary verb, so it carries the one Lamp Key (ORRERY §3.6):
+    // amber field, dark ink, the 45° cut, the sheen. The word and the handler stay the screen's.
+    for (const button of actions.querySelectorAll('button[data-act]')) dressLampKey(button);
+  },
+
+  _syncObjective() {
+    const panel = this._els && this._els.objective;
+    if (!panel) return;
+    const objective = resolveStarmapObjective(this._ctx.state);
+    if (!objective) {
+      panel.hidden = true;
+      panel.innerHTML = '';
+      panel.removeAttribute('aria-label');
+      return;
+    }
+    const guidance = describeStarmapObjectiveRoute(this._ctx.state, objective, (id) => this._nameOf(id));
+    const meta = [];
+    if (objective.sectorId) meta.push({ text: objective.sectorName || this._nameOf(objective.sectorId), hot: guidance && guidance.state !== 'local', ref: 'sector:' + objective.sectorId });
+    if (guidance && guidance.summary) meta.push({ text: guidance.summary, hot: guidance.state !== 'local' });
+    if (objective.hasLocalFix && (!guidance || guidance.summary !== 'local fix acquired')) meta.push({ text: 'local fix acquired', hot: false });
+    if (objective.commodityId) meta.push({ text: 'cargo route', hot: true });
+    const body = guidance && guidance.next
+      ? appendSentence(objective.detail || 'Proceed to the objective.', guidance.next)
+      : objective.detail || 'Proceed to the objective.';
+    const action = guidance && guidance.canPlot
+      ? `<button type="button" data-act="objective-route">${escapeHtml(guidance.actionLabel || 'Plot Objective Route')}</button>`
+      : guidance && guidance.canOpenLocalMap
+        ? `<button type="button" data-act="objective-localmap">${escapeHtml(guidance.actionLabel || 'Open Local Map')}</button>`
+        : '';
+    const html = `
+      <div class="sm-objective-k">${escapeHtml(objective.kicker)}</div>
+      <div class="sm-objective-title">${escapeHtml(objective.title)}</div>
+      <div class="sm-objective-body">${escapeHtml(body)}</div>
+      ${meta.length ? `<div class="sm-objective-meta">${meta.map((m) => `<span${m.hot ? ' class="hot"' : ''}>${m.ref ? entitySpanHtml(m.ref, escapeHtml(m.text)) : escapeHtml(m.text)}</span>`).join('')}</div>` : ''}
+      ${action}`;
+    const readable = [objective.kicker, objective.title, body, ...meta.map((m) => m.text)].filter(Boolean).join(' ');
+    if (panel.innerHTML !== html) panel.innerHTML = html;
+    if (panel.getAttribute('aria-label') !== readable) panel.setAttribute('aria-label', readable);
+    panel.hidden = false;
+  },
+
+  _riskHtml(label, risk) {
+    const color = risk.incidentChance > 0.55 ? dpColor('foe') : risk.incidentChance > 0.25 ? dpColor('goal') : dpColor('you');
+    const marginColor = risk.survivalMargin < 0 ? dpColor('foe') : dpColor('you');
+    return `<div class="sm-risk">
+      <div class="sm-risk-head"><span>${label}</span><b class="sf-fig" style="color:${color}">${pct(risk.incidentChance)} incident</b></div>
+      <div class="sm-kv"><span>Expected impact</span><b class="sf-fig">${risk.expectedDamage} HP</b></div>
+      <div class="sm-kv"><span>Speed / threat</span><b class="sf-fig">${Math.round(risk.maxSpeed)} / ${Math.round(risk.threatSpeed)}</b></div>
+      <div class="sm-kv"><span>Survival margin</span><b class="sf-fig" style="color:${marginColor}">${signed(risk.survivalMargin, 0)} HP</b></div>
+    </div>`;
+  },
+
+  _routeHtml() {
+    const route = this._route();
+    if (!route || !route.legs || !route.legs.length) return '';
+    let html = `<div class="sm-section"><div class="sm-route">▸ Active Route (${route.totalHops || route.legs.length} hops)</div>`;
+    for (const leg of route.legs) {
+      html += `<div class="sm-route-leg"><b>${entitySpanHtml('sector:' + leg.from, escapeHtml(this._nameOf(leg.from)))}</b> → <b>${entitySpanHtml('sector:' + leg.to, escapeHtml(this._nameOf(leg.to)))}</b> · <span class="sf-fig">${Math.round(leg.fuel)}F</span>${leg.interdict ? ' <span class="sm-interdict">[!]</span>' : ''}</div>`;
+    }
+    html += `<div class="sm-route-total">Σ ${Math.round(route.totalFuel || 0)} fuel</div></div>`;
+    return html;
+  },
+
+  _marketMemoryHtml(sectorId) {
+    const overlays = marketMemoryStationOverlays(this._ctx.state, this._commodityId)
+      .filter((entry) => entry.sectorId === sectorId);
+    if (!overlays.length) return '<div class="sm-hint">No visited station price for this commodity.</div>';
+    return '<div class="sm-market-memory">' + overlays.map((entry) =>
+      '<div class="sm-market-row ' + escapeHtml(entry.tint) + '">' +
+        '<span>' + entitySpanHtml('station:' + entry.stationId, escapeHtml(entry.stationName)) + '</span>' +
+        '<b>' + Math.round(entry.sell).toLocaleString('en-US') + ' cr · ' + escapeHtml(entry.ageLabel) + '</b>' +
+      '</div>').join('') + '</div>';
+  },
+
+  _onAction(action) {
+    if (action === 'objective-localmap') {
+      // Legacy starmap CTA: route through the unified map at LOCAL focus (retain objective intent).
+      const objective = resolveStarmapObjective(this._ctx.state);
+      const wp = this._ctx.state && this._ctx.state.nav && this._ctx.state.nav.waypoint;
+      openGalaxyMap(this._ctx, {
+        focus: MAP_FOCUS.LOCAL,
+        sectorId: (objective && objective.sectorId) || (wp && wp.sectorId) || null,
+        missionId: (objective && objective.missionId) || (wp && wp.missionId) || null,
+        stationId: (objective && objective.stationId) || (wp && wp.stationId) || null,
+        pos: (wp && wp.pos) || (objective && objective.pos) || null,
+        source: 'starmap-objective',
+      });
+      this._ctx.bus.emit('toast', { text: 'Opening Local Map for the active objective', kind: 'info', ttl: 3000 });
+      return;
+    }
+    if (action === 'objective-route') {
+      const objective = resolveStarmapObjective(this._ctx.state);
+      const targetSectorId = objective && objective.sectorId;
+      if (!targetSectorId) {
+        this._ctx.bus.emit('toast', { text: 'Objective has no sector fix yet', kind: 'warn', ttl: 3000 });
+        return;
+      }
+      const payload = {
+        sectorId: targetSectorId,
+        path: null,
+        waypointKind: objective.kind || null,
+        missionId: objective.missionId || null,
+        stationId: objective.stationId || null,
+        commodityId: objective.commodityId || null,
+      };
+      this._ctx.bus.emit('world:requestRoute', { targetSectorId, mode: 'fuel' });
+      this._ctx.bus.emit('ui:setCourse', payload);
+      if (this._isDiscovered(targetSectorId)) this._selectedId = targetSectorId;
+      this._ctx.bus.emit('toast', { text: `Plotting objective route to ${this._nameOf(targetSectorId)}`, kind: 'info', ttl: 3000 });
+      this._syncHeader();
+      this._syncSidebar();
+      this._draw();
+      return;
+    }
+    const target = this._selectedId;
+    if (!target) return;
+    const bus = this._ctx.bus;
+    if (action === 'jump') {
+      bus.emit('world:requestJump', { targetSectorId: target, via: 'gate' });
+      bus.emit('ui:setCourse', { sectorId: target, path: null });
+      bus.emit('toast', { text: `Course set: ${this._nameOf(target)}`, kind: 'info', ttl: 3000 });
+    } else if (action === 'route') {
+      bus.emit('world:requestRoute', { targetSectorId: target, mode: 'fuel' });
+      bus.emit('ui:setCourse', { sectorId: target, path: null });
+      bus.emit('toast', { text: `Plotting route to ${this._nameOf(target)}…`, kind: 'info', ttl: 3000 });
+    } else if (action === 'engage') {
+      // ENGAGE hands the PLOTTED route to the route follower — the same `nav:engageRoute` intent
+      // the galaxy map emits. The follower owns every refusal receipt (no route, welded gate,
+      // drive out); this screen writes no navigation state of its own.
+      bus.emit('nav:engageRoute', {});
+      bus.emit('toast', { text: `Engaging route to ${this._nameOf(target)}`, kind: 'info', ttl: 3000 });
+    }
+    this._syncHeader();
+  },
+
+  _drawSignature() {
+    const parts = [this._currentId() || '', this._selectedId || '', this._hoverId || '', this._dpr, this._commodityId || ''];
+    // A live tooltip follows the cursor — the signature must move with it or the gated anim
+    // loop freezes the box at the hover-entry position.
+    if (this._hoverInfo) parts.push((this._mouseX | 0) + ',' + (this._mouseY | 0));
+    parts.push('goal:' + (this._objectiveSectorId() || ''));
+    const route = this._route();
+    if (route) parts.push(route.legs.map((l) => `${l.from}>${l.to}`).join(','));
+    else {
+      // The preview beam is a derived draw input: it must move the signature, or the gated anim
+      // loop would keep the last frame's intent line after the selection or chart changes.
+      const preview = this._selectionPreviewRoute();
+      if (preview) parts.push('preview:' + preview.legs.map((l) => `${l.from}>${l.to}`).join(','));
+      else parts.push('preview:none');
+    }
+    for (const s of this._sectors()) {
+      const known = this._isDiscovered(s.id);
+      parts.push(s.id, known ? 1 : 0);
+      if (known) {
+        const signal = this._signal(s.id);
+        if (signal) parts.push(Math.round(signal.danger * 1000), Math.round(signal.pricePressure * 1000), signal.dominantFactionId || '', Math.round(signal.contestMargin * 1000));
+      }
+    }
+    return parts.join('|');
+  },
+
+  _sidebarSignature() {
+    const id = this._selectedId;
+    const signal = id && this._signal(id);
+    const field = this._ctx.state.sectorSim && this._ctx.state.sectorSim.field;
+    const player = this._ctx.state.entities && this._ctx.state.entities.get && this._ctx.state.entities.get(this._ctx.state.playerId);
+    const objective = resolveStarmapObjective(this._ctx.state);
+    const guidance = describeStarmapObjectiveRoute(this._ctx.state, objective, (sectorId) => this._nameOf(sectorId));
+    return [
+      id || '', this._currentId() || '', field && field.epochDays || 0,
+      signal && Math.round(signal.danger * 10000), signal && Math.round(signal.pricePressure * 10000),
+      signal && signal.dominantFactionId, signal && Math.round(signal.contestMargin * 10000),
+      player && Math.round(player.maxSpeed || 0), player && Math.round((player.shield || 0) + (player.armorHp || 0) + (player.hull || 0)),
+      this._route() && this._route().legs && this._route().legs.length || 0,
+      // The sidebar's verb depends on WHERE the plotted route ends (Engage vs Plot) — the
+      // destination moves the signature, not just the leg count.
+      (this._route() && this._route().legs && this._route().legs.length
+        ? this._route().legs[this._route().legs.length - 1].to : ''),
+      objective && objective.kind || '', objective && objective.sectorId || '', objective && objective.title || '',
+      guidance && guidance.state || '', guidance && guidance.summary || '',
+      this._commodityId || '', marketMemoryStationOverlays(this._ctx.state, this._commodityId).length,
+    ].join('|');
+  },
+
+  _nameOf(id) { const s = this._sectorById(id); return s ? s.name : id; },
+};
+
+function roundedRect(g, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  g.beginPath();
+  g.moveTo(x + rr, y); g.lineTo(x + w - rr, y); g.quadraticCurveTo(x + w, y, x + w, y + rr);
+  g.lineTo(x + w, y + h - rr); g.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+  g.lineTo(x + rr, y + h); g.quadraticCurveTo(x, y + h, x, y + h - rr);
+  g.lineTo(x, y + rr); g.quadraticCurveTo(x, y, x + rr, y); g.closePath();
+}

@@ -1,0 +1,15 @@
+{
+  "source": "/workspace/scratch/d2415e46e35b/mite-recovery-candidate-n4/artifacts/n4/brood_mite_v01.glb",
+  "sha256": "f2703799b6beef7b84471185293e95d058d6603a8236c9a17244ff5870652107",
+  "renderer": "Blender Cycles 4.3 CPU",
+  "scriptSha256": "bd45055bed9f25a4c539bc56cfb07c26a201262a136a3732d8b74cef018eb8d5",
+  "actualGameLook": false,
+  "input": "Cold import of exact exported GLB",
+  "clayIsActualGeometry": true,
+  "colorGrade": "AgX",
+  "renders": [
+    "brood_mite_v01-lod2-material-tiny60.png"
+  ],
+  "camera": "orthographic comparison, chase is 60 degrees; not actual perspective game camera",
+  "orthographicWidth": 13.6
+}

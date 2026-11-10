@@ -1,0 +1,542 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.greeble-rcs",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "5bb2c8af66160226ad9858d1862a565aa70da3895c48218a395b72299d49a411",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.9699621645081529,
+          0.4600094556235472,
+          0.9300000071525574
+        ],
+        "min": [
+          1.8900378497969619,
+          0.2399905324555238,
+          -0.9300000071525574
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "11dd7276bbc2f7568abce959c2ae1e3d7a22348243322c50b0a3307c5e23e534",
+      "id": "sf.render.greeble-rcs.mesh.greeble-rcs-material-accent-merged.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_rcs_Material_Accent_Merged",
+      "nodeId": "sf.render.greeble-rcs.mesh.greeble-rcs-material-accent-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 52
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4449367718961246,
+          0.6299765754003246,
+          1.3427975177764893
+        ],
+        "min": [
+          -0.04493692984843323,
+          0.07002341267874646,
+          -1.3427975177764893
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7bb0fc910edfc18a471c0733b22cd0fb98121ad7a6c53e80ec9783ac96621c1e",
+      "id": "sf.render.greeble-rcs.mesh.greeble-rcs-material-mechanical-merged.primitive.0",
+      "indexCount": 1968,
+      "indexed": true,
+      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_rcs_Material_Mechanical_Merged",
+      "nodeId": "sf.render.greeble-rcs.mesh.greeble-rcs-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 256
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7999999821186066,
+          0.19992553856105927,
+          1.600000023841858
+        ],
+        "min": [
+          -0.40000006556510925,
+          -0.039925534686757344,
+          -1.600000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b4a2a263164753a3e0067f32267aed450c434fd2a0afa247d00f8c52134cb836",
+      "id": "sf.render.greeble-rcs.mesh.rcs-base.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "df9bc1b1b3dc7b78856f78d05d8690ac5f0b3e1acd276105d9c363f607c16590",
+      "materialPipelineKey": "opaque",
+      "meshName": "RCS_Base",
+      "nodeId": "sf.render.greeble-rcs.mesh.rcs-base",
+      "primitiveIndex": 0,
+      "vertexCount": 150
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "id": "material:4bbfc0af06e03d63cd7b8818",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "id": "material:7af6f768ac4f1f4c9ee04b14",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "df9bc1b1b3dc7b78856f78d05d8690ac5f0b3e1acd276105d9c363f607c16590",
+      "id": "material:df9bc1b1b3dc7b78856f78d0",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.greeble-rcs.mesh.greeble-rcs-material-accent-merged",
+      "localTransform": [
+        0.9300000071525574,
+        0,
+        0,
+        0,
+        0,
+        0.9300000071525574,
+        0,
+        0,
+        0,
+        0,
+        0.9300000071525574,
+        0,
+        1.9300000071525574,
+        0.3499999940395355,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_rcs_Material_Accent_Merged",
+      "nodeName": "greeble_rcs_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.greeble-rcs.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-rcs.body",
+      "worldTransform": [
+        0.9300000071525574,
+        0,
+        0,
+        0,
+        0,
+        0.9300000071525574,
+        0,
+        0,
+        0,
+        0,
+        0.9300000071525574,
+        0,
+        1.9300000071525574,
+        0.3499999940395355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-rcs.mesh.greeble-rcs-material-mechanical-merged",
+      "localTransform": [
+        1.3427975177764893,
+        0,
+        0,
+        0,
+        0,
+        1.3427975177764893,
+        0,
+        0,
+        0,
+        0,
+        1.3427975177764893,
+        0,
+        1.1999999210238457,
+        0.3499999940395355,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_rcs_Material_Mechanical_Merged",
+      "nodeName": "greeble_rcs_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.greeble-rcs.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-rcs.body",
+      "worldTransform": [
+        1.3427975177764893,
+        0,
+        0,
+        0,
+        0,
+        1.3427975177764893,
+        0,
+        0,
+        0,
+        0,
+        1.3427975177764893,
+        0,
+        1.1999999210238457,
+        0.3499999940395355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-rcs.mesh.rcs-base",
+      "localTransform": [
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        1.1999999582767487,
+        0.08000000193715096,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RCS_Base",
+      "nodeName": "RCS_Base",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.greeble-rcs.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-rcs.body",
+      "worldTransform": [
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        1.1999999582767487,
+        0.08000000193715096,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-rcs.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "greeble_rcs",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-rcs.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "04fc544bcad205c341ef5e9885d655751a825533e0b55ee8f1602e8184e42ae2"
+    },
+    "sourceGlb": {
+      "bytes": 410220,
+      "sha256": "9608e939191cf457a2ad846dc0ea8dfda4ad0f42f65fb33e6ea3d3c18b898583",
+      "uri": "greeble_rcs.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 409472,
+    "sha256": "3e63942a68f72bd5a77d1fb4e354aaf0fbe0206c2738d20c243be880bf5ced5c",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.1999999582767487,
+        0.29502552035678364,
+        0
+      ],
+      "max": [
+        2.7999999821186066,
+        0.6299765754003246,
+        1.600000023841858
+      ],
+      "min": [
+        -0.40000006556510925,
+        -0.039925534686757344,
+        -1.600000023841858
+      ],
+      "size": [
+        3.200000047683716,
+        0.6699021100870819,
+        3.200000047683716
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 3,
+        "tags": {},
+        "userData": {
+          "name": "HOOK_Emissive",
+          "spacefaceHook": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 18,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.600000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.600000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.600000023841858,
+          0,
+          1.1999999582767487,
+          0.08000000193715096,
+          0,
+          1
+        ],
+        "name": "RCS_Base",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9300000071525574,
+          0,
+          0,
+          0,
+          0,
+          0.9300000071525574,
+          0,
+          0,
+          0,
+          0,
+          0.9300000071525574,
+          0,
+          1.9300000071525574,
+          0.3499999940395355,
+          0,
+          1
+        ],
+        "name": "greeble_rcs_Material_Accent_Merged",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.3427975177764893,
+          0,
+          0,
+          0,
+          0,
+          1.3427975177764893,
+          0,
+          0,
+          0,
+          0,
+          1.3427975177764893,
+          0,
+          1.1999999210238457,
+          0.3499999940395355,
+          0,
+          1
+        ],
+        "name": "greeble_rcs_Material_Mechanical_Merged",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "greeble",
+    "url": "assets/ships/release/parts/greebles/greeble_rcs.glb"
+  },
+  "runtimeHash": "c79331bf4ccfe0867f281b82f8ddbfb900d32fe91406c3005bcd9eb7118b0c43",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.7999999821186066,
+          0.6299765754003246,
+          1.600000023841858
+        ],
+        "min": [
+          -0.40000006556510925,
+          -0.039925534686757344,
+          -1.600000023841858
+        ]
+      },
+      "id": "sf.render.greeble-rcs.body",
+      "nodeIds": [
+        "sf.render.greeble-rcs.mesh.greeble-rcs-material-accent-merged",
+        "sf.render.greeble-rcs.mesh.greeble-rcs-material-mechanical-merged",
+        "sf.render.greeble-rcs.mesh.rcs-base",
+        "sf.render.greeble-rcs.root"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+TAP version 13
+# Subtest: player and glass visibility pin exact simulation
+ok 1 - player and glass visibility pin exact simulation
+  ---
+  duration_ms: 1.541691
+  ...
+# Subtest: off-screen pursuer can be exact while not drawn
+ok 2 - off-screen pursuer can be exact while not drawn
+  ---
+  duration_ms: 0.192182
+  ...
+# Subtest: far itinerary traffic is abstract not deleted
+ok 3 - far itinerary traffic is abstract not deleted
+  ---
+  duration_ms: 0.163735
+  ...
+# Subtest: after grace, inside exit radius stays near
+ok 4 - after grace, inside exit radius stays near
+  ---
+  duration_ms: 0.220908
+  ...
+# Subtest: beyond the exit radius the classifier is dormant; grace lives on the stamp
+ok 5 - beyond the exit radius the classifier is dormant; grace lives on the stamp
+  ---
+  duration_ms: 0.142614
+  ...
+# Subtest: mission pin is explicit data not a guessed radius
+ok 6 - mission pin is explicit data not a guessed radius
+  ---
+  duration_ms: 0.220897
+  ...
+# Subtest: a lawful ship answering an incident is pinned exact, far or near
+ok 7 - a lawful ship answering an incident is pinned exact, far or near
+  ---
+  duration_ms: 0.199722
+  ...
+# Subtest: classifyActivity skips a second pin normalize when pins are already normalized
+ok 8 - classifyActivity skips a second pin normalize when pins are already normalized
+  ---
+  duration_ms: 0.156627
+  ...
+# Subtest: pin normalize scratch reuses the same buffers without changing reasons
+ok 9 - pin normalize scratch reuses the same buffers without changing reasons
+  ---
+  duration_ms: 1.51637
+  ...
+# Subtest: tether flag on the entity is an explicit pin
+ok 10 - tether flag on the entity is an explicit pin
+  ---
+  duration_ms: 0.273782
+  ...
+# Subtest: physics reach uses look-ahead not camera size alone
+ok 11 - physics reach uses look-ahead not camera size alone
+  ---
+  duration_ms: 0.296361
+  ...
+# Subtest: presentation runway is independent of exact sim
+ok 12 - presentation runway is independent of exact sim
+  ---
+  duration_ms: 0.143282
+  ...
+# Subtest: entityNeedsFlightStep keeps exact/near and unclassified craft
+ok 13 - entityNeedsFlightStep keeps exact/near and unclassified craft
+  ---
+  duration_ms: 1.379645
+  ...
+# Subtest: entityNeedsFlightStep shelves abstract/dormant/aggregate unless intent is live
+ok 14 - entityNeedsFlightStep shelves abstract/dormant/aggregate unless intent is live
+  ---
+  duration_ms: 0.221127
+  ...
+# Subtest: legacy flight.update skips continuous drag on dormant ships
+ok 15 - legacy flight.update skips continuous drag on dormant ships
+  ---
+  duration_ms: 2.200245
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 184.691283

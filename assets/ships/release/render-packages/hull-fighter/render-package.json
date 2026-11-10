@@ -1,0 +1,1770 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.hull-fighter.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.303999900817871,
+        0.03999999910593033,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.hull-fighter.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.303999900817871,
+        0.03999999910593033,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.303999900817871,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.hull-fighter.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.303999900817871,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.hull-fighter",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "42bac1f3fa1c7d8f4c78464b5ad8b6b8da2ac09e0bf81eb5906971c688a82808",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -0.8223219513893127,
+          0.12162579431203058,
+          -0.2950112487641362
+        ],
+        "min": [
+          -1.5776782035827637,
+          -0.42162581368354013,
+          -0.34498873693074905
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2c9f67b2724ee0ad723060bdd5ab25ea6ff6280d3fd61b8fa5ff77f1b94bd8b8",
+      "id": "sf.render.hull-fighter.mesh.lod0-det-bounty-weld.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "175f3d63e86205422cdcf03e8f41c007cdc5e969d6081ce889f643edd9994cd8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.hull-fighter.mesh.lod0-det-bounty-weld",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.25,
+          0.800000011920929,
+          0.20999939559027497
+        ],
+        "min": [
+          -0.75,
+          0.30000001192092896,
+          0.090000616330654
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9f597e3763625e0fcf7e4ed4337f713043d1ba965b0942111eb236a20a332e13",
+      "id": "sf.render.hull-fighter.mesh.lod0-det-hardpoint-collar.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "175f3d63e86205422cdcf03e8f41c007cdc5e969d6081ce889f643edd9994cd8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.hull-fighter.mesh.lod0-det-hardpoint-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.0356872081756592,
+          0.8054802687128394,
+          -0.31998201718291674
+        ],
+        "min": [
+          -2.964312791824341,
+          -0.40548023295005253,
+          -0.3800179708961543
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9bce95f2ad1915f85a74ffee5c987f0e7ac322352f6aae82d9b4c78334a4d38e",
+      "id": "sf.render.hull-fighter.mesh.lod0-det-heat-scorch.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "e9001161a58e9771427ae23d3bcd7b4e3556bb672c2433a8b6d5172ad07afe28",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.hull-fighter.mesh.lod0-det-heat-scorch",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          3.1035945415496826,
+          -0.05998809072758479,
+          0.19142779209376637
+        ],
+        "min": [
+          0.8964055180549622,
+          -0.14001191225264745,
+          -1.0314278105712062
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "48e8a32965d7e8880caf7e924bee110311269b32aba961b42b723e3330cffed4",
+      "id": "sf.render.hull-fighter.mesh.lod0-det-nav-stripe.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "a3534ac2d9a1908bc3e01294a836933b5080bae131893dc2139fbc5602c13e2b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.hull-fighter.mesh.lod0-det-nav-stripe",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0999999046325684,
+          0.6500457390184663,
+          -0.5300042857040939
+        ],
+        "min": [
+          0.8999999761581421,
+          0.04995421925828236,
+          -0.569995738137764
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fffd1db8929dccf93db1ff123ac26d86fa4706fe7a2710be1f34c31b5af5aa4d",
+      "id": "sf.render.hull-fighter.mesh.lod0-det-patrol-stencil.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "a3534ac2d9a1908bc3e01294a836933b5080bae131893dc2139fbc5602c13e2b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.hull-fighter.mesh.lod0-det-patrol-stencil",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.0021259784698486,
+          0.3631151270036182,
+          -0.17500056720462656
+        ],
+        "min": [
+          -3.9978740215301514,
+          -0.3631151270036182,
+          -0.3249994178942123
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a4bcec95c03a2cd49d0ed63a249adc060a0b3014ebebb41e725fbba2cfdd62b4",
+      "id": "sf.render.hull-fighter.mesh.lod0-det-reactor-vent.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "175f3d63e86205422cdcf03e8f41c007cdc5e969d6081ce889f643edd9994cd8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.hull-fighter.mesh.lod0-det-reactor-vent",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          4.982392311096191,
+          0.20561565231877135,
+          0.0250087683435975
+        ],
+        "min": [
+          4.617608070373535,
+          -0.005615653063829412,
+          -0.22500876387324914
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1578533f0d21dbfe10bde5e133dc297254cfeda93945e5c608aca43669e15313",
+      "id": "sf.render.hull-fighter.mesh.lod0-det-sensor-nose.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "175f3d63e86205422cdcf03e8f41c007cdc5e969d6081ce889f643edd9994cd8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.hull-fighter.mesh.lod0-det-sensor-nose",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5617457628250122,
+          -0.17502433180860863,
+          0.36022302855427957
+        ],
+        "min": [
+          -0.561745822429657,
+          -0.5249756413693012,
+          -0.36022302855427957
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8906b977b29a4ffd5d7598cb871baec2c02f572a81321d975b784d4c9bcc79ca",
+      "id": "sf.render.hull-fighter.mesh.lod0-det-wing-root-rib.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "e9001161a58e9771427ae23d3bcd7b4e3556bb672c2433a8b6d5172ad07afe28",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.hull-fighter.mesh.lod0-det-wing-root-rib",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          5.29899263381958,
+          0.8716321479893293,
+          2.9423766567646887
+        ],
+        "min": [
+          -5.150000095367432,
+          -0.3197322380161848,
+          -2.9423766567646887
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3ccf2275a9f31a5d3e197a0abc7dfe4607068231dc1e0299ac208aaf67f3cea3",
+      "id": "sf.render.hull-fighter.mesh.lod0-hull-fighter-main.primitive.0",
+      "indexCount": 7332,
+      "indexed": true,
+      "materialHash": "e9001161a58e9771427ae23d3bcd7b4e3556bb672c2433a8b6d5172ad07afe28",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_FIGHTER",
+      "nodeId": "sf.render.hull-fighter.mesh.lod0-hull-fighter-main",
+      "primitiveIndex": 0,
+      "vertexCount": 6016
+    },
+    {
+      "bounds": {
+        "max": [
+          5.29899263381958,
+          0.8716321628904905,
+          2.9423766567646887
+        ],
+        "min": [
+          -5.150000095367432,
+          -0.3197322231150236,
+          -2.9423766567646887
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a1338bd4af0b6d885b813ebc165660ca6df8ad7c7819492eda649fba55c8a464",
+      "id": "sf.render.hull-fighter.mesh.lod1-hull-fighter-silhouette.primitive.0",
+      "indexCount": 4032,
+      "indexed": true,
+      "materialHash": "e9001161a58e9771427ae23d3bcd7b4e3556bb672c2433a8b6d5172ad07afe28",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_FIGHTER.001",
+      "nodeId": "sf.render.hull-fighter.mesh.lod1-hull-fighter-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 3144
+    },
+    {
+      "bounds": {
+        "max": [
+          5.294674396514893,
+          0.8911147512306564,
+          2.929510235331677
+        ],
+        "min": [
+          -5.150000095367432,
+          -0.31633258832591704,
+          -2.928585648081921
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f254ee9afb46354e0c453b063c27b70911a3bc88a66ddf1beca519c9ee74b481",
+      "id": "sf.render.hull-fighter.mesh.lod2-hull-fighter-silhouette.primitive.0",
+      "indexCount": 114,
+      "indexed": true,
+      "materialHash": "e9001161a58e9771427ae23d3bcd7b4e3556bb672c2433a8b6d5172ad07afe28",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_FIGHTER.002",
+      "nodeId": "sf.render.hull-fighter.mesh.lod2-hull-fighter-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 114
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "175f3d63e86205422cdcf03e8f41c007cdc5e969d6081ce889f643edd9994cd8",
+      "id": "material:175f3d63e86205422cdcf03e",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_fighter_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_fighter_mechanical_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_fighter_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_fighter_mechanical_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a3534ac2d9a1908bc3e01294a836933b5080bae131893dc2139fbc5602c13e2b",
+      "id": "material:a3534ac2d9a1908bc3e01294",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_fighter_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_fighter_accent_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_fighter_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_fighter_accent_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e9001161a58e9771427ae23d3bcd7b4e3556bb672c2433a8b6d5172ad07afe28",
+      "id": "material:e9001161a58e9771427ae23d",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_fighter_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_fighter_hull_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_fighter_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_fighter_hull_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.hull-fighter.mesh.lod0-det-bounty-weld",
+      "localTransform": [
+        0.37767812609672546,
+        0,
+        0,
+        0,
+        0,
+        0.37767812609672546,
+        0,
+        0,
+        0,
+        0,
+        0.37767812609672546,
+        0,
+        -1.2000000774860382,
+        -0.15000000968575478,
+        -0.3199999928474426,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_bounty_weld",
+      "nodeName": "LOD0_DET_bounty_weld",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.hull-fighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        0.37767812609672546,
+        0,
+        0,
+        0,
+        0,
+        0.37767812609672546,
+        0,
+        0,
+        0,
+        0,
+        0.37767812609672546,
+        0,
+        -1.2000000774860382,
+        -0.15000000968575478,
+        -0.3199999928474426,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.mesh.lod0-det-hardpoint-collar",
+      "localTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        -0.5,
+        0.550000011920929,
+        0.15000000596046448,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_hardpoint_collar",
+      "nodeName": "LOD0_DET_hardpoint_collar",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.hull-fighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        0,
+        -0.5,
+        0.550000011920929,
+        0.15000000596046448,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.mesh.lod0-det-heat-scorch",
+      "localTransform": [
+        0.9643127918243408,
+        0,
+        0,
+        0,
+        0,
+        0.9643127918243408,
+        0,
+        0,
+        0,
+        0,
+        0.9643127918243408,
+        0,
+        -2,
+        0.20000001788139343,
+        -0.3499999940395355,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_heat_scorch",
+      "nodeName": "LOD0_DET_heat_scorch",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.hull-fighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        0.9643127918243408,
+        0,
+        0,
+        0,
+        0,
+        0.9643127918243408,
+        0,
+        0,
+        0,
+        0,
+        0.9643127918243408,
+        0,
+        -2,
+        0.20000001788139343,
+        -0.3499999940395355,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.mesh.lod0-det-nav-stripe",
+      "localTransform": [
+        1.1035945117473602,
+        0,
+        0,
+        0,
+        0,
+        1.1035945117473602,
+        0,
+        0,
+        0,
+        0,
+        1.1035945117473602,
+        0,
+        2.0000000298023224,
+        -0.10000000149011612,
+        -0.42000000923871994,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_nav_stripe",
+      "nodeName": "LOD0_DET_nav_stripe",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.hull-fighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        1.1035945117473602,
+        0,
+        0,
+        0,
+        0,
+        1.1035945117473602,
+        0,
+        0,
+        0,
+        0,
+        1.1035945117473602,
+        0,
+        2.0000000298023224,
+        -0.10000000149011612,
+        -0.42000000923871994,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.mesh.lod0-det-patrol-stencil",
+      "localTransform": [
+        0.5999999642372131,
+        0,
+        0,
+        0,
+        0,
+        0.5999999642372131,
+        0,
+        0,
+        0,
+        0,
+        0.5999999642372131,
+        0,
+        1.4999999403953552,
+        0.34999997913837433,
+        -0.550000011920929,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_patrol_stencil",
+      "nodeName": "LOD0_DET_patrol_stencil",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.hull-fighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        0.5999999642372131,
+        0,
+        0,
+        0,
+        0,
+        0.5999999642372131,
+        0,
+        0,
+        0,
+        0,
+        0.5999999642372131,
+        0,
+        1.4999999403953552,
+        0.34999997913837433,
+        -0.550000011920929,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.mesh.lod0-det-reactor-vent",
+      "localTransform": [
+        0.49787402153015137,
+        0,
+        0,
+        0,
+        0,
+        0.49787402153015137,
+        0,
+        0,
+        0,
+        0,
+        0.49787402153015137,
+        0,
+        -3.5,
+        0,
+        -0.2499999925494194,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_reactor_vent",
+      "nodeName": "LOD0_DET_reactor_vent",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.hull-fighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        0.49787402153015137,
+        0,
+        0,
+        0,
+        0,
+        0.49787402153015137,
+        0,
+        0,
+        0,
+        0,
+        0.49787402153015137,
+        0,
+        -3.5,
+        0,
+        -0.2499999925494194,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.mesh.lod0-det-sensor-nose",
+      "localTransform": [
+        0.18239212036132812,
+        0,
+        0,
+        0,
+        0,
+        0.18239212036132812,
+        0,
+        0,
+        0,
+        0,
+        0.18239212036132812,
+        0,
+        4.800000190734863,
+        0.09999999962747097,
+        -0.09999999776482582,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_sensor_nose",
+      "nodeName": "LOD0_DET_sensor_nose",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.hull-fighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        0.18239212036132812,
+        0,
+        0,
+        0,
+        0,
+        0.18239212036132812,
+        0,
+        0,
+        0,
+        0,
+        0.18239212036132812,
+        0,
+        4.800000190734863,
+        0.09999999962747097,
+        -0.09999999776482582,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.mesh.lod0-det-wing-root-rib",
+      "localTransform": [
+        1.0617457926273346,
+        0,
+        0,
+        0,
+        0,
+        1.0617457926273346,
+        0,
+        0,
+        0,
+        0,
+        1.0617457926273346,
+        0,
+        0.4999999701976776,
+        -0.3499999865889549,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_wing_root_rib",
+      "nodeName": "LOD0_DET_wing_root_rib",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.hull-fighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        1.0617457926273346,
+        0,
+        0,
+        0,
+        0,
+        1.0617457926273346,
+        0,
+        0,
+        0,
+        0,
+        1.0617457926273346,
+        0,
+        0.4999999701976776,
+        -0.3499999865889549,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.mesh.lod0-hull-fighter-main",
+      "localTransform": [
+        5.224496364593506,
+        0,
+        0,
+        0,
+        0,
+        5.224496364593506,
+        0,
+        0,
+        0,
+        0,
+        5.224496364593506,
+        0,
+        0.07449626922607422,
+        0.27594995498657227,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HULL_FIGHTER_MAIN",
+      "nodeName": "LOD0_HULL_FIGHTER_MAIN",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.hull-fighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        5.224496364593506,
+        0,
+        0,
+        0,
+        0,
+        5.224496364593506,
+        0,
+        0,
+        0,
+        0,
+        5.224496364593506,
+        0,
+        0.07449626922607422,
+        0.27594995498657227,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.mesh.lod1-hull-fighter-silhouette",
+      "localTransform": [
+        5.224496364593506,
+        0,
+        0,
+        0,
+        0,
+        5.224496364593506,
+        0,
+        0,
+        0,
+        0,
+        5.224496364593506,
+        0,
+        0.07449626922607422,
+        0.27594996988773346,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HULL_FIGHTER_SILHOUETTE",
+      "nodeName": "LOD1_HULL_FIGHTER_SILHOUETTE",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.hull-fighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        5.224496364593506,
+        0,
+        0,
+        0,
+        0,
+        5.224496364593506,
+        0,
+        0,
+        0,
+        0,
+        5.224496364593506,
+        0,
+        0.07449626922607422,
+        0.27594996988773346,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.mesh.lod2-hull-fighter-silhouette",
+      "localTransform": [
+        5.222337245941162,
+        0,
+        0,
+        0,
+        0,
+        5.222337245941162,
+        0,
+        0,
+        0,
+        0,
+        5.222337245941162,
+        0,
+        0.07233715057373047,
+        0.2873910814523697,
+        0.0004622936248779297,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HULL_FIGHTER_SILHOUETTE",
+      "nodeName": "LOD2_HULL_FIGHTER_SILHOUETTE",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.hull-fighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        5.222337245941162,
+        0,
+        0,
+        0,
+        0,
+        5.222337245941162,
+        0,
+        0,
+        0,
+        0,
+        5.222337245941162,
+        0,
+        0.07233715057373047,
+        0.2873910814523697,
+        0.0004622936248779297,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-fighter.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "HULL_FIGHTER_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-fighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "327c4d8929371b050fe4f939131cdc1a9d23e157d3910cf24fbe681dc7464736"
+    },
+    "sourceGlb": {
+      "bytes": 458904,
+      "sha256": "497710a33f19e4971f6d5b0a4c6d1870168fdffaadfe5281160b95825b69a8e1",
+      "uri": "hull_fighter.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 475720,
+    "sha256": "9243a59a9543fd02ea3321e5b4c340c401410a7564ef260960cd7a44a7ed1f9c",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.07449626922607422,
+        0.1830695549306776,
+        0
+      ],
+      "max": [
+        5.29899263381958,
+        0.8911147512306564,
+        2.9423766567646887
+      ],
+      "min": [
+        -5.150000095367432,
+        -0.5249756413693012,
+        -2.9423766567646887
+      ],
+      "size": [
+        10.448992729187012,
+        1.4160903925999575,
+        5.8847533135293775
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.6319999694824219,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "MOUNT_COCKPIT",
+        "planIndex": 13,
+        "tags": {
+          "chamfered": true,
+          "mount": "cockpit",
+          "mountKey": "cockpit",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "MOUNT_COCKPIT"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.691999912261963,
+          0.05999999865889549,
+          -1.0199999809265137,
+          1
+        ],
+        "name": "MOUNT_ENGINE_L",
+        "planIndex": 14,
+        "tags": {
+          "chamfered": true,
+          "mount": "engine",
+          "mountKey": "engine_l",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "MOUNT_ENGINE_L"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.691999912261963,
+          0.05999999865889549,
+          1.0199999809265137,
+          1
+        ],
+        "name": "MOUNT_ENGINE_R",
+        "planIndex": 15,
+        "tags": {
+          "chamfered": true,
+          "mount": "engine",
+          "mountKey": "engine_r",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "MOUNT_ENGINE_R"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.8159999847412109,
+          0.03999999910593033,
+          -2.759999990463257,
+          1
+        ],
+        "name": "MOUNT_FIN_L",
+        "planIndex": 16,
+        "tags": {
+          "chamfered": true,
+          "mount": "fin",
+          "mountKey": "fin_l",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "MOUNT_FIN_L"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.8159999847412109,
+          0.03999999910593033,
+          2.759999990463257,
+          1
+        ],
+        "name": "MOUNT_FIN_R",
+        "planIndex": 17,
+        "tags": {
+          "chamfered": true,
+          "mount": "fin",
+          "mountKey": "fin_r",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "MOUNT_FIN_R"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.303999900817871,
+          0.03999999910593033,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 18,
+        "tags": {
+          "chamfered": true,
+          "socket": true,
+          "socketRole": "vfx",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.hull-fighter.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.303999900817871,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 19,
+        "tags": {
+          "chamfered": true,
+          "socket": true,
+          "socketRole": "weapon",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.hull-fighter.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "hull": 5,
+      "mechanical": 4
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 20,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.37767812609672546,
+          0,
+          0,
+          0,
+          0,
+          0.37767812609672546,
+          0,
+          0,
+          0,
+          0,
+          0.37767812609672546,
+          0,
+          -1.2000000774860382,
+          -0.15000000968575478,
+          -0.3199999928474426,
+          1
+        ],
+        "name": "LOD0_DET_bounty_weld",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          0.25,
+          0,
+          -0.5,
+          0.550000011920929,
+          0.15000000596046448,
+          1
+        ],
+        "name": "LOD0_DET_hardpoint_collar",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9643127918243408,
+          0,
+          0,
+          0,
+          0,
+          0.9643127918243408,
+          0,
+          0,
+          0,
+          0,
+          0.9643127918243408,
+          0,
+          -2,
+          0.20000001788139343,
+          -0.3499999940395355,
+          1
+        ],
+        "name": "LOD0_DET_heat_scorch",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.1035945117473602,
+          0,
+          0,
+          0,
+          0,
+          1.1035945117473602,
+          0,
+          0,
+          0,
+          0,
+          1.1035945117473602,
+          0,
+          2.0000000298023224,
+          -0.10000000149011612,
+          -0.42000000923871994,
+          1
+        ],
+        "name": "LOD0_DET_nav_stripe",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.5999999642372131,
+          0,
+          0,
+          0,
+          0,
+          0.5999999642372131,
+          0,
+          0,
+          0,
+          0,
+          0.5999999642372131,
+          0,
+          1.4999999403953552,
+          0.34999997913837433,
+          -0.550000011920929,
+          1
+        ],
+        "name": "LOD0_DET_patrol_stencil",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.49787402153015137,
+          0,
+          0,
+          0,
+          0,
+          0.49787402153015137,
+          0,
+          0,
+          0,
+          0,
+          0.49787402153015137,
+          0,
+          -3.5,
+          0,
+          -0.2499999925494194,
+          1
+        ],
+        "name": "LOD0_DET_reactor_vent",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.18239212036132812,
+          0,
+          0,
+          0,
+          0,
+          0.18239212036132812,
+          0,
+          0,
+          0,
+          0,
+          0.18239212036132812,
+          0,
+          4.800000190734863,
+          0.09999999962747097,
+          -0.09999999776482582,
+          1
+        ],
+        "name": "LOD0_DET_sensor_nose",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0617457926273346,
+          0,
+          0,
+          0,
+          0,
+          1.0617457926273346,
+          0,
+          0,
+          0,
+          0,
+          1.0617457926273346,
+          0,
+          0.4999999701976776,
+          -0.3499999865889549,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_wing_root_rib",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.224496364593506,
+          0,
+          0,
+          0,
+          0,
+          5.224496364593506,
+          0,
+          0,
+          0,
+          0,
+          5.224496364593506,
+          0,
+          0.07449626922607422,
+          0.27594995498657227,
+          0,
+          1
+        ],
+        "name": "LOD0_HULL_FIGHTER_MAIN",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.224496364593506,
+          0,
+          0,
+          0,
+          0,
+          5.224496364593506,
+          0,
+          0,
+          0,
+          0,
+          5.224496364593506,
+          0,
+          0.07449626922607422,
+          0.27594996988773346,
+          0,
+          1
+        ],
+        "name": "LOD1_HULL_FIGHTER_SILHOUETTE",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.222337245941162,
+          0,
+          0,
+          0,
+          0,
+          5.222337245941162,
+          0,
+          0,
+          0,
+          0,
+          5.222337245941162,
+          0,
+          0.07233715057373047,
+          0.2873910814523697,
+          0.0004622936248779297,
+          1
+        ],
+        "name": "LOD2_HULL_FIGHTER_SILHOUETTE",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/hulls/hull_fighter.glb"
+  },
+  "runtimeHash": "672f2bf9fc1a613b999a232feb57c372df5b9f8847b6302906c29d1e9c6ad028",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.29899263381958,
+          0.8911147512306564,
+          2.9423766567646887
+        ],
+        "min": [
+          -5.150000095367432,
+          -0.5249756413693012,
+          -2.9423766567646887
+        ]
+      },
+      "id": "sf.render.hull-fighter.body",
+      "nodeIds": [
+        "sf.render.hull-fighter.mesh.lod0-det-bounty-weld",
+        "sf.render.hull-fighter.mesh.lod0-det-hardpoint-collar",
+        "sf.render.hull-fighter.mesh.lod0-det-heat-scorch",
+        "sf.render.hull-fighter.mesh.lod0-det-nav-stripe",
+        "sf.render.hull-fighter.mesh.lod0-det-patrol-stencil",
+        "sf.render.hull-fighter.mesh.lod0-det-reactor-vent",
+        "sf.render.hull-fighter.mesh.lod0-det-sensor-nose",
+        "sf.render.hull-fighter.mesh.lod0-det-wing-root-rib",
+        "sf.render.hull-fighter.mesh.lod0-hull-fighter-main",
+        "sf.render.hull-fighter.mesh.lod1-hull-fighter-silhouette",
+        "sf.render.hull-fighter.mesh.lod2-hull-fighter-silhouette",
+        "sf.render.hull-fighter.root"
+      ]
+    }
+  ]
+}

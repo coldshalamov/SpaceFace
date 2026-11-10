@@ -1,0 +1,17 @@
+This is a campaign: replace every procedural stand-in object in the Asteroid Works mine with an authored asset at the flight ships' bar. Do not use INFERENCE. Do not take hitch/PQ-129 or PQ-050. Do not stop after one unit.
+
+Law: design/program/ASTEROID_WORKS_ART_CAMPAIGN.md (the inventory, the works camera, the build steps) + docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md + docs/visual-assets/MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md + design/ASTEROID_WORKS_DESIGN_LAW.md section 2.7. Dispatch: node scripts/program-dispatch.mjs --id PQ-131. Take the first claimable unit. --next still returns fleet remaster.
+
+Owner verdict 2026-08-21 on the live build: "the rover is like this 8-bit NES model inside this 3d world ... you're intentionally cutting corners." The rock is real; every OBJECT is a procedural box stack. A procedural stand-in is scaffolding, never acceptance.
+
+Bar: Hitch / Helios wholeships at play size, seen through the works camera (straight down, 31 degrees, ~120 px per cell at 1080p; 19 px at the site register). A works still beside a flight still must read as the same game.
+
+Order:
+0. PQ-131.00 Loader - the works renderer loads KTX2/meshopt release parts through the shared assetLoader path (loadWorksPart), LOD by register, disposal on exit; tools/blender/spaceface_works_camera.py.
+1. PQ-131.01 Rover - the hero: tracked rig, cab, boom pivot, bit, five-stage hopper, lid, lamp socket, vent, scar plate.
+2. PQ-131.02 Massline Core. 3. PQ-131.03 Extractor. 4. PQ-131.04 Refinery. 5. PQ-131.05 Surface derrick.
+6. PQ-131.06 Conduit kit (cable + lane: straight/corner/T/cross/end/junction). 7. PQ-131.07 Gas tap. 8. PQ-131.08 Fabricator. 9. PQ-131.09 Cargo port + crates + courier pod. 10. PQ-131.10 Inclusion kit.
+
+Each unit: reference first; Blender blockout at works scale; one skin with holes, join by material; unique UVs, bakes, authored PBR; LOD0+LOD1; scripts/build-hull-release-assets.mjs (never build_release_parts); manifest entry; wire through loadWorksPart with the named hooks; works-camera stills beside a flight still; three subagent reviews listing every defect at play size; revise; commit only that unit, then the next. check:asteroid-theater and check:playable stay green. No quality cuts, no billboards, no emissive outlines, no scaled box stacks.
+
+RESULT: DONE when every inventory row is an authored, reviewed, wired asset on master and the procedural builders for those objects are deleted.

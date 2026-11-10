@@ -1,0 +1,113 @@
+TAP version 13
+# Subtest: feel.chain_reaction: one player action, three or more secondary consequences, twice the same
+not ok 1 - feel.chain_reaction: one player action, three or more secondary consequences, twice the same
+  ---
+  duration_ms: 1059.445477
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/chain-reaction-determinism.test.mjs:22:1'
+  failureType: 'testCodeFailure'
+  error: 'Consequences or it is thin. — 1 secondary consequences from one shove: ["slam_detonation@t100: plate on #2 went off on impact"]'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/chain-reaction-determinism.test.mjs:32:10)
+    async Test.run (node:internal/test_runner/test:797:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# boots the real rapier-dynamic path twice; allow a minute
+# Subtest: feel.chain_reaction: the well converges craft into the authored band and primes what it grinds
+not ok 2 - feel.chain_reaction: the well converges craft into the authored band and primes what it grinds
+  ---
+  duration_ms: 221.633635
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/chain-reaction-determinism.test.mjs:48:1'
+  failureType: 'testCodeFailure'
+  error: 'a well converges ships to 30-60 WU/s relative; measured 72.25382122150953'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/chain-reaction-determinism.test.mjs:52:10)
+    async Test.run (node:internal/test_runner/test:797:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: kernel weave cannot manufacture planar speed — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
+ok 3 - kernel weave cannot manufacture planar speed — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
+  ---
+  duration_ms: 25.121833
+  ...
+# Subtest: assisted translation publishes one finite control-made bound — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
+ok 4 - assisted translation publishes one finite control-made bound — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
+  ---
+  duration_ms: 0.923898
+  ...
+# Subtest: authored travel ceilings are byte-for-byte unchanged
+ok 5 - authored travel ceilings are byte-for-byte unchanged
+  ---
+  duration_ms: 0.37725
+  ...
+# Subtest: feel.governor_integrity is deterministic on seed 4242 and meets every clause
+ok 6 - feel.governor_integrity is deterministic on seed 4242 and meets every clause
+  ---
+  duration_ms: 1403.118045
+  ...
+# Subtest: feel.governor_integrity meets every clause on seed 8008
+ok 7 - feel.governor_integrity meets every clause on seed 8008
+  ---
+  duration_ms: 388.85761
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# {
+#   "ok": true,
+#   "test": "vfx-settings-runtime-truth",
+#   "caps": {
+#     "low": {
+#       "cap": 1500,
+#       "burst": 0.55
+#     },
+#     "med": {
+#       "cap": 3000,
+#       "burst": 0.8
+#     },
+#     "medium": {
+#       "cap": 3000,
+#       "burst": 0.8
+#     },
+#     "high": {
+#       "cap": 4000,
+#       "burst": 1
+#     }
+#   },
+#   "passed": [
+#     "boot cap/burst [low]",
+#     "boot cap/burst [medium]",
+#     "boot cap/burst [high]",
+#     "boot[high]: no quality cap (full 4000 / burst 1.0)",
+#     "current→max→current: cap/burst live-apply",
+#     "current→max: pool migration without duplicate pools/listeners",
+#     "current→max: preserve existing live particles (upsize)",
+#     "max→current: preserve live particles within new cap (downsize)",
+#     "sanity: raw _initPools/_subscribe without teardown duplicates",
+#     "integration seam: VFX must listen for settings:changed"
+#   ],
+#   "failed": [],
+#   "defect": null
+# }
+# [vfx-settings-runtime-truth] all 10 checks passed
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-settings-runtime-truth.test.mjs
+ok 3 - /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-settings-runtime-truth.test.mjs
+  ---
+  duration_ms: 616.411383
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 6
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3034.983251

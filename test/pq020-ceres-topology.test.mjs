@@ -1,0 +1,563 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  buildPq020CeresTopologySnapshot,
+  evaluatePq020CeresTopology,
+  validatePq020CeresTopologySnapshot,
+} from '../scripts/lib/pq020CeresTopology.mjs';
+
+const SITE_ID = 'world_site_wreck_cathedral';
+const PLACE_ID = 'place_landmark_wreck_cathedral';
+// Re-pinned 2026-09-12 with scripts/lib/pq020CeresTopology.mjs: the far shelf (9c4509ff1) parks
+// 14 of the cathedral's 15 bodies and the sluice's 4 wrecks at boot; the census now counts
+// live + shelved against the plan and records `shelvedEntities`. Prior digest
+// f09251bb6637c48f264551a386a30ffc76d33b5d4a42fee87867e1f6243ec5a1.
+// Re-pinned again for the compound-collision rollout: stations now register the 23-primitive
+// ring-hub proxy and gates the 3-primitive jump-ring proxy instead of one center ball each,
+// so the sector collider count rises 23 → 66. Entity/type census unchanged. Prior digest
+// d07a76c72022e2199191e5e991267ba3e137a31705c4beb5d909b7909cbc593b.
+// Re-synced 2026-09-28 with scripts/lib/pq020CeresTopology.mjs: sanctioned Forge rebuild waves
+// moved embedded release hashes and the measured-skin collider count (184 → 190); this local
+// pin had drifted stale since the optic-structure re-pin. Prior digest
+// efa15466778447cf900b74fee7fa4f483168f7ce1bd826468139e289ffbe5cd0.
+// Re-pinned 2026-09-28 for the alien-ecology additive seam (PR #170): the Closed Refinery's
+// 12-fauna colony joins the structural census (entities 23 → 35, byType +fauna:12); colliders
+// unchanged at 190. Prior digest daac8aa195abf9517f8b5a2036824894080e4fcad68f823b03bdb3425bdfc188.
+// Re-pinned 2026-09-29 for the Kettle Line (WF-10): three drift-trail POIs each stand a live fx
+// marker (pois 6 → 9, entities 35 → 38, fx 9 → 12); colliders unchanged at 190. Prior digest
+// 1e19a7cfa232d4842c5bf8d440432dd3ffa39983c7f4fa5ca47a005c34c461db.
+// Re-pinned 2026-09-29 for Solid-World Package E (b7b499263): non-landmark rocks ≤ 90 WU are now
+// dynamic, and dynamic bodies are not compound-skin eligible, so the six live Ceres asteroids
+// dropped their measured `skin:` manifests for single ball colliders (colliders 190 → 68).
+// Entity/type census, cathedral census and releaseSha256 unchanged. Prior digest
+// c4c49314e678ae40bb122dd2f53edd17b2841d3bcf81f4894d6f351a8e7f3faa.
+// Re-pinned 2026-09-30 for solid contact dynamics (eb1869826 "make contacts solid and keep
+// player heading true"): dynamic bodies adopt measured solid skins via SKIN_DYNAMIC_TYPES,
+// restoring compound collision proxies to 6 live asteroids (128 primitives) and 2 live ships
+// (48 primitives), taking colliders 68 → 236. Prior digest
+// 718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544.
+// Re-pinned 2026-10-05 for the D90/D145 adjudication: SOLSTICE / SL-9 (5103e8668) added the
+// Star Lantern POI (authored pois 9 → 10); _spawnPOIs draws two rng values per POI even with a
+// fixed pos, so the deterministic spawn stream shifted and one patrol ship now lands inside the
+// far-shelf boundary (ship 2 → 1, entities 38 → 37, collidable 14 → 13, colliders 236 → 212).
+// Prior digest b0627637f6ac3f120dc67fb2197c0817165bf3d002dcaf8ca1fcacf9af9028c0.
+// Re-pinned 2026-10-04 for the D83 adjudication — the drift is the solid-dressing lane
+// (309deb2f7 "physics: solid dressing — every visible structure takes its measured collider",
+// the D161 adjudication), which re-derived the library pin and the dressing censuses but left
+// this file's duplicated pin stale. Six re-pointed Ceres activity-object structures (dead-hulk
+// draw, bait wreck, grave shard, cargo staging pod → barge, and kin) now carry fixed
+// measured-skin bodies in the core census: collidable 13 → 19, colliders 212 → 329 (+117
+// primitives). The additive dressing groups gained their adopted skins the same way
+// (everydaySpaceKit 0 → 58, wreckAftermath 0 → 58, worldOneOff 24 → 183 colliders). Entity/type
+// census (37), authored counts, cathedral census (15/15, 14 shelved) and releaseSha256 are all
+// unchanged — verified against the live receipt, which the standalone check passes.
+// Prior digest 8404e62c8acaa5e75feca22c173c32ee3597254df16ab0f4db176d516cf77e1b.
+// Re-pinned 2026-10-12 (D186): far residency shelves the Cathedral's fourteen static wrecks
+// at boot (core 52→38 entities, colliders 291→284); additive census v2 proves approach
+// materialization. Prior digest f3ddedcef9d4992fcf9a7c39c983fe967ab1f4906e72a4302e148fd203b5d333.
+// Re-pinned 2026-10-18 (D215): this file's duplicated pin went stale when the first-session
+// lane (7b89490b7f0, 2026-10-13) deliberately added two authored Ceres arrival-leg POIs
+// (poi_ceres_flare_rack, poi_ceres_weigh_pin — plain beacon rows) and re-derived the library
+// pin in scripts/lib/pq020CeresTopology.mjs (prior digest recorded there). The live receipt
+// reads back the re-pinned digest, authored pois 14 / zones 7, and the one-tick core census
+// 41 entities { asteroid 6, fauna 12, fx 14, ship 3, station 6 } / 17 collidable / 306 colliders
+// with the Cathedral at 15/15 materialized (14 shelved); entity/type/collider pins below move
+// to that measured truth. Prior digest 8f38ca9502b927fce2a250462f209a4a91238bf32b9c384b35f07839f3abaf6e.
+// Re-pinned 2026-10-18 (ceres-ambush-pack-dart): Ceres enemyDensity 0.18 → 0.73 funds the
+// authored belt-shadow pack (zone_ceres_ambush [3,4] incl. the weighted detonator_dart), so
+// the one-tick core carries two more live squad ships and the density-fed aftermath dressing
+// adds two solids: 43 entities { ship 3 → 5 } / 19 collidable / 355 colliders. Causality-proved
+// by neutralization (HEAD data passes, authored data fails). Prior digest
+// d0f9f1328761b4515fb95d96be9796198454f9c1d074e5c338540eccfed5b4cd.
+// Re-pinned 2026-10-18 (6926e5d09c9, Ceres derelict scavenger fix): the derelict field and its
+// driller POI moved west out of Belt Outpost's ambient-spawn protection bubble, so the authored
+// scavenger materializes — 44 entities { ship 5 → 6 } / 20 collidable / 378 colliders. Prior
+// digest 2c8f6fcee520650cb055d02f08f44b9070d5e40506c671a1030c64d4622f0eed.
+// Re-pinned 2026-10-19 (c8eec27a272, D226): the wreck-cathedral LOD1 re-author rebuilt the
+// release GLB, moving the embedded worldSite.releaseSha256 inside the digest. Entity/type
+// census, colliders, cathedral census and residency are unchanged — the standalone check
+// passes with only the digest moved. Prior digest
+// cd33a6853a0c32d493efaf80d12c8eb4a412596c821811f00c759f0c95793acc.
+const EXPECTED_STRUCTURAL_COST_DIGEST =
+  'ef111a91e4f2aceb637f368104df3e90f1db8006af77ba6f54ff05f399e6dea7';
+
+function pocket(receipt, id) {
+  const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
+  assert.ok(value, `missing ${id} pocket`);
+  return value;
+}
+
+test('PQ-020 authors four separated Ceres pockets around the immutable Cathedral reservation', async () => {
+  const receipt = await evaluatePq020CeresTopology();
+
+  assert.equal(receipt.pass, true, receipt.failures.join('\n'));
+  assert.equal(receipt.sectorId, 'sector_ceres_belt');
+  assert.equal(receipt.cathedral.siteId, SITE_ID);
+  assert.equal(receipt.cathedral.placeId, PLACE_ID);
+  assert.deepEqual(receipt.cathedral.local, { x: 300, z: 2700 });
+  assert.deepEqual(receipt.cathedral.global, { x: -11988, z: 10892 });
+  assert.equal(receipt.cathedral.reservationRadius, 620);
+  assert.equal(receipt.cathedral.coordinateReservation.pass, true);
+
+  assert.deepEqual(pocket(receipt, 'civic'), {
+    id: 'civic',
+    sourceId: 'station_ceres',
+    center: { x: -1100, z: 620 },
+    radius: 720,
+  });
+  assert.deepEqual(pocket(receipt, 'production'), {
+    id: 'production',
+    sourceId: 'zone_ceres_belt',
+    center: { x: 500, z: -700 },
+    radius: 850,
+  });
+  assert.deepEqual(pocket(receipt, 'transit'), {
+    id: 'transit',
+    sourceId: 'zone_ceres_throughline',
+    center: { x: 3155, z: -955 },
+    radius: 500,
+  });
+  assert.deepEqual(pocket(receipt, 'cathedral'), {
+    id: 'cathedral',
+    sourceId: SITE_ID,
+    center: { x: 300, z: 2700 },
+    radius: 620,
+  });
+
+  assert.equal(receipt.topology.overlaps.length, 6);
+  for (const row of receipt.topology.overlaps) {
+    assert.ok(Number.isFinite(row.clearance), `${row.pair} clearance must be finite`);
+    assert.ok(row.clearance >= 0, `${row.pair} overlaps by ${-row.clearance} WU`);
+  }
+  assert.ok(receipt.topology.minimumBoundaryClearance >= 0);
+
+  assert.equal(receipt.route.siteId, SITE_ID);
+  assert.equal(receipt.route.legs.length, 3);
+  for (const leg of receipt.route.legs) {
+    assert.notDeepEqual(leg.start, leg.end, `${leg.id} must not collapse`);
+    assert.ok(Number.isFinite(leg.distance) && leg.distance > 0, `${leg.id} distance`);
+  }
+  assert.ok(Number.isFinite(receipt.route.totalDistance) && receipt.route.totalDistance > 0);
+
+  assert.deepEqual(receipt.transit.beacon.local, { x: 3040, z: -920 });
+  assert.deepEqual(receipt.transit.beacon.global, { x: -9248, z: 7272 });
+  assert.deepEqual(receipt.transit.beacon.physicalGlobal, { x: -9248, z: 7272 });
+  assert.equal(receipt.transit.beacon.physicalPlaceId, 'place_lane_beacon');
+  assert.deepEqual(receipt.transit.beacon.systemMapDrawPos, { x: 3040, z: -920 });
+  assert.deepEqual(receipt.transit.beacon.courseGlobal, { x: -9248, z: 7272 });
+  assert.equal(receipt.transit.beacon.courseAutopilot, true);
+  assert.equal(receipt.transit.beacon.positionAliasesCanonicalPos, true);
+  assert.equal(receipt.transit.beacon.insideTransitPocket, true);
+  assert.equal(receipt.transit.noPresenceBudget, true);
+  assert.deepEqual(receipt.transit.approachMidpoint, { x: 3155, z: -955 });
+  assert.equal(receipt.transit.zoneCenteredOnApproachMidpoint, true);
+
+  assert.equal(receipt.production.mechanicalCondition.type, 'dense_asteroid');
+  assert.equal(receipt.production.mechanicalCondition.owner, 'world.hazards');
+  assert.equal(receipt.production.mechanicalCondition.centerInsideProduction, true);
+  assert.equal(receipt.production.primaryFieldInsideProduction, true);
+  assert.equal(receipt.production.civicZoneCenteredOnStation, true);
+  assert.equal(receipt.production.beltOutpostInsideProduction, true);
+  assert.deepEqual(receipt.deterministicEffects.offscreenEmbodiment, {
+    intentCount: 3,
+    // ceres-ambush-pack-dart (2026-10-18): two more live belt-shadow ships join the mix.
+    digest: 3217214187,
+    roleMixBias: {
+      hauler: 1.4,
+      miner: 2.2,
+      courier: 1,
+      escort: 1.4,
+      patrol: 1.8,
+      pirate: 1,
+      smuggler: 1,
+      rescue: 1,
+    },
+  });
+
+  assert.equal(receipt.rejectedStaleProposal.local.x, -720);
+  assert.equal(receipt.rejectedStaleProposal.local.z, -2120);
+  assert.equal(receipt.rejectedStaleProposal.accepted, false);
+  assert.ok(receipt.rejectedStaleProposal.minimumLaneClearance < 0);
+});
+
+test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields stay honest', async () => {
+  const first = await evaluatePq020CeresTopology();
+  const second = await evaluatePq020CeresTopology();
+
+  assert.equal(first.pass, true, first.failures.join('\n'));
+  assert.equal(second.pass, true, second.failures.join('\n'));
+  assert.equal(first.structuralCostDigest, EXPECTED_STRUCTURAL_COST_DIGEST);
+  assert.equal(second.structuralCostDigest, EXPECTED_STRUCTURAL_COST_DIGEST);
+  assert.equal(first.receiptDigest, second.receiptDigest);
+
+  assert.equal(first.structuralCost.scope, 'sector_ceres_belt:seed47:one-fixed-tick');
+  // Far residency (b7a4f2494, d51aba898) shelves dormant site wrecks onto the far table until
+  // the player approaches, so the Cathedral's fourteen wrecks (seven solids) no longer sit in
+  // the one-tick live core; the four ghost activity slots (7f6f048ef) stay free of
+  // physics; two new Ceres POIs shift the ordinary seeded patrol into live range. Additive
+  // Second Measure is counted separately. Re-pinned 2026-10-18 (D215) to the first-session
+  // lane's deliberate arrival-leg POIs (7b89490b7f0): core 38 → 41 entities
+  // (fx 12 → 14 for the two beacon rows, ship 2 → 3 as the shifted spawn stream lands a
+  // patrol ship inside the live range), collidable 16 → 17, colliders 284 → 306;
+  // worldSite.shelvedEntities still reads 14.
+  // 6926e5d09c9 (2026-10-18): the derelict field moved out of Belt Outpost's spawn-protection
+  // bubble, so its authored scavenger joins the one-tick live core (ship 5 → 6, total 43 → 44,
+  // collidable 19 → 20).
+  assert.deepEqual(first.structuralCost.entities, {
+    total: 44,
+    byType: { asteroid: 6, fauna: 12, fx: 14, ship: 6, station: 6 },
+    collidable: 20,
+  });
+  // Latest core260 + the patrol skin + the belt-shadow squad's two extra hulls and the two
+  // density-fed aftermath solids + the derelict scavenger's measured hull (6926e5d09c9, +23);
+  // the seven canonical Cathedral solids are shelved at boot and return on approach.
+  assert.equal(first.structuralCost.colliders, 378);
+  assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
+  assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
+  assert.equal(first.structuralCost.worldSite.shelvedEntities, 14);
+  assert.equal(first.structuralCost.residencyTier, 'FULL');
+  assert.equal(first.structuralCost.presentationAdmission, 'headless');
+  assert.ok(Number.isInteger(first.structuralCost.spatial.queries));
+  assert.ok(Number.isInteger(first.structuralCost.spatial.candidates));
+
+  assert.deepEqual(first.additiveWorldSites, second.additiveWorldSites);
+  assert.equal(
+    first.additiveWorldSites.schema,
+    'spaceface.pq020-ceres-additive-world-sites.v2',
+  );
+  assert.equal(first.additiveWorldSites.coreWorldSiteId, SITE_ID);
+  assert.equal(
+    first.additiveWorldSites.exclusionPolicy,
+    'manifest_identified_non_cathedral_world_records',
+  );
+  assert.deepEqual(first.additiveWorldSites.siteIds, [
+    'world_site_ceres_cinder_sluice', 'world_site_ceres_second_measure',
+  ]);
+  assert.equal(first.additiveWorldSites.allMaterializedExactlyAsPlanned, true);
+  // `live` is the approach census — the site as it stands for a player who flies in. `boot` is
+  // the sector-entry census: Second Measure's three compound payload sections are approach-
+  // dormant by far-residency design (a lean far row cannot rebuild their compound bodies).
+  assert.deepEqual(first.additiveWorldSites.totals, {
+    live: { entities: 17, byType: { fx: 2, wreck: 15 }, collidable: 10, colliders: 18 },
+    boot: { entities: 14, byType: { fx: 2, wreck: 12 }, collidable: 7, colliders: 7 },
+    planned: { entities: 17, byType: { fx: 2, wreck: 15 }, collidable: 10, colliders: 18 },
+  });
+  const cinder = first.additiveWorldSites.sites[0];
+  assert.equal(cinder.siteId, 'world_site_ceres_cinder_sluice');
+  assert.equal(cinder.exactAgreement, true);
+  assert.deepEqual(cinder.live, cinder.planned);
+  assert.deepEqual(cinder.live, cinder.boot);
+  assert.equal(cinder.approachDormant, 0);
+  const secondMeasure = first.additiveWorldSites.sites[1];
+  assert.equal(secondMeasure.siteId, 'world_site_ceres_second_measure');
+  assert.equal(secondMeasure.exactAgreement, true);
+  // Five shell solids plus three whole finite sections (5+5+1 boxes), six interaction
+  // components and one non-solid visual root. Structural sections are real wrecks, not loot.
+  assert.deepEqual(secondMeasure.live, {
+    entities: 12, byType: { fx: 1, wreck: 11 }, collidable: 8, colliders: 16,
+  });
+  assert.deepEqual(secondMeasure.live, secondMeasure.planned);
+  // At sector entry the three compound sections are dormant (boot 9/5); flying into the
+  // site's approach envelope must reauthor them from the manifest with their web boxes.
+  assert.deepEqual(secondMeasure.boot, {
+    entities: 9, byType: { fx: 1, wreck: 8 }, collidable: 5, colliders: 5,
+  });
+  assert.equal(secondMeasure.approachDormant, 3);
+
+  assert.deepEqual(first.additiveDressing, second.additiveDressing);
+  assert.equal(
+    first.additiveDressing.schema,
+    'spaceface.pq020-ceres-additive-dressing.v1',
+  );
+  assert.equal(
+    first.additiveDressing.exclusionPolicy,
+    'explicit_world_dressing_data_flags',
+  );
+  assert.deepEqual(first.additiveDressing.groupIds, [
+    'everydaySpaceKit', 'worldOneOff', 'wreckAftermath',
+  ]);
+  // The Long Berth yard tug is an authored physical wreck body (0c6f0ea1a). D141 (09132834b)
+  // keeps worldOneOff bodies out of the far-actor shelf — a lean far row would strip the
+  // identity fields the unique one-off needs to rematerialize exactly once — so it now stays
+  // live here as one collidable wreck carrying a 24-primitive measured skin.
+  // The solid-dressing lane (309deb2f7, D161) then gave every visible dressing structure its
+  // measured collider — the strut shrine, pirate ram, pod-field shells and kit pieces above the
+  // craft-scale floor joined the yard tug as fixed measured-skin solids (totals collidable
+  // 1 → 15, colliders 24 → 299). Pieces under the floor stay ghosts.
+  assert.deepEqual(first.additiveDressing.totals, {
+    entities: 23,
+    byType: { fx: 22, wreck: 1 },
+    collidable: 17,
+    colliders: 309,
+  });
+  assert.equal(first.additiveDressing.ambiguousEntities, 0);
+  assert.deepEqual(first.additiveDressing.groups, [
+    {
+      id: 'everydaySpaceKit',
+      dataFlag: 'everydaySpaceKit',
+      live: { entities: 6, byType: { fx: 6 }, collidable: 3, colliders: 58 },
+    },
+    {
+      id: 'worldOneOff',
+      dataFlag: 'worldOneOff',
+      live: { entities: 11, byType: { fx: 10, wreck: 1 }, collidable: 9, colliders: 183 },
+    },
+    {
+      id: 'wreckAftermath',
+      dataFlag: 'wreckAftermath',
+      // ceres-ambush-pack-dart (2026-10-18): the density dial feeds aftermath dressing volume.
+      live: { entities: 6, byType: { fx: 6 }, collidable: 5, colliders: 68 },
+    },
+  ]);
+
+  for (const group of Object.values(first.requiresHeaded)) {
+    assert.equal(group.requiresHeaded, true);
+    for (const value of Object.values(group.fields)) assert.equal(value, null);
+  }
+});
+
+test('PQ-020 validator fails closed on topology, structural, map, and evidence-schema drift', async () => {
+  const snapshot = await buildPq020CeresTopologySnapshot();
+
+  const cathedralDrift = structuredClone(snapshot);
+  cathedralDrift.cathedral.local.x += 1;
+  assert.equal(validatePq020CeresTopologySnapshot(cathedralDrift).pass, false);
+
+  const overlap = structuredClone(snapshot);
+  overlap.topology.pockets.find((candidate) => candidate.id === 'transit').center =
+    { ...overlap.topology.pockets.find((candidate) => candidate.id === 'production').center };
+  assert.equal(validatePq020CeresTopologySnapshot(overlap).pass, false);
+
+  const structuralDrift = structuredClone(snapshot);
+  structuralDrift.structuralCost.entities.total += 1;
+  const changed = validatePq020CeresTopologySnapshot(structuralDrift);
+  assert.equal(changed.pass, false);
+  assert.ok(changed.failures.some((failure) => failure.startsWith('structuralCostDigest:')));
+
+  for (const type of ['asteroid', 'fx', 'wreck']) {
+    const ordinaryCeresDrift = structuredClone(snapshot);
+    ordinaryCeresDrift.structuralCost.entities.total += 1;
+    ordinaryCeresDrift.structuralCost.entities.byType[type] += 1;
+    const result = validatePq020CeresTopologySnapshot(ordinaryCeresDrift);
+    assert.equal(result.pass, false, `${type} growth must remain inside the pinned core gate`);
+    assert.ok(result.failures.some((failure) => failure.startsWith('structuralCostDigest:')));
+  }
+
+  const cinderLiveDrift = structuredClone(snapshot);
+  cinderLiveDrift.additiveWorldSites.sites[0].live.entities += 1;
+  const cinderLiveResult = validatePq020CeresTopologySnapshot(cinderLiveDrift);
+  assert.equal(cinderLiveResult.pass, false);
+  assert.ok(cinderLiveResult.failures.some((failure) => (
+    failure.startsWith('additiveWorldSites.world_site_ceres_cinder_sluice.live:')
+  )));
+
+  const cinderPlannedDrift = structuredClone(snapshot);
+  cinderPlannedDrift.additiveWorldSites.sites[0].planned.collidable += 1;
+  const cinderPlannedResult = validatePq020CeresTopologySnapshot(cinderPlannedDrift);
+  assert.equal(cinderPlannedResult.pass, false);
+  assert.ok(cinderPlannedResult.failures.some((failure) => (
+    failure.startsWith('additiveWorldSites.world_site_ceres_cinder_sluice.planned:')
+  )));
+
+  const secondMeasureDrift = structuredClone(snapshot);
+  // Matching a bad live/planned census must not hide a lost section collider.
+  const secondMeasure = secondMeasureDrift.additiveWorldSites.sites[1];
+  secondMeasure.live.colliders -= 1;
+  secondMeasure.planned.colliders -= 1;
+  const secondMeasureResult = validatePq020CeresTopologySnapshot(secondMeasureDrift);
+  assert.equal(secondMeasureResult.pass, false);
+  assert.ok(secondMeasureResult.failures.some((failure) => (
+    failure.startsWith('additiveWorldSites.world_site_ceres_second_measure.planned:')
+  )));
+
+  const additiveDressingDrift = structuredClone(snapshot);
+  additiveDressingDrift.additiveDressing.groups[0].live.entities -= 1;
+  const additiveDressingResult = validatePq020CeresTopologySnapshot(additiveDressingDrift);
+  assert.equal(additiveDressingResult.pass, false);
+  assert.ok(additiveDressingResult.failures.some((failure) => (
+    failure.startsWith('additiveDressing.everydaySpaceKit.live:')
+  )));
+
+  const ambiguousDressing = structuredClone(snapshot);
+  ambiguousDressing.additiveDressing.ambiguousEntities = 1;
+  const ambiguousDressingResult = validatePq020CeresTopologySnapshot(ambiguousDressing);
+  assert.equal(ambiguousDressingResult.pass, false);
+  assert.ok(ambiguousDressingResult.failures.includes(
+    'additiveDressing.ambiguousEntities:1!=0',
+  ));
+
+  const mapDrift = structuredClone(snapshot);
+  mapDrift.transit.beacon.systemMapDrawPos.x += 1;
+  assert.equal(validatePq020CeresTopologySnapshot(mapDrift).pass, false);
+
+  const missingGroup = structuredClone(snapshot);
+  delete missingGroup.requiresHeaded.routePerformance;
+  const missingGroupReceipt = validatePq020CeresTopologySnapshot(missingGroup);
+  assert.equal(missingGroupReceipt.pass, false);
+  assert.ok(missingGroupReceipt.failures.includes('requiresHeaded:routePerformance:marker'));
+
+  const missingField = structuredClone(snapshot);
+  delete missingField.requiresHeaded.visualStates.fields.appliedLod;
+  const missingFieldReceipt = validatePq020CeresTopologySnapshot(missingField);
+  assert.equal(missingFieldReceipt.pass, false);
+  assert.ok(missingFieldReceipt.failures.includes('requiresHeaded:visualStates.appliedLod:missing'));
+
+  const extraGroup = structuredClone(snapshot);
+  extraGroup.requiresHeaded.fabricatedAcceptance = {
+    requiresHeaded: true,
+    fields: { passed: true },
+  };
+  assert.equal(validatePq020CeresTopologySnapshot(extraGroup).pass, false);
+
+  const extraField = structuredClone(snapshot);
+  extraField.requiresHeaded.routePerformance.fields.fabricatedGpuPass = 16.7;
+  assert.equal(validatePq020CeresTopologySnapshot(extraField).pass, false);
+});
+
+test('PQ-020 matched baseline is a SIBLING of the pinned structural cost, not a re-pin of it', async () => {
+  const receipt = await evaluatePq020CeresTopology();
+
+  assert.equal(receipt.pass, true, receipt.failures.join('\n'));
+  // The load-bearing invariant: adding the matched-baseline record must not move the pinned digest.
+  assert.equal(receipt.structuralCostDigest, EXPECTED_STRUCTURAL_COST_DIGEST);
+
+  const baseline = receipt.matchedBaseline;
+  assert.equal(baseline.schema, 'spaceface.pq020-ceres-matched-baseline.v1');
+  assert.ok(baseline.digest);
+  assert.notEqual(baseline.digest, receipt.structuralCostDigest);
+
+  // Headless rows carry real numbers …
+  assert.equal(baseline.headless.structural.entities, receipt.structuralCost.entities.total);
+  assert.equal(baseline.headless.structural.colliders, receipt.structuralCost.colliders);
+  assert.equal(baseline.headless.structural.worldSiteEntities, 15);
+  assert.ok(baseline.headless.mapLayout.digest);
+  assert.equal(baseline.headless.naturalJobCensus.perSeed.length, 3);
+  assert.equal(baseline.headless.offscreenRoleMix.perSeed.length, 3);
+  assert.ok(baseline.headless.routeLegs.throughCeresItinerary.totalDistanceWu > 0);
+
+  // … and every headed row stays null and marked, because PQ-034 holds those leases.
+  for (const group of Object.values(baseline.requiresHeaded)) {
+    assert.equal(group.requiresHeaded, true);
+    assert.match(group.blockedBy, /PQ-034/);
+    for (const value of Object.values(group.fields)) assert.equal(value, null);
+  }
+});
+
+test('PQ-020 receipt carries the continuation proofs and reports routing honestly', async () => {
+  const receipt = await evaluatePq020CeresTopology();
+
+  assert.equal(receipt.pass, true, receipt.failures.join('\n'));
+  assert.equal(receipt.naturalJobs.seedsWithIndustrialJob, 3);
+  assert.deepEqual(receipt.naturalJobs.heldOutSeeds, [90731, 90737, 90743]);
+  assert.equal(receipt.naturalJobs.advancementClaim.claimed, false);
+  assert.equal(receipt.offscreenProjection.allStable, true);
+  assert.equal(receipt.mechanicalCondition.bound, true);
+  assert.equal(receipt.mechanicalCondition.changesObservablePlayerDecision, true);
+  assert.equal(receipt.mechanicalCondition.laneDangerConsumer.fires, false);
+  assert.equal(receipt.reentryIdempotence.staticContentMaterializesExactlyOnce, true);
+  assert.equal(receipt.exactAgreement.allAgree, true);
+  // The generic router bypasses Ceres. The receipt must say so rather than imply a through-route.
+  assert.equal(receipt.routing.generic.traversesCeres, false);
+  assert.match(receipt.routing.generic.verdict, /BYPASSES Ceres/);
+});
+
+test('PQ-020 validator fails closed on continuation-proof drift', async () => {
+  const snapshot = await buildPq020CeresTopologySnapshot();
+
+  // A fabricated headed row is the exact failure this packet exists to prevent.
+  const fabricatedHeaded = structuredClone(snapshot);
+  fabricatedHeaded.matchedBaseline.requiresHeaded.frame.fields.p95Ms = 16.7;
+  const fabricatedReceipt = validatePq020CeresTopologySnapshot(fabricatedHeaded);
+  assert.equal(fabricatedReceipt.pass, false);
+  assert.ok(fabricatedReceipt.failures.includes('matchedBaseline:frame.p95Ms:fabricated'));
+
+  // A seed that produced no natural job must fail, not be quietly dropped.
+  const noJobs = structuredClone(snapshot);
+  noJobs.naturalJobs.perSeed[0].withMetadata.jobKinds = {};
+  assert.equal(validatePq020CeresTopologySnapshot(noJobs).pass, false);
+
+  // Claiming lifecycle advancement this harness did not observe must fail.
+  const overclaim = structuredClone(snapshot);
+  overclaim.naturalJobs.advancementClaim.claimed = true;
+  const overclaimReceipt = validatePq020CeresTopologySnapshot(overclaim);
+  assert.equal(overclaimReceipt.pass, false);
+  assert.ok(overclaimReceipt.failures.includes('naturalJobs:advancement-overclaim'));
+
+  // A mechanical condition that stopped changing anything observable must fail.
+  const inertCondition = structuredClone(snapshot);
+  inertCondition.mechanicalCondition.changesObservablePlayerDecision = false;
+  assert.equal(validatePq020CeresTopologySnapshot(inertCondition).pass, false);
+
+  // Duplicated static content after Continue must fail.
+  const duplicated = structuredClone(snapshot);
+  duplicated.reentryIdempotence.afterContinue.beaconEntities = 2;
+  assert.equal(validatePq020CeresTopologySnapshot(duplicated).pass, false);
+
+  // A coordinate consumer that silently went missing must fail, not pass vacuously.
+  const missingConsumer = structuredClone(snapshot);
+  missingConsumer.exactAgreement.rows[0].missing = ['courseGlobal'];
+  missingConsumer.exactAgreement.allAgree = false;
+  assert.equal(validatePq020CeresTopologySnapshot(missingConsumer).pass, false);
+
+  // Cathedral navigation deliberately targets the manifest-authored safe course rather than the
+  // wreck centre. The validator must recompute that binding instead of trusting the row's cached
+  // mismatch metadata.
+  const baselineCathedralRow = snapshot.exactAgreement.rows
+    .find((row) => row.id === 'cathedral');
+  assert.notDeepEqual(baselineCathedralRow.courseGlobal, baselineCathedralRow.expectedGlobal);
+  assert.deepEqual(baselineCathedralRow.courseGlobal, baselineCathedralRow.expectedCourseGlobal);
+  assert.equal(baselineCathedralRow.courseLabel, 'Wreck Cathedral');
+  assert.equal(baselineCathedralRow.courseArrivalRadius, 48);
+  assert.deepEqual(baselineCathedralRow.courseIntent, {
+    type: 'poi', reason: 'Wreck Cathedral', waypointKind: 'local', autopilot: true,
+  });
+  for (const [label, failureLabel, mutate] of [
+    ['target', 'courseTarget', (row) => { row.courseGlobal.x += 1; }],
+    ['label', 'courseLabel', (row) => { row.courseLabel = 'Unsafe Cathedral centre'; }],
+    ['radius', 'courseRadius', (row) => { row.courseArrivalRadius += 1; }],
+    ['intent', 'courseIntent', (row) => { row.courseIntent.autopilot = false; }],
+  ]) {
+    const courseDrift = structuredClone(snapshot);
+    const cathedralRow = courseDrift.exactAgreement.rows
+      .find((row) => row.id === 'cathedral');
+    mutate(cathedralRow);
+    const courseDriftReceipt = validatePq020CeresTopologySnapshot(courseDrift);
+    assert.equal(courseDriftReceipt.pass, false, `Cathedral course ${label} drift must fail`);
+    assert.ok(courseDriftReceipt.failures.some((failure) => (
+      failure.startsWith(`exactAgreement:cathedral:${failureLabel}`)
+    )), `Cathedral course ${label} drift must identify the recomputed binding`);
+  }
+
+  // An itinerary waypoint drifting off its authored anchor must fail.
+  const itineraryDrift = structuredClone(snapshot);
+  itineraryDrift.routing.throughCeresItinerary.allWaypointsMatchAuthored = false;
+  assert.equal(validatePq020CeresTopologySnapshot(itineraryDrift).pass, false);
+
+  // Offscreen projection losing determinism must fail.
+  const unstableProjection = structuredClone(snapshot);
+  unstableProjection.offscreenProjection.allStable = false;
+  assert.equal(validatePq020CeresTopologySnapshot(unstableProjection).pass, false);
+
+  // If the counterfactual arm stopped actually reaching the producer, the A/B would be theatre —
+  // the arms would be identical and the census would still look green. That must fail.
+  const brokenAb = structuredClone(snapshot);
+  brokenAb.naturalJobs.perSeed[0].withoutMetadata.observedIndustriesMining = true;
+  const brokenAbReceipt = validatePq020CeresTopologySnapshot(brokenAb);
+  assert.equal(brokenAbReceipt.pass, false);
+  assert.ok(brokenAbReceipt.failures.some(
+    (failure) => failure.includes('counterfactualIndustriesMining'),
+  ));
+
+  // Likewise if the WITH arm's metadata never reached the producer.
+  const unseenMetadata = structuredClone(snapshot);
+  unseenMetadata.naturalJobs.perSeed[0].withMetadata.observedIndustriesMining = false;
+  assert.equal(validatePq020CeresTopologySnapshot(unseenMetadata).pass, false);
+
+  // Re-labelling the recomputed projection as a survived-save claim must fail.
+  const projectionOverclaim = structuredClone(snapshot);
+  projectionOverclaim.reentryIdempotence.offscreenProjectionPersistence.claimed = true;
+  const projectionReceipt = validatePq020CeresTopologySnapshot(projectionOverclaim);
+  assert.equal(projectionReceipt.pass, false);
+  assert.ok(projectionReceipt.failures.includes('reentryIdempotence:projection-persistence-overclaim'));
+});

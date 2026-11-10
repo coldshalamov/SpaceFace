@@ -1,0 +1,139 @@
+CRITIC ROUND 5 — RESEARCH (tech tree), with an Achievements confirmation
+Scored against ORRERY.md, the critic brief (including §7 and the measured bar), and my round-4
+report (con-r4-critic.txt).
+
+Tree: 70e62765b + 1a1f6a825.
+- The Research stills (con-r26-*, shot 10:17-10:23) come after the final commit (10:15).
+- The Achievements stills (con-r25-*, shot 10:09-10:10) come after 70e62765b, the last commit that
+  touched Achievements. con-r26-ach-1920 and -s-achcat-1280 have the same byte size as their r25
+  twins.
+Crops: scratchpad/crops/concrit-5-*.png.
+How I measured: label boxes are pixel bounding boxes of the text. "Gap" means the distance from a
+name's box to a star's visible light: its ring or band at grey ≥70, or for a researched glint, its
+core and its spike lines.
+
+=====================================================================================================
+REPORT A — RESEARCH (the tech tree)
+=====================================================================================================
+
+1. VERDICT: PASSED, overall 8.0 (previous 7.9). (a) PASS. (b) PASS. No axis below 7.
+   The pass is marginal.
+   The line I have drawn every round:
+   - A name at rest that sits nearer another star than its own blocks. That was Out of the Pocket
+     in r3, and Deflector Theory and Guided Ordnance in r4.
+   - A name nearer its own star but inside the 20 px margin is a Legibility deduction.
+   - In a focus state, the chosen star is named three ways: its own name, the Hand, and the
+     reading. There, the same measure is a deduction, not a blocker.
+   At rest, no name on any still sits nearer another star than its own.
+   Four names at 1920 sit inside the margin by my measure. Only one of them reads wrong to the eye:
+   Fire Control, which is centred over the Payload Conduction disc (section 2; fix item 1 in
+   section 4).
+
+2. THE SIX AXES
+   Composition 8.1 (prev 8.1). This is unchanged; the multi-line names ("Fire / Control",
+     "Focused / Extraction", "Guided / Ordnance / 4K CR · 7 RP") stack neatly over their stars.
+   Hierarchy 8.1 (prev 8.1). Unchanged. The branches read before the rings, and the frontier leads.
+   Legibility 7.8 (prev 7.5). Both round-4 cases are fixed:
+     - Deflector Theory at 1280. On the new career (con-r26-tt-1280) it stands directly left of
+       its own star (274-367 by 96-106; star at 392,100), level with it.
+       In the progress state (con-r26-ttp-1280) it is two lines (317-368 by 96-120) that end ~4 px
+       from its glint's left spike. Hardened Deflectors is named again, level with its own disc
+       (266-381 by 134-142; disc at 407,133), ~26 px from the Deflector glint.
+       (concrit-5-defl1280, -defl1280p)
+     - Guided Ordnance at 1920 (con-r26-ttp-1920). It is centred above its own reticle (320-411 by
+       460-507; reticle at 358,540, ~17 px) and ~22 px from Combat Basics' upward spike. It is now
+       nearer its own star, where in r4 it was nearer Combat Basics (concrit-5-guided).
+     The one name that reads wrong is Fire Control at 1920 (con-r26-ttp-1920 and -s-focus-1920; concrit-5-fire,
+     -payload). "Fire / Control" (459-503 by 437-461) hangs off its glint (437,412):
+     - at rest it is ~22 px from the glint's spike lines and ~25 px from the locked Payload
+       Conduction disc below it (its band starts at y 486);
+     - in the focus state the chosen ring's ticks rise to y 480, so the name is ~19 px from the
+       chosen star and ~22 px from its own.
+     It is centred within 5 px above that disc, which is exactly how Guided Ordnance, 120 px to its
+     left, is placed over its own star. A reader can take it as the disc's name.
+     In the focus state the chosen star's identity is still carried three ways: by "Payload
+     Conduction" printed directly under it, by the Hand, and by the reading. So this is a
+     deduction, not a blocker.
+     Measured at 1920 rest (con-r26-ttp-1920): every name's pixel box, plus the four spikes of each
+     glint to where they fade below grey 70 (~30 px; Fire Control's reach 24-33).
+     Nearer its own star by 20 px or more: Strike Craft, Attack Topology, Warship License, Deflector
+     Theory, Kinetic Drivers, Beam Focusing, Long-Range Survey, Graviton Drives, Impulse Ballistics,
+     Industrial Mining, Bulk Logistics, Tractor Systems, Combat Basics and Drive Tuning.
+     Nearer its own star but inside the margin:
+     - Guided Ordnance: ~17 px to its own reticle, ~22 px to Combat Basics' upward spike;
+     - Focused Extraction: ~16 px, against ~28 px to Industrial Mining's spikes;
+     - Hardened Deflectors: ~13 px, against ~30 px to Deflector Theory's downward spike;
+     - Fire Control: ~22 px, against ~25 px (above).
+     The builder reports all of these clear the margin, so our spike models differ. Only Fire
+     Control reads wrong to the eye. The other three are centred on or level with their own star.
+   ORRERY fidelity 8.1 (prev 8.1). Unchanged. Names that cannot rest show on hover or choice
+     (Guided Ordnance, Fire Control and Focused Extraction at 1280; con-r26-s-lens-1280 shows the
+     Lens caption doing it). That is the right fallback for a researched star; for an open star, see
+     fix item 2.
+   Craft/detail 8.0 (prev 8.0). Unchanged.
+   Interaction clarity 8.0 (prev 7.8). The arrival view at 1280 no longer misleads the first
+     choice. The focus state names the chosen star below it (429-500 by 541-565).
+
+3. ROUND-4 BLOCKER, ITEM BY ITEM
+   1 Name association:
+     - Deflector Theory at 1280: DONE.
+     - Hardened Deflectors named at 1280: DONE.
+     - Guided Ordnance at 1920: DONE.
+     - Payload Conduction in focus: DONE (named below its own star).
+     - One name still reads wrong: Fire Control at 1920 (section 4, item 1).
+   Not built, as the builder says: the branch-completion flash.
+
+4. BLOCKERS: none. Fix next, in order:
+   1. Fire Control at 1920 (con-r26-ttp-1920, 459-503 by 437-461). Hold it to the rule the way the
+      1280 layout already does: if no side of the glint clears the Payload Conduction disc by 20 px,
+      show the name on hover or choice.
+      A likely cause, worth checking: the placer may count a glint as a disc of spike radius. If so,
+      a name just off a spike tip scores as touching its own star even when it is centred over a
+      neighbour. Measure to the glint's core and its four spike lines instead.
+   2. At 1280, two open (frontier) stars carry no name at rest: Guided Ordnance and Focused
+      Extraction (con-r26-ttp-1280). These are the stars a player is choosing between. For an open
+      star, prefer a short leader tick to the hover fallback. Researched stars, such as Fire
+      Control, may keep the fallback.
+   3. The branch-completion flash (still missing; see 5).
+
+5. What would make this memorable that is still missing: the branch-completion flash. When the
+   last star of a sector lights, its lines join into a figure and the rim arc closes.
+
+6. STILLS READ (all 8 given, all from the final commit)
+   - tt-1920, tt-1280 and tt-2560: the six open names each stand by their own star.
+   - ttp-1920: every name measured (list and numbers in section 2, Legibility). None sits nearer
+     another star; four sit inside the margin; one (Fire Control) reads wrong.
+   - ttp-1280: the shown names were checked by eye and measured for Deflector Theory and Hardened
+     Deflectors; each stands by its own star. Guided Ordnance, Fire Control and Focused Extraction
+     are unnamed at rest (fix item 2).
+   - ttp-2560: checked by eye; each name stands by its own star, and Fire Control stands right of
+     its glint, level with it.
+   - lens-1280: clean. The caption reads "Payload Conduction / LOCKED · 18K CR · 21 RP".
+   - focus-1920: Payload Conduction is named below its own star; the Fire Control case is as in
+     section 2.
+
+7. OWNER CRITERIA
+   (a) PASS. Unchanged from round 4: bands at 72-81 (≥2.2:1), solid locked discs, bright open
+       rings, produced glints, and names carved into the light with no boxes.
+   (b) PASS. The unlock beat (light out along the Hand, the flare, sweeps waking the next stars) is
+       Research-only.
+
+=====================================================================================================
+REPORT B — ACHIEVEMENTS: STILL PASSED
+=====================================================================================================
+
+VERDICT: PASSED, overall 8.1 (previous 8.1). (a) PASS. (b) PASS.
+Axes: Composition 8.0, Hierarchy 8.2, Legibility 8.1, ORRERY fidelity 8.1, Craft/detail 8.2
+(prev 8.0), Interaction clarity 8.2. Mean 8.13.
+- Both round-4 craft items are DONE:
+  - The 1280 Massline turn names Keep the Speed and Razor Release again (con-r25-s-achcat-1280;
+    Keep the Speed at 539-664 by 162-173 above its medal at 581,206; Razor Release at 406-528 by
+    288-298, ~15 px from its own halo and ~51 px from the next).
+  - Rock Has a Price stands below-right of its medal (con-r25-ach-1920, 885-1044 by 831-844):
+    ~9 px from its own halo, ~50 px from Into the Crucible, and 22 px clear of "CRUCIBLE 0/5".
+- The 1920 Massline turn now also names Light Ships Are Ammunition, hugging its medal's left side
+  (con-r25-s-achcat-1920, 583-841 by 701-731): ~9 px from its own halo and ~31 px from the
+  Adventure medal below.
+- The 1280 new profile (con-r25-ach-1280) names Out of the Pocket, Signed and Delivered and Paper
+  Trail, each by its own medal.
+- Nothing regressed.

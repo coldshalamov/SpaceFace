@@ -1,0 +1,89 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { createBus } from '../src/core/eventBus.js';
+import {
+  AMBIENT_GAP_STEP_S,
+  admitNpcCounterplayBark,
+} from '../src/systems/barkDirector.js';
+import { MASSLINE_COUNTERPLAY_BARKS } from '../src/data/masslineCounters.js';
+import { broadcastDishBeatRecord } from '../src/render/stationSideEventVfx.js';
+import { createMarketNews } from '../src/ui/marketNews.js';
+import { buildReply, rememberGhostConvoyRumor } from '../src/ui/station/barContacts.js';
+import { resolveGateVerdictRingRate } from '../src/render/infrastructureMotion.js';
+
+test('an NPC contesting the line barks once per engagement, and the next engagement speaks again', () => {
+  // FIGHT-12 gates once per engagement; the aftermath census re-arms after the last
+  // pressing hostile leaves, and the specialist speaks from its own authored lines.
+  const host = {};
+  const first = admitNpcCounterplayBark(host, { actorId: 4, role: 'specialist' }, 0);
+  const second = admitNpcCounterplayBark(host, { actorId: 4, role: 'specialist' }, 1);
+  const sameEngagementLater = admitNpcCounterplayBark(host, { actorId: 9, role: 'ace' }, AMBIENT_GAP_STEP_S);
+  assert.ok(MASSLINE_COUNTERPLAY_BARKS.includes(first.text), 'the specialist speaks one of its authored lines');
+  assert.equal(second, null);
+  assert.equal(sameEngagementLater, null, 'a second counter in the same engagement stays quiet, even past the ambient gap');
+  host._npcCounterplayEngagement = 1; // what the quiet aftermath boundary does
+  const nextEngagement = admitNpcCounterplayBark(host, { actorId: 9, role: 'ace' }, AMBIENT_GAP_STEP_S * 2);
+  assert.equal(nextEngagement.role, 'ace');
+  assert.equal(host._npcCounterplayBarks.length, 2);
+});
+
+test('a broadcast tic beats the dish and a quiet broadcaster does not', () => {
+  const beat = broadcastDishBeatRecord({
+    stationId: 'station_helios', tic: 3, pos: { x: 10, z: 4 },
+  });
+  assert.equal(beat.kind, 'dish-beat');
+  assert.equal(beat.pattern, 'station:sideEvent');
+  assert.equal(beat.trajectory, 'dish-sweep');
+  assert.equal(broadcastDishBeatRecord({ stationId: 'station_helios', quiet: true, tic: 3, pos: { x: 1, z: 1 } }), null);
+  assert.equal(broadcastDishBeatRecord({ stationId: 'station_helios', pos: { x: 1, z: 1 } }), null);
+});
+
+test('a miner relocation in the current sector is one cited headline', () => {
+  const state = {
+    meta: { seed: 4242 },
+    simTime: 12,
+    world: { currentSectorId: 'sector_helios_prime' },
+    ui: {},
+  };
+  const news = createMarketNews({ state, bus: createBus(), helpers: {} });
+  state.bus = null;
+  news.bus && news.bus.emit;
+  const bus = createBus();
+  const wired = createMarketNews({ state, bus, helpers: {} });
+  bus.emit('npcjobs:minerRelocated', { sectorId: 'sector_ceres_drift', simTime: 12 });
+  assert.equal(state.ui.marketNews.log.length, 0, 'off-sector relocation stays off the ticker');
+  bus.emit('npcjobs:minerRelocated', { sectorId: 'sector_helios_prime', simTime: 12 });
+  assert.equal(state.ui.marketNews.log.length, 1);
+  // Plain-language ticker (83fd33bd8): the sector's name, never its id slug; the id stays on sourceRef.
+  assert.match(state.ui.marketNews.log[0].text, /Helios Prime/);
+  assert.doesNotMatch(state.ui.marketNews.log[0].text, /sector_helios_prime/);
+  assert.equal(state.ui.marketNews.log[0].sourceRef, 'miner-relocated:sector_helios_prime:12');
+  wired.destroy && wired.destroy();
+  news.destroy && news.destroy();
+});
+
+test('a ghost convoy rumour is a bar line and does not name a position', () => {
+  const state = { ui: {}, world: { currentSectorId: 'sector_helios_prime' } };
+  const rumor = rememberGhostConvoyRumor(state, {
+    line: 'A convoy went quiet on the lane.',
+    sectorId: 'sector_helios_prime',
+    laneKey: 'helios-freight',
+  });
+  assert.equal(rumor.text, 'A convoy went quiet on the lane.');
+  assert.equal(/position|bearing|coords/i.test(rumor.text), false);
+  const reply = buildReply('barkeep', 'rumors', { state }, 'station_helios', { role: 'barkeep' });
+  assert.equal(reply.text, rumor.text);
+});
+
+test('gate verdicts change the ring rate in three different ways', () => {
+  const base = 0.2;
+  const pass = resolveGateVerdictRingRate(base, 'pass');
+  const hold = resolveGateVerdictRingRate(base, 'hold');
+  const refusal = resolveGateVerdictRingRate(base, 'refusal');
+  assert.ok(pass > base);
+  assert.ok(hold < base && hold > refusal);
+  assert.ok(refusal < hold);
+  assert.notEqual(pass, hold);
+  assert.notEqual(hold, refusal);
+});

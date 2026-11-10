@@ -1,0 +1,55 @@
+{
+  "schema": "spaceface.goldenWardenModuleTriad.recipeSpec.v1",
+  "recipeId": "golden-warden-module-triad-v1",
+  "manufacturer": {
+    "name": "Varden Naval Works",
+    "family": "Aegis command modules",
+    "language": "protected apertures, split ochre service marks, dark composite gaskets, restrained alloy edges, and mechanically rooted thermal hardware"
+  },
+  "inputs": {
+    "cockpit_recessed": {
+      "file": "cockpit_recessed.glb",
+      "bytes": 1510524,
+      "sha256": "9B1471C5A8E243A96A7D68525D510CFED4266D8D49BCFD6B27C3B6A2E1A61390",
+      "sourceBounds": [5.7, 1.23, 3.5],
+      "targetBounds": [5.7, 0.9, 1.72]
+    },
+    "engine_plasma_ring": {
+      "file": "engine_plasma_ring.glb",
+      "bytes": 1573872,
+      "sha256": "67354D60F2B845444E9C8B6DA8DF026AE906E5F770C994C73C3363F80AD274C7",
+      "sourceBounds": [2.77, 2.08, 2.08],
+      "targetBounds": [2.77, 1.22, 1.22]
+    },
+    "fin_stabilator": {
+      "file": "fin_stabilator.glb",
+      "bytes": 1518812,
+      "sha256": "FA96CA3A8148B23BE08A598F7E7A714EA9BBEFCC775B44DF31581B61F25F422E",
+      "sourceBounds": [4.8, 0.835, 3.6],
+      "targetBounds": [4.8, 0.56, 1.6]
+    }
+  },
+  "coordinateContract": {
+    "gltf": "+X forward, +Y up, +Z starboard, metres",
+    "blender": "+X forward, +Z up, -Y starboard",
+    "pivot": "Each module root remains at world origin with applied mesh transforms",
+    "scaleRepair": "Preserve source X length while reducing Y/Z envelope; runtime X-length normalization therefore retains mount scale without oversized white donor planes"
+  },
+  "lodPolicy": {
+    "lod0": "macro silhouette, rooted construction, functional meso detail, identity marks, and restrained micro surface response",
+    "lod1": "same material identity with simplified frame, thermal, and radiator cues",
+    "lod2": "silhouette-safe role separation with no alpha-only identity"
+  },
+  "materialProfiles": {
+    "varden_armor": {"baseRgb": [0.16, 0.22, 0.27], "secondaryRgb": [0.31, 0.36, 0.39], "roughnessRange": [0.29, 0.62], "metallicRange": [0.0, 0.035], "aoRange": [0.76, 0.99], "pattern": "painted_panels", "normalStrength": 0.58, "coatWeight": 0.12, "coatRoughness": 0.38},
+    "varden_alloy": {"baseRgb": [0.16, 0.19, 0.21], "secondaryRgb": [0.34, 0.37, 0.38], "roughnessRange": [0.19, 0.52], "metallicRange": [0.8, 0.96], "aoRange": [0.78, 0.99], "pattern": "brushed_alloy", "normalStrength": 0.43, "anisotropy": 0.38},
+    "dark_composite": {"baseRgb": [0.022, 0.032, 0.042], "secondaryRgb": [0.065, 0.078, 0.088], "roughnessRange": [0.5, 0.79], "metallicRange": [0.0, 0.025], "aoRange": [0.7, 0.96], "pattern": "composite_laminate", "normalStrength": 0.4},
+    "cockpit_glass": {"baseRgb": [0.025, 0.082, 0.105], "secondaryRgb": [0.075, 0.19, 0.22], "roughnessRange": [0.08, 0.24], "metallicRange": [0.02, 0.12], "aoRange": [0.88, 1.0], "pattern": "glass_laminate", "normalStrength": 0.16, "coatWeight": 0.72, "coatRoughness": 0.1},
+    "engine_ceramic": {"baseRgb": [0.11, 0.12, 0.12], "secondaryRgb": [0.32, 0.28, 0.22], "roughnessRange": [0.36, 0.71], "metallicRange": [0.0, 0.055], "aoRange": [0.7, 0.97], "pattern": "ceramic_tiles", "normalStrength": 0.52},
+    "heat_alloy": {"baseRgb": [0.075, 0.09, 0.105], "secondaryRgb": [0.27, 0.14, 0.065], "roughnessRange": [0.23, 0.73], "metallicRange": [0.72, 0.94], "aoRange": [0.64, 0.95], "pattern": "thermal_bands", "normalStrength": 0.52, "anisotropy": 0.22},
+    "radiator_laminate": {"baseRgb": [0.035, 0.052, 0.058], "secondaryRgb": [0.13, 0.16, 0.17], "roughnessRange": [0.43, 0.74], "metallicRange": [0.08, 0.28], "aoRange": [0.6, 0.94], "pattern": "radiator_channels", "normalStrength": 0.58},
+    "recessed_machinery": {"baseRgb": [0.035, 0.042, 0.046], "secondaryRgb": [0.12, 0.095, 0.07], "roughnessRange": [0.4, 0.75], "metallicRange": [0.45, 0.76], "aoRange": [0.5, 0.9], "pattern": "machinery_channels", "normalStrength": 0.64},
+    "identity_marking": {"baseRgb": [0.3, 0.16, 0.035], "secondaryRgb": [0.78, 0.47, 0.1], "roughnessRange": [0.39, 0.67], "metallicRange": [0.0, 0.018], "aoRange": [0.84, 1.0], "pattern": "worn_marking", "normalStrength": 0.22},
+    "powered_aperture": {"baseRgb": [0.025, 0.25, 0.34], "secondaryRgb": [0.36, 0.96, 1.0], "roughnessRange": [0.19, 0.42], "metallicRange": [0.05, 0.18], "aoRange": [0.75, 1.0], "pattern": "powered_aperture", "normalStrength": 0.28, "emissiveRgb": [0.18, 0.92, 1.0], "emissiveStrength": 3.0}
+  }
+}

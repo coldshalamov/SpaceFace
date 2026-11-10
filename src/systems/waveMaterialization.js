@@ -1,0 +1,505 @@
+// Survival wave materialization (PQ-133 / CRU-012).
+//
+// One seam that turns a PURE plan batch into live hostiles. It is the only place a Survival wave
+// creates entities, and it always goes through the two canonical owners:
+//   1. ctx.helpers.spawnBudget  — the single live-ship-cap authority (DEFAULT_MAX 24 / HARD_MAX 40).
+//      Never setMax, never bypass, never spawn more than the granted count.
+//   2. makeEnemySpawnSpec       — the canonical hostile spec builder in src/systems/combat.js.
+//      Only live ENEMY_TYPES ids reach it; there is no Survival-only enemy construction path.
+//
+// Pure except for the two calls above plus helpers.spawnEntity. No bus, no state.run write, no DOM.
+// Returns an explicit receipt so the caller can tell "admitted" from "the room was full" without
+// counting entities.
+
+import { mulberry32 } from '../core/rng.js';
+import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
+import { makeEnemySpawnSpec } from './enemySpawnSpec.js';
+import { swarmDoctrineStamp, SWARM_MIN_ARRIVAL_WU } from '../data/swarmMode.js';
+import { swarmCharacterFor } from '../data/swarmCharacter.js';
+import { swarmFeel, SWARM_FEEL_STAMP } from '../data/swarmFeelProfile.js';
+import { swarmFortifyCorridorForGate } from '../data/swarmFortify.js';
+import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
+import { LAGRANGE_BOSS_ROLE } from './lagrangeCrucible.js';
+import { CRYO_BOSS_ROLE } from './cryoDriftArena.js';
+import { STORM_BOSS_ROLE } from './stormLatticeArena.js';
+// The Mill/Hive arena systems predate the module-library fold and export no role — their
+// authored bossRole rows live on the library itself (arenaModuleLibrary.js).
+import { HIVE_BOSS_ROLE, MILL_BOSS_ROLE } from '../data/arenaModuleLibrary.js';
+
+/** Ring radius for a gate. C1 engagement scale: enemies arrive inside the frame envelope. */
+export const SURVIVAL_SPAWN_DISTANCE = 260;
+
+/** Marker written onto every hostile this module creates. Reward owners branch on it. */
+export const SURVIVAL_COHORT_TAG = 'survival';
+
+// Eight distinct bearings, 45 degrees apart, for the eight gate ids in survivalWaves.js.
+// Bearings are player-relative at dispatch time: the arena follows the player, so a plan
+// reproduces the same fight from the same seed without pinning world coordinates.
+const R2 = Math.SQRT1_2;
+export const GATE_BEARINGS = Object.freeze({
+  front: Object.freeze({ x: 0, z: -1 }),
+  ne: Object.freeze({ x: R2, z: -R2 }),
+  diagonal_b: Object.freeze({ x: 1, z: 0 }),
+  se: Object.freeze({ x: R2, z: R2 }),
+  rear: Object.freeze({ x: 0, z: 1 }),
+  sw: Object.freeze({ x: -R2, z: R2 }),
+  diagonal_a: Object.freeze({ x: -1, z: 0 }),
+  nw: Object.freeze({ x: -R2, z: -R2 }),
+});
+
+const GATE_FALLBACK = GATE_BEARINGS.front;
+// Half of one 45-degree gate sector, so bodies from one gate spread but never wander into the next.
+const GATE_SPREAD_RAD = Math.PI / 8;
+const RADIUS_JITTER = 0.18;
+// SWARM-03: clumps, not streams. A Swarm batch lands as ONE throw-shaped group — bodies
+// inside SWARM_CLUMP_RADIUS_WU of the pack centre — so a single impulse charge (blast
+// radius ~105 wu) or one swung body can honestly take three. The gate bearing still
+// decides WHICH side the pack arrives on, and depth jitter keeps the approach read;
+// only the fan inside the batch is gone. Adventure/Crucible waves keep the sector fan.
+export const SWARM_CLUMP_RADIUS_WU = 44;
+const SWARM_CLUMP_DEPTH_JITTER = 0.10;
+
+/** Deterministic per-batch stream. Same run seed + wave + package + batch => same placement. */
+export function batchStreamSeed(seed, wave, packageIndex, batchIndex) {
+  const label = `survival-wave-batch-v1|w${wave}|p${packageIndex}|b${batchIndex}`;
+  let h = (seed >>> 0) ^ 0x9e3779b9;
+  for (let i = 0; i < label.length; i++) {
+    h = Math.imul(h ^ label.charCodeAt(i), 0x01000193);
+  }
+  return (h >>> 0) || 1;
+}
+
+/**
+ * Enemy level for a wave. Always 1: §33 forbids HP inflation as the difficulty lever, and
+ * FB-026 moved the arc's curve into composeArcWave package counts, bearings and batch gaps
+ * (survivalActs.js). A level here would multiply hull/armor/shield/damage through
+ * scaleCombatant — the exact knob the arc is not allowed to have.
+ */
+export function levelForWave(wave) {
+  void wave;
+  return 1;
+}
+
+/** Unit bearing for a gate id, falling back to `front` for an unknown id. */
+export function gateBearing(gateGroup) {
+  const bearing = GATE_BEARINGS[gateGroup];
+  return bearing || GATE_FALLBACK;
+}
+
+function emptyReceipt(requested) {
+  return { requested, granted: 0, admitted: 0, spawnedIds: [], rejected: requested };
+}
+
+function playerAnchor(ctx) {
+  const state = ctx && ctx.state;
+  const player = state && state.entities && state.playerId != null && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const x = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+  const z = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+  return { x, z };
+}
+
+function spawnIdOf(spawned) {
+  if (spawned == null) return null;
+  if (typeof spawned === 'object') return spawned.id != null ? spawned.id : null;
+  return spawned;
+}
+
+// PQ-133.08: a law arena's boss wave fields a ROLE over the shared dreadnought hull — the
+// arena module's `bossRole` is the contract (`hullId` + `role` identify the package exactly;
+// neither alone does — `elite` chaff exists and the hull is arena-agnostic). The dressing kind
+// rides on `data.bossDressing` so the render layer can hang its machinery without the shared
+// enemy def gaining arena logic. Presentation-only; the boss fights identically without it.
+const LAW_ARENA_BOSS_ROLES = Object.freeze({
+  [LAGRANGE_BOSS_ROLE.law]: LAGRANGE_BOSS_ROLE,
+  [CINDER_BOSS_ROLE.law]: CINDER_BOSS_ROLE,
+  [CRYO_BOSS_ROLE.law]: CRYO_BOSS_ROLE,
+  [STORM_BOSS_ROLE.law]: STORM_BOSS_ROLE,
+  // SWARM-07 B4 — the library-fold arenas dress their wave-10 boss too: seam_crusher for the
+  // Mill's grind, queen_warden for the Hive's brood heart.
+  [MILL_BOSS_ROLE.law]: MILL_BOSS_ROLE,
+  [HIVE_BOSS_ROLE.law]: HIVE_BOSS_ROLE,
+});
+
+export function lawArenaBossDressing(arenaId, enemyId, role) {
+  const bossRole = typeof arenaId === 'string' ? LAW_ARENA_BOSS_ROLES[arenaId] : null;
+  if (!bossRole || enemyId !== bossRole.hullId || role !== bossRole.role) return null;
+  return { kind: bossRole.id, law: bossRole.law };
+}
+
+/**
+ * Materialize ONE scheduled batch.
+ *
+ * request: { ownerId, enemyId, level, count, gateGroup, distance, seed, wave, packageIndex,
+ *            batchIndex, role }
+ * receipt: { requested, granted, admitted, spawnedIds, rejected }
+ *
+ * `granted < requested` is the normal, expected outcome when ambient traffic already holds slots.
+ * The caller must treat a partly-admitted (or fully rejected) batch as DISPATCHED — a Survival wave
+ * that waits for bodies the cap will never allow strands the player in `active` forever.
+ */
+// Arrivals clear the field's rocks: a hull materialized inside a rock is shoved out by the
+// solver on its first tick and dies of the impact before the player has touched anything.
+const SPAWN_ROCK_CLEARANCE_WU = 24;
+const SPAWN_HULL_CLEARANCE_WU = 14;
+
+function spawnObstacleNeed(state, e) {
+  if (!e || e.alive === false || !e.pos) return 0;
+  // Hulls of the same batch are obstacles too: two bodies born a unit apart are thrown
+  // apart at hundreds of u/s by the solver and pay out a pile-up the player never caused.
+  const hull = (e.type === 'ship' || e.type === 'drone') && e.id !== state.playerId;
+  if (e.type !== 'asteroid' && !hull) return 0;
+  return (Number.isFinite(e.radius) ? e.radius : 10)
+    + (hull ? SPAWN_HULL_CLEARANCE_WU : SPAWN_ROCK_CLEARANCE_WU);
+}
+
+function overlapsObstacle(state, pos) {
+  for (const e of state.entities.values()) {
+    const need = spawnObstacleNeed(state, e);
+    if (need <= 0) continue;
+    const dx = pos.x - e.pos.x;
+    const dz = pos.z - e.pos.z;
+    if (dx * dx + dz * dz < need * need) return true;
+  }
+  return false;
+}
+
+function clearOfRocks(state, pos) {
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return pos;
+  const player = entities.get(state.playerId);
+  const ring = player && player.pos ? Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z) : 0;
+  for (let pass = 0; pass < 4; pass++) {
+    let moved = false;
+    for (const e of entities.values()) {
+      const need = spawnObstacleNeed(state, e);
+      if (need <= 0) continue;
+      const dx = pos.x - e.pos.x;
+      const dz = pos.z - e.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= need * need) continue;
+      const d = Math.sqrt(d2);
+      pos.x = e.pos.x + (d > 1e-6 ? dx / d : 1) * need;
+      pos.z = e.pos.z + (d > 1e-6 ? dz / d : 0) * need;
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  // A shove never brings the arrival inside its gate ring: it steps back out along its bearing.
+  if (ring > 0) {
+    const rx = pos.x - player.pos.x;
+    const rz = pos.z - player.pos.z;
+    const r = Math.hypot(rx, rz);
+    if (r > 1e-6 && r < ring) {
+      const ux = rx / r;
+      const uz = rz / r;
+      let out = ring;
+      pos.x = player.pos.x + ux * out;
+      pos.z = player.pos.z + uz * out;
+      for (let step = 0; step < 40 && overlapsObstacle(state, pos); step++) {
+        out += 4;
+        pos.x = player.pos.x + ux * out;
+        pos.z = player.pos.z + uz * out;
+      }
+    }
+  }
+  return pos;
+}
+
+// S1 — apply the Swarm feel profile to one spawn spec. Three jobs, all stamped only when
+// swarmFeel(ctx.state) resolved non-null, so Adventure specs are byte-identical to before:
+//   1. data[SWARM_FEEL_STAMP] — the contact owner's per-entity gate for the bowling-pin and
+//      Swarm tumble rules; the stamp crosses the worker lane with the entity.
+//   2. physicsBody.contact — the profile's bouncy enemy material, merged through the
+//      per-entity override path so shared PHYSICS_MATERIALS never move.
+//   3. fodder rewrite — hull scaled, shield and armor zeroed for the fodder band (C1/C2).
+export function applySwarmFeelSpec(spec, enemyId, feel) {
+  spec.data = spec.data || {};
+  spec.data[SWARM_FEEL_STAMP] = true;
+  spec.physicsBody = {
+    ...(spec.physicsBody || {}),
+    contact: {
+      ...((spec.physicsBody && spec.physicsBody.contact) || {}),
+      restitution: feel.contact.enemyRestitution,
+      restitutionCombine: feel.contact.enemyCombine,
+    },
+  };
+  if (feel.fodder.ids.includes(enemyId)) {
+    const baseHull = Number.isFinite(spec.hull) && spec.hull > 0 ? spec.hull : 1;
+    const hull = Math.max(1, Math.round(baseHull * feel.fodder.hullMult));
+    spec.hull = hull;
+    spec.hullMax = hull;
+    spec.shield = feel.fodder.shield;
+    spec.shieldMax = feel.fodder.shield;
+    spec.shieldRegenRate = 0;
+    spec.armorHp = feel.fodder.armor;
+    spec.armorMax = feel.fodder.armor;
+    spec.armorFlat = 0;
+  }
+  // S7 task 2 — the character sheet's body numbers land through the same profile gate:
+  // radius, mass and the doctrine cruise are the sheet's, never the adventure def's, so a
+  // dart reads fast and a wall reads heavy. Silhouette/hue/scale ride the data stamp for
+  // Lane S; abilityId/tellId name the behaviour the doctrine and tell owners already own.
+  const row = swarmCharacterFor(enemyId);
+  if (row) {
+    spec.radius = row.radius;
+    spec.mass = row.mass;
+    spec.maxSpeed = row.speed;
+    if (Number.isFinite(spec.combatSpeed) && spec.combatSpeed > row.speed) {
+      spec.combatSpeed = row.speed;
+    }
+    spec.data.swarmCharacter = {
+      silhouette: row.silhouette,
+      scale: row.scale,
+      hue: row.hue,
+      tier: row.tier,
+      abilityId: row.abilityId,
+      tellId: row.tellId,
+    };
+    // S7 — cohort telegraphs hold the 0.6 s tell floor: the doctrine executor reads the
+    // flattened flag and stretches every cue beat it owns for this hull only.
+    if (spec.data.ai && typeof spec.data.ai === 'object') spec.data.ai.swarmTellFloor = true;
+  }
+  return spec;
+}
+
+export function materializeWaveBatch(ctx, request) {
+  const req = request || {};
+  const requested = Number.isInteger(req.count) && req.count > 0 ? req.count : 0;
+  if (requested <= 0) return { requested: 0, granted: 0, admitted: 0, spawnedIds: [], rejected: 0 };
+
+  const budget = ctx && ctx.helpers && ctx.helpers.spawnBudget;
+  if (!budget || typeof budget.request !== 'function') return emptyReceipt(requested);
+  if (req.swarm === true && typeof budget.bindEntity !== 'function') return emptyReceipt(requested);
+  const helpers = ctx && ctx.helpers;
+  if (!helpers || typeof helpers.spawnEntity !== 'function') return emptyReceipt(requested);
+
+  const ownerId = req.ownerId != null ? String(req.ownerId) : 'survival-wave';
+  const granted = Math.max(0, budget.request(requested, ownerId) | 0);
+  if (granted <= 0) return emptyReceipt(requested);
+
+  const fortify = req.swarm === true && typeof ctx?.registry?.get === 'function'
+    ? ctx.registry.get('swarmFortify') : null;
+  const ingressPolicy = fortify && typeof fortify.getIngressPolicy === 'function'
+    ? fortify.getIngressPolicy() : null;
+  const fixedAnchor = ingressPolicy?.gateGroupPolicy === 'fortify-three-corridor-v1'
+    ? ingressPolicy.anchor : null;
+  const fortifiedIngress = req.swarm === true && fixedAnchor
+    && Number.isFinite(fixedAnchor.x) && Number.isFinite(fixedAnchor.z);
+  const anchor = fortifiedIngress ? fixedAnchor : playerAnchor(ctx);
+  const distance = Number.isFinite(req.distance) && req.distance > 0
+    ? req.distance
+    : SURVIVAL_SPAWN_DISTANCE;
+  const ingressGroup = fortifiedIngress
+    ? (swarmFortifyCorridorForGate(req.gateGroup, req.wave) || req.gateGroup)
+    : req.gateGroup;
+  const bearing = gateBearing(ingressGroup);
+  const baseAngle = Math.atan2(bearing.z, bearing.x)
+    + (fortifiedIngress && Number.isFinite(anchor.rotation) ? anchor.rotation : 0);
+  const level = Number.isInteger(req.level) && req.level >= 1 ? req.level : levelForWave(req.wave);
+  const rng = mulberry32(batchStreamSeed(
+    Number.isInteger(req.seed) ? req.seed : 1,
+    Number.isInteger(req.wave) ? req.wave : 1,
+    Number.isInteger(req.packageIndex) ? req.packageIndex : 0,
+    Number.isInteger(req.batchIndex) ? req.batchIndex : 0,
+  ));
+
+  const feel = swarmFeel(ctx && ctx.state);
+  const spawnedIds = [];
+  const reserved = [];
+  let ingressPose = null;
+  let arrival = null;
+  let deferred = 0;
+  // SWARM-03: a swarm batch of 2+ arrives as one clump — same gate, same distance band,
+  // one tight pack instead of the sector fan. Deterministic: the same batch stream draws
+  // the clump centre first, then each body's offset inside it.
+  const clumped = req.swarm === true && granted > 1;
+  let clumpX = 0;
+  let clumpZ = 0;
+  if (clumped) {
+    const clumpAngle = baseAngle + (rng() - 0.5) * GATE_SPREAD_RAD;
+    // E4: the whole clump — centre plus the pack's own radius — stays outside the
+    // 1.3-screen materialisation line. Depth jitter slides along the bearing, never under it.
+    const clumpDist = Math.max(SWARM_MIN_ARRIVAL_WU + SWARM_CLUMP_RADIUS_WU,
+      distance * (1 + (rng() - 0.5) * 2 * SWARM_CLUMP_DEPTH_JITTER));
+    clumpX = anchor.x + Math.cos(clumpAngle) * clumpDist;
+    clumpZ = anchor.z + Math.sin(clumpAngle) * clumpDist;
+  }
+  try {
+    for (let i = 0; i < granted; i++) {
+      let pos;
+      if (clumped) {
+        const a = rng() * Math.PI * 2;
+        const r = Math.sqrt(rng()) * SWARM_CLUMP_RADIUS_WU;
+        pos = { x: clumpX + Math.cos(a) * r, z: clumpZ + Math.sin(a) * r };
+      } else {
+        // Spread deterministically across the gate sector so a six-body batch is an arriving
+        // formation, not a stack of coincident hulls at one point.
+        const lane = granted === 1 ? 0 : (i / (granted - 1)) * 2 - 1;
+        const angle = baseAngle + lane * GATE_SPREAD_RAD + (rng() - 0.5) * GATE_SPREAD_RAD * 0.5;
+        // E4: a lone swarm body (or a scored fan) never materialises inside the line either —
+        // the jitter swings around the ring, never under it.
+        const radius = Math.max(req.swarm === true ? SWARM_MIN_ARRIVAL_WU : 0,
+          distance * (1 + (rng() - 0.5) * 2 * RADIUS_JITTER));
+        pos = {
+          x: anchor.x + Math.cos(angle) * radius,
+          z: anchor.z + Math.sin(angle) * radius,
+        };
+      }
+      if (req.swarm !== true) clearOfRocks(ctx && ctx.state, pos);
+      const spec = makeEnemySpawnSpec(req.enemyId, level, pos);
+      if (!spec) continue;
+      if (feel) applySwarmFeelSpec(spec, req.enemyId, feel);
+      if (req.swarm === true) {
+        const open = findSwarmArrival(ctx.state, pos, Number.isFinite(spec.radius) ? spec.radius : 10,
+          { anchor, velocity: spec.vel, reserved, clusterCenter: clumped ? { x: clumpX, z: clumpZ } : null,
+            clusterRadius: SWARM_CLUMP_RADIUS_WU });
+        // E4: the blocked-arrival search may legally settle closer than the materialisation
+        // line (its own floor is hull-clearance, not the screen). A slot that cannot offer a
+        // spot outside the line defers — the batch retries next window, it does not pop in.
+        const player = ctx.state?.entities?.get?.(ctx.state?.playerId);
+        if (!open || (player && player.pos
+          && Math.hypot(open.x - player.pos.x, open.z - player.pos.z) < SWARM_MIN_ARRIVAL_WU)) {
+          deferred++;
+          continue;
+        }
+        spec.pos = open;
+      }
+      spec.data = spec.data || {};
+      // Initial pose is spawn-owned. The eight-arm rig and the first locked tell share +X
+      // forward, without a runtime transform correction fighting the native helm.
+      if (spec.data.ironKraken) spec.rot = Math.atan2(anchor.z - spec.pos.z, anchor.x - spec.pos.x);
+      spec.data.ai = spec.data.ai || {};
+      spec.data.ai.spawnContext = 'encounter';
+      // Admission owns the initial hold: the AI may run before the next wave update.
+      if (req.swarm === true) {
+        const now = Number.isFinite(ctx.state?.simTime) ? ctx.state.simTime : 0;
+        spec.data.ai.swarmArmedAt = now + SWARM_ARRIVAL_GRACE_S;
+        spec.data.ai.swarmFireHoldUntil = spec.data.ai.swarmArmedAt;
+      }
+      // A run cohort hunts the pilot until the round resolves. Adventure surrender,
+      // pirate morale and a spawn-point leash otherwise strand the final few enemies.
+      const playerId = ctx.state?.playerId;
+      spec.data.ai.forcePlayerTarget = true;
+      spec.data.ai.huntPlayer = true;
+      spec.data.ai.moraleImmune = true;
+      spec.data.ai.surrenderImmune = true;
+      spec.data.ai.activity = { ...spec.data.ai.activity, kind: 'attack_run',
+        reason: 'survival_pursuit', targetId: playerId ?? null, anchor: null };
+      spec.data.combat = { ...spec.data.combat, targetId: playerId ?? null };
+      // Cohort stamp travels with the body. Reward owners read it off the victim rather than
+      // asking a global "is a run live?" question that would also capture ambient traffic.
+      spec.data.runCohort = SURVIVAL_COHORT_TAG;
+      // Adventure's opening wasps use a softened teaching gun. Arena packs get a
+      // readable pulse burst that can threaten a stationary pilot, without hidden damage.
+      if (req.enemyId === 'wasp_swarmer') {
+        for (const weapon of spec.data.weapons || []) {
+          if (weapon.id === 'wpn_pulse_laser_s') {
+            weapon.dmg = 8;
+            weapon.rof = 3.6;
+            weapon.dps = weapon.dmg * weapon.rof;
+          }
+        }
+      }
+      const doctrine = swarmDoctrineStamp(req.enemyId, {
+        swarm: req.swarm === true,
+        champion: req.champion === true,
+      });
+      if (doctrine) spec.data.ai.combatDoctrineId = doctrine;
+      // FB-023 — a hull that patrols lawful space under `lawful_wanted_only` is an ARENA
+      // combatant here: the Crucible has no WANTED axis, so the lawful latch would spawn it
+      // inert. Restamped on the COHORT copy only — the open-route def and its wanted-status
+      // policing are untouched, and engagementAuthority still validates the fight end to end
+      // (motive, trigger, telegraph, response window all still required).
+      if (req.swarm === true && spec.data.ai.lawful === true) {
+        spec.data.ai.lawful = false;
+        spec.data.ai.roe = 'weapons_free';
+        spec.data.ai.motive = 'arena_contract';
+        spec.data.ai.engagementTrigger = 'authorized_hostile_spawn';
+      }
+      // FB-024 — a capital champion's body enters the `capital_boss` doctrine family so the
+      // score's committed-bearing choreography is what it flies if orders ever lapse.
+      if (req.capitalBoss === true) spec.data.missionTag = 'capital_boss';
+      // FB-027 — the champion is a bounty hunter under the crucible's own contract. The stamp
+      // routes it through the SAME trick path a bounty mark runs (bountyHunt's normalize +
+      // startHunterTrickTelegraph): telegraph, counter window, activation, cooldown.
+      if (typeof req.trickId === 'string' && req.trickId) {
+        spec.data.bountyHunt = {
+          role: 'hunter',
+          contractId: typeof req.trickContractId === 'string' && req.trickContractId
+            ? req.trickContractId
+            : `swarm:champion:w${Number.isInteger(req.wave) ? req.wave : 0}`,
+          trickId: req.trickId,
+        };
+        spec.data.contractTargetId = playerId ?? null;
+      }
+      spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
+      if (req.swarm === true && typeof req.gateGroup === 'string' && GATE_BEARINGS[req.gateGroup]) {
+        spec.data.swarmGateGroup = fortifiedIngress ? ingressGroup : req.gateGroup;
+        if (fortifiedIngress) {
+          spec.data.swarmSourceGateGroup = req.gateGroup;
+          spec.data.swarmIngressPose = {
+            x: spec.pos.x,
+            z: spec.pos.z,
+            heading: Math.atan2(anchor.z - spec.pos.z, anchor.x - spec.pos.x),
+          };
+        }
+      }
+      if (typeof req.role === 'string') spec.data.runRole = req.role;
+      // The champion mark travels with the body (SWARM-02): the arcade juice layer and any
+      // later boss surface find the round's boss bodies without re-deriving the wave owner's
+      // requireBoss ledger, exactly like runRole/runWave above.
+      if (req.champion === true) spec.data.swarmChampion = true;
+      const bossDressing = lawArenaBossDressing(req.arenaId, req.enemyId, req.role);
+      if (bossDressing) spec.data.bossDressing = bossDressing;
+      const spawned = helpers.spawnEntity(spec);
+      const id = spawnIdOf(spawned);
+      if (id == null) continue;
+      const bound = typeof budget.bindEntity === 'function' && !!budget.bindEntity(id, ownerId);
+      // Roll back through the lifecycle owner, never leave an uncounted attacker alive.
+      if (!bound) {
+        if (typeof helpers.removeEntity === 'function') helpers.removeEntity(id);
+        else {
+          // Minimal/headless adapters may lack the removal port. The ordinary despawn sweep
+          // owns disposal; quarantine the failed admission until that sweep, without a kill.
+          const orphan = ctx.state?.entities?.get?.(id) || spawned;
+          if (orphan && typeof orphan === 'object') {
+            orphan.alive = false;
+            orphan.data = orphan.data || {};
+            orphan.data.despawnAt = Number.isFinite(ctx.state?.simTime) ? ctx.state.simTime : 0;
+          }
+        }
+        continue;
+      }
+      if (fortifiedIngress && !ingressPose) ingressPose = { ...spec.data.swarmIngressPose };
+      // E4: the group's true entry point, for the gate flare and the arrival receipt —
+      // the clump centre when the pack is throw-shaped, else the first hull's own spot.
+      if (req.swarm === true && !arrival) {
+        arrival = clumped ? { x: clumpX, z: clumpZ } : { x: spec.pos.x, z: spec.pos.z };
+      }
+      spawnedIds.push(id);
+      reserved.push(spec);
+    }
+  } finally {
+    const unbound = granted - spawnedIds.length;
+    if (unbound > 0 && typeof budget.releaseSome === 'function') {
+      budget.releaseSome(ownerId, unbound);
+    }
+  }
+
+  return {
+    requested,
+    granted,
+    admitted: spawnedIds.length,
+    spawnedIds,
+    rejected: requested - spawnedIds.length,
+    ...(req.swarm === true && arrival ? { arrival, gateGroup: ingressGroup } : {}),
+    ...(fortifiedIngress ? {
+      gateGroup: ingressGroup,
+      sourceGateGroup: req.gateGroup,
+      ingressPose: ingressPose ? { ...ingressPose, origin: { x: anchor.x, z: anchor.z } } : null,
+    } : {}),
+    ...(deferred > 0 ? { deferred, reason: 'unsafe_arrival' } : {}),
+  };
+}

@@ -1,0 +1,30 @@
+TAP version 13
+# Subtest: persistent combat beams update in place with a bounded two-draw pool
+ok 1 - persistent combat beams update in place with a bounded two-draw pool
+  ---
+  duration_ms: 4.729399
+  ...
+# Subtest: persistent combat beams retire on bounded timeout if a stop event is lost
+ok 2 - persistent combat beams retire on bounded timeout if a stop event is lost
+  ---
+  duration_ms: 0.656087
+  ...
+# Subtest: persistent beam pool rejects ownerless updates instead of aliasing them under an undefined key
+ok 3 - persistent beam pool rejects ownerless updates instead of aliasing them under an undefined key
+  ---
+  duration_ms: 0.407892
+  ...
+# Subtest: persistent beam uploads retain sparse slots and publish only the changed quads
+ok 4 - persistent beam uploads retain sparse slots and publish only the changed quads
+  ---
+  duration_ms: 3.428159
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 196.737041

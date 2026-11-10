@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-severed-umbilical",
+  "category": "cargo",
+  "description": "Bent service umbilical with exposed conductors",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        -0.1759876012802124,
+        0.7674957513809204,
+        -0.27362649142742157
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.408024787902832,
+        0.36874787509441376,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -0.7,
+          0.3,
+          -0.08
+        ],
+        "size": [
+          1.6,
+          0.4,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "aftermath",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.7599999904632568,
+      -0.030000001192092896,
+      -0.827252984046936
+    ],
+    "max": [
+      1.408024787902832,
+      0.7674957513809204,
+      0.2800000011920929
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-severed-umbilical_lod0.glb",
+      "triangles": 6112,
+      "draws": 7,
+      "bytes": 531908,
+      "method": "source",
+      "sha256": "8d2887ae6903b8ddfdb3e3f7aed13007449b459e8127b87640b5d8f1c61d6570"
+    },
+    {
+      "level": 1,
+      "file": "cargo-severed-umbilical_lod1.glb",
+      "triangles": 1808,
+      "draws": 7,
+      "bytes": 333788,
+      "method": "authored-topology",
+      "sha256": "4227b56da4af7e102efeb7ce1a4f35f7598ed7cf76bcde787718ef29bd6bc471"
+    },
+    {
+      "level": 2,
+      "file": "cargo-severed-umbilical_lod2.glb",
+      "triangles": 1048,
+      "draws": 7,
+      "bytes": 304460,
+      "method": "authored-topology",
+      "sha256": "fa2353f0152781dae4b79f7db1c7fcb609ffb9ef28ee303bf5b15cfe470f446a"
+    }
+  ]
+}

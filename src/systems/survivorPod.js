@@ -1,0 +1,2096 @@
+// survivorPod.js — BP-01.1 salvage communicator + U09 causal eject loop.
+//
+// ── Stage-1 characterization (U09-CHARACTERIZE) — CUT ──────────────────────────────────────────
+// Proposed verb: "pin a temporary anchor to any asteroid/heavy body; slingshot/tow from geometry
+// that had no natural anchor." Live bench already delivers that decision surface:
+//   • terrainAnchors — encounter-owned large rocks (r≥26) on telegraph; immovable + tether socket.
+//   • tetherGameplay.isAttachable — physical command: any non-transient body is latchable
+//     (asteroid/station/planet/wreck/ship/payload). massSeed gated only by frame-lock phase.
+//   • massSeed (PQ-011) — player-deployed temporary static anchor with cooldown + lifetime.
+//   • masslineThrow — slingshot/release assist on latched massive anchors.
+//   • beacons — claim/lure marker (not a massline anchor); mines — hostile deployable pattern.
+// Added "anchor beacon" decision is therefore MARGINAL vs massSeed + natural heavy bodies → CUT.
+// Stage 2 lands here: causal survivor pods on crewed-hull death.
+//
+// ── Salvage communicator path (existing) ───────────────────────────────────────────────────────
+// One salvage point per sector can promote to wm_survivor_pod. Rescue/strip via mission choice.
+//
+// ── Causal eject path (U09 Stage 2) ────────────────────────────────────────────────────────────
+// Destroyed/disabled crewed ships may eject a tetherable survivor payload. Player can:
+//   rescue — tow into lawful station protection, or hand to a traffic rescue hull;
+//   ransom — tow to the one fence who buys pods;
+//   ignore — TTL expires with a moralMemory note.
+// Credits are never written directly (economy stays single writer). A player-answered mayday
+// emits an economy:grantCredits intent (salvage fee) exactly like the authored strip choice;
+// rescue reward is that fee + moralMemory + faction rep intent. Ransom is moralMemory only
+// here; the fence desk pays the buyer. Any other berth leaves the pod on the cable.
+// Spawn gated out of curated scenarios (salvor pattern).
+
+import { spawnPayloadEntity } from '../combat/industrialBeam.js';
+import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
+import { clearEntityRuntime, occupantGenerationOf } from '../core/entity.js';
+import { SECTORS } from '../data/sectors.js';
+import { SHIPS } from '../data/ships.js';
+import { wreckMissionById } from '../data/wreckMissions.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
+import { hasContractsDesk } from '../data/missions.js';
+import { protectedStationAt } from '../ai/engagementAuthority.js';
+import { onPodEjected, sweepStalePodHunts, tickPodHunts } from '../ai/podHunt.js';
+import { clearIneligibleAIFiringIntents } from './aiPorts.js';
+import { rememberMoralDebt } from './moralMemory.js';
+import { playerWreckMarker } from './aftermathWrecks.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { fenceForStation } from '../data/fences.js';
+import { localizeText } from '../localization/sourceText.js';
+
+const MISSION_ID = 'wm_survivor_pod';
+const CONCORD_FACTION_ID = 'faction_scn';
+const OXYGEN_WINDOW_S = 210;
+const OXYGEN_DECAY_WINDOW_S = 240;
+const MIN_REWARD_MULTIPLIER = 0.45;
+const RESCUE_DISTANCE_WU = 600;
+const STRIP_POOL = Object.freeze({
+  cmdty_salvage_electronics: 2,
+  cmdty_medical: 1,
+});
+const STRIP_BASE_CREDITS = 260;
+const STRIP_REP_DELTA = -8;
+const SURVIVOR_POD_SCHEMA = 'spaceface.survivorPod.v1';
+
+// ── Causal eject dials ─────────────────────────────────────────────────────────────────────────
+export const CAUSAL_SURVIVOR_PAYLOAD_TYPE = 'survivor_pod';
+/** Live concurrent physical pods (cap + TTL — same bounded-residency idea as civilian manifests). */
+export const MAX_CAUSAL_SURVIVOR_PODS = 4;
+/** Soft life of an unrescued pod before moralMemory abandon note + despawn. */
+export const CAUSAL_POD_TTL_S = 180;
+/** Deterministic eject chance (percent) from (seed, victim identity). */
+export const CAUSAL_EJECT_CHANCE_PCT = 42;
+/** Player must reel the pod this close for station/fence/rescue handoff. */
+export const CAUSAL_HANDOFF_RANGE_WU = 90;
+/** Ambient rescue hull auto-claims an unattended pod inside this radius. */
+export const CAUSAL_RESCUE_HULL_CLAIM_WU = 70;
+/**
+ * The player "noticed" a pod when their hull came this close while it was live: the existing pod
+ * rescue radius, so a pod the player could have answered is a pod they can be said to have left.
+ * The mayday itself is a global bark, so a hail alone proves nothing about where the player was.
+ */
+export const CAUSAL_POD_NOTICE_WU = RESCUE_DISTANCE_WU;
+const CAUSAL_RESCUE_REP_DELTA = 3;
+/** Salvage fee paid to the player who tows a mayday pod to a lawful handoff (grant intent). */
+const CAUSAL_RESCUE_SALVAGE_FEE_CR = 420;
+const CAUSAL_RECEIPT_CAP = 24;
+const CUSTODY_OUTCOMES = new Set(['in_transit', 'recovery_pending', 'adrift']);
+
+function trimCausalReceipts(rows) {
+  const pending = rows.filter((row) => row && CUSTODY_OUTCOMES.has(row.outcome));
+  const terminal = rows.filter((row) => row && !CUSTODY_OUTCOMES.has(row.outcome));
+  return [...pending, ...terminal.slice(-CAUSAL_RECEIPT_CAP)];
+}
+
+function rescueHullDisabled(state, e) {
+  const data = e?.data || {};
+  const runtime = state.combat?.entities?.[String(e?.id)];
+  const drive = runtime?.subsystems?.subsystem_drive;
+  return !e || e.alive === false || e.type !== 'ship' || e.disabled === true
+    || data.disabled || data.derelict || data.engineDead || data.deadInWater || data.surrendered
+    || e.flags?.disabled || e.flags?.derelict || (Number.isFinite(e.hull) && e.hull <= 0)
+    || (Number.isFinite(e.hull) && e.hullMax > 0 && e.hull <= e.hullMax * .25)
+    || runtime?.capabilities?.drive === false || drive?.destroyed || drive?.effectiveDisabled;
+}
+
+const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+const ALL_STATIONS = [];
+const STATION_BY_ID = new Map();
+for (const sec of SECTORS) {
+  for (const st of (sec.stations || [])) {
+    const row = { ...st, sectorId: sec.id };
+    ALL_STATIONS.push(row);
+    STATION_BY_ID.set(row.id, row);
+  }
+}
+
+function ensureState(state) {
+  if (!state) return null;
+  if (!state.survivorPod || typeof state.survivorPod !== 'object') {
+    state.survivorPod = freshState();
+  }
+  const own = state.survivorPod;
+  if (!own.promotedBySector || typeof own.promotedBySector !== 'object') own.promotedBySector = {};
+  if (!own.promotedByPoint || typeof own.promotedByPoint !== 'object') own.promotedByPoint = {};
+  if (!own.causal || typeof own.causal !== 'object') own.causal = { byEntityId: {}, receipts: [] };
+  if (!own.causal.byEntityId || typeof own.causal.byEntityId !== 'object') own.causal.byEntityId = {};
+  if (!Array.isArray(own.causal.receipts)) own.causal.receipts = [];
+  return own;
+}
+
+function freshState() {
+  return {
+    promotedBySector: {},
+    promotedByPoint: {},
+    causal: { byEntityId: {}, receipts: [] },
+  };
+}
+
+function clone(obj) {
+  return obj == null ? obj : JSON.parse(JSON.stringify(obj));
+}
+
+function entityForPoint(state, point) {
+  if (!state || !point || point.entityId == null || !state.entities) return null;
+  const entity = typeof state.entities.get === 'function'
+    ? state.entities.get(point.entityId) || null
+    : state.entities[point.entityId] || null;
+  // Entity ids recycle through freeIds and point.entityId is not a world-ledger pin — a bare
+  // id hit can name a foreign occupant one spawn later. Trust the hit only while the
+  // occupant's own data still carries this point's binding (marker-bound wrecks bind by
+  // markerId instead); anything else drops the stale pin so reconcile can never stamp pod
+  // records onto an unrelated body. Same verify-then-drop shape as salvage._entityForPoint,
+  // minus the liveness clause: a stripped pod's bound corpse is still its carrier.
+  if (!entity) { point.entityId = null; return null; }
+  const data = entity.data;
+  const stillBound = !!data
+    && (data.salvagePointId === point.id
+      || (point.markerId != null && data.markerId === point.markerId));
+  if (!stillBound) { point.entityId = null; return null; }
+  return entity;
+}
+
+function pointForRec(state, rec) {
+  const points = state && state.salvage && Array.isArray(state.salvage.points) ? state.salvage.points : [];
+  return points.find((p) => p && p.id === rec.salvagePointId) || null;
+}
+
+function choosePoint(seed, sectorId, candidates) {
+  if (!candidates.length) return null;
+  const ordered = candidates.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  const idx = hash32(seed || 1, sectorId || '', 'survivorPodPoint') % ordered.length;
+  return ordered[idx] || ordered[0];
+}
+
+function repFor(state, factionId) {
+  const rec = factionId && state && state.factions ? state.factions[factionId] : null;
+  return rec ? (rec.rep || 0) : 0;
+}
+
+// The handoff berth is where the pod's passenger_transport offer settles — a pick the
+// pilot cannot dock at writes a rescue that can never pay out (the accept gate refuses
+// it outright). The same preference ladder holds, just over berths that admit: concord
+// house first, then a real desk, then any open local berth, then the same ladder wide.
+function rescueStationForSector(sectorId, state) {
+  const sec = SECTOR_BY_ID.get(sectorId);
+  const local = (sec && sec.stations) || [];
+  const admits = (s) => {
+    if (!s) return false;
+    // Station faction first, sector faction as the world-stamp fallback — a record that
+    // carried no factionId of its own reads the sector's standing, same as the dock gate.
+    const factionId = s.factionId || (SECTOR_BY_ID.get(s.sectorId || sectorId) || {}).factionId;
+    return stationBerthAdmits(s, repFor(state, factionId), state);
+  };
+  const hasDesk = (s) => hasContractsDesk(s && s.services);
+  // The global desk rung is defensive ordering: every concord house admits unconditionally
+  // today, so the first global concord find always lands — a future gated house needs the
+  // ladder past it already written.
+  return local.find((s) => s.factionId === CONCORD_FACTION_ID && admits(s))
+    || local.find((s) => hasDesk(s) && admits(s))
+    || local.find((s) => admits(s))
+    || ALL_STATIONS.find((s) => s.factionId === CONCORD_FACTION_ID && admits(s))
+    || ALL_STATIONS.find((s) => hasDesk(s) && admits(s))
+    || ALL_STATIONS.find((s) => admits(s))
+    || null;
+}
+
+function secondsLeft(state, rec) {
+  return Math.max(0, Math.ceil((rec.oxygenDueAt || 0) - (state.simTime || 0)));
+}
+
+function rewardMultiplier(state, rec) {
+  const overdue = Math.max(0, (state.simTime || 0) - (rec.oxygenDueAt || 0));
+  if (overdue <= 0) return 1;
+  const span = Math.max(1, rec.oxygenDecayWindow_s || OXYGEN_DECAY_WINDOW_S);
+  const min = Math.max(0, Math.min(1, rec.minRewardMultiplier || MIN_REWARD_MULTIPLIER));
+  return Math.max(min, 1 - (overdue / span) * (1 - min));
+}
+
+function countdownLabel(state, rec) {
+  const left = secondsLeft(state, rec);
+  if (left <= 0) return 'oxygen depleted - survivor stable, payout decaying';
+  return `oxygen ${left}s`;
+}
+
+function publicMeta(state, rec) {
+  const mult = rewardMultiplier(state, rec);
+  const left = secondsLeft(state, rec);
+  return {
+    salvagePointId: rec.salvagePointId,
+    entityId: rec.entityId,
+    sectorId: rec.sectorId,
+    destStationId: rec.destStationId,
+    destSectorId: rec.destSectorId,
+    factionId: rec.factionId,
+    oxygenDueAt: rec.oxygenDueAt,
+    oxygenRemaining_s: left,
+    oxygenExpired: left <= 0,
+    rewardMultiplier: mult,
+    minRewardMultiplier: rec.minRewardMultiplier,
+    stripPool: clone(rec.stripPool),
+    stripCredits: rec.stripCredits,
+    rescueSelected: !!rec.rescueSelected,
+    stripped: !!rec.stripped,
+    label: countdownLabel(state, rec),
+  };
+}
+
+// Pod-owned scan labels always carry this prefix. Encounter and mission scripts author richer
+// identity labels (e.g. 'BITE TWO CREW POD — SIX SOULS — O2 LOW') — the countdown refreshers only
+// maintain their own line and never stomp an authored one. Oxygen/strip state still rides
+// ent.data.survivorPod for the inspector.
+const POD_SCAN_LABEL_PREFIX = 'Survivor Pod';
+
+function setPodScanLabel(ent, text) {
+  if (!ent || !ent.data) return;
+  const current = ent.data.scanLabel;
+  if (current && !String(current).startsWith(POD_SCAN_LABEL_PREFIX)) return;
+  ent.data.scanLabel = text;
+}
+
+function mirrorMeta(state, rec, point, ent) {
+  const meta = publicMeta(state, rec);
+  rec.oxygenRemaining_s = meta.oxygenRemaining_s;
+  rec.oxygenExpired = meta.oxygenExpired;
+  rec.rewardMultiplier = meta.rewardMultiplier;
+  if (point) point.survivorPod = { ...meta };
+  if (ent && ent.data) {
+    ent.data.survivorPod = { ...meta };
+    setPodScanLabel(ent, meta.oxygenExpired ? 'Survivor Pod - oxygen depleted' : `Survivor Pod - ${meta.label}`);
+  }
+  return meta;
+}
+
+function stripCreditsFor(seed, pointId) {
+  return STRIP_BASE_CREDITS + (hash32(seed || 1, pointId || '', 'survivorPodStrip') % 90);
+}
+
+// Normalize one durable promoted-pod record. Anything unverifiable (missing point id, malformed
+// pool) is dropped to defaults rather than trusted — a stale save can only lose the pod, never
+// resurrect a stripped one.
+function normalizePromotedRecord(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const salvagePointId = typeof raw.salvagePointId === 'string' && raw.salvagePointId
+    ? raw.salvagePointId : null;
+  if (!salvagePointId) return null;
+  const oxygenStartedAt = Number(raw.oxygenStartedAt);
+  const oxygenDueAt = Number(raw.oxygenDueAt);
+  const stripPool = clone(raw.stripPool);
+  return {
+    salvagePointId,
+    entityId: raw.entityId != null ? raw.entityId : null,
+    sectorId: typeof raw.sectorId === 'string' && raw.sectorId ? raw.sectorId : null,
+    zoneId: raw.zoneId || null,
+    wreckMissionId: raw.wreckMissionId || MISSION_ID,
+    factionId: raw.factionId || CONCORD_FACTION_ID,
+    destStationId: raw.destStationId || null,
+    destSectorId: raw.destSectorId || null,
+    oxygenStartedAt: Number.isFinite(oxygenStartedAt) ? oxygenStartedAt : 0,
+    oxygenDueAt: Number.isFinite(oxygenDueAt) ? oxygenDueAt : 0,
+    oxygenDecayWindow_s: Number.isFinite(Number(raw.oxygenDecayWindow_s))
+      ? Number(raw.oxygenDecayWindow_s) : OXYGEN_DECAY_WINDOW_S,
+    minRewardMultiplier: Number.isFinite(Number(raw.minRewardMultiplier))
+      ? Number(raw.minRewardMultiplier) : MIN_REWARD_MULTIPLIER,
+    rewardMultiplier: Number.isFinite(Number(raw.rewardMultiplier)) ? Number(raw.rewardMultiplier) : 1,
+    stripPool: stripPool && Object.keys(stripPool).length ? stripPool : clone(STRIP_POOL),
+    stripCredits: Math.max(0, Math.floor(Number(raw.stripCredits) || STRIP_BASE_CREDITS)),
+    rescueSelected: raw.rescueSelected === true,
+    stripped: raw.stripped === true,
+  };
+}
+
+// ── Causal helpers ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Curated scenario / golden gate — same idea as general salvors:
+ * ambient death-eject never runs while a scenario contract is active, so 47a and authored scenes
+ * keep their exact entity lists. Demand-driven only on the ordinary free-flight route.
+ */
+export function causalSurvivorPodsGatedOut(state) {
+  if (!state) return true;
+  const scenario = state.scenario;
+  if (scenario && scenario.active) return true;
+  if (scenario && typeof scenario.scenarioId === 'string' && scenario.scenarioId) return true;
+  return false;
+}
+
+export function isCausalSurvivorPod(entity) {
+  return !!(entity
+    && entity.alive !== false
+    && entity.type === 'payload'
+    && entity.data
+    && entity.data.payloadType === CAUSAL_SURVIVOR_PAYLOAD_TYPE);
+}
+
+export function isPlayerWreckPod(entity) {
+  return !!(entity && entity.alive !== false && entity.data && entity.data.playerWreck === true
+    && (entity.data.payloadType === CAUSAL_SURVIVOR_PAYLOAD_TYPE || entity.data.tetherRole === 'survivor_pod'));
+}
+
+export function isCrewedHullForPodEject(entity) {
+  if (!entity || entity.type !== 'ship') return false;
+  if (entity.alive === false) return false;
+  const data = entity.data || {};
+  if (data.uncrewed === true || data.drone === true || data.isWingman === true) return false;
+  if (data.echoOfPlayer === true) return false;
+  if (data.scenarioActorId) return false;
+  return true;
+}
+
+/** Deterministic eject roll — pure; does not touch state.rng. */
+export function shouldEjectCausalSurvivorPod(state, victim) {
+  if (!victim || victim.id == null) return false;
+  const seed = (state && state.meta && state.meta.seed) || 1;
+  const identity = victim.data && (victim.data.worldRecordId || victim.data.predationIdentityKey || '');
+  const roll = hash32(seed, victim.id, identity, 'causalSurvivorEject') % 100;
+  return roll < CAUSAL_EJECT_CHANCE_PCT;
+}
+
+function payloadScanList(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.payloads)) return index.payloads;
+  if (Array.isArray(state && state.entityList)) return state.entityList;
+  return null;
+}
+
+export function countLiveCausalSurvivorPods(state) {
+  let n = 0;
+  const list = payloadScanList(state);
+  if (Array.isArray(list)) {
+    for (let i = 0; i < list.length; i++) {
+      if (isCausalSurvivorPod(list[i])) n += 1;
+    }
+    return n;
+  }
+  if (state && state.entities && typeof state.entities.values === 'function') {
+    for (const e of state.entities.values()) {
+      if (isCausalSurvivorPod(e)) n += 1;
+    }
+  }
+  return n;
+}
+
+function disposeEntity(state, bus, entity, reason, helpers = null) {
+  if (!entity) return false;
+  // A synchronous resolution observer may already retire this body and reuse its
+  // numeric slot. The late disposal belongs to the original resident only.
+  if (state.entities?.get && state.entities.get(entity.id) !== entity) return false;
+  if (helpers && typeof helpers.removeEntity === 'function') {
+    return helpers.removeEntity(entity.id, { immediate: true, reason }) === true;
+  }
+  if (hasCanonicalEntityLifecycle(state)) {
+    throw new Error('survivor pod disposal requires canonical helpers.removeEntity');
+  }
+  entity.alive = false;
+  clearEntityRuntime(entity);
+  if (state.entities && typeof state.entities.delete === 'function') {
+    state.entities.delete(entity.id);
+  }
+  if (Array.isArray(state.entityList)) {
+    const idx = state.entityList.indexOf(entity);
+    if (idx >= 0) state.entityList.splice(idx, 1);
+  }
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('entity:destroyed', { id: entity.id, type: entity.type, reason });
+  }
+  return true;
+}
+
+export function enforceCausalSurvivorPodCap(
+  state,
+  bus,
+  max = MAX_CAUSAL_SURVIVOR_PODS,
+  helpers = null,
+) {
+  if (!state || !Number.isFinite(max) || max < 0) return 0;
+  if (hasCanonicalEntityLifecycle(state)
+    && (!helpers || typeof helpers.removeEntity !== 'function')) {
+    throw new Error('survivor pod cap requires canonical helpers.removeEntity');
+  }
+  const found = [];
+  const list = payloadScanList(state);
+  if (Array.isArray(list)) {
+    for (let i = 0; i < list.length; i++) {
+      if (isCausalSurvivorPod(list[i])) found.push(list[i]);
+    }
+  } else if (state.entities && typeof state.entities.values === 'function') {
+    for (const entity of state.entities.values()) {
+      if (isCausalSurvivorPod(entity)) found.push(entity);
+    }
+  }
+  if (found.length <= max) return 0;
+  found.sort((a, b) => (a.id | 0) - (b.id | 0));
+  const drop = found.length - max;
+  let removed = 0;
+  for (let i = 0; i < found.length && removed < drop; i++) {
+    if (isPlayerWreckPod(found[i])) continue;
+    // A survivor returned from an interrupted lifter is still the same outstanding custody.
+    // Generic pod-pressure eviction must not silently erase that already-accepted passenger.
+    const survivorId = found[i].data?.survivorPodCausal?.memoryId;
+    const custodyRows = state.survivorPod?.causal?.receipts;
+    if (survivorId && Array.isArray(custodyRows) && custodyRows.some(r =>
+      r?.id === survivorId && r.outcome === 'adrift')) continue;
+    // Residency pressure must not cut the pilot's live rescue line. Retire an unattended
+    // pod instead; the cap still bounds the world while the held pod remains a real body.
+    if (playerLatchedTo(state, found[i].id)) continue;
+    if (disposeEntity(state, bus, found[i], 'survivor_pod_cap', helpers)) removed += 1;
+  }
+  return removed;
+}
+
+function hasCanonicalEntityLifecycle(state) {
+  return !!(state && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 === true);
+}
+
+// The live station spawn stamps stationId and stationTypeId. The buyer is the fence
+// record, not the type string: only quirk.wantsPods takes the pod. A black-market berth
+// with no such fence, including one labeled stationType for an older harness, leaves it.
+function podBuyerAt(station) {
+  if (!station || station.alive === false || station.type !== 'station') return null;
+  const data = station.data || {};
+  const stationId = data.stationId || station.stationId || null;
+  if (typeof stationId !== 'string' || !stationId) return null;
+  const fence = fenceForStation(stationId);
+  if (!fence || !fence.quirk || fence.quirk.wantsPods !== true) return null;
+  return {
+    stationId,
+    entityId: station.id,
+    factionId: station.factionId || data.factionId || fence.factionId || null,
+  };
+}
+
+function fenceStationAt(state, entity) {
+  if (!state || !entity || !entity.pos) return null;
+  const list = indexedTypeScan(state, 'stations');
+  for (let i = 0; i < list.length; i++) {
+    const station = list[i];
+    if (!station || !station.pos) continue;
+    const buyer = podBuyerAt(station);
+    if (!buyer) continue;
+    const dx = entity.pos.x - station.pos.x;
+    const dz = entity.pos.z - station.pos.z;
+    const radius = Math.max(CAUSAL_HANDOFF_RANGE_WU, Number(station.radius) || 40) + CAUSAL_HANDOFF_RANGE_WU;
+    if (dx * dx + dz * dz <= radius * radius) return buyer;
+  }
+  return null;
+}
+
+function playerLatchedTo(state, targetId) {
+  const tether = state && state.player && state.player.tether;
+  if (!tether || tether.active !== true || tether.targetId !== targetId) return false;
+  const attachments = state.combat?.attachments?.byId;
+  if (tether.attachmentId != null && attachments) {
+    const line = attachments[String(tether.attachmentId)];
+    const player = state.entities?.get(state.playerId), target = state.entities?.get(targetId);
+    if (!line || line.state !== 'active' || line.ownerId !== state.playerId || line.targetId !== targetId
+      || !player || !target || (line.ownerGeneration != null && line.ownerGeneration !== player.occupantGeneration)
+      || (line.targetGeneration != null && line.targetGeneration !== target.occupantGeneration)) return false;
+  }
+  return true;
+}
+
+function distance2(a, b) {
+  if (!a || !b) return Infinity;
+  const dx = (a.x || 0) - (b.x || 0);
+  const dz = (a.z || 0) - (b.z || 0);
+  return dx * dx + dz * dz;
+}
+
+function findRescueHullNear(state, pos, radius) {
+  if (!state || !pos) return null;
+  const r2 = radius * radius;
+  const list = indexedShipLikeScan(state);
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    if (!e || e.alive === false || e.type !== 'ship' || !e.pos) continue;
+    if (e.id === state.playerId) continue;
+    const data = e.data || {};
+    const role = data.trafficRole || data.role;
+    if (role !== 'rescue') continue;
+    // A wrecked ambulance cannot take custody, and the ordinary traffic owner has one
+    // passenger berth. Preserve the pod until that hull repairs or finishes its delivery.
+    if (rescueHullDisabled(state, e) || typeof data.worldRecordId !== 'string' || !data.worldRecordId) continue;
+    const trafficRec = state.traffic && Array.isArray(state.traffic.freighters)
+      ? state.traffic.freighters.find((rec) => rec && rec.id === e.id) : null;
+    // A tender-job owner still has sole steering authority; a fleeing lifter is not accepting
+    // passengers. Proximity alone cannot put a survivor aboard either of those hulls.
+    if (!trafficRec || trafficRec.role !== 'rescue' || data.jobId
+      || data.violenceAlarmed || trafficRec.violenceAlarmed) continue;
+    if ((trafficRec && trafficRec.carryingSurvivor) || data.carryingSurvivor
+      || data.civilianReaction === 'transporting_survivor') continue;
+    if (distance2(e.pos, pos) <= r2) return e;
+  }
+  return null;
+}
+
+function causalPublic(entity, rec) {
+  return {
+    entityId: entity && entity.id,
+    victimId: rec && rec.victimId,
+    sectorId: rec && rec.sectorId,
+    factionId: rec && rec.factionId,
+    expireAt: rec && rec.expireAt,
+    phase: rec && rec.phase,
+    source: 'causal_eject',
+  };
+}
+
+// ── Causal mayday voice ────────────────────────────────────────────────────────────────────────
+
+const SHIP_NAME_BY_DEF_ID = new Map(SHIPS.map((s) => [s && s.id, s && s.name]));
+
+/** Cheap dying-ship label: hull def name when the traffic ship carries one, else its role. */
+function victimMaydayLabel(victim) {
+  const data = (victim && victim.data) || {};
+  const defName = SHIP_NAME_BY_DEF_ID.get(data.defId);
+  if (defName) return String(defName);
+  const role = data.trafficRole || data.role;
+  return role ? String(role) : null;
+}
+
+function causalMaydayText(victim) {
+  const label = victimMaydayLabel(victim);
+  return label
+    ? localizeText('Mayday, mayday — {label} going down, pod away.', { label })
+    : localizeText('Mayday, mayday — we are going down, pod away.');
+}
+
+function causalSalvageReceiptText(rec) {
+  const who = (rec && rec.victimLabel) || "The pod's survivor";
+  return localizeText('SURVIVOR PAID · {who} is aboard — {fee} cr salvage fee', {
+    who,
+    fee: CAUSAL_RESCUE_SALVAGE_FEE_CR,
+  });
+}
+
+// ── Tow voice ── the person on your cable, between the mayday and the fee receipt ──────────────
+// Three lines, once each, all while the player's line actually holds: a grip when the tow starts,
+// and two air calls that read the same clock the scan label shows. One line per threshold — the
+// arbiter owns pacing; the voiceId receipt keeps the radio voice off a dropped line.
+
+const CAUSAL_TOW_GRIP_TEXT = () =>
+  localizeText("You've got us — whoever you are, don't let go. Get us inside a bubble.");
+const CAUSAL_TOW_AIR_CALLS = [
+  {
+    leftS: 60,
+    stamp: 'towAir60',
+    text: () => localizeText("Air reads sixty seconds. Whatever you're doing, do it faster."),
+    importance: 0.7,
+  },
+  {
+    leftS: 20,
+    stamp: 'towAir20',
+    text: () => localizeText('Twenty seconds of air. Please.'),
+    importance: 0.9,
+  },
+];
+
+// The delivery answer — the rescue's payer speaks where the fee receipt only pays. A pod the
+// player towed into a station's bubble gets the receiving desk's own line (a bunk offered, the
+// debt named in words, not numbers — the fee receipt already says the figure), and a pod handed
+// to a rescue hull gets that hull's crew answering the cable before they cast off. Each speaks
+// once per rescue, pod-scoped, riding the same arbiter floor as the tow voice.
+const CAUSAL_DESK_ANSWER_TEXT = () =>
+  localizeText("Dock control: pod secured. Medbay has a bunk with their name on it — your fee is posted at the desk.");
+const CAUSAL_HANDOFF_CREW_TEXT = () =>
+  localizeText("We'll take the line from here — good tow. They'll breathe when we open up.");
+
+/**
+ * Player attribution for the causal rescue fee. _tickCausal resolves 'station_delivery' and
+ * 'player_handoff_rescue_hull' only while the live player tether holds the pod (playerLatchedTo —
+ * the handoff block skips every pod the player is not towing), and resolves 'rescue_hull' only
+ * while it does NOT (the explicit unattended-claim path). The resolution reason therefore proves
+ * who answered the mayday; no extra stamping needed.
+ */
+function causalRescuePlayerAttributed(detail) {
+  const reason = detail && detail.reason;
+  return reason === 'station_delivery' || reason === 'player_handoff_rescue_hull';
+}
+
+export const survivorPod = {
+  name: 'survivorPod',
+
+  init(ctx) {
+    this._state = ctx && ctx.state;
+    this._bus = ctx && ctx.bus;
+    this.helpers = ctx && ctx.helpers;
+    this._custodyRestoring = false;
+    ensureState(this._state);
+    this._onPlaced = (p) => this._promoteSector(p && p.sectorId);
+    this._onSectorEnter = (p) => {
+      // Sync lane (emit listener, tests): drain the chunked steps inline.
+      for (const _ of this._enterSteps(p)) { /* inline */ }
+      if (!this._custodyRestoring) this._reconcileCustody(this._state, true);
+    };
+    this._enterSteps = function* (p) {
+      const sectorId = p && p.sectorId;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — promoting
+      // its pod mints a body keyed to the departed sector. Synthetic payloads carry no
+      // epoch and always run.
+      if (p && p.enterEpoch != null && this._state && this._state.world
+          && this._state.world.enterSerial != null
+          && p.enterEpoch !== this._state.world.enterSerial) return;
+      yield* this._promoteSectorSteps(sectorId);
+    };
+    this._onMissionOffered = (offer) => this._stampOffer(offer);
+    this._onChoice = (p) => this._handleChoice(p);
+    // LAW-13: the heat owner alone prices and deduplicates testimony. Speak only after its
+    // measured cooling receipt, so an ambient pickup or a duplicate rescue promises nothing.
+    this._onHeatCooled = (p) => {
+      if (!(p?.cooled > 0)) return;
+      this._bus.emit('toast', {
+        text: localizeText('RESCUED PILOT — testimony filed; heat reduced.'), kind: 'info', ttl: 4,
+      });
+    };
+    this._onNewGame = () => this.newGame();
+    this._onCustodyRestoring = () => { this._custodyRestoring = true; };
+    this._onCustodyRestoreError = (p) => {
+      if (p && ['load_failed', 'visual_gate_failed', 'deferred_transition_failed'].includes(p.reason)) {
+        this._custodyRestoring = false;
+      }
+    };
+    this._onKilled = (p) => {
+      this._onCustodyKilled(p || {});
+      this._onEntityKilled(p || {});
+    };
+    this._onCustodyDelivery = (p) => this._deliverCustody(p || {});
+    this._onCustodyExit = (p) => this._exitCustodySector(p || {});
+    this._onPlayerDeath = (p) => this._onPlayerWreckDeath(p || {});
+    this._onLatched = (p) => this._onTetherLatched(p || {});
+    this._onSaveLoaded = () => {
+      this._custodyRestoring = false;
+      // Continue must keep the pod's history: reconcile restored promoted/stripped records onto
+      // the sector's re-planned salvage points (stable ids) instead of wiping them and letting a
+      // spent pod re-promote. Causal pods re-adopt from entity stamps inside _tickCausal.
+      this._reconcilePromoted(this._state);
+      this._rematerializePlayerWreckPod();
+      // The pirate errand book is never serialized: release any pod-hunt stamp that rode an ai-bag.
+      sweepStalePodHunts(this._state, ensureState(this._state));
+      this._reconcileCustody(this._state, true);
+    };
+    // C7 (THE WORLD ANSWERS): a wounded pirate near a freshly ejected pod breaks off to take it.
+    this._onPodEjectedForHunt = (p) => {
+      const state = this._state;
+      if (!state || causalSurvivorPodsGatedOut(state)) return;
+      onPodEjected(this._podHuntCtx(state), p);
+    };
+    if (this._bus && this._bus.on) {
+      this._bus.on('salvage:placed', this._onPlaced);
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains the same _onSectorEnter under its slice clock in listener order.
+      this._bus.on('sector:enter', (p) => {
+        if (deferSectorEnterMaterialization(this._state, p, this._cookProvider)) return;
+        this._onSectorEnter(p);
+      });
+      // Census arm: survivor-pod promotion lands inside the sector cook deterministically.
+      if (this.helpers) {
+        this._cookProvider = (sector) => this._enterSteps({
+          sectorId: (sector && sector.id)
+            || (this.state && this.state.world && this.state.world.currentSectorId),
+        });
+        (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+          .push(this._cookProvider);
+      }
+      this._bus.on('mission:offered', this._onMissionOffered);
+      this._bus.on('survivorPod:choose', this._onChoice);
+      this._bus.on('survivorPod:heatCooled', this._onHeatCooled);
+      this._bus.on('game:newGame', this._onNewGame);
+      this._bus.on('game:new', this._onNewGame);
+      this._bus.on('save:loaded', this._onSaveLoaded);
+      this._bus.on('save:restoring', this._onCustodyRestoring);
+      this._bus.on('save:error', this._onCustodyRestoreError);
+      this._bus.on('entity:killed', this._onKilled);
+      this._bus.on('player:death', this._onPlayerDeath);
+      this._bus.on('tether:latched', this._onLatched);
+      this._bus.on('survivorPod:ejected', this._onPodEjectedForHunt);
+      this._bus.on('survivorPod:delivered', this._onCustodyDelivery);
+      this._bus.on('sector:exit', this._onCustodyExit);
+    }
+    if (this.helpers) {
+      this.helpers.survivorPod = {
+        ...(this.helpers.survivorPod || {}),
+        canDeliver: (hull, custodyId, station) => this._canDeliverCustody(hull, custodyId, station),
+      };
+    }
+  },
+
+  // The pod owner's side of the pirate pod hunt (src/ai/podHunt.js): predicates it must not
+  // import (circularity) and the writes it cannot make — resolving the pod as captured, and
+  // disarming the hunter: src/ai may not write the fire bit (SG-06 intake), so the host routes
+  // it through aiPorts' own fail-closed sweep once the errand sets hold_fire.
+  _podHuntCtx(state) {
+    const own = ensureState(state);
+    return {
+      state,
+      own,
+      bus: this._bus,
+      helpers: this.helpers,
+      isHuntablePod: (pod) => isCausalSurvivorPod(pod) && !isPlayerWreckPod(pod),
+      playerLatchedTo: (podId) => playerLatchedTo(state, podId),
+      capture: (rec, pod, detail) => this._resolveCausal(state, own, rec, pod, 'captured', detail),
+      disarm: () => clearIneligibleAIFiringIntents(state, this.helpers),
+    };
+  },
+
+  newGame() {
+    this._custodyRestoring = false;
+    if (this._state) this._state.survivorPod = freshState();
+  },
+
+  // ── Save seam ──────────────────────────────────────────────────────────────────────────────
+  // Promoted pod records (which salvage point became a pod, its oxygen clock, and the terminal
+  // stripped flag) are durable state: a stripped pod must stay stripped across Continue and a live
+  // pod keeps its oxygen clock. Causal pods are NOT serialized here — persistent-flagged pod
+  // entities carry their own survivorPodCausal stamp and re-adopt on the next _tickCausal.
+  serialize() {
+    const own = ensureState(this._state);
+    const promotedByPoint = {};
+    for (const raw of Object.values(own.promotedByPoint)) {
+      const rec = normalizePromotedRecord(raw);
+      if (rec) promotedByPoint[rec.salvagePointId] = rec;
+    }
+    const promotedBySector = {};
+    for (const [sectorId, raw] of Object.entries(own.promotedBySector)) {
+      // Fold sector rows whose record only lives in bySector into the point table first.
+      const rec = normalizePromotedRecord(raw);
+      if (!rec) continue;
+      if (!promotedByPoint[rec.salvagePointId]) promotedByPoint[rec.salvagePointId] = rec;
+      promotedBySector[sectorId] = rec.salvagePointId;
+    }
+    return {
+      schema: SURVIVOR_POD_SCHEMA,
+      promotedBySector,
+      promotedByPoint,
+      causalReceipts: trimCausalReceipts(own.causal.receipts || []).map((r) => clone(r)),
+    };
+  },
+
+  deserialize(data) {
+    const own = ensureState(this._state);
+    if (!own) return;
+    const src = data && !Array.isArray(data) && data.schema === SURVIVOR_POD_SCHEMA ? data : {};
+    const promotedByPoint = {};
+    for (const raw of Object.values(src.promotedByPoint || {})) {
+      const rec = normalizePromotedRecord(raw);
+      if (rec) promotedByPoint[rec.salvagePointId] = rec;
+    }
+    const promotedBySector = {};
+    for (const [sectorId, value] of Object.entries(src.promotedBySector || {})) {
+      // v1 writes point-id strings; tolerate a whole-record row the same way.
+      const rec = typeof value === 'string' ? promotedByPoint[value] : normalizePromotedRecord(value);
+      if (!rec) continue;
+      promotedByPoint[rec.salvagePointId] = rec;
+      promotedBySector[sectorId] = rec;
+    }
+    own.promotedBySector = promotedBySector;
+    own.promotedByPoint = promotedByPoint;
+    own.causal = {
+      byEntityId: {},
+      receipts: Array.isArray(src.causalReceipts)
+        ? trimCausalReceipts(src.causalReceipts).map((r) => clone(r))
+        : [],
+    };
+  },
+
+  update(_dt, state) {
+    const own = ensureState(state);
+    if (!own) return;
+    const currentSectorId = state.world && state.world.currentSectorId;
+    let visible = null;
+    // Scratch refill instead of Object.values — this ran every update tick even with no pods.
+    const promoted = this._promotedScratch || (this._promotedScratch = []);
+    promoted.length = 0;
+    for (const key in own.promotedByPoint) promoted.push(own.promotedByPoint[key]);
+    for (const rec of promoted) {
+      if (!rec || rec.stripped) continue;
+      const point = pointForRec(state, rec);
+      const ent = entityForPoint(state, point || rec);
+      const meta = mirrorMeta(state, rec, point, ent);
+      if (!visible && rec.sectorId === currentSectorId) visible = meta;
+    }
+    if (!state.ui) state.ui = {};
+    if (visible) state.ui.survivorPod = visible;
+    else if (state.ui.survivorPod && state.ui.survivorPod.salvagePointId) state.ui.survivorPod = null;
+
+    // Causal path: re-adopt + settle + TTL.
+    if (!this._custodyRestoring) {
+      this._reconcileCustody(state, false);
+      this._tickCausal(state, own);
+    }
+    // C7: steer wounded pirates onto adrift pods (zero work while no pod and no errand is live).
+    let livePods = false;
+    for (const _id in own.causal.byEntityId) { livePods = true; break; }
+    if (own.hunt || livePods) {
+      if (!causalSurvivorPodsGatedOut(state) && (!state.mode || state.mode === 'flight')) {
+        tickPodHunts(this._podHuntCtx(state));
+      }
+    }
+    this._readoptPlayerWreckPod(state);
+  },
+
+  // ── Causal eject ─────────────────────────────────────────────────────────────────────────────
+
+  _onEntityKilled(payload) {
+    const state = this._state;
+    if (!state || causalSurvivorPodsGatedOut(state)) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const id = payload && payload.id;
+    if (id == null || id === state.playerId) return null;
+    const victim = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(id)
+      : null;
+    // Prefer live entity; fall back to payload snapshot for same-tick disposal.
+    const hull = victim || {
+      id,
+      type: payload.type,
+      pos: payload.pos,
+      vel: payload.vel,
+      data: payload.data || {},
+      factionId: payload.factionId,
+      occupantGeneration: occupantGenerationOf(payload),
+      alive: false,
+    };
+    if (hull.type !== 'ship' && payload.type !== 'ship') return null;
+    if (!isCrewedHullForPodEject({ ...hull, type: 'ship', alive: true })) return null;
+    if (victim && victim.data && victim.data.survivorPodEjected === true) return null;
+    if (payload.data && payload.data.survivorPodEjected === true) return null;
+    if (!shouldEjectCausalSurvivorPod(state, hull)) return null;
+    return this._spawnCausalPod(state, hull, payload);
+  },
+
+  _onPlayerWreckDeath(payload) {
+    const state = this._state;
+    if (!state) return null;
+    return this._spawnPlayerWreckPod(state, payload || {});
+  },
+
+  _livePlayerWreckPod(state) {
+    const list = payloadScanList(state) || [];
+    for (let i = 0; i < list.length; i++) {
+      if (isPlayerWreckPod(list[i])) return list[i];
+    }
+    return null;
+  },
+
+  _readoptPlayerWreckPod(state) {
+    const entity = this._livePlayerWreckPod(state);
+    if (!entity || !entity.data) return entity;
+    entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    entity.data.playerWreck = true;
+    entity.data.tetherRole = 'survivor_pod';
+    entity.data.scanLabel = entity.data.scanLabel || 'Your Pod';
+    entity.data.masslineTetherable = true;
+    return entity;
+  },
+
+  _rematerializePlayerWreckPod() {
+    const state = this._state;
+    if (!state) return null;
+    if (this._livePlayerWreckPod(state)) return this._readoptPlayerWreckPod(state);
+    const marker = playerWreckMarker(state);
+    if (!marker || !marker.pos) return null;
+    return this._spawnPlayerWreckPod(state, {
+      pos: marker.pos,
+      markerId: marker.markerId,
+      rematerialize: true,
+    });
+  },
+
+  _spawnPlayerWreckPod(state, payload = {}) {
+    if (this._livePlayerWreckPod(state)) return this._readoptPlayerWreckPod(state);
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const pos = (payload && payload.pos) || (player && player.pos);
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const velSrc = (player && player.vel) || (payload && payload.vel) || { x: 0, z: 0 };
+    const entity = spawnPayloadEntity(state, {
+      pos: { x: pos.x + 6, z: pos.z - 4 },
+      vel: {
+        x: Number.isFinite(velSrc.x) ? velSrc.x * 0.15 : 0,
+        z: Number.isFinite(velSrc.z) ? velSrc.z * 0.15 : 0,
+      },
+      radius: 5,
+      mass: 24,
+      hull: 40,
+      hullMax: 40,
+      ownerId: null,
+      factionId: player && player.factionId || 'faction_free',
+      salvagePool: {},
+      payloadType: CAUSAL_SURVIVOR_PAYLOAD_TYPE,
+      worldRecordId: null,
+      transientSector: false,
+      homeSectorId: state.world && state.world.currentSectorId || null,
+    }, this.helpers);
+    if (!entity) return null;
+    entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    entity.data.playerWreck = true;
+    entity.data.sourceVictimId = state.playerId;
+    entity.data.playerWreckMarkerId = payload.markerId || (playerWreckMarker(state) && playerWreckMarker(state).markerId) || null;
+    entity.data.tetherRole = 'survivor_pod';
+    entity.data.scanLabel = 'Your Pod';
+    entity.data.masslineTetherable = true;
+    entity.data.survivorPodCausal = {
+      entityId: entity.id,
+      victimId: state.playerId,
+      sectorId: state.world && state.world.currentSectorId || null,
+      factionId: entity.factionId || 'faction_free',
+      memoryId: `player-wreck-pod:${hash32((state.meta && state.meta.seed) || 1, 'player_wreck_pod').toString(36)}`,
+      phase: 'adrift',
+      ejectedAt: Number.isFinite(state.simTime) ? state.simTime : 0,
+      expireAt: null,
+      resolved: false,
+      playerWreck: true,
+    };
+    if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('survivorPod:ejected', {
+        entityId: entity.id,
+        victimId: state.playerId,
+        sectorId: entity.data.survivorPodCausal.sectorId,
+        factionId: entity.factionId,
+        expireAt: null,
+        phase: 'adrift',
+        source: 'player_wreck',
+        playerWreck: true,
+        markerId: entity.data.playerWreckMarkerId,
+      });
+    }
+    return entity;
+  },
+
+  spawnWreckSquatter(request = {}) {
+    const state = this._state;
+    const pos = request && request.pos;
+    if (!state || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const entity = spawnPayloadEntity(state, {
+      pos: { x: pos.x, z: pos.z },
+      vel: { x: 0, z: 0 },
+      radius: 5,
+      mass: 24,
+      hull: 40,
+      hullMax: 40,
+      ownerId: null,
+      factionId: request.factionId || 'faction_reach',
+      salvagePool: {},
+      payloadType: 'wreck_squatter',
+      worldRecordId: null,
+      transientSector: true,
+      homeSectorId: request.sectorId || (state.world && state.world.currentSectorId) || null,
+    }, this.helpers);
+    if (!entity || !entity.data) return entity;
+    entity.data.tetherRole = 'survivor_pod';
+    entity.data.scanLabel = 'Wreck Squatter';
+    entity.data.wreckSquatter = true;
+    entity.data.masslineTetherable = true;
+    entity.data.sourceFieldId = request.fieldId || null;
+    return entity;
+  },
+
+  _spawnCausalPod(state, victim, payload) {
+    const pos = (victim && victim.pos) || (payload && payload.pos);
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    if (victim && victim.data) victim.data.survivorPodEjected = true;
+
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const velSrc = (victim && victim.vel) || (payload && payload.vel) || { x: 0, z: 0 };
+    const vel = {
+      x: Number.isFinite(velSrc.x) ? velSrc.x * 0.2 : 0,
+      z: Number.isFinite(velSrc.z) ? velSrc.z * 0.2 : 0,
+    };
+    const factionId = victim.factionId
+      || (victim.data && victim.data.factionId)
+      || 'neutral';
+    const sectorId = state.world && state.world.currentSectorId || null;
+
+    // D65 / cc93d8461: spawn beside the wreck's line, never on it. The wreck inherits the
+    // victim's full velocity at victim.pos; a pod co-spawned there is nudged +2.5 WU by the
+    // SG-02 coincident-spawn guard into a valid contact pair, and the fast wreck plows into
+    // the slow pod — bleeding ~30% of the wreck's momentum in the first ticks (PQ-138.03).
+    // wreckR replicates aftermathWrecks.js boundedVictimRadius() (finite > 0 else the 9 WU
+    // fallback) so the clearance matches the wreck that is actually spawned.
+    const podR = 5;
+    const victimR = Number(victim && victim.radius);
+    const wreckR = Number.isFinite(victimR) && victimR > 0 ? victimR : 9;
+    const clearance = wreckR + podR + 4;
+    const vvX = Number.isFinite(velSrc.x) ? velSrc.x : 0;
+    const vvZ = Number.isFinite(velSrc.z) ? velSrc.z : 0;
+    const vLen = Math.hypot(vvX, vvZ);
+    let perpX;
+    let perpZ;
+    if (vLen > 1e-3) {
+      perpX = -vvZ / vLen;
+      perpZ = vvX / vLen;
+    } else {
+      // Heading fallback: forward is (cos(rot), sin(rot)), so the right-perpendicular is
+      // (-sin(rot), cos(rot)).
+      const rot = Number.isFinite(Number(victim && victim.rot)) ? Number(victim.rot) : 0;
+      perpX = -Math.sin(rot);
+      perpZ = Math.cos(rot);
+    }
+    const side = Number(victim && victim.id) % 2 ? 1 : -1;
+    const spawnPos = {
+      x: pos.x + side * perpX * clearance,
+      z: pos.z + side * perpZ * clearance,
+    };
+
+    const entity = spawnPayloadEntity(state, {
+      pos: { x: spawnPos.x, z: spawnPos.z },
+      vel,
+      radius: 5,
+      mass: 24,
+      hull: 40,
+      hullMax: 40,
+      ownerId: null,
+      factionId,
+      salvagePool: {},
+      payloadType: CAUSAL_SURVIVOR_PAYLOAD_TYPE,
+      worldRecordId: null,
+      transientSector: false,
+      homeSectorId: sectorId,
+    }, this.helpers);
+    // Entity slots are reusable; a new victim occupant must mint a new person. Some kill
+    // events arrive after the hull was retired without a generation snapshot. In that case
+    // the canonical pod allocation supplies the ejection identity. Restored IDs are never minted here.
+    const victimGeneration = occupantGenerationOf(victim);
+    const life = victimGeneration != null ? `victim:${victimGeneration}`
+      : `ejection:${entity.id}:${occupantGenerationOf(entity) ?? 'legacy'}`;
+    const memoryId = `survivor:${victim.id}:${hash32((state.meta && state.meta.seed) || 1, victim.id, 'podId').toString(36)}:${life}`;
+    entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    const rec = {
+      entityId: entity.id,
+      victimId: victim.id,
+      victimLabel: victimMaydayLabel(victim),
+      sectorId,
+      factionId,
+      memoryId,
+      phase: 'adrift',
+      ejectedAt: now,
+      expireAt: now + CAUSAL_POD_TTL_S,
+      resolved: false,
+    };
+    entity.data.sourceVictimId = victim.id;
+    entity.data.survivorPodCausal = { ...rec };
+    entity.data.tetherRole = 'survivor_pod';
+    entity.data.scanLabel = 'Survivor Pod';
+    entity.data.masslineTetherable = true;
+
+    const own = ensureState(state);
+    own.causal.byEntityId[entity.id] = rec;
+    enforceCausalSurvivorPodCap(state, this._bus, MAX_CAUSAL_SURVIVOR_PODS, this.helpers);
+    // Cap may have disposed this entity if we were over; drop stale record.
+    if (entity.alive === false) {
+      delete own.causal.byEntityId[entity.id];
+      return null;
+    }
+    // The hail: one mayday per pod, at eject. Pod-scoped voice id keeps it idempotent; the
+    // tick never re-hails (resolution paths in _tickCausal are silent).
+    this._speakMayday(victim, entity, rec);
+    if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('survivorPod:ejected', causalPublic(entity, rec));
+    }
+    return entity;
+  },
+
+  // One mayday hail per ejected pod. When no voice helper is mounted (headless runs, probes)
+  // the same line surfaces as a toast — the pirateDisengage._speak fallback pattern.
+  _speakMayday(victim, entity, rec) {
+    const text = causalMaydayText(victim);
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'survivorMayday',
+        // Bark ttl doubles as the queue stale-drop deadline — under the 1.5 s bark gap a 1 s
+        // hail expired unread, so a mayday fired mid-firefight never reached the player.
+        ttl: 4,
+        id: `survivorMayday:${entity && entity.id != null ? entity.id : (rec && rec.entityId)}`,
+        factionId: (rec && rec.factionId) || 'neutral',
+      });
+    } else if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('toast', { text, kind: 'survivorMayday', ttl: 4 });
+    }
+  },
+
+  // Player-answered receipt: same voice-or-toast pattern, pod-scoped id, fires once because
+  // _resolveCausal guards on rec.resolved before its caller reaches the payout.
+  _speakSalvageReceipt(rec, entityId, factionId) {
+    const text = causalSalvageReceiptText(rec);
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'survivorMaydayPaid',
+        ttl: 4,
+        id: `survivorMaydayPaid:${entityId}`,
+        factionId: factionId || CONCORD_FACTION_ID,
+      });
+    } else if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('toast', { text, kind: 'survivorMaydayPaid', ttl: 4 });
+    }
+  },
+
+  _tickCausal(state, own) {
+    if (!own || !own.causal) return;
+    // Re-adopt pods restored via flags.persistent after save:loaded wiped coordinator state.
+    const list = payloadScanList(state) || [];
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (!entity || entity.type !== 'payload' || !entity.data
+        || entity.data.payloadType !== CAUSAL_SURVIVOR_PAYLOAD_TYPE || entity.data.playerWreck) continue;
+      const stamp = entity.data && entity.data.survivorPodCausal;
+      if (!stamp) continue;
+      // A terminal receipt owns the outcome even when physical retirement was refused.
+      // Retry disposal directly after Continue, never re-adopt it as a new rescue/debt.
+      if (stamp.resolved) {
+        disposeEntity(state, this._bus, entity, `survivor_pod_${stamp.phase}`, this.helpers);
+        delete own.causal.byEntityId[entity.id];
+        if (list[i] !== entity) i -= 1;
+        continue;
+      }
+      if (!isCausalSurvivorPod(entity)) continue;
+      if (!own.causal.byEntityId[entity.id]) {
+        own.causal.byEntityId[entity.id] = {
+          entityId: entity.id,
+          victimId: stamp.victimId,
+          sectorId: stamp.sectorId || (state.world && state.world.currentSectorId) || null,
+          factionId: stamp.factionId || entity.factionId || 'neutral',
+          memoryId: stamp.memoryId || `survivor:${entity.id}`,
+          phase: stamp.phase || 'adrift',
+          ejectedAt: stamp.ejectedAt || 0,
+          expireAt: stamp.expireAt || ((Number(state.simTime) || 0) + CAUSAL_POD_TTL_S),
+          playerNoticedAt: Number.isFinite(stamp.playerNoticedAt) ? stamp.playerNoticedAt : null,
+          // The tow voice's spent lines ride the stamp: a save/restore re-adoption must not
+          // re-speak a grip or air call the survivor already said.
+          towGripSpoken: stamp.towGripSpoken === true,
+          towAir60: stamp.towAir60 === true,
+          towAir20: stamp.towAir20 === true,
+          resolved: false,
+        };
+      }
+    }
+
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const player = state.entities && state.entities.get
+      ? state.entities.get(state.playerId)
+      : null;
+
+    for (const id of Object.keys(own.causal.byEntityId)) {
+      const rec = own.causal.byEntityId[id];
+      if (!rec || rec.resolved) {
+        delete own.causal.byEntityId[id];
+        continue;
+      }
+      const entity = state.entities && state.entities.get
+        ? state.entities.get(Number(id) === Number(id) ? Number(id) : id) || state.entities.get(id)
+        : null;
+      if (!entity || entity.alive === false || !isCausalSurvivorPod(entity) || isPlayerWreckPod(entity)) {
+        delete own.causal.byEntityId[id];
+        continue;
+      }
+      // The player came within hail of a live pod: the one fact that lets its expiry be their debt.
+      if (rec.playerNoticedAt == null && player && player.alive !== false && player.pos && entity.pos
+        && distance2(player.pos, entity.pos) <= CAUSAL_POD_NOTICE_WU * CAUSAL_POD_NOTICE_WU) {
+        rec.playerNoticedAt = now;
+      }
+      // Keep entity annotation in sync for save/Continue.
+      entity.data.survivorPodCausal = { ...rec, entityId: entity.id };
+      // Unnoticed, the pod is just a pod. Once the player has come within hail, the air left is readable.
+      if (Number.isFinite(rec.playerNoticedAt)) {
+        const left = Math.max(0, Math.ceil((Number(rec.expireAt) || 0) - now));
+        setPodScanLabel(entity, `Survivor Pod - oxygen ${left}s`);
+      }
+
+      if (Number.isFinite(rec.expireAt) && now >= rec.expireAt) {
+        this._resolveCausal(state, own, rec, entity, 'abandoned', {
+          reason: 'ttl_expired',
+        });
+        continue;
+      }
+
+      // Ambient rescue hull claim (unattended pod).
+      const rescuer = findRescueHullNear(state, entity.pos, CAUSAL_RESCUE_HULL_CLAIM_WU);
+      if (rescuer && !playerLatchedTo(state, entity.id)) {
+        this._boardCustody(state, own, rec, entity, rescuer, {
+          reason: 'rescue_hull',
+          rescueHullId: rescuer.id,
+          rescueHullGeneration: rescuer.occupantGeneration,
+          stationId: null,
+        });
+        continue;
+      }
+
+      // Player must be latched for handoff decisions (tow agency).
+      if (!player || !playerLatchedTo(state, entity.id)) continue;
+      // The tow voice reads the same clock the scan label shows, once per threshold.
+      this._speakTowAir(rec, entity, now);
+      if (distance2(player.pos, entity.pos) > CAUSAL_HANDOFF_RANGE_WU * CAUSAL_HANDOFF_RANGE_WU) {
+        continue;
+      }
+
+      // Hand to nearby rescue hull while latched.
+      const handoffHull = findRescueHullNear(state, entity.pos, CAUSAL_HANDOFF_RANGE_WU);
+      if (handoffHull) {
+        this._boardCustody(state, own, rec, entity, handoffHull, {
+          reason: 'player_handoff_rescue_hull',
+          rescueHullId: handoffHull.id,
+          rescueHullGeneration: handoffHull.occupantGeneration,
+          stationId: null,
+        });
+        continue;
+      }
+
+      // Lawful station custody (same protection bubble as nonlethal recovery).
+      const jurisdiction = protectedStationAt(state, entity) || protectedStationAt(state, player);
+      if (jurisdiction) {
+        this._resolveCausal(state, own, rec, entity, 'rescued', {
+          reason: 'station_delivery',
+          stationId: jurisdiction.stationId,
+          authorityFactionId: jurisdiction.factionId || CONCORD_FACTION_ID,
+        });
+        continue;
+      }
+
+      // Only the fence who buys pods. Any other berth leaves the pod on the cable.
+      const fence = fenceStationAt(state, entity) || fenceStationAt(state, player);
+      if (fence) {
+        this._resolveCausal(state, own, rec, entity, 'ransomed', {
+          reason: 'fence_delivery',
+          stationId: fence.stationId,
+          authorityFactionId: fence.factionId,
+        });
+      }
+    }
+  },
+
+  // Pending custody uses the existing saved causal receipt collection. It is deliberately not a
+  // rescue receipt: the terminal event, reputation and fee belong to actual station arrival.
+  _boardCustody(state, own, rec, pod, hull, detail) {
+    if (!rec || rec.resolved || !pod || state.entities?.get(pod.id) !== pod
+      || !hull || state.entities?.get(hull.id) !== hull || rescueHullDisabled(state, hull)
+      || typeof hull.data?.worldRecordId !== 'string' || !hull.data.worldRecordId) return false;
+    const pending = own.causal.receipts.filter(r => r && CUSTODY_OUTCOMES.has(r.outcome));
+    const prior = pending.find(r => r.id === rec.memoryId);
+    // A passenger released after an interrupted ride may be picked up again. Its adrift marker
+    // remains until this exact physical pod transfers, so the person's identity is not duplicated.
+    if ((prior && prior.outcome !== 'adrift')
+      || pending.some(r => r !== prior && r.outcome === 'in_transit'
+        && r.carrierWorldRecordId === hull.data.worldRecordId)
+      || (!prior && pending.length >= MAX_CAUSAL_SURVIVOR_PODS)) return false;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const captainPodKey = pod.data?.captainPodKey;
+    const entry = {
+      id: rec.memoryId || `survivor:${pod.id}`, outcome: 'in_transit', entityId: pod.id,
+      victimId: rec.victimId, sectorId: rec.sectorId, factionId: rec.factionId,
+      carrierWorldRecordId: hull.data.worldRecordId, carrierEntityId: hull.id,
+      carrierGeneration: hull.occupantGeneration ?? null,
+      lastPos: { x: hull.pos.x, z: hull.pos.z }, lastVel: { x: hull.vel?.x || 0, z: hull.vel?.z || 0 },
+      // Boarding retires the pod. Its captain binding must travel with the same
+      // durable passenger, not be recovered later from a recycled entity slot.
+      survivor: { ...rec, ...(typeof captainPodKey === 'string' && captainPodKey ? { captainPodKey } : {}) },
+      oxygenLeft: Math.max(0, (rec.expireAt || now) - now),
+      pickupReason: detail.reason,
+    };
+    own.causal.receipts.push(entry);
+    if (!disposeEntity(state, this._bus, pod, 'survivor_pod_boarded', this.helpers)) {
+      own.causal.receipts = own.causal.receipts.filter(r => r !== entry);
+      return false;
+    }
+    if (prior) own.causal.receipts = own.causal.receipts.filter(r => r !== prior);
+    delete own.causal.byEntityId[pod.id];
+    this._bus?.emit('survivorPod:boarded', {
+      id: entry.id, custodyId: entry.id, entityId: entry.entityId, rescueHullId: entry.carrierEntityId,
+      rescueHullGeneration: entry.carrierGeneration, reason: entry.pickupReason,
+    });
+    // The crew of the hull that just opened up answers the cable that fed them — only when the
+    // PLAYER made the handoff (an unattended pod an ambulance claims on its own credits nobody).
+    // One line, pod-scoped; the hull's own faction register, like every voice on the band.
+    if (detail.reason === 'player_handoff_rescue_hull') {
+      this._speakDeskAnswer(
+        CAUSAL_HANDOFF_CREW_TEXT(),
+        hull.factionId || hull.data?.factionId || 'neutral',
+        `survivorDesk:${pod.id}`,
+        0.6,
+        pod.id,
+      );
+    }
+    return true;
+  },
+
+  _canDeliverCustody(hull, custodyId, station) {
+    const state = this._state;
+    const row = state?.survivorPod?.causal?.receipts?.find(r => r?.id === custodyId && r.outcome === 'in_transit');
+    if (!row || !hull || state.entities?.get(hull.id) !== hull || rescueHullDisabled(state, hull)
+      || hull.data?.trafficRole !== 'rescue' || hull.data?.worldRecordId !== row.carrierWorldRecordId
+      || hull.id !== row.carrierEntityId || (row.carrierGeneration != null && hull.occupantGeneration !== row.carrierGeneration)
+      || !station || state.entities?.get(station.id) !== station || station.type !== 'station'
+      || station.alive === false || !station.pos || !hull.pos
+      || !Number.isFinite(hull.pos.x) || !Number.isFinite(hull.pos.z)
+      || !Number.isFinite(station.pos.x) || !Number.isFinite(station.pos.z)) return false;
+    return distance2(hull.pos, station.pos) < 80 * 80;
+  },
+
+  _deliverCustody(p) {
+    const state = this._state;
+    const hull = state?.entities?.get(p.rescueHullId), station = state?.entities?.get(p.stationId);
+    if (p.rescueHullGeneration != null && p.rescueHullGeneration !== hull?.occupantGeneration) return;
+    if (!this._canDeliverCustody(hull, p.custodyId, station)) return;
+    const own = ensureState(state);
+    const row = own.causal.receipts.find(r => r?.id === p.custodyId && r.outcome === 'in_transit');
+    if (!row || p.podEntityId !== row.entityId) return;
+    const rec = { ...row.survivor, entityId: row.entityId, pos: { ...hull.pos }, resolved: false };
+    if (this._resolveCausal(state, own, rec, null, 'rescued', {
+      reason: row.pickupReason, rescueHullId: hull.id, stationId: station.id,
+    })) p.custodyAccepted = true;
+  },
+
+  _recoverCustody(state, own, row) {
+    if (!row || row.outcome !== 'recovery_pending' || row.sectorId !== state.world?.currentSectorId
+      || !row.lastPos || !Number.isFinite(row.lastPos.x) || !Number.isFinite(row.lastPos.z)) return false;
+    const existing = (payloadScanList(state) || []).find(e => isCausalSurvivorPod(e)
+      && e.data?.survivorPodCausal?.memoryId === row.id);
+    const captainPodKey = row.survivor?.captainPodKey;
+    if (existing) {
+      if (!existing.data.captainPodKey && typeof captainPodKey === 'string' && captainPodKey)
+        existing.data.captainPodKey = captainPodKey;
+      row.outcome = 'adrift'; row.entityId = existing.id; return true;
+    }
+    const pod = spawnPayloadEntity(state, {
+      pos: { x: row.lastPos.x + 20, z: row.lastPos.z }, vel: row.lastVel || { x: 0, z: 0 },
+      radius: 5, mass: 24, hull: 40, hullMax: 40, factionId: row.factionId,
+      payloadType: CAUSAL_SURVIVOR_PAYLOAD_TYPE, salvagePool: {}, transientSector: false,
+      homeSectorId: row.sectorId,
+    }, this.helpers);
+    if (!pod) return false;
+    const rec = { ...row.survivor, entityId: pod.id, memoryId: row.id, phase: 'adrift',
+      expireAt: (Number(state.simTime) || 0) + Math.max(0, Number.isFinite(row.oxygenLeft) ? row.oxygenLeft : 0),
+      resolved: false };
+    pod.flags = { ...pod.flags, persistent: true };
+    pod.data.survivorPodCausal = { ...rec };
+    if (typeof captainPodKey === 'string' && captainPodKey) pod.data.captainPodKey = captainPodKey;
+    pod.data.tetherRole = 'survivor_pod'; pod.data.masslineTetherable = true;
+    pod.data.scanLabel = 'Survivor Pod';
+    own.causal.byEntityId[pod.id] = rec;
+    row.outcome = 'adrift'; row.entityId = pod.id;
+    return true;
+  },
+
+  _reconcileCustody(state, restore) {
+    if (!state) return;
+    const own = ensureState(state);
+    for (const row of own.causal.receipts) {
+      if (!row || !CUSTODY_OUTCOMES.has(row.outcome)) continue;
+      if (row.outcome === 'recovery_pending') {
+        if (!row.waitForEnter || restore) { row.waitForEnter = false; this._recoverCustody(state, own, row); }
+        continue;
+      }
+      if (row.outcome !== 'in_transit') continue;
+      let hull = state.entities?.get(row.carrierEntityId);
+      if (!hull || hull.data?.worldRecordId !== row.carrierWorldRecordId
+        || (row.carrierGeneration != null && hull.occupantGeneration !== row.carrierGeneration)) {
+        // Residency can rematerialize the same durable hull under a new occupant generation.
+        // Rebind only an unambiguous world identity, never a reused numeric slot or a twin.
+        const matches = indexedShipLikeScan(state).filter(e => e?.alive !== false
+          && e?.data?.worldRecordId === row.carrierWorldRecordId);
+        hull = matches.length === 1 ? matches[0] : null;
+        if (matches.length > 1) continue;
+      }
+      if (!hull) {
+        if (restore) { row.outcome = 'recovery_pending'; this._recoverCustody(state, own, row); }
+        continue;
+      }
+      row.carrierEntityId = hull.id; row.carrierGeneration = hull.occupantGeneration ?? null;
+      if (hull.data?.sectorId) row.sectorId = hull.data.sectorId;
+      if (hull.pos) row.lastPos = { x: hull.pos.x, z: hull.pos.z };
+      if (hull.vel) row.lastVel = { x: hull.vel.x || 0, z: hull.vel.z || 0 };
+      if (rescueHullDisabled(state, hull) || hull.data?.trafficRole !== 'rescue') {
+        row.outcome = 'recovery_pending';
+        const trafficRec = state.traffic?.freighters?.find(r => r.id === hull.id);
+        if (trafficRec?.rescueCustodyId === row.id) {
+          trafficRec.carryingSurvivor = false; trafficRec.rescueCustodyId = null;
+          trafficRec.rescueTargetId = null; trafficRec.civilianReaction = null;
+        }
+        if (hull.data) { hull.data.carryingSurvivor = false; delete hull.data.rescueCustodyId; }
+        this._recoverCustody(state, own, row);
+        continue;
+      }
+      const trafficRec = state.traffic?.freighters?.find(r => r.id === hull.id && r.role === 'rescue');
+      if (trafficRec && !trafficRec.carryingSurvivor) {
+        this._bus?.emit('survivorPod:boarded', { id: row.id, custodyId: row.id, entityId: row.entityId,
+          rescueHullId: hull.id, rescueHullGeneration: hull.occupantGeneration, reason: row.pickupReason });
+      }
+    }
+  },
+
+  _exitCustodySector(p) {
+    if (p.continuous || p.noTeleport) return;
+    const state = this._state;
+    if (!state) return;
+    const own = ensureState(state);
+    const sectorId = p.sectorId || state?.world?.currentSectorId;
+    for (const row of own.causal.receipts) if (row?.outcome === 'in_transit' && row.sectorId === sectorId) {
+      row.outcome = 'recovery_pending'; row.waitForEnter = true;
+      const hull = state.entities?.get(row.carrierEntityId);
+      if (hull?.data?.worldRecordId === row.carrierWorldRecordId
+        && (row.carrierGeneration == null || hull.occupantGeneration === row.carrierGeneration)
+        && hull.data.rescueCustodyId === row.id) {
+        hull.data.carryingSurvivor = false; delete hull.data.rescueCustodyId;
+      }
+    }
+  },
+
+  _onCustodyKilled(p) {
+    const state = this._state, own = ensureState(state);
+    if (!state || p.id == null) return;
+    const entity = state.entities?.get(p.id);
+    for (const row of own.causal.receipts) {
+      if (!row) continue;
+      if (row.outcome === 'adrift' && row.entityId === p.id
+        && (entity?.data?.survivorPodCausal?.memoryId === row.id || p.data?.survivorPodCausal?.memoryId === row.id)) {
+        own.causal.receipts = own.causal.receipts.filter(r => r !== row);
+      }
+      if (row.outcome !== 'in_transit' || row.carrierEntityId !== p.id) continue;
+      const data = p.data || entity?.data;
+      if (data?.worldRecordId !== row.carrierWorldRecordId
+        || (entity && row.carrierGeneration != null && entity.occupantGeneration !== row.carrierGeneration)) continue;
+      if (p.pos) row.lastPos = { x: p.pos.x, z: p.pos.z };
+      if (p.vel) row.lastVel = { x: p.vel.x, z: p.vel.z };
+      row.outcome = 'recovery_pending';
+      this._recoverCustody(state, own, row);
+    }
+  },
+
+  _onTetherLatched(payload) {
+    // Immediate settle attempt on the same tick as latch if already in a bubble.
+    const state = this._state;
+    if (!state || !payload || payload.targetId == null) return;
+    const own = ensureState(state);
+    if (!own) return;
+    this._tickCausal(state, own);
+    // The latch is the moment the tow becomes a person on a cable. A same-tick custody resolve
+    // (pod already inside the bubble) has removed the record — nobody towed anybody, no grip.
+    this._speakTowGrip(state, own, payload.targetId);
+  },
+
+  // First tow line, once per pod: the survivor answers the cable that just caught them.
+  _speakTowGrip(state, own, targetId) {
+    const rec = own && own.causal ? own.causal.byEntityId[targetId] : null;
+    if (!rec || rec.resolved || rec.towGripSpoken) return;
+    const entity = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(targetId)
+      : null;
+    if (!isCausalSurvivorPod(entity)) return;
+    rec.towGripSpoken = true;
+    if (entity.data) entity.data.survivorPodCausal = { ...rec, entityId: entity.id };
+    this._speakTowLine(CAUSAL_TOW_GRIP_TEXT(), entity, rec, `survivorTowGrip:${rec.entityId}`, 0.55);
+  },
+
+  // Air calls ride the tow ticks: same clock the scan label names, spoken once per threshold,
+  // and only while the line holds (an unlatched pod answers nobody).
+  _speakTowAir(rec, entity, now) {
+    if (!Number.isFinite(rec.expireAt)) return;
+    const left = Math.ceil((Number(rec.expireAt) || 0) - now);
+    for (const call of CAUSAL_TOW_AIR_CALLS) {
+      if (left > call.leftS) break; // thresholds descend; the rest are further out
+      if (rec[call.stamp]) continue;
+      rec[call.stamp] = true;
+      if (entity.data) entity.data.survivorPodCausal = { ...rec, entityId: entity.id };
+      this._speakTowLine(
+        call.text(), entity, rec, `survivorAir:${call.stamp}:${rec.entityId}`, call.importance,
+      );
+      break; // one call per tick — the next threshold waits for a later tick
+    }
+  },
+
+  // The audible route, same contract as the mayday's voice-or-toast: the arbiter floor (say) plus
+  // a barkDirector:voice receipt carrying the same id as voiceId, so the radio voice schedules on
+  // the real floor — a queued line never sounds early and a dropped line never sounds at all.
+  _speakTowLine(text, entity, rec, id, importance) {
+    const factionId = rec.factionId || 'neutral';
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'survivorMayday',
+        ttl: 4,
+        id,
+        factionId,
+      });
+      if (this._bus && typeof this._bus.emit === 'function') {
+        this._bus.emit('barkDirector:voice', {
+          situation: 'distress',
+          text,
+          factionId,
+          voiceId: id,
+          importance,
+          entityId: entity ? entity.id : (rec.entityId != null ? rec.entityId : null),
+          t: Number(this._state && this._state.simTime) || 0,
+        });
+      }
+    } else if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('toast', { text, kind: 'survivorMayday', ttl: 4 });
+    }
+  },
+
+  // The delivery answer uses the same seam but the receiver's own register: the desk speaks for
+  // the house that took the person in (its authority faction), the rescue hull's crew for the
+  // hull that opened up. A custom situation (neither immediate nor chatter) rides the arbiter at
+  // line priority — the fee receipt is the payoff, this is the place answering it.
+  _speakDeskAnswer(text, factionId, id, importance, entityId) {
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'survivorDeskAnswer',
+        ttl: 4,
+        id,
+        factionId: factionId || CONCORD_FACTION_ID,
+      });
+      if (this._bus && typeof this._bus.emit === 'function') {
+        this._bus.emit('barkDirector:voice', {
+          situation: 'desk',
+          text,
+          factionId: factionId || CONCORD_FACTION_ID,
+          voiceId: id,
+          importance,
+          entityId: entityId != null ? entityId : null,
+          t: Number(this._state && this._state.simTime) || 0,
+        });
+      }
+    } else if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('toast', { text, kind: 'survivorDeskAnswer', ttl: 4 });
+    }
+  },
+
+  _resolveCausal(state, own, rec, entity, outcome, detail = {}) {
+    if (!rec || rec.resolved) return false;
+    rec.resolved = true;
+    rec.phase = outcome;
+    rec.resolvedAt = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const entityId = entity && entity.id != null ? entity.id : rec.entityId;
+    // Stamp the terminal fact before any synchronous event or retirement attempt. Persistent
+    // entities carry this across a refused removal/save; no second tick can pay it again.
+    if (entity && entity.data) entity.data.survivorPodCausal = { ...rec, entityId };
+    const posSrc = entity && entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)
+      ? entity.pos
+      : rec.pos;
+    const receipt = {
+      id: rec.memoryId || `survivor:${entityId}`,
+      outcome,
+      entityId,
+      victimId: rec.victimId,
+      sectorId: rec.sectorId,
+      // The pod's own faction — heat reads it to decide whether answering this mayday was lawful.
+      factionId: rec.factionId || null,
+      t: rec.resolvedAt,
+      ...detail,
+    };
+    const captainPodKey = entity?.data?.captainPodKey ?? rec.captainPodKey;
+    if (typeof captainPodKey === 'string' && captainPodKey) receipt.captainPodKey = captainPodKey;
+    // Stamped only on a rescue the player towed in (heat's gate for the rescue cooling step).
+    if (outcome === 'rescued' && causalRescuePlayerAttributed(detail)) receipt.playerAnswered = true;
+    // Stamped only on an abandonment the player plausibly witnessed (the Record's gate; a pod that
+    // timed out with the player never within hail is not their deed).
+    if (outcome === 'abandoned' && Number.isFinite(rec.playerNoticedAt)) receipt.playerLeftIt = true;
+    // Stamped only on an abandonment the player was close enough to answer (the Record's gate:
+    // a pod that died with the player never within hail is the world's loss, not their deed).
+    if (outcome === 'abandoned' && Number.isFinite(rec.playerNoticedAt)) receipt.playerLeftIt = true;
+    if (receipt.pos == null && posSrc && Number.isFinite(posSrc.x) && Number.isFinite(posSrc.z)) {
+      receipt.pos = {
+        x: posSrc.x,
+        y: Number.isFinite(posSrc.y) ? posSrc.y : 0,
+        z: posSrc.z,
+      };
+    }
+    own.causal.receipts.push(receipt);
+    own.causal.receipts = trimCausalReceipts(own.causal.receipts.filter((r) =>
+      r === receipt || r.id !== receipt.id || !CUSTODY_OUTCOMES.has(r.outcome)));
+    if (own.causal.byEntityId && entityId != null) {
+      delete own.causal.byEntityId[entityId];
+      delete own.causal.byEntityId[String(entityId)];
+    }
+
+    // moralMemory is the durable world memory; credits stay with economy (never written here).
+    const cause = outcome === 'rescued'
+      ? 'rescued_survivors'
+      : outcome === 'ransomed'
+        ? 'ransomed_survivors'
+        // A pirate took the pod: not the same memory as leaving it to drift and die.
+        : outcome === 'captured'
+          ? 'captured_survivors'
+          : outcome === 'abandoned' ? 'abandoned_survivors' : null;
+    // A pod that ran out its clock with the player never within hail of it is not their debt:
+    // only a pod they plausibly left behind is remembered as abandoned.
+    const playerLeftIt = outcome !== 'abandoned' || Number.isFinite(rec.playerNoticedAt);
+    if (cause && playerLeftIt) {
+      const debt = {
+        id: rec.memoryId || `survivor:${entityId}`,
+        name: 'Survivor Pod',
+        cause,
+        factionId: rec.factionId || CONCORD_FACTION_ID,
+        archetype: 'survivor_pod',
+        t: rec.resolvedAt,
+        source: `survivorPod:${outcome}`,
+      };
+      // WHO took them: carried from the capture receipt (podHunt hands the hunter's id and faction).
+      if (outcome === 'captured') {
+        if (receipt.captorFactionId) debt.captorFactionId = receipt.captorFactionId;
+        if (receipt.captorId != null) debt.captorId = receipt.captorId;
+      }
+      if (outcome === 'rescued' && receipt.playerAnswered === true) debt.playerAnswered = true;
+      rememberMoralDebt(state, debt);
+    }
+
+    if (outcome === 'rescued' && entityId != null && this._bus && typeof this._bus.emit === 'function') {
+      const factionId = detail.authorityFactionId || CONCORD_FACTION_ID;
+      this._bus.emit('faction:repDelta', {
+        factionId,
+        delta: CAUSAL_RESCUE_REP_DELTA,
+        reason: 'survivorPod:rescued',
+        entityId,
+        victimId: rec.victimId,
+      });
+      // THE ANSWER: only a player-towed rescue pays the mayday salvage fee — the grant is an
+      // intent to economy (single writer), same shape as the authored strip payout above.
+      // Unattended pods claimed by AI rescue hulls resolve for rep alone.
+      if (causalRescuePlayerAttributed(detail)) {
+        this._bus.emit('economy:grantCredits', {
+          amount: CAUSAL_RESCUE_SALVAGE_FEE_CR,
+          reason: `survivor_mayday:${entityId}`,
+          entityId,
+          victimId: rec.victimId,
+        });
+        this._speakSalvageReceipt(rec, entityId, factionId);
+        // The station that took the person in answers the tow — a bunk and the debt, once,
+        // in the receiving house's register. A custody ride to the same outcome already heard
+        // the ambulance crew at the handoff, so only the direct bubble delivery speaks here.
+        if (detail.reason === 'station_delivery') {
+          this._speakDeskAnswer(
+            CAUSAL_DESK_ANSWER_TEXT(), factionId, `survivorDesk:${entityId}`, 0.6, entityId,
+          );
+          // The delivery moment's own audio register (inf-rescue-delivery-chime): the berth's
+          // receiving chime answers the pod crossing the ring — the desk voice's sound, never
+          // the player hull's dock clunk and never a UI blip. The fence keeps its own desk
+          // voice and a black-market ring keeps quiet; an unattended claim chimes for nobody.
+          this._bus.emit('audio:cue', {
+            id: 'rescue.delivery',
+            position: entity && entity.pos ? { x: entity.pos.x, z: entity.pos.z } : null,
+            gain: 0.75,
+          });
+        }
+      }
+    }
+
+    if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit(`survivorPod:${outcome}`, { ...receipt });
+      this._bus.emit('survivorPod:resolved', { ...receipt });
+    }
+
+    disposeEntity(state, this._bus, entity, `survivor_pod_${outcome}`, this.helpers);
+    return true;
+  },
+
+  // ── Salvage communicator path (unchanged ownership) ──────────────────────────────────────────
+
+  // Re-stamp a durable promoted record onto its (possibly re-planned) salvage point + entity.
+  // Called on promote, sector re-entry, and Continue reconcile — idempotent by salvagePointId.
+  // A stripped record is terminal: the point stays offered, the entity stays dead, and the
+  // strip pool it left is all that remains — no second rescue, no second strip payout.
+  _reconcilePointRecord(state, rec) {
+    if (!state || !rec || !rec.salvagePointId) return false;
+    const point = pointForRec(state, rec);
+    if (!point) return false;
+    point.isCommunicator = true;
+    point.wreckMissionId = rec.wreckMissionId || MISSION_ID;
+    // The sector replan may have re-spawned the wreck under a fresh entity id — rebind.
+    if (point.entityId != null && rec.entityId !== point.entityId) rec.entityId = point.entityId;
+    const ent = entityForPoint(state, point);
+    if (rec.stripped) {
+      point.offered = true;
+      point.survivorPod = { ...publicMeta(state, rec), stripped: true };
+      if (ent) {
+        ent.alive = false;
+        if (ent.data) {
+          ent.data.survivorPod = { ...publicMeta(state, rec), stripped: true };
+          ent.data.salvagePool = clone(rec.stripPool || STRIP_POOL);
+          setPodScanLabel(ent, 'Survivor Pod - stripped');
+        }
+      }
+      return true;
+    }
+    point.survivorPod = publicMeta(state, rec);
+    if (ent && ent.data) {
+      ent.data.parentType = 'survivor_pod';
+      ent.data.isCommunicator = true;
+      ent.data.wreckMissionId = rec.wreckMissionId || MISSION_ID;
+      ent.data.salvagePointId = point.id;
+      ent.data.salvagePool = clone(rec.stripPool || STRIP_POOL);
+      ent.data.tetherRole = 'survivor_pod';
+      ent.data.survivorPod = { ...point.survivorPod };
+      setPodScanLabel(ent, `Survivor Pod - ${countdownLabel(state, rec)}`);
+    }
+    return true;
+  },
+
+  _reconcilePromoted(state) {
+    const own = ensureState(state);
+    if (!own) return 0;
+    let stamped = 0;
+    for (const rec of Object.values(own.promotedByPoint)) {
+      if (this._reconcilePointRecord(state, rec)) stamped += 1;
+    }
+    return stamped;
+  },
+
+  _promoteSector(sectorId) {
+    // Sync lane (emit listener, salvage:placed): drain the chunked steps inline —
+    // the census drive holds the same generator across its slices.
+    const steps = this._promoteSectorSteps(sectorId);
+    for (;;) { const s = steps.next(); if (s.done) return s.value; }
+  },
+
+  *_promoteSectorSteps(sectorId) {
+    const state = this._state;
+    if (!state || !sectorId) return null;
+    const own = ensureState(state);
+    const existing = own.promotedBySector[sectorId];
+    if (existing) {
+      // A sector promotes at most one pod — ever. Reconcile the durable record against the
+      // (re-)planned point rather than promote a second one when the point table lacks the key
+      // (older saves, dropped record rows, or a stripped pod the caller wants to re-exploit).
+      own.promotedByPoint[existing.salvagePointId] = existing;
+      this._reconcilePointRecord(state, existing);
+      return existing;
+    }
+
+    const points = state.salvage && Array.isArray(state.salvage.points) ? state.salvage.points : [];
+    yield;
+    const eligible = points.filter((p) => {
+      if (!p || p.sectorId !== sectorId || p.offered || p.survivorPod || p.lossInvestigation) return false;
+      return !!entityForPoint(state, p);
+    });
+    const preferred = eligible.filter((p) => !p.isCommunicator && !p.wreckMissionId);
+    const point = choosePoint(state.meta && state.meta.seed, sectorId, preferred.length ? preferred : eligible);
+    if (!point) return null;
+
+    const dest = rescueStationForSector(sectorId, state);
+    const startedAt = deferredEnterNow(state) || 0;
+    const rec = {
+      salvagePointId: point.id,
+      entityId: point.entityId == null ? null : point.entityId,
+      sectorId,
+      zoneId: point.zoneId || null,
+      wreckMissionId: MISSION_ID,
+      factionId: CONCORD_FACTION_ID,
+      destStationId: dest ? dest.id : null,
+      // Local picks come back as raw catalog records (no sectorId); global picks carry it.
+      destSectorId: dest ? (dest.sectorId || sectorId) : sectorId,
+      oxygenStartedAt: startedAt,
+      oxygenDueAt: startedAt + OXYGEN_WINDOW_S,
+      oxygenDecayWindow_s: OXYGEN_DECAY_WINDOW_S,
+      minRewardMultiplier: MIN_REWARD_MULTIPLIER,
+      rewardMultiplier: 1,
+      stripPool: clone(STRIP_POOL),
+      stripCredits: stripCreditsFor(state.meta && state.meta.seed, point.id),
+      rescueSelected: false,
+      stripped: false,
+    };
+
+    // Commit the promotion record before the point mutation: a suspended-and-killed
+    // pass that stamped the point but not the record would re-plan to a different
+    // point — the `existing` head then repairs the rest on re-run.
+    own.promotedBySector[sectorId] = rec;
+    own.promotedByPoint[point.id] = rec;
+
+    point.isCommunicator = true;
+    point.wreckMissionId = MISSION_ID;
+    point.survivorPod = publicMeta(state, rec);
+
+    yield;
+    const ent = entityForPoint(state, point);
+    if (ent && ent.data) {
+      ent.data.parentType = 'survivor_pod';
+      ent.data.isCommunicator = true;
+      ent.data.wreckMissionId = MISSION_ID;
+      ent.data.salvagePointId = point.id;
+      ent.data.salvagePool = clone(STRIP_POOL);
+      ent.data.tetherRole = 'survivor_pod';
+      ent.data.survivorPod = { ...point.survivorPod };
+      setPodScanLabel(ent, `Survivor Pod - ${countdownLabel(state, rec)}`);
+    }
+
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('survivorPod:promoted', { ...publicMeta(state, rec), zoneId: point.zoneId || null });
+    }
+    return rec;
+  },
+
+  _stampOffer(offer) {
+    const state = this._state;
+    if (!state || !offer || offer.source !== 'salvage' || !offer.salvagePointId) return;
+    const own = ensureState(state);
+    const rec = own.promotedByPoint[offer.salvagePointId];
+    if (!rec || rec.stripped) return;
+    const template = wreckMissionById(MISSION_ID);
+    if (!template) return;
+
+    const point = pointForRec(state, rec);
+    const ent = entityForPoint(state, point || rec);
+    let meta = mirrorMeta(state, rec, point, ent);
+    const reward = Math.max(
+      Math.round((template.reward_cr || 0) * meta.minRewardMultiplier),
+      Math.round((template.reward_cr || 0) * meta.rewardMultiplier),
+    );
+
+    offer.id = offer.id || offer.offerId || `survivor_${rec.salvagePointId}`;
+    offer.offerId = offer.offerId || offer.id;
+    offer.wreckMissionId = MISSION_ID;
+    offer.type = 'passenger_transport';
+    offer.title = template.title;
+    offer.giver = template.giver;
+    offer.log = template.log;
+    offer.summary = `${template.summary} ${meta.label}.`;
+    offer.reward_cr = reward;
+    offer.collateral_cr = 0;
+    offer.riskTier = offer.riskTier == null ? 1 : offer.riskTier;
+    // The card's advertised window is the oxygen clock (roughly the paid-decay span), never the
+    // generic 2400s wreck duration _buildOffer stamps — so bound DOWN, not only when absent.
+    // duration_s stays the real contract clock: a decayed pod is still physically rescuable.
+    offer.time_limit_s = Math.min(
+      Number.isFinite(offer.time_limit_s) ? offer.time_limit_s : Infinity,
+      meta.oxygenRemaining_s + 300,
+    );
+    offer.choice = clone(template.choice);
+    offer.tag = template.tag || 'wreck_salvage';
+    offer.factionId = CONCORD_FACTION_ID;
+    // The bound handoff was picked at promotion; a stale save (or standing lost since)
+    // can leave it a berth the pilot cannot use. Re-resolve at offer time — an admitting
+    // reroute heals the record for the board and the tethered path alike; a still-closed
+    // sector keeps the named berth so the accept gate's refusal can say why.
+    const bound = rec.destStationId ? STATION_BY_ID.get(rec.destStationId) : null;
+    if (bound && !stationBerthAdmits(
+      bound,
+      repFor(state, bound.factionId || (SECTOR_BY_ID.get(bound.sectorId) || {}).factionId),
+      state,
+    )) {
+      const reroute = rescueStationForSector(rec.sectorId, state);
+      if (reroute) {
+        rec.destStationId = reroute.id;
+        // Local rows are raw catalog records without sectorId — keep the pod's sector.
+        rec.destSectorId = reroute.sectorId || rec.sectorId;
+        // The mirror stamped above still names the refused berth — re-stamp so readers see
+        // the admitted destination now rather than on the next update tick. Refresh `meta`
+        // too: offer.survivorPod spreads it below and must not contradict offer.destStationId.
+        meta = mirrorMeta(state, rec, point, ent);
+      }
+    }
+    // salvage._buildOffer already bound a board station; the rescue desk is the fallback.
+    offer.stationId = offer.stationId || rec.destStationId || null;
+    offer.destStationId = rec.destStationId;
+    offer.destSectorId = rec.destSectorId || rec.sectorId;
+    offer.distance = offer.distance || RESCUE_DISTANCE_WU;
+    offer.params = {
+      cmdtyId: null,
+      qty: 1,
+      cargoValue: 0,
+      fValue: 1,
+      taskTime: 20,
+      passengers: 1,
+      survivorPodId: rec.salvagePointId,
+      // Keep the wreck-mission provenance the offer builder stamped so the accepted
+      // instance still traces back to the physical point after serialize/restore.
+      salvagePointId: rec.salvagePointId,
+      wreckMissionId: MISSION_ID,
+      ...(offer.params && offer.params.wreckPos ? { wreckPos: clone(offer.params.wreckPos) } : {}),
+      ...(offer.params && offer.params.wreckSectorId ? { wreckSectorId: offer.params.wreckSectorId } : {}),
+    };
+    offer.survivorPod = {
+      ...meta,
+      oxygenCountdownLabel: meta.label,
+      rescueRoute: {
+        type: 'passenger_transport',
+        factionId: CONCORD_FACTION_ID,
+        destStationId: rec.destStationId,
+        destSectorId: rec.destSectorId || rec.sectorId,
+      },
+      stripRoute: {
+        credits: rec.stripCredits,
+        repDelta: STRIP_REP_DELTA,
+        salvagePool: clone(rec.stripPool),
+      },
+    };
+  },
+
+  _handleChoice(payload) {
+    if (!payload) return false;
+    const state = this._state;
+    const own = ensureState(state);
+    const point = this._pointFromChoice(payload);
+    if (!point || !point.survivorPod) return false;
+    const rec = own.promotedByPoint[point.id];
+    if (!rec || rec.stripped) return false;
+    const optionId = payload.optionId || payload.choiceId || payload.id;
+    if (optionId === 'rescue') {
+      // A committed rescue (its contract is already live) never re-runs the choice — the
+      // pod's second rescueSelected would price a second accept against a withdrawn offer.
+      if (rec.rescueSelected) return false;
+      return this._chooseRescue(point, rec);
+    }
+    if (optionId === 'strip') {
+      const committed = ((state.missions && state.missions.active) || [])
+        .some((mission) => mission && mission.status === 'active' && mission.params
+          && mission.params.survivorPodId === point.id);
+      if (committed) {
+        if (this._bus && this._bus.emit) this._bus.emit('survivorPod:stripBlocked', {
+          salvagePointId: point.id, entityId: point.entityId, reason: 'rescue_committed',
+        });
+        return false;
+      }
+      return this._chooseStrip(point, rec);
+    }
+    return false;
+  },
+
+  _pointFromChoice(payload) {
+    const state = this._state;
+    const points = state && state.salvage && Array.isArray(state.salvage.points) ? state.salvage.points : [];
+    if (payload.salvagePointId) return points.find((p) => p && p.id === payload.salvagePointId) || null;
+    if (payload.entityId != null) return points.find((p) => p && p.entityId === payload.entityId) || null;
+    return null;
+  },
+
+  _chooseRescue(point, rec) {
+    const state = this._state;
+    const tether = state && state.player && state.player.tether;
+    if (!tether || tether.active !== true || tether.targetId !== point.entityId) {
+      if (this._bus && this._bus.emit) {
+        this._bus.emit('survivorPod:rescueBlocked', {
+          salvagePointId: point.id,
+          entityId: point.entityId,
+          reason: 'tow_required',
+        });
+      }
+      return false;
+    }
+    const ent = entityForPoint(state, point);
+    // Latch before the emit: the payload meta (spread below) and the mirrors stamp the true
+    // state at choice time, and missions' synchronous accept runs inside the emit.
+    rec.rescueSelected = true;
+    const meta = mirrorMeta(state, rec, point, ent);
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('survivorPod:rescueSelected', {
+        ...meta,
+        missionType: 'passenger_transport',
+        factionId: CONCORD_FACTION_ID,
+        destStationId: rec.destStationId,
+        destSectorId: rec.destSectorId || rec.sectorId,
+      });
+    }
+    // Missions accepts synchronously inside the emit above. A refused accept — standing lost
+    // at the destination desk between the berth re-resolve and this choice, or an offer row
+    // that is already gone — leaves NO contract. The latch must not hold: it survives only
+    // when a live rescue mission for this pod exists, otherwise roll back and tell the card
+    // so the prompt stays for the retry instead of resolving on a choice that produced
+    // nothing (D133).
+    const active = (state.missions && state.missions.active) || [];
+    const committed = active.some((m) => m && m.status === 'active'
+      && m.params && m.params.survivorPodId === point.id);
+    if (committed) return true;
+    rec.rescueSelected = false;
+    mirrorMeta(state, rec, point, ent);
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('survivorPod:rescueBlocked', {
+        salvagePointId: point.id,
+        entityId: point.entityId,
+        reason: 'accept_refused',
+      });
+    }
+    return false;
+  },
+
+  _chooseStrip(point, rec) {
+    const state = this._state;
+    rec.stripped = true;
+    rec.rescueSelected = false;
+    point.offered = true;
+    const ent = entityForPoint(state, point);
+    if (ent) {
+      ent.alive = false;
+      if (ent.data) {
+        ent.data.survivorPod = { ...publicMeta(state, rec), stripped: true };
+        ent.data.salvagePool = clone(rec.stripPool);
+      }
+    }
+    point.survivorPod = { ...publicMeta(state, rec), stripped: true };
+
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('economy:grantCredits', {
+        amount: rec.stripCredits,
+        reason: 'survivorPod:strip',
+        salvagePointId: point.id,
+        salvagePool: clone(rec.stripPool),
+      });
+      this._bus.emit('faction:repDelta', {
+        factionId: CONCORD_FACTION_ID,
+        delta: STRIP_REP_DELTA,
+        reason: 'survivorPod:strip',
+        salvagePointId: point.id,
+      });
+      this._bus.emit('survivorPod:stripped', {
+        salvagePointId: point.id,
+        entityId: point.entityId,
+        amount: rec.stripCredits,
+        salvagePool: clone(rec.stripPool),
+        factionId: CONCORD_FACTION_ID,
+        repDelta: STRIP_REP_DELTA,
+      });
+    }
+    return true;
+  },
+
+  destroy() {
+    if (this._bus && this._bus.off) {
+      if (this._onPlaced) this._bus.off('salvage:placed', this._onPlaced);
+      if (this._onSectorEnter) this._bus.off('sector:enter', this._onSectorEnter);
+      if (this._onMissionOffered) this._bus.off('mission:offered', this._onMissionOffered);
+      if (this._onChoice) this._bus.off('survivorPod:choose', this._onChoice);
+      if (this._onHeatCooled) this._bus.off('survivorPod:heatCooled', this._onHeatCooled);
+      if (this._onNewGame) {
+        this._bus.off('game:newGame', this._onNewGame);
+        this._bus.off('game:new', this._onNewGame);
+      }
+      if (this._onSaveLoaded) this._bus.off('save:loaded', this._onSaveLoaded);
+      if (this._onCustodyRestoring) this._bus.off('save:restoring', this._onCustodyRestoring);
+      if (this._onCustodyRestoreError) this._bus.off('save:error', this._onCustodyRestoreError);
+      if (this._onKilled) this._bus.off('entity:killed', this._onKilled);
+      if (this._onPlayerDeath) this._bus.off('player:death', this._onPlayerDeath);
+      if (this._onLatched) this._bus.off('tether:latched', this._onLatched);
+      if (this._onPodEjectedForHunt) this._bus.off('survivorPod:ejected', this._onPodEjectedForHunt);
+      if (this._onCustodyDelivery) this._bus.off('survivorPod:delivered', this._onCustodyDelivery);
+      if (this._onCustodyExit) this._bus.off('sector:exit', this._onCustodyExit);
+    }
+    this._onPodEjectedForHunt = null;
+    this._onPlaced = null;
+    this._onSectorEnter = null;
+    this._onMissionOffered = null;
+    this._onChoice = null;
+    this._onNewGame = null;
+    this._onSaveLoaded = null;
+    this._onKilled = null;
+    this._onPlayerDeath = null;
+    this._onLatched = null;
+    this.helpers = null;
+  },
+};
+
+export default survivorPod;

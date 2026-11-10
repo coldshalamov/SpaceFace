@@ -1,0 +1,219 @@
+import { isPlayerSaucer } from '../data/saucer.js';
+import { resolveHullBurst } from '../data/hullBurst.js';
+// Read-only Crucible toy guidance. Fittings choose the toy; combat owns its readiness.
+import { WEAPONS } from '../data/weapons.js';
+import { MODULES } from '../data/modules.js';
+import { ATTACK_TRAIT_BY_ID } from '../data/attackTraits.js';
+import { resolveActionLabel } from '../systems/input.js';
+import { el } from './kit/index.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { PHASE_BLINK, phaseBlinkCommitCost } from '../data/phaseBlink.js';
+import { heroManeuverReadiness } from '../systems/heroManeuvers.js';
+
+const weapons = new Map(WEAPONS.map(def => [def.id, def]));
+const modules = new Map(MODULES.map(def => [def.id, def]));
+const FLIGHT_PHASES = new Set(['wave_intro', 'active', 'cleanup']);
+
+function binding(state, action) {
+  return resolveActionLabel(state || {}, action, { arrows: 'word', empty: 'unbound' });
+}
+
+/** Activation only: an offer is not fitted yet and must not claim to be ready. */
+export function crucibleFittingDescription(defId, state) {
+  const fire = () => binding(state, 'fire');
+  if (defId === 'wpn_snarl_s') return `Snarl — fires with guns (${fire()})`;
+  if (defId === 'mod_bank_shot') {
+    return `Banking — primary fire (${fire()})`;
+  }
+  if (defId === 'wpn_sticky_detonator') return `Primary fire — ${fire()} plant · ${binding(state, 'chargeDetonate')} detonate`;
+  if (defId === 'tool_grav_anchor' || defId === 'tool_quantum_sympathy') return `Primary fire — ${fire()} hit two different bodies`;
+  if (defId === 'tool_polarity_inverter') return `Primary fire — ${fire()} alternate positive / negative tags`;
+  const mod = modules.get(defId);
+  const mods = mod?.mods || {};
+  if (mod?.slotType === 'mining') return `Mining beam — hold ${binding(state, 'mine')} on a resource body`;
+  if (mods.repulsionTrap) return `Plate — ${binding(state, 'chargeThrow')} · Trap — ${binding(state, 'brake')}+${binding(state, 'chargeThrow')}`;
+  if (mods.impulseChargeCapacity) {
+    return `Charges — ${binding(state, 'chargeThrow')} throw · ${binding(state, 'chargeDetonate')} detonate`;
+  }
+  if (weapons.has(defId) || ATTACK_TRAIT_BY_ID[defId]) return `Primary fire — ${fire()}`;
+  if (mods.masslineHeadId || mods.tetherReelRateMult || mods.tetherSpoolMult) {
+    return `Massline — ${binding(state, 'tether')} latch / hold to control`;
+  }
+  if (mods.boostTopSpeedPct) return `Boost — ${binding(state, 'boost')}`;
+  if (mods.phaseBlink) return `Blink — hold ${binding(state, 'boost')} to aim, release to jump`;
+  if (mods.heroManeuver === 'pinball_rush') return `Pinball Rush — hold ${binding(state, 'boost')} to charge and aim · release to dash`;
+  if (mods.swingDrive) return `Swing — ${binding(state, 'boost')} while a Massline is taut`;
+  if (mods.cloakBaseRadius) return `Cloak — ${binding(state, 'cloak')} toggle`;
+  if (mods.droneBay) return 'Drone bay — deploy and manage drones in Automation';
+  if (mods.countermeasure) return `Countermeasure — ${binding(state, 'countermeasure')}`;
+  if (mods.ramDamageDealtMult) return 'Ram — fly into a hull';
+  if (mods.hullBurst) return `Boost — ${binding(state, 'boost')} powers the nose; release to stop`;
+  return mod ? 'Always active while fitted' : '';
+}
+
+function gunReadiness(state, ship, accepts, emptyText = 'no primary weapon') {
+  const guns = (ship?.data?.weapons || []).filter(w => accepts(w.defId));
+  if (!guns.length) return { status: 'empty', text: emptyText };
+  if ((ship.data.weaponVentUntil || 0) > (state.simTime || 0)) {
+    return { status: 'cooldown', text: 'cooling' };
+  }
+  const ready = guns.some(w => {
+    const def = weapons.get(w.defId) || {};
+    const heatCost = w.heat ?? def.heatPerShot ?? def.heatPerSec ?? 0;
+    const heatMax = w.heatMax ?? def.heatMax ?? Infinity;
+    const cost = w.energyCost ?? def.energyCost ?? 0;
+    const cap = ship.cap ?? ship.data.derived?.cap ?? 0;
+    return !(w._cooldown > 0) && !(heatCost > 0 && (w._heat || 0) >= heatMax)
+      && cap >= cost * ((w.continuous ?? def.continuous) ? 1 / 60 : 1);
+  });
+  return ready ? { status: 'armed', text: 'armed' } : { status: 'cooldown', text: 'recharging' };
+}
+
+function trapReadiness(state, ship) {
+  const quantity = Number(state.player?.cargo?.items?.cmdty_impulse_charge);
+  const remaining = Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
+  let deployed = 0;
+  let arming = 0;
+  for (const entity of indexedTypeScan(state, 'charges')) {
+    if (!entity.alive || entity.type !== 'charge' || entity.data?.ownerId !== state.playerId
+      || entity.data?.chargeId !== 'charge_repulsion_trap') continue;
+    if (entity.data.armed) deployed += 1;
+    else arming += 1;
+  }
+  const status = remaining === 0 ? 'empty'
+    : (ship?.data?.impulseCharges?.throwCdT > 0 ? 'cooldown' : 'armed');
+  // Launcher readiness and charges already in the room are separate facts. An empty rack can
+  // still have a live trap. Do not count down fractional seconds or announce every gun cycle.
+  const parts = [`${remaining} remaining`, status];
+  if (deployed) parts.push(`${deployed} deployed`);
+  if (arming) parts.push(`${arming} arming`);
+  return { status, text: parts.join(' · ') };
+}
+
+/** Small flight supplement for toys whose activation is otherwise easy to mistake. */
+export function crucibleCombatLines(state) {
+  if (state?.run?.kind !== 'survival' || !FLIGHT_PHASES.has(state.run.phase)
+    || state.ui?.screenStack?.length) return [];
+  const player = state.player;
+  const fittings = player?.ownedShips?.[player.activeShipIndex || 0]?.fittings || [];
+  const ship = state.entities?.get(state.playerId);
+  if (!ship?.alive) return [];
+  const rows = [];
+  if (isPlayerSaucer(ship)) {
+    rows.push({ id: 'saucer-drive', status: 'armed',
+      text: 'Saucer · arrows / WASD translate · release to stop · gravity immune' });
+    const guns = gunReadiness(state, ship, () => true);
+    rows.push({ id: 'saucer-arsenal', status: guns.status,
+      text: `Alien emitters · ${binding(state, 'fire')} fire · ${guns.text}` });
+    const boost = Number(ship.boost?.energy) || 0;
+    const off = state.settings?.gameplay?.boostBurst === false;
+    const horizon = resolveHullBurst('saucer_horizon');
+    const active = state.hullBurst?.phase === 'active' && state.hullBurst?.kind === 'saucer_horizon';
+    const ready = !off && boost >= horizon.activationCost && (state.simTime || 0) >= (state.hullBurst?.readyAt || 0);
+    rows.push({ id: 'saucer-horizon', status: active || ready ? 'armed' : 'cooldown',
+      text: `Event Horizon · ${binding(state, 'boost')} boost + radial shock field · ${off ? 'disabled in settings' : active ? 'active' : ready ? 'ready' : 'recharging'}` });
+  }
+  const addGun = (id, accepts, emptyText) => {
+    const readiness = gunReadiness(state, ship, accepts, emptyText);
+    rows.push({ id, status: readiness.status,
+      text: `${crucibleFittingDescription(id, state)} · ${readiness.text}` });
+  };
+  if (fittings.includes('mod_bank_shot')) {
+    addGun('mod_bank_shot', id => {
+      const weapon = weapons.get(id);
+      return fittings.includes(id) && weapon && !weapon.continuous && weapon.tracking !== 'hitscan';
+    }, 'needs a projectile weapon');
+  }
+  if (fittings.includes('wpn_snarl_s')) addGun('wpn_snarl_s', id => id === 'wpn_snarl_s');
+  if (fittings.some(id => modules.get(id)?.mods?.repulsionTrap)) {
+    const readiness = trapReadiness(state, ship);
+    rows.push({ id: 'trap', status: readiness.status,
+      text: `Plate — ${binding(state, 'chargeThrow')} · Trap — ${binding(state, 'brake')}+${binding(state, 'chargeThrow')} · ${readiness.text}` });
+  }
+  if (fittings.includes('mod_veil_step')) {
+    const runtime = ship._phaseBlink;
+    const energy = Number.isFinite(ship.boost?.energy) ? Math.max(0, ship.boost.energy) : 0;
+    const cooling = Number(state.simTime || 0) < Number(runtime?.readyAt || 0);
+    if (runtime?.aiming) {
+      const commitCost = phaseBlinkCommitCost(runtime.dist);
+      const canRelease = runtime.active && runtime.dist >= PHASE_BLINK.minCommit && energy >= commitCost;
+      const releaseStatus = !runtime.active || runtime.dist < PHASE_BLINK.minCommit
+        ? 'no clear landing'
+        : energy < commitCost ? `needs ${Math.ceil(commitCost)} energy to release` : 'release to jump';
+      rows.push({ id: 'veil-step', status: canRelease ? 'armed' : 'cooldown',
+        text: `Veil Step — ${binding(state, 'boost')} held · ${runtime.active ? `${Math.round(runtime.dist)} WU` : 'no clear landing'} · ${releaseStatus}` });
+    } else {
+      const ready = !cooling && energy >= PHASE_BLINK.minEnergy;
+      const reason = cooling ? 'cooling' : energy < PHASE_BLINK.minEnergy
+        ? `needs ${PHASE_BLINK.minEnergy} energy` : 'ready';
+      rows.push({ id: 'veil-step', status: ready ? 'armed' : 'cooldown',
+        text: `Veil Step — hold ${binding(state, 'boost')} to aim · release to jump · ${reason}` });
+    }
+  }
+  if (fittings.includes('mod_boomerang_run')) {
+    const run = state.heroManeuverReadModel || state.flightRuntime?.heroManeuverStatus;
+    const readiness = state.heroManeuverReadModel || heroManeuverReadiness(state);
+    const active = run && (run.phase === 'bank' || run.phase === 'return');
+    rows.push({
+      id: 'boomerang-bomb-run',
+      status: active || readiness.status === 'armed' ? 'armed' : 'cooldown',
+      text: active
+        ? `Boomerang Run · ${run.targetName || 'locked hostile'} · ${run.phase === 'return' ? 'phase return' : 'physical bank'} · ${run.attackCommitted ? 'bomb away' : 'bomb reserved'}`
+        : `Boomerang Run — lock a hostile · ${binding(state, 'bomb')} · ${readiness.text}`,
+    });
+  }
+  if (fittings.includes('mod_pinball_rush')) {
+    const run = state.heroManeuverReadModel?.mode === 'pinball' ? state.heroManeuverReadModel : null;
+    const active = run && ['pinball_charge', 'pinball_pending', 'pinball_dash'].includes(run.phase);
+    const readiness = run;
+    const reason = readiness?.status === 'armed' ? `ready · ${readiness.targetName || 'hostile lock'}`
+      : (readiness?.text || readiness?.reason || 'status unavailable').replaceAll('_', ' ');
+    rows.push({
+      id: 'pinball-rush',
+      status: active || readiness?.status === 'armed' ? 'armed' : 'cooldown',
+      text: active
+        ? `Pinball Rush · ${run.targetName || 'locked hostile'} · ${run.phase === 'pinball_charge' ? `charging ${Math.round((run.charge || 0) * 1000)} ms` : run.phase === 'pinball_pending' ? 'dash committing' : `${run.contactCount || 0}/5 physical contacts`}`
+        : `Pinball Rush — ${binding(state, 'boost')} hold / release · ${reason}`,
+    });
+  }
+  return rows;
+}
+
+/** Mounted and released by crucibleFocus, never a second animation loop or input owner. */
+export function mountCrucibleCombatReadout(host) {
+  const root = el('ul', 'k-text k-t-data sf-crucible-combat');
+  root.setAttribute('aria-label', 'Crucible combat fittings');
+  root.setAttribute('aria-live', 'off');
+  root.hidden = true;
+  host.appendChild(root);
+  const rows = new Map();
+  return {
+    root,
+    update(state) {
+      const lines = crucibleCombatLines(state);
+      let changed = false;
+      const keep = new Set(lines.map(line => line.id));
+      for (const [id, row] of rows) {
+        if (keep.has(id)) continue;
+        row.remove();
+        rows.delete(id);
+        changed = true;
+      }
+      for (const line of lines) {
+        let row = rows.get(line.id);
+        if (!row) {
+          row = el('li', 'sf-crucible-combat__toy');
+          rows.set(line.id, row);
+          root.appendChild(row);
+          changed = true;
+        }
+        if (row.textContent !== line.text) { row.textContent = line.text; changed = true; }
+        if (row.dataset.state !== line.status) { row.dataset.state = line.status; changed = true; }
+      }
+      const hidden = lines.length === 0;
+      if (root.hidden !== hidden) { root.hidden = hidden; changed = true; }
+      return changed;
+    },
+    release() { root.remove(); rows.clear(); },
+  };
+}

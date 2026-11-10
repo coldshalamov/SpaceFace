@@ -1,0 +1,43 @@
+{
+  "runs": [
+    {
+      "median": 4.13,
+      "min": 3.338,
+      "absBeforeUs": 1.202,
+      "allLatched": true
+    },
+    {
+      "median": 4.108,
+      "min": 3.418,
+      "absBeforeUs": 1.13,
+      "allLatched": true
+    },
+    {
+      "median": 4.057,
+      "min": 3.715,
+      "absBeforeUs": 1.149,
+      "allLatched": true
+    },
+    {
+      "median": 3.956,
+      "min": 3.46,
+      "absBeforeUs": 1.1,
+      "allLatched": true
+    },
+    {
+      "median": 4.047,
+      "min": 3.812,
+      "absBeforeUs": 1.105,
+      "allLatched": true
+    }
+  ],
+  "medianRange": [
+    3.956,
+    4.13
+  ],
+  "floorMin": 3.338,
+  "absBeforeRange": [
+    1.1,
+    1.202
+  ]
+}

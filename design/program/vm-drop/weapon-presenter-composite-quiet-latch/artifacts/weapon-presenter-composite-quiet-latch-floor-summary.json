@@ -1,0 +1,20 @@
+{
+  "name": "weapon-presenter-composite-quiet-latch-floor",
+  "packageRuns": 5,
+  "medians": [
+    6.109,
+    5.945,
+    6.114,
+    6.391,
+    6.067
+  ],
+  "mins": [
+    5.354,
+    5.198,
+    5.125,
+    4.769,
+    5.08
+  ],
+  "floorMinSpeedup": 4.769,
+  "medianOfMedians": 6.109
+}

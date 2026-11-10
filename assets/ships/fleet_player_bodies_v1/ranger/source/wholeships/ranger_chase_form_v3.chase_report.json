@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/ranger_production_v1.glb",
+  "ship": "ranger",
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "runtimeScale": 1.879781444711223,
+  "authoredX": 16.46999979019165,
+  "targetWU": 30.96,
+  "size": [
+    30.96,
+    11.3283,
+    5.3247
+  ],
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/assets/ships/fleet_player_bodies_v1/ranger/evidence/ranger/cycles/cycle_03/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/assets/ships/fleet_player_bodies_v1/ranger/evidence/ranger/cycles/cycle_03/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/assets/ships/fleet_player_bodies_v1/ranger/evidence/ranger/cycles/cycle_03/play_chase_close.png"
+  },
+  "clay": "/workspace/spaceface/assets/ships/fleet_player_bodies_v1/ranger/evidence/ranger/cycles/cycle_03/clay_play_chase.png",
+  "clayAbeam": "/workspace/spaceface/assets/ships/fleet_player_bodies_v1/ranger/evidence/ranger/cycles/cycle_03/clay_play_chase_abeam.png",
+  "clayClose": "/workspace/spaceface/assets/ships/fleet_player_bodies_v1/ranger/evidence/ranger/cycles/cycle_03/clay_play_chase_close.png"
+}

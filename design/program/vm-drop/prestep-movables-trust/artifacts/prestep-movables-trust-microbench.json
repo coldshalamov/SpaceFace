@@ -1,0 +1,13 @@
+{
+  "ships": 220,
+  "chunks": 40,
+  "ticks": 80000,
+  "runs": 9,
+  "beforeMedMs": 181.385,
+  "afterMedMs": 79.418,
+  "minSpeedup": 2.013,
+  "medSpeedup": 2.284,
+  "maxSpeedup": 2.568,
+  "admitParity": true,
+  "primary": "~2.28×"
+}
