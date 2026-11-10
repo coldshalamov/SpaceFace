@@ -122,6 +122,11 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
     }
     return keys;
   }
+  if (event === 'pitborn:cullSettled') {
+    // PL-58: the yard only settles when the run scored and paid a purse — that IS
+    // winning the Pit. A cold house emits nothing and opens nothing.
+    return (Number(payload.purse) || 0) > 0 ? ['player.won_pit'] : [];
+  }
   if (event === 'player:death') {
     // PL-55: killed by TRAFFIC — a civilian hull, not a hostile. The receipt's killerId
     // still resolves at emit time; the law layer's own civilian test decides "traffic".
@@ -247,7 +252,7 @@ export const bandRadio = {
     });
     this._listen('band:bearingResolved', (payload) => this._acceptBearingResolution(payload));
     this._listen('band:bearingUnavailable', (payload) => this._rejectBearingResolution(payload));
-    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged', 'player:death']) {
+    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged', 'player:death', 'pitborn:cullSettled']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
         for (const eventKey of deriveBandEventKeys(event, payload || {}, this.state)) {

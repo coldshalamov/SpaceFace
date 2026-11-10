@@ -244,6 +244,7 @@ export default defineFlavorPack({
         { id: 'static_74', eventKey: 'player.downed_raider', repBand: 'neutral', text: 'Word is the Tessera sank a raider wing today. Nobody has priced that name yet. Yet.' },
         { id: 'static_75', eventKey: 'player.line_class_up', text: 'New rope in the lanes. Mind your cargo.' },
         { id: 'static_76', eventKey: 'player.killed_by_traffic', text: 'Lane lights exist. Just saying.' },
+        { id: 'static_77', eventKey: 'player.won_pit', text: 'Lights came up at the Pit last night.' },
       ],
     },
     {
