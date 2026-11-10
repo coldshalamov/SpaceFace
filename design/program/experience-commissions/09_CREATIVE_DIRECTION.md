@@ -1,6 +1,6 @@
 # 09 — Creative direction, build order and how to check your own work
 
-**From the creative director, 2026-11-09. This is the standard for all commissions.** Each commission now opens with a *Director's card*. The card says what to build first and what must be true; this page says why, and how the pieces become one game.
+**From the creative director, 2026-11-09. This is the standard for all commissions.** Read [10 — The game](10_THE_GAME.md) first: it holds the verdict, the decisions and the current order. Each commission now opens with a *Director's card*. The card says what to build first and what must be true; this page says why, and how the pieces become one game.
 
 Where a card and its brief disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins. Nobody needs to write another plan. Build.
 
@@ -77,6 +77,8 @@ Give a fresh reviewer who has **not** read the brief three minutes of ordinary p
 A wrong or generic answer to any of them means not done. A passing test suite does not change that.
 
 ## 7. Build order
+
+> **Superseded 2026-11-10:** the order of work is now in [10 — The game](10_THE_GAME.md) §6. The table below is kept for the record.
 
 No more than **six** commissions in flight. A sector PR is ready to merge when its **Slice 1** passes the Stranger Test, the Inspector (EC-G16) and the smoothness run (EC-G11). The brief's remaining jobs follow in a second PR on the same place.
 

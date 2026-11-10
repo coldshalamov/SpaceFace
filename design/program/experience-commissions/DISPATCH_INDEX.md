@@ -111,3 +111,9 @@ Every one of the 52 draft PR briefs now includes explicit **branch ownership, na
 - **Start here now:** [09 — Creative direction, build order and how to check your own work](09_CREATIVE_DIRECTION.md). Every commission brief opens with a *Director's card* that says what to build first.
 - **Two new commissions, both Wave 0:** EC-G16 — One glass (the interface system), [#1024](https://github.com/coldshalamov/SpaceFace/pull/1024); EC-G17 — The workbench (see your own work in under a minute), [#1025](https://github.com/coldshalamov/SpaceFace/pull/1025).
 - **Order:** Wave 0 is EC-G11, EC-G16, EC-G17. Wave 1 is Helios (EC-S01 with EC-G01 and EC-G06), the Foundry (EC-A01 with EC-Z01), EC-G08 and EC-G10. No more than six in flight. The full table is in 09 §7.
+
+## Added 2026-11-10 — the verdict
+
+- **Read this before 09:** [10 — The game: the verdict, the decisions, and what changes in the plans](10_THE_GAME.md). Its order of work replaces 09 §7.
+- **Two more commissions:** EC-G18 — One feel, one set of keys, [#1028](https://github.com/coldshalamov/SpaceFace/pull/1028) (Wave 0); EC-G19 — One ladder, [#1029](https://github.com/coldshalamov/SpaceFace/pull/1029) (Wave 1).
+- **Sector tiers:** five towns to a finished standard first (Helios, Tethys, Ceres, Vesta, Sker); six outposts; the rest are waystations. Each sector card states its tier.
