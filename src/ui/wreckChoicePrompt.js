@@ -50,6 +50,9 @@ export const wreckChoicePrompt = {
       // annotation (D133 — a refused rescue used to close the card with no contract).
       this._bus.on('survivorPod:stripped', this._onPodTerminal);
       this._bus.on('survivorPod:rescueBlocked', this._onPodBlocked);
+      // A strip refused because the rescue contract is already live is the same dead-end
+      // class as a refused rescue — without a listener the card would show nothing forever.
+      this._bus.on('survivorPod:stripBlocked', this._onPodBlocked);
       this._bus.on('sector:exit', this._onClear);
       this._bus.on('dock:docked', this._onClear);
       this._bus.on('save:loaded', this._onRestore);
@@ -201,9 +204,13 @@ export const wreckChoicePrompt = {
     if (!deck) return;
     // A refused rescue keeps the card: tow_missing still asks for the latch, and a refused
     // contract accept says the filing desk itself would not take the rescue (D133).
-    const flag = payload.reason === 'accept_refused' ? 'RESCUE REFUSED' : 'TETHER REQUIRED';
+    const flag = payload.reason === 'accept_refused' ? 'RESCUE REFUSED'
+      : payload.reason === 'rescue_committed' ? 'RESCUE COMMITTED'
+      : 'TETHER REQUIRED';
     const detail = payload.reason === 'accept_refused'
       ? 'The destination desk will not take this rescue — check your standing, then choose again.'
+      : payload.reason === 'rescue_committed'
+      ? 'The rescue contract is already live — the strip claim is spent. Fly the delivery.'
       : 'Latch the pod to your massline first, then tow it out.';
     for (const [deckId, rec] of [...this._live]) {
       if (rec.salvagePointId !== payload.salvagePointId) continue;
@@ -230,13 +237,25 @@ export const wreckChoicePrompt = {
       for (const offer of (board && board.slots || [])) {
         if (!offer || offer.source !== 'salvage') continue;
         const podId = offer.params && offer.params.survivorPodId;
-        if (!podId) continue;
-        // Only a pod still aboard in THIS sector re-prompts; a stripped/rescued record's offer
-        // is gone already (missions withdrew it on survivorPod:stripped / accept).
-        const rec = this._state.survivorPod && this._state.survivorPod.promotedByPoint
-          && this._state.survivorPod.promotedByPoint[podId];
-        if (!rec || rec.stripped || rec.rescueSelected) continue;
-        if (rec.sectorId && sectorId && rec.sectorId !== sectorId) continue;
+        if (podId) {
+          // Only a pod still aboard in THIS sector re-prompts; a stripped/rescued record's offer
+          // is gone already (missions withdrew it on survivorPod:stripped / accept).
+          const rec = this._state.survivorPod && this._state.survivorPod.promotedByPoint
+            && this._state.survivorPod.promotedByPoint[podId];
+          if (!rec || rec.stripped || rec.rescueSelected) continue;
+          if (rec.sectorId && sectorId && rec.sectorId !== sectorId) continue;
+          this._offerCard(offer);
+          continue;
+        }
+        // A non-pod offer carrying an authored choice is the same open decision: an answered
+        // pick ran the canonical accept and the row was withdrawn, so a still-boarded row for
+        // THIS sector is an unanswered choice (or a refused one owed a retry) that earns its
+        // card back. Plain TAKE/LEAVE offers stay dismissed — LEAVE is a dismissal, not a debt.
+        const authored = offer.choice && Array.isArray(offer.choice.options)
+          && offer.choice.options.some((o) => o && o.id);
+        if (!authored) continue;
+        const offerSector = offer.sectorId || (offer.params && offer.params.wreckSectorId) || null;
+        if (offerSector && sectorId && offerSector !== sectorId) continue;
         this._offerCard(offer);
       }
     }
@@ -249,7 +268,10 @@ export const wreckChoicePrompt = {
       if (this._onPodTerminal) {
         this._bus.off('survivorPod:stripped', this._onPodTerminal);
       }
-      if (this._onPodBlocked) this._bus.off('survivorPod:rescueBlocked', this._onPodBlocked);
+      if (this._onPodBlocked) {
+        this._bus.off('survivorPod:rescueBlocked', this._onPodBlocked);
+        this._bus.off('survivorPod:stripBlocked', this._onPodBlocked);
+      }
       if (this._onClear) {
         this._bus.off('sector:exit', this._onClear);
         this._bus.off('dock:docked', this._onClear);
