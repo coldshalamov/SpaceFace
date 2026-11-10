@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier C — a waystation.** A landmark, one face, the toy and your mark. Small on purpose; one pass.
+
 **One line:** the border has a rhythm, and the gap in it is a road.
 
 **Landmark:** the Sweep — a patrol searchlight crossing the approach. **Shift:** the sweep's cycle; runners cross in a small group when the opening is real. **Toy:** the light — rocks give cover, a thrown decoy drags the beam away, and being seen is something you watch happen.
