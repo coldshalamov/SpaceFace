@@ -79,14 +79,23 @@ No more than six in flight.
 | Wave | Build | Why |
 |---|---|---|
 | **0 — the floor** | EC-G11 never freeze · EC-G18 one feel, one set of keys · EC-G17 the workbench · EC-G16 one glass | The throw has to feel right at full speed in both doors before anything is built on it. |
-| **1 — Swarm, finished** | EC-G08 enemies you can tell apart · EC-A01 the Foundry · EC-Z01 · EC-C01 the ending · EC-G19 the ladder | The proof. One arena, thirty rounds, winnable, replayable. |
-| **2 — the first hour** | EC-G10 first ten minutes · EC-S01 Helios with EC-G01 and EC-G06 · EC-G09 one next · EC-S03 Tethys | The second door, opened properly. |
+| **1 — Swarm, finished** | EC-G08 enemies you can tell apart · EC-A01 the Foundry · EC-Z01 · EC-C01 the ending · EC-G19 the ladder · EC-G20 the Rig | The proof. One arena, thirty rounds, winnable, replayable. |
+| **2 — the first hour** | EC-G10 first ten minutes · EC-S01 Helios with EC-G01 and EC-G06 · EC-G09 one next · EC-S03 Tethys · EC-G21 the Chart | The second door, opened properly. |
 | **3 — the five towns** | EC-S02 Ceres · EC-S05 Vesta · EC-S07 Sker · EC-G15 · EC-G04 · EC-G12 · EC-G07 | Weight gates, heists, toys. |
 | **4 — more Swarm, more world** | EC-A02–A07 · EC-Z02–Z04 · the outposts (EC-S04, S06, S08, S09, S10, S11) | From the kits. |
 | **5 — the frontier** | the waystations (EC-S12–S25) · EC-G05 · EC-G14 | One pass each. |
 
 ## 7. What changes in the commissions
 
-- **New:** EC-G18 (one feel, one set of keys) and EC-G19 (one ladder, an honest hold).
+- **New:** EC-G18 (one feel, one set of keys), EC-G19 (one ladder, an honest hold), EC-G20 (the Rig — one loadout screen for both doors) and EC-G21 (the Chart — the map as a navigation instrument).
 - **Amended cards:** EC-G07, G09, G10, G12 and EC-S03 carry a dated amendment; every sector card now states its tier.
 - **Unchanged:** the Town Recipe, the Road Cast, the Stranger Test and the rules for builders in 09.
+
+## 8. The written content — build from these, do not invent
+
+Agents build well from something specific and badly from "make it good". So the specific things are written:
+
+- **[11 — The Armory](11_THE_ARMORY.md)** — one set of toys for both doors: ships as ways to move (the Saucer and the Tank in detail), gun families and the Kick stat, three bends for each power, Line heads, mods that are trades, and ten builds worth chasing.
+- **[12 — Swarm: the Pit](12_SWARM_THE_PIT.md)** — the whole run: what is on the floor, the drops, the freight lanes, fifteen enemies and the answer to each, thirty rounds by name, the bosses, Madame Kiln.
+- **[13 — Jobs and heists](13_JOBS_AND_HEISTS.md)** — the five towns, every job and heist beat by beat, the street moments, and the long game of building your own yard.
+- **`design/program/INFERENCE_PLANTS.md`** (on master) — sixty chance events, secrets, street moments and radio lines. INFERENCE agents build these as written; they do not invent them.

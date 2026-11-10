@@ -117,3 +117,13 @@ Every one of the 52 draft PR briefs now includes explicit **branch ownership, na
 - **Read this before 09:** [10 — The game: the verdict, the decisions, and what changes in the plans](10_THE_GAME.md). Its order of work replaces 09 §7.
 - **Two more commissions:** EC-G18 — One feel, one set of keys, [#1028](https://github.com/coldshalamov/SpaceFace/pull/1028) (Wave 0); EC-G19 — One ladder, [#1029](https://github.com/coldshalamov/SpaceFace/pull/1029) (Wave 1).
 - **Sector tiers:** five towns to a finished standard first (Helios, Tethys, Ceres, Vesta, Sker); six outposts; the rest are waystations. Each sector card states its tier.
+
+## Added 2026-11-10 — the written content
+
+Written by the lead designer so that nobody has to invent it:
+
+- [11 — The Armory](11_THE_ARMORY.md) — ships as ways to move, gun families and Kick, power bends, Line heads, mods, ten builds.
+- [12 — Swarm: the Pit](12_SWARM_THE_PIT.md) — the loop, the floor, drops, freight lanes, fifteen enemies and their answers, thirty named rounds, the bosses.
+- [13 — Jobs and heists](13_JOBS_AND_HEISTS.md) — the five towns: every job, heist and street moment, beat by beat; and the long game.
+- `design/program/INFERENCE_PLANTS.md` on master — sixty chance events, secrets and radio lines for INFERENCE agents to build as written.
+- **Two more commissions:** EC-G20 — The Rig, one loadout screen for both doors, [#1032](https://github.com/coldshalamov/SpaceFace/pull/1032); EC-G21 — The Chart, the map as a navigation instrument, [#1033](https://github.com/coldshalamov/SpaceFace/pull/1033).
