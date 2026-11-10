@@ -87,6 +87,37 @@ const DETAIL_OBSTACLES = '.sf-leftcontext, #sf-comms, .sf-rightdock, .orr-hud-cl
   + '#sf-prompt-deck, #sf-tutorial-flight-card, '
   + '.mf-buttons, .mf-stick, .mf-nodes';
 
+// Read only the rescue owner's currently published guidance for this exact live
+// attachment. Tags alone, a selected target, or a remembered offer cannot replace it.
+export function ninthMouthTowRead(state, body) {
+  const offer = state?.ceresNinthMouthOffer, guidance = offer?.guidance;
+  const tether = state?.player?.tether, player = state?.entities?.get?.(state.playerId);
+  const attachment = state?.combat?.attachments?.byId?.[tether?.attachmentId];
+  if (state?.mode !== 'flight' || state.ui?.docked || state.save?.restoring
+    || !player || player.alive === false || !(player.hull > 0)
+    || offer?.playerLife !== player.occupantGeneration
+    || !body || body.alive === false || !(body.hull > 0)
+    || !Number.isSafeInteger(body.occupantGeneration) || body.occupantGeneration <= 0
+    || !tether?.active || tether.targetId !== body.id
+    || !guidance || guidance.attached !== true || guidance.entityId !== body.id
+    || guidance.entityLife !== body.occupantGeneration
+    || !['barge', 'lamp:0', 'lamp:1', 'lamp:2'].includes(guidance.role)
+    || body.data?.ninthMouthRole !== guidance.role
+    || body.data?.ninthMouthIdentity !== `lw_ceres_ninth_mouth:${guidance.role}`
+    || attachment?.state !== 'active' || attachment.ownerId !== player.id
+    || attachment.ownerGeneration !== player.occupantGeneration
+    || attachment.targetId !== body.id || attachment.targetGeneration !== body.occupantGeneration
+    || typeof guidance.stage !== 'string' || !guidance.stage.trim()
+    || typeof guidance.instruction !== 'string' || !guidance.instruction.trim()
+    || guidance.instruction.length > 500
+    || !Number.isFinite(guidance.target?.x) || !Number.isFinite(guidance.target?.z)
+    || !Number.isFinite(guidance.remaining) || guidance.remaining < 0
+    || !Number.isFinite(guidance.speed) || guidance.speed < 0
+    || !Number.isFinite(guidance.maxSpeed) || guidance.maxSpeed < 0
+    || !Number.isFinite(guidance.radius) || guidance.radius <= 0) return null;
+  return guidance;
+}
+
 // The attached entity is the load, never the independently selected throw target.
 export function masslineFlightRead(state) {
   const tether = state?.player?.tether;
@@ -96,6 +127,8 @@ export function masslineFlightRead(state) {
   const raw = body && ((isWreckLike(body) || body.type === 'ship' || body.type === 'payload') ? targetDisplayName(body)
     : data.displayName || data.name || data.label || (body.type === 'asteroid' ? 'Asteroid' : body.type));
   const name = typeof raw === 'string' && raw.trim() ? raw.trim().replaceAll('_', ' ') : 'Unknown load';
+  const tow = ninthMouthTowRead(state, body);
+  if (tow) return { name, cue: tow.instruction, tow };
   const solution = state.massline2?.throw?.solution;
   let cue = 'Choose an exit target';
   if (solution) {
@@ -192,8 +225,9 @@ export function createMasslineCadenceReadout(parent) {
   function update(state) {
     if(destroyed)return;
     latestState=state;
-    const tether=state?.player?.tether, solution=state?.massline2?.throw?.solution;
+    const tether=state?.player?.tether;
     const read=masslineFlightRead(state);
+    const solution=read?.tow ? null : state?.massline2?.throw?.solution;
     if(!read){
       hide();
       if(prev.whip!=='none'){prev.whip='none';root.dataset.whip='none';}
@@ -212,7 +246,7 @@ export function createMasslineCadenceReadout(parent) {
     if(prev.open!==openText){prev.open=openText;root.dataset.open=openText;}
     if(!details.open) return;
     const window=solution?.window;
-    text(el.hint,!solution?'No release target selected.':solution.degraded||solution.decisionStale?
+    text(el.hint,read.tow?read.tow.instruction:!solution?'No release target selected.':solution.degraded||solution.decisionStale?
       'The prediction is stale or uncertain.':solution.fieldAware?
       'Field snapshot estimate; future motion may differ.':window?.reliable?
       'Coast window assumes both bodies continue on their present paths.':'No reliable near-term coast window.');

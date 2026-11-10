@@ -1,10 +1,20 @@
 // Prompt Deck owns all input and accessible, mute-friendly text presentation.
 // This adapter only reads offers and emits intents; the runtime owns rescue outcomes.
 import { getPromptDeck } from './promptDeck.js';
+import { resolveActionLabel } from '../systems/input.js';
+import { getPromptDevice, gamepadGlyphForAction } from './bindings.js';
 const ID = 'ceres-ninth-mouth';
+export function ninthMouthControlHint(state, guidance, device = getPromptDevice()) {
+  if (!guidance || !['acquire','tow','brake','release','intercept'].includes(guidance.stage)) return '';
+  const label = action => device === 'touch' ? '' : device === 'gamepad'
+    ? gamepadGlyphForAction(action) : resolveActionLabel(state, action);
+  const line=label('tether'), brake=label('brake');
+  const tap=line ? `Tap ${line}: attach/release Line` : 'Tap Line to attach/release';
+  return `${tap} · ${brake ? `${brake}: brake` : 'Use the brake control'}`;
+}
 export function createCeresNinthMouthPrompt({ state, bus, helpers }) {
   const marks = createNinthMouthServiceMarks({ state, helpers });
-  let current = null, currentId = null, consumedId = null, destroyed = false;
+  let current = null, currentId = null, currentHint = '', consumedId = null, destroyed = false;
   const close = () => {
     consumedId = currentId ?? state.ceresNinthMouthOffer?.id ?? consumedId;
     current = null; currentId = null;
@@ -25,14 +35,15 @@ export function createCeresNinthMouthPrompt({ state, bus, helpers }) {
         return;
       }
       marks.update(offer);
-      if (offer.id === consumedId || current === offer && currentId === offer.id) return;
+      const controlHint = ninthMouthControlHint(state,offer.guidance);
+      if (offer.id === consumedId || current === offer && currentId === offer.id && currentHint === controlHint) return;
       const deck = getPromptDeck();
       if (!deck) return;
-      current = offer; currentId = offer.id;
+      current = offer; currentId = offer.id; currentHint = controlHint;
       const offerId = offer.id, playerLife = offer.playerLife;
       const spec = {
         id: ID, kind: 'contact', sender: 'DESSA KROLL · NINTH MOUTH',
-        headline: offer.headline, detail: offer.detail,
+        headline: offer.headline, detail: controlHint ? `${offer.detail} ${controlHint}.` : offer.detail,
         choices: offer.choices.map(choice => ({ ...choice, cancel: choice.id === 'close' })),
         onChoose(action) {
           if (destroyed || current !== offer || currentId !== offerId || offer.id !== offerId
@@ -78,7 +89,9 @@ export function createNinthMouthServiceMarks({ state, helpers }) {
         + '<path class="sf-objarrow__mark" d="M12 3.4 20.6 12 12 20.6 3.4 12Z"/></svg>'
         + '<span class="sf-objarrow__label mono"></span>';
       root.appendChild(node);
-      rows.push({ node, label: node.querySelector('.sf-objarrow__label') });
+      const label = node.querySelector('.sf-objarrow__label');
+      if (label?.style) label.style.whiteSpace = 'pre-line';
+      rows.push({ node, label });
     }
   }
   return {
@@ -101,7 +114,7 @@ export function createNinthMouthServiceMarks({ state, helpers }) {
         const projected = helpers.worldToScreen(world, screen);
         // Behind-camera and off-screen locations are not mislabeled as visible marks.
         if (!projected?.onScreen || !Number.isFinite(projected.x) || !Number.isFinite(projected.y)) continue;
-        const label = `SERVICE MARK · ${mark.label}`;
+        const label = `SERVICE MARK · ${mark.label}` + (typeof mark.readout === 'string' ? `\n${mark.readout}` : '');
         row.label.textContent = label;
         row.node.setAttribute('aria-label', `${label}, ${Math.round(mark.radius)} units radius`);
         row.node.dataset.edge = typeof window !== 'undefined' && projected.x > window.innerWidth * 0.6 ? 'right' : 'left';

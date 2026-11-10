@@ -19,7 +19,7 @@ const speed = e => Math.hypot(e?.vel?.x ?? Infinity, e?.vel?.z ?? Infinity);
 function fresh() {
   return { version: 1, storyId: CUT.id,
     objects: Object.fromEntries(ROLES.map(role => [role, { identity: ID(role), spawned: false, lost: false }])),
-    entered: null, rockShifted: false, rescue: null, tag: false };
+    entered: null, rockShifted: false, rescue: null, tag: false, guide: null };
 }
 function record(owner) { return owner.state.npcJobs?.ceresNinthMouth; }
 function eligible(s) {
@@ -155,45 +155,133 @@ export function ceresNinthMouthStatus(owner) {
     rescuedBarges: r.rescue ? 1 : 0, awaitingBarges: !r.rescue && barge ? 1 : 0,
     lights, rockShifted: r.rockShifted, tag: r.tag, receipt: r.rescue ? copy(r.rescue) : null };
 }
+// Guidance reads the same bound original and fresh native pose as settlement.
+// Selecting a route changes only the radio/HUD focus, never the target, body or Line.
+function playerAttached(s, e) {
+  const p = s.entities?.get(s.playerId);
+  return p && Object.values(s.combat?.attachments?.byId || {}).some(a => a.state === 'active'
+    && a.ownerId === p.id && a.ownerGeneration === p.occupantGeneration
+    && a.targetId === e.id && a.targetGeneration === e.occupantGeneration);
+}
+function routeGuidance(owner) {
+  const s = owner.state, r = record(owner), p = s.entities?.get(s.playerId);
+  const originals = [...CUT.lamps.map(d => body(owner, d.role)), body(owner, 'barge')].filter(Boolean);
+  const towing = originals.find(e => playerAttached(s, e));
+  const selected = originals.find(e => e.id === s.player?.targetId);
+  // Retain the attached original after release, so the instruction becomes Seat
+  // rather than silently switching to a different nearby object.
+  if (towing) r.guide = towing.data.ninthMouthRole;
+  const explicit = originals.find(e => e.data.ninthMouthRole === r.guide);
+  const closest = originals.filter(e => e.data.ninthMouthRole.startsWith('lamp:')
+    && !e.data.ninthMouthInstalled && distance(p.pos, e.pos) <= 100)
+    .sort((a,b) => distance(p.pos,a.pos) - distance(p.pos,b.pos))[0];
+  const e = towing || explicit || selected || closest || (!r.rescue && body(owner, 'barge'));
+  const pose = nativePose(owner, e);
+  if (!e || !pose || e.playerOwned || e.data.playerOwned || e.data.controlLease) return null;
+  const role = e.data.ninthMouthRole, isLamp = role.startsWith('lamp:'), index = isLamp ? Number(role.slice(5)) : -1;
+  const def = isLamp ? CUT.lamps[index] : CUT.berth, target = worldPoint(def.local);
+  const remaining = distance(pose.pos, target), velocity = speed(pose), linked = attached(s,e), ours = !!playerAttached(s,e);
+  const radius = isLamp ? def.seatRadius : def.radius;
+  const label = isLamp ? `Light ${index+1} · ${def.label}` : 'Original barge';
+  // Constant-velocity intercept is advice, never a predicted arrival receipt.
+  // Recompute from fresh native motion: contact or a bad heading revokes it.
+  const dx=pose.pos.x-target.x,dz=pose.pos.z-target.z,v2=velocity*velocity;
+  const dot=dx*pose.vel.x+dz*pose.vel.z;
+  const discriminant=dot*dot-v2*(remaining*remaining-radius*radius);
+  const intercept=v2>.0025 && dot<0 && discriminant>=0 ? (-dot-Math.sqrt(discriminant))/v2 : Infinity;
+  const coastEta=isLamp && !linked && remaining>radius && velocity<=def.maxSpeed
+    && pose.spin<=def.maxSpin && intercept>0 && intercept<=300 ? Math.ceil(intercept) : null;
+  let stage, instruction;
+  if (isLamp && e.data.ninthMouthInstalled) { stage='seated'; instruction='Worklight seated. Its light stays here; choose the next light or the barge.'; }
+  else if (!isLamp && r.rescue) { stage='received'; instruction='One barge home. Crew transfer is recorded; the lamps remain separate work.'; }
+  else if (linked && !ours) { stage='held'; instruction='Another Line holds this body. Clear that Line before seating or receiving it.'; }
+  else if (coastEta != null) { stage='coast'; instruction='The released light is projected to cross its mark. Stay within 100 m; Seat enables only when it actually arrives slowly.'; }
+  else if (isLamp && !linked && velocity>def.maxSpeed) {
+    stage='intercept'; instruction=intercept>0 && Number.isFinite(intercept)
+      ? 'Pass around the moving light and get behind its course. Reattach the Line just before it reaches the mark to brake it; watch the load speed.'
+      : 'The moving light will miss the mark. Pass around its path and reattach from behind to brake it, then tow it back toward the mark.';
+  }
+  else if (remaining > radius) {
+    if (!ours) { stage='acquire'; instruction=isLamp
+      ? 'Aim at the original worklight and tap Line to attach. Pull toward its mark; after release, catch it from behind to brake before seating.'
+      : 'Aim at the original barge and tap Line to attach. Pull its bow straight toward the receiving apron.'; }
+    else if (remaining < radius + Math.max(25, velocity * 8) && velocity > def.maxSpeed) {
+      stage='brake'; instruction='Brake early with the Line attached. Watch the load speed; stopping your ship alone does not stop the load.';
+    } else { stage='tow'; instruction=isLamp
+      ? 'Use short thrusts toward the mark. Release, pass around its path and catch from behind near the mark to brake. A tight reel can start an orbit.'
+      : 'Tow straight to the receiving apron. Use thrust for the haul; reeling alone pulls you toward this heavy barge.'; }
+  } else if (velocity > def.maxSpeed || pose.spin > def.maxSpin) {
+    stage='brake'; instruction=pose.spin > def.maxSpin && velocity <= def.maxSpeed
+      ? 'The load is still turning. Let the Line settle it before release.'
+      : 'The load is inside its mark but still moving. Brake with the Line attached before releasing it.';
+    if (!ours) instruction='The released load is still moving. Reattach the Line and steady it; waiting alone will not stop a drifting body.';
+  } else if (ours) { stage='release'; instruction=isLamp
+    ? 'The light is inside its mark and slow. Tap Line to release, then choose Seat.'
+    : 'The barge is inside the apron and slow. Tap Line to release; Kroll needs two clear seconds to receive it.'; }
+  else if (isLamp && !near(owner, pose.pos, 100)) { stage='approach'; instruction='Approach the settled worklight to seat it.'; }
+  else if (isLamp) { stage='seat'; instruction='Worklight settled at its mark. Choose Seat to bolt it at this actual position.'; }
+  else if (!nativePose(owner, body(owner,'receiver'))) { stage='unavailable'; instruction='Receiving mast unavailable. No safe arrival is recorded.'; }
+  else { stage='receiving'; instruction='Line released and barge settled. Hold it clear for two seconds; crew transfer is not recorded yet.'; }
+  return {role,entityId:e.id,entityLife:e.occupantGeneration,stage,instruction,label,target,coastEta,
+    pos:{...pose.pos},remaining:Math.ceil(remaining),speed:Math.ceil(velocity*10)/10,
+    maxSpeed:def.maxSpeed,spin:Math.ceil(pose.spin*100)/100,maxSpin:def.maxSpin,radius,attached:ours};
+}
 function publish(owner, force = false) {
   const s = owner.state, rt = runs.get(owner), r = record(owner), p = s.entities?.get(s.playerId);
   if (!rt || !r || !eligible(s) || !near(owner, CUT.center, CUT.hearingRadius) || !body(owner, 'receiver')) {
     s.ceresNinthMouthOffer = null; if (rt) { rt.offer = null; rt.signature = ''; } return;
   }
-  const status = ceresNinthMouthStatus(owner), choices = [];
+  const status = ceresNinthMouthStatus(owner), guidance = routeGuidance(owner), choices = [];
   let detail;
   if (rt.page === 'compact') {
-    detail = status.status === 'rescued' ? 'One barge received. Kroll is on the berth radio.' : 'Kroll is holding the service cut for the last barge.';
+    detail = guidance?.instruction || (status.status === 'rescued' ? 'One barge received. Kroll is on the berth radio.' : 'Kroll is holding the service cut for the last barge.');
     choices.push({ id: 'talk', label: 'Call the rescue berth' });
   } else {
     detail = status.status === 'rescued'
-      ? `The original barge reached the berth and its Line was released. Crew transfer is recorded. ${status.lights}/3 worklights seated. ${r.tag ? 'Your rescue tag stays at the radio mast.' : 'The lamps are separate work; tow each original to its service mark if you want the approach to stay lit.'}`
-      : status.status === 'lost' ? 'The original barge is lost. No safe arrival was recorded. The service cut and any surviving worklights remain here.'
-        : status.status === 'unavailable' ? 'The barge is not currently resolved. I will not post a safe arrival from a missing signal.'
-          : 'One barge is still in the service cut. Its crew is holding thrust. Tow its bow straight back to this berth, or take a worklight through first. Each light travels with the Line; the three service marks lead from the lip to the inner edge. Release a settled light at its mark, then Seat it. The far opening stays clear for retreat. Pulling sideways can move the loose rock. Bring the barge into the apron and release it almost stopped.';
-    if (r.rockShifted) detail += ' The fallen rock has shifted. Check the gap before another pull; the far end remains open.';
-    for (let i = 0; i < CUT.lamps.length; i++) {
-      const lamp = body(owner, `lamp:${i}`);
-      if (!lamp || !near(owner, lamp.pos, 100)) continue;
-      const installed = lamp.data.ninthMouthInstalled === true;
-      const issue = lampIssue(owner, i, installed);
-      choices.push({ id: `${installed ? 'unseat' : 'seat'}:${i}`, label: `${installed ? 'Unbolt' : 'Seat'} worklight ${i + 1}`, disabled: !!issue });
-      if (issue && !installed) {
-        const to = worldPoint(CUT.lamps[i].local), delta = {x: Math.round(to.x - lamp.pos.x), z: Math.round(to.z - lamp.pos.z)};
-        detail += ` Light ${i + 1}: ${issue}. Service mark ${delta.x} m east, ${delta.z} m south of the light.`;
-      }
+      ? `The original barge reached the berth and its Line was released. Crew transfer is recorded. ${status.lights}/3 worklights seated. ${r.tag ? 'Your rescue tag stays at the radio mast.' : 'The lamps remain separate work.'}`
+      : status.status === 'lost' ? 'The original barge is lost. No safe arrival was recorded. Surviving worklights remain here.'
+        : status.status === 'unavailable' ? 'The barge is not currently resolved. No safe arrival is recorded from a missing signal.'
+          : 'One barge is waiting in the shaded service cut. Rescue it now or take the worklights in first. The far opening stays clear for retreat; pulling sideways can move the loose rock.';
+    if (r.rockShifted) detail += ' The fallen rock has shifted. Check the gap before another pull.';
+    if (guidance) detail += ` ${guidance.label}: ${guidance.instruction}`;
+  }
+  // Seat stays reachable even with the radio compacted. Every click is still
+  // revalidated by lampIssue; guidance never grants authority to freeze a body.
+  for (let i = 0; i < CUT.lamps.length; i++) {
+    const lamp = body(owner, `lamp:${i}`);
+    if (!lamp || !near(owner, lamp.pos, 100)) continue;
+    const installed = lamp.data.ninthMouthInstalled === true, issue = lampIssue(owner,i,installed);
+    if (rt.page === 'full' || guidance?.role === `lamp:${i}`) choices.push({
+      id:`${installed ? 'unseat' : 'seat'}:${i}`, label:`${installed ? 'Unbolt' : 'Seat'} worklight ${i+1}`, disabled:!!issue });
+  }
+  if (rt.page === 'full') {
+    if (!r.rescue && body(owner,'barge') && guidance?.role !== 'barge') choices.push({id:'guide:barge',label:'Guide the barge rescue'});
+    for (let i=0;i<CUT.lamps.length;i++) {
+      const lamp=body(owner,`lamp:${i}`);
+      if (lamp && !lamp.data.ninthMouthInstalled && guidance?.role !== `lamp:${i}`)
+        choices.push({id:`guide:lamp:${i}`,label:`Guide light ${i+1} · ${CUT.lamps[i].label}`});
     }
-    choices.push({ id: 'close', label: 'Keep flying' });
+    choices.push({id:'close',label:'Keep flying'});
   }
   const headline = status.status === 'rescued' ? 'ONE BARGE HOME' : 'NINTH MOUTH · RESCUE BERTH';
-  const serviceMarks = [{id:'berth',label:'Receiving apron',pos:worldPoint(CUT.berth.local),radius:CUT.berth.radius},
-    ...(rt.page === 'full' ? CUT.lamps.map((def,i)=>({id:def.role,label:`Light ${i+1} · ${def.label}`,pos:worldPoint(def.local),radius:def.seatRadius})) : [])];
-  const payload = { headline, detail, choices, serviceMarks, playerLife: p.occupantGeneration };
-  const signature = JSON.stringify([payload, p.id, r.rescue, r.tag]);
-  if (!force && signature === rt.signature) return;
-  rt.signature = signature;
-  rt.offer = { ...payload, id: `ninth-mouth:${++rt.sequence}`, playerId: p.id };
-  s.ceresNinthMouthOffer = rt.offer;
+  // A compact radio never erases the chosen route. Distinguish the moving source
+  // from the destination; label source only while the pilot needs to acquire it.
+  const serviceMarks = guidance ? [
+    {id:guidance.role,label:guidance.role === 'barge' ? 'Receiving apron' : guidance.label,
+      pos:guidance.target,radius:guidance.radius,readout:guidance.coastEta != null ? `${guidance.remaining} m · projected ${guidance.coastEta} s` : `${guidance.remaining} m · load ${guidance.speed.toFixed(1)} / ${guidance.maxSpeed} m/s`},
+    ...(['acquire','approach','coast','intercept'].includes(guidance.stage) ? [{id:'source',label:`${guidance.stage==='coast' ? 'COASTING' : guidance.stage==='approach' ? 'SEAT HERE' : guidance.stage==='intercept' ? 'CATCH FROM BEHIND' : 'PICK UP'} · ${guidance.label}`,
+      pos:guidance.pos,radius:8}] : []),
+  ] : [{id:'berth',label:'Receiving apron',pos:worldPoint(CUT.berth.local),radius:CUT.berth.radius}];
+  const payload = {headline,detail,choices,serviceMarks,guidance,playerLife:p.occupantGeneration};
+  // Telemetry can update without revoking a legitimate button under the cursor.
+  // Changes to phase/choices/player life still revoke every prior callback.
+  const signature = JSON.stringify([headline,detail,choices,p.id,p.occupantGeneration,guidance?.entityId,guidance?.entityLife]);
+  if (!force && signature === rt.signature && rt.offer) {
+    rt.offer.serviceMarks=serviceMarks; rt.offer.guidance=guidance; return;
+  }
+  rt.signature=signature;
+  rt.offer={...payload,id:`ninth-mouth:${++rt.sequence}`,playerId:p.id};
+  s.ceresNinthMouthOffer=rt.offer;
 }
 
 export function installCeresNinthMouth(owner) {
@@ -223,6 +311,11 @@ export function installCeresNinthMouth(owner) {
     try {
       if (payload.action === 'close') rt.page = 'compact';
       else if (payload.action === 'talk') rt.page = 'full';
+      else if (payload.action.startsWith('guide:')) {
+        const role=payload.action.slice(6);
+        if (!['barge',...CUT.lamps.map(d=>d.role)].includes(role) || !body(owner,role)) return;
+        record(owner).guide=role;
+      }
       else {
         const [verb, raw] = payload.action.split(':'), index = Number(raw), unseat = verb === 'unseat';
         if (!['seat', 'unseat'].includes(verb) || !Number.isInteger(index)) return;
@@ -250,7 +343,7 @@ export function installCeresNinthMouth(owner) {
 
 export function stepCeresNinthMouth(owner, dt) {
   const s = owner.state, rt = runs.get(owner);
-  if (!rt || !finite(dt) || dt <= 0 || !eligible(s)) { if (rt) { rt.receivedDwell = 0; s.ceresNinthMouthOffer = null; } return; }
+  if (!rt || !finite(dt) || dt <= 0 || !eligible(s)) { if (rt) { rt.receivedDwell = 0; rt.offer = null; rt.signature = ''; s.ceresNinthMouthOffer = null; } return; }
   if (rt.lastTick === s.tick) return;
   rt.lastTick = s.tick;
   if (!record(owner) && !near(owner, CUT.center, CUT.admissionRadius)) return;
@@ -312,6 +405,7 @@ export function restoreCeresNinthMouth(owner, saved) {
   if (saved.version !== 1 || saved.storyId !== CUT.id) return;
   r.entered = ['lamps_seated', 'lamps_unseated'].includes(saved.entered) ? saved.entered : null;
   r.rockShifted = saved.rockShifted === true;
+  r.guide = ['barge',...CUT.lamps.map(d=>d.role)].includes(saved.guide) ? saved.guide : null;
   const q = saved.rescue;
   if (q?.receiptId === RECEIPT && q.storyId === CUT.id && q.bargeIdentity === ID('barge')
     && q.receiverIdentity === ID('receiver') && q.count === 1 && q.committed === true

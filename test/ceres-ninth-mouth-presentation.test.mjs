@@ -9,7 +9,10 @@ async function loadAdapter(path, replacements) {
   for (const [original, replacement] of replacements) source = source.replace(original, replacement);
   return import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 }
-const promptModule = await loadAdapter('../src/ui/ceresNinthMouthPrompt.js', [[
+const promptModule = await loadAdapter('../src/ui/ceresNinthMouthPrompt.js', [
+  ["import { resolveActionLabel } from '../systems/input.js';", "const resolveActionLabel=()=>'';"],
+  ["import { getPromptDevice, gamepadGlyphForAction } from './bindings.js';", "const getPromptDevice=()=> 'touch', gamepadGlyphForAction=()=>'';"],
+[
   "import { getPromptDeck } from './promptDeck.js';",
   'const getPromptDeck = () => globalThis.__ninthMouthTestDeck;',
 ]]);
