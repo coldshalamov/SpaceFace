@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "recordType": "collector-behavior-verification",
+  "scope": "This verifies collector behavior and reruns inventory file/hash reads only. Reachability and Chromium render checks were not rerun.",
+  "defaultRuns": [
+    {
+      "startedAtHostUTC": "2026-11-10T01:08:04.662Z",
+      "finishedAtHostUTC": "2026-11-10T01:08:04.874Z",
+      "stdoutSha256": "f2488f3a204563c63375f4ee5eca7ef2f8208c062df9dd9032a1eda975465779"
+    },
+    {
+      "startedAtHostUTC": "2026-11-10T01:08:04.874Z",
+      "finishedAtHostUTC": "2026-11-10T01:08:05.096Z",
+      "stdoutSha256": "f2488f3a204563c63375f4ee5eca7ef2f8208c062df9dd9032a1eda975465779"
+    }
+  ],
+  "explicitInventoryWrite": {
+    "file": "inventory-refresh.json",
+    "startedAtHostUTC": "2026-11-10T01:08:05.664Z",
+    "finishedAtHostUTC": "2026-11-10T01:08:05.833Z",
+    "exitCode": 0
+  },
+  "assertions": {
+    "defaultDoesNotModifyReportDirectory": true,
+    "defaultOutputsIdenticalForUnchangedSource": true,
+    "outputIsInventoryOnly": true,
+    "releaseFilesExist": true,
+    "selectedHashesMatch": true,
+    "explicitWriteCreatesNewFile": true,
+    "existingDestinationRefused": true,
+    "invalidFlagRefused": true,
+    "explicitFreshInventorySaved": true
+  },
+  "counts": {
+    "parts": 267,
+    "release": 423,
+    "selected": 20
+  }
+}

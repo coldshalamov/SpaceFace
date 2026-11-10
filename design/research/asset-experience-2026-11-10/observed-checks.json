@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "recordType": "historical-check-observations",
+  "provenance": "Results observed directly in the original research tool session, before inventory regeneration during review. These checks are not executed by catalog-evidence.mjs. Exact UTC observation times were not recorded and must not be inferred from any inventory timestamp.",
+  "observations": [
+    {
+      "id": "asset-reachability-original-research",
+      "observedAtUTC": null,
+      "timestampStatus": "not recorded",
+      "source": "Original research exec_command/write_stdin tool result, session 94183, completion chunk 4d2183",
+      "command": "node scripts/check-asset-reachability.mjs",
+      "result": "passed",
+      "output": "asset reachability OK — 1107 referenced runtime assets exist and are retail-routable (685 physically bundled, 422 render-package-routed); 0 authoring-only reference sheets held out of the runtime.",
+      "counts": {
+        "referencedRuntimeAssets": 1107,
+        "physicallyBundled": 685,
+        "renderPackageRouted": 422
+      },
+      "rerunByInventoryCollector": false
+    },
+    {
+      "id": "kestrel-render-original-research",
+      "observedAtUTC": null,
+      "timestampStatus": "not recorded as UTC; browser log carries 1109/194657.686000 without timezone, not converted",
+      "source": "Original research exec_command tool result, completion chunk 38d096",
+      "command": "SF_CHROMIUM=/usr/bin/chromium node scripts/fleet-look.mjs --def=ship_kestrel --views=chase,top --timeout=90 --out=.devshots/asset-experience-2026-11-10-kestrel",
+      "result": "blocked before rendering",
+      "reason": "Chromium process-singleton socket() failed: Operation not permitted; crash-report settings path read-only.",
+      "rerunByInventoryCollector": false
+    }
+  ]
+}

@@ -195,6 +195,7 @@ export function registrarOfferSpec(state, opts = {}) {
     statusFlag: view.attempt?.armed ? 'running' : 'idle',
     choices: view.attempt
       ? [
+          ...(!view.attempt.practice ? [{ id: 'practiceContinue', label: 'Continue as practice · forfeit payout' }] : []),
           { id: 'cancel', label: 'Abandon attempt' },
           { id: 'close', label: 'Leave' },
         ]
@@ -371,7 +372,10 @@ export function attemptProgressSpec(state, opts = {}) {
     detail: opts.attempt?.admissionPending ? 'Preparing course. The run has not started.'
       : `${legLine}${current?.hint ? `\n${current.hint}` : ''}${handling ? `\n${handling}` : ''}${cond}${a.practice ? '\n(practice — no payout)' : ''}`,
     statusFlag: 'running',
-    choices: [{ id: 'cancel', label: 'Abandon attempt' }],
+    choices: [
+      ...(!a.practice && !opts.attempt?.admissionPending ? [{ id: 'practiceContinue', label: 'Continue as practice · forfeit payout' }] : []),
+      { id: 'cancel', label: 'Abandon attempt' },
+    ],
   };
 }
 

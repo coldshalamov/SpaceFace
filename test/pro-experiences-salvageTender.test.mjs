@@ -27,7 +27,7 @@ import { createSalvageTenderPresentation, TENDER_EQUIPMENT, bindSalvageTenderAud
 import { bindNocturneScene, createLogicalLight, unbindNocturneScene } from '../src/render/nocturne/bridge.js';
 import { NocturneRegistry } from '../src/render/nocturne/registry.js';
 import { setPromptDeck } from '../src/ui/promptDeck.js';
-import { resolveCourseTarget, commitCoursePayload, resolveGalaxyMapPrimaryAction } from '../src/ui/galaxyMap.js';
+import { resolveCourseTarget, commitCoursePayload, resolveGalaxyMapPrimaryAction, emitGalaxyMapPrimaryAction } from '../src/ui/galaxyMap.js';
 
 const SECTOR = 'sector_helios_prime';
 const DT = 1 / 60;
@@ -960,7 +960,15 @@ test('home chart uses real map coordinates, stamped local course and remote sect
   const route = resolveCourseTarget(remoteClick);
   assert.equal(route.type, 'sector'); assert.equal(route.sectorId, homeSector);
   assert.equal('pos' in route, false); assert.equal('targetEntityId' in route, false);
-  assert.equal(resolveGalaxyMapPrimaryAction(state, remoteClick).kind, 'jump', 'the existing map offers its standard adjacent-sector course and jump');
+  const remoteAction = resolveGalaxyMapPrimaryAction(state, remoteClick);
+  assert.equal(remoteAction.kind, 'route', 'a remote home marker plots a destination, not an immediate jump');
+  const events = [];
+  emitGalaxyMapPrimaryAction({ emit: (name, payload) => events.push({ name, payload }) }, remoteAction);
+  assert.deepEqual(events.filter(e => e.name === 'world:requestRoute').map(e => e.payload.targetSectorId), [homeSector]);
+  assert.equal(events.some(e => e.name === 'world:requestJump' || e.name === 'nav:engageRoute'), false,
+    'selecting a remote home must not authorize travel');
+  assert.equal(resolveGalaxyMapPrimaryAction(state, { kind: 'sector', id: homeSector }).kind, 'jump',
+    'an explicit adjacent-sector node retains its separate jump action');
   assert.equal(filterSalvageTenderMapContacts(state, contacts), contacts);
   assert.equal(JSON.stringify(row), before, 'map adapters remain pure');
 

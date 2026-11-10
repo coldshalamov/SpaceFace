@@ -1,8 +1,9 @@
 // RATCHET: one simulation owner for the bench, its machines and work orders.
 // All decisions arrive through promptDeck; movement and contacts stay with native physics.
+import { installRelayCargoImpacts } from './cargoImpact.js';
 import { PART_LIST, PARTS, MOUNTS } from './parts.js';
 import { createRigPhysicsAdapter, connectedPartIds } from './physics.js';
-import { createWorkshopJobs, RIG_JOB_DEFS } from './jobs.js';
+import { createWorkshopJobs, RIG_JOB_DEFS, rigJobAvailability } from './jobs.js';
 import { captureRigWorkshop, restoreRigWorkshop } from './persistence.js';
 import { explainWorkshopReason, PART_BUTTONS } from './text.js';
 import { isRacingCorridorSession } from '../../world/racingCorridor.js';
@@ -78,7 +79,7 @@ export function createRigWorkshopSystem() {
       this.physics = createRigPhysicsAdapter(ctx);
       this.jobs = createWorkshopJobs({ state: this.state, bus: this.bus, physics: this.physics,
         feedback: (kind, text, position) => this.feedback(kind, text, position) });
-      this._unsubs = []; this._actions = new Map(); this._sequence = sequenceFloor;
+      this._unsubs = [installRelayCargoImpacts(ctx)]; this._actions = new Map(); this._sequence = sequenceFloor;
       this._lastRefresh = -Infinity; this._near = false; this._wasFlying = false; this._farPromptOffered = false;
       const on = (name, fn) => this._unsubs.push(this.bus.on(name, fn));
       on('rigWorkshop:choose', payload => this.choose(payload));
@@ -283,15 +284,7 @@ export function createRigWorkshopSystem() {
         if (!this._atBench()) return { ok: false, reason: 'Accept a work order at the bench.' };
         result = this.jobs.accept(w, args.id); this._showField();
       } else if (action === 'capture') {
-        const job = w.jobs[w.activeJobId];
-        const originalIds = new Set((job?.cargo || []).filter(c => !c.paid && !c.lost).map(c => c.id));
-        const candidates = (this.state.entityList || []).filter(e => {
-          if (!at(e) || e.type !== 'payload' || e.data?.rigWorkshop || e.physicsBody?.dynamic === false
-            || e.data?.rigWorkshopCargo?.delivered || e.data?.rigWorkshopDelivered) return false;
-          if (originalIds.has(e.id)) return true;
-          const owner = e.data?.rigWorkshopCargo?.ownerId ?? e.data?.ownerId ?? e.ownerId;
-          return !e.data?.rigWorkshopJob && (owner === w.ownerId || owner === this.state.playerId);
-        });
+        const job = w.jobs[w.activeJobId], candidates = this._captureCandidates();
         const rigBodies = (rig?.partIds || []).map(id => this.state.entities.get(id)).filter(e => at(e));
         const cargo = args.cargoId ? candidates.find(e => e.id === args.cargoId) : candidates
           .filter(e => !(w.rigs || []).some(r => this.physics.isCargoSecured(w, r.id, e.id)))
@@ -304,11 +297,11 @@ export function createRigWorkshopSystem() {
       } else if (action === 'releaseCargo') {
         const cargoId = args.cargoId ?? rig?.cargoIds?.[rig.cargoIds.length - 1];
         result = this.physics.releaseCargo(w, rig?.id, cargoId); this._showField();
-      } else if (action === 'deliver') { result = this.jobs.deliver(w); this._showField(); }
+      } else if (action === 'deliver') { result = this.jobs.deliver(w, args.jobId || w.activeJobId, args.selection || null); this._showField(); }
       else if (action === 'finishPartial') { result = this.jobs.settlePartial(w); this._showJobs(); }
       else if (action === 'guide') {
         if (!args.target && w.activeJobId) this._showGuide();
-        else { result = this.jobs.guide(w, args.target); this._showField(); }
+        else { result = this.jobs.guide(w, args.target, args.selection || null); this._showField(); }
       }
       else if (action === 'recover') {
         const broken = (rig?.connections || []).find(c => c.state === 'broken' || c.state === 'detached');
@@ -443,10 +436,10 @@ export function createRigWorkshopSystem() {
     _showJobs() {
       const w = this.workshop;
       this._show('jobs', 'RATCHET · useful trouble outside the yard',
-        w.activeJobId ? 'An order is already open. Deliver what you can; partial payment is kept if you close the remainder.' : 'Both work orders are local flights beyond the bench. Damage reduces pay. Delivering original bodies pays once.',
-        [...RIG_JOB_DEFS.map(d => ({ id: `job:${d.id}`, label: `${d.id === 'needle' ? 'Needle Orchard' : 'Bad Centre of Gravity'}${w.jobs[d.id]?.settled ? ' · done' : ''}`, disabled: !!w.jobs[d.id]?.settled,
-          run: () => this._show('offer', d.title, `${d.description} ${d.lesson} Up to ${d.pay * d.count} cr, with payment for each surviving original.`,
-            [this._option('accept', 'Accept this work order', 'acceptJob', { id: d.id }, { disabled: !!w.activeJobId }),
+        w.activeJobId ? 'An order is already open. Deliver what you can; partial payment is kept if you close the remainder.' : 'The first two work orders are local flights beyond the bench. Deliver a survivor from each and settle them to earn the receiving crew’s fragile relay run. Damage reduces pay. Delivering original bodies pays once.',
+        [...RIG_JOB_DEFS.map(d => ({ id: `job:${d.id}`, label: `${d.title}${w.jobs[d.id]?.settled ? ' · done' : !rigJobAvailability(w, d.id).ok ? ' · earn crew trust' : ''}`, disabled: !!w.jobs[d.id]?.settled,
+          run: () => this._show('offer', d.title, `${d.description} ${d.lesson} ${rigJobAvailability(w, d.id).reason || ''} Up to ${d.pay * d.count} cr, with payment for each surviving original.`,
+            [this._option('accept', 'Accept this work order', 'acceptJob', { id: d.id }, { disabled: !!w.activeJobId || !rigJobAvailability(w, d.id).ok }),
               this._option('refuse', 'Leave it on the board', 'cancel', {}, { cancel: true })]) })),
           ...(w.activeJobId ? [this._option('guide', 'Mark a destination', 'guide'),
             { id: 'partial', label: 'Settle partial work', run: () => this._show('close-order', 'Settle the work done?', 'You keep every recorded payment. Undelivered cargo stays in the world and cannot pay this contract later.',
@@ -458,11 +451,22 @@ export function createRigWorkshopSystem() {
       const job = this.workshop.jobs[this.workshop.activeJobId];
       if (!job) { this.jobs.guide(this.workshop, 'bench'); this._showField(); return; }
       this._show('guide', 'Where next?', 'You can return for the remaining originals after a partial delivery. The marker guides your flight; you still move and brake the physical load.', [
-        this._option('pickup', 'Remaining cargo', 'guide', { target: 'pickup' }),
+        { id: 'pickup', label: 'Choose remaining original', run: () => this._showOriginalCourses() },
         this._option('receiver', 'Receiving gantry', 'guide', { target: 'receiver' }),
         this._option('bench', 'Workshop bench', 'guide', { target: 'bench' }),
         this._option('back', 'Back to rig', 'cancel', {}, { cancel: true }),
       ]);
+    },
+    _showOriginalCourses() {
+      const lines = this.jobs.remainingCourses(this.workshop);
+      this._show('original-courses', 'Which load next?',
+        'Choose a surviving loose original by mass and condition. The course follows its actual position; nothing is collected or moved. A secured load belongs on the route to the gantry.',
+        [...lines.map(line => this._option(`original:${line.id}:${line.generation}`,
+          `${line.name} · ${Math.round(line.mass * 10) / 10} t · ${line.integrity}% · ${line.distance} WU`,
+          'guide', { target: 'pickup', selection: { jobId: line.jobId, id: line.id, generation: line.generation, token: line.token } })),
+          this._option('receiver', 'Mark receiving gantry', 'guide', { target: 'receiver' }),
+          { id: 'back', label: 'Back to destinations', run: () => this._showGuide() }],
+        lines.length ? 'Original bodies, not replacement stock' : 'No loose surviving originals here');
     },
     _showAway() {
       this._show('away', 'RATCHET · Your machine is still yours',
@@ -473,20 +477,115 @@ export function createRigWorkshopSystem() {
           this._option('close', 'Keep exploring', 'close', {}, { cancel: true }),
         ]);
     },
+    _captureCandidates() {
+      const w = this.workshop, job = w.jobs[w.activeJobId];
+      const originalIds = new Set((job?.cargo || []).filter(c => !c.paid && !c.lost).map(c => c.id));
+      return (this.state.entityList || []).filter(e => {
+        if (!at(e) || e.type !== 'payload' || e.data?.rigWorkshop || e.physicsBody?.dynamic === false
+          || e.data?.rigWorkshopCargo?.delivered || e.data?.rigWorkshopDelivered) return false;
+        if (originalIds.has(e.id)) return true;
+        const owner = e.data?.rigWorkshopCargo?.ownerId ?? e.data?.ownerId ?? e.ownerId;
+        return !e.data?.rigWorkshopJob && (owner === w.ownerId || owner === this.state.playerId);
+      });
+    },
+    _showCargoCapture(page = 0) {
+      const rig = this.activeRig, w = this.workshop;
+      if (!rig) return this._showField();
+      const holders = rig.partIds.map(id => this.state.entities.get(id))
+        .filter(e => at(e) && PARTS[e.data?.rigWorkshop?.partType]?.cargoCapacity);
+      const cargo = this._captureCandidates().filter(e => Number.isInteger(e.occupantGeneration) && e.occupantGeneration > 0
+        && !w.rigs.some(r => this.physics.isCargoSecured(w, r.id, e.id))
+        && holders.some(holder => dist(holder.pos, e.pos) <= PARTS[holder.data.rigWorkshop.partType].captureRadius));
+      const current = Math.max(0, Math.min(Math.floor(page) || 0, Math.max(0, Math.ceil(cargo.length / 5) - 1)));
+      const choices = cargo.slice(current * 5, current * 5 + 5).map(body => {
+        const generation = body.occupantGeneration;
+        const mass = Number.isFinite(body.physicsBody?.mass) ? body.physicsBody.mass : body.mass;
+        return { id: `capture:${body.id}:${generation}`, label: `${body.data?.name || 'Owned cargo'} · ${Number.isFinite(mass) ? Math.round(mass * 10) / 10 : '?'} t`,
+          run: () => {
+            if (this.activeRig !== rig || this.state.entities.get(body.id) !== body || body.occupantGeneration !== generation
+              || !this._captureCandidates().includes(body)) {
+              this.feedback('reject', 'That original or its ownership changed. Choose a current load.');
+              this._promptSignature = null; this._showCargoCapture(current); return;
+            }
+            this.dispatch('capture', { cargoId: body.id });
+          } };
+      });
+      if (current > 0) choices.push({ id: 'previous', label: 'Previous loads', run: () => this._showCargoCapture(current - 1) });
+      if ((current + 1) * 5 < cargo.length) choices.push({ id: 'next', label: 'More loads', run: () => this._showCargoCapture(current + 1) });
+      choices.push({ id: 'back', label: 'Back to the rig', run: () => this._showField() },
+        this._option('close', 'Keep flying · clamp nothing', 'close', {}, { cancel: true }));
+      this._show(`capture-cargo:${current}`, `${rig.name} · choose a load`,
+        'Choose which owned original to secure. Only loads within a collector or cradle’s reach are listed. Match their speed; the real clamp still checks capacity and motion. No cargo is delivered or sold.',
+        choices, cargo.length ? `Nearby loads · page ${current + 1}/${Math.ceil(cargo.length / 5)}` : 'Bring owned loose cargo inside a collector or cradle');
+    },
+    _showCargoRelease() {
+      const rig = this.activeRig, w = this.workshop;
+      if (!rig) return this._showField();
+      const cargo = (rig.cargoIds || []).map(id => this.state.entities.get(id))
+        .filter(body => body?.alive && Number.isInteger(body.occupantGeneration) && body.occupantGeneration > 0
+          && this.physics.isCargoSecured(w, rig.id, body.id));
+      this._show('release-cargo', `${rig.name} · choose a load to set loose`,
+        'Release only the selected restraint to rebalance. The same cargo keeps its position and momentum; nothing is delivered or sold. Slow down first, then recover it when ready.',
+        [...cargo.map((body, index) => {
+          const generation = body.occupantGeneration;
+          const mass = Number.isFinite(body.physicsBody?.mass) ? body.physicsBody.mass : body.mass;
+          return { id: `release:${body.id}:${generation}`,
+            label: `${index + 1}. ${body.data?.name || 'Secured cargo'} · ${Number.isFinite(mass) ? Math.round(mass * 10) / 10 : '?'} t`,
+            run: () => {
+              if (this.activeRig !== rig || this.state.entities.get(body.id) !== body
+                || body.occupantGeneration !== generation || !this.physics.isCargoSecured(w, rig.id, body.id)) {
+                this.feedback('reject', 'That secured original changed. Choose from the current restraints.');
+                this._promptSignature = null; this._showCargoRelease(); return;
+              }
+              this.dispatch('releaseCargo', { cargoId: body.id });
+            } };
+        }),
+          { id: 'back', label: 'Back to the rig', run: () => this._showField() },
+          this._option('close', 'Keep flying · release nothing', 'close', {}, { cancel: true })],
+        cargo.length ? 'Only current native restraints' : 'No secured cargo to release');
+    },
+    _showDelivery() {
+      const w = this.workshop, job = w.jobs[w.activeJobId];
+      if (!job) { this._showField(); return; }
+      const quote = this.jobs.deliveryQuote(w);
+      const options = quote.accepted.map(line => {
+        const body = this.state.entities.get(line.id), generation = body?.occupantGeneration;
+        return { id: `handover:${line.id}:${generation}`, label: `${body?.data?.name || 'Original cargo'} · ${line.amount} cr`,
+          run: () => {
+            if (w.jobs[w.activeJobId] !== job || this.state.entities.get(line.id) !== body) {
+              this.feedback('reject', 'That original or work order changed. Inspect the handover again.');
+              this._promptSignature = null; this._showDelivery(); return;
+            }
+            this.dispatch('deliver', { jobId: job.id, selection: { id: line.id, generation, token: line.token, amount: line.amount } });
+          } };
+      });
+      this._show('delivery', `${job.title} · gantry handover`,
+        'Hand over one named original and keep the others, or deliver all currently eligible originals. Damage changes the base payment. The first modified-rig success may add the existing 100 cr bonus. Handover releases its restraint and transfers custody; it cannot be undone.',
+        [...options, ...(quote.ok ? [{ id: 'all', label: 'Deliver all currently eligible originals', run: () => {
+            if (w.jobs[w.activeJobId] !== job) {
+              this.feedback('reject', 'That work order changed. Inspect the current handover.');
+              this._promptSignature = null; this._showDelivery(); return;
+            }
+            this.dispatch('deliver', { jobId: job.id });
+          } }] : []),
+          { id: 'back', label: 'Keep the loads · Back', run: () => this._showField() },
+          this._option('close', 'Keep flying · hand over nothing', 'close', {}, { cancel: true })],
+        quote.reason || `${quote.accepted.length} ready · ${quote.rejected.length} not ready`);
+    },
     _showField() {
       const rig = this.activeRig, w = this.workshop, job = w.jobs[w.activeJobId];
       if (!rig || !isWorkshopAdventure(this.state)) return;
       const broken = Math.max(rig.connections.filter(c => ['broken', 'detached'].includes(c.state)).length, rig.detachedCount || 0);
       const detail = job ? `${job.title} · ${job.delivered.length}/${job.cargo.length} delivered. ${job.stage === 'pickup' ? 'Follow the cargo marker, approach slowly, then secure an original.' : 'Brake well before the gantry and let the load settle below 6 WU/s and 0.4 rad/s.'}${job.id === 'kiln' ? ' Keep mover assist enabled while braking.' : ''}` : 'Test the rig or carry your own loose payloads. Fly and brake normally; the tow and mover respond through the existing physics.';
       this._show('field', `${rig.name}${broken ? ` · ${broken} broken connection${broken === 1 ? '' : 's'}` : ''}`, detail,
-        [this._option('capture', 'Secure cargo', 'capture'),
+        [{ id: 'capture', label: 'Choose cargo to secure', run: () => this._showCargoCapture() },
           this._option('power', rig.power ? 'Cut mover power' : 'Enable movers', 'power'),
           this._option('couple', 'Couple ship', 'couple'),
           this._option('release', 'Release tow', 'release'),
-          ...(job ? [this._option('deliver', 'Deliver originals', 'deliver'), this._option('guide', 'Mark a destination', 'guide')] : []),
+          ...(job ? [{ id: 'deliver', label: 'Inspect gantry handover', run: () => this._showDelivery() }, this._option('guide', 'Mark a destination', 'guide')] : []),
           { id: 'more', label: 'Recovery · release', run: () => this._show('field-care', 'Recover the machine, keep the story',
             'Lost a connection? Find the original part, tow it home, and repair. You can release cargo to rebalance before securing it again.',
-            [this._option('releaseCargo', 'Release last cargo', 'releaseCargo'), this._option('recover', 'Recover originals', 'recover'),
+            [{ id: 'releaseCargo', label: 'Choose cargo to release', run: () => this._showCargoRelease() }, this._option('recover', 'Recover originals', 'recover'),
               this._option('bench', 'Mark workshop', 'guide', { target: 'bench' }), this._option('jobs', 'Job status · settle', 'jobs'),
               this._option('close', 'Keep flying', 'close', {}, { cancel: true })]) },
           this._option('close', 'Keep flying', 'close', {}, { cancel: true })],

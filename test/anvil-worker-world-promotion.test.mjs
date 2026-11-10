@@ -19,12 +19,14 @@ import { STORMSHIFT_RECEIVER_COLLISION } from '../src/data/stormshiftReceiverCol
 
 // Compact seeded boundary regression, not a replay of a saved harvesting route.
 // Fixture setup supplies a loaded return and a separated tender. After native preparation,
-// only raw keys and ordinary sim ticks run: world owns shelving/promotion, traffic owns
-// work, and spawnBudget owns admission. No direct far-table mutation or promotion call.
+// only raw keys and ordinary sim ticks run: world owns residency, traffic owns
+// work, and spawnBudget owns admission. Active work pins preserve native bodies beyond
+// the local residency radius. Legacy shelf restoration is separately covered in
+// anvil-worker-residency-integration.test.mjs; no direct promotion call is used here.
 // Planet harvesting, save/UI Continue, rendering and the production manifest are excluded.
 const trafficWork = { ...traffic, update(dt, state) { this._stepAnvilWork(dt, state); } };
 
-test('ordinary world ticks promote both Anvil workers with native hardware and finite custody', async () => {
+test('ordinary world ticks retain working Anvil originals with native hardware and finite custody', async () => {
   const sim = createSimulation({ seed: 424214,
     systems: [spawnBudget, world, trafficWork, input, flightV3, physics] });
   try {
@@ -55,7 +57,7 @@ test('ordinary world ticks promote both Anvil workers with native hardware and f
       assert.equal(budget.request(1, requester), 1);
       assert.equal(budget.bindEntity(entity.id, requester), true);
       expected.set(role, { id: entity.id, recordId, requester,
-        manifest: structuredClone(entity.data.cargoManifest), stable: 0, generation: null });
+        original: entity, manifest: structuredClone(entity.data.cargoManifest), stable: 0, generation: null });
     }
     const facade = sim.registry.get('physics');
     assert.equal(await facade.prepareBackend(state), true);
@@ -70,43 +72,45 @@ test('ordinary world ticks promote both Anvil workers with native hardware and f
     sim.bus.on('world:farActorRestored', event => {
       const role = event.entity?.data?.itinerary?.role, e = expected.get(role);
       if (!e || event.entity.data.worldRecordId !== e.recordId) return;
-      assert.equal(promoted.has(role), false, 'no second incarnation during the short approach');
-      assert.ok(shelved.has(e.id), 'the same worker was shelved by the ordinary world owner');
-      assert.deepEqual(event.entity.data.cargoManifest, e.manifest);
       promoted.set(role, { tick: state.tick, id: event.id });
     });
 
     // Native preparation is complete; participant poses, manifests and phases are read-only below.
     const start = { ...player.pos };
-    for (let n = 0; n < 120 && shelved.size < 2; n++) sim.step();
-    assert.equal(shelved.size, 2, 'ordinary world update must actually shelf both distant workers');
+    for (let n = 0; n < 120; n++) sim.step();
+    assert.equal(shelved.size, 0, 'active work retains both original workers beyond the local radius');
     for (const e of expected.values()) {
-      assert.equal(bodies(e.recordId).length, 0);
-      assert.equal(rows(e.recordId).length, 1);
-      assert.equal(budget.ownerForEntity(e.id), null, 'shelving releases the worker budget binding');
+      assert.equal(bodies(e.recordId).length, 1);
+      assert.strictEqual(bodies(e.recordId)[0], e.original);
+      assert.equal(e.original.data.anvilWorkLiveness, true);
+      assert.equal(e.original.data.transitCritical, true);
+      assert.equal(rows(e.recordId).length, 0);
+      assert.equal(budget.ownerForEntity(e.id), e.requester, 'native work keeps its admission binding');
     }
     const radius = farActorTableRadius(state).enter;
     assert.ok(Math.hypot(collector.pos.x - player.pos.x, collector.pos.z - player.pos.z) > radius);
     const keys = sim.registry.get('input'), approachStartTick = state.tick;
     applyFlightKeyEvent(keys, { code: 'KeyW', pressed: true });
-    for (let n = 0; n < 600 && [...expected.values()].some(e => e.stable < 120); n++) {
+    for (let n = 0; n < 600 && ([...expected.values()].some(e => e.stable < 120) || Math.hypot(player.pos.x - start.x, player.pos.z - start.z) <= 500); n++) {
       sim.step();
       assert.ok(facade._sg02.records.has(player.id));
       assert.ok(budget.current() <= budget.max());
       let total = 0;
       for (const [role, e] of expected) {
         const local = bodies(e.recordId), distant = rows(e.recordId);
-        assert.equal(local.length + distant.length, 1, 'one live OR shelved durable worker');
-        const carrier = local[0] || distant[0];
+        assert.equal(local.length, 1, 'one native durable worker');
+        assert.equal(distant.length, 0, 'no duplicate far-table carrier');
+        assert.strictEqual(local[0], e.original);
+        const carrier = local[0];
         assert.deepEqual(carrier.data.cargoManifest, e.manifest);
         total += carrier.data.cargoManifest.totalQty;
         const native = local[0] && facade._sg02.records.get(local[0].id);
-        if (!native) { e.stable = 0; e.generation = null; continue; }
+        assert.ok(native, 'active work stays physically admitted every tick');
         const entity = local[0];
         assert.equal(wholeShipVisualForEntity(entity, { requiredWholeShip: true }).file,
           role === 'collector' ? 'wholeships/ship_stormshift_collector_v01.glb' : 'wholeships/ship_stormshift_receiver_v01.glb',
-          'ordinary residency promotion retains the dedicated visual identity');
-        assert.ok(promoted.has(role), 'ordinary promotion must precede native observation');
+          'active residency retains the dedicated visual identity');
+        assert.equal(entity.data.anvilWorkLiveness, true);
         assert.equal(entity.id, e.id);
         assert.equal(native.entity, entity);
         assert.equal(native.body.mass(), canonical.mass);
@@ -127,11 +131,12 @@ test('ordinary world ticks promote both Anvil workers with native hardware and f
     }
     applyFlightKeyEvent(keys, { code: 'KeyW', pressed: false });
     applyFlightKeyEvent(keys, { code: 'Digit0', pressed: true });
-    assert.equal(promoted.size, 2, 'raw approach must reach both workers within 600 ticks');
+    assert.equal(promoted.size, 0, 'raw approach must retain the same originals');
+    assert.equal(shelved.size, 0, 'working originals never leave native residency');
     for (const e of expected.values()) assert.ok(e.stable >= 120, '120 consecutive native ticks per worker');
     assert.ok(Math.hypot(player.pos.x - start.x, player.pos.z - start.z) > 500,
-      'ordinary raw input must actually move the observer across the residency boundary');
-    console.log(JSON.stringify({ route: 'seeded-ordinary-world-worker-promotion',
+      'ordinary raw input must move the observer while the originals keep working');
+    console.log(JSON.stringify({ route: 'seeded-ordinary-world-worker-residency',
       approachTicks: state.tick - approachStartTick, promotions: Object.fromEntries(promoted),
       cargoTotal: 4, nativeStableTicks: Object.fromEntries([...expected].map(([role, e]) => [role, e.stable])),
       budgetUsed: budget.current(), budgetCap: budget.max() }));

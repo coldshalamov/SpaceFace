@@ -24,7 +24,8 @@ export function freshYardState(seed = 1) {
 export function createYardJob(row, layoutId) {
   const serial = row.nextJob++;
   const cycle = row.cycles[layoutId] || 0;
-  const variant = (hash32(row.seed, layoutId) + cycle) % 6;
+  const variant = (hash32(row.seed, layoutId) + cycle) % 6
+    + (layoutId === 'lark' && cycle % 2 === 1 ? 6 : 0);
   const layout = createYardLayout(layoutId, variant);
   if (!layout || !row.anchor) throw new Error('A yard lot requires a known layout and berth.');
   const berth = SITE.berthOffsets[YARD_LAYOUT_IDS.indexOf(layoutId)];
@@ -60,7 +61,7 @@ export function normalizeYardState(raw, seed = 1) {
     const serial = integer(saved.serial, Number.MAX_SAFE_INTEGER - 1000);
     if (id !== `shipbreaking:${out.seed}:${serial}` || serial < 1 || !point(saved.anchor)) continue;
     out.nextJob = Math.max(out.nextJob, serial + 1);
-    const variant = integer(saved.variant, 5);
+    const variant = integer(saved.variant, saved.layoutId === 'lark' && saved.variant >= 6 && saved.variant <= 11 && Number.isInteger(saved.variant) ? 11 : 5);
     const layout = createYardLayout(layoutId, variant);
     const job = { id, serial, layoutId, variant, status: saved.status,
       paidCr: saved.status === 'offered' ? 0 : layout.fee,

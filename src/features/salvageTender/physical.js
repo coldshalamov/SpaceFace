@@ -2,7 +2,7 @@ import { makeShipEntitySpec } from '../../systems/ships.js';
 import { getCombatKernel } from '../../combat/kernel.js';
 import { attachmentBindsOccupant } from '../../combat/attachments.js';
 import { physicsBodyNativeReady, writePhysicsControl, syncDerivedPhysicsMass } from '../../core/physicsAuthority.js';
-import { addCargo } from '../../systems/cargo.js';
+import { addCargo, removeCargo, sellableCargoQuantity, cargoUnitVolume } from '../../systems/cargo.js';
 import { stationServices } from '../../systems/stationServices.js';
 
 // This module owns only these finite bodies and their berth controls. Flight, Rapier,
@@ -20,6 +20,7 @@ const CRATES = Object.freeze([
   Object.freeze({ key: 'outer', name: 'Broken shift repair crate', offset: [650, -230], scrap: 10, electronics: 5, fuel: 3 }),
   Object.freeze({ key: 'deep', name: 'Old survey expedition chest', offset: [-1000, 480], scrap: 14, electronics: 7, fuel: 3 }),
 ]);
+const transferStates = new WeakSet();
 const COMMODITIES = ['cmdty_scrap_metal', 'cmdty_salvage_electronics', 'cmdty_fuel_cells'];
 const validSector = v => typeof v === 'string' && /^sector_[a-z0-9_]+$/.test(v);
 const finite = (n, fallback = 0) => Number.isFinite(n) ? n : fallback;
@@ -359,45 +360,157 @@ export function createTenderPhysical(ctx) {
     if (!(e.data.cargoManifest?.totalQty > 0)) return refusal('crate_empty');
     return { ok: true, bodyId: e.id, sourceId: r.id };
   }
-  function unloadRecovery(row, bodyId, cargoOwner = ctx.registry?.get?.('cargo')) {
-    if (busy) return refusal('transfer_busy');
+  function unloadRecovery(row, bodyId, cargoOwner = ctx.registry?.get?.('cargo'), selection = null) {
+    if (busy || transferStates.has(state)) return refusal('transfer_busy');
     const gate = canUnload(row, bodyId); if (!gate.ok) return gate;
     const e = state.entities.get(bodyId), r = recordFor(row, gate.sourceId), before = e.data.cargoManifest;
-    const moved = {}; busy = true;
+    if (selection !== null && (!COMMODITIES.includes(selection?.commodityId)
+      || !Number.isInteger(selection.quantity) || selection.quantity <= 0
+      || !before.lines.some(line => line.commodityId === selection.commodityId && line.qty > 0)))
+      return refusal('selected_supply_unavailable');
+    const moved = {}, life = e.occupantGeneration, pilot = player(), pilotLife = pilot.occupantGeneration;
+    const current = () => !restoring && state.salvageTender === row && state.mode === 'flight' && !state.ui?.docked
+      && state.entities.get(bodyId) === e && e.occupantGeneration === life && e.alive !== false
+      && player() === pilot && pilot.occupantGeneration === pilotLife && byIdentity(row, r.id) === e;
+    const publishMass = () => {
+      const mass = crateMass(before); e.mass = mass;
+      syncDerivedPhysicsMass(e, mass, mass * e.radius * e.radius * 0.4, e.radius);
+    };
+    busy = true; transferStates.add(state);
     try {
       for (const line of before.lines) {
-        if (line.qty <= 0) continue;
-        const requested = line.qty;
-        // Reserve the source before a cargo callback can re-enter. The ordinary cargo
-        // owner returns its actual accepted quantity; untouched units stay in this body.
-        line.qty = 0;
-        before.totalQty -= requested;
-        r.manifest = clone(before);
-        let accepted = 0;
-        try {
-          accepted = cargoOwner?.addCargo
-            ? cargoOwner.addCargo(line.commodityId, requested, { kind: 'salvage', sourceId: r.id })
-            : addCargo(state, line.commodityId, requested, { kind: 'salvage', sourceId: r.id });
-        } finally {
-          accepted = clamp(Math.floor(finite(accepted)), 0, requested);
-          line.qty = requested - accepted; before.totalQty += line.qty;
-          if (accepted) moved[line.commodityId] = accepted;
-          r.manifest = clone(before);
+        if (!current()) break;
+        if (line.qty <= 0 || (selection && line.commodityId !== selection.commodityId)) continue;
+        const requested = selection ? Math.min(line.qty, selection.quantity) : line.qty;
+        // Reserve only the exact whole units the canonical volume-capped writer
+        // can accept. Its first callback observes the committed hold and source.
+        const volume = cargoUnitVolume(state, line.commodityId);
+        const free = state.player.cargo.capVolume - state.player.cargo.usedVolume;
+        const accepted = volume === 0 ? requested : Number.isFinite(free)
+          ? Math.min(requested, Math.max(0, Math.floor(free / volume))) : 0;
+        if (!accepted) continue;
+        line.qty -= accepted; before.totalQty -= accepted;
+        r.manifest = clone(before); publishMass();
+        // Use the canonical writer directly, not an injectable callback that can
+        // throw after crediting the hold and hide whether a transfer happened.
+        addCargo(state, line.commodityId, accepted, { kind: 'salvage', sourceId: r.id });
+        moved[line.commodityId] = accepted;
+      }
+      if (current()) {
+        if (before.totalQty === 0) {
+          r.status = 'empty';
+          if (physical(row).rackId === r.id) releaseRecovery(row, e.id);
         }
+        if (current()) capture(row);
       }
-      if (before.totalQty === 0) {
-        // Keep the emptied original shell; the record is terminal and never re-filled.
-        r.status = 'empty';
-        if (physical(row).rackId === r.id) releaseRecovery(row, e.id);
-      }
-      const remainingMass = crateMass(before);
-      e.mass = remainingMass;
-      syncDerivedPhysicsMass(e, remainingMass, remainingMass * e.radius * e.radius * 0.4, e.radius);
-      capture(row);
       const total = Object.values(moved).reduce((sum, q) => sum + q, 0);
       if (total) bus?.emit('cargo:changed', { reason: 'salvage_tender_recovery', sourceId: r.id });
       return total ? { ok: true, moved, remaining: before.totalQty, sourceId: r.id } : refusal('cargo_hold_full');
-    } finally { busy = false; }
+    } finally { busy = false; transferStates.delete(state); }
+  }
+  function podPatchQuote(row, bodyId, generation, sourceId, tenderGeneration) {
+    const home = byIdentity(row, TENDER_BODY_ID), pilot = player(), e = state.entities?.get(bodyId);
+    const r = physical(row)?.recovery.find(c => c.id === sourceId);
+    if (restoring || state.salvageTender !== row || !row?.owned || !activeSector(row)
+      || state.mode !== 'flight' || state.ui?.docked || !pilot || !home
+      || !Number.isInteger(tenderGeneration) || tenderGeneration <= 0 || home.occupantGeneration !== tenderGeneration || !r || byIdentity(row, sourceId) !== e
+      || e?.occupantGeneration !== generation || !Number.isInteger(generation) || generation <= 0
+      || !['loose', 'racked'].includes(r.status) || physical(row).mode !== 'secured') return refusal('original_crate_unavailable');
+    if (![home, pilot, e].every(nativeReady)) return refusal('waiting_for_physics');
+    if (distance(pilot.pos, home.pos) > 100 || distance(pilot.pos, e.pos) > 75 || distance(e.pos, home.pos) > 95
+      || relativeSpeed(pilot, home) > 8 || relativeSpeed(e, home) > 8 || Math.hypot(home.vel.x, home.vel.z) > 8) return refusal('bring_pod_alongside_home');
+    const m = e.data.cargoManifest, line = m?.lines?.find(l => l.commodityId === 'cmdty_scrap_metal');
+    if (m?.ownerId !== TENDER_BODY_ID || m.manifestId !== `${sourceId}:manifest` || m.sealed || line?.sealed
+      || !Array.isArray(m?.lines) || !m.lines.every(l => COMMODITIES.includes(l.commodityId) && Number.isInteger(l.qty) && l.qty >= 0 && !l.sealed)
+      || new Set(m.lines.map(l => l.commodityId)).size !== m.lines.length
+      || m.totalQty !== m.lines.reduce((n, l) => n + l.qty, 0)
+      || e.data.missionCargo || !(line?.qty >= 1) || !Number.isInteger(line.qty)) return refusal('pod_scrap_unavailable');
+    if (m.totalQty === 1 && physical(row).rackId === r.id) {
+      const line = attachments()?.get(r.rackAttachmentId);
+      if (!line || line.state !== 'active' || lineBetween(home, e) !== line || line.controlMode !== 'salvage_tender_rack') return refusal('rack_constraint_not_ready');
+    }
+    const amount = Math.min(30, Math.max(0, home.hullMax - home.hull));
+    if (!Number.isFinite(amount) || amount <= 0) return refusal('tender_hull_intact');
+    return { ok: true, amount, stored: line.qty };
+  }
+  function patchFromRecovery(row, bodyId, generation, sourceId, tenderGeneration) {
+    if (busy || transferStates.has(state)) return refusal('transfer_busy');
+    const q = podPatchQuote(row, bodyId, generation, sourceId, tenderGeneration); if (!q.ok) return q;
+    const home = byIdentity(row, TENDER_BODY_ID), e = state.entities.get(bodyId), r = recordFor(row, sourceId);
+    const m = e.data.cargoManifest, line = m.lines.find(l => l.commodityId === 'cmdty_scrap_metal');
+    const rackLine = m.totalQty === 1 && physical(row).rackId === r.id ? attachments().get(r.rackAttachmentId) : null;
+    busy = true; transferStates.add(state);
+    try {
+      // This delivery writer is synchronous and callback-free. Commit both
+      // physical owners and their save records before emitting any receipt.
+      const job = { type: 'repair', deliveredHull: 0, deliveredArmor: 0, meta: { shares: { hull: 1, armor: 0 } } };
+      stationServices._applyJobDelta({ ...state, playerId: home.id }, job, q.amount);
+      if (!(job.deliveredHull > 0)) return refusal('repair_not_delivered');
+      line.qty--; m.totalQty--; r.manifest = clone(m);
+      const mass = crateMass(m); e.mass = mass;
+      syncDerivedPhysicsMass(e, mass, mass * e.radius * e.radius * 0.4, e.radius);
+      // Re-enable the repaired original before callback-time save/prompt readers.
+      syncTenderProtection(row, home);
+      if (m.totalQty === 0) {
+        r.status = 'empty';
+        if (physical(row).rackId === r.id) { physical(row).rackId = null; r.rackAttachmentId = null; }
+      }
+      capture(row); row.revision++;
+      // Publish empty custody before cut's synchronous callbacks. The native
+      // owner marks the exact validated line inactive before notifying listeners.
+      if (rackLine) attachments().cut(rackLine.id, home.id, 'salvage_tender_pod_spent');
+      const receiptCurrent = byIdentity(row, TENDER_BODY_ID) === home && home.occupantGeneration === tenderGeneration
+        && byIdentity(row, sourceId) === e && e.occupantGeneration === generation && state.salvageTender === row;
+      if (!receiptCurrent) return { ok: true, restoredHull: job.deliveredHull, consumedScrap: 1, remaining: line.qty, receiptSuppressed: true };
+      bus?.emit('salvageTender:podPatched', { sourceId, bodyId, generation, tenderId: home.id,
+        tenderGeneration, consumedScrap: 1, restoredHull: job.deliveredHull });
+      return { ok: true, restoredHull: job.deliveredHull, consumedScrap: 1, remaining: line.qty };
+    } finally { busy = false; transferStates.delete(state); }
+  }
+  function restockQuote(row, bodyId, generation, sourceId, commodityId) {
+    const p = physical(row), pilot = player(), e = state.entities?.get(bodyId);
+    const r = p?.recovery.find(c => c.id === sourceId);
+    if (restoring || state.salvageTender !== row || state.mode !== 'flight' || state.ui?.docked || !row?.owned || !activeSector(row) || !pilot || !r || byIdentity(row, r.id) !== e
+      || !Number.isInteger(generation) || generation <= 0 || e.occupantGeneration !== generation
+      || !['loose', 'empty', 'racked'].includes(r.status)) return refusal('original_crate_unavailable');
+    if (!nativeReady(e) || !nativeReady(pilot)) return refusal('waiting_for_physics');
+    if (distance(pilot.pos, e.pos) > 75 || relativeSpeed(e, pilot) > TENDER_PHYSICAL.secureSpeed) return refusal('match_crate_speed_within_75');
+    const index = COMMODITIES.indexOf(commodityId), spec = CRATES.find(c => c.key === r.key);
+    if (index < 0 || !spec) return refusal('unsupported_supply');
+    const capacity = [spec.scrap, spec.electronics, spec.fuel][index];
+    const stored = e.data.cargoManifest?.lines?.find(l => l.commodityId === commodityId)?.qty || 0;
+    const available = sellableCargoQuantity(state, commodityId);
+    if (stored >= capacity) return refusal('original_compartment_full');
+    if (available < 1) return refusal('bring_one_unsealed_supply');
+    return { ok: true, stored, capacity, available, sourceId: r.id };
+  }
+  function restockRecovery(row, bodyId, generation, sourceId, commodityId) {
+    if (busy || transferStates.has(state)) return refusal('transfer_busy');
+    const quote = restockQuote(row, bodyId, generation, sourceId, commodityId); if (!quote.ok) return quote;
+    const e = state.entities.get(bodyId), r = recordFor(row, sourceId);
+    const before = clone(e.data.cargoManifest), priorStatus = r.status;
+    busy = true; transferStates.add(state);
+    try {
+      // Publish the destination before the canonical cargo owner emits its post-debit
+      // callback. No callback occurs between these plain writes and removeCargo's
+      // inventory mutation. Saves in cargo:changed therefore see both sides committed.
+      const quantities = COMMODITIES.map(id => before.lines.find(l => l.commodityId === id)?.qty || 0);
+      quantities[COMMODITIES.indexOf(commodityId)]++;
+      const next = manifest(sourceId, quantities);
+      e.data.cargoManifest = next; r.manifest = clone(next);
+      if (r.status === 'empty') r.status = 'loose';
+      const mass = crateMass(next); e.mass = mass;
+      syncDerivedPhysicsMass(e, mass, mass * e.radius * e.radius * 0.4, e.radius);
+      const removed = removeCargo(state, commodityId, 1);
+      if (removed !== 1) {
+        // A zero removal emits no cargo event, so this rollback has no observer.
+        e.data.cargoManifest = before; r.manifest = clone(before); r.status = priorStatus;
+        const oldMass = crateMass(before); e.mass = oldMass;
+        syncDerivedPhysicsMass(e, oldMass, oldMass * e.radius * e.radius * 0.4, e.radius);
+        return refusal('supply_debit_refused');
+      }
+      return { ok: true, moved: 1, commodityId, sourceId, remaining: next.totalQty };
+    } finally { busy = false; transferStates.delete(state); }
   }
   function stowRecovery(row, bodyId) {
     const p = physical(row), e = state.entities?.get(bodyId), home = byIdentity(row, TENDER_BODY_ID), pilot = player();
@@ -438,14 +551,20 @@ export function createTenderPhysical(ctx) {
     capture(row); return { ok: true, bodyId: e.id, sourceId: r.id };
   }
 
+  function syncTenderProtection(row, e) {
+    const p = physical(row);
+    const sheltered = !activeSector(row) || distance(player()?.pos, e.pos) > TENDER_PHYSICAL.awayShelterRange;
+    if (p.disabled && e.hull > TENDER_PHYSICAL.disabledHull) p.disabled = false;
+    e.flags.invuln = sheltered || p.disabled;
+    return sheltered;
+  }
+
   function step(dt, row) {
     currentRow = row;
     if (restoring || !physical(row)) return;
     const p = physical(row), e = byIdentity(row, TENDER_BODY_ID), pilot = player();
     if (!e) return;
-    const sheltered = !activeSector(row) || distance(pilot?.pos, e.pos) > TENDER_PHYSICAL.awayShelterRange;
-    if (p.disabled && e.hull > TENDER_PHYSICAL.disabledHull) p.disabled = false;
-    e.flags.invuln = sheltered || p.disabled;
+    const sheltered = syncTenderProtection(row, e);
     for (const record of p.recovery) {
       const cargo = byIdentity(row, record.id);
       if (cargo) cargo.flags.invuln = row.owned === true && record.id === p.rackId && sheltered;
@@ -537,7 +656,7 @@ export function createTenderPhysical(ctx) {
     nativeReady, hasPlayerLine: row => lineBetween(player(), byIdentity(row, TENDER_BODY_ID)),
     beginTow, cancelTow, canSecure, secure, step, capture, afterRestore, shelve, destroy,
     handleDamage, isDisabled: row => physical(row)?.disabled === true,
-    spawnRecovery, recoveryBodies, canUnload, unloadRecovery, stowRecovery, releaseRecovery,
+    spawnRecovery, recoveryBodies, canUnload, unloadRecovery, podPatchQuote, patchFromRecovery, restockQuote, restockRecovery, stowRecovery, releaseRecovery,
     dispose(row) { destroy(row); for (const off of subscriptions) if (typeof off === 'function') off(); subscriptions.length = 0; },
   };
 }

@@ -9,7 +9,7 @@ import { cinderglassJobEnsureLatchMount, cinderglassJobCohortReady, cinderglassJ
 import { attachments, podEntity, carrierEntity, cinderglassJobEnsureClamp,
   cinderglassJobObserveCustody, cinderglassJobReleasePod, cinderglassJobStepHandoff,
   cinderglassJobReceiveQuote, nativeCinderglassAttachment, nativeCinderglassPose } from './custody.js';
-import { cinderglassJobProposalAvailable, cinderglassJobPropose, cinderglassJobDaskRelease } from './negotiation.js';
+import { cinderglassJobProposalAvailable, cinderglassJobPropose, cinderglassJobDaskRelease, cinderglassJobExtensionAvailable, cinderglassJobRequestExtension } from './negotiation.js';
 import { cinderglassJobObserveScan, cinderglassJobObserveMarkings, cinderglassJobServiceGate,
   cinderglassJobServiceProgress, cinderglassJobServiceAbort } from './interception.js';
 import { cinderglassJobApplyClosingMemory, cinderglassJobApplyConsequences } from './consequences.js';
@@ -262,6 +262,17 @@ export const cinderglassJobSystem = {
       detail = `Hold close, matched drift and clear sightlines for ${CINDERGLASS_JOB_SERVICE_SECONDS} seconds.`;
       choices.push({ id: 'serviceAbort', label: 'Abort service' });
     } else if ([P.RECON, P.DECIDE].includes(st.phase)) {
+      // Communicate the physical stop's deadline without rebuilding controls on
+      // every simulation tick. This reads the lease; it never extends or pauses it.
+      if (st.atLayby && st.laybyHoldActive && Number.isFinite(st.laybyRemainingS) && st.laybyRemainingS > 0) {
+        const window = st.laybyRemainingS <= 5 ? 'five seconds or less'
+          : st.laybyRemainingS <= 15 ? 'fifteen seconds or less'
+            : st.laybyRemainingS <= 30 ? 'thirty seconds or less' : 'more than thirty seconds';
+        headline = `Dask · inspection stop · ${window}`;
+        detail = '“I have a delivery slot to make. Read the latch, then tell me your terms.” The clock keeps running while you choose. If CG-7 stays aboard, Dask resumes the paid delivery; closing this conversation does not stop him. Force is unlawful.';
+        if (st.actors.dask.inspectionExtensionUsed === true) detail += ' Your one extra thirty-second window is already included.';
+      }
+      if (cinderglassJobExtensionAvailable(this, state)) choices.push({ id: 'extendInspection', label: 'Ask Dask for 30 more seconds · once, no fee' });
       if (cinderglassJobProposalAvailable(this, state)) choices.push({ id: 'propose', label: 'Post the quoted 150CR inspection deposit' });
       if (cinderglassJobServiceGate(this, state).ok) choices.push({ id: 'serviceStart', label: 'Quietly service the latch · five seconds' });
     } else if (st.phase === P.RECOVERY && st.receiveQuote) {
@@ -363,6 +374,10 @@ export const cinderglassJobSystem = {
       cinderglassJobClose(st, state.simTime, O.LOST);
       rememberFact(st, state.simTime, 'abandoned', 'The recovery was abandoned during preparation. No deposit or reward was paid; no replacement original will be created.');
       this._stepClosure(state); p.result = { ok: true };
+    } else if (action === 'extendInspection') {
+      if (p.revision !== st.promptRevision) return this._refuseAction(p, 'stale_inspection_view');
+      p.result = cinderglassJobRequestExtension(this, state);
+      if (!p.result.ok) this._refuseAction(p, p.result.reason);
     } else if (action === 'propose') {
       p.result = cinderglassJobPropose(this, state, p);
       if (!p.result.ok) this._refuseAction(p, p.result.reason);

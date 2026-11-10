@@ -69,8 +69,10 @@ export function resolveBeamVerb(descriptor, toolState = {}) {
       }
       const credits = typeof toolState.credits === 'number' ? toolState.credits : 0;
       const cargo = toolState.cargo || {};
-      const hasScrap = (cargo.cmdty_scrap_metal || 0) > 0;
-      if (credits <= 0 && !hasScrap) {
+      const hasScrap = (toolState.repairScrapUnits ?? cargo.cmdty_scrap_metal ?? 0) >= 1;
+      const reserve = toolState.repairReserveHp;
+      const hasReserve = Number.isFinite(reserve) && reserve > 0 && reserve <= 20;
+      if (credits <= 0 && !hasScrap && !hasReserve) {
         return { verb: 'repair', ok: false, reason: 'insufficient-resources', receiverHints: null };
       }
       return {

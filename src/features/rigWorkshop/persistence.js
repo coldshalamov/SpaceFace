@@ -86,7 +86,7 @@ function validateJobs(w) {
   }
   if (signatures > 1 || signatures === 1 && !w.signatureDone) return 'invalid_signature_receipt';
   if (w.activeJobId != null && (!jobs[w.activeJobId] || jobs[w.activeJobId].settled)) return 'invalid_active_job';
-  if (!Array.isArray(w.receipts || []) || (w.receipts || []).length > 5) return 'invalid_receipt_bound';
+  if (!Array.isArray(w.receipts || []) || (w.receipts || []).length > RIG_JOB_DEFS.reduce((sum, def) => sum + def.count, 0)) return 'invalid_receipt_bound';
   const receiptIds = new Set(), paidIds = new Set(), paidByJob = {};
   for (const r of w.receipts || []) {
     const job = jobs[r.jobId];

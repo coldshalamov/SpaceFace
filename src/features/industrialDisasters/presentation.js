@@ -24,12 +24,22 @@ export function industrialDecision(model = {}) {
   const phase = model.phase;
   if (model.hidden || model.discovered === false || model.near === false) return null;
   if (phase === 'offered' || phase === 'inspecting' || phase === 'inspect' || phase === 'available') {
+    if (model.drill) return {
+      key: `practice-preview:${scenarioId}`, title: `PRACTICE · ${label} · No pay or incident credit. Ship damage and supplies remain real.`,
+      options: [
+        { id: 'inspect', label: 'Inspect practice setup — no clock yet' },
+        { id: `accept:${scenarioId}`, label: 'Begin practice — release rehearsal hold' },
+        { id: 'finishDrill', label: 'End practice — restore the held original scene' },
+        { id: 'cancel', label: 'Close channel — keep practice setup' },
+      ],
+    };
     return {
       key: `offer:${scenarioId}:${model.inspected === true}`,
       title: model.inspected ? `${label} — ${SCENARIOS[scenarioId].firstHint}` : `Hinge Works — ${label}`,
       options: [
         { id: 'inspect', label: 'Inspect the scene — no rescue clock' },
         { id: `accept:${scenarioId}`, label: 'Take the response — release emergency hold' },
+        { id: `drill:${scenarioId}`, label: 'Practice first · no pay; ship damage and supplies stay real' },
         { id: 'decline', label: 'Fly on — leave emergency hold in place' },
         { id: 'cancel', label: 'Close channel — reopen on your next approach' },
       ],
@@ -43,19 +53,24 @@ export function industrialDecision(model = {}) {
       { id: 'cancel', label: 'Close channel — reopen on your next approach' },
     ],
   };
+  if (phase === 'active' && model.drill) return {
+    key: `practice-active:${scenarioId}`, title: `PRACTICE · ${label} · Physical tools and ship costs are real; no incident credit.`,
+    options: [{ id: 'finishDrill', label: 'End practice — restore saved original scene' },
+      { id: 'cancel', label: 'Keep practising — close channel' }],
+  };
   if (phase === 'active') return null; // gameplay is bodies and tools, not a wall of buttons
   if (phase === 'recovery') return {
     key: `recovery:${scenarioId}:${model.drill === true}`,
     title: `Hinge Works — ${industrialOutcomeLine(model)}`,
     options: [
       { id: 'inspect', label: 'Continue recovery — tow survivors and parts to refuge' },
-      { id: model.drill ? 'finishDrill' : 'finalize', label: model.drill ? 'End drill — restore the real aftermath' : 'Close response — record what was saved and lost' },
+      { id: model.drill ? 'finishDrill' : 'finalize', label: model.drill ? 'End drill — restore saved original scene' : 'Close response — record what was saved and lost' },
       { id: 'cancel', label: 'Close channel — keep this state; reopen on return' },
     ],
   };
   if (phase === 'settled' || phase === 'aftermath') {
     if (model.drill) return { key: `drill-end:${scenarioId}`, title: `Response drill — ${industrialOutcomeLine(model)}`,
-      options: [{ id: 'finishDrill', label: 'End drill — restore the real aftermath' }, { id: 'cancel', label: 'Close channel — reopen on return' }] };
+      options: [{ id: 'finishDrill', label: 'End drill — restore saved original scene' }, { id: 'cancel', label: 'Close channel — reopen on return' }] };
     const completed = SCENARIO_IDS.filter((id) => model.history?.some((row) => row.scenarioId === id));
     if (!completed.length) completed.push(scenarioId);
     return {

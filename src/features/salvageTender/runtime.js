@@ -3,7 +3,7 @@ import { createTenderPhysical, TENDER_BODY_ID, TENDER_PHYSICAL } from './physica
 import { TENDER_CONFIG as C, TENDER_STAGES, freshSalvageTender, normalizeSalvageTender,
   discoverTenderState, recordTenderHistory } from './model.js';
 import { tenderCostQuote, payTenderCost, tenderServiceQuote, bookTenderService,
-  stepTenderService, cancelTenderService, repairTenderHull, rebindTenderService } from './services.js';
+  stepTenderService, holdTenderService, setTenderRepairPriority, cancelTenderService, repairTenderHull, rebindTenderService } from './services.js';
 import { installSalvageTenderSaveAdapter } from './saveAdapter.js';
 import { getSalvageTenderReadModel } from './readModel.js';
 
@@ -196,14 +196,14 @@ export const salvageTender = {
   _nearbyCrate() {
     if (!this._sameSector()) return null;
     const player = this._player();
-    return this.physical.recoveryBodies(this._row).filter(e => e.data.cargoManifest?.totalQty > 0
+    return this.physical.recoveryBodies(this._row).filter(e => (e.data.cargoManifest?.totalQty > 0 || this._row.owned)
       && distance(player?.pos, e.pos) <= 110).sort((a, b) => distance(player.pos, a.pos) - distance(player.pos, b.pos))[0] || null;
   },
 
   inspect(page = 'home') {
     if (!this._eligible() || !this._row.discovered || (!this._near(C.offerRange)
-      && !(page === 'cargo' && this._nearbyCrate()))) return fail('Approach or scan Morrowlight, or a nearby recovery crate.');
-    this._page = ['home', 'service', 'restore', 'cargo', 'navigation', 'history'].includes(page) ? page : 'home';
+      && !(['cargo', 'restock', 'packing'].includes(page) && this._nearbyCrate()))) return fail('Approach or scan Morrowlight, or a nearby recovery crate.');
+    this._page = ['home', 'service', 'restore', 'cargo', 'restock', 'packing', 'navigation', 'history'].includes(page) ? page : 'home';
     const row = this._row, body = this.physical.find(row), choices = [];
     const hull = `${Math.ceil(body?.hull || row.physical.tender.hull)}/${TENDER_PHYSICAL.hullMax}`;
     const stateWord = row.physical.disabled ? 'DISABLED' : row.physical.mode === 'released' ? 'MOVING · services paused' : 'SECURED';
@@ -228,6 +228,7 @@ export const salvageTender = {
       choices.push(choice('service_menu', 'Prepare / service this ship', { action: 'menu', page: 'service' }));
       choices.push(choice('restore_menu', row.stage < 3 ? 'Restore the next machine' : 'Inspect installed machines', { action: 'menu', page: 'restore' }));
       choices.push(choice('cargo_menu', 'Physical supply crates / rack', { action: 'menu', page: 'cargo' }));
+      choices.push(choice('restock_menu', 'Original pods · pack supplies / patch home', { action: 'menu', page: 'restock' }));
       choices.push(choice('navigation_menu', 'Home course / move the tender', { action: 'menu', page: 'navigation' }));
       const patchGate = this._serviceGate({ allowDisabled: true });
       const patchParts = tenderCostQuote(this.state, { items: { cmdty_scrap_metal: 1 } });
@@ -238,10 +239,22 @@ export const salvageTender = {
       detail = `Supplies come from your existing hold. One fuel cell pumps up to ${C.fuelPerCell} fuel; one scrap restores up to ${C.repairPerScrap} hull/armor. Keep within 100 wu at matched speed. Leaving pauses prepaid work.`;
       if (row.service) {
         detail += ` Booked ${row.service.type}: ${row.service.delivered.toFixed(1)}/${row.service.requested.toFixed(1)} delivered. ${row.service.paused ? row.service.pauseReason : 'Machinery is working.'}`;
+        if (row.service.type === 'repair') {
+          detail += ` Priority: ${row.service.repairPriority || 'balanced'}. Priority fills that protection first, then the other; total prepaid work is unchanged.`;
+          for (const priority of ['balanced', 'hull', 'armor']) choices.push(choice(`priority_${priority}`, `Redirect: ${priority === 'balanced' ? 'balanced' : priority + ' first'} · no new charge`,
+            { action: 'repair_priority', priority, jobId: row.service.id }, gate.ok && (row.service.repairPriority || 'balanced') !== priority));
+        }
+        choices.push(choice('hold_service', row.service.manualPaused === true ? 'Resume prepaid work · no new charge' : 'Pause prepaid work · keep the remainder',
+          { action: 'hold_service', paused: row.service.manualPaused !== true, jobId: row.service.id }, gate.ok, gate.reason));
         choices.push(choice('cancel_service', row.service.delivered <= 1e-9 ? 'Cancel · untouched supply returned' : 'Cancel · partially used supply is spent'));
-      } else for (const [action, label] of [['refuel', 'Pump one fuel cell'], ['repair', 'Weld with one scrap'], ['emergency', 'Use starter emergency weld · free to 35% hull']]) {
+      } else for (const [action, label] of [['refuel', 'Pump one fuel cell'], ['repair', 'Balanced weld · 1 scrap'], ['emergency', 'Use starter emergency weld · free to 35% hull']]) {
         const q = tenderServiceQuote(this.state, row, action);
         choices.push(choice(action, label, {}, gate.ok && q.ok, gate.ok ? q.reason : gate.reason));
+      }
+      if (!row.service) for (const priority of ['hull', 'armor']) {
+        const q = tenderServiceQuote(this.state, row, 'repair');
+        choices.push(choice(`repair_${priority}`, `${priority === 'hull' ? 'Hull' : 'Armor'} first · 1 scrap / up to ${C.repairPerScrap} combined HP`,
+          { action: 'repair', priority }, gate.ok && q.ok, gate.ok ? q.reason : gate.reason));
       }
       const supplies = tenderCostQuote(this.state, { items: { cmdty_fuel_cells: 1, cmdty_scrap_metal: 1 } }).items;
       detail += ` Unsealed hold: ${supplies[0].available} fuel cells · ${supplies[1].available} scrap. Sealed freight is never consumed.`;
@@ -256,20 +269,56 @@ export const salvageTender = {
         choices.push(choice('restore_cash', `Buy installation supplies · ${next.cost.credits} cr`, { action: 'restore', payment: 'credits' }, gate.ok && q.canUseCredits, gate.reason || 'Insufficient credits.'));
       }
     } else if (this._page === 'cargo') {
-      detail = 'These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate’s speed within 75 wu to transfer what fits into your normal hold. Stage 3 clamps one of these original pods; unload it before using its supplies. Empty shells stay empty.';
+      detail = 'These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate’s speed within 75 wu to transfer what fits into your normal hold. Take one chosen supply from the nearest locker to leave room for what you need, or transfer a mixed load. Stage 3 clamps one of these original pods; unload its supplies for ship services, or bring its scrap alongside to patch Morrowlight directly. Empty shells receive no free refill; after claiming Morrowlight you may pack your own unsealed supplies into their original compartments.';
       const crates = row.physical.recovery.filter(r => r.status !== 'lost' && r.manifest.totalQty > 0);
       for (const r of crates) {
         const e = this.physical.recoveryBodies(row).find(e => e.data.worldRecordId === r.id);
         const can = e && this.physical.canUnload(row, e.id);
         const contents = r.manifest.lines.filter(l => l.qty > 0).map(l => `${l.qty} ${commodityName(l.commodityId)}`).join(' · ');
-        choices.push(choice(`crate_${r.key}`, `${r.name} · ${r.manifest.totalQty} units`, { action: can?.ok ? 'unload' : 'recovery', bodyId: e?.id, sourceId: r.id }, true,
+        choices.push(choice(`crate_${r.key}`, `${r.name} · ${can?.ok ? 'transfer mixed load' : `${r.manifest.totalQty} units`}`, { action: can?.ok ? 'unload' : 'recovery', bodyId: e?.id, sourceId: r.id }, true,
           `${contents}. ${can?.ok ? 'Transfer what fits.' : 'Mark this original crate.'}`));
+      }
+      const nearby = this.physical.recoveryBodies(row).filter(e => this.physical.canUnload(row, e.id).ok)
+        .sort((a, b) => distance(this._player()?.pos, a.pos) - distance(this._player()?.pos, b.pos) || a.id - b.id)[0];
+      if (nearby) {
+        detail += ` Choose from ${row.physical.recovery.find(r => r.id === nearby.data.worldRecordId)?.name || 'the nearest original locker'}.`;
+        for (const line of nearby.data.cargoManifest.lines.filter(line => line.qty > 0)) {
+          choices.push(choice(`take_${line.commodityId}`, `Take 1 ${commodityName(line.commodityId)} · ${line.qty} left`,
+            { action: 'unload', bodyId: nearby.id, sourceId: nearby.data.worldRecordId,
+              commodityId: line.commodityId, quantity: 1 }));
+        }
+      }
+      if (row.owned) choices.push(choice('restock_menu', 'Rack / pack / patch Morrowlight', { action: 'menu', page: 'restock' }));
+    } else if (this._page === 'restock') {
+      detail = 'Choose an original pod to pack from your hold. Each click moves one unsealed supply, with no purchase or free refill. Keep within 75 wu at matched speed. Original compartment limits remain unchanged; lost pods are not replaced.';
+      for (const r of row.physical.recovery.filter(r => r.status !== 'lost')) {
+        const e = this.physical.recoveryBodies(row).find(e => e.data.worldRecordId === r.id);
+        if (e) choices.push(choice(`pack_${r.key}`, `${r.name} · ${r.manifest.totalQty} units`,
+          { action: 'packing', bodyId: e.id, generation: e.occupantGeneration, sourceId: r.id }));
       }
       if (row.stage >= 3) {
         const target = this._rackCandidate();
         if (row.physical.rackId) choices.push(choice('release', 'Release the original rack pod', { bodyId: target?.id }));
         else choices.push(choice('stow', 'Clamp nearest supply pod into rack', { bodyId: target?.id }, !!target && gate.ok, 'Bring one stocked original slowly within 95 wu.'));
       }
+    } else if (this._page === 'packing') {
+      const target = this._packingTarget, e = this.state.entities.get(target?.bodyId);
+      const record = row.physical.recovery.find(r => r.id === target?.sourceId);
+      detail = `Pack one supply into ${record?.name || 'the original pod'}. This takes it out of your hold; unload the same pod for ship services, or spend its scrap directly on Morrowlight’s hull. Sealed mission freight stays aboard. No cash changes hands.`;
+      if (target && e === target.body) for (const id of ['cmdty_scrap_metal', 'cmdty_salvage_electronics', 'cmdty_fuel_cells']) {
+        const q = this.physical.restockQuote(row, target.bodyId, target.generation, target.sourceId, id);
+        choices.push(choice(`deposit_${id}`, `Pack 1 ${commodityName(id)}${q.ok ? ` · ${q.stored}/${q.capacity} stored` : ''}`,
+          { action: 'restock', bodyId: target.bodyId, generation: target.generation, sourceId: target.sourceId, commodityId: id }, q.ok, readable(q.reason)));
+      }
+      if (target && e === target.body) {
+        const home = this.physical.find(row);
+        const q = this.physical.podPatchQuote(row, target.bodyId, target.generation, target.sourceId, home?.occupantGeneration);
+        choices.push(choice('pod_patch', `Patch Morrowlight from this pod · 1 scrap → up to 30 hull${q.ok ? ` (${q.amount} now)` : ''}`,
+          { action: 'pod_patch', bodyId: target.bodyId, generation: target.generation, sourceId: target.sourceId,
+            tenderGeneration: home?.occupantGeneration }, q.ok, readable(q.reason)));
+        detail += ' Or bring this original alongside the secured tender: its own scrap can patch Morrowlight directly, without cargo space or a cash payment.';
+      }
+      choices.push(choice('pods', 'Choose another original pod', { action: 'menu', page: 'restock' }));
     } else if (this._page === 'navigation') {
       detail = 'Relocation moves this hull and its clamped cargo with your actual Massline. Release costs one scrap for the mooring brake; resuming an interrupted tow is free. Stop below 8 wu/s to secure the new berth; scan the hull to inspect it at any time. Intersector relocation is not offered.';
       choices.push(choice('course', 'Mark Morrowlight on the chart', { destination: 'home' }));
@@ -318,13 +367,17 @@ export const salvageTender = {
     if (!this._eligible()) return fail('Adventure flight only.');
     if (revision !== this._row.revision) return this._feedback(fail('This offer changed. Inspect Morrowlight again.'));
     if (action === 'menu') return this.inspect(options.page);
+    if (action === 'packing') {
+      this._packingTarget = { ...options, body: this.state.entities.get(options.bodyId) };
+      return this.inspect('packing');
+    }
     if (action === 'course') return this._course(options.destination, options.sourceId);
     if (action === 'leave' || action === 'refuse') {
       this._dismissed = true; this._row.nextOfferAt = this.state.simTime + 15; this._hide();
       return { ok: true, ownershipChanged: false };
     }
     if (!this._row.discovered) return fail('Discover the original tender first.');
-    if (!['unload', 'recovery'].includes(action) && !this._near(C.offerRange)) return this._feedback(fail('Come back alongside Morrowlight.'));
+    if (!['unload', 'recovery', 'restock'].includes(action) && !this._near(C.offerRange)) return this._feedback(fail('Come back alongside Morrowlight.'));
     this._busy = true;
     let result;
     try { result = this._act(action, options); }
@@ -379,9 +432,17 @@ export const salvageTender = {
     }
     if (['repair', 'refuel', 'emergency'].includes(action)) {
       const gate = this._serviceGate(); if (!gate.ok) return gate;
-      const result = bookTenderService(this.ctx, row, action);
+      const result = bookTenderService(this.ctx, row, action, options.priority || 'balanced');
       if (result.ok) this._remember(action === 'refuel' ? 'provision' : 'repair', `${action === 'refuel' ? 'Fuel' : 'Repair'} work booked. Stay alongside; leaving pauses the work you paid for.`);
       return result;
+    }
+    if (action === 'hold_service') {
+      const gate = this._serviceGate(); if (!gate.ok) return gate;
+      return holdTenderService(this.ctx, row, options.paused, options.jobId);
+    }
+    if (action === 'repair_priority') {
+      const gate = this._serviceGate(); if (!gate.ok) return gate;
+      return setTenderRepairPriority(this.ctx, row, options.priority, options.jobId);
     }
     if (action === 'cancel_service') return cancelTenderService(this.ctx, row);
     if (action === 'patch') {
@@ -393,8 +454,22 @@ export const salvageTender = {
     if (action === 'recovery') {
       this.physical.capture(row); return this._course('crate', options.sourceId);
     }
+    if (action === 'pod_patch') {
+      const result = this.physical.patchFromRecovery(row, options.bodyId, options.generation, options.sourceId, options.tenderGeneration);
+      if (result.ok && !result.receiptSuppressed) this._remember('repair', `One plate from the original pod patches Morrowlight by ${result.restoredHull} hull. Your hold is unchanged.`);
+      return result;
+    }
+    if (action === 'restock') {
+      const result = this.physical.restockRecovery(row, options.bodyId, options.generation, options.sourceId, options.commodityId);
+      if (result.ok) { row.revision++; this._remember('provision', `Packed 1 ${commodityName(options.commodityId)} from your hold into the original pod. No supply purchased or created.`); }
+      return result;
+    }
     if (action === 'unload') {
-      const result = this.physical.unloadRecovery(row, options.bodyId);
+      const original = this.physical.recoveryBodies(row).find(e => e.id === options.bodyId);
+      if (options.sourceId && original?.data.worldRecordId !== options.sourceId) return fail('The original locker changed. Inspect it again.');
+      const selection = options.commodityId !== undefined || options.quantity !== undefined
+        ? { commodityId: options.commodityId, quantity: options.quantity } : null;
+      const result = this.physical.unloadRecovery(row, options.bodyId, undefined, selection);
       if (result.ok) { row.revision++; this._remember('provision', `Recovered ${Object.values(result.moved).reduce((a, b) => a + b, 0)} units into your hold. ${result.remaining} remain in the original pod.`); }
       return result;
     }

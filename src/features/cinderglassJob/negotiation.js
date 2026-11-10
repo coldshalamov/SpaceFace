@@ -1,7 +1,7 @@
 import {
   CINDERGLASS_JOB_DEPOSIT_CR as DEPOSIT, CINDERGLASS_JOB_TEXT as T,
   CINDERGLASS_JOB_RELEASE_NEGOTIATED, CINDERGLASS_JOB_NEGOTIATE_RANGE_WU,
-  CINDERGLASS_JOB_PHASES as P,
+  CINDERGLASS_JOB_PHASES as P, CINDERGLASS_JOB_SECTOR_ID,
 } from './definition.js';
 import { rememberFact, recordReceipt } from './operation.js';
 import { carrierEntity, podEntity, cinderglassJobReleasePod, cinderglassJobLiveClamp } from './custody.js';
@@ -73,4 +73,40 @@ export function cinderglassJobDaskRelease(sys, state) {
     rememberFact(st, state.simTime, 'released_negotiated', T.releasedNegotiated);
   }
   return out;
+}
+
+
+const extensionStates = new WeakSet();
+const INSPECTION_CLAIM = 'cinderglassJob:inspection';
+/** One voluntary grace period on the existing physical inspection stop. */
+export function cinderglassJobExtensionAvailable(sys, state) {
+  const st = sys._cg, jobs = sys.helpers?.npcJobs;
+  const carrier = carrierEntity(sys, state), entry = state.npcJobs?.byId?.[st.entities.carrierJobId];
+  const claim = jobs?.controlClaim?.(st.entities.carrierJobId);
+  return !sys._restoring && !sys._destroying && sys._presentationReady && state.mode === 'flight'
+    && state.world?.currentSectorId === CINDERGLASS_JOB_SECTOR_ID
+    && !state.ui?.docked && !state.player?.docked && !st.serviceActive
+    && st.actors.dask.inspectionExtensionUsed == null && st.suspicion < 2
+    && cinderglassJobProposalAvailable(sys, state) && Number.isFinite(st.laybyRemainingS) && st.laybyRemainingS > 0
+    && entry?.entityId === carrier?.id && (!entry.entityRef || entry.entityRef === carrier)
+    && entry.worldRecordId === carrier?.data?.worldRecordId
+    && claim?.claimId === INSPECTION_CLAIM && claim.holder === 'cinderglassJob';
+}
+export function cinderglassJobRequestExtension(sys, state) {
+  if (extensionStates.has(state) || !cinderglassJobExtensionAvailable(sys, state)) return {ok:false,reason:'inspection_extension_unavailable'};
+  const st=sys._cg, carrier=carrierEntity(sys,state), before=st.laybyRemainingS;
+  extensionStates.add(state);
+  try {
+    // Reserve the one-time permission and saved duration before the owner call.
+    st.actors.dask.inspectionExtensionUsed=true;
+    st.laybyRemainingS=before+30;
+    const out=sys.helpers.npcJobs.heaveToEntity(carrier.id,{claimId:INSPECTION_CLAIM,holder:'cinderglassJob',durationS:st.laybyRemainingS+1,cooldownS:0});
+    if (!out?.granted) {
+      delete st.actors.dask.inspectionExtensionUsed;st.laybyRemainingS=before;
+      return {ok:false,reason:out?.reason || 'inspection_extension_refused'};
+    }
+    st.promptRevision++;
+    rememberFact(st,state.simTime,'inspection_extension','Dask grants thirty more seconds at this inspection stop. One extension only; the deposit and cargo terms are unchanged.');
+    return {ok:true,addedSeconds:30,remainingSeconds:st.laybyRemainingS};
+  } finally {extensionStates.delete(state);}
 }

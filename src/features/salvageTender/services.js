@@ -63,7 +63,7 @@ export function payTenderCost(ctx, cost, method, commit) {
 export function tenderServiceQuote(state, row, type) {
   const player = state.entities?.get(state.playerId);
   if (!player?.alive) return { ok: false, reason: 'A live ship is required.' };
-  if (row.service) return { ok: false, reason: 'Finish or pause the booked work before starting another service.' };
+  if (row.service) return { ok: false, reason: 'Finish or cancel the booked work before starting another service.' };
   if (!row.owned) return { ok: false, reason: 'Recover and claim Morrowlight first.' };
   const hullMissing = Math.max(0, (player.hullMax || 0) - (player.hull || 0));
   const armorMissing = Math.max(0, (player.armorMax || 0) - (player.armorHp || 0));
@@ -87,19 +87,20 @@ export function tenderServiceQuote(state, row, type) {
     hullShare: hullMissing / (hullMissing + armorMissing), armorShare: armorMissing / (hullMissing + armorMissing) };
 }
 
-export function bookTenderService(ctx, row, type) {
+export function bookTenderService(ctx, row, type, priority = 'balanced') {
+  if (!['balanced', 'hull', 'armor'].includes(priority)) return { ok: false, reason: 'Unknown repair priority.' };
   const q = tenderServiceQuote(ctx.state, row, type);
   if (!q.ok) return q;
   const player = ctx.state.entities.get(ctx.state.playerId);
   const pending = {
-    id: `${C.id}:service:${row.revision}`, type, requested: q.units, remaining: q.units, delivered: 0,
+    id: `${C.id}:service:${row.revision}`, type, repairPriority: type === 'repair' ? priority : 'balanced', requested: q.units, remaining: q.units, delivered: 0,
     shipIndex: ctx.state.player.activeShipIndex || 0, shipDefId: player.data?.defId || '',
     vesselId: ownedVessel(ctx.state),
     startedAt: ctx.state.simTime, rate: C.serviceRate * (row.stage >= 3 ? 2 : 1),
     hullShare: q.hullShare, armorShare: q.armorShare,
     deliveredHull: 0, deliveredArmor: 0, deliveredFuel: 0,
     paidCommodity: q.commodity, paidUnits: q.count,
-    beforeProtection: (player.hull || 0) + (player.armorHp || 0), paused: false, pauseReason: '',
+    beforeProtection: (player.hull || 0) + (player.armorHp || 0), manualPaused: false, paused: false, pauseReason: '',
   };
   // Reserve before the cargo owner emits cargo:changed; a nested button cannot book twice.
   row.service = pending;
@@ -111,6 +112,36 @@ export function bookTenderService(ctx, row, type) {
   if (type === 'emergency') row.emergencyAvailable = false;
   row.revision++;
   return { ok: true, service: pending };
+}
+
+/** Redirect only the existing paid booking on its still-bound living hull. */
+export function setTenderRepairPriority(ctx, row, priority, jobId) {
+  const job = row.service, player = ctx.state.entities?.get(ctx.state.playerId), binding = serviceBindings.get(ctx.state);
+  if (!['balanced', 'hull', 'armor'].includes(priority) || job?.type !== 'repair' || job.id !== jobId
+    || !player?.alive || binding?.jobId !== job.id || binding.entity !== player
+    || binding.generation !== player.occupantGeneration
+    || (ctx.state.player.activeShipIndex || 0) !== job.shipIndex
+    || (player.data?.defId || '') !== job.shipDefId
+    || (job.vesselId && ownedVessel(ctx.state) !== job.vesselId)) {
+    return { ok: false, reason: 'The repair booking or its original ship changed.' };
+  }
+  job.repairPriority = priority; row.revision++;
+  return { ok: true, priority, charged: 0 };
+}
+
+/** A deliberate hold preserves exactly the same paid work; it is not cancellation. */
+export function holdTenderService(ctx, row, paused, jobId) {
+  const job = row.service, player = ctx.state.entities?.get(ctx.state.playerId), binding = serviceBindings.get(ctx.state);
+  if (typeof paused !== 'boolean' || !job || job.id !== jobId || !player?.alive
+    || binding?.jobId !== job.id || binding.entity !== player || binding.generation !== player.occupantGeneration
+    || (ctx.state.player.activeShipIndex || 0) !== job.shipIndex
+    || (player.data?.defId || '') !== job.shipDefId || (job.vesselId && ownedVessel(ctx.state) !== job.vesselId)) {
+    return { ok: false, reason: 'The service booking or its original ship changed.' };
+  }
+  job.manualPaused = paused; job.paused = paused;
+  job.pauseReason = paused ? 'Held by you. Resume prepaid work at this berth when ready.' : '';
+  row.revision++;
+  return { ok: true, paused, charged: 0, refunded: 0 };
 }
 
 /** Uses the existing yard's delivery writer without pretending the pilot is docked at a
@@ -127,11 +158,32 @@ export function stepTenderService(ctx, row, dt, gate) {
     job.paused = true; job.pauseReason = sameHull ? gate.reason : 'This work belongs to your previous hull. Return in it or cancel the unused work.';
     return null;
   }
+  if (job.manualPaused === true) {
+    job.paused = true; job.pauseReason = 'Held by you. Resume prepaid work at this berth when ready.';
+    return null;
+  }
   if (!(dt > 0) || !Number.isFinite(dt)) return null;
-  job.paused = false; job.pauseReason = '';
   const amount = Math.min(job.remaining, job.rate * dt);
+  // Reject unusable work before priority shares divide by the delivery amount.
+  if (!(amount > 0) || !Number.isFinite(amount)) return null;
+  job.paused = false; job.pauseReason = '';
   const before = (job.deliveredHull || 0) + (job.deliveredArmor || 0) + (job.deliveredFuel || 0);
-  const delivery = { ...job, type: job.type === 'refuel' ? 'refuel' : 'repair', meta: { shares: { hull: job.hullShare, armor: job.armorShare } } };
+  // The bench sold combined hull/armor work on this exact ship, not a frozen
+  // damage split. Other repair/damage owners can change that split while the
+  // pilot is away. Send today's deficits to the same delivery writer; never
+  // rebook, recharge or count work that could not fit. Starter weld stays hull-only.
+  let shares = { hull: job.hullShare, armor: job.armorShare };
+  if (job.type === 'repair') {
+    const hull = Math.max(0, (player.hullMax || 0) - (player.hull || 0));
+    const armor = Math.max(0, (player.armorMax || 0) - (player.armorHp || 0));
+    const missing = hull + armor;
+    if (job.repairPriority === 'hull' || job.repairPriority === 'armor') {
+      const hullWork = job.repairPriority === 'hull' ? Math.min(amount, hull) : Math.min(hull, Math.max(0, amount - armor));
+      const armorWork = job.repairPriority === 'armor' ? Math.min(amount, armor) : Math.min(armor, Math.max(0, amount - hull));
+      shares = { hull: hullWork / amount, armor: armorWork / amount };
+    } else shares = missing > 0 ? { hull: hull / missing, armor: armor / missing } : { hull: 0, armor: 0 };
+  }
+  const delivery = { ...job, type: job.type === 'refuel' ? 'refuel' : 'repair', meta: { shares } };
   stationServices._applyJobDelta(state, delivery, amount);
   const gained = Math.max(0, delivery.deliveredHull + delivery.deliveredArmor + delivery.deliveredFuel - before);
   job.deliveredHull = delivery.deliveredHull; job.deliveredArmor = delivery.deliveredArmor; job.deliveredFuel = delivery.deliveredFuel;

@@ -18,7 +18,7 @@ function intentFor(choiceId) {
   if (['preview', 'practice', 'attempt'].includes(action) && eventId) {
     return { action, eventId };
   }
-  if (['menu', 'events', 'records', 'ghost', 'cancel', 'close', 'leave'].includes(action)) {
+  if (['menu', 'events', 'records', 'ghost', 'cancel', 'close', 'leave', 'practiceContinue', 'practiceConfirm', 'practiceBack'].includes(action)) {
     return { action };
   }
   return null;
@@ -46,7 +46,7 @@ export const counterweightCircuitPrompt = {
       detailCopy: offer.detailTemplate ? { template: offer.detailTemplate, values: offer.detailValues } : null,
       choices: offer.choices.map((c) => ({
         id: c.id, label: c.label, title: c.title,
-        disabled: c.disabled === true, cancel: ['close', 'leave', 'back', 'menu'].includes(c.id),
+        disabled: c.disabled === true, cancel: ['close', 'leave', 'back', 'menu', 'practiceBack'].includes(c.id),
       })),
       onChoose: (id) => {
         if (this._last !== offer) return false;

@@ -684,6 +684,10 @@ test('the field deck secures ordinary owned salvage, can recapture a failed rest
     assert.equal(field.options.find((o) => o.id === 'capture').disabled, undefined,
       'owned salvage remains useful without an active order');
     assert.equal(system.choose({ promptId: field.id, revision: field.revision, choiceId: 'capture' }), true);
+    const selection = h.w.prompt;
+    assert.equal(h.physics.isCargoSecured(h.w, rig.id, cargo.id), false, 'opening the load choice does not clamp');
+    assert.equal(system.choose({ promptId: selection.id, revision: selection.revision,
+      choiceId: `capture:${cargo.id}:${cargo.occupantGeneration}` }), true);
     assert.equal(h.physics.isCargoSecured(h.w, rig.id, cargo.id), true);
     const edge = rig.connections.find((e) => e.kind === 'cargo' && e.childId === cargo.id);
     h.physics.kernel.attachments.cut(edge.attachmentIds[0], null, 'test_failed_restraint');

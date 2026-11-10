@@ -1936,6 +1936,69 @@ The fix must also add a check that **FAILS** when a whole-ship required by a liv
 load and no substitute is published. This class currently reports as a passing warning, which is
 precisely why it survived.
 
+### 8.6 Ashline LOD asset-owner reconciliation handoff
+
+This is a bounded repair specification for the existing ship-asset/render-package owner, not a
+new queue row, asset-write claim, or permission to publish. Route through the integration
+controller, who must establish the current exact-path owner before the repair. The older NOW
+"Distant ship admission" claim covers runtime admission, not ownership of these asset outputs.
+Do not assign this dependency to either gameplay PR merely because its retail check exposed it.
+
+**Established cause:** [9e9ebcd906c1c7257ddd94c94e2c8869d5a13b16](https://github.com/coldshalamov/SpaceFace/commit/9e9ebcd906c1c7257ddd94c94e2c8869d5a13b16)
+renamed Dart/Rig LOD1/LOD2 node/mesh markers in eight authored/release GLBs without updating
+their manifests or render packages. The retail failures for
+[#942](https://github.com/coldshalamov/SpaceFace/actions/runs/42767365395/job/129666878317)
+and [#982](https://github.com/coldshalamov/SpaceFace/actions/runs/42743080191/job/129588647401)
+occur in `renderPackageSourceOmissions`, before browser boot. Their checked merges
+`bcaf0763b7cd4e6945313088bbebacda5041ef0d` and `9d0d007f875755550a9f16ed3105984a4370c402`,
+the actual CI base `93935be2342dfbe22d74864448c5cde824093905`, and the older API-reported base
+`f95de0eb1ba7560839209936afba48c7b96fe41a` share assets tree
+`3f72237077831000721bba247d958e8e978183c5`. The API base is not the actual CI checkout base.
+
+For `assets/ships/release/parts/wholeships/ashline_dart_lod1.glb`, actual SHA-256 is
+`fe54fccab7275578b1ddd318c29535cd91e8eefd0ac64e178f00064887ab88d9`; all four committed records
+still pin `77e46eebb3d811d1e80d36a2ffcee58bcf3e650580c5e0842d8c872891788b66`:
+`render-packages/pilots.json`'s `releaseSha256`, `release/release_manifest.json`'s release SHA,
+the package's `provenance.sourceGlb.sha256`, and `src/render/renderPackageManifest.js`'s
+`sourceSha256` (asset-relative paths start at `assets/ships/`). URI and 475,072-byte size agree;
+the old package's own content hash still agrees with its runtime pin, but its render payload
+retains `LOD0_` markers while the release source now uses `LOD1_`. The authored-source SHA in
+the release manifest is stale too. A merge-equivalent read-only committed-object pin check
+failed **4/4** pilots: `ashline-dart-lod1`, `ashline-dart-lod2`, `ashline-rig-lod1`,
+`ashline-rig-lod2`. This establishes the shared asset defect, not a full-CI result.
+
+**Owner reconciliation:** inspect current exact asset/package/manifest diffs and agree the
+input revision with the integration controller. Preserve the intended LOD-tier correction and
+authored visuals. Use the supported pipeline in [`assets/ships/AGENTS.md`](assets/ships/AGENTS.md)
+and [`COMMON_BUGS.md §15A`](docs/COMMON_BUGS.md#15a-vercel-production-build-fails-on-content-hash-does-not-match-the-shipping-manifest):
+reconcile the four authored/release GLB pairs and their parts/release provenance, refresh the four
+pilot entries, recompile their complete render packages, and regenerate the runtime manifest
+and affected census rows. Inspect package node/mesh tiers as well as hashes. Keep all related
+outputs together in one coherent candidate with committed inputs and exact-path ownership.
+Do not merely replace hash strings, repair only Dart LOD1, hand-edit GLBs or generated metadata,
+regenerate against unrelated dirty recompiles, weaken a gate, or change workflow/security settings.
+
+**Acceptance on that exact reviewed candidate, before publication:**
+
+1. The four release GLBs' actual SHA-256, bytes and URI agree with their pilot records,
+   release-manifest rows, package source provenance and runtime source pins. Authored-source
+   provenance also matches the corresponding committed input. Each recompiled package's content
+   hash matches the runtime `expectedContentHash`; payload digests match package metadata, and
+   its LOD markers reflect the intended tier rather than the old packaged `LOD0_` names.
+2. Run the focused gate:
+   `node scripts/check-release-manifest-pins.mjs --only=ashline-dart-lod1,ashline-dart-lod2,ashline-rig-lod1,ashline-rig-lod2`.
+   Require all four consistent, then run `npm run check:release-manifest-pins` for the full set.
+   Run `node scripts/check-runtime-asset-contract.mjs` to retain the LOD contract; do not undo
+   the marker fix simply to recover an old digest.
+3. Run `npm run check:retail-boot` without `--use-existing`: it rebuilds the retail bundle and
+   verifies title-menu boot. Record the exact candidate and distinguish build/pin results from
+   browser acceptance. The asset owner also inspects Dart/Rig at LOD1/LOD2 in the real renderer
+   through the existing visual-asset workflow; pin consistency alone does not prove appearance.
+4. Review the bounded related diff and preserve every unrelated edit. This handoff authorizes
+   no asset edits or publication itself; the assigned owner/controller must review the complete
+   repair before any authorized commit, push, PR update or deployment. Neither gameplay PR is
+   cleared by this documentation-only handoff.
+
 ## 9. Documentation and instruction hygiene
 
 Documentation has a declared lifetime:

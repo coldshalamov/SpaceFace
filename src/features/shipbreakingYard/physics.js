@@ -6,6 +6,7 @@ import { createYardLayout, SHIPBREAKING_YARD_SITE } from './layouts.js';
 import { DEFAULT_MASK, Masks } from '../../core/entity.js';
 
 const OWNER = 'shipbreakingYard';
+const resecuring = new WeakSet();
 const CLAMP = 'attachment_salvage_clamp';
 const TERMINAL = new Set(['delivered', 'lost']);
 const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
@@ -26,6 +27,7 @@ export function createYardPhysics(ctx) {
   const state = ctx.state;
   const bindings = new Map();
   const lines = new Map();
+  const pendingResecures = new Map();
   const jobs = new Map();
   const suspended = new Set();
   const lossNotified = new Set();
@@ -107,8 +109,17 @@ export function createYardPhysics(ctx) {
     const layout = layoutFor(job), spec = layout?.couplings.find(row => row.id === couplingId);
     if (!spec) return { ok: false, reason: 'unknown_coupling', connected: false };
     const a = body(job, spec.a), b = body(job, spec.b);
-    const key = bindingKey(job.id, couplingId), knownId = lines.get(key)
+    const key = bindingKey(job.id, couplingId);
+    let knownId = lines.get(key)
       ?? job.couplings?.[couplingId]?.attachmentId;
+    const pending = pendingResecures.get(key);
+    if (pending && a) {
+      // create inserts its record before observer callbacks, but returns afterward.
+      // A callback save must see even an already-cut new line, not remint the intent.
+      const created = attachments().listForEntity(a.id, false).filter(line =>
+        line.actionInstanceId === `shipbreaking:${job.id}:${couplingId}` && !pending.has(line.id));
+      if (created.length === 1) { knownId = created[0].id; lines.set(key, knownId); }
+    }
     const line = knownId ? attachments().get(knownId) : null;
     return { ok: true, connected: lineIsOriginal(line, a, b), admitted: !!line && lineNative(line),
       line, a, b, spec, reason: line?.breakReason || null,
@@ -247,6 +258,7 @@ export function createYardPhysics(ctx) {
         line.actionInstanceId === token && lineIsOriginal(line, a, b));
       if (existing.length > 1) { pending++; continue; }
       if (existing.length === 1) { lines.set(key, existing[0].id); continue; }
+      if (pendingResecures.has(key)) { pending++; continue; }
       const created = attachments().create({ defId: CLAMP, ownerId: a.id, targetId: b.id,
         sourceWorld: { x: a.pos.x, z: a.pos.z }, targetWorld: { x: b.pos.x, z: b.pos.z },
         actionInstanceId: token, controlMode: OWNER });
@@ -293,6 +305,59 @@ export function createYardPhysics(ctx) {
       strainNotified.set(key, tense);
     }
     return events;
+  }
+
+  function resecureGate(job, couplingId, actorId = state.playerId) {
+    if (!job) return { ok: false, reason: 'No current LARK claim.' };
+    const spec = layoutFor(job)?.couplings.find(c => c.id === couplingId), row = job?.couplings?.[couplingId];
+    if (disposed || resecuring.has(state) || job?.layoutId !== 'lark' || row?.status !== 'released'
+      || !spec || spec.hazardModuleId || !['working', 'parked'].includes(job.status)) return { ok: false, reason: 'Only intact service-released LARK clamps can be secured again.' };
+    const actor = state.entities.get(actorId), a = body(job, spec.a), b = body(job, spec.b);
+    if (state.mode !== 'flight' || state.ui?.docked || state.world?.currentSectorId !== job.sectorId
+      || actorId !== state.playerId || !live(actor) || !nativeReady(a) || !nativeReady(b)) return { ok: false, reason: 'Return in flight to the same living originals and wait for native admission.' };
+    const span = distance(a.pos, b.pos);
+    if (span > 40 || span < a.radius + b.radius + 2) return { ok: false, reason: 'Bring the originals within 40 WU center-to-center, without overlapping their hulls.' };
+    if (distance(actor.pos, b.pos) > SHIPBREAKING_YARD_SITE.workRange
+      || Math.hypot(a.vel.x-b.vel.x,a.vel.z-b.vel.z) > 2
+      || Math.max(Math.abs(a.angVel||0),Math.abs(b.angVel||0)) > .4
+      || Math.hypot(actor.vel.x-b.vel.x,actor.vel.z-b.vel.z) > 8) return { ok: false, reason: 'Stay alongside; match the parts below 2 WU/s relative speed and stop their spin.' };
+    if (!towLine(b, actorId)) return { ok: false, reason: 'Support this released component with your own MassLine first.' };
+    for (const end of [a,b]) if (attachments().listForEntity(end.id).some(line => line.state === 'active'
+      && line.controlMode !== OWNER && line !== towLine(end,actorId))) return { ok: false, reason: 'Another line still has custody of an original.' };
+    return { ok: true, a, b, spec, row, span };
+  }
+
+  function resecure(job, couplingId, actorId = state.playerId) {
+    const gate = resecureGate(job, couplingId, actorId); if (!gate.ok) return gate;
+    const {a,b,row,span} = gate, lifeA=a.occupantGeneration,lifeB=b.occupantGeneration;
+    const actor=state.entities.get(actorId),actorLife=actor.occupantGeneration,support=towLine(b,actorId),sector=state.world?.currentSectorId;
+    const key=bindingKey(job.id,couplingId), prior=clone(row);
+    resecuring.add(state);
+    pendingResecures.set(key,new Set(attachments().listForEntity(a.id,false).map(line=>line.id)));
+    try {
+      // Reserve saved intent before create's synchronous observer. A callback save
+      // can re-admit this same constraint, never create a second physical original.
+      lines.delete(key); delete row.attachmentId; row.status='connected'; row.restLength=span;
+      cutNotified.delete(key);strainNotified.delete(key);
+      const created=attachments().create({defId:CLAMP,ownerId:a.id,targetId:b.id,
+        sourceWorld:{x:a.pos.x,z:a.pos.z},targetWorld:{x:b.pos.x,z:b.pos.z},
+        actionInstanceId:`shipbreaking:${job.id}:${couplingId}`,controlMode:OWNER});
+      const current=created?.ok && lineIsOriginal(created.attachment,a,b) && row.status==='connected' && !disposed && actorId===state.playerId && state.entities.get(actorId)===actor && actor.occupantGeneration===actorLife
+        && live(actor) && state.mode==='flight' && !state.ui?.docked && state.world?.currentSectorId===sector && job.sectorId===sector
+        && ['working','parked'].includes(job.status) && towLine(b,actorId)===support
+        && [a,b].every(end=>!attachments().listForEntity(end.id).some(line=>line.state==='active'
+          && line.controlMode!==OWNER && line!==towLine(end,actorId)))
+        && body(job,gate.spec.a)===a && body(job,gate.spec.b)===b
+        && a.occupantGeneration===lifeA && b.occupantGeneration===lifeB
+        && Object.values(state.shipbreakingYard?.jobs||{}).includes(job) && job.couplings[couplingId]===row;
+      if (!created?.ok || !current) {
+        row.status=prior.status;row.restLength=prior.restLength;lines.delete(key);
+        if(created?.ok)attachments().cut(created.attachment.id,null,'shipbreaking_resecure_changed');
+        return {ok:false,reason:'The original changed or the clamp could not be admitted. No repair or payment was made.'};
+      }
+      lines.set(key,created.attachment.id);
+      return {ok:true,couplingId,attachmentId:created.attachment.id,pending:!lineNative(created.attachment)};
+    } finally {pendingResecures.delete(key);resecuring.delete(state);}
   }
 
   function disconnect(job, couplingId, actorId = state.playerId) {
@@ -519,12 +584,12 @@ export function createYardPhysics(ctx) {
 
   const unsubscribe = ctx.bus?.on?.('physics:impact', impact);
   function resetBindings() {
-    bindings.clear(); lines.clear(); jobs.clear(); suspended.clear(); lossNotified.clear();
+    bindings.clear(); lines.clear(); pendingResecures.clear(); jobs.clear(); suspended.clear(); lossNotified.clear();
     cutNotified.clear(); strainNotified.clear(); contactTicks.clear(); layouts.clear();
     fittedSkins.clear();
   }
   function dispose() { disposed = true; if (typeof unsubscribe === 'function') unsubscribe(); resetBindings(); }
-  return Object.freeze({ spawnJob, hydrateJob: spawnJob, syncJob, disconnect, releaseImpulse, vent, burst,
+  return Object.freeze({ spawnJob, hydrateJob: spawnJob, syncJob, disconnect, resecureGate, resecure, releaseImpulse, vent, burst,
     snapshotJob, retire, shelve, body, lineStatus, nativeReady, towLine, deliveryGate, damage,
     resetBindings, dispose });
 }

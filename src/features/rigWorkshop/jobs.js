@@ -13,8 +13,19 @@ export const RIG_JOB_DEFS = Object.freeze([
     lesson: 'Put the mover behind the load. An off-centre load twists the hitch. Brake early with mover assist enabled, then let the heavy load settle.',
     count: 2, mass: 190, radius: 5.5, hull: 320, pay: 300, asset: 'place_cargo_pod_hazmat',
     pickup: { x: -760, z: 250 }, destination: { x: -350, z: -480 } }),
+  Object.freeze({ id: 'relay', title: 'The Quiet Relay', rig: 'cradle', requires: Object.freeze(['needle', 'kiln']),
+    description: 'The receiving crew has watched your survey and kiln loads arrive. Now a sensitive signal coil and its protective relay housing need moving from a retired dispatch rack to the night-shift gantry. The coil is light but easily damaged; the housing is heavier and tougher.',
+    lesson: 'Take one original at a time if your cradle is broad. The freight throat is narrow, but the outside route stays open. Keep the packs clear of the frames; damage reduces their receipt.',
+    count: 2, mass: 18, radius: 6, hull: 90, pay: 220, asset: 'place_cargo_pod_standard',
+    loads: Object.freeze([
+      Object.freeze({ label: 'Signal coil', mass: 18, hull: 90 }),
+      Object.freeze({ label: 'Protective relay housing', mass: 36, hull: 180 }),
+    ]),
+    pickupRadius: 145, throatHalfWidth: 48, frameRadius: 24, westbound: true,
+    pickup: { x: 780, z: 650 }, destination: { x: -620, z: 680 } }),
 ]);
-export const RIG_JOB_LIMITS = Object.freeze({ receiverRadius: 75, speed: 6, spin: 0.4, minimumTravel: 180, maxBodies: 21 });
+export const RIG_JOB_LIMITS = Object.freeze({ receiverRadius: 75, speed: 6, spin: 0.4, minimumTravel: 180, maxBodies: 24 });
+const deliveryTransactions = new WeakSet();
 const copy = v => JSON.parse(JSON.stringify(v));
 const distance = (a, b) => Math.hypot((a?.x || 0) - (b?.x || 0), (a?.z || 0) - (b?.z || 0));
 const speed = e => Math.hypot(e?.vel?.x || 0, e?.vel?.z || 0);
@@ -22,10 +33,21 @@ const definition = id => RIG_JOB_DEFS.find(d => d.id === id);
 const worldPoint = (w, offset) => ({ x: w.bench.pos.x + offset.x, z: w.bench.pos.z + offset.z });
 const entity = (state, id) => state.entities?.get(id);
 
+/** Earned work is based on delivered originals, never merely closing an abandoned ticket. */
+export function rigJobAvailability(w, id) {
+  const def = definition(id);
+  if (!def) return { ok: false, reason: 'Unknown work order.' };
+  const missing = (def.requires || []).filter(key => {
+    const prior = w.jobs?.[key];
+    return !prior?.settled || !(prior.delivered?.length > 0);
+  });
+  return missing.length ? { ok: false, reason: 'Deliver at least one original and settle both the Needle Orchard and kiln orders first. The crew needs to see your work arrive.' } : { ok: true };
+}
+
 export function createWorkshopJobs({ state, bus, physics, feedback = () => {} }) {
   const bodies = w => (state.entityList || []).filter(e => e.data?.rigWorkshopOwner === w.ownerId && e.data?.rigWorkshopJob);
 
-  function bodySpec(w, job, role, at, { radius = 10, mass = 50, hull = 300, placeId, dynamic = true, token } = {}) {
+  function bodySpec(w, job, role, at, { radius = 10, mass = 50, hull = 300, placeId, dynamic = true, token, label } = {}) {
     return {
       type: 'payload', pos: { ...at }, vel: { x: 0, z: 0 }, rot: 0, angVel: 0,
       radius, mass, hull, hullMax: hull, collides: true, team: 0, ownerId: state.playerId,
@@ -34,7 +56,7 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
         inertiaY: mass * radius * radius * 0.5, material: dynamic ? 'cargo' : 'wreck', ccd: true, revision: 0 },
       data: { rigWorkshopOwner: w.ownerId, rigWorkshopJob: job.id, rigWorkshopRole: role,
         persistenceOwner: 'rigWorkshop', transientSector: false, sectorId: w.bench.sectorId,
-        homeSectorId: w.bench.sectorId, name: role === 'cargo' ? `${job.title} · ${token}` : `${job.title} · ${role}`,
+        homeSectorId: w.bench.sectorId, name: role === 'cargo' ? `${job.title} · ${label || token}` : `${job.title} · ${role}`,
         placeId, placeTargetRadius: radius, poi: true, playerOwned: dynamic,
         salvagePool: {}, payloadType: 'rig_workshop',
         ...(role === 'cargo' ? { rigWorkshopCargo: { jobId: job.id, token, ownerId: w.ownerId, delivered: false } } : {}),
@@ -45,13 +67,15 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
   function accept(w, id) {
     const def = definition(id);
     if (!def) return { ok: false, reason: 'Unknown work order.' };
+    const availability = rigJobAvailability(w, id);
+    if (!availability.ok) return availability;
     const existing = w.jobs?.[id];
     if (existing) return { ok: false, reason: existing.settled ? 'This contract has already been settled.' : 'This work order is already aboard. Follow its cargo marker.' };
     if (w.activeJobId && !w.jobs[w.activeJobId]?.settled) return { ok: false, reason: 'Finish or settle the current work order first.' };
     if (!w.rigs?.length) return { ok: false, reason: 'Inspect a rig at the bench first.' };
-    if (bodies(w).length > RIG_JOB_LIMITS.maxBodies - 9) return { ok: false, reason: 'Workshop body limit reached. Finish the first job before accepting another.' };
+    if (bodies(w).length + 5 + def.count > RIG_JOB_LIMITS.maxBodies) return { ok: false, reason: 'Workshop body limit reached. Finish the first job before accepting another.' };
     if (!w.bench?.pos || state.world?.currentSectorId !== w.bench.sectorId) return { ok: false, reason: 'Accept this order at the workshop in its home sector.' };
-    const pickup = clearPatch(w, worldPoint(w, def.pickup), id === 'needle' ? 145 : 165);
+    const pickup = clearPatch(w, worldPoint(w, def.pickup), def.pickupRadius ?? (id === 'needle' ? 145 : 165));
     const destination = pickup && clearPatch(w, worldPoint(w, def.destination), 110, pickup);
     if (!pickup || !destination) return { ok: false, reason: 'The nearby work site is obstructed. Clear the local traffic and try the order again; nothing was spent.' };
     const job = { id, title: def.title, stage: 'pickup', acceptedAt: state.simTime || 0,
@@ -61,22 +85,30 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
     const spawned = [];
     const spawn = spec => { const e = physics.spawnBody(spec); if (e) spawned.push(e); return e; };
     try {
-      const receiver = spawn(bodySpec(w, job, 'receiver', { x: job.destination.x + 65, z: job.destination.z },
+      const receiver = spawn(bodySpec(w, job, 'receiver', { x: job.destination.x + (def.westbound ? 0 : 65), z: job.destination.z + (def.westbound ? 65 : 0) },
         { radius: 19, mass: 100000, dynamic: false, placeId: 'place_maintenance_gantry' }));
       if (!receiver) throw new Error('Receiver could not enter the world.');
       job.receiverId = receiver.id;
       for (let i = 0; i < def.count; i += 1) {
         const token = `${w.ownerId}:${id}:${i + 1}`;
-        const at = { x: job.pickup.x + (i - (def.count - 1) / 2) * 39, z: job.pickup.z + 55 + (i % 2) * 28 };
-        const e = spawn(bodySpec(w, job, 'cargo', at, { radius: def.radius, mass: def.mass * (id === 'kiln' && i === 1 ? 1.4 : 1), hull: def.hull, placeId: def.asset, token }));
+        const across = (i - (def.count - 1) / 2) * 39, behind = 55 + (i % 2) * 28;
+        const at = def.westbound ? { x: job.pickup.x + behind, z: job.pickup.z + across }
+          : { x: job.pickup.x + across, z: job.pickup.z + behind };
+        const load = def.loads?.[i];
+        const e = spawn(bodySpec(w, job, 'cargo', at, { radius: def.radius,
+          mass: load?.mass ?? def.mass * (id === 'kiln' && i === 1 ? 1.4 : 1),
+          hull: load?.hull ?? def.hull, placeId: def.asset, token, label: load?.label }));
         if (!e) throw new Error('A cargo body could not enter the world.');
         job.cargoIds.push(e.id);
         job.cargo.push({ id: e.id, token, origin: { ...at }, collectedByRig: null, travelled: 0, paid: false, lost: false });
       }
       // Two rows make a physical throat. The alternate wide route stays open around them.
       for (const side of [-1, 1]) for (let row = 0; row < 2; row += 1) {
-        const e = spawn(bodySpec(w, job, 'freight frame', { x: job.pickup.x + side * (id === 'needle' ? 48 : 92), z: job.pickup.z - 65 + row * 52 },
-          { radius: id === 'needle' ? 24 : 30, mass: 100000, dynamic: false, placeId: 'place_construction_frame' }));
+        const across = side * (def.throatHalfWidth ?? (id === 'needle' ? 48 : 92)), along = -65 + row * 52;
+        const at = def.westbound ? { x: job.pickup.x + along, z: job.pickup.z + across }
+          : { x: job.pickup.x + across, z: job.pickup.z + along };
+        const e = spawn(bodySpec(w, job, 'freight frame', at,
+          { radius: def.frameRadius ?? (id === 'needle' ? 24 : 30), mass: 100000, dynamic: false, placeId: 'place_construction_frame' }));
         if (!e) throw new Error('The route could not enter the world.');
         job.obstacleIds.push(e.id);
       }
@@ -186,16 +218,54 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
     return { ok: accepted.length > 0, reason: accepted.length ? null : rejected[0]?.reason || 'No unpaid cargo remains.', accepted, rejected };
   }
 
-  function deliver(w, id = w.activeJobId) {
+  function deliver(w, id = w.activeJobId, selection = null) {
+    if (deliveryTransactions.has(state)) return { ok: false, reason: 'A handover is already in progress.' };
+    deliveryTransactions.add(state);
+    try { return commitDelivery(w, id, selection); }
+    finally { deliveryTransactions.delete(state); }
+  }
+
+  function commitDelivery(w, id, selection) {
     update(w);
     const quote = deliveryQuote(w, id), job = w.jobs?.[id];
     if (!quote.ok) { if (job) job.lastReject = quote.reason; return quote; }
+    if (selection) {
+      const line = quote.accepted.find(c => c.id === selection.id);
+      const body = entity(state, selection.id);
+      if (!line || !Number.isInteger(selection.generation) || selection.generation <= 0
+        || body?.occupantGeneration !== selection.generation || body.ownerId !== state.playerId
+        || body.data?.playerOwned !== true || line.token !== selection.token
+        || line.amount !== selection.amount) {
+        return { ok: false, reason: 'That original or its receipt changed. Inspect the handover again.' };
+      }
+      quote.accepted = [line];
+    }
+    // Native release emits tether:broken synchronously. Reserve the transaction
+    // before release, then verify every original again before any receipt/credit.
+    // A callback may save the unpaid released load or replace its life; neither
+    // authorizes a receipt for the replacement. Failed validation leaves it loose.
+    const plans = quote.accepted.map(line => {
+      const record = job.cargo.find(c => c.id === line.id), body = original(w, job, record);
+      return { line, record, body, generation: body?.occupantGeneration,
+        ownerId: body?.ownerId, playerOwned: body?.data?.playerOwned };
+    });
+    for (const { body } of plans) {
+      for (const rig of w.rigs) if (rig.cargoIds?.includes(body.id)) physics.releaseCargo(w, rig.id, body.id);
+    }
+    const current = deliveryQuote(w, id);
+    if (state.rigWorkshop !== w || w.jobs?.[id] !== job || job.settled || !current.ok
+      || plans.some(p => original(w, job, p.record) !== p.body
+        || p.body.occupantGeneration !== p.generation || p.body.ownerId !== p.ownerId
+        || p.body.data?.playerOwned !== p.playerOwned || p.record.paid
+        || job.cargo.find(c => c.id === p.line.id) !== p.record
+        || !current.accepted.some(c => c.id === p.line.id && c.token === p.line.token && c.amount === p.line.amount))) {
+      return { ok: false, reason: 'The handover changed while releasing the restraint. No payment or custody was transferred; inspect the loose originals again.' };
+    }
     // Commit custody and payout receipt before publishing to economy. Its writer remains sole owner of credits.
     let amount = 0;
     for (const line of quote.accepted) {
       const record = job.cargo.find(c => c.id === line.id), e = original(w, job, record);
       if (record.paid || !e) continue;
-      for (const rig of w.rigs) if (rig.cargoIds?.includes(e.id)) physics.releaseCargo(w, rig.id, e.id);
       record.paid = true;
       e.data.rigWorkshopCargo.delivered = true;
       e.data.rigWorkshopCargo.receiverId = job.receiverId;
@@ -229,6 +299,7 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
   }
 
   function settlePartial(w) {
+    if (deliveryTransactions.has(state)) return { ok: false, reason: 'A handover is already in progress.' };
     const job = w.jobs?.[w.activeJobId];
     if (!job || job.settled) return { ok: false, reason: 'No open work order.' };
     if (state.world?.currentSectorId !== job.sectorId) return { ok: false, reason: 'Return to the workshop sector to settle this order.' };
@@ -242,9 +313,34 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
     return { ok: true, paid: job.paid };
   }
 
-  function guide(w, target) {
+  function remainingCourses(w) {
+    const job = w.jobs?.[w.activeJobId];
+    if (!job || job.settled || state.world?.currentSectorId !== job.sectorId) return [];
+    const player = entity(state, state.playerId);
+    return job.cargo.filter(c => !c.paid && !c.lost).map(record => ({ record, body: original(w, job, record) }))
+      .filter(({ body }) => body?.alive !== false && body?.hull > 0 && body?.pos
+        && body.ownerId === state.playerId && body.data?.playerOwned === true
+        && Number.isInteger(body.occupantGeneration) && body.occupantGeneration > 0
+        && !w.rigs.some(r => physics.isCargoSecured?.(w, r.id, body.id)))
+      .map(({ record, body }) => ({ jobId: job.id, id: body.id, generation: body.occupantGeneration,
+        token: record.token, name: body.data?.name || 'Original cargo', mass: body.mass,
+        integrity: Math.round(100 * Math.max(0, Math.min(1, body.hull / body.hullMax))),
+        distance: Math.round(distance(player?.pos, body.pos)) }));
+  }
+
+  function guide(w, target, selection = null) {
     if (!w.bench) return { ok: false, reason: 'The workshop has not been charted yet.' };
     const job = w.jobs?.[w.activeJobId];
+    if (selection) {
+      const line = remainingCourses(w).find(c => c.id === selection.id && c.jobId === selection.jobId
+        && c.generation === selection.generation && c.token === selection.token);
+      if (target !== 'pickup' || !line) return { ok: false, reason: 'That original is no longer loose on this work order. Inspect the remaining loads again.' };
+      const body = entity(state, line.id);
+      bus.emit('ui:setCourse', { pos: { ...body.pos }, sectorId: job.sectorId, autopilot: false,
+        targetEntityId: body.id, waypointKind: 'local', arrivalRadius: 65,
+        label: line.name, reason: 'Approach this original slowly. The marker follows the body; secure it with your assembled rig.' });
+      return { ok: true };
+    }
     const useBench = target === 'bench' || !job;
     const usePickup = target === 'pickup' || (!target && job && job.stage === 'pickup');
     const remaining = usePickup ? (job?.cargo || []).filter(c => !c.paid && !c.lost
@@ -263,5 +359,5 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
       reason: useBench ? 'Inspect, change, repair, or recover your machine.' : usePickup ? 'Fly the rig to the cargo. Slow down, then secure the nearest original.' : 'Deliver the physical cargo inside the gantry circle at low speed.' });
     return { ok: true };
   }
-  return { accept, update, recordLoss, deliveryQuote, deliver, settlePartial, guide };
+  return { accept, update, recordLoss, deliveryQuote, deliver, settlePartial, guide, remainingCourses };
 }

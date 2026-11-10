@@ -6,7 +6,7 @@ import { physics } from '../../src/core/physics.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../../src/runtime/authoritativeSystemManifest.js';
 import { PRODUCTION_FEATURES } from '../../src/runtime/runtimeProfiles.js';
 import { applyFeatureConfigToMaps, snapshotFeatureMaps, restoreFeatureMaps } from '../../src/data/featureFlags.js';
-import { TETHYS_TALLY as C } from '../../src/data/tethysTallyPassage.js';
+import { TETHYS_TALLY as C, isTallyCourier } from '../../src/data/tethysTallyPassage.js';
 import { world } from '../../src/systems/world.js';
 import { traffic } from '../../src/systems/traffic.js';
 import { npcJobsRuntime } from '../../src/systems/npcJobsRuntime.js';
@@ -24,7 +24,7 @@ import { save } from '../../src/save/saveSystem.js';
 // Production owners, ordinary traffic producer and original authored keg. Unrelated world encounters
 // are not ticked. This is a focused native route, not a full world/player-camera acceptance claim.
 export async function tethysTallyNativeFixture({
-  native = true, residency = false, seed = 4242
+  native = true, residency = false, seed = 4242, isolatePassage = false
 } = {}) {
   const flags = snapshotFeatureMaps();
   applyFeatureConfigToMaps(PRODUCTION_FEATURES);
@@ -55,6 +55,16 @@ export async function tethysTallyNativeFixture({
   }));
   state.playerId = player.id;
   applyFrameOrigin(state, snapFrameOrigin(player.pos, {}));
+  // A controlled hold/Continue fixture excludes unrelated live traffic, not the keg's
+  // physics. Full-roster tests separately cover incidental clearance by working ships.
+  // This is NOT evidence that the ordinary inhabited route always produces a hold.
+  if (isolatePassage) {
+    for (const e of [...state.entityList]) {
+      if (e.type === 'ship' && e.id !== player.id && !isTallyCourier(e)) {
+        owner.helpers.removeEntity(e.id);
+      }
+    }
+  }
   const phys = sim.registry.get('physics');
   if (native) assert.equal(await phys.prepareBackend(state), true);
   return {

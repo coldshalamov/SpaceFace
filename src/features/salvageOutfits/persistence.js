@@ -41,6 +41,9 @@ export function makeSalvageMeeting({ id, sectorId, anchor, variant, now = 0, mem
       // Trust changes decisions, not just text: a helped cutter leaves the light crate alone.
       favorsPlayer: !distrustsPlayer(memory?.[c.id]) && (memory?.[c.id]?.helped || 0) > (memory?.[c.id]?.cheated || 0),
       cautious: distrustsPlayer(memory?.[c.id]),
+      // Latchkey's kept count is earned only by completed three-way recovery.
+      // Store the lesson on this meeting so later memory changes cannot rewrite a live job.
+      learnedMassLimit: c.id === 'latch' && (memory?.latch?.kept || 0) > 0,
     }])),
   };
   if (meeting.crews.latch.favorsPlayer) {
@@ -52,6 +55,12 @@ export function makeSalvageMeeting({ id, sectorId, anchor, variant, now = 0, mem
   if (meeting.crews.latch.cautious) {
     meeting.crews.latch.targetId = 'cache'; meeting.bodies.cache.claim = 'latch';
     meeting.bodies.core.claim = 'keel'; meeting.crews.latch.pos.x += 120;
+  }
+  if (meeting.crews.latch.learnedMassLimit && !meeting.crews.latch.cautious
+    && shape.latchTarget === 'core') {
+    const target = meeting.crews.latch.favorsPlayer ? 'frame' : 'cache';
+    meeting.crews.latch.targetId = target; meeting.bodies[target].claim = 'latch';
+    meeting.bodies.core.claim = 'keel';
   }
   return meeting;
 }
@@ -68,7 +77,7 @@ export function normalizeSalvageOutfits(raw) {
     mem.events = (Array.isArray(src.events) ? src.events : []).filter(e => plain(e)
       && safeId(e.id, 240) && safeId(e.meetingId) && ['helped', 'kept', 'cheated'].includes(e.kind))
       .slice(-L.memoryEvents).map(e => ({ id: e.id, meetingId: e.meetingId, kind: e.kind,
-        cause: ['player_damage', 'promise_broken', 'split_kept', 'cooperate', 'rescue'].includes(e.cause) ? e.cause : e.kind,
+        cause: ['player_damage', 'promise_broken', 'split_kept', 'three_way_kept', 'three_way_broken', 'cooperate', 'rescue'].includes(e.cause) ? e.cause : e.kind,
         at: positive(e.at) }));
     mem.lastEvent = mem.events.length ? mem.events[mem.events.length - 1] : null;
   }
@@ -105,6 +114,7 @@ export function normalizeSalvageOutfits(raw) {
       row.lastRequestAt = -10; row.overcommitted = c.overcommitted === true;
       row.stalls = integer(c.stalls, 100); row.favorsPlayer = c.favorsPlayer === true;
       row.cautious = c.cautious === true;
+      row.learnedMassLimit = c.learnedMassLimit === true;
     }
     if (plain(src.receipts)) for (const [key, receipt] of Object.entries(src.receipts).slice(0, 24)) {
       if (safeId(key, 240) && key.startsWith(`${id}:`) && plain(receipt)) {
@@ -113,11 +123,11 @@ export function normalizeSalvageOutfits(raw) {
       }
     }
     const a = src.agreement;
-    if (plain(a) && ['split', 'cooperate', 'rescue'].includes(a.type)
+    if (plain(a) && ['split', 'cooperate', 'rescue', 'three_way'].includes(a.type)
       && ['active', 'complete', 'broken'].includes(a.status)) {
       m.agreement = { type: a.type, status: a.status, crewId: a.type === 'rescue' ? 'latch' : 'keel',
         pieceId: a.type === 'rescue' ? 'core' : 'frame', acceptedAt: positive(a.acceptedAt),
-        bonus: positive(a.bonus, 500), receiptId: `${id}:agreement:${a.type}` };
+        bonus: a.type === 'three_way' ? 0 : positive(a.bonus, 500), receiptId: `${id}:agreement:${a.type}` };
     }
     m.status = Object.values(m.bodies).every(b => b.status !== 'live') ? 'complete' : 'working';
     out.meetings[id] = m;
