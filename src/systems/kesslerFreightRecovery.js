@@ -8,7 +8,10 @@ export function tickKesslerRecovery(owner){
  if(!s||s.mode!=='flight'||s.run?.kind==='survival'||s.physicsVenue?.active||s.ui?.docked||s.player?.flags?.docked||s.world?.currentSectorId!==KESSLER_SCALE.sectorId||!p?.alive||![p.pos?.x,p.pos?.z].every(Number.isFinite)){clearKesslerRecovery(owner);return;}
  let selected;
  for(const w of s.entityList||[]){const d=w?.data,receipt=d?.kesslerReceipt;if(!w?.alive||s.entities.get(w.id)!==w||w.type!=='payload'||d?.jettisonedCargo!==true||d.kesslerRead!==true||d.physicalCustodyOnly||!Number.isSafeInteger(w.occupantGeneration)||!Number.isFinite(receipt?.plateRead)||!Number.isFinite(receipt?.trueRead)||![w.pos?.x,w.pos?.z].every(Number.isFinite)||typeof d.commodityId!=='string')continue;
-  const quantity=d.salvagePool&&typeof d.salvagePool==='object'?d.salvagePool[d.commodityId]:d.amount;
+  // Pool mirrors the remaining cargo units but predates some saved pods; an absent or
+  // unreadable key falls back to the pod's stamped amount rather than losing the fix.
+  const poolQty=d.salvagePool&&typeof d.salvagePool==='object'?d.salvagePool[d.commodityId]:undefined;
+  const quantity=Number.isFinite(poolQty)?poolQty:d.amount;
   if(!Number.isFinite(quantity)||quantity<=0)continue;
   const distance=Math.hypot(w.pos.x-p.pos.x,w.pos.z-p.pos.z);if(distance>400||Math.hypot(w.pos.x-pad.x,w.pos.z-pad.z)>600||selected&&distance>=selected.distance)continue;
   selected={w,d,receipt,quantity,distance};
