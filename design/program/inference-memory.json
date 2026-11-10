@@ -132,32 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-hail-registry",
-      "date": "2026-11-04",
-      "wf": "WF-09",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "an anonymous hull's hail answers with its painted ship name and captain instead of its job description",
-      "fingerprint": "verb=hear,subject=traffic-hail,sector=lanes,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "21e01ef13901",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-chain-kill",
-      "wf": "WF-05",
-      "reason": "The exact moving aftermath wreck carries the pilot first kill into a native second collision, one replay mark and one worker comms receipt",
-      "fingerprint": "verb=chain,subject=original-wreck,sector=combat,domain=wf-05",
-      "date": "2026-11-04",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "references": [],
-      "integration": "live",
-      "commit": "b1c33da3aa98",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-station-nightside",
       "wf": "WF-04",
       "reason": "Released station window and berth-light surfaces retain their authored emission on the dark side without new geometry or point lights",
@@ -1689,6 +1663,32 @@
       "references": [],
       "integration": "live",
       "commit": "59288e9ca8b7",
+      "verification": "focused_green"
+    },
+    {
+      "id": "words-draft-invoice-money",
+      "date": "2026-11-10",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The Crucible draft's re-roll verb, the Special-500 assessment invoice and the asteroid bore-charge cost chip printed raw money - each now reads grouped, small prices plain; the automation panel's labeled chips keep their unit symbol (chips, not prose).",
+      "fingerprint": "verb=groups-money,subject=draft-invoice-bore-chips,sector=crucible+asteroid-ops,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "96e478495881",
+      "verification": "focused_green"
+    },
+    {
+      "id": "words-miner-ops-chips",
+      "date": "2026-11-10",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The automation panel's miner-ops chips were the last 'u'-symbol holders on a spoken surface - 'Gross cut 12 u', 'Stored 4/20 u' now read whole unit words with a singular branch, one grammar for sighted and blind pilots on the same panel.",
+      "fingerprint": "verb=words-the-chips,subject=miner-ops-chips,sector=automation-panel,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "8dee7ad35fc3",
       "verification": "focused_green"
     }
   ],
