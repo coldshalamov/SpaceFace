@@ -23,7 +23,7 @@ import { ensureActivityClassified } from '../src/world/activityRuntime.js';
 test('E3: validateSystemModeDeclarations validates all production update systems', () => {
   const violations = validateSystemModeDeclarations();
   assert.deepEqual(violations, [], 'Production update order must have zero mode declaration violations');
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 220);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 221);
   // The live working states are scheduling scopes; DOCKED is the only frozen label.
   assert.deepEqual([...ALL_SIM_MODES], [SIM_MODE.FLIGHT, SIM_MODE.SWARM, SIM_MODE.YARD]);
   assert.equal(ALL_SIM_MODES.includes(SIM_MODE.DOCKED), false);
@@ -297,7 +297,7 @@ test('E3: a frozen or unknown mode has one policy — no queue and every system 
     assert.equal(shouldSkipSystemThisStep(id, catchupDockedState), true, `${id} must be skipped`);
   }
 
-  // An explicitly unknown mode is fail-closed too: no queue, and every one of the 220 production
+  // An explicitly unknown mode is fail-closed too: no queue, and every one of the 221 production
   // systems reports skipped. This is the regression for the old UNSCOPED fall-through, which ran
   // the full 140-system queue for a typo.
   const unknownState = {

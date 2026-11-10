@@ -75,9 +75,9 @@ export function tethysScaleReply(ctx, stationId, id) {
   const action = id.slice(PREFIX.length).split(':')[0];
   if (action === 'course') {
     ctx.bus?.emit('ui:setCourse', { pos: kesslerPadPosition(), sectorId: KESSLER_SCALE.sectorId,
-      label: 'Scale 4 · weigh your own freight', reason: 'Release your own unreserved cargo, settle the pod inside the open ring, compare plate and stamp, then recover it.',
+      label: 'Scale 4 · weigh your own freight', reason: 'Stop in the center of the open ring, jettison your own unreserved cargo for a gentle set-down, read plate against stamp, then recover the pod.',
       autopilot: false, source: 'station-bar:mira' });
-    return { text: '“Marked: the open ring between the freight apron and inspection desk. Launch, then use the Cargo panel to choose an unreserved lot and Jettison it. Catch the pod with your Line. Tow slowly through the open station-side approach and brake the pod inside the ring, at 8 WU/s or below. The plate reads the physical pod, not the number of units. Cut its Line and approach to collect when finished. Nothing is sold here.”', tethysScaleAnswer: true };
+    return { text: '“Marked: the open ring between the freight apron and inspection desk. Launch with your cargo still aboard and fly into its center, then brake below 2 WU/s. Choose an unreserved lot in the Cargo panel and Jettison: stopped on this deck, it releases gently behind your hull. Leave that space clear. The damped deck steadies the real pod against the Anvil’s pull. The plate reads it at 8 WU/s or below. Stay nearby to collect it after the release delay; if you catch it with your Line, release the Line first. Outside the calm deck, Jettison still throws cargo aft at speed. Existing loose freight can be towed in. Nothing is sold here.”', tethysScaleAnswer: true };
   }
   if (action === 'next') {
     if (r.furnace) ctx.bus?.emit('ui:trackMission', { missionId: r.furnace.id });

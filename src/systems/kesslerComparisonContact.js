@@ -41,6 +41,6 @@ export function tickKesslerComparison(state,bus,pad) {
  }
  if(!f.kessler_comparison_arrival&&!watch){
   f.kessler_comparison_arrival=true;
-  say(bus,'kessler_comparison_arrival',KESSLER_SCALE.sender,'Scale 4 is the open ring between the racks. Bring a jettisoned cargo pod inside ninety and settle it below eight. We read the load; we do not take it. Leave yourself room to catch it again.');
+  say(bus,'kessler_comparison_arrival',KESSLER_SCALE.sender,'Scale 4 is the open ring between the racks. Carry your cargo into its center and brake below 2 WU/s. Jettison sets it gently behind your hull here; leave that space clear. The damped deck steadies the real pod against the Anvil’s pull. The plate reads it below eight. Stay nearby to recover it after the release delay. Release any Line before collecting. We read the load; we do not take it.');
  }
 }

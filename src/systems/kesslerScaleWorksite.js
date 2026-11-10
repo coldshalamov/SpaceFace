@@ -55,6 +55,6 @@ export function kesslerScaleWaypoint(state) {
     kind: 'story', storyBeat: 1, label: 'Scale 4 · weigh your own freight',
     sectorId: KESSLER_SCALE.sectorId, sectorName: 'Tethys Junction',
     stationId: null, pos: kesslerPadPosition(),
-    reason: 'Use any fresh jettisoned cargo pod; the delivered alloys are not required. Buy or mine unreserved cargo if needed, jettison a lot from your hold, then bring that pod inside the Scale 4 ring and settle it at 8 WU/s or below. Read plate against stamp; keep your freight.',
+    reason: 'Use your own unreserved cargo; the delivered alloys are not required. Carry it into the center of the Scale 4 ring and brake below 2 WU/s. Jettison releases gently behind your hull here; keep that space clear. The damped deck steadies it against the Anvil’s pull. The plate reads the real pod at 8 WU/s or below. Stay nearby to collect after the release delay, or release its Line first if attached. Existing loose pods can still be towed in. Read plate against stamp; keep your freight.',
   };
 }

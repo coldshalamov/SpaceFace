@@ -28,7 +28,7 @@ export function kesslerScaleSpec() {
     homeSectorId: KESSLER_SCALE.sectorId,
     data: {
       kesslerScale: true, kesslerWorksiteVersion: 1, parentType: 'story_prop',
-      scanLabel: 'Scale 4 · rest a cargo pod inside the ring · freight retained',
+      scanLabel: 'Scale 4 · damped deck · rest cargo inside the ring · freight retained',
       circuitMark: true, ringRadius: KESSLER_SCALE.padRadius,
       visualRadius: KESSLER_SCALE.padRadius,
       scannerSignalKind: 'salvage',
