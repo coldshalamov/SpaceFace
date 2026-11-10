@@ -98,9 +98,16 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
   }
   /* wide 701-820 tall (1280x720): the archive's 22px route lead drops to 12px so the band starts
      where it did with no inset (y557 vs master 559) and the course track stays above the fold.
-     At <=700 tall the archive's own 6px lead stands. */
+     At <=700 tall the archive's own 6px lead stands. At 1280x820 the 16px sides narrow the route
+     so FROM/TO wrap and the band ends 10px past the fold (master fits); from 801-820 (1101-1439w)
+     the sides drop to 8px with a 4px gap (same as the >=821 rule) and the lead to 0 so the shorter
+     band clears. 701-800 (1280x720, 1366x768) and 1440+ keep the 12px lead and 16px sides. */
   @media (min-width: 1101px) and (min-height: 701px) and (max-height: 820px) {
     ${ML} .sf-mlog-card > .ml-route-host { margin-top: 12px; }
+  }
+  @media (min-width: 1101px) and (max-width: 1439px) and (min-height: 801px) and (max-height: 820px) {
+    ${ML} .sf-mlog-card { padding-left: 8px; padding-right: 8px; column-gap: 4px; }
+    ${ML} .sf-mlog-card > .ml-route-host { margin-top: 0; }
   }
   /* wide >820 tall (1440x900, 1600x900, 1920x1080): the full 20px top inset and the 4.8vh lead ran
      the band past the fold (1600x900 ~19px, 1920x1080 ~31px); a 10px top inset and a 3.6vh lead
@@ -109,11 +116,11 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
     ${ML} .sf-mlog-card { padding-top: 10px; }
     ${ML} .sf-mlog-card > .ml-route-host { margin-top: clamp(24px, 3.6vh, 46px); }
   }
-  /* ...and 1101-1365 wide (1101x900, 1194x834, 1200x900, 1280x900): the 24px sides narrowed the
-     reading column, so the title went to 3 lines and the medallions under the fold. As at
-     761-1100, the sides drop to 8px and a 4px column gap gives the dial its room back; 1366+
-     keeps 24px, where it fits. */
-  @media (min-width: 1101px) and (max-width: 1365px) and (min-height: 821px) {
+  /* ...and 1101-1439 wide (1101x900, 1194x834, 1200x900, 1280x900, 1366x900, 1366x1024): the 24px
+     sides narrowed the reading column, so the title went to 3 lines and the medallions under the
+     fold (and at 1366, Pays and Authorization wrapped to 2 lines). As at 761-1100, the sides drop
+     to 8px and a 4px column gap gives the dial its room back; 1440+ keeps 24px, where it fits. */
+  @media (min-width: 1101px) and (max-width: 1439px) and (min-height: 821px) {
     ${ML} .sf-mlog-card { padding-left: 8px; padding-right: 8px; column-gap: 4px; }
   }
   /* 761-1100 wide at any height (800x600 ... 1024x768, 900x900, 1100x900, tablet portrait): the
