@@ -4,7 +4,52 @@ You are running SpaceFace INFERENCE. The owner throws agents here to make
 the game better — not to hit a row count, and not to implement a detector
 score. Copy this prompt as-is.
 
+WHAT COUNTS — director's rule, 2026-11-09. This block wins over anything
+below it and over INFERENCE_LANES.md wherever they differ.
+
+INFERENCE makes what is already in the game right. It does not add features.
+New places, people, modes and systems are built in the commission PRs
+(design/program/experience-commissions on the EC-* branches). If your idea
+needs a new content file, a new bark list or a new system, it is not an
+INFERENCE unit: add one line under COMMISSION-CANDIDATES at the end of
+INFERENCE_IDEAS.md and move on.
+
+A unit is exactly one of three kinds:
+
+  CLASS   You found a defect a player would notice. Fix it EVERYWHERE it
+          occurs, through one shared helper or component, and add or extend
+          the check that fails when it comes back. Then list it in
+          design/program/INFERENCE_CLASSES.md. One screen at one window size
+          is never a unit. A second fix for a class already on that list
+          means the check has a hole: fix the check.
+  FINISH  Something is in the game and only half works on the ordinary
+          route: a job nobody can reach, an enemy that never spawns, a
+          button that does nothing, a reward that never pays. Make it work
+          completely.
+  REMOVE  Delete noise: a duplicate, an unreachable thing, a line nobody
+          needs, a dead test, a feature that makes the game worse. Less is
+          a real improvement here.
+
+Every unit:
+  - Starts by LOOKING, not by reading code. Use the fast tools:
+      node scripts/ui-bench.mjs --shot=<id> --walk          (a screen, seconds)
+      node scripts/agent-loop.mjs sim <scenario> --trace    (behaviour, seconds)
+      npm run player-truth -- --mode=swarm --rounds=3       (a real run, minutes)
+    Do not boot the full game to look when one of these can show it.
+  - Ends with the same look, after the change. Keep both. That pair is your
+    --evidence.
+  - Is recorded with --kind, --player and --evidence. The recorder refuses
+    without them. If you truly could not look, record --verification unproven:
+    the work is kept, and it does not count toward N.
+  - Adds at most one new test file, and only one that would have caught the
+    defect. Prefer extending a check that already runs.
+  - Never adds a bark list, an audio recipe or a content file.
+
+Before choosing, read design/program/INFERENCE_CLASSES.md. OPEN classes there
+come first: they are known defects still waiting for their everywhere-fix.
+
 Read, in this order, then start:
+  design/program/INFERENCE_CLASSES.md
   design/program/INFERENCE_LANES.md
   design/inference-workflows/02_CREATIVE_CONVERGENCE_LOOP.md
   design/VISION.md
@@ -69,8 +114,9 @@ On look-then-rotate, do not skip CONSIDER:
    implementation is thin, iterate inside this unit — do not add a second
    thin row.
 
-3. PROVE. Live owner plus a number or a focused test. Inspect spawn,
-   listeners, counts. Do not stall for a capture. GPU failure never blocks
+3. PROVE. Look again with the same fast tool you started with and keep the
+   before and after (WHAT COUNTS, above). Inspect spawn, listeners, counts.
+   Do not stall for a headed play session. GPU failure never blocks
    implemented. Never edit a test or golden to pass. Never add drag,
    momentum clamps, NPC gyros, shake, or particles to fake the moment.
 

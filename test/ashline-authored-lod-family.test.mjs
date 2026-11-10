@@ -38,12 +38,15 @@ for (const [ship, hostile] of [['dart', 'wasp_swarmer'], ['rig', 'reaver_pirate'
     const authored = await io.read(`assets/ships/parts/${file}`);
     const authoredNodes = authored.getRoot().listNodes();
     const baseNames = sourceNodes.filter(n => n.getName().startsWith('LOD0_')).map(n => n.getName()).sort();
-    assert.deepEqual(authoredNodes.filter(n => n.getName().startsWith('LOD0_')).map(n => n.getName()).sort(), baseNames);
+    const tierPrefix = `LOD${tier}_`;
+    assert.deepEqual(authoredNodes.filter(n => /^LOD\d+_/.test(n.getName())).map(n => n.getName()).sort(),
+      baseNames.map(name => name.replace(/^LOD0_/, tierPrefix)).sort());
     for (const n of authoredNodes) {
       let name = n.getName();
-      if (name.startsWith('LOD0_')) {
+      if (name.startsWith(tierPrefix)) {
         const preserve = ship === 'dart' ? name.endsWith('_Warning') : name.endsWith('_Livery');
-        if (!preserve) name = name.replace(/^LOD0_/, `LOD${tier}_`);
+        // The external file declares its actual tier, including the preserved base livery.
+        if (preserve) name = `LOD0_${name.slice(tierPrefix.length)}`;
       }
       const original = sourceNodes.find(x => x.getName() === name);
       assert.ok(original, name);
