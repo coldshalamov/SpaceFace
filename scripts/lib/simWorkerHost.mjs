@@ -1,3 +1,4 @@
+import { NINTH_MOUTH_LIGHT_VITAL_KEYS, ninthMouthLightLife, ninthMouthLightVitalValue } from './ceresNinthMouthMirror.mjs';
 // S1 Phase-B stage 6 — lane-agnostic whole-sim host.
 //
 // The sim + channel machinery that stage 0..5 grew inside wholeSimWorker.mjs,
@@ -377,6 +378,10 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
     fields.pallasSeamCutting = e.data.minerShiftActive === true;
     fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
   }
+  const ninthLife = ninthMouthLightLife(e);
+  if (ninthLife != null) {
+    for (const key of NINTH_MOUTH_LIGHT_VITAL_KEYS) fields[key] = ninthMouthLightVitalValue(e, key, ninthLife);
+  }
   const wardLife = lanternWardPresentationLife(e);
   if (wardLife != null) {
     for (const key of LANTERN_WARD_VITAL_KEYS) fields[key] = lanternWardVitalValue(e, key, wardLife);
@@ -471,6 +476,10 @@ function krakenMotionFrame(state, e) {
 
 function vitalShadowMatches(e, shadow, krakenFrame, state) {
   if (!Array.isArray(shadow)) return false;
+  const ninthLife = ninthMouthLightLife(e);
+  if (shadow.ninthMouthLightLife !== ninthLife
+    || shadow.ninthMouthLightIdentity !== (ninthLife == null ? null : e.data.ninthMouthIdentity)
+    || shadow.ninthMouthLightOn !== (ninthLife == null ? null : e.data.ninthMouthLight)) return false;
   if (e.type === 'projectile' && e.data?.kind === 'missile') {
     const data = e.data;
     if (shadow.seekerSourceGeneration !== (e.occupantGeneration ?? null)
@@ -547,6 +556,10 @@ function vitalShadowMatches(e, shadow, krakenFrame, state) {
 }
 
 function writeVitalShadow(e, shadow, krakenFrame, state) {
+  const ninthLife = ninthMouthLightLife(e);
+  shadow.ninthMouthLightLife = ninthLife;
+  shadow.ninthMouthLightIdentity = ninthLife == null ? null : e.data.ninthMouthIdentity;
+  shadow.ninthMouthLightOn = ninthLife == null ? null : e.data.ninthMouthLight;
   // Named runtime-only slots preserve every existing positional/tail vital index.
   if (e.type === 'projectile' && e.data?.kind === 'missile') {
     shadow.seekerSourceGeneration = e.occupantGeneration ?? null;

@@ -25,6 +25,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'career:origin:decline',
   'career:origin:reoffer',
   'ceresWinching:action',
+  'ceresNinthMouth:action',
   'cinderglassJob:action',
   'cinderglassJob:presentationReady',
   'claim:defenseIgnore',

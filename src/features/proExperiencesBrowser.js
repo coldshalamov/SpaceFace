@@ -1,3 +1,5 @@
+import { createCeresNinthMouthPrompt } from '../ui/ceresNinthMouthPrompt.js';
+import { createCeresNinthMouthVisuals } from '../render/ceresNinthMouthVisuals.js';
 import { createCeresWinchingPrompt } from '../ui/ceresWinchingPrompt.js';
 import { createRigWorkshopView } from './rigWorkshop/view.js';
 // The production browser's existing UI and prepared-frame owners drive these adapters.
@@ -39,6 +41,8 @@ export function mountProExperiencesBrowser(ctx = {}) {
   if (!registeredCinderglass) cinderglass.init(ctx);
   const outfits = mountSalvageOutfitsPresentation(ctx);
   const ceresWinching = createCeresWinchingPrompt(ctx);
+  const ninthMouth = createCeresNinthMouthPrompt(ctx);
+  let ninthMouthWorld = null;
   const off = [];
   let disaster = null, rig = null, breakwaterWorld = null, scene = null, renderer = null, destroyed = false;
   let uiElapsed = 0, tenderSignature, circuitSignature, breakwaterSignature;
@@ -55,6 +59,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
   for (const event of ['save:restoring', 'sector:exit', 'game:new', 'game:newGame']) on(event, reset);
 
   function releaseWorld() {
+    ninthMouthWorld?.destroy(); ninthMouthWorld = null;
     disaster?.dispose(); disaster = null; rig?.destroy(); rig = null; breakwaterWorld?.destroy(); breakwaterWorld = null; scene = renderer = null;
     releaseSalvageTenderPresentation(state);
     releaseShipbreakingYardPresentation(state);
@@ -64,10 +69,12 @@ export function mountProExperiencesBrowser(ctx = {}) {
     const nextScene = state.render?.scene, nextRenderer = state.render?.renderer;
     if (!nextScene?.add) return null;
     if (disaster && (scene !== nextScene || renderer !== nextRenderer)) {
+      ninthMouthWorld?.destroy(); ninthMouthWorld = null;
       disaster.dispose(); disaster = null; rig?.destroy(); rig = null; breakwaterWorld?.destroy(); breakwaterWorld = null;
     }
     if (!disaster) {
       scene = nextScene; renderer = nextRenderer;
+      ninthMouthWorld = createCeresNinthMouthVisuals({ state, scene });
       disaster = createIndustrialDisastersPresentation({ ...ctx, scene, renderer });
       rig = createRigWorkshopView({ state, bus, scene });
       breakwaterWorld = mountBreakwaterSpurPresentation({ ...ctx, scene, THREE });
@@ -78,6 +85,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
     frame(dt, currentState = state, hudVisible = true) {
       if (destroyed || currentState !== state) return;
       ceresWinching.frame();
+      ninthMouth.frame();
       outfits?.draw(currentState, hudVisible);
       cinderglass.frame(dt, currentState, hudVisible);
       // Domain mirrors recover offers across a worker attach or UI remount. Ordinary
@@ -111,6 +119,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
     present(alpha = 1) {
       if (destroyed) return;
       ensureDisaster()?.update(alpha);
+      ninthMouthWorld?.update(alpha);
       rig?.frame(1 / 60, state);
       breakwaterWorld?.update(alpha);
       updateCounterweightCircuitPresentation(state, bus);
@@ -126,6 +135,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
       if (registeredBreakwater) breakwater.close(); else breakwater.destroy();
       if (registeredCinderglass) cinderglass.close(); else cinderglass.destroy();
       ceresWinching.destroy();
+      ninthMouth.destroy();
       outfits?.destroy(); releaseWorld();
       if (OWNERS.get(state) === api) OWNERS.delete(state);
     },

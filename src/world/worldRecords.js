@@ -1,3 +1,4 @@
+import { captureNinthMouthBody, isNinthMouthBody, isNinthMouthRecordIdentity, ninthMouthRoleForRecord, ninthMouthBodySpec } from './ceresNinthMouthBodies.js';
 import { starterBuoyRecordMarker, starterBuoyFromRecord, isStarterBuoyRecord } from '../missions/starterWorkday.js';
 import { captureOrchardWorkDamage } from '../combat/orchardWorkDamage.js';
 import {claimsTallyAssessor} from './tallyThreeIdentity.js';
@@ -348,6 +349,18 @@ export function* normalizeRecordsBagChunked(input) {
  * @returns {object|null}
  */
 export function normalizeRecord(raw, fallbackId) {
+  const ninthSlot = isNinthMouthRecordIdentity({recordId:fallbackId});
+  if (ninthSlot && (!raw || typeof raw !== 'object' || Array.isArray(raw)))
+    raw = {recordId:fallbackId,extra:{ninthMouthInvalid:true}};
+  if (ninthSlot && raw.recordId != null && raw.recordId !== fallbackId)
+    raw = {...raw,recordId:fallbackId,extra:{...raw.extra,ninthMouthInvalid:true}};
+  const ninthOriginal = isNinthMouthRecordIdentity(raw) || ninthSlot;
+  if (ninthOriginal && !ninthMouthRoleForRecord({...raw,recordId:raw.recordId || fallbackId}))
+    raw = {...raw,extra:{...raw.extra,ninthMouthInvalid:true}};
+  if (ninthOriginal) raw = {...raw, kind:DURABLE_KINDS.has(raw.kind)?raw.kind:RECORD_KIND.NPC,
+    sectorId:typeof raw.sectorId === 'string' && raw.sectorId ? raw.sectorId : 'sector_ceres_belt',
+    homeSectorId:typeof raw.homeSectorId === 'string' && raw.homeSectorId ? raw.homeSectorId : 'sector_ceres_belt',
+    pos:finiteXZ(raw.pos)?raw.pos:{x:0,z:0}};
   const fallbackIdentity = typeof fallbackId === 'string' && fallbackId.startsWith('lantern-ward:')
     ? { recordId: fallbackId } : null;
   const wardSlot = fallbackIdentity && (isLanternWardRecordIdentity(fallbackIdentity) || isLanternWardActorRecord(fallbackIdentity));
@@ -398,7 +411,7 @@ export function normalizeRecord(raw, fallbackId) {
     rot: Number.isFinite(raw.rot) ? raw.rot : 0,
     angVel: Number.isFinite(raw.angVel) ? raw.angVel : 0,
     // identity / spawn
-    type: isStarterBuoyRecord(raw) || (raw.type === 'payload' && wardHardware) ? 'payload'
+    type: (ninthOriginal && raw.type === 'payload') || isStarterBuoyRecord(raw) || (raw.type === 'payload' && wardHardware) ? 'payload'
       : raw.type === 'wreck' || raw.type === 'fx' || raw.type === 'ship' ? raw.type : 'ship',
     enemyTypeId: raw.enemyTypeId || null,
     shipDefId: raw.shipDefId || raw.defId || null,
@@ -601,6 +614,7 @@ function itineraryStationId(itinerary, keys) {
 /** Convert supported traffic endpoint itineraries into the deterministic catch-up language. */
 export function canonicalTrafficIntent(entity, opts = {}, previous = null) {
   const d = entity && entity.data || {};
+  if (isNinthMouthBody(entity)) return null;
   const explicit = opts.intent !== undefined
     ? opts.intent
     : (d.abstractIntent || d.activityIntent || null);
@@ -734,6 +748,7 @@ export function recordsForSector(bag, sectorId) {
 /** Whether a record should produce a live entity at FULL rematerialize. */
 export function recordShouldRematerialize(rec, tier) {
   if (!rec || rec.alive === false) return false;
+  if (isNinthMouthRecordIdentity(rec) && !ninthMouthRoleForRecord(rec)) return false;
   if (rec.outcome === 'defeated' || rec.outcome === 'destroyed') return false;
   // These finite originals have exact native recipes. Refuse before world's
   // enemyTypeId shortcut can replace a corrupted civic body with an enemy ship.
@@ -773,6 +788,7 @@ export function entityHasDurableMarkers(entity, playerId) {
   if (explicitOwner != null && explicitOwner !== 'worldRecords') return false;
   if (entity.type === 'station' && entity.data && entity.data.isGate) return false;
   if (entity.type === 'station' && entity.data && entity.data.stationId) return false;
+  if (isNinthMouthBody(entity)) return true;
   if (entity.type === 'asteroid') return false;
   if (entity.type === 'payload') {
     if (isLanternWardHardwareEntity(entity)
@@ -811,6 +827,7 @@ export function entityIsDurableCandidate(entity, playerId) {
  * Classify durable kind for a live entity.
  */
 export function classifyEntityKind(entity) {
+  if (isNinthMouthBody(entity)) return RECORD_KIND.NPC;
   const d = entity && entity.data || {};
   if (entity.type === 'payload' && isLanternWardHardwareEntity(entity)) return RECORD_KIND.NPC;
   if (entity.type === 'wreck' || d.wreckClass || d.markerId) {
@@ -877,6 +894,7 @@ export function captureEntityRecord(entity, opts = {}) {
   const d = entity.data || {};
   const starterBuoy = kind === RECORD_KIND.MISSION_TARGET && sectorId === 'sector_helios_prime' ? starterBuoyRecordMarker(entity) : null;
   const lanternHardware = captureLanternWardHardware(entity);
+  const ninthBody = captureNinthMouthBody(entity);
   const existingId = d.worldRecordId || opts.recordId || null;
   const previous = opts.previousRecord
     || opts.existingRecord
@@ -989,7 +1007,7 @@ export function captureEntityRecord(entity, opts = {}) {
     vel: entity.vel,
     rot: entity.rot,
     angVel: entity.angVel,
-    type: starterBuoy || lanternHardware ? 'payload' : entity.type === 'wreck' || entity.type === 'fx' ? entity.type : 'ship',
+    type: starterBuoy || lanternHardware || (ninthBody && entity.type === 'payload') ? 'payload' : entity.type === 'wreck' || entity.type === 'fx' ? entity.type : 'ship',
     enemyTypeId: d.lootTableId || d.enemyTypeId || null,
     shipDefId: d.defId || null,
     factionId: entity.factionId || d.factionId || null,
@@ -1013,7 +1031,7 @@ export function captureEntityRecord(entity, opts = {}) {
     retentionClass,
     trafficRole: d.trafficRole || null,
     trafficLabel: d.trafficLabel || null,
-    itinerary: lanternHardware || d.itinerary || (opts.itinerary || null),
+    itinerary: ninthBody || lanternHardware || d.itinerary || (opts.itinerary || null),
     cargoManifest: d.cargoManifest || null,
     freightDockSeq: Number.isFinite(d.freightDockSeq) ? d.freightDockSeq : null,
     wreckClass: d.wreckClass || null,
@@ -1245,6 +1263,10 @@ export function markRecordDestroyed(bag, recordId, opts = {}) {
 export function spawnSpecFromRecord(record) {
   const rec = normalizeRecord(record);
   if (!rec || !recordShouldRematerialize(rec, 'FULL')) return null;
+  if (isNinthMouthRecordIdentity(record)) {
+    const role = ninthMouthRoleForRecord(record);
+    return role ? ninthMouthBodySpec(role, record) : null;
+  }
   const starterBuoy = starterBuoyFromRecord(rec);
   if (starterBuoy) return starterBuoy;
   // A malformed versioned starter marker must not fall through into a generic ship.
