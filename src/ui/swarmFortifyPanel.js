@@ -73,7 +73,7 @@ export const crucibleFortifyScreen = {
       this._reveal(service || this._structures);
     });
     overview.append(this._balance, devicesLink, this._fieldLink);
-    title.append(heading, make('p', 'k-sentence', 'Build while paused. Your first defense establishes three fixed approaches. Defenses remain between waves and can be destroyed.'), overview);
+    title.append(heading, make('p', 'k-sentence sf-fortify-intro', 'Build while paused. First defense fixes three approaches. Defenses stay between waves unless destroyed.'), overview);
     const layout = make('section', 'sf-fortify-layout'); layout.dataset.sfScroll = 'fortify';
     const plan = make('section', 'sf-fortify-plan'); plan.setAttribute('aria-label', 'Arena construction positions');
     this._map = svg(this._doc, 'svg', { viewBox: '-560 -560 1120 1120', role: 'img', 'aria-label': 'Live paused field: physical obstacles, defenses, approach corridors and selected device reach' });
