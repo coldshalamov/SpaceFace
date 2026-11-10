@@ -1,3 +1,4 @@
+import { furnaceDetailChoices, furnaceDetailReply } from './furnaceDetailConversation.js';
 import { tethysScaleChoices, tethysScaleReply } from './tethysScaleConversation.js';
 import { heliosCampaignChoices, heliosCampaignReply } from './heliosCampaignHandoff.js';
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
@@ -908,6 +909,11 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   stampAceRouteRumor(listed, stationId, state);
   stampLastShiftLocalReport(listed, stationId, state);
+  const furnaceHost = listed.find(c => c.id === 'contact_station_ceres_0' && c.role === 'barkeep');
+  if (furnaceHost) {
+    const choices = furnaceDetailChoices(state, stationId, furnaceHost);
+    if (choices.length) furnaceHost.choices = [...choices, ...getChoices(furnaceHost.role, furnaceHost)];
+  }
   stampCollectiveHours(listed, stationId, state);
   stampQuinnsStool(listed, stationId, state);
   // The wake silences this room's ambient patrons, not its mission and service contacts.
@@ -1765,6 +1771,8 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }
   if (contact && contact.storyBuyer) return storyBuyerReply(contact, choiceId);
+  const furnaceReply = furnaceDetailReply(ctx, stationId, contact, choiceId);
+  if (furnaceReply) return furnaceReply;
   if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
   if (contact && contact.id === SORI_COMPARISON_CONTACT_ID) return soriComparisonReply(state, stationId, choiceId);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
