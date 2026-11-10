@@ -6860,7 +6860,7 @@ _stepAnimation(now) {
       : offers.length
       ? offers.map((offer) => {
         const tint = memoryTint(offer.ageS);
-        return `<div class="gm-bk-row"><span class="gm-bk-station">${escapeMapHtml(offer.stationName)}</span><span class="gm-bk-val ${tint.key}">${offer.sell} cr · ${ageText(offer.ageS)}</span></div>`;
+        return `<div class="gm-bk-row"><span class="gm-bk-station">${escapeMapHtml(offer.stationName)}</span><span class="gm-bk-val ${tint.key}">${Number(offer.sell).toLocaleString('en-US')} cr · ${ageText(offer.ageS)}</span></div>`;
       }).join('')
       : dataStateHtml('empty', {
         code: 'NO_QUOTES',

@@ -79,7 +79,7 @@ export const customsPrompt = {
       : Math.max(0, p.units | 0);
     const fine = Number.isFinite(p.fine) ? p.fine : null;
     const seized = units > 0 ? ` · ${units} unit${units === 1 ? '' : 's'} seized` : '';
-    const cost = fine != null ? `fined ${fine} cr` : 'contraband flagged';
+    const cost = fine != null ? `fined ${Math.max(0, Math.round(fine)).toLocaleString('en-US')} cr` : 'contraband flagged';
     this._bus?.emit?.('toast', {
       text: `CUSTOMS BUST — ${factionShort(p.factionId)} ${cost}${seized}; standing damaged.`,
       kind: 'warn', ttl: 5,

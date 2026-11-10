@@ -183,7 +183,7 @@ export function sortieTallyLine({ kills = 0, rocks = 0, credits = 0 } = {}) {
   const parts = [];
   if (kills > 0) parts.push(`${kills} kill${kills === 1 ? '' : 's'}`);
   if (rocks > 0) parts.push(`${rocks} rock${rocks === 1 ? '' : 's'}`);
-  if (credits > 0) parts.push(`${credits} cr`);
+  if (credits > 0) parts.push(`${credits.toLocaleString('en-US')} cr`);
   return parts.length ? `SORTIE — ${parts.join(' · ')}` : '';
 }
 
