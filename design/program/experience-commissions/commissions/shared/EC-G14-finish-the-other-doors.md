@@ -8,6 +8,8 @@
 
 **Build first:** the Dione range as the practice door.
 
+**Also written out, 2026-11-10:** getting in fast — seconds to the title, seconds to a run, nothing to choose unless asked — is in [19 — What players expect](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/19_WHAT_PLAYERS_EXPECT.md).
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
