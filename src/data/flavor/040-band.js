@@ -242,6 +242,7 @@ export default defineFlavorPack({
         { id: 'static_72', text: 'A loan man called Chili took a deckhand\u2019s coat on the vig. The coat fit better than the debt.' },
         { id: 'static_73', eventKey: 'player.downed_raider', repBand: 'hostile', text: 'Tessera put one of ours down. The next toll on that lane buys their hull.' },
         { id: 'static_74', eventKey: 'player.downed_raider', repBand: 'neutral', text: 'Word is the Tessera sank a raider wing today. Nobody has priced that name yet. Yet.' },
+        { id: 'static_75', eventKey: 'player.line_class_up', text: 'New rope in the lanes. Mind your cargo.' },
       ],
     },
     {

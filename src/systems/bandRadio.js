@@ -121,6 +121,11 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
     }
     return keys;
   }
+  if (event === 'line:classChanged') {
+    // PL-56: the lineProgression owner emits this only when the class ladder moves UP —
+    // a bigger Line on the lane is exactly what the Static would gossip about.
+    return ['player.line_class_up'];
+  }
   if (event === 'warrant:hunterDisabled') {
     // The Margin reports the kill only when the player's hull did it — a hunter downed by another
     // party is the bond office's story, not the Tessera's.
@@ -234,7 +239,7 @@ export const bandRadio = {
     });
     this._listen('band:bearingResolved', (payload) => this._acceptBearingResolution(payload));
     this._listen('band:bearingUnavailable', (payload) => this._rejectBearingResolution(payload));
-    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed']) {
+    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
         for (const eventKey of deriveBandEventKeys(event, payload || {}, this.state)) {
