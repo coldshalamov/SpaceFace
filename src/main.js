@@ -1,0 +1,1466 @@
+// Boot sequence (ARCHITECTURE §1.3). Builds state + bus + registry, inits all systems, starts a
+// flight scene, and runs the loop. The skeleton bootstraps a playable scene directly; once the
+// save system is implemented it owns newGame() and this delegates to it.
+import * as THREE from 'three';
+import { createGameState } from './core/gameState.js';
+import { clearEntityRuntime } from './core/entity.js';
+import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
+import { createBus } from './core/eventBus.js';
+import { resolveSimLaneFlags, createSimLaneRuntime } from './core/simLaneMain.js';
+import { startLoop } from './core/loop.js';
+import { createPresentationJournal } from './core/presentationJournal.js';
+import { entityIsJournaled } from './world/presentationSources.js';
+import { configureRacingCorridorSession } from './world/racingCorridor.js';
+import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
+import { canonicalStringify } from './core/simSnapshot.js';
+import { installLiveClipDirector } from './ui/clipCaptureRuntime.js';
+
+import { listUserMods, hasUserContent, userContentDirLabel } from './data/userContent.js';
+import { createTelemetry } from './systems/telemetry.js';
+import { installAchievements } from './systems/achievements.js';
+import { createDeterministicEventTrace } from './core/eventTrace.js';
+import { postTaskAtBackgroundPriorityBounded } from './core/backgroundPost.js';
+import { createTimeEffects } from './core/timeEffects.js';
+
+import { createRunTransitionGuard } from './core/runTransitionGuard.js';
+import { installGameStartRecovery } from './core/gameStartRecovery.js';
+import { installStartupJournal } from './core/startupJournal.js';
+import { laneCommandSink, laneInputWrite, laneRemoveEntity, laneRpc, laneSetMode } from './core/simLaneCommands.js';
+import {
+  resolveNewGamePlusOverlay,
+  resetCombatInputMode,
+  runNewGameSimBoot,
+  resetRunUiState,
+} from './core/newGameBoot.js';
+import {
+  GameStartReadinessError,
+  describeGameStartFailure,
+  runNewGameStartTransition,
+} from './core/newGameStartTransition.js';
+import { applyAccessibility } from './ui/accessibility.js';
+import { ensureStylesheet as ensureStationStylesheet } from './ui/station/stationStyles.js';
+import { createLoadingPresenter } from './ui/loadingPresenter.js';
+import { mountStartupReportControl } from './ui/startupReportControl.js';
+import { registerToastAction } from './ui/toastAction.js';
+import { installSlowFrameOffer, SLOW_OFFER_ACTION_ID } from './render/slowFrameOffer.js';
+import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
+import { installGlobalErrorBoundary, attachErrorBoundary, recordRuntimeError } from './core/errorBoundary.js';
+import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
+import { requiresRuckusWarmForNewGame, warmRuckusModel } from './render/characters/ruckusModel.js';
+import {
+  settleRequiredPackageAdmission,
+  waitForOpeningFirstPictureWithSingleOwnerRetry,
+  holdOpeningPresentationUntilPaint,
+} from './render/pipelineReadiness.js';
+import { authoredVisualBudgetMs, openingGateBudgetMs } from './render/startupPacing.js';
+import { releaseUiStage } from './render/uiStage.js';
+import { SCENARIO_47A_CONTRACT_PATH } from './data/scenarios/47aLiveScene.js';
+import { loadModelTruthCensus } from './data/modelTruth.js';
+import { ensureLocaleReady, setGameLocale, startupLocale } from './localization/sourceText.js';
+import { runtimeAssetUrl } from './core/runtimeAssetUrl.js';
+
+// Debug surfaces (the mutable window.SF handle + boot logs) are exposed outside production bundles.
+// Launcher URLs stay identical for browser/Electron; release/debug behavior must not fork gameplay.
+const SF_DEBUG = typeof __SPACEFACE_PRODUCTION__ !== 'undefined'
+  ? !__SPACEFACE_PRODUCTION__
+  : debugRuntimeEnabled();
+// Device-scaled (startupPacing.js): a handset streams the opening payload over one radio and
+// decodes it on a slow CPU, so the same fail-closed ceilings are met several times over.
+const INITIAL_AUTHORED_VISUAL_TIMEOUT_MS = authoredVisualBudgetMs(180000);
+// One bounded second window before declaring startup failure. Staging pipelines keep
+// running between waits, so a transient stall (host contention, driver-variant compile
+// burst) resolves inside a short retry; a persistent stall still fails quickly. Kept
+// short so the app-side worst case stays inside the route's own load bound.
+const AUTHORED_VISUAL_RETRY_TIMEOUT_MS = openingGateBudgetMs(30000);
+
+function debugRuntimeEnabled() {
+  const env = typeof process !== 'undefined' && process.env ? process.env : null;
+  if (env && env.NODE_ENV === 'production') return false;
+  return true;
+}
+
+// Global error boundary (src/core/errorBoundary.js). Uncaught exceptions and unhandled promise
+// rejections are logged to the console, kept in a bounded ring for the diagnostics report, and
+// surface as one rate-limited player toast over the bus captured right after createBus() below —
+// never through `window.SF`, which the retail bundle strips (SF_DEBUG_ONLY).
+
+// The live game state, once boot() has made it. The recovery pane's "Copy details" and the
+// diagnostics report read it; null until then (a failure before the state exists still reports).
+let diagnosticsState = null;
+
+async function boot() {
+  installGlobalErrorBoundary();
+  try {
+    const modelTruthCensusUrl = runtimeAssetUrl('src/data/modelTruthCensus.json', import.meta.url);
+    const runtimeDataReady = loadModelTruthCensus(modelTruthCensusUrl);
+    // Kick the scenario-contract fetch+hash at boot top: it is consumed only at helpers
+    // construction below, so the fetch RTT overlaps everything in between instead of
+    // serializing ahead of registry init.
+    const contractPromise = loadScenarioContract(
+      new URL('./data/scenarios/47a.scenario.json', import.meta.url), SCENARIO_47A_CONTRACT_PATH);
+    // Belt: a rejection surfacing before the real await below still counts as handled (a boot
+    // error thrown earlier would otherwise leave it as an unhandled rejection).
+    contractPromise.catch(() => {});
+    // Synchronous model measurements and localized copy are available before any system starts.
+    await runtimeDataReady;
+    const seed = (Date.now() & 0x7fffffff) >>> 0;
+    const state = createGameState(seed);
+    diagnosticsState = state;
+    // Renderer/VFX are initialized before the save system in registry order. Consume the persisted
+    // profile first so their boot resources match the player's settings on the very first frame.
+    // This is read-only and therefore leaves the raw profile byte-identical.
+    bootstrapProfileSettingsBeforeRegistry(state);
+    // English source copy needs no inventory. A saved language/URL choice is prepared before
+    // registry initialization can mount its first interactive localized screen.
+    await ensureLocaleReady(state.settings?.locale || startupLocale);
+    setGameLocale(state.settings?.locale || startupLocale);
+    // Phase 2: seed gameplay feature MAPS from the explicit production runtime profile (not
+    // typeof window). createRegistry also re-applies from state.settings.gameplay.runtimeProfile.
+    if (!state.settings.gameplay) state.settings.gameplay = {};
+    if (!state.settings.gameplay.runtimeProfile) state.settings.gameplay.runtimeProfile = 'production';
+    const timeEffects = createTimeEffects(state);
+    const runTransitionGuard = createRunTransitionGuard();
+    timeEffects.set('runtime:boot-menu', { scale: 0 });
+    const bus = createBus();
+    const startupJournal = installStartupJournal({ bus, state });
+    // Arm the error boundary here, not via window.SF (stripped from retail bundles). Its line reaches
+    // the player through the presentation-only receipt route, never a bus `toast` that sim listeners hear.
+    attachErrorBoundary({ getState: () => state });
+    installGameStartRecovery(bus);
+    // PQ-160.01: rated moments mark clip windows on the live bus so Pause → Clips lists them.
+    // Production entity:killed has no tick; stamp sim tick + world seed onto the receipt.
+    installLiveClipDirector(bus, {
+      stateOf: () => state,
+      seedOf: () => state && state.meta && state.meta.seed,
+      tickOf: () => state && state.tick,
+    });
+    // Mirrors pushAlive()'s mesh test in presentationSources.js: entities the
+    // rebuild collect can never republish must never journal — a spawn
+    // suppressed during a pending rebuild would otherwise leave the entity
+    // permanently journaled-out, tripping a rebuild once per tick for life.
+    const presentationJournal = createPresentationJournal(undefined, {
+      isEntityJournaled: entityIsJournaled,
+    });
+    const loadingPresenter = createLoadingPresenter({ document, bus, state });
+    const startupReportControl = mountStartupReportControl({ document, state, bus });
+    // SFQ-B228: the same instance showBootError uses — one pane owner over #boot-overlay.
+    const failurePresenter = bootRecoveryPresenter();
+    bus.emit('game:loadingProgress', { id: 'boot-contract', progress: .18, ceiling: .20,
+      label: 'Preparing flight systems', detail: 'Reading the opening scenario' });
+    const contract = await contractPromise;
+    const helpers = {
+      prepareLocale: ensureLocaleReady,
+      modelTruthCensusUrl,
+      scenarioContract: contract.document,
+      scenarioContractPath: contract.path,
+      scenarioContractHash: contract.sha256,
+    };
+    // Stage-8: resolve the sim-lane flags once at boot (?simLane=worker, ?simSab=1).
+    // ctx.simLane lands BEFORE createRegistry so the registry can skip init of
+    // sim-owned systems when the whole sim lives in the worker.
+    const simLaneFlags = resolveSimLaneFlags();
+    for (const w of simLaneFlags.warnings) console.warn(`[simLane] ${w}`);
+    const ctx = {
+      state,
+      bus,
+      three: THREE,
+      registry: null,
+      helpers,
+      timeEffects,
+      presentationJournal,
+      simLane: simLaneFlags.lane,
+    };
+
+    const createFullRegistry = async () => (await import('./core/registry.js')).createRegistry(ctx);
+    let registry;
+    if (ctx.simLane === 'worker') {
+      const { createPresentationRegistry } = await import('./runtime/presentationRegistry.js');
+      registry = createPresentationRegistry(ctx);
+    } else {
+      registry = await createFullRegistry();
+    }
+    ctx.registry = registry;
+    // Whole-sim worker lane: null on the main lane (zero behavior change);
+    // otherwise a createSimulationRunner-compatible lane runner plus the
+    // transport journal presentation consumes.
+    const mainLaneEntities = state.entities;
+    const mainLaneProjectiles = state.weaponVfxProjectiles;
+    let simLaneRuntime = createSimLaneRuntime({
+      state,
+      registry,
+      bus,
+      flags: simLaneFlags,
+      helpers,
+    });
+    if (simLaneRuntime) {
+      // The worker lane is the production default — a worker that dies before
+      // its init reply (module-eval failure, CSP block, silent spawn) must not
+      // dead-end boot. Gate on the lane's readiness with a bounded window; on
+      // failure restore the in-process bindings and continue on the main lane.
+      // The registry is rebuilt so the sim-owned systems it skipped under the
+      // worker lane init normally here.
+      try {
+        await Promise.race([
+          simLaneRuntime.readyPromise,
+          new Promise((_, reject) => setTimeout(
+            () => reject(new Error('sim worker init timed out')), 45_000)),
+        ]);
+      } catch (error) {
+        try { simLaneRuntime.close?.(); } catch (_) { /* dead lane */ }
+        state.entities = mainLaneEntities;
+        state.weaponVfxProjectiles = mainLaneProjectiles;
+        // The lane refills entityList from its mirror on every reply — clear
+        // any rows it landed so the in-process sim repopulates cleanly.
+        state.entityList.length = 0;
+        ctx.simLane = 'main';
+        simLaneRuntime = null;
+        registry = await createFullRegistry();
+        ctx.registry = registry;
+        console.warn(`[simLane] worker boot failed — in-process sim serves: ${(error && error.message) || error}`);
+      }
+    }
+    if (!simLaneRuntime && ctx.simLane === 'worker') {
+      ctx.simLane = 'main';
+      registry = await createFullRegistry();
+      ctx.registry = registry;
+    }
+    // The render publisher binds ctx.presentationJournal at renderer init —
+    // under the lane it must read the transport journal, not the in-process
+    // one (which the worker's journal replaces wholesale).
+    if (simLaneRuntime) ctx.presentationJournal = simLaneRuntime.journal;
+    const bootInitMetrics = await registry.initAsync({
+      // Each yield costs a rAF+task hop (~a frame); the loading shell owns the picture, so
+      // larger slices convert that scheduling overhead back into time-to-title.
+      budgetMs: 10,
+      onProgress({ completed, total }) {
+        bus.emit('game:loadingProgress', {
+          id: 'boot-systems', progress: .20 + .72 * (total ? completed / total : 1), ceiling: .94,
+          label: 'Starting flight systems', detail: `${completed} of ${total} online`,
+        });
+      },
+    });
+    // The shell's normal close waits for the existing exit-save owner and queued mirrors.
+    window.spacefaceShell?.onPrepareQuit?.(async () => {
+      const owner = ctx.registry?.get?.('save');
+      const result = owner?.prepareForQuit ? await owner.prepareForQuit() : { ok: false, reason: 'save-system-unavailable' };
+      if (result?.ok !== true) return result;
+      const achievements = ctx.achievements;
+      let achievementResult;
+      try {
+        achievementResult = achievements?.prepareForQuit ? await achievements.prepareForQuit() : { ok: true };
+        return achievementResult;
+      } finally {
+        if (achievementResult?.ok !== true) await owner.cancelPreparedQuit?.();
+      }
+    });
+    SF_DEBUG_ONLY: if (SF_DEBUG) window.__SF_BOOT_INIT__ = bootInitMetrics;
+    // Kick SG-02 backend bring-up the moment the saved envelope decodes: the whole chunked
+    // restore then overlaps WASM boot instead of the D26 gate waiting on a cold start.
+    // Boot-time only — a mid-flight restore keeps the finalize-time kick so the live
+    // authority is never re-armed under the running sim. finalizeLoadedGame adopts the
+    // promise below (and kicks itself if this lane never ran).
+    let earlyContinuePhysicsPrep = null;
+    let earlyContinueKickPending = false;
+    const kickEarlyContinuePhysicsPrep = () => {
+      // An emit landing while a doomed prep pends skips its re-mint; flag it so the
+      // settle-clear re-kicks instead of waiting on the next emit or finalize.
+      if (earlyContinuePhysicsPrep) { earlyContinueKickPending = true; return; }
+      earlyContinueKickPending = false;
+      if (state.mode === 'flight') return;
+      const physicsSystem = registry.get('physics');
+      if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return;
+      // Only a cold authority may prep early: with an owner already resolved, prepareBackend
+      // would sync+step the outgoing run's entities before the restore swaps them. Module
+      // init is the whole point of the early kick, and it already runs whenever no owner
+      // exists. The finalize-time non-reset prep then does the first real sync against the
+      // restored world exactly as before.
+      if (typeof physicsSystem.hasResolvedSg02Owner === 'function'
+          && physicsSystem.hasResolvedSg02Owner()) return;
+      const prep = Promise.resolve()
+        .then(() => physicsSystem.prepareBackend(state));
+      earlyContinuePhysicsPrep = prep;
+      // A stale settle (the SG-02 token guard's false, or a rejection) must not
+      // latch: clear it so the next envelope kick re-mints instead of the gate
+      // inheriting a verdict from a dead authority. A skipped emit then re-kicks
+      // immediately rather than serializing its fresh prepare inside the gate.
+      const settleClear = () => {
+        if (earlyContinuePhysicsPrep === prep) earlyContinuePhysicsPrep = null;
+        if (earlyContinueKickPending && !earlyContinuePhysicsPrep) kickEarlyContinuePhysicsPrep();
+      };
+      prep.then((verdict) => {
+        if (verdict !== true) settleClear();
+      }, settleClear);
+    };
+    // Speculative prepare fires during menu dwell — WASM bring-up reads no envelope data,
+    // so it can overlap the dwell instead of serializing inside the Continue gate.
+    bus.on('save:envelopeSpecPrepared', kickEarlyContinuePhysicsPrep);
+    bus.on('save:envelopePrepared', kickEarlyContinuePhysicsPrep);
+    helpers.deferLoadedGameRestore = (restore) => {
+      bus.emit('game:loadingProgress', {
+        id: 'restoring-save',
+        progress: 0.05,
+        label: 'Restoring flight state',
+        detail: 'Rebuilding the saved sector',
+        transition: 'continue',
+      });
+      // One rAF boundary: the 0.05 emit rides the presenter's own paint loop, so the
+      // restore only needs to leave this task — the double-rAF paint commit added ~16-33 ms
+      // of dead time before the slot scans and worker dispatch could even start. Continue
+      // still warms RU-7 before restored entities can materialize its synchronous visual.
+      Promise.all([nextFrame(), warmRuckusModel()]).then(restore).catch((error) => {
+        console.error('[SpaceFace] deferred save restore failed', error);
+        // SFQ-B228: name the cause so the recovery toast can state it — the saveSystem's own
+        // failure receipts already carry `error`; this outer catch was the bare one.
+        bus.emit('save:error', {
+          slot: 'latest',
+          reason: 'load_failed',
+          error: error && error.message ? error.message : String(error),
+        });
+      });
+      return true;
+    };
+    helpers.beginLoadedGameTransition = () => {
+      // Reserve the load token BEFORE any reentrant lifecycle event. bus.emit is synchronous, so a
+      // listener on game:loadingProgress that starts a new-game transition would otherwise take the
+      // generation first and the save restore would proceed under a token it no longer owns.
+      const token = runTransitionGuard.begin('load');
+      // Continue runs the same admission-generation machinery as game:new — without a fresh
+      // generation here, a New Game attempt that ended 'pending'/'rejected' stamps a record
+      // whose generation never advances, and waitForOpeningGpuResources' owned-run bareStamp
+      // short-circuits to false → the save throws unreachable until another New Game.
+      if (state.render) state.render.admissionRunGeneration = token.generation;
+      bus.emit('game:loadingProgress', {
+        id: 'restoring-save',
+        progress: 0.05,
+        label: 'Restoring flight state',
+        detail: 'Rebuilding the saved sector',
+      });
+      return token;
+    };
+    helpers.finalizeLoadedGame = (payload) => {
+      const inherited = earlyContinuePhysicsPrep;
+      earlyContinuePhysicsPrep = null;
+      earlyContinueKickPending = false;
+      return finalizeLoadedGame(
+        state,
+        bus,
+        registry,
+        runTransitionGuard,
+        { ...(payload || {}), physicsPrep: inherited },
+      );
+    };
+    let loopController = null;
+    const closeRuntime = createPresentationRuntimeCloser({
+      stopPresentation() {
+        state.render?.cancelOpeningPresentationHold?.();
+        // Retire async Launch/Continue and GPU admissions before any teardown can settle their
+        // gates. A late success must not publish flight into a runtime whose loop is stopped.
+        const cancelledToken = runTransitionGuard.begin('runtime-closed');
+        if (state.render) state.render.admissionRunGeneration = cancelledToken.generation;
+        const errors = [];
+        try { loadingPresenter.destroy(); } catch (error) { errors.push(error); }
+        try { startupJournal.dispose(); } catch (error) { errors.push(error); }
+        try { startupReportControl?.destroy(); } catch (error) { errors.push(error); }
+        try { loopController?.stop?.(); } catch (error) { errors.push(error); }
+        if (errors.length > 0) {
+          throw new AggregateError(errors, 'Presentation listener teardown failed');
+        }
+      },
+      detachProducers: () => registry.destroy(),
+      closeSimulation: () => loopController?.close?.(),
+      closeJournal: () => presentationJournal.close(),
+    });
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', () => {
+        const receipt = closeRuntime();
+        if (receipt.errorCount > 0) {
+          console.error('[SpaceFace] runtime teardown completed with errors:', receipt.errors);
+        }
+        failurePresenter.destroy();
+      });
+    }
+
+    // Local telemetry sink (privacy-safe, no network): onboarding funnel, balance/career stats,
+    // death heatmap. Subscribes to the live bus; mirrored to window.__SF_TELEMETRY__ for dev.
+    const telemetry = createTelemetry(bus, state);
+    ctx.telemetry = telemetry;
+    // PQ-033.03 achievements: a META ledger on the same live bus — never a registry system and never
+    // a GameState write, so the deterministic sim cannot see it. It unlocks from real gameplay events
+    // on the bus; this is deliberately independent of the environment drain.
+    ctx.achievements = installAchievements({ bus, state, telemetry });
+    const eventTrace = createDeterministicEventTrace(bus, state);
+    // Apply accessibility settings (colorblind palette, motion/flash, UI scale) on boot + on change/load.
+    applyAccessibility(state.settings);
+    bus.on('settings:changed', () => applyAccessibility(state.settings));
+    bus.on('save:loaded', () => applyAccessibility(state.settings));
+    bus.on('save:restoring', () => configureRacingCorridorSession(state, false));
+    // Worker lane: the sim realm's save.load restores state off-thread, so the
+    // restore generator's own helpers.finalizeLoadedGame call never fires
+    // there. The bridged save:loaded is the same signal — drive the identical
+    // main-side finalization (visual gates, enterFlightMode, ui:closeAll) here.
+    // On the main lane this listener is inert: finalizeLoadedGame already ran
+    // inside the save generator before save:loaded emitted.
+    bus.on('save:loaded', (payload) => {
+      if (!(laneCommandSink && laneCommandSink())) return;
+      try {
+        // The shared finalizer owns menu recovery and failure receipts. Observe its
+        // rejection here as the save generator does on the main simulation lane.
+        Promise.resolve(helpers.finalizeLoadedGame(payload || {}))
+          .catch((err) => console.error('[SpaceFace] lane finalizeLoadedGame failed', err));
+      } catch (err) { console.error('[SpaceFace] lane finalizeLoadedGame failed', err); }
+    });
+    // Ledger D15: the station sheet set used to arrive at first dock, so every screen rendered
+    // differently before vs after docking once. Loading it at boot keeps the cascade identical
+    // regardless of dock history; stationStyles positions it after the Deckplate sheet, matching
+    // the order dock-time injection produced.
+    ensureStationStylesheet();
+    // PQ-210.07: the one-time motion ask lives on the boot route as the motionAsk screen
+    // (uiRoot routes the first screen through firstBootScreenId). Reconciled over INF-007's
+    // boot-time DOM prompt so the ask is a real screen, not an unstyled overlay — exactly one
+    // ask surface, settled by the same motionAsked/motionPrompted markers.
+
+    // If the save system implements newGame(), let it own world setup; else use the skeleton bootstrap.
+    // Boot to the MAIN MENU. uiRoot shows it automatically because state.mode === 'menu' (the
+    // gameState default). The world is created on New Game (game:new) and restored on Continue
+    // (the save system handles game:load and emits save:loaded).
+    bus.on('game:new', (opts) => {
+      const startNewGameTransition = () => {
+        const transitionToken = runTransitionGuard.begin('new-game');
+        if (state.render) state.render.admissionRunGeneration = transitionToken.generation;
+        startNewGame(
+          state, helpers, bus, registry, runTransitionGuard, transitionToken, opts || {},
+        ).catch((error) => {
+          if (!runTransitionGuard.isCurrent(transitionToken)) return;
+          console.error('[SpaceFace] new game startup failed', error);
+          const failure = describeGameStartFailure(error);
+          failGameStart(
+            state, bus, error, failure.text,
+            runTransitionGuard, transitionToken, failure,
+          );
+        });
+      };
+      const saveSystem = registry.get('save');
+      if (saveSystem && typeof saveSystem.deferRunTransition === 'function'
+        && saveSystem.deferRunTransition(startNewGameTransition)) return;
+      startNewGameTransition();
+    });
+
+    bus.on('game:exitToMenu', () => {
+      state.render?.cancelOpeningPresentationHold?.();
+      // Returning to the menu also owns outstanding readiness work. Without a new generation,
+      // an old Launch/Continue can settle afterward and put the player straight back in flight.
+      const cancelledToken = runTransitionGuard.begin('exit-to-menu');
+      if (state.render) state.render.admissionRunGeneration = cancelledToken.generation;
+      const previousMode = state.mode;
+      laneSetMode(state, bus, 'menu');
+      if (previousMode !== 'menu') bus.emit('mode:changed', { mode: 'menu', previousMode });
+    });
+
+    const recoverRuntimeFailure = (failure) => {
+      const receipt = closeRuntime();
+      if (receipt.errorCount > 0) {
+        console.error('[SpaceFace] runtime teardown completed with errors:', receipt.errors);
+      }
+      failurePresenter.show(failure);
+    };
+    // One-time "this looks slow" offer: a sustained sub-30 fps median in live flight offers the
+    // High performance preset as a receipt button, once per session. Never applied on its own.
+    const slowFrameOffer = installSlowFrameOffer({ state, bus });
+    registerToastAction(SLOW_OFFER_ACTION_ID, () => slowFrameOffer.accept());
+    loopController = startLoop(state, registry, {
+      bus,
+      // Under the flip the presentation lane reads the transport journal and
+      // steps the worker-backed runner; identical shapes on the main lane.
+      presentationJournal: simLaneRuntime ? simLaneRuntime.journal : presentationJournal,
+      simulationRunner: simLaneRuntime ? simLaneRuntime.runner : undefined,
+      // Gates that pay a paint boundary only need one when nothing has drawn
+      // recently — the runner's accepted presents are exactly that evidence,
+      // while its suspended/restoring window correctly stops stamping. The same present also
+      // feeds the slow-frame offer its per-callback frame time.
+      onPresented() { lastPaintAt = nowMs(); slowFrameOffer.onPresented(); },
+      onSimulationFailure: recoverRuntimeFailure,
+      onPresentationFailure: recoverRuntimeFailure,
+    });
+    ctx.simStep = () => loopController.stepOnce();
+    const loopDebug = {
+      getDiagnostics: () => loopController.getDiagnostics(),
+      getPresentationFrame: () => loopController.getPresentationFrame?.(),
+      getLifecycleState: () => loopController.getLifecycleState(),
+      isSuspended: () => loopController.isSuspended(),
+      simStep: () => loopController.stepOnce(),
+    };
+    SF_DEBUG_ONLY: if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, {
+      state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace, loop: loopDebug,
+      simLaneDiag: simLaneRuntime ? () => simLaneRuntime.runner.getDiagnostics() : null,
+      laneRpc,
+    });
+    // The title route must become usable promptly. Heavy shader/asset warmup is sector-scoped in
+    // renderer.js once a run exists; running the all-archetype precompile here competes with the
+    // New Game authored-visual queue and can strand Launch in loading on software WebGL.
+    state.render.pipelinePrecompileReady = Promise.resolve({ skipped: true, reason: 'deferred until first sector' });
+    // Route through the presenter, not a direct DOM toggle: it owns the overlay's lifecycle —
+    // on hide it also stops and destroys the boot artwork's worker/WebGL2 context, which
+    // otherwise kept rendering into the hidden canvas for the rest of the session.
+    bus.emit('game:loadingProgress', { id: 'boot-menu', progress: .96, ceiling: .997,
+      label: 'Opening the command deck', detail: 'All systems online' });
+    await nextPaint();
+    loadingPresenter.hide();
+
+    // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
+    SF_DEBUG_ONLY: if (SF_DEBUG) {
+      window.SF = Object.assign(window.SF || {}, {
+        state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace, loop: loopDebug,
+      });
+      // Expose the game's OWN authored-visual readiness contract to acceptance harnesses.
+      // Without this a harness cannot ask "are the visuals that matter ready?" and is forced to
+      // reinvent the check from entity internals — which is exactly how the professional-travel
+      // route came to demand `ships.every(authoredAssetState === 'authored')`, a condition the
+      // engine deliberately never satisfies (distant NPCs stay dormant by design, pinned by
+      // test/asset-npc-authored-binding.test.mjs). Publishing the real contract is what stops
+      // that divergence recurring: harnesses consume this, they do not re-derive it.
+      window.SF.authoredVisualReadiness = () => authoredVisualReadiness(state);
+      // PQ-172.00: user content packs validated+merged at module-eval time — the settings
+      // Gameplay tab is the player-facing list; this is the probe/diagnostic surface.
+      window.SF.userMods = { list: listUserMods, dir: userContentDirLabel() };
+      // Phase 4 test-only live-route stepping bridge. Dynamic import lives inside SF_DEBUG_ONLY so
+      // production dropLabels strips the call and the bridge module never enters build/web.
+      import('./testing/lab/liveRouteBridge.js').then((mod) => {
+        try {
+          window.SF.labBridge = mod.installLiveRouteBridge(window.SF);
+        } catch (err) {
+          console.error('[SpaceFace] labBridge install failed', err);
+        }
+      }).catch((err) => console.error('[SpaceFace] labBridge import failed', err));
+      // Comprehensive performance tools bootstrap (stats-gl, spector.js, renderer.info).
+      import('./testing/perf/perfToolsBootstrap.js').then((mod) => {
+        try {
+          mod.bootstrapPerfTools(window.SF);
+        } catch (err) {
+          console.error('[SpaceFace] perfToolsBootstrap install failed', err);
+        }
+      }).catch((err) => console.error('[SpaceFace] perfToolsBootstrap import failed', err));
+      console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
+      if (hasUserContent()) {
+        const mods = listUserMods();
+        const loaded = mods.filter((m) => m.status !== 'rejected' && m.status !== 'invalid').length;
+        const refused = mods.length - loaded;
+        console.log('[SpaceFace] user content: %d pack(s) from %s%s', mods.length,
+          userContentDirLabel() || '(mounted dir)', refused ? ` (${refused} with refusals)` : '');
+      }
+    }
+
+    // Dev-only ship turntable preview: ?dev=shippreview renders every hull × tier into .devshots/
+    // for visual verification. Requires the render system to be initialized, so we wait a frame.
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'shippreview') {
+      const { runShipPreview } = await import('./render/shipPreview.js');
+      // ensure the render system has registered its scene/renderer handles on state.render
+      setTimeout(() => { runShipPreview({ state, registry, THREE }).catch((e) => console.error('[shipPreview]', e)); }, 500);
+    }
+    // Dev-only fleet look harness: ?dev=fleetlook exposes window.SF_fleetLook (scripts/fleet-look.mjs).
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'fleetlook') {
+      const { installFleetLook } = await import('./render/fleetLook.js');
+      setTimeout(() => { try { installFleetLook({ state, registry, THREE }); } catch (e) { console.error('[fleetLook]', e); } }, 500);
+    }
+    // Dev-only single-frame Kestrel hero capture: ?dev=shipshot renders the player Kestrel once (no
+    // rAF loop, so it's robust under headless Chrome) and POSTs kestrel_hero_live.jpg to /__shot.
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'shipshot') {
+      const { runShipShot } = await import('./render/shipShot.js');
+      setTimeout(() => { runShipShot({ state, registry, THREE }).catch((e) => console.error('[shipShot]', e)); }, 500);
+    }
+    // Dev-only asteroid-interior LOOK LAB: renders the drill/works cutaway in the real 3D engine to
+    // judge congruence vs the flat Canvas2D playfield. Exposed as a callable so a capture harness can
+    // start a run first (for the baked nebula env), and auto-run on ?dev=astlab for hand inspection.
+    SF_DEBUG_ONLY: if (SF_DEBUG) {
+      window.SF = Object.assign(window.SF || {}, {
+        runAsteroidLab: () => import('./render/asteroidInteriorPreview.js')
+          .then((m) => m.runAsteroidInteriorLab({ state })).catch((e) => { console.error('[astlab]', e); return null; }),
+      });
+      if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'astlab') {
+        setTimeout(() => { window.SF.runAsteroidLab(); }, 800);
+      }
+    }
+    // Dev-only DIRECT SCREEN ROUTE, for the look-first UI loop (docs/UI_VISUAL_ITERATION.md):
+    //   ?dev=screen:pause              boot a deterministic session, open the pause screen
+    //   ?dev=screen:settings,saveLoad  open a stack, in order
+    //   ?dev=screen:pause&devseed=47   pin the run seed (the repo's canonical fixture seed)
+    //   ?dev=screen:mainMenu           no session at all; just raise the meta screen
+    // Reloading re-runs it, so "open it, click every control, look, fix, reload" costs one page
+    // load instead of a scripted capture boot. That cheapness is the point: a screen should be as
+    // easy to look at as a web page, because the failure this route exists to prevent is an agent
+    // restyling a screen it never actually looked at.
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined') {
+      const devQuery = new URLSearchParams(location.search);
+      const devRoute = devQuery.get('dev') || '';
+      if (devRoute.startsWith('screen:')) {
+        console.log('[SpaceFace] dev screen route armed:', devRoute);
+        const wantedScreens = devRoute.slice('screen:'.length)
+          .split(',').map((value) => value.trim()).filter(Boolean);
+        const devSeed = Number(devQuery.get('devseed'));
+        const wantsWorld = wantedScreens.some((id) => id !== 'mainMenu' && id !== 'title');
+        const opened = new Set();
+        const logFailure = () => {
+          const ui = registry.get('ui');
+          console.error('[SpaceFace] dev screen route could not open:',
+            wantedScreens.filter((id) => !opened.has(id)).join(', '),
+            '| ui entry keys:', ui ? Object.keys(ui).slice(0, 12).join(',') : 'none');
+        };
+        // uiRoot owns screen navigation (`ui:pushScreen` → screenManager.pushScreen), and the
+        // fixtures use exactly this event. The manager is only a fallback for a boot that lands
+        // before uiRoot has bound its listeners.
+        const attemptOpen = (attempt = 0) => {
+          if (attempt === 0) console.log('[SpaceFace] dev screen route: opening', wantedScreens.join(', '));
+          for (const id of wantedScreens) {
+            if (!opened.has(id)) bus.emit('ui:pushScreen', { id, source: 'dev-screen-route' });
+          }
+          setTimeout(() => {
+            for (const id of wantedScreens) {
+              if (document.querySelector(`[data-screen="${id}"]`)) opened.add(id);
+            }
+            if (wantedScreens.every((id) => opened.has(id))) { console.log('[SpaceFace] dev screen route: open', [...opened].join(', ')); return; }
+            if (attempt === 0) {
+              const ui = registry.get('ui');
+              const manager = ui && (ui.screenManager || ui.manager);
+              if (manager && typeof manager.pushScreen === 'function') {
+                for (const id of wantedScreens) {
+                  if (opened.has(id)) continue;
+                  try { manager.pushScreen(id); } catch (error) { console.error('[SpaceFace] dev screen open failed:', id, error); }
+                }
+              }
+            }
+            if (attempt >= 3) { logFailure(); return; }
+            attemptOpen(attempt + 1);
+          }, 1100);
+        };
+        let devTicks = 0;
+        const reachWantedScreen = () => {
+          devTicks += 1;
+          if (!wantsWorld) { attemptOpen(); return; }
+          if (state.mode === 'flight' || state.mode === 'paused') {
+            // One presented frame of the held world before the screen stands on it.
+            setTimeout(() => attemptOpen(), 700);
+            return;
+          }
+          if (devTicks < 2400) setTimeout(reachWantedScreen, 100); // ~4 min, then the log speaks
+          else console.error('[SpaceFace] dev screen route gave up waiting for a run: mode =', state.mode);
+        };
+        setTimeout(async () => {
+          // A screen-inspection route emulates a returning player: mark the first-run First Light
+          // offer as already shown so the title screen cannot raise its confirm mid-mount.
+          const access = state && state.settings && state.settings.accessibility;
+          if (access && typeof access === 'object') access.firstLightOffered = true;
+          // The fail-closed startup budgets are tuned for real devices (startupPacing.js); an
+          // inspection route may run on a contended/software-GL host that legitimately needs the
+          // widest class ceiling — detectStartupBudgetScale pins it for ?dev=screen: routes.
+          // Gates still settle as soon as their work completes; a wedge still dies, later.
+          // &devsetup=<sandbox preset id> launches through the harness's own pipeline instead of
+          // a bare game:new — so `?dev=screen:drill&devsetup=drill` boots a real drill session
+          // (asteroid + session + screen open) rather than a screen that pops for lack of one.
+          const devSetupId = devQuery.get('devsetup') || '';
+          let launched = false;
+          if (wantsWorld && devSetupId) {
+            try {
+              const { SCENARIO_PRESETS, requestSandboxGame } = await import('./ui/sandbox/sandboxSetup.js');
+              const preset = SCENARIO_PRESETS.find((p) => p.id === devSetupId);
+              if (preset) { requestSandboxGame(bus, preset.config); launched = true; }
+              else console.error('[SpaceFace] dev screen route: unknown devsetup', devSetupId);
+            } catch (err) { console.error('[SpaceFace] devsetup launch failed:', err); }
+          }
+          if (wantsWorld && !launched) {
+            bus.emit('game:new', Number.isFinite(devSeed) && devSeed > 0 ? { seed: devSeed } : {});
+          }
+          reachWantedScreen();
+        }, 300);
+      }
+    }
+  } catch (err) {
+    showBootError(err);
+    throw err;
+  }
+}
+
+// Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
+async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts) {
+  // The dynamic authority's bring-up (Rapier WASM compile + world construction) is pure CPU
+  // work with no dependency on authored assets or the GPU cook. Kicked at scenePrepared it
+  // overlaps the whole readiness chain instead of sitting as a serial stage at the end;
+  // waitForPhysics below still gates flight on the same promise.
+  let physicsPrep = null;
+  let newGamePlus = null;
+  return runNewGameStartTransition({
+    guard: runTransitionGuard,
+    token: transitionToken,
+    async prepareRun() {
+      // The veil goes up before the roster clear: a populated sector's entity:destroyed fan-out
+      // is a multi-hundred-ms stretch, and it must not brick on the previous screen.
+      enterLoadingMode(state, bus);
+      newGamePlus = await resolveNewGamePlusOverlay(registry, opts);
+      // Adventure keeps the authored Ceres actor ready for hard and continuous sector entry.
+      // A standalone Crucible run cannot enter Ceres and does not request RU-7's four payloads.
+      if (requiresRuckusWarmForNewGame(opts)) await warmRuckusModel();
+      if (laneCommandSink()) {
+        // Whole-sim-worker lane: the boot's sim mutations replay inside the worker's directive
+        // window as one correlated rpc; its ack resolves after the physics-prep promise the
+        // boot kicked settles, so waitForPhysics below still gates on the same work.
+        physicsPrep = laneRpc('newGameBoot', {
+          opts: opts || {},
+          newGamePlus: newGamePlus || null,
+        });
+        const bootResult = await physicsPrep;
+        if (!bootResult || bootResult.aborted) return;
+        // state.ui is main-owned — the boot's reset ran against the worker's
+        // copy, so replay the same ui write here or the menu screens pinned on
+        // screenStack would hold shouldFreezeFlightSubmit open forever.
+        resetRunUiState(state);
+        return;
+      }
+      const bootResult = await runNewGameSimBoot({
+        state, helpers, bus, registry, opts: opts || {}, newGamePlus,
+        isCurrent: () => runTransitionGuard.isCurrent(transitionToken),
+        nextPaint: () => nextPaintSliced(),
+        nextFrameTick: () => nextFrame(),
+        onPhysicsPrep: (prep) => { physicsPrep = prep; },
+      });
+      if (!bootResult || bootResult.aborted) return;
+    },
+    discardRun: () => discardPreparedNewGameScene(
+      state, bus, runTransitionGuard, transitionToken,
+    ),
+    waitForLibrary: () => withLoadingGatePulse(
+      bus, runTransitionGuard, transitionToken, 'new-game',
+      'authored-library', 0.25, 'Loading the ships',
+      (elapsed) => (elapsed > 8000 ? 'Still loading the ships' : 'Bringing the ships in for the first flight'),
+      () => {
+        Promise.resolve(state.render?.beginOpeningLoadingAdmission?.()).catch(() => {});
+        return waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+      },
+    ),
+    waitForVisuals: () => withLoadingGatePulse(
+      bus, runTransitionGuard, transitionToken, 'new-game',
+      'authored-visuals', 0.5, 'Building the opening scene',
+      () => {
+        const readiness = authoredCriticalVisualReadiness(state);
+        const pending = readiness && Array.isArray(readiness.openingPending)
+          ? readiness.openingPending.length
+          : 0;
+        return pending > 0
+          ? `Placing ships and stations — ${pending} still staging`
+          : 'Placing ships and stations before you arrive';
+      },
+      () => waitForInitialAuthoredVisualsWithRetry(
+        state,
+        INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+        () => runTransitionGuard.isCurrent(transitionToken),
+        bus,
+        'new-game',
+      ),
+    ),
+    waitForWarmup: () => withLoadingGatePulse(
+      bus, runTransitionGuard, transitionToken, 'new-game',
+      'render-pipelines', 0.78, 'Preparing the visuals',
+      (elapsed) => (elapsed > 8000 ? 'Still preparing the visuals' : 'Linking the first-flight render pipelines'),
+      () => waitForRequiredOpeningPicture(state, () => runTransitionGuard.isCurrent(transitionToken)),
+    ),
+    waitForGpuResources: () => withLoadingGatePulse(
+      bus, runTransitionGuard, transitionToken, 'new-game',
+      'gpu-resources', 0.9, 'Preparing the opening route',
+      () => {
+        const ledger = state.render && state.render.openingCookLedger;
+        const rows = Array.isArray(ledger) ? ledger.filter((row) => row && row.step && row.step !== 'lane') : [];
+        const done = rows.filter((row) => row.outcome === 'resolved' || row.outcome === 'skipped').length;
+        return done > 0
+          ? `Loading the opening stretch smoothly — ${done} warmup steps finished`
+          : 'Loading the opening stretch smoothly';
+      },
+      () => waitForRequiredOpeningPicture(state, () => runTransitionGuard.isCurrent(transitionToken)),
+    ),
+    waitForPhysics: () => withLoadingGatePulse(
+      bus, runTransitionGuard, transitionToken, 'new-game',
+      'physics-authority', 0.94, 'Preparing flight dynamics',
+      (elapsed) => (elapsed > 8000 ? 'Still preparing flight dynamics' : 'Waking the flight authority'),
+      async () => {
+        if (!physicsPrep) {
+          const physicsSystem = registry.get('physics');
+          if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return true;
+          physicsPrep = Promise.resolve()
+            .then(() => physicsSystem.prepareBackend(state, { reset: true, initTimeoutMs: openingGateBudgetMs() }));
+        }
+        try {
+          // Same outer bound the Continue gate runs (main.js ~1052): prepareBackend's
+          // internal init race only bounds one leg — a wedge anywhere else inside it
+          // would hold the loading shell forever.
+          return await Promise.race([
+            physicsPrep,
+            new Promise((_, reject) => setTimeout(
+              () => reject(new Error(`physics backend preparation timed out after ${openingGateBudgetMs()}ms`)),
+              openingGateBudgetMs(),
+            )),
+          ]);
+        } catch (error) {
+          console.warn('[startup] physics backend preparation failed', error);
+          return false;
+        }
+      },
+    ),
+    readPackageAdmission: () => (state.render && state.render.requiredPackageAdmission) || null,
+    awaitSettledPackageAdmission: () => settleRequiredPackageAdmission(state),
+    reportProgress: (stage) => bus.emit('game:loadingProgress', {
+      ...stage,
+      detail: loadingDetailForStage(stage),
+      transition: 'new-game',
+    }),
+    yieldForPresentation: nextPaintSliced,
+    enterFlight() {
+      enterFlightMode(state, bus, { runTransitionGuard, transitionToken });
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      // Worker lane: the receipt is generated inside the worker — the newGameBoot
+      // rpc stages the payload and the post-boot 'flight' mode apply emits
+      // game:started once on the worker bus; the bridge replays it back so
+      // main-side subscribers fire exactly once. A local emit here would
+      // double-fire them. (Stage-9 remediation: forwarding the main emit used
+      // to replay the receipt into restore windows and double-seed the world.)
+      if (!laneCommandSink()) bus.emit('game:started', { newGamePlus });
+      SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
+    },
+  });
+}
+
+async function waitForRequiredOpeningPicture(state, isActive) {
+  try {
+    const budgetMs = state.run?.kind === 'survival'
+      ? INITIAL_AUTHORED_VISUAL_TIMEOUT_MS
+      : openingGateBudgetMs();
+    return await waitForOpeningFirstPictureWithSingleOwnerRetry(state, budgetMs, {
+      isActive,
+      isTransitionCurrent: isActive,
+    });
+  } catch (cause) {
+    const error = new GameStartReadinessError('GPU_RESIDENCY_UNAVAILABLE', 'gpu-resources',
+      cause?.message || 'The opening picture could not be prepared. Retry Launch.');
+    error.cause = cause;
+    throw error;
+  }
+}
+
+function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken) {
+  if (!runTransitionGuard.isCurrent(transitionToken)) return false;
+  if (laneCommandSink()) {
+    // Worker lane: the roster's authority lives in the worker. Clearing the
+    // mirrored containers here (entities/entityList/freeIds/playerId/
+    // world.currentSectorId) would be silently overwritten by the next reply
+    // and never reach the sim — the same class of transition game:new already
+    // routes through the lane (newGameBoot rpc). Ship one REMOVE command per
+    // mirrored entity instead: the worker runs the identical immediate
+    // _removeEntityAtIndex teardown (runtime clear + entity:destroyed fan-out,
+    // which the bridge replays back to main-side listeners exactly once — so
+    // no local emit here) and the next journal pack converges the mirror to
+    // empty. The scalar/id counters stay worker-owned on purpose: the next
+    // newGameBoot or save restore resets them on its own lane exactly like a
+    // main-lane discard's successors would.
+    for (const entity of [...state.entityList]) {
+      laneRemoveEntity(entity.id, { immediate: true, reason: 'run_reset' });
+      if (!runTransitionGuard.isCurrent(transitionToken)) return false;
+    }
+    return true;
+  }
+  for (const entity of [...state.entityList]) {
+    clearEntityRuntime(entity);
+    bus.emit('entity:destroyed', {
+      id: entity.id,
+      type: entity.type,
+      pos: { x: entity.pos.x, z: entity.pos.z },
+      radius: entity.radius,
+      factionId: entity.factionId,
+      reason: 'run_reset',
+    });
+    if (!runTransitionGuard.isCurrent(transitionToken)) return false;
+  }
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.freeIds.length = 0;
+  state.nextEntityId = 1;
+  state.playerId = 0;
+  if (state.world) state.world.currentSectorId = null;
+  return true;
+}
+
+// The long loading gates used to publish one stage event then stay silent for their whole
+// bound — the shell read as frozen behind real work. This pulse re-emits a bounded detail
+// heartbeat (≤1 update / 500 ms, only when the text actually changes) so the loading
+// presenter keeps moving with honest, non-duplicated stage detail.
+function startLoadingGatePulse(bus, runTransitionGuard, transitionToken, transition, id, progress, label, detailOf) {
+  let lastText = null;
+  const emit = () => {
+    try {
+      if (!runTransitionGuard.isCurrent(transitionToken)) {
+        // A leaked pulse (its gate threw before stop ran) must not outlive the
+        // transition — self-clear instead of waking every 500 ms forever.
+        clearInterval(timer);
+        return;
+      }
+      const detail = detailOf();
+      if (detail == null || detail === lastText) return;
+      lastText = detail;
+      bus.emit('game:loadingProgress', { id, progress, label, detail, transition });
+    } catch (_) { /* the pulse is presentation-only; never let it break the gate */ }
+  };
+  const timer = setInterval(emit, 500);
+  if (timer && typeof timer.unref === 'function') timer.unref();
+  return () => clearInterval(timer);
+}
+
+function withLoadingGatePulse(bus, runTransitionGuard, transitionToken, transition, id, progress, label, detailOf, gate) {
+  const startedMs = nowMs();
+  const stop = startLoadingGatePulse(
+    bus, runTransitionGuard, transitionToken, transition, id, progress, label,
+    () => detailOf(nowMs() - startedMs),
+  );
+  let result;
+  try {
+    result = gate();
+  } catch (error) {
+    stop();
+    throw error;
+  }
+  return Promise.resolve(result).finally(stop);
+}
+
+async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payload = {}) {
+  const transitionToken = payload.transitionToken || runTransitionGuard.begin('load');
+  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+  resetCombatInputMode(state, registry);
+  enterLoadingMode(state, bus);
+  if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+  Promise.resolve(state.render?.beginOpeningLoadingAdmission?.()).catch(() => {});
+  const startGatePulse = (id, progress, label, detailOf) => startLoadingGatePulse(
+    bus, runTransitionGuard, transitionToken, 'continue', id, progress, label, detailOf,
+  );
+  // Kick the backend prepare so WASM/world bring-up overlaps the whole library/
+  // visuals/GPU chain below — the same overlap New Game gets from its scenePrepared
+  // kick. save:loaded already rebound the player record before this function ran,
+  // so the non-reset prepare only needs to resolve before the D26 gate at the end.
+  // save:envelopePrepared may already have started it at envelope decode (payload.physicsPrep)
+  // — adopt that promise so a restore-time bring-up is never paid twice.
+  let continuePhysicsPrep = payload.physicsPrep || null;
+  const physicsSystem = registry.get('physics');
+  if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
+    // A spec-armed prep can go stale before adoption: a New Game attempt between
+    // the envelope kick and this Continue bumps _sg02Token and disposes the
+    // authority it resolved against, so the inherited verdict no longer describes
+    // the backend the gate is checking. Re-validate at adoption — a fresh non-reset
+    // prepare is idempotent (joins _sg02Init mid-settle, re-mints only when torn
+    // down); never {reset:true} — that would dispose a live owner mid-restore.
+    continuePhysicsPrep = Promise.resolve(continuePhysicsPrep)
+      .then(() => physicsSystem.prepareBackend(state, { initTimeoutMs: openingGateBudgetMs() }),
+        () => physicsSystem.prepareBackend(state, { initTimeoutMs: openingGateBudgetMs() }));
+    continuePhysicsPrep.catch(() => {});
+  }
+  try {
+    const restoredSettings = state.settings;
+    await ensureLocaleReady(restoredSettings?.locale || startupLocale);
+    if (!runTransitionGuard.isCurrent(transitionToken) || state.settings !== restoredSettings) return { stale: true };
+    applyAccessibility(restoredSettings);
+    bus.emit('game:loadingProgress', {
+      id: 'authored-library',
+      progress: 0.25,
+      label: 'Loading the ships',
+      detail: 'Hulls, stations and traffic',
+      transition: 'continue',
+    });
+    // Paint the stage boundary before the wait's synchronous prefix — the loader's easing
+    // loop only moves when the compositor gets a frame.
+    await nextPaintSliced();
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    const stopLibraryPulse = startGatePulse('authored-library', 0.25, 'Loading the ships', () => {
+      const elapsed = nowMs() - gateStartedMs;
+      return elapsed > 8000 ? 'Still loading the saved sector' : 'Bringing the saved sector back with its ships intact';
+    });
+    const gateStartedMs = nowMs();
+    let libraryReady;
+    try {
+      libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+    } finally {
+      stopLibraryPulse();
+    }
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    if (!libraryReady) {
+      throw new GameStartReadinessError('AUTHORED_LIBRARY_UNAVAILABLE', 'authored-library',
+        'Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
+    }
+    bus.emit('game:loadingProgress', {
+      id: 'authored-visuals',
+      progress: 0.5,
+      label: 'Building the opening scene',
+      detail: 'Placing ships and stations before you arrive',
+      transition: 'continue',
+    });
+    await nextPaintSliced();
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    const stopVisualsPulse = startGatePulse('authored-visuals', 0.5, 'Building the opening scene', () => {
+      const readiness = authoredCriticalVisualReadiness(state);
+      const pending = readiness && Array.isArray(readiness.openingPending)
+        ? readiness.openingPending.length
+        : 0;
+      return pending > 0
+        ? `Placing ships and stations — ${pending} still staging`
+        : 'Placing ships and stations before you arrive';
+    });
+    let visualsReady;
+    try {
+      visualsReady = await waitForInitialAuthoredVisualsWithRetry(
+        state,
+        INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+        () => runTransitionGuard.isCurrent(transitionToken),
+        bus,
+      );
+    } finally {
+      stopVisualsPulse();
+    }
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    if (!visualsReady) {
+      throw new GameStartReadinessError('AUTHORED_VISUALS_UNAVAILABLE', 'authored-visuals',
+        'Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
+    }
+    bus.emit('game:loadingProgress', {
+      id: 'render-pipelines',
+      progress: 0.78,
+      label: 'Preparing the visuals',
+      detail: 'Warming the renderer so the first minute runs smooth',
+      transition: 'continue',
+    });
+    // Single-frame breath: the gpu-resources boundary below still pays the full
+    // paint before the cook — this one only needs to yield.
+    await nextFrame();
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    bus.emit('game:loadingProgress', {
+      id: 'gpu-resources',
+      progress: 0.9,
+      label: 'Preparing the opening route',
+      detail: 'Loading the first stretch of space',
+      transition: 'continue',
+    });
+    await nextPaintSliced();
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    {
+      const stopCookPulse = startGatePulse('gpu-resources', 0.9, 'Preparing the opening route', () => {
+        const ledger = state.render && state.render.openingCookLedger;
+        const rows = Array.isArray(ledger) ? ledger.filter((row) => row && row.step && row.step !== 'lane') : [];
+        const done = rows.filter((row) => row.outcome === 'resolved' || row.outcome === 'skipped').length;
+        return done > 0
+          ? `Loading the opening stretch smoothly — ${done} warmup steps finished`
+          : 'Loading the opening stretch smoothly';
+      });
+      try {
+        await waitForRequiredOpeningPicture(state, () => runTransitionGuard.isCurrent(transitionToken));
+        if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+      } finally {
+        stopCookPulse();
+      }
+    }
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    {
+      // Same D26 gate as New Game: the loaded world must enter flight only after the
+      // SG-02 authority exists. No reset — save:loaded already rebound the retained
+      // player record; the promise kicked at function top just resolves here. This
+      // gate needs the same pulse loop New Game runs under 'physics-authority' —
+      // an un-pulsed await reads as a frozen shell while a slow WASM bring-up
+      // settles, and an unbounded one freezes the transition forever on a wedge.
+      if (continuePhysicsPrep) {
+        const stopPhysicsPulse = startGatePulse('physics-authority', 0.94, 'Preparing flight dynamics',
+          () => 'Waking the flight authority');
+        try {
+          // The prepare has overlapped the whole GPU chain by now — whatever is
+          // still outstanding 20 s later is a wedged bring-up, not a slow one.
+          // A rejected prepare used to fold into the same false as a timeout —
+          // capture its reason so the readiness error carries the real cause
+          // instead of an opaque wedge.
+          let physicsPrepError = null;
+          const physicsReady = await Promise.race([
+            continuePhysicsPrep.catch((err) => { physicsPrepError = err || null; return false; }),
+            new Promise((resolve) => setTimeout(() => resolve(false), openingGateBudgetMs())),
+          ]);
+          if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+          if (physicsReady === false) {
+            const readinessError = new GameStartReadinessError(
+              'PHYSICS_BACKEND_UNAVAILABLE',
+              'physics-authority',
+              'The dynamic physics backend did not initialize after save load; refusing to enter flight frozen in place.',
+            );
+            if (physicsPrepError != null) readinessError.cause = physicsPrepError;
+            throw readinessError;
+          }
+        } finally {
+          stopPhysicsPulse();
+        }
+      }
+    }
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    bus.emit('game:loadingProgress', {
+      id: 'entering-flight',
+      progress: 0.96,
+      label: 'Handing over flight control',
+      detail: 'Final checks',
+      transition: 'continue',
+    });
+    runTransitionGuard.commit(transitionToken, () => {
+      enterFlightMode(state, bus, {
+        runTransitionGuard,
+        transitionToken,
+        continueSlot: payload.slot || 'latest',
+      });
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      bus.emit('ui:closeAll', {});
+      SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] loaded game entered flight. slot=%s', payload.slot || 'unknown');
+    });
+    return { stale: false };
+  } catch (error) {
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    console.error('[SpaceFace] loaded game startup failed', error);
+    const failure = describeGameStartFailure(error);
+    failGameStart(
+      state, bus, error, failure.text,
+      runTransitionGuard, transitionToken, failure,
+    );
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    // The worker restore cannot invoke the main realm's save-generator finalizer
+    // observer. Give its title route the same durable failure receipt, with the
+    // actual cause; the main lane keeps its existing single save-owner receipt.
+    if (laneCommandSink()) {
+      bus.emit('save:error', {
+        slot: payload.slot || 'latest', reason: 'load_failed',
+        error: error?.message || String(error), ...failure,
+      });
+    }
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    throw error;
+  }
+}
+
+
+const _loadingClearColor = new THREE.Color();
+
+function enterLoadingMode(state, bus) {
+  state.render?.cancelOpeningPresentationHold?.();
+  const timeEffects = createTimeEffects(state);
+  timeEffects.set('runtime:loading', { scale: 0 });
+  const previousMode = state.mode;
+  laneSetMode(state, bus, 'loading');
+  try { releaseUiStage('loading-started'); } catch (_) { /* stage may not be mounted */ }
+  // The frozen canvas holds its last presented frame for the whole load. If any cover lifts a
+  // beat before the first flight present, that frame is what shows — so make the held frame a
+  // deliberate black, matching the veil, instead of whatever the menu era last drew.
+  try {
+    const renderer = state.render && state.render.renderer;
+    if (renderer && typeof renderer.clear === 'function'
+        && typeof renderer.getClearColor === 'function') {
+      const prevAlpha = renderer.getClearAlpha();
+      renderer.getClearColor(_loadingClearColor);
+      renderer.setRenderTarget(null);
+      renderer.setClearColor(0x000000, 1);
+      renderer.clear(true, true, false);
+      renderer.setClearColor(_loadingClearColor, prevAlpha);
+    }
+  } catch (_) { /* best effort — the shell still covers the handoff */ }
+  if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
+}
+
+function enterFlightMode(state, bus, options = {}) {
+  const runTransitionGuard = options && options.runTransitionGuard;
+  const transitionToken = options && options.transitionToken;
+  const continueSlot = options && options.continueSlot;
+  const holdOptions = options && options.holdOptions && typeof options.holdOptions === 'object'
+    ? options.holdOptions : {};
+  let lateFailureHandled = false;
+  const handleLateFailure = (error) => {
+    if (lateFailureHandled) return false;
+    if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
+    // The worker lane accepts the flight command before its mirrored facade mode arrives on
+    // the main thread. A guarded hold belongs to this committed transition even while that
+    // mirror still says loading; an unguarded legacy caller still needs the mode fence.
+    if (!runTransitionGuard && state.mode !== 'flight') return false;
+    lateFailureHandled = true;
+    const failure = describeGameStartFailure(error);
+    if (!failGameStart(state, bus, error, failure.text, runTransitionGuard, transitionToken, failure)) return false;
+    if (continueSlot == null) return true;
+    const receipt = {
+      slot: continueSlot,
+      reason: 'load_failed',
+      error: error?.message || String(error),
+      ...failure,
+    };
+    const emitReceipt = () => {
+      if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return;
+      bus.emit('save:error', receipt);
+    };
+    if (typeof queueMicrotask === 'function') queueMicrotask(emitReceipt);
+    else Promise.resolve().then(emitReceipt);
+    return true;
+  };
+  const timeEffects = createTimeEffects(state);
+  const previousMode = state.mode;
+  holdOpeningPresentationUntilPaint(state, timeEffects, handleLateFailure, holdOptions);
+  laneSetMode(state, bus, 'flight');
+  timeEffects.clear('runtime:boot-menu');
+  timeEffects.clear('runtime:loading');
+  timeEffects.clear('runtime:start-failed');
+  if (previousMode !== 'flight') bus.emit('mode:changed', { mode: 'flight', previousMode });
+}
+
+function failGameStart(state, bus, error, text, runTransitionGuard = null, transitionToken = null, failure = null) {
+  if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
+  state.render?.cancelOpeningPresentationHold?.();
+  const timeEffects = createTimeEffects(state);
+  timeEffects.set('runtime:start-failed', { scale: 0 });
+  timeEffects.clear('runtime:boot-menu');
+  timeEffects.clear('runtime:loading');
+  const previousMode = state.mode;
+  laneSetMode(state, bus, 'menu');
+  if (previousMode !== 'menu') bus.emit('mode:changed', { mode: 'menu', previousMode });
+  if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
+  bus.emit('game:startFailed', {
+    error: error && error.message ? error.message : String(error),
+    ...(failure || {}),
+    text,
+  });
+  if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
+  // The loading presenter retains the failure and public Retry/Back actions. Do not replace
+  // the failed route with a menu or an expiring toast that loses the original cause.
+  return true;
+}
+
+async function waitForAuthoredPartLibrary(state, timeoutMs = 20000) {
+  const ready = state && state.render && state.render.authoredPartLibraryReady;
+  if (!ready || typeof ready.then !== 'function') return false;
+  const settlement = await Promise.race([
+    ready.then(
+      (value) => ({ settled: true, usable: isAuthoredPartLibraryUsable(value) }),
+      () => ({ settled: true, usable: false }),
+    ),
+    delay(timeoutMs).then(() => ({ settled: false, usable: false })),
+  ]);
+  if (settlement.usable) return true;
+  if (!settlement.settled) {
+    console.warn('[SpaceFace] authored part library was not preloaded before world spawn');
+    return false;
+  }
+
+  const retry = state && state.render && state.render.retryAuthoredPartLibrary;
+  if (typeof retry !== 'function') return false;
+  const retried = retry();
+  const retryResult = await Promise.race([
+    Promise.resolve(retried).then(
+      (value) => isAuthoredPartLibraryUsable(value),
+      () => false,
+    ),
+    delay(timeoutMs).then(() => false),
+  ]);
+  if (!retryResult) console.warn('[SpaceFace] authored part library retry did not produce a usable library');
+  return retryResult;
+}
+
+// One bounded second window before declaring startup failure. Staging pipelines keep
+// running between waits, so a transient stall (host contention, driver-variant compile
+// burst) resolves inside the retry while a persistent stall still fails closed. Without
+// this a one-shot timeout lands the player on a frozen menu with a valid save (D31).
+async function waitForInitialAuthoredVisualsWithRetry(state, timeoutMs, isCurrent = null, bus = null, transition = 'continue') {
+  let ready = await waitForInitialAuthoredVisuals(state, timeoutMs, isCurrent);
+  if (ready || (isCurrent && !isCurrent())) return ready;
+  console.warn('[SpaceFace] authored visuals staging stalled; retrying once before declaring startup failure', authoredVisualReadiness(state));
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('game:loadingProgress', {
+      id: 'authored-visuals',
+      progress: 0.5,
+      label: 'Building the opening scene',
+      detail: 'Still placing ships and stations. Almost there.',
+      transition,
+    });
+  }
+  ready = await waitForInitialAuthoredVisuals(state, AUTHORED_VISUAL_RETRY_TIMEOUT_MS, isCurrent);
+  return ready;
+}
+
+async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000, isCurrent = null) {
+  const started = nowMs();
+  let readiness = authoredVisualReadiness(state);
+  let heartbeatLogged = false;
+  // The readiness scan is O(entityList) with per-entity status derives; on a contended host the
+  // old every-frame poll ran it thousands of times inside its own bound. Full-rate early (the
+  // first ~0.5s where a fast boot flips ready), then one scan per four presented frames — a
+  // ~66ms granularity far tighter than any link/compile leg underneath it.
+  let frames = 0;
+  while (!readiness.pipelineReady && nowMs() - started < timeoutMs) {
+    frames += 1;
+    await nextFrame();
+    if (isCurrent && !isCurrent()) return false;
+    if (frames > 30 && frames % 4 !== 0) continue;
+    readiness = authoredVisualReadiness(state);
+    // A same-session restore re-stages every required pipeline; on a contended host the gate
+    // can sit inside its own bound long enough that probes and players both wonder what is
+    // stuck. Name the blocking entries once mid-wait instead of only at the timeout warn.
+    if (!heartbeatLogged && nowMs() - started > 25000) {
+      heartbeatLogged = true;
+      console.warn('[SpaceFace] authored visuals still staging after 25s', readiness);
+    }
+  }
+  if (readiness.pipelineReady) return true;
+  console.warn('[SpaceFace] initial authored visuals were not staged before pipeline preparation', readiness);
+  return false;
+}
+
+function authoredVisualReadiness(state) {
+  return authoredCriticalVisualReadiness(state);
+}
+
+function loadingDetailForStage(stageOrId) {
+  const stage = stageOrId && typeof stageOrId === 'object' ? stageOrId : null;
+  if (stage && typeof stage.detail === 'string' && stage.detail) return stage.detail;
+  const stageId = stage ? stage.id : stageOrId;
+  if (stageId === 'preparing-run') return 'Initializing pilot profile and sector data';
+  if (stageId === 'authored-library') return 'Loading sector assets';
+  if (stageId === 'authored-visuals') return 'Populating ships and stations';
+  if (stageId === 'render-pipelines') return 'Compiling shaders and render pipelines';
+  if (stageId === 'gpu-resources') return 'Uploading graphics resources';
+  if (stageId === 'physics-authority') return 'Initializing flight physics';
+  if (stageId === 'entering-flight') return 'Final system checks';
+  return 'Preparing flight systems';
+}
+
+// D35/D36: rAF can starve entirely on an occluded or compositor-blocked host while timers keep
+// running. A startup wait that only listens to rAF then never settles, and load finalization
+// holds the session at mode:'loading' with time frozen. Every frame-wait below therefore pairs
+// its rAF with a timer fallback — when frames present normally the timer is a no-op, and under
+// starvation the waits resolve at the fallback cadence so their callers' own wall-clock bounds
+// still apply instead of the load hanging open.
+// Starvation latch shared by the frame waits: when the timer wins twice running the compositor
+// is demonstrably starved, so remaining boundaries downgrade to setTimeout(0) — they still
+// flush the task queue (worker posts, bus emits) instead of burning the full 48/250ms floor a
+// frame wait cannot deliver anyway. A pending probe rAF re-arms the race on real delivery.
+let frameWaitStarved = 0;
+let frameWaitProbePending = false;
+
+function armFrameWaitProbe() {
+  if (frameWaitProbePending || typeof requestAnimationFrame !== 'function') return;
+  frameWaitProbePending = true;
+  requestAnimationFrame(() => {
+    frameWaitProbePending = false;
+    frameWaitStarved = 0;
+  });
+}
+
+function nextFrame() {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (viaTimer) => {
+      if (done) return;
+      done = true;
+      frameWaitStarved = viaTimer ? frameWaitStarved + 1 : 0;
+      // The rAF path resolves in a fresh background task — an inline resolve
+      // runs the awaited boot/restore leg inside this frame's task, pre-present.
+      if (viaTimer) resolve();
+      else postTaskAtBackgroundPriorityBounded(resolve);
+    };
+    if (frameWaitStarved >= 2) {
+      armFrameWaitProbe();
+      setTimeout(() => finish(true), 0);
+      return;
+    }
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => finish(false));
+    setTimeout(() => finish(true), 48);
+  });
+}
+
+let lastPaintAt = -Infinity;
+
+function nextPaint() {
+  if (typeof requestAnimationFrame !== 'function') return delay(0);
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (viaTimer) => {
+      if (done) return;
+      done = true;
+      frameWaitStarved = viaTimer ? frameWaitStarved + 1 : 0;
+      lastPaintAt = nowMs();
+      if (viaTimer) resolve();
+      else postTaskAtBackgroundPriorityBounded(resolve);
+    };
+    if (frameWaitStarved >= 2) {
+      armFrameWaitProbe();
+      setTimeout(() => finish(true), 0);
+      return;
+    }
+    requestAnimationFrame(() => requestAnimationFrame(() => finish(false)));
+    // 250 ms ≈ 4 fps: a merely slow compositor still wins the race and gets its real paint;
+    // only a starved one gives the boundary up to the timer.
+    setTimeout(() => finish(true), 250);
+  });
+}
+
+// A gate that resolves within a frame slice of the last real paint does not need its own
+// double-rAF — the compositor is demonstrably alive, so the progress emit runs synchronously
+// and only a genuinely un-painted stretch pays the boundary. ~2 frames each otherwise.
+function nextPaintSliced() {
+  if (lastPaintAt !== -Infinity && nowMs() - lastPaintAt < 16) return Promise.resolve();
+  return nextPaint();
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function nowMs() {
+  return (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
+    ? performance.now()
+    : Date.now();
+}
+
+
+// SFQ-B228: a boot-stage failure (missing scenario asset, failed fetch, init throw) used to
+// dump a raw stack into the overlay — a cause, but no exit: a dead screen. The recovery pane
+// owner (runtimeFailurePresenter) renders instead: named cause + Retry, saves untouched.
+// The raw stack stays the fallback (and always reaches the console for devtools).
+// One presenter instance is shared by both dead-end classes — boot()'s flight-interrupted
+// path and this boot-error path — because two instances over #boot-overlay would stack
+// capture-phase keydown listeners and orphan the first instance's destroy path.
+let bootFailurePresenterInstance = null;
+function bootRecoveryPresenter() {
+  if (!bootFailurePresenterInstance) {
+    bootFailurePresenterInstance = createRuntimeFailurePresenter({
+      document,
+      // "Copy details" attaches the diagnostics report; the state may not exist yet at boot.
+      getDiagnosticsState: () => diagnosticsState,
+    });
+  }
+  return bootFailurePresenterInstance;
+}
+function showBootError(err) {
+  console.error('[boot]', err);
+  try { recordRuntimeError('boot failure', err, { silent: true }); } catch (_) { /* the ring is best-effort */ }
+  try {
+    if (bootRecoveryPresenter().show(describeBootFailure(err))) return;
+  } catch (paneError) {
+    console.error('[boot] recovery pane failed; falling back to raw boot error', paneError);
+  }
+  const o = document.getElementById('boot-overlay');
+  if (o) o.innerHTML = '<div class="boot-error">BOOT ERROR\n\n' + ((err && err.stack) || err) + '</div>';
+}
+
+async function loadScenarioContract(url, path) {
+  // This await sits at main.js:108, upstream of startLoop and hideBootOverlay. With no timeout, a
+  // response that never settles freezes the loading screen forever and prints nothing. Failing
+  // loudly after 15s is strictly better than hanging silently: the caller already handles a throw.
+  const response = await fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(15000) });
+  if (!response.ok) throw new Error(`Unable to load scenario contract ${path}: HTTP ${response.status}`);
+  const document = await response.json();
+  return {
+    document,
+    path,
+    sha256: await sha256Hex(canonicalStringify(document)),
+  };
+}
+
+async function sha256Hex(text) {
+  const bytes = new TextEncoder().encode(String(text || ''));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+boot();

@@ -1,0 +1,330 @@
+TAP version 13
+# Subtest: player and glass visibility pin exact simulation
+ok 1 - player and glass visibility pin exact simulation
+  ---
+  duration_ms: 1.542073
+  ...
+# Subtest: off-screen pursuer can be exact while not drawn
+ok 2 - off-screen pursuer can be exact while not drawn
+  ---
+  duration_ms: 0.186191
+  ...
+# Subtest: far itinerary traffic is abstract not deleted
+ok 3 - far itinerary traffic is abstract not deleted
+  ---
+  duration_ms: 0.201186
+  ...
+# Subtest: after grace, inside exit radius stays near
+ok 4 - after grace, inside exit radius stays near
+  ---
+  duration_ms: 0.238811
+  ...
+# Subtest: beyond the exit radius the classifier is dormant; grace lives on the stamp
+ok 5 - beyond the exit radius the classifier is dormant; grace lives on the stamp
+  ---
+  duration_ms: 0.142465
+  ...
+# Subtest: mission pin is explicit data not a guessed radius
+ok 6 - mission pin is explicit data not a guessed radius
+  ---
+  duration_ms: 0.13298
+  ...
+# Subtest: a lawful ship answering an incident is pinned exact, far or near
+ok 7 - a lawful ship answering an incident is pinned exact, far or near
+  ---
+  duration_ms: 0.185989
+  ...
+# Subtest: classifyActivity skips a second pin normalize when pins are already normalized
+ok 8 - classifyActivity skips a second pin normalize when pins are already normalized
+  ---
+  duration_ms: 0.150042
+  ...
+# Subtest: pin normalize scratch reuses the same buffers without changing reasons
+ok 9 - pin normalize scratch reuses the same buffers without changing reasons
+  ---
+  duration_ms: 1.312158
+  ...
+# Subtest: tether flag on the entity is an explicit pin
+ok 10 - tether flag on the entity is an explicit pin
+  ---
+  duration_ms: 0.255533
+  ...
+# Subtest: physics reach uses look-ahead not camera size alone
+ok 11 - physics reach uses look-ahead not camera size alone
+  ---
+  duration_ms: 0.246623
+  ...
+# Subtest: presentation runway is independent of exact sim
+ok 12 - presentation runway is independent of exact sim
+  ---
+  duration_ms: 0.123455
+  ...
+# Subtest: far rocks and haulers leave the Rapier set without being deleted
+ok 13 - far rocks and haulers leave the Rapier set without being deleted
+  ---
+  duration_ms: 4.72229
+  ...
+# Subtest: later ticks do not reclassify the full live list
+ok 14 - later ticks do not reclassify the full live list
+  ---
+  duration_ms: 3.536566
+  ...
+# Subtest: stable entity-index membership skips the fat unstamped rescan
+ok 15 - stable entity-index membership skips the fat unstamped rescan
+  ---
+  duration_ms: 1.617148
+  ...
+# Subtest: same-tick projectile spawns append without reclassifying the world
+ok 16 - same-tick projectile spawns append without reclassifying the world
+  ---
+  duration_ms: 0.7109
+  ...
+# Subtest: off-glass pursuer stays exact and in physics
+ok 17 - off-glass pursuer stays exact and in physics
+  ---
+  duration_ms: 0.831902
+  ...
+# Subtest: tethered payload stays exact after leaving the glass
+ok 18 - tethered payload stays exact after leaving the glass
+  ---
+  duration_ms: 0.419185
+  ...
+# Subtest: job-pinned far actor stays exact
+ok 19 - job-pinned far actor stays exact
+  ---
+  duration_ms: 0.599311
+  ...
+# Subtest: mined rock keeps remaining ore after leaving and returning
+ok 20 - mined rock keeps remaining ore after leaving and returning
+  ---
+  duration_ms: 0.989572
+  ...
+# Subtest: destroyed records are not the same as dematerialized far actors
+ok 21 - destroyed records are not the same as dematerialized far actors
+  ---
+  duration_ms: 0.529815
+  ...
+# Subtest: stamped dormant owners never think; unstamped hostiles still do
+ok 22 - stamped dormant owners never think; unstamped hostiles still do
+  ---
+  duration_ms: 0.983545
+  ...
+# Subtest: consecutive ticks demote a far hauler after grace instead of restarting it
+ok 23 - consecutive ticks demote a far hauler after grace instead of restarting it
+  ---
+  duration_ms: 3.963765
+  ...
+# Subtest: mining lock and authored activity slots stay exact off the table
+ok 24 - mining lock and authored activity slots stay exact off the table
+  ---
+  duration_ms: 0.353279
+  ...
+# Subtest: SG-06 pursuit activity pins a far hostile
+ok 25 - SG-06 pursuit activity pins a far hostile
+  ---
+  duration_ms: 0.23676
+  ...
+# Subtest: demoting a durable hauler writes the world ledger without deleting it
+ok 26 - demoting a durable hauler writes the world ledger without deleting it
+  ---
+  duration_ms: 4.680556
+  ...
+# Subtest: spatial hash membership is the Rapier active set, not the whole sector
+ok 27 - spatial hash membership is the Rapier active set, not the whole sector
+  ---
+  duration_ms: 1.423774
+  ...
+# Subtest: production physics, AI, and traffic call the activity runtime
+ok 28 - production physics, AI, and traffic call the activity runtime
+  ---
+  duration_ms: 15.392205
+  ...
+# Subtest: S1 near actors think on a reduced cadence, not every tick
+ok 29 - S1 near actors think on a reduced cadence, not every tick
+  ---
+  duration_ms: 0.520726
+  ...
+# Subtest: generic unobserved far ships become aggregate population, not 60 Hz bodies
+ok 30 - generic unobserved far ships become aggregate population, not 60 Hz bodies
+  ---
+  duration_ms: 0.482211
+  ...
+# Subtest: activity manager publishes glass and exact sets from the live classifier
+ok 31 - activity manager publishes glass and exact sets from the live classifier
+  ---
+  duration_ms: 0.396161
+  ...
+# Subtest: incremental classify revisits fast non-physics movers the hash cannot see
+ok 32 - incremental classify revisits fast non-physics movers the hash cannot see
+  ---
+  duration_ms: 0.954026
+  ...
+# Subtest: signature prune skips when entity-index membership is unchanged
+ok 33 - signature prune skips when entity-index membership is unchanged
+  ---
+  duration_ms: 0.532942
+  ...
+# Subtest: incremental classify closed-form catch-up uses entity-index lane when ready
+ok 34 - incremental classify closed-form catch-up uses entity-index lane when ready
+  ---
+  duration_ms: 1.368468
+  ...
+# Subtest: prepared Rapier job hull tracks kernel route speed/bounds, completes, and recommissions
+ok 35 - prepared Rapier job hull tracks kernel route speed/bounds, completes, and recommissions
+  ---
+  duration_ms: 273.292456
+  ...
+# Subtest: prepared Rapier Ranger field sail follows the authored Ceres survey leg without coasting out
+ok 36 - prepared Rapier Ranger field sail follows the authored Ceres survey leg without coasting out
+  ---
+  duration_ms: 235.618494
+  ...
+# Subtest: Ceres seam miner follows its unique live ore clast, then fails closed to the authored route mark
+ok 37 - Ceres seam miner follows its unique live ore clast, then fails closed to the authored route mark
+  ---
+  duration_ms: 2.969163
+  ...
+# Subtest: prepared Rapier seam miner physically closes to its live ore-clast standoff during work
+ok 38 - prepared Rapier seam miner physically closes to its live ore-clast standoff during work
+  ---
+  duration_ms: 128.31746
+  ...
+# Subtest: the five admitted Ceres target tuples bind once and drive without a steady entity scan
+ok 39 - the five admitted Ceres target tuples bind once and drive without a steady entity scan
+  ---
+  duration_ms: 4.621369
+  ...
+# Subtest: the production Ceres world and traffic cast bind all five admitted live relationships
+ok 40 - the production Ceres world and traffic cast bind all five admitted live relationships
+  ---
+  duration_ms: 45.829205
+  ...
+# Subtest: duplicate and same-id replacement target authority fail closed without a neutral prewrite
+ok 41 - duplicate and same-id replacement target authority fail closed without a neutral prewrite
+  ---
+  duration_ms: 2.651468
+  ...
+# Subtest: duplicate Ceres job actors fail assignment and rematerialization until exact authority is unique
+ok 42 - duplicate Ceres job actors fail assignment and rematerialization until exact authority is unique
+  ---
+  duration_ms: 1.682714
+  ...
+# Subtest: a malformed same-record contender invalidates a canonical actor until real post-delete recovery
+ok 43 - a malformed same-record contender invalidates a canonical actor until real post-delete recovery
+  ---
+  duration_ms: 2.565395
+  ...
+# Subtest: canonical actor death with immediate numeric-id reuse never mutates the replacement entity
+ok 44 - canonical actor death with immediate numeric-id reuse never mutates the replacement entity
+  ---
+  duration_ms: 1.417962
+  ...
+# Subtest: same-sector enter preserves prior terminal cleanup authority through live actor ambiguity
+ok 45 - same-sector enter preserves prior terminal cleanup authority through live actor ambiguity
+  ---
+  duration_ms: 1.050993
+  ...
+# Subtest: ambiguous same-sector enter consumes stale entry and job wrapper terminal authority
+ok 46 - ambiguous same-sector enter consumes stale entry and job wrapper terminal authority
+  ---
+  duration_ms: 1.65149
+  ...
+# Subtest: route-invalidated production actor release consumes exact terminal cleanup authority
+ok 47 - route-invalidated production actor release consumes exact terminal cleanup authority
+  ---
+  duration_ms: 21.021076
+  ...
+# Subtest: in-place semantic reclassification cannot inherit exact Ceres terminal cleanup
+ok 48 - in-place semantic reclassification cannot inherit exact Ceres terminal cleanup
+  ---
+  duration_ms: 2.139755
+  ...
+# Subtest: route-invalid actor ambiguity removal re-admits terminal-only cleanup authority
+ok 49 - route-invalid actor ambiguity removal re-admits terminal-only cleanup authority
+  ---
+  duration_ms: 1.205684
+  ...
+# Subtest: authoritative Ceres job release rejects a foreign-record same-id successor and consumes authority
+ok 50 - authoritative Ceres job release rejects a foreign-record same-id successor and consumes authority
+  ---
+  duration_ms: 0.788413
+  ...
+# Subtest: same-sector enter rejects a scalar-identical same-id actor clone without cleanup transfer
+ok 51 - same-sector enter rejects a scalar-identical same-id actor clone without cleanup transfer
+  ---
+  duration_ms: 0.917642
+  ...
+# Subtest: observed entry and job wrapper replacements invalidate authority until explicit reassignment
+ok 52 - observed entry and job wrapper replacements invalidate authority until explicit reassignment
+  ---
+  duration_ms: 1.49702
+  ...
+# Subtest: route and waypoint invalidation clears movement before null applicability can early-return
+ok 53 - route and waypoint invalidation clears movement before null applicability can early-return
+  ---
+  duration_ms: 1.49511
+  ...
+# Subtest: canonical actor preflight rejects malformed identity and retained-wrapper replacement without mutation
+ok 54 - canonical actor preflight rejects malformed identity and retained-wrapper replacement without mutation
+  ---
+  duration_ms: 1.053822
+  ...
+# Subtest: Ceres sector exit virtualizes jobs but cleans only the retained exact actor identity
+ok 55 - Ceres sector exit virtualizes jobs but cleans only the retained exact actor identity
+  ---
+  duration_ms: 1.485383
+  ...
+# Subtest: virtual exact-Ceres relink and adoption reject a foreign live job marker without mutation
+ok 56 - virtual exact-Ceres relink and adoption reject a foreign live job marker without mutation
+  ---
+  duration_ms: 0.764564
+  ...
+# Subtest: Continue-style restore reacquires changed numeric actor and target ids through stable authority
+ok 57 - Continue-style restore reacquires changed numeric actor and target ids through stable authority
+  ---
+  duration_ms: 1.501158
+  ...
+# Subtest: real legacy Continue adopts miner refs before strict relink and resumes live target motion
+ok 58 - real legacy Continue adopts miner refs before strict relink and resumes live target motion
+  ---
+  duration_ms: 60.604104
+  ...
+# Subtest: unsupported, wrong-kind, and foreign target refs retain the authored route controller
+ok 59 - unsupported, wrong-kind, and foreign target refs retain the authored route controller
+  ---
+  duration_ms: 0.928365
+  ...
+# Subtest: route braking is transient across stationary, flee, control, and release ownership
+ok 60 - route braking is transient across stationary, flee, control, and release ownership
+  ---
+  duration_ms: 0.881012
+  ...
+# Subtest: live Ceres ambush resists pirate disengage and resolve restores morale ownership exactly
+ok 61 - live Ceres ambush resists pirate disengage and resolve restores morale ownership exactly
+  ---
+  duration_ms: 9.916488
+  ...
+# Subtest: Continue resume reapplies live immunity and hard exit restores without replacement
+ok 62 - Continue resume reapplies live immunity and hard exit restores without replacement
+  ---
+  duration_ms: 3.052381
+  ...
+# Subtest: legacy Continue snapshots preserve morale own-property truth through adoption and exit
+ok 63 - legacy Continue snapshots preserve morale own-property truth through adoption and exit
+  ---
+  duration_ms: 2.197931
+  ...
+# Subtest: explicit ambush abort restores morale ownership without encounter despawn
+ok 64 - explicit ambush abort restores morale ownership without encounter despawn
+  ---
+  duration_ms: 1.394481
+  ...
+1..64
+# tests 64
+# suites 0
+# pass 64
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1274.970576

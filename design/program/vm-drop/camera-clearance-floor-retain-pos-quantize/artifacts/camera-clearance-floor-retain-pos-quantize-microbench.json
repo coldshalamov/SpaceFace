@@ -1,0 +1,89 @@
+{
+  "label": "camera-clearance-floor-retain-pos-quantize",
+  "scenario": "quiet-chase-drift-off-roof",
+  "iters": 400000,
+  "stations": 8,
+  "fieldRocks": 40,
+  "pairs": [
+    {
+      "beforeMs": 102.48161599999997,
+      "afterMs": 51.366115000000036,
+      "speedup": 1.9951210248234639,
+      "beforeSink": 400000,
+      "afterSink": 400000
+    },
+    {
+      "beforeMs": 150.384701,
+      "afterMs": 43.94866099999996,
+      "speedup": 3.421826685459203,
+      "beforeSink": 400000,
+      "afterSink": 400000
+    },
+    {
+      "beforeMs": 106.319186,
+      "afterMs": 44.230456000000004,
+      "speedup": 2.4037551410277116,
+      "beforeSink": 400000,
+      "afterSink": 400000
+    },
+    {
+      "beforeMs": 105.889767,
+      "afterMs": 51.459270000000004,
+      "speedup": 2.057739392727491,
+      "beforeSink": 400000,
+      "afterSink": 400000
+    },
+    {
+      "beforeMs": 103.49606499999993,
+      "afterMs": 46.97116999999997,
+      "speedup": 2.2033955083511865,
+      "beforeSink": 400000,
+      "afterSink": 400000
+    },
+    {
+      "beforeMs": 106.30945299999996,
+      "afterMs": 45.71957299999997,
+      "speedup": 2.325250347373105,
+      "beforeSink": 400000,
+      "afterSink": 400000
+    },
+    {
+      "beforeMs": 105.611851,
+      "afterMs": 43.98692599999998,
+      "speedup": 2.40098276019561,
+      "beforeSink": 400000,
+      "afterSink": 400000
+    },
+    {
+      "beforeMs": 119.55873299999996,
+      "afterMs": 71.88068800000008,
+      "speedup": 1.6632942216691058,
+      "beforeSink": 400000,
+      "afterSink": 400000
+    },
+    {
+      "beforeMs": 101.82757099999998,
+      "afterMs": 50.75290000000001,
+      "speedup": 2.0063399529879073,
+      "beforeSink": 400000,
+      "afterSink": 400000
+    },
+    {
+      "beforeMs": 112.02911799999993,
+      "afterMs": 54.490209999999934,
+      "speedup": 2.0559494632155033,
+      "beforeSink": 400000,
+      "afterSink": 400000
+    },
+    {
+      "beforeMs": 109.640172,
+      "afterMs": 52.878287,
+      "speedup": 2.0734440962506975,
+      "beforeSink": 400000,
+      "afterSink": 400000
+    }
+  ],
+  "medianSpeedup": 2.0734440962506975,
+  "floorMinSpeedup": 1.6632942216691058,
+  "note": "Before=retain+bit-identical (drift miss); After=retain+0.25WU quantize (drift hit). Soft-GPU fps not claimed."
+}

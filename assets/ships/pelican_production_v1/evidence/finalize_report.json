@@ -1,0 +1,124 @@
+{
+  "schema": "spaceface.pelicanProductionV1.finalize.v1",
+  "packet": "SF-PELICAN-PRODUCTION-V1-001",
+  "assetId": "SF_PELICAN_PRODUCTION_V1",
+  "status": "technical_candidate",
+  "promoted": false,
+  "lods": [
+    {
+      "lod": 0,
+      "path": "assets/ships/pelican_production_v1/release_candidates/wholeships/pelican_production_v1_lod0.glb",
+      "sourcePath": "assets/ships/pelican_production_v1/source/wholeships/pelican_production_v1_lod0.glb",
+      "bytes": 1006656,
+      "sha256": "D26CE26879656637021A5E5EA24B55E3DD87DDC2CBD67ABFEE0B1265DCB0355C",
+      "hullTriangles": 2148,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "missingSockets": [],
+      "missingMaterials": [],
+      "embeddedPlume": false,
+      "under100MiB": true
+    },
+    {
+      "lod": 1,
+      "path": "assets/ships/pelican_production_v1/release_candidates/wholeships/pelican_production_v1_lod1.glb",
+      "sourcePath": "assets/ships/pelican_production_v1/source/wholeships/pelican_production_v1_lod1.glb",
+      "bytes": 557440,
+      "sha256": "A51F957E4259178FE8AAF85F5A3C0447D4423BEDE9D5874F06488144058B6B06",
+      "hullTriangles": 2148,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "missingSockets": [],
+      "missingMaterials": [],
+      "embeddedPlume": false,
+      "under100MiB": true
+    },
+    {
+      "lod": 2,
+      "path": "assets/ships/pelican_production_v1/release_candidates/wholeships/pelican_production_v1_lod2.glb",
+      "sourcePath": "assets/ships/pelican_production_v1/source/wholeships/pelican_production_v1_lod2.glb",
+      "bytes": 451036,
+      "sha256": "FDDF21D5C918832C42764F2661D07905846E57C1D8B3CE256CF3EC18820C8E73",
+      "hullTriangles": 2148,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "missingSockets": [],
+      "missingMaterials": [],
+      "embeddedPlume": false,
+      "under100MiB": true
+    }
+  ],
+  "checks": {
+    "allUnder100MiB": true,
+    "allSocketsPresent": true,
+    "semanticMaterialsPresent": true,
+    "authoredHullBody": true,
+    "noEmbeddedPlume": true
+  },
+  "ok": true
+}

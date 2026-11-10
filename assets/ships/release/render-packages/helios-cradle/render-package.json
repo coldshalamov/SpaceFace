@@ -1,0 +1,7763 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.9956002235412598,
+        0.14963603019714355,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.9956002235412598,
+        0.14963603019714355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        -3.3500001430511475,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        -3.3500001430511475,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.399999618530273,
+        -0.699999988079071,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.399999618530273,
+        -0.699999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.5,
+        -0.0003639697970356792,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.5,
+        -0.0003639697970356792,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        0.14963603019714355,
+        -2.8380000591278076,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        0.14963603019714355,
+        -2.8380000591278076,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        0.14963603019714355,
+        2.8380000591278076,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        0.14963603019714355,
+        2.8380000591278076,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.150399684906006,
+        1.8496360778808594,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.150399684906006,
+        1.8496360778808594,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        -1.1825000047683716,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        -1.1825000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        1.1825000047683716,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        1.1825000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        3.6492722034454346,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        3.6492722034454346,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.600000381469727,
+        0.14963603019714355,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.600000381469727,
+        0.14963603019714355,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.helios-cradle",
+  "collisions": [
+    {
+      "id": "sf.render.helios-cradle.collision",
+      "nodeId": "sf.render.helios-cradle.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "a5da9b87156938d43d9d6422e898accbf344c7acc71b42a34222a528010a6c0f",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-drive-core.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-drive-core"
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-port"
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-drive-core.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-drive-core"
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-port"
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-drive-core.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-drive-core"
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-port"
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-starboard"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          12.99917221069336,
+          3.69896362317319,
+          4.732670873289859
+        ],
+        "min": [
+          -10.820108413696289,
+          -3.399497490055514,
+          -4.732670873289859
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa14df82555ab3ebaa6425df9b01f7f6f118033f0b797d77d3b60539625ff1c5",
+      "id": "sf.render.helios-cradle.node.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.helios-cradle.node.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 849
+    },
+    {
+      "bounds": {
+        "max": [
+          9.699897766113281,
+          3.3010544502750054,
+          4.5767005145409705
+        ],
+        "min": [
+          -9.99990463256836,
+          -3.3994154655948297,
+          -4.5767005145409705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1bc889e168683c38833321701ebd48040975b9b3c3193ce899c900ef6b0c4d77",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-armor.primitive.0",
+      "indexCount": 17748,
+      "indexed": true,
+      "materialHash": "635f34cd461205a122c1769c11940ccf89bc9760bd66d9d28c773f2352522745",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 5135
+    },
+    {
+      "bounds": {
+        "max": [
+          10.049999237060547,
+          1.7986357730767308,
+          3.70134037729258
+        ],
+        "min": [
+          -9,
+          -2.0965940278908786,
+          -3.70134037729258
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa22c7281679f96161a759672983cb0f84c1d4f96c73ac4c73ba40a22a34d682",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "indexCount": 6846,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 2247
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7944751515419268,
+          2.9618239332392147,
+          4.010713577270508
+        ],
+        "min": [
+          -4.694475306514003,
+          1.4381762813375063,
+          -4.010713577270508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6cf0db95a6625425869969d5824e2951547288fe0e372e1c8edc94595bbb062c",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-brushedmetal.primitive.0",
+      "indexCount": 2256,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 776
+    },
+    {
+      "bounds": {
+        "max": [
+          8.850178570875,
+          1.5833246338390927,
+          2.0993852615356445
+        ],
+        "min": [
+          7.349788336626221,
+          -0.1420792865776639,
+          -2.0993752479553223
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3cccaa6f180b9d0a27485be869ab6ce562eb731d0482488ae65732bf4ef70d6a",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-canopy.primitive.0",
+      "indexCount": 3570,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 1102
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4076409339904785,
+          3.4733600320314566,
+          2.1179471620944517
+        ],
+        "min": [
+          -4.24161434173584,
+          1.9019060431028207,
+          -2.219379485550262
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "591e5ac0800148b38f1e3aee29aa4146c12fbf14465685fde4aacc700aac1d01",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-ceramic-ore.primitive.0",
+      "indexCount": 960,
+      "indexed": true,
+      "materialHash": "fedde3ba42c1b254f0ac33b047db8b16f746a919daa671e533a5c7d07b222eee",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Ceramic_ore",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-ceramic-ore",
+      "primitiveIndex": 0,
+      "vertexCount": 779
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8006188869476318,
+          3.4260009447386732,
+          1.8500199468694574
+        ],
+        "min": [
+          -4.049265384674072,
+          2.0327547868439684,
+          -2.1415481718145255
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d429b6f5842561d6ebae2824b805820adbec5123f6394fec2fd498ee900b884",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-ceramic-ore2.primitive.0",
+      "indexCount": 480,
+      "indexed": true,
+      "materialHash": "3f085ac29b92c9a568713249e3c9e373f96ed2a5476efd1ab52f5f4152983478",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Ceramic_ore2",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-ceramic-ore2",
+      "primitiveIndex": 0,
+      "vertexCount": 393
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.350000381469727,
+          -0.12960561804711468,
+          1.7704001665115356
+        ],
+        "min": [
+          -10.350000381469727,
+          -1.2703944177156723,
+          -1.7703999280929565
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "46a3dc09cd38f195c021442e7f7908eaa985bbf797d77ac9bca78dfa6c59b16c",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          4.634999752044678,
+          2.8745779532368583,
+          -0.6648848022922595
+        ],
+        "min": [
+          -1.149999976158142,
+          1.1449218255107003,
+          -4.730115178634254
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9411f987ac3b2cba2be08253f8adccf5551d73a095c53bec83996315152d2b9e",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-port.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.8499999046325684,
+          1.3550051023144671,
+          4.730000019073486
+        ],
+        "min": [
+          -1.1500000953674316,
+          1.1449948976855329,
+          4.429999828338623
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "464b52a33a12348c63e161902503e7ddabdc6fdc2b80f1aa14e91e3c87cc2d76",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.69990348815918,
+          3.500587055592693,
+          4.674098345213757
+        ],
+        "min": [
+          -9.999907493591309,
+          -2.8872571682025563,
+          -4.674098345213757
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "de50eff330b19b02104d365b493cdbb6aca33be9888cd379e442338b3f309628",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hull.primitive.0",
+      "indexCount": 23352,
+      "indexed": true,
+      "materialHash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 6770
+    },
+    {
+      "bounds": {
+        "max": [
+          5.13200044631958,
+          1.803202101009702,
+          0.6560002565383911
+        ],
+        "min": [
+          5.019999980926514,
+          1.7247980153385647,
+          0.5439997911453247
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "14a8ca35caedba57360dfc439292262b9c1eeb43e25c39fc6d87e5524e67686d",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.09985013807697,
+          1.7060217112789375,
+          4.099999904632568
+        ],
+        "min": [
+          3.6701496044309643,
+          -0.3250216693172676,
+          -4.099999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "97b1eb4b678a841491b4297cf3d1530947954dd6925c8409e3b6f075978159ae",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-lights-warm.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 384
+    },
+    {
+      "bounds": {
+        "max": [
+          10.399999618530273,
+          1.8197104843418006,
+          4.690314697696142
+        ],
+        "min": [
+          -8.15009593963623,
+          -2.4737532051364783,
+          -4.690314697696142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1fbb63348aaaf871e9b13bbc747d0466248179143eeddf3b51f0e7a1288f5ccb",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-livery.primitive.0",
+      "indexCount": 26628,
+      "indexed": true,
+      "materialHash": "346e630e7b6956f0a5e4452f64e00b9ec9da1bf656606d53a99b91699da6ab25",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Livery",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 8090
+    },
+    {
+      "bounds": {
+        "max": [
+          13,
+          3.6986806484804307,
+          4.209409107726665
+        ],
+        "min": [
+          -10.819999694824219,
+          -1.8494085165605698,
+          -4.209409107726665
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "90c70c80f1a70b369c62155961379cbbc8aafd92c6ba3e6a2367094633c09135",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanical.primitive.0",
+      "indexCount": 35784,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 11673
+    },
+    {
+      "bounds": {
+        "max": [
+          2.25,
+          3.099887772952102,
+          2.150135807367168
+        ],
+        "min": [
+          -4.25,
+          2.0501120839967504,
+          -2.150135807367168
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d872a02c8b6ea6ff7f96930cd83333551ab69c942552b3990a504726494b4b29",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanicaldark-ore.primitive.0",
+      "indexCount": 948,
+      "indexed": true,
+      "materialHash": "4bf741c764cfb34e33789f6326934c4e87da3a75164eb6666b5bf07575895165",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark_ore",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanicaldark-ore",
+      "primitiveIndex": 0,
+      "vertexCount": 286
+    },
+    {
+      "bounds": {
+        "max": [
+          12.170000076293945,
+          3.1820983898360637,
+          3.7498109005017555
+        ],
+        "min": [
+          -10.819999694824219,
+          -2.0997009288985637,
+          -3.7498109005017555
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4f9f94558afdf6a2b1b93fda8762accd1ff3e8df0ad903f461489c68e6d6958a",
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
+      "indexCount": 11838,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodeId": "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 3865
+    },
+    {
+      "bounds": {
+        "max": [
+          9.69998836517334,
+          3.3005738813061374,
+          4.577943931061177
+        ],
+        "min": [
+          -9.999990463256836,
+          -3.3999560434002536,
+          -4.577943931061177
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d07074c767b6a52db3973a2635f21c85a9c72609804fd686ec7b41d2aefbd199",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-armor.primitive.0",
+      "indexCount": 4896,
+      "indexed": true,
+      "materialHash": "635f34cd461205a122c1769c11940ccf89bc9760bd66d9d28c773f2352522745",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Armor",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1459
+    },
+    {
+      "bounds": {
+        "max": [
+          10.049999237060547,
+          1.7986488264939366,
+          3.699015224591513
+        ],
+        "min": [
+          -9,
+          -2.0965809744736728,
+          -3.699014509335776
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0681cabd863336d24ccfe91559edb35850d4e0f52038c160f5a05782f95115a9",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-beacon-amber.primitive.0",
+      "indexCount": 2058,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 764
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7944752707512164,
+          2.9618475962831905,
+          4.010713577270508
+        ],
+        "min": [
+          -4.694475187304714,
+          1.4381999443814821,
+          -4.010713577270508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ebe2a68bd07323b740dca2cde65653ce95e8be676daf73195a037b389f99a9cf",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-brushedmetal.primitive.0",
+      "indexCount": 1818,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_BrushedMetal",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 603
+    },
+    {
+      "bounds": {
+        "max": [
+          8.850163248608546,
+          1.5833483849105177,
+          2.099222421646118
+        ],
+        "min": [
+          7.349878999163671,
+          -0.14193365614979825,
+          -2.0992414951324463
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "95c2f065365e54b26b7750565b8b2860620b7607b01508f4f2a7ebe29f2394f9",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-canopy.primitive.0",
+      "indexCount": 630,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_MOTION_HULL_CORE_CANOPY",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 218
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4076409339904785,
+          3.4733600320314566,
+          2.1179471620944517
+        ],
+        "min": [
+          -4.24161434173584,
+          1.9019060431028207,
+          -2.219379485550262
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "591e5ac0800148b38f1e3aee29aa4146c12fbf14465685fde4aacc700aac1d01",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-ceramic-ore.primitive.0",
+      "indexCount": 960,
+      "indexed": true,
+      "materialHash": "fedde3ba42c1b254f0ac33b047db8b16f746a919daa671e533a5c7d07b222eee",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Ceramic_ore",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-ceramic-ore",
+      "primitiveIndex": 0,
+      "vertexCount": 779
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8006188869476318,
+          3.4260009447386732,
+          1.8500199468694574
+        ],
+        "min": [
+          -4.049265384674072,
+          2.0327547868439684,
+          -2.1415481718145255
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d429b6f5842561d6ebae2824b805820adbec5123f6394fec2fd498ee900b884",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-ceramic-ore2.primitive.0",
+      "indexCount": 480,
+      "indexed": true,
+      "materialHash": "3f085ac29b92c9a568713249e3c9e373f96ed2a5476efd1ab52f5f4152983478",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Ceramic_ore2",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-ceramic-ore2",
+      "primitiveIndex": 0,
+      "vertexCount": 393
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.350000381469727,
+          -0.12960561804711468,
+          1.7704001665115356
+        ],
+        "min": [
+          -10.350000381469727,
+          -1.2703944177156723,
+          -1.7703999280929565
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "46a3dc09cd38f195c021442e7f7908eaa985bbf797d77ac9bca78dfa6c59b16c",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-drive-core.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          4.634999752044678,
+          2.8745779532368583,
+          -0.6648848022922595
+        ],
+        "min": [
+          -1.149999976158142,
+          1.1449218255107003,
+          -4.730115178634254
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dcecfad3d158f5095c2b45db8f0ff297b19e1ee30089a063d17882932a61f860",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-port.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.8499999046325684,
+          1.3550051023144671,
+          4.730000019073486
+        ],
+        "min": [
+          -1.1500000953674316,
+          1.1449948976855329,
+          4.429999828338623
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "016fbe75dcff22f2c9a515dd8a955d362bc942a8ea997b1161117195b1c84447",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.700055122375488,
+          3.4994280693874256,
+          4.674162166804838
+        ],
+        "min": [
+          -10.00002384185791,
+          -2.886098181997289,
+          -4.67416168996768
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6fa62fc07be764ab0530f8e2798d8e505f4a5df2b381523fd72c1a9714a58f13",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-hull.primitive.0",
+      "indexCount": 10149,
+      "indexed": true,
+      "materialHash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Hull",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 2851
+    },
+    {
+      "bounds": {
+        "max": [
+          5.13200044631958,
+          1.803202101009702,
+          0.6560002565383911
+        ],
+        "min": [
+          5.019999980926514,
+          1.7247980153385647,
+          0.5439997911453247
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "711f41975d27cff4415a4d90c042af72a3cab3ba91e3792378e4d2bf74f8ad6b",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Lights_Cyan",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.09985013807697,
+          1.7060217112789375,
+          4.099999904632568
+        ],
+        "min": [
+          3.6701496044309643,
+          -0.3250216693172676,
+          -4.099999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "45513f381b3a54e02c9bffa6d2d19e5fc8cdeb4f9571eadd638f5fb56576771b",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-lights-warm.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 384
+    },
+    {
+      "bounds": {
+        "max": [
+          10.399999618530273,
+          1.8195445803875314,
+          4.690277493541742
+        ],
+        "min": [
+          -8.150092124938965,
+          -2.473918226170002,
+          -4.690349972789789
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1cf0f6d6b1a2c736b8c16de906fc2ad2c6c216ded1b87c32ff077eeb25c85736",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-livery.primitive.0",
+      "indexCount": 8592,
+      "indexed": true,
+      "materialHash": "346e630e7b6956f0a5e4452f64e00b9ec9da1bf656606d53a99b91699da6ab25",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Livery",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 2879
+    },
+    {
+      "bounds": {
+        "max": [
+          13.000024795532227,
+          3.6986153484205744,
+          4.2063745527383585
+        ],
+        "min": [
+          -10.819999694824219,
+          -1.8494795919279596,
+          -4.20663681317537
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3bad140d1afce1754b1c10247fcfc71035259576e4b96eb65746b7d1273bbf66",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanical.primitive.0",
+      "indexCount": 16002,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Mechanical",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 5575
+    },
+    {
+      "bounds": {
+        "max": [
+          2.250000476837158,
+          3.099924089587211,
+          2.1501361228332136
+        ],
+        "min": [
+          -4.250000476837158,
+          2.0501482466096883,
+          -2.1501361228332136
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e3674ac9e5d92b9e378ff9809c63c475d09cffab6e1ef7369ff5742f46527540",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanicaldark-ore.primitive.0",
+      "indexCount": 858,
+      "indexed": true,
+      "materialHash": "4bf741c764cfb34e33789f6326934c4e87da3a75164eb6666b5bf07575895165",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_MechanicalDark_ore",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanicaldark-ore",
+      "primitiveIndex": 0,
+      "vertexCount": 265
+    },
+    {
+      "bounds": {
+        "max": [
+          9.700055122375488,
+          3.1813504256120035,
+          3.7502471472151995
+        ],
+        "min": [
+          -10.819999694824219,
+          -2.0997440375199625,
+          -3.7502471472151995
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ac254b7ab48f448c50453f8fb25ead029b745252ca0e5083dc7176c6f02cf100",
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanicaldark.primitive.0",
+      "indexCount": 5193,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+      "nodeId": "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1865
+    },
+    {
+      "bounds": {
+        "max": [
+          9.700065612792969,
+          3.3000650310856883,
+          4.575597346900428
+        ],
+        "min": [
+          -10.000163078308105,
+          -3.400549879108149,
+          -4.575596870063269
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3a65ad949ca4245dfecd70392914d28733d54b2f84ebd95a2d7225ff83b99c5e",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-armor.primitive.0",
+      "indexCount": 3282,
+      "indexed": true,
+      "materialHash": "635f34cd461205a122c1769c11940ccf89bc9760bd66d9d28c773f2352522745",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Armor",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1054
+    },
+    {
+      "bounds": {
+        "max": [
+          10.049999237060547,
+          1.7957850739768686,
+          3.6930003426977014
+        ],
+        "min": [
+          -9,
+          -2.097119216661805,
+          -3.6934018395849084
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "92849b6e13a608123758b8f60e24ea73bcdfb7609e90963a5a2b688eb9aea1bb",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-beacon-amber.primitive.0",
+      "indexCount": 1239,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 491
+    },
+    {
+      "bounds": {
+        "max": [
+          8.850163248608546,
+          1.5833483849105177,
+          2.099222421646118
+        ],
+        "min": [
+          7.349878999163671,
+          -0.14193365614979825,
+          -2.0992414951324463
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d4f0ad7aa08f9d003ff2f96c09f498f9112da245f651240cf5296b28bd52c5b8",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-canopy.primitive.0",
+      "indexCount": 486,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD2_MOTION_HULL_CORE_CANOPY",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 174
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.349974155426025,
+          -0.12903284354231292,
+          1.7690315824002028
+        ],
+        "min": [
+          -10.349974155426025,
+          -1.2710994549272305,
+          -1.7690318245440722
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fc6f4bca9e04975913dfecd9d5289b79412c35700ce048fa687ae16b24f4c047",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-drive-core.primitive.0",
+      "indexCount": 90,
+      "indexed": true,
+      "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 34
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.8499999046325684,
+          1.3550051023144671,
+          -4.429999828338623
+        ],
+        "min": [
+          -1.1500000953674316,
+          1.1449948976855329,
+          -4.730000019073486
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "95978bed51a09db44eef332dff34ff1ee0dad1c5edb42e43122542c5c06f03ac",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.8499999046325684,
+          1.3550051023144671,
+          4.730000019073486
+        ],
+        "min": [
+          -1.1500000953674316,
+          1.1449948976855329,
+          4.429999828338623
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "016fbe75dcff22f2c9a515dd8a955d362bc942a8ea997b1161117195b1c84447",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.700132369995117,
+          3.4942239213259754,
+          4.670641222409626
+        ],
+        "min": [
+          -10.000311851501465,
+          -2.970782845047289,
+          -4.670641222409626
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5f53dd52799bdbe636667539cddf7ee6e81996cb92062a194fb8dad346819653",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-hull.primitive.0",
+      "indexCount": 4749,
+      "indexed": true,
+      "materialHash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Hull",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 1447
+    },
+    {
+      "bounds": {
+        "max": [
+          7.09985013807697,
+          1.7060217112789375,
+          4.099999904632568
+        ],
+        "min": [
+          3.6701496044309643,
+          -0.3250216693172676,
+          -4.099999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "45513f381b3a54e02c9bffa6d2d19e5fc8cdeb4f9571eadd638f5fb56576771b",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-lights-warm.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 384
+    },
+    {
+      "bounds": {
+        "max": [
+          10.398421287536621,
+          1.8170125774695172,
+          4.687660489472485
+        ],
+        "min": [
+          -8.150132179260254,
+          -2.4738298944784893,
+          -4.687660489472485
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "82879d1a59c02497898f6650f5226d5db4f20bcf836a017bc313fded95cbe8e0",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-livery.primitive.0",
+      "indexCount": 4407,
+      "indexed": true,
+      "materialHash": "346e630e7b6956f0a5e4452f64e00b9ec9da1bf656606d53a99b91699da6ab25",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Livery",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 1600
+    },
+    {
+      "bounds": {
+        "max": [
+          13.000091552734375,
+          3.698290087065509,
+          4.204508844634002
+        ],
+        "min": [
+          -10.820595741271973,
+          -1.8499592316959412,
+          -4.205828729887909
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5745a4544dbe914d8f7cd40d580960a7657b7c1a7f34a98a3565237bf5a97f20",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanical.primitive.0",
+      "indexCount": 5304,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Mechanical",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 2221
+    },
+    {
+      "bounds": {
+        "max": [
+          2.2501370906829834,
+          3.0974128789510567,
+          2.1498721061519923
+        ],
+        "min": [
+          -4.250136852264404,
+          2.0491799765024346,
+          -2.149787229137832
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2181654b242b85ff4589d9d8af7d0fb69efb2436b665bc15b9a610971a31a995",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanicaldark-ore.primitive.0",
+      "indexCount": 414,
+      "indexed": true,
+      "materialHash": "4bf741c764cfb34e33789f6326934c4e87da3a75164eb6666b5bf07575895165",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_MechanicalDark_ore",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanicaldark-ore",
+      "primitiveIndex": 0,
+      "vertexCount": 138
+    },
+    {
+      "bounds": {
+        "max": [
+          9.700132369995117,
+          3.179905472947174,
+          3.7441075781490616
+        ],
+        "min": [
+          -10.820595741271973,
+          -2.09885722274881,
+          -3.7441075781490616
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8eddcaad799f46261219e299d7c7a3090868ccf5e95bd2a139218571178c43dd",
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanicaldark.primitive.0",
+      "indexCount": 1251,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+      "nodeId": "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 525
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
+      "id": "material:0f6b54826e3f4efb7a7bd61d",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "346e630e7b6956f0a5e4452f64e00b9ec9da1bf656606d53a99b91699da6ab25",
+      "id": "material:346e630e7b6956f0a5e4452f",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "3f085ac29b92c9a568713249e3c9e373f96ed2a5476efd1ab52f5f4152983478",
+      "id": "material:3f085ac29b92c9a568713249",
+      "name": "Material_Ceramic_ore2",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4bf741c764cfb34e33789f6326934c4e87da3a75164eb6666b5bf07575895165",
+      "id": "material:4bf741c764cfb34e33789f63",
+      "name": "Material_MechanicalDark_ore",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "635f34cd461205a122c1769c11940ccf89bc9760bd66d9d28c773f2352522745",
+      "id": "material:635f34cd461205a122c1769c",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "id": "material:85add90c89b799ae69ad3e2f",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "id": "material:be05a75f6364bf5672ea6503",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "id": "material:bfa183b9b652162d020ab353",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "id": "material:f64dcbc7e999cc81995955b9",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "fedde3ba42c1b254f0ac33b047db8b16f746a919daa671e533a5c7d07b222eee",
+      "id": "material:fedde3ba42c1b254f0ac33b0",
+      "name": "Material_Ceramic_ore",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.helios-cradle.node.collision-hull",
+      "localTransform": [
+        11.909640312194824,
+        0,
+        0,
+        0,
+        0,
+        11.909640312194824,
+        0,
+        0,
+        0,
+        0,
+        11.909640312194824,
+        0,
+        1.0895318984985352,
+        0.1497330665588379,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        11.909640312194824,
+        0,
+        0,
+        0,
+        0,
+        11.909640312194824,
+        0,
+        0,
+        0,
+        0,
+        11.909640312194824,
+        0,
+        1.0895318984985352,
+        0.1497330665588379,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-armor",
+      "localTransform": [
+        9.84990119934082,
+        0,
+        0,
+        0,
+        0,
+        9.84990119934082,
+        0,
+        0,
+        0,
+        0,
+        9.84990119934082,
+        0,
+        -0.15000343322753906,
+        -0.04918050765991211,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.84990119934082,
+        0,
+        0,
+        0,
+        0,
+        9.84990119934082,
+        0,
+        0,
+        0,
+        0,
+        9.84990119934082,
+        0,
+        -0.15000343322753906,
+        -0.04918050765991211,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-beacon-amber",
+      "localTransform": [
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0.5249996185302734,
+        -0.14897912740707397,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0.5249996185302734,
+        -0.14897912740707397,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-brushedmetal",
+      "localTransform": [
+        4.010713577270508,
+        0,
+        0,
+        0,
+        0,
+        4.010713577270508,
+        0,
+        0,
+        0,
+        0,
+        4.010713577270508,
+        0,
+        -1.9500000774860382,
+        2.2000001072883606,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+      "nodeName": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        4.010713577270508,
+        0,
+        0,
+        0,
+        0,
+        4.010713577270508,
+        0,
+        0,
+        0,
+        0,
+        4.010713577270508,
+        0,
+        -1.9500000774860382,
+        2.2000001072883606,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-canopy",
+      "localTransform": [
+        2.0993802547454834,
+        0,
+        0,
+        0,
+        0,
+        2.0993802547454834,
+        0,
+        0,
+        0,
+        0,
+        2.0993802547454834,
+        0,
+        8.09998345375061,
+        0.7206226736307144,
+        0.0000050067901611328125,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodeName": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodePath": [
+        0,
+        1,
+        3
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        2.0993802547454834,
+        0,
+        0,
+        0,
+        0,
+        2.0993802547454834,
+        0,
+        0,
+        0,
+        0,
+        2.0993802547454834,
+        0,
+        8.09998345375061,
+        0.7206226736307144,
+        0.0000050067901611328125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-ceramic-ore",
+      "localTransform": [
+        3.324627637863159,
+        0,
+        0,
+        0,
+        0,
+        3.324627637863159,
+        0,
+        0,
+        0,
+        0,
+        3.324627637863159,
+        0,
+        -0.9169867038726807,
+        2.6876330375671387,
+        -0.05071616172790527,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Ceramic_ore",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Ceramic_ore",
+      "nodePath": [
+        0,
+        1,
+        4
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        3.324627637863159,
+        0,
+        0,
+        0,
+        0,
+        3.324627637863159,
+        0,
+        0,
+        0,
+        0,
+        3.324627637863159,
+        0,
+        -0.9169867038726807,
+        2.6876330375671387,
+        -0.05071616172790527,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-ceramic-ore2",
+      "localTransform": [
+        2.924942135810852,
+        0,
+        0,
+        0,
+        0,
+        2.924942135810852,
+        0,
+        0,
+        0,
+        0,
+        2.924942135810852,
+        0,
+        -1.1243232488632202,
+        2.729377865791321,
+        -0.14576411247253418,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Ceramic_ore2",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Ceramic_ore2",
+      "nodePath": [
+        0,
+        1,
+        5
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        2.924942135810852,
+        0,
+        0,
+        0,
+        0,
+        2.924942135810852,
+        0,
+        0,
+        0,
+        0,
+        2.924942135810852,
+        0,
+        -1.1243232488632202,
+        2.729377865791321,
+        -0.14576411247253418,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-drive-core",
+      "localTransform": [
+        1.770400047302246,
+        0,
+        0,
+        0,
+        0,
+        1.770400047302246,
+        0,
+        0,
+        0,
+        0,
+        1.770400047302246,
+        0,
+        -10.350000381469727,
+        -0.7000000178813934,
+        1.1920928955078125e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        1,
+        6
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1.770400047302246,
+        0,
+        0,
+        0,
+        0,
+        1.770400047302246,
+        0,
+        0,
+        0,
+        0,
+        1.770400047302246,
+        0,
+        -10.350000381469727,
+        -0.7000000178813934,
+        1.1920928955078125e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-port",
+      "localTransform": [
+        2.89249986410141,
+        0,
+        0,
+        0,
+        0,
+        2.89249986410141,
+        0,
+        0,
+        0,
+        0,
+        2.89249986410141,
+        0,
+        1.7424998879432678,
+        2.0097498893737793,
+        -2.697499990463257,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        1,
+        7
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        2.89249986410141,
+        0,
+        0,
+        0,
+        0,
+        2.89249986410141,
+        0,
+        0,
+        0,
+        0,
+        2.89249986410141,
+        0,
+        1.7424998879432678,
+        2.0097498893737793,
+        -2.697499990463257,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-starboard",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -1,
+        1.25,
+        4.579999923706055,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        1,
+        8
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -1,
+        1.25,
+        4.579999923706055,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-hull",
+      "localTransform": [
+        9.849905490875244,
+        0,
+        0,
+        0,
+        0,
+        9.849905490875244,
+        0,
+        0,
+        0,
+        0,
+        9.849905490875244,
+        0,
+        -0.15000200271606445,
+        0.30666494369506836,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodePath": [
+        0,
+        1,
+        9
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.849905490875244,
+        0,
+        0,
+        0,
+        0,
+        9.849905490875244,
+        0,
+        0,
+        0,
+        0,
+        9.849905490875244,
+        0,
+        -0.15000200271606445,
+        0.30666494369506836,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-lights-cyan",
+      "localTransform": [
+        0.0560002326965332,
+        0,
+        0,
+        0,
+        0,
+        0.0560002326965332,
+        0,
+        0,
+        0,
+        0,
+        0.0560002326965332,
+        0,
+        5.076000213623047,
+        1.7640000581741333,
+        0.6000000238418579,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+      "nodePath": [
+        0,
+        1,
+        10
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        0.0560002326965332,
+        0,
+        0,
+        0,
+        0,
+        0.0560002326965332,
+        0,
+        0,
+        0,
+        0,
+        0.0560002326965332,
+        0,
+        5.076000213623047,
+        1.7640000581741333,
+        0.6000000238418579,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-lights-warm",
+      "localTransform": [
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        5.384999871253967,
+        0.690500020980835,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodePath": [
+        0,
+        1,
+        11
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        5.384999871253967,
+        0.690500020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-livery",
+      "localTransform": [
+        9.275047779083252,
+        0,
+        0,
+        0,
+        0,
+        9.275047779083252,
+        0,
+        0,
+        0,
+        0,
+        9.275047779083252,
+        0,
+        1.1249518394470215,
+        -0.32702136039733887,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Livery",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Livery",
+      "nodePath": [
+        0,
+        1,
+        12
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.275047779083252,
+        0,
+        0,
+        0,
+        0,
+        9.275047779083252,
+        0,
+        0,
+        0,
+        0,
+        9.275047779083252,
+        0,
+        1.1249518394470215,
+        -0.32702136039733887,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanical",
+      "localTransform": [
+        11.90999984741211,
+        0,
+        0,
+        0,
+        0,
+        11.90999984741211,
+        0,
+        0,
+        0,
+        0,
+        11.90999984741211,
+        0,
+        1.0900001525878906,
+        0.9246360659599304,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodePath": [
+        0,
+        1,
+        13
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        11.90999984741211,
+        0,
+        0,
+        0,
+        0,
+        11.90999984741211,
+        0,
+        0,
+        0,
+        0,
+        11.90999984741211,
+        0,
+        1.0900001525878906,
+        0.9246360659599304,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanicaldark",
+      "localTransform": [
+        11.494999885559082,
+        0,
+        0,
+        0,
+        0,
+        11.494999885559082,
+        0,
+        0,
+        0,
+        0,
+        11.494999885559082,
+        0,
+        0.6750001907348633,
+        0.54119873046875,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodeName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        14
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        11.494999885559082,
+        0,
+        0,
+        0,
+        0,
+        11.494999885559082,
+        0,
+        0,
+        0,
+        0,
+        11.494999885559082,
+        0,
+        0.6750001907348633,
+        0.54119873046875,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanicaldark-ore",
+      "localTransform": [
+        3.25,
+        0,
+        0,
+        0,
+        0,
+        3.25,
+        0,
+        0,
+        0,
+        0,
+        3.25,
+        0,
+        -1,
+        2.5749999284744263,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_MechanicalDark_ore",
+      "nodeName": "LOD0_MOTION_HULL_CORE_MechanicalDark_ore",
+      "nodePath": [
+        0,
+        1,
+        15
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        3.25,
+        0,
+        0,
+        0,
+        0,
+        3.25,
+        0,
+        0,
+        0,
+        0,
+        3.25,
+        0,
+        -1,
+        2.5749999284744263,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-armor",
+      "localTransform": [
+        9.849989414215088,
+        0,
+        0,
+        0,
+        0,
+        9.849989414215088,
+        0,
+        0,
+        0,
+        0,
+        9.849989414215088,
+        0,
+        -0.15000104904174805,
+        -0.049691081047058105,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Armor",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Armor",
+      "nodePath": [
+        0,
+        1,
+        16
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.849989414215088,
+        0,
+        0,
+        0,
+        0,
+        9.849989414215088,
+        0,
+        0,
+        0,
+        0,
+        9.849989414215088,
+        0,
+        -0.15000104904174805,
+        -0.049691081047058105,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-beacon-amber",
+      "localTransform": [
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0.5249996185302734,
+        -0.14896607398986816,
+        3.5762786865234375e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+      "nodePath": [
+        0,
+        1,
+        17
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0.5249996185302734,
+        -0.14896607398986816,
+        3.5762786865234375e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-brushedmetal",
+      "localTransform": [
+        4.010713577270508,
+        0,
+        0,
+        0,
+        0,
+        4.010713577270508,
+        0,
+        0,
+        0,
+        0,
+        4.010713577270508,
+        0,
+        -1.9499999582767487,
+        2.2000237703323364,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_BrushedMetal",
+      "nodeName": "LOD1_MOTION_HULL_CORE_BrushedMetal",
+      "nodePath": [
+        0,
+        1,
+        18
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        4.010713577270508,
+        0,
+        0,
+        0,
+        0,
+        4.010713577270508,
+        0,
+        0,
+        0,
+        0,
+        4.010713577270508,
+        0,
+        -1.9499999582767487,
+        2.2000237703323364,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-canopy",
+      "localTransform": [
+        2.0992319583892822,
+        0,
+        0,
+        0,
+        0,
+        2.0992319583892822,
+        0,
+        0,
+        0,
+        0,
+        2.0992319583892822,
+        0,
+        8.100021123886108,
+        0.7207073643803596,
+        -0.0000095367431640625,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_CANOPY",
+      "nodeName": "LOD1_MOTION_HULL_CORE_CANOPY",
+      "nodePath": [
+        0,
+        1,
+        19
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        2.0992319583892822,
+        0,
+        0,
+        0,
+        0,
+        2.0992319583892822,
+        0,
+        0,
+        0,
+        0,
+        2.0992319583892822,
+        0,
+        8.100021123886108,
+        0.7207073643803596,
+        -0.0000095367431640625,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-ceramic-ore",
+      "localTransform": [
+        3.324627637863159,
+        0,
+        0,
+        0,
+        0,
+        3.324627637863159,
+        0,
+        0,
+        0,
+        0,
+        3.324627637863159,
+        0,
+        -0.9169867038726807,
+        2.6876330375671387,
+        -0.05071616172790527,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Ceramic_ore",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Ceramic_ore",
+      "nodePath": [
+        0,
+        1,
+        20
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        3.324627637863159,
+        0,
+        0,
+        0,
+        0,
+        3.324627637863159,
+        0,
+        0,
+        0,
+        0,
+        3.324627637863159,
+        0,
+        -0.9169867038726807,
+        2.6876330375671387,
+        -0.05071616172790527,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-ceramic-ore2",
+      "localTransform": [
+        2.924942135810852,
+        0,
+        0,
+        0,
+        0,
+        2.924942135810852,
+        0,
+        0,
+        0,
+        0,
+        2.924942135810852,
+        0,
+        -1.1243232488632202,
+        2.729377865791321,
+        -0.14576411247253418,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Ceramic_ore2",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Ceramic_ore2",
+      "nodePath": [
+        0,
+        1,
+        21
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        2.924942135810852,
+        0,
+        0,
+        0,
+        0,
+        2.924942135810852,
+        0,
+        0,
+        0,
+        0,
+        2.924942135810852,
+        0,
+        -1.1243232488632202,
+        2.729377865791321,
+        -0.14576411247253418,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-drive-core",
+      "localTransform": [
+        1.770400047302246,
+        0,
+        0,
+        0,
+        0,
+        1.770400047302246,
+        0,
+        0,
+        0,
+        0,
+        1.770400047302246,
+        0,
+        -10.350000381469727,
+        -0.7000000178813934,
+        1.1920928955078125e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeName": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        1,
+        22
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1.770400047302246,
+        0,
+        0,
+        0,
+        0,
+        1.770400047302246,
+        0,
+        0,
+        0,
+        0,
+        1.770400047302246,
+        0,
+        -10.350000381469727,
+        -0.7000000178813934,
+        1.1920928955078125e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-port",
+      "localTransform": [
+        2.89249986410141,
+        0,
+        0,
+        0,
+        0,
+        2.89249986410141,
+        0,
+        0,
+        0,
+        0,
+        2.89249986410141,
+        0,
+        1.7424998879432678,
+        2.0097498893737793,
+        -2.697499990463257,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        1,
+        23
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        2.89249986410141,
+        0,
+        0,
+        0,
+        0,
+        2.89249986410141,
+        0,
+        0,
+        0,
+        0,
+        2.89249986410141,
+        0,
+        1.7424998879432678,
+        2.0097498893737793,
+        -2.697499990463257,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-starboard",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -1,
+        1.25,
+        4.579999923706055,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        1,
+        24
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -1,
+        1.25,
+        4.579999923706055,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-hull",
+      "localTransform": [
+        9.8500394821167,
+        0,
+        0,
+        0,
+        0,
+        9.8500394821167,
+        0,
+        0,
+        0,
+        0,
+        9.8500394821167,
+        0,
+        -0.14998435974121094,
+        0.30666494369506836,
+        2.384185791015625e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Hull",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Hull",
+      "nodePath": [
+        0,
+        1,
+        25
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.8500394821167,
+        0,
+        0,
+        0,
+        0,
+        9.8500394821167,
+        0,
+        0,
+        0,
+        0,
+        9.8500394821167,
+        0,
+        -0.14998435974121094,
+        0.30666494369506836,
+        2.384185791015625e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-lights-cyan",
+      "localTransform": [
+        0.0560002326965332,
+        0,
+        0,
+        0,
+        0,
+        0.0560002326965332,
+        0,
+        0,
+        0,
+        0,
+        0.0560002326965332,
+        0,
+        5.076000213623047,
+        1.7640000581741333,
+        0.6000000238418579,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Cyan",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Lights_Cyan",
+      "nodePath": [
+        0,
+        1,
+        26
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        0.0560002326965332,
+        0,
+        0,
+        0,
+        0,
+        0.0560002326965332,
+        0,
+        0,
+        0,
+        0,
+        0.0560002326965332,
+        0,
+        5.076000213623047,
+        1.7640000581741333,
+        0.6000000238418579,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-lights-warm",
+      "localTransform": [
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        5.384999871253967,
+        0.690500020980835,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+      "nodePath": [
+        0,
+        1,
+        27
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        5.384999871253967,
+        0.690500020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-livery",
+      "localTransform": [
+        9.27504587173462,
+        0,
+        0,
+        0,
+        0,
+        9.27504587173462,
+        0,
+        0,
+        0,
+        0,
+        9.27504587173462,
+        0,
+        1.1249537467956543,
+        -0.32718682289123535,
+        -0.0000362396240234375,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Livery",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Livery",
+      "nodePath": [
+        0,
+        1,
+        28
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.27504587173462,
+        0,
+        0,
+        0,
+        0,
+        9.27504587173462,
+        0,
+        0,
+        0,
+        0,
+        9.27504587173462,
+        0,
+        1.1249537467956543,
+        -0.32718682289123535,
+        -0.0000362396240234375,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanical",
+      "localTransform": [
+        11.910012245178223,
+        0,
+        0,
+        0,
+        0,
+        11.910012245178223,
+        0,
+        0,
+        0,
+        0,
+        11.910012245178223,
+        0,
+        1.090012550354004,
+        0.9245678782463074,
+        -0.00013113021850585938,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Mechanical",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Mechanical",
+      "nodePath": [
+        0,
+        1,
+        29
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        11.910012245178223,
+        0,
+        0,
+        0,
+        0,
+        11.910012245178223,
+        0,
+        0,
+        0,
+        0,
+        11.910012245178223,
+        0,
+        1.090012550354004,
+        0.9245678782463074,
+        -0.00013113021850585938,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanicaldark",
+      "localTransform": [
+        10.260027408599854,
+        0,
+        0,
+        0,
+        0,
+        10.260027408599854,
+        0,
+        0,
+        0,
+        0,
+        10.260027408599854,
+        0,
+        -0.5599722862243652,
+        0.5408031940460205,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+      "nodeName": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        30
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        10.260027408599854,
+        0,
+        0,
+        0,
+        0,
+        10.260027408599854,
+        0,
+        0,
+        0,
+        0,
+        10.260027408599854,
+        0,
+        -0.5599722862243652,
+        0.5408031940460205,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanicaldark-ore",
+      "localTransform": [
+        3.250000476837158,
+        0,
+        0,
+        0,
+        0,
+        3.250000476837158,
+        0,
+        0,
+        0,
+        0,
+        3.250000476837158,
+        0,
+        -1,
+        2.5750361680984497,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_MechanicalDark_ore",
+      "nodeName": "LOD1_MOTION_HULL_CORE_MechanicalDark_ore",
+      "nodePath": [
+        0,
+        1,
+        31
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        3.250000476837158,
+        0,
+        0,
+        0,
+        0,
+        3.250000476837158,
+        0,
+        0,
+        0,
+        0,
+        3.250000476837158,
+        0,
+        -1,
+        2.5750361680984497,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-armor",
+      "localTransform": [
+        9.850114345550537,
+        0,
+        0,
+        0,
+        0,
+        9.850114345550537,
+        0,
+        0,
+        0,
+        0,
+        9.850114345550537,
+        0,
+        -0.15004873275756836,
+        -0.05024242401123047,
+        2.384185791015625e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Armor",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Armor",
+      "nodePath": [
+        0,
+        1,
+        32
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.850114345550537,
+        0,
+        0,
+        0,
+        0,
+        9.850114345550537,
+        0,
+        0,
+        0,
+        0,
+        9.850114345550537,
+        0,
+        -0.15004873275756836,
+        -0.05024242401123047,
+        2.384185791015625e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-beacon-amber",
+      "localTransform": [
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0.5249996185302734,
+        -0.15066707134246826,
+        -0.00020074844360351562,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+      "nodePath": [
+        0,
+        1,
+        33
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0,
+        0,
+        0,
+        9.524999618530273,
+        0,
+        0.5249996185302734,
+        -0.15066707134246826,
+        -0.00020074844360351562,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-canopy",
+      "localTransform": [
+        2.0992319583892822,
+        0,
+        0,
+        0,
+        0,
+        2.0992319583892822,
+        0,
+        0,
+        0,
+        0,
+        2.0992319583892822,
+        0,
+        8.100021123886108,
+        0.7207073643803596,
+        -0.0000095367431640625,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_CANOPY",
+      "nodeName": "LOD2_MOTION_HULL_CORE_CANOPY",
+      "nodePath": [
+        0,
+        1,
+        34
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        2.0992319583892822,
+        0,
+        0,
+        0,
+        0,
+        2.0992319583892822,
+        0,
+        0,
+        0,
+        0,
+        2.0992319583892822,
+        0,
+        8.100021123886108,
+        0.7207073643803596,
+        -0.0000095367431640625,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-drive-core",
+      "localTransform": [
+        1.7690317034721375,
+        0,
+        0,
+        0,
+        0,
+        1.7690317034721375,
+        0,
+        0,
+        0,
+        0,
+        1.7690317034721375,
+        0,
+        -10.349974155426025,
+        -0.7000661492347717,
+        -1.210719347000122e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeName": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        1,
+        35
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1.7690317034721375,
+        0,
+        0,
+        0,
+        0,
+        1.7690317034721375,
+        0,
+        0,
+        0,
+        0,
+        1.7690317034721375,
+        0,
+        -10.349974155426025,
+        -0.7000661492347717,
+        -1.210719347000122e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-port",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -1,
+        1.25,
+        -4.579999923706055,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        1,
+        36
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -1,
+        1.25,
+        -4.579999923706055,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-starboard",
+      "localTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -1,
+        1.25,
+        4.579999923706055,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        1,
+        37
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        0,
+        0,
+        0,
+        0.15000009536743164,
+        0,
+        -1,
+        1.25,
+        4.579999923706055,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-hull",
+      "localTransform": [
+        9.850222110748291,
+        0,
+        0,
+        0,
+        0,
+        9.850222110748291,
+        0,
+        0,
+        0,
+        0,
+        9.850222110748291,
+        0,
+        -0.15008974075317383,
+        0.26172053813934326,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Hull",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Hull",
+      "nodePath": [
+        0,
+        1,
+        38
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.850222110748291,
+        0,
+        0,
+        0,
+        0,
+        9.850222110748291,
+        0,
+        0,
+        0,
+        0,
+        9.850222110748291,
+        0,
+        -0.15008974075317383,
+        0.26172053813934326,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-lights-warm",
+      "localTransform": [
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        5.384999871253967,
+        0.690500020980835,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+      "nodePath": [
+        0,
+        1,
+        39
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.099999904632568,
+        0,
+        5.384999871253967,
+        0.690500020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-livery",
+      "localTransform": [
+        9.274276733398438,
+        0,
+        0,
+        0,
+        0,
+        9.274276733398438,
+        0,
+        0,
+        0,
+        0,
+        9.274276733398438,
+        0,
+        1.1241445541381836,
+        -0.3284086585044861,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Livery",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Livery",
+      "nodePath": [
+        0,
+        1,
+        40
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        9.274276733398438,
+        0,
+        0,
+        0,
+        0,
+        9.274276733398438,
+        0,
+        0,
+        0,
+        0,
+        9.274276733398438,
+        0,
+        1.1241445541381836,
+        -0.3284086585044861,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanical",
+      "localTransform": [
+        11.910343647003174,
+        0,
+        0,
+        0,
+        0,
+        11.910343647003174,
+        0,
+        0,
+        0,
+        0,
+        11.910343647003174,
+        0,
+        1.0897479057312012,
+        0.9241654276847839,
+        -0.000659942626953125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Mechanical",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Mechanical",
+      "nodePath": [
+        0,
+        1,
+        41
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        11.910343647003174,
+        0,
+        0,
+        0,
+        0,
+        11.910343647003174,
+        0,
+        0,
+        0,
+        0,
+        11.910343647003174,
+        0,
+        1.0897479057312012,
+        0.9241654276847839,
+        -0.000659942626953125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanicaldark",
+      "localTransform": [
+        10.260364055633545,
+        0,
+        0,
+        0,
+        0,
+        10.260364055633545,
+        0,
+        0,
+        0,
+        0,
+        10.260364055633545,
+        0,
+        -0.5602316856384277,
+        0.5405241250991821,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+      "nodeName": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        42
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        10.260364055633545,
+        0,
+        0,
+        0,
+        0,
+        10.260364055633545,
+        0,
+        0,
+        0,
+        0,
+        10.260364055633545,
+        0,
+        -0.5602316856384277,
+        0.5405241250991821,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanicaldark-ore",
+      "localTransform": [
+        3.250136971473694,
+        0,
+        0,
+        0,
+        0,
+        3.250136971473694,
+        0,
+        0,
+        0,
+        0,
+        3.250136971473694,
+        0,
+        -0.9999998807907104,
+        2.5732964277267456,
+        0.000042438507080078125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_MechanicalDark_ore",
+      "nodeName": "LOD2_MOTION_HULL_CORE_MechanicalDark_ore",
+      "nodePath": [
+        0,
+        1,
+        43
+      ],
+      "parentId": "sf.render.helios-cradle.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        3.250136971473694,
+        0,
+        0,
+        0,
+        0,
+        3.250136971473694,
+        0,
+        0,
+        0,
+        0,
+        3.250136971473694,
+        0,
+        -0.9999998807907104,
+        2.5732964277267456,
+        0.000042438507080078125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.motion-hull-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_HULL_CORE",
+      "nodeName": "MOTION_HULL_CORE",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_M4_HELIOS_CRADLE_ROOT",
+      "nodeName": "SF_M4_HELIOS_CRADLE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.9956002235412598,
+        0.14963603019714355,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.9956002235412598,
+        0.14963603019714355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-cargo-ventral",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        -3.3500001430511475,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Cargo_Ventral",
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        -3.3500001430511475,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.399999618530273,
+        -0.699999988079071,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.399999618530273,
+        -0.699999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.5,
+        -0.0003639697970356792,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.5,
+        -0.0003639697970356792,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-rcs-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        0.14963603019714355,
+        -2.8380000591278076,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Port",
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        0.14963603019714355,
+        -2.8380000591278076,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-rcs-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        0.14963603019714355,
+        2.8380000591278076,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Starboard",
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        0.14963603019714355,
+        2.8380000591278076,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.150399684906006,
+        1.8496360778808594,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.150399684906006,
+        1.8496360778808594,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-trail-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        -1.1825000047683716,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Port",
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        -1.1825000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-trail-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        1.1825000047683716,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Starboard",
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.920000076293945,
+        -0.699999988079071,
+        1.1825000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-utility-dorsal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        3.6492722034454346,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Utility_Dorsal",
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0900001525878906,
+        3.6492722034454346,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-weapon-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.600000381469727,
+        0.14963603019714355,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Weapon_Front",
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.600000381469727,
+        0.14963603019714355,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "aa2f92611874670cf21c767b847d722b7d81ab43adc8ac4466addce43948b9c6"
+    },
+    "sourceGlb": {
+      "bytes": 1337268,
+      "sha256": "b78ca290b80dc9a063911651bad6872251720a68754f39a2659cb3b355e8c297",
+      "uri": "helios_cradle.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 1054608,
+    "resources": [
+      {
+        "bytes": 5381,
+        "mimeType": "image/ktx2",
+        "sha256": "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+        "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
+      },
+      {
+        "bytes": 72992,
+        "mimeType": "image/ktx2",
+        "sha256": "884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5",
+        "uri": "../_shared/images/884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5.ktx2"
+      },
+      {
+        "bytes": 58536,
+        "mimeType": "image/ktx2",
+        "sha256": "a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4",
+        "uri": "../_shared/images/a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4.ktx2"
+      },
+      {
+        "bytes": 114191,
+        "mimeType": "image/ktx2",
+        "sha256": "adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3",
+        "uri": "../_shared/images/adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3.ktx2"
+      },
+      {
+        "bytes": 6409,
+        "mimeType": "image/ktx2",
+        "sha256": "d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065",
+        "uri": "../_shared/images/d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065.ktx2"
+      },
+      {
+        "bytes": 35770,
+        "mimeType": "image/ktx2",
+        "sha256": "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3",
+        "uri": "../_shared/images/d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3.ktx2"
+      }
+    ],
+    "sha256": "6d0cb7167687407343617ac60399c5b92b73b1068d3c74d0898264b6f390923c",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.0897479057312012,
+        0.14920687203252037,
+        0
+      ],
+      "max": [
+        13.000091552734375,
+        3.69896362317319,
+        4.732670873289859
+      ],
+      "min": [
+        -10.820595741271973,
+        -3.400549879108149,
+        -4.732670873289859
+      ],
+      "size": [
+        23.820687294006348,
+        7.099513502281339,
+        9.465341746579718
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "MOTION_HULL_CORE",
+        "planIndex": 3,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "hull_core",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_HULL_CORE",
+          "spaceface": {
+            "motionGroup": "hull_core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_HULL_CORE",
+            "recordIds": [
+              "sf.render.helios-cradle.node.motion-hull-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.770400047302246,
+          0,
+          0,
+          0,
+          0,
+          1.770400047302246,
+          0,
+          0,
+          0,
+          0,
+          1.770400047302246,
+          0,
+          -10.350000381469727,
+          -0.7000000178813934,
+          1.1920928955078125e-7,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 10,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.89249986410141,
+          0,
+          0,
+          0,
+          0,
+          2.89249986410141,
+          0,
+          0,
+          0,
+          0,
+          2.89249986410141,
+          0,
+          1.7424998879432678,
+          2.0097498893737793,
+          -2.697499990463257,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 12,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          -1,
+          1.25,
+          4.579999923706055,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 14,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.770400047302246,
+          0,
+          0,
+          0,
+          0,
+          1.770400047302246,
+          0,
+          0,
+          0,
+          0,
+          1.770400047302246,
+          0,
+          -10.350000381469727,
+          -0.7000000178813934,
+          1.1920928955078125e-7,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 29,
+        "tags": {
+          "drive": "core",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.89249986410141,
+          0,
+          0,
+          0,
+          0,
+          2.89249986410141,
+          0,
+          0,
+          0,
+          0,
+          2.89249986410141,
+          0,
+          1.7424998879432678,
+          2.0097498893737793,
+          -2.697499990463257,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 31,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          -1,
+          1.25,
+          4.579999923706055,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 33,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.7690317034721375,
+          0,
+          0,
+          0,
+          0,
+          1.7690317034721375,
+          0,
+          0,
+          0,
+          0,
+          1.7690317034721375,
+          0,
+          -10.349974155426025,
+          -0.7000661492347717,
+          -1.210719347000122e-7,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 45,
+        "tags": {
+          "drive": "core",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          -1,
+          1.25,
+          -4.579999923706055,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 47,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          -1,
+          1.25,
+          4.579999923706055,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 49,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.9956002235412598,
+          0.14963603019714355,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 57,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-camera-focus",
+              "sf.render.helios-cradle.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.0900001525878906,
+          -3.3500001430511475,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 58,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-cargo-ventral",
+              "sf.render.helios-cradle.node.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10.399999618530273,
+          -0.699999988079071,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 59,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-engine-main",
+              "sf.render.helios-cradle.node.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          12.5,
+          -0.0003639697970356792,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 60,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-mining-front",
+              "sf.render.helios-cradle.node.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.0900001525878906,
+          0.14963603019714355,
+          -2.8380000591278076,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 61,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-rcs-port",
+              "sf.render.helios-cradle.node.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.0900001525878906,
+          0.14963603019714355,
+          2.8380000591278076,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 62,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-rcs-starboard",
+              "sf.render.helios-cradle.node.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.150399684906006,
+          1.8496360778808594,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 63,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-tether-massline",
+              "sf.render.helios-cradle.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10.920000076293945,
+          -0.699999988079071,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 64,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-trail-main",
+              "sf.render.helios-cradle.node.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10.920000076293945,
+          -0.699999988079071,
+          -1.1825000047683716,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 65,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-trail-port",
+              "sf.render.helios-cradle.node.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10.920000076293945,
+          -0.699999988079071,
+          1.1825000047683716,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 66,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-trail-starboard",
+              "sf.render.helios-cradle.node.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.0900001525878906,
+          3.6492722034454346,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 67,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-utility-dorsal",
+              "sf.render.helios-cradle.node.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          12.600000381469727,
+          0.14963603019714355,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 68,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-weapon-front",
+              "sf.render.helios-cradle.node.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "ceramic": 4,
+      "drive": 3,
+      "glass": 3,
+      "hull": 7,
+      "mechanical": 11,
+      "signal": 14
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "mechanical"
+      }
+    ],
+    "motionBank": {
+      "bytes": 7163,
+      "rigId": "hull",
+      "sha256": "931c2d9aa2f262ef492f36b8f7decadf54259a16c6b068245e48d25120324ef1",
+      "uri": "assets/ships/motions/helios-cradle.motion.json"
+    },
+    "nodeCount": 69,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          9.84990119934082,
+          0,
+          0,
+          0,
+          0,
+          9.84990119934082,
+          0,
+          0,
+          0,
+          0,
+          9.84990119934082,
+          0,
+          -0.15000343322753906,
+          -0.04918050765991211,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Armor",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.524999618530273,
+          0,
+          0,
+          0,
+          0,
+          9.524999618530273,
+          0,
+          0,
+          0,
+          0,
+          9.524999618530273,
+          0,
+          0.5249996185302734,
+          -0.14897912740707397,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.010713577270508,
+          0,
+          0,
+          0,
+          0,
+          4.010713577270508,
+          0,
+          0,
+          0,
+          0,
+          4.010713577270508,
+          0,
+          -1.9500000774860382,
+          2.2000001072883606,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          2.0993802547454834,
+          0,
+          0,
+          0,
+          0,
+          2.0993802547454834,
+          0,
+          0,
+          0,
+          0,
+          2.0993802547454834,
+          0,
+          8.09998345375061,
+          0.7206226736307144,
+          0.0000050067901611328125,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_CANOPY",
+        "planIndex": 7,
+        "tags": {
+          "canopy": true,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.324627637863159,
+          0,
+          0,
+          0,
+          0,
+          3.324627637863159,
+          0,
+          0,
+          0,
+          0,
+          3.324627637863159,
+          0,
+          -0.9169867038726807,
+          2.6876330375671387,
+          -0.05071616172790527,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Ceramic_ore",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.924942135810852,
+          0,
+          0,
+          0,
+          0,
+          2.924942135810852,
+          0,
+          0,
+          0,
+          0,
+          2.924942135810852,
+          0,
+          -1.1243232488632202,
+          2.729377865791321,
+          -0.14576411247253418,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Ceramic_ore2",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.770400047302246,
+          0,
+          0,
+          0,
+          0,
+          1.770400047302246,
+          0,
+          0,
+          0,
+          0,
+          1.770400047302246,
+          0,
+          -10.350000381469727,
+          -0.7000000178813934,
+          1.1920928955078125e-7,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.770400047302246,
+            0,
+            0,
+            0,
+            0,
+            1.770400047302246,
+            0,
+            0,
+            0,
+            0,
+            1.770400047302246,
+            0,
+            -10.350000381469727,
+            -0.7000000178813934,
+            1.1920928955078125e-7,
+            1
+          ],
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.89249986410141,
+          0,
+          0,
+          0,
+          0,
+          2.89249986410141,
+          0,
+          0,
+          0,
+          0,
+          2.89249986410141,
+          0,
+          1.7424998879432678,
+          2.0097498893737793,
+          -2.697499990463257,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          -1,
+          1.25,
+          4.579999923706055,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.849905490875244,
+          0,
+          0,
+          0,
+          0,
+          9.849905490875244,
+          0,
+          0,
+          0,
+          0,
+          9.849905490875244,
+          0,
+          -0.15000200271606445,
+          0.30666494369506836,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Hull",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.0560002326965332,
+          0,
+          0,
+          0,
+          0,
+          0.0560002326965332,
+          0,
+          0,
+          0,
+          0,
+          0.0560002326965332,
+          0,
+          5.076000213623047,
+          1.7640000581741333,
+          0.6000000238418579,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.099999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.099999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.099999904632568,
+          0,
+          5.384999871253967,
+          0.690500020980835,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.275047779083252,
+          0,
+          0,
+          0,
+          0,
+          9.275047779083252,
+          0,
+          0,
+          0,
+          0,
+          9.275047779083252,
+          0,
+          1.1249518394470215,
+          -0.32702136039733887,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Livery",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          11.90999984741211,
+          0,
+          0,
+          0,
+          0,
+          11.90999984741211,
+          0,
+          0,
+          0,
+          0,
+          11.90999984741211,
+          0,
+          1.0900001525878906,
+          0.9246360659599304,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Mechanical",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          11.494999885559082,
+          0,
+          0,
+          0,
+          0,
+          11.494999885559082,
+          0,
+          0,
+          0,
+          0,
+          11.494999885559082,
+          0,
+          0.6750001907348633,
+          0.54119873046875,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.25,
+          0,
+          0,
+          0,
+          0,
+          3.25,
+          0,
+          0,
+          0,
+          0,
+          3.25,
+          0,
+          -1,
+          2.5749999284744263,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_MechanicalDark_ore",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.849989414215088,
+          0,
+          0,
+          0,
+          0,
+          9.849989414215088,
+          0,
+          0,
+          0,
+          0,
+          9.849989414215088,
+          0,
+          -0.15000104904174805,
+          -0.049691081047058105,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Armor",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.524999618530273,
+          0,
+          0,
+          0,
+          0,
+          9.524999618530273,
+          0,
+          0,
+          0,
+          0,
+          9.524999618530273,
+          0,
+          0.5249996185302734,
+          -0.14896607398986816,
+          3.5762786865234375e-7,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.010713577270508,
+          0,
+          0,
+          0,
+          0,
+          4.010713577270508,
+          0,
+          0,
+          0,
+          0,
+          4.010713577270508,
+          0,
+          -1.9499999582767487,
+          2.2000237703323364,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_BrushedMetal",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          2.0992319583892822,
+          0,
+          0,
+          0,
+          0,
+          2.0992319583892822,
+          0,
+          0,
+          0,
+          0,
+          2.0992319583892822,
+          0,
+          8.100021123886108,
+          0.7207073643803596,
+          -0.0000095367431640625,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_CANOPY",
+        "planIndex": 26,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.324627637863159,
+          0,
+          0,
+          0,
+          0,
+          3.324627637863159,
+          0,
+          0,
+          0,
+          0,
+          3.324627637863159,
+          0,
+          -0.9169867038726807,
+          2.6876330375671387,
+          -0.05071616172790527,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Ceramic_ore",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.924942135810852,
+          0,
+          0,
+          0,
+          0,
+          2.924942135810852,
+          0,
+          0,
+          0,
+          0,
+          2.924942135810852,
+          0,
+          -1.1243232488632202,
+          2.729377865791321,
+          -0.14576411247253418,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Ceramic_ore2",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.770400047302246,
+          0,
+          0,
+          0,
+          0,
+          1.770400047302246,
+          0,
+          0,
+          0,
+          0,
+          1.770400047302246,
+          0,
+          -10.350000381469727,
+          -0.7000000178813934,
+          1.1920928955078125e-7,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.770400047302246,
+            0,
+            0,
+            0,
+            0,
+            1.770400047302246,
+            0,
+            0,
+            0,
+            0,
+            1.770400047302246,
+            0,
+            -10.350000381469727,
+            -0.7000000178813934,
+            1.1920928955078125e-7,
+            1
+          ],
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.89249986410141,
+          0,
+          0,
+          0,
+          0,
+          2.89249986410141,
+          0,
+          0,
+          0,
+          0,
+          2.89249986410141,
+          0,
+          1.7424998879432678,
+          2.0097498893737793,
+          -2.697499990463257,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          -1,
+          1.25,
+          4.579999923706055,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.8500394821167,
+          0,
+          0,
+          0,
+          0,
+          9.8500394821167,
+          0,
+          0,
+          0,
+          0,
+          9.8500394821167,
+          0,
+          -0.14998435974121094,
+          0.30666494369506836,
+          2.384185791015625e-7,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Hull",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.0560002326965332,
+          0,
+          0,
+          0,
+          0,
+          0.0560002326965332,
+          0,
+          0,
+          0,
+          0,
+          0.0560002326965332,
+          0,
+          5.076000213623047,
+          1.7640000581741333,
+          0.6000000238418579,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Lights_Cyan",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.099999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.099999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.099999904632568,
+          0,
+          5.384999871253967,
+          0.690500020980835,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.27504587173462,
+          0,
+          0,
+          0,
+          0,
+          9.27504587173462,
+          0,
+          0,
+          0,
+          0,
+          9.27504587173462,
+          0,
+          1.1249537467956543,
+          -0.32718682289123535,
+          -0.0000362396240234375,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Livery",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          11.910012245178223,
+          0,
+          0,
+          0,
+          0,
+          11.910012245178223,
+          0,
+          0,
+          0,
+          0,
+          11.910012245178223,
+          0,
+          1.090012550354004,
+          0.9245678782463074,
+          -0.00013113021850585938,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Mechanical",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          10.260027408599854,
+          0,
+          0,
+          0,
+          0,
+          10.260027408599854,
+          0,
+          0,
+          0,
+          0,
+          10.260027408599854,
+          0,
+          -0.5599722862243652,
+          0.5408031940460205,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.250000476837158,
+          0,
+          0,
+          0,
+          0,
+          3.250000476837158,
+          0,
+          0,
+          0,
+          0,
+          3.250000476837158,
+          0,
+          -1,
+          2.5750361680984497,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_MechanicalDark_ore",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.850114345550537,
+          0,
+          0,
+          0,
+          0,
+          9.850114345550537,
+          0,
+          0,
+          0,
+          0,
+          9.850114345550537,
+          0,
+          -0.15004873275756836,
+          -0.05024242401123047,
+          2.384185791015625e-7,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Armor",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.524999618530273,
+          0,
+          0,
+          0,
+          0,
+          9.524999618530273,
+          0,
+          0,
+          0,
+          0,
+          9.524999618530273,
+          0,
+          0.5249996185302734,
+          -0.15066707134246826,
+          -0.00020074844360351562,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          2.0992319583892822,
+          0,
+          0,
+          0,
+          0,
+          2.0992319583892822,
+          0,
+          0,
+          0,
+          0,
+          2.0992319583892822,
+          0,
+          8.100021123886108,
+          0.7207073643803596,
+          -0.0000095367431640625,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_CANOPY",
+        "planIndex": 44,
+        "tags": {
+          "canopy": true,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.7690317034721375,
+          0,
+          0,
+          0,
+          0,
+          1.7690317034721375,
+          0,
+          0,
+          0,
+          0,
+          1.7690317034721375,
+          0,
+          -10.349974155426025,
+          -0.7000661492347717,
+          -1.210719347000122e-7,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.7690317034721375,
+            0,
+            0,
+            0,
+            0,
+            1.7690317034721375,
+            0,
+            0,
+            0,
+            0,
+            1.7690317034721375,
+            0,
+            -10.349974155426025,
+            -0.7000661492347717,
+            -1.210719347000122e-7,
+            1
+          ],
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          -1,
+          1.25,
+          -4.579999923706055,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          0,
+          0,
+          0,
+          0.15000009536743164,
+          0,
+          -1,
+          1.25,
+          4.579999923706055,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.850222110748291,
+          0,
+          0,
+          0,
+          0,
+          9.850222110748291,
+          0,
+          0,
+          0,
+          0,
+          9.850222110748291,
+          0,
+          -0.15008974075317383,
+          0.26172053813934326,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Hull",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.099999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.099999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.099999904632568,
+          0,
+          5.384999871253967,
+          0.690500020980835,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.274276733398438,
+          0,
+          0,
+          0,
+          0,
+          9.274276733398438,
+          0,
+          0,
+          0,
+          0,
+          9.274276733398438,
+          0,
+          1.1241445541381836,
+          -0.3284086585044861,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Livery",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          11.910343647003174,
+          0,
+          0,
+          0,
+          0,
+          11.910343647003174,
+          0,
+          0,
+          0,
+          0,
+          11.910343647003174,
+          0,
+          1.0897479057312012,
+          0.9241654276847839,
+          -0.000659942626953125,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Mechanical",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          10.260364055633545,
+          0,
+          0,
+          0,
+          0,
+          10.260364055633545,
+          0,
+          0,
+          0,
+          0,
+          10.260364055633545,
+          0,
+          -0.5602316856384277,
+          0.5405241250991821,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.250136971473694,
+          0,
+          0,
+          0,
+          0,
+          3.250136971473694,
+          0,
+          0,
+          0,
+          0,
+          3.250136971473694,
+          0,
+          -0.9999998807907104,
+          2.5732964277267456,
+          0.000042438507080078125,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_MechanicalDark_ore",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/helios_cradle.glb"
+  },
+  "runtimeHash": "1cbe278ba207a28aa0c112d45121a9ceb1b1e17f9401846423f1c2a5b0cdce7d",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          13.000091552734375,
+          3.69896362317319,
+          4.732670873289859
+        ],
+        "min": [
+          -10.820595741271973,
+          -3.400549879108149,
+          -4.732670873289859
+        ]
+      },
+      "id": "sf.render.helios-cradle.body",
+      "nodeIds": [
+        "sf.render.helios-cradle.node.collision-hull",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-armor",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-beacon-amber",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-brushedmetal",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-canopy",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-ceramic-ore",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-ceramic-ore2",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-drive-core",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-port",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-hook-nav-starboard",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-hull",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-lights-cyan",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-lights-warm",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-livery",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanical",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanicaldark",
+        "sf.render.helios-cradle.node.lod0-motion-hull-core-mechanicaldark-ore",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-armor",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-beacon-amber",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-brushedmetal",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-canopy",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-ceramic-ore",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-ceramic-ore2",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-drive-core",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-port",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-hook-nav-starboard",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-hull",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-lights-cyan",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-lights-warm",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-livery",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanical",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanicaldark",
+        "sf.render.helios-cradle.node.lod1-motion-hull-core-mechanicaldark-ore",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-armor",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-beacon-amber",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-canopy",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-drive-core",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-port",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-hook-nav-starboard",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-hull",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-lights-warm",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-livery",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanical",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanicaldark",
+        "sf.render.helios-cradle.node.lod2-motion-hull-core-mechanicaldark-ore",
+        "sf.render.helios-cradle.node.motion-hull-core",
+        "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+        "sf.render.helios-cradle.node.socket-camera-focus",
+        "sf.render.helios-cradle.node.socket-cargo-ventral",
+        "sf.render.helios-cradle.node.socket-engine-main",
+        "sf.render.helios-cradle.node.socket-mining-front",
+        "sf.render.helios-cradle.node.socket-rcs-port",
+        "sf.render.helios-cradle.node.socket-rcs-starboard",
+        "sf.render.helios-cradle.node.socket-tether-massline",
+        "sf.render.helios-cradle.node.socket-trail-main",
+        "sf.render.helios-cradle.node.socket-trail-port",
+        "sf.render.helios-cradle.node.socket-trail-starboard",
+        "sf.render.helios-cradle.node.socket-utility-dorsal",
+        "sf.render.helios-cradle.node.socket-weapon-front"
+      ]
+    }
+  ]
+}

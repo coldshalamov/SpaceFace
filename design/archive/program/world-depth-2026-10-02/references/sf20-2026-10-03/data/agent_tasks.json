@@ -1,0 +1,2895 @@
+{
+  "schema": "spaceface.expansion.tasks.planning.v1",
+  "count": 125,
+  "repo_commit": "1e0cf9499613b7c3acad10f34739278136d3d469",
+  "tasks": [
+    {
+      "id": "SF20-S01",
+      "title": "Rebase and duplicate audit",
+      "status": "NEW_PROPOSAL",
+      "depends_on": [],
+      "output": "Implementation evidence for Rebase and duplicate audit; no completed status implied."
+    },
+    {
+      "id": "SF20-S02",
+      "title": "Normal-route and performance baseline",
+      "status": "NEW_PROPOSAL",
+      "depends_on": [
+        "SF20-S01"
+      ],
+      "output": "Implementation evidence for Normal-route and performance baseline; no completed status implied."
+    },
+    {
+      "id": "SF20-S03",
+      "title": "Owner, event and save contracts",
+      "status": "NEW_PROPOSAL",
+      "depends_on": [
+        "SF20-S01"
+      ],
+      "output": "Implementation evidence for Owner, event and save contracts; no completed status implied."
+    },
+    {
+      "id": "SF20-S04",
+      "title": "Forge and asset delivery contract",
+      "status": "NEW_PROPOSAL",
+      "depends_on": [
+        "SF20-S01"
+      ],
+      "output": "Implementation evidence for Forge and asset delivery contract; no completed status implied."
+    },
+    {
+      "id": "SF20-S05",
+      "title": "Acceptance and evidence harness",
+      "status": "NEW_PROPOSAL",
+      "depends_on": [
+        "SF20-S01"
+      ],
+      "output": "Implementation evidence for Acceptance and evidence harness; no completed status implied."
+    },
+    {
+      "id": "SF20-01-A",
+      "concept_id": "SF20-01",
+      "title": "Latch Nine: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/01_latch_nine.md",
+      "existing_seams_to_read": [
+        "src/systems/dockingCorridor.js",
+        "src/systems/stationBroadcast.js",
+        "src/ui/voiceArbiter.js",
+        "src/data/sectorAnchors.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-01-B",
+      "concept_id": "SF20-01",
+      "title": "Latch Nine: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-01-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/01_latch_nine.md",
+      "existing_seams_to_read": [
+        "src/systems/dockingCorridor.js",
+        "src/systems/stationBroadcast.js",
+        "src/ui/voiceArbiter.js",
+        "src/data/sectorAnchors.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Follow the visual lane, request ordinary text guidance, or ignore the character and dock normally. Clean approaches earn recognition only; no precision penalty, unavoidable tutorial, or new currency.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Follow the visual lane, request ordinary text guidance, or ignore the character and dock normally. Clean approaches earn recognition only; no precision penalty, unavoidable tutorial, or new currency."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-01-C",
+      "concept_id": "SF20-01",
+      "title": "Latch Nine: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-01-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/01_latch_nine.md",
+      "existing_seams_to_read": [
+        "src/systems/dockingCorridor.js",
+        "src/systems/stationBroadcast.js",
+        "src/ui/voiceArbiter.js",
+        "src/data/sectorAnchors.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-01-D",
+      "concept_id": "SF20-01",
+      "title": "Latch Nine: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-01-B",
+        "SF20-01-C"
+      ],
+      "read": "concepts/01_latch_nine.md",
+      "existing_seams_to_read": [
+        "src/systems/dockingCorridor.js",
+        "src/systems/stationBroadcast.js",
+        "src/ui/voiceArbiter.js",
+        "src/data/sectorAnchors.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-01-E",
+      "concept_id": "SF20-01",
+      "title": "Latch Nine: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-01-D"
+      ],
+      "read": "concepts/01_latch_nine.md",
+      "existing_seams_to_read": [
+        "src/systems/dockingCorridor.js",
+        "src/systems/stationBroadcast.js",
+        "src/ui/voiceArbiter.js",
+        "src/data/sectorAnchors.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-01-F",
+      "concept_id": "SF20-01",
+      "title": "Latch Nine: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-01-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/01_latch_nine.md",
+      "existing_seams_to_read": [
+        "src/systems/dockingCorridor.js",
+        "src/systems/stationBroadcast.js",
+        "src/ui/voiceArbiter.js",
+        "src/data/sectorAnchors.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Deny docking while an animation is opening: the UI and corridor still deny it.",
+        "Disable the character: every original docking route remains usable.",
+        "Ram from three bearings: the visible body and collision proxy agree.",
+        "Load after a completed arrival: no duplicate bark or reward.",
+        "Recognize HOLD and CLEAR with grayscale, sound muted, and reduced motion enabled."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-02-A",
+      "concept_id": "SF20-02",
+      "title": "Sable Venn & the Patchwork: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/02_sable_venn.md",
+      "existing_seams_to_read": [
+        "src/systems/ships.js",
+        "src/systems/buildIdentity.js",
+        "src/systems/crafting.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-02-B",
+      "concept_id": "SF20-02",
+      "title": "Sable Venn & the Patchwork: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-02-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/02_sable_venn.md",
+      "existing_seams_to_read": [
+        "src/systems/ships.js",
+        "src/systems/buildIdentity.js",
+        "src/systems/crafting.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Buy, retain current equipment, request a demo, or leave. Show one benefit and one cost, such as impulse versus cargo mass. Never imply every purchase is an upgrade.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Buy, retain current equipment, request a demo, or leave. Show one benefit and one cost, such as impulse versus cargo mass. Never imply every purchase is an upgrade."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-02-C",
+      "concept_id": "SF20-02",
+      "title": "Sable Venn & the Patchwork: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-02-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/02_sable_venn.md",
+      "existing_seams_to_read": [
+        "src/systems/ships.js",
+        "src/systems/buildIdentity.js",
+        "src/systems/crafting.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-02-D",
+      "concept_id": "SF20-02",
+      "title": "Sable Venn & the Patchwork: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-02-B",
+        "SF20-02-C"
+      ],
+      "read": "concepts/02_sable_venn.md",
+      "existing_seams_to_read": [
+        "src/systems/ships.js",
+        "src/systems/buildIdentity.js",
+        "src/systems/crafting.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-02-E",
+      "concept_id": "SF20-02",
+      "title": "Sable Venn & the Patchwork: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-02-D",
+        "SF20-19-F"
+      ],
+      "read": "concepts/02_sable_venn.md",
+      "existing_seams_to_read": [
+        "src/systems/ships.js",
+        "src/systems/buildIdentity.js",
+        "src/systems/crafting.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-02-F",
+      "concept_id": "SF20-02",
+      "title": "Sable Venn & the Patchwork: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-02-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/02_sable_venn.md",
+      "existing_seams_to_read": [
+        "src/systems/ships.js",
+        "src/systems/buildIdentity.js",
+        "src/systems/crafting.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Preview ten modules and cancel: live fit, credits and RNG state remain byte-equivalent.",
+        "Commit after inventory changes: revalidation refuses the stale quote.",
+        "Compare displayed impulse and heat with measured values in the same preview configuration.",
+        "Open/close preview fifty times: no retained meshes, listeners or physics worlds.",
+        "Keyboard and controller can select, compare, confirm and return without a hover-only action."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-03-A",
+      "concept_id": "SF20-03",
+      "title": "Tally-3, Claim Assessor: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/03_tally_3.md",
+      "existing_seams_to_read": [
+        "src/systems/salvage.js",
+        "src/systems/claims.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/contactHail.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-03-B",
+      "concept_id": "SF20-03",
+      "title": "Tally-3, Claim Assessor: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-03-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/03_tally_3.md",
+      "existing_seams_to_read": [
+        "src/systems/salvage.js",
+        "src/systems/claims.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/contactHail.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Deliver honestly, contest a claim using already-discovered evidence, or steal with the consequence visible beforehand. A disputed object stays physically manipulable; the UI must not confuse disputed with untouchable.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Deliver honestly, contest a claim using already-discovered evidence, or steal with the consequence visible beforehand. A disputed object stays physically manipulable; the UI must not confuse disputed with untouchable."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-03-C",
+      "concept_id": "SF20-03",
+      "title": "Tally-3, Claim Assessor: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-03-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/03_tally_3.md",
+      "existing_seams_to_read": [
+        "src/systems/salvage.js",
+        "src/systems/claims.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/contactHail.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-03-D",
+      "concept_id": "SF20-03",
+      "title": "Tally-3, Claim Assessor: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-03-B",
+        "SF20-03-C"
+      ],
+      "read": "concepts/03_tally_3.md",
+      "existing_seams_to_read": [
+        "src/systems/salvage.js",
+        "src/systems/claims.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/contactHail.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-03-E",
+      "concept_id": "SF20-03",
+      "title": "Tally-3, Claim Assessor: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-03-D"
+      ],
+      "read": "concepts/03_tally_3.md",
+      "existing_seams_to_read": [
+        "src/systems/salvage.js",
+        "src/systems/claims.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/contactHail.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-03-F",
+      "concept_id": "SF20-03",
+      "title": "Tally-3, Claim Assessor: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-03-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/03_tally_3.md",
+      "existing_seams_to_read": [
+        "src/systems/salvage.js",
+        "src/systems/claims.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/contactHail.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Tow an owned crate without confirming: no sale occurs.",
+        "Replay the delivery collision ten times: one transfer and one payment.",
+        "Change claimant before confirming: the old offer invalidates.",
+        "Load with a tethered crate: body, owner and receiver still agree.",
+        "Destroy assessor: station fallback still resolves the contract."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-04-A",
+      "concept_id": "SF20-04",
+      "title": "Ilex Seed Ark: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/04_ilex_seed_ark.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/traffic.js",
+        "src/systems/fragileCargo.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-04-B",
+      "concept_id": "SF20-04",
+      "title": "Ilex Seed Ark: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-04-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/04_ilex_seed_ark.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/traffic.js",
+        "src/systems/fragileCargo.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Protect the ship, recover a pod, or delegate a rescue when a legitimate responder is present. No secret best route: the consequences and timing are visible. The captain can refuse a dangerous shortcut without blocking all alternatives.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Protect the ship, recover a pod, or delegate a rescue when a legitimate responder is present. No secret best route: the consequences and timing are visible. The captain can refuse a dangerous shortcut without blocking all alternatives."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-04-C",
+      "concept_id": "SF20-04",
+      "title": "Ilex Seed Ark: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-04-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/04_ilex_seed_ark.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/traffic.js",
+        "src/systems/fragileCargo.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-04-D",
+      "concept_id": "SF20-04",
+      "title": "Ilex Seed Ark: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-04-B",
+        "SF20-04-C"
+      ],
+      "read": "concepts/04_ilex_seed_ark.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/traffic.js",
+        "src/systems/fragileCargo.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-04-E",
+      "concept_id": "SF20-04",
+      "title": "Ilex Seed Ark: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-04-D",
+        "SF20-03-F"
+      ],
+      "read": "concepts/04_ilex_seed_ark.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/traffic.js",
+        "src/systems/fragileCargo.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-04-F",
+      "concept_id": "SF20-04",
+      "title": "Ilex Seed Ark: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-04-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/04_ilex_seed_ark.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/traffic.js",
+        "src/systems/fragileCargo.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Sever a rotating pod: velocity matches the rigid-body point velocity.",
+        "Save during severance and reload: no duplicate capsule or lost mass.",
+        "Deliver 0,1,5,6 pods: all outcomes lead somewhere coherent.",
+        "Escort exits sector while player tows: route and destination remain resolvable.",
+        "One NPC damages a pod: provenance does not blame the player."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-05-A",
+      "concept_id": "SF20-05",
+      "title": "Red Kite: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/05_red_kite.md",
+      "existing_seams_to_read": [
+        "src/systems/routeFollower.js",
+        "src/systems/stuntGrammar.js",
+        "src/systems/missions.js",
+        "src/systems/traffic.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-05-B",
+      "concept_id": "SF20-05",
+      "title": "Red Kite: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-05-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/05_red_kite.md",
+      "existing_seams_to_read": [
+        "src/systems/routeFollower.js",
+        "src/systems/stuntGrammar.js",
+        "src/systems/missions.js",
+        "src/systems/traffic.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Take the direct turn, use an anchor to conserve momentum, accept a heavier cargo class, or decline. A novice can lose without losing inventory; expert prestige comes from a clean, faster route.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Take the direct turn, use an anchor to conserve momentum, accept a heavier cargo class, or decline. A novice can lose without losing inventory; expert prestige comes from a clean, faster route."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-05-C",
+      "concept_id": "SF20-05",
+      "title": "Red Kite: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-05-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/05_red_kite.md",
+      "existing_seams_to_read": [
+        "src/systems/routeFollower.js",
+        "src/systems/stuntGrammar.js",
+        "src/systems/missions.js",
+        "src/systems/traffic.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-05-D",
+      "concept_id": "SF20-05",
+      "title": "Red Kite: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-05-B",
+        "SF20-05-C"
+      ],
+      "read": "concepts/05_red_kite.md",
+      "existing_seams_to_read": [
+        "src/systems/routeFollower.js",
+        "src/systems/stuntGrammar.js",
+        "src/systems/missions.js",
+        "src/systems/traffic.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-05-E",
+      "concept_id": "SF20-05",
+      "title": "Red Kite: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-05-D"
+      ],
+      "read": "concepts/05_red_kite.md",
+      "existing_seams_to_read": [
+        "src/systems/routeFollower.js",
+        "src/systems/stuntGrammar.js",
+        "src/systems/missions.js",
+        "src/systems/traffic.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-05-F",
+      "concept_id": "SF20-05",
+      "title": "Red Kite: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-05-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/05_red_kite.md",
+      "existing_seams_to_read": [
+        "src/systems/routeFollower.js",
+        "src/systems/stuntGrammar.js",
+        "src/systems/missions.js",
+        "src/systems/traffic.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Run identical inputs at 30/60/144 render FPS: finish tick is equal.",
+        "Cross gate backward or twice: no illegitimate advancement.",
+        "Block a course with a heavy wreck: race aborts cleanly rather than teleporting.",
+        "Trigger combat on the last gate: no simultaneous win and refund.",
+        "Inspect a losing opponent: its thrust and speed stay within the same authored definition."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-06-A",
+      "concept_id": "SF20-06",
+      "title": "The Towline Table: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/06_towline_table.md",
+      "existing_seams_to_read": [
+        "src/systems/traffic.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/provenanceLedger.js",
+        "src/ui/stuckTowPrompt.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-06-B",
+      "concept_id": "SF20-06",
+      "title": "The Towline Table: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-06-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/06_towline_table.md",
+      "existing_seams_to_read": [
+        "src/systems/traffic.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/provenanceLedger.js",
+        "src/ui/stuckTowPrompt.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Join a cleanup, ask for bounded help, repay a recorded favor, or decline without losing the campaign. The crew can remember deliberate harm, but a failed rescue is not automatically betrayal.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Join a cleanup, ask for bounded help, repay a recorded favor, or decline without losing the campaign. The crew can remember deliberate harm, but a failed rescue is not automatically betrayal."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-06-C",
+      "concept_id": "SF20-06",
+      "title": "The Towline Table: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-06-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/06_towline_table.md",
+      "existing_seams_to_read": [
+        "src/systems/traffic.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/provenanceLedger.js",
+        "src/ui/stuckTowPrompt.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-06-D",
+      "concept_id": "SF20-06",
+      "title": "The Towline Table: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-06-B",
+        "SF20-06-C"
+      ],
+      "read": "concepts/06_towline_table.md",
+      "existing_seams_to_read": [
+        "src/systems/traffic.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/provenanceLedger.js",
+        "src/ui/stuckTowPrompt.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-06-E",
+      "concept_id": "SF20-06",
+      "title": "The Towline Table: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-06-D",
+        "SF20-01-F",
+        "SF20-03-F"
+      ],
+      "read": "concepts/06_towline_table.md",
+      "existing_seams_to_read": [
+        "src/systems/traffic.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/provenanceLedger.js",
+        "src/ui/stuckTowPrompt.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-06-F",
+      "concept_id": "SF20-06",
+      "title": "The Towline Table: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-06-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/06_towline_table.md",
+      "existing_seams_to_read": [
+        "src/systems/traffic.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/provenanceLedger.js",
+        "src/ui/stuckTowPrompt.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Two helpers claim one job in the same tick: exactly one tow owner.",
+        "A job resolves before approach: tug releases the reservation and returns.",
+        "Kill a crew member and reload: identity remains absent and dialogue changes.",
+        "Request help without a free slot: explanation is truthful, with no phantom ship.",
+        "Repeat the same favor receipt: no accumulating free service."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-07-A",
+      "concept_id": "SF20-07",
+      "title": "Scissorwake: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/07_scissorwake.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/masslineThreats.js",
+        "src/combat/attachments.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-07-B",
+      "concept_id": "SF20-07",
+      "title": "Scissorwake: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-07-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/07_scissorwake.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/masslineThreats.js",
+        "src/combat/attachments.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Release your line before the pass, change its geometry, displace the attacker, use another object as cover, or kill it. These are independent answers; do not require a particular purchased module.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Release your line before the pass, change its geometry, displace the attacker, use another object as cover, or kill it. These are independent answers; do not require a particular purchased module."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-07-C",
+      "concept_id": "SF20-07",
+      "title": "Scissorwake: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-07-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/07_scissorwake.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/masslineThreats.js",
+        "src/combat/attachments.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-07-D",
+      "concept_id": "SF20-07",
+      "title": "Scissorwake: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-07-B",
+        "SF20-07-C"
+      ],
+      "read": "concepts/07_scissorwake.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/masslineThreats.js",
+        "src/combat/attachments.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-07-E",
+      "concept_id": "SF20-07",
+      "title": "Scissorwake: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-07-D"
+      ],
+      "read": "concepts/07_scissorwake.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/masslineThreats.js",
+        "src/combat/attachments.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-07-F",
+      "concept_id": "SF20-07",
+      "title": "Scissorwake: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-07-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/07_scissorwake.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/masslineThreats.js",
+        "src/combat/attachments.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Move the line outside the swept corridor during windup: no cut.",
+        "Render at 15 FPS: damage/cut still occurs on the identical fixed tick.",
+        "Throw the cutter backward: it cannot cut a line it never intersects.",
+        "Release manually on the impact tick: exactly one detach, no exception.",
+        "Turn off effects/audio: shape and textual threat still expose the counterplay."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-08-A",
+      "concept_id": "SF20-08",
+      "title": "Kilnback: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/08_kilnback.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/volatileExposure.js",
+        "src/systems/fields.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-08-B",
+      "concept_id": "SF20-08",
+      "title": "Kilnback: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-08-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/08_kilnback.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/volatileExposure.js",
+        "src/systems/fields.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Break a cask early for a safe but less dramatic window; tow it to shape the upcoming fight; bait the jet into cover; or circle to the exposed rear. Hull destruction is valid but not the only satisfying answer.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Break a cask early for a safe but less dramatic window; tow it to shape the upcoming fight; bait the jet into cover; or circle to the exposed rear. Hull destruction is valid but not the only satisfying answer."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-08-C",
+      "concept_id": "SF20-08",
+      "title": "Kilnback: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-08-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/08_kilnback.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/volatileExposure.js",
+        "src/systems/fields.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-08-D",
+      "concept_id": "SF20-08",
+      "title": "Kilnback: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-08-B",
+        "SF20-08-C"
+      ],
+      "read": "concepts/08_kilnback.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/volatileExposure.js",
+        "src/systems/fields.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-08-E",
+      "concept_id": "SF20-08",
+      "title": "Kilnback: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-08-D",
+        "SF20-07-F"
+      ],
+      "read": "concepts/08_kilnback.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/volatileExposure.js",
+        "src/systems/fields.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-08-F",
+      "concept_id": "SF20-08",
+      "title": "Kilnback: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-08-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/08_kilnback.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/volatileExposure.js",
+        "src/systems/fields.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Disable VFX: the same field tests produce the same damage and cancellation.",
+        "Break cask during save/load boundary: only one field appears.",
+        "Hide behind authored cover: the jet respects the chosen occlusion contract.",
+        "Move cask after detachment: no remaining parent collider blocks it.",
+        "Provoke the first burn from every approach: warning always precedes damage."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-09-A",
+      "concept_id": "SF20-09",
+      "title": "Pallet Jack: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/09_pallet_jack.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/cargo.js",
+        "src/systems/pirateParley.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-09-B",
+      "concept_id": "SF20-09",
+      "title": "Pallet Jack: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-09-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/09_pallet_jack.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/cargo.js",
+        "src/systems/pirateParley.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Save the cargo, save the trader, chase the thief, negotiate a drop, or exploit the situation. The fence trail is optional; it must not let theft create an unlimited sequence of loot and new enemies.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Save the cargo, save the trader, chase the thief, negotiate a drop, or exploit the situation. The fence trail is optional; it must not let theft create an unlimited sequence of loot and new enemies."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-09-C",
+      "concept_id": "SF20-09",
+      "title": "Pallet Jack: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-09-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/09_pallet_jack.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/cargo.js",
+        "src/systems/pirateParley.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-09-D",
+      "concept_id": "SF20-09",
+      "title": "Pallet Jack: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-09-B",
+        "SF20-09-C"
+      ],
+      "read": "concepts/09_pallet_jack.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/cargo.js",
+        "src/systems/pirateParley.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-09-E",
+      "concept_id": "SF20-09",
+      "title": "Pallet Jack: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-09-D",
+        "SF20-03-F"
+      ],
+      "read": "concepts/09_pallet_jack.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/cargo.js",
+        "src/systems/pirateParley.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-09-F",
+      "concept_id": "SF20-09",
+      "title": "Pallet Jack: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-09-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/09_pallet_jack.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/cargo.js",
+        "src/systems/pirateParley.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Move the pallet during grab: clamp misses honestly.",
+        "Destroy thief carrying cargo: one surviving pallet, no duplicate loot item.",
+        "Contest with Massline: established attachment arbitration stays deterministic.",
+        "Cross-sector escape and reload: exactly the same cargo provenance returns.",
+        "No eligible cargo: no useless thief spawn."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-10-A",
+      "concept_id": "SF20-10",
+      "title": "Mothlight: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/10_mothlight.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/scanner.js",
+        "src/systems/weapons.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-10-B",
+      "concept_id": "SF20-10",
+      "title": "Mothlight: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-10-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/10_mothlight.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/scanner.js",
+        "src/systems/weapons.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Scan, inspect physical shutter motion, shove a suspected lamp, clear the decoys cheaply, or close under cover. Provide an accessibility option to add a learned decoy badge after the first confirmed identification without removing normal challenge for everyone.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Scan, inspect physical shutter motion, shove a suspected lamp, clear the decoys cheaply, or close under cover. Provide an accessibility option to add a learned decoy badge after the first confirmed identification without removing normal challenge for everyone."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-10-C",
+      "concept_id": "SF20-10",
+      "title": "Mothlight: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-10-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/10_mothlight.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/scanner.js",
+        "src/systems/weapons.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-10-D",
+      "concept_id": "SF20-10",
+      "title": "Mothlight: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-10-B",
+        "SF20-10-C"
+      ],
+      "read": "concepts/10_mothlight.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/scanner.js",
+        "src/systems/weapons.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-10-E",
+      "concept_id": "SF20-10",
+      "title": "Mothlight: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-10-D",
+        "SF20-07-F"
+      ],
+      "read": "concepts/10_mothlight.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/scanner.js",
+        "src/systems/weapons.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-10-F",
+      "concept_id": "SF20-10",
+      "title": "Mothlight: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-10-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/10_mothlight.md",
+      "existing_seams_to_read": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/scanner.js",
+        "src/systems/weapons.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "No scanner or audio: player can still distinguish real shutter geometry.",
+        "Kill all lamps and reload: stock does not replenish.",
+        "Change render FPS: local sequence and attack tick stay equal.",
+        "Push a lamp: it drifts physically rather than snapping back.",
+        "Hide the actual weapon behind cover: its shot respects occlusion."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-11-A",
+      "concept_id": "SF20-11",
+      "title": "Tethys Switchyard: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/11_tethys_switchyard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-11-B",
+      "concept_id": "SF20-11",
+      "title": "Tethys Switchyard: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-11-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/11_tethys_switchyard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Clear the cargo, move the sled, tow the bent guide if the authored joint allows it, take an alternate delivery, or leave. Smuggling can use an actual vacant berth, but cannot become a UI exploit that teleports inventory.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Clear the cargo, move the sled, tow the bent guide if the authored joint allows it, take an alternate delivery, or leave. Smuggling can use an actual vacant berth, but cannot become a UI exploit that teleports inventory."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-11-C",
+      "concept_id": "SF20-11",
+      "title": "Tethys Switchyard: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-11-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/11_tethys_switchyard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-11-D",
+      "concept_id": "SF20-11",
+      "title": "Tethys Switchyard: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-11-B",
+        "SF20-11-C"
+      ],
+      "read": "concepts/11_tethys_switchyard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-11-E",
+      "concept_id": "SF20-11",
+      "title": "Tethys Switchyard: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-11-D",
+        "SF20-03-F",
+        "SF20-09-F"
+      ],
+      "read": "concepts/11_tethys_switchyard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-11-F",
+      "concept_id": "SF20-11",
+      "title": "Tethys Switchyard: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-11-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/11_tethys_switchyard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/cargo.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Add zone in nonzero-origin sector: atlas position round-trips exactly.",
+        "Jam gantry with a player ship: machinery stops, never tunnels.",
+        "Resolve cargo by another route: waiting job updates instead of hanging.",
+        "Save a reserved berth: one reservation and one cargo survive.",
+        "Destroy yard: bypass is usable and no credits/stock are fabricated."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-12-A",
+      "concept_id": "SF20-12",
+      "title": "The Borrowed Sun: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/12_borrowed_sun.md",
+      "existing_seams_to_read": [
+        "src/data/sectorAnchors.js",
+        "src/systems/traffic.js",
+        "src/systems/economy.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-12-B",
+      "concept_id": "SF20-12",
+      "title": "The Borrowed Sun: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-12-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/12_borrowed_sun.md",
+      "existing_seams_to_read": [
+        "src/data/sectorAnchors.js",
+        "src/systems/traffic.js",
+        "src/systems/economy.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Trade, browse, listen to a local rumor grounded in actual events, or leave. Curated stock highlights tradeoffs rather than presenting \u201cbuy now or miss forever.\u201d All necessary progression items remain obtainable elsewhere.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Trade, browse, listen to a local rumor grounded in actual events, or leave. Curated stock highlights tradeoffs rather than presenting \u201cbuy now or miss forever.\u201d All necessary progression items remain obtainable elsewhere."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-12-C",
+      "concept_id": "SF20-12",
+      "title": "The Borrowed Sun: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-12-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/12_borrowed_sun.md",
+      "existing_seams_to_read": [
+        "src/data/sectorAnchors.js",
+        "src/systems/traffic.js",
+        "src/systems/economy.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-12-D",
+      "concept_id": "SF20-12",
+      "title": "The Borrowed Sun: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-12-B",
+        "SF20-12-C"
+      ],
+      "read": "concepts/12_borrowed_sun.md",
+      "existing_seams_to_read": [
+        "src/data/sectorAnchors.js",
+        "src/systems/traffic.js",
+        "src/systems/economy.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-12-E",
+      "concept_id": "SF20-12",
+      "title": "The Borrowed Sun: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-12-D",
+        "SF20-01-F",
+        "SF20-02-F"
+      ],
+      "read": "concepts/12_borrowed_sun.md",
+      "existing_seams_to_read": [
+        "src/data/sectorAnchors.js",
+        "src/systems/traffic.js",
+        "src/systems/economy.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-12-F",
+      "concept_id": "SF20-12",
+      "title": "The Borrowed Sun: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-12-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/12_borrowed_sun.md",
+      "existing_seams_to_read": [
+        "src/data/sectorAnchors.js",
+        "src/systems/traffic.js",
+        "src/systems/economy.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Buy on closing tick: exactly one accepted transaction or one clear denial.",
+        "Remain docked past planned departure: no forced teleport or lost ship.",
+        "Restart app after a long wall-clock gap: visit changes only under intended sim/offline rules.",
+        "Remove GLB from test server: chart and fallback service remain usable.",
+        "Inspect folded and open colliders: no invisible petal walls."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-13-A",
+      "concept_id": "SF20-13",
+      "title": "The Thimble Door: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/13_thimble_door.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/data/collisionProxyManifests.js",
+        "src/render/camera.js",
+        "src/systems/salvage.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-13-B",
+      "concept_id": "SF20-13",
+      "title": "The Thimble Door: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-13-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/13_thimble_door.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/data/collisionProxyManifests.js",
+        "src/render/camera.js",
+        "src/systems/salvage.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Thread the opening, shorten/reorient a load under existing Massline controls, detach and retrieve separately, or go around. Each option remains reversible; the recorder cannot be permanently wedged behind an unreachable collider.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Thread the opening, shorten/reorient a load under existing Massline controls, detach and retrieve separately, or go around. Each option remains reversible; the recorder cannot be permanently wedged behind an unreachable collider."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-13-C",
+      "concept_id": "SF20-13",
+      "title": "The Thimble Door: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-13-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/13_thimble_door.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/data/collisionProxyManifests.js",
+        "src/render/camera.js",
+        "src/systems/salvage.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-13-D",
+      "concept_id": "SF20-13",
+      "title": "The Thimble Door: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-13-B",
+        "SF20-13-C"
+      ],
+      "read": "concepts/13_thimble_door.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/data/collisionProxyManifests.js",
+        "src/render/camera.js",
+        "src/systems/salvage.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-13-E",
+      "concept_id": "SF20-13",
+      "title": "The Thimble Door: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-13-D",
+        "SF20-01-F",
+        "SF20-03-F"
+      ],
+      "read": "concepts/13_thimble_door.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/data/collisionProxyManifests.js",
+        "src/render/camera.js",
+        "src/systems/salvage.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-13-F",
+      "concept_id": "SF20-13",
+      "title": "The Thimble Door: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-13-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/13_thimble_door.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/data/collisionProxyManifests.js",
+        "src/render/camera.js",
+        "src/systems/salvage.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Sweep smallest and largest hulls across all rim directions: contacts match visible ribs.",
+        "Tow a wide crate through and around: no false CLEAR result.",
+        "Place camera inside every rim quadrant: player and exit remain legible.",
+        "Save while partly inside: reload never ejects or duplicates bodies.",
+        "Recover recorder after an interrupted attempt: objective remains reachable."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-14-A",
+      "concept_id": "SF20-14",
+      "title": "Anvil Storm Orchard: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/14_anvil_storm_orchard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/planetRuntime.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/fragileCargo.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-14-B",
+      "concept_id": "SF20-14",
+      "title": "Anvil Storm Orchard: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-14-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/14_anvil_storm_orchard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/planetRuntime.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/fragileCargo.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Wait, make a single conservative harvest, combine a skilled slingshot with collection, or accept an NPC-assisted retrieval at a lower net return. Time pressure is voluntary; no main story item requires dangerous skimming.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Wait, make a single conservative harvest, combine a skilled slingshot with collection, or accept an NPC-assisted retrieval at a lower net return. Time pressure is voluntary; no main story item requires dangerous skimming."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-14-C",
+      "concept_id": "SF20-14",
+      "title": "Anvil Storm Orchard: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-14-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/14_anvil_storm_orchard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/planetRuntime.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/fragileCargo.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-14-D",
+      "concept_id": "SF20-14",
+      "title": "Anvil Storm Orchard: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-14-B",
+        "SF20-14-C"
+      ],
+      "read": "concepts/14_anvil_storm_orchard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/planetRuntime.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/fragileCargo.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-14-E",
+      "concept_id": "SF20-14",
+      "title": "Anvil Storm Orchard: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-14-D",
+        "SF20-04-F",
+        "SF20-11-F"
+      ],
+      "read": "concepts/14_anvil_storm_orchard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/planetRuntime.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/fragileCargo.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-14-F",
+      "concept_id": "SF20-14",
+      "title": "Anvil Storm Orchard: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-14-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/14_anvil_storm_orchard.md",
+      "existing_seams_to_read": [
+        "src/data/authoredPlaces.js",
+        "src/systems/planetRuntime.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/fragileCargo.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Compare forecast direction with applied force at multiple points.",
+        "Load one tick before gust: full remaining warning is truthful.",
+        "Harvest the same pod twice: second request refuses.",
+        "Leave and return midcycle: resource and phase do not reset for profit.",
+        "Maximal tow length and large hull: safe pocket actually remains safe."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-15-A",
+      "concept_id": "SF20-15",
+      "title": "Veil-Ray Nursery: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/15_veil_ray_nursery.md",
+      "existing_seams_to_read": [
+        "src/data/alienFauna.js",
+        "src/data/alienEcology.js",
+        "src/data/authoredPlaces.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-15-B",
+      "concept_id": "SF20-15",
+      "title": "Veil-Ray Nursery: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-15-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/15_veil_ray_nursery.md",
+      "existing_seams_to_read": [
+        "src/data/alienFauna.js",
+        "src/data/alienEcology.js",
+        "src/data/authoredPlaces.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Passively observe, take a quick disruptive scan, return after settling, or leave. A short scientific survey does not require perfect behavior or an unadvertised sequence. Violence remains possible under existing fauna rules but is not an efficient farming path.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Passively observe, take a quick disruptive scan, return after settling, or leave. A short scientific survey does not require perfect behavior or an unadvertised sequence. Violence remains possible under existing fauna rules but is not an efficient farming path."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-15-C",
+      "concept_id": "SF20-15",
+      "title": "Veil-Ray Nursery: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-15-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/15_veil_ray_nursery.md",
+      "existing_seams_to_read": [
+        "src/data/alienFauna.js",
+        "src/data/alienEcology.js",
+        "src/data/authoredPlaces.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-15-D",
+      "concept_id": "SF20-15",
+      "title": "Veil-Ray Nursery: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-15-B",
+        "SF20-15-C"
+      ],
+      "read": "concepts/15_veil_ray_nursery.md",
+      "existing_seams_to_read": [
+        "src/data/alienFauna.js",
+        "src/data/alienEcology.js",
+        "src/data/authoredPlaces.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-15-E",
+      "concept_id": "SF20-15",
+      "title": "Veil-Ray Nursery: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-15-D"
+      ],
+      "read": "concepts/15_veil_ray_nursery.md",
+      "existing_seams_to_read": [
+        "src/data/alienFauna.js",
+        "src/data/alienEcology.js",
+        "src/data/authoredPlaces.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-15-F",
+      "concept_id": "SF20-15",
+      "title": "Veil-Ray Nursery: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 2,
+      "depends_on": [
+        "SF20-15-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/15_veil_ray_nursery.md",
+      "existing_seams_to_read": [
+        "src/data/alienFauna.js",
+        "src/data/alienEcology.js",
+        "src/data/authoredPlaces.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Active scan disperses formation through existing stimulus rules.",
+        "Passive observation succeeds without hidden input sequence.",
+        "Mute sound and reduce motion: behavior and survey cues still understandable.",
+        "Exit/reenter repeatedly: no population or survey-reward duplication.",
+        "Use maximum graphics quality: juvenile aggregation does not create dozens of AI updates."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-16-A",
+      "concept_id": "SF20-16",
+      "title": "Borrowed Voice: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/16_borrowed_voice.md",
+      "existing_seams_to_read": [
+        "src/data/alienEcology.js",
+        "src/data/alienEcologyState.js",
+        "src/systems/scanner.js",
+        "src/systems/story.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-16-B",
+      "concept_id": "SF20-16",
+      "title": "Borrowed Voice: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-16-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/16_borrowed_voice.md",
+      "existing_seams_to_read": [
+        "src/data/alienEcology.js",
+        "src/data/alienEcologyState.js",
+        "src/systems/scanner.js",
+        "src/systems/story.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Recover enough to understand the immediate incident, pursue optional details, archive the artifact, quarantine it, or leave it in place. Disposition affects an actual later record or ecology state; it never awards omniscient truth.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Recover enough to understand the immediate incident, pursue optional details, archive the artifact, quarantine it, or leave it in place. Disposition affects an actual later record or ecology state; it never awards omniscient truth."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-16-C",
+      "concept_id": "SF20-16",
+      "title": "Borrowed Voice: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-16-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/16_borrowed_voice.md",
+      "existing_seams_to_read": [
+        "src/data/alienEcology.js",
+        "src/data/alienEcologyState.js",
+        "src/systems/scanner.js",
+        "src/systems/story.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-16-D",
+      "concept_id": "SF20-16",
+      "title": "Borrowed Voice: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-16-B",
+        "SF20-16-C"
+      ],
+      "read": "concepts/16_borrowed_voice.md",
+      "existing_seams_to_read": [
+        "src/data/alienEcology.js",
+        "src/data/alienEcologyState.js",
+        "src/systems/scanner.js",
+        "src/systems/story.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-16-E",
+      "concept_id": "SF20-16",
+      "title": "Borrowed Voice: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-16-D",
+        "SF20-15-F",
+        "SF20-18-F"
+      ],
+      "read": "concepts/16_borrowed_voice.md",
+      "existing_seams_to_read": [
+        "src/data/alienEcology.js",
+        "src/data/alienEcologyState.js",
+        "src/systems/scanner.js",
+        "src/systems/story.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-16-F",
+      "concept_id": "SF20-16",
+      "title": "Borrowed Voice: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-16-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/16_borrowed_voice.md",
+      "existing_seams_to_read": [
+        "src/data/alienEcology.js",
+        "src/data/alienEcologyState.js",
+        "src/systems/scanner.js",
+        "src/systems/story.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Before revelation gate: no captions or journal titles spoil readable content.",
+        "Move recorder through the threshold repeatedly: one fragment and one reward.",
+        "Destroy one source: partial conclusion and journal remain valid.",
+        "Render-only animation changes: signal score is unchanged.",
+        "Reload after quarantine: no restored emission or new biology spawn."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-17-A",
+      "concept_id": "SF20-17",
+      "title": "The Open-Hand Lock: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/17_open_hand_lock.md",
+      "existing_seams_to_read": [
+        "src/data/precursorMachines.js",
+        "src/data/authoredPlaces.js",
+        "src/data/contactHail.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-17-B",
+      "concept_id": "SF20-17",
+      "title": "The Open-Hand Lock: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-17-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/17_open_hand_lock.md",
+      "existing_seams_to_read": [
+        "src/data/precursorMachines.js",
+        "src/data/authoredPlaces.js",
+        "src/data/contactHail.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Return the token, inspect it first, retain it and forgo the shortcut, or take the outside route. The interesting choice is between access and custody, not a disguised binary good/evil score.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Return the token, inspect it first, retain it and forgo the shortcut, or take the outside route. The interesting choice is between access and custody, not a disguised binary good/evil score."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-17-C",
+      "concept_id": "SF20-17",
+      "title": "The Open-Hand Lock: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-17-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/17_open_hand_lock.md",
+      "existing_seams_to_read": [
+        "src/data/precursorMachines.js",
+        "src/data/authoredPlaces.js",
+        "src/data/contactHail.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-17-D",
+      "concept_id": "SF20-17",
+      "title": "The Open-Hand Lock: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-17-B",
+        "SF20-17-C"
+      ],
+      "read": "concepts/17_open_hand_lock.md",
+      "existing_seams_to_read": [
+        "src/data/precursorMachines.js",
+        "src/data/authoredPlaces.js",
+        "src/data/contactHail.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-17-E",
+      "concept_id": "SF20-17",
+      "title": "The Open-Hand Lock: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-17-D",
+        "SF20-13-F",
+        "SF20-16-F"
+      ],
+      "read": "concepts/17_open_hand_lock.md",
+      "existing_seams_to_read": [
+        "src/data/precursorMachines.js",
+        "src/data/authoredPlaces.js",
+        "src/data/contactHail.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-17-F",
+      "concept_id": "SF20-17",
+      "title": "The Open-Hand Lock: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 3,
+      "depends_on": [
+        "SF20-17-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/17_open_hand_lock.md",
+      "existing_seams_to_read": [
+        "src/data/precursorMachines.js",
+        "src/data/authoredPlaces.js",
+        "src/data/contactHail.js",
+        "src/systems/scanner.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Present wrong token-shaped object: no access.",
+        "Occupy gate at closure: collider waits safely.",
+        "Retain token: outside route and main story remain valid.",
+        "Load mid-open: same protocol and safe gate state return.",
+        "Before the applicable revelation: machine behavior stays within current canon gates."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-18-A",
+      "concept_id": "SF20-18",
+      "title": "The Last Shift: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/18_last_shift.md",
+      "existing_seams_to_read": [
+        "src/systems/aftermathWrecks.js",
+        "src/systems/uniqueWrecks.js",
+        "src/systems/salvage.js",
+        "src/systems/provenanceLedger.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-18-B",
+      "concept_id": "SF20-18",
+      "title": "The Last Shift: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-18-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/18_last_shift.md",
+      "existing_seams_to_read": [
+        "src/systems/aftermathWrecks.js",
+        "src/systems/uniqueWrecks.js",
+        "src/systems/salvage.js",
+        "src/systems/provenanceLedger.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Return personal/log records, salvage unclaimed hardware, publish a partial report, investigate all clues, or leave. Recovering valuable cargo and preserving evidence can conflict locally, but one mistake never destroys every path to understanding.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Return personal/log records, salvage unclaimed hardware, publish a partial report, investigate all clues, or leave. Recovering valuable cargo and preserving evidence can conflict locally, but one mistake never destroys every path to understanding."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-18-C",
+      "concept_id": "SF20-18",
+      "title": "The Last Shift: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-18-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/18_last_shift.md",
+      "existing_seams_to_read": [
+        "src/systems/aftermathWrecks.js",
+        "src/systems/uniqueWrecks.js",
+        "src/systems/salvage.js",
+        "src/systems/provenanceLedger.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-18-D",
+      "concept_id": "SF20-18",
+      "title": "The Last Shift: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-18-B",
+        "SF20-18-C"
+      ],
+      "read": "concepts/18_last_shift.md",
+      "existing_seams_to_read": [
+        "src/systems/aftermathWrecks.js",
+        "src/systems/uniqueWrecks.js",
+        "src/systems/salvage.js",
+        "src/systems/provenanceLedger.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-18-E",
+      "concept_id": "SF20-18",
+      "title": "The Last Shift: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-18-D",
+        "SF20-03-F"
+      ],
+      "read": "concepts/18_last_shift.md",
+      "existing_seams_to_read": [
+        "src/systems/aftermathWrecks.js",
+        "src/systems/uniqueWrecks.js",
+        "src/systems/salvage.js",
+        "src/systems/provenanceLedger.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-18-F",
+      "concept_id": "SF20-18",
+      "title": "The Last Shift: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-18-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/18_last_shift.md",
+      "existing_seams_to_read": [
+        "src/systems/aftermathWrecks.js",
+        "src/systems/uniqueWrecks.js",
+        "src/systems/salvage.js",
+        "src/systems/provenanceLedger.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Recover clues in all six orders: final evidence set agrees.",
+        "Destroy each clue separately: partial report remains truthful and accessible.",
+        "Publish twice: only one archive receipt per evidence revision.",
+        "Scan a towed recorder: no identity loss or duplicate object.",
+        "Turn off reconstruction: all essential information remains in accessible journal text."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-19-A",
+      "concept_id": "SF20-19",
+      "title": "Pip & Spanner: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/19_pip_and_spanner.md",
+      "existing_seams_to_read": [
+        "src/systems/survivalDraft.js",
+        "src/systems/swarmSupply.js",
+        "src/systems/runSession.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-19-B",
+      "concept_id": "SF20-19",
+      "title": "Pip & Spanner: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-19-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/19_pip_and_spanner.md",
+      "existing_seams_to_read": [
+        "src/systems/survivalDraft.js",
+        "src/systems/swarmSupply.js",
+        "src/systems/runSession.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Repair, buy a module, retain the current build, compare, or launch. Every option states the actual cost and affected capability. Choosing nothing must look intentional, not like a missing selection.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Repair, buy a module, retain the current build, compare, or launch. Every option states the actual cost and affected capability. Choosing nothing must look intentional, not like a missing selection."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-19-C",
+      "concept_id": "SF20-19",
+      "title": "Pip & Spanner: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-19-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/19_pip_and_spanner.md",
+      "existing_seams_to_read": [
+        "src/systems/survivalDraft.js",
+        "src/systems/swarmSupply.js",
+        "src/systems/runSession.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-19-D",
+      "concept_id": "SF20-19",
+      "title": "Pip & Spanner: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-19-B",
+        "SF20-19-C"
+      ],
+      "read": "concepts/19_pip_and_spanner.md",
+      "existing_seams_to_read": [
+        "src/systems/survivalDraft.js",
+        "src/systems/swarmSupply.js",
+        "src/systems/runSession.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-19-E",
+      "concept_id": "SF20-19",
+      "title": "Pip & Spanner: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-19-D"
+      ],
+      "read": "concepts/19_pip_and_spanner.md",
+      "existing_seams_to_read": [
+        "src/systems/survivalDraft.js",
+        "src/systems/swarmSupply.js",
+        "src/systems/runSession.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-19-F",
+      "concept_id": "SF20-19",
+      "title": "Pip & Spanner: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 1,
+      "depends_on": [
+        "SF20-19-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/19_pip_and_spanner.md",
+      "existing_seams_to_read": [
+        "src/systems/survivalDraft.js",
+        "src/systems/swarmSupply.js",
+        "src/systems/runSession.js",
+        "src/ui/orrery/"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Double-confirm one offer: one debit and one item.",
+        "Close/reopen at every transaction state: displayed build equals authoritative run build.",
+        "Fail the GLB load: SVG and text allow full selection and launch.",
+        "Keyboard/gamepad-only walk reaches every option, compare, back and launch.",
+        "Finish or abort run: zero unintended change to campaign credits, inventory or kills."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-20-A",
+      "concept_id": "SF20-20",
+      "title": "The Hundred-Hand Mile: Audit exact owners and resolve placement",
+      "status": "NEW_PROPOSAL",
+      "wave": 4,
+      "depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "read": "concepts/20_hundred_hand_mile.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/story.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/authoredPlaces.js"
+      ],
+      "instruction": "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry.",
+      "acceptance": [
+        "Read current integration files; record actual signatures/events/save fields; search overlap; finalize valid sector-local placement or screen entry."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-20-B",
+      "concept_id": "SF20-20",
+      "title": "The Hundred-Hand Mile: Prove the defining behavior",
+      "status": "NEW_PROPOSAL",
+      "wave": 4,
+      "depends_on": [
+        "SF20-20-A",
+        "SF20-S02"
+      ],
+      "read": "concepts/20_hundred_hand_mile.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/story.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/authoredPlaces.js"
+      ],
+      "instruction": "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Help with one chapter, pursue the full restoration, donate recovered goods, investigate why it failed, or leave. Partial contributions remain visible. Deliberate sabotage creates a repairable consequence, not an irreversible global softlock.",
+      "acceptance": [
+        "Implement a minimal normal-route behavior proof with real inputs/objects and both choices; preserve single writers. Help with one chapter, pursue the full restoration, donate recovered goods, investigate why it failed, or leave. Partial contributions remain visible. Deliberate sabotage creates a repairable consequence, not an irreversible global softlock."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-20-C",
+      "concept_id": "SF20-20",
+      "title": "The Hundred-Hand Mile: Build Forge model and collision plan",
+      "status": "NEW_PROPOSAL",
+      "wave": 4,
+      "depends_on": [
+        "SF20-20-A",
+        "SF20-S04"
+      ],
+      "read": "concepts/20_hundred_hand_mile.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/story.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/authoredPlaces.js"
+      ],
+      "instruction": "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views.",
+      "acceptance": [
+        "Rebuild the part recipe in Forge, not by shipping the blockout. Supply stable pivots, real sockets, collider plan, LODs and top/chase/close views."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-20-D",
+      "concept_id": "SF20-20",
+      "title": "The Hundred-Hand Mile: Wire readable presentation and sound",
+      "status": "NEW_PROPOSAL",
+      "wave": 4,
+      "depends_on": [
+        "SF20-20-B",
+        "SF20-20-C"
+      ],
+      "read": "concepts/20_hundred_hand_mile.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/story.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/authoredPlaces.js"
+      ],
+      "instruction": "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity.",
+      "acceptance": [
+        "Implement listed animation phases and receipt-driven reactions; voice arbitration, fallback art, reduced motion/flash and keyboard/controller parity."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-20-E",
+      "concept_id": "SF20-20",
+      "title": "The Hundred-Hand Mile: Integrate saves, routing and resources",
+      "status": "NEW_PROPOSAL",
+      "wave": 4,
+      "depends_on": [
+        "SF20-20-D",
+        "SF20-03-F",
+        "SF20-04-F",
+        "SF20-06-F",
+        "SF20-11-F",
+        "SF20-18-F"
+      ],
+      "read": "concepts/20_hundred_hand_mile.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/story.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/authoredPlaces.js"
+      ],
+      "instruction": "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle.",
+      "acceptance": [
+        "Make ordinary first/repeat encounters reachable; preserve state on load/exit/death/abort; verify rewards and asset lifecycle."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    },
+    {
+      "id": "SF20-20-F",
+      "concept_id": "SF20-20",
+      "title": "The Hundred-Hand Mile: Run acceptance and publish evidence",
+      "status": "NEW_PROPOSAL",
+      "wave": 4,
+      "depends_on": [
+        "SF20-20-E",
+        "SF20-S05"
+      ],
+      "read": "concepts/20_hundred_hand_mile.md",
+      "existing_seams_to_read": [
+        "src/systems/missions.js",
+        "src/systems/story.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/authoredPlaces.js"
+      ],
+      "instruction": "Run shared gates plus every specific test. Attach captures and measured performance, and document changed paths and remaining limitations.",
+      "acceptance": [
+        "Complete milestones in permitted alternate orders: graph reaches coherent branch.",
+        "Lose Ilex cargo or a Last Shift clue: partial branch still completes.",
+        "Install while another ship occupies the volume: action waits or denies safely.",
+        "Replay all receipts after save/load: no duplicate modules or payments.",
+        "Destroy and rebuild: costs/rewards conserve the intended resource budget."
+      ],
+      "do_not": "Do not replace existing owner systems, ship placeholder blockouts, invent API signatures, or claim done from unit tests alone."
+    }
+  ]
+}

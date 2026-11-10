@@ -1,0 +1,86 @@
+{
+  "name": "tumble-states-quiet-latch",
+  "primary": "quiet-tumbleStates-no-active@npc24",
+  "npc": 24,
+  "iters": 30000,
+  "runs": 11,
+  "medianSpeedup": 5.900177620202072,
+  "floorMinSpeedup": 5.602842014009313,
+  "maxSpeedup": 6.559665327148695,
+  "pairs": [
+    {
+      "before": 57.26857000000001,
+      "after": 10.221343000000005,
+      "speedup": 5.602842014009313,
+      "afterLatched": true
+    },
+    {
+      "before": 58.070233,
+      "after": 10.288049,
+      "speedup": 5.644435888670436,
+      "afterLatched": true
+    },
+    {
+      "before": 58.44991499999999,
+      "after": 10.266679999999994,
+      "speedup": 5.6931661452387745,
+      "afterLatched": true
+    },
+    {
+      "before": 57.56199000000001,
+      "after": 9.898928999999995,
+      "speedup": 5.814971498431803,
+      "afterLatched": true
+    },
+    {
+      "before": 62.057441,
+      "after": 10.550688000000008,
+      "speedup": 5.881838321823179,
+      "afterLatched": true
+    },
+    {
+      "before": 61.11769199999999,
+      "after": 10.358619000000004,
+      "speedup": 5.900177620202072,
+      "afterLatched": true
+    },
+    {
+      "before": 60.03099399999999,
+      "after": 10.166680999999997,
+      "speedup": 5.904679609795961,
+      "afterLatched": true
+    },
+    {
+      "before": 65.308962,
+      "after": 10.969969000000006,
+      "speedup": 5.953431773599356,
+      "afterLatched": true
+    },
+    {
+      "before": 58.994585999999984,
+      "after": 9.852789000000001,
+      "speedup": 5.987602698078684,
+      "afterLatched": true
+    },
+    {
+      "before": 62.64173600000001,
+      "after": 10.185485,
+      "speedup": 6.150098498009669,
+      "afterLatched": true
+    },
+    {
+      "before": 67.086104,
+      "after": 10.227062000000004,
+      "speedup": 6.559665327148695,
+      "afterLatched": true
+    }
+  ],
+  "dirtyWakeOk": true,
+  "wake": {
+    "ok": true,
+    "afterImpulse": true,
+    "cleared": true,
+    "beforeArmed": 31
+  },
+  "note": "Quiet: no tumble/rcs/recovery/drift. Before=latch OFF; after=latch ON. Soft-GPU fps not claimed."
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-07-31T11:11:46.455Z",
+  "status": "pass",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 129058,
+  "pidRecord": {
+    "pid": 39560,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq023-corridor-cues.mjs"
+    ],
+    "startedAt": "2026-07-31T11:09:37.396Z",
+    "platform": "win32",
+    "finishedAt": "2026-07-31T11:11:46.454Z",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq023-corridor-cues",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 39560
+  },
+  "fixedSeed": 47,
+  "failureFingerprint": null,
+  "family": null,
+  "routeDigest": "15961a9914d0a4d2239f589f7f78c5ff9041b00ac88e4a94afd89c19d93b04af",
+  "regressionDigest": "fc4fd14c6ca690e526eb175abe491b72704e9344e3b97375c433a238a9b580d2",
+  "candidateDigest": "3b31ee47da771989ef583301b78169a577ab714b8d2deb1168ce3c1a95e6a82b"
+}

@@ -1,0 +1,61 @@
+
+> spaceface@0.1.0 player-truth
+> node scripts/player-truth/run.mjs --mode=swarm --headed --gate --evidence --tag=pr-maturation-producers --out=.devshots/pr-maturation/player-truth/swarm-producers
+
+[swarm-idle-pr-maturation-producers 26s] ok  main menu — menu visible
+[swarm-idle-pr-maturation-producers 31s] ok  mode select — Crucible · swarm · arena Ricochet Foundry · seed 4242
+[swarm-idle-pr-maturation-producers 59s] ok  preparation — hull Ricochet RunnerHornet · 4/8 fitted · 63 armory offers read · no install possible
+[swarm-idle-pr-maturation-producers 61s] ok  spawn — flight · round 1 active at sim 1.7 s
+[swarm-idle-pr-maturation-producers 61s] idle 40 sim s (no input)
+[swarm-idle-pr-maturation-producers 103s] progress: sim 38.5 s · 28.1 fps · 1.15 sim s per wall s · phase active
+[swarm-idle-pr-maturation-producers 113s] ok  play — 1 round(s): 1:cut
+player-truth FAIL · swarm-idle-pr-maturation-producers · ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)
+  PASS    route               main menu → mode select → preparation → spawn → play
+  UNKNOWN round_resolution    
+  PASS    kills_before_input  0 kills
+  PASS    reward_before_input +0 score
+  PASS    spawn_motion        0 bodies
+  PASS    player_control      0/2 probes dead · 0 pinned spans
+  PASS    tumble              longest 0 s
+  PASS    player_ship         0% frames bad (0/1138)
+  PASS    lod_churn           max 1/10s per entity · 0.2/s total · 1 real LOD · 8 loading
+  PASS    popping             0/min · worst entity 0 toggles · 0 visibility · 0 loading
+  UNKNOWN readability         
+  PASS    vfx_coverage        p95 4% screen · player hidden 0% · threats hidden p95 0% · 0 s persist
+  FAIL    backdrop_coverage   backdrop lights median 5% / p95 6% of screen · threats on bright backdrop p95 100%
+  PASS    loadout             0 irrelevant · 0 undescribed · 0 silent swaps
+  UNKNOWN frame_time          p50 41 ms · p99 106 ms · 0 long tasks ≥250 ms
+  UNKNOWN round_transitions   
+  N/A     rounds_reached      
+  verdict: .devshots\pr-maturation\player-truth\swarm-producers\swarm-idle-pr-maturation-producers\verdict.md
+  contactSheet: .devshots\pr-maturation\player-truth\swarm-producers\swarm-idle-pr-maturation-producers\contact-sheet.jpg
+  json: .devshots\pr-maturation\player-truth\swarm-producers\swarm-idle-pr-maturation-producers\verdict.json
+  trace: .devshots\pr-maturation\player-truth\swarm-producers\swarm-idle-pr-maturation-producers\trace.json.gz
+  frames: .devshots\pr-maturation\player-truth\swarm-producers\swarm-idle-pr-maturation-producers\frames
+[swarm-active-pr-maturation-producers 27s] ok  main menu — menu visible
+[swarm-active-pr-maturation-producers 30s] ok  mode select — Crucible · swarm · arena Ricochet Foundry · seed 4242
+page.waitForFunction: Timeout 600000ms exceeded.
+    at runOne (C:\Users\93rob\Documents\GitHub\SpaceFace\scripts\player-truth\run.mjs:295:20)
+    at async main (C:\Users\93rob\Documents\GitHub\SpaceFace\scripts\player-truth\run.mjs:529:19) {
+  log: [],
+  name: 'TimeoutError'
+}
+
+<--- Last few GCs --->
+
+[24880:0000024CE5AE7000]   827310 ms: Scavenge (interleaved) 4041.6 (4076.5) -> 4019.3 (4081.5) MB, pooled: 0 MB, 21.94 / 0.00 ms  (average mu = 0.157, current mu = 0.105) allocation failure; 
+[24880:0000024CE5AE7000]   830529 ms: Mark-Compact (reduce) 4023.6 (4081.5) -> 4020.0 (4025.2) MB, pooled: 0 MB, 2779.28 / 0.00 ms  (+ 337.9 ms in 68 steps since start of marking, biggest step 5.0 ms, walltime since start of marking 3131 ms) (average mu =
+FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF60873403F node::OnFatalError+1343
+ 2: 00007FF60937FAA7 v8::Function::NewInstance+423
+ 3: 00007FF6091804D7 v8::base::AddressSpaceReservation::AddressSpaceReservation+322071
+ 4: 00007FF6091841E4 v8::base::AddressSpaceReservation::AddressSpaceReservation+337700
+ 5: 00007FF60919313C v8::internal::StrongRootAllocatorBase::deallocate_impl+16604
+ 6: 00007FF60919297B v8::internal::StrongRootAllocatorBase::deallocate_impl+14619
+ 7: 00007FF60A61A2AD v8::base::UnsignedDivisionByConstant<unsigned __int64>+2794653
+ 8: 00007FF60917DFA0 v8::base::AddressSpaceReservation::AddressSpaceReservation+312544
+ 9: 00007FF609201CD9 v8::Unlocker::~Unlocker+9273
+10: 00007FF608D76698 v8::String::Utf8Value::~Utf8Value+143384
+11: 0000024C9FE775FA 

@@ -1,0 +1,55 @@
+// Presentation sync banding.
+//
+// The live cull box is the glass plus a short approach runway so trails, shadows,
+// and fast crossers do not pop. Closures cannot change a readable pixel on a ship
+// that is still off the table. Inner band is the glass; middle band is the runway.
+
+export const ENTITY_VIEW_BAND = Object.freeze({
+  INNER: 'inner',
+  MIDDLE: 'middle',
+});
+
+// 1.0 is the live on-screen box. Larger values widen the expensive inner band
+// into the off-screen runway and re-submit ships the player cannot see.
+export const INNER_VIEW_BAND_SCALE = 1;
+export const MIDDLE_SYNC_PERIOD_TICKS = 4;
+
+export function viewHalfExtents(zoom, fovDeg, aspect, scale = 1) {
+  const zoomValue = Number.isFinite(zoom) ? zoom : 88;
+  const fov = Number.isFinite(fovDeg) ? fovDeg : 50;
+  const aspectValue = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+  const halfV = Math.tan((fov * Math.PI / 180) * 0.5) * zoomValue * 0.72 * scale;
+  return { halfX: halfV * aspectValue, halfZ: halfV };
+}
+
+export function classifyEntityViewBand(options = {}) {
+  if (options.isPlayer === true || options.forceInner === true) return ENTITY_VIEW_BAND.INNER;
+  const absDx = Math.abs(Number(options.dx) || 0);
+  const absDz = Math.abs(Number(options.dz) || 0);
+  // The frame caller supplies the extents it already computed once per frame; the tan-based
+  // fallback only serves callers that omit them. Keep it out of the per-entity path.
+  let halfX = Number(options.innerHalfX);
+  let halfZ = Number(options.innerHalfZ);
+  if (!Number.isFinite(halfX) || !Number.isFinite(halfZ)) {
+    const view = viewHalfExtents(options.zoom, options.fov, options.aspect, INNER_VIEW_BAND_SCALE);
+    if (!Number.isFinite(halfX)) halfX = view.halfX;
+    if (!Number.isFinite(halfZ)) halfZ = view.halfZ;
+  }
+  // The box test reads centre distance; a body whose drawn envelope reaches the glass counts
+  // as inner even when its root centre sits outside the band (station/hulk rims).
+  const reach = Math.max(0, Number(options.radius) || 0);
+  if (absDx <= halfX + reach && absDz <= halfZ + reach) return ENTITY_VIEW_BAND.INNER;
+  return ENTITY_VIEW_BAND.MIDDLE;
+}
+
+export function shouldFullSyncMiddleBand(tick, slot) {
+  const period = MIDDLE_SYNC_PERIOD_TICKS;
+  const t = Number.isInteger(tick) ? tick : Math.floor(Number(tick) || 0);
+  const s = Number.isInteger(slot) ? slot : Math.floor(Number(slot) || 0);
+  return ((t + s) % period + period) % period === 0;
+}
+
+export function shouldRunEntityClosures(band, tick, slot, options = {}) {
+  if (options.forceInner === true || band === ENTITY_VIEW_BAND.INNER) return true;
+  return shouldFullSyncMiddleBand(tick, slot);
+}

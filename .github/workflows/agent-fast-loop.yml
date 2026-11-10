@@ -1,0 +1,110 @@
+name: agent-fast-loop
+on:
+  pull_request:
+    paths:
+      - 'scripts/agent-loop.mjs'
+      - 'scripts/sf-lab.mjs'
+      - 'scripts/ui-bench.mjs'
+      - 'scripts/lib/agentLoopPlan.mjs'
+      - 'scripts/lib/labExecution.mjs'
+      - 'scripts/lib/labTraceReport.mjs'
+      - 'scripts/lib/uiBenchBatch.mjs'
+      - 'src/testing/lab/**'
+      - 'src/testing/scenarios/**'
+      - 'test/agent-loop*.test.mjs'
+      - '.github/workflows/agent-fast-loop.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: agent-fast-loop-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # No full asset bank, no history, no browser install. This is not a shipped-game build.
+          # Runtime-owned JSON/code under assets is required even without rendering.
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/assets/**
+            /assets/**/*.json
+            /assets/**/*.js
+            /assets/**/*.mjs
+            /assets/**/*.cjs
+            !/design/
+            !/tools/blender/
+            !/docs/
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependency-free orchestration, CLI and report regressions
+        run: node --test test/agent-loop.test.mjs test/agent-loop-cli.test.mjs
+      - name: Install Node simulation dependencies (not Electron/Chromium binaries)
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: npm ci --ignore-scripts
+      - name: Existing lab boundaries and real-runtime batch/trace regression
+        run: node --test --test-concurrency=1 test/agent-loop-runtime.test.mjs test/lab-scenarios-cli.test.mjs test/lab-production-fixture.test.mjs test/lab-false-positive-guards.test.mjs
+      - name: Exercise the no-boot agent command itself
+        run: node scripts/agent-loop.mjs sim flight-fixed-input flight-save-load
+      - name: Preserve partial evidence even after failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-fast-loop-${{ github.run_id }}
+          path: .devshots/agent-loop/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+  ui-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Real screen modules/fonts plus authored stills; no game models or world boot.
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/assets/**
+            /assets/**/*.json
+            /assets/**/*.js
+            /assets/**/*.mjs
+            /assets/**/*.cjs
+            /assets/**/*.css
+            /assets/**/*.woff2
+            /assets/ui/backdrops/**
+            !/design/
+            !/tools/blender/
+            !/docs/
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install bench dependencies without Electron
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: npm ci --ignore-scripts
+      - name: Install only the browser this fixture check uses
+        run: npx playwright install --with-deps chromium
+      - name: Capture real screen modules in one isolated viewport batch
+        run: node scripts/agent-loop.mjs ui pause,settings --viewports=960x540,1920x1080 --timeout-ms=120000 --cell-timeout-ms=30000
+      - name: Preserve pictures and partial failure reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-fast-loop-ui-${{ github.run_id }}
+          path: .devshots/agent-loop/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7

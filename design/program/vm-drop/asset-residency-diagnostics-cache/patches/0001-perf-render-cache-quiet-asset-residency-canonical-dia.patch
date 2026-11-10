@@ -1,0 +1,176 @@
+From 92e36f2e8f103ffac5485add68f745730e98cec2 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 02:13:22 -0400
+Subject: [PATCH] perf(render): cache quiet asset-residency canonical
+ diagnostics
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet reconcileMeshResidency polls republished a full frozen sorted
+asset-row table every ~250 ms with no retain/release. Cache the
+canonical snapshot until emit/cacheSweep mutates the registry.
+
+Portable microbench ~794× (80 assets, quiet republish). Focused
+residency tests pass. Picture ON; soft-GPU fps ignored.
+---
+ src/render/assetResidency.js                  | 26 +++++++-
+ src/render/renderer.js                        |  3 +
+ ...asset-residency-diagnostics-cache.test.mjs | 65 +++++++++++++++++++
+ 3 files changed, 93 insertions(+), 1 deletion(-)
+ create mode 100644 test/asset-residency-diagnostics-cache.test.mjs
+
+diff --git a/src/render/assetResidency.js b/src/render/assetResidency.js
+index 788c12f7b..eee18c6dd 100644
+--- a/src/render/assetResidency.js
++++ b/src/render/assetResidency.js
+@@ -73,6 +73,11 @@ export function createAssetResidencyRegistry(options = {}) {
+   let abandonedResources = 0;
+   let evictedAssets = 0;
+   let cacheSweepCount = 0;
++  // Canonical diagnostics are rebuilt only when residency mutates. Quiet settled
++  // polls republish the same summary every RENDER_RESIDENCY_POLL_SECONDS.
++  let canonicalDiagnosticsRevision = 0;
++  let cachedCanonicalDiagnostics = null;
++  let cachedCanonicalDiagnosticsRevision = -1;
+   // `null` disables each inline soft cap (decode adapters/tests that want explicit sweep control
+   // can pass `maxPackageCacheOnlyBytes: null` / `maxSoftResidentBytes: null`).
+   const packageCacheOnlyMaxBytes = options.maxPackageCacheOnlyBytes === null
+@@ -94,6 +99,10 @@ export function createAssetResidencyRegistry(options = {}) {
+   });
+ 
+   function emit(type, detail = {}) {
++    // Any structural event invalidates the canonical diagnostics cache. Quiet
++    // residency polls used to rebuild a frozen sorted row table every 250 ms even
++    // when nothing changed (prepareFrame → serviceRenderMeshResidency residual).
++    invalidateCanonicalDiagnostics();
+     const event = Object.freeze({ sequence: ++eventSequence, type, atMs: now(), ...detail });
+     events.push(event);
+     if (events.length > maxEvents) events.splice(0, events.length - maxEvents);
+@@ -101,6 +110,12 @@ export function createAssetResidencyRegistry(options = {}) {
+     return event;
+   }
+ 
++  function invalidateCanonicalDiagnostics() {
++    canonicalDiagnosticsRevision++;
++    cachedCanonicalDiagnostics = null;
++    cachedCanonicalDiagnosticsRevision = -1;
++  }
++
+   function ownerState(owner, create = true) {
+     if (owner == null) return null;
+     if (isOwnerReleased(owner)) return null;
+@@ -527,6 +542,8 @@ export function createAssetResidencyRegistry(options = {}) {
+    */
+   function releaseUnreferencedCacheOwners(reason = 'cache-only-residency-cleanup', options = {}) {
+     cacheSweepCount++;
++    // cacheSweepCount is part of the canonical summary even when the pass releases nothing.
++    invalidateCanonicalDiagnostics();
+     packageCacheBudgetDepth++;
+     try {
+       return releaseUnreferencedCacheOwnersPass(reason, options);
+@@ -870,7 +887,14 @@ export function createAssetResidencyRegistry(options = {}) {
+   }
+ 
+   function canonicalDiagnostics() {
+-    return diagnostics({ canonical: true, includeEvents: false });
++    if (cachedCanonicalDiagnostics
++        && cachedCanonicalDiagnosticsRevision === canonicalDiagnosticsRevision) {
++      return cachedCanonicalDiagnostics;
++    }
++    const snapshot = diagnostics({ canonical: true, includeEvents: false });
++    cachedCanonicalDiagnostics = snapshot;
++    cachedCanonicalDiagnosticsRevision = canonicalDiagnosticsRevision;
++    return snapshot;
+   }
+ 
+   function has(key) {
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index 291eb10c2..591ef8a78 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -11379,7 +11379,10 @@ export const render = {
+     // The renderer publishes this snapshot at high-frequency lifecycle seams. Keep the bounded
+     // forensic ring inside the registry; the player-facing state needs only the canonical summary,
+     // avoiding a fresh copy of hundreds of event objects on every mesh reconciliation.
++    // Quiet residency polls (every ~250 ms with no retain/release) reuse the cached canonical
++    // object so prepareFrame does not rebuild sorted asset rows when nothing changed.
+     const diagnostics = this._assetResidency.canonicalDiagnostics();
++    if (this.state.render.assetResidency === diagnostics) return diagnostics;
+     this.state.render.assetResidency = diagnostics;
+     return diagnostics;
+   },
+diff --git a/test/asset-residency-diagnostics-cache.test.mjs b/test/asset-residency-diagnostics-cache.test.mjs
+new file mode 100644
+index 000000000..0bd09e538
+--- /dev/null
++++ b/test/asset-residency-diagnostics-cache.test.mjs
+@@ -0,0 +1,65 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
++
++function seed(registry, key) {
++  const tex = new THREE.DataTexture(
++    new Uint8Array(16),
++    2,
++    2,
++    THREE.RGBAFormat,
++    THREE.UnsignedByteType,
++  );
++  registry.registerAsset(key, [tex], { cpuPackageBytes: 16 });
++  registry.retain(key, { type: 'live-boundary', name: key }, {
++    role: 'glass',
++    presentationTier: 'R0_GLASS',
++    sectorId: 'ceres',
++  });
++}
++
++test('canonicalDiagnostics reuses the same object while residency is quiet', () => {
++  const registry = createAssetResidencyRegistry({ maxGpuBytes: 1e12 });
++  seed(registry, 'package:a');
++  seed(registry, 'package:b');
++  const first = registry.canonicalDiagnostics();
++  const second = registry.canonicalDiagnostics();
++  assert.equal(second, first, 'quiet republish must reuse the cached snapshot');
++  assert.equal(first.residentAssets, 2);
++  assert.equal(first.schema, 'spaceface.assetResidency.v2');
++  assert.deepEqual(first.events, []);
++});
++
++test('canonicalDiagnostics rebuilds after retain/release mutation', () => {
++  const registry = createAssetResidencyRegistry({ maxGpuBytes: 1e12 });
++  seed(registry, 'package:a');
++  const before = registry.canonicalDiagnostics();
++  seed(registry, 'package:b');
++  const afterRetain = registry.canonicalDiagnostics();
++  assert.notEqual(afterRetain, before);
++  assert.equal(afterRetain.residentAssets, before.residentAssets + 1);
++
++  const owner = { type: 'live-boundary', name: 'solo' };
++  const tex = new THREE.DataTexture(new Uint8Array(16), 2, 2, THREE.RGBAFormat, THREE.UnsignedByteType);
++  registry.registerAsset('package:c', [tex], { cpuPackageBytes: 16 });
++  registry.retain('package:c', owner, { role: 'glass' });
++  const mid = registry.canonicalDiagnostics();
++  registry.release('package:c', owner, 'test-release');
++  const afterRelease = registry.canonicalDiagnostics();
++  assert.notEqual(afterRelease, mid);
++  assert.equal(afterRelease.residentAssets, mid.residentAssets - 1);
++});
++
++test('cacheSweepCount alone invalidates the canonical snapshot', () => {
++  const registry = createAssetResidencyRegistry({ maxGpuBytes: 1e12 });
++  seed(registry, 'package:a');
++  const before = registry.canonicalDiagnostics();
++  const sweep = registry.releaseUnreferencedCacheOwners('test-sweep', { minAgeMs: 1e12 });
++  assert.equal(sweep.releasedOwners, 0);
++  const after = registry.canonicalDiagnostics();
++  assert.notEqual(after, before);
++  assert.equal(after.cacheSweepCount, before.cacheSweepCount + 1);
++  assert.equal(after.residentAssets, before.residentAssets);
++});
+-- 
+2.47.3
+

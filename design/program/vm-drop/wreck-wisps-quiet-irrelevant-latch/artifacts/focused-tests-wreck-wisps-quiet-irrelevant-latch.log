@@ -1,0 +1,118 @@
+TAP version 13
+# Subtest: quiet empty latch skips after first empty publish and wakes on entityIndexVersion
+ok 1 - quiet empty latch skips after first empty publish and wakes on entityIndexVersion
+  ---
+  duration_ms: 9.113954
+  ...
+# Subtest: quiet latch refuses without entity index version (entityList fallback stays live)
+ok 2 - quiet latch refuses without entity index version (entityList fallback stays live)
+  ---
+  duration_ms: 3.225806
+  ...
+# Subtest: quiet empty field-force latches after first empty publish
+ok 3 - quiet empty field-force latches after first empty publish
+  ---
+  duration_ms: 4.211075
+  ...
+# Subtest: fields.active dirty-wake resumes update then re-latches when empty
+ok 4 - fields.active dirty-wake resumes update then re-latches when empty
+  ---
+  duration_ms: 2.094429
+  ...
+# Subtest: picture unchanged while latched — mesh stays hidden/count 0
+ok 5 - picture unchanged while latched — mesh stays hidden/count 0
+  ---
+  duration_ms: 4.621091
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: loot-magnet quiet-latches on empty pickups+payloads buckets
+ok 6 - loot-magnet quiet-latches on empty pickups+payloads buckets
+  ---
+  duration_ms: 106.570602
+  ...
+# Subtest: entityIndexVersion dirty-wake resumes then re-latches when empty
+ok 7 - entityIndexVersion dirty-wake resumes then re-latches when empty
+  ---
+  duration_ms: 40.941086
+  ...
+# Subtest: no entityIndex version refuses latch (entityList fallback stays live)
+ok 8 - no entityIndex version refuses latch (entityList fallback stays live)
+  ---
+  duration_ms: 17.202358
+  ...
+# Subtest: boundary resets clear loot-magnet quiet latch
+ok 9 - boundary resets clear loot-magnet quiet latch
+  ---
+  duration_ms: 14.941
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: quiet empty sprites latch after first idle commit and skip reset+commit
+ok 10 - quiet empty sprites latch after first idle commit and skip reset+commit
+  ---
+  duration_ms: 101.962771
+  ...
+# Subtest: activateSprite dirty-wake clears idle latch then re-latches after drain
+ok 11 - activateSprite dirty-wake clears idle latch then re-latches after drain
+  ---
+  duration_ms: 24.270187
+  ...
+# Subtest: picture unchanged while latched — all four bucket meshes stay count 0
+ok 12 - picture unchanged while latched — all four bucket meshes stay count 0
+  ---
+  duration_ms: 16.935886
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# {
+#   "ok": true,
+#   "test": "vfx-save-restore-destroy",
+#   "saveRestore": {
+#     "liveParticles": 0,
+#     "liveSprites": 0,
+#     "activeLights": 0
+#   },
+#   "normalDestroy": {
+#     "liveParticles": 15,
+#     "liveSprites": 14,
+#     "activeLights": 2
+#   },
+#   "combatReason": {
+#     "liveParticles": 15,
+#     "liveSprites": 14,
+#     "activeLights": 2
+#   }
+# }
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
+ok 5 - /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
+  ---
+  duration_ms: 615.152029
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: wreck-wisps quiet-latches when wrecks bucket is empty
+ok 14 - wreck-wisps quiet-latches when wrecks bucket is empty
+  ---
+  duration_ms: 131.071884
+  ...
+# Subtest: entityIndexVersion dirty-wake resumes then re-latches when empty
+ok 15 - entityIndexVersion dirty-wake resumes then re-latches when empty
+  ---
+  duration_ms: 45.649689
+  ...
+# Subtest: no entityIndex version refuses latch (entityList fallback stays live)
+ok 16 - no entityIndex version refuses latch (entityList fallback stays live)
+  ---
+  duration_ms: 15.659928
+  ...
+# Subtest: boundary resets clear wreck-wisps quiet latch
+ok 17 - boundary resets clear wreck-wisps quiet latch
+  ---
+  duration_ms: 17.964322
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 17
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 632.306939

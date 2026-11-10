@@ -1,0 +1,679 @@
+// The one reader. Measurements live in modelTruthCensus.json, written only by
+// scripts/model-truth-census.mjs. Sim, camera, weapons, and labels import this module.
+
+import { isMothlightTender, MOTHLIGHT_GUN_SOCKET } from './mothlightBody.js';
+import {
+  CAMERA_NEAR_MARGIN_WU,
+  colliderRadiusAt,
+  convexHullRadiusAt,
+  convexPlanarHull,
+  flightPlaneToleranceWu,
+  roundWu,
+  scaleProxyPrimitives,
+  skinContains,
+  throatOpen,
+} from './modelTruthMath.js';
+import {
+  boltRadiusFromPlanar,
+  fittedSocketLocal,
+  hitVolumeFromRow,
+  measuredHardpointFromRow,
+  mineSensorRadiusFromPlanar,
+  mountFractionsFromRow,
+  nozzleWorldFromRow,
+  placeDrawScaleFromRow,
+  plumeSocketNameFromNames,
+  trailSocketNameFromNames,
+  plumeWorldFromRow,
+  ropeEndFromRow,
+  shotWorldFromRow,
+  socketWorldFromRow,
+  unmeasuredHitVolumeIds,
+  weaponSocketNameForSlot,
+} from './modelTruthMounts.js';
+
+// The full census is a fetched JSON asset instead of a multi-megabyte bundled JS string.
+// Browser boot and the simulation worker call loadModelTruthCensus() before synchronous
+// consumers run. Node consumers initialize from the canonical source JSON during import.
+
+/** A plain object whose real contents are built synchronously on first property access. */
+function deferredObject(build) {
+  const target = {};
+  let real = null;
+  const materialize = () => {
+    if (real === null) real = build();
+    return real;
+  };
+  return new Proxy(target, {
+    get: (t, p) => Reflect.get(materialize(), p),
+    has: (t, p) => p in materialize(),
+    ownKeys: () => Reflect.ownKeys(materialize()),
+    getOwnPropertyDescriptor: (t, p) => {
+      const d = Object.getOwnPropertyDescriptor(materialize(), p);
+      // A descriptor reported for a property the target does not own must be configurable; once
+      // the target is frozen it owns every real key and the real descriptor is reported verbatim.
+      return d && !Object.prototype.hasOwnProperty.call(t, p) ? { ...d, configurable: true } : d;
+    },
+    preventExtensions: (t) => {
+      const o = materialize();
+      Object.defineProperties(t, Object.getOwnPropertyDescriptors(o));
+      return Object.preventExtensions(t);
+    },
+    set: (t, p, v) => Reflect.set(materialize(), p, v),
+    deleteProperty: (t, p) => Reflect.deleteProperty(materialize(), p),
+    defineProperty: (t, p, d) => Reflect.defineProperty(materialize(), p, d),
+  });
+}
+
+/** `deferredObject` for arrays: the built contents are pushed onto the target once. */
+function deferredArray(build) {
+  const target = [];
+  let real = null;
+  const materialize = () => {
+    if (real === null) {
+      real = build();
+      for (const value of real) target.push(value);
+    }
+    return target;
+  };
+  return new Proxy(target, {
+    get: (t, p) => Reflect.get(materialize(), p),
+    has: (t, p) => p in materialize(),
+    ownKeys: () => Reflect.ownKeys(materialize()),
+    getOwnPropertyDescriptor: (t, p) => Object.getOwnPropertyDescriptor(materialize(), p),
+    preventExtensions: (t) => { materialize(); return Object.preventExtensions(t); },
+    set: (t, p, v) => Reflect.set(materialize(), p, v),
+    deleteProperty: (t, p) => Reflect.deleteProperty(materialize(), p),
+    defineProperty: (t, p, d) => Reflect.defineProperty(materialize(), p, d),
+  });
+}
+
+let censusData = null;
+const census = deferredObject(() => {
+  if (!censusData) throw new Error('Model truth census is not loaded; await loadModelTruthCensus() before synchronous consumers run');
+  return censusData;
+});
+const ROWS = deferredArray(() => (Array.isArray(census.rows) ? census.rows : []));
+// A Map cannot take the deferredObject proxy (its methods need the real receiver), so the
+// id index materializes through a memo instead — same laziness contract, internal only.
+let byIdCache = null;
+function byIdMap() {
+  if (byIdCache === null) byIdCache = new Map(ROWS.map((row) => [row.id, row]));
+  return byIdCache;
+}
+
+let censusLoadPromise = null;
+const isNodeRuntime = typeof process !== 'undefined'
+  && typeof import.meta.url === 'string'
+  && import.meta.url.startsWith('file:')
+  && Boolean(process.versions?.node);
+function installCensusJson(jsonText) {
+  const parsed = JSON.parse(jsonText);
+  if (!parsed || !Array.isArray(parsed.rows)) throw new Error('Model truth census JSON has no rows array');
+  censusData = parsed;
+  // Warm exactly once after parsing, matching the former generated-module first-use behavior.
+  void ROWS.length;
+  return census;
+}
+/** Load the complete measured census once, before any synchronous modelTruth API is used. */
+export function loadModelTruthCensus(assetUrl = null) {
+  if (censusData) return censusLoadPromise || Promise.resolve(census);
+  if (censusLoadPromise) return censusLoadPromise;
+  censusLoadPromise = (async () => {
+    let jsonText;
+    if (isNodeRuntime) {
+      // Keep Node-only IO out of the browser bundle's static import graph.
+      const fsSpecifier = 'node:' + 'fs/promises';
+      const { readFile } = await import(fsSpecifier);
+      jsonText = await readFile(new URL('./modelTruthCensus.json', import.meta.url), 'utf8');
+    } else {
+      const url = assetUrl || new URL('./modelTruthCensus.json', import.meta.url);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Model truth census fetch failed (${response.status})`);
+      jsonText = await response.text();
+    }
+    return installCensusJson(jsonText);
+  })();
+  censusLoadPromise.catch(() => { censusLoadPromise = null; });
+  return censusLoadPromise;
+}
+
+/** Read-only readiness check for synchronous callers that can use a temporary fallback. */
+export function isModelTruthCensusLoaded() {
+  return censusData !== null;
+}
+
+// MODEL SUBSTANCE TRUTH TABLE (Rapier SG-02 live collider truth — READ-ONLY data).
+//
+// Verified live behavior (do not re-litigate; encode it):
+//   debris ghost:false, rock ghost:false, pickup ghost:true (sensor).
+// Sources: src/core/physicsAuthority.js defaultDynamic/defaultMaterial/ensurePhysicsBodySpec,
+//   src/core/sg02DynamicBodyOwner.js CONTACT_MATERIALS + contactMaterialFor (pickup ghost
+//   override), src/systems/hullFracture.js wreckPhysicsBody (capsule debris dynamic),
+//   src/data/wreckClasses.js WRECK_COLLIDER_PROPORTIONS (wreck capsule fit).
+// The custom-backend mask path (DEFAULT_MASK in src/core/entity.js) is compatibility-only and
+// NOT live: DEFAULT_MASK.wreck = 0 must stay 0; live wreck solidity is the Rapier debris body.
+//
+// Pure data: frozen, no rng, no side effects. `proportionsRef` names the capsule-fit source:
+//   'craft' = sg02 resolveCraftProportions (data.proportions ?? ship/enemy silhouette catalog
+//   ?? 1.35/0.42 default); 'drone-fallback' = { length: 1.0, halfWidth: 0.45, height: 0.30 };
+//   'WRECK_COLLIDER_PROPORTIONS' = src/data/wreckClasses.js capsule fit; null for ball bodies.
+// `note` records the live caveat where a stamped spawn differs from the bare default.
+export const MODEL_SUBSTANCE_TABLE = Object.freeze({
+  ship_light: Object.freeze({ shape: 'capsule', material: 'ship', dynamic: true, sensor: false, ghost: false, proportionsRef: 'craft', note: null }),
+  ship_medium: Object.freeze({ shape: 'capsule', material: 'ship', dynamic: true, sensor: false, ghost: false, proportionsRef: 'craft', note: null }),
+  ship_heavy: Object.freeze({ shape: 'capsule', material: 'ship', dynamic: true, sensor: false, ghost: false, proportionsRef: 'craft', note: null }),
+  drone: Object.freeze({ shape: 'capsule', material: 'ship', dynamic: true, sensor: false, ghost: false, proportionsRef: 'drone-fallback', note: null }),
+  rock: Object.freeze({ shape: 'ball', material: 'rock', dynamic: true, sensor: false, ghost: false, proportionsRef: null, note: 'rocks <= 90 WU radius are dynamic (Package E); landmark rocks and rocks > 90 WU are fixed' }),
+  chunk: Object.freeze({ shape: 'ball', material: 'rock', dynamic: true, sensor: false, ghost: false, proportionsRef: null, note: 'isChunk asteroids promote to dynamic (defaultDynamic); mining stamps radius only, so the shape stays ball' }),
+  wreck: Object.freeze({ shape: 'ball', material: 'debris', dynamic: true, sensor: false, ghost: false, proportionsRef: 'WRECK_COLLIDER_PROPORTIONS', note: 'bare default is the legacy ball collider (bit-identical); live spawn sites (hullFracture/aftermath/mining) stamp physicsBody:{shape:capsule}, which plus data.proportions is the capsule fit' }),
+  pickup: Object.freeze({ shape: 'ball', material: 'sensor', dynamic: true, sensor: true, ghost: true, proportionsRef: null, note: 'CONTACT_MATERIALS.sensor.ghost is false; sg02 contactMaterialFor forces ghost:true for pickups (JS-overlap collection)' }),
+  station: Object.freeze({ shape: 'ball', material: 'station', dynamic: false, sensor: false, ghost: false, proportionsRef: null, note: 'adopted measured skins become a fixed compound proxy (modelTruthProxyManifest); the body stays fixed' }),
+  payload: Object.freeze({ shape: 'ball', material: 'payload', dynamic: true, sensor: false, ghost: false, proportionsRef: null, note: 'massline_sensor variant is ghost:true (attachment authority)' }),
+  projectile: Object.freeze({ shape: 'ball', material: 'projectile', dynamic: true, sensor: false, ghost: true, proportionsRef: null, note: null }),
+});
+
+export function modelTruthCensus() {
+  return census;
+}
+
+export function modelTruthRows() {
+  return ROWS;
+}
+
+export function modelTruthRow(id) {
+  return byIdMap().get(id) || null;
+}
+
+export function modelTruthRowForEntity(entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  // Hot path (physics sync, LOS, scanning): short-circuit lookups in the canonical priority
+  // order, no per-call key array.
+  const row = (data.defId && byIdMap().get(data.defId))
+    || (data.placeId && byIdMap().get(data.placeId))
+    || (data.archetypeGlb && byIdMap().get(data.archetypeGlb))
+    || (data.typeId && byIdMap().get(data.typeId))
+    || (data.lootTableId && byIdMap().get(data.lootTableId))
+    || (entity.id && byIdMap().get(entity.id));
+  if (row) return row;
+  if (data.trafficRole && byIdMap().has(`traffic:${data.trafficRole}`)) {
+    return byIdMap().get(`traffic:${data.trafficRole}`);
+  }
+  if (data.isGate || data.isWormhole) return byIdMap().get('place_gate_jump_ring');
+  return null;
+}
+
+/** The canonical proxy row: stations resolve through the station identity chain first. */
+export function modelTruthProxyRowForEntity(entity) {
+  return stationRow(entity) || modelTruthRowForEntity(entity);
+}
+
+// SFQ-I072 — hoop props whose measured skin seals a visibly passable middle. These
+// rows are drawn as open hoops (the aft dock collar is a dock mouth ring, the
+// freighter span and the transponder gate read as archways): the flight-plane
+// outline holds solid arcs on opposite sides with wide empty wedges between them,
+// but the skin builder grows one radial arm per solid ray from the origin, so every
+// arm covers the middle and a flight pass through the visible opening registers a
+// hit. The middle is opened by trimming each arm back to half the longest arm —
+// the outer half still covers the arcs by construction, and stubs fully inside the
+// middle (slice noise) drop out. Capsule/circle compounds only: never mesh colliders.
+function hoopOpeningPrimitives(primitives) {
+  let half = 0;
+  for (const primitive of primitives || []) {
+    if (primitive.kind === 'capsule') {
+      half = Math.max(half, Math.hypot(primitive.bx - primitive.ax, primitive.bz - primitive.az) / 2);
+    }
+  }
+  if (!(half > 0)) return primitives;
+  const out = [];
+  for (const primitive of primitives || []) {
+    if (primitive.kind !== 'capsule') {
+      out.push(primitive);
+      continue;
+    }
+    const dx = primitive.bx - primitive.ax;
+    const dz = primitive.bz - primitive.az;
+    const len = Math.hypot(dx, dz);
+    if (!(len > half)) continue;
+    const ux = dx / len;
+    const uz = dz / len;
+    const push = Math.max(0, half - (primitive.ax * ux + primitive.az * uz));
+    if (push <= 0) {
+      out.push(primitive);
+      continue;
+    }
+    out.push({ ...primitive, ax: primitive.ax + ux * push, az: primitive.az + uz * push });
+  }
+  return out;
+}
+
+const HOOP_OPENING_ROW_IDS = new Set([
+  'place_aftermath_aft_dock_collar',
+  'place_aftermath_deb_ore_freighter_ring_span',
+  'place_transponder_gate',
+]);
+
+function openingPrimitivesForRow(row) {
+  const skin = row && row.proposedSkin;
+  const primitives = skin && skin.primitives;
+  if (!primitives || !primitives.length) return primitives;
+  if (row.opening || !HOOP_OPENING_ROW_IDS.has(row.id)) return primitives;
+  return hoopOpeningPrimitives(primitives);
+}
+
+/** World-space primitives for the measured skin, or null when the row has no skin yet. */
+export function modelTruthSkinPrimitives(entity) {
+  const row = modelTruthRowForEntity(entity);
+  const skin = row && row.proposedSkin;
+  if (!skin || !skin.primitives || !skin.primitives.length) return null;
+  const data = entity && entity.data || {};  // Primitives are stored in units of the census reference (1 = dockRadius or entity.radius).
+  // World size is that fraction times the live reference, not the fraction itself.
+  const reference = row.gameplay && row.gameplay.dockRadius
+    ? Number(data.dockRadius) || row.gameplay.dockRadius
+    : Number(entity && entity.radius) || (row.gameplay && row.gameplay.entityRadius) || skinReference(row);
+  const local = scaleProxyPrimitives(openingPrimitivesForRow(row), Math.max(1e-6, reference));
+  const rot = Number(entity && entity.rot) || 0;
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  const px = entity && entity.pos ? Number(entity.pos.x) || 0 : 0;
+  const pz = entity && entity.pos ? Number(entity.pos.z) || 0 : 0;
+  return local.map((primitive) => {
+    if (primitive.kind === 'circle') {
+      return { ...primitive, x: px + c * primitive.x - s * primitive.z, z: pz + s * primitive.x + c * primitive.z };
+    }
+    if (primitive.kind === 'capsule') {
+      return {
+        ...primitive,
+        ax: px + c * primitive.ax - s * primitive.az,
+        az: pz + s * primitive.ax + c * primitive.az,
+        bx: px + c * primitive.bx - s * primitive.bz,
+        bz: pz + s * primitive.bx + c * primitive.bz,
+      };
+    }
+    return {
+      ...primitive,
+      x: px + c * primitive.x - s * primitive.z,
+      z: pz + s * primitive.x + c * primitive.z,
+      rot: (primitive.rot || 0) + rot,
+    };
+  });
+}
+
+function skinReference(row) {
+  if (row.gameplay && row.gameplay.dockRadius) return row.gameplay.dockRadius;
+  if (row.gameplay && row.gameplay.entityRadius) return row.gameplay.entityRadius;
+  return row.shell && row.shell.silhouetteRadius || 1;
+}
+
+export function modelTruthContains(entity, x, z) {
+  const primitives = modelTruthSkinPrimitives(entity);
+  if (!primitives) return false;
+  return skinContains(x, z, primitives);
+}
+
+export function modelTruthProxyManifest(entity) {
+  const row = modelTruthProxyRowForEntity(entity);
+  const skin = row && row.proposedSkin;
+  if (!row || !skin || skin.adopted !== true || !skin.primitives || !skin.primitives.length) return null;
+  const dock = row.family === 'station' || row.family === 'gate';
+  return {
+    schemaVersion: 1,
+    id: `skin:${row.id}`,
+    stationIds: row.id === 'place_station_trade_hub' ? ['station_helios'] : [],
+    flags: { collides: true, renderable: false, targetable: false, radarVisible: false },
+    referenceRadius: dock ? 'dockRadius' : 'radius',
+    primitives: openingPrimitivesForRow(row),
+    opening: row.opening || null,
+    mouthBearingDeg: skin.mouthBearingDeg,
+    sourceRow: row.id,
+  };
+}
+
+const SKIN_HULL_CACHE = new Map();
+
+export function modelTruthSkinHull(rowOrId) {
+  const row = typeof rowOrId === 'string' ? byIdMap().get(rowOrId) : rowOrId;
+  if (!row) return null;
+  if (SKIN_HULL_CACHE.has(row.id)) return SKIN_HULL_CACHE.get(row.id);
+  let verts = null;
+  const skin = row.proposedSkin;
+  const outline = row.collider && row.collider.outline;
+  const reference = skinReference(row);
+  if (skin && skin.adopted === true && !row.opening && Array.isArray(outline) && reference > 0
+    && skin.primitives && skin.primitives.length) {
+    const hull = convexPlanarHull(skin.primitives);
+    if (hull) {
+      const tolerance = Number.isFinite(row.collider.toleranceWu)
+        ? row.collider.toleranceWu
+        : flightPlaneToleranceWu(reference);
+      const bins = outline.length;
+      let fits = true;
+      for (let i = 0; i < bins && fits; i += 1) {
+        const visual = (outline[i] || 0) / reference;
+        if (visual <= 0) continue;
+        const angle = -Math.PI + ((i + 0.5) / bins) * Math.PI * 2;
+        if (Math.abs(convexHullRadiusAt(angle, hull) - visual) > tolerance / reference) fits = false;
+      }
+      if (fits) verts = hull;
+    }
+  }
+  SKIN_HULL_CACHE.set(row.id, verts);
+  return verts;
+}
+
+const SKIN_POLYGON_CACHE = new Map();
+
+export function modelTruthSkinPolygon(rowOrId) {
+  const row = typeof rowOrId === 'string' ? byIdMap().get(rowOrId) : rowOrId;
+  if (!row) return null;
+  if (SKIN_POLYGON_CACHE.has(row.id)) return SKIN_POLYGON_CACHE.get(row.id);
+  let verts = null;
+  const skin = row.proposedSkin;
+  const outline = row.collider && row.collider.outline;
+  const reference = skinReference(row);
+  if (skin && skin.adopted === true && !row.opening && Array.isArray(outline) && reference > 0) {
+    const bins = outline.length;
+    const pts = [];
+    for (let i = 0; i < bins; i += 1) {
+      const r = (outline[i] || 0) / reference;
+      if (r <= 0) continue;
+      const angle = -Math.PI + ((i + 0.5) / bins) * Math.PI * 2;
+      pts.push({ x: roundWu(Math.cos(angle) * r), z: roundWu(Math.sin(angle) * r) });
+    }
+    if (pts.length >= 3) verts = pts;
+  }
+  SKIN_POLYGON_CACHE.set(row.id, verts);
+  return verts;
+}
+
+function stationRow(entity) {
+  if (!entity || entity.type !== 'station') return null;
+  const data = entity.data || {};
+  if (data.isGate === true || data.isWormhole === true || data.collisionProxy === 'gate_jump_ring') {
+    return modelTruthRow('place_gate_jump_ring');
+  }
+  const token = String(data.archetypeGlb || data.stationTypeId || data.placeId || '');
+  if (!token) return modelTruthRow('place_station_trade_hub');
+  if (byIdMap().has(token)) return byIdMap().get(token);
+  const prefixed = `place_station_${token}`;
+  if (byIdMap().has(prefixed)) return byIdMap().get(prefixed);
+  return modelTruthRow('place_station_trade_hub');
+}
+
+export function modelTruthCameraMarginWu() {
+  return CAMERA_NEAR_MARGIN_WU;
+}
+
+export function modelTruthFlightTolerance(entity) {
+  const row = modelTruthRowForEntity(entity);
+  const radius = row && row.shell ? row.shell.silhouetteRadius : Number(entity && entity.radius) || 0;
+  return flightPlaneToleranceWu(radius);
+}
+
+export function modelTruthThroatOpen(entity) {
+  const primitives = modelTruthSkinPrimitives({ ...entity, pos: { x: 0, z: 0 }, rot: 0 });
+  if (!primitives) return true;
+  const row = modelTruthRowForEntity(entity);
+  const half = row && row.shell ? row.shell.silhouetteRadius * 0.2 : 4;
+  return throatOpen(primitives, half);
+}
+
+/** Planar keep-out radius of the measured skin, in world units. Gameplay entity.radius is unchanged. */
+export function modelTruthPlanarRadius(entity) {
+  const row = (entity && entity.type === 'station' ? stationRow(entity) : null) || modelTruthRowForEntity(entity);
+  const gameplay = Number(entity && entity.radius) || 0;
+  if (!row || !row.proposedSkin || row.proposedSkin.adopted !== true) return gameplay;
+  const silhouette = Number(row.shell && row.shell.silhouetteRadius) || 0;
+  const reference = skinReference(row);
+  if (!(silhouette > 0) || !(reference > 0)) return gameplay;
+  const data = entity && entity.data || {};
+  const live = row.gameplay && row.gameplay.dockRadius
+    ? Number(data.dockRadius) || row.gameplay.dockRadius
+    : Number(entity && entity.radius) || (row.gameplay && row.gameplay.entityRadius) || reference;
+  return silhouette * (live / reference);
+}
+
+/**
+ * Slide a point out of every measured skin, radially, until it sits `margin` outside.
+ * Small bodies are ignored: only a shell wide enough to swallow the camera participates.
+ */
+export function modelTruthSlideOutside(entities, x, z, margin = CAMERA_NEAR_MARGIN_WU) {
+  let px = Number(x) || 0;
+  let pz = Number(z) || 0;
+  const list = entities || [];
+  for (let pass = 0; pass < 4; pass += 1) {
+    let moved = false;
+    for (const entity of list) {
+      if (!entity || !entity.pos || entity.collides === false) continue;
+      const primitives = modelTruthSkinPrimitives(entity);
+      if (!primitives || !primitives.length) continue;
+      const planar = modelTruthPlanarRadius(entity);
+      const span = planar * 2;
+      if (span < 120 || span > 14000) continue;
+      const ex = Number(entity.pos.x) || 0;
+      const ez = Number(entity.pos.z) || 0;
+      const dx = px - ex;
+      const dz = pz - ez;
+      const dist = Math.hypot(dx, dz);
+      const angle = dist > 1e-6 ? Math.atan2(dz, dx) : 0;
+      const local = primitives.map((primitive) => {
+        if (primitive.kind === 'circle') return { ...primitive, x: primitive.x - ex, z: primitive.z - ez };
+        if (primitive.kind === 'capsule') {
+          return {
+            ...primitive,
+            ax: primitive.ax - ex,
+            az: primitive.az - ez,
+            bx: primitive.bx - ex,
+            bz: primitive.bz - ez,
+          };
+        }
+        return { ...primitive, x: primitive.x - ex, z: primitive.z - ez };
+      });
+      const outer = colliderRadiusAt(angle, local, Math.max(planar, 1));
+      const target = outer + margin;
+      if (dist >= target - 1e-3) continue;
+      if (dist <= 1e-6) {
+        px = ex + target;
+        pz = ez;
+      } else {
+        px = ex + (dx / dist) * target;
+        pz = ez + (dz / dist) * target;
+      }
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  return { x: px, z: pz };
+}
+
+/** Move later solids until their planar skins no longer overlap. Counts stay the same. */
+export function separateSkinOverlaps(entities) {
+  const list = (entities || []).filter((entity) => entity && entity.pos && entity.alive !== false && entity.collides !== false);
+  for (let pass = 0; pass < 6; pass += 1) {
+    let moved = false;
+    for (let i = 0; i < list.length; i += 1) {
+      for (let j = i + 1; j < list.length; j += 1) {
+        const a = list[i];
+        const b = list[j];
+        const dx = b.pos.x - a.pos.x;
+        const dz = b.pos.z - a.pos.z;
+        const dist = Math.hypot(dx, dz);
+        const need = modelTruthPlanarRadius(a) + modelTruthPlanarRadius(b);
+        if (dist >= need - 0.05) continue;
+        const gap = need - dist + 0.5;
+        const ux = dist > 1e-4 ? dx / dist : 1;
+        const uz = dist > 1e-4 ? dz / dist : 0;
+        b.pos.x += ux * gap;
+        b.pos.z += uz * gap;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  return list;
+}
+
+function rowFor(entityOrId) {
+  if (typeof entityOrId === 'string') return modelTruthRow(entityOrId);
+  return modelTruthRowForEntity(entityOrId);
+}
+
+export function modelTruthSocketWorld(entity, socketName) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  return socketWorldFromRow(row, entity, socketName);
+}
+
+export function modelTruthShotOrigin(entity, weapon) {
+  if (isMothlightTender(entity)) {
+    if (weapon?.defId !== 'wpn_railgun_m' || weapon.slotIndex !== 0) return null;
+    const p=MOTHLIGHT_GUN_SOCKET,c=Math.cos(entity.rot||0),s=Math.sin(entity.rot||0);
+    return {x:entity.pos.x+c*p.x-s*p.z,z:entity.pos.z+s*p.x+c*p.z,y:p.y};
+  }
+  const row = rowFor(entity);
+  if (!row) return null;
+  const slot = weapon && Number.isFinite(weapon.slotIndex) ? weapon.slotIndex : 0;
+  return shotWorldFromRow(row, entity, slot);
+}
+
+export function modelTruthFlashOrigin(entity, weapon) {
+  return modelTruthShotOrigin(entity, weapon);
+}
+
+export function modelTruthPlumeSocketName(entity) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  const names = (row.sockets || []).map((socket) => socket && socket.name);
+  return plumeSocketNameFromNames(names);
+}
+
+/** The recorded-wake anchor: authored SOCKET_Trail_* stations first, nozzle as fallback. */
+export function modelTruthTrailSocketName(entity) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  const names = (row.sockets || []).map((socket) => socket && socket.name);
+  return trailSocketNameFromNames(names);
+}
+
+export function modelTruthPlumeOrigin(entity) {
+  const row = rowFor(entity);
+  return row ? plumeWorldFromRow(row, entity) : null;
+}
+
+export function modelTruthNozzleOrigin(entity) {
+  const row = rowFor(entity);
+  return row ? nozzleWorldFromRow(row, entity) : null;
+}
+
+export function modelTruthRopeEnd(entity) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  return ropeEndFromRow(row, entity);
+}
+
+export function modelTruthMeasuredHardpoint(entity) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  return measuredHardpointFromRow(row, entity);
+}
+
+export function modelTruthMountFractions(defId, prefix) {
+  const row = modelTruthRow(defId);
+  if (!row) return [];
+  return mountFractionsFromRow(row, prefix);
+}
+
+export function modelTruthHitVolume(entity, subsystemId) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  return hitVolumeFromRow(row, entity, subsystemId);
+}
+
+export function modelTruthUnmeasuredHitVolumes(entityOrId) {
+  const row = rowFor(entityOrId);
+  return row ? unmeasuredHitVolumeIds(row) : [];
+}
+
+export function modelTruthBoltRadius(entity) {
+  return boltRadiusFromPlanar(modelTruthPlanarRadius(entity));
+}
+
+export function modelTruthMineSensorRadius(entity) {
+  return mineSensorRadiusFromPlanar(modelTruthPlanarRadius(entity));
+}
+
+export function modelTruthPlaceDrawScale(entity) {
+  const row = rowFor(entity);
+  return placeDrawScaleFromRow(row, entity);
+}
+
+/** World nameplates and map pips share the measured planar size. Deckplate titles do not. */
+export function modelTruthNameplateHeight(entity) {
+  return Math.max(1.5, modelTruthPlanarRadius(entity) * 0.15);
+}
+
+export function modelTruthPipRadius(entity) {
+  return Math.max(1.2, modelTruthPlanarRadius(entity) * 0.08);
+}
+
+function chartContactEntity(contact) {
+  if (!contact) return null;
+  if (contact.pos && contact.data) return contact;
+  const kind = contact.kind || contact.type;
+  const isGate = kind === 'gate' || contact.isGate === true;
+  return {
+    type: kind === 'station' || isGate ? 'station' : kind === 'asteroid' ? 'asteroid' : 'ship',
+    radius: Number(contact.radius) || 0,
+    id: contact.defId || contact.placeId || contact.id,
+    data: {
+      defId: contact.defId,
+      placeId: contact.placeId,
+      stationTypeId: contact.stationTypeId || contact.stationId,
+      dockRadius: contact.dockRadius,
+      archetypeGlb: contact.archetypeGlb,
+      typeId: contact.typeId,
+      isGate,
+    },
+  };
+}
+
+/** Screen size of a map pip, in pixels when pxPerWu is the map scale. */
+export function censusPipRadiusPx(contact, pxPerWu) {
+  const world = modelTruthPipRadius(chartContactEntity(contact));
+  const scale = Number(pxPerWu);
+  return scale > 0 ? world * scale : world;
+}
+
+/** Screen offset of a world nameplate, in pixels when pxPerWu is the map scale. */
+export function censusNameplateOffsetPx(contact, pxPerWu) {
+  const world = modelTruthNameplateHeight(chartContactEntity(contact));
+  const scale = Number(pxPerWu);
+  return scale > 0 ? world * scale : world;
+}
+
+export function chartMarkSizes(contact, pxPerWu) {
+  return {
+    pipPx: censusPipRadiusPx(contact, pxPerWu),
+    nameplatePx: censusNameplateOffsetPx(contact, pxPerWu),
+  };
+}
+
+export function modelTruthWeaponSocketName(entity, weapon) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  const slot = weapon && Number.isFinite(weapon.slotIndex) ? weapon.slotIndex : 0;
+  return weaponSocketNameForSlot(row, slot);
+}
+
+// Preserve the direct, synchronous API for Node scripts and tests without import-time top-level
+// await (some browser-only bundling tools still parse this module). Node 22.12+ exposes builtins
+// through process.getBuiltinModule, which keeps Node IO out of the browser's static import graph.
+// Browser boot/worker code explicitly awaits the async fetch loader before synchronous consumers.
+if (isNodeRuntime && typeof process.getBuiltinModule === 'function') {
+  const fs = process.getBuiltinModule('node:fs');
+  installCensusJson(fs.readFileSync(new URL('./modelTruthCensus.json', import.meta.url), 'utf8'));
+  censusLoadPromise = Promise.resolve(census);
+}
+
+export { flightPlaneToleranceWu, CAMERA_NEAR_MARGIN_WU, fittedSocketLocal };

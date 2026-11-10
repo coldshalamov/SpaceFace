@@ -1,0 +1,82 @@
+RENDER wholeships/apron_shuttle.glb
+  -> OK
+RENDER wholeships/ashline_dart.glb
+  -> OK
+RENDER wholeships/ashline_lode.glb
+  -> OK
+RENDER wholeships/ashline_rig.glb
+  -> OK
+RENDER wholeships/ashline_rig_corsair_blade.glb
+  -> OK
+RENDER wholeships/atlas_production_v1.glb
+  -> OK
+RENDER wholeships/bastion_production_v1.glb
+  -> OK
+RENDER wholeships/colossus_production_v1.glb
+  -> OK
+RENDER wholeships/drifter_production_v1.glb
+  -> OK
+RENDER wholeships/helios_arclight.glb
+  -> OK
+RENDER wholeships/helios_cradle.glb
+  -> OK
+RENDER wholeships/helios_lark.glb
+  -> OK
+RENDER wholeships/helios_span.glb
+  -> OK
+RENDER wholeships/helios_span_dmc.glb
+  -> OK
+RENDER wholeships/helios_span_mts.glb
+  -> OK
+RENDER wholeships/helios_span_reach.glb
+  -> OK
+RENDER wholeships/hornet_production_v1.glb
+  -> OK
+RENDER wholeships/inspection_cutter.glb
+  -> OK
+RENDER wholeships/ironback_production_v1.glb
+  -> OK
+RENDER wholeships/kestrel.glb
+  -> OK
+RENDER wholeships/leviathan_production_v1.glb
+  -> OK
+RENDER wholeships/massline_express_liner_v1.glb
+  -> OK
+RENDER wholeships/mule_production_v1.glb
+  -> OK
+RENDER wholeships/ore_barge.glb
+  -> OK
+RENDER wholeships/pelican_production_v1.glb
+  -> OK
+RENDER wholeships/prospector_skiff.glb
+  -> OK
+RENDER wholeships/ranger_production_v1.glb
+  -> OK
+RENDER wholeships/repair_tender.glb
+  -> OK
+RENDER wholeships/rescue_lifter.glb
+  -> OK
+RENDER wholeships/salvage_cutter.glb
+  -> OK
+RENDER wholeships/scrap_sweeper.glb
+  -> OK
+RENDER wholeships/survey_pin.glb
+  -> OK
+RENDER wholeships/volatiles_tanker.glb
+  -> OK
+RENDER wholeships/warden_production_v1.glb
+  -> OK
+RENDER wholeships/wasp_free_militia.glb
+  -> OK
+RENDER wholeships/wasp_mts_escort.glb
+  -> OK
+RENDER wholeships/wasp_production_v1.glb
+  -> OK
+RENDER wholeships/wasp_scn_patrol.glb
+  -> OK
+RENDER wholeships/yard_tug.glb
+  -> OK
+{
+  "okCount": 39,
+  "failCount": 0
+}

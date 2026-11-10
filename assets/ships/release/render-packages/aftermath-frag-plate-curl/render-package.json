@@ -1,0 +1,534 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-frag-plate-curl",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "7bc921725f4dc16f207c32a6a299a93362f521178f3f1278558e095b4d46d17e",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -0.49875997746471357,
+          1.4771235551924184,
+          1.6636230945587158
+        ],
+        "min": [
+          -2.999921806211434,
+          -1.4092346992582754,
+          -1.8336701393127441
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "03d56625847166f124621131944128e068de57b3114305ac5818e4d935896950",
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.curl0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
+      "materialPipelineKey": "opaque",
+      "meshName": "curl0",
+      "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.426912806791502,
+          0.42255060885206264,
+          1.8336701393127441
+        ],
+        "min": [
+          -0.6015530450765667,
+          -1.495527615287457,
+          -1.4332842826843262
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ee9fcb4778b05660f8e998d315a637de620b4a1c43ec9886de2883337b0d0274",
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.curl1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e9f7bd582170738d03ca89c5cd88893b17d0cc9a530b5069ca26183315ab58f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "curl1",
+      "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.000062949681015,
+          1.4954227020729085,
+          1.4154701232910156
+        ],
+        "min": [
+          1.8676062750580598,
+          -1.4275336077201863,
+          -1.585517168045044
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d75d8bd35e5fb9c132f417571fae15fc3d94eda22466529b079c907d0e82316c",
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.curl2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
+      "materialPipelineKey": "opaque",
+      "meshName": "curl2",
+      "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
+      "id": "material:26127603b853d7f44c27cfbb",
+      "name": "Forge_ore_barge_wk_torn",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e9f7bd582170738d03ca89c5cd88893b17d0cc9a530b5069ca26183315ab58f1",
+      "id": "material:e9f7bd582170738d03ca89c5",
+      "name": "Forge_ore_barge_wk_scorch",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.curl0",
+      "localTransform": [
+        1.74864661693573,
+        0,
+        0,
+        0,
+        0,
+        1.74864661693573,
+        0,
+        0,
+        0,
+        0,
+        1.74864661693573,
+        0,
+        -1.7493408918380737,
+        0.03394442796707153,
+        -0.08502352237701416,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "curl0",
+      "nodeName": "curl0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-frag-plate-curl.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-plate-curl.body",
+      "worldTransform": [
+        1.74864661693573,
+        0,
+        0,
+        0,
+        0,
+        1.74864661693573,
+        0,
+        0,
+        0,
+        0,
+        1.74864661693573,
+        0,
+        -1.7493408918380737,
+        0.03394442796707153,
+        -0.08502352237701416,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.curl1",
+      "localTransform": [
+        1.6334772109985352,
+        0,
+        0,
+        0,
+        0,
+        1.6334772109985352,
+        0,
+        0,
+        0,
+        0,
+        1.6334772109985352,
+        0,
+        0.9126798808574677,
+        -0.5364885032176971,
+        0.20019292831420898,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "curl1",
+      "nodeName": "curl1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-frag-plate-curl.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-plate-curl.body",
+      "worldTransform": [
+        1.6334772109985352,
+        0,
+        0,
+        0,
+        0,
+        1.6334772109985352,
+        0,
+        0,
+        0,
+        0,
+        1.6334772109985352,
+        0,
+        0.9126798808574677,
+        -0.5364885032176971,
+        0.20019292831420898,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.curl2",
+      "localTransform": [
+        1.5004936456680298,
+        0,
+        0,
+        0,
+        0,
+        1.5004936456680298,
+        0,
+        0,
+        0,
+        0,
+        1.5004936456680298,
+        0,
+        2.4338346123695374,
+        0.033944547176361084,
+        -0.08502352237701416,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "curl2",
+      "nodeName": "curl2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-frag-plate-curl.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-plate-curl.body",
+      "worldTransform": [
+        1.5004936456680298,
+        0,
+        0,
+        0,
+        0,
+        1.5004936456680298,
+        0,
+        0,
+        0,
+        0,
+        1.5004936456680298,
+        0,
+        2.4338346123695374,
+        0.033944547176361084,
+        -0.08502352237701416,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-plate-curl.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "frag_plate_curl",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-plate-curl.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "81df6187adba6b6a3ebdb43a558cd0ba40a50b6e98c1702de1de69e0735268ff"
+    },
+    "sourceGlb": {
+      "bytes": 115636,
+      "sha256": "eb0d11f7fde6e3ba98de24a528fbc07d57d604503d4a53fe894f271654a9239d",
+      "uri": "place_aftermath_frag_plate_curl.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 116404,
+    "sha256": "1376da048fd4f832e1fc5b48c0a868679c4041c8921093dc7bd1319fd3225a4a",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.00007057173479041445,
+        -0.00005245660727426493,
+        0
+      ],
+      "max": [
+        3.000062949681015,
+        1.4954227020729085,
+        1.8336701393127441
+      ],
+      "min": [
+        -2.999921806211434,
+        -1.495527615287457,
+        -1.8336701393127441
+      ],
+      "size": [
+        5.999984755892449,
+        2.9909503173603653,
+        3.6673402786254883
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "ceramic": 1,
+      "mechanical": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 5,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.74864661693573,
+          0,
+          0,
+          0,
+          0,
+          1.74864661693573,
+          0,
+          0,
+          0,
+          0,
+          1.74864661693573,
+          0,
+          -1.7493408918380737,
+          0.03394442796707153,
+          -0.08502352237701416,
+          1
+        ],
+        "name": "curl0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.6334772109985352,
+          0,
+          0,
+          0,
+          0,
+          1.6334772109985352,
+          0,
+          0,
+          0,
+          0,
+          1.6334772109985352,
+          0,
+          0.9126798808574677,
+          -0.5364885032176971,
+          0.20019292831420898,
+          1
+        ],
+        "name": "curl1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5004936456680298,
+          0,
+          0,
+          0,
+          0,
+          1.5004936456680298,
+          0,
+          0,
+          0,
+          0,
+          1.5004936456680298,
+          0,
+          2.4338346123695374,
+          0.033944547176361084,
+          -0.08502352237701416,
+          1
+        ],
+        "name": "curl2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_frag_plate_curl.glb"
+  },
+  "runtimeHash": "4885a6d11e9be026662a8cca7c12dd21e8fa0f9916a388f7f21c89692cfcb354",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.000062949681015,
+          1.4954227020729085,
+          1.8336701393127441
+        ],
+        "min": [
+          -2.999921806211434,
+          -1.495527615287457,
+          -1.8336701393127441
+        ]
+      },
+      "id": "sf.render.aftermath-frag-plate-curl.body",
+      "nodeIds": [
+        "sf.render.aftermath-frag-plate-curl.mesh.curl0",
+        "sf.render.aftermath-frag-plate-curl.mesh.curl1",
+        "sf.render.aftermath-frag-plate-curl.mesh.curl2",
+        "sf.render.aftermath-frag-plate-curl.root"
+      ]
+    }
+  ]
+}

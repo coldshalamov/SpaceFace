@@ -1,0 +1,575 @@
+// Live-gameplay capture driver: loads the REAL game at /, lets the sim populate the world for a few
+// seconds, samples window.__THREE_GAME_DIAGNOSTICS__ for the §18 Gate 6 p95 frame-time, and captures a
+// gameplay screenshot of the live scene (the full game world — sector, ships, asteroids, HUD) for §16.4.
+//
+// Uses Chrome's REAL GPU (no --use-gl=swiftshader) so frame-times are representative of a hardware WebGL
+// stack, not software rendering. Hard watchdog kill so a hung GPU/loop can never wedge the parent shell.
+//
+// Run: node scripts/capture-gameplay.mjs [port]
+import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+
+const argv = parseArgs(process.argv.slice(2));
+const PORT = Number(argv._[0] || process.env.PORT || 8123);
+const SCENARIO = argv.scenario || 'idle';
+const SEED = Number(argv.seed || 12345) >>> 0;
+const WARMUP_MS = Number(argv.warmup || 5000);
+const DURATION_MS = Number(argv.duration || 15000);
+const TARGET_MS = Number(argv.targetMs || 16.7);
+const FLOOR_MS = Number(argv.floorMs || 33.3);
+const STRICT = !!argv.strict;
+const OUT = argv.out || `.devshots/perf/${SCENARIO}.json`;
+const SHOT = argv.shot || `${SCENARIO}.jpg`;
+const SHOT_PATH = argv.shotPath || `.devshots/perf/${SHOT}`;
+const VIDEO_OVERRIDES = collectVideoOverrides(argv);
+const HARD_KILL_MS = Number(argv.hardKillMs || Math.max(90000, WARMUP_MS + DURATION_MS + 60000));
+const DEBUG_PORT = Number(argv.debugPort || 9333);
+// Optional EXACT capture viewport. Existing callers pass neither and keep the historic 1280x800
+// window (which lands on a ~1262x648 page viewport); reference-comparison runs pass --width/--height
+// so the frame is a true 16:9 1920x1080 that can be matched against press screenshots.
+const EXACT_W = argv.width != null ? Number(argv.width) : null;
+const EXACT_H = argv.height != null ? Number(argv.height) : null;
+const EXACT_VIEWPORT = Number.isFinite(EXACT_W) && Number.isFinite(EXACT_H) && EXACT_W > 0 && EXACT_H > 0;
+// Optional JS expression evaluated in the page after the scenario is applied (A/B experiments).
+const EVAL_JS = typeof argv.eval === 'string' ? argv.eval : null;
+// Same, but evaluated AFTER the warmup + capture window (see the call site). Use this for anything
+// whose value is only meaningful once the world has actually run for a while.
+const EVAL_AFTER_JS = typeof argv.evalAfter === 'string' ? argv.evalAfter : null;
+
+const CANDIDATES = [
+  'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
+];
+const chrome = CANDIDATES.find((p) => existsSync(p));
+if (!chrome) { console.error('No Chrome/Edge found.'); process.exit(2); }
+
+// A tiny injected page that drives the capture: wait for the game handle, sample diagnostics over time,
+// POST the report + a screenshot, then close. Injected via a bookmark-style data URL so we don't modify
+// the game. We navigate the main frame to the game, and use --remote-debugging to inject — simpler: use
+// Chrome's --screenshot + --virtual-time-budget, but those don't read JS state. Instead, we run an
+// injector page in an iframe that posts messages. Simplest robust path: a data: page that opens the game
+// and polls its own window — but cross-origin framing blocks that. So: load the game directly and use
+// Chrome's --remote-debugging-port + a CDP probe. To keep this dependency-free, we instead rely on the
+// game's OWN dev-shot sink by appending a query flag the game already understands (?dev=). The game has
+// no gameplay-auto-capture mode, so we add a NEW minimal one here via a user-data-dir startup script.
+
+// Pragmatic approach: launch Chrome with remote debugging, drive it over CDP with raw WebSocket from
+// Node. That's the clean way to (a) eval JS in the page and (b) capture a screenshot — without a
+// browser-test dependency.
+const args = [
+  '--headless=new', '--no-sandbox', '--no-first-run', '--no-default-browser-check',
+  '--disable-extensions', `--window-size=${EXACT_VIEWPORT ? `${EXACT_W},${EXACT_H}` : '1280,800'}`, '--hide-scrollbars',
+  // REAL GPU — deliberately NOT passing swiftshader flags so frame-times reflect hardware WebGL.
+  '--ignore-gpu-blocklist', '--enable-webgl',
+  `--remote-debugging-port=${DEBUG_PORT}`,
+  `http://localhost:${PORT}/`,
+];
+console.log(`[gameplay] launching ${chrome.split('/').pop()} (real GPU) -> http://localhost:${PORT}/ scenario=${SCENARIO} seed=${SEED}`);
+const child = spawn(chrome, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+let log = '';
+child.stdout.on('data', (d) => { log += d; });
+child.stderr.on('data', (d) => { log += d.toString(); });
+
+const watchdog = setTimeout(() => {
+  console.error(`[gameplay] hard-killing chrome after ${HARD_KILL_MS}ms`);
+  try { child.kill('SIGKILL'); } catch (_) {}
+}, HARD_KILL_MS);
+
+// Drive Chrome over the DevTools Protocol (CDP): discover the page target, eval JS in it, and capture a
+// screenshot — dependency-free (Node 22+ has a global WebSocket, and fetch is built in).
+async function cdpCapture() {
+  // Discover the page target.
+  let wsUrl = null;
+  for (let i = 0; i < 30; i++) {
+    try {
+      const r = await fetch(`http://localhost:${DEBUG_PORT}/json`);
+      const tabs = await r.json();
+      const page = tabs.find((t) => t.type === 'page');
+      if (page) { wsUrl = page.webSocketDebuggerUrl; break; }
+    } catch (_) {}
+    await sleep(300);
+  }
+  if (!wsUrl) throw new Error('no CDP page target');
+  // Node has no built-in WebSocket until v22+; v24 has global WebSocket. Use it.
+  const WS = globalThis.WebSocket;
+  if (!WS) throw new Error('no global WebSocket (need Node 22+)');
+  const ws = new WS(wsUrl);
+  await new Promise((res, rej) => { ws.addEventListener('open', res, { once: true }); ws.addEventListener('error', rej, { once: true }); });
+  let id = 0;
+  const pending = new Map();
+  ws.addEventListener('message', (ev) => {
+    const msg = JSON.parse(typeof ev.data === 'string' ? ev.data : ev.data.toString());
+    if (msg.id && pending.has(msg.id)) { const { resolve } = pending.get(msg.id); pending.delete(msg.id); resolve(msg.result); }
+  });
+  const send = (method, params = {}) => new Promise((resolve) => { id++; pending.set(id, { resolve }); ws.send(JSON.stringify({ id, method, params })); });
+
+  // Force an exact page viewport when requested, so the captured frame really is WxH (the raw
+  // window-size loses ~18x152px to the headless frame). Done BEFORE the game boots its renderer so
+  // the drawing buffer, background tier bake and camera aspect are all sized for the final frame.
+  if (EXACT_VIEWPORT) {
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: EXACT_W, height: EXACT_H, deviceScaleFactor: 1, mobile: false,
+    });
+    console.log(`[gameplay] exact viewport override -> ${EXACT_W}x${EXACT_H}`);
+  }
+
+  // Wait for the game handle to exist, then START A NEW GAME (the title screen otherwise blocks
+  // gameplay) by emitting game:new on the bus. Then apply the requested deterministic scenario.
+  console.log('[gameplay] starting a fixed-seed new game via window.SF.bus.emit("game:new")...');
+  for (let i = 0; i < 40; i++) {
+    const has = await send('Runtime.evaluate', { expression: '!!(window.SF && window.SF.bus && window.SF.bus.emit)', returnByValue: true });
+    if (has.result.value) break;
+    await sleep(250);
+  }
+  await send('Runtime.evaluate', { expression: `window.SF.bus.emit("game:new", { seed: ${SEED} }); window.SF.bus.emit("ui:closeAll", {});` });
+  const flightStarted = await waitForFlight(send);
+  if (!flightStarted) throw new Error('game:new did not reach flight mode');
+  if (Object.keys(VIDEO_OVERRIDES).length) {
+    await send('Runtime.evaluate', { expression: `Object.assign(window.SF.state.settings.video, ${JSON.stringify(VIDEO_OVERRIDES)}); window.SF.bus.emit("settings:changed", { section: "video", key: null });` });
+  }
+  await send('Runtime.evaluate', { expression: scenarioExpression(SCENARIO), awaitPromise: false });
+  // A/B experiment hook. Lets the parity loop measure a render change (background tier, intensity,
+  // a material swap) against the SAME scenario without editing game source first, so a proposed
+  // upgrade can be costed before it is committed. Evaluated after the scenario is applied.
+  if (EVAL_JS) {
+    const r = await send('Runtime.evaluate', { expression: `(() => { try { return String(${EVAL_JS}); } catch (e) { return 'EVAL_ERROR: ' + e.message; } })()`, returnByValue: true });
+    console.log(`[gameplay] --eval -> ${r && r.result && r.result.value}`);
+  }
+  console.log(`[gameplay] warmup ${WARMUP_MS}ms, capture ${DURATION_MS}ms...`);
+  await sleep(WARMUP_MS);
+  await send('Runtime.evaluate', {
+    expression: `new Promise((resolve) => requestAnimationFrame(() => {
+      if (window.__SPACEFACE_PERF__ && window.__SPACEFACE_PERF__.reset) window.__SPACEFACE_PERF__.reset();
+      if (window.__THREE_GAME_DIAGNOSTICS__ && window.__THREE_GAME_DIAGNOSTICS__.reset) window.__THREE_GAME_DIAGNOSTICS__.reset();
+      if (window.__SF_CAPTURE_SCENARIO__) window.__SF_CAPTURE_SCENARIO__.measuredAt = performance.now();
+      resolve(true);
+    }))`,
+    awaitPromise: true,
+  });
+
+  const timeline = [];
+  const started = Date.now();
+  while (Date.now() - started < DURATION_MS) {
+    timeline.push(await readRuntimeReport(send));
+    await sleep(1000);
+  }
+  const report = await readRuntimeReport(send);
+  report.timeline = timeline;
+
+  // Late experiment hook — the counterpart to --eval. `--eval` fires the instant the scenario is
+  // applied, so it can only ever observe the world at t≈0. Anything that DEVELOPS (an NPC job
+  // leaving `commission`, a convoy reaching its terminal, an encounter interrupting another) is
+  // invisible to it, and reading a t≈0 census as if it described settled play is exactly the stale-
+  // baseline class of error §5 of the expansion brief warns about. This runs after the full
+  // warmup + capture window, against the same page, so before/after are the SAME session.
+  if (EVAL_AFTER_JS) {
+    // awaitPromise, unlike --eval. An expression that needs a FRAME to elapse before its answer
+    // exists — "I moved these hulls, now where do their effects land on screen?" — is unanswerable
+    // synchronously, and answering it anyway returns the state before the change. Returning a
+    // promise that awaits a few rAFs is the only honest way to read post-change render state.
+    const r = await send('Runtime.evaluate', { expression: `(async () => { try { return String(await (${EVAL_AFTER_JS})); } catch (e) { return 'EVAL_ERROR: ' + e.message; } })()`, returnByValue: true, awaitPromise: true });
+    const value = r && r.result && r.result.value;
+    console.log(`[gameplay] --evalAfter -> ${value}`);
+    report.evalAfter = value == null ? null : String(value);
+  }
+
+  // Scenario self-check. A scenario that claims to move the ship but does not is the worst kind of
+  // capture bug: it produces a plausible screenshot and a plausible frame time, and every downstream
+  // conclusion drawn from it is wrong. 'boost' and 'combat-vfx' assigned state.input directly, which
+  // systems/input.js overwrites from held keys every frame, so they silently captured a parked ship
+  // at SPD 0 — no plume, no motion cues — for the entire life of this harness. Measure the outcome
+  // and record it rather than trusting that the scenario did what its name says.
+  const motion = await send('Runtime.evaluate', {
+    expression: `JSON.stringify((() => {
+      const st = window.SF && window.SF.state; if (!st) return null;
+      const p = st.entities && st.entities.get(st.playerId);
+      if (!p || !p.vel) return null;
+      return { speed: Math.hypot(p.vel.x, p.vel.z), moveZ: st.input && st.input.moveZ };
+    })())`,
+    returnByValue: true,
+  });
+  try {
+    const parsed = JSON.parse((motion && motion.result && motion.result.value) || 'null');
+    if (parsed) report.motion = { speed: Number(parsed.speed.toFixed(2)), moveZ: parsed.moveZ };
+  } catch (_) { /* motion telemetry is advisory */ }
+
+  // §16.4 scene set: capture a short sequence as the live world evolves (more entities spawn, combat/
+  // mining occur over time). Each shot is a candidate scene; the runbook records which §16.4 type each
+  // best represents. Captured at ~3s intervals so the world changes between frames.
+  const SCENES = [`${SCENARIO}_flight`, `${SCENARIO}_t2`, `${SCENARIO}_t3`, `${SCENARIO}_t4`];
+  const b64s = [];
+  for (const name of SCENES) {
+    const sr = await send('Page.captureScreenshot', { format: 'jpeg', quality: 88 });
+    writeFileSync(`.devshots/${name}.jpg`, Buffer.from(sr.data, 'base64'));
+    b64s.push(name);
+    if (name !== SCENES[SCENES.length - 1]) await sleep(3000);
+  }
+  // Primary screenshot for the §16.4 "hero flight" scene (scene 1).
+  const shotRes = await send('Page.captureScreenshot', { format: 'jpeg', quality: 88 });
+  const b64 = shotRes.data;
+
+  ws.close();
+  return { report, b64 };
+}
+
+let result = null;
+try {
+  result = await cdpCapture();
+} catch (e) {
+  console.error('[gameplay] CDP capture failed:', e.message);
+}
+
+clearTimeout(watchdog);
+try { child.kill(); } catch (_) {}
+
+if (!result) { console.error('[gameplay] FAILED'); process.exit(1); }
+
+// Write the diagnostics report.
+try { mkdirSync(dirname(OUT), { recursive: true }); } catch (_) {}
+try { mkdirSync(dirname(SHOT_PATH), { recursive: true }); } catch (_) {}
+const shotBuffer = Buffer.from(result.b64, 'base64');
+const shotHash = createHash('sha256').update(shotBuffer).digest('hex');
+const okShot = shotBuffer.length > 2000;
+result.report.scenario = {
+  name: SCENARIO,
+  seed: SEED,
+  port: PORT,
+  warmupMs: WARMUP_MS,
+  durationMs: DURATION_MS,
+  videoOverrides: VIDEO_OVERRIDES,
+  screenshot: SHOT_PATH,
+  screenshotBytes: shotBuffer.length,
+  screenshotSha256: shotHash,
+};
+const ft = result.report.frameMs || {};
+const p95 = Number.isFinite(ft.p95) ? ft.p95 : 999;
+const targetPass = p95 <= TARGET_MS;
+const floorPass = p95 <= FLOOR_MS;
+result.report.verdict = {
+  okShot,
+  targetMs: TARGET_MS,
+  floorMs: FLOOR_MS,
+  strict: STRICT,
+  targetPass,
+  floorPass,
+  pass: okShot && (STRICT ? targetPass : floorPass),
+};
+writeFileSync(OUT, JSON.stringify(result.report, null, 2));
+writeFileSync(SHOT_PATH, shotBuffer);
+
+console.log('[gameplay] §18 Gate 6 diagnostics:');
+console.log(`  frame ms — last:${ft.last && ft.last.toFixed(2)} avg:${ft.avg && ft.avg.toFixed(2)} min:${ft.min && ft.min.toFixed(2)} max:${ft.max && ft.max.toFixed(2)} p95:${ft.p95 && ft.p95.toFixed(2)}`);
+console.log(`  render — calls:${result.report.render && result.report.render.calls} tris:${result.report.render && result.report.render.triangles}`);
+console.log(`  memory — geo:${result.report.memory && result.report.memory.geometries} tex:${result.report.memory && result.report.memory.textures} prog:${result.report.memory && result.report.memory.programs}`);
+console.log(`[gameplay] report: ${OUT}`);
+console.log(`[gameplay] §16.4 screenshot: ${SHOT_PATH} ${okShot ? 'OK (' + (statSync(SHOT_PATH).size / 1024).toFixed(1) + ' KB sha256=' + shotHash.slice(0, 12) + ')' : 'MISSING'}`);
+
+// Scenarios whose whole purpose is motion. If one of these captures a stationary ship the frame is
+// invalid evidence for plume, speed language, motion streaks or in-flight cost — say so loudly
+// rather than letting a plausible-looking screenshot through.
+const MOTION_SCENARIOS = new Set(['cruise', 'cruise-boost', 'boost']);
+const measuredSpeed = (result.report.motion && result.report.motion.speed) || 0;
+if (result.report.motion) {
+  console.log(`[gameplay] motion: speed=${measuredSpeed} moveZ=${result.report.motion.moveZ}`);
+}
+if (MOTION_SCENARIOS.has(SCENARIO) && measuredSpeed < 1) {
+  console.error(`[gameplay] WARNING — scenario '${SCENARIO}' is a MOTION scenario but the ship measured speed ${measuredSpeed}.`);
+  console.error('[gameplay] The frame shows a parked ship: no plume, no speed cues, and its frame time is not in-flight cost.');
+  console.error('[gameplay] Assigning state.input.* from a timer does NOT work — systems/input.js rebuilds it from held keys each frame.');
+  result.report.scenarioMotionValid = false;
+} else if (MOTION_SCENARIOS.has(SCENARIO)) {
+  result.report.scenarioMotionValid = true;
+}
+// The report was serialised above; rewrite it so motion/scenarioMotionValid actually reach the file
+// that downstream tooling reads.
+writeFileSync(OUT, JSON.stringify(result.report, null, 2));
+
+// §12.1 verdict.
+console.log(`[gameplay] §12.1 verdict — target(<=${TARGET_MS}ms/60fps):${targetPass ? 'PASS' : 'FAIL'} floor(<=${FLOOR_MS}ms/30fps):${floorPass ? 'PASS' : 'FAIL'} mode:${STRICT ? 'strict-target' : 'floor'}`);
+process.exit(result.report.verdict.pass ? 0 : 1);
+
+function parseArgs(args) {
+  const out = { _: [] };
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (!a.startsWith('--')) { out._.push(a); continue; }
+    const key = a.slice(2);
+    const next = args[i + 1];
+    if (next && !next.startsWith('--')) { out[key] = next; i++; }
+    else out[key] = true;
+  }
+  return out;
+}
+
+function collectVideoOverrides(args) {
+  const out = {};
+  if (args.bloom != null) out.bloom = boolArg(args.bloom);
+  if (args.shadows != null) out.shadows = boolArg(args.shadows);
+  if (args.renderScale != null) out.renderScale = Number(args.renderScale);
+  if (args.pixelRatioCap != null) out.pixelRatioCap = Number(args.pixelRatioCap);
+  if (args.particleQuality != null) out.particleQuality = String(args.particleQuality);
+  return out;
+}
+
+function boolArg(v) {
+  if (v === true) return true;
+  const s = String(v).toLowerCase();
+  return !(s === '0' || s === 'false' || s === 'off' || s === 'no');
+}
+
+async function readRuntimeReport(send) {
+  const expr = `JSON.stringify((() => {
+    const diag = (window.__THREE_GAME_DIAGNOSTICS__ && window.__THREE_GAME_DIAGNOSTICS__.getReport)
+      ? window.__THREE_GAME_DIAGNOSTICS__.getReport()
+      : { error: "no diagnostics handle" };
+    const sf = window.SF || {};
+    const state = sf.state || {};
+    const canvas = document.getElementById('gl-canvas');
+    let gpu = null;
+    try {
+      const gl = canvas && (canvas.getContext('webgl2') || canvas.getContext('webgl'));
+      const dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      gpu = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : null;
+    } catch (_) {}
+    diag.capture = {
+      userAgent: navigator.userAgent,
+      viewport: { width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio },
+      gpu,
+      mode: state.mode,
+      seed: state.meta && state.meta.seed,
+      simTime: state.simTime,
+      tick: state.tick,
+      entityListLength: state.entityList ? state.entityList.length : 0,
+      screenStack: state.ui && state.ui.screenStack ? state.ui.screenStack.slice() : [],
+      settings: state.settings || null,
+      flybyFocus: state.player && state.player.flybyFocus ? { ...state.player.flybyFocus } : null,
+      cameraComposition: state.render && state.render.cameraCtrl
+        && typeof state.render.cameraCtrl.composition === "function"
+        ? { ...state.render.cameraCtrl.composition() }
+        : null
+    };
+    return diag;
+  })())`;
+  const res = await send('Runtime.evaluate', { expression: expr, returnByValue: true });
+  return JSON.parse(res.result.value);
+}
+
+async function waitForFlight(send) {
+  const expr = `new Promise((resolve) => {
+    const start = performance.now();
+    const check = () => {
+      const sf = window.SF || {};
+      const state = sf.state || {};
+      if (state.mode === 'flight' && state.playerId && state.entities && state.entities.get(state.playerId)) {
+        const close = () => {
+          try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+          const splash = document.getElementById('cinematic-splash');
+          if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
+          const tutorialIntro = document.querySelector('.sf-ob-intro');
+          if (tutorialIntro && tutorialIntro.parentNode) tutorialIntro.parentNode.removeChild(tutorialIntro);
+          if (sf.bus && sf.bus.emit) sf.bus.emit('ui:closeAll', {});
+          if (state.ui && state.ui.screenStack) state.ui.screenStack.length = 0;
+        };
+        close();
+        setTimeout(() => { close(); resolve(true); }, 150);
+        return;
+      }
+      if (performance.now() - start > 45000) {
+        resolve(false);
+        return;
+      }
+      setTimeout(check, 50);
+    };
+    check();
+  })`;
+  const res = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
+  return !!(res && res.result && res.result.value);
+}
+
+function scenarioExpression(name) {
+  const combatSpecs = JSON.stringify(buildCombatVfxSpecs());
+  return `(() => {
+    const sf = window.SF;
+    if (!sf || !sf.state || !sf.helpers) return;
+    const state = sf.state;
+    const helpers = sf.helpers;
+    const player = () => state.entities && state.entities.get(state.playerId);
+    window.__SF_CAPTURE_SCENARIO__ = { name: ${JSON.stringify(name)}, startedAt: performance.now() };
+    const p = player();
+    if (!p) return;
+    const spawnRock = (x, z, r = 18) => helpers.spawnEntity({
+      type: 'asteroid', pos: { x, z }, radius: r, mass: 500, hull: 240, hullMax: 240,
+      data: { typeId: 'ast_rock', oreHP: 240, oreHPMax: 240 }
+    });
+    const spawnPickup = (x, z) => helpers.spawnEntity({
+      type: 'pickup', pos: { x, z }, radius: 8, mass: 1, hull: 1, hullMax: 1, ttl: 120,
+      data: { itemId: 'ore_common', qty: 1 }
+    });
+    if (${JSON.stringify(name)} === 'boost') {
+      window.__SF_CAPTURE_SCENARIO__.tick = setInterval(() => {
+        state.input.moveZ = 1;
+        state.input.boost = true;
+      }, 16);
+    } else if (${JSON.stringify(name)} === 'dense') {
+      for (let i = 0; i < 180; i++) {
+        const a = i * 2.399963;
+        const r = 260 + (i % 18) * 42;
+        spawnRock(p.pos.x + Math.cos(a) * r, p.pos.z + Math.sin(a) * r, 10 + (i % 6) * 4);
+      }
+    } else if (${JSON.stringify(name)} === 'cruise' || ${JSON.stringify(name)} === 'cruise-boost') {
+      // Deep-flight means FLIGHT. 'idle' pins moveZ to 0, so its frames show a parked ship at SPD 0
+      // with no plume, no motion streak and no velocity-driven speed motes — then get compared
+      // against reference frames that are all ships under power.
+      //
+      // Writing state.input.moveZ directly does NOT work: systems/input.js rebuilds state.input
+      // from held keys every frame, so a timer-assigned value is overwritten before the sim reads
+      // it. (The pre-existing 'boost' and 'combat-vfx' scenarios assign state.input the same way and
+      // therefore never actually move the ship — left untouched here because other perf baselines
+      // are calibrated against them; use 'cruise'/'cruise-boost' for motion evidence.)
+      //
+      // Holding a real KeyW keydown drives the actual input pipeline. PILOT scheme binds
+      // forward: ['KeyW','ArrowUp'] (src/systems/input.js). Re-dispatched periodically so a focus
+      // or blur event cannot silently drop the hold mid-capture.
+      const holdBoost = ${JSON.stringify(name)} === 'cruise-boost';
+      const press = () => {
+        for (const code of ['KeyW']) {
+          window.dispatchEvent(new KeyboardEvent('keydown', { code, key: 'w', bubbles: true }));
+        }
+        if (holdBoost) {
+          window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ShiftLeft', key: 'Shift', bubbles: true }));
+        }
+      };
+      press();
+      window.__SF_CAPTURE_SCENARIO__.tick = setInterval(press, 500);
+    } else if (${JSON.stringify(name)} === 'asteroid-field') {
+      // VISUAL scene, not the 'dense' entity-count stress test. 'dense' seeds rocks at 260-974 WU
+      // while the chase camera only sees ~60 WU, so nothing it spawns is ever in frame. Here the
+      // rocks are deliberately placed INSIDE the frustum at mixed depths so the capture is valid
+      // evidence for an asteroid-field reference comparison.
+      const ring = [
+        [-96, -54, 22], [-58, 38, 15], [-24, -78, 26], [18, 62, 12],
+        [52, -40, 19], [86, 30, 24], [120, -66, 30], [-132, 12, 28],
+        [-70, -18, 9], [40, 16, 7], [-14, 44, 6], [74, -12, 8],
+      ];
+      for (const [dx, dz, r] of ring) spawnRock(p.pos.x + dx, p.pos.z + dz, r);
+      // A second, further band gives the field a readable back plane instead of one flat layer.
+      for (let i = 0; i < 24; i++) {
+        const a = i * 2.399963;
+        const rad = 170 + (i % 5) * 34;
+        spawnRock(p.pos.x + Math.cos(a) * rad, p.pos.z + Math.sin(a) * rad, 12 + (i % 4) * 7);
+      }
+      // Deliberately stationary. The rocks are placed relative to the player at spawn, so thrusting
+      // just leaves the field behind and empties the frame. (An earlier version assigned
+      // state.input.moveZ here, which did nothing at all — systems/input.js rebuilds state.input
+      // from held keys every frame. See the 'cruise' scenario for how to actually move the ship.)
+    } else if (${JSON.stringify(name)} === 'combat-vfx') {
+      const combatSpecs = ${combatSpecs};
+      for (let i = 0; i < 24; i++) {
+        const entry = combatSpecs[i % combatSpecs.length];
+        const spec = entry.spec;
+        spec.pos = { x: p.pos.x + entry.offset.x, z: p.pos.z + entry.offset.z };
+        helpers.spawnEntity(spec);
+      }
+      window.__SF_CAPTURE_SCENARIO__.tick = setInterval(() => {
+        state.input.fire = true;
+        state.input.autoFire = true;
+        sf.bus.emit('combat:damage', { targetId: state.playerId, amount: 1, pos: { x: p.pos.x + 40, z: p.pos.z } });
+      }, 120);
+    } else if (${JSON.stringify(name)} === 'massline-vfx') {
+      const target = spawnRock(p.pos.x + 82, p.pos.z + 12, 18);
+      target.data.seams = [
+        { angle: 0.2, richness: 1 },
+        { angle: 2.4, richness: 0.75 },
+      ];
+      const present = () => {
+        state.player.tether = {
+          active: true,
+          targetId: target.id,
+          strain: 0.62,
+          load: 0.78,
+          restLength: 92,
+          phase: 'loaded',
+          reeling: true,
+          reelStrength: 0.65,
+        };
+        state.player.masslineTelemetry = {
+          active: true,
+          tangentialSpeed: 68,
+          arcPreview: {
+            peakSpeed: 112,
+            exitAngle: 0.18,
+            exitSpeed: 78,
+            timeToWhip: 0.2,
+            viable: true,
+          },
+        };
+      };
+      present();
+      sf.bus.emit('mining:start', { minerId: p.id, targetId: target.id, position: { ...target.pos } });
+      sf.bus.emit('tether:attached', { targetId: target.id, position: { ...target.pos } });
+      window.__SF_CAPTURE_SCENARIO__.tick = setInterval(present, 16);
+    } else if (${JSON.stringify(name)} === 'flyby-focus') {
+      const combatSpecs = ${combatSpecs};
+      const spec = combatSpecs[0].spec;
+      spec.pos = { x: p.pos.x + 100, z: p.pos.z - 70 };
+      const target = helpers.spawnEntity(spec);
+      const armCrossingPass = () => {
+        if (!target || target.alive === false) return;
+        const focus = state.player && state.player.flybyFocus;
+        if (focus && focus.active) return;
+        if (focus && Number.isFinite(focus.cooldownUntil) && state.simTime < focus.cooldownUntil) return;
+        target.pos.x = p.pos.x + 100;
+        target.pos.z = p.pos.z - 70;
+        target.vel.x = 0;
+        target.vel.z = 120;
+        target.team = target.team == null ? 1 : target.team;
+        target.data = target.data || {};
+        target.data.encounter = target.data.encounter || { id: 'capture.flyby-focus' };
+        target.data.combat = target.data.combat || {};
+        target.data.combat.targetId = p.id;
+        target.data.combat.lockTarget = p.id;
+        const ai = target.data.ai || (target.data.ai = {});
+        ai.passive = true;
+        if (target.physicsBody) {
+          target.physicsBody.revision = (Number(target.physicsBody.revision) || 0) + 1;
+        }
+      };
+      armCrossingPass();
+      window.__SF_CAPTURE_SCENARIO__.targetId = target.id;
+      window.__SF_CAPTURE_SCENARIO__.tick = setInterval(armCrossingPass, 100);
+    } else if (${JSON.stringify(name)} === 'spawn-churn') {
+      let n = 0;
+      window.__SF_CAPTURE_SCENARIO__.tick = setInterval(() => {
+        const e = spawnRock(p.pos.x + 300 + (n % 16) * 12, p.pos.z + 240 + (n % 8) * 18, 12);
+        e.ttl = 1.2;
+        n++;
+      }, 80);
+    } else if (${JSON.stringify(name)} === 'ui-overlay') {
+      sf.bus.emit('ui:pushScreen', { id: 'starmap' });
+      for (let i = 0; i < 80; i++) spawnPickup(p.pos.x + i * 4, p.pos.z + 180 + (i % 8) * 12);
+    } else {
+      state.input.moveZ = 0;
+      state.input.boost = false;
+    }
+  })()`;
+}
+
+function buildCombatVfxSpecs() {
+  const out = [];
+  const types = ['reaver_pirate', 'wasp_swarmer', 'corsair_raider'];
+  for (let i = 0; i < 24; i++) {
+    const a = i * 0.618;
+    const r = 120 + (i % 6) * 22;
+    out.push({
+      offset: { x: Math.cos(a) * r, z: Math.sin(a) * r },
+      spec: makeEnemySpawnSpec(types[i % types.length], 4 + (i % 3), { x: 0, z: 0 }),
+    });
+  }
+  return out;
+}

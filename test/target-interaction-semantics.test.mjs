@@ -1,0 +1,291 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { BINDINGS } from '../src/ui/bindings.js';
+import { createUiInput } from '../src/ui/input.js';
+import * as targetPanel from '../src/ui/targetPanel.js';
+
+function entity(id, type, data = {}) {
+  return {
+    id,
+    type,
+    alive: true,
+    data,
+    pos: { x: 20, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 8,
+  };
+}
+
+function installDomHarness() {
+  const listeners = new Map();
+  const body = { tagName: 'BODY', isContentEditable: false };
+  globalThis.document = {
+    activeElement: body,
+    body,
+    documentElement: { classList: { add() {}, remove() {} } },
+    addEventListener(type, handler, options) {
+      const capture = options === true || !!(options && options.capture);
+      const list = listeners.get(type) || [];
+      list.push({ handler, capture });
+      listeners.set(type, list);
+    },
+    removeEventListener(type, handler) {
+      const list = listeners.get(type) || [];
+      listeners.set(type, list.filter((entry) => entry.handler !== handler));
+    },
+    getElementById() { return null; },
+  };
+  globalThis.window = {
+    addEventListener() {},
+    removeEventListener() {},
+  };
+  return listeners;
+}
+
+function press(listeners, key, code) {
+  const event = {
+    key,
+    code,
+    target: globalThis.document.body,
+    defaultPrevented: false,
+    preventDefault() { this.defaultPrevented = true; },
+    stopPropagation() {},
+    stopImmediatePropagation() {},
+  };
+  const keydowns = listeners.get('keydown') || [];
+  for (const { handler } of keydowns) handler(event);
+  return event;
+}
+
+function inputHarness({
+  selectedTarget = null,
+  earlierTetherTarget = null,
+  tetherTarget = null,
+  tetherDefId = 'tether_standard',
+} = {}) {
+  const listeners = installDomHarness();
+  const player = entity('player', 'ship');
+  const entities = new Map([[player.id, player]]);
+  if (selectedTarget) entities.set(selectedTarget.id, selectedTarget);
+  if (earlierTetherTarget) entities.set(earlierTetherTarget.id, earlierTetherTarget);
+  if (tetherTarget) entities.set(tetherTarget.id, tetherTarget);
+  const attachments = {};
+  if (earlierTetherTarget) {
+    attachments.earlier = {
+      id: 'earlier',
+      state: 'active',
+      ownerId: player.id,
+      targetId: earlierTetherTarget.id,
+      defId: 'tether_standard',
+    };
+  }
+  if (tetherTarget) {
+    attachments.tether = {
+      id: 'tether',
+      state: 'active',
+      ownerId: player.id,
+      targetId: tetherTarget.id,
+      defId: tetherDefId,
+    };
+  }
+  const state = {
+    mode: 'flight',
+    ui: {},
+    playerId: player.id,
+    player: { targetId: selectedTarget ? selectedTarget.id : null },
+    entities,
+    entityList: [...entities.values()],
+    combat: { attachments: { byId: attachments } },
+  };
+  const events = [];
+  const bus = {
+    on() { return () => {}; },
+    emit(name, payload) { events.push({ name, payload }); },
+  };
+  const screenManager = {
+    isOpen() { return false; },
+    getActiveScreenDef() { return null; },
+    pushScreen() {},
+    popScreen() {},
+  };
+  const input = createUiInput({ state, bus, registry: { get() { return null; } } }, screenManager);
+  return { events, input, listeners };
+}
+
+function latestToast(events) {
+  const item = events.findLast((event) => event.name === 'toast');
+  return item && item.payload ? String(item.payload.text || '') : '';
+}
+
+test('target panel identifies a mineable asteroid by geological name and interaction class', () => {
+  const rock = entity('rock', 'asteroid', { typeId: 'ast_metallic' });
+  assert.equal(targetPanel.targetDisplayName(rock), 'Metallic Asteroid');
+  assert.equal(typeof targetPanel.targetInteractionClass, 'function');
+  // The class line reports what is INSIDE the body, not the verb restated next to a name that
+  // already said "Metallic Asteroid". Derived from the type's own ore table, heaviest first.
+  assert.equal(targetPanel.targetInteractionClass(rock),
+    'Mineable · Iron Ore / Copper Ore / Titanium Ore');
+});
+
+test('the class line is the yield mix for every rock type, and falls back when the type is unknown', () => {
+  const yields = (typeId) => targetPanel.targetInteractionClass(
+    entity('rock', 'asteroid', { typeId }),
+  );
+  assert.equal(yields('ast_common_rock'), 'Mineable · Silicate Rock / Iron Ore');
+  assert.equal(yields('ast_icy'), 'Mineable · Water Ice / Ice Volatiles');
+  assert.equal(yields('ast_gas_cloud'), 'Mineable · Hydrogen Gas / Helium-3');
+  assert.equal(yields('ast_rare_exotic'),
+    'Mineable · Platinoid Ore / Phosphor Crystal / Xenium');
+  // An untyped body keeps the honest generic rather than printing "Yields undefined".
+  assert.equal(yields('ast_not_a_real_type'), 'Mineable Asteroid');
+
+  // The mix is ordered by what mining will actually release, not alphabetically: the heaviest
+  // commodity leads on every type that has one.
+  for (const typeId of ['ast_common_rock', 'ast_metallic', 'ast_icy', 'ast_crystalline',
+    'ast_gas_cloud', 'ast_rare_exotic']) {
+    const line = yields(typeId);
+    assert.ok(line.startsWith('Mineable · '), `${typeId} keeps the affordance: ${line}`);
+    assert.ok(line.split(' / ').length >= 2, `${typeId} names a mix, not one token: ${line}`);
+  }
+});
+
+test('flight Tab cycles the combat target and Backspace releases it', () => {
+  const h = inputHarness();
+  assert.equal(press(h.listeners, 'Tab', 'Tab').defaultPrevented, true);
+  assert.deepEqual(h.events.findLast((event) => event.name === 'ui:cycleTarget')?.payload, { dir: 1 });
+  assert.equal(press(h.listeners, 'Backspace', 'Backspace').defaultPrevented, true);
+  assert.equal(h.events.findLast((event) => event.name === 'ui:clearTarget')?.name, 'ui:clearTarget');
+  h.input.dispose();
+});
+
+test('selected ordinary wreck is labeled salvage and B explains the salvage verb', () => {
+  const wreck = entity('wreck', 'wreck', { parentType: 'hull', scanned: true });
+  assert.equal(targetPanel.targetDisplayName(wreck), 'Wreckage');
+  assert.equal(typeof targetPanel.targetInteractionClass, 'function');
+  assert.equal(targetPanel.targetInteractionClass(wreck), 'Salvage');
+
+  const h = inputHarness({ selectedTarget: wreck });
+  const event = press(h.listeners, BINDINGS.drill.key, BINDINGS.drill.code);
+  const toast = latestToast(h.events);
+  assert.equal(event.defaultPrevented, true);
+  assert.match(toast, /B drills asteroids/i);
+  assert.match(toast, /mining control.*salvage this wreck/i);
+  h.input.dispose();
+});
+
+test('active unstable reactor wreck massline is labeled hazardous salvage and B warns it can explode', () => {
+  const reactor = entity('reactor', 'wreck', {
+    parentType: 'reactor',
+    unstableReactor: { dueAt: 120, vented: false },
+    scanned: true,
+  });
+  assert.equal(targetPanel.targetDisplayName(reactor), 'Unstable Reactor Wreck');
+  assert.equal(typeof targetPanel.targetInteractionClass, 'function');
+  assert.equal(targetPanel.targetInteractionClass(reactor), 'Hazardous Salvage');
+
+  const h = inputHarness({
+    tetherTarget: reactor,
+  });
+  press(h.listeners, BINDINGS.drill.key, BINDINGS.drill.code);
+  const toast = latestToast(h.events);
+  assert.match(toast, /hazardous reactor/i);
+  assert.match(toast, /explode/i);
+  assert.match(toast, /B drills asteroids/i);
+  assert.match(toast, /mining control.*salvage/i);
+  h.input.dispose();
+});
+
+test('an active asteroid massline keeps drill authority when a wreck is selected', () => {
+  const asteroid = entity('latched-rock', 'asteroid', { typeId: 'ast_metallic' });
+  const wreck = entity('selected-wreck', 'wreck', { parentType: 'hull' });
+  const h = inputHarness({ selectedTarget: wreck, tetherTarget: asteroid });
+
+  press(h.listeners, BINDINGS.drill.key, BINDINGS.drill.code);
+
+  assert.deepEqual(
+    h.events.filter((event) => event.name === 'drill:approachRequested').map((event) => event.payload),
+    [{ asteroidId: asteroid.id, attachmentId: 'tether' }],
+  );
+  assert.equal(h.events.some((event) => event.name === 'toast'), false);
+  h.input.dispose();
+});
+
+test('legacy asteroid Massline keeps accurate drill guidance but does not request an unavailable winch', () => {
+  const asteroid = entity('legacy-rock', 'asteroid', { typeId: 'ast_metallic' });
+  const h = inputHarness({ tetherTarget: asteroid, tetherDefId: 'attachment_massline' });
+
+  press(h.listeners, BINDINGS.drill.key, BINDINGS.drill.code);
+
+  assert.equal(h.events.some((event) => event.name === 'drill:approachRequested'), false);
+  assert.match(latestToast(h.events), /legacy Massline has no drill winch/i);
+  assert.match(latestToast(h.events), /relatch with the standard Massline/i);
+  h.input.dispose();
+});
+
+test('B keeps the generic no-target drill guidance when no semantic target exists', () => {
+  const h = inputHarness();
+  press(h.listeners, BINDINGS.drill.key, BINDINGS.drill.code);
+  assert.match(latestToast(h.events), /No asteroid targeted/i);
+  h.input.dispose();
+});
+
+test('object readout advertises only finite whole cargo quantities and an honest mass', () => {
+  const stateFor = (e) => ({ entities: new Map([[e.id, e]]), entityList: [e], player: {}, playerId: 'player' });
+  const lineFor = (e, extra = {}) =>
+    targetPanel.objectInfoLine(Object.assign(e, extra), stateFor(e), {}, 50);
+
+  const wreck = entity('w1', 'wreck', {
+    salvagePool: {
+      cmdty_ore_iron: 4,
+      cmdty_nan: NaN,
+      cmdty_inf: Infinity,
+      cmdty_str: '9',
+      cmdty_zero: 0,
+    },
+  });
+  const line = lineFor(wreck);
+  assert.match(line, /Iron Ore ×4/, `whole finite pool entries advertise: ${line}`);
+  assert.ok(!/Infinity|NaN/.test(line), `malformed quantities are never printed: ${line}`);
+
+  const ghost = entity('w2', 'wreck', {
+    salvagePool: { cmdty_inf: Infinity, cmdty_str: '9', cmdty_zero: 0 },
+  });
+  const ghostLine = lineFor(ghost);
+  assert.ok(!/Holds/.test(ghostLine), `no Holds line when every quantity is malformed: ${ghostLine}`);
+  assert.match(ghostLine, /Salvageable/, `the wreck still reports its honest class: ${ghostLine}`);
+
+  const frac = entity('w3', 'payload', { salvagePool: { cmdty_ore_iron: 2.7 } });
+  const fracLine = lineFor(frac);
+  assert.match(fracLine, /Iron Ore ×2/,
+    `a fractional pool advertises the actual whole units only: ${fracLine}`);
+
+  const pod = entity('p1', 'pickup', { commodityId: 'cmdty_ore_iron', amount: Infinity });
+  const podLine = lineFor(pod);
+  assert.match(podLine, /Holds Iron Ore(?! ×)/,
+    `a malformed amount shows the commodity without a count: ${podLine}`);
+  assert.ok(!/Infinity/.test(podLine));
+
+  const station = entity('s1', 'station', {});
+  const stationLine = lineFor(station, { mass: 5000 });
+  assert.match(stationLine, /Mass 5000/, `a finite actual mass prints plainly: ${stationLine}`);
+  assert.ok(!/\d+t\b/.test(stationLine), `no invented tonnes unit: ${stationLine}`);
+
+  const badMass = entity('s2', 'station', {});
+  const badLine = lineFor(badMass, { mass: Infinity });
+  assert.ok(!/Mass|Infinity/.test(badLine), `non-finite mass prints nothing: ${badLine}`);
+});
+
+test('a pending or unavailable authored body reports an honest appearance status', () => {
+  const stateFor = (e) => ({ entities: new Map([[e.id, e]]), entityList: [e], player: {}, playerId: 'player' });
+  const ship = entity('npc', 'ship', { name: 'Inspection Tender' });
+  ship.presentationAdmission = 'pending';
+  assert.match(targetPanel.objectInfoLine(ship, stateFor(ship), {}, 50),
+    /Appearance loading/i, 'the selected pending ship names its loading state');
+  ship.presentationAdmission = 'unavailable';
+  assert.match(targetPanel.objectInfoLine(ship, stateFor(ship), {}, 50),
+    /Appearance unavailable/i, 'the unavailable body says so instead of an empty row');
+  ship.presentationAdmission = 'ready';
+  assert.equal(targetPanel.objectInfoLine(ship, stateFor(ship), {}, 50), '',
+    'a ready ship keeps the plain object row');
+});

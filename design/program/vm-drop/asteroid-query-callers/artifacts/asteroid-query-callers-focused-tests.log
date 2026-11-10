@@ -1,0 +1,136 @@
+TAP version 13
+# Subtest: dormant rocks stay off the combat list until promoted
+ok 1 - dormant rocks stay off the combat list until promoted
+  ---
+  duration_ms: 7.066578
+  ...
+# Subtest: reserved presentation ids advance the allocator and stay unique
+ok 2 - reserved presentation ids advance the allocator and stay unique
+  ---
+  duration_ms: 1.460717
+  ...
+# Subtest: reserved dressing ids also stay unique with automatic row allocation
+ok 3 - reserved dressing ids also stay unique with automatic row allocation
+  ---
+  duration_ms: 0.441677
+  ...
+# Subtest: activity and geology rocks stay live entities
+ok 4 - activity and geology rocks stay live entities
+  ---
+  duration_ms: 0.158061
+  ...
+# Subtest: dressing rows are presentation sources, not combat entities
+ok 5 - dressing rows are presentation sources, not combat entities
+  ---
+  duration_ms: 1.598042
+  ...
+# Subtest: quiet Ceres combat list drops the dormant belt and dressing
+ok 6 - quiet Ceres combat list drops the dormant belt and dressing
+  ---
+  duration_ms: 40.317907
+  ...
+# Subtest: promote a field rock applies catch-up before it is live
+ok 7 - promote a field rock applies catch-up before it is live
+  ---
+  duration_ms: 1.212494
+  ...
+# Subtest: ram overlap promotes a field rock onto the combat list
+ok 8 - ram overlap promotes a field rock onto the combat list
+  ---
+  duration_ms: 0.909812
+  ...
+# Subtest: decode-runway promote reports field presence without spatial rock query
+ok 9 - decode-runway promote reports field presence without spatial rock query
+  ---
+  duration_ms: 3.685424
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: evict stays farther than admit so a lip oscillation does not thrash
+ok 10 - evict stays farther than admit so a lip oscillation does not thrash
+  ---
+  duration_ms: 1.253577
+  ...
+# Subtest: decode runway sees an inbound far hull and can request promote
+ok 11 - decode runway sees an inbound far hull and can request promote
+  ---
+  duration_ms: 4.873176
+  ...
+# Subtest: a mesh already on the lip is kept when the live body is shelved
+ok 12 - a mesh already on the lip is kept when the live body is shelved
+  ---
+  duration_ms: 1.071723
+  ...
+# Subtest: a promoted inbound hull stays render-relevant when the last activity frame omitted it
+ok 13 - a promoted inbound hull stays render-relevant when the last activity frame omitted it
+  ---
+  duration_ms: 0.543209
+  ...
+# Subtest: flight first-render does not compose an ordinary on-glass hull
+ok 14 - flight first-render does not compose an ordinary on-glass hull
+  ---
+  duration_ms: 0.30115
+  ...
+# Subtest: time-to-glass solves entry for movers and rejects non-approachers
+ok 15 - time-to-glass solves entry for movers and rejects non-approachers
+  ---
+  duration_ms: 0.248772
+  ...
+# Subtest: admission anchor follows the near focus and falls back after a relocate
+ok 16 - admission anchor follows the near focus and falls back after a relocate
+  ---
+  duration_ms: 1.126077
+  ...
+# Subtest: a fast inbound hull beyond the decode disc is render-relevant on approach time
+ok 17 - a fast inbound hull beyond the decode disc is render-relevant on approach time
+  ---
+  duration_ms: 1.065879
+  ...
+# Subtest: player motion leans the residency oval forward and lets the trailing edge sleep
+ok 18 - player motion leans the residency oval forward and lets the trailing edge sleep
+  ---
+  duration_ms: 0.655122
+  ...
+# Subtest: a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+ok 19 - a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+  ---
+  duration_ms: 4.512592
+  ...
+# Subtest: a fast inbound row shelved long ago still admits on its extrapolated position
+ok 20 - a fast inbound row shelved long ago still admits on its extrapolated position
+  ---
+  duration_ms: 0.888669
+  ...
+# Subtest: mesh collect leans forward on approach vectors only
+ok 21 - mesh collect leans forward on approach vectors only
+  ---
+  duration_ms: 0.790854
+  ...
+# Subtest: first-flight hold still owes a mesh to an inbound prefetch contact
+ok 22 - first-flight hold still owes a mesh to an inbound prefetch contact
+  ---
+  duration_ms: 0.565516
+  ...
+# Subtest: first-flight hold admits static ledger rocks on player-vel collect horizon
+ok 23 - first-flight hold admits static ledger rocks on player-vel collect horizon
+  ---
+  duration_ms: 0.466294
+  ...
+# Subtest: mesh collect takes the prefetch circle, not the whole belt
+ok 24 - mesh collect takes the prefetch circle, not the whole belt
+  ---
+  duration_ms: 7.871266
+  ...
+# Subtest: decode-runway promote still leaves field rocks off the combat list
+ok 25 - decode-runway promote still leaves field rocks off the combat list
+  ---
+  duration_ms: 1.420327
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 584.138578

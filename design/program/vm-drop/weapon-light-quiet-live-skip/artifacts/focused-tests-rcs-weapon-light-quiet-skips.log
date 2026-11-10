@@ -1,0 +1,502 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: component spans retain one bounded union in component indexes
+ok 1 - component spans retain one bounded union in component indexes
+  ---
+  duration_ms: 2.532155
+  ...
+# Subtest: owner registration leaves every attribute untouched when a later attribute is rejected
+ok 2 - owner registration leaves every attribute untouched when a later attribute is rejected
+  ---
+  duration_ms: 1.398937
+  ...
+# Subtest: scene-owned publication forces the initial buffer and restores the prior hook
+ok 3 - scene-owned publication forces the initial buffer and restores the prior hook
+  ---
+  duration_ms: 1.677426
+  ...
+# Subtest: ordinary dirty spans survive skipped draws and publish once on eligibility
+ok 4 - ordinary dirty spans survive skipped draws and publish once on eligibility
+  ---
+  duration_ms: 0.620017
+  ...
+# Subtest: one interleaved backing owns ranged publication, replacement, and context recovery
+ok 5 - one interleaved backing owns ranged publication, replacement, and context recovery
+  ---
+  duration_ms: 1.133543
+  ...
+# Subtest: probe-only full-span control changes requested bytes without changing logical writes
+ok 6 - probe-only full-span control changes requested bytes without changing logical writes
+  ---
+  duration_ms: 0.536624
+  ...
+# Subtest: probe-only full-span control cannot change during an armed renderer epoch
+ok 7 - probe-only full-span control cannot change during an armed renderer epoch
+  ---
+  duration_ms: 0.460955
+  ...
+# Subtest: context loss supersedes an unacknowledged generation and restore forces a full replacement
+ok 8 - context loss supersedes an unacknowledged generation and restore forces a full replacement
+  ---
+  duration_ms: 0.595403
+  ...
+# Subtest: context restoration accepts Three driver re-upload without weakening unsolicited callback detection
+ok 9 - context restoration accepts Three driver re-upload without weakening unsolicited callback detection
+  ---
+  duration_ms: 0.795397
+  ...
+# Subtest: Three first bufferData does not retire the owner or abort later frames
+ok 10 - Three first bufferData does not retire the owner or abort later frames
+  ---
+  duration_ms: 0.526113
+  ...
+# Subtest: an invalid owner can still release its callback and coordinator ownership
+ok 11 - an invalid owner can still release its callback and coordinator ownership
+  ---
+  duration_ms: 0.509559
+  ...
+# Subtest: one owner trap cannot latch the coordinator dead for later frames
+ok 12 - one owner trap cannot latch the coordinator dead for later frames
+  ---
+  duration_ms: 0.766859
+  ...
+# Subtest: a nested scene render during publication does not freeze later frames
+ok 13 - a nested scene render during publication does not freeze later frames
+  ---
+  duration_ms: 0.489952
+  ...
+# Subtest: live sprite and trail owners publish only their packed prefixes after initial residency
+ok 14 - live sprite and trail owners publish only their packed prefixes after initial residency
+  ---
+  duration_ms: 23.697047
+  ...
+# Subtest: dense one-times and five-times fanout stays at 31 ranges and charges packed bytes
+ok 15 - dense one-times and five-times fanout stays at 31 ranges and charges packed bytes
+  ---
+  duration_ms: 12.232804
+  ...
+# Subtest: common-rock matrices publish only the changed compacted slot after residency
+ok 16 - common-rock matrices publish only the changed compacted slot after residency
+  ---
+  duration_ms: 5.193716
+  ...
+# Subtest: ordinary-flight plume layers publish one packed socket prefix per layer
+ok 17 - ordinary-flight plume layers publish one packed socket prefix per layer
+  ---
+  duration_ms: 8.471196
+  ...
+# Subtest: signed RCS layers publish only the live impulse prefix
+ok 18 - signed RCS layers publish only the live impulse prefix
+  ---
+  duration_ms: 3.834214
+  ...
+# Subtest: ordinary-flight shard particles publish only their live prefix and survive quality migration
+ok 19 - ordinary-flight shard particles publish only their live prefix and survive quality migration
+  ---
+  duration_ms: 3.509116
+  ...
+# Subtest: shard particles pack fragmented CPU slots into the live GPU prefix
+ok 20 - shard particles pack fragmented CPU slots into the live GPU prefix
+  ---
+  duration_ms: 1.097479
+  ...
+# Subtest: nearby asteroid seam markers publish only their live matrix and color prefix
+ok 21 - nearby asteroid seam markers publish only their live matrix and color prefix
+  ---
+  duration_ms: 1.853444
+  ...
+# Subtest: active field-device geometry publishes each visible instance prefix
+ok 22 - active field-device geometry publishes each visible instance prefix
+  ---
+  duration_ms: 3.628714
+  ...
+# Subtest: tether topology coordinates stay resident while the rope positions move
+ok 23 - tether topology coordinates stay resident while the rope positions move
+  ---
+  duration_ms: 4.517914
+  ...
+# Subtest: authored instance chunks publish only moved, hidden, released, and reused matrix slots
+ok 24 - authored instance chunks publish only moved, hidden, released, and reused matrix slots
+  ---
+  duration_ms: 4.56131
+  ...
+# Subtest: a yaw command lights the OPPOSITE-side jet, never both bow jets
+ok 25 - a yaw command lights the OPPOSITE-side jet, never both bow jets
+  ---
+  duration_ms: 8.287702
+  ...
+# Subtest: mirrored yaw commands produce mirrored jets of equal magnitude
+ok 26 - mirrored yaw commands produce mirrored jets of equal magnitude
+  ---
+  duration_ms: 1.470393
+  ...
+# Subtest: every firing obeys Newton's third law: exhaust is exactly opposite the push
+ok 27 - every firing obeys Newton's third law: exhaust is exactly opposite the push
+  ---
+  duration_ms: 11.535725
+  ...
+# Subtest: a laterally-pushing jet always sits on the hull OPPOSITE the push
+ok 28 - a laterally-pushing jet always sits on the hull OPPOSITE the push
+  ---
+  duration_ms: 3.237749
+  ...
+# Subtest: strafing lights the pair on one hull — a translation, with no yaw couple
+ok 29 - strafing lights the pair on one hull — a translation, with no yaw couple
+  ---
+  duration_ms: 1.918504
+  ...
+# Subtest: braking lights BOTH bow retros, exhausting along the nose
+ok 30 - braking lights BOTH bow retros, exhausting along the nose
+  ---
+  duration_ms: 0.66042
+  ...
+# Subtest: main-drive demand is reported from physics, and retro-only braking darkens the main nozzle
+ok 31 - main-drive demand is reported from physics, and retro-only braking darkens the main nozzle
+  ---
+  duration_ms: 0.810622
+  ...
+# Subtest: the resolver maps demand to intensity continuously, not as an on/off switch
+ok 32 - the resolver maps demand to intensity continuously, not as an on/off switch
+  ---
+  duration_ms: 0.318144
+  ...
+# Subtest: yaw intensity distinguishes entering a turn from arresting one
+ok 33 - yaw intensity distinguishes entering a turn from arresting one
+  ---
+  duration_ms: 0.532035
+  ...
+# Subtest: assist counter-thrust fires jets with NO pilot translation input at all
+ok 34 - assist counter-thrust fires jets with NO pilot translation input at all
+  ---
+  duration_ms: 0.380693
+  ...
+# Subtest: a blended strafe-and-yaw loads one end and unloads the other, instead of fighting itself
+ok 35 - a blended strafe-and-yaw loads one end and unloads the other, instead of fighting itself
+  ---
+  duration_ms: 0.358436
+  ...
+# Subtest: a null or empty actuator block resolves to no jets rather than throwing
+ok 36 - a null or empty actuator block resolves to no jets rather than throwing
+  ---
+  duration_ms: 0.209214
+  ...
+# Subtest: a supplied output reuses firing records and channel descriptors across active and idle frames
+ok 37 - a supplied output reuses firing records and channel descriptors across active and idle frames
+  ---
+  duration_ms: 0.285317
+  ...
+# Subtest: every drive family resolves a usable scale, including the ones with no authored accels
+ok 38 - every drive family resolves a usable scale, including the ones with no authored accels
+  ---
+  duration_ms: 0.266662
+  ...
+# Subtest: nozzle positions rotate with the hull instead of being baked in world axes
+ok 39 - nozzle positions rotate with the hull instead of being baked in world axes
+  ---
+  duration_ms: 0.261049
+  ...
+# Subtest: a stationary firing ship shows moving exhaust: the clock advances and reaches the shader
+ok 40 - a stationary firing ship shows moving exhaust: the clock advances and reaches the shader
+  ---
+  duration_ms: 28.905992
+  ...
+# Subtest: a stationary firing ship shows moving exhaust: the field itself changes, every family
+ok 41 - a stationary firing ship shows moving exhaust: the field itself changes, every family
+  ---
+  duration_ms: 5.324677
+  ...
+# Subtest: reduced motion calms the exhaust without freezing it
+ok 42 - reduced motion calms the exhaust without freezing it
+  ---
+  duration_ms: 3.018621
+  ...
+# Subtest: the hot core never ends short of the cold sheath wrapped around it
+ok 43 - the hot core never ends short of the cold sheath wrapped around it
+  ---
+  duration_ms: 1.172483
+  ...
+# Subtest: creases darken the interior but never open a hole between sheets (B19)
+ok 44 - creases darken the interior but never open a hole between sheets (B19)
+  ---
+  duration_ms: 2.849072
+  ...
+# Subtest: per-instance extent varies and can only ever shorten (B18, B9)
+ok 45 - per-instance extent varies and can only ever shorten (B18, B9)
+  ---
+  duration_ms: 0.709245
+  ...
+# Subtest: two ships of one family do not animate in lockstep
+ok 46 - two ships of one family do not animate in lockstep
+  ---
+  duration_ms: 2.209728
+  ...
+# Subtest: every live family pair differs on several construction axes
+ok 47 - every live family pair differs on several construction axes
+  ---
+  duration_ms: 0.44953
+  ...
+# Subtest: disciplined and loaded drives are opposites, not neighbours
+ok 48 - disciplined and loaded drives are opposites, not neighbours
+  ---
+  duration_ms: 0.38144
+  ...
+# Subtest: the unusual families do not read as reaction drives
+ok 49 - the unusual families do not read as reaction drives
+  ---
+  duration_ms: 0.277983
+  ...
+# Subtest: the three-silhouette prototype record is complete and one candidate is wired per group
+ok 50 - the three-silhouette prototype record is complete and one candidate is wired per group
+  ---
+  duration_ms: 0.369594
+  ...
+# Subtest: construction values are clamped to their stated limits
+ok 51 - construction values are clamped to their stated limits
+  ---
+  duration_ms: 0.435261
+  ...
+# Subtest: an RCS pulse throws a packet: the head leaves while the collar shuts
+ok 52 - an RCS pulse throws a packet: the head leaves while the collar shuts
+  ---
+  duration_ms: 0.238483
+  ...
+# Subtest: an RCS jet holds its reach and does not retract into its nozzle
+ok 53 - an RCS jet holds its reach and does not retract into its nozzle
+  ---
+  duration_ms: 7.047283
+  ...
+# Subtest: two RCS taps carry two independent clocks
+ok 54 - two RCS taps carry two independent clocks
+  ---
+  duration_ms: 0.871944
+  ...
+# Subtest: a shutting valve blows down rather than dimming at a constant rate
+ok 55 - a shutting valve blows down rather than dimming at a constant rate
+  ---
+  duration_ms: 0.70557
+  ...
+# Subtest: the brake bites on engagement and relaxes into the held jet
+ok 56 - the brake bites on engagement and relaxes into the held jet
+  ---
+  duration_ms: 0.478829
+  ...
+# Subtest: the bite is heat and collimation, never reach: the jet-likeness contract holds
+ok 57 - the bite is heat and collimation, never reach: the jet-likeness contract holds
+  ---
+  duration_ms: 0.63808
+  ...
+# Subtest: lighting a drive is an event, not the first part of a ramp
+ok 58 - lighting a drive is an event, not the first part of a ramp
+  ---
+  duration_ms: 0.379808
+  ...
+# Subtest: the ignition transient is spent on structure, so reduced flash still sees the engine commit
+ok 59 - the ignition transient is spent on structure, so reduced flash still sees the engine commit
+  ---
+  duration_ms: 1.169077
+  ...
+# Subtest: boost drives the arrangement harder rather than just brighter
+ok 60 - boost drives the arrangement harder rather than just brighter
+  ---
+  duration_ms: 3.524388
+  ...
+# Subtest: the fold clock is integrated, so a throttle change can never scrub the creases
+ok 61 - the fold clock is integrated, so a throttle change can never scrub the creases
+  ---
+  duration_ms: 51.05767
+  ...
+# Subtest: fleet drives follow their sockets through turns, stops and restarts
+ok 62 - fleet drives follow their sockets through turns, stops and restarts
+  ---
+  duration_ms: 3.806804
+  ...
+# Subtest: a crowd of ships all draw, all differ, and cost no per-frame allocation
+ok 63 - a crowd of ships all draw, all differ, and cost no per-frame allocation
+  ---
+  duration_ms: 1.717432
+  ...
+# Subtest: the GLSL mirror carries every term the JS law does
+ok 64 - the GLSL mirror carries every term the JS law does
+  ---
+  duration_ms: 0.284398
+  ...
+# Subtest: each family binds its own construction, and the distortion encoder stays flat
+ok 65 - each family binds its own construction, and the distortion encoder stays flat
+  ---
+  duration_ms: 2.572264
+  ...
+# Subtest: the shell arc never exceeds the span the vertex stage can place
+ok 66 - the shell arc never exceeds the span the vertex stage can place
+  ---
+  duration_ms: 0.319231
+  ...
+# Subtest: the fold profile bake is deterministic and tells the families apart
+ok 67 - the fold profile bake is deterministic and tells the families apart
+  ---
+  duration_ms: 4.073151
+  ...
+# Subtest: the nozzle shock train stays near the lip instead of laddering the jet
+ok 68 - the nozzle shock train stays near the lip instead of laddering the jet
+  ---
+  duration_ms: 0.320242
+  ...
+# Subtest: the jet/history boundary is allocation-free and tracks the live jet
+ok 69 - the jet/history boundary is allocation-free and tracks the live jet
+  ---
+  duration_ms: 0.626252
+  ...
+# Subtest: live ENGINE_PROFILES ids each resolve to a validated main+RCS pack
+ok 70 - live ENGINE_PROFILES ids each resolve to a validated main+RCS pack
+  ---
+  duration_ms: 4.698575
+  ...
+# Subtest: accepted Kestrel substrate remains the ion_small family identity
+ok 71 - accepted Kestrel substrate remains the ion_small family identity
+  ---
+  duration_ms: 0.149594
+  ...
+# Subtest: live families differ by structure and timing, not tint alone
+ok 72 - live families differ by structure and timing, not tint alone
+  ---
+  duration_ms: 0.838824
+  ...
+# Subtest: throttle continuum responds continuously for every family (length/width/flow)
+ok 73 - throttle continuum responds continuously for every family (length/width/flow)
+  ---
+  duration_ms: 0.433387
+  ...
+# Subtest: drive modes communicate idle/accel/cruise/boost/brake/reverse through structure
+ok 74 - drive modes communicate idle/accel/cruise/boost/brake/reverse through structure
+  ---
+  duration_ms: 0.386826
+  ...
+# Subtest: pool samples carry continuum mode without per-frame allocation
+ok 75 - pool samples carry continuum mode without per-frame allocation
+  ---
+  duration_ms: 2.105819
+  ...
+# Subtest: family pools produce distinct layer geometry at equal throttle
+ok 76 - family pools produce distinct layer geometry at equal throttle
+  ---
+  duration_ms: 1.7271
+  ...
+# Subtest: RCS impulse direction and lifecycle are truthful and bounded
+ok 77 - RCS impulse direction and lifecycle are truthful and bounded
+  ---
+  duration_ms: 15.547441
+  ...
+# Subtest: accessibility preserves family feedback for every pack
+ok 78 - accessibility preserves family feedback for every pack
+  ---
+  duration_ms: 12.432371
+  ...
+# Subtest: socket axis truth: exhaust follows socket forward (negated for shader convention)
+ok 79 - socket axis truth: exhaust follows socket forward (negated for shader convention)
+  ---
+  duration_ms: 0.546142
+  ...
+# Subtest: family GPU batches bind textures and dispose cleanly
+ok 80 - family GPU batches bind textures and dispose cleanly
+  ---
+  duration_ms: 8.378879
+  ...
+# Subtest: drive integration is continuous (no binary boost snap)
+ok 81 - drive integration is continuous (no binary boost snap)
+  ---
+  duration_ms: 0.321089
+  ...
+# Subtest: pairwise family distinction helper rejects tint-only clones
+ok 82 - pairwise family distinction helper rejects tint-only clones
+  ---
+  duration_ms: 0.515685
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: weapon lights are a dedicated pool and do not steal the six event lights
+ok 83 - weapon lights are a dedicated pool and do not steal the six event lights
+  ---
+  duration_ms: 44.161938
+  ...
+# Subtest: shield contact writes four bubble hit slots instead of a spark in empty space
+ok 84 - shield contact writes four bubble hit slots instead of a spark in empty space
+  ---
+  duration_ms: 19.81761
+  ...
+# Subtest: distortion is a graph pass and stays off when nothing is live
+ok 85 - distortion is a graph pass and stays off when nothing is live
+  ---
+  duration_ms: 14.05576
+  ...
+# Subtest: weapon depth binding follows the active graph route rather than a retained graph object
+ok 86 - weapon depth binding follows the active graph route rather than a retained graph object
+  ---
+  duration_ms: 0.198719
+  ...
+# Subtest: pulse chase-camera evidence: dash, barrel flipbook, and contact survive bloom-off
+ok 87 - pulse chase-camera evidence: dash, barrel flipbook, and contact survive bloom-off
+  ---
+  duration_ms: 20.065207
+  ...
+# Subtest: reduced-flash and reduced-motion keep the dash and contact mark, not haze
+ok 88 - reduced-flash and reduced-motion keep the dash and contact mark, not haze
+  ---
+  duration_ms: 23.036141
+  ...
+# Subtest: energy-card recipes never fall back to a cylinder identity
+ok 89 - energy-card recipes never fall back to a cylinder identity
+  ---
+  duration_ms: 0.341378
+  ...
+# Subtest: distortion encodes signed offsets around neutral and composite decodes them
+ok 90 - distortion encodes signed offsets around neutral and composite decodes them
+  ---
+  duration_ms: 11.262012
+  ...
+# Subtest: presenter clears stale depth and carries recipe pixel floors per bolt
+ok 91 - presenter clears stale depth and carries recipe pixel floors per bolt
+  ---
+  duration_ms: 13.535232
+  ...
+# Subtest: normal-blended bolts sort swept midpoints in camera depth with every slot attribute and mapping
+ok 92 - normal-blended bolts sort swept midpoints in camera depth with every slot attribute and mapping
+  ---
+  duration_ms: 2.267478
+  ...
+# Subtest: equal-depth bolts retain write order and a reused pool handles partial and full volleys
+ok 93 - equal-depth bolts retain write order and a reused pool handles partial and full volleys
+  ---
+  duration_ms: 1.060506
+  ...
+# Subtest: shared accessibility freezes bolt decoration and removes crackle without stopping EMP travel
+ok 94 - shared accessibility freezes bolt decoration and removes crackle without stopping EMP travel
+  ---
+  duration_ms: 9.267112
+  ...
+# Subtest: ballistic narrowing precedes the pixel floor and concussion deformation excludes kinetic and rail
+ok 95 - ballistic narrowing precedes the pixel floor and concussion deformation excludes kinetic and rail
+  ---
+  duration_ms: 0.36843
+  ...
+# Subtest: weapon ribbons stay on WebGL1-compatible uint16 indices
+ok 96 - weapon ribbons stay on WebGL1-compatible uint16 indices
+  ---
+  duration_ms: 1.887087
+  ...
+# Subtest: weapon pose and velocity preserve zero components
+ok 97 - weapon pose and velocity preserve zero components
+  ---
+  duration_ms: 7.621233
+  ...
+# Subtest: accessibility scales flash geometry and reproject keeps target-local marks
+ok 98 - accessibility scales flash geometry and reproject keeps target-local marks
+  ---
+  duration_ms: 8.586424
+  ...
+1..98
+# tests 98
+# suites 0
+# pass 98
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 578.122087

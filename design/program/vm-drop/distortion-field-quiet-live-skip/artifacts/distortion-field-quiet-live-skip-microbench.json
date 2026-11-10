@@ -1,0 +1,67 @@
+{
+  "label": "distortion-field-quiet-live-skip",
+  "primary": "quiet-distortion-live-zero-update",
+  "iters": 200000,
+  "capacity": 64,
+  "pairs": [
+    {
+      "beforeMs": 15.423,
+      "afterMs": 2.708,
+      "speedup": 5.695
+    },
+    {
+      "beforeMs": 14.757,
+      "afterMs": 2.442,
+      "speedup": 6.042
+    },
+    {
+      "beforeMs": 15.368,
+      "afterMs": 2.487,
+      "speedup": 6.178
+    },
+    {
+      "beforeMs": 15.536,
+      "afterMs": 2.473,
+      "speedup": 6.281
+    },
+    {
+      "beforeMs": 15.039,
+      "afterMs": 2.362,
+      "speedup": 6.368
+    },
+    {
+      "beforeMs": 14.998,
+      "afterMs": 2.172,
+      "speedup": 6.906
+    },
+    {
+      "beforeMs": 15.787,
+      "afterMs": 2.22,
+      "speedup": 7.111
+    },
+    {
+      "beforeMs": 15.628,
+      "afterMs": 2.19,
+      "speedup": 7.137
+    },
+    {
+      "beforeMs": 15.851,
+      "afterMs": 2.146,
+      "speedup": 7.387
+    },
+    {
+      "beforeMs": 18.187,
+      "afterMs": 2.4,
+      "speedup": 7.578
+    },
+    {
+      "beforeMs": 20.763,
+      "afterMs": 2.335,
+      "speedup": 8.894
+    }
+  ],
+  "medianSpeedup": 6.906,
+  "minSpeedup": 5.695,
+  "maxSpeedup": 8.894,
+  "note": "Picture unchanged: no haze when idle; uTime advances; one idle publish then skip."
+}

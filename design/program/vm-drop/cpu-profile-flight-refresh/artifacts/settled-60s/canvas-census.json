@@ -1,0 +1,62 @@
+[
+ {
+  "id": "gl-canvas",
+  "className": null,
+  "backingWidth": 435,
+  "backingHeight": 244,
+  "clientWidth": 1280,
+  "clientHeight": 719,
+  "display": "block",
+  "connected": true
+ },
+ {
+  "id": null,
+  "className": "sf-radar-semantic-canvas",
+  "backingWidth": 220,
+  "backingHeight": 220,
+  "clientWidth": 220,
+  "clientHeight": 220,
+  "display": "block",
+  "connected": true
+ },
+ {
+  "id": null,
+  "className": "sf-fx-flickergrid",
+  "backingWidth": 560,
+  "backingHeight": 260,
+  "clientWidth": 0,
+  "clientHeight": 0,
+  "display": "inline",
+  "connected": true
+ },
+ {
+  "id": "sf-speed-lines",
+  "className": null,
+  "backingWidth": 1280,
+  "backingHeight": 719,
+  "clientWidth": 1280,
+  "clientHeight": 719,
+  "display": "block",
+  "connected": true
+ },
+ {
+  "id": "boot-terminal-canvas",
+  "className": "boot-canvas",
+  "backingWidth": 1280,
+  "backingHeight": 743,
+  "clientWidth": 0,
+  "clientHeight": 0,
+  "display": "block",
+  "connected": true
+ },
+ {
+  "id": null,
+  "className": "sf-capital-boss-overlay",
+  "backingWidth": 1280,
+  "backingHeight": 719,
+  "clientWidth": 1280,
+  "clientHeight": 719,
+  "display": "block",
+  "connected": true
+ }
+]

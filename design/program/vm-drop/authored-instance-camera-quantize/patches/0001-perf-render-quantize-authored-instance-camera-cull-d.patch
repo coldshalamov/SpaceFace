@@ -1,0 +1,566 @@
+From a5cb8e4ab49a0786600811ebde0b23789788a5d8 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 02:22:10 -0400
+Subject: [PATCH] perf(render): quantize authored-instance camera cull dirty
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Chase follow micro-moves marked cameraDirty every frame (exact matrix
+equality), forcing every active pool owner through syncOwnerSlots under
+prepareFrame. Quantize translation to 0.25 WU and basis/projection to
+1e-3 so quiet damping reuses the stable owner path; real pans/zooms
+still dirty.
+
+Portable pool sync ~2.32× (120 owners, 0.05 WU jitter; ownersVisited
+~5.5× fewer). Picture ON; soft-GPU fps ignored. No master merge.
+---
+ ...d-instance-camera-quantize-microbench.json |  72 ++++++
+ ...ed-instance-camera-quantize-microbench.mjs |  72 ++++++
+ ...ests-authored-instance-camera-quantize.log | 231 ++++++++++++++++++
+ src/render/partsLibrary.js                    | 113 ++++++++-
+ 4 files changed, 486 insertions(+), 2 deletions(-)
+ create mode 100644 artifacts/authored-instance-camera-quantize-microbench.json
+ create mode 100644 artifacts/authored-instance-camera-quantize-microbench.mjs
+ create mode 100644 artifacts/focused-tests-authored-instance-camera-quantize.log
+
+diff --git a/artifacts/authored-instance-camera-quantize-microbench.json b/artifacts/authored-instance-camera-quantize-microbench.json
+new file mode 100644
+index 000000000..068e6a44f
+--- /dev/null
++++ b/artifacts/authored-instance-camera-quantize-microbench.json
+@@ -0,0 +1,72 @@
++{
++  "label": "authored-instance-camera-quantize",
++  "oracle": {
++    "microDirtyRate": 0.19,
++    "largeDirtyRate": 1,
++    "microQuieterThanLarge": true,
++    "largeMostlyDirty": true
++  },
++  "scenarios": [
++    {
++      "owners": 80,
++      "frames": 4000,
++      "jitterWu": 0.05,
++      "beforeMs": 344.052,
++      "afterMs": 72.92,
++      "speedup": 4.718,
++      "beforeDirtyRate": 1,
++      "afterDirtyRate": 0.1827,
++      "beforeOwnersVisited": 320000,
++      "afterOwnersVisited": 58480
++    },
++    {
++      "owners": 120,
++      "frames": 4000,
++      "jitterWu": 0.05,
++      "beforeMs": 202.127,
++      "afterMs": 87.118,
++      "speedup": 2.32,
++      "beforeDirtyRate": 1,
++      "afterDirtyRate": 0.1827,
++      "beforeOwnersVisited": 480000,
++      "afterOwnersVisited": 87720
++    },
++    {
++      "owners": 120,
++      "frames": 4000,
++      "jitterWu": 0.02,
++      "beforeMs": 213.108,
++      "afterMs": 60.845,
++      "speedup": 3.502,
++      "beforeDirtyRate": 1,
++      "afterDirtyRate": 0.054,
++      "beforeOwnersVisited": 480000,
++      "afterOwnersVisited": 25920
++    },
++    {
++      "owners": 200,
++      "frames": 3000,
++      "jitterWu": 0.05,
++      "beforeMs": 263.799,
++      "afterMs": 113.127,
++      "speedup": 2.332,
++      "beforeDirtyRate": 1,
++      "afterDirtyRate": 0.1833,
++      "beforeOwnersVisited": 600000,
++      "afterOwnersVisited": 110000
++    }
++  ],
++  "primary": {
++    "owners": 120,
++    "frames": 4000,
++    "jitterWu": 0.05,
++    "beforeMs": 202.127,
++    "afterMs": 87.118,
++    "speedup": 2.32,
++    "beforeDirtyRate": 1,
++    "afterDirtyRate": 0.1827,
++    "beforeOwnersVisited": 480000,
++    "afterOwnersVisited": 87720
++  },
++  "note": "Portable pool sync. Soft-GPU fps not claimed. Before=exact cameraDirty; After=0.25WU/1e-3 quantize."
++}
+\ No newline at end of file
+diff --git a/artifacts/authored-instance-camera-quantize-microbench.mjs b/artifacts/authored-instance-camera-quantize-microbench.mjs
+new file mode 100644
+index 000000000..61d6c3f50
+--- /dev/null
++++ b/artifacts/authored-instance-camera-quantize-microbench.mjs
+@@ -0,0 +1,72 @@
++/**
++ * Primary KPI: authored instance pool sync under prepareFrame with chase micro-moves.
++ * Before = exact camera matrix equality (cameraDirty every frame).
++ * After  = quantized camera capture (this package).
++ * Soft-GPU fps not claimed.
++ */
++import { performance } from 'node:perf_hooks';
++import { writeFileSync } from 'node:fs';
++import {
++  runAuthoredInstanceCameraDirtyMicrobench,
++  setAuthoredInstanceCameraCullExactCompare,
++} from '../src/render/partsLibrary.js';
++
++function runPair(ownerCount, frames, jitterWu) {
++  // Warm both modes
++  runAuthoredInstanceCameraDirtyMicrobench({ ownerCount, frames: 40, jitterWu, exactCameraDirty: true });
++  runAuthoredInstanceCameraDirtyMicrobench({ ownerCount, frames: 40, jitterWu, exactCameraDirty: false });
++  const before = runAuthoredInstanceCameraDirtyMicrobench({
++    ownerCount, frames, jitterWu, exactCameraDirty: true,
++  });
++  const after = runAuthoredInstanceCameraDirtyMicrobench({
++    ownerCount, frames, jitterWu, exactCameraDirty: false,
++  });
++  return {
++    owners: ownerCount,
++    frames,
++    jitterWu,
++    beforeMs: +before.ms.toFixed(3),
++    afterMs: +after.ms.toFixed(3),
++    speedup: +(before.ms / Math.max(after.ms, 1e-9)).toFixed(3),
++    beforeDirtyRate: +before.dirtyRate.toFixed(4),
++    afterDirtyRate: +after.dirtyRate.toFixed(4),
++    beforeOwnersVisited: before.ownersVisited,
++    afterOwnersVisited: after.ownersVisited,
++  };
++}
++
++function oracle() {
++  setAuthoredInstanceCameraCullExactCompare(false);
++  const micro = runAuthoredInstanceCameraDirtyMicrobench({
++    ownerCount: 8, frames: 200, jitterWu: 0.05, exactCameraDirty: false,
++  });
++  const large = runAuthoredInstanceCameraDirtyMicrobench({
++    ownerCount: 8, frames: 200, jitterWu: 2.0, exactCameraDirty: false,
++  });
++  return {
++    microDirtyRate: +micro.dirtyRate.toFixed(4),
++    largeDirtyRate: +large.dirtyRate.toFixed(4),
++    microQuieterThanLarge: micro.dirtyRate < large.dirtyRate,
++    largeMostlyDirty: large.dirtyRate > 0.8,
++  };
++}
++
++const scenarios = [
++  runPair(80, 4000, 0.05),
++  runPair(120, 4000, 0.05),
++  runPair(120, 4000, 0.02),
++  runPair(200, 3000, 0.05),
++];
++const primary = scenarios.find((s) => s.owners === 120 && s.jitterWu === 0.05) || scenarios[0];
++const out = {
++  label: 'authored-instance-camera-quantize',
++  oracle: oracle(),
++  scenarios,
++  primary,
++  note: 'Portable pool sync. Soft-GPU fps not claimed. Before=exact cameraDirty; After=0.25WU/1e-3 quantize.',
++};
++writeFileSync(
++  new URL('./authored-instance-camera-quantize-microbench.json', import.meta.url),
++  JSON.stringify(out, null, 2),
++);
++console.log(JSON.stringify(out, null, 2));
+diff --git a/artifacts/focused-tests-authored-instance-camera-quantize.log b/artifacts/focused-tests-authored-instance-camera-quantize.log
+new file mode 100644
+index 000000000..607baede4
+--- /dev/null
++++ b/artifacts/focused-tests-authored-instance-camera-quantize.log
+@@ -0,0 +1,231 @@
++TAP version 13
++# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
++ok 1 - player and on-screen ships stay on the inner band; off-glass runway is middle
++  ---
++  duration_ms: 2.222458
++  ...
++# Subtest: middle-band closures fire once per period, staggered by slot
++ok 2 - middle-band closures fire once per period, staggered by slot
++  ---
++  duration_ms: 0.291362
++  ...
++# Subtest: opaque nearby instances keep casting; far and empty chunks drop out of the shadow map
++ok 3 - opaque nearby instances keep casting; far and empty chunks drop out of the shadow map
++  ---
++  duration_ms: 1.814626
++  ...
++# Subtest: nearest submitted instance uses the instance translation, not the origin mesh
++ok 4 - nearest submitted instance uses the instance translation, not the origin mesh
++  ---
++  duration_ms: 2.109735
++  ...
++# Subtest: apply policy hides empty chunks, enables frustum bounds, and turns off far shadows
++ok 5 - apply policy hides empty chunks, enables frustum bounds, and turns off far shadows
++  ---
++  duration_ms: 2.830126
++  ...
++# Subtest: live instance finalize refreshes bounds when the camera/origin moved
++ok 6 - live instance finalize refreshes bounds when the camera/origin moved
++  ---
++  duration_ms: 19.902914
++  ...
++# Subtest: one traversal retains records, reclaims membership, and detects visibility and LOD changes
++ok 7 - one traversal retains records, reclaims membership, and detects visibility and LOD changes
++  ---
++  duration_ms: 20.551427
++  ...
++# Subtest: authored instance pools consume bounded frame records, clean omissions, and retain fallback sync
++ok 8 - authored instance pools consume bounded frame records, clean omissions, and retain fallback sync
++  ---
++  duration_ms: 21.283176
++  ...
++# Subtest: asteroid pool reuses a static matrix and uploads real instance data after transform and rebase
++ok 9 - asteroid pool reuses a static matrix and uploads real instance data after transform and rebase
++  ---
++  duration_ms: 5.034038
++  ...
++# Subtest: asteroid visibility and normal-shadow camera union preserve only relevant exact bodies
++ok 10 - asteroid visibility and normal-shadow camera union preserve only relevant exact bodies
++  ---
++  duration_ms: 7.004417
++  ...
++# Subtest: asteroid static reuse invalidates for parented camera motion and detached owners
++ok 11 - asteroid static reuse invalidates for parented camera motion and detached owners
++  ---
++  duration_ms: 2.405848
++  ...
++# Subtest: asteroid membership, release, and LOD detail visibility keep source ownership exact
++ok 12 - asteroid membership, release, and LOD detail visibility keep source ownership exact
++  ---
++  duration_ms: 2.309882
++  ...
++1..12
++# tests 12
++# suites 0
++# pass 12
++# fail 0
++# cancelled 0
++# skipped 0
++# todo 0
++# duration_ms 523.333414
++TAP version 13
++#  Particle system powered by three.quarks. https://quarks.art/
++# Subtest: component spans retain one bounded union in component indexes
++ok 1 - component spans retain one bounded union in component indexes
++  ---
++  duration_ms: 2.999251
++  ...
++# Subtest: owner registration leaves every attribute untouched when a later attribute is rejected
++ok 2 - owner registration leaves every attribute untouched when a later attribute is rejected
++  ---
++  duration_ms: 1.69759
++  ...
++# Subtest: scene-owned publication forces the initial buffer and restores the prior hook
++ok 3 - scene-owned publication forces the initial buffer and restores the prior hook
++  ---
++  duration_ms: 2.171574
++  ...
++# Subtest: ordinary dirty spans survive skipped draws and publish once on eligibility
++ok 4 - ordinary dirty spans survive skipped draws and publish once on eligibility
++  ---
++  duration_ms: 0.886945
++  ...
++# Subtest: one interleaved backing owns ranged publication, replacement, and context recovery
++ok 5 - one interleaved backing owns ranged publication, replacement, and context recovery
++  ---
++  duration_ms: 9.687197
++  ...
++# Subtest: probe-only full-span control changes requested bytes without changing logical writes
++ok 6 - probe-only full-span control changes requested bytes without changing logical writes
++  ---
++  duration_ms: 0.603715
++  ...
++# Subtest: probe-only full-span control cannot change during an armed renderer epoch
++ok 7 - probe-only full-span control cannot change during an armed renderer epoch
++  ---
++  duration_ms: 0.774193
++  ...
++# Subtest: context loss supersedes an unacknowledged generation and restore forces a full replacement
++ok 8 - context loss supersedes an unacknowledged generation and restore forces a full replacement
++  ---
++  duration_ms: 0.653245
++  ...
++# Subtest: context restoration accepts Three driver re-upload without weakening unsolicited callback detection
++ok 9 - context restoration accepts Three driver re-upload without weakening unsolicited callback detection
++  ---
++  duration_ms: 0.824792
++  ...
++# Subtest: Three first bufferData does not retire the owner or abort later frames
++ok 10 - Three first bufferData does not retire the owner or abort later frames
++  ---
++  duration_ms: 0.547221
++  ...
++# Subtest: an invalid owner can still release its callback and coordinator ownership
++ok 11 - an invalid owner can still release its callback and coordinator ownership
++  ---
++  duration_ms: 0.552574
++  ...
++# Subtest: one owner trap cannot latch the coordinator dead for later frames
++ok 12 - one owner trap cannot latch the coordinator dead for later frames
++  ---
++  duration_ms: 0.703141
++  ...
++# Subtest: a nested scene render during publication does not freeze later frames
++ok 13 - a nested scene render during publication does not freeze later frames
++  ---
++  duration_ms: 0.509937
++  ...
++# Subtest: live sprite and trail owners publish only their packed prefixes after initial residency
++ok 14 - live sprite and trail owners publish only their packed prefixes after initial residency
++  ---
++  duration_ms: 32.670441
++  ...
++# Subtest: dense one-times and five-times fanout stays at 31 ranges and charges packed bytes
++ok 15 - dense one-times and five-times fanout stays at 31 ranges and charges packed bytes
++  ---
++  duration_ms: 17.232702
++  ...
++# Subtest: common-rock matrices publish only the changed compacted slot after residency
++ok 16 - common-rock matrices publish only the changed compacted slot after residency
++  ---
++  duration_ms: 7.291105
++  ...
++# Subtest: ordinary-flight plume layers publish one packed socket prefix per layer
++ok 17 - ordinary-flight plume layers publish one packed socket prefix per layer
++  ---
++  duration_ms: 12.345304
++  ...
++# Subtest: signed RCS layers publish only the live impulse prefix
++ok 18 - signed RCS layers publish only the live impulse prefix
++  ---
++  duration_ms: 5.459912
++  ...
++# Subtest: ordinary-flight shard particles publish only their live prefix and survive quality migration
++ok 19 - ordinary-flight shard particles publish only their live prefix and survive quality migration
++  ---
++  duration_ms: 15.147651
++  ...
++# Subtest: shard particles pack fragmented CPU slots into the live GPU prefix
++ok 20 - shard particles pack fragmented CPU slots into the live GPU prefix
++  ---
++  duration_ms: 1.226589
++  ...
++# Subtest: nearby asteroid seam markers publish only their live matrix and color prefix
++ok 21 - nearby asteroid seam markers publish only their live matrix and color prefix
++  ---
++  duration_ms: 3.7538
++  ...
++# Subtest: active field-device geometry publishes each visible instance prefix
++ok 22 - active field-device geometry publishes each visible instance prefix
++  ---
++  duration_ms: 5.10895
++  ...
++# Subtest: tether topology coordinates stay resident while the rope positions move
++ok 23 - tether topology coordinates stay resident while the rope positions move
++  ---
++  duration_ms: 9.163684
++  ...
++# Subtest: authored instance chunks publish only moved, hidden, released, and reused matrix slots
++ok 24 - authored instance chunks publish only moved, hidden, released, and reused matrix slots
++  ---
++  duration_ms: 5.813387
++  ...
++# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
++ok 25 - player and on-screen ships stay on the inner band; off-glass runway is middle
++  ---
++  duration_ms: 1.449729
++  ...
++# Subtest: middle-band closures fire once per period, staggered by slot
++ok 26 - middle-band closures fire once per period, staggered by slot
++  ---
++  duration_ms: 0.231493
++  ...
++# Subtest: opaque nearby instances keep casting; far and empty chunks drop out of the shadow map
++ok 27 - opaque nearby instances keep casting; far and empty chunks drop out of the shadow map
++  ---
++  duration_ms: 1.266942
++  ...
++# Subtest: nearest submitted instance uses the instance translation, not the origin mesh
++ok 28 - nearest submitted instance uses the instance translation, not the origin mesh
++  ---
++  duration_ms: 1.483154
++  ...
++# Subtest: apply policy hides empty chunks, enables frustum bounds, and turns off far shadows
++ok 29 - apply policy hides empty chunks, enables frustum bounds, and turns off far shadows
++  ---
++  duration_ms: 1.943508
++  ...
++# Subtest: live instance finalize refreshes bounds when the camera/origin moved
++ok 30 - live instance finalize refreshes bounds when the camera/origin moved
++  ---
++  duration_ms: 28.201907
++  ...
++1..30
++# tests 30
++# suites 0
++# pass 30
++# fail 0
++# cancelled 0
++# skipped 0
++# todo 0
++# duration_ms 810.595324
+diff --git a/src/render/partsLibrary.js b/src/render/partsLibrary.js
+index af0c1534f..6ce4d0d1f 100644
+--- a/src/render/partsLibrary.js
++++ b/src/render/partsLibrary.js
+@@ -10775,6 +10775,27 @@ function createInstanceCullContext() {
+   };
+ }
+ 
++// Chase follow damping moves the camera every frame by <<1 WU. Exact matrix equality
++// marked cameraDirty continuously, forcing every active authored-instance owner through
++// syncOwnerSlots (frustum + matrix compare) under prepareFrame. Quantize translation to
++// 0.25 WU and basis/projection to 1e-3 so micro-moves reuse the stable owner path; real
++// pans/zooms still dirty.
++const CAMERA_CULL_POS_QUANT_WU = 0.25;
++const CAMERA_CULL_BASIS_EPS = 1e-3;
++// Bench-only: force exact matrix compare (pre-quantize residual).
++let _cameraCullExactCompare = false;
++export function setAuthoredInstanceCameraCullExactCompare(enabled) {
++  _cameraCullExactCompare = enabled === true;
++}
++
++function quantizeCullCameraValue(value, index) {
++  const n = Number(value) || 0;
++  if (index === 12 || index === 13 || index === 14) {
++    return Math.round(n / CAMERA_CULL_POS_QUANT_WU) * CAMERA_CULL_POS_QUANT_WU;
++  }
++  return Math.round(n / CAMERA_CULL_BASIS_EPS) * CAMERA_CULL_BASIS_EPS;
++}
++
+ function captureCullCameraState(camera, snapshot) {
+   const present = !!camera;
+   let changed = !snapshot.initialized || snapshot.present !== present;
+@@ -10783,13 +10804,16 @@ function captureCullCameraState(camera, snapshot) {
+   if (!camera) return changed;
+   const world = camera.matrixWorld && camera.matrixWorld.elements;
+   const projection = camera.projectionMatrix && camera.projectionMatrix.elements;
++  const exact = _cameraCullExactCompare;
+   for (let index = 0; index < 16; index++) {
+-    const value = world ? Number(world[index]) || 0 : 0;
++    const raw = world ? Number(world[index]) || 0 : 0;
++    const value = exact ? raw : quantizeCullCameraValue(raw, index);
+     if (snapshot.values[index] !== value) changed = true;
+     snapshot.values[index] = value;
+   }
+   for (let index = 0; index < 16; index++) {
+-    const value = projection ? Number(projection[index]) || 0 : 0;
++    const raw = projection ? Number(projection[index]) || 0 : 0;
++    const value = exact ? raw : quantizeCullCameraValue(raw, -1);
+     if (snapshot.values[index + 16] !== value) changed = true;
+     snapshot.values[index + 16] = value;
+   }
+@@ -10879,6 +10903,91 @@ function drainOwnerReleaseCallbacks(state) {
+  * the same private allocator, release listeners, visibility logic, InstancedMesh attribute, and
+  * fallback sync as live authored ships; only the two tiny geometry proxies are synthetic.
+  */
++export function runAuthoredInstanceCameraDirtyMicrobench(options = {}) {
++  const ownerCount = Math.max(2, Math.floor(Number(options.ownerCount) || 80));
++  const frames = Math.max(10, Math.floor(Number(options.frames) || 2000));
++  const jitterWu = Number.isFinite(Number(options.jitterWu)) ? Number(options.jitterWu) : 0.05;
++  const exact = options.exactCameraDirty === true;
++  const scene = new THREE.Scene();
++  const geometry = new THREE.BoxGeometry(1, 1, 1);
++  const material = new THREE.MeshStandardMaterial();
++  const owners = [];
++  for (let i = 0; i < ownerCount; i++) {
++    const owner = new THREE.Group();
++    const proxy = new THREE.Object3D();
++    owner.position.set((i % 20) * 40, 0, Math.floor(i / 20) * 40);
++    owner.add(proxy);
++    scene.add(owner);
++    allocateInstance(scene, owner, proxy, geometry, material, 'CameraDirtyMicrobench');
++    owners.push(owner);
++  }
++  const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 8000);
++  camera.position.set(0, 120, 180);
++  camera.lookAt(0, 0, 0);
++  camera.updateMatrixWorld(true);
++  camera.updateProjectionMatrix();
++  const poolState = sceneStates.get(scene);
++  const frameFor = (frameId) => ({
++    frameId,
++    authored: owners.map((mesh) => ({
++      mesh,
++      visible: true,
++      viewCulled: false,
++      renderDirty: false,
++    })),
++  });
++  const priorExact = _cameraCullExactCompare;
++  _cameraCullExactCompare = exact;
++  try {
++    // Reset camera snapshot so the first capture matches the compare mode.
++    if (poolState && poolState.cameraState) {
++      poolState.cameraState.initialized = false;
++      poolState.cameraState.values.fill(0);
++    }
++    const prime = frameFor(0);
++    syncAuthoredInstancePools(scene, {
++      entityFrame: prime,
++      authoredRecords: prime.authored,
++      camera,
++    });
++    let dirtyFrames = 0;
++    let ownersVisited = 0;
++    const t0 = performance.now();
++    for (let f = 0; f < frames; f++) {
++      camera.position.x += jitterWu * Math.sin(f * 0.17);
++      camera.position.z += jitterWu * 0.5 * Math.cos(f * 0.13);
++      camera.updateMatrixWorld(true);
++      const entry = frameFor(f + 1);
++      const stats = syncAuthoredInstancePools(scene, {
++        entityFrame: entry,
++        authoredRecords: entry.authored,
++        camera,
++      });
++      if (poolState && poolState.cullContext && poolState.cullContext.cameraDirty) dirtyFrames++;
++      ownersVisited += stats && Number(stats.ownersVisited) || 0;
++    }
++    const ms = performance.now() - t0;
++    return {
++      ownerCount,
++      frames,
++      jitterWu,
++      exact,
++      ms,
++      dirtyFrames,
++      dirtyRate: dirtyFrames / frames,
++      ownersVisited,
++    };
++  } finally {
++    _cameraCullExactCompare = priorExact;
++    for (const owner of owners) {
++      scene.remove(owner);
++      releaseOwnerInstances(owner);
++    }
++    geometry.dispose();
++    material.dispose();
++  }
++}
++
+ export function runAuthoredInstanceFrameContractProbe() {
+   const scene = new THREE.Scene();
+   const geometry = new THREE.BoxGeometry(1, 1, 1);
+-- 
+2.47.3
+

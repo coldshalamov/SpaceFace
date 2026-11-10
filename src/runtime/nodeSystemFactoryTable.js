@@ -1,0 +1,596 @@
+// Node-safe production system factory table (H4).
+// Materializes the authoritative production manifest without presentation platform systems
+// (render/vfx/feel/audio/ui). Avoids the browser registry path (Three.js).
+
+import { isNodeSafeSystemId } from './authoritativeSystemManifest.js';
+import { createProExperienceSystemEntries } from '../features/proExperienceSystems.js';
+import { core } from '../core/coreSystem.js';
+import { runSession } from '../systems/runSession.js';
+import { survivalDraft } from '../systems/survivalDraft.js';
+import { survivalResults } from '../systems/survivalResults.js';
+import { killReplay } from '../systems/killReplay.js';
+import { chainKills } from '../combat/chainKills.js';
+import { killcamRecorder } from '../sim/killcamTape.js';
+import { survivalAnnounce } from '../systems/survivalAnnounce.js';
+import { survivalArena } from '../systems/survivalArena.js';
+import { swarmArena } from '../systems/swarmArena.js';
+import { swarmFortify } from '../systems/swarmFortify.js';
+import { heroManeuvers } from '../systems/heroManeuvers.js';
+import { swarmSupply } from '../systems/swarmSupply.js';
+import { swarmChain } from '../systems/swarmChain.js';
+import { swarmJuice } from '../systems/swarmJuice.js';
+import { swarmElites } from '../systems/swarmElites.js';
+import { swarmJuiceHud } from '../ui/swarmJuiceHud.js';
+import { survivalRewards } from '../systems/survivalRewards.js';
+import { survivalWave } from '../systems/survivalWave.js';
+import { survivalRun } from '../systems/survivalRun.js';
+import { physics } from '../core/physics.js';
+import { orbitalGallery } from '../gallery/orbital/system.js';
+import { createKineticLeague } from '../sports/kineticLeague/system.js';
+import { reactiveMatter } from '../systems/reactiveMatter.js';
+import { spectrum } from '../systems/spectrum/index.js';
+import { createLiveMercyServiceSystem } from '../response/mercyService/live.js';
+import { createWreckCourtSystem } from '../systems/wreckCourt.js';
+import { input } from '../systems/input.js';
+import { autoTargetAssist } from '../systems/autoTargetAssist.js';
+import { flybyFocus } from '../systems/flybyFocus.js';
+import { scanner } from '../systems/scanner.js';
+import { mines } from '../systems/mines.js';
+import { bombs } from '../systems/bombs.js';
+import { dockingCorridor } from '../systems/dockingCorridor.js';
+import { latchNine } from '../systems/latchNine.js';
+import { scissorwake } from '../systems/scissorwake.js';
+import { tallyThree } from '../systems/tallyThree.js';
+import { lastShift } from '../systems/lastShift.js';
+import { lastShiftPrompt } from '../ui/lastShiftPrompt.js';
+import { redKite } from '../systems/redKite.js';
+import { redKitePrompt } from '../ui/redKitePrompt.js';
+import { sableVenn } from '../systems/sableVenn.js';
+import { ilexArk } from '../systems/ilexArk.js';
+import { ilexArkPrompt } from '../ui/ilexArkPrompt.js';
+import { kilnback } from '../systems/kilnback.js';
+import { mothlight } from '../systems/mothlight.js';
+import { mothlightPrompt } from '../ui/mothlightPrompt.js';
+import { palletJack } from '../systems/palletJack.js';
+import { palletJackPrompt } from '../ui/palletJackPrompt.js';
+import { secondRinse } from '../systems/secondRinse.js';
+import { towlineTable } from '../systems/towlineTable.js';
+import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
+import { borrowedVoice } from '../systems/borrowedVoice.js';
+import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
+import { borrowedSun } from '../systems/borrowedSun.js';
+import { borrowedSunPrompt } from '../ui/borrowedSunPrompt.js';
+import { scanReveal } from '../systems/scanReveal.js';
+import { buildIdentity } from '../systems/buildIdentity.js';
+import { lawSecurity } from '../systems/lawSecurity.js';
+import { pirateDisguise } from '../systems/pirateDisguise.js';
+import { pirateParley } from '../systems/pirateParley.js';
+import { pirateDisengage } from '../systems/pirateDisengage.js';
+import { surrenderRecovery } from '../systems/surrenderRecovery.js';
+import { shipjack } from '../systems/shipjack.js';
+import { custodyConsequences } from '../systems/custodyConsequences.js';
+import { aceMemory } from '../systems/aceMemory.js';
+import { barkDirector } from '../systems/barkDirector.js';
+import { aiPorts } from '../systems/aiPorts.js';
+import { createTacticalAISystem, PRODUCTION_ENEMY_MIND_CONFIG } from '../systems/tacticalAI.js';
+import { aiEncounter } from '../systems/aiEncounter.js';
+import { actions } from '../systems/actions.js';
+import { flight } from '../systems/flight.js';
+import { flightV3 } from '../systems/flightV3.js';
+import { cruise } from '../systems/cruise.js';
+import { weapons } from '../systems/weapons.js';
+import { countermeasures } from '../systems/countermeasures.js';
+import { combat } from '../systems/combat.js';
+import { combatOutcome } from '../systems/combatOutcome.js';
+import { aftermathWrecks } from '../systems/aftermathWrecks.js';
+import { dyingHull } from '../systems/dyingHull.js';
+import { uniqueWrecks } from '../systems/uniqueWrecks.js';
+import { uniqueLootAbilities } from '../systems/uniqueLootAbilities.js';
+import { titlesSystem } from '../systems/titles.js';
+import { wingMorale } from '../systems/wingMorale.js';
+import { tetherGameplay } from '../systems/tetherGameplay.js';
+import { masslineTelemetry } from '../systems/masslineTelemetry.js';
+import { masslineThreats } from '../systems/masslineThreats.js';
+import { masslineImpacts } from '../systems/masslineImpacts.js';
+import { masslineSnares } from '../systems/masslineSnares.js';
+import { impulseCharges } from '../systems/impulseCharges.js';
+import { hullBurst } from '../systems/hullBurst.js';
+import { massSeed } from '../systems/massSeed.js';
+import { fields } from '../systems/fields.js';
+import { gyreSnare } from '../systems/gyreSnare.js';
+import { shieldPylons } from '../systems/shieldPylons.js';
+import { emergentPrimitives } from '../systems/emergentPrimitives.js';
+import { environmentMaterials } from '../systems/environmentMaterials.js';
+import { environmentalMachinery } from '../systems/environmentalMachinery.js';
+import { planetRuntime } from '../systems/planetRuntime.js';
+import { massSeedHud } from '../ui/massSeedHud.js';
+import { fieldHud } from '../ui/fieldHud.js';
+import { gyreHud } from '../ui/gyreHud.js';
+import { pylonHud } from '../ui/pylonHud.js';
+import { planetHud } from '../ui/planetHud.js';
+import { miningHud } from '../ui/miningHud.js';
+import { survivalHud } from '../ui/survivalHud.js';
+import { crucibleFocus } from '../ui/crucibleFocus.js';
+import { masslineThrow } from '../systems/masslineThrow.js';
+import { bulletTime } from '../systems/bulletTime.js';
+import { tumbleStates } from '../systems/tumbleStates.js';
+import { collisionConsequences } from '../systems/collisionConsequences.js';
+import { stuntGrammar } from '../systems/stuntGrammar.js';
+import { masslineImpactDamage } from '../systems/masslineImpactDamage.js';
+import { cloak } from '../systems/cloak.js';
+import { lootShards } from '../systems/lootShards.js';
+import { terrainAnchors } from '../systems/terrainAnchors.js';
+import { jettisonImpulse } from '../systems/jettisonImpulse.js';
+import { volatileExposure } from '../systems/volatileExposure.js';
+import { masslineHud } from '../ui/masslineHud.js';
+import { mining } from '../systems/mining.js';
+import { fieldDepletion } from '../systems/fieldDepletion.js';
+import { cargo } from '../systems/cargo.js';
+import { fragileCargo } from '../systems/fragileCargo.js';
+import { economy } from '../systems/economy.js';
+import { automation } from '../systems/automation.js';
+import { asteroidSites } from '../systems/asteroidSites.js';
+import { asteroidFormations } from '../systems/asteroidFormations.js';
+import { wingmen } from '../systems/wingmen.js';
+import { world } from '../systems/world.js';
+import { heistFacilities } from '../systems/heistFacilities.js';
+import { routeFollower } from '../systems/routeFollower.js';
+import { travelLanes } from '../systems/travelLanes.js';
+import { factions } from '../systems/factions.js';
+import { sectorSim } from '../systems/sectorSim.js';
+import { understoryGardens } from '../systems/faction_understory.js';
+import { fulfillmentRoutes } from '../systems/faction_fulfillment.js';
+import { pitbornCull } from '../systems/faction_pitborn.js';
+import { vaelLiens } from '../systems/faction_vael.js';
+import { archiveRedaction } from '../systems/faction_archive.js';
+import { choirResonance } from '../systems/faction_choir.js';
+import { vergeCourt } from '../systems/faction_verge.js';
+import { frontierHomesteads } from '../systems/faction_frontier.js';
+import { massSignature } from '../systems/massSignature.js';
+import { factionConcord } from '../systems/faction_concord.js';
+import { factionMeridian } from '../systems/faction_meridian.js';
+import { factionHelix } from '../systems/faction_helix.js';
+import { factionDrift } from '../systems/faction_drift.js';
+import { lineHeads } from '../systems/lineHeads.js';
+import { npcJobsRuntime } from '../systems/npcJobsRuntime.js';
+import { missions } from '../systems/missions.js';
+import { careerContracts } from '../systems/careerContracts.js';
+import { postEndingReplay } from '../systems/postEndingReplay.js';
+import { economyContracts } from '../systems/economyContracts.js';
+import { careerOrigins } from '../careers/origins/careerOrigins.js';
+import { careerLadders } from '../careers/ladders/careerLadders.js';
+import { liveCareerLadderBranches } from '../careers/ladders/liveCareerLadderBranches.js';
+import { story } from '../systems/story.js';
+import { scenarioRuntime } from '../systems/scenarioRuntime.js';
+import { presentationOrchestrator } from '../systems/presentationOrchestrator.js';
+import { presentationAdapters } from '../systems/presentationAdapters.js';
+import { ships } from '../systems/ships.js';
+import { crafting } from '../systems/crafting.js';
+import { heat } from '../systems/heat.js';
+import { traffic } from '../systems/traffic.js';
+import { drill } from '../systems/drill.js';
+import { intervention } from '../systems/intervention.js';
+import { claims } from '../systems/claims.js';
+import { longBerth } from '../systems/longBerth.js';
+import { crew } from '../systems/crew.js';
+import { beacons } from '../systems/beacons.js';
+import { onboarding } from '../systems/onboarding.js';
+import { spawnBudget } from '../systems/spawnBudget.js';
+import { regionalEcology } from '../systems/regionalEcology.js';
+import { tensionDirector } from '../systems/tensionDirector.js';
+import { encounterDirector } from '../systems/encounterDirector.js';
+import { rockCore } from '../systems/rockCore.js';
+import { nemesis } from '../systems/nemesis.js';
+import { nemesisEncounter } from '../systems/nemesisEncounter.js';
+import { nemesisSignals } from '../systems/nemesisSignals.js';
+import { capitalBossEncounters } from '../systems/capitalBossRuntime.js';
+import { createChronicler } from '../systems/chronicler.js';
+import { isRunSealed } from '../core/runSeal.js';
+import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js';
+import { pirateRumor } from '../systems/pirateRumor.js';
+import { ambushSignatures } from '../systems/ambushSignatures.js';
+import { bountyHunt } from '../systems/bountyHunt.js';
+import { morrow } from '../systems/morrow.js';
+import { vesper } from '../systems/vesper.js';
+import { bracket } from '../systems/bracket.js';
+import { ravel } from '../systems/ravel.js';
+import { solstice } from '../systems/solstice.js';
+import { rubric } from '../systems/rubric.js';
+import { ruckus } from '../systems/ruckus.js';
+import { ruud } from '../systems/ruud.js';
+import { docket } from '../systems/docket.js';
+import { wexTicket } from '../systems/wexTicket.js';
+import { moistureLoss } from '../systems/moistureLoss.js';
+import { rookBooth } from '../systems/rookBooth.js';
+import { kesslerScale } from '../systems/kesslerScale.js';
+import { furnaceIntake } from '../systems/furnaceIntake.js';
+import { gateThreeWeir } from '../systems/gateThreeWeir.js';
+import { slateColumn } from '../systems/slateColumn.js';
+import { varianceAdjustmentBerth } from '../systems/varianceAdjustmentBerth.js';
+import { bouncer } from '../systems/bouncer.js';
+import { receipt } from '../systems/receipt.js';
+import { mop } from '../systems/mop.js';
+import { tallyho } from '../systems/tallyho.js';
+import { tare } from '../systems/tare.js';
+import { lamplighter } from '../systems/lamplighter.js';
+import { shepherd12 } from '../systems/shepherd12.js';
+import { quill } from '../systems/quill.js';
+import { holdfast } from '../systems/holdfast.js';
+import { bellhop } from '../systems/bellhop.js';
+import { gravedigger } from '../systems/gravedigger.js';
+import { salvage } from '../systems/salvage.js';
+import { voiceArbiter } from '../ui/voiceArbiter.js';
+import { sectorPostcard } from '../ui/sectorPostcard.js';
+import { dockDenyBanner } from '../ui/dockDenyBanner.js';
+import { stationBroadcast } from '../systems/stationBroadcast.js';
+import { hazardHints } from '../data/hazardLanguage.js';
+import { noFireAdvisory } from '../data/stationBubbles.js';
+import { bulkHaulTag } from '../ui/prompts/bulkHaulTag.js';
+import { dangerGradient } from '../ui/dangerGradient.js';
+import { causeLedger } from '../ui/causeLedger.js';
+import { customsPrompt } from '../ui/customsPrompt.js';
+import { impoundPayPrompt } from '../ui/impoundPayPrompt.js';
+import { moralTrapPrompt } from '../ui/moralTrapPrompt.js';
+import { wreckChoicePrompt } from '../ui/wreckChoicePrompt.js';
+import { warrantOfferPrompt } from '../ui/warrantOfferPrompt.js';
+import { stuckTowPrompt } from '../ui/stuckTowPrompt.js';
+import { cargoConscience } from '../ui/cargoConscience.js';
+import { securityReadoutSystem } from '../ui/securityReadout.js';
+import { priceForecastSystem } from '../ui/priceForecast.js';
+import { contractClausesSystem } from '../systems/contractClauses.js';
+import { moralTrapSystem } from '../systems/moralTrap.js';
+import { moralMemorySystem } from '../systems/moralMemory.js';
+import { special500Director } from '../systems/special500Director.js';
+import { special500Spectacle } from '../systems/special500Spectacle.js';
+import { special500Question } from '../systems/special500Question.js';
+import { special500Invoice } from '../systems/special500Invoice.js';
+import { special500PortraitBuoys } from '../systems/special500PortraitBuoys.js';
+import { special500Sommelier } from '../systems/special500Sommelier.js';
+import { special500DockLedger } from '../systems/special500DockLedger.js';   // batch 18 counter legs: the per-station dock counter
+import { special500HullLog } from '../systems/special500HullLog.js';         // batch 18 counter legs: the player-hull log
+import { special500ReadEverything } from '../systems/special500ReadEverything.js'; // batch 18 counter leg: SP2-188's run-end chain
+import { special500CollectiveHours } from '../systems/special500CollectiveHours.js'; // batch 18 counter leg: SP1-173's tally
+import { createSpecial500Confessional } from '../systems/special500Confessional.js';
+import { createSpecial500DeathBell } from '../systems/special500DeathBell.js';
+import { createSpecial500ForgeKaraoke } from '../systems/special500ForgeKaraoke.js';
+import { mail } from '../systems/mail.js';
+import { worldClock } from '../systems/worldClock.js';
+import { worldPressure } from '../systems/worldPressure.js';
+import { lineProgression } from '../systems/lineProgression.js';
+import { lossLedger } from '../systems/lossLedger.js';
+import { deedRecord } from '../systems/deedRecord.js';
+import { historyWear } from '../systems/historyWear.js';
+import { provenanceLedger } from '../systems/provenanceLedger.js';
+import { factionPresence } from '../systems/factionPresence.js';
+import { bandRadio } from '../systems/bandRadio.js';
+import { v2FlavorRuntime } from '../systems/v2FlavorRuntime.js';
+import { lossInvestigation } from '../systems/lossInvestigation.js';
+import { salvageActions } from '../systems/salvageActions.js';
+import { survivorPod } from '../systems/survivorPod.js';
+import { recoveryEncounter } from '../systems/recoveryEncounter.js';
+import { stationSideEventDirector } from '../systems/stationSideEventDirector.js';
+import { stationServices } from '../systems/stationServices.js';
+import { difficultyDirector } from '../systems/difficultyDirector.js';
+import { stationContacts } from '../systems/stationContacts.js';
+import { stationContactLoadBoundary } from '../systems/stationContactLoadBoundary.js';
+import { gateControlDirector } from '../systems/gateControlDirector.js';
+import { save } from '../save/saveSystem.js';
+
+/**
+ * Build a Map of system id → factory object for Node production-fidelity runs.
+ * @param {{ aiSlot?: object, flightSlot?: object, flightBackend?: string }} [options]
+ */
+export function getNodeSystemFactoryTable(options = {}) {
+  const aiSlot = options.aiSlot
+    || createTacticalAISystem({ config: { enemyMind: PRODUCTION_ENEMY_MIND_CONFIG } });
+  // I5: honor flightBackend — legacy47a must materialize legacy flight, not flightV3.
+  const flightBackend = typeof options.flightBackend === 'string' ? options.flightBackend : 'v3';
+  const flightSlot = options.flightSlot
+    || (flightBackend === 'legacy' ? flight : flightV3);
+
+  // Genie 01: campaign-gated world memory, one instance per Node registry (mirrors registry.js).
+  const chronicler = createChronicler({
+    shouldObserve: (state) => !isRunSealed(state),
+  });
+
+  /** @type {Array<[string, object]>} */
+  const entries = [
+    ['core', core],
+    ['runSession', runSession],
+    ['survivalWave', survivalWave],
+    ['survivalRewards', survivalRewards],
+    ['survivalDraft', survivalDraft],
+    ['survivalResults', survivalResults],
+    ['killReplay', killReplay],
+    ['chainKills', chainKills],
+    ['killcamRecorder', killcamRecorder],
+    ['survivalAnnounce', survivalAnnounce],
+    ['survivalArena', survivalArena],
+    ['swarmArena', swarmArena],
+    ['swarmFortify', swarmFortify],
+    ['heroManeuvers', heroManeuvers],
+    ['swarmSupply', swarmSupply],
+    ['swarmChain', swarmChain],
+    // The manifest marks swarmJuice node-safe (sim-phase juice detector) and swarmJuiceHud
+    // domGuarded — without table rows every Node production-fidelity boot throws
+    // "missing system swarmJuice for init order" before the first tick.
+    ['swarmJuice', swarmJuice],
+    ['swarmJuiceHud', swarmJuiceHud],
+    // swarmElites is nodeSafe (sim-phase Threat/affix/perk runtime, SWARM-06) — without a row
+    // every Node production-fidelity boot throws "missing system swarmElites for init order".
+    ['swarmElites', swarmElites],
+    ['survivalRun', survivalRun],
+    ['voiceArbiter', voiceArbiter],
+    ['input', input],
+    ['autoTargetAssist', autoTargetAssist],
+    ['flybyFocus', flybyFocus],
+    ['bulletTime', bulletTime],
+    ['cloak', cloak],
+    ['scanner', scanner],
+    ['spectrum', spectrum],
+    ['scanReveal', scanReveal],
+    ['buildIdentity', buildIdentity],
+    ['lawSecurity', lawSecurity],
+    ['pirateDisguise', pirateDisguise],
+    ['pirateParley', pirateParley],
+    ['pirateDisengage', pirateDisengage],
+    ['aceMemory', aceMemory],
+    ['barkDirector', barkDirector],
+    ['dockingCorridor', dockingCorridor],
+    ['physics', physics],
+    ['reactiveMatter', reactiveMatter],
+    ['orbitalGallery', orbitalGallery],
+    ['kineticLeague', createKineticLeague()],
+    ['mercyService', createLiveMercyServiceSystem()],
+    ['wreckCourt', createWreckCourtSystem()],
+    ['aiPorts', aiPorts],
+    ['tumbleStates', tumbleStates],
+    ['collisionConsequences', collisionConsequences],
+    ['stuntGrammar', stuntGrammar],
+    ['aiEncounter', aiEncounter],
+    ['actions', actions],
+    ['cruise', cruise],
+    ['weapons', weapons],
+    ['countermeasures', countermeasures],
+    ['impulseCharges', impulseCharges],
+    ['hullBurst', hullBurst],
+    ['mines', mines],
+    ['bombs', bombs],
+    ['massSeed', massSeed],
+    ['uniqueLootAbilities', uniqueLootAbilities],
+    ['fields', fields],
+    ['gyreSnare', gyreSnare],
+    ['shieldPylons', shieldPylons],
+    ['latchNine', latchNine],
+    ['scissorwake', scissorwake],
+    ['tallyThree', tallyThree],
+    ['lastShift', lastShift],
+    ['lastShiftPrompt', lastShiftPrompt],
+    ['redKite', redKite],
+    ['redKitePrompt', redKitePrompt],
+    ['sableVenn', sableVenn],
+    ['ilexArk', ilexArk],
+    ['ilexArkPrompt', ilexArkPrompt],
+    ['kilnback', kilnback],
+    ['mothlight', mothlight],
+    ['mothlightPrompt', mothlightPrompt],
+    ['palletJack', palletJack],
+    ['palletJackPrompt', palletJackPrompt],
+    ['secondRinse', secondRinse],
+    ['towlineTable', towlineTable],
+    ['towlineTablePrompt', towlineTablePrompt],
+    ['borrowedVoice', borrowedVoice],
+    ['borrowedVoicePrompt', borrowedVoicePrompt],
+    ['borrowedSun', borrowedSun],
+    ['borrowedSunPrompt', borrowedSunPrompt],
+    // Pro-experience owners (shipbreakingYard, rigWorkshop, salvageTender(+Prompt),
+    // salvageOutfits(+Prompt), industrialDisasters) — node-safe sim entries shared with
+    // the browser registry; shipbreakingYardBrowser stays browser-only by capability.
+    ...createProExperienceSystemEntries(),
+    ['emergentPrimitives', emergentPrimitives],
+    ['environmentMaterials', environmentMaterials],
+    ['environmentalMachinery', environmentalMachinery],
+    ['planetRuntime', planetRuntime],
+    ['combat', combat],
+    ['combatOutcome', combatOutcome],
+    ['aftermathWrecks', aftermathWrecks],
+    ['dyingHull', dyingHull],
+    // Packet 09: production construction lives in capitalBossRuntime (shared with the browser
+    // registry) so Node runs the identical observe/spawnWing ports.
+    ['capitalBossEncounters', capitalBossEncounters],
+    ['uniqueWrecks', uniqueWrecks],
+    ['titles', titlesSystem],
+    ['wingMorale', wingMorale],
+    ['tetherGameplay', tetherGameplay],
+    ['surrenderRecovery', surrenderRecovery],
+    ['shipjack', shipjack],
+    ['custodyConsequences', custodyConsequences],
+    ['masslineTelemetry', masslineTelemetry],
+    ['masslineThreats', masslineThreats],
+    ['masslineImpacts', masslineImpacts],
+    ['masslineSnares', masslineSnares],
+    ['masslineThrow', masslineThrow],
+    ['masslineImpactDamage', masslineImpactDamage],
+    ['lootShards', lootShards],
+    ['terrainAnchors', terrainAnchors],
+    ['jettisonImpulse', jettisonImpulse],
+    ['volatileExposure', volatileExposure],
+    ['mining', mining],
+    ['fieldDepletion', fieldDepletion],
+    ['cargo', cargo],
+    ['fragileCargo', fragileCargo],
+    ['economy', economy],
+    ['automation', automation],
+    ['asteroidSites', asteroidSites],
+    ['asteroidFormations', asteroidFormations],
+    ['wingmen', wingmen],
+    ['intervention', intervention],
+    ['lossLedger', lossLedger],
+    ['deedRecord', deedRecord],
+    ['historyWear', historyWear],
+    ['provenanceLedger', provenanceLedger],
+    ['chronicler', chronicler],
+    ['factionPresence', factionPresence],
+    ['understoryGardens', understoryGardens],
+    ['fulfillmentRoutes', fulfillmentRoutes],
+    ['pitbornCull', pitbornCull],
+    ['vaelLiens', vaelLiens],
+    ['archiveRedaction', archiveRedaction],
+    ['choirResonance', choirResonance],
+    ['vergeCourt', vergeCourt],
+    ['frontierHomesteads', frontierHomesteads],
+    ['massSignature', massSignature],
+    ['faction_concord', factionConcord],
+    ['faction_meridian', factionMeridian],
+    ['faction_helix', factionHelix],
+    ['faction_drift', factionDrift],
+    ['lineHeads', lineHeads],
+    ['spawnBudget', spawnBudget],
+    ['world', world],
+    ['heistFacilities', heistFacilities],
+    ['regionalEcology', regionalEcology],
+    ['tensionDirector', tensionDirector],
+    ['encounterDirector', encounterDirector],
+    ['rockCore', rockCore],
+    ['nemesis', nemesis],
+    ['nemesisEncounter', nemesisEncounter],
+    ['nemesisSignals', nemesisSignals],
+    ['routeFollower', routeFollower],
+    ['travelLanes', travelLanes],
+    ['livingPoiBehaviors', livingPoiBehaviors],
+    ['pirateRumor', pirateRumor],
+    ['ambushSignatures', ambushSignatures],
+    ['bountyHunt', bountyHunt],
+    ['stationSideEventDirector', stationSideEventDirector],
+    ['stationServices', stationServices],
+    ['difficultyDirector', difficultyDirector],
+    ['stationContacts', stationContacts],
+    ['stationContactLoadBoundary', stationContactLoadBoundary],
+    ['gateControlDirector', gateControlDirector],
+    ['morrow', morrow],
+    ['vesper', vesper],
+    ['bracket', bracket],
+    ['ravel', ravel],
+    ['solstice', solstice],
+    ['rubric', rubric],
+    ['ruckus', ruckus],
+    ['ruud', ruud],
+    ['docket', docket],
+    ['wexTicket', wexTicket],
+    ['moistureLoss', moistureLoss],
+    ['rookBooth', rookBooth],
+    ['kesslerScale', kesslerScale],
+    ['furnaceIntake', furnaceIntake],
+    ['gateThreeWeir', gateThreeWeir],
+    ['slateColumn', slateColumn],
+    ['bouncer', bouncer],
+    ['receipt', receipt],
+    ['mop', mop],
+    ['tallyho', tallyho],
+    ['tare', tare],
+    ['lamplighter', lamplighter],
+    ['shepherd12', shepherd12],
+    ['quill', quill],
+    ['holdfast', holdfast],
+    ['bellhop', bellhop],
+    ['gravedigger', gravedigger],
+    ['salvage', salvage],
+    ['lossInvestigation', lossInvestigation],
+    ['salvageActions', salvageActions],
+    ['survivorPod', survivorPod],
+    ['recoveryEncounter', recoveryEncounter],
+    ['factions', factions],
+    ['sectorSim', sectorSim],
+    ['npcJobsRuntime', npcJobsRuntime],
+    ['careerOrigins', careerOrigins],
+    ['careerLadders', careerLadders],
+    ['liveCareerLadderBranches', liveCareerLadderBranches],
+    ['missions', missions],
+    ['careerContracts', careerContracts],
+    ['economyContracts', economyContracts],
+    ['postEndingReplay', postEndingReplay],
+    ['story', story],
+    ['scenarioRuntime', scenarioRuntime],
+    ['presentationOrchestrator', presentationOrchestrator],
+    ['presentationAdapters', presentationAdapters],
+    ['ships', ships],
+    ['crafting', crafting],
+    ['heat', heat],
+    ['traffic', traffic],
+    ['varianceAdjustmentBerth', varianceAdjustmentBerth],
+    ['drill', drill],
+    ['claims', claims],
+    ['longBerth', longBerth],
+    ['crew', crew],
+    ['beacons', beacons],
+    ['bandRadio', bandRadio],
+    ['v2FlavorRuntime', v2FlavorRuntime],
+    ['onboarding', onboarding],
+    ['masslineHud', masslineHud],
+    ['massSeedHud', massSeedHud],
+    ['fieldHud', fieldHud],
+    ['gyreHud', gyreHud],
+    ['pylonHud', pylonHud],
+    ['planetHud', planetHud],
+    ['miningHud', miningHud],
+    ['survivalHud', survivalHud],
+    ['crucibleFocus', crucibleFocus],
+    ['sectorPostcard', sectorPostcard],
+    ['dockDenyBanner', dockDenyBanner],
+    ['stationBroadcast', stationBroadcast],
+    ['hazardHints', hazardHints],
+    ['noFireAdvisory', noFireAdvisory],
+    ['bulkHaulTag', bulkHaulTag],
+    ['dangerGradient', dangerGradient],
+    ['causeLedger', causeLedger],
+    ['customsPrompt', customsPrompt],
+    ['impoundPayPrompt', impoundPayPrompt],
+    ['warrantOfferPrompt', warrantOfferPrompt],
+    ['moralTrapPrompt', moralTrapPrompt],
+    ['wreckChoicePrompt', wreckChoicePrompt],
+    ['stuckTowPrompt', stuckTowPrompt],
+    ['cargoConscience', cargoConscience],
+    ['securityReadoutSystem', securityReadoutSystem],
+    ['priceForecastSystem', priceForecastSystem],
+    ['contractClausesSystem', contractClausesSystem],
+    ['moralTrapSystem', moralTrapSystem],
+    ['moralMemory', moralMemorySystem],
+    ['special500', special500Director],
+    ['special500Spectacle', special500Spectacle],
+    ['special500Question', special500Question],
+    ['special500Invoice', special500Invoice],
+    ['special500PortraitBuoys', special500PortraitBuoys],
+    ['special500Sommelier', special500Sommelier],
+    ['special500DockLedger', special500DockLedger],
+    ['special500HullLog', special500HullLog],
+    ['special500ReadEverything', special500ReadEverything],
+    ['special500CollectiveHours', special500CollectiveHours],
+    ['special500Confessional', createSpecial500Confessional()],
+    ['special500DeathBell', createSpecial500DeathBell()],
+    ['special500ForgeKaraoke', createSpecial500ForgeKaraoke()],
+    ['mail', mail],
+    ['worldClock', worldClock],
+    ['worldPressure', worldPressure],
+    ['lineProgression', lineProgression],
+    ['save', save],
+  ];
+
+  const lookup = new Map();
+  for (const [id, system] of entries) {
+    if (!system) continue;
+    if (!isNodeSafeSystemId(id) && id !== 'core') continue;
+    lookup.set(id, system);
+    if (typeof system.name === 'string' && system.name) lookup.set(system.name, system);
+  }
+  lookup.set('aiSlot', aiSlot);
+  lookup.set('flightSlot', flightSlot);
+  lookup.set('ai', aiSlot);
+  lookup.set('flight', flightSlot);
+  if (aiSlot && aiSlot.name) lookup.set(aiSlot.name, aiSlot);
+  if (flightSlot && flightSlot.name) lookup.set(flightSlot.name, flightSlot);
+  return lookup;
+}
+
+export function createNodeProductionSystemLookup(options = {}) {
+  return getNodeSystemFactoryTable(options);
+}

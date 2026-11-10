@@ -1,0 +1,37 @@
+{
+  "masterTip": "568d1358e",
+  "scratchSha": "889e44f49",
+  "ab": {
+    "copies": 48,
+    "rounds": 11,
+    "alwaysClone": {
+      "wallMs": 33.701,
+      "uniqueMaterials": 384
+    },
+    "shared": {
+      "wallMs": 33.28,
+      "uniqueMaterials": 196,
+      "hullShared": true,
+      "plumeDistinct": true,
+      "navDistinct": true,
+      "shieldDistinct": true
+    },
+    "uniqueMaterialReduction": 1.96,
+    "wallSpeedup": 1.01
+  },
+  "census": {
+    "copies": 48,
+    "panelCount": 48,
+    "meshCount": 54,
+    "wallMs": 37.035,
+    "uniqueMaterials": 196,
+    "sharedMaterialBindings": 2400,
+    "clonedMaterialBindings": 192,
+    "hullShared": true,
+    "plumeDistinct": true,
+    "navDistinct": true,
+    "sensorDistinct": true,
+    "shieldDistinct": true,
+    "naiveUniqueIfAllCloned": 2592
+  }
+}

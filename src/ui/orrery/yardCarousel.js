@@ -1,0 +1,677 @@
+// ORRERY Yard Carousel — "Spin the yard" (design/frontend/OVERHAUL_PLAN_2026-09-25.md §4, New Game).
+//
+// The hull choice as a turntable you can grab. The ring lies on a lit floor under the hero render; the hulls
+// ride it at even spacing, the chosen one front-centre under the amber index. Drag anywhere over the yard and
+// the ring turns under your hand; each hull's MASS sets how the ring answers — a heavy hull at the front
+// resists and glides short, a light one flicks and runs on — and on release it springs onto the nearest hull
+// with a small overshoot and picks it (the screen's own button is clicked, so every contract downstream is the
+// same as a click). While it turns, `onTurn(i0, i1, f)` reports the two hulls it is between, so the screen can
+// sweep its readings between them.
+//
+// It seats the screen's own buttons (roving focus, data-action, aria-pressed) and follows aria-pressed; a
+// click on a word turns the ring to it. Reduced motion: no glide, the ring snaps. Nothing runs at rest.
+import { svg } from './svg.js';
+import { createSpring, onFrame, reducedMotion } from './motion.js';
+import { injectOrrery } from './tokens.js';
+
+const STYLE_ID = 'sf-orrery-yard-style';
+const CSS = `
+.orr-yard__grab { position:absolute; pointer-events:auto; cursor:grab; touch-action:none; z-index:0; user-select:none; -webkit-user-select:none; }
+.orr-yard.is-dragging .orr-yard__grab { cursor:grabbing; }
+.orr-yard.is-dragging > .orr-turntable__row > li, .orr-yard.is-dragging > .orr-turntable__art { transition:none !important; }
+.orr-yard > .orr-turntable__row { z-index:1; }
+.orr-svg .orr-yard__floor { pointer-events:none; }
+.orr-yard__back { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:-1; }
+.orr-yard__model { position:absolute; left:0; top:0; pointer-events:none; transform-origin:0 0; will-change:transform; }
+.orr-yard__model > img { display:block; width:100%; height:100%; object-fit:contain; pointer-events:none; }
+.orr-yard--models > .orr-turntable__row > li, .orr-yard--models > .orr-yard__model { transition:none !important; }
+/* the detent: the index bead flashes as each hull passes the front */
+.orr-yard .orr-yard__bead { transform-box:fill-box; transform-origin:center; transition:transform 220ms cubic-bezier(.2,1.6,.4,1); }
+.orr-yard .orr-yard__bead.is-detent { transform:scale(1.9); transition:none; }
+html.sf-reduce-motion .orr-yard .orr-yard__bead { transition:none; }
+`;
+let seq = 0;
+
+function injectStyle(doc) {
+  if (!doc || !doc.head || doc.getElementById(STYLE_ID)) return;
+  const style = doc.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = CSS;
+  doc.head.appendChild(style);
+}
+
+const RING_K = 0.65;
+const RING_SQRT = Math.sqrt(1 - RING_K * RING_K);
+const FOLLOW_TAU_S = 0.045;
+const TAP_PX = 7;
+
+export function yardRingPose(thetaRad) {
+  const c = Math.cos(thetaRad);
+  const d = 1 - RING_K * c;
+  return { x: Math.sin(thetaRad) * RING_SQRT / d, y: (c - RING_K) / d, p: (1 - RING_K) / d, c };
+}
+
+const wrapDeg = (a) => ((((a + 180) % 360) + 360) % 360) - 180;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+/**
+ * @param {object} o
+ * @param {HTMLElement} o.row       the screen's row of hull buttons (aria-pressed marks the chosen)
+ * @param {HTMLElement} o.host      the element the yard is laid over (the screen root)
+ * @param {HTMLElement} o.anchor    the stage; `hero` is a selector inside it for the hero's box
+ * @param {string} o.hero
+ * @param {Object<string,string>} [o.art]   data-action -> produced hull art
+ * @param {number} [o.artWidth]
+ * @param {Object<string,number>} [o.mass]  data-action -> tonnes (how the ring answers with that hull in front)
+ * @param {(i0:number, i1:number, f:number) => void} [o.onTurn]
+ * @param {(geometry:object) => void} [o.onLayout]  called after a build that really moved the yard, so
+ *   whatever is seated against it (the screen's hull ring) can re-measure; a skipped build never calls it
+ */
+export function createYardCarousel({ row, host, anchor, hero, art = null, artWidth = 132, mass = null, onTurn = null, modelRing = false, onModelsReady = null, onLayout = null } = {}) {
+  const doc = (row && row.ownerDocument) || globalThis.document;
+  if (!row || !host || !anchor || !doc || typeof doc.createElementNS !== 'function' || typeof anchor.getBoundingClientRect !== 'function') {
+    return { el: null, update() {}, layout() {}, setActive() {}, dispose() {} };
+  }
+  injectOrrery();
+  injectStyle(doc);
+  const wrap = doc.createElement('div');
+  wrap.className = `orr-turntable orr-turntable--carousel orr-yard${modelRing ? ' orr-yard--models' : ''}`;
+  const face = svg('svg', { class: 'orr-svg', 'aria-hidden': 'true' });
+  const grab = doc.createElement('div');
+  grab.className = 'orr-yard__grab';
+  grab.setAttribute('aria-hidden', 'true');
+  wrap.append(face, grab, row);
+  row.classList.add('orr-turntable__row');
+  host.appendChild(wrap);
+
+  let members = null;
+  const items = () => {
+    if (!members) members = [...row.children].filter((li) => li.querySelector && li.querySelector('button'));
+    return members;
+  };
+  const actionOf = (li) => li.querySelector('button').dataset.action;
+  const massOf = (i) => { const li = items()[i]; const m = li && mass ? Number(mass[actionOf(li)]) : NaN; return Number.isFinite(m) && m > 0 ? m : 32; };
+  const lightest = () => Math.min(...items().map((_, i) => massOf(i)), 32);
+  const pressedIndex = () => { const i = items().findIndex((li) => li.querySelector('button[aria-pressed="true"]')); return i < 0 ? 0 : i; };
+  const n = () => Math.max(1, items().length);
+  const sp = () => 360 / n();
+
+  let g = null;
+  let rot = 0;
+  let intent = 0;
+  let rotVel = 0;
+  let followOff = null;
+  let followLast = 0;
+  let suppressClick = false;
+  let modelsReady = false;
+  let modelsNotified = false;
+  let disposed = false;
+  let active = true;
+  const models = [];
+  const pt = (t) => [g.cx + g.rx * Math.sin(t * Math.PI / 180), g.cy + g.ry * Math.cos(t * Math.PI / 180)];
+  const ring = (t0, t1, steps = 64) => {
+    const pts = [];
+    for (let i = 0; i <= steps; i += 1) { const [x, y] = pt(t0 + ((t1 - t0) * i) / steps); pts.push(`${x.toFixed(1)} ${y.toFixed(1)}`); }
+    return `M ${pts.join(' L ')}`;
+  };
+
+  // the face: a lit floor, a faint back rim, a solid front rim with its scale, the amber index at the front
+  const gid = `orr-yard-floor-${++seq}`;
+  const defs = svg('defs');
+  const grad = svg('radialGradient', { id: gid, cx: '50%', cy: '50%', r: '50%' });
+  grad.append(svg('stop', { offset: '0', 'stop-color': 'rgb(236 230 216)', 'stop-opacity': '.085' }),
+    svg('stop', { offset: '.62', 'stop-color': 'rgb(236 230 216)', 'stop-opacity': '.035' }),
+    svg('stop', { offset: '1', 'stop-color': 'rgb(236 230 216)', 'stop-opacity': '0' }));
+  defs.appendChild(grad);
+  const floor = svg('ellipse', { class: 'orr-yard__floor', fill: `url(#${gid})` });
+  const backBand = svg('path', { d: '', class: 'orr-band', style: '--orr-band-a:.035; --orr-w-band:6px' });
+  const backEdge = svg('path', { d: '', class: 'orr-edge', style: '--orr-edge-a:.22' });
+  const frontBand = svg('path', { d: '', class: 'orr-band', style: '--orr-band-a:.1; --orr-w-band:9px' });
+  const frontEdge = svg('path', { d: '', class: 'orr-edge', style: '--orr-edge-a:.6; --orr-w-edge:1.75px' });
+  const fine = svg('path', { d: '', class: 'orr-tick', style: 'stroke:rgb(236 230 216 / .34)' });
+  const litBloom = svg('path', { d: '', class: 'orr-lit-bloom is-hand' });
+  const lit = svg('path', { d: '', class: 'orr-lit is-hand' });
+  const slot = svg('path', { d: '', class: 'orr-lit is-hand', style: '--orr-w-lit:2px' });
+  const beadBloom = svg('circle', { r: 10, fill: 'var(--dp-hand, #f2b950)', opacity: '.24', class: 'orr-yard__bead' });
+  const bead = svg('circle', { r: 4.5, fill: 'var(--dp-hand-hot, #ffd98c)', class: 'orr-yard__bead' });
+  // the back half of the yard lies BEHIND the hero: its floor and rim go in a layer under the stage's picture
+  const back = svg('svg', { class: 'orr-svg orr-yard__back', 'aria-hidden': 'true' });
+  back.append(defs, floor, backBand, backEdge);
+  face.append(frontBand, frontEdge, fine, litBloom, lit, slot, beadBloom, bead);
+  const arts = [];
+  let lastFront = -1;
+
+  function place(r) {
+    if (disposed || !g) return;
+    wrap._rot = r;
+    const lis = items();
+    const step = sp();
+    lis.forEach((li, i) => {
+      const t = wrapDeg(i * step - r);
+      const at = Math.abs(t);
+      if (modelRing) {
+        const pose = yardRingPose(t * Math.PI / 180);
+        const depth = (pose.c + 1) / 2;
+        const dim = 0.35 + 0.65 * depth;
+        const z = Math.round(10 + 90 * depth);
+        const px = g.cx + g.rx * pose.x;
+        const py = g.cy + g.ry * pose.y;
+        const m = models[i];
+        if (m && m.img && g.mw) {
+          const s = pose.p;
+          m.pose = { x: px, y: py, w: g.mw * s, h: g.mh * s };
+          m.wrap.style.transform = `translate(${(px - (s * g.mw) / 2).toFixed(2)}px, ${(py - s * g.mh).toFixed(2)}px) scale(${s.toFixed(4)})`;
+          m.wrap.style.opacity = modelsReady ? dim.toFixed(3) : '0';
+          m.wrap.style.zIndex = z;
+        }
+        li.style.left = '0px';
+        li.style.top = '0px';
+        li.style.transform = `translate(${(px + g.rx * 0.3 * Math.sin(t * Math.PI / 180)).toFixed(1)}px, ${(py + 14).toFixed(1)}px) translateX(-50%)`;
+        li.style.textAlign = 'center';
+        li.style.opacity = dim.toFixed(2);
+        li.style.pointerEvents = dim < 0.4 ? 'none' : '';
+        li.style.zIndex = z;
+        li.classList.toggle('is-front', at < 12);
+        return;
+      }
+      const [x, y] = pt(t);
+      if (at < 30) { li.style.left = `${x.toFixed(1)}px`; li.style.top = `${(y + 20).toFixed(1)}px`; li.style.transform = ''; li.style.textAlign = ''; }
+      else {
+        // a hull off the front names itself beside the ring's widest point, outside the rim and clear of the hero
+        const side = t < 0 ? -1 : 1;
+        const edgeX = g.cx + side * (g.rx + 26);
+        const lx = at < 60 ? x + side * 16 : edgeX;
+        const ly = at < 60 ? y - 14 : g.cy - 42;
+        li.style.left = `${lx.toFixed(1)}px`; li.style.top = `${ly.toFixed(1)}px`;
+        li.style.transform = side < 0 ? 'translateX(-100%)' : 'none'; li.style.textAlign = side < 0 ? 'right' : 'left';
+      }
+      const fade = at > 128 ? clamp(1 - (at - 128) / 36, 0, 1) : 1;
+      li.style.opacity = fade.toFixed(2);
+      li.style.pointerEvents = fade < 0.35 ? 'none' : '';
+      li.classList.toggle('is-front', at < 12);
+      const img = arts[i];
+      if (img) {
+        const h = artWidth * 0.56;
+        Object.assign(img.style, { left: `${x.toFixed(1)}px`, top: `${(y - 8 - h).toFixed(1)}px`, width: `${artWidth}px`, height: `${h.toFixed(0)}px`,
+          // the far side of the ring is far away: a hull behind the hero reads dim, so the hero stands in front of it
+          opacity: (at < 24 ? 0 : (at > 90 ? 0.3 : 0.58) * fade).toFixed(2) });
+        img.classList.toggle('is-on', at < 12);
+      }
+    });
+    const nearest = lis.reduce((best, _, i) => (Math.abs(wrapDeg(i * step - r)) < Math.abs(wrapDeg(best * step - r)) ? i : best), 0);
+    if (lastFront !== -1 && nearest !== lastFront && !reducedMotion()) {
+      for (const b of [bead, beadBloom]) b.classList.add('is-detent');
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(() => { for (const b of [bead, beadBloom]) b.classList.remove('is-detent'); }));
+    }
+    lastFront = nearest;
+    if (typeof onTurn === 'function' && lis.length) {
+      const count = lis.length;
+      const p = (((r / step) % count) + count) % count;
+      const i0 = Math.floor(p) % count;
+      onTurn(i0, (i0 + 1) % count, p - Math.floor(p));
+    }
+  }
+
+  // The yard is rebuilt only when a box it is laid out from really moved. Every trigger (the first frame,
+  // fonts, the resize observer, a re-show, the position watch) asks through scheduleBuild(), the pass
+  // measures, and an unchanged signature of what it measured ends it before the first write. So five
+  // triggers at one layout cost a few reads and no writes instead of five forced layouts.
+  let lastSig = null;
+  let buildDirty = false;
+  let buildFrame = false;
+  const q1 = (v) => Math.round(v * 100) / 100;
+
+  // `force` (an explicit layout()) always rebuilds; returns whether the pass wrote anything
+  function build(force = false) {
+    buildDirty = false;
+    if (disposed || !active) return false;
+    const hb = host.getBoundingClientRect();
+    const heroEl = hero && typeof anchor.querySelector === 'function' ? anchor.querySelector(hero) : null;
+    const hr = heroEl ? heroEl.getBoundingClientRect() : null;
+    const ab = hr && hr.width ? hr : anchor.getBoundingClientRect();
+    if (!hb.width || !ab.width) { lastSig = null; return false; }
+    const W = hb.width; const H = hb.height;
+    const rx = Math.min(ab.width * 0.42, 420);
+    const ry = rx * 0.2;
+    const next = { cx: ab.left - hb.left + ab.width / 2, cy: Math.min(ab.top - hb.top + ab.height + 4, H - ry - 96), rx, ry };
+    if (modelRing && typeof host.querySelector === 'function') {
+      const routeEl = host.querySelector('.sf-ng-route');
+      if (routeEl && typeof routeEl.getBoundingClientRect === 'function') {
+        const rt = routeEl.getBoundingClientRect();
+        if (rt && rt.top) {
+          let liH = 40;
+          for (const li of items()) { const r = li.getBoundingClientRect(); if (r && r.height > liH) liH = r.height; }
+          next.cy = Math.min(next.cy, rt.top - hb.top - ry - 14 - liH - 16);
+        }
+      }
+    }
+    // every box this pass needs is read here, before the first write below, so the build costs one
+    // layout instead of forcing a fresh one mid-pass (the back layer and grab surface are absolute
+    // and cannot move the stage or the poster)
+    const sb = hr && hr.width ? anchor.getBoundingClientRect() : ab;
+    const posterEl = modelRing && typeof anchor.querySelector === 'function' ? anchor.querySelector('.k-stage__poster') : null;
+    const pr = posterEl ? posterEl.getBoundingClientRect() : null;
+    const sig = [W, H, next.cx, next.cy, next.rx, ab.top - hb.top, ab.width, ab.height, hr ? hr.width : -1, hr ? hr.height : -1,
+      sb.left - hb.left, sb.top - hb.top, sb.width, sb.height, pr ? pr.width : -1, pr ? pr.height : -1, items().length].map(q1).join('|');
+    if (!force && g && sig === lastSig) return false;
+    lastSig = sig;
+    g = next;
+    face.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    // the back layer lives in the anchor (the stage), under its picture, measured in the host's box
+    if (!back.isConnected && anchor.firstChild) anchor.insertBefore(back, anchor.firstChild);
+    back.setAttribute('viewBox', `${(sb.left - hb.left).toFixed(1)} ${(sb.top - hb.top).toFixed(1)} ${sb.width.toFixed(1)} ${sb.height.toFixed(1)}`);
+    Object.entries({ cx: g.cx, cy: g.cy, rx: rx * 1.02, ry: ry * 1.1 }).forEach(([k, v]) => floor.setAttribute(k, v.toFixed(1)));
+    backBand.setAttribute('d', ring(104, 256));
+    backEdge.setAttribute('d', ring(104, 256));
+    frontBand.setAttribute('d', ring(-104, 104));
+    frontEdge.setAttribute('d', ring(-104, 104));
+    const f = [];
+    for (let t = -100; t <= 100; t += 5) { const [x0, y0] = pt(t); f.push(`M ${x0.toFixed(1)} ${(y0 + 5).toFixed(1)} L ${x0.toFixed(1)} ${(y0 + (t % 25 === 0 ? 12 : 9)).toFixed(1)}`); }
+    fine.setAttribute('d', f.join(' '));
+    const lp = ring(-10, 10, 12);
+    lit.setAttribute('d', lp); litBloom.setAttribute('d', lp);
+    const [fx, fy] = pt(0);
+    slot.setAttribute('d', `M ${fx.toFixed(1)} ${(fy - 12).toFixed(1)} L ${fx.toFixed(1)} ${(fy + 14).toFixed(1)}`);
+    for (const b of [bead, beadBloom]) { b.setAttribute('cx', fx.toFixed(1)); b.setAttribute('cy', fy.toFixed(1)); }
+    // the grab surface: the yard itself, from the hero's top to just under the ring
+    const top = ab.top - hb.top;
+    g.grab = { l: g.cx - rx - 30, t: top, r: g.cx + rx + 30, b: g.cy + ry + 26 };
+    Object.assign(grab.style, { left: `${(g.cx - rx - 30).toFixed(0)}px`, top: `${top.toFixed(0)}px`, width: `${(2 * rx + 60).toFixed(0)}px`, height: `${(g.cy + ry + 26 - top).toFixed(0)}px` });
+    if (modelRing) {
+      g.mw = (pr && pr.width) || (hr && hr.width ? hr.width : ab.width * 0.74) * 1.4;
+      g.mh = (pr && pr.height) || (hr && hr.width ? hr.height : ab.height * 0.46) * 1.4;
+      for (const m of models) {
+        if (!m || m.dead || !m.wrap) continue;
+        m.wrap.style.width = `${g.mw.toFixed(0)}px`;
+        m.wrap.style.height = `${g.mh.toFixed(0)}px`;
+      }
+    }
+    items().forEach((li, i) => {
+      const a = art && art[actionOf(li)];
+      if (modelRing) {
+        if (a && g.mw && !models[i]) {
+          const shell = doc.createElement('div');
+          shell.className = 'orr-yard__model';
+          shell.style.width = `${g.mw.toFixed(0)}px`;
+          shell.style.height = `${g.mh.toFixed(0)}px`;
+          shell.style.opacity = '0';
+          const img = doc.createElement('img');
+          img.alt = '';
+          img.setAttribute('aria-hidden', 'true');
+          img.draggable = false;
+          const rec = { wrap: shell, img, loaded: false, dead: false, pose: null };
+          img.addEventListener('load', () => { if (!rec.dead && !disposed) { rec.loaded = true; checkModels(); } });
+          img.addEventListener('error', () => { if (!rec.dead && !disposed) failModels(); });
+          img.src = a;
+          shell.appendChild(img);
+          wrap.insertBefore(shell, row);
+          models[i] = rec;
+          if (img.complete && img.naturalWidth > 0) rec.loaded = true;
+        }
+      } else if (a && !arts[i]) { const img = doc.createElement('div'); img.className = 'orr-turntable__art'; img.style.backgroundImage = `url("${a}")`; wrap.insertBefore(img, row); arts[i] = img; }
+    });
+    if (modelRing) {
+      const lis = items();
+      if (lis.length > 0 && lis.every((_, i) => modelOk(i))) setModelsReady(true);
+      else if (lis.length === 0 || lis.some((_, i) => !models[i] || models[i].dead)) setModelsReady(false);
+    }
+    if (!drag && !settling) rot = pressedIndex() * sp();
+    place(rot);
+    if (typeof onLayout === 'function') onLayout(g);
+    return true;
+  }
+
+  // The one way anything asks for a build: a dirty flag and a single frame, so any number of triggers in a
+  // frame cost one measuring pass (which ends before its first write when nothing moved).
+  function scheduleBuild() {
+    if (disposed || !active) return;
+    if (typeof requestAnimationFrame !== 'function') { build(); return; }
+    buildDirty = true;
+    if (buildFrame) return;
+    buildFrame = true;
+    requestAnimationFrame(() => {
+      buildFrame = false;
+      if (buildDirty) build();
+    });
+  }
+
+  const setModelsReady = (v) => {
+    const next = !!v;
+    if (modelsNotified && next === modelsReady) return;
+    modelsNotified = true;
+    modelsReady = next;
+    place(rot);
+    if (typeof onModelsReady === 'function') onModelsReady(next);
+  };
+  const modelOk = (i) => {
+    const m = models[i];
+    return !!(m && !m.dead && m.loaded && m.wrap && m.wrap.parentNode);
+  };
+  const checkModels = () => {
+    const lis = items();
+    if (lis.length > 0 && lis.every((_, i) => modelOk(i))) setModelsReady(true);
+  };
+  const failModels = () => {
+    for (const m of models) {
+      if (!m) continue;
+      m.dead = true;
+      if (m.wrap) m.wrap.remove();
+    }
+    setModelsReady(false);
+  };
+
+  // ---- the settle: a spring whose stiffness follows the arriving hull's mass (heavy settles slow and deep)
+  let settle = null;
+  let settling = false;
+  let settleTarget = 0;
+  function settleTo(target, v, m, instant = false) {
+    if (disposed) return;
+    if (settle) settle.stop();
+    settleTarget = target;
+    if (instant || reducedMotion() || typeof requestAnimationFrame !== 'function') { settle = null; settling = false; rot = target; place(rot); return; }
+    const light = lightest();
+    const k = 170 * clamp(light / m, 0.55, 1.3);
+    const c = 2 * Math.sqrt(k) * 0.74;
+    settling = true;
+    settle = createSpring({ value: rot, preset: { k, c }, onUpdate: (x) => { rot = x; place(rot); if (x === settleTarget) settling = false; } });
+    settle.set(target);
+    if (v) settle.kick(v * 0.35);
+  }
+  const frontIndex = () => { const c = n(); return ((Math.round(rot / sp()) % c) + c) % c; };
+  function pick(i) {
+    const li = items()[i];
+    const b = li && li.querySelector('button');
+    if (b && b.getAttribute('aria-pressed') !== 'true' && b.getAttribute('aria-disabled') !== 'true') b.click();
+  }
+
+  // ---- the drag
+  let drag = null;
+  const win = (doc && doc.defaultView) || (typeof window !== 'undefined' ? window : null);
+  const noFrames = () => typeof requestAnimationFrame !== 'function';
+  const resistNow = () => {
+    const count = n();
+    const p = (((intent / sp()) % count) + count) % count;
+    const i0 = Math.floor(p) % count;
+    const f = p - Math.floor(p);
+    const m = massOf(i0) + (massOf((i0 + 1) % count) - massOf(i0)) * f;
+    return clamp(lightest() / m, 0.55, 1.2);
+  };
+  const inGrab = (lx, ly) => !!(g && g.grab && lx >= g.grab.l && lx <= g.grab.r && ly >= g.grab.t && ly <= g.grab.b);
+  const hitModel = (lx, ly) => {
+    if (!modelsReady) return null;
+    let best = null;
+    let bestW = -Infinity;
+    items().forEach((li, i) => {
+      const m = models[i];
+      if (!m || m.dead || !m.pose) return;
+      if (lx >= m.pose.x - m.pose.w / 2 && lx <= m.pose.x + m.pose.w / 2 && ly >= m.pose.y - m.pose.h && ly <= m.pose.y) {
+        if (m.pose.w > bestW) { bestW = m.pose.w; best = i; }
+      }
+    });
+    return best;
+  };
+  const inYard = (lx, ly) => inGrab(lx, ly) || hitModel(lx, ly) != null;
+  const isControl = (t) => {
+    for (let node = t; node && node !== host; node = node.parentNode) {
+      const tag = node.tagName;
+      if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'A' || node.isContentEditable) return true;
+    }
+    return false;
+  };
+  const gestureDenied = () => {
+    const lis = items();
+    return lis.length > 0 && lis.every((li) => { const b = li.querySelector('button'); return b && b.getAttribute('aria-disabled') === 'true'; });
+  };
+  const localXY = (e) => {
+    const hb = host.getBoundingClientRect();
+    return [e.clientX - hb.left, e.clientY - hb.top];
+  };
+  const follow = (now) => {
+    if (!drag || disposed) return false;
+    const dt = followLast ? Math.min(0.05, Math.max(0.001, (now - followLast) / 1000)) : 1 / 60;
+    followLast = now;
+    const a = reducedMotion() ? 1 : 1 - Math.exp(-dt / FOLLOW_TAU_S);
+    const prev = rot;
+    rot += (intent - rot) * a;
+    rotVel = 0.5 * rotVel + 0.5 * ((rot - prev) / dt);
+    place(rot);
+    return true;
+  };
+  const startFollow = () => {
+    followLast = 0;
+    if (!followOff && !noFrames()) followOff = onFrame(follow);
+  };
+  const stopFollow = () => {
+    if (followOff) { followOff(); followOff = null; }
+  };
+  const onDown = (e) => {
+    suppressClick = 0;
+    if (disposed || !active || !g || drag) return;
+    if (!e || e.button !== 0 || e.isPrimary === false) return;
+    if (isControl(e.target) || gestureDenied()) return;
+    if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
+    const [lx, ly] = localXY(e);
+    if (!inYard(lx, ly)) return;
+    e.preventDefault();
+    if (settle) settle.stop();
+    settling = false;
+    rotVel = 0;
+    drag = { id: e.pointerId, x: e.clientX, t: performance.now(), v: 0, moved: 0, tapIndex: hitModel(lx, ly) };
+    intent = rot;
+    try { grab.setPointerCapture(e.pointerId); } catch (_) {}
+    wrap.classList.add('is-dragging');
+    startFollow();
+  };
+  const applyMove = (e) => {
+    const now = performance.now();
+    const dx = e.clientX - drag.x;
+    // the hull at the front sets how the ring answers the hand: heavy resists, light runs
+    const d = -(dx / g.rx) * (180 / Math.PI) * resistNow();
+    intent += d;
+    const dt = Math.max(0.001, (now - drag.t) / 1000);
+    drag.v = 0.7 * drag.v + 0.3 * (d / dt);
+    drag.moved += Math.abs(dx);
+    drag.x = e.clientX;
+    drag.t = now;
+    if (noFrames() || reducedMotion()) { rot = intent; place(rot); }
+  };
+  const onMove = (e) => {
+    if (!drag || !g || (e.pointerId !== undefined && e.pointerId !== drag.id)) return;
+    if (!Number.isFinite(e.clientX)) return;
+    applyMove(e);
+  };
+  const end = (e) => {
+    if (!drag || (e && e.pointerId !== undefined && e.pointerId !== drag.id)) return;
+    const v = performance.now() - drag.t > 140 ? 0 : drag.v;
+    if (e && Number.isFinite(e.clientX)) applyMove(e);
+    const tap = drag.moved < TAP_PX;
+    const tapIndex = drag.tapIndex;
+    const pid = drag.id;
+    drag = null;
+    stopFollow();
+    wrap.classList.remove('is-dragging');
+    try { grab.releasePointerCapture(pid); } catch (_) {}
+    const step = sp();
+    const c = n();
+    let idx;
+    if (tap) {
+      idx = tapIndex != null ? tapIndex : (((Math.round(intent / step) % c) + c) % c);
+      settleTo(rot + wrapDeg(idx * step - rot), 0, massOf(idx));
+    } else {
+      // a light hull glides on; a heavy one stops short
+      const glide = reducedMotion() ? 0 : 0.2 * clamp(lightest() / massOf(frontIndex()), 0.5, 1.4);
+      const k0 = Math.round(intent / step);
+      const k = k0 + clamp(Math.round((intent + v * glide) / step) - k0, -1, 1);
+      idx = ((k % c) + c) % c;
+      settleTo(rot + wrapDeg(k * step - rot), rotVel, massOf(idx));
+    }
+    pick(idx);
+    suppressClick = performance.now();
+  };
+  const cancelDrag = () => {
+    if (!drag) return;
+    const pid = drag.id;
+    drag = null;
+    stopFollow();
+    wrap.classList.remove('is-dragging');
+    try { grab.releasePointerCapture(pid); } catch (_) {}
+    suppressClick = performance.now();
+    const idx = pressedIndex();
+    settleTo(rot + wrapDeg(idx * sp() - rot), 0, massOf(idx));
+  };
+  const onCancel = (e) => {
+    if (!drag || (e && e.pointerId !== undefined && e.pointerId !== drag.id)) return;
+    cancelDrag();
+  };
+  const onDragStart = (e) => {
+    if (drag) { e.preventDefault(); return; }
+    if (!g || !e) return;
+    if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
+    const [lx, ly] = localXY(e);
+    if (!inYard(lx, ly)) return;
+    if (e.target && e.target.tagName === 'IMG') { e.preventDefault(); return; }
+    if (!isControl(e.target)) e.preventDefault();
+  };
+  const onClick = (e) => {
+    if (!suppressClick) return;
+    if (performance.now() - suppressClick > 400) { suppressClick = 0; return; }
+    if (e && e.detail === 0) return;
+    suppressClick = 0;
+    e.preventDefault();
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+  };
+  const onHidden = () => { if (doc.visibilityState === 'hidden') cancelDrag(); };
+  host.addEventListener('pointerdown', onDown, true);
+  host.addEventListener('dragstart', onDragStart, true);
+  host.addEventListener('click', onClick, true);
+  grab.addEventListener('pointermove', onMove);
+  grab.addEventListener('pointerup', end);
+  grab.addEventListener('pointercancel', onCancel);
+  grab.addEventListener('lostpointercapture', onCancel);
+  if (win && typeof win.addEventListener === 'function') {
+    win.addEventListener('pointerup', end);
+    win.addEventListener('blur', cancelDrag);
+  }
+  if (doc && typeof doc.addEventListener === 'function') doc.addEventListener('visibilitychange', onHidden);
+
+  // a click on a word (or any aria-pressed change) turns the ring to it, the short way round
+  function update({ instant = false } = {}) {
+    if (disposed || !active || !g || drag) return;
+    const idx = pressedIndex();
+    const target = rot + wrapDeg(idx * sp() - rot);
+    if (settling && Math.abs(target - settleTarget) < 0.01) return;
+    if (!settling && Math.abs(target - rot) < 0.01) { place(rot); return; }
+    settleTo(target, 0, massOf(idx), instant);
+  }
+  let mo = null;
+  if (typeof MutationObserver === 'function') {
+    mo = new MutationObserver((muts) => {
+      if (muts && muts.some((m) => m.type === 'childList')) members = null;
+      update();
+    });
+  }
+  let ro = null;
+  if (typeof ResizeObserver === 'function') ro = new ResizeObserver(() => scheduleBuild());
+  const observeAll = () => {
+    if (mo) mo.observe(row, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'], childList: true });
+    if (ro) {
+      ro.observe(host);
+      // the stage and the hero box move as the columns settle: the yard re-centres on the hull with them
+      ro.observe(anchor);
+      const heroBox = hero && typeof anchor.querySelector === 'function' ? anchor.querySelector(hero) : null;
+      if (heroBox) ro.observe(heroBox);
+      for (const li of items()) ro.observe(li);
+    }
+  };
+  observeAll();
+  if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(() => scheduleBuild());
+  // the one build at mount (so the first gesture has geometry); the frame after it only checks it
+  build();
+  scheduleBuild();
+  // the columns settle for a moment after the screen shows and SLIDE the stage without resizing it (a
+  // ResizeObserver cannot see a move): watch the hull's box and re-centre the yard if it moved. The
+  // watch rests once the box has held still for WATCH_STILL_FRAMES (or after WATCH_MAX_MS), and every
+  // show starts it again, so a still screen costs no per-frame reads.
+  const WATCH_STILL_FRAMES = 8;
+  const WATCH_MAX_MS = 2000;
+  const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : 0);
+  let watching = false;
+  let watchUntil = 0;
+  let watchStill = 0;
+  let lastAt = null;
+  const heroAt = () => { const h = hero && typeof anchor.querySelector === 'function' ? anchor.querySelector(hero) : null; const r = (h || anchor).getBoundingClientRect(); return r.left + r.width / 2 + ',' + (r.top + r.height); };
+  const watch = () => {
+    watching = false;
+    if (disposed || !active) return;
+    const at = heroAt();
+    if (lastAt !== null && at !== lastAt) {
+      watchStill = 0;
+      if (!drag) build();
+    } else watchStill += 1;
+    lastAt = at;
+    if (watchStill < WATCH_STILL_FRAMES && nowMs() < watchUntil) { watching = true; requestAnimationFrame(watch); }
+  };
+  const startWatch = () => {
+    if (typeof requestAnimationFrame !== 'function' || typeof performance === 'undefined') return;
+    watchStill = 0;
+    lastAt = null;
+    watchUntil = nowMs() + WATCH_MAX_MS;
+    if (!watching) { watching = true; requestAnimationFrame(watch); }
+  };
+  startWatch();
+  const setActive = (v = true) => {
+    if (disposed) return;
+    if (!v) {
+      cancelDrag();
+      if (settle) { settle.stop(); settle = null; }
+      settling = false;
+      stopFollow();
+      rotVel = 0;
+      intent = rot = pressedIndex() * sp();
+      if (g) place(rot);
+      if (mo) mo.disconnect();
+      if (ro) ro.disconnect();
+      active = false;
+      return;
+    }
+    active = true;
+    observeAll();
+    // re-seat on the committed hull now (the geometry stands from the last build), then measure on the
+    // frame: a re-show at an unchanged layout writes nothing, a moved one rebuilds once
+    update({ instant: true });
+    scheduleBuild();
+    startWatch();
+  };
+  return {
+    el: wrap,
+    update,
+    layout: () => { build(true); },
+    setActive,
+    get geometry() { return g; },
+    get rotation() { return rot; },
+    get modelsReady() { return modelsReady; },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      cancelDrag();
+      intent = rot = pressedIndex() * sp();
+      rotVel = 0;
+      stopFollow();
+      if (settle) settle.stop();
+      host.removeEventListener('pointerdown', onDown, true);
+      host.removeEventListener('dragstart', onDragStart, true);
+      host.removeEventListener('click', onClick, true);
+      if (doc && typeof doc.removeEventListener === 'function') doc.removeEventListener('visibilitychange', onHidden);
+      if (win && typeof win.removeEventListener === 'function') {
+        win.removeEventListener('pointerup', end);
+        win.removeEventListener('blur', cancelDrag);
+      }
+      if (mo) mo.disconnect();
+      if (ro) ro.disconnect();
+      for (const m of models) if (m) m.dead = true;
+      wrap.remove();
+      back.remove();
+      setModelsReady(false);
+    },
+  };
+}

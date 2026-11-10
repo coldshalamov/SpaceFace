@@ -1,0 +1,597 @@
+// Player-damage and recovery receipts. Combat owns the transition; UI consumes these models.
+// No wall clock, RNG, or DOM lives here. A massline snap offers the swing rung once.
+// The cause lines stay with the existing formatter.
+
+import { ENEMY_TYPES } from '../data/enemies.js';
+import { FACTION_META } from '../data/factions.js';
+import { MODULES } from '../data/modules.js';
+import { SECTORS } from '../data/sectors.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { SHIPS } from '../data/ships.js';
+import { WEAPONS } from '../data/weapons.js';
+import { formatNumber, resolveNumberLocale } from '../core/numberFormat.js';
+import { INSURANCE_DEFAULTS } from '../systems/economy.js';
+import { RANGE_RAIL_ROWS, rangeRungIndex, sentenceCase } from '../data/rangeRails.js';
+
+const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
+const FACTION_BY_ID = new Map(FACTION_META.map((entry) => [entry.id, entry]));
+const MODULE_BY_ID = new Map(MODULES.map((entry) => [entry.id, entry]));
+const SHIP_BY_ID = new Map(SHIPS.map((entry) => [entry.id, entry]));
+const WEAPON_BY_ID = new Map(WEAPONS.map((entry) => [entry.id, entry]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((entry) => [entry && entry.id, entry]));
+const STATION_BY_ID = new Map();
+
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    STATION_BY_ID.set(station.id, { ...station, sectorId: sector.id, security: sector.security });
+  }
+}
+
+const NON_LAWFUL_PERSONALITIES = new Set(['pirate', 'smuggler', 'xenophobic']);
+const HULL_POLICY_NAME = 'hull insurance';
+const ENVIRONMENT_LABELS = Object.freeze({
+  collision: 'Environmental hazard',
+  deep_core_gas: 'Deep-core gas pocket',
+  salvage_reactor: 'Salvage reactor',
+  environmental: 'Environmental hazard',
+});
+
+function pct(value, max) {
+  return max > 0 ? Math.max(0, Math.min(100, Math.round((Number(value) || 0) / max * 100))) : 0;
+}
+
+// PRO-03: locale resolution now lives in one place (src/core/numberFormat.js) so the death summary
+// and the HUD read the SAME separators. This module's private copies are kept as thin wrappers
+// because its callers pass an already-resolved locale tag and the shared helper's signature is
+// (value, state, options).
+function playerCreditLocale(state) {
+  return resolveNumberLocale(state);
+}
+
+function formatCredits(amount, locale) {
+  const n = Math.max(0, Math.round(Number(amount) || 0));
+  return formatNumber(n, null, { locale });
+}
+
+// Station premium: the on-file deductible, or INSURANCE_DEFAULTS when the record never named one.
+function policyPremiumCr(shipId, insurance) {
+  const record = insurance && typeof insurance === 'object' ? insurance : {};
+  const rate = Number(record.rate);
+  const deductibleCr = Number(record.deductibleCr);
+  return recoveryCostQuote(shipId, {
+    rate: Number.isFinite(rate) ? rate : INSURANCE_DEFAULTS.rate,
+    deductibleCr: Number.isFinite(deductibleCr) ? deductibleCr : INSURANCE_DEFAULTS.deductibleCr,
+    insuredModules: false,
+  }).deductibleCr;
+}
+
+function titleWords(value, fallback = 'Unknown') {
+  const text = String(value || fallback).replace(/^(ship|wpn|station|faction)_/, '').replace(/_/g, ' ');
+  return text.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export function weaponIdFromDamage(payload = {}) {
+  const packet = payload.packet && typeof payload.packet === 'object' ? payload.packet : null;
+  return payload.weaponId
+    || payload.origin && payload.origin.weaponId
+    || payload.origin && payload.origin.kind === 'weapon' && payload.origin.id
+    || packet && packet.source && packet.source.weaponId
+    || physicalWeaponLabelFromDamage(packet
+      ? { ...packet, origin: payload.origin || packet.origin || null, tag: payload.tag || packet.tag || null }
+      : payload)
+    || null;
+}
+
+// SFQ-B058 — a physical kill has no weapon id: a thrown mass, a Massline whip, a
+// ram or a collision slam. The defeat summary must name the physical fact in
+// plain words, never a raw tag and never "unidentified weapon". Pure: same
+// packet in, same label out. Unknown packets return null so callers keep their
+// existing fallbacks.
+export function physicalWeaponLabelFromDamage(packet = {}) {
+  const record = packet && typeof packet === 'object' ? packet : {};
+  const origin = record.origin && typeof record.origin === 'object' ? record.origin : null;
+  const source = record.source && typeof record.source === 'object' ? record.source : null;
+  const link = record.collisionPresentation
+    && typeof record.collisionPresentation === 'object'
+    && record.collisionPresentation.impactLink
+    && typeof record.collisionPresentation.impactLink === 'object'
+    ? record.collisionPresentation.impactLink
+    : (source && source.collisionPresentation
+      && typeof source.collisionPresentation === 'object'
+      && source.collisionPresentation.impactLink
+      && typeof source.collisionPresentation.impactLink === 'object'
+      ? source.collisionPresentation.impactLink
+      : null);
+  const tags = [
+    origin && origin.kind,
+    source && source.kind,
+    record.tag,
+    origin && origin.tag,
+    source && source.tag,
+    source && source.impulseProvenance,
+    link && link.tag,
+  ];
+  for (const tag of tags) {
+    if (tag === 'massline_whip' || tag === 'massline_whip_recoil' || tag === 'massline_tumble_impact'
+      || tag === 'massline_throw' || tag === 'rope_throw') return 'thrown mass';
+  }
+  for (const tag of tags) {
+    if (tag === 'terrain_collision' || tag === 'collision_terrain') return 'arena impact';
+  }
+  for (const tag of tags) {
+    if (tag === 'ship_collision' || tag === 'collision_craft' || tag === 'direct_contact') return 'hull ram';
+    if (tag === 'ram_plate' || tag === 'tow_flail') {
+      const moduleId = tag === 'ram_plate' ? 'mod_ram_plate' : 'mod_mass_flail_rig';
+      const moduleDef = MODULE_BY_ID.get(moduleId);
+      return moduleDef ? moduleDef.name : 'hull ram';
+    }
+  }
+  const moduleIds = [
+    origin && origin.weaponId,
+    source && source.weaponId,
+    record.weaponId,
+  ];
+  for (const moduleId of moduleIds) {
+    if (typeof moduleId !== 'string' || !moduleId) continue;
+    // Exact module ids first, then the legacy short id without its size suffix.
+    const moduleDef = MODULE_BY_ID.get(moduleId)
+      || (moduleId === 'mod_mass_flail_rig' ? MODULE_BY_ID.get('mod_mass_flail_rig_m') : null);
+    if (moduleDef) return moduleDef.name;
+  }
+  return null;
+}
+
+export function attackerLabel(state, attackerId) {
+  if (attackerId == null) return 'Environmental hazard';
+  if (attackerId === state.playerId) return 'Own ship';
+  const attacker = state.entities && typeof state.entities.get === 'function' ? state.entities.get(attackerId) : null;
+  if (!attacker) return 'Unknown contact';
+  const data = attacker.data || {};
+  const enemy = ENEMY_BY_ID.get(data.lootTableId || data.enemyTypeId);
+  if (enemy) return enemy.name;
+  if (data.callsign) return String(data.callsign);
+  const ship = SHIP_BY_ID.get(data.defId);
+  return ship ? ship.name : titleWords(data.shipClass || attacker.type, 'Unknown contact');
+}
+
+function contextLabel(context) {
+  if (!context) return null;
+  if (context === 'deep_core_gas') return 'Deep-core gas';
+  return titleWords(context);
+}
+
+/** Stable source identity for the after-action receipt. Never infer "environment" from a missing
+ * entity when a non-null contact id was supplied: despawned attackers must remain Unknown contact. */
+export function defeatSource(state, attackerId, context = null) {
+  if (attackerId == null) {
+    return {
+      kind: 'environment',
+      entityId: null,
+      label: ENVIRONMENT_LABELS[context] || 'Environmental hazard',
+      factionId: null,
+      faction: null,
+    };
+  }
+  if (attackerId === state.playerId) {
+    return { kind: 'self', entityId: attackerId, label: 'Own ship', factionId: null, faction: null };
+  }
+  const entity = state.entities && typeof state.entities.get === 'function' ? state.entities.get(attackerId) : null;
+  if (!entity) {
+    return { kind: 'unknown', entityId: attackerId, label: 'Unknown contact', factionId: null, faction: null };
+  }
+  const data = entity.data || {};
+  const factionId = entity.factionId || data.factionId || null;
+  const faction = FACTION_BY_ID.get(factionId);
+  return {
+    kind: 'contact',
+    entityId: attackerId,
+    label: attackerLabel(state, attackerId),
+    factionId,
+    faction: faction ? faction.name : (factionId ? titleWords(factionId) : null),
+  };
+}
+
+export function weaponLabel(weaponId) {
+  const weapon = WEAPON_BY_ID.get(weaponId);
+  if (weapon) return weapon.name;
+  // SFQ-B058 — a physical kill label ('thrown mass', 'arena impact', 'hull ram')
+  // is already player words: pass it through verbatim. Anything else is still an
+  // id, humanised as before.
+  if (typeof weaponId === 'string' && weaponId && !weaponId.includes('_')) return weaponId;
+  return weaponId ? titleWords(weaponId) : 'Unknown weapon';
+}
+
+export function impactDirection(state, attackerId, hitPos = null) {
+  const player = state.entities && typeof state.entities.get === 'function' ? state.entities.get(state.playerId) : null;
+  const attacker = attackerId == null || !state.entities || typeof state.entities.get !== 'function'
+    ? null : state.entities.get(attackerId);
+  const source = attacker && attacker.pos || hitPos;
+  if (!player || !player.pos || !source) return 'UNKNOWN';
+  const dx = Number(source.x) - Number(player.pos.x);
+  const dz = Number(source.z) - Number(player.pos.z);
+  if (!(Math.hypot(dx, dz) > 1e-6)) return 'CONTACT';
+  let relative = Math.atan2(dz, dx) - (Number(player.rot) || 0);
+  while (relative > Math.PI) relative -= Math.PI * 2;
+  while (relative <= -Math.PI) relative += Math.PI * 2;
+  const quarter = Math.PI / 4;
+  if (relative >= -quarter && relative <= quarter) return 'FRONT';
+  if (relative > quarter && relative < Math.PI - quarter) return 'STARBOARD';
+  if (relative < -quarter && relative > -Math.PI + quarter) return 'PORT';
+  return 'AFT';
+}
+
+export function buildDamageReadout(state, payload = {}) {
+  const after = payload.after || {};
+  const layer = String(payload.dominantLayer || 'impact').toUpperCase();
+  const subsystem = payload.subsystemId ? String(payload.subsystemId).replace(/_/g, ' ').toUpperCase() : null;
+  const readout = {
+    direction: impactDirection(state, payload.attackerId, payload.pos),
+    attacker: attackerLabel(state, payload.attackerId),
+    weapon: weaponLabel(weaponIdFromDamage(payload)),
+    layer,
+    subsystem,
+    shieldPct: pct(after.shield, after.shieldMax),
+    armorPct: pct(after.armor, after.armorMax),
+    hullPct: pct(after.hull, after.hullMax),
+  };
+  readout.text = [readout.direction, readout.attacker, readout.weapon, readout.layer, readout.subsystem]
+    .filter(Boolean)
+    .join(' · ');
+  return readout;
+}
+
+export function formatDefeatCause(state, receipt = {}) {
+  const source = receipt.source || defeatSource(state, receipt.killerId, receipt.context);
+  const weaponId = receipt.weaponId || weaponIdFromDamage(receipt);
+  const weapon = weaponId ? weaponLabel(weaponId) : null;
+  const layer = receipt.dominantLayer ? String(receipt.dominantLayer).toLowerCase() + ' breach' : 'hull loss';
+  const context = receipt.context && !['weapon', 'combat'].includes(receipt.context)
+    ? contextLabel(receipt.context) : null;
+  return [source.label, source.faction, weapon, layer, context].filter(Boolean).join(' · ');
+}
+
+function fatalSummary(source, weapon, direction, dominantLayer) {
+  const layer = String(dominantLayer || 'hull').toLowerCase();
+  if (source.kind === 'environment') return `${source.label} breached the ${layer}.`;
+  if (source.kind === 'self') {
+    return `${weapon || 'Self-inflicted damage'} breached your ${layer}.`;
+  }
+  const faction = source.faction ? ` (${source.faction})` : '';
+  const bearing = String(direction || 'unknown').toLowerCase();
+  return `Final hit from ${source.label}${faction} · ${weapon || 'unidentified weapon'} · ${bearing} ${layer} breach.`;
+}
+
+function stationIsLawful(station) {
+  if (!station || station.type === 'blackmarket') return false;
+  const faction = FACTION_BY_ID.get(station.factionId);
+  return !faction || !NON_LAWFUL_PERSONALITIES.has(faction.personality);
+}
+
+export function liveStationPosition(state, stationId) {
+  const active = state.world && state.world.activeSector;
+  const record = active && Array.isArray(active.stations)
+    ? active.stations.find((station) => (station.stationId || station.id) === stationId)
+    : null;
+  if (record && record.pos) return { x: Number(record.pos.x) || 0, z: Number(record.pos.z) || 0 };
+  const entities = state.entityList || [];
+  const entity = entities.find((item) => item && item.type === 'station' && item.data && item.data.stationId === stationId);
+  return entity && entity.pos ? { x: Number(entity.pos.x) || 0, z: Number(entity.pos.z) || 0 } : null;
+}
+
+// Exported for the stuck-tow offer (FB-111): a wedged hull is towed to the same lawful dock a
+// defeat recovery would choose — the chooser stays one authority.
+export function chooseLawfulStation(state) {
+  const remembered = state.player && state.player.insurance && state.player.insurance.lastStationId;
+  const rememberedDef = STATION_BY_ID.get(remembered);
+  if (rememberedDef && stationIsLawful(rememberedDef)) return rememberedDef;
+
+  const currentSectorId = state.world && state.world.currentSectorId;
+  const currentSector = SECTORS.find((sector) => sector.id === currentSectorId);
+  const local = currentSector && (currentSector.stations || []).find(stationIsLawful);
+  if (local) return { ...local, sectorId: currentSector.id, security: currentSector.security };
+
+  const helios = STATION_BY_ID.get('station_helios');
+  if (helios) return helios;
+  return [...STATION_BY_ID.values()].find(stationIsLawful) || null;
+}
+
+// Row 463 "Retry act": the boss-staging berth aims the player's re-entry bearing at the sector's
+// lawful recovery station, so the chooser needs the same lawful test scoped to a named sector
+// rather than the player's remembered/current dock.
+export function lawfulStationInSector(sectorId) {
+  const sector = SECTORS.find((s) => s.id === sectorId);
+  const station = sector && Array.isArray(sector.stations)
+    ? sector.stations.find(stationIsLawful)
+    : null;
+  return station ? { ...station, sectorId: sector.id, security: sector.security } : null;
+}
+
+// Recovery pricing as a pure quote so the docked service row can price the player's actual
+// hull before they ever need it — buildRecoveryPlan consumes the same math at loss time.
+export function recoveryCostQuote(shipId, insurance = {}) {
+  insurance = insurance && typeof insurance === 'object' ? insurance : {};
+  const ship = SHIP_BY_ID.get(shipId) || SHIP_BY_ID.get('ship_kestrel');
+  const rate = Math.max(0, Math.min(1, Number(insurance.rate) || 0));
+  const deductibleCr = Math.max(0, Math.round(Number(insurance.deductibleCr) || 0));
+  const insured = insurance.insuredModules === true;
+  const shipPrice = Math.max(0, Math.round(Number(ship && ship.price) || 0));
+  const starter = !!(ship && ship.tier === 0);
+  const uninsuredCostCr = starter
+    ? deductibleCr
+    : Math.max(deductibleCr, Math.round(shipPrice * (1 - rate)));
+  const insuredCostCr = deductibleCr;
+  return {
+    shipId: ship && ship.id || shipId,
+    shipName: ship && ship.name || shipId,
+    tier: ship && Number(ship.tier) || 0,
+    starter,
+    insured,
+    rate,
+    deductibleCr,
+    uninsuredCostCr,
+    insuredCostCr,
+    coveredCostCr: Math.max(0, uninsuredCostCr - insuredCostCr),
+  };
+}
+
+export function buildRecoveryPlan(state, playerEntity) {
+  const station = chooseLawfulStation(state);
+  const insurance = state.player && state.player.insurance || {};
+  const owned = (state.player && state.player.ownedShips || [])[state.player && state.player.activeShipIndex || 0] || {};
+  const shipId = owned.defId || playerEntity && playerEntity.data && playerEntity.data.defId || 'ship_kestrel';
+  const ship = SHIP_BY_ID.get(shipId) || SHIP_BY_ID.get('ship_kestrel');
+  const quote = recoveryCostQuote(shipId, insurance);
+  const rate = quote.rate;
+  const deductible = quote.deductibleCr;
+  const insured = quote.insured;
+  const quotedCostCr = quote.insured ? quote.insuredCostCr : quote.uninsuredCostCr;
+  const availableCredits = Math.max(0, Math.round(Number(state.player && state.player.credits) || 0));
+  const costCr = Math.min(quotedCostCr, availableCredits);
+  const hardshipCoveredCr = quotedCostCr - costCr;
+  const locale = playerCreditLocale(state);
+  const premiumCr = insured ? null : policyPremiumCr(shipId, insurance);
+  const deductibleCr = insured ? deductible : null;
+
+  const cargo = state.player && state.player.cargo;
+  const cargoLosses = [];
+  let persistentCargoProtected = 0;
+  for (const commodityId of Object.keys(cargo && cargo.items || {}).sort()) {
+    const have = Math.max(0, Math.floor(cargo.items[commodityId] || 0));
+    const persistent = state.story && Array.isArray(state.story.persistentCargo)
+      && state.story.persistentCargo.includes(commodityId);
+    if (persistent) {
+      persistentCargoProtected += have;
+      continue;
+    }
+    const qty = Math.floor(have * 0.5);
+    if (qty > 0) cargoLosses.push({ commodityId, qty });
+  }
+
+  // FB-124 — a live cargo policy pays its covered fraction of the manifest value actually
+  // destroyed, capped by the insured amount. The claim is priced into the plan here so the
+  // recovery berth's grant is one-shot: the policy expires at the dock either way.
+  const policy = state.player && state.player.cargoPolicy;
+  let cargoPayoutCr = 0;
+  let cargoPolicyName = null;
+  if (policy && Number(policy.coverFrac) > 0 && Number(policy.coverCr) > 0) {
+    let lostValueCr = 0;
+    for (const loss of cargoLosses) {
+      const def = COMMODITY_BY_ID.get(loss.commodityId);
+      lostValueCr += loss.qty * (def && Number(def.basePrice) || 0);
+    }
+    cargoPayoutCr = Math.min(
+      Math.round(policy.coverCr),
+      Math.round(lostValueCr * Number(policy.coverFrac)),
+    );
+    if (cargoPayoutCr > 0) cargoPolicyName = 'cargo policy';
+  }
+
+  const insuranceStatus = (ship && ship.tier === 0
+    ? `STARTER RECOVERY · ${formatCredits(deductible, locale)} CR DEDUCTIBLE`
+    : insured
+      ? `INSURED · COVERED ${formatCredits(quote.coveredCostCr, locale)} CR`
+      : `UNINSURED · ${Math.round((1 - rate) * 100)}% HULL SHARE`)
+    + (hardshipCoveredCr > 0 ? ` · ${formatCredits(hardshipCoveredCr, locale)} CR RECOVERY FUND` : '')
+    + (cargoPayoutCr > 0 ? ` · CARGO POLICY +${formatCredits(cargoPayoutCr, locale)} CR` : '');
+  const coverageNote = insured
+    ? `${formatCredits(deductibleCr, locale)} cr deductible`
+    : `${insuranceStatus} · ${HULL_POLICY_NAME} · ${formatCredits(premiumCr, locale)} cr premium`;
+
+  return {
+    schemaVersion: 1,
+    stationId: station && station.id || null,
+    stationName: station && station.name || 'Lawful recovery dock',
+    sectorId: station && station.sectorId || state.world && state.world.currentSectorId || null,
+    stationPos: station ? liveStationPosition(state, station.id) : { x: 0, z: 0 },
+    shipId,
+    costCr,
+    quotedCostCr,
+    hardshipCoveredCr,
+    insured,
+    insuranceRate: rate,
+    policyName: insured ? null : HULL_POLICY_NAME,
+    premiumCr,
+    deductibleCr,
+    insuranceStatus,
+    coverageNote,
+    cargoLosses,
+    cargoLostQty: cargoLosses.reduce((total, loss) => total + loss.qty, 0),
+    cargoPayoutCr,
+    cargoPolicyName,
+    persistentCargoProtected,
+  };
+}
+
+const MASSLINE_SNAP_KINDS = new Set([
+  'massline_whip',
+  'massline_whip_recoil',
+  'massline_tumble_impact',
+]);
+const SWING_RUNG_ID = 'swing_do_not_pull';
+// X-09 (plan-approved rows): the only causes a real Range rung actually teaches. A weapon kill,
+// a contact-caused ram or throw, a hazard, or an unreadable cause stays silent — no rung teaches
+// surviving gunfire and an offer with no drill behind it is a lie.
+// X-09: the v1 physicalLabel rows are correct mappings but DORMANT — the player takes no
+// impact damage yet (a separate gameplay contract). Rows keying `origin`/`context` are live:
+// the berth's dock-collar scrape is already a player-caused failure to stop.
+const DEFEAT_RUNG_ROWS = Object.freeze([
+  { label: 'arena impact', sources: Object.freeze(['self', 'environment']), rungId: 'stopping_takes_room', lead: 'Came in hot.' },
+  { label: 'hull ram', sources: Object.freeze(['self', 'environment']), rungId: 'slip_a_gap', lead: 'Clipped a hull.' },
+  { origin: 'dock_collar', sources: Object.freeze(['environment']), rungId: 'stopping_takes_room', lead: 'Came in hot.' },
+]);
+
+// Exported for the X-09 miss-robustness seam: a rung id with no rail row returns null, never throws.
+export function rangeRow(id) {
+  const rows = Array.isArray(RANGE_RAIL_ROWS) ? RANGE_RAIL_ROWS : [];
+  const row = rows.find((entry) => entry && entry.id === id);
+  if (!row || rangeRungIndex(row.id) < 0) return null;
+  return row;
+}
+
+function kindOf(record) {
+  return record && typeof record.kind === 'string' ? record.kind : '';
+}
+
+function isSnapCut(record) {
+  if (!record || typeof record !== 'object') return false;
+  return record.cutReason === 'snap' || record.reason === 'snap';
+}
+
+/** A massline whip or a recorded line snap. A weapon kill stays a combat death. */
+export function isSlackLineSnapDeath(lethal) {
+  if (!lethal || typeof lethal !== 'object') return false;
+  const origin = lethal.origin && typeof lethal.origin === 'object' ? lethal.origin : null;
+  const source = lethal.packet && lethal.packet.source && typeof lethal.packet.source === 'object'
+    ? lethal.packet.source
+    : null;
+  if (kindOf(origin) === 'weapon' || kindOf(source) === 'weapon') return false;
+  if (MASSLINE_SNAP_KINDS.has(kindOf(origin)) || MASSLINE_SNAP_KINDS.has(kindOf(source))) return true;
+  if (MASSLINE_SNAP_KINDS.has(lethal.context)) return true;
+  if (isSnapCut(lethal) || isSnapCut(origin) || isSnapCut(source)) return true;
+  return false;
+}
+
+// Per-rung gate: the session string marks the lesson offered this run; the profile hint
+// (player.hints is save-durable) keeps a second run of the same cause silent across saves.
+function rungOfferedBefore(state, rungId) {
+  const ui = state && state.ui;
+  if (ui && ui.deathRangeOfferedRung === rungId) return true;
+  const hints = state && state.player && state.player.hints;
+  return !!(hints && hints['deathRung:' + rungId] === true);
+}
+
+function rangeOfferFor(rungId, lead) {
+  const row = rangeRow(rungId);
+  if (!row) return null;
+  return {
+    rungId: row.id,
+    once: true,
+    line: `${lead ? lead + ' ' : ''}The Range can teach ${sentenceCase(row.rule)}.`,
+  };
+}
+
+export function defeatRangeOffer(state, lethal, read = {}) {
+  if (isSlackLineSnapDeath(lethal)) {
+    if (rungOfferedBefore(state, SWING_RUNG_ID)) return null;
+    return rangeOfferFor(SWING_RUNG_ID);
+  }
+  const cause = read && typeof read === 'object' ? read : {};
+  const sourceKind = cause.sourceKind;
+  // v3 live row — ran the cap dry into a contact death. No last-fire stamp exists, so the
+  // read is cap-only; 'unknown' (despawned attacker) stays silent by the kind gate.
+  // typeof gate, not Number(): Number(null) is 0, which would read a missing cap as dry.
+  const capMax = typeof cause.capMax === 'number' ? cause.capMax : NaN;
+  const cap = typeof cause.cap === 'number' ? cause.cap : NaN;
+  if (sourceKind === 'contact' && !cause.physicalLabel
+    && Number.isFinite(capMax) && capMax > 0 && Number.isFinite(cap) && cap <= 0.05 * capMax) {
+    if (!rungOfferedBefore(state, 'you_can_run_dry')) {
+      return rangeOfferFor('you_can_run_dry', 'Ran the cap dry.');
+    }
+  }
+  for (const rule of DEFEAT_RUNG_ROWS) {
+    if (rule.origin) {
+      if (cause.origin !== rule.origin && cause.context !== rule.origin) continue;
+    } else if (cause.physicalLabel !== rule.label) {
+      continue;
+    }
+    if (!rule.sources.includes(sourceKind)) continue;
+    if (rungOfferedBefore(state, rule.rungId)) continue;
+    return rangeOfferFor(rule.rungId, rule.lead);
+  }
+  return null;
+}
+
+export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
+  const rawWeaponId = lethal.weaponId || weaponIdFromDamage({
+    origin: lethal.origin,
+    packet: lethal.packet,
+  });
+  // A known gun keeps its id; a physical kill (or a raw tag riding weaponId)
+  // reads as the plain-word impact label instead of "unidentified weapon".
+  const physicalLabel = physicalWeaponLabelFromDamage({
+    origin: lethal.origin,
+    source: lethal.packet && lethal.packet.source || null,
+    tag: lethal.tag || lethal.context || null,
+    collisionPresentation: lethal.packet && lethal.packet.source
+      && lethal.packet.source.collisionPresentation || null,
+    weaponId: typeof rawWeaponId === 'string' ? rawWeaponId : null,
+  });
+  const weaponId = rawWeaponId && WEAPON_BY_ID.has(rawWeaponId)
+    ? rawWeaponId
+    : (physicalLabel || rawWeaponId);
+  const dominantLayer = lethal.dominantLayer || lethal.result && lethal.result.dominantLayer || 'hull';
+  const context = lethal.context || lethal.origin && lethal.origin.kind || 'combat';
+  const source = defeatSource(state, killerId, context);
+  const subsystemId = lethal.subsystemId || lethal.result && lethal.result.subsystemId || null;
+  const finalDamage = buildDamageReadout(state, {
+    attackerId: killerId,
+    weaponId,
+    dominantLayer,
+    subsystemId,
+    after: lethal.result && lethal.result.after || {},
+    pos: lethal.packet && lethal.packet.hit && lethal.packet.hit.pos || null,
+  });
+  const recovery = buildRecoveryPlan(state, playerEntity);
+  const receipt = {
+    schemaVersion: 1,
+    tick: Number.isFinite(state.tick) ? state.tick | 0 : 0,
+    simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
+    killerId: killerId == null ? null : killerId,
+    source,
+    attacker: source.label,
+    factionId: source.factionId,
+    faction: source.faction,
+    weaponId,
+    weapon: weaponId ? weaponLabel(weaponId) : null,
+    dominantLayer,
+    direction: finalDamage.direction,
+    subsystemId,
+    vitalsPct: {
+      shield: finalDamage.shieldPct,
+      armor: finalDamage.armorPct,
+      hull: finalDamage.hullPct,
+    },
+    context,
+    cause: formatDefeatCause(state, { killerId, source, weaponId, dominantLayer, context }),
+    fatalSummary: fatalSummary(source, weaponId ? weaponLabel(weaponId) : null, finalDamage.direction, dominantLayer),
+    pos: playerEntity && playerEntity.pos ? { x: playerEntity.pos.x, z: playerEntity.pos.z } : null,
+    recovery,
+  };
+  const offer = defeatRangeOffer(state, lethal, {
+    physicalLabel,
+    sourceKind: source.kind,
+    cap: playerEntity && Number.isFinite(playerEntity.cap) ? playerEntity.cap : null,
+    capMax: playerEntity && Number.isFinite(playerEntity.capMax) ? playerEntity.capMax : null,
+    origin: lethal.origin && typeof lethal.origin === 'object' ? lethal.origin.kind : null,
+    context,
+  });
+  if (offer) {
+    receipt.rangeOffer = offer;
+    if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+    state.ui.deathRangeOfferedRung = offer.rungId;
+    const player = state.player || (state.player = {});
+    const hints = player.hints || (player.hints = {});
+    hints['deathRung:' + offer.rungId] = true;
+  }
+  return receipt;
+}

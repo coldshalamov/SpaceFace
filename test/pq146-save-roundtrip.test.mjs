@@ -1,0 +1,171 @@
+// PQ-146 save boundaries across a live physical episode. A Razor Bolas is released, the world is
+// saved before the impact, restored onto identical bodies, and the impact then settles exactly
+// once with the saved root identity; a second save after the first payoff still lets the
+// wingman collision amend the same incident; a settled episode never pays again after reload.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createSg02DynamicBodyOwner,createSg02CombatPhysicsPort} from '../src/core/sg02DynamicBodyOwner.js';
+import {createBus} from '../src/core/eventBus.js';
+import {createCombatKernel} from '../src/combat/kernel.js';
+import {stuntGrammar} from '../src/systems/stuntGrammar.js';
+import {collisionConsequences} from '../src/systems/collisionConsequences.js';
+import {tumbleStates} from '../src/systems/tumbleStates.js';
+import {journalFor} from '../src/combat/stuntEvidence.js';
+import {serializeCombatState,restoreCombatState} from '../src/combat/persistence.js';
+import {readTumbleStatus} from '../src/combat/tumbleStatus.js';
+import {COMBAT_FLAGS} from '../src/data/featureFlags.js';
+
+function body(id,x,z,{mass=16,radius=8,hull=100,team=1,vx=0,vz=0,combatSpeed}={}){
+  return {id,type:'ship',alive:true,team,name:`ship ${id}`,pos:{x,z},vel:{x:vx,z:vz},rot:0,angVel:0,radius,mass,hull,hullMax:hull,shield:0,armor:0,
+    ...(combatSpeed!=null?{combatSpeed}:{}),
+    data:{defId:'ship_kestrel',encounter:{id:'roundtrip'},ai:id?{huntPlayer:true}:{}},
+    physicsBody:{schemaVersion:1,dynamic:true,radius,mass,inertiaY:48,ccd:true,revision:0}};
+}
+const cloneBody=e=>({...e,pos:{x:e.pos.x,z:e.pos.z},vel:{x:e.vel.x,z:e.vel.z},data:structuredClone(e.data),physicsBody:{...e.physicsBody}});
+async function world(entities,tick=0){
+  const state={playerId:0,entities:new Map(entities.map(e=>[e.id,e])),entityList:entities,mode:'flight',tick,simTime:tick/60,combat:{},factions:{},settings:{},player:{},run:null,
+    story:{titles:{byId:{}},titlesSeen:[]},world:{currentSectorId:'roundtrip'},meta:{seed:1}};
+  const bus=createBus(),owner=await createSg02DynamicBodyOwner({publishTelemetry:false});owner.syncFromEntities(entities);if(tick===0)owner.step(1/60);
+  const flag=COMBAT_FLAGS.weaponImpulseConsequences;COMBAT_FLAGS.weaponImpulseConsequences=true;
+  const helpers={combatPhysics:createSg02CombatPhysicsPort(owner)},kernel=createCombatKernel({state,bus,helpers}),registry={get:id=>id==='combat'?{kernel}:null};
+  const grammar=Object.create(stuntGrammar);grammar.init({state,bus});
+  const consequence=Object.create(collisionConsequences);consequence.init({state,bus,registry});
+  const tumble=Object.create(tumbleStates);tumble.init({state,bus,registry,helpers});
+  const detected=[],amended=[],consequences=[];
+  bus.on('stunt:trickDetected',t=>detected.push(t));bus.on('stunt:trickAmended',t=>amended.push(t));bus.on('combat:collisionConsequence',c=>consequences.push(c));
+  return {state,bus,owner,grammar,detected,amended,consequences,
+    rope(){owner.createAttachment({attachmentId:'rope',defId:'tether_standard',ownerId:0,targetId:1,sourceWorld:entities[0].pos,targetWorld:entities[1].pos,restLength:30,tick:state.tick});},
+    run(until,each=null){while(state.tick<until){state.tick++;state.simTime=state.tick/60;each?.(state.tick);owner.step(1/60);
+      for(const p of owner.drainContactImpacts())bus.emit('physics:impact',{...p,tick:state.tick,consequenceKernelVersion:1});tumble.update(1/60,state);grammar.update(1/60,state);}},
+    snapshot(){return {tick:state.tick,entities:entities.map(cloneBody),stunts:structuredClone(grammar.serialize()),combat:serializeCombatState(state)};},
+    close(){tumble.destroy?.();grammar.destroy();consequence.destroy();kernel.dispose();owner.dispose();COMBAT_FLAGS.weaponImpulseConsequences=flag;}};
+}
+async function restored(saved){
+  const w=await world(saved.entities.map(cloneBody),saved.tick);
+  w.bus.emit('save:restoring',{});
+  restoreCombatState(w.state,saved.combat,ref=>ref?.kind==='player'?w.state.playerId:ref?.kind==='persistent'&&w.state.entities.has(Number(ref.saveId))?Number(ref.saveId):null);
+  w.grammar.deserialize(structuredClone(saved.stunts));w.bus.emit('save:loaded',{});
+  return w;
+}
+// The payload, pursuer and wingman are slow hull classes (governed combat speed 95): receipt
+// gates key to 0.5 x a struck hull's cruise, doubled by the ceiling restore, and this episode's
+// strikes close at ~112 (bolas) and ~55 (wingman amendment) — over the 47.5 slow-class gate,
+// under the 105 kestrel-pace one. 2026-09-29: the wingman was re-seated onto the pursuer's
+// post-release flight line (-118,42 from -135,51). Under the post-1639c221e solver a tangential
+// clip bleeds closing across six ticks and the first impulse packet stays under damageDeltaV
+// (8), so the old grazing seat produced damageApplied=false and no amendment; the head-on seat
+// lands a single ~17.4-deltaV kill, preserving the same collateral-count-2 contract.
+// 2026-09-30 (eb1869826 solid contacts): the bolas strike lands ~t71 and flings the pursuer
+// downrange at (-106.4,6.4), while the released payload leaves on its own line — the old
+// (-118,42) seat now sits on the PAYLOAD's line, so the payload struck the wingman first and
+// the incident amended in-run before the t90 save boundary. The wingman returns to the
+// pursuer's post-strike flight line at (-155,37) (pursuer arrives ~t110): the wingman
+// collision lands after the save, and its receipt rides the pursuer's bolas-strike path
+// (edges 2, two victim lives), preserving the same collateral-count-2 contract.
+const scene=()=>[body(0,0,0,{team:0,mass:400}),body(1,35,0,{vz:110,mass:28,combatSpeed:95}),body(2,-90,33,{hull:60,mass:10,combatSpeed:95}),body(3,-155,37,{hull:3,mass:10,combatSpeed:95})];
+const release=tick=>tick===31;
+
+// The unchanged full-hull wingman takes sub-material damage under today's physical response.
+// Attribution must survive even when no extra style is earned. Wounded variants below
+// separately prove actual lethal amendments, without reseating bodies or altering damage gates.
+const woundedScene=()=>{const entities=scene();entities[3].hull=0.5;return entities;};
+function assertWingmanEvidence(w,rootId,{lethal=false}={}){
+  const hit=w.consequences.find(c=>c.targetId===3&&c.otherId===2);
+  assert.ok(hit?.damageApplied,'the native wingman collision deals actual damage');
+  assert.equal(hit.provenance.actorId,0);assert.equal(hit.stuntEvidence.root.id,rootId);
+  assert.equal(hit.stuntEvidence.path.edges,2);assert.equal(hit.targetKilled,lethal);
+  if(!lethal)assert.ok(hit.hullDamage<0.25*hit.targetHullMax||hit.helmLossSeconds<1,'nonlethal damage needs both quarter-hull loss and one second helm loss to become material');
+}
+
+for(const wounded of [false,true])test(`a save between release and impact preserves root identity (${wounded?'wounded lethal':'full-hull nonmaterial'} wingman)`,async()=>{
+  const live=await world(wounded?woundedScene():scene());live.rope();
+  let saved;
+  try{
+    live.run(45,tick=>{if(release(tick)){live.owner.cutAttachment({attachmentId:'rope',reason:'tether_cut',tick});live.bus.emit('tether:releaseRated',{targetId:1,classification:'razor',tick});}});
+    const journal=journalFor(live.state);
+    assert.equal(journal.roots.size,1);assert.equal(live.detected.length,0,'nothing has landed yet');
+    saved=live.snapshot();
+    const rootId=[...journal.roots.keys()][0];
+    assert.ok(saved.stunts.evidence.roots.some(([id])=>id===rootId),'the pending root is in the save');
+    assert.ok(saved.stunts.evidence.constraints.some(([,c])=>c.release?.grade==='razor'),'the rated release travels with it');
+    const after=await restored(saved);
+    try{
+      const j=journalFor(after.state);
+      assert.equal(j.roots.size,1);assert.ok(j.roots.has(rootId));
+      assert.equal(j.lives.get('number:1')?.id,saved.stunts.evidence.lives.find(([k])=>k==='number:1')[1].id,'the payload keeps its saved body life');
+      after.run(200);
+      assert.equal(after.detected.length,1,JSON.stringify(after.detected.map(t=>t.trickId)));
+      assert.equal(after.detected[0].trickId,'bolas');assert.equal(after.detected[0].episodeId,rootId);
+      assert.equal(after.detected[0].modifiers.razorRelease,'razor');
+      assertWingmanEvidence(after,rootId,{lethal:wounded});
+      assert.equal(after.amended.length,wounded?1:0,'only a material collision earns an amendment');
+    }finally{after.close();}
+  }finally{live.close();}
+});
+test('a moved body cannot inherit the pending root; the impact is then an unclaimed world collision',async()=>{
+  const live=await world(scene());live.rope();
+  try{
+    live.run(45,tick=>{if(release(tick))live.owner.cutAttachment({attachmentId:'rope',reason:'tether_cut',tick});});
+    const saved=live.snapshot();
+    saved.entities[1].pos.z+=25;
+    const after=await restored(saved);
+    try{
+      assert.equal(journalFor(after.state).roots.size,0,'a body that does not match its saved motion restores no provenance');
+      after.run(200);
+      assert.equal(after.detected.length,0);
+    }finally{after.close();}
+  }finally{live.close();}
+});
+test('a save after the first payoff keeps the amendment window: an actually wounded wingman amends the saved incident and a replay pays nothing',async()=>{
+  const live=await world(woundedScene());live.rope();
+  try{
+    live.run(90,tick=>{if(release(tick)){live.owner.cutAttachment({attachmentId:'rope',reason:'tether_cut',tick});live.bus.emit('tether:releaseRated',{targetId:1,classification:'razor',tick});}});
+    assert.equal(live.detected.length,1);assert.equal(live.amended.length,0);
+    const saved=live.snapshot();
+    assert.equal(saved.stunts.detector.incidents.length,1);
+    assert.equal(saved.stunts.state.recentTricks.length,1);
+    assert.ok(readTumbleStatus(live.state,2),'the struck pursuer is still a loose projectile at the save boundary');
+    assert.ok(saved.combat.entities.some(r=>r.entityRef?.saveId==='2'),'the pending stunt body keeps its combat state even without a persistent flag');
+    assert.equal(saved.combat.entities.some(r=>r.entityRef?.saveId==='3'),false,'unclaimed transient bodies remain outside combat persistence');
+    const after=await restored(saved);
+    try{
+      assert.equal(readTumbleStatus(after.state,2)?.data.until,readTumbleStatus(live.state,2)?.data.until,'Continue preserves the existing loose-hull lifetime');
+      after.run(200);
+      assert.equal(after.detected.length,0,'the settled first payoff is not re-detected after reload');
+      assertWingmanEvidence(after,live.detected[0].episodeId,{lethal:true});
+      assert.equal(after.amended.length,1);
+      assert.equal(after.amended[0].episodeId,live.detected[0].episodeId);
+      assert.equal(after.amended[0].modifiers.collateralCount,2);
+      assert.equal(after.state.stunts.recentTricks.length,1,'the amendment replaces the incident row instead of adding one');
+      assert.equal(after.state.stunts.totalTricksDetected,1);
+      const settled=after.snapshot();
+      const again=await restored(settled);
+      try{
+        const beforeReplay=structuredClone(again.state.stunts.combo);
+        again.bus.emit('combat:collisionConsequence',after.consequences.find(c=>c.targetId===3&&c.targetKilled));
+        again.bus.emit('combat:collisionConsequence',live.consequences.find(c=>c.targetId===2&&c.otherId===1));
+        assert.equal(again.detected.length+again.amended.length,0,'replayed settled receipts never pay after a reload');
+        assert.deepEqual(again.state.stunts.combo,beforeReplay,'replay cannot increase settled style or combo payout');
+      }finally{again.close();}
+    }finally{after.close();}
+  }finally{live.close();}
+});
+
+for(const wounded of [false,true])test(`uninterrupted and post-payoff Continue retain the same native causal outcome (${wounded?'wounded':'full-hull'})`,async()=>{
+  let expected;
+  for(const checkpoint of [null,72,90]){
+    let w=await world(wounded?woundedScene():scene());w.rope();
+    try{
+      w.run(checkpoint??90,tick=>{if(release(tick)){w.owner.cutAttachment({attachmentId:'rope',reason:'tether_cut',tick});w.bus.emit('tether:releaseRated',{targetId:1,classification:'razor',tick});}});
+      const rootId=w.detected[0].episodeId;
+      const carried=journalFor(w.state).bodies.get(journalFor(w.state).lives.get('number:2').id);
+      assert.equal(carried.origin.tick,71,'receipt gaps must not relabel the first player push as natural motion');
+      assert.deepEqual(carried.origin.before,{x:0,z:0});
+      if(checkpoint){const save=w.snapshot();w.close();w=await restored(save);}
+      w.run(200);assertWingmanEvidence(w,rootId,{lethal:wounded});
+      const outcome={rootId,amendments:w.amended.length,total:w.state.stunts.totalTricksDetected,rows:w.state.stunts.recentTricks.length,killed:w.state.entities.get(3).alive===false};
+      assert.equal(outcome.amendments,wounded?1:0);
+      if(expected)assert.deepEqual(outcome,expected);else expected=outcome;
+    }finally{w.close();}
+  }
+});

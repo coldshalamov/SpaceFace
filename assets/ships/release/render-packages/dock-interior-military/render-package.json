@@ -1,0 +1,3286 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.dock-interior-military.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.dock-interior-military.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.dock-interior-military",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "0c56539872b3019ccffb68441ed3681a63471fcb619a065fcab7080e8833d143",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port"
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-hook-nav-starboard"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          26,
+          13.100564735476453,
+          18.00091555528428
+        ],
+        "min": [
+          -26,
+          -3.9005644493741585,
+          -18.00091555528428
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2886f8f2da99dbd5bd2a852436943d08ecf466d9fdbe6fcfe46ad4bc836acb2c",
+      "id": "sf.render.dock-interior-military.mesh.lod0-armor.primitive.0",
+      "indexCount": 10716,
+      "indexed": true,
+      "materialHash": "4a028330fd07f6e8a391948934b1e839a51ac74d59c42c2ac944f64200dfe310",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 3206
+    },
+    {
+      "bounds": {
+        "max": [
+          16.149999618530273,
+          8.504847515879774,
+          0.09930697045671266
+        ],
+        "min": [
+          -24.079999923706055,
+          -3.449847925959731,
+          -14.399306408682936
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b98981b632a543432bd51f116f9d7a6577678583793bec3a3ccae0d44300375",
+      "id": "sf.render.dock-interior-military.mesh.lod0-beacon-amber.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "5482a3c3fe335f54f6b2aafe42a3ac878eb03027048b91b8f425ca98e44830b6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 288
+    },
+    {
+      "bounds": {
+        "max": [
+          24.24799919128418,
+          13.959735056073146,
+          3.400846313861967
+        ],
+        "min": [
+          -25.700000762939453,
+          -3.4497350656098895,
+          -14.648845981983305
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c38783b415445901cd776a59b1523c919b9edd0ed252b35da82bf454e2f7cbea",
+      "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port.primitive.0",
+      "indexCount": 1332,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 520
+    },
+    {
+      "bounds": {
+        "max": [
+          8.699999809265137,
+          7.399970993166328,
+          -14.160525797065876
+        ],
+        "min": [
+          -8.699999809265137,
+          6.100029006833672,
+          -14.279474736991741
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "de9c80ab086e346cd4c283b15bcd515f8c1b66b64a2041c07f37303e0330c027",
+      "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-starboard.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          26,
+          13.49882555237862,
+          9.499710074159978
+        ],
+        "min": [
+          -26,
+          -3.43882513276192,
+          -15.499710074159978
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "19d5d21f8996bed80464bed742d58387dc479d6ed37d8689eae07c1da057fb71",
+      "id": "sf.render.dock-interior-military.mesh.lod0-hull-aged.primitive.0",
+      "indexCount": 2256,
+      "indexed": true,
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_aged",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-hull-aged",
+      "primitiveIndex": 0,
+      "vertexCount": 694
+    },
+    {
+      "bounds": {
+        "max": [
+          26,
+          -3.438519909510873,
+          18.00091555528428
+        ],
+        "min": [
+          -26,
+          -4.441480204930045,
+          -18.00091555528428
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "96be3b63c326fad4858cb8607f9a311bb88eab4466859a9117ab74a51858886a",
+      "id": "sf.render.dock-interior-military.mesh.lod0-hull-deck.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "8d2ca2ea3ca5071b161106b37dd37a578a42fdcf5d3141163ef12198ae41c915",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_deck",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-hull-deck",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          -3.3397156819326015,
+          10.74855800042726
+        ],
+        "min": [
+          -22,
+          -3.4202845469492344,
+          -10.74855800042726
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "73d6c98f46d383d3ece053f5304873b94481570e78637a43ee1a02c7bf14942c",
+      "id": "sf.render.dock-interior-military.mesh.lod0-hull-line-red.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "bbf4a96de9dabb020cfe665d45287aa3fe55b9c14882e83f6a467c43faeacbd3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_line_red",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-hull-line-red",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          -3.3397156819326015,
+          11.57640308847316
+        ],
+        "min": [
+          -22,
+          -3.4202845469492344,
+          -11.57640308847316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dcb7714259305f958ba531a174fda76c16ffc8779bfe3433a405745a1dc022c9",
+      "id": "sf.render.dock-interior-military.mesh.lod0-hull-line-white.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "38d1a2eb13fa667b7ec0d9774c9ce77efe9bafe27898604e73b5ce0ac9c0d871",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_line_white",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-hull-line-white",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          26,
+          11.998533490252246,
+          7.998230164868971
+        ],
+        "min": [
+          -26,
+          5.70146631901289,
+          -15.998229688031813
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e5de1514e8cb01a740e1cb8c7e6ac0320b56aef905b2c14dce1be4edd410192a",
+      "id": "sf.render.dock-interior-military.mesh.lod0-hull-navy.primitive.0",
+      "indexCount": 1200,
+      "indexed": true,
+      "materialHash": "502c9bc8a7de4f0c283f0d401459ccbc391ee8c76efb169667004812af0cdab1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_navy",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-hull-navy",
+      "primitiveIndex": 0,
+      "vertexCount": 388
+    },
+    {
+      "bounds": {
+        "max": [
+          20.110000610351562,
+          -2.3641591189374536,
+          17.909483089465066
+        ],
+        "min": [
+          -25.90999984741211,
+          -2.5158409955034644,
+          -12.10948385240452
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "48097d4aac2ae1f11ce8421e2110d9d16dc2a4775da9ee30e9d002de238e723f",
+      "id": "sf.render.dock-interior-military.mesh.lod0-lights-cyan.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "74c484f7407f5c70bb62529d834e850af38ba4f249d7223720b411f0cfc40ae5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 240
+    },
+    {
+      "bounds": {
+        "max": [
+          22.899999618530273,
+          9.950959119808541,
+          8.125958950798168
+        ],
+        "min": [
+          -22.200000762939453,
+          -3.638087902080879,
+          -14.900958569328441
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "90cc48af6243407b36c72c11fa7cc3899d86313afc5a545f3c75da160fc4eeda",
+      "id": "sf.render.dock-interior-military.mesh.lod0-lights-warm.primitive.0",
+      "indexCount": 2088,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Warm",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 912
+    },
+    {
+      "bounds": {
+        "max": [
+          8.17497444152832,
+          -3.3300817999655115,
+          8.17497444152832
+        ],
+        "min": [
+          -8.17497444152832,
+          -3.4099179711526526,
+          -8.17497444152832
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2d27cb750243114da39c5093c11c8b05c2c39e3e68c0427d7b3bfa8722c7296b",
+      "id": "sf.render.dock-interior-military.mesh.lod0-livery.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "c1d2508f1a14ef5cd8ab952be06b37bf6a6447fca7d526e9fd679a3e03f571c8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          24.30795669555664,
+          13.73920240524316,
+          15.651395317327006
+        ],
+        "min": [
+          -24.30795669555664,
+          -3.639202500610592,
+          -15.651395317327006
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "877f63f8e2437a8f3ffb2f240717aa8f66865a5398ae94c4e732537b4354447d",
+      "id": "sf.render.dock-interior-military.mesh.lod0-mechanical.primitive.0",
+      "indexCount": 17052,
+      "indexed": true,
+      "materialHash": "c6142d0e8b9b6fa90201ef1f13f695ce2c27a1fb5764287689f673392ad7d3fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 5734
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          7.4003414115219766,
+          14.60042115543077
+        ],
+        "min": [
+          -22,
+          -3.4603415927200967,
+          -14.60042115543077
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "36971ff684a605d3f083e85b2281d8e1fd2ce98cc3c51c61fec635a5839048cf",
+      "id": "sf.render.dock-interior-military.mesh.lod0-mechanicaldark.primitive.0",
+      "indexCount": 2112,
+      "indexed": true,
+      "materialHash": "591bb8c899dfc708a17ffdf0717046aa8e6dd5faf05bee19d658e62d4bbeb11e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1092
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.41355158995303,
+          -3.1399241121780346,
+          2.979684352874756
+        ],
+        "min": [
+          -5.9864480341651785,
+          -3.4400758189786007,
+          -0.9796839952468872
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "733b5d780a48b6739440b0a33e7a919ca8b4a9dff4d7c0e966a198e1d28552aa",
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-l-armor.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "4a028330fd07f6e8a391948934b1e839a51ac74d59c42c2ac944f64200dfe310",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_DOCK_CLAMP_L_Armor",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-l-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.150053502759015,
+          -3.0499503406602426,
+          2.5
+        ],
+        "min": [
+          -4.649946687975849,
+          -3.2700498310011343,
+          -0.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "95048beda9d0ad222621ef42cdf2391b659432b93f62c3f7c0cbb739c228e055",
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-l-mechanicaldark.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "591bb8c899dfc708a17ffdf0717046aa8e6dd5faf05bee19d658e62d4bbeb11e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_DOCK_CLAMP_L_MechanicalDark",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-l-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 174
+    },
+    {
+      "bounds": {
+        "max": [
+          5.9864480341651785,
+          -3.1399241121780346,
+          2.979684352874756
+        ],
+        "min": [
+          4.41355158995303,
+          -3.4400758189786007,
+          -0.9796839952468872
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "596c375259d032f311152b82be266ecdc6a32ea401f224d680739a3ab087d660",
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-r-armor.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "4a028330fd07f6e8a391948934b1e839a51ac74d59c42c2ac944f64200dfe310",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_DOCK_CLAMP_R_Armor",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-r-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          4.649946687975849,
+          -3.0499503406602426,
+          2.5
+        ],
+        "min": [
+          4.150053502759015,
+          -3.2700498310011343,
+          -0.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "09fd0e0a164ffb158a8b248e468578008e6266875b90dec7804b54262acd7de1",
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-r-mechanicaldark.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "591bb8c899dfc708a17ffdf0717046aa8e6dd5faf05bee19d658e62d4bbeb11e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_DOCK_CLAMP_R_MechanicalDark",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-r-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 174
+    },
+    {
+      "bounds": {
+        "max": [
+          10.449999809265137,
+          -2.239978712609587,
+          -8.550000190734863
+        ],
+        "min": [
+          9.550000190734863,
+          -2.940021141806068,
+          -9.449999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "69b9fe9b44b623c8c59599dde8b3ecb7976446fc9d375d8c171192d1880220fe",
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-umbilical-armor.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "4a028330fd07f6e8a391948934b1e839a51ac74d59c42c2ac944f64200dfe310",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_DOCK_UMBILICAL_Armor",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-motion-dock-umbilical-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          10.256355497061207,
+          -2.333644402206943,
+          -9.199999809265137
+        ],
+        "min": [
+          9.743644502938793,
+          -2.8463553963293577,
+          -12
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bd091b9f1bf3b713718ba04991ee756bf1da0d6a7b60c4052ef570e7a666048e",
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-umbilical-warning.primitive.0",
+      "indexCount": 1140,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_DOCK_UMBILICAL_Warning",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-motion-dock-umbilical-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 348
+    },
+    {
+      "bounds": {
+        "max": [
+          9.700000762939453,
+          4.800363286059526,
+          0.25069257027489833
+        ],
+        "min": [
+          -9.700000762939453,
+          -3.6003637152129686,
+          -14.900692635840008
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "188ab46e553a2d5bda77d0c40033a68cadb7dbcc2d4e0663dc83cf13fe6e8ed8",
+      "id": "sf.render.dock-interior-military.mesh.lod0-warning.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.dock-interior-military.mesh.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "38d1a2eb13fa667b7ec0d9774c9ce77efe9bafe27898604e73b5ce0ac9c0d871",
+      "id": "material:38d1a2eb13fa667b7ec0d977",
+      "name": "Material_Hull_line_white",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4a028330fd07f6e8a391948934b1e839a51ac74d59c42c2ac944f64200dfe310",
+      "id": "material:4a028330fd07f6e8a3919489",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "502c9bc8a7de4f0c283f0d401459ccbc391ee8c76efb169667004812af0cdab1",
+      "id": "material:502c9bc8a7de4f0c283f0d40",
+      "name": "Material_Hull_navy",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "5482a3c3fe335f54f6b2aafe42a3ac878eb03027048b91b8f425ca98e44830b6",
+      "id": "material:5482a3c3fe335f54f6b2aafe",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "591bb8c899dfc708a17ffdf0717046aa8e6dd5faf05bee19d658e62d4bbeb11e",
+      "id": "material:591bb8c899dfc708a17ffdf0",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "74c484f7407f5c70bb62529d834e850af38ba4f249d7223720b411f0cfc40ae5",
+      "id": "material:74c484f7407f5c70bb62529d",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "8d2ca2ea3ca5071b161106b37dd37a578a42fdcf5d3141163ef12198ae41c915",
+      "id": "material:8d2ca2ea3ca5071b161106b3",
+      "name": "Material_Hull_deck",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "id": "material:ab17b13dc8559ae23c6f811c",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "bbf4a96de9dabb020cfe665d45287aa3fe55b9c14882e83f6a467c43faeacbd3",
+      "id": "material:bbf4a96de9dabb020cfe665d",
+      "name": "Material_Hull_line_red",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c1d2508f1a14ef5cd8ab952be06b37bf6a6447fca7d526e9fd679a3e03f571c8",
+      "id": "material:c1d2508f1a14ef5cd8ab952b",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c6142d0e8b9b6fa90201ef1f13f695ce2c27a1fb5764287689f673392ad7d3fe",
+      "id": "material:c6142d0e8b9b6fa90201ef1f",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "id": "material:eb6bbae95702790bb530b9a9",
+      "name": "Material_Hull_aged",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-armor",
+      "localTransform": [
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        4.6000001430511475,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        4.6000001430511475,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-beacon-amber",
+      "localTransform": [
+        20.114999771118164,
+        0,
+        0,
+        0,
+        0,
+        20.114999771118164,
+        0,
+        0,
+        0,
+        0,
+        20.114999771118164,
+        0,
+        -3.9650001525878906,
+        2.527499794960022,
+        -7.1499997191131115,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        20.114999771118164,
+        0,
+        0,
+        0,
+        0,
+        20.114999771118164,
+        0,
+        0,
+        0,
+        0,
+        20.114999771118164,
+        0,
+        -3.9650001525878906,
+        2.527499794960022,
+        -7.1499997191131115,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port",
+      "localTransform": [
+        24.973999977111816,
+        0,
+        0,
+        0,
+        0,
+        24.973999977111816,
+        0,
+        0,
+        0,
+        0,
+        24.973999977111816,
+        0,
+        -0.7260007858276367,
+        5.254999995231628,
+        -5.623999834060669,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        24.973999977111816,
+        0,
+        0,
+        0,
+        0,
+        24.973999977111816,
+        0,
+        0,
+        0,
+        0,
+        24.973999977111816,
+        0,
+        -0.7260007858276367,
+        5.254999995231628,
+        -5.623999834060669,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-starboard",
+      "localTransform": [
+        8.699999809265137,
+        0,
+        0,
+        0,
+        0,
+        8.699999809265137,
+        0,
+        0,
+        0,
+        0,
+        8.699999809265137,
+        0,
+        0,
+        6.75,
+        -14.220000267028809,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        8.699999809265137,
+        0,
+        0,
+        0,
+        0,
+        8.699999809265137,
+        0,
+        0,
+        0,
+        0,
+        8.699999809265137,
+        0,
+        0,
+        6.75,
+        -14.220000267028809,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-hull-aged",
+      "localTransform": [
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        5.03000020980835,
+        -3,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_aged",
+      "nodeName": "LOD0_Hull_aged",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        5.03000020980835,
+        -3,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-hull-deck",
+      "localTransform": [
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        -3.940000057220459,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_deck",
+      "nodeName": "LOD0_Hull_deck",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        -3.940000057220459,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-hull-line-red",
+      "localTransform": [
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        -3.380000114440918,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_line_red",
+      "nodeName": "LOD0_Hull_line_red",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        -3.380000114440918,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-hull-line-white",
+      "localTransform": [
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        -3.380000114440918,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_line_white",
+      "nodeName": "LOD0_Hull_line_white",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        -3.380000114440918,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-hull-navy",
+      "localTransform": [
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        8.849999904632568,
+        -3.999999761581421,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_navy",
+      "nodeName": "LOD0_Hull_navy",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        0,
+        0,
+        26,
+        0,
+        0,
+        8.849999904632568,
+        -3.999999761581421,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-lights-cyan",
+      "localTransform": [
+        23.010000228881836,
+        0,
+        0,
+        0,
+        0,
+        23.010000228881836,
+        0,
+        0,
+        0,
+        0,
+        23.010000228881836,
+        0,
+        -2.8999996185302734,
+        -2.440000057220459,
+        2.8999996185302734,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan",
+      "nodeName": "LOD0_Lights_Cyan",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        23.010000228881836,
+        0,
+        0,
+        0,
+        0,
+        23.010000228881836,
+        0,
+        0,
+        0,
+        0,
+        23.010000228881836,
+        0,
+        -2.8999996185302734,
+        -2.440000057220459,
+        2.8999996185302734,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-lights-warm",
+      "localTransform": [
+        22.550000190734863,
+        0,
+        0,
+        0,
+        0,
+        22.550000190734863,
+        0,
+        0,
+        0,
+        0,
+        22.550000190734863,
+        0,
+        0.34999942779541016,
+        3.1564356088638306,
+        -3.3874998092651367,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Warm",
+      "nodeName": "LOD0_Lights_Warm",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        22.550000190734863,
+        0,
+        0,
+        0,
+        0,
+        22.550000190734863,
+        0,
+        0,
+        0,
+        0,
+        22.550000190734863,
+        0,
+        0.34999942779541016,
+        3.1564356088638306,
+        -3.3874998092651367,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-livery",
+      "localTransform": [
+        8.17497444152832,
+        0,
+        0,
+        0,
+        0,
+        8.17497444152832,
+        0,
+        0,
+        0,
+        0,
+        8.17497444152832,
+        0,
+        0,
+        -3.369999885559082,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        8.17497444152832,
+        0,
+        0,
+        0,
+        0,
+        8.17497444152832,
+        0,
+        0,
+        0,
+        0,
+        8.17497444152832,
+        0,
+        0,
+        -3.369999885559082,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-mechanical",
+      "localTransform": [
+        24.30795669555664,
+        0,
+        0,
+        0,
+        0,
+        24.30795669555664,
+        0,
+        0,
+        0,
+        0,
+        24.30795669555664,
+        0,
+        0,
+        5.049999952316284,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        24.30795669555664,
+        0,
+        0,
+        0,
+        0,
+        24.30795669555664,
+        0,
+        0,
+        0,
+        0,
+        24.30795669555664,
+        0,
+        0,
+        5.049999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-mechanicaldark",
+      "localTransform": [
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        1.96999990940094,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        0,
+        0,
+        22,
+        0,
+        0,
+        1.96999990940094,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-l-armor",
+      "localTransform": [
+        1.9796841740608215,
+        0,
+        0,
+        0,
+        0,
+        1.9796841740608215,
+        0,
+        0,
+        0,
+        0,
+        1.9796841740608215,
+        0,
+        -0.7999997166916728,
+        -0.08999991789460182,
+        1.7881393432617188e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_DOCK_CLAMP_L_Armor",
+      "nodeName": "LOD0_MOTION_DOCK_CLAMP_L_Armor",
+      "nodePath": [
+        0,
+        15,
+        0
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        1.9796841740608215,
+        0,
+        0,
+        0,
+        0,
+        1.9796841740608215,
+        0,
+        0,
+        0,
+        0,
+        1.9796841740608215,
+        0,
+        -5.199999812059104,
+        -3.2899999655783176,
+        1.0000001788139343,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-l-mechanicaldark",
+      "localTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0.039999961853027344,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_DOCK_CLAMP_L_MechanicalDark",
+      "nodeName": "LOD0_MOTION_DOCK_CLAMP_L_MechanicalDark",
+      "nodePath": [
+        0,
+        15,
+        1
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        -4.400000095367432,
+        -3.1600000858306885,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-r-armor",
+      "localTransform": [
+        1.9796841740608215,
+        0,
+        0,
+        0,
+        0,
+        1.9796841740608215,
+        0,
+        0,
+        0,
+        0,
+        1.9796841740608215,
+        0,
+        0.7999997166916728,
+        -0.08999991789460182,
+        1.7881393432617188e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_DOCK_CLAMP_R_Armor",
+      "nodeName": "LOD0_MOTION_DOCK_CLAMP_R_Armor",
+      "nodePath": [
+        0,
+        16,
+        0
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        1.9796841740608215,
+        0,
+        0,
+        0,
+        0,
+        1.9796841740608215,
+        0,
+        0,
+        0,
+        0,
+        1.9796841740608215,
+        0,
+        5.199999812059104,
+        -3.2899999655783176,
+        1.0000001788139343,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-r-mechanicaldark",
+      "localTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0.039999961853027344,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_DOCK_CLAMP_R_MechanicalDark",
+      "nodeName": "LOD0_MOTION_DOCK_CLAMP_R_MechanicalDark",
+      "nodePath": [
+        0,
+        16,
+        1
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        0,
+        0,
+        0,
+        1.5,
+        0,
+        4.400000095367432,
+        -3.1600000858306885,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-umbilical-armor",
+      "localTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0.41000007279217243,
+        3,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_DOCK_UMBILICAL_Armor",
+      "nodeName": "LOD0_MOTION_DOCK_UMBILICAL_Armor",
+      "nodePath": [
+        0,
+        17,
+        0
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        0,
+        0,
+        0,
+        0.4499998092651367,
+        0,
+        10,
+        -2.5899999272078276,
+        -9,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-umbilical-warning",
+      "localTransform": [
+        1.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1.4000000953674316,
+        0,
+        0,
+        0.41000010073184967,
+        1.4000000953674316,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_DOCK_UMBILICAL_Warning",
+      "nodeName": "LOD0_MOTION_DOCK_UMBILICAL_Warning",
+      "nodePath": [
+        0,
+        17,
+        1
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        1.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1.4000000953674316,
+        0,
+        10,
+        -2.5899998992681503,
+        -10.599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.lod0-warning",
+      "localTransform": [
+        9.700000762939453,
+        0,
+        0,
+        0,
+        0,
+        9.700000762939453,
+        0,
+        0,
+        0,
+        0,
+        9.700000762939453,
+        0,
+        0,
+        0.5999997854232788,
+        -7.325000032782555,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        9.700000762939453,
+        0,
+        0,
+        0,
+        0,
+        9.700000762939453,
+        0,
+        0,
+        0,
+        0,
+        9.700000762939453,
+        0,
+        0,
+        0.5999997854232788,
+        -7.325000032782555,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.motion-dock-clamp-l",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.400000095367432,
+        -3.200000047683716,
+        1,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_DOCK_CLAMP_L",
+      "nodeName": "MOTION_DOCK_CLAMP_L",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.400000095367432,
+        -3.200000047683716,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.motion-dock-clamp-r",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.400000095367432,
+        -3.200000047683716,
+        1,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_DOCK_CLAMP_R",
+      "nodeName": "MOTION_DOCK_CLAMP_R",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.400000095367432,
+        -3.200000047683716,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.mesh.motion-dock-umbilical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10,
+        -3,
+        -12,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_DOCK_UMBILICAL",
+      "nodeName": "MOTION_DOCK_UMBILICAL",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.dock-interior-military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10,
+        -3,
+        -12,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-military.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "DockInterior_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "9b2becc6a4b4fcff413894d8b5c9dba7d7b91db02cfecfc1253c9c85a19a26a1"
+    },
+    "sourceGlb": {
+      "bytes": 370336,
+      "sha256": "95441b07e5c62120f9d0f6d4bd2b5bb6c3ef1433b2aa6c9869dfe865f1cfbcfc",
+      "uri": "place_dock_interior_military.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 373288,
+    "sha256": "70a5e9b4dea5d719966e7ff7bd6eb2bd1141e91d4ac99d2e459668116a2308fe",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        4.759127425571551,
+        0
+      ],
+      "max": [
+        26,
+        13.959735056073146,
+        18.00091555528428
+      ],
+      "min": [
+        -26,
+        -4.441480204930045,
+        -18.00091555528428
+      ],
+      "size": [
+        52,
+        18.40121526100319,
+        36.00183111056856
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          24.973999977111816,
+          0,
+          0,
+          0,
+          0,
+          24.973999977111816,
+          0,
+          0,
+          0,
+          0,
+          24.973999977111816,
+          0,
+          -0.7260007858276367,
+          5.254999995231628,
+          -5.623999834060669,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 4,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.dock-interior-military.mesh.lod0-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          8.699999809265137,
+          0,
+          0,
+          0,
+          0,
+          8.699999809265137,
+          0,
+          0,
+          0,
+          0,
+          8.699999809265137,
+          0,
+          0,
+          6.75,
+          -14.220000267028809,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 6,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.dock-interior-military.mesh.lod0-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.400000095367432,
+          -3.200000047683716,
+          1,
+          1
+        ],
+        "name": "MOTION_DOCK_CLAMP_L",
+        "planIndex": 19,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "dock_clamp_l",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -4.400000095367432
+            ],
+            [
+              0,
+              1,
+              0,
+              -1
+            ],
+            [
+              0,
+              0,
+              1,
+              -3.200000047683716
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_DOCK_CLAMP_L",
+          "spaceface": {
+            "motionGroup": "dock_clamp_l"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_DOCK_CLAMP_L",
+            "recordIds": [
+              "sf.render.dock-interior-military.mesh.motion-dock-clamp-l"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.400000095367432,
+          -3.200000047683716,
+          1,
+          1
+        ],
+        "name": "MOTION_DOCK_CLAMP_R",
+        "planIndex": 22,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "dock_clamp_r",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              4.400000095367432
+            ],
+            [
+              0,
+              1,
+              0,
+              -1
+            ],
+            [
+              0,
+              0,
+              1,
+              -3.200000047683716
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_DOCK_CLAMP_R",
+          "spaceface": {
+            "motionGroup": "dock_clamp_r"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_DOCK_CLAMP_R",
+            "recordIds": [
+              "sf.render.dock-interior-military.mesh.motion-dock-clamp-r"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10,
+          -3,
+          -12,
+          1
+        ],
+        "name": "MOTION_DOCK_UMBILICAL",
+        "planIndex": 25,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "dock_umbilical",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              10
+            ],
+            [
+              0,
+              1,
+              0,
+              12
+            ],
+            [
+              0,
+              0,
+              1,
+              -3
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_DOCK_UMBILICAL",
+          "spaceface": {
+            "motionGroup": "dock_umbilical"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_DOCK_UMBILICAL",
+            "recordIds": [
+              "sf.render.dock-interior-military.mesh.motion-dock-umbilical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 28,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Structure_Core",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.dock-interior-military.anchor.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 9,
+      "mechanical": 4,
+      "signal": 5,
+      "warning": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "warning"
+      }
+    ],
+    "motionBank": {
+      "bytes": 10165,
+      "rigId": "dock_interior",
+      "sha256": "5748dadf837ed5a58714d0b633205409b5e202b0e6a3b2c937677bf8b1c523d2",
+      "uri": "assets/ships/motions/dock-interior-military.motion.json"
+    },
+    "nodeCount": 29,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          26,
+          0,
+          0,
+          0,
+          0,
+          26,
+          0,
+          0,
+          0,
+          0,
+          26,
+          0,
+          0,
+          4.6000001430511475,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          20.114999771118164,
+          0,
+          0,
+          0,
+          0,
+          20.114999771118164,
+          0,
+          0,
+          0,
+          0,
+          20.114999771118164,
+          0,
+          -3.9650001525878906,
+          2.527499794960022,
+          -7.1499997191131115,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          24.973999977111816,
+          0,
+          0,
+          0,
+          0,
+          24.973999977111816,
+          0,
+          0,
+          0,
+          0,
+          24.973999977111816,
+          0,
+          -0.7260007858276367,
+          5.254999995231628,
+          -5.623999834060669,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT_1",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.699999809265137,
+          0,
+          0,
+          0,
+          0,
+          8.699999809265137,
+          0,
+          0,
+          0,
+          0,
+          8.699999809265137,
+          0,
+          0,
+          6.75,
+          -14.220000267028809,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD_1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          26,
+          0,
+          0,
+          0,
+          0,
+          26,
+          0,
+          0,
+          0,
+          0,
+          26,
+          0,
+          0,
+          5.03000020980835,
+          -3,
+          1
+        ],
+        "name": "LOD0_Hull_aged",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          26,
+          0,
+          0,
+          0,
+          0,
+          26,
+          0,
+          0,
+          0,
+          0,
+          26,
+          0,
+          0,
+          -3.940000057220459,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_deck",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          22,
+          0,
+          0,
+          0,
+          0,
+          22,
+          0,
+          0,
+          0,
+          0,
+          22,
+          0,
+          0,
+          -3.380000114440918,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_line_red",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          22,
+          0,
+          0,
+          0,
+          0,
+          22,
+          0,
+          0,
+          0,
+          0,
+          22,
+          0,
+          0,
+          -3.380000114440918,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_line_white",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          26,
+          0,
+          0,
+          0,
+          0,
+          26,
+          0,
+          0,
+          0,
+          0,
+          26,
+          0,
+          0,
+          8.849999904632568,
+          -3.999999761581421,
+          1
+        ],
+        "name": "LOD0_Hull_navy",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          23.010000228881836,
+          0,
+          0,
+          0,
+          0,
+          23.010000228881836,
+          0,
+          0,
+          0,
+          0,
+          23.010000228881836,
+          0,
+          -2.8999996185302734,
+          -2.440000057220459,
+          2.8999996185302734,
+          1
+        ],
+        "name": "LOD0_Lights_Cyan",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          22.550000190734863,
+          0,
+          0,
+          0,
+          0,
+          22.550000190734863,
+          0,
+          0,
+          0,
+          0,
+          22.550000190734863,
+          0,
+          0.34999942779541016,
+          3.1564356088638306,
+          -3.3874998092651367,
+          1
+        ],
+        "name": "LOD0_Lights_Warm",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.17497444152832,
+          0,
+          0,
+          0,
+          0,
+          8.17497444152832,
+          0,
+          0,
+          0,
+          0,
+          8.17497444152832,
+          0,
+          0,
+          -3.369999885559082,
+          0,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          24.30795669555664,
+          0,
+          0,
+          0,
+          0,
+          24.30795669555664,
+          0,
+          0,
+          0,
+          0,
+          24.30795669555664,
+          0,
+          0,
+          5.049999952316284,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          22,
+          0,
+          0,
+          0,
+          0,
+          22,
+          0,
+          0,
+          0,
+          0,
+          22,
+          0,
+          0,
+          1.96999990940094,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.700000762939453,
+          0,
+          0,
+          0,
+          0,
+          9.700000762939453,
+          0,
+          0,
+          0,
+          0,
+          9.700000762939453,
+          0,
+          0,
+          0.5999997854232788,
+          -7.325000032782555,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.9796841740608215,
+          0,
+          0,
+          0,
+          0,
+          1.9796841740608215,
+          0,
+          0,
+          0,
+          0,
+          1.9796841740608215,
+          0,
+          -5.199999812059104,
+          -3.2899999655783176,
+          1.0000001788139343,
+          1
+        ],
+        "name": "LOD0_MOTION_DOCK_CLAMP_L_Armor",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          -4.400000095367432,
+          -3.1600000858306885,
+          1,
+          1
+        ],
+        "name": "LOD0_MOTION_DOCK_CLAMP_L_MechanicalDark",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.9796841740608215,
+          0,
+          0,
+          0,
+          0,
+          1.9796841740608215,
+          0,
+          0,
+          0,
+          0,
+          1.9796841740608215,
+          0,
+          5.199999812059104,
+          -3.2899999655783176,
+          1.0000001788139343,
+          1
+        ],
+        "name": "LOD0_MOTION_DOCK_CLAMP_R_Armor",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          4.400000095367432,
+          -3.1600000858306885,
+          1,
+          1
+        ],
+        "name": "LOD0_MOTION_DOCK_CLAMP_R_MechanicalDark",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          0,
+          0,
+          0,
+          0.4499998092651367,
+          0,
+          10,
+          -2.5899999272078276,
+          -9,
+          1
+        ],
+        "name": "LOD0_MOTION_DOCK_UMBILICAL_Armor",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1.4000000953674316,
+          0,
+          10,
+          -2.5899998992681503,
+          -10.599999904632568,
+          1
+        ],
+        "name": "LOD0_MOTION_DOCK_UMBILICAL_Warning",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_dock_interior_military.glb"
+  },
+  "runtimeHash": "5c2d70653efe9c86af456a5b0efae99e2290089a38d8fca31d2e00cada5f742b",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          26,
+          13.959735056073146,
+          18.00091555528428
+        ],
+        "min": [
+          -26,
+          -4.441480204930045,
+          -18.00091555528428
+        ]
+      },
+      "id": "sf.render.dock-interior-military.body",
+      "nodeIds": [
+        "sf.render.dock-interior-military.mesh.lod0-armor",
+        "sf.render.dock-interior-military.mesh.lod0-beacon-amber",
+        "sf.render.dock-interior-military.mesh.lod0-hook-nav-port",
+        "sf.render.dock-interior-military.mesh.lod0-hook-nav-starboard",
+        "sf.render.dock-interior-military.mesh.lod0-hull-aged",
+        "sf.render.dock-interior-military.mesh.lod0-hull-deck",
+        "sf.render.dock-interior-military.mesh.lod0-hull-line-red",
+        "sf.render.dock-interior-military.mesh.lod0-hull-line-white",
+        "sf.render.dock-interior-military.mesh.lod0-hull-navy",
+        "sf.render.dock-interior-military.mesh.lod0-lights-cyan",
+        "sf.render.dock-interior-military.mesh.lod0-lights-warm",
+        "sf.render.dock-interior-military.mesh.lod0-livery",
+        "sf.render.dock-interior-military.mesh.lod0-mechanical",
+        "sf.render.dock-interior-military.mesh.lod0-mechanicaldark",
+        "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-l-armor",
+        "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-l-mechanicaldark",
+        "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-r-armor",
+        "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-r-mechanicaldark",
+        "sf.render.dock-interior-military.mesh.lod0-motion-dock-umbilical-armor",
+        "sf.render.dock-interior-military.mesh.lod0-motion-dock-umbilical-warning",
+        "sf.render.dock-interior-military.mesh.lod0-warning",
+        "sf.render.dock-interior-military.mesh.motion-dock-clamp-l",
+        "sf.render.dock-interior-military.mesh.motion-dock-clamp-r",
+        "sf.render.dock-interior-military.mesh.motion-dock-umbilical",
+        "sf.render.dock-interior-military.root"
+      ]
+    }
+  ]
+}

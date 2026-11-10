@@ -1,0 +1,120 @@
+// egressExit.js — Egress exit bound (PQ-206.02).
+//
+// A hull under a live flee order that has stacked EGRESS_DISTANCE_WU of separation from the
+// player has left the fight. It keeps burning off-field for EGRESS_FADE_S, then the engine's
+// ordinary despawnAt sweep retires it. If the pilot closes back inside the bound, or the flee
+// order ends before the fade fires, this system's stamp is released and the authored fight
+// resumes — the exit only lands for an escape the pilot could not answer.
+//
+// This bounds the degenerate flee cell: scattered, disengaged, pacing-pinned, and surrendered-
+// escape flee orders leave the hull alive and fleeing forever, kiting a pursuing player past
+// 10k WU with the fight never resolving. Authored flee survives — the order, the steering,
+// and the combat-outcome receipt are unchanged; only the unbounded lifetime is closed.
+
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+
+// combatDoctrine.js RUN_EGRESS_DISTANCE scale: a hull this far out has broken contact on the
+// engagement envelope. The fade keeps it burning off-camera before the sweep retires it.
+export const EGRESS_DISTANCE_WU = 960;
+export const EGRESS_FADE_S = 12;
+export const EGRESS_SCAN_TICKS = 15;
+
+export function fleeOrderActive(ai) {
+  if (!ai) return false;
+  if (ai.forceFlee === true || ai.fsm === 'flee') return true;
+  const kind = ai.activity && ai.activity.kind;
+  return kind === 'flee' || kind === 'disengage';
+}
+
+function encounterOwned(state, entityId) {
+  const live = state && state.encounterDirector && state.encounterDirector.live;
+  if (!live || typeof live !== 'object') return false;
+  for (const id of Object.keys(live)) {
+    const l = live[id];
+    if (l && l.phase !== 'done' && Array.isArray(l.ids) && l.ids.includes(entityId)) return true;
+  }
+  return false;
+}
+
+export function stepEgressExits(state, shipLikeList = null, bus = null) {
+  if (!state || state.tick % EGRESS_SCAN_TICKS !== 0) return;
+  if (state.ui && state.ui.docked === true) return;
+  const entities = state.entities;
+  const player = entities && typeof entities.get === 'function' && entities.get(state.playerId);
+  if (!player || player.alive === false || !player.pos) return;
+  const now = Number(state.simTime) || 0;
+  const bound2 = EGRESS_DISTANCE_WU * EGRESS_DISTANCE_WU;
+  const list = shipLikeList || indexedShipLikeScan(state);
+  for (const entity of list) {
+    if (!entity || entity.id === state.playerId || entity.alive === false) continue;
+    if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+    const data = entity.data || (entity.data = {});
+    const ai = data.ai || {};
+    const ours = Number.isFinite(data._egressExitAt) && data.despawnAt === data._egressExitAt;
+    const dx = entity.pos ? entity.pos.x - player.pos.x : 0;
+    const dz = entity.pos ? entity.pos.z - player.pos.z : 0;
+    const separated = !!entity.pos && dx * dx + dz * dz >= bound2;
+    if (!fleeOrderActive(ai) || !separated) {
+      // Re-closed inside the bound or the order ended — a premature stamp releases; stamps
+      // another owner placed are never touched.
+      if (ours) { delete data.despawnAt; delete data._egressExitAt; }
+      continue;
+    }
+    // X-02: while its raid beat is live the Claim Jumper's wing is a staged tutorial actor —
+    // the same identity gate lawSecurity's withdrawal loop, the damage ward, and
+    // pirateDisengage's wingBeat read. A difficultyDirector pin-release or a wingMorale
+    // scatter is a TEMPORARY hold built to lapse so the hull re-presses; a despawn here is
+    // silent (no kill receipt, wingDone never set) and raid.ids.wing keeps blocking every
+    // later restage, so the beat would lose its authored antagonist for good on a hold
+    // designed to expire. Any stamp already placed releases the same way. Once the beat owns
+    // the exit (wingDone — the scripted DISENGAGE or an adopted honest rout) the exemption
+    // ends and this bound still retires the fleeing hull.
+    if (data.onboardingRaidWing === true
+      && state.onboarding?.raid?.active && !state.onboarding?.raid?.wingDone
+      && entity.id === state.onboarding?.raid?.ids?.wing) {
+      if (ours) { delete data.despawnAt; delete data._egressExitAt; }
+      continue;
+    }
+    // Mission-owned bodies (accepted bounty/patrol marks carry missionId/missionTag/
+    // missionPinned) are owned by the contract, not this ambient bound: a silent despawnAt
+    // expiry emits no entity:killed, so the slot stays issued-but-uncompletable and the
+    // contract parks forever (run 84: a fleeing Cinder Wasp stranded m_5 at 2/3). Their exit
+    // lands only after settlement — _handoffFleeingTarget strips these stamps on settle,
+    // which is what makes the hull takeable here. A stamp already placed releases the same
+    // way the wing's does.
+    if (data.missionPinned === true || (entity.flags && entity.flags.missionPinned === true)
+      || data.missionId != null || data.missionTag != null) {
+      if (ours) { delete data.despawnAt; delete data._egressExitAt; }
+      continue;
+    }
+    // A working crew's FLEE is an interruption of its job, not a combatant's permanent
+    // escape. The job owner brings this same actor back to its booked workface. Retiring it
+    // here silently abandons that work and clears its durable anchor without a kill.
+    const jobEntry = data.jobId != null ? state.npcJobs?.byId?.[data.jobId] : null;
+    if (jobEntry?.job && jobEntry.job.id === data.jobId && jobEntry.entityId === entity.id
+      && (!jobEntry.entityRef || jobEntry.entityRef === entity)
+      && jobEntry.worldRecordId === data.worldRecordId) {
+      if (ours) { delete data.despawnAt; delete data._egressExitAt; }
+      continue;
+    }
+    if (ours || data.despawnAt != null) continue;
+    if (ai.moraleImmune === true) continue;
+    // Arena/survival cells are finite: a retreating cell must stay reachable or a round strands.
+    if (data.runCohort === 'survival') continue;
+    // Player-team hulls belong to wingmen and escort systems, not this bound.
+    if (entity.team != null && player.team != null && entity.team === player.team) continue;
+    // Encounter scripts own their actors' exits (staggered despawnAll / +45 s stragglers).
+    if (data.encounter || encounterOwned(state, entity.id)) continue;
+    data.despawnAt = now + EGRESS_FADE_S;
+    data._egressExitAt = data.despawnAt;
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('ai:egressExit', {
+        entityId: entity.id,
+        reason: ai.fsm === 'flee' ? 'fsm:flee' : (ai.forceFlee === true ? 'forceFlee' : 'activity'),
+        factionId: entity.factionId || data.factionId || null,
+        separation: Math.round(Math.sqrt(dx * dx + dz * dz)),
+        t: now,
+      });
+    }
+  }
+}

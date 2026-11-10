@@ -1,0 +1,51 @@
+From 3e798170f2337a44244b761c476f96b740cc8ffe Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 22:42:53 -0400
+Subject: [PATCH] perf(activity): limit classify catch-up walk to
+ physicsBody===false
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Incremental classify re-scanned the entire live list for closed-form movers
+the spatial hash cannot see. Travel-lane traffic stamps physicsBody:false;
+filter the catch-up walk to that explicit opt-out so physics-backed rows
+(already in `seen` from the hash query) are not distance-tested again.
+Focused activity-runtime 20/20. Microbench cold-scan ~1.3× on 8k entities.
+---
+ src/world/activityRuntime.js | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/src/world/activityRuntime.js b/src/world/activityRuntime.js
+index cb3542b08..9468afe98 100644
+--- a/src/world/activityRuntime.js
++++ b/src/world/activityRuntime.js
+@@ -675,17 +675,20 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
+   }
+   for (let i = 0; i < scratch.length; i++) add(scratch[i]);
+   // The spatial hash only indexes physics bodies. Closed-form movers that opted out of
+-  // physics (travel-lane traffic repositions itself every tick at 420 WU/s) are invisible
+-  // to the radius query, so without this scan an S3/R3 stamp from spawn time survives the
+-  // whole pass through the player's glass and the hull never earns a mesh. The no-hash
+-  // path below already visits this disc; the hash path must visit at least the same set.
+-  // `add` dedupes against the hash results, so physics entities cost one Set lookup here.
++  // physics (travel-lane traffic stamps `physicsBody: false` and repositions itself every
++  // tick at 420 WU/s) are invisible to the radius query, so without this scan an S3/R3
++  // stamp from spawn time survives the whole pass through the player's glass and the hull
++  // never earns a mesh. Restrict the catch-up walk to the explicit opt-out stamp — walking
++  // the entire live list every incremental classify was ~60–100 ms self in
++  // cpu-profile-flight (classifyWorld), and physics-backed rows are already in `seen`
++  // from the hash query above.
+   if (origin) {
+     const enter = reach + NEAR_ENTER_PAD_WU;
+     const enter2 = enter * enter;
+     for (let i = 0; i < list.length; i++) {
+       const entity = list[i];
+       if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
++      if (entity.physicsBody !== false) continue;
+       const dx = finite(entity.pos.x) - origin.x;
+       const dz = finite(entity.pos.z) - origin.z;
+       if (dx * dx + dz * dz <= enter2) add(entity);
+-- 
+2.47.3
+

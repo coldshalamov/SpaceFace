@@ -1,0 +1,20 @@
+{
+  "label": "classifyPinFactsAndClosedForm",
+  "aiShips": 400,
+  "projectiles": 40,
+  "entities": 8000,
+  "closedForm": 24,
+  "pinFacts": {
+    "missMs": 54.51,
+    "hitMs": 1.01,
+    "speedup": 54.2,
+    "hitRatio": 1,
+    "iters": 5000
+  },
+  "catchUp": {
+    "fullMs": 510.25,
+    "closedMs": 497.93,
+    "speedup": 1.02,
+    "iters": 3000
+  }
+}

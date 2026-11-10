@@ -1,0 +1,400 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.greeble-vents",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "6851354a452a13c09728acb97ad155534eda13682aea9492307fcd6d84d0fcac",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.799999952316284,
+          1.1000134074314052,
+          1.2999664151113193
+        ],
+        "min": [
+          -0.20000000298023224,
+          -0.260013433657449,
+          -1.2999664151113193
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f3d6b8d5bd2c38fd028166358c57a3dd74a177aa74afd424d6578f95d1faa78f",
+      "id": "sf.render.greeble-vents.mesh.greeble-vents-material-hull-merged.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "df9bc1b1b3dc7b78856f78d05d8690ac5f0b3e1acd276105d9c363f607c16590",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_vents_Material_Hull_Merged",
+      "nodeId": "sf.render.greeble-vents.mesh.greeble-vents-material-hull-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 265
+    },
+    {
+      "bounds": {
+        "max": [
+          3.1965887546539307,
+          0.4596355806287624,
+          0.9349624770757006
+        ],
+        "min": [
+          0.05999999865889549,
+          0.04036440074478606,
+          -1.1880046981450365
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a1a9b7d1a62f53217f8d719529f6bf23554d0f412a3b16291035e785ded683bf",
+      "id": "sf.render.greeble-vents.mesh.greeble-vents-material-mechanical-merged.primitive.0",
+      "indexCount": 2256,
+      "indexed": true,
+      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_vents_Material_Mechanical_Merged",
+      "nodeId": "sf.render.greeble-vents.mesh.greeble-vents-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 654
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "id": "material:4bbfc0af06e03d63cd7b8818",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "df9bc1b1b3dc7b78856f78d05d8690ac5f0b3e1acd276105d9c363f607c16590",
+      "id": "material:df9bc1b1b3dc7b78856f78d0",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.greeble-vents.mesh.greeble-vents-material-hull-merged",
+      "localTransform": [
+        1.9999999776482582,
+        0,
+        0,
+        0,
+        0,
+        1.9999999776482582,
+        0,
+        0,
+        0,
+        0,
+        1.9999999776482582,
+        0,
+        1.799999974668026,
+        0.41999998688697815,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_vents_Material_Hull_Merged",
+      "nodeName": "greeble_vents_Material_Hull_Merged",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.greeble-vents.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-vents.body",
+      "worldTransform": [
+        1.9999999776482582,
+        0,
+        0,
+        0,
+        0,
+        1.9999999776482582,
+        0,
+        0,
+        0,
+        0,
+        1.9999999776482582,
+        0,
+        1.799999974668026,
+        0.41999998688697815,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-vents.mesh.greeble-vents-material-mechanical-merged",
+      "localTransform": [
+        1.5682943779975176,
+        0,
+        0,
+        0,
+        0,
+        1.5682943779975176,
+        0,
+        0,
+        0,
+        0,
+        1.5682943779975176,
+        0,
+        1.628294376656413,
+        0.24999999068677425,
+        -0.12652111053466797,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_vents_Material_Mechanical_Merged",
+      "nodeName": "greeble_vents_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.greeble-vents.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-vents.body",
+      "worldTransform": [
+        1.5682943779975176,
+        0,
+        0,
+        0,
+        0,
+        1.5682943779975176,
+        0,
+        0,
+        0,
+        0,
+        1.5682943779975176,
+        0,
+        1.628294376656413,
+        0.24999999068677425,
+        -0.12652111053466797,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-vents.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "greeble_vents",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-vents.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "3cd4c1b63ba152135c71475273f902409f87270c296e92fa0522cd38cc4b2efb"
+    },
+    "sourceGlb": {
+      "bytes": 416328,
+      "sha256": "9a28cc7825d80a52d5d6c4907ba04602273cf862d2f68001b667d22747052d4a",
+      "uri": "greeble_vents.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 415400,
+    "sha256": "a023ac1c0c5e5633910b3fd7a4d938ecc6e3f5fa227b8675ed1e9c343c94be08",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.799999974668026,
+        0.4199999868869781,
+        0
+      ],
+      "max": [
+        3.799999952316284,
+        1.1000134074314052,
+        1.2999664151113193
+      ],
+      "min": [
+        -0.20000000298023224,
+        -0.260013433657449,
+        -1.2999664151113193
+      ],
+      "size": [
+        3.9999999552965164,
+        1.360026841088854,
+        2.5999328302226385
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 19,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.9999999776482582,
+          0,
+          0,
+          0,
+          0,
+          1.9999999776482582,
+          0,
+          0,
+          0,
+          0,
+          1.9999999776482582,
+          0,
+          1.799999974668026,
+          0.41999998688697815,
+          0,
+          1
+        ],
+        "name": "greeble_vents_Material_Hull_Merged",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5682943779975176,
+          0,
+          0,
+          0,
+          0,
+          1.5682943779975176,
+          0,
+          0,
+          0,
+          0,
+          1.5682943779975176,
+          0,
+          1.628294376656413,
+          0.24999999068677425,
+          -0.12652111053466797,
+          1
+        ],
+        "name": "greeble_vents_Material_Mechanical_Merged",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "greeble",
+    "url": "assets/ships/release/parts/greebles/greeble_vents.glb"
+  },
+  "runtimeHash": "4dfb85225f4548f7f38531c4445ea335a0d72aae4263c83522964f30558d746e",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.799999952316284,
+          1.1000134074314052,
+          1.2999664151113193
+        ],
+        "min": [
+          -0.20000000298023224,
+          -0.260013433657449,
+          -1.2999664151113193
+        ]
+      },
+      "id": "sf.render.greeble-vents.body",
+      "nodeIds": [
+        "sf.render.greeble-vents.mesh.greeble-vents-material-hull-merged",
+        "sf.render.greeble-vents.mesh.greeble-vents-material-mechanical-merged",
+        "sf.render.greeble-vents.root"
+      ]
+    }
+  ]
+}

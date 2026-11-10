@@ -1,0 +1,26 @@
+{
+  "manifest": {
+    "label": "SYNTHETIC EXAMPLE — NOT SPACEFACE PERFORMANCE DATA",
+    "commit": "synthetic",
+    "route": "demonstration_only",
+    "scenarioRevision": 1,
+    "inputTapeHash": "synthetic",
+    "seed": 0,
+    "hull": "synthetic",
+    "device": "synthetic",
+    "resolution": [1920, 1080],
+    "quality": "synthetic",
+    "profile": "synthetic_not_spaceface",
+    "physicsBackend": "none",
+    "cacheState": "synthetic",
+    "displayHz": 60
+  },
+  "frames": [
+    {"lifecycle":"foreground","frameMs":16.67,"cpuCallbackMs":7,"simulationMs":2,"presentationCpuMs":3,"gpuMs":5,"gpuValid":true,"shedTicks":0},
+    {"lifecycle":"foreground","frameMs":16.67,"cpuCallbackMs":7,"simulationMs":2,"presentationCpuMs":3,"gpuValid":false,"shedTicks":0},
+    {"lifecycle":"foreground","frameMs":50,"cpuCallbackMs":29,"simulationMs":14,"presentationCpuMs":10,"gpuMs":12,"gpuValid":true,"shedTicks":1},
+    {"lifecycle":"hidden","frameMs":1000,"gpuValid":false,"shedTicks":0},
+    {"lifecycle":"restore","frameMs":100,"gpuValid":false,"shedTicks":0},
+    {"lifecycle":"foreground","frameMs":16.67,"cpuCallbackMs":7,"simulationMs":2,"presentationCpuMs":3,"gpuMs":5,"gpuValid":true,"shedTicks":0}
+  ]
+}

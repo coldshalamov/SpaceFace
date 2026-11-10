@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-magnetic-handling-shoe",
+  "category": "cargo",
+  "description": "Segmented magnetic shoe with gimballed head",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.3849999904632568,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        0.8999999761581421,
+        0.7225000001490116,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.35,
+          -0.0
+        ],
+        "size": [
+          1.7,
+          0.6,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "handling",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -0.8999999761581421,
+      0.06000000983476639,
+      -0.5049999952316284
+    ],
+    "max": [
+      0.8999999761581421,
+      1.3849999904632568,
+      0.5049999952316284
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-magnetic-handling-shoe_lod0.glb",
+      "triangles": 3876,
+      "draws": 6,
+      "bytes": 431376,
+      "method": "source",
+      "sha256": "9c60d1a3115843d4f18d796859e6afd7831e1a49c7ca987571d5b372ebcebade"
+    },
+    {
+      "level": 1,
+      "file": "cargo-magnetic-handling-shoe_lod1.glb",
+      "triangles": 580,
+      "draws": 6,
+      "bytes": 272104,
+      "method": "authored-topology",
+      "sha256": "025a6099dd52e3c651eb590ff47da36ff775a47f30b802f445ba5c3988500967"
+    },
+    {
+      "level": 2,
+      "file": "cargo-magnetic-handling-shoe_lod2.glb",
+      "triangles": 244,
+      "draws": 6,
+      "bytes": 255100,
+      "method": "authored-topology",
+      "sha256": "eb5d7e79601d267d0d624734a9da9adffb106f83adf9f075edc725d69b0d549a"
+    }
+  ]
+}

@@ -1,0 +1,3069 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.8769688606262207,
+        0.35194873809814453,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.8769688606262207,
+        0.35194873809814453,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.356107234954834,
+        -8.595158576965332,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.356107234954834,
+        -8.595158576965332,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.862833023071289,
+        0.35194873809814453,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.862833023071289,
+        0.35194873809814453,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.850618362426758,
+        0.20194873213768005,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.850618362426758,
+        0.20194873213768005,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.356107234954834,
+        0.35194873809814453,
+        -4.510283470153809,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.356107234954834,
+        0.35194873809814453,
+        -4.510283470153809,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.356107234954834,
+        0.35194873809814453,
+        4.510283470153809,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.356107234954834,
+        0.35194873809814453,
+        4.510283470153809,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.7470664978027344,
+        4.674528121948242,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.7470664978027344,
+        4.674528121948242,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.162833213806152,
+        0.35194873809814453,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.162833213806152,
+        0.35194873809814453,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.162833213806152,
+        0.35194873809814453,
+        -1.8792848587036133,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.162833213806152,
+        0.35194873809814453,
+        -1.8792848587036133,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.162833213806152,
+        0.35194873809814453,
+        1.8792848587036133,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.162833213806152,
+        0.35194873809814453,
+        1.8792848587036133,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.356107234954834,
+        9.299056053161621,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.356107234954834,
+        9.299056053161621,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.950618267059326,
+        0.35194873809814453,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentNodeId": "sf.render.rock-ice-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.950618267059326,
+        0.35194873809814453,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.rock-ice-monolith",
+  "collisions": [
+    {
+      "id": "sf.render.rock-ice-monolith.collision",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "0aa84f271701c3b70b937e0254ad61ee45a3cac569f2523178abe3a6a2fe03df",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          6.719595104511429,
+          9.349056243896484,
+          8.466997967061188
+        ],
+        "min": [
+          -8.063151985462357,
+          -8.645158767700195,
+          -7.517303810414459
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b8261d583cb1ef0152a5a9c1992ebb9bb578b67c72335a9291d6c9b095499e5f",
+      "id": "sf.render.rock-ice-monolith.mesh.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 862
+    },
+    {
+      "bounds": {
+        "max": [
+          6.652299116276791,
+          9.348921097121298,
+          7.073261260986328
+        ],
+        "min": [
+          -6.654197405003598,
+          -3.5910997756338716,
+          -6.634852409362793
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8a8f57ca7c61e1f5c6044ad9311d040165a4faeee547f46aeb6612739b6c50ab",
+      "id": "sf.render.rock-ice-monolith.mesh.lod0-canopy.primitive.0",
+      "indexCount": 3600,
+      "indexed": true,
+      "materialHash": "88376496eeb3b746e34adfda578731a54d9c655d82e730f636d2b5b729a7975c",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_CANOPY",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod0-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 1164
+    },
+    {
+      "bounds": {
+        "max": [
+          4.912143230438232,
+          6.5433680752313474,
+          2.456642547030508
+        ],
+        "min": [
+          -4.257111549377441,
+          5.904231812616553,
+          -4.256526866335928
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "df3691c47d79c9f27f89bbb8a786f12ec500c2e681e011087f2856dab039835a",
+      "id": "sf.render.rock-ice-monolith.mesh.lod0-ceramic-ice.primitive.0",
+      "indexCount": 2088,
+      "indexed": true,
+      "materialHash": "cacd824ab7cc6c4bc407c6f49131e4b2925d46d23eaf75134c92045427a8c4bb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Ceramic_ice",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod0-ceramic-ice",
+      "primitiveIndex": 0,
+      "vertexCount": 598
+    },
+    {
+      "bounds": {
+        "max": [
+          4.686530113220215,
+          7.859543981967448,
+          8.467189198607407
+        ],
+        "min": [
+          -8.062832832336426,
+          -4.871142569003581,
+          -3.4479614554586036
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3bac43b2684217296e482d29f555074830b71b423c81e22b7fd68090c5f13d69",
+      "id": "sf.render.rock-ice-monolith.mesh.lod0-stone-deep.primitive.0",
+      "indexCount": 11520,
+      "indexed": true,
+      "materialHash": "1b0bc65c6c698f190a6817a20004eecad6b25911b11daaf262e3890534ab02b9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone_deep",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod0-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 8054
+    },
+    {
+      "bounds": {
+        "max": [
+          6.0168342077943455,
+          -2.3099584797534876,
+          6.882892608642578
+        ],
+        "min": [
+          -6.785703130981601,
+          -4.5250496646251746,
+          -6.256479740142822
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3c7031381d0c5f8a4bfbbfebbdc762c01c62f940fa477107cd63bff3a0f88362",
+      "id": "sf.render.rock-ice-monolith.mesh.lod0-stone-strata.primitive.0",
+      "indexCount": 780,
+      "indexed": true,
+      "materialHash": "a5762cabfe07811549184ae09a09c1990e48b554f18847148f90263121a4ecd2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone_strata",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod0-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 462
+    },
+    {
+      "bounds": {
+        "max": [
+          6.719290143326545,
+          6.224541664123535,
+          7.19471214411842
+        ],
+        "min": [
+          -7.006831532791877,
+          -8.645158767700195,
+          -7.51706550715553
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fefaa19d0a0cc9c64715b68856dc379580b727f07c86da4a53c45bf349f0e9e1",
+      "id": "sf.render.rock-ice-monolith.mesh.lod0-stone.primitive.0",
+      "indexCount": 4092,
+      "indexed": true,
+      "materialHash": "da6a680cb98def57b5b632687b54272016b508500d30b415176dfcfa50ba1a0a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod0-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 2825
+    },
+    {
+      "bounds": {
+        "max": [
+          6.650609793645416,
+          9.36609647353837,
+          7.0733747482299805
+        ],
+        "min": [
+          -6.654294314366852,
+          -3.5907373197908115,
+          -6.634822368621826
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c4e6e166dac6782311f4299863d2fb2ab8dd5d77bae40cf62207f235fe4b457b",
+      "id": "sf.render.rock-ice-monolith.mesh.lod1-canopy.primitive.0",
+      "indexCount": 342,
+      "indexed": true,
+      "materialHash": "88376496eeb3b746e34adfda578731a54d9c655d82e730f636d2b5b729a7975c",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_CANOPY",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod1-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 226
+    },
+    {
+      "bounds": {
+        "max": [
+          4.910671234130859,
+          6.540505597570081,
+          2.4522509687816445
+        ],
+        "min": [
+          -4.254166603088379,
+          5.911746313593249,
+          -4.254328262177641
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aad81da47f00059863c37ea23b75e6e4da57dfbd4b7da3f4f6941c35011a4b61",
+      "id": "sf.render.rock-ice-monolith.mesh.lod1-ceramic-ice.primitive.0",
+      "indexCount": 162,
+      "indexed": true,
+      "materialHash": "cacd824ab7cc6c4bc407c6f49131e4b2925d46d23eaf75134c92045427a8c4bb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Ceramic_ice",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod1-ceramic-ice",
+      "primitiveIndex": 0,
+      "vertexCount": 69
+    },
+    {
+      "bounds": {
+        "max": [
+          4.7445173263549805,
+          7.85108951656849,
+          8.448775684283811
+        ],
+        "min": [
+          -8.03923225402832,
+          -4.9076910409215175,
+          -3.4735426062808816
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3ae94cda596666fdfd05999febb822c38727de3d80759471685880db5d302ffa",
+      "id": "sf.render.rock-ice-monolith.mesh.lod1-stone-deep.primitive.0",
+      "indexCount": 5058,
+      "indexed": true,
+      "materialHash": "1b0bc65c6c698f190a6817a20004eecad6b25911b11daaf262e3890534ab02b9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone_deep",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod1-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 3561
+    },
+    {
+      "bounds": {
+        "max": [
+          6.017579498822759,
+          -1.8140802970810646,
+          6.939764022827148
+        ],
+        "min": [
+          -6.888814392621587,
+          -4.6199765810088405,
+          -6.331137180328369
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8f38f6b114936fdcafc466cba40a44414b613c5eed3faafade826b9ef10f378f",
+      "id": "sf.render.rock-ice-monolith.mesh.lod1-stone-strata.primitive.0",
+      "indexCount": 210,
+      "indexed": true,
+      "materialHash": "a5762cabfe07811549184ae09a09c1990e48b554f18847148f90263121a4ecd2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone_strata",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod1-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 159
+    },
+    {
+      "bounds": {
+        "max": [
+          6.733991766258268,
+          6.224541664123535,
+          7.19471214411842
+        ],
+        "min": [
+          -7.006651544853239,
+          -8.645158767700195,
+          -7.51706550715553
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "31d288495469a668162fcf171c60cc9e0e2dd0f2ff7be31ecd1313eac2fad0ed",
+      "id": "sf.render.rock-ice-monolith.mesh.lod1-stone.primitive.0",
+      "indexCount": 3060,
+      "indexed": true,
+      "materialHash": "da6a680cb98def57b5b632687b54272016b508500d30b415176dfcfa50ba1a0a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 2179
+    },
+    {
+      "bounds": {
+        "max": [
+          6.677926010523353,
+          9.375333171839332,
+          7.0733747482299805
+        ],
+        "min": [
+          -6.629345840845619,
+          -3.6156865177103032,
+          -6.633813858032227
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "83ebaaf4579afe2741d96a21b71c0bddbe10ed3cc16339d3d75339e5f3c3c120",
+      "id": "sf.render.rock-ice-monolith.mesh.lod2-canopy.primitive.0",
+      "indexCount": 138,
+      "indexed": true,
+      "materialHash": "88376496eeb3b746e34adfda578731a54d9c655d82e730f636d2b5b729a7975c",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD2_CANOPY",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod2-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 114
+    },
+    {
+      "bounds": {
+        "max": [
+          4.944633483886719,
+          6.540126054153875,
+          2.4516569640626478
+        ],
+        "min": [
+          -4.282864570617676,
+          5.911573679580256,
+          -4.287258055447536
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "85622433d4e3f9dca81dd4eb9c87ceb36c7fa8a63f29d5ef9e46e2f168b3bbe3",
+      "id": "sf.render.rock-ice-monolith.mesh.lod2-ceramic-ice.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "cacd824ab7cc6c4bc407c6f49131e4b2925d46d23eaf75134c92045427a8c4bb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Ceramic_ice",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod2-ceramic-ice",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          4.74455624024425,
+          7.882958889007568,
+          8.440787591779804
+        ],
+        "min": [
+          -7.994222454233507,
+          -4.907344818115234,
+          -3.4361181639081
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be7bf595f7982f570e98f1acbe976081c7db609244fce10cc136e5a966a1d115",
+      "id": "sf.render.rock-ice-monolith.mesh.lod2-stone-deep.primitive.0",
+      "indexCount": 2124,
+      "indexed": true,
+      "materialHash": "1b0bc65c6c698f190a6817a20004eecad6b25911b11daaf262e3890534ab02b9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone_deep",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod2-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 1433
+    },
+    {
+      "bounds": {
+        "max": [
+          5.925378662413461,
+          -1.670758800494295,
+          7.145808696746826
+        ],
+        "min": [
+          -6.888144356078012,
+          -5.045806450856108,
+          -6.400269985198975
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1179012f3f5218cc59a0a0fcaf2078aea2a1b0ca34af48d67e58f6109f33720c",
+      "id": "sf.render.rock-ice-monolith.mesh.lod2-stone-strata.primitive.0",
+      "indexCount": 123,
+      "indexed": true,
+      "materialHash": "a5762cabfe07811549184ae09a09c1990e48b554f18847148f90263121a4ecd2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone_strata",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod2-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 102
+    },
+    {
+      "bounds": {
+        "max": [
+          6.734240192298425,
+          6.236018657684326,
+          7.157289998220721
+        ],
+        "min": [
+          -6.989759582404626,
+          -8.645158767700195,
+          -7.513161198782244
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d64fed6c1eabb5fc7afc7a4b12a0b292cb1f1a148e533e9ad30db28ade214ddd",
+      "id": "sf.render.rock-ice-monolith.mesh.lod2-stone.primitive.0",
+      "indexCount": 1527,
+      "indexed": true,
+      "materialHash": "da6a680cb98def57b5b632687b54272016b508500d30b415176dfcfa50ba1a0a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone",
+      "nodeId": "sf.render.rock-ice-monolith.mesh.lod2-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 1102
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "1b0bc65c6c698f190a6817a20004eecad6b25911b11daaf262e3890534ab02b9",
+      "id": "material:1b0bc65c6c698f190a6817a2",
+      "name": "Material_Stone_deep",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "88376496eeb3b746e34adfda578731a54d9c655d82e730f636d2b5b729a7975c",
+      "id": "material:88376496eeb3b746e34adfda",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "a5762cabfe07811549184ae09a09c1990e48b554f18847148f90263121a4ecd2",
+      "id": "material:a5762cabfe07811549184ae0",
+      "name": "Material_Stone_strata",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cacd824ab7cc6c4bc407c6f49131e4b2925d46d23eaf75134c92045427a8c4bb",
+      "id": "material:cacd824ab7cc6c4bc407c6f4",
+      "name": "Material_Ceramic_ice",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "da6a680cb98def57b5b632687b54272016b508500d30b415176dfcfa50ba1a0a",
+      "id": "material:da6a680cb98def57b5b63268",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.collision-hull",
+      "localTransform": [
+        8.99710750579834,
+        0,
+        0,
+        0,
+        0,
+        8.99710750579834,
+        0,
+        0,
+        0,
+        0,
+        8.99710750579834,
+        0,
+        -0.6717784404754639,
+        0.35194873809814453,
+        0.47484707832336426,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        8.99710750579834,
+        0,
+        0,
+        0,
+        0,
+        8.99710750579834,
+        0,
+        0,
+        0,
+        0,
+        8.99710750579834,
+        0,
+        -0.6717784404754639,
+        0.35194873809814453,
+        0.47484707832336426,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod0-canopy",
+      "localTransform": [
+        6.8540568351745605,
+        0,
+        0,
+        0,
+        0,
+        6.8540568351745605,
+        0,
+        0,
+        0,
+        0,
+        6.8540568351745605,
+        0,
+        -0.0009491443634033203,
+        2.8789106607437134,
+        0.21920442581176758,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_CANOPY",
+      "nodeName": "LOD0_CANOPY",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        6.8540568351745605,
+        0,
+        0,
+        0,
+        0,
+        6.8540568351745605,
+        0,
+        0,
+        0,
+        0,
+        6.8540568351745605,
+        0,
+        -0.0009491443634033203,
+        2.8789106607437134,
+        0.21920442581176758,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod0-ceramic-ice",
+      "localTransform": [
+        4.584627389907837,
+        0,
+        0,
+        0,
+        0,
+        4.584627389907837,
+        0,
+        0,
+        0,
+        0,
+        4.584627389907837,
+        0,
+        0.3275158405303955,
+        6.22379994392395,
+        -0.89994215965271,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Ceramic_ice",
+      "nodeName": "LOD0_Ceramic_ice",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        4.584627389907837,
+        0,
+        0,
+        0,
+        0,
+        4.584627389907837,
+        0,
+        0,
+        0,
+        0,
+        4.584627389907837,
+        0,
+        0.3275158405303955,
+        6.22379994392395,
+        -0.89994215965271,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod0-stone",
+      "localTransform": [
+        7.434850215911865,
+        0,
+        0,
+        0,
+        0,
+        7.434850215911865,
+        0,
+        0,
+        0,
+        0,
+        7.434850215911865,
+        0,
+        -0.14377069473266602,
+        -1.21030855178833,
+        -0.1611766815185547,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone",
+      "nodeName": "LOD0_Stone",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        7.434850215911865,
+        0,
+        0,
+        0,
+        0,
+        7.434850215911865,
+        0,
+        0,
+        0,
+        0,
+        7.434850215911865,
+        0,
+        -0.14377069473266602,
+        -1.21030855178833,
+        -0.1611766815185547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod0-stone-deep",
+      "localTransform": [
+        6.37468147277832,
+        0,
+        0,
+        0,
+        0,
+        6.37468147277832,
+        0,
+        0,
+        0,
+        0,
+        6.37468147277832,
+        0,
+        -1.6881513595581055,
+        1.4942007064819336,
+        2.509613871574402,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone_deep",
+      "nodeName": "LOD0_Stone_deep",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        6.37468147277832,
+        0,
+        0,
+        0,
+        0,
+        6.37468147277832,
+        0,
+        0,
+        0,
+        0,
+        6.37468147277832,
+        0,
+        -1.6881513595581055,
+        1.4942007064819336,
+        2.509613871574402,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod0-stone-strata",
+      "localTransform": [
+        6.5696861743927,
+        0,
+        0,
+        0,
+        0,
+        6.5696861743927,
+        0,
+        0,
+        0,
+        0,
+        6.5696861743927,
+        0,
+        -0.38443446159362793,
+        -3.417504072189331,
+        0.31320643424987793,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone_strata",
+      "nodeName": "LOD0_Stone_strata",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        6.5696861743927,
+        0,
+        0,
+        0,
+        0,
+        6.5696861743927,
+        0,
+        0,
+        0,
+        0,
+        6.5696861743927,
+        0,
+        -0.38443446159362793,
+        -3.417504072189331,
+        0.31320643424987793,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod1-canopy",
+      "localTransform": [
+        6.854098558425903,
+        0,
+        0,
+        0,
+        0,
+        6.854098558425903,
+        0,
+        0,
+        0,
+        0,
+        6.854098558425903,
+        0,
+        -0.0018422603607177734,
+        2.8876795768737793,
+        0.21927618980407715,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_CANOPY",
+      "nodeName": "LOD1_CANOPY",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        6.854098558425903,
+        0,
+        0,
+        0,
+        0,
+        6.854098558425903,
+        0,
+        0,
+        0,
+        0,
+        6.854098558425903,
+        0,
+        -0.0018422603607177734,
+        2.8876795768737793,
+        0.21927618980407715,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod1-ceramic-ice",
+      "localTransform": [
+        4.582418918609619,
+        0,
+        0,
+        0,
+        0,
+        4.582418918609619,
+        0,
+        0,
+        0,
+        0,
+        4.582418918609619,
+        0,
+        0.32825231552124023,
+        6.226125955581665,
+        -0.901038646697998,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Ceramic_ice",
+      "nodeName": "LOD1_Ceramic_ice",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        4.582418918609619,
+        0,
+        0,
+        0,
+        0,
+        4.582418918609619,
+        0,
+        0,
+        0,
+        0,
+        4.582418918609619,
+        0,
+        0.32825231552124023,
+        6.226125955581665,
+        -0.901038646697998,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod1-stone",
+      "localTransform": [
+        7.434850215911865,
+        0,
+        0,
+        0,
+        0,
+        7.434850215911865,
+        0,
+        0,
+        0,
+        0,
+        7.434850215911865,
+        0,
+        -0.13632988929748535,
+        -1.21030855178833,
+        -0.1611766815185547,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone",
+      "nodeName": "LOD1_Stone",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        7.434850215911865,
+        0,
+        0,
+        0,
+        0,
+        7.434850215911865,
+        0,
+        0,
+        0,
+        0,
+        7.434850215911865,
+        0,
+        -0.13632988929748535,
+        -1.21030855178833,
+        -0.1611766815185547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod1-stone-deep",
+      "localTransform": [
+        6.39187479019165,
+        0,
+        0,
+        0,
+        0,
+        6.39187479019165,
+        0,
+        0,
+        0,
+        0,
+        6.39187479019165,
+        0,
+        -1.64735746383667,
+        1.4716992378234863,
+        2.487616539001465,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone_deep",
+      "nodeName": "LOD1_Stone_deep",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        6.39187479019165,
+        0,
+        0,
+        0,
+        0,
+        6.39187479019165,
+        0,
+        0,
+        0,
+        0,
+        6.39187479019165,
+        0,
+        -1.64735746383667,
+        1.4716992378234863,
+        2.487616539001465,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod1-stone-strata",
+      "localTransform": [
+        6.635450601577759,
+        0,
+        0,
+        0,
+        0,
+        6.635450601577759,
+        0,
+        0,
+        0,
+        0,
+        6.635450601577759,
+        0,
+        -0.43561744689941406,
+        -3.2170284390449524,
+        0.30431342124938965,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone_strata",
+      "nodeName": "LOD1_Stone_strata",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        6.635450601577759,
+        0,
+        0,
+        0,
+        0,
+        6.635450601577759,
+        0,
+        0,
+        0,
+        0,
+        6.635450601577759,
+        0,
+        -0.43561744689941406,
+        -3.2170284390449524,
+        0.30431342124938965,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod2-canopy",
+      "localTransform": [
+        6.8535943031311035,
+        0,
+        0,
+        0,
+        0,
+        6.8535943031311035,
+        0,
+        0,
+        0,
+        0,
+        6.8535943031311035,
+        0,
+        0.024290084838867188,
+        2.879823327064514,
+        0.21978044509887695,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_CANOPY",
+      "nodeName": "LOD2_CANOPY",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        6.8535943031311035,
+        0,
+        0,
+        0,
+        0,
+        6.8535943031311035,
+        0,
+        0,
+        0,
+        0,
+        6.8535943031311035,
+        0,
+        0.024290084838867188,
+        2.879823327064514,
+        0.21978044509887695,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod2-ceramic-ice",
+      "localTransform": [
+        4.613749027252197,
+        0,
+        0,
+        0,
+        0,
+        4.613749027252197,
+        0,
+        0,
+        0,
+        0,
+        4.613749027252197,
+        0,
+        0.3308844566345215,
+        6.225849866867065,
+        -0.9178005456924438,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Ceramic_ice",
+      "nodeName": "LOD2_Ceramic_ice",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        4.613749027252197,
+        0,
+        0,
+        0,
+        0,
+        4.613749027252197,
+        0,
+        0,
+        0,
+        0,
+        4.613749027252197,
+        0,
+        0.3308844566345215,
+        6.225849866867065,
+        -0.9178005456924438,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod2-stone",
+      "localTransform": [
+        7.440588712692261,
+        0,
+        0,
+        0,
+        0,
+        7.440588712692261,
+        0,
+        0,
+        0,
+        0,
+        7.440588712692261,
+        0,
+        -0.12775969505310059,
+        -1.2045700550079346,
+        -0.17793560028076172,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone",
+      "nodeName": "LOD2_Stone",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        7.440588712692261,
+        0,
+        0,
+        0,
+        0,
+        7.440588712692261,
+        0,
+        0,
+        0,
+        0,
+        7.440588712692261,
+        0,
+        -0.12775969505310059,
+        -1.2045700550079346,
+        -0.17793560028076172,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod2-stone-deep",
+      "localTransform": [
+        6.395151853561401,
+        0,
+        0,
+        0,
+        0,
+        6.395151853561401,
+        0,
+        0,
+        0,
+        0,
+        6.395151853561401,
+        0,
+        -1.624833106994629,
+        1.487807035446167,
+        2.502334713935852,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone_deep",
+      "nodeName": "LOD2_Stone_deep",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        6.395151853561401,
+        0,
+        0,
+        0,
+        0,
+        6.395151853561401,
+        0,
+        0,
+        0,
+        0,
+        6.395151853561401,
+        0,
+        -1.624833106994629,
+        1.487807035446167,
+        2.502334713935852,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.mesh.lod2-stone-strata",
+      "localTransform": [
+        6.7730393409729,
+        0,
+        0,
+        0,
+        0,
+        6.7730393409729,
+        0,
+        0,
+        0,
+        0,
+        6.7730393409729,
+        0,
+        -0.4813828468322754,
+        -3.3582826256752014,
+        0.3727693557739258,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone_strata",
+      "nodeName": "LOD2_Stone_strata",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.rock-ice-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        6.7730393409729,
+        0,
+        0,
+        0,
+        0,
+        6.7730393409729,
+        0,
+        0,
+        0,
+        0,
+        6.7730393409729,
+        0,
+        -0.4813828468322754,
+        -3.3582826256752014,
+        0.3727693557739258,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-ice-monolith.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_ROCK_ICE_MONOLITH_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-ice-monolith.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "56d7e48725f2f7413928761ac645a1636873d0488b695bb77f7ed43b1621c293"
+    },
+    "sourceGlb": {
+      "bytes": 435412,
+      "sha256": "d48d7065263fd39a1d73df8b692df137be18bb2410eae0a80e1ff89f135832cb",
+      "uri": "place_rock_ice_monolith.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 440204,
+    "sha256": "829e8bd67fd3a762b924b247d94f7c5396d704a55f3f88dbd5c77f6594dcbf12",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.6644558965819658,
+        0.36508720206956813,
+        0.47494269409647405
+      ],
+      "max": [
+        6.734240192298425,
+        9.375333171839332,
+        8.467189198607407
+      ],
+      "min": [
+        -8.063151985462357,
+        -8.645158767700195,
+        -7.517303810414459
+      ],
+      "size": [
+        14.79739217776078,
+        18.020491939539525,
+        15.984493009021866
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.8769688606262207,
+          0.35194873809814453,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.356107234954834,
+          -8.595158576965332,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.862833023071289,
+          0.35194873809814453,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          6.850618362426758,
+          0.20194873213768005,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.356107234954834,
+          0.35194873809814453,
+          -4.510283470153809,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.356107234954834,
+          0.35194873809814453,
+          4.510283470153809,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.7470664978027344,
+          4.674528121948242,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.162833213806152,
+          0.35194873809814453,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.162833213806152,
+          0.35194873809814453,
+          -1.8792848587036133,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.162833213806152,
+          0.35194873809814453,
+          1.8792848587036133,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 27,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.356107234954834,
+          9.299056053161621,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 28,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          6.950618267059326,
+          0.35194873809814453,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 29,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.rock-ice-monolith.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "ceramic": 3,
+      "geology": 10,
+      "glass": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 30,
+    "primitives": [
+      {
+        "canopy": true,
+        "matrix": [
+          6.8540568351745605,
+          0,
+          0,
+          0,
+          0,
+          6.8540568351745605,
+          0,
+          0,
+          0,
+          0,
+          6.8540568351745605,
+          0,
+          -0.0009491443634033203,
+          2.8789106607437134,
+          0.21920442581176758,
+          1
+        ],
+        "name": "LOD0_CANOPY",
+        "planIndex": 3,
+        "tags": {
+          "canopy": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.584627389907837,
+          0,
+          0,
+          0,
+          0,
+          4.584627389907837,
+          0,
+          0,
+          0,
+          0,
+          4.584627389907837,
+          0,
+          0.3275158405303955,
+          6.22379994392395,
+          -0.89994215965271,
+          1
+        ],
+        "name": "LOD0_Ceramic_ice",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.434850215911865,
+          0,
+          0,
+          0,
+          0,
+          7.434850215911865,
+          0,
+          0,
+          0,
+          0,
+          7.434850215911865,
+          0,
+          -0.14377069473266602,
+          -1.21030855178833,
+          -0.1611766815185547,
+          1
+        ],
+        "name": "LOD0_Stone",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.37468147277832,
+          0,
+          0,
+          0,
+          0,
+          6.37468147277832,
+          0,
+          0,
+          0,
+          0,
+          6.37468147277832,
+          0,
+          -1.6881513595581055,
+          1.4942007064819336,
+          2.509613871574402,
+          1
+        ],
+        "name": "LOD0_Stone_deep",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.5696861743927,
+          0,
+          0,
+          0,
+          0,
+          6.5696861743927,
+          0,
+          0,
+          0,
+          0,
+          6.5696861743927,
+          0,
+          -0.38443446159362793,
+          -3.417504072189331,
+          0.31320643424987793,
+          1
+        ],
+        "name": "LOD0_Stone_strata",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          6.854098558425903,
+          0,
+          0,
+          0,
+          0,
+          6.854098558425903,
+          0,
+          0,
+          0,
+          0,
+          6.854098558425903,
+          0,
+          -0.0018422603607177734,
+          2.8876795768737793,
+          0.21927618980407715,
+          1
+        ],
+        "name": "LOD1_CANOPY",
+        "planIndex": 8,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.582418918609619,
+          0,
+          0,
+          0,
+          0,
+          4.582418918609619,
+          0,
+          0,
+          0,
+          0,
+          4.582418918609619,
+          0,
+          0.32825231552124023,
+          6.226125955581665,
+          -0.901038646697998,
+          1
+        ],
+        "name": "LOD1_Ceramic_ice",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.434850215911865,
+          0,
+          0,
+          0,
+          0,
+          7.434850215911865,
+          0,
+          0,
+          0,
+          0,
+          7.434850215911865,
+          0,
+          -0.13632988929748535,
+          -1.21030855178833,
+          -0.1611766815185547,
+          1
+        ],
+        "name": "LOD1_Stone",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.39187479019165,
+          0,
+          0,
+          0,
+          0,
+          6.39187479019165,
+          0,
+          0,
+          0,
+          0,
+          6.39187479019165,
+          0,
+          -1.64735746383667,
+          1.4716992378234863,
+          2.487616539001465,
+          1
+        ],
+        "name": "LOD1_Stone_deep",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.635450601577759,
+          0,
+          0,
+          0,
+          0,
+          6.635450601577759,
+          0,
+          0,
+          0,
+          0,
+          6.635450601577759,
+          0,
+          -0.43561744689941406,
+          -3.2170284390449524,
+          0.30431342124938965,
+          1
+        ],
+        "name": "LOD1_Stone_strata",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          6.8535943031311035,
+          0,
+          0,
+          0,
+          0,
+          6.8535943031311035,
+          0,
+          0,
+          0,
+          0,
+          6.8535943031311035,
+          0,
+          0.024290084838867188,
+          2.879823327064514,
+          0.21978044509887695,
+          1
+        ],
+        "name": "LOD2_CANOPY",
+        "planIndex": 13,
+        "tags": {
+          "canopy": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.613749027252197,
+          0,
+          0,
+          0,
+          0,
+          4.613749027252197,
+          0,
+          0,
+          0,
+          0,
+          4.613749027252197,
+          0,
+          0.3308844566345215,
+          6.225849866867065,
+          -0.9178005456924438,
+          1
+        ],
+        "name": "LOD2_Ceramic_ice",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.440588712692261,
+          0,
+          0,
+          0,
+          0,
+          7.440588712692261,
+          0,
+          0,
+          0,
+          0,
+          7.440588712692261,
+          0,
+          -0.12775969505310059,
+          -1.2045700550079346,
+          -0.17793560028076172,
+          1
+        ],
+        "name": "LOD2_Stone",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.395151853561401,
+          0,
+          0,
+          0,
+          0,
+          6.395151853561401,
+          0,
+          0,
+          0,
+          0,
+          6.395151853561401,
+          0,
+          -1.624833106994629,
+          1.487807035446167,
+          2.502334713935852,
+          1
+        ],
+        "name": "LOD2_Stone_deep",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.7730393409729,
+          0,
+          0,
+          0,
+          0,
+          6.7730393409729,
+          0,
+          0,
+          0,
+          0,
+          6.7730393409729,
+          0,
+          -0.4813828468322754,
+          -3.3582826256752014,
+          0.3727693557739258,
+          1
+        ],
+        "name": "LOD2_Stone_strata",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_rock_ice_monolith.glb"
+  },
+  "runtimeHash": "9ad5ba25db310e35ba559729f24bd4b7fb13c1d01363962e6a694b66bb824eb5",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          6.734240192298425,
+          9.375333171839332,
+          8.467189198607407
+        ],
+        "min": [
+          -8.063151985462357,
+          -8.645158767700195,
+          -7.517303810414459
+        ]
+      },
+      "id": "sf.render.rock-ice-monolith.body",
+      "nodeIds": [
+        "sf.render.rock-ice-monolith.mesh.collision-hull",
+        "sf.render.rock-ice-monolith.mesh.lod0-canopy",
+        "sf.render.rock-ice-monolith.mesh.lod0-ceramic-ice",
+        "sf.render.rock-ice-monolith.mesh.lod0-stone",
+        "sf.render.rock-ice-monolith.mesh.lod0-stone-deep",
+        "sf.render.rock-ice-monolith.mesh.lod0-stone-strata",
+        "sf.render.rock-ice-monolith.mesh.lod1-canopy",
+        "sf.render.rock-ice-monolith.mesh.lod1-ceramic-ice",
+        "sf.render.rock-ice-monolith.mesh.lod1-stone",
+        "sf.render.rock-ice-monolith.mesh.lod1-stone-deep",
+        "sf.render.rock-ice-monolith.mesh.lod1-stone-strata",
+        "sf.render.rock-ice-monolith.mesh.lod2-canopy",
+        "sf.render.rock-ice-monolith.mesh.lod2-ceramic-ice",
+        "sf.render.rock-ice-monolith.mesh.lod2-stone",
+        "sf.render.rock-ice-monolith.mesh.lod2-stone-deep",
+        "sf.render.rock-ice-monolith.mesh.lod2-stone-strata",
+        "sf.render.rock-ice-monolith.root"
+      ]
+    }
+  ]
+}

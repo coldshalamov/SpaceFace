@@ -1,0 +1,11 @@
+{
+  "sectorId": "sector_helios_prime",
+  "id": "zone_helios_surplus_yard",
+  "name": "Helios Surplus Yard",
+  "type": "derelict_field",
+  "factionId": "faction_reach",
+  "reason": "A Reach-brokered scrap pocket: decommissioned hulls and estate hardware stripped and stacked for resale.",
+  "center": { "x": -1800, "z": 1100 },
+  "radius": 500,
+  "threat": 1
+}

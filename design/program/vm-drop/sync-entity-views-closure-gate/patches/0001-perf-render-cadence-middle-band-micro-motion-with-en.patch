@@ -1,0 +1,95 @@
+From 4df3ba34f94d00f43ca5fb2db7533542cf85b93c Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 23:13:23 -0400
+Subject: [PATCH] perf(render): cadence middle-band micro-motion with entity
+ closures
+
+Off-screen runway roots already refresh presentation closures on the
+middle-band tick cadence; cosmetic craft/asteroid/ordnance micro-motion
+kept running every frame anyway. Gate that work on runClosures (same
+seam) and fill craft micro-motion options once per syncEntityViews pass.
+---
+ src/render/renderer.js | 45 ++++++++++++++++++++++++------------------
+ 1 file changed, 26 insertions(+), 19 deletions(-)
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index c2952122f..ed430cf15 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -11799,6 +11799,24 @@ export const render = {
+       INNER_VIEW_BAND_SCALE,
+     );
+ 
++    // Frame-constant craft micro-motion inputs — filled once per pass. Per-entity call sites
++    // only read the retained options object; rewriting these inside the visible loop was pure
++    // duplicate work for every ship/drone/freighter root.
++    {
++      const playerView = this.state && this.state.player;
++      const tetherView = playerView && playerView.tether;
++      _craftMicroMotionOptions.motionReduce = _worldSiteA11y.reducedMotion;
++      _craftMicroMotionOptions.playerMiningActive = !!(playerView && playerView.miningBeam && playerView.miningBeam.active);
++      _craftMicroMotionOptions.playerId = this.state && this.state.playerId;
++      _craftMicroMotionOptions.playerTargetId = playerView && playerView.targetId;
++      _craftMicroMotionOptions.entities = this.state && this.state.entities;
++      _craftMicroMotionOptions.tetherActive = !!(tetherView && tetherView.active);
++      _craftMicroMotionOptions.tetherTargetId = tetherView ? tetherView.targetId : null;
++      _craftMicroMotionOptions.tetherLoad = tetherView && Number.isFinite(tetherView.load) ? tetherView.load : 0;
++      _craftMicroMotionOptions.tetherPhase = tetherView && tetherView.phase ? tetherView.phase : '';
++      _craftMicroMotionOptions.flashReduce = _worldSiteA11y.reducedFlash;
++    }
++
+     for (let index = 0; index < query.visibleCount; index++) {
+       const slot = query.visibleSlots[index];
+       const generation = query.visibleGenerations[index];
+@@ -11977,22 +11995,14 @@ export const render = {
+       }
+       if (entity && runClosures && userData.updateDriveState) userData.updateDriveState(entity, now);
+ 
+-      // A-List dynamic mechanical micro-motion & environmental reactions
+-      if (entity && !farSpeck) {
++      // A-List dynamic mechanical micro-motion & environmental reactions.
++      // Same cadence as the presentation closures above: the middle-band runway keeps
++      // poses every frame, but cosmetic micro-motion cannot change a readable on-glass
++      // pixel until the root re-enters the inner band (or its middle-band cadence slot).
++      if (entity && runClosures && !farSpeck) {
+         const frameDt = this._lastFrameDt || 0.016667;
+         const simTime = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : now;
+         if (typeName === 'ship' || typeName === 'drone' || typeName === 'freighter') {
+-          _craftMicroMotionOptions.motionReduce = _worldSiteA11y.reducedMotion;
+-          _craftMicroMotionOptions.playerMiningActive = !!(this.state && this.state.player && this.state.player.miningBeam && this.state.player.miningBeam.active);
+-          _craftMicroMotionOptions.playerId = this.state && this.state.playerId;
+-          _craftMicroMotionOptions.playerTargetId = this.state && this.state.player && this.state.player.targetId;
+-          _craftMicroMotionOptions.entities = this.state && this.state.entities;
+-          const tetherView = this.state && this.state.player && this.state.player.tether;
+-          _craftMicroMotionOptions.tetherActive = !!(tetherView && tetherView.active);
+-          _craftMicroMotionOptions.tetherTargetId = tetherView ? tetherView.targetId : null;
+-          _craftMicroMotionOptions.tetherLoad = tetherView && Number.isFinite(tetherView.load) ? tetherView.load : 0;
+-          _craftMicroMotionOptions.tetherPhase = tetherView && tetherView.phase ? tetherView.phase : '';
+-          _craftMicroMotionOptions.flashReduce = _worldSiteA11y.reducedFlash;
+           globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+           if (isPlayer && this.scene) {
+             slipstreamSeen = true;
+@@ -12010,17 +12020,14 @@ export const render = {
+           _worldSiteA11y.instancePool = this._asteroidInstancePool;
+           globalAsteroidMotion.updateAsteroidMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
+         } else if (typeName === 'pickup') {
+-          const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+-          globalPickupMotion.updatePickupMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
++          globalPickupMotion.updatePickupMotion(entity, mesh, simTime, frameDt, framePlayer, _worldSiteA11y);
+         } else if (typeName === 'bomb' || typeName === 'mine' || typeName === 'vectormine'
+             || typeName === 'charge' || typeName === 'payload' || typeName === 'beacon') {
+-          const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+-          globalOrdnanceMotion.updateOrdnanceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
++          globalOrdnanceMotion.updateOrdnanceMotion(entity, mesh, simTime, frameDt, framePlayer, _worldSiteA11y);
+         } else if (typeName === 'station') {
+           const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
+           if (isGate) {
+-            const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+-            globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
++            globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, framePlayer, _worldSiteA11y);
+           } else {
+             globalInfrastructureMotion.updateStationMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
+           }
+-- 
+2.47.3
+

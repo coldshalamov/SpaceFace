@@ -1,0 +1,193 @@
+{
+  "camera": {
+    "x": 0,
+    "z": 0,
+    "zoom": 3.2
+  },
+  "composition": "braking-drifting-hulk",
+  "description": "The Hitch is latched to a heavy drifting mass and the throttle is closed. The lab oracle is the live tether plus the speed trace.",
+  "encounter": {
+    "context": "encounter",
+    "cooldownS": 480,
+    "deck": "civilian",
+    "factionId": "faction_free",
+    "id": "dock_brake_hulk",
+    "order": 1002,
+    "pressureCost": 12,
+    "proximity": true,
+    "script": "salvageSignal",
+    "shape": {
+      "actor": "none",
+      "place": [
+        "derelict_field"
+      ],
+      "situation": "salvage",
+      "twist": "none"
+    },
+    "squad": {
+      "archetypes": [
+        "wasp_swarmer"
+      ]
+    },
+    "tier": "minor",
+    "title": "Drifting hulk",
+    "weight": 1,
+    "zoneTypes": [
+      "derelict_field"
+    ]
+  },
+  "evidenceClass": "focused-fixture",
+  "fixtureExceptions": [
+    "focused-fixture authored in Creator's Dock; not production-manifest evidence"
+  ],
+  "frames": [
+    {
+      "input": {
+        "boost": false,
+        "fire": false,
+        "moveX": 0,
+        "moveZ": 0,
+        "turnIntent": 0
+      },
+      "tick": 0
+    }
+  ],
+  "grid": {
+    "size": 10,
+    "snap": true
+  },
+  "id": "dock.brake-hulk",
+  "inputEvents": [],
+  "notes": {
+    "composition": "braking-drifting-hulk",
+    "creatorsDock": "1",
+    "expectedObservation": "attachmentActive holds while the player speed trace stays finite. Initial velocity is on the player; the hulk is the tether target."
+  },
+  "objects": [
+    {
+      "angularVelocity": 0,
+      "factionId": "faction_free",
+      "heading": 1.570796,
+      "id": "player",
+      "isPlayer": true,
+      "kind": "actor",
+      "label": "Hitch on a latch",
+      "persistent": true,
+      "profile": "ship.starter",
+      "role": "player",
+      "team": 0,
+      "velX": 0,
+      "velZ": 36,
+      "x": 0,
+      "z": 0
+    },
+    {
+      "angularVelocity": 0,
+      "heading": 0,
+      "id": "hulk",
+      "kind": "actor",
+      "label": "drifting hulk",
+      "overrides": {
+        "mass": 4000,
+        "radius": 12
+      },
+      "persistent": true,
+      "profile": "asteroid.heavy",
+      "role": "hulk",
+      "team": 2,
+      "velX": 6,
+      "velZ": 0,
+      "x": 80,
+      "z": 0
+    },
+    {
+      "defId": "tether_standard",
+      "id": "tow",
+      "kind": "attachment",
+      "label": "tow",
+      "ownerAlias": "player",
+      "targetAlias": "hulk"
+    },
+    {
+      "assertion": {
+        "holdsTicks": 30,
+        "kind": "holds",
+        "signal": "attachmentActive"
+      },
+      "id": "latch",
+      "kind": "trigger",
+      "labOnly": true,
+      "label": "tether stays active",
+      "radius": 12,
+      "shape": "circle",
+      "x": 80,
+      "z": 36
+    },
+    {
+      "id": "peak_speed",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "opened with speed",
+      "metric": "trace.max",
+      "op": ">=",
+      "signal": "player.speed",
+      "value": 5,
+      "x": -90,
+      "z": 20
+    },
+    {
+      "id": "end_speed",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "speed stayed bounded",
+      "metric": "flight.finalSpeed",
+      "op": "<=",
+      "value": 80,
+      "x": -90,
+      "z": 0
+    },
+    {
+      "assertion": {
+        "holdsTicks": 60,
+        "kind": "holds",
+        "signal": "playerAlive"
+      },
+      "id": "alive_hulk",
+      "kind": "trigger",
+      "labOnly": true,
+      "label": "player stays alive",
+      "radius": 12,
+      "shape": "circle",
+      "x": -90,
+      "z": -20
+    },
+    {
+      "from": "player",
+      "gameplay": false,
+      "id": "to_hulk",
+      "kind": "route",
+      "label": "brake the tow",
+      "to": "hulk"
+    }
+  ],
+  "observer": {
+    "enabled": false
+  },
+  "runtimeProfile": "focused-lab",
+  "schema": "spaceface.creatorsDock.v1",
+  "seed": 11002,
+  "standardInvariants": true,
+  "ticks": 180,
+  "title": "Braking a drifting hulk",
+  "traceSignals": [],
+  "version": 1,
+  "world": {
+    "aiBackend": "legacy",
+    "credits": 5000,
+    "fixtureProfile": "massline",
+    "flightBackend": "v3",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "sectorId": "sector_helios_prime"
+  }
+}

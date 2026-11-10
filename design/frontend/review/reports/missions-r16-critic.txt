@@ -1,0 +1,126 @@
+STATION MISSIONS TAB - ROUND 16 CRITIC, under the OWNER CRITERIA (critic-brief section 7 and the measured weight bar)
+Stills (all .devshots/ui-review/view/): gate-mis-1920c (arrival 1920), gate-mis-1280 (arrival 1280),
+gate-mis-hold50 (deterministic 50% hold via dossier.__ctHoldPath.set(0.5)).
+Commits: 5f2b4ed57 (combined hold path, hold clock on every ACCEPT, berth ignition, RISK banded,
+STANDING arc, Hand heaviest, bead offset, STANDING spacing) + 10d4692b2 (shell rail margin).
+Method: sharp crops plus raw Rec.709 luma + WCAG ratios vs glass 7-11. Motion frozen in stills, so
+the pulse/retract/ignition beats were verified in src/ui/station/screens/contracts.js (read only).
+Bench artefacts ignored per brief (frozen motion; no toast/cycle visible in these frames).
+
+1. VERDICT: PASSED. Overall 8.2 (previous 8.03).
+   - (a) PASS. No hairline-only instruments and no generic elements remain: RISK is a banded scale
+     with a lit blade, STANDING is an arc gauge, every band clears 2:1 (numbers in section 7).
+   - (b) PASS. The signature "hold ACCEPT and the pulse runs key to THIS STATION to the berth" is
+     now wired that way: one combined key-to-station-to-berth mpath, hold fraction drives the fill,
+     and the 50% still seats the head exactly on THIS STATION.
+
+2. AXES (previous = r15)
+   Composition      8.0 (prev 8.1) - Dial holds the right third with real mass; 1280 compact and
+                    clean. But the bare-spine void above YOURS grew to ~230px (last FEATURED
+                    dispatch ~y555 to YOURS caps y789-797) as rail content grew: YOURS reads
+                    bottom-pinned while the rail's middle third sits empty.
+   Hierarchy        7.8 (prev 7.7) - Beam core 188 stays the dial's peak and hue-leader; ring cores
+                    fell 163-174 to 123-135. But beam glow is still 47-48 against ring bands of
+                    60-109, so the rings still carry more total light than the Hand's glow. Better,
+                    not yet heaviest.
+   Legibility       8.2 (prev 8.0) - 1920 names all clean; 1280 VESTA FORGE under its node and
+                    TETHYS JUNCTION clear; STANDING labels clear of the arc; RISK zones + blade read
+                    at both sizes; bead/key/hold-track separation legible.
+   ORRERY fidelity  8.6 (prev 8.4) - STANDING is an arc per section 3.2; one Beam carries the route
+                    with a single travelling pulse plus hold-driven fill (a lawful extension);
+                    berth mask intact. Ring cores at ~52-57% of bone still sit above section 3.3's
+                    14-40% rest range.
+   Craft / detail   8.2 (prev 8.0) - Bead 17px off the key with 9px hold-track clearance; band edges
+                    softened to a 3px ramp (was a 1px tube edge); hold head lands on the station at
+                    50%. YOURS major sits 4px above cap centre; 720 rows were not re-shot.
+   Interaction      8.6 (prev 8.0) - The hold IS the route: every ACCEPT holds (450/720ms), the fill
+                    tracks the finger along one path, retract + berth ignition + fly-home-to-YOURS
+                    are in code, and the hold ring clears the bead so the r11 fusion stays dead.
+                    Hover/focus not re-shot.
+   Mean 49.4 / 6 = 8.23.
+
+3. THE R15 LIST
+   1. (b) signature wiring (combined path, hold clock, retract, ignition, 50% still)  DONE.
+      - One mpath: tether + beam, key to station to berth (contracts.js layTether, combinedD).
+      - Every ACCEPT holds: 450ms no collateral, 720ms with (the 50% still is a None-collateral
+        contract and still shows fill: the hold exists where r15 had a plain tap).
+      - Hold fraction drives stroke-dashoffset on amber bloom + core; midpoint lands on THIS
+        STATION by construction, and the hold50 crop shows the bright head blob at the node.
+      - Early release retracts; commit flashes the berth hot (#ffd98c), retracts berth-to-key
+        into a flaring bead, then flies a pulse home to the YOURS Track control (better than
+        the asked TRACKED-bead endpoint: the light lands in the bead, then visits YOURS).
+      - The two drifting ambient loops are one ice pulse on the combined path.
+   2. (a) RISK banded, no longer a stock slider                               DONE.
+      - Track is a 6-7px band (y550-556 at x700): lit ROUTINE-to-cursor stretch core 182
+        (10.9:1), shoulders 68, bloom 52; dim stretch 93-119 (3.0:1); blade 4px x 17px at 244.
+      - Zone ticks ride the band; reads as an instrument scale at 1920 and 1280.
+   3. (a) STANDING arc gauge with ghost delta                                 DONE.
+      - Arc between the labels (bbox x815-873 y582-593): gain fill 236 (18:1, genuinely lit),
+        loss fill 142-173, centre tick fading down x844, unfilled track 35-39 (faint empty-state,
+        like a lane). Bipolar about centre as specced; labels clear of the figure.
+   4. Hand heaviest (glow to 110-120 OR cores to 95-105)                      HALF.
+      - Ring cores 163-174 -> 123-135 (outer-left 126, inner-left 135, tops 123/135); bands
+        60-109. Movement toward, but not to, 95-105.
+      - Beam untouched: core 188 (x1586-1589 at y690), shoulders 92-95, glow plateau still
+        exactly 47-48 across ~20px. Neither branch's number met.
+   5. 1920 bead offset (clamp >=16 css px)                                    DONE.
+      - Key face to x709 (190), edge AA x710; bead x728-733 at 218-244-244-244-244-157;
+        gap 728-711 = 17px. Hold-ring track at x718-719 clears the bead by 9px.
+   Also:
+   - Elbow the 720 berth leader past VESTA                                    NOT (not shot: no 720
+     still in r16; 1280 proxy clean, VESTA clear of the leader, TETHYS label uncrossed).
+   - Start that leader at the rim, not the centre                             NOT (same; 1920 berth
+     mask itself intact: bone ring stops/resumes round the amber marker, fill dot amber).
+   - Section/row ticks on glyph centre                                        NOT (1920 YOURS major at
+     y789-790 = cap-top; caps y789-797, centre 793; 4px high. 720 not shot).
+   - Soften the band outer edge                                                DONE (outer-left: 13-25-47-78
+     over 3px, was 14-to-72 in one).
+
+4. RANKED FIXES (follow-ups; none blocks the pass)
+   1. Left-rail YOURS void (composition-structural). Rail x28-52, void y555-785 in gate-mis-1920c:
+      ~230px of bare spine between the last FEATURED dispatch (~y555) and YOURS caps (y789-797).
+      Fix: top-anchor the YOURS section to flow (drop the bottom pin/fixed slot) with a standard
+      28-32px section gap, so YOURS caps land at ~y590.
+   2. Beam glow weight (residual r15-4). Beam at y690: core x1586-1589 at 188, glow plateau
+      x1577-1597 at 47-48 vs ring bands 60-109. Fix: bloom stroke 12px at amber ~.45 so the glow
+      reads ~110-120. Do this OR fix 5, not both.
+   3. YOURS major to cap centre. Spine x28-52: major at y789-790 (x36: 171/141), caps y789-797.
+      Fix: major at y793-794.
+   4. Re-shoot 720 (arrival + hold50). Unverified: berth-leader elbow, rim start, tracked tick.
+      Fix: shoot and confirm the leader elbows past x1166 and starts at rim+2.
+   5. Either/or with 2: rest-ring cores 123-135 to 95-105, keeping the 60-109 bands (the weight
+      the owner asked for). If fix 2 lands, skip this.
+
+5. MEMORABLE (next unattempted thing): the committed route should outlive the tab — on ignition,
+   leave the key-to-berth run as a persistent amber thread on the chart until delivery, so the
+   decision made here glows in the world the player then flies.
+
+6. LANDMARKS (r16 arrival 1920 unless noted; glass 7-11)
+   - Tether: core 129 (1px at y834), shoulders 79-80, bloom 27-32 over 9px — identical to r15.
+   - Bead: x728-733 @244, 17px off key edge x711 (r15: 0px); hold track x718-719 between them.
+   - Key: face 190 (242,185,80, 10.8:1), spans x572-709 / y~809-841; 1280 key keeps the 45-degree
+     cut (edge x608 at y588 stepping to x617 at y597) with track 6-10px off.
+   - Beam: core 188 amber, glow 47-48 (unchanged from r15); station node bone ring @244 with the
+     amber run leaving SE and the bone leg arriving SW.
+   - Rings: cores 123-135 (r15: 133 outer, 163-174 inner); bands 60-109 (>=2:1 throughout the
+     inner band); edges a 3px ramp. Spine core 156/band 68; dossier spine unchanged.
+   - Hold50: tether + leg fully amber with the head blob at THIS STATION; berth reads normal
+     amber (no premature ignition — correct, ignition is on commit).
+   - Shell rail (10d4692b2): band 91-93 (r15: 91-93; the +.03 alpha not resolved at x200/400
+     samples, still >=2:1); MISSIONS needle core 178 at x505.
+
+7. OWNER CRITERIA
+   (a) Thin wireframe / generic elements: PASS. Measured body vs glass (~8), 2:1 bar:
+   - RISK lit stretch 182 (10.9:1) / dim stretch 93 (3.0:1) / blade 244 (18:1)
+   - STANDING gain dash 236 (18:1) / loss fill 142-173 (6-9:1); empty track 35-39 is the
+     gauge's unfilled remainder, a secondary ghost like a lane, not the instrument's body
+   - Outer ring band 71-109 + core 123-126 (5:1); inner ring band 68-101 + core 135 (5.6:1)
+   - Tether core 129 + bloom; beam core 188 (10.5:1); bead 244; key face 190 (10.8:1)
+   - Sector dots filled 7px discs; lanes dashed 1.4px secondaries
+   Nothing reads as a hairline drawing; nothing reads as a stock component. ACCEPT is the Lamp
+   Key with a visible hold track, RISK is a banded zone scale, STANDING is an arc gauge.
+   (b) Signature interaction: PASS, strong. This screen's verb is commit-to-a-route, and no other
+   screen charges light along a path with the finger: press fills key-to-station-to-berth under
+   the hold, the head parks on THIS STATION at half, early release retracts, commit ignites the
+   berth and flies the receipt home to YOURS. The 50% still proves the midpoint; the code proves
+   the rest. To make it unforgettable: let the ignited run persist on the chart (see section 5).

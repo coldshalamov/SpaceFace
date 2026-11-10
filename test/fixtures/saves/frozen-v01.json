@@ -1,0 +1,187 @@
+{
+ "fmt": "spaceface-save",
+ "version": 1,
+ "savedAt": "2026-10-23T00:00:00.000Z",
+ "playtimeS": 3600,
+ "slot": "frozen",
+ "data": {
+  "meta": {
+   "seed": 4242,
+   "playtimeS": 3600,
+   "createdAt": "2026-01-15T09:00:00.000Z",
+   "lastSavedAt": "2026-01-15T10:00:00.000Z"
+  },
+  "player": {
+   "credits": 7300,
+   "activeShipIndex": 0,
+   "ownedShips": [
+    {
+     "defId": "ship_kestrel",
+     "fittings": []
+    }
+   ]
+  },
+  "cargo": {
+   "items": {
+    "cmdty_refined_metals": 4,
+    "cmdty_scrap_metal": 3
+   },
+   "capVolume": 40,
+   "capMass": 40
+  },
+  "economy": {},
+  "factions": {},
+  "world": {
+   "currentSectorId": "sector_ceres_belt",
+   "sectors": {
+    "sector_ceres_belt": {
+     "id": "sector_ceres_belt",
+     "name": "Ceres Belt"
+    }
+   },
+   "entryPoint": {
+    "x": 64,
+    "z": 128
+   },
+   "scanPings": {
+    "sector_vesta_forge": [
+     {
+      "id": "ping-1",
+      "pos": {
+       "x": 100,
+       "z": 100
+      }
+     }
+    ]
+   }
+  },
+  "entities": {
+   "player": {
+    "id": "player",
+    "type": "ship",
+    "pos": {
+     "x": 512,
+     "z": -256
+    },
+    "vel": {
+     "x": 0,
+     "z": 0
+    },
+    "rot": 0,
+    "flags": {},
+    "data": {
+     "defId": "ship_kestrel"
+    }
+   },
+   "persistent": [
+    {
+     "id": "wreck-1",
+     "type": "wreck",
+     "pos": {
+      "x": 10,
+      "z": 10
+     },
+     "flags": {},
+     "data": {}
+    }
+   ],
+   "simTime": 3600,
+   "tick": 216000
+  },
+  "missions": {
+   "active": [
+    {
+     "id": "m_1",
+     "type": "recon_scan",
+     "stationId": "station_helios",
+     "factionId": "faction_choir",
+     "params": {
+      "scanTargets": 1,
+      "setPieceObjective": "choir_first_light",
+      "bearingFixed": false,
+      "rumorPurchased": false,
+      "wreckId": "wreck_choir_tender",
+      "wreckName": "Relief-Freighter Choir-Tender",
+      "sourceRef": "news.tragedy_at_helios",
+      "channelId": "mission",
+      "complicationKinds": [
+       "reactor",
+       "report_or_loot"
+      ],
+      "hasReactorComplication": true,
+      "hasHazardComplication": false
+     },
+     "objectiveProgress": 0,
+     "objectiveTarget": 1,
+     "acceptedAt_s": 1.0000000000000013,
+     "deadline_s": 1801,
+     "reward_cr": 720,
+     "collateral_cr": 0,
+     "riskTier": 1,
+     "destStationId": null,
+     "destSectorId": "sector_helios_prime",
+     "distance": 900,
+     "needsTargets": false,
+     "status": "active",
+     "storyTag": null,
+     "storyContractId": null,
+     "campaign47aBeat": null,
+     "storyTarget": null,
+     "preloadedCargo": false,
+     "storyBranch": null,
+     "storyStake": null,
+     "storyOperation": null,
+     "title": "First Light at the Wreck",
+     "brief": "The Helios loss report names a bearing ring. Fly it and pulse the wreck into a fixed site.",
+     "stageId": "first_light",
+     "stepBriefs": {
+      "first_light": "The Helios loss report names a bearing ring. Fly it and pulse the wreck into a fixed site."
+     },
+     "summary": "The Helios loss report names a bearing ring. Fly it and pulse the wreck into a fixed site.",
+     "description": null,
+     "authorization": null,
+     "adminField": null,
+     "source": "setPieceMission",
+     "sourceRef": "news.tragedy_at_helios",
+     "wreckId": "wreck_choir_tender",
+     "channelId": "mission",
+     "upfrontCostCr": 0,
+     "sourceOfferId": "offer_sp1_choir_vigil_0_109ozfe_0_common_attempt_0",
+     "giverId": null,
+     "clientId": null,
+     "cause": {
+      "tag": "sp1-set-piece",
+      "chainId": "sp1_choir_vigil_0_109ozfe",
+      "archetypeId": "choir_vigil",
+      "startEpoch": 0,
+      "stageIndex": 0,
+      "stageId": "first_light",
+      "branchId": null,
+      "branchLabel": null,
+      "attempt": 0,
+      "stageFingerprint": "sp1_choir_vigil_0_109ozfe:0:common",
+      "fingerprint": "sp1_choir_vigil_0_109ozfe:0:common:attempt:0",
+      "house": "The Choir Vigil",
+      "instructionRef": "mission.sp1.choir_vigil.first_light.instruction",
+      "successRef": "mission.sp1.choir_vigil.first_light.success",
+      "failureRef": "mission.sp1.choir_vigil.first_light.failure",
+      "recoveryRef": "mission.sp1.choir_vigil.first_light.recovery",
+      "travelRef": null,
+      "travelText": null,
+      "witnessId": null,
+      "witnessName": null,
+      "wreckId": "wreck_choir_tender",
+      "wreckName": "Relief-Freighter Choir-Tender",
+      "sourceRef": "news.tragedy_at_helios",
+      "channelId": "mission"
+     },
+     "chainNextSeed": null,
+     "targetEntityIds": []
+    }
+   ],
+   "completed": []
+  },
+  "settings": {}
+ },
+ "checksum": "62c85c4d"
+}

@@ -1,0 +1,1068 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-deb-ore-freighter-ring-span",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "ccc80c473ea67109f35946eb5f8a16b9ceeb7bdd807196435de2c33d90294dbd",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          4.068929701471443,
+          25.926132202148438,
+          23.09551088376743
+        ],
+        "min": [
+          -0.8404261166096885,
+          4.021875381469727,
+          1.4292348189760968
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "609150161647daf59f389ac8f47ce10f143fe7b1494db12e5cfcd4ac03723d62",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Coaming",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8355314848944486,
+          -16.30087689948547,
+          -12.74388313293457
+        ],
+        "min": [
+          -2.3412972806021513,
+          -20.276439384694218,
+          -17.9481201171875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2480dae79f0c59e07455415c19721e6ca2bbe4b836d41e0401e57cd81a470073",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib0.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "endA_rib0",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib0",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          3.9939252703515167,
+          -12.889808654785156,
+          -17.039743810147208
+        ],
+        "min": [
+          0.7032403380545502,
+          -16.87347412109375,
+          -20.808950037509042
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9ee822fe919aec7ce99d07d08738385ec020643b1904cdc918364299e9ed6cbf",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib1.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "endA_rib1",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib1",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.2429209886102341,
+          -11.803704261779785,
+          -16.88590739564776
+        ],
+        "min": [
+          -5.0684496225805615,
+          -16.63251495361328,
+          -21.26436115903974
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1a0c4cdf291bd1c06fdec6f5c91d259ed737051fec0a044d72291a8bdf751952",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "endA_rib2",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          5.068371725640116,
+          22.17772674560547,
+          -8.95699549841845
+        ],
+        "min": [
+          0.7018579715873616,
+          16.937366485595703,
+          -13.759792793512702
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "389ba0baf8909d603adf6fdea8494ee329aeeb2c07393b77d8dbfdcb75aaee41",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib0.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "endB_rib0",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib0",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.189072540711741,
+          22.836466193959517,
+          -7.886473178863525
+        ],
+        "min": [
+          -4.155564376402516,
+          18.947896599009233,
+          -11.929524421691895
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "19723ac4031e0293a26c9dfb214838b649a40aeeef7f5cf1eddd487e4eb5365a",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib1.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "endB_rib1",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib1",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.10497911249523595,
+          19.86627197265625,
+          -13.297408811071115
+        ],
+        "min": [
+          -3.055746368814759,
+          15.257126808166504,
+          -16.476139315149588
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3717d2d51cf1d1654d634b4952b04749c0a84156382adeae08968781711adfb3",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "endB_rib2",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6828112923049745,
+          25.496667672146604,
+          26.499998092651367
+        ],
+        "min": [
+          -1.717530342235547,
+          -25.924667168606565,
+          -26.499998092651367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "de9af223edb8dd6b0a50d973c66ee66b3ebc9b1d8aad432e40f6fbc34adfe0b1",
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.ringarc.primitive.0",
+      "indexCount": 588,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "RingArc",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.ringarc",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
+      "id": "material:26127603b853d7f44c27cfbb",
+      "name": "Forge_ore_barge_wk_torn",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming",
+      "localTransform": [
+        10.952128410339355,
+        0,
+        0,
+        0,
+        0,
+        10.952128410339355,
+        0,
+        0,
+        0,
+        0,
+        10.952128410339355,
+        0,
+        1.6142517924308777,
+        14.974003791809082,
+        12.262372851371765,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Coaming",
+      "nodeName": "Coaming",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
+      "worldTransform": [
+        10.952128410339355,
+        0,
+        0,
+        0,
+        0,
+        10.952128410339355,
+        0,
+        0,
+        0,
+        0,
+        10.952128410339355,
+        0,
+        1.6142517924308777,
+        14.974003791809082,
+        12.262372851371765,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib0",
+      "localTransform": [
+        2.602118492126465,
+        0,
+        0,
+        0,
+        0,
+        2.602118492126465,
+        0,
+        0,
+        0,
+        0,
+        2.602118492126465,
+        0,
+        -0.7528828978538513,
+        -18.288658142089844,
+        -15.346001625061035,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "endA_rib0",
+      "nodeName": "endA_rib0",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
+      "worldTransform": [
+        2.602118492126465,
+        0,
+        0,
+        0,
+        0,
+        2.602118492126465,
+        0,
+        0,
+        0,
+        0,
+        2.602118492126465,
+        0,
+        -0.7528828978538513,
+        -18.288658142089844,
+        -15.346001625061035,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib1",
+      "localTransform": [
+        1.9918327331542969,
+        0,
+        0,
+        0,
+        0,
+        1.9918327331542969,
+        0,
+        0,
+        0,
+        0,
+        1.9918327331542969,
+        0,
+        2.3485828042030334,
+        -14.881641387939453,
+        -18.924346923828125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "endA_rib1",
+      "nodeName": "endA_rib1",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
+      "worldTransform": [
+        1.9918327331542969,
+        0,
+        0,
+        0,
+        0,
+        1.9918327331542969,
+        0,
+        0,
+        0,
+        0,
+        1.9918327331542969,
+        0,
+        2.3485828042030334,
+        -14.881641387939453,
+        -18.924346923828125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib2",
+      "localTransform": [
+        2.414405345916748,
+        0,
+        0,
+        0,
+        0,
+        2.414405345916748,
+        0,
+        0,
+        0,
+        0,
+        2.414405345916748,
+        0,
+        -3.155685305595398,
+        -14.218109607696533,
+        -19.07513427734375,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "endA_rib2",
+      "nodeName": "endA_rib2",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
+      "worldTransform": [
+        2.414405345916748,
+        0,
+        0,
+        0,
+        0,
+        2.414405345916748,
+        0,
+        0,
+        0,
+        0,
+        2.414405345916748,
+        0,
+        -3.155685305595398,
+        -14.218109607696533,
+        -19.07513427734375,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib0",
+      "localTransform": [
+        2.620180130004883,
+        0,
+        0,
+        0,
+        0,
+        2.620180130004883,
+        0,
+        0,
+        0,
+        0,
+        2.620180130004883,
+        0,
+        2.885114848613739,
+        19.557546615600586,
+        -11.358394145965576,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "endB_rib0",
+      "nodeName": "endB_rib0",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
+      "worldTransform": [
+        2.620180130004883,
+        0,
+        0,
+        0,
+        0,
+        2.620180130004883,
+        0,
+        0,
+        0,
+        0,
+        2.620180130004883,
+        0,
+        2.885114848613739,
+        19.557546615600586,
+        -11.358394145965576,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib1",
+      "localTransform": [
+        2.0215256214141846,
+        0,
+        0,
+        0,
+        0,
+        2.0215256214141846,
+        0,
+        0,
+        0,
+        0,
+        2.0215256214141846,
+        0,
+        -2.672318458557129,
+        20.892181396484375,
+        -9.90799880027771,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "endB_rib1",
+      "nodeName": "endB_rib1",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
+      "worldTransform": [
+        2.0215256214141846,
+        0,
+        0,
+        0,
+        0,
+        2.0215256214141846,
+        0,
+        0,
+        0,
+        0,
+        2.0215256214141846,
+        0,
+        -2.672318458557129,
+        20.892181396484375,
+        -9.90799880027771,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib2",
+      "localTransform": [
+        2.304572582244873,
+        0,
+        0,
+        0,
+        0,
+        2.304572582244873,
+        0,
+        0,
+        0,
+        0,
+        2.304572582244873,
+        0,
+        -1.4753836281597614,
+        17.561699390411377,
+        -14.886774063110352,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "endB_rib2",
+      "nodeName": "endB_rib2",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
+      "worldTransform": [
+        2.304572582244873,
+        0,
+        0,
+        0,
+        0,
+        2.304572582244873,
+        0,
+        0,
+        0,
+        0,
+        2.304572582244873,
+        0,
+        -1.4753836281597614,
+        17.561699390411377,
+        -14.886774063110352,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.ringarc",
+      "localTransform": [
+        26.499998092651367,
+        0,
+        0,
+        0,
+        0,
+        26.499998092651367,
+        0,
+        0,
+        0,
+        0,
+        26.499998092651367,
+        0,
+        -0.5173595249652863,
+        -0.21399974822998047,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "RingArc",
+      "nodeName": "RingArc",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
+      "worldTransform": [
+        26.499998092651367,
+        0,
+        0,
+        0,
+        0,
+        26.499998092651367,
+        0,
+        0,
+        0,
+        0,
+        26.499998092651367,
+        0,
+        -0.5173595249652863,
+        -0.21399974822998047,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "deb_ore_freighter_ring_span",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "809ae6e61b429fd8dacaa34b561bcc031d9aa17e59617f17ad6a500696a4392d"
+    },
+    "sourceGlb": {
+      "bytes": 129040,
+      "sha256": "f4cb0009c4c7bf2b21e58d96e16f6c0d2b91855ff5ac9dd640211334c8ad1c98",
+      "uri": "place_aftermath_deb_ore_freighter_ring_span.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 130696,
+    "sha256": "1d3f3c2b62128a8a2dccafd207edf6b5e94c21ab2925415d96941f85427f11c7",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.000038948470222788245,
+        0.0007325167709364422,
+        0
+      ],
+      "max": [
+        5.068371725640116,
+        25.926132202148438,
+        26.499998092651367
+      ],
+      "min": [
+        -5.0684496225805615,
+        -25.924667168606565,
+        -26.499998092651367
+      ],
+      "size": [
+        10.136821348220678,
+        51.850799370755,
+        52.999996185302734
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "mechanical": 8
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 10,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          10.952128410339355,
+          0,
+          0,
+          0,
+          0,
+          10.952128410339355,
+          0,
+          0,
+          0,
+          0,
+          10.952128410339355,
+          0,
+          1.6142517924308777,
+          14.974003791809082,
+          12.262372851371765,
+          1
+        ],
+        "name": "Coaming",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.602118492126465,
+          0,
+          0,
+          0,
+          0,
+          2.602118492126465,
+          0,
+          0,
+          0,
+          0,
+          2.602118492126465,
+          0,
+          -0.7528828978538513,
+          -18.288658142089844,
+          -15.346001625061035,
+          1
+        ],
+        "name": "endA_rib0",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.9918327331542969,
+          0,
+          0,
+          0,
+          0,
+          1.9918327331542969,
+          0,
+          0,
+          0,
+          0,
+          1.9918327331542969,
+          0,
+          2.3485828042030334,
+          -14.881641387939453,
+          -18.924346923828125,
+          1
+        ],
+        "name": "endA_rib1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.414405345916748,
+          0,
+          0,
+          0,
+          0,
+          2.414405345916748,
+          0,
+          0,
+          0,
+          0,
+          2.414405345916748,
+          0,
+          -3.155685305595398,
+          -14.218109607696533,
+          -19.07513427734375,
+          1
+        ],
+        "name": "endA_rib2",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.620180130004883,
+          0,
+          0,
+          0,
+          0,
+          2.620180130004883,
+          0,
+          0,
+          0,
+          0,
+          2.620180130004883,
+          0,
+          2.885114848613739,
+          19.557546615600586,
+          -11.358394145965576,
+          1
+        ],
+        "name": "endB_rib0",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.0215256214141846,
+          0,
+          0,
+          0,
+          0,
+          2.0215256214141846,
+          0,
+          0,
+          0,
+          0,
+          2.0215256214141846,
+          0,
+          -2.672318458557129,
+          20.892181396484375,
+          -9.90799880027771,
+          1
+        ],
+        "name": "endB_rib1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.304572582244873,
+          0,
+          0,
+          0,
+          0,
+          2.304572582244873,
+          0,
+          0,
+          0,
+          0,
+          2.304572582244873,
+          0,
+          -1.4753836281597614,
+          17.561699390411377,
+          -14.886774063110352,
+          1
+        ],
+        "name": "endB_rib2",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          26.499998092651367,
+          0,
+          0,
+          0,
+          0,
+          26.499998092651367,
+          0,
+          0,
+          0,
+          0,
+          26.499998092651367,
+          0,
+          -0.5173595249652863,
+          -0.21399974822998047,
+          0,
+          1
+        ],
+        "name": "RingArc",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_ring_span.glb"
+  },
+  "runtimeHash": "d8f945f6f8a2a8315ecb7ba3761f70b098db13178427d97c5c55aa0331ca8c74",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.068371725640116,
+          25.926132202148438,
+          26.499998092651367
+        ],
+        "min": [
+          -5.0684496225805615,
+          -25.924667168606565,
+          -26.499998092651367
+        ]
+      },
+      "id": "sf.render.aftermath-deb-ore-freighter-ring-span.body",
+      "nodeIds": [
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib0",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib1",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib2",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib0",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib1",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib2",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.ringarc",
+        "sf.render.aftermath-deb-ore-freighter-ring-span.root"
+      ]
+    }
+  ]
+}

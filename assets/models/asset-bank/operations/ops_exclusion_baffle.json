@@ -1,0 +1,298 @@
+{
+  "assetId": "ops_exclusion_baffle",
+  "category": "service",
+  "description": "exclusion baffle",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "shielded_axis",
+      "position": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.1,
+          0.65
+        ],
+        "size": [
+          0.7,
+          0.2,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.65,
+          0.65
+        ],
+        "size": [
+          0.15,
+          1.1,
+          0.15
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.1,
+          -0.65
+        ],
+        "size": [
+          0.7,
+          0.2,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.65,
+          -0.65
+        ],
+        "size": [
+          0.15,
+          1.1,
+          0.15
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.4,
+          1.0,
+          -0.0
+        ],
+        "size": [
+          0.12,
+          1.5,
+          1.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.2,
+          1.0,
+          -0.0
+        ],
+        "size": [
+          0.12,
+          1.5,
+          1.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          -0.0
+        ],
+        "size": [
+          0.12,
+          1.5,
+          1.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2,
+          1.0,
+          -0.0
+        ],
+        "size": [
+          0.12,
+          1.5,
+          1.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.4,
+          1.0,
+          -0.0
+        ],
+        "size": [
+          0.12,
+          1.5,
+          1.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.4,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          0.2,
+          0.1,
+          1.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "operations",
+    "service",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.4699999988079071,
+      0.0,
+      -0.8999999761581421
+    ],
+    "max": [
+      0.5,
+      1.8499999046325684,
+      0.8999999761581421
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_exclusion_baffle_lod0.glb",
+      "triangles": 2820,
+      "draws": 5,
+      "bytes": 377888,
+      "method": "source",
+      "sha256": "90635982f0a374cd84aa6eafce8fa37ceb0bbf11d7e7853d8ae67305b3a25bf5"
+    },
+    {
+      "level": 1,
+      "file": "ops_exclusion_baffle_lod1.glb",
+      "triangles": 1128,
+      "draws": 5,
+      "bytes": 303928,
+      "method": "Forge-decimation",
+      "sha256": "27a37743d5713d79f8e6a3623d44b51c46cbf963d34fbe95144ead002f893618"
+    },
+    {
+      "level": 2,
+      "file": "ops_exclusion_baffle_lod2.glb",
+      "triangles": 506,
+      "draws": 5,
+      "bytes": 267008,
+      "method": "Forge-decimation",
+      "sha256": "0d39517812a64035657af5b23cc23db868224be1d6d6331729d48e9ed265ea5e"
+    }
+  ]
+}

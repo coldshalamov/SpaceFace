@@ -1,0 +1,49 @@
+{
+  "schema": "spaceface.referenceIndex.v1",
+  "id": "47a-save-v25",
+  "envelope": "test/47a.telemetry.save-v25.expected.json",
+  "createdAt": "2026-11-07T01:33:05.127Z",
+  "updatedAt": "2026-11-07T01:33:05.127Z",
+  "versions": [
+    {
+      "version": 1,
+      "file": "v1.expected.json",
+      "snapshotFile": "v1.snapshot.json.gz",
+      "hash": "080c5bd945763d9deba2a569e801b5c32af22be6fdf7fc59dd851f5f9973dd92",
+      "at": "2026-11-07T01:33:05.127Z",
+      "reason": "Un-drained economy slicing shape: a 24-advance pass could not finish in the 5 s due window, so only one pass completed in the 47-A tape. Kept as history; superseded by the per-fixed-tick drain (v26 pending a clean re-record).",
+      "ticket": "E2-ECON-SLICING",
+      "cleanRuns": 5,
+      "ticks": 720,
+      "reloadAt": 600,
+      "seed": 47,
+      "inputTape": "test/47a.inputs.json",
+      "scenarioContract": "src/data/scenarios/47a.scenario.json",
+      "gitHead": "d309816f23cf065f105d3dc411490a3ef1f1355b",
+      "dirty": true,
+      "delta": {
+        "hashChanged": true,
+        "previousHash": "1fedbd09dc3d8b70c4c392f6258b44f41a3969295e2df550b5eeeaa723084331",
+        "newHash": "080c5bd945763d9deba2a569e801b5c32af22be6fdf7fc59dd851f5f9973dd92",
+        "hashEqual": false,
+        "changed": 2434,
+        "added": 0,
+        "removed": 0,
+        "totalDiffs": 2434,
+        "fieldClasses": {
+          "economy": 2434
+        },
+        "motionCount": 0,
+        "motionDiffs": [],
+        "sample": [
+          {
+            "path": "\\$.economy.markets",
+            "change": "changed"
+          }
+        ],
+        "traceChanged": {}
+      }
+    }
+  ],
+  "latest": 1
+}

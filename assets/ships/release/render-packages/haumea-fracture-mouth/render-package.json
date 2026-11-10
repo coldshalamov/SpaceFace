@@ -1,0 +1,374 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.haumea-fracture-mouth",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "4ff0a8d4223b30fdc8096f12d0fb94cdcdc5a81ac5c3bff99c7a755261a99901",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.14001282237834642,
+          -0.02999541785970008,
+          0.7250000238418579
+        ],
+        "min": [
+          -0.14001282237834642,
+          -0.13000457670137608,
+          -0.7250000238418579
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a4822bee0b731a5d403d4cbda1a365d31aba97e541dd0cf37dd42f9c4f9ff769",
+      "id": "sf.render.haumea-fracture-mouth.mesh.fracturefloor.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ce343d66f4c8e90e110a4ba016fa54af470679409481091cf5482e6aa9777ee2",
+      "materialPipelineKey": "opaque",
+      "meshName": "FractureFloor",
+      "nodeId": "sf.render.haumea-fracture-mouth.mesh.fracturefloor",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0399999618530273,
+          0.19001250798339425,
+          0.8500722976869909
+        ],
+        "min": [
+          -1.0399999618530273,
+          0.009987489408902525,
+          -0.8500722976869909
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e69a0657520a13dcf59da56272e8063d12c7bc3d3e2154b91feb2ce120bc1fe2",
+      "id": "sf.render.haumea-fracture-mouth.mesh.icesheets.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "18ab51632f642843e7cf23e0625e7dba41ac5c776d7de95f422e9655a3bfcaa7",
+      "materialPipelineKey": "opaque",
+      "meshName": "IceSheets",
+      "nodeId": "sf.render.haumea-fracture-mouth.mesh.icesheets",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "18ab51632f642843e7cf23e0625e7dba41ac5c776d7de95f422e9655a3bfcaa7",
+      "id": "material:18ab51632f642843e7cf23e0",
+      "name": "IceSheet",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "ce343d66f4c8e90e110a4ba016fa54af470679409481091cf5482e6aa9777ee2",
+      "id": "material:ce343d66f4c8e90e110a4ba0",
+      "name": "FractureMouth",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.haumea-fracture-mouth.mesh.fracturefloor",
+      "localTransform": [
+        0.7250000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.7250000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.7250000238418579,
+        0,
+        0,
+        -0.07999999728053808,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "FractureFloor",
+      "nodeName": "FractureFloor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.haumea-fracture-mouth.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.haumea-fracture-mouth.body",
+      "worldTransform": [
+        0.7250000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.7250000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.7250000238418579,
+        0,
+        0,
+        -0.07999999728053808,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.haumea-fracture-mouth.mesh.icesheets",
+      "localTransform": [
+        1.0399999618530273,
+        0,
+        0,
+        0,
+        0,
+        1.0399999618530273,
+        0,
+        0,
+        0,
+        0,
+        1.0399999618530273,
+        0,
+        0,
+        0.0999999986961484,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "IceSheets",
+      "nodeName": "IceSheets",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.haumea-fracture-mouth.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.haumea-fracture-mouth.body",
+      "worldTransform": [
+        1.0399999618530273,
+        0,
+        0,
+        0,
+        0,
+        1.0399999618530273,
+        0,
+        0,
+        0,
+        0,
+        1.0399999618530273,
+        0,
+        0,
+        0.0999999986961484,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.haumea-fracture-mouth.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_haumea_fracture_mouth",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.haumea-fracture-mouth.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "4024aabd50d5613a5ae68ac220ee080634d9e919a97afbdec92c7348f5692a59"
+    },
+    "sourceGlb": {
+      "bytes": 3912,
+      "sha256": "d64d1e66e14e6fe5270a9dca9ced39616c53ad542d10bed06bafd15d36fcad0d",
+      "uri": "place_haumea_fracture_mouth.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 4256,
+    "sha256": "86097e379f22e9cda16f908cddbf8c3b265f720167e25201766fde354487daef",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0.030003965641009087,
+        0
+      ],
+      "max": [
+        1.0399999618530273,
+        0.19001250798339425,
+        0.8500722976869909
+      ],
+      "min": [
+        -1.0399999618530273,
+        -0.13000457670137608,
+        -0.8500722976869909
+      ],
+      "size": [
+        2.0799999237060547,
+        0.3200170846847703,
+        1.7001445953739818
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 4,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.0399999618530273,
+          0,
+          0,
+          0,
+          0,
+          1.0399999618530273,
+          0,
+          0,
+          0,
+          0,
+          1.0399999618530273,
+          0,
+          0,
+          0.0999999986961484,
+          0,
+          1
+        ],
+        "name": "IceSheets",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7250000238418579,
+          0,
+          0,
+          0,
+          0,
+          0.7250000238418579,
+          0,
+          0,
+          0,
+          0,
+          0.7250000238418579,
+          0,
+          0,
+          -0.07999999728053808,
+          0,
+          1
+        ],
+        "name": "FractureFloor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_haumea_fracture_mouth.glb"
+  },
+  "runtimeHash": "afa5467af2a6696a9db6fecc695510d55fd41834fa48529adc4450c0b75d171f",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.0399999618530273,
+          0.19001250798339425,
+          0.8500722976869909
+        ],
+        "min": [
+          -1.0399999618530273,
+          -0.13000457670137608,
+          -0.8500722976869909
+        ]
+      },
+      "id": "sf.render.haumea-fracture-mouth.body",
+      "nodeIds": [
+        "sf.render.haumea-fracture-mouth.mesh.fracturefloor",
+        "sf.render.haumea-fracture-mouth.mesh.icesheets",
+        "sf.render.haumea-fracture-mouth.root"
+      ]
+    }
+  ]
+}

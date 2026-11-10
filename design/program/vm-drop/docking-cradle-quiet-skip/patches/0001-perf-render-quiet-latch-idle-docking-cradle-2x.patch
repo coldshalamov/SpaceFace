@@ -1,0 +1,146 @@
+From 789585bc90bf1790e24c12e5482a70aa264e342f Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 07:52:37 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20docking=20?=
+ =?UTF-8?q?cradle=20(~2.2=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid collisionProxies scan + updateDockingCradle
++ writeDockingCradleGeometry + a11y resolve every tick after the holo pad
+had faded out. Latch when fully faded; wake on corridor phase/berth.
+Soft-GPU fps not claimed. Picture unchanged while no bay is engaged.
+---
+ src/render/vfx.js                       | 21 ++++++++
+ test/docking-cradle-quiet-skip.test.mjs | 65 +++++++++++++++++++++++++
+ 2 files changed, 86 insertions(+)
+ create mode 100644 test/docking-cradle-quiet-skip.test.mjs
+
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 04047e012..d11f320e0 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -8802,6 +8802,7 @@ export const vfx = {
+     mesh.visible = false;
+     this._scene.add(mesh);
+     this._dockingCradle = { mesh, cradle, scratch };
++    this._dockingCradleQuietHidden = false;
+   },
+ 
+   _resetDockingCradle() {
+@@ -8811,6 +8812,16 @@ export const vfx = {
+     dc.mesh.visible = false;
+     dc.mesh.material.opacity = 0;
+     dc.mesh.geometry.setDrawRange(0, 0);
++    this._dockingCradleQuietHidden = false;
++  },
++
++  // Cheap dirty wake for quiet cradle latch — corridor phase/berth only.
++  // False-wake falls through to one full update and re-latches when faded.
++  _dockingCradleQuietMaybeAwake(readout) {
++    if (!readout) return false;
++    const phase = readout.phase || 'none';
++    if (phase === 'none') return false;
++    return !!(readout.berth);
+   },
+ 
+   _updateDockingCradle(dt) {
+@@ -8818,6 +8829,13 @@ export const vfx = {
+     if (!dc) return false;
+     const state = this.state;
+     const readout = state && state.dockingCorridor;
++    // Quiet settled flight: cradle still paid proxy scan + updateDockingCradle +
++    // writeDockingCradleGeometry + a11y resolve every tick after fade-out. Latch
++    // when fully faded; cheap phase/berth wake. Soft-GPU fps not claimed.
++    if (this._dockingCradleQuietHidden) {
++      if (!this._dockingCradleQuietMaybeAwake(readout)) return false;
++      this._dockingCradleQuietHidden = false;
++    }
+     // Match the engaged station's diagnostics row for the corridor axis and lane width. Rows are
+     // frozen records — reading them here never touches sim state.
+     let proxy = null;
+@@ -8852,6 +8870,9 @@ export const vfx = {
+         dc.mesh.material.opacity = 0;
+         dc.mesh.geometry.setDrawRange(0, 0);
+       }
++      if (cradle.visible01 <= 0.004 && !this._dockingCradleQuietMaybeAwake(readout)) {
++        this._dockingCradleQuietHidden = true;
++      }
+       return false;
+     }
+     const positions = geometry.positions;
+diff --git a/test/docking-cradle-quiet-skip.test.mjs b/test/docking-cradle-quiet-skip.test.mjs
+new file mode 100644
+index 000000000..24f17cb92
+--- /dev/null
++++ b/test/docking-cradle-quiet-skip.test.mjs
+@@ -0,0 +1,65 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import * as THREE from 'three';
++import { createBus } from '../src/core/eventBus.js';
++import { vfx } from '../src/render/vfx.js';
++
++function makeHarness() {
++  const scene = new THREE.Scene();
++  const state = {
++    playerId: 1,
++    mode: 'flight',
++    entities: new Map([[1, { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } }]]),
++    entityList: [],
++    dockingCorridor: { phase: 'none', berth: null, stationId: null, proxyId: null },
++    physicsRuntime: { collisionProxies: [] },
++    settings: {
++      video: { particleQuality: 'high', motionReduce: false, engineTrails: true },
++      accessibility: { flashReduce: false },
++    },
++    render: { scene },
++    content: {},
++  };
++  const system = Object.create(vfx);
++  system.init({ state, bus: createBus(), helpers: {} });
++  return { state, system };
++}
++
++test('docking cradle quiet-latches after idle fade and wakes on corridor berth', () => {
++  const { state, system } = makeHarness();
++  assert.ok(system._dockingCradle, 'cradle mesh must init');
++
++  // Prime: several idle ticks → latch
++  for (let i = 0; i < 8; i++) system._updateDockingCradle(1 / 60);
++  assert.equal(system._dockingCradleQuietHidden, true, 'idle cradle must quiet-latch');
++  assert.equal(system._dockingCradle.mesh.visible, false);
++
++  // While latched, update is a no-op walk (pulseT frozen)
++  const pulseBefore = system._dockingCradle.cradle.pulseT;
++  for (let i = 0; i < 30; i++) system._updateDockingCradle(1 / 60);
++  assert.equal(system._dockingCradle.cradle.pulseT, pulseBefore, 'latched cradle must not advance pulse');
++  assert.equal(system._dockingCradleQuietHidden, true);
++
++  // Dirty wake: approach + berth
++  state.dockingCorridor = {
++    phase: 'approach',
++    berth: { x: 40, z: -12 },
++    stationId: 7,
++    proxyId: null,
++  };
++  state.physicsRuntime.collisionProxies = [
++    { stationId: 7, proxyId: 1, rot: 0.2, corridorBearingDeg: 0, corridor: { captureHalfWidth: 10 } },
++  ];
++  assert.equal(system._dockingCradleQuietMaybeAwake(state.dockingCorridor), true);
++  system._updateDockingCradle(1 / 60);
++  assert.equal(system._dockingCradleQuietHidden, false, 'berth approach must clear quiet latch');
++  assert.ok(system._dockingCradle.cradle.visible01 > 0, 'preview envelope must rise after wake');
++});
++
++test('docking cradle boundary reset clears quiet latch', () => {
++  const { system } = makeHarness();
++  for (let i = 0; i < 8; i++) system._updateDockingCradle(1 / 60);
++  assert.equal(system._dockingCradleQuietHidden, true);
++  system._resetDockingCradle();
++  assert.equal(system._dockingCradleQuietHidden, false);
++});
+-- 
+2.47.3
+

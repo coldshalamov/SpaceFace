@@ -1,0 +1,109 @@
+{
+  "name": "flyby-focus-empty-quiet-latch",
+  "primary": "quiet-flybyFocus-update-no-closing-hostiles",
+  "iterations": 60000,
+  "shipN": 48,
+  "runs": 11,
+  "pairs": [
+    {
+      "beforeMs": 405.032834,
+      "afterMs": 22.785420999999985,
+      "speedup": 17.775964464294965,
+      "beforeUs": 6.750547233333333,
+      "afterUs": 0.3797570166666664,
+      "afterSkips": 60000
+    },
+    {
+      "beforeMs": 445.32095300000003,
+      "afterMs": 21.99716700000002,
+      "speedup": 20.2444684354126,
+      "beforeUs": 7.422015883333334,
+      "afterUs": 0.36661945000000035,
+      "afterSkips": 60000
+    },
+    {
+      "beforeMs": 403.90331000000003,
+      "afterMs": 22.718301999999994,
+      "speedup": 17.77876313115303,
+      "beforeUs": 6.731721833333334,
+      "afterUs": 0.3786383666666666,
+      "afterSkips": 60000
+    },
+    {
+      "beforeMs": 424.241014,
+      "afterMs": 23.593007999999998,
+      "speedup": 17.981641594831828,
+      "beforeUs": 7.070683566666667,
+      "afterUs": 0.3932168,
+      "afterSkips": 60000
+    },
+    {
+      "beforeMs": 503.00303899999994,
+      "afterMs": 22.400094999999993,
+      "speedup": 22.455397577554923,
+      "beforeUs": 8.383383983333331,
+      "afterUs": 0.37333491666666657,
+      "afterSkips": 60000
+    },
+    {
+      "beforeMs": 409.586485,
+      "afterMs": 23.115218999999996,
+      "speedup": 17.719342611463038,
+      "beforeUs": 6.8264414166666665,
+      "afterUs": 0.38525364999999995,
+      "afterSkips": 60000
+    },
+    {
+      "beforeMs": 409.32454300000006,
+      "afterMs": 23.784786999999994,
+      "speedup": 17.20951055815636,
+      "beforeUs": 6.822075716666668,
+      "afterUs": 0.39641311666666657,
+      "afterSkips": 60000
+    },
+    {
+      "beforeMs": 384.42836400000004,
+      "afterMs": 21.368790999999987,
+      "speedup": 17.990178480382923,
+      "beforeUs": 6.407139400000001,
+      "afterUs": 0.35614651666666647,
+      "afterSkips": 60000
+    },
+    {
+      "beforeMs": 372.45432300000004,
+      "afterMs": 22.249109000000004,
+      "speedup": 16.740190494819366,
+      "beforeUs": 6.2075720500000005,
+      "afterUs": 0.3708184833333334,
+      "afterSkips": 60000
+    },
+    {
+      "beforeMs": 421.0218490000001,
+      "afterMs": 23.65110100000001,
+      "speedup": 17.801363623621576,
+      "beforeUs": 7.017030816666669,
+      "afterUs": 0.39418501666666683,
+      "afterSkips": 60000
+    },
+    {
+      "beforeMs": 402.35425999999995,
+      "afterMs": 22.52677,
+      "speedup": 17.86116074341772,
+      "beforeUs": 6.705904333333333,
+      "afterUs": 0.3754461666666667,
+      "afterSkips": 60000
+    }
+  ],
+  "median": 17.801363623621576,
+  "minSpeedup": 16.740190494819366,
+  "maxSpeedup": 22.455397577554923,
+  "absBeforeUsMedian": 6.822075716666668,
+  "dirtyWake": {
+    "ok": true,
+    "armed": true,
+    "afterLatched": false,
+    "active": true,
+    "targetId": 26,
+    "foeId": 26
+  }
+}

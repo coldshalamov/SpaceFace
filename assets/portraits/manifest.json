@@ -1,0 +1,11 @@
+{
+  "schema": "spaceface.generatedArt.v1",
+  "set": "cast portraits (W-FACES, build_map §34.8 row 543)",
+  "use": "src/data/portraits.js via src/ui/portraitArt.js: the identity portrait of an authored recurring contact (canonicalKey). The rest of the canon cast (Sula Dree, Callum Oakes, Wex, Sump), the eleven new faces of 03 §4.2, two authored recurring contacts that owned no face (Sallow, Ferrow), and the Settlement Courier. Kurtz is deliberately absent — he is the Witness, shown only in the terminal register (05 §6).",
+  "date": "2026-10-26",
+  "generator": "OpenAI image generation via codex exec -m gpt-6.1-sol (ChatGPT account); tools/art/imagegen_variants.py (3 variants per two-person sheet, each taken from its own session folder), best passing the reject-list check per person, cut by tools/art/cut_portraits.py (768 px square JPEG, quality 90)",
+  "license": "Generated for SpaceFace by the project. Two existing portraits (portrait_kessler, portrait_rook) were given as look references only. Every face is an invented person; no real person or third-party photograph was supplied.",
+  "briefs": "tools/art/cast_portrait_briefs.py holds the shared style frame and each person's brief (a specific life, a justified detail, the capture device)",
+  "files": {
+  }
+}

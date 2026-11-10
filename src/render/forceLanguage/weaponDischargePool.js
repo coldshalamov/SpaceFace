@@ -1,0 +1,530 @@
+import * as THREE from 'three';
+import { SweptSurfaceBatch } from './sweptSurfaceBatch.js';
+import { weaponSignature } from './catalog.js';
+import { sampleDischargeLifecycle, sampleImpactLifecycle } from './effectLifecycle.js';
+
+export const DISCHARGE_CAPACITY = 48;
+
+/**
+ * Screen-thickness floor for every strip in this pool, in pixels. Strips are authored in world
+ * units (a bolt-diameter wide), so at the 144 WU chase camera a 0.15 WU ribbon is 1 px and the
+ * muzzle/contact vanishes. The presenter stamps each event with world-units-per-pixel (`pxw`);
+ * the floor only ever thickens, so close zoom keeps its authored cross-section exactly.
+ */
+export const SOURCE_MIN_STRIP_PX = 2.4;
+export const IMPACT_MIN_STRIP_PX = 5.0;
+/** Whole-footprint floors (width x reach, pixels) so a hit/muzzle still reads at the wide camera. */
+export const SOURCE_MIN_WIDTH_PX = 9, SOURCE_MIN_LENGTH_PX = 44;
+export const IMPACT_MIN_WIDTH_PX = 22, IMPACT_MIN_LENGTH_PX = 86;
+
+/**
+ * Working heat of the strips (instance attribute `iPivot.w`). The legacy surface shader multiplies
+ * ALL of its emission by it, so a strip that never sends heat is flat dim pigment: nothing above
+ * the bloom threshold, no hot seat, no glow (technique standard B8). Heat is the radiance dial:
+ * ignition is hot, the compression ring and the cooling fan sit lower so the seat reads as the
+ * brightest thing in the hit.
+ */
+export const SOURCE_HEAT = 0.82;
+export const IMPACT_HEAT = 1.0;
+export const IMPACT_RING_HEAT = 0.64;
+/** Muzzles that are not the player's own run this much cooler so a crowded fight cannot stack its bloom. */
+export const BYSTANDER_SOURCE_HEAT_SCALE = 0.72;
+
+/**
+ * §22 A7 — a steady travel speed for the whole flash, then nothing.
+ * The fragment advances the bright band by `life * flow * 5` radians. These
+ * speeds carry one band out of the bore before a starter flash dies.
+ * Machined burst is the kinetic default kit. Split aperture is the starter pulse.
+ */
+export const DISCHARGE_FLOW = Object.freeze({
+  'machined-burst': 18,
+  'split-aperture': 14,
+});
+
+export function dischargeFlowAt(source, age, life) {
+  const span = Math.max(0.001, Number(life) || 0);
+  const t = Number(age);
+  if (!Number.isFinite(t) || t < 0 || t >= span) return 0;
+  const speed = DISCHARGE_FLOW[source];
+  return speed > 0 ? speed : 0;
+}
+
+/** Source events (muzzle ignition) and contact events (impact flash) share one retained pool so
+ *  the weapon surface language has exactly one owner, one material and one admission budget. */
+export const SURFACE_ROLE = Object.freeze({ SOURCE: 0, IMPACT: 1 });
+export const IMPACT_KIND = Object.freeze({ HULL: 0, SHIELD: 1 });
+
+/** Scratch for the shot-envelope sample feeding descriptor 16 in `_strip`; CPU-serial use only. */
+const FLOW_ENVELOPE = { length: 1, width: 1, opacity: 1 };
+
+const PALE = new THREE.Color(0xb9f4ff);
+const BRASS = new THREE.Color(0xffc17a);
+const VIOLET = new THREE.Color(0xc29aff);
+const THERMAL = new THREE.Color(0xffb066);
+const SHIELD_CYAN = new THREE.Color(0x9fe8ff);
+
+/**
+ * Impact beats are parameter tables, not tints: family changes blade count, fan angle, reach
+ * and ring proportions, so a kinetic spall fan cannot read as a recoloured coherent slit.
+ * `ribs` adds crossing panel seams (shield contact); hull gouges leave them off.
+ */
+const IMPACT_BEATS = Object.freeze({
+  kinetic: Object.freeze({ style: 3, color: BRASS, blades: 3, spread: 0.46, reach: 1.22, bladeWidth: 0.27, ring: 0.92, ringWidth: 0.34, ribs: 0 }),
+  coherent: Object.freeze({ style: 4, color: PALE, blades: 2, spread: 0.18, reach: 1.72, bladeWidth: 0.18, ring: 0.66, ringWidth: 0.15, ribs: 0 }),
+  propulsion: Object.freeze({ style: 1, color: THERMAL, blades: 3, spread: 0.60, reach: 1.05, bladeWidth: 0.34, ring: 1.12, ringWidth: 0.40, ribs: 0 }),
+  induction: Object.freeze({ style: 4, color: VIOLET, blades: 4, spread: 0.66, reach: 1.30, bladeWidth: 0.23, ring: 0.82, ringWidth: 0.18, ribs: 2 }),
+  metric: Object.freeze({ style: 1, color: SHIELD_CYAN, blades: 3, spread: 0.52, reach: 1.16, bladeWidth: 0.28, ring: 1.08, ringWidth: 0.34, ribs: 2 }),
+  reactive: Object.freeze({ style: 0, color: THERMAL, blades: 2, spread: 0.82, reach: 0.74, bladeWidth: 0.52, ring: 0.56, ringWidth: 0.42, ribs: 0 }),
+});
+const DEFAULT_BEAT = IMPACT_BEATS.kinetic;
+
+/** Deterministic per-instance salt so extents never end on one shared plane (B18). */
+function salt(seed, k) {
+  const x = Math.sin(seed * 91.7 + k * 47.3) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function impactBeat(variant) {
+  const signature = weaponSignature(variant);
+  const beat = signature ? IMPACT_BEATS[signature.family] : null;
+  return beat || DEFAULT_BEAT;
+}
+
+/** Source-only weapon geometry plus contact ignition. Existing flight, casings, contacts,
+ *  scorch and light pools remain their own owners. */
+export class WeaponDischargePool {
+  constructor(scene,{capacity=DISCHARGE_CAPACITY}={}){
+    this.batch=new SweptSurfaceBatch(scene,{capacity:capacity*9,name:'SF_WeaponDischargeSurfaces'});
+    this.mesh=this.batch.mesh;this.time=0;this.sequence=0;this.disposed=false;this.dropped=0;
+    // Quiet settled flight: update always walked CAP slots + begin/end commit(0).
+    // Trust activeCount (spawn ++ / retire -- / dispose clear); picture unchanged when 0.
+    this.activeCount=0;
+    this.slots=Array.from({length:capacity},()=>({
+      alive:false,role:SURFACE_ROLE.SOURCE,kind:IMPACT_KIND.HULL,
+      age:0,life:0,x:0,y:0,z:0,angle:0,pitch:0,width:0,length:0,opacity:1,
+      source:null,variant:null,ownerId:null,targetId:null,attached:false,slant:0,
+      approachX:NaN,approachZ:NaN,
+      tr:1,tg:1,tb:1,priority:0,seed:0,beat:0,cadence:Infinity,pxw:0,
+      // Retained target-local anchor of an attached impact. x/y/z/angle/pitch hold the DRAWN world pose.
+      lx:0,ly:0,lz:0,langle:0,lpitch:0,heatScale:1,
+    }));
+    this.descriptor=new Float32Array(36);
+    this.heat=IMPACT_HEAT;
+    this.envelope={length:1,width:1,opacity:1};
+    this.color=BRASS;
+    // Impact tint scratch: never mutate the shared family constants through `this.color`.
+    this.impactTint=new THREE.Color();
+    this.style=0;
+  }
+  spawn(recipe,pose,ownerId,flash,priority=0.45){
+    if(this.disposed)return false;
+    const signature=weaponSignature(recipe?.variant);
+    // An unregistered variant still gets a designed source beat; the migrated route has no
+    // card fallback to keep, so a missing signature must not silently delete the muzzle.
+    const source=signature?signature.source:'machined-burst';
+    // Coalesce rapid same-owner source shots; no additive pileup into a glowing ball.
+    let slot=null;let coalesced=false;
+    for(const s of this.slots)if(s.alive&&s.role===SURFACE_ROLE.SOURCE&&s.ownerId===ownerId&&ownerId!=null&&s.variant===recipe.variant){slot=s;coalesced=true;break;}
+    if(!slot)for(const s of this.slots)if(!s.alive){slot=s;break;}
+    if(!slot){
+      // Decorative enemy sources may be dropped. Never displace a live player cue with one.
+      for(const s of this.slots)if(s.priority<=priority&&(!slot||s.age/s.life>slot.age/slot.life))slot=s;
+    }
+    if(!slot){this.dropped++;return true;} // saturating the pool is handled, not a license to stack cards
+    // Cadence and beat are the RHYTHM channel. Coalescing already stops brightness from piling
+    // up; without a per-shot counter the restarted envelope would simply hold the source at its
+    // ignition peak, which reads as one continuous glow rather than a machine cycling.
+    slot.cadence=coalesced?slot.age:Infinity;
+    slot.beat=coalesced?(slot.beat+1)%12:0;
+    const wasAlive=slot.alive===true;
+    slot.alive=true;slot.role=SURFACE_ROLE.SOURCE;slot.age=0;slot.life=Math.max(.035,flash.life);
+    if(!wasAlive) this.activeCount++;
+    slot.x=pose.x;slot.y=pose.y;slot.z=pose.z;slot.angle=Math.atan2(pose.az,pose.ax);
+    slot.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
+    const sp=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
+    slot.width=Math.max(.55,flash.size0,sp*SOURCE_MIN_WIDTH_PX);slot.length=Math.max(2.8,flash.size1*2.1,sp*SOURCE_MIN_LENGTH_PX);
+    const rapid=coalesced?Math.max(0,1-slot.cadence/Math.max(.001,slot.life*.9)):0;
+    slot.opacity=Math.min(1,flash.opacity0/1.35)*(1-.22*rapid);
+    slot.source=source;slot.variant=recipe.variant;
+    slot.ownerId=ownerId;slot.priority=priority;slot.seed=(this.sequence++%17)/17;
+    slot.pxw=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
+    slot.heatScale=priority>=0.9?1:BYSTANDER_SOURCE_HEAT_SCALE;
+    return true;
+  }
+  /**
+   * Contact ignition: contact slit, family spall fan and a partial pressure ring. `pose` carries
+   * the contact axis (outward normal) and, when attached, target-local coordinates that the
+   * resolver re-lifts every frame. Reduced-flash/flash-scale already arrive through `flash`.
+   */
+  spawnImpact(pose,kind,variant,flash,priority=0.45){
+    if(this.disposed)return false;
+    let slot=null;
+    for(const s of this.slots)if(!s.alive){slot=s;break;}
+    if(!slot){
+      for(const s of this.slots)if(s.priority<=priority&&(!slot||s.age/s.life>slot.age/slot.life))slot=s;
+    }
+    if(!slot){this.dropped++;return false;}
+    const wasAlive=slot.alive===true;
+    slot.alive=true;slot.role=SURFACE_ROLE.IMPACT;slot.kind=kind;
+    if(!wasAlive) this.activeCount++;
+    slot.age=0;slot.life=Math.max(.06,flash.life);
+    slot.x=pose.x;slot.y=pose.y;slot.z=pose.z;
+    slot.angle=Math.atan2(pose.az,pose.ax);
+    slot.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
+    const ip=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
+    slot.width=Math.max(1.0,flash.size0,ip*IMPACT_MIN_WIDTH_PX);slot.length=Math.max(2.8,flash.size1*2.35,ip*IMPACT_MIN_LENGTH_PX);
+    slot.opacity=Math.min(1,flash.opacity0/1.2);
+    slot.source=null;slot.variant=variant;
+    slot.targetId=pose.targetId!=null?pose.targetId:null;
+    slot.attached=pose.attached===true;
+    slot.slant=Number.isFinite(pose.slant)?pose.slant:0;
+    slot.approachX=Number.isFinite(pose.approachX)?pose.approachX:NaN;
+    slot.approachZ=Number.isFinite(pose.approachZ)?pose.approachZ:NaN;
+    slot.tr=Number.isFinite(flash.r)?flash.r:1;
+    slot.tg=Number.isFinite(flash.g)?flash.g:1;
+    slot.tb=Number.isFinite(flash.b)?flash.b:1;
+    slot.ownerId=null;slot.priority=priority;slot.seed=(this.sequence++%17)/17;
+    slot.beat=0;slot.cadence=Infinity;
+    slot.pxw=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
+    slot.lx=slot.x;slot.ly=slot.y;slot.lz=slot.z;slot.langle=slot.angle;slot.lpitch=slot.pitch;
+    slot.heatScale=1;
+    return true;
+  }
+  _strip(s,a0,a1,r0,r1,width,type=1,offset=0,lift=0,frontMode=0,phase=-1,axial=0){
+    const d=this.descriptor,c=this.color;
+    const ca=Math.cos(s.angle),sa=Math.sin(s.angle);
+    d[0]=s.x-sa*offset+ca*axial;d[1]=s.y;d[2]=s.z+ca*offset+sa*axial;d[3]=s.angle;
+    d[4]=type;d[5]=a0;d[6]=a1;d[7]=r0;d[8]=r1;d[9]=Math.max(width,s.pxw*(s.role===SURFACE_ROLE.IMPACT?IMPACT_MIN_STRIP_PX:SOURCE_MIN_STRIP_PX));d[10]=lift;d[11]=0;
+    d[12]=c.r;d[13]=c.g;d[14]=c.b;d[15]=this.opacity;
+    // INF-009: discharge flow is driven from the shot inside the shot envelope. machined-burst
+    // (kinetic default-kit guns) and split-aperture (the starter pulse-bolt coherent family) each
+    // get their own rhythm; every other family keeps the untouched zero path. The steady family
+    // speed (dischargeFlowAt, §22 A7) rides the shot envelope's opacity clock on the effect
+    // clock (s.age): ignition spins the band up, cooling eases it back down, and it lands on
+    // zero exactly when the shot ends — the muzzle is no longer a static shape in an envelope.
+    // Reduced flash is preserved through s.opacity (flash.opacity0 arrives already scaled);
+    // reduced motion freezes transport in-shader via uMotion-scaled vCycle.z, so no lifecycle
+    // handling changes here.
+    const flowEnv=sampleDischargeLifecycle(s.age,s.life,false,FLOW_ENVELOPE).opacity;
+    d[16]=s.role===0?dischargeFlowAt(s.source,s.age,s.life)*s.opacity*flowEnv:0;d[17]=phase>=0?phase:s.seed;d[18]=frontMode;d[19]=this.style;
+    d[20]=1;d[21]=1;d[22]=1;d[23]=s.pitch;
+    // iLife / iBehavior / iPivot: the legacy defaults the batch used to fill in, written out so the
+    // working-heat channel (iPivot.w) can ride in the same descriptor.
+    d[24]=0;d[25]=0;d[26]=-1;d[27]=1;d[28]=0;d[29]=0;d[30]=0;d[31]=0;d[32]=0;d[33]=0;d[34]=0;d[35]=this.heat;
+    this.batch.add(d);
+  }
+  /**
+   * Source geometry for one shot, staged in the weapon's own fiction.
+   *
+   *  - ballistics run a real breech cycle: the carrier rides back on ignition, the opposed brake
+   *    ports alternate which one vents hard, and the whole stroke replays per shot so automatic
+   *    fire keeps a readable rhythm instead of settling into one continuous glow;
+   *  - coherent apertures ALIGN first - jaws converge onto the axis, then the collimated core
+   *    opens, so the beam is released by a mechanism that found its line;
+   *  - induction forks branch, bridge at a real junction and extinguish together - no limb is
+   *    ever left hanging in empty space;
+   *  - propulsion sources transport hot material off the throat rather than growing in place,
+   *    and staged launches eject BEFORE the motor lights.
+   *
+   * Every one of those is a shape/motion difference, so the families stay apart in a grayscale,
+   * bloom-off frame. Nothing here is drawn at or beyond the contact point.
+   */
+  _sourceStrips(s,w,length){
+    this.style=3;this.color=BRASS;this.heat=SOURCE_HEAT*s.heatScale;
+    const t=Math.min(1,s.age/Math.max(.001,s.life));
+    const hand=(s.beat&1)?-1:1;
+    if(s.source==='machined-burst'){
+      const spread=s.variant==='flak'?.27:.12;
+      const stroke=Math.max(0,1-t/.55);
+      const kick=-w*.34*stroke*stroke;
+      this._strip(s,-spread*hand,0,.1,length*.86,w*.21,1,0,0,0,-1,kick);
+      this._strip(s,spread*.7*hand,0,.05,length,w*.29,1,0,0,0,-1,kick);
+      this._strip(s,spread*1.5*hand,0,.1,length*.65,w*.14,1,0,0,0,-1,kick);
+      this._strip(s,-1.17*hand,0,.08,w*(hand>0?1.95:1.14),w*.19,1,0,0,0,-1,kick);
+      this._strip(s,1.06*hand,0,.08,w*(hand>0?1.02:1.57),w*.24,1,0,0,0,-1,kick);
+      this._strip(s,.04,0,.1,length*1.07,w*.09,1,0,0,0,-1,kick);
+      // Hard machined bar behind the bore: the moving part the blast escapes past.
+      this.style=1;
+      this._strip(s,Math.PI,0,w*.2,w*1.05,w*.3,1,0,0,0,-1,kick*1.9);
+      this.style=3;
+    }else if(s.source==='rail-shear'){
+      this.color=PALE;
+      this._strip(s,0,0,0,length*1.8,w*.15);
+      // The armature leaves one rail hotter than the other, and it swaps every shot.
+      this._strip(s,0,0,.1,length*(hand>0?.84:.5),w*.08,1,w*.29);
+      this._strip(s,0,0,.1,length*(hand>0?.5:.84),w*.08,1,-w*.29);
+      this.color=BRASS;
+      const vent=w*(1.35+.85*Math.max(0,1-t/.4));
+      this._strip(s,-1.44,0,0,vent,w*.16);
+      this._strip(s,1.44,0,0,vent,w*.16);
+    }else if(s.source==='split-aperture'){
+      this.style=4;this.color=PALE;
+      const align=Math.min(1,t/.34);
+      const part=(1-align*align)*.52;
+      this._strip(s,-1.12-part,-.12,w*.72,w*.72,w*.16,0);
+      this._strip(s,.12,1.12+part,w*.72,w*.72,w*.16,0);
+      this._strip(s,0,0,w*.18,length,w*.14,1,w*.27*(1+part));
+      this._strip(s,0,0,w*.18,length*.88,w*.14,1,-w*.27*(1+part));
+      this._strip(s,0,0,w*.6,length*.78,w*.07);
+    }else if(s.source==='thermal-lobes'){
+      this.style=0;
+      // Transport: the lobes are carried off the throat, they do not inflate in place.
+      const carry=length*.34*t;
+      for(let j=0;j<3;j++)this._strip(s,(j-1)*.2,(j-1)*.4,.05+carry*(.25+j*.3),
+        length*(.65+j*.12)+carry,w*(.36-j*.055)*(1-.3*t),0,0,w*.2);
+    }else if(s.source==='circuit-fork'){
+      this.style=4;this.color=VIOLET;
+      // Branch, bridge, extinguish. Each outer limb starts INSIDE its inner limb's reach, so
+      // the junction is real and no branch ends in empty space. The live limb rotates per shot.
+      const liveLimb=s.beat%3;
+      for(let j=0;j<3;j++){
+        const a=(j-1)*.53*hand;
+        const live=j===liveLimb;
+        const inner=length*(live?.64:.46);
+        this._strip(s,a,0,.05,inner,w*(live?.18:.11));
+        this._strip(s,a+.21*hand,0,inner*.84,length*(live?.94:.66),w*(live?.14:.09));
+      }
+    }else if(s.source==='staged-launch'){
+      // Eject first: material is thrown back out of the tube as a hard bowl, and only then does
+      // the motor light forward. No soft smoke card, no single plume cone.
+      const eject=Math.max(0,1-t/.45);
+      const motor=Math.min(1,Math.max(0,(t-.18)/.5));
+      this.style=1;this.color=THERMAL;
+      this._strip(s,-1.35,1.35,w*.35,w*(.62+.7*eject),w*.4,0);
+      this.style=0;this.color=PALE;
+      this._strip(s,-.06,0,-w*1.1,-w*(1.3+1.2*eject),w*.16);
+      this._strip(s,.05,0,.1,Math.max(.14,length*(.18+.4*motor)),w*.13);
+      this.style=3;this.color=BRASS;
+      this._strip(s,-.5,0,.05,Math.max(.1,length*.28*motor),w*.12);
+      this._strip(s,.62,0,.05,Math.max(.1,length*.22*motor),w*.09);
+    }else if(s.source==='heavy-launch'){
+      const eject=Math.max(0,1-t/.5);
+      const motor=Math.min(1,Math.max(0,(t-.3)/.5));
+      this.style=1;this.color=THERMAL;
+      this._strip(s,-1.5,1.5,w*.3,w*(.75+.95*eject),w*.5,0);
+      this._strip(s,-.5,.4,w*.7,w*.7,w*.22,0);
+      this.style=0;this.color=PALE;
+      this._strip(s,.02,0,.12,Math.max(.16,length*.72*motor),w*.11);
+      this._strip(s,-.1,0,-w*1.4,-w*(1.7+1.6*eject),w*.2);
+      this.style=3;this.color=BRASS;
+      this._strip(s,-.7,0,.05,Math.max(.12,length*.34*motor),w*.14);
+      this._strip(s,.8,0,.05,Math.max(.1,length*.26*motor),w*.1);
+    }else if(s.source==='latched-aperture'){
+      // Coherent: the jaws converge onto the axis (alignment), then one long collimated core
+      // opens between them. The latch ring is the only closed shape and never becomes a ball.
+      this.style=4;this.color=PALE;
+      const align=Math.min(1,t/.30);
+      const open=align*align*(3-2*align);
+      const jaw=w*.34*(1.95-.95*open);
+      this._strip(s,0,0,.05,length*(.34+1.12*open),w*.085);
+      this._strip(s,0,0,w*.25,length*.9,w*.06,1,jaw);
+      this._strip(s,0,0,w*.25,length*.9,w*.06,1,-jaw);
+      this._strip(s,Math.PI*.5,0,w*.4,w*.4,w*.1,0);
+      this.style=0;
+      this._strip(s,0,0,.04,Math.max(.06,length*.5*open),w*.14);
+    }else if(s.source==='shaped-deploy'){
+      // Metric: outward pressure bowls and rails that arm outward, never inward suction.
+      const arm=Math.min(1,t/.42);
+      this.style=1;this.color=SHIELD_CYAN;
+      this._strip(s,-1.2,1.2,w*.4,w*(1.05+.55*arm),w*.34,0);
+      this._strip(s,-.55,.55,w*(.85+.25*arm),w*(1.0+.35*arm),w*.16,0);
+      this.style=0;this.color=PALE;
+      this._strip(s,-.22,0,.1,length*.42,w*.12);
+      this._strip(s,.26,0,.1,length*.36,w*.1);
+      this.style=3;this.color=BRASS;
+      this._strip(s,0,0,.05,length*.2,w*.09);
+    }else if(s.source==='filament-spool'){
+      this.style=4;this.color=SHIELD_CYAN;
+      const draw=Math.min(1,t/.36),carry=length*.18*t;
+      this._strip(s,0,0,w*.15+carry,length*1.3+carry,w*.055);
+      for(let side=-1;side<=1;side+=2){
+        const gap=w*(.54-.27*draw),reach=length*(side>0?.43:.30);
+        this._strip(s,-side*.16,0,-w*.2,reach,w*.15,1,side*gap);
+        this._strip(s,side*.73,side*1.32,w*.32,w*.62,w*.12,0);
+      }
+    }else if(s.source==='well-inlet'){
+      // An intake seats three unequal inward-curving vanes around an empty
+      // throat. It opens at the source; the marker's two travelling jaws stamp.
+      this.style=1;this.color=SHIELD_CYAN;
+      const open=Math.min(1,t/.36),drain=Math.max(0,(t-.58)/.42);
+      for(let j=0;j<3;j++){
+        const a=(j-1)*1.78;
+        this._strip(s,a,a+.84,w*(1.02+.16*j+.18*open),w*(.32+.10*j),
+          w*(.20-.06*drain),0,0,w*(.1+j*.08));
+      }
+      this.style=4;this.color=PALE;
+      this._strip(s,Math.PI-.35,Math.PI+.35,w*.25,w*.42,w*.09,0);
+    }else if(s.source==='metric-tag'){
+      this.style=1;this.color=SHIELD_CYAN;
+      // Two asymmetric moving jaws stamp a travelling collar. Its open centre remains
+      // readable and it never borrows the kinetic muzzle's vent fan.
+      const close=Math.min(1,t/.42),carry=length*.48*t;
+      for(let side=-1;side<=1;side+=2){
+        const radius=w*(.82-.24*close+(side>0?.08:0));
+        this._strip(s,side*.20,side*1.36,radius,radius,w*.28,0,0,w*.14,0,-1,carry);
+        this._strip(s,-side*.12,0,.04,length*(side>0?.64:.46),w*.19,1,side*w*.35);
+      }
+      this.style=4;this.color=PALE;
+      this._strip(s,0,0,w*.4+carry,length*.63+carry,w*.10);
+    }else if(s.source==='frame-latch'){
+      this.style=1;this.color=BRASS;
+      const close=Math.min(1,t/.46),release=Math.max(0,(t-.46)/.54);
+      for(let side=-1;side<=1;side+=2){
+        const gap=w*(.8-.44*close+release*.18),reach=length*(side>0?.69:.51);
+        this._strip(s,0,0,-w*.18,reach,w*.23,1,side*gap,0,0,-1,-w*release*.3);
+        this._strip(s,-side*.9,0,0,w*.52,w*.21,1,side*gap,0,0,-1,reach);
+      }
+      this.color=SHIELD_CYAN;
+      this._strip(s,0,0,w*.14,length*.78,w*.09);
+    }else if(s.source==='ram-wedge'){
+      this.style=3;this.color=PALE;
+      const recoil=-w*.5*Math.pow(1-t,2);
+      this._strip(s,-.29,0,.08,length*.65,w*.42,1,w*.25,0,0,-1,recoil);
+      this._strip(s,.29,0,.08,length*.65,w*.42,1,-w*.25,0,0,-1,recoil);
+      this.style=1;this.color=BRASS;
+      this._strip(s,-.80,.80,w*.42,w*(.80+t*.35),w*.32,0,0,0,0,-1,recoil);
+    }else if(s.source==='adhesive-eject'){
+      this.style=0;this.color=THERMAL;
+      const carry=length*.58*t,neck=1-.68*t;
+      for(let j=0;j<3;j++){
+        const side=j-1;
+        this._strip(s,side*.19,side*.38,w*.03+carry*(.45+j*.18),
+          length*(.44+j*.11)+carry,w*(.37-j*.055)*neck,0,side*w*.13,w*.18);
+      }
+      this.style=1;this.color=BRASS;
+      this._strip(s,-1.15,1.15,w*.36,w*.42,w*.17,0);
+    }else if(s.source==='primer-bridge'){
+      this.style=4;this.color=VIOLET;
+      const reach=length*(.52+.21*Math.min(1,t/.28));
+      for(let side=-1;side<=1;side+=2){
+        this._strip(s,-side*.22,0,.05,reach*.68,w*.17,1,side*w*.4);
+        this._strip(s,side*.42,0,reach*.48,reach,w*.12);
+      }
+      this.color=PALE;
+      this._strip(s,Math.PI*.5,0,-w*.30,w*.30,w*.19,1,0,0,0,-1,reach*.48);
+      this._strip(s,0,0,reach*.48,length,w*.10);
+    }else if(s.source==='thermal-seam'){
+      this.style=0;this.color=THERMAL;
+      const carry=length*.31*t;
+      for(let j=0;j<3;j++)this._strip(s,(j-1)*.035,(j-1)*.12,
+        carry*(.4+j*.16),length*(.48+j*.12)+carry,w*(.32-j*.045),0,(j-1)*w*.40,w*.13);
+      this.style=4;this.color=PALE;
+      this._strip(s,Math.PI*.5,0,-w*.78,w*.78,w*.14,1,0,0,0,-1,w*.16);
+    }else if(s.source==='driver-piston'){
+      this.style=3;this.color=BRASS;
+      const kick=-w*.62*Math.pow(1-t,2);
+      this._strip(s,0,0,-w*.14,length*.67,w*.40,1,0,0,0,-1,kick);
+      this.color=PALE;
+      for(let side=-1;side<=1;side+=2)this._strip(s,0,0,-w*.20,
+        length*(side>0?.52:.43),w*.12,1,side*w*.46,0,0,-1,kick*.4);
+      this.color=BRASS;
+      this._strip(s,Math.PI,0,w*.15,w*(.78+.32*(1-t)),w*.31,1,0,0,0,-1,kick);
+    }else{
+      // Defensive default: one hard kernel, never a soft card.
+      this._strip(s,0,0,.08,length*.7,w*.18);
+    }
+  }
+  _impactStrips(s,w,length){
+    const beat=impactBeat(s.variant);
+    this.heat=IMPACT_HEAT;
+    this.style=beat.style;
+    this.color=this.impactTint.setRGB(s.tr,s.tg,s.tb);
+    const lean=Math.max(-1,Math.min(1,s.slant))*.55;
+    const shield=s.kind===IMPACT_KIND.SHIELD;
+    // Contact first: one short hard slit exactly at the surface point. It is the sharp impulse;
+    // everything after it is aftermath and must not share its terminal plane.
+    this._strip(s,lean*.25,0,.05,length*(beat.style===4?.42:.34),w*(beat.style===4?.10:.15));
+    // Hot seat: the first frames of a hit are a fat, short, lean-aligned bar at the contact, not a
+    // hairline. It is a tapered blade (never a disc or card) and it cools with the same envelope,
+    // so the eye gets one bright anchor to hang the slit, fan and ring on at the chase camera.
+    this._strip(s,lean*.25,0,.04,length*.2,w*(shield?.30:.36),1,0,0,0,-1,0);
+    // A hard hull contact sheds one bright ping along the reflected approach. This is a
+    // short outward spark path after the hit, not a claim that the shot bounced with damage.
+    if (!shield && Number.isFinite(s.approachX) && Number.isFinite(s.approachZ)) {
+      const nx = Math.cos(s.angle), nz = Math.sin(s.angle);
+      const dot = s.approachX * nx + s.approachZ * nz;
+      const rx = s.approachX - 2 * dot * nx;
+      const rz = s.approachZ - 2 * dot * nz;
+      if (Math.hypot(rx, rz) > 1e-5) {
+        const ping = Math.atan2(rz, rx);
+        this._strip(s, ping - .05, 0, .04, length * (.50 + salt(s.seed, 41) * .12),
+          w * (.075 + salt(s.seed, 42) * .02), 1, 0, w * .07, 0, -1, 0);
+        this._strip(s, ping + .13, 0, .03, length * (.20 + salt(s.seed, 43) * .08),
+          w * .040, 1, 0, -w * .08, 0, -1, 0);
+      }
+    }
+    for(let k=0;k<beat.blades;k++){
+      const fan=beat.blades===1?0:(k/(beat.blades-1)-.5)*2;
+      const reach=(.42+.58*salt(s.seed,k))*beat.reach;
+      const lift=(salt(s.seed,k+5)-.5)*w*.3;
+      this._strip(s,lean+fan*beat.spread,0,.10+w*.06,length*reach,
+        w*beat.bladeWidth*(.7+.6*salt(s.seed,k+9)),1,0,lift);
+    }
+    // Partial pressure ring, age-driven outward front — not a full circle, not a bubble.
+    const ringWidth=shield?Math.max(beat.ringWidth,.22):beat.ringWidth;
+    this.heat=IMPACT_RING_HEAT;
+    this._strip(s,-.85+lean*.4,.85+lean*.4,w*beat.ring*.45,w*beat.ring,ringWidth,0,0,0,1,s.age/s.life);
+    this.heat=IMPACT_HEAT;
+    // Shield contact is a designed panel response: crossed seams over the local patch.
+    const ribs=shield?Math.max(2,beat.ribs):beat.ribs;
+    for(let r=0;r<ribs;r++){
+      const a=lean+Math.PI*.5*(r%2?1:-1)*(.85+.12*salt(s.seed,r+21));
+      this._strip(s,a,0,w*.2,w*(1.05+.12*salt(s.seed,r+31)),w*.09,1,0,w*.18*(r%2?1:-1));
+    }
+  }
+  update(dt,resolvePose=null,a11y=null){
+    if(this.disposed)return 0;
+    // Quiet path: capacity walk + begin/end commit(0) when activeCount===0 was pure CPU;
+    // mesh already count=0/visible=false after the frame that retired the last slot.
+    if(!(this.activeCount>0)) return 0;
+    const step=Math.max(0,Number.isFinite(dt)?dt:0);
+    this.time+=step;
+    const reducedMotion=a11y?.id?.includes('motion')===true;
+    const reducedFlash=a11y?.id?.includes('flash')===true;
+    this.batch.begin(this.time,reducedMotion,reducedFlash);
+    let live=0;
+    for(const s of this.slots){
+      if(!s.alive)continue;
+      s.age+=step;
+      if(s.age>=s.life){
+        s.alive=false;
+        this.activeCount=Math.max(0,this.activeCount-1);
+        continue;
+      }
+      if(resolvePose){
+        // An attached impact is resolved FROM its retained target-local anchor every frame. The pose
+        // written back below is the drawn world pose; feeding that into the next resolve would add
+        // the target's position again each frame and fling the contact off the hull.
+        if(s.role===SURFACE_ROLE.IMPACT&&s.attached){s.x=s.lx;s.y=s.ly;s.z=s.lz;s.angle=s.langle;s.pitch=s.lpitch;}
+        const pose=resolvePose(s);
+        // A missing/dead owner or detached target must not stick a surface in mid-air.
+        if(!pose){
+          s.alive=false;
+          this.activeCount=Math.max(0,this.activeCount-1);
+          continue;
+        }
+        s.x=pose.x;s.y=pose.y;s.z=pose.z;
+        s.angle=Math.atan2(pose.az,pose.ax);s.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
+      }
+      live++;
+      if(s.role===SURFACE_ROLE.IMPACT){
+        const e=sampleImpactLifecycle(s.age,s.life,reducedMotion,this.envelope);
+        this.opacity=s.opacity*e.opacity;
+        this._impactStrips(s,s.width*e.width,s.length*e.length);
+      }else{
+        const e=sampleDischargeLifecycle(s.age,s.life,reducedMotion,this.envelope);
+        this.opacity=s.opacity*e.opacity;
+        this._sourceStrips(s,s.width*e.width,s.length*e.length);
+      }
+    }
+    this.batch.end();return live;
+  }
+  reproject(dx,dz){for(const s of this.slots)if(s.alive){s.x+=dx;s.z+=dz;}this.batch.reproject(dx,dz);}
+  clear(){
+    if(this.disposed)return;
+    for(const s of this.slots)s.alive=false;
+    this.activeCount=0;
+    this.batch.begin(this.time);this.batch.end();
+  }
+  dispose(){if(this.disposed)return;this.disposed=true;this.batch.dispose();for(const s of this.slots)s.alive=false;this.activeCount=0;}
+}

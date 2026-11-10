@@ -1,0 +1,84 @@
+{
+  "name": "sanctuary-empty-quiet-latch",
+  "iters": 60000,
+  "ships": 48,
+  "pirates": 8,
+  "pairs": [
+    {
+      "beforeMs": 178.46312099999997,
+      "afterMs": 12.746366999999964,
+      "speedup": 14.001097018468123,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 159.65180099999998,
+      "afterMs": 15.435071999999991,
+      "speedup": 10.343443878978995,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 231.84893599999998,
+      "afterMs": 11.829626000000019,
+      "speedup": 19.599008117416357,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 204.60423200000002,
+      "afterMs": 11.03769699999998,
+      "speedup": 18.536858911782087,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 166.84028899999998,
+      "afterMs": 10.906185999999991,
+      "speedup": 15.297766698642414,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 160.570647,
+      "afterMs": 11.966638999999986,
+      "speedup": 13.418190938992995,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 174.19769200000002,
+      "afterMs": 12.081891999999982,
+      "speedup": 14.418080545662905,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 166.410489,
+      "afterMs": 10.987966000000029,
+      "speedup": 15.144794678105082,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 184.12847399999998,
+      "afterMs": 12.360287999999997,
+      "speedup": 14.896778618750632,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 166.772023,
+      "afterMs": 11.193484999999953,
+      "speedup": 14.899025906587688,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 181.913368,
+      "afterMs": 10.74392800000004,
+      "speedup": 16.93173744276761,
+      "afterLatched": true
+    }
+  ],
+  "medianSpeedup": 14.899025906587688,
+  "minSpeedup": 10.343443878978995,
+  "maxSpeedup": 19.599008117416357,
+  "dirtyWake": {
+    "ok": true,
+    "latchedBefore": true,
+    "withdrawn": true,
+    "latchedAfter": false,
+    "engagement": "jurisdiction_withdrawal"
+  }
+}

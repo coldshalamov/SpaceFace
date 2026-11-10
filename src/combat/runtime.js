@@ -1,0 +1,255 @@
+import { hydrateOrchardWorkDamage } from './orchardWorkDamage.js';
+import { recomputeCombatantModifiers } from './subsystems.js';
+import {
+  ACTION_DEFS,
+  ATTACHMENT_DEFS,
+  COMBAT_PROFILES,
+  COMBAT_SCHEMA_VERSION,
+  DAMAGE_MODEL,
+  DEFAULT_COMBAT_PROFILE_BY_TYPE,
+  STATUS_DEFS,
+  SUBSYSTEM_DEFS,
+} from '../data/combatDefs.js';
+import { ensureCombatTrace } from './trace.js';
+import { registerTurretSubsystems } from './turretSubsystems.js';
+
+export function createCombatCatalog(overrides = {}) {
+  const actions = overrides.actions || ACTION_DEFS;
+  const statuses = overrides.statuses || STATUS_DEFS;
+  const subsystems = overrides.subsystems || SUBSYSTEM_DEFS;
+  const attachments = overrides.attachments || ATTACHMENT_DEFS;
+  const profiles = overrides.profiles || COMBAT_PROFILES;
+  return Object.freeze({
+    schemaVersion: COMBAT_SCHEMA_VERSION,
+    actionDefs: actions,
+    statusDefs: statuses,
+    subsystemDefs: subsystems,
+    attachmentDefs: attachments,
+    combatProfiles: profiles,
+    damageModel: overrides.damageModel || DAMAGE_MODEL,
+    actions: indexById(actions, 'ActionDef'),
+    statuses: indexById(statuses, 'StatusDef'),
+    subsystems: indexById(subsystems, 'SubsystemDef'),
+    attachments: indexById(attachments, 'AttachmentDef'),
+    profiles: indexById(profiles, 'CombatProfile'),
+  });
+}
+
+export function ensureCombatState(state) {
+  if (!state.combat || typeof state.combat !== 'object') state.combat = {};
+  const combat = state.combat;
+  combat.schemaVersion = COMBAT_SCHEMA_VERSION;
+  if (!Array.isArray(combat.beams)) combat.beams = [];
+  if (!(combat.threatTables instanceof Map)) combat.threatTables = new Map();
+  if (!Number.isInteger(combat.statusNextPendingSeq) || combat.statusNextPendingSeq < 1) combat.statusNextPendingSeq = 1;
+  if (!combat.actions || typeof combat.actions !== 'object') combat.actions = {};
+  if (!Number.isInteger(combat.actions.nextRequestSeq) || combat.actions.nextRequestSeq < 1) combat.actions.nextRequestSeq = 1;
+  if (!Number.isInteger(combat.actions.nextInstanceSeq) || combat.actions.nextInstanceSeq < 1) combat.actions.nextInstanceSeq = 1;
+  if (!Array.isArray(combat.actions.requests)) combat.actions.requests = [];
+  if (!combat.actions.activeByActor || typeof combat.actions.activeByActor !== 'object') combat.actions.activeByActor = {};
+  if (!combat.actions.cooldownReadyTickByActor || typeof combat.actions.cooldownReadyTickByActor !== 'object') combat.actions.cooldownReadyTickByActor = {};
+  if (!combat.entities || typeof combat.entities !== 'object') combat.entities = {};
+  if (!combat.attachments || typeof combat.attachments !== 'object') combat.attachments = {};
+  if (!Number.isInteger(combat.attachments.nextId) || combat.attachments.nextId < 1) combat.attachments.nextId = 1;
+  if (!combat.attachments.byId || typeof combat.attachments.byId !== 'object') combat.attachments.byId = {};
+  ensureCombatTrace(combat);
+  return combat;
+}
+
+export function ensureCombatant(state, entity, catalog) {
+  if (!entity || entity.id == null) return null;
+  // Quiet hit: warm combat table + stable profile id skips ensureCombatState's
+  // property walk, resolveCombatProfile (Map get), and syncCombatantBounds.
+  // Status/subsystem changes still sync via the kernel's statusChanged gate (#83);
+  // damage/actions clamp at mutation sites. Cold/missing table falls through.
+  const warm = state.combat;
+  const warmEntities = warm && warm.entities;
+  if (warmEntities) {
+    const warmKey = entityKey(entity.id);
+    const warmRuntime = warmEntities[warmKey];
+    if (warmRuntime) {
+      const explicit = entity.data && entity.data.combatProfileId;
+      const expectedId = (typeof explicit === 'string' && explicit)
+        ? explicit
+        : (DEFAULT_COMBAT_PROFILE_BY_TYPE[entity.type] || null);
+      if (warmRuntime.profileId === expectedId) {
+        if (!Number.isFinite(warmRuntime.heatDissipationPerTick)) {
+          const warmProfile = expectedId ? catalog.profiles.get(expectedId) : null;
+          warmRuntime.heatDissipationPerTick = warmProfile && warmProfile.heat
+            ? Number(warmProfile.heat.dissipationPerTick) || 0
+            : 0;
+        }
+        return warmRuntime;
+      }
+    }
+  }
+  const combat = ensureCombatState(state);
+  // Property access with the raw id is the identical key to entityKey(entity.id) — object
+  // property keys are strings, so `entities[5]` and `entities['5']` are the same slot; this
+  // skips one String() allocation per combatant per pass.
+  let runtime = combat.entities[entity.id];
+  const profile = resolveCombatProfile(entity, catalog);
+  if (!runtime || runtime.profileId !== (profile && profile.id)) {
+    const cold = !runtime;
+    runtime = createCombatantRuntime(entity, profile, catalog, runtime);
+    combat.entities[entity.id] = runtime;
+    if (cold && hydrateOrchardWorkDamage(state, entity, runtime, profile, catalog))
+      recomputeCombatantModifiers({ state, catalog }, entity, runtime, null, false);
+  }
+  // Backfill dissipation for runtimes created before this field existed; create path
+  // already stamps it. Avoid rewriting the same number every quiet ensure.
+  if (!Number.isFinite(runtime.heatDissipationPerTick)) {
+    runtime.heatDissipationPerTick = profile && profile.heat
+      ? Number(profile.heat.dissipationPerTick) || 0
+      : 0;
+  }
+  syncCombatantBounds(entity, runtime, profile);
+  return runtime;
+}
+
+export function removeCombatantRuntime(state, entityId) {
+  const combat = ensureCombatState(state);
+  delete combat.entities[entityKey(entityId)];
+  delete combat.actions.activeByActor[entityKey(entityId)];
+  delete combat.actions.cooldownReadyTickByActor[entityKey(entityId)];
+}
+
+// Perf memo: resolveCombatProfile runs for every combatant several times per tick (prePhysics,
+// postPhysics, ensureCombatant) and was a Map lookup behind a property-chain read each time.
+// The answer is pure in (catalog identity, explicit profile id, entity type) — all three are
+// memo keys, so any change recomputes and the answer never goes stale.
+const COMBAT_PROFILE_MEMO = new WeakMap();
+
+export function resolveCombatProfile(entity, catalog) {
+  if (!entity) return null;
+  const explicit = entity.data && entity.data.combatProfileId;
+  const type = entity.type;
+  const memo = COMBAT_PROFILE_MEMO.get(entity);
+  if (memo && memo.catalog === catalog && memo.explicit === explicit && memo.type === type) {
+    return memo.profile;
+  }
+  const profileId = explicit || DEFAULT_COMBAT_PROFILE_BY_TYPE[type];
+  const profile = profileId ? catalog.profiles.get(profileId) || null : null;
+  COMBAT_PROFILE_MEMO.set(entity, { catalog, explicit, type, profile });
+  return profile;
+}
+
+export function syncCombatantBounds(entity, runtime, profile = null) {
+  if (!runtime) return;
+  const heatMax = profile && profile.heat && finiteNonNegative(profile.heat.max)
+    ? profile.heat.max : (finiteNonNegative(runtime.heatMax) ? runtime.heatMax : 100);
+  runtime.heatMax = heatMax;
+  runtime.heat = clamp(finiteNonNegative(runtime.heat) ? runtime.heat : 0, 0, heatMax);
+  if (Number.isFinite(entity.capMax)) entity.cap = clamp(Number(entity.cap) || 0, 0, Math.max(0, entity.capMax));
+  if (Number.isFinite(entity.hullMax)) entity.hull = clamp(Number(entity.hull) || 0, 0, Math.max(0, entity.hullMax));
+  if (Number.isFinite(entity.shieldMax)) entity.shield = clamp(Number(entity.shield) || 0, 0, Math.max(0, entity.shieldMax));
+  if (Number.isFinite(entity.armorMax)) entity.armorHp = clamp(Number(entity.armorHp) || 0, 0, Math.max(0, entity.armorMax));
+}
+
+export function entityKey(id) {
+  return String(id);
+}
+
+// B3b active-attacker predicate: a hostile that cannot fire is not an attacker the camera must
+// compose. Statuses whose effects block the 'weapon' action tag (status_tumbling) or declare
+// capabilities.weapon === false are the combat kernel's own "cannot shoot" fact — reusing them
+// keeps camera framing and bench measurement honest about what can actually hurt the player.
+const WEAPON_ACTION_DEF = ACTION_DEFS.find((def) => def.id === 'action_burst');
+
+export function entityWeaponBlocked(state, entity) {
+  const table = state && state.combat && state.combat.entities;
+  const runtime = table && entity && entity.id != null ? table[entityKey(entity.id)] : null;
+  if (!runtime || !WEAPON_ACTION_DEF) return false;
+  for (const capability of WEAPON_ACTION_DEF.requiresCapabilities || []) {
+    if (runtime.capabilities && runtime.capabilities[capability] === false) return true;
+  }
+  const tags = runtime.blockedActionTags;
+  if (Array.isArray(tags)) {
+    for (const tag of WEAPON_ACTION_DEF.tags || []) if (tags.includes(tag)) return true;
+  }
+  return false;
+}
+
+export function cloneData(value) {
+  if (value == null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(cloneData);
+  const out = {};
+  for (const [key, item] of Object.entries(value)) out[key] = cloneData(item);
+  return out;
+}
+
+function createCombatantRuntime(entity, profile, catalog, previous) {
+  const runtime = {
+    schemaVersion: COMBAT_SCHEMA_VERSION,
+    entityId: entity.id,
+    profileId: profile ? profile.id : null,
+    heat: previous && finiteNonNegative(previous.heat) ? previous.heat : 0,
+    heatMax: profile && profile.heat ? profile.heat.max : 100,
+    heatDissipationPerTick: profile && profile.heat
+      ? Number(profile.heat.dissipationPerTick) || 0
+      : 0,
+    immunityTags: profile ? [...(profile.immunityTags || [])].sort() : [],
+    baseCapabilities: profile ? cloneData(profile.capabilities || {}) : {},
+    capabilities: profile ? cloneData(profile.capabilities || {}) : {},
+    multipliers: { movement: 1, capRegen: 1, heatDissipation: 1 },
+    physicsResponse: { massScale: 1, inertiaScale: 1 },
+    blockedActionTags: [],
+    subsystems: {},
+    statuses: {},
+    pendingStatuses: [],
+    pendingSubsystemTransitionCount: 0,
+    sockets: {},
+    revision: previous && Number.isInteger(previous.revision) ? previous.revision + 1 : 1,
+  };
+
+  for (const subsystemId of (profile && profile.subsystemIds) || []) {
+    const def = catalog.subsystems.get(subsystemId);
+    if (!def) continue;
+    const old = previous && previous.subsystems && previous.subsystems[subsystemId];
+    const maxHealth = Math.max(0, Number(def.health) || 0);
+    const oldFraction = old && old.maxHealth > 0 ? clamp(old.health / old.maxHealth, 0, 1) : 1;
+    const pendingTransition = old && old.pendingTransition ? cloneData(old.pendingTransition) : null;
+    if (pendingTransition) runtime.pendingSubsystemTransitionCount += 1;
+    runtime.subsystems[subsystemId] = {
+      id: subsystemId,
+      health: maxHealth * oldFraction,
+      maxHealth,
+      destroyed: old ? !!old.destroyed : false,
+      effectiveDisabled: old ? !!old.effectiveDisabled : false,
+      pendingTransition,
+      lastDamageTick: old && Number.isInteger(old.lastDamageTick) ? old.lastDamageTick : -1,
+    };
+  }
+
+  // FB-020: an entity authoring subsystems.turretHp carries each turret mount as a real
+  // destructible subsystem — the phase machine reads mount loss, never hull fraction.
+  registerTurretSubsystems(entity, runtime, previous);
+
+  for (const socket of (profile && profile.sockets) || []) {
+    runtime.sockets[socket.id] = {
+      id: socket.id,
+      tags: [...(socket.tags || [])].sort(),
+      localPos: Array.isArray(socket.localPos) ? socket.localPos.slice(0, 2) : [0, 0],
+      maxAttachments: Math.max(1, Math.floor(socket.maxAttachments || 1)),
+    };
+  }
+  return runtime;
+}
+
+function indexById(items, label) {
+  const map = new Map();
+  for (const item of items || []) {
+    if (!item || typeof item.id !== 'string' || !item.id) throw new TypeError(`${label} requires a non-empty id`);
+    if (map.has(item.id)) throw new Error(`Duplicate ${label} id: ${item.id}`);
+    map.set(item.id, item);
+  }
+  return map;
+}
+
+function finiteNonNegative(value) {
+  return Number.isFinite(value) && value >= 0;
+}
+
+function clamp(value, min, max) {
+  return value < min ? min : value > max ? max : value;
+}

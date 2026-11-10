@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/worker-candidate-record.schema.json",
+  "title": "SpaceFace Controller-Wrapped Worker Candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "controllerEnvelope", "payload", "payloadSha256"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "controllerEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "servedModel",
+        "modelFamily",
+        "sessionId",
+        "packetId",
+        "briefHash",
+        "inputManifestHash",
+        "deltaManifestHash",
+        "candidateHash",
+        "cycleLedgerHash",
+        "processReceiptHash"
+      ],
+      "properties": {
+        "runId": { "type": "string", "minLength": 1 },
+        "servedModel": { "type": "string", "minLength": 1 },
+        "modelFamily": { "type": "string", "minLength": 1 },
+        "sessionId": { "type": "string", "minLength": 1 },
+        "packetId": { "type": "string", "minLength": 1 },
+        "briefHash": { "$ref": "#/definitions/digest" },
+        "inputManifestHash": { "$ref": "#/definitions/digest" },
+        "deltaManifestHash": { "$ref": "#/definitions/digest" },
+        "candidateHash": { "$ref": "#/definitions/digest" },
+        "cycleLedgerHash": { "$ref": "#/definitions/digest" },
+        "processReceiptHash": { "$ref": "#/definitions/digest" }
+      }
+    },
+    "payload": { "$ref": "spaceface://production/worker-submission.schema.json" },
+    "payloadSha256": { "$ref": "#/definitions/digest" }
+  },
+  "definitions": {
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

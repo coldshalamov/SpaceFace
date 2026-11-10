@@ -1,0 +1,152 @@
+From 2e001e5f8cff3979e643a7fabb13ee7c9dda37a8 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 01:12:00 -0400
+Subject: [PATCH] perf(activity): index closedFormMovers for classify catch-up
+ (rebased)
+
+Rebase of vm-drop #37 onto master tip after selectClassifyEntities
+context drift (projectile-append / filter residual). Walks entity-index
+closedFormMovers lane instead of filtered full-list catch-up.
+---
+ src/core/coreSystem.js         |  9 +++++++
+ src/world/activityRuntime.js   | 20 ++++++++++------
+ test/activity-runtime.test.mjs | 43 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 65 insertions(+), 7 deletions(-)
+
+diff --git a/src/core/coreSystem.js b/src/core/coreSystem.js
+index 9925dbfa2..af28382f4 100644
+--- a/src/core/coreSystem.js
++++ b/src/core/coreSystem.js
+@@ -396,6 +396,10 @@ function ensureEntityIndex(state) {
+     physicsStatics: [],
+     physicsDynamics: [],
+     physicsStaticVersion: 0,
++    // Explicit physicsBody:false opt-outs (travel-lane freighters, bombs, snares, …).
++    // selectClassifyEntities walks this lane for hash-invisible catch-up instead of the
++    // full entityList (prior inline filter was only ~1.3× — still O(N) property checks).
++    closedFormMovers: [],
+     radarContacts: [],
+     radarAsteroids: [],
+     byStationId: new Map(),
+@@ -454,6 +458,7 @@ function repairEntityIndex(index) {
+   if (!Array.isArray(index.physicsStatics)) index.physicsStatics = [];
+   if (!Array.isArray(index.physicsDynamics)) index.physicsDynamics = [];
+   if (!Number.isFinite(index.physicsStaticVersion)) index.physicsStaticVersion = 0;
++  if (!Array.isArray(index.closedFormMovers)) index.closedFormMovers = [];
+   if (!Array.isArray(index.radarContacts)) index.radarContacts = [];
+   if (!Array.isArray(index.radarAsteroids)) index.radarAsteroids = [];
+   if (!(index.byStationId instanceof Map)) index.byStationId = new Map();
+@@ -498,6 +503,7 @@ function clearEntityIndex(index) {
+   index.physicsBodies.length = 0;
+   index.physicsStatics.length = 0;
+   index.physicsDynamics.length = 0;
++  index.closedFormMovers.length = 0;
+   index.radarContacts.length = 0;
+   index.radarAsteroids.length = 0;
+   index.byStationId.clear();
+@@ -528,6 +534,8 @@ function appendEntityIndex(index, e) {
+       index.physicsStatics.push(e);
+       index.physicsStaticVersion++;
+     }
++  } else if (e.physicsBody === false) {
++    index.closedFormMovers.push(e);
+   }
+   if (movable) index.movables.push(e);
+   if (e.type !== 'projectile' && e.type !== 'fx'
+@@ -630,6 +638,7 @@ function removeEntityIndex(index, e) {
+   removeFromIndexArray(index.physicsBodies, e);
+   const removedPhysicsStatic = removeFromIndexArray(index.physicsStatics, e);
+   removeFromIndexArray(index.physicsDynamics, e);
++  removeFromIndexArray(index.closedFormMovers, e);
+   removeFromIndexArray(index.movables, e);
+   removeFromIndexArray(index.radarContacts, e);
+   removeFromIndexArray(index.radarAsteroids, e);
+diff --git a/src/world/activityRuntime.js b/src/world/activityRuntime.js
+index e3dc19538..5830d7a5b 100644
+--- a/src/world/activityRuntime.js
++++ b/src/world/activityRuntime.js
+@@ -744,17 +744,23 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
+   // physics (travel-lane traffic stamps `physicsBody: false` and repositions itself every
+   // tick at 420 WU/s) are invisible to the radius query, so without this scan an S3/R3
+   // stamp from spawn time survives the whole pass through the player's glass and the hull
+-  // never earns a mesh. Restrict the catch-up walk to the explicit opt-out stamp — walking
+-  // the entire live list every incremental classify was ~60–100 ms self in
+-  // cpu-profile-flight (classifyWorld), and physics-backed rows are already in `seen`
+-  // from the hash query above.
++  // never earns a mesh. Walk the entity-index `closedFormMovers` lane (O(opt-outs)) instead
++  // of distance-testing the full live list every incremental classify — the prior inline
++  // `physicsBody === false` filter still paid O(N) property checks and only measured ~1.3×.
++  // Fallback (no ready index): same filter on the live list. `add` dedupes against the hash.
+   if (origin) {
+     const enter = reach + NEAR_ENTER_PAD_WU;
+     const enter2 = enter * enter;
+-    for (let i = 0; i < list.length; i++) {
+-      const entity = list[i];
++    const index = state && state.entityIndex;
++    const closedForm = index && index.__spacefaceEntityIndexV1 && index.ready === true
++      && Array.isArray(index.closedFormMovers)
++      ? index.closedFormMovers
++      : null;
++    const catchUp = closedForm || list;
++    for (let i = 0; i < catchUp.length; i++) {
++      const entity = catchUp[i];
+       if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
+-      if (entity.physicsBody !== false) continue;
++      if (!closedForm && entity.physicsBody !== false) continue;
+       const dx = finite(entity.pos.x) - origin.x;
+       const dz = finite(entity.pos.z) - origin.z;
+       if (dx * dx + dz * dz <= enter2) add(entity);
+diff --git a/test/activity-runtime.test.mjs b/test/activity-runtime.test.mjs
+index 47ed4e338..346d7294f 100644
+--- a/test/activity-runtime.test.mjs
++++ b/test/activity-runtime.test.mjs
+@@ -515,3 +515,46 @@ test('signature prune skips when entity-index membership is unchanged', () => {
+   assert.equal(third.classifyMode, 'incremental');
+   assert.equal(third.signaturesById.has(2), false, 'membership bump prunes the dead signature');
+ });
++
++test('incremental classify closed-form catch-up uses entity-index lane when ready', () => {
++  const player = ship(1, 0, { isPlayer: true, team: 0 });
++  const laneHauler = {
++    id: 7,
++    type: 'freighter',
++    alive: true,
++    collides: false,
++    physicsBody: false,
++    radius: 12,
++    pos: { x: 3000, z: 0 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    data: {},
++    flags: {},
++  };
++  const distractors = [];
++  for (let i = 0; i < 80; i++) distractors.push(rock(100 + i, 4000 + i * 10));
++  const state = makeState([player, laneHauler, ...distractors], {
++    runtime: { profileId: 'production' },
++    entityIndex: {
++      __spacefaceEntityIndexV1: true,
++      version: 11,
++      ready: true,
++      shipLike: [player],
++      asteroids: distractors,
++      projectiles: [],
++      closedFormMovers: [laneHauler],
++    },
++  });
++  const hash = new SpatialHash(64);
++  hash.rebuild([player]);
++  state.spatialHash = hash;
++  const first = ensureActivityClassified(state);
++  assert.equal(first.classifyMode, 'full');
++  state.tick = (state.tick | 0) + 1;
++  state.simTime = (state.simTime || 0) + 1 / 60;
++  laneHauler.pos.x = 40;
++  const second = ensureActivityClassified(state);
++  assert.equal(second.classifyMode, 'incremental');
++  assert.equal(laneHauler.activity.presentationTier, PRESENTATION_TIER.R0_GLASS);
++  assert.ok(second.glassIds.includes(7), 'indexed closed-form hauler joins the glass set');
++});
+-- 
+2.47.3
+

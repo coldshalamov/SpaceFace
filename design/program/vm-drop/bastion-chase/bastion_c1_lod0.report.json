@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "asset": "ship_bastion",
+  "revision": "chase_form_v1",
+  "lod": 0,
+  "source": "/workspace/spaceface/assets/ships/parts/wholeships/bastion_production_v1.glb",
+  "output": "/workspace/spaceface/design/program/vm-drop/bastion-chase/bastion_c1_lod0.glb",
+  "cockpit": {
+    "kind": "tub+canopy",
+    "location": [
+      4.1,
+      0.0,
+      0.58
+    ]
+  },
+  "tower": {
+    "kind": "hole+stack",
+    "location": [
+      -2.4,
+      0.0,
+      0.95
+    ]
+  },
+  "casemates": {
+    "wells": [
+      {
+        "side": "Port",
+        "kind": "hole"
+      },
+      {
+        "side": "Starboard",
+        "kind": "hole"
+      }
+    ]
+  },
+  "drive": {
+    "houses": [
+      {
+        "side": "Port",
+        "y": -1.5
+      },
+      {
+        "side": "Starboard",
+        "y": 1.5
+      }
+    ]
+  },
+  "size": [
+    18.29,
+    4.509,
+    4.006
+  ],
+  "boundsMin": [
+    -9.09,
+    -2.254,
+    -1.006
+  ],
+  "boundsMax": [
+    9.2,
+    2.254,
+    3.0
+  ],
+  "triangles": 25444,
+  "hullTriangles": 16098,
+  "objects": [
+    "COLLISION_HULL",
+    "LOD0_AccentBand",
+    "LOD0_AftWalk",
+    "LOD0_BellThroat_Port",
+    "LOD0_Bell_Port",
+    "LOD0_Bell_Starboard",
+    "LOD0_CabinShoulder",
+    "LOD0_Canopy",
+    "LOD0_DeckCrate",
+    "LOD0_DriveCollar_Port",
+    "LOD0_Hull",
+    "LOD0_TowerGlass"
+  ],
+  "bytes": 1037276,
+  "gates": {
+    "TUBE_PADDLE": "NO",
+    "CAGE_READ": "NO",
+    "wells": "HOLES"
+  }
+}

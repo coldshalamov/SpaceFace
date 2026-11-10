@@ -1,0 +1,268 @@
+{
+  "assetId": "ops_launch_sled",
+  "category": "mechanisms",
+  "description": "launch sled",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "payload",
+      "position": [
+        0.0,
+        0.6,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion",
+      "motionGroup": "sled_travel"
+    },
+    {
+      "name": "pusher",
+      "position": [
+        -1.65,
+        0.8,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion",
+      "motionGroup": "sled_travel"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.25,
+          0.7
+        ],
+        "size": [
+          3.8,
+          0.5,
+          0.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.25,
+          -0.7
+        ],
+        "size": [
+          3.8,
+          0.5,
+          0.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.52,
+          -0.0
+        ],
+        "size": [
+          3.2,
+          0.16,
+          1.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.45,
+          0.95,
+          -0.0
+        ],
+        "size": [
+          0.4,
+          0.85,
+          1.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2,
+          0.64,
+          0.56
+        ],
+        "size": [
+          2.5,
+          0.09,
+          0.12
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2,
+          0.64,
+          -0.56
+        ],
+        "size": [
+          2.5,
+          0.09,
+          0.12
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "sled_travel",
+      "pivot": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "runner",
+        "runner.001",
+        "deck",
+        "thrust_abutment",
+        "guide_strip",
+        "guide_strip.001",
+        "sled_crossrib",
+        "sled_crossrib.001",
+        "sled_crossrib.002",
+        "runner_guard",
+        "runner_guard.001"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "mechanisms",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -1.899999976158142,
+      0.0,
+      -0.824999988079071
+    ],
+    "max": [
+      1.899999976158142,
+      1.375,
+      0.824999988079071
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_launch_sled_lod0.glb",
+      "triangles": 2068,
+      "draws": 5,
+      "bytes": 339812,
+      "method": "source",
+      "sha256": "9b2e73a07abff18fede21273e47baab2b3b33116563e67e835093b6598882002"
+    },
+    {
+      "level": 1,
+      "file": "ops_launch_sled_lod1.glb",
+      "triangles": 826,
+      "draws": 5,
+      "bytes": 284824,
+      "method": "Forge-decimation",
+      "sha256": "1047f7f9dedf735fed48fd67bc9e3311f91c4478eb677325760366bbab2e94f0"
+    },
+    {
+      "level": 2,
+      "file": "ops_launch_sled_lod2.glb",
+      "triangles": 372,
+      "draws": 5,
+      "bytes": 259296,
+      "method": "Forge-decimation",
+      "sha256": "32d5cb73bb52d8138b226d0476dee25db75d3aa82afe7709bfd42bcaeffca303"
+    }
+  ]
+}

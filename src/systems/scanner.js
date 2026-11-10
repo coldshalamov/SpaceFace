@@ -1,0 +1,2227 @@
+import { ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, ANVIL_RETURN_GAS } from '../world/anvilSpillRecovery.js';
+import { LANTERN_WARD_REPAIR_ACTION, isLanternWardNessa } from '../data/lanternWardHail.js';
+// Scanner pulse system (GDD 2.0 §7.4).
+//
+// Consumes the locked input edge `state.input.actions.scanPulse` and annotates live entities with
+// plain data fields that UI/render layers can read. No wall-clock; durations are simTime-based.
+// Ghost reveal uses entity-keyed deterministic streams (hash32), not ambient Math.random.
+import { SHARD_SPHERE_SONG } from '../data/landmarkMissions.js';
+import { asteroidScanGlyph } from '../data/mining.js';
+import { ionStormBlackout } from '../data/environmentalMachinery.js';
+import { mothlightScannerReading } from '../data/mothlight.js';
+import { borrowedVoiceScannerReading } from './borrowedVoice.js';
+
+// The asteroid-site projection reaches the scanner through the composition root (createRegistry registers it):
+// a static import of asteroidSites here closes a cycle through drill -> cargo -> combat -> scanner and makes
+// the module graph depend on which file a test or the app happens to import first.
+let siteProjectionSource = null;
+export function setScannerSiteProjectionSource(source) {
+  siteProjectionSource = source && typeof source.find === 'function' && typeof source.project === 'function' ? source : null;
+}
+import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
+import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js';
+import { hash32 } from '../core/rng.js';
+import { takeNearWorkSlice } from '../core/activityScheduler.js';
+import { isPlayerWanted } from './heat.js';
+import { isHostileToPlayer } from './scannerReadModel.js';
+export { isHostileToPlayer };
+export { contactMass, contactThreatTier, SCANNER_CONTACT_RANGE } from './scannerReadModel.js';
+import { combatFlag } from '../data/featureFlags.js';
+import { weakPointForEntity } from '../data/weakPoints.js';
+import { claimSensorPostActive } from '../data/claimableBodies.js';
+import { EXPOSURE_MODEL } from '../data/alienEcology.js';
+import {
+  isResonanceObeliskSignal,
+  resonanceObeliskResponse,
+} from '../data/resonanceObelisk.js';
+import {
+  vestaOreCacheSignalAvailable,
+  vestaOreCacheSignalCopy,
+} from '../data/vestaOreCache.js';
+import {
+  pallasHiddenCacheSignalAvailable,
+  pallasHiddenCacheSignalCopy,
+} from '../data/pallasHiddenCache.js';
+import { kettleLineSignalCopy } from '../data/kettleLine.js';
+import {
+  applyClueObservation,
+  cloneClueBook,
+  emptyClueBook,
+  normalizeClueBook,
+  shipmentReadingFromReveal,
+} from '../data/scanClues.js';
+import {
+  anomalyRuleLesson,
+  discoveryPlaceCandidates,
+  normalizeDiscoveryMemory,
+} from './scanReveal.js';
+import {
+  PLANET_STATE_DEFS,
+  PLANET_SIGNAL_RANGE,
+  planetSignalAnchor,
+  planetStatesForSector,
+} from '../data/planetStates.js';
+import {
+  CONTACT_HAIL_RANGE,
+  CONTACT_HAIL_REQUEST_TTL_S,
+  CONTACT_HAIL_ACTION_HEAVE_TO,
+  CONTACT_HAIL_ACTION_TOW_ASSIST,
+  contactHailAvailability,
+  createContactHailOffer,
+  createContactHailResponse,
+  pirateParleyDemandForHandoff,
+  towAssistBodyFor,
+} from '../data/contactHail.js';
+import { TOW_ASSIST_FEE_CR } from '../data/yardContracts.js';
+import { ruudTowAssistFeeQuote } from './ruud.js'; // SP2-123: the stamped tow-assist grade
+import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { makeShipEntitySpec } from './ships.js';
+import {
+  captureEntitySelection,
+  liveEntityById,
+  resolveEntitySelection,
+} from '../ui/sim/stableSelection.js';
+
+/**
+ * The live body a signal record still points at. A record written with `entityStable` resolves
+ * through the identity stamp — a recycled id can never satisfy it — and returns the CURRENT
+ * instance (a durable target rebinds after an instance swap). Pre-stamp saves and non-entity
+ * signals fall back to the legacy bare-id resolve, dead holders included nowhere.
+ */
+function recordEntity(state, record) {
+  if (!record) return null;
+  if (record.entityStable) {
+    try { return resolveEntitySelection(state, record.entityStable); } catch { return null; }
+  }
+  return liveEntityById(state, record.entityId);
+}
+
+const HAIL_REFUSAL_TEXT = Object.freeze({
+  unresolved_target: 'No contact to hail',
+  stale_target: 'That isn\'t the contact you\'re locked on',
+  dead_target: 'No answer — that contact is gone',
+  unsupported_target: 'That contact doesn\'t take a hail',
+  unsupported_contact: 'That contact doesn\'t take a hail',
+  out_of_reveal_range: 'Too far to hail — close in',
+  parley_expired: 'The demand has already expired',
+  nebula_wash: 'The nebula ate the hail',
+  sensors_blind: 'Sensors out — nobody hears the hail',
+});
+
+/** 'out' when the sensor bank is dead, 'jammed' when a status killed the capability, else null. */
+/** A dead or jammed sensor bank closes the hail channel. The contact check still runs;
+ *  this only stamps the refusal the pilot can hear. */
+export function hailAvailabilityThroughSensors(state, availability) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!playerSensorBlock(state, player)) return availability;
+  const base = availability && typeof availability === 'object' ? availability : {};
+  return { ...base, enabled: false, reason: 'sensors_blind', kind: null, label: 'HAIL' };
+}
+
+export function playerSensorBlock(state, player) {
+  if (ionStormBlackout(state, player)) return 'jammed';
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !player || player.id == null) return null;
+  const runtime = book[String(player.id)];
+  if (!runtime) return null;
+  const sensor = runtime.subsystems && runtime.subsystems.subsystem_sensor;
+  if (sensor && sensor.effectiveDisabled === true) return 'out';
+  if (runtime.capabilities && runtime.capabilities.sensor === false) return 'jammed';
+  return null;
+}
+
+const PULSE_COOLDOWN_S = 8;
+const NEAR_SCAN_RADIUS = 1200;
+const HIDDEN_POI_RADIUS = 2000;
+// Existing authored sectors top out at 5,500 WU from center. Twelve thousand covers the full
+// diameter from one navigable edge to the other without becoming an unbounded/global scan.
+export const SENSOR_POST_POI_RANGE = 12000;
+const ASTEROID_HIGHLIGHT_S = 20;
+const PINGED_S = 45;
+const SIGNAL_RECORD_CAP = 64;
+const SIGNAL_RECEIPT_CAP = 32;
+const SIGNAL_INVESTIGATE_RADIUS = 150;
+const ANOMALY_TRIANGULATION_CAP = 16;
+const ANOMALY_TRIANGULATION_REQUIRED = 3;
+const ANOMALY_TRIANGULATION_MIN_BASELINE_WU = 350;
+const ANOMALY_TRIANGULATION_MIN_BEARING_DEG = 8;
+const CONTACT_HAIL_POLL_TICKS = 12; // 5 Hz at the fixed 60 Hz sim cadence.
+/** Ghost escape/decay is time-based; skipping rocks between checks is enough. */
+export const GHOST_CONTACT_CADENCE_TICKS = 8;
+// W05 sensor-ghost — sim-truth on entity.data. Scanner owns uncertainty; HUD/map read only.
+export const GHOST_REVEAL_STAGE_MAX = 3;
+export const GHOST_ESCAPE_RANGE = 2400;
+export const GHOST_ESCAPE_HOLD_S = 18;
+/** E1/H8 shattered-echo swarm: contacts drift out and despawn on their own clock. */
+const SENSOR_GHOST_SWARM_LIFETIME_S = 45;
+const GHOST_STAGE_CONFIDENCE = Object.freeze([0.12, 0.34, 0.58, 0.82]);
+
+/** A nebula washes the hull scanner. The fitting multiplier is unchanged. */
+export const NEBULA_SCAN_MULT = 0.45;
+
+export function nebulaScanMult(state) {
+  const presence = state && state.world && state.world.hazardPresence;
+  return presence && presence.nebula === true ? NEBULA_SCAN_MULT : 1;
+}
+
+/** Hull-scanner reach while biological fouling is severe. 1 leaves the fitting math alone. */
+function severeHullScanMult(state) {
+  if (!EXPOSURE_MODEL || EXPOSURE_MODEL.scannerNoiseAtSevere !== true) return 1;
+  const mult = Number(EXPOSURE_MODEL.scannerRadiusMultAtSevere);
+  if (!(mult > 0 && mult < 1)) return 1;
+  const eco = state && state.world && state.world.alienEcology;
+  const exposure = eco ? Number(eco.exposure) : NaN;
+  const severeAt = Number(EXPOSURE_MODEL.severeAt);
+  if (!Number.isFinite(exposure) || !Number.isFinite(severeAt) || exposure < severeAt) return 1;
+  return mult;
+}
+
+export function scannerProfileForState(state) {
+  const radiusMult = Math.max(
+    1,
+    maxFittedModuleMod(state, 'scannerRadiusMult', 1),
+    maxFittedModuleMod(state, 'scanRangeMult', 1),
+  );
+  const pingPersistMult = Math.max(0.05, maxFittedModuleMod(state, 'pingPersistMult', 1));
+  // Severe fouling shortens the hull scanner. radiusMult itself stays the fitting, and a
+  // placed sensor post still publishes its own range over the fouled hidden base.
+  const foul = severeHullScanMult(state);
+  const wash = nebulaScanMult(state);
+  const hiddenPoiRadius = HIDDEN_POI_RADIUS * radiusMult * foul * wash;
+  const sensorPostActive = claimSensorPostActive(state, state && state.world && state.world.currentSectorId);
+  return {
+    radiusMult,
+    wash,
+    pingPersistMult,
+    nearRadius: NEAR_SCAN_RADIUS * radiusMult * foul * wash,
+    hiddenPoiRadius,
+    poiRadius: sensorPostActive ? Math.max(hiddenPoiRadius, SENSOR_POST_POI_RANGE) : hiddenPoiRadius,
+    sensorPostActive,
+    pingPersistS: PINGED_S * pingPersistMult,
+  };
+}
+
+/**
+ * Mark a live ship as a sensor ghost (W05). Known contact is uncertain (isGhost, low confidence,
+ * revealStage); the live entity still exists. Does not touch HUD/map — readers already honor
+ * entity.data.isGhost | ghost | kind==='unknown'.
+ */
+// Writers of isGhost/ghost bump this so the cadence walk can skip re-collecting when no
+// ghost flag was set or cleared since the last pass.
+let _ghostFlagSeq = 0;
+
+/** Membership lanes for the ghost collect — it walks living actors (shipLike, stations,
+ * wrecks); projectile/pickup/asteroid churn no longer re-collects. */
+const SCANNER_GHOST_LANES = ['shipLike', 'stations', 'wrecks'];
+
+export function markEntityGhost(entity, opts = {}) {
+  if (!entity || !entity.alive) return null;
+  const data = entity.data || (entity.data = {});
+  const stage = Math.max(0, Math.min(GHOST_REVEAL_STAGE_MAX - 1, (opts.revealStage | 0) || 0));
+  if (!data.isGhost && !data.ghost) _ghostFlagSeq++;
+  data.isGhost = true;
+  data.ghost = true;
+  if (!data.kind || data.kind === 'ship') data.kind = 'unknown';
+  data.revealStage = stage;
+  data.ghostConfidence = Number.isFinite(opts.ghostConfidence)
+    ? clamp01(opts.ghostConfidence)
+    : GHOST_STAGE_CONFIDENCE[stage];
+  data.ghostSpawnedAt = Number.isFinite(opts.spawnedAt) ? opts.spawnedAt : null;
+  data.ghostEscapeRange = Number.isFinite(opts.escapeRange) ? opts.escapeRange : GHOST_ESCAPE_RANGE;
+  data.ghostEscapeHoldS = Number.isFinite(opts.escapeHoldS) ? opts.escapeHoldS : GHOST_ESCAPE_HOLD_S;
+  data.ghostBeyondSince = null;
+  data.ghostFullyRevealed = false;
+  return data;
+}
+
+/** Deterministic unit draw for a ghost entity stream (keyed by entity id; never Math.random). */
+export function ghostStreamUnit(state, entityId, salt = 'reveal') {
+  const seed = (state && state.meta && state.meta.seed) || 1;
+  // Independent stream per (seed, entityId, salt). Callers that need multi-draw should re-key salt.
+  const h = hash32(seed, entityId, salt);
+  return ((h >>> 0) % 10000) / 10000;
+}
+
+/**
+ * Advance one reveal stage on a ghost contact. Full reveal clears isGhost and returns
+ * { revealed: true }. Deterministic: stage thresholds use entity-keyed stream, not wall clock.
+ */
+export function advanceGhostReveal(entity, state, opts = {}) {
+  if (!entity || !entity.alive) return { ok: false, reason: 'missing' };
+  const data = entity.data || (entity.data = {});
+  if (!data.isGhost && !data.ghost) return { ok: false, reason: 'not_ghost' };
+  if (data.ghostFullyRevealed) return { ok: true, revealed: true, stage: GHOST_REVEAL_STAGE_MAX, confidence: 1 };
+
+  const pulseIndex = Math.max(0, (opts.pulseIndex | 0) || (data.ghostPulseCount | 0));
+  data.ghostPulseCount = pulseIndex + 1;
+  // Entity stream decides whether this pulse advances (always advances for stage 0→1 at close range).
+  const unit = ghostStreamUnit(state, entity.id, `pulse:${data.ghostPulseCount}`);
+  const near = opts.near === true || (Number.isFinite(opts.distance) && opts.distance <= 600);
+  const advance = near || unit < 0.72 + data.revealStage * 0.08;
+  if (!advance) {
+    return {
+      ok: true,
+      revealed: false,
+      stage: data.revealStage | 0,
+      confidence: data.ghostConfidence,
+    };
+  }
+
+  const nextStage = Math.min(GHOST_REVEAL_STAGE_MAX, (data.revealStage | 0) + 1);
+  data.revealStage = nextStage;
+  data.ghostConfidence = GHOST_STAGE_CONFIDENCE[Math.min(nextStage, GHOST_STAGE_CONFIDENCE.length - 1)];
+
+  if (nextStage >= GHOST_REVEAL_STAGE_MAX) {
+    clearGhostFlags(data);
+    data.ghostFullyRevealed = true;
+    data.revealStage = GHOST_REVEAL_STAGE_MAX;
+    data.ghostConfidence = 1;
+    return { ok: true, revealed: true, stage: GHOST_REVEAL_STAGE_MAX, confidence: 1 };
+  }
+  return {
+    ok: true,
+    revealed: false,
+    stage: data.revealStage,
+    confidence: data.ghostConfidence,
+  };
+}
+
+function clearGhostFlags(data) {
+  if (data.isGhost || data.ghost) _ghostFlagSeq++;
+  data.isGhost = false;
+  data.ghost = false;
+  if (data.kind === 'unknown') data.kind = 'ship';
+}
+
+/**
+ * Deception consequence: an unrevealed ghost that stays beyond escape range long enough
+ * despawns (alive=false). Emits nothing itself — caller emits scanner:ghostEscaped.
+ */
+export function tickGhostEscape(entity, state, now = null) {
+  if (!entity || !entity.alive) return { escaped: false };
+  const data = entity.data;
+  if (!data || (!data.isGhost && !data.ghost) || data.ghostFullyRevealed) return { escaped: false };
+  const t = Number.isFinite(now) ? now : (state && state.simTime) || 0;
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (!player || !player.alive || !player.pos || !entity.pos) return { escaped: false };
+  const dx = (entity.pos.x || 0) - (player.pos.x || 0);
+  const dz = (entity.pos.z || 0) - (player.pos.z || 0);
+  const d = Math.hypot(dx, dz);
+  const escapeR = Number.isFinite(data.ghostEscapeRange) ? data.ghostEscapeRange : GHOST_ESCAPE_RANGE;
+  const holdS = Number.isFinite(data.ghostEscapeHoldS) ? data.ghostEscapeHoldS : GHOST_ESCAPE_HOLD_S;
+  if (d <= escapeR) {
+    data.ghostBeyondSince = null;
+    return { escaped: false, distance: d };
+  }
+  if (data.ghostBeyondSince == null) data.ghostBeyondSince = t;
+  if (t - data.ghostBeyondSince < holdS) return { escaped: false, distance: d, holdS: t - data.ghostBeyondSince };
+  entity.alive = false;
+  data.ghostEscaped = true;
+  return { escaped: true, distance: d, reason: 'beyond_escape_range' };
+}
+
+function clamp01(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
+}
+
+function pos2(pos) {
+  return { x: Number(pos && pos.x) || 0, z: Number(pos && pos.z) || 0 };
+}
+
+function bearingDeg(from, to) {
+  const dx = (Number(to && to.x) || 0) - (Number(from && from.x) || 0);
+  const dz = (Number(to && to.z) || 0) - (Number(from && from.z) || 0);
+  return (Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360;
+}
+
+/**
+ * Effective anomaly fix length: authored configs that deliberately differ from the default win
+ * untouched; the default count (authored as 3 or omitted) is what a fitted Triangulation Suite
+ * tightens (one pulse per reduction point, floored at 2). Exported for focused characterization.
+ */
+export function effectiveAnomalyRequiredPings(configRequiredPings, pingReduction) {
+  const authored = Number(configRequiredPings);
+  if (Number.isFinite(authored) && authored !== ANOMALY_TRIANGULATION_REQUIRED) {
+    return Math.max(2, Math.min(6, Math.trunc(authored)));
+  }
+  const reduction = Math.max(0, Math.trunc(Number(pingReduction) || 0));
+  return Math.max(2, ANOMALY_TRIANGULATION_REQUIRED - reduction);
+}
+
+function bearingDeltaDeg(a, b) {
+  const raw = Math.abs((Number(a) || 0) - (Number(b) || 0)) % 360;
+  return Math.min(raw, 360 - raw);
+}
+
+/**
+ * Add one player-earned bearing to an anomaly fix. The target position is read only to calculate
+ * the bearing; it is not retained until the required distinct samples have been earned.
+ */
+export function recordAnomalyBearing(previous, origin, targetPos, options = {}, now = 0) {
+  const requiredPings = Math.max(2, Math.min(6,
+    Math.trunc(Number(options.requiredPings) || ANOMALY_TRIANGULATION_REQUIRED)));
+  const minBaselineWu = Math.max(50,
+    Number(options.minBaselineWu) || ANOMALY_TRIANGULATION_MIN_BASELINE_WU);
+  const minBearingDeltaDeg = Math.max(1,
+    Number(options.minBearingDeltaDeg) || ANOMALY_TRIANGULATION_MIN_BEARING_DEG);
+  const samples = (previous && Array.isArray(previous.samples) ? previous.samples : [])
+    .slice(0, requiredPings).map((sample) => ({ ...sample, origin: pos2(sample.origin) }));
+  const from = pos2(origin);
+  const target = pos2(targetPos);
+  const nextBearingDeg = bearingDeg(from, target);
+  const last = samples[samples.length - 1] || null;
+  const baselineWu = last ? dist(from, last.origin) : Infinity;
+  const angleDeltaDeg = last ? bearingDeltaDeg(nextBearingDeg, last.bearingDeg) : Infinity;
+
+  let accepted = true;
+  let reason = null;
+  if (last && baselineWu < minBaselineWu) {
+    accepted = false;
+    reason = 'baseline_short';
+  } else if (last && angleDeltaDeg < minBearingDeltaDeg) {
+    accepted = false;
+    reason = 'bearing_too_similar';
+  }
+  if (accepted && samples.length < requiredPings) {
+    samples.push({
+      origin: from,
+      bearingDeg: Number(nextBearingDeg.toFixed(3)),
+      sampledAt: Number(now) || 0,
+    });
+  }
+  const revealed = samples.length >= requiredPings;
+  const record = {
+    schemaVersion: 1,
+    sectorId: options.sectorId || previous && previous.sectorId || null,
+    poiId: options.poiId || previous && previous.poiId || null,
+    requiredPings,
+    minBaselineWu,
+    minBearingDeltaDeg,
+    samples,
+    revealed,
+    fixedPos: revealed ? target : null,
+    revealedAt: revealed ? Number(now) || 0 : null,
+  };
+  return {
+    record,
+    accepted,
+    reason,
+    revealed,
+    sampleCount: samples.length,
+    requiredPings,
+    bearingDeg: Number(nextBearingDeg.toFixed(3)),
+    baselineWu: Number.isFinite(baselineWu) ? Number(baselineWu.toFixed(3)) : null,
+    angleDeltaDeg: Number.isFinite(angleDeltaDeg) ? Number(angleDeltaDeg.toFixed(3)) : null,
+  };
+}
+
+function dist(posA, posB) {
+  return Math.hypot((posA.x || 0) - (posB.x || 0), (posA.z || 0) - (posB.z || 0));
+}
+
+function isWreckLike(entity) {
+  const data = entity && entity.data || {};
+  return entity && (
+    entity.type === 'wreck' ||
+    data.poiType === 'wreck' ||
+    data.kind === 'wreck' ||
+    data.kind === 'derelict' ||
+    data.salvage === true
+  );
+}
+
+// Weak-point callout resolved on a wreck scan. Deterministic from the entity id so a re-scan (or a
+// second look at the same derelict this session) names the same subsystem — no per-frame flicker.
+const WEAK_POINTS = ['REACTOR CORE', 'FUEL CELLS', 'MAGAZINE', 'SHIELD NODE', 'CARGO SEAL', 'DRIVE COIL'];
+function weakPointFor(entity) {
+  const id = entity && entity.id != null ? String(entity.id) : '0';
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0x7fffffff;
+  return WEAK_POINTS[h % WEAK_POINTS.length];
+}
+
+// Turn a wreck's salvage contents into a compact manifest [{ id, qty }] the contacts strip resolves
+// from the "??? UNSCANNED" ghost once a scan pulse lands. Reads salvagePool (id→units) + any loot.
+function buildWreckManifest(entity) {
+  const out = [];
+  const pool = entity && entity.data && entity.data.salvagePool;
+  if (pool && typeof pool === 'object') {
+    for (const id in pool) {
+      const qty = Math.round(Number(pool[id]) || 0);
+      if (qty > 0) out.push({ id, qty });
+    }
+  }
+  const loot = entity && entity.data && entity.data.loot;
+  if (Array.isArray(loot)) {
+    for (const item of loot) {
+      if (!item) continue;
+      const id = item.commodityId || item.id;
+      const qty = Math.round(Number(item.amount != null ? item.amount : item.qty) || 0);
+      if (id && qty > 0) out.push({ id, qty });
+    }
+  }
+  return out;
+}
+
+function isCargoLike(entity) {
+  const data = entity && entity.data || {};
+  return entity && (
+    entity.type === 'cargo' ||
+    entity.type === 'pickup' ||
+    data.kind === 'cargo' ||
+    data.commodityId
+  );
+}
+
+function isAnomalyLike(entity) {
+  const data = entity && entity.data || {};
+  return entity && (entity.type === 'anomaly' || data.poiType === 'anomaly');
+}
+
+function appendNonCollidingScanTargets(state, origin, radius, out) {
+  if (!state || !origin || !out) return out;
+  const seen = new Set();
+  for (let i = 0; i < out.length; i++) {
+    const entity = out[i];
+    if (entity && entity.id != null) seen.add(entity.id);
+  }
+  const r2 = Number(radius) * Number(radius);
+  const consider = (entity) => {
+    if (!entity || !entity.alive || !entity.pos || entity.id == null) return;
+    if (seen.has(entity.id)) return;
+    const dx = entity.pos.x - origin.x;
+    const dz = entity.pos.z - origin.z;
+    if (!(dx * dx + dz * dz <= r2)) return;
+    seen.add(entity.id);
+    out.push(entity);
+  };
+  const index = state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.wrecks)) {
+    for (let i = 0; i < index.wrecks.length; i++) consider(index.wrecks[i]);
+  }
+  const pois = state.world && state.world.activeSector && state.world.activeSector.pois;
+  const entities = state.entities;
+  if (Array.isArray(pois) && entities && typeof entities.get === 'function') {
+    for (let i = 0; i < pois.length; i++) {
+      const poi = pois[i];
+      if (!poi) continue;
+      consider(entities.get(poi.id));
+    }
+  }
+  return out;
+}
+
+function ensurePingBucket(state, sectorId) {
+  if (!state.world.scanPings || typeof state.world.scanPings !== 'object') state.world.scanPings = {};
+  const list = state.world.scanPings[sectorId];
+  if (Array.isArray(list)) return list;
+  state.world.scanPings[sectorId] = [];
+  return state.world.scanPings[sectorId];
+}
+
+function upsertUnknownPing(state, sectorId, ping) {
+  const list = ensurePingBucket(state, sectorId);
+  const existing = list.find((item) => item && item.id === ping.id);
+  if (existing) {
+    existing.pos = pos2(ping.pos);
+    existing.kind = 'unknown';
+    return false;
+  }
+  list.push({ id: ping.id, pos: pos2(ping.pos), kind: 'unknown' });
+  return true;
+}
+
+// A ping row may exist only while its source POI still qualifies for one (hidden or an anomaly,
+// triangulation answered, cache signal live) — the SAME predicate the upsert in
+// _pingHiddenPois grants, minus the pulse radius, so an out-of-range fix stays remembered.
+// When the source is answered — the POI discovered (world.js poi:discovered flips .hidden),
+// a named cache consumed, an untriangulated anomaly regressed — the row would otherwise live
+// forever (upsert is create-only; the bucket rides the save), and every map surface would keep
+// offering an 'Unresolved contact' course to a question that has been answered. Runs on the
+// pulse that refreshes the bucket, in this single-writer file; keyed on the POI identity
+// (poi.poiId || poi_<entity id>), never on a signal-string namespace.
+function pruneResolvedPings(state, sectorId, pois) {
+  const bucket = state.world && state.world.scanPings;
+  const list = bucket && bucket[sectorId];
+  if (!Array.isArray(list) || !list.length) return;
+  const live = new Set();
+  for (const poi of pois || []) {
+    if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
+    const entity = state.entities && state.entities.get && state.entities.get(poi.id);
+    if (entity && entity.data && entity.data.requiresTriangulation && !entity.data.anomalyTriangulated) continue;
+    if (!vestaOreCacheSignalAvailable(state, poi.poiId || poi.id)
+      || !pallasHiddenCacheSignalAvailable(state, poi.poiId || poi.id)) continue;
+    live.add(poi.poiId || `poi_${poi.id}`);
+  }
+  // An id no current POI claims is an orphan only once the sector is cooked (a non-empty poi
+  // list answers "who could own a ping here"); a transiently empty list must not wipe the
+  // remembered fixes the bucket exists to keep.
+  const cooked = Array.isArray(pois) && pois.length > 0;
+  bucket[sectorId] = list.filter((ping) => {
+    if (!ping || ping.id == null) return false;
+    if (live.has(ping.id)) return true;
+    return !cooked;
+  });
+}
+
+export function signalStrengthFor(distance, range) {
+  const r = Math.max(1, Number(range) || 1);
+  return Math.max(0, Math.min(1, 1 - Math.max(0, Number(distance) || 0) / r));
+}
+
+export function signalClassificationStage(scanCount, distance) {
+  const scans = Math.max(1, Math.floor(Number(scanCount) || 1));
+  const d = Math.max(0, Number(distance) || 0);
+  if (scans >= 3 || d <= 300) return 3;
+  if (scans >= 2 || d <= 650) return 2;
+  return 1;
+}
+
+export function signalClassLabel(kind, stage = 1) {
+  const s = Math.max(1, Math.min(3, stage | 0));
+  if (kind === 'archive') return s >= 3 ? 'ARCHIVE TELEMETRY' : s >= 2 ? 'ARCHIVE SIGNAL' : 'RECORDED CARRIER';
+  if (kind === 'distress') return s >= 3 ? 'DISTRESS COMMUNICATOR' : s >= 2 ? 'DISTRESS SIGNAL' : 'MODULATED SIGNAL';
+  if (kind === 'cache') return s >= 3 ? 'CACHE' : s >= 2 ? 'SEALED CACHE' : 'CACHE RETURN';
+  if (kind === 'salvage') return s >= 3 ? 'DERELICT SALVAGE' : s >= 2 ? 'SALVAGE SIGNATURE' : 'METALLIC RETURN';
+  if (kind === 'anomaly') return s >= 3 ? 'ANOMALOUS PHENOMENON' : s >= 2 ? 'ANOMALY SIGNATURE' : 'ENERGY RETURN';
+  if (kind === 'ore') return s >= 3 ? 'ORE CONCENTRATION' : s >= 2 ? 'ORE SIGNATURE' : 'MINERAL RETURN';
+  if (kind === 'ambush') return s >= 3 ? 'MULTIPLE DRIVE ECHOES' : s >= 2 ? 'UNCERTAIN TRAFFIC' : 'SHIP SIGNATURE';
+  return s >= 3 ? 'VESSEL SIGNATURE' : s >= 2 ? 'SHIP SIGNATURE' : 'DRIVE RETURN';
+}
+
+function signalDetail(kind, stage) {
+  if (kind === 'archive') return stage >= 3
+    ? 'Historical telemetry isolated. Track the source or inspect its discovery plate.'
+    : 'Recorded carrier unresolved. Close range or pulse again.';
+  if (kind === 'ambush') return stage >= 3
+    ? 'Several drives, intent unresolved. Track or hold clear.'
+    : 'Traffic pattern unresolved. Close range or pulse again.';
+  if (stage <= 1) return 'Source unresolved. Close range or pulse again.';
+  if (stage === 2) return 'Probable class. Track the return or pulse again.';
+  return 'Investigation fix stable. Track to inspect at close range.';
+}
+
+function anomalyTriangulationDetail(result, config) {
+  const baseline = Math.round(Number(config && config.minBaselineWu) || ANOMALY_TRIANGULATION_MIN_BASELINE_WU);
+  const bearingDelta = Math.round(Number(config && config.minBearingDeltaDeg) || ANOMALY_TRIANGULATION_MIN_BEARING_DEG);
+  if (result.reason === 'baseline_short') {
+    return `Baseline too short (${Math.round(result.baselineWu || 0)} WU). Move at least ${baseline} WU laterally, then pulse again.`;
+  }
+  if (result.reason === 'bearing_too_similar') {
+    return `Bearing unchanged. Move laterally until the return shifts by at least ${bearingDelta}°, then pulse again.`;
+  }
+  return `Bearing ${result.sampleCount}/${result.requiredPings} logged. Move laterally, then pulse again for a distinct fix.`;
+}
+
+function freshSignalState() {
+  return {
+    schemaVersion: 2, records: {}, completed: {}, receipts: [], triangulations: {}, trackedId: null,
+    clues: emptyClueBook(),
+    discoveryMemory: { subjects: {} },
+  };
+}
+
+function ensureSignalState(state) {
+  if (!state.signalInvestigation || typeof state.signalInvestigation !== 'object') state.signalInvestigation = freshSignalState();
+  const own = state.signalInvestigation;
+  own.schemaVersion = 2;
+  if (!own.records || typeof own.records !== 'object' || Array.isArray(own.records)) own.records = {};
+  if (!own.completed || typeof own.completed !== 'object' || Array.isArray(own.completed)) own.completed = {};
+  if (!Array.isArray(own.receipts)) own.receipts = [];
+  if (!own.triangulations || typeof own.triangulations !== 'object' || Array.isArray(own.triangulations)) own.triangulations = {};
+  if (!own.clues || typeof own.clues !== 'object' || Array.isArray(own.clues)) own.clues = emptyClueBook();
+  else if (!own.clues.subjects || typeof own.clues.subjects !== 'object' || Array.isArray(own.clues.subjects)) {
+    own.clues.subjects = {};
+  }
+  if (!own.discoveryMemory || typeof own.discoveryMemory !== 'object' || Array.isArray(own.discoveryMemory)
+    || !own.discoveryMemory.subjects || typeof own.discoveryMemory.subjects !== 'object') {
+    own.discoveryMemory = { subjects: {} };
+  }
+  return own;
+}
+
+const SIGNAL_KIND_PRIORITY = Object.freeze({
+  distress: 100,
+  anomaly: 90,
+  archive: 85,
+  salvage: 80,
+  cache: 78,
+  ambush: 70,
+  ship: 60,
+  ore: 40,
+});
+
+function signalKindForEntity(entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  const explicitKind = String(data.scannerSignalKind || '').trim().toLowerCase();
+  if (Object.hasOwn(SIGNAL_KIND_PRIORITY, explicitKind)) return explicitKind;
+  const label = String(data.scanLabel || data.label || data.name || '').toLowerCase();
+  if (isAnomalyLike(entity)) return 'anomaly';
+  if (isWreckLike(entity)) {
+    if (data.isCommunicator || data.parentType === 'communicator' || label.includes('distress')) return 'distress';
+    return 'salvage';
+  }
+  if (entity.type === 'asteroid') return 'ore';
+  if (entity.type === 'ship' || entity.type === 'drone') return 'ship';
+  return null;
+}
+
+export function signalKindForPoi(poi, entityData = null) {
+  const explicitKind = String((poi && poi.scannerSignalKind)
+    || (entityData && entityData.scannerSignalKind) || '').trim().toLowerCase();
+  if (Object.hasOwn(SIGNAL_KIND_PRIORITY, explicitKind)) return explicitKind;
+  const type = String(poi && (poi.type || poi.poiType || poi.kind) || '').toLowerCase();
+  const label = String(poi && (poi.name || poi.label || poi.poiId) || '').toLowerCase();
+  if (type.includes('anomal')) return 'anomaly';
+  if (type.includes('distress') || type.includes('beacon') || label.includes('distress')) return 'distress';
+  if (type.includes('cache')) return 'cache';
+  if (type.includes('wreck') || type.includes('derelict') || type.includes('salvage')) return 'salvage';
+  return null;
+}
+
+function scannerSignalPriorityFor(poi, entityData = null) {
+  const configured = poi && poi.scannerSignalPriority != null
+    ? poi.scannerSignalPriority
+    : entityData && entityData.scannerSignalPriority;
+  const priority = Number(configured);
+  return Number.isFinite(priority) ? Math.max(0, priority) : 0;
+}
+
+function signalKindForLivingPoi(row) {
+  if (!row) return null;
+  if (row.familyId === 'anomaly_research') return 'anomaly';
+  if (row.familyId === 'derelict_salvage') return 'salvage';
+  if (row.familyId === 'mining_field') return 'ore';
+  if (row.familyId === 'pirate_contested_nest') return 'ambush';
+  if (row.familyId === 'convoy_industrial_route') return 'ship';
+  return null;
+}
+
+function collectSignalCandidates(state, sectorId, origin, nearby = [], profile = scannerProfileForState(state)) {
+  const byId = new Map();
+  const add = (candidate) => {
+    if (!candidate || !candidate.id || !candidate.pos || !candidate.kind) return;
+    const distance = dist(origin, candidate.pos);
+    const range = Math.max(1, Number(candidate.range) || NEAR_SCAN_RADIUS);
+    if (distance > range) return;
+    const row = { ...candidate, distance, range, pos: pos2(candidate.pos) };
+    // Stamp what the entityId means at record time — a signal record can outlive the body,
+    // and the free-id pool reissues ids; the stamp is the record's proof of WHICH holder.
+    if (row.entityId != null && row.entityStable == null) {
+      const bound = liveEntityById(state, row.entityId);
+      const stable = bound ? captureEntitySelection(bound) : null;
+      if (stable) row.entityStable = stable;
+    }
+    const previous = byId.get(row.id);
+    if (!previous || row.distance < previous.distance) byId.set(row.id, row);
+  };
+
+  const active = state.world && state.world.activeSector;
+  for (const entity of nearby || []) {
+    if (!entity || !entity.alive || entity.id === state.playerId || !entity.pos) continue;
+    // POI identities must flow through the POI loop below so scanner completion carries the stable
+    // authored sourceId rather than a transient numeric entity id.
+    if (entity.data && entity.data.poi) continue;
+    if (entity.data && entity.data.requiresTriangulation) continue;
+    // An operating claim has one stable site return below, including after rock rematerialization.
+    const claim = entity.type === 'asteroid' && siteProjectionSource ? siteProjectionSource.find(state, entity.id) : null;
+    if (claim?.anchored && claim.sectorId === sectorId && claim.machines?.length) continue;
+    const sourceReading = mothlightScannerReading(state, entity) || borrowedVoiceScannerReading(state, entity);
+    const kind = sourceReading?.kind || signalKindForEntity(entity);
+    if (!kind) continue;
+    const revealed = entity.data && entity.data.scanRevealed;
+    const discovery = revealed && revealed.discovery;
+    const shipment = kind === 'ship' ? shipmentReadingFromReveal(revealed) : null;
+    // Trusted traffic keeps the ordinary signature. Only a declared or conflicting
+    // hold reading becomes a clue, so a patrol flyby does not mint shipment memory.
+    const fileShipment = shipment && shipment.observedReading !== 'trusted';
+    add({
+      id: `signal:entity:${entity.id}`,
+      kind,
+      sourceId: entity.id,
+      entityId: entity.id,
+      pos: entity.pos,
+      range: profile.nearRadius,
+      repeatableScannerSignal: entity.data && entity.data.repeatableScannerSignal === true,
+      ...(sourceReading ? { resolvedLabel: sourceReading.label, resolvedDetail: sourceReading.detail } : {}),
+      ...(discovery ? { discovery } : {}),
+      ...(discovery && discovery.trackable === false ? { trackable: false } : {}),
+      ...(fileShipment ? {
+        observedClaim: shipment.observedClaim,
+        observedReading: shipment.observedReading,
+        observedRelation: shipment.observedRelation,
+        clueKind: shipment.clueKind,
+        clueSubjectId: `manifest:${entity.id}`,
+      } : {}),
+    });
+  }
+
+  for (const poi of active && active.pois || []) {
+    if (!poi) continue;
+    const entity = state.entities && state.entities.get && state.entities.get(poi.id);
+    const entityData = entity && entity.data || {};
+    const explicitKind = String(poi.scannerSignalKind || entityData.scannerSignalKind || '').trim().toLowerCase();
+    if (!(poi.hidden || String(poi.type || '').toLowerCase() === 'anomaly'
+      || Object.hasOwn(SIGNAL_KIND_PRIORITY, explicitKind))) continue;
+    const kind = signalKindForPoi(poi, entityData);
+    if (!kind) continue;
+    const pos = entity && entity.pos || poi.pos;
+    if (!pos) continue;
+    const sourceId = String(poi.poiId || poi.id || '');
+    if (!sourceId) continue;
+    if (!vestaOreCacheSignalAvailable(state, sourceId)
+      || !pallasHiddenCacheSignalAvailable(state, sourceId)) continue;
+    add({
+      id: `signal:poi:${sourceId}`,
+      kind,
+      sourceId,
+      entityId: entity && entity.id || null,
+      pos,
+      range: profile.poiRadius || profile.hiddenPoiRadius,
+      requiresTriangulation: poi.requiresTriangulation === true || entityData.requiresTriangulation === true,
+      triangulated: poi.anomalyTriangulated === true || entityData.anomalyTriangulated === true,
+      triangulation: poi.triangulation || entityData.triangulation || null,
+      resonanceScanResponse: entityData.resonanceScanResponse === true,
+      repeatableScannerSignal: entityData.repeatableScannerSignal === true,
+      manualInvestigation: poi.manualInvestigation === true || entityData.manualInvestigation === true,
+      signalPriority: scannerSignalPriorityFor(poi, entityData),
+    });
+  }
+
+  const living = state.livingPoiBehaviors && state.livingPoiBehaviors.activeByZone;
+  for (const row of Object.values(living || {})) {
+    if (!row || row.sectorId !== sectorId || row.status === 'resolved' || row.status === 'aftermath') continue;
+    const kind = signalKindForLivingPoi(row);
+    if (!kind || !row.zoneCenter) continue;
+    const shipmentLane = row.familyId === 'convoy_industrial_route';
+    add({
+      id: `signal:living:${row.behaviorId}`,
+      kind,
+      sourceId: row.behaviorId,
+      entityId: null,
+      pos: row.zoneCenter,
+      range: profile.hiddenPoiRadius,
+      // Public lane sentence only. Contract text, true cargo, and status enums stay off the clue.
+      ...(shipmentLane ? {
+        observedClaim: 'shipment on the industrial lane',
+        clueKind: 'shipment',
+        clueSubjectId: `shipment:${row.behaviorId}`,
+      } : {}),
+    });
+  }
+
+  // The same site projection serves the workbench and the scanner. Hot skin vanes
+  // carry a stronger return farther within the pulse; shearing them quiets that return.
+  const sites = siteProjectionSource ? state.sites : null;
+  for (const siteId of sites?.order || Object.keys(sites?.byId || {}).sort()) {
+    const site = sites.byId?.[siteId];
+    if (!site?.anchored || site.sectorId !== sectorId || !site.machines?.length) continue;
+    const rock = state.entities?.get(site.asteroidId);
+    const pos = rock?.alive ? rock.pos : site.anchor;
+    if (!pos || dist(origin, pos) > profile.nearRadius) continue;
+    const reading = siteProjectionSource.project(state, siteId);
+    if (!reading) continue;
+    add({
+      id: `signal:site:${siteId}`,
+      kind: 'ore',
+      sourceId: siteId,
+      entityId: rock?.alive ? rock.id : null,
+      pos,
+      range: profile.nearRadius * (0.5 + 0.5 * reading.signature.total),
+      resolvedLabel: 'Industrial site',
+      resolvedDetail: `${reading.thermal.worstBandLabel}. ${reading.signature.signatureLabel} signature.`,
+      repeatableScannerSignal: true,
+    });
+  }
+
+  // Ambush tells deliberately remain an uncertain traffic class at every stage. The scanner does
+  // not consult hostility, encounter labels, or faction intent here: investigation earns warning,
+  // never omniscient red paint. A tell the pulse has already resolved (ambushSignatures marks it
+  // scanned) earns its authored name + warning — the second observation disambiguates the clue.
+  const tells = state.ambushSignatures && state.ambushSignatures.tells;
+  for (const tell of Object.values(tells || {})) {
+    if (!tell || tell.active === false || tell.sectorId !== sectorId || !tell.pos) continue;
+    add({
+      id: `signal:${tell.id}`,
+      kind: 'ambush',
+      sourceId: tell.id,
+      entityId: null,
+      pos: tell.pos,
+      range: profile.hiddenPoiRadius,
+      resolvedLabel: tell.scanned === true ? tell.label || null : null,
+      resolvedDetail: tell.scanned === true ? tell.hint || null : null,
+    });
+  }
+
+  // A planet is a signal environment, not scenery: W1 planet-state assignments carry an authored
+  // scannerSignal the sky should answer for. The anchor hangs outside the playable rim, so the
+  // return is far, never trackable, and resolves to the world's own name on full classification.
+  for (const assignment of planetStatesForSector(sectorId)) {
+    const signal = assignment && assignment.scannerSignal;
+    if (!signal) continue;
+    add({
+      id: signal.id,
+      kind: signal.kind,
+      sourceId: signal.sourceId,
+      entityId: null,
+      pos: planetSignalAnchor(assignment),
+      range: PLANET_SIGNAL_RANGE,
+      trackable: false,
+      scanLabel: signal.label,
+      // The anchor ring is physically visitable — a parked ship must not let the distance
+      // shortcut skip the three-pass arc, and an authored reveal stays authored until the
+      // signature resolves (stage 1 reads generic so an ambush-tag world doesn't pre-leak).
+      noProximityStage: true,
+      planetName: (signal.bodyName
+        || (PLANET_STATE_DEFS[assignment.stateId] && PLANET_STATE_DEFS[assignment.stateId].label)
+        || '').toUpperCase(),
+    });
+  }
+
+  for (const place of discoveryPlaceCandidates(state, origin, state.simTime || 0, nearby)) add(place);
+
+  return [...byId.values()].sort(compareSignalRows);
+}
+
+function compareSignalRows(a, b) {
+  const priority = (SIGNAL_KIND_PRIORITY[b && (b.sourceKind || b.kind)] || 0)
+    - (SIGNAL_KIND_PRIORITY[a && (a.sourceKind || a.kind)] || 0);
+  if (priority) return priority;
+  const explicitPriority = (Number(b && b.signalPriority) || 0) - (Number(a && a.signalPriority) || 0);
+  if (explicitPriority) return explicitPriority;
+  const distance = (Number(a && a.distance) || 0) - (Number(b && b.distance) || 0);
+  if (distance) return distance;
+  return String(a && a.id || '').localeCompare(String(b && b.id || ''));
+}
+
+function visibleSignalRows(rows, limit = 6) {
+  const visible = rows.slice(0, limit);
+  if (rows.length <= limit) return visible;
+  const visibleIds = new Set(visible.map((row) => row.id));
+  const closeManual = rows
+    .filter((row) => row.manualInvestigation === true
+      && Number(row.distance) <= SIGNAL_INVESTIGATE_RADIUS
+      && !visibleIds.has(row.id))
+    .sort((a, b) => (Number(a.distance) || 0) - (Number(b.distance) || 0)
+      || compareSignalRows(a, b))[0];
+  if (!closeManual) return visible;
+  visible[visible.length - 1] = closeManual;
+  return visible.sort(compareSignalRows);
+}
+
+// The Song is recovered over several visits, not a disposable sensor contact. Preserve
+// this one authored record without pretending the pilot investigated it or changing tracking.
+// Other contacts still compete for the same 64 slots; existing completed protection is unchanged.
+function retainedSongReading(id, record) {
+  return id === `signal:poi:${SHARD_SPHERE_SONG.poiId}`
+    && record?.sourceId === SHARD_SPHERE_SONG.poiId
+    && record?.sectorId === SHARD_SPHERE_SONG.sectorId
+    && record?.sourceKind === 'archive'
+    && Number.isFinite(Number(record.scanCount)) && Number(record.scanCount) > 0;
+}
+
+function pruneSignalRecords(own) {
+  const ids = Object.keys(own.records || {});
+  if (ids.length <= SIGNAL_RECORD_CAP) return;
+  ids.sort((a, b) => {
+    const aProtected = a === own.trackedId || !!own.completed[a] || retainedSongReading(a, own.records[a]);
+    const bProtected = b === own.trackedId || !!own.completed[b] || retainedSongReading(b, own.records[b]);
+    if (aProtected !== bProtected) return aProtected ? 1 : -1;
+    const time = (Number(own.records[a] && own.records[a].lastScanAt) || 0)
+      - (Number(own.records[b] && own.records[b].lastScanAt) || 0);
+    return time || a.localeCompare(b);
+  });
+  for (const id of ids.slice(0, Math.max(0, ids.length - SIGNAL_RECORD_CAP))) {
+    if (id !== own.trackedId && !own.completed[id] && !retainedSongReading(id, own.records[id])) delete own.records[id];
+  }
+}
+
+function cloneSignalRecord(record) {
+  if (!record || typeof record !== 'object') return null;
+  const clone = {
+    ...record,
+    pos: pos2(record.pos),
+    triangulation: record.triangulation && typeof record.triangulation === 'object'
+      ? { ...record.triangulation }
+      : null,
+  };
+  if (clone.discovery && typeof clone.discovery === 'object') {
+    clone.discovery = {
+      ...clone.discovery,
+      actionPos: clone.discovery.actionPos ? { ...clone.discovery.actionPos } : null,
+      parts: clone.discovery.parts && typeof clone.discovery.parts === 'object'
+        ? { ...clone.discovery.parts } : null,
+    };
+  }
+  if (record.clue && record.clue.subjectId) {
+    const cloned = cloneClueBook({ subjects: { [record.clue.subjectId]: record.clue } });
+    const subject = cloned.subjects[record.clue.subjectId];
+    clone.clue = subject ? {
+      ...subject,
+      status: 'current',
+      revised: Array.isArray(subject.history) && subject.history.length > 0,
+    } : null;
+  }
+  return clone;
+}
+
+function cloneSignalReceipt(receipt) {
+  if (!receipt || typeof receipt !== 'object') return null;
+  return { ...receipt, pos: pos2(receipt.pos) };
+}
+
+function cloneTriangulationRecord(record) {
+  if (!record || typeof record !== 'object') return null;
+  return {
+    schemaVersion: 1,
+    sectorId: record.sectorId || null,
+    poiId: record.poiId || null,
+    requiredPings: Math.max(2, Math.min(6, Math.trunc(Number(record.requiredPings) || ANOMALY_TRIANGULATION_REQUIRED))),
+    minBaselineWu: Math.max(50, Number(record.minBaselineWu) || ANOMALY_TRIANGULATION_MIN_BASELINE_WU),
+    minBearingDeltaDeg: Math.max(1, Number(record.minBearingDeltaDeg) || ANOMALY_TRIANGULATION_MIN_BEARING_DEG),
+    samples: (Array.isArray(record.samples) ? record.samples : []).slice(0, 6).map((sample) => ({
+      origin: pos2(sample && sample.origin),
+      bearingDeg: Number(sample && sample.bearingDeg) || 0,
+      sampledAt: Number(sample && sample.sampledAt) || 0,
+    })),
+    revealed: record.revealed === true,
+    fixedPos: record.revealed && record.fixedPos ? pos2(record.fixedPos) : null,
+    revealedAt: record.revealed ? Number(record.revealedAt) || 0 : null,
+  };
+}
+
+function cloneSignalState(own) {
+  const records = {};
+  const completed = {};
+  const triangulations = {};
+  for (const [id, row] of Object.entries(own.records || {})) {
+    const clone = cloneSignalRecord(row);
+    if (clone) records[id] = clone;
+  }
+  for (const [id, receipt] of Object.entries(own.completed || {})) {
+    const clone = cloneSignalReceipt(receipt);
+    if (clone) completed[id] = clone;
+  }
+  for (const [id, row] of Object.entries(own.triangulations || {})) {
+    const clone = cloneTriangulationRecord(row);
+    if (clone) triangulations[id] = clone;
+  }
+  return {
+    schemaVersion: 2,
+    records,
+    completed,
+    receipts: (own.receipts || []).map(cloneSignalReceipt).filter(Boolean).slice(-SIGNAL_RECEIPT_CAP),
+    triangulations,
+    trackedId: own.trackedId && records[own.trackedId] && !completed[own.trackedId] ? own.trackedId : null,
+    clues: cloneClueBook(own.clues),
+    discoveryMemory: normalizeDiscoveryMemory(own.discoveryMemory),
+  };
+}
+
+function normalizeSignalState(data) {
+  const source = data && typeof data === 'object' ? data : freshSignalState();
+  const normalized = freshSignalState();
+  for (const [id, row] of Object.entries(source.records || {})) {
+    if (!id || !row || typeof row !== 'object') continue;
+    normalized.records[id] = cloneSignalRecord({ ...row, id });
+  }
+  for (const [id, receipt] of Object.entries(source.completed || {})) {
+    if (!id || !receipt || typeof receipt !== 'object') continue;
+    normalized.completed[id] = cloneSignalReceipt({ ...receipt, signalId: receipt.signalId || id });
+  }
+  for (const [id, row] of Object.entries(source.triangulations || {})) {
+    if (!id || !row || typeof row !== 'object') continue;
+    const clone = cloneTriangulationRecord(row);
+    if (clone) normalized.triangulations[id] = clone;
+  }
+  const triangulationIds = Object.keys(normalized.triangulations);
+  if (triangulationIds.length > ANOMALY_TRIANGULATION_CAP) {
+    triangulationIds.sort((a, b) => {
+      const ar = normalized.triangulations[a];
+      const br = normalized.triangulations[b];
+      return (Number(ar.revealedAt) || Number(ar.samples.at(-1)?.sampledAt) || 0)
+        - (Number(br.revealedAt) || Number(br.samples.at(-1)?.sampledAt) || 0)
+        || a.localeCompare(b);
+    });
+    for (const id of triangulationIds.slice(0, triangulationIds.length - ANOMALY_TRIANGULATION_CAP)) {
+      delete normalized.triangulations[id];
+    }
+  }
+  normalized.receipts = (Array.isArray(source.receipts) ? source.receipts : [])
+    .map(cloneSignalReceipt).filter(Boolean).slice(-SIGNAL_RECEIPT_CAP);
+  normalized.trackedId = source.trackedId && normalized.records[source.trackedId]
+    && !normalized.completed[source.trackedId] ? source.trackedId : null;
+  normalized.clues = normalizeClueBook(source.clues);
+  normalized.discoveryMemory = normalizeDiscoveryMemory(source.discoveryMemory);
+  pruneSignalRecords(normalized);
+  return normalized;
+}
+
+export const scanner = {
+  name: 'scanner',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers || null;
+    this.registry = ctx.registry || null;
+    this._scratch = [];
+    this._cooldownUntil = 0;
+    ensureSignalState(this.state);
+    this._contactHail = null;
+    this._contactHailBinding = null;
+    this._contactHailSequence = 0;
+    this._orchardTowGuidance = null;
+    this._contactHailAvailability = null;
+    this._contactHailAvailabilitySignature = '';
+    this._contactHailNextPollTick = 0;
+    this._contactHailLastTargetId = undefined;
+    this._contactHailHeaveTo = null;
+    this._onSignalTrack = (payload) => this._trackSignal(payload || {});
+    this._onSignalInvestigate = (payload) => this._investigateSignal(payload || {});
+    this._onSignalSurveyFiled = (payload) => this._completeSurveyedSignal(payload || {});
+    this._onContactHailRequest = (payload) => this._requestContactHail(payload || {});
+    this._onContactHailChoice = (payload) => this._chooseContactHail(payload || {});
+    this._onContactHailReset = () => this._resetContactHail('lifecycle');
+    // The heave-to latch is entity- and clock-bound; a sector boundary leaves the stamped
+    // target unreachable and the cooldown comparable only to the old roster's clock. The open
+    // offer itself stays availability-polled at 5 Hz (a continuous enter may keep the target),
+    // so only the latch clears here.
+    this._onContactHailSectorEnter = () => { this._contactHailHeaveTo = null; };
+    this._onOrchardTowComplete = payload => this._guideOrchardPickup(payload);
+    this._onOrchardTowLost = payload => {
+      if(payload?.jobId === this._orchardTowGuidance?.jobId)this._orchardTowGuidance=null;
+    };
+    this._onSensorGhostSwarm = (payload) => this._spawnSensorGhostSwarm(payload || {});
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('signal:track', this._onSignalTrack);
+      this.bus.on('signal:investigate', this._onSignalInvestigate);
+      this.bus.on('signal:surveyFiled', this._onSignalSurveyFiled);
+      this.bus.on('contactHail:request', this._onContactHailRequest);
+      this.bus.on('contactHail:choice', this._onContactHailChoice);
+      this.bus.on('npcJobs:towAssistComplete', this._onOrchardTowComplete);
+      this.bus.on('npcJobs:towAssistLost', this._onOrchardTowLost);
+      this.bus.on('game:new', this._onContactHailReset);
+      this.bus.on('game:load', this._onContactHailReset);
+      this.bus.on('dock:docked', this._onContactHailReset);
+      this.bus.on('mode:changed', this._onContactHailReset);
+      this.bus.on('sector:enter', this._onContactHailSectorEnter);
+      // E1/H8 payoff: a shattered echo scatters sensor ghosts. The scanner owns ghost
+      // semantics (mark/reveal/escape), so it owns the spawn too — passive, revealStage-0
+      // contacts that drift outward and decay on their own despawn clock.
+      this.bus.on('sensorGhost:swarm', this._onSensorGhostSwarm);
+    }
+  },
+
+  newGame() {
+    this._resetContactHail('new_game');
+    // The pulse cooldown is keyed on absolute simTime; a fresh run restarts the clock at 0,
+    // so a late-run pulse must not keep scanning locked for the whole old timestamp.
+    this._cooldownUntil = 0;
+    if (this.state) this.state.signalInvestigation = freshSignalState();
+    const survey = this.registry && this.registry.get && this.registry.get('scanReveal');
+    if (survey && typeof survey.newGame === 'function') survey.newGame();
+  },
+
+  update(_dt, state) {
+    this._updateContactHail(state);
+    if (state.mode !== 'flight') return;
+    this._updateTrackedSignal(state);
+    this._tickGhostContacts(state);
+    const actions = state.input && state.input.actions;
+    if (!actions?.scanPulse) return;
+    actions.scanPulse = false;
+
+    const now = state.simTime || 0;
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (player && player.alive) {
+      const block = playerSensorBlock(state, player);
+      if (block) {
+        this.bus.emit('toast', {
+          text: block === 'jammed'
+            ? 'Sensors aren\'t answering — jammed'
+            : 'Sensors out — the board is blind',
+          kind: 'warn',
+          ttl: 1.6,
+        });
+        return;
+      }
+    }
+    if (now < this._cooldownUntil) {
+      const left = Math.max(1, Math.ceil(this._cooldownUntil - now));
+      this.bus.emit('toast', { text: `Scanner recharging — ${left}s`, kind: 'warn', ttl: 1.6 });
+      return;
+    }
+
+    if (!player || !player.alive) return;
+
+    this._cooldownUntil = now + PULSE_COOLDOWN_S;
+    this._pulse(state, player, now);
+  },
+
+  /** Escape / decay for unrevealed ghosts (deception consequence). */
+  _tickGhostContacts(state) {
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
+    if (tick % GHOST_CONTACT_CADENCE_TICKS !== 0) return;
+    const now = state.simTime || 0;
+    // Re-collect only when a ghost flag changed or the indexed actor set did — between bumps
+    // the cadence walk would push the same (usually empty) list every 8 ticks.
+    const collect = this._ghostCollect || (this._ghostCollect = { flagSeq: -1, version: -1 });
+    const ghosts = this._ghostScratch || (this._ghostScratch = []);
+    const laneVersion = entityIndexLaneVersion(state, SCANNER_GHOST_LANES);
+    const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+    if (collect.flagSeq !== _ghostFlagSeq || collect.version !== version) {
+      ghosts.length = 0;
+      forEachLivingWorldActor(state, (entity) => {
+        if (!entity.data) return;
+        if (!entity.data.isGhost && !entity.data.ghost) return;
+        ghosts.push(entity);
+      });
+      collect.flagSeq = _ghostFlagSeq;
+      collect.version = version == null ? -1 : version;
+    }
+    const slice = takeNearWorkSlice(state, 'scanner', ghosts);
+    for (let i = 0; i < slice.length; i++) {
+      const entity = slice[i];
+      const result = tickGhostEscape(entity, state, now);
+      if (result.escaped) {
+        // fix-ghost-escape-pos: the sim despawns the escaped ghost, so the consumer's entity
+        // lookup usually misses and the melt honestly skipped. The last recorded position is
+        // the truth — stamp it into the receipt at emit time.
+        const px = Number(entity && entity.pos && entity.pos.x);
+        const pz = Number(entity && entity.pos && entity.pos.z);
+        this.bus.emit('scanner:ghostEscaped', {
+          entityId: entity.id,
+          reason: result.reason || 'beyond_escape_range',
+          distance: result.distance,
+          simTime: now,
+          ...(Number.isFinite(px) && Number.isFinite(pz) ? { pos: { x: px, z: pz } } : {}),
+        });
+      }
+    }
+  },
+
+  /** E1/H8 `sensorGhost:swarm` { encounterId?, pos, count } — scatter passive ghost contacts. */
+  _spawnSensorGhostSwarm(payload) {
+    const state = this.state;
+    if (!state || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return 0;
+    const pos = payload.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return 0;
+    const count = Math.max(1, Math.min(12, (payload.count | 0) || 7));
+    const seed = (state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 1) >>> 0;
+    const key = String(payload.encounterId || 'sensor-ghost-swarm');
+    const now = state.simTime || 0;
+    let spawned = 0;
+    for (let i = 0; i < count; i++) {
+      const angle = ((hash32(seed, key, i, 'swarm:angle') >>> 0) % 3600) / 3600 * Math.PI * 2;
+      const dist = 60 + ((hash32(seed, key, i, 'swarm:dist') >>> 0) % 1000) / 1000 * 140;
+      const speed = 26 + ((hash32(seed, key, i, 'swarm:speed') >>> 0) % 1400) / 1400 * 22;
+      const spec = makeShipEntitySpec('ship_wasp', {
+        team: 2,
+        factionId: 'faction_free',
+        pos: { x: pos.x + Math.cos(angle) * dist, z: pos.z + Math.sin(angle) * dist },
+        rot: angle,
+        ai: { passive: true },
+      });
+      spec.data.scanLabel = 'Sensor ghost';
+      spec.data.callsign = 'Ghost Contact';
+      spec.data.despawnAt = now + SENSOR_GHOST_SWARM_LIFETIME_S;
+      spec.vel = { x: Math.cos(angle) * speed, z: Math.sin(angle) * speed };
+      const entity = this.helpers.spawnEntity(spec);
+      if (!entity || !entity.alive) continue;
+      markEntityGhost(entity, { spawnedAt: now, revealStage: 0 });
+      spawned++;
+    }
+    return spawned;
+  },
+
+  _pulse(state, player, now) {
+    const sectorId = state.world && state.world.currentSectorId || null;
+    const origin = pos2(player.pos);
+    const profile = scannerProfileForState(state);
+    const found = { asteroids: 0, wrecks: 0, anomalies: 0 };
+    const candidates = queryNearbyEntities(state, origin, profile.nearRadius, this._scratch, state.entityList);
+    if (hasActiveSpatialHash(state.spatialHash)) {
+      appendNonCollidingScanTargets(state, origin, profile.nearRadius, candidates);
+    }
+
+    // The scanner-owned pulse fields are the authored-motion acceptance gate: only a pulse that
+    // carries this source, the emitting scanner's entity id and a monotonically increasing
+    // sequence may retrigger the dish rig (ANI-01 — replayed or foreign pulses never reach it).
+    this._pulseSeq = (this._pulseSeq || 0) + 1;
+    this.bus.emit('scan:pulse', {
+      pos: origin,
+      radius: profile.nearRadius,
+      source: 'player-scanner',
+      scannerId: player.id,
+      scannerGeneration: player.occupantGeneration,
+      seq: this._pulseSeq,
+      simTime: now,
+    });
+
+    for (const entity of candidates) {
+      if (!entity || !entity.alive || entity.id === player.id || !entity.pos) continue;
+      const distance = dist(origin, entity.pos);
+      if (distance > profile.nearRadius) continue;
+      const data = entity.data || (entity.data = {});
+      if (entity.type === 'asteroid') {
+        data.scanHighlightUntil = now + ASTEROID_HIGHLIGHT_S;
+        data.scanOreGlyph = asteroidScanGlyph(data.typeId);
+        found.asteroids++;
+      } else if (isWreckLike(entity)) {
+        data.pingedUntil = now + profile.pingPersistS;
+        // Scan-resolve the derelict: the strip's "??? UNSCANNED" ghost fills in with a manifest +
+        // a weak-point callout (GDD 2.0 §7.4 "scanning resolves the outline into a manifest").
+        const firstResolve = data.scanned !== true;
+        data.scanned = true;
+        data.manifest = buildWreckManifest(entity);
+        if (!data.weakPoint) data.weakPoint = weakPointFor(entity);
+        if (firstResolve) {
+          // The resolve names the hull it was: an aftermath wreck's provenance carries the
+          // victim's own callsign, so the hulk reads "Hulk of MERIDIA SPOKE" on every scanLabel
+          // surface (lock, comms, roster) instead of the salvage-kit tag (CV-SO).
+          const provenance = data.provenance && typeof data.provenance === 'object' ? data.provenance : null;
+          const victim = provenance && provenance.victimLabel;
+          if (victim && victim !== provenance.victimClass && data.playerWreck !== true) {
+            const named = `Hulk of ${victim}`;
+            if (data.scanLabel !== named) data.scanLabel = named;
+          }
+          // A targeted per-hull resolution — the law's wreck-provenance loop keys on markerId,
+          // so a generic sector pulse can never mass-report every wreck it merely pinged.
+          this.bus.emit('scan:wreckResolved', {
+            wreckId: entity.id,
+            markerId: data.markerId || (data.provenance && data.provenance.markerId) || null,
+            sectorId,
+            pos: { x: entity.pos.x, z: entity.pos.z },
+          });
+        }
+        found.wrecks++;
+      } else if (isCargoLike(entity)) {
+        data.pingedUntil = now + profile.pingPersistS;
+      } else if (isAnomalyLike(entity)) {
+        if (data.requiresTriangulation && !data.anomalyTriangulated) continue;
+        data.pingedUntil = now + profile.pingPersistS;
+        found.anomalies++;
+      } else if ((entity.type === 'ship' || entity.type === 'drone') && (data.isGhost || data.ghost)) {
+        // W05: scan pulses advance ghost reveal stages (sim-truth on entity.data).
+        const result = advanceGhostReveal(entity, state, { distance, near: distance <= 600 });
+        data.pingedUntil = now + profile.pingPersistS;
+        if (result.revealed) {
+          this.bus.emit('scanner:ghostRevealed', {
+            entityId: entity.id,
+            stage: result.stage,
+            confidence: result.confidence,
+            simTime: now,
+          });
+        }
+      } else if (entity.type === 'ship' || entity.type === 'drone') {
+        // FB-121: an ordinary hull's mass class resolves on pulse contact — the target panel
+        // may print ammunition/terrain/specialist only after the hull has been scanned, so
+        // the flag is durable (learned once) rather than the wrecks' transient ping stamp.
+        data.scanned = true;
+      }
+    }
+
+    // Weak-point reveal (BP-02): a pulse exposes the soft spot on nearby LARGE hostiles so the HUD can
+    // guide the player to flank it. Flag-gated (`combat.weakPoints`, OFF in the golden) and reveal-only
+    // — the arc itself is deterministic data (weakPoints.js); nothing is written onto the sim entity.
+    if (combatFlag('weakPoints')) {
+      const playerTeam = player.team;
+      for (const entity of candidates) {
+        if (!entity || !entity.alive || entity.id === player.id || !entity.pos) continue;
+        if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+        if (dist(origin, entity.pos) > profile.nearRadius) continue;
+        if (!isHostileToPlayer(entity, playerTeam, state)) continue;
+        const wp = weakPointForEntity(entity);
+        if (wp) this.bus.emit('scan:weakPoint', {
+          entityId: entity.id,
+          label: wp.label,
+          hint: wp.hint,
+          until: now + profile.pingPersistS,
+        });
+      }
+    }
+
+    if (sectorId) this._pingHiddenPois(state, sectorId, origin, profile.poiRadius);
+    const signals = this._scanSignals(state, sectorId, origin, now, candidates, profile);
+    this.bus.emit('scan:completed', { targetId: null, sectorId, found, signalCount: signals.length });
+    if (signals.length) this.bus.emit('signal:scanResults', {
+      sectorId,
+      scannedAt: now,
+      // A read-only return (a planet, an investigated record) carries no verb — the headline
+      // goes to the first row the player can still act on, or the top row if none.
+      primary: (() => {
+        const primary = signals.find((row) => row.trackable !== false) || signals[0];
+        return { ...primary, pos: { ...primary.pos } };
+      })(),
+      signals: signals.map((row) => ({ ...row, pos: { ...row.pos } })),
+      total: signals.length,
+    });
+  },
+
+  _pingHiddenPois(state, sectorId, origin, scanRadius = HIDDEN_POI_RADIUS) {
+    const active = state.world && state.world.activeSector;
+    const pois = active && active.pois || [];
+    pruneResolvedPings(state, sectorId, pois);
+    for (const poi of pois) {
+      if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
+      const entity = state.entities && state.entities.get && state.entities.get(poi.id);
+      if (entity && entity.data && entity.data.requiresTriangulation && !entity.data.anomalyTriangulated) continue;
+      if (!vestaOreCacheSignalAvailable(state, poi.poiId || poi.id)
+        || !pallasHiddenCacheSignalAvailable(state, poi.poiId || poi.id)) continue;
+      const pos = entity && entity.pos || poi.pos;
+      if (!pos || dist(origin, pos) > scanRadius) continue;
+      upsertUnknownPing(state, sectorId, {
+        id: poi.poiId || `poi_${poi.id}`,
+        pos,
+        kind: 'unknown',
+      });
+    }
+  },
+
+  _scanSignals(state, sectorId, origin, now, candidates, profile = scannerProfileForState(state)) {
+    const own = ensureSignalState(state);
+    const raw = collectSignalCandidates(state, sectorId, origin, candidates, profile);
+    // A fitted Triangulation Suite tightens the bearing solver: the default three-pulse anomaly fix
+    // closes in two. Authored counts that differ from the default win untouched; the default
+    // (authored 3 or omitted) is what the suite tightens — see effectiveAnomalyRequiredPings.
+    const pingReduction = sumFittedModuleMod(state, 'anomalyPingReduction');
+    const rows = [];
+    for (const candidate of raw) {
+      const resonanceSignal = candidate.resonanceScanResponse === true
+        && isResonanceObeliskSignal(sectorId, candidate.sourceId);
+      const repeatableSignal = resonanceSignal || candidate.repeatableScannerSignal === true;
+      if (own.completed[candidate.id] && !repeatableSignal) continue;
+      const previous = own.records[candidate.id] || null;
+      if (candidate.kind === 'anomaly' && candidate.requiresTriangulation && !candidate.triangulated) {
+        const config = candidate.triangulation && typeof candidate.triangulation === 'object'
+          ? candidate.triangulation
+          : {};
+        const previousTriangulation = own.triangulations[candidate.sourceId] || null;
+        const options = { ...config, sectorId, poiId: candidate.sourceId };
+        if (pingReduction > 0) {
+          options.requiredPings = effectiveAnomalyRequiredPings(config.requiredPings, pingReduction);
+        }
+        const result = recordAnomalyBearing(previousTriangulation, origin, candidate.pos, options, now);
+        own.triangulations[candidate.sourceId] = result.record;
+        this.bus.emit('anomaly:bearing', {
+          sectorId,
+          poiId: candidate.sourceId,
+          accepted: result.accepted,
+          reason: result.reason,
+          sampleCount: result.sampleCount,
+          requiredPings: result.requiredPings,
+          bearingDeg: result.bearingDeg,
+          baselineWu: result.baselineWu,
+          angleDeltaDeg: result.angleDeltaDeg,
+        });
+        if (result.revealed) {
+          candidate.triangulated = true;
+          const entity = candidate.entityId && state.entities && state.entities.get && state.entities.get(candidate.entityId);
+          if (entity && entity.data) entity.data.anomalyTriangulated = true;
+          const activePoi = state.world && state.world.activeSector && (state.world.activeSector.pois || [])
+            .find((poi) => poi && (poi.poiId === candidate.sourceId || poi.id === candidate.entityId));
+          if (activePoi) activePoi.anomalyTriangulated = true;
+          this.bus.emit('anomaly:triangulated', {
+            sectorId,
+            poiId: candidate.sourceId,
+            entityId: candidate.entityId,
+            pos: pos2(candidate.pos),
+            sampleCount: result.sampleCount,
+            completedAt: now,
+          });
+        } else {
+          const scanCount = result.sampleCount;
+          const record = {
+            id: candidate.id,
+            sectorId,
+            sourceKind: candidate.kind,
+            sourceId: candidate.sourceId || null,
+            entityId: candidate.entityId || null,
+            entityStable: candidate.entityStable || null,
+            signalPriority: candidate.signalPriority || 0,
+            // Before the fix, this is the pilot's sample origin—not the hidden target position.
+            pos: pos2(origin),
+            classification: 'ANOMALY BEARING',
+            detail: anomalyTriangulationDetail(result, result.record),
+            stage: Math.max(1, Math.min(2, scanCount)),
+            confidence: Number(Math.min(0.72, 0.18 + scanCount * 0.18).toFixed(3)),
+            strength: Number(signalStrengthFor(candidate.distance, candidate.range).toFixed(3)),
+            distance: 0,
+            range: candidate.range,
+            scanCount,
+            firstSeenAt: previous ? previous.firstSeenAt : now,
+            lastScanAt: now,
+            bestDistance: previous && Number.isFinite(Number(previous.bestDistance))
+              ? Number(previous.bestDistance) : 0,
+            status: 'triangulating',
+            trackable: false,
+            triangulation: {
+              bearingDeg: result.bearingDeg,
+              sampleCount: scanCount,
+              requiredPings: result.requiredPings,
+              accepted: result.accepted,
+              reason: result.reason,
+            },
+          };
+          own.records[record.id] = record;
+          rows.push(record);
+          continue;
+        }
+      }
+      const scanCount = (previous && previous.scanCount || 0) + 1;
+      const bestDistance = Math.min(
+        previous && Number.isFinite(Number(previous.bestDistance)) ? Number(previous.bestDistance) : Infinity,
+        candidate.distance,
+      );
+      const stage = candidate.noProximityStage
+        ? Math.min(3, Math.max(1, Math.floor(scanCount)))
+        : signalClassificationStage(scanCount, bestDistance);
+      const strength = signalStrengthFor(candidate.distance, candidate.range);
+      const confidence = Math.min(0.98, 0.24 + (stage - 1) * 0.27 + strength * 0.2);
+      const record = {
+        id: candidate.id,
+        sectorId,
+        sourceKind: candidate.kind,
+        sourceId: candidate.sourceId || null,
+        entityId: candidate.entityId || null,
+        entityStable: candidate.entityStable || null,
+        signalPriority: candidate.signalPriority || 0,
+        pos: pos2(candidate.pos),
+        classification: signalClassLabel(candidate.kind, stage),
+        detail: signalDetail(candidate.kind, stage),
+        stage,
+        confidence: Number(confidence.toFixed(3)),
+        strength: Number(strength.toFixed(3)),
+        distance: Math.round(candidate.distance),
+        range: candidate.range,
+        scanCount,
+        firstSeenAt: previous ? previous.firstSeenAt : now,
+        lastScanAt: now,
+        bestDistance,
+        status: previous && previous.status === 'tracked' ? 'tracked' : 'detected',
+        manualInvestigation: candidate.manualInvestigation === true,
+      };
+      if (candidate.trackable === false) record.trackable = false;
+      if (candidate.scanLabel && (!candidate.noProximityStage || stage >= 2)) record.detail = candidate.scanLabel;
+      // A resolved ambush tell names itself — the pulse that marked it scanned upgrades this
+      // row in the same results batch, so the clue disambiguates on the observation that
+      // earned it.
+      if (candidate.resolvedLabel) {
+        record.classification = String(candidate.resolvedLabel).toUpperCase();
+        if (candidate.resolvedDetail) record.detail = candidate.resolvedDetail;
+      }
+      // A world names itself once the signature resolves — until then it reads as its kind class.
+      if (stage >= 3 && candidate.planetName) record.classification = candidate.planetName;
+      const discoveryCopy = vestaOreCacheSignalCopy(candidate.sourceId)
+        || pallasHiddenCacheSignalCopy(candidate.sourceId)
+        || kettleLineSignalCopy(candidate.sourceId);
+      if (discoveryCopy) {
+        record.classification = discoveryCopy.classification;
+        record.detail = discoveryCopy.detail;
+      }
+      if (resonanceSignal) {
+        const response = resonanceObeliskResponse(scanCount);
+        record.classification = 'RESONANCE OBELISK';
+        record.detail = `Pulse interval ${response.pulseIntervalS.toFixed(1)} s. ${scanCount} scan${scanCount === 1 ? '' : 's'} logged; Vael watch cadence target ${response.patrolIntervalS} s.`;
+        record.resonance = response;
+        if (own.completed[candidate.id]) {
+          record.status = 'investigated';
+          record.trackable = false;
+        }
+        const entity = candidate.entityId && state.entities && state.entities.get
+          && state.entities.get(candidate.entityId);
+        if (entity && entity.data) {
+          entity.data.resonanceScanCount = scanCount;
+          entity.data.resonancePulseIntervalS = response.pulseIntervalS;
+        }
+        this.bus.emit('resonance:scanCompleted', {
+          sectorId,
+          zoneId: 'zone_veil_anomaly',
+          poiId: candidate.sourceId,
+          entityId: candidate.entityId || null,
+          ...response,
+        });
+      }
+      if (own.completed[candidate.id]) {
+        record.status = 'investigated';
+        record.trackable = false;
+      }
+      this._noteClue(own, candidate, record, now);
+      if (candidate.discovery && candidate.discovery.sentence) {
+        record.discovery = candidate.discovery;
+        if (candidate.discovery.lesson === true) record.discoveryLesson = true;
+        record.detail = candidate.discovery.sentence;
+        if (candidate.discovery.trackable === false) record.trackable = false;
+      } else if (candidate.kind === 'anomaly' && !resonanceSignal && !discoveryCopy) {
+        const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+        const rule = anomalyRuleLesson(player, candidates, candidate.pos, candidate.entityId);
+        if (rule) {
+          record.discovery = {
+            sf: 'SF-171',
+            lesson: false,
+            sentence: rule.sentence,
+            actionPos: null,
+            trackable: true,
+            parts: { 'SF-171': rule },
+          };
+          if (record.detail === signalDetail(candidate.kind, stage)) record.detail = rule.sentence;
+        }
+      }
+      own.records[record.id] = record;
+      rows.push(record);
+    }
+    rows.sort(compareSignalRows);
+    pruneSignalRecords(own);
+    return visibleSignalRows(rows, 6);
+  },
+
+  _trackSignal(payload) {
+    const state = this.state;
+    const own = state && ensureSignalState(state);
+    const id = String(payload.signalId || payload.id || '');
+    const record = own && own.records[id];
+    if (!record || own.completed[id] || record.trackable === false || !record.pos
+      || record.manualInvestigation === true) return false;
+    return this._armSignalInvestigation(record);
+  },
+
+  _investigateSignal(payload) {
+    const state = this.state;
+    const own = state && ensureSignalState(state);
+    const id = String(payload.signalId || payload.id || '');
+    const record = own && own.records[id];
+    if (!record || own.completed[id] || record.trackable === false || !record.pos
+      || record.manualInvestigation !== true) return false;
+    return this._armSignalInvestigation(record, { manual: true });
+  },
+
+  _armSignalInvestigation(record, { manual = false } = {}) {
+    const state = this.state;
+    const own = state && ensureSignalState(state);
+    if (!own || !record) return false;
+    if (own.trackedId && own.records[own.trackedId]) own.records[own.trackedId].status = 'detected';
+    own.trackedId = record.id;
+    record.status = 'tracked';
+    if (manual) {
+      this.bus.emit('signal:investigating', {
+        ...record,
+        pos: { ...record.pos },
+        manualInvestigation: true,
+      });
+      return true;
+    }
+    if (record.clue && record.clue.revised && record.clue.route) {
+      this.bus.emit('signal:tracked', { ...record, pos: { ...record.pos } });
+      return this._retargetClue(record);
+    }
+    const discovery = record.discovery;
+    const lessonPos = discovery && discovery.lesson === true && discovery.trackable !== false
+      && discovery.actionPos && Number.isFinite(discovery.actionPos.x) && Number.isFinite(discovery.actionPos.z)
+      ? discovery.actionPos : null;
+    const aim = lessonPos || record.pos;
+    // Emit the entity the record still proves it means — a dead or recycled holder binds
+    // nothing and the course keeps the honest recorded fix instead of a stranger's hull.
+    const holder = lessonPos ? null : recordEntity(state, record);
+    const course = {
+      pos: { x: aim.x, z: aim.z },
+      targetEntityId: holder ? holder.id : null,
+      label: record.classification,
+      reason: lessonPos && discovery.sentence
+        ? discovery.sentence
+        : `Investigate ${record.classification.toLowerCase()}`,
+      waypointKind: 'signal',
+      arrivalRadius: SIGNAL_INVESTIGATE_RADIUS,
+      autopilot: true,
+    };
+    this.bus.emit('ui:setCourse', course);
+    this.bus.emit('signal:tracked', { ...record, pos: { ...record.pos }, course });
+    return true;
+  },
+
+  // A later reading of the same shipment or worksite updates only that clue.
+  // The observed claim is filed; hidden cargo on the candidate is not copied.
+  _noteClue(own, candidate, record, now) {
+    if (!own || !candidate || !candidate.observedClaim || !record) return null;
+    if (!own.clues) own.clues = emptyClueBook();
+    const result = applyClueObservation(own.clues, {
+      subjectId: candidate.clueSubjectId || candidate.id,
+      kind: candidate.clueKind || 'shipment',
+      claim: candidate.observedClaim,
+      reading: candidate.observedReading || null,
+      relation: candidate.observedRelation || null,
+      pos: record.pos,
+      at: now,
+    });
+    if (!result || !result.hypothesis || !result.hypothesis.history?.length) return result;
+    record.detail = result.playerLine || record.detail;
+    record.clue = { ...result.hypothesis, status: 'current', revised: true };
+    if (result.revised && own.trackedId === record.id && record.trackable !== false && !own.completed[record.id]) {
+      this._retargetClue(record);
+    }
+    return result;
+  },
+
+  _retargetClue(record) {
+    const route = record && record.clue && record.clue.route;
+    if (!route || !route.pos || !this.bus || typeof this.bus.emit !== 'function') return false;
+    const holder = recordEntity(this.state, record);
+    this.bus.emit('ui:setCourse', {
+      pos: { x: route.pos.x, z: route.pos.z },
+      targetEntityId: holder ? holder.id : null,
+      label: route.label || record.classification,
+      reason: route.reason,
+      waypointKind: 'signal',
+      arrivalRadius: SIGNAL_INVESTIGATE_RADIUS,
+      autopilot: true,
+    });
+    return true;
+  },
+
+  _noteHailRefusal(reason) {
+    const text = HAIL_REFUSAL_TEXT[reason];
+    if (!text || !this.bus) return;
+    this.bus.emit('toast', { text, kind: 'warn', ttl: 1.6 });
+  },
+
+  _requestContactHail(payload) {
+    const state = this.state;
+    const availability = hailAvailabilityThroughSensors(state, contactHailAvailability(state));
+    if (!availability.enabled || payload.targetId != null && payload.targetId !== availability.targetId) {
+      this._clearContactHail('request_invalid');
+      const reason = !availability.enabled ? availability.reason : 'stale_target';
+      this._noteHailRefusal(reason);
+      return false;
+    }
+    if (availability.kind === 'red_kite') {
+      this._clearContactHail('relay_handoff');
+      return this.registry.get('redKite')?.offer() === true;
+    }
+    if (availability.kind === 'pallet_jack') {
+      this._clearContactHail('freight_handoff');
+      return this.registry.get('palletJack')?.offer() === true;
+    }
+    if (availability.kind === 'toll') {
+      const demand = pirateParleyDemandForHandoff(availability.parley);
+      if (!demand || !(Number(demand.deadlineAt) > Number(state.simTime || 0))) {
+        this._clearContactHail('parley_invalid');
+        this._noteHailRefusal('parley_expired');
+        return false;
+      }
+      this._clearContactHail('parley_handoff');
+      this.bus.emit('contactHail:handoff', {
+        targetId: availability.targetId,
+        squadId: demand.squadId,
+      });
+      // Reuse the shipped presenter and its COMPLY / REFUSE / RUN intents verbatim. Scanner does
+      // not become a second payment, hostility, or escape authority.
+      this.bus.emit('pirateParley:demand', demand);
+      return true;
+    }
+    const now = Number(state.simTime) || 0;
+    this._contactHailSequence += 1;
+    const requestId = `contact-hail:${availability.kind}:${String(availability.targetId)}:${state.tick | 0}:${Math.round(now * 1000)}:${this._contactHailSequence}`;
+    const offer = availability.kind==='tally_three'
+      ?this.registry.get('tallyThree')?.offer(availability,requestId,now+CONTACT_HAIL_REQUEST_TTL_S)
+      :createContactHailOffer(
+      state,
+      availability,
+      requestId,
+      now + CONTACT_HAIL_REQUEST_TTL_S,
+    );
+    if (!offer) {
+      this._clearContactHail('offer_invalid');
+      return false;
+    }
+    if (offer.anvilReturnQuote && !this.registry?.get?.('traffic')?.bindAnvilSpillReturnQuote?.(availability.entity,offer.anvilReturnQuote)) {
+      offer.actions=offer.actions.filter(a=>a.id!==ANVIL_RETURN_GAS);
+      offer.lines=[offer.lines[0], 'Return unavailable; physical line and receiver must be ready. Hail again.'];
+      delete offer.anvilReturnQuote;
+    }
+    if (offer.anvilRendezvousQuote && !this.registry?.get?.('traffic')?.bindAnvilSpillRendezvousQuote?.(availability.entity,offer.anvilRendezvousQuote)) {
+      offer.actions=offer.actions.filter(a=>a.id!==ANVIL_RENDEZVOUS);delete offer.anvilRendezvousQuote;
+      offer.lines[0]='RENDEZVOUS UNAVAILABLE · native line and capable tender must be ready.';
+    }
+    for (const quote of [offer.anvilReturnQuote,offer.anvilRendezvousQuote]) {
+      if (Number.isFinite(quote?.expiresAt)) offer.expiresAt=Math.min(offer.expiresAt,quote.expiresAt);
+    }
+    this._contactHail = offer;
+    this._contactHailBinding = {
+      entity: availability.entity,
+      generation: availability.entity?.occupantGeneration ?? null,
+    };
+    this.bus.emit('contactHail:offer', cloneContactHailPayload(offer));
+    return true;
+  },
+
+  _chooseContactHail(payload) {
+    const active = this._contactHail;
+    if (!active || payload.requestId !== active.requestId) return false;
+    const state = this.state;
+    const now = Number(state && state.simTime) || 0;
+    const availability = hailAvailabilityThroughSensors(state, contactHailAvailability(state));
+    const valid = now < Number(active.expiresAt)
+      && payload.targetId === active.targetId
+      && availability.enabled
+      && availability.targetId === active.targetId
+      && availability.kind === active.kind
+      && this._sameContactHailBody(availability.entity);
+    if (!valid) {
+      this._clearContactHail('choice_invalid');
+      return false;
+    }
+    const target = availability.entity;
+    if(availability.kind==='tally_three'){
+      const response=this.registry.get('tallyThree')?.choose(active,String(payload.choice||'').toLowerCase());
+      if(!response)return false;
+      this._contactHail=null;this._contactHailBinding=null;this.bus.emit('contactHail:response',cloneContactHailPayload(response));return true;
+    }
+    const ai = target && target.data && target.data.ai || {};
+    const wanted = isPlayerWanted(state);
+    const choice = String(payload.choice || '').toLowerCase();
+    const lanternRepair = choice === LANTERN_WARD_REPAIR_ACTION && active.lanternWardHail
+      && active.actions?.some(action => action.id === choice) && isLanternWardNessa(state, target)
+      ? this.registry?.get?.('npcJobsRuntime')?.lanternWardRepair?.(target) : null;
+    const heaveTo = choice === CONTACT_HAIL_ACTION_HEAVE_TO
+      ? this._requestContactHeaveTo(target, availability, { wanted, ai })
+      : null;
+    const towAssist = choice === CONTACT_HAIL_ACTION_TOW_ASSIST
+      ? this._requestContactTowAssist(target, active)
+      : null;
+    const anvilReturn = choice === ANVIL_RETURN_GAS && active.anvilReturnQuote
+      && active.actions?.some(action => action.id === ANVIL_RETURN_GAS)
+      ? this.registry?.get?.('traffic')?.returnAnvilSpill?.(target, active.anvilReturnQuote) : null;
+    const anvilRendezvous = active.actions?.some(a=>a.id===choice)
+      ? choice===ANVIL_RENDEZVOUS && active.anvilRendezvousQuote
+        ? this.registry?.get?.('traffic')?.requestAnvilSpillRendezvous?.(target,active.anvilRendezvousQuote)
+        : choice===ANVIL_CANCEL_RENDEZVOUS ? this.registry?.get?.('traffic')?.cancelAnvilSpillRendezvous?.(target) : null
+      : null;
+    const response = createContactHailResponse(state, active, payload.choice, {
+      wanted,
+      weaponsAuthorized: wanted || ai.securityTargetId === state.playerId,
+      roe: ai.roe || null,
+      heaveTo,
+      towAssist,
+      lanternRepair,
+      anvilReturn,anvilRendezvous,
+    });
+    if (!response) return false;
+    this._contactHail = null;
+    this._contactHailBinding = null;
+    this.bus.emit('contactHail:response', cloneContactHailPayload(response));
+    return true;
+  },
+
+  _guideOrchardPickup(payload) {
+    const g=this._orchardTowGuidance,state=this.state;
+    if(!g || payload?.jobId!==g.jobId)return;
+    const pod=g.pod;
+    if(g.state!==state || g.entities!==state.entities || g.world!==state.world || state.mode!=='flight'
+      || !pod || pod.alive===false || state.entities.get(pod.id)!==pod || payload.targetId!==pod.id
+      || pod.occupantGeneration!==g.life || payload.targetGeneration!==g.life
+      || pod.data?.worldRecordId!==g.lotId || payload.lotId!==g.lotId
+      || !this.registry?.get?.('physics')?.readOrchardPodReady?.(pod))return;
+    this._orchardTowGuidance=null;
+    if(state.nav?.waypoint!==g.waypoint){
+      this.bus.emit('ui:toast',{text:'Orchard tow complete. The released pod is ready for pickup.',duration:5});
+      return;
+    }
+    this.bus.emit('ui:setCourse',{pos:{x:pod.pos.x,z:pod.pos.z},targetEntityId:pod.id,
+      label:'ORCHARD POD PICKUP',reason:'Tow complete. Fly close to collect this pod.',
+      waypointKind:'local',arrivalRadius:24,autopilot:false});
+    this.bus.emit('ui:toast',{text:'Orchard tow complete. Follow the pickup marker and fly close to collect.',duration:5});
+  },
+
+  _requestContactHeaveTo(target, availability, { wanted = false, ai = null } = {}) {
+    const now = Number(this.state && this.state.simTime) || 0;
+    const active = this._contactHailHeaveTo;
+    if (active && active.activeUntil > now && active.targetId !== target.id) {
+      return { granted: false, reason: 'another_target_active' };
+    }
+    if (active && active.cooldownUntil > now && active.targetId !== target.id) {
+      return { granted: false, reason: 'cooldown' };
+    }
+    if (!availability || availability.heaveToAvailable !== true) {
+      return { granted: false, reason: 'unavailable' };
+    }
+    if (availability.kind === 'patrol' && (wanted || ai && ai.securityTargetId === this.state.playerId)) {
+      return { granted: false, reason: 'ignored' };
+    }
+
+    const jobApi = this.helpers && this.helpers.npcJobs
+      ? this.helpers.npcJobs
+      : this.registry && this.registry.get && this.registry.get('npcJobsRuntime');
+    const trafficApi = this.helpers && this.helpers.traffic
+      ? this.helpers.traffic
+      : this.registry && this.registry.get && this.registry.get('traffic');
+    const claimId = `contact-hail:heave-to:${String(target.id)}`;
+    let result = null;
+    if (target.data && target.data.jobId && jobApi && typeof jobApi.heaveToEntity === 'function') {
+      result = jobApi.heaveToEntity(target.id, { claimId, holder: 'contactHail' });
+    }
+    if ((!result || result.granted !== true) && trafficApi && typeof trafficApi.heaveToEntity === 'function') {
+      result = trafficApi.heaveToEntity(target.id, {});
+    }
+    if (!result) result = { granted: false, reason: 'no_owner' };
+    if (result.granted === true) {
+      const until = Number(result.untilSimT);
+      const activeUntil = Number.isFinite(until) ? until : now + 5;
+      this._contactHailHeaveTo = {
+        targetId: target.id,
+        activeUntil,
+        cooldownUntil: activeUntil + 12,
+      };
+    }
+    return result;
+  },
+
+  // SF-138 — hire the hailed worker to tow the nearest loose body to a sink. The data layer
+  // answers which body; a live mission may claim a specific destination for it (yard berth,
+  // dock ring), otherwise the nearest station is the honest default. The hire fee is billed
+  // by the runtime; whatever the load is worth is settled by whoever owns the destination.
+  _requestContactTowAssist(worker, offer = null) {
+    if (offer?.orchardQuote) {
+      const result=this.registry?.get?.('traffic')?.requestOrchardTowAssist?.(worker,offer.orchardQuote);
+      if(result?.granted){
+        const quote=offer.orchardQuote,pod=this.state.entities.get(quote.targetId);
+        this._orchardTowGuidance={state:this.state,entities:this.state.entities,world:this.state.world,
+          jobId:result.jobId,pod,life:quote.targetGeneration,lotId:quote.lotId,waypoint:this.state.nav?.waypoint};
+      }
+      return result || {granted:false,reason:'no_owner'};
+    }
+
+    const state = this.state;
+    const body = worker ? towAssistBodyFor(state, worker) : null;
+    if (!body) return { granted: false, reason: 'no_load' };
+    const jobApi = this.helpers && this.helpers.npcJobs
+      ? this.helpers.npcJobs
+      : this.registry && this.registry.get && this.registry.get('npcJobsRuntime');
+    if (!jobApi || typeof jobApi.requestTowAssist !== 'function') {
+      return { granted: false, reason: 'no_owner' };
+    }
+    let dest = null;
+    let missionId = null;
+    let deliverW = null;
+    const missionsApi = this.registry && this.registry.get && this.registry.get('missions');
+    if (missionsApi && typeof missionsApi.towAssistDestFor === 'function') {
+      const hint = missionsApi.towAssistDestFor(body.id);
+      if (hint && hint.pos) {
+        dest = hint.pos;
+        missionId = hint.missionId || null;
+        deliverW = Number.isFinite(hint.deliverW) ? hint.deliverW : null;
+      }
+    }
+    if (!dest) dest = this._nearestStationPosTo(body) || { x: body.pos.x, z: body.pos.z };
+    // SP2-123 — a hull Ruud has stamped ("You came back. Stamps like that.") hires the
+    // working tugs one grade better, permanently. The quote is still the runtime's settled
+    // fee whenever the tab settles short.
+    const stampedFee = ruudTowAssistFeeQuote(this.state);
+    const out = jobApi.requestTowAssist(worker.id, body.id, dest, {
+      holder: 'contactHail',
+      missionId,
+      deliverW,
+      feeCr: stampedFee,
+    });
+    // The runtime bills take-what-they-have and records the settled fee — a short tab reads
+    // back the real amount on the line, never the sticker price.
+    if (out && out.granted === true) {
+      return { granted: true, feeCr: Number.isFinite(out.feeCr) ? out.feeCr : stampedFee };
+    }
+    return { granted: false, reason: out && out.reason || 'claim_refused' };
+  },
+
+  _nearestStationPosTo(entity) {
+    const entities = this.state && this.state.entities;
+    if (!entities || !entity || !entity.pos) return null;
+    let best = null;
+    let bestD2 = Infinity;
+    for (const e of entities.values()) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      const dx = e.pos.x - entity.pos.x;
+      const dz = e.pos.z - entity.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2) { bestD2 = d2; best = e; }
+    }
+    return best ? { x: best.pos.x, z: best.pos.z } : null;
+  },
+
+  _updateContactHail(state) {
+    const active = this._contactHail;
+    const now = Number(state && state.simTime) || 0;
+    // Expiry remains exact at the fixed-step cadence; range/classification work sleeps at 5 Hz.
+    if (active && now >= Number(active.expiresAt)) this._clearContactHail('expired');
+
+    const targetId = state && state.player && state.player.targetId;
+    const targetDirty = targetId !== this._contactHailLastTargetId;
+    const tick = state && state.tick | 0;
+    if (!targetDirty && tick < this._contactHailNextPollTick) return;
+
+    const availability = hailAvailabilityThroughSensors(state, contactHailAvailability(state));
+    this._contactHailLastTargetId = targetId;
+    this._contactHailNextPollTick = tick + CONTACT_HAIL_POLL_TICKS;
+    this._publishContactHailAvailability(availability);
+
+    const current = this._contactHail;
+    if (current && (!availability.enabled
+      || availability.targetId !== current.targetId
+      || availability.kind !== current.kind
+      || !this._sameContactHailBody(availability.entity))) {
+      this._clearContactHail('availability_lost');
+    }
+  },
+
+  _publishContactHailAvailability(availability) {
+    const publicView = {
+      enabled: availability && availability.enabled === true,
+      reason: availability && availability.reason || null,
+      targetId: availability && availability.targetId != null ? availability.targetId : null,
+      kind: availability && availability.kind || null,
+      label: availability && availability.label || 'HAIL',
+      heaveToAvailable: availability && availability.heaveToAvailable === true,
+    };
+    const signature = `${publicView.enabled}:${String(publicView.targetId)}:${publicView.kind}:${publicView.reason}:${publicView.label}:${publicView.heaveToAvailable}`;
+    this._contactHailAvailability = publicView;
+    if (signature === this._contactHailAvailabilitySignature) return false;
+    this._contactHailAvailabilitySignature = signature;
+    this.bus.emit('contactHail:availability', { ...publicView });
+    return true;
+  },
+
+  _resetContactHail(reason) {
+    if(reason==='load' || reason==='new_game' || !['flight','paused','pause'].includes(this.state?.mode))
+      this._orchardTowGuidance = null;
+    // The heave-to latch's deadlines are simTime stamps: a fresh run restarts the clock at 0 and
+    // a load restores whatever the save held (same law as _cooldownUntil in newGame), so a latch
+    // must not ride across lifecycle resets and lock heave-to out for the whole old timestamp.
+    this._contactHailHeaveTo = null;
+    this._clearContactHail(reason);
+    this._contactHailAvailability = null;
+    this._contactHailAvailabilitySignature = '';
+    this._contactHailNextPollTick = 0;
+    this._contactHailLastTargetId = undefined;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('contactHail:availability', {
+        enabled: false, reason, targetId: null, kind: null, label: 'HAIL',
+      });
+    }
+  },
+
+  _sameContactHailBody(entity) {
+    const binding = this._contactHailBinding;
+    return !!binding && binding.entity === entity
+      && binding.generation === (entity?.occupantGeneration ?? null);
+  },
+
+  _clearContactHail(reason) {
+    if (!this._contactHail) return false;
+    const previous = this._contactHail;
+    this._contactHail = null;
+    this._contactHailBinding = null;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('contactHail:clear', {
+        requestId: previous.requestId,
+        targetId: previous.targetId,
+        reason,
+      });
+    }
+    return true;
+  },
+
+  _updateTrackedSignal(state) {
+    const own = ensureSignalState(state);
+    const record = own.trackedId && own.records[own.trackedId];
+    if (!record || own.completed[record.id]) return;
+    const sectorId = state.world && state.world.currentSectorId;
+    if (record.sectorId && sectorId && record.sectorId !== sectorId) return;
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || !player.alive || !player.pos) return;
+    const target = recordEntity(state, record);
+    const pos = target && target.pos || record.pos;
+    if (!pos) return;
+    record.pos = pos2(pos);
+    const distance = dist(player.pos, pos);
+    record.distance = Math.round(distance);
+    if (distance > SIGNAL_INVESTIGATE_RADIUS) return;
+    this._finishSignalRecord(record);
+  },
+
+  // A surveyed member of a multi-signal census (Quiessence hulls) goes quiet once its
+  // reading is filed, so the six-row pulse window rotates to the next unsurveyed hull
+  // instead of re-listing finished work forever. Scanner owns the write; the filing
+  // system owns the semantic. Unknown or already finished ids fail closed.
+  _completeSurveyedSignal(payload) {
+    const own = this.state && ensureSignalState(this.state);
+    const id = String(payload && (payload.signalId || payload.id) || '');
+    const record = own && own.records[id];
+    if (!record || own.completed[id] || record.trackable === false) return false;
+    return this._finishSignalRecord(record);
+  },
+
+  _finishSignalRecord(record) {
+    const state = this.state;
+    const own = state && ensureSignalState(state);
+    if (!own || !record || own.completed[record.id]) return false;
+    if (record.discovery && record.discovery.lesson === true) return false;
+    const receipt = {
+      id: `signal-receipt:${record.id}`,
+      signalId: record.id,
+      sectorId: record.sectorId,
+      classification: record.classification,
+      sourceKind: record.sourceKind,
+      sourceId: record.sourceId,
+      entityId: record.entityId,
+      pos: { ...record.pos },
+      outcome: 'investigated',
+      completedAt: Number(state.simTime) || 0,
+    };
+    own.completed[record.id] = receipt;
+    own.receipts.push(receipt);
+    while (own.receipts.length > SIGNAL_RECEIPT_CAP) own.receipts.shift();
+    record.status = 'investigated';
+    if (own.trackedId === record.id) own.trackedId = null;
+    this.bus.emit('signal:investigated', { ...receipt, pos: { ...receipt.pos } });
+    this.bus.emit('signal:receipt', { ...receipt, pos: { ...receipt.pos } });
+    return true;
+  },
+
+  serialize() {
+    const own = ensureSignalState(this.state);
+    const snapshot = cloneSignalState(own);
+    const survey = this.registry && this.registry.get && this.registry.get('scanReveal');
+    if (survey && typeof survey.serialize === 'function') snapshot.wreckSurvey = survey.serialize();
+    return snapshot;
+  },
+
+  deserialize(data) {
+    this._resetContactHail('load');
+    // Transient cooldown is not serialized; the restored clock can be far below the old
+    // deadline, so carry no lockout across a load.
+    this._cooldownUntil = 0;
+    this.state.signalInvestigation = normalizeSignalState(data);
+    const survey = this.registry && this.registry.get && this.registry.get('scanReveal');
+    if (survey && typeof survey.deserialize === 'function') survey.deserialize(data && data.wreckSurvey);
+  },
+
+  destroy() {
+    if (this.bus && typeof this.bus.off === 'function') {
+      if (this._onSignalTrack) this.bus.off('signal:track', this._onSignalTrack);
+      if (this._onSignalInvestigate) this.bus.off('signal:investigate', this._onSignalInvestigate);
+      if (this._onSignalSurveyFiled) this.bus.off('signal:surveyFiled', this._onSignalSurveyFiled);
+      if (this._onContactHailRequest) this.bus.off('contactHail:request', this._onContactHailRequest);
+      if (this._onContactHailChoice) this.bus.off('contactHail:choice', this._onContactHailChoice);
+      this.bus.off('npcJobs:towAssistComplete', this._onOrchardTowComplete);
+      this.bus.off('npcJobs:towAssistLost', this._onOrchardTowLost);
+      this._orchardTowGuidance = null;
+      if (this._onContactHailReset) {
+        this.bus.off('game:new', this._onContactHailReset);
+        this.bus.off('game:load', this._onContactHailReset);
+        this.bus.off('dock:docked', this._onContactHailReset);
+        this.bus.off('mode:changed', this._onContactHailReset);
+        this.bus.off('sector:enter', this._onContactHailSectorEnter);
+      }
+      if (this._onSensorGhostSwarm) this.bus.off('sensorGhost:swarm', this._onSensorGhostSwarm);
+    }
+    this._contactHail = null;
+    this._contactHailBinding = null;
+    this._contactHailAvailability = null;
+    this._contactHailAvailabilitySignature = '';
+    this._onSignalTrack = null;
+    this._onSignalInvestigate = null;
+    this._onSignalSurveyFiled = null;
+    this._onContactHailRequest = null;
+    this._onContactHailChoice = null;
+    this._onContactHailReset = null;
+    this._onContactHailSectorEnter = null;
+    this._onOrchardTowComplete = null;
+    this._onOrchardTowLost = null;
+    this._orchardTowGuidance = null;
+    this._onSensorGhostSwarm = null;
+  },
+};
+
+function cloneContactHailPayload(payload) {
+  return {
+    ...payload,
+    lines: Array.isArray(payload.lines) ? payload.lines.slice(0, 2) : [],
+    actions: Array.isArray(payload.actions)
+      ? payload.actions.slice(0, 3).map((row) => ({ ...row }))
+      : [],
+  };
+}
+
+// One-word contact state for the strip. Derelicts read DERELICT; player-aligned ships WINGMAN/ALLY;
+// opposing ships resolve to HOSTILE / PATROL / HAULER / COURIER / MINER via trafficRole + AI signals,
+// with a plain team fallback so a contact never renders blank (respects the "one word" contract).
+// Intent is the operational role (who they are / what they're doing), not a prose wall.
+export function contactStateWord(e, playerTeam, state) {
+  const data = (e && e.data) || {};
+  if (data.poiType === 'cache' || data.kind === 'cache') return 'CACHE';
+  if (isWreckLike(e)) return 'DERELICT';
+  if (e && e.data && e.data.echoOfPlayer === true) return 'ECHO';
+  // The Unclosed is not traffic. A quiet body is not a trader, and a classified
+  // one is the fold, not a generic hostile. Scars, plates, and corners keep their own word.
+  if (data.foldAberrant) {
+    const role = data.foldAberrant.role;
+    if (role === 'scar') return 'SCAR';
+    if (role === 'plate') return 'PLATE';
+    if (role === 'corner') return 'CORNER';
+    const classified = !!(data.combat && state && state.playerId != null
+      && data.combat.targetId === state.playerId);
+    return classified ? 'FOLD' : 'QUIET';
+  }
+  const playerId = state && state.playerId;
+  if (e.team === 0 && e.id !== playerId) return (e.data && e.data.isWingman) ? 'WINGMAN' : 'ALLY';
+  const ai = data.ai;
+  const combat = data.combat;
+  const targetsPlayer = !!(combat && playerId != null && combat.targetId === playerId);
+  const attacking = !!(ai && (ai.fsm === 'attack' || ai.fsm === 'pursue' || ai.fsm === 'strafe'));
+  if ((attacking || targetsPlayer) && isHostileToPlayer(e, playerTeam, state)) return 'HOSTILE';
+
+  // Traffic / encounter role is the primary readability channel (faction lives on the faction chip).
+  const trafficRole = String(data.trafficRole || data.role || (ai && ai.encounterRole) || '').toLowerCase();
+  if (trafficRole === 'patrol' || trafficRole === 'escort') return trafficRole === 'escort' ? 'ESCORT' : 'PATROL';
+  if (trafficRole === 'miner' || trafficRole === 'mining' || trafficRole === 'mining_barge') return 'MINER';
+  if (trafficRole === 'courier') return 'COURIER';
+  if (trafficRole === 'hauler' || trafficRole === 'freighter') return 'HAULER';
+  if (trafficRole === 'smuggler') return 'SMUGGLER';
+  if (trafficRole === 'rescue') return 'RESCUE';
+  if (trafficRole === 'surveyor') return 'SURVEY';
+  if (trafficRole === 'salvor') return 'SALVOR';
+  if (trafficRole === 'tender') return 'TENDER';
+  if (trafficRole === 'ore_carrier') return 'BARGE';
+  if (trafficRole === 'express') return 'LINER';
+  if (trafficRole === 'pirate' || trafficRole === 'raider') {
+    return isHostileToPlayer(e, playerTeam, state) ? 'HOSTILE' : 'RAIDER';
+  }
+
+  // Wreck-field scavengers ride passive AI with deliberately NO trafficRole (traffic's adoption
+  // path would hijack the hull), so the passive fallthrough below used to label a looter
+  // beelining to your kill site as TRADER. The ecology role stamp is their identity.
+  if (data.wreckEcologyRole === 'scavenger') return 'SCAVENGER';
+
+  if (ai) {
+    if (ai.lawful) return 'PATROL';
+    const ctx = String(ai.spawnContext || ai.context || '');
+    if (ctx === 'patrol') return 'PATROL';
+    if (ctx === 'convoy_civilian') return 'HAULER';
+    if (ai.passive) return 'TRADER';
+    const arch = String(ai.archetype || '');
+    if (arch.includes('min')) return 'MINER';
+    if (arch.includes('trad')) return 'TRADER';
+  }
+  if (isHostileToPlayer(e, playerTeam, state)) return 'HOSTILE';
+  return 'NEUTRAL';
+}
+
+// Has a derelict/wreck been scan-resolved (manifest known)? Unscanned wrecks show only a ghost
+// outline in the strip; a scan pulse fills in the manifest + weak point.
+export function wreckScanned(e) {
+  return !!(e && e.data && e.data.scanned);
+}
+
+export { isWreckLike };

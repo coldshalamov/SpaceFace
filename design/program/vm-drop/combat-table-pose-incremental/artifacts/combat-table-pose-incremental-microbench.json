@@ -1,0 +1,82 @@
+{
+  "label": "combat-table-pose-incremental",
+  "scenarios": [
+    {
+      "label": "quiet-120ships-1mover",
+      "nShips": 120,
+      "movers": 1,
+      "nProjectiles": 0,
+      "iters": 8000,
+      "beforeMs": 52.475,
+      "afterMs": 10.971,
+      "speedup": 4.783,
+      "count": 125,
+      "playerX": 1600.0000000002267,
+      "parkedX": 40,
+      "expectedParkedX": 40
+    },
+    {
+      "label": "quiet-120ships-3movers",
+      "nShips": 120,
+      "movers": 3,
+      "nProjectiles": 0,
+      "iters": 8000,
+      "beforeMs": 41.591,
+      "afterMs": 3.245,
+      "speedup": 12.816,
+      "count": 125,
+      "playerX": 1600.0000000002267,
+      "parkedX": 120,
+      "expectedParkedX": 120
+    },
+    {
+      "label": "combat-80ships-3movers-6proj",
+      "nShips": 80,
+      "movers": 3,
+      "nProjectiles": 6,
+      "iters": 8000,
+      "beforeMs": 37.745,
+      "afterMs": 21.523,
+      "speedup": 1.754,
+      "count": 91,
+      "playerX": 1600.0000000002267,
+      "parkedX": 120,
+      "expectedParkedX": 120
+    },
+    {
+      "label": "membership-control-full",
+      "nShips": 120,
+      "movers": 1,
+      "nProjectiles": 0,
+      "iters": 2000,
+      "beforeMs": 15.631,
+      "afterMs": 0.448,
+      "speedup": 34.904,
+      "count": 125,
+      "playerX": 399.99999999998585,
+      "parkedX": 40,
+      "expectedParkedX": 40
+    },
+    {
+      "label": "membership-adds-row",
+      "beforeCount": 41,
+      "afterCount": 42,
+      "hasNewbie": true,
+      "ok": true
+    }
+  ],
+  "primary": {
+    "label": "quiet-120ships-1mover",
+    "nShips": 120,
+    "movers": 1,
+    "nProjectiles": 0,
+    "iters": 8000,
+    "beforeMs": 52.475,
+    "afterMs": 10.971,
+    "speedup": 4.783,
+    "count": 125,
+    "playerX": 1600.0000000002267,
+    "parkedX": 40,
+    "expectedParkedX": 40
+  }
+}

@@ -1,0 +1,317 @@
+{
+  "assetId": "threshold_lintel",
+  "category": "ancient",
+  "description": "threshold lintel; reusable ancient assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_JAMB_-2.2",
+      "position": [
+        -2.2,
+        -0.55,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_JAMB_2.2",
+      "position": [
+        2.2,
+        -0.55,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_MOUNT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.1,
+          0.39
+        ],
+        "size": [
+          4.8,
+          0.3,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.1,
+          -0.38
+        ],
+        "size": [
+          4.8,
+          0.3,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.1,
+          -0.0
+        ],
+        "size": [
+          3.9,
+          0.18,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.9,
+          0.15,
+          -0.0
+        ],
+        "size": [
+          0.18,
+          0.17,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.9,
+          0.15,
+          -0.0
+        ],
+        "size": [
+          0.18,
+          0.17,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.15,
+          -0.0
+        ],
+        "size": [
+          0.18,
+          0.17,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.9,
+          0.15,
+          -0.0
+        ],
+        "size": [
+          0.18,
+          0.17,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.9,
+          0.15,
+          -0.0
+        ],
+        "size": [
+          0.18,
+          0.17,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.2,
+          -0.4,
+          -0.0
+        ],
+        "size": [
+          0.5,
+          0.3,
+          0.7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.2,
+          -0.4,
+          -0.0
+        ],
+        "size": [
+          0.5,
+          0.3,
+          0.7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "ancient",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -2.5,
+      -0.550000011920929,
+      -0.48000001907348633
+    ],
+    "max": [
+      2.5,
+      0.4000000059604645,
+      0.49000000953674316
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "threshold_lintel_lod0.glb",
+      "triangles": 3252,
+      "draws": 3,
+      "bytes": 170756,
+      "method": "source",
+      "sha256": "0d853b8dc3976053099dabfec3be4c2f5bdf1af080e178b862d4b17f40df1ee4"
+    },
+    {
+      "level": 1,
+      "file": "threshold_lintel_lod1.glb",
+      "triangles": 3252,
+      "draws": 3,
+      "bytes": 170812,
+      "method": "authored-topology",
+      "sha256": "2c95312870cdf77fa1760b0cbe1227c1ceede7e850953d98ce0028cfbeb2d4b2"
+    },
+    {
+      "level": 2,
+      "file": "threshold_lintel_lod2.glb",
+      "triangles": 3252,
+      "draws": 3,
+      "bytes": 170812,
+      "method": "authored-topology",
+      "sha256": "758b7381dbde2567280ac843efd7742ba2a493036de715b2b5ac1472feb059a8"
+    }
+  ]
+}

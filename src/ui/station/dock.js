@@ -1,0 +1,255 @@
+import { escapeMarkup } from '../views/identity.js';
+import { stationIcon } from './stationArt.js';
+import { stationControlAttrs } from './stationBindingMap.js';
+// DUST P5: destination glyphs ride inside the label so they show wherever the label shows.
+// The old artwork rail (.sx-tile__seat) is display:none in the Orrery station sheet, which is
+// why the rail read as micro-text with no icons; the seat span stays (checks query it).
+import { stationTabGlyphSvg } from '../icons/index.js';
+// Station destinations: an explicit facility rail, horizontal on narrow screens.
+// A real ARIA tablist of kit words: role=tab, roving tabindex, arrow keys, aria-current on the live
+// one. The pointer/keyboard distance field still writes --dock-scale / --dock-lift / --dock-near on
+// each word (the tab-navigation check reads them); the Orbital sheet applies them to icon artwork only. Hitboxes and labels never
+// move. `.sx-dock`, `.sx-dock__group--nav`, `.sx-tile`, `.sx-tile__seat`, `data-nav`, `sx-tab-<id>`
+// are inert hooks the station checks query.
+
+function tileHtml(item, kind) {
+  const isNav = kind === 'nav';
+  const dataAttr = isNav
+    ? `data-nav="${item.id}" role="tab" id="sx-tab-${item.id}" aria-controls="sx-panel" aria-selected="false" tabindex="-1"`
+    : `data-act="${item.id}"`;
+  const extra = isNav ? '' : ' sx-tile--act';
+  // DUST P5: nav tiles carry their glyph inside the label (the label word stays — the glyph
+  // augments it, and the spoken name is unchanged). The seat keeps the action tiles' artwork;
+  // for nav tiles it stays present but empty, so narrow layouts that un-hide it do not draw
+  // a second, different icon beside the label's.
+  const seat = isNav ? '' : stationIcon(item.id);
+  const labelGlyph = isNav ? stationTabGlyphSvg(item.id) : '';
+  // Inside a role=tablist an <li> keeps no role of its own — the tab is the listitem's button.
+  return (
+    `<li${isNav ? ' role="presentation"' : ''}><button type="button" ${stationControlAttrs(item.id)} class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
+      `<span class="sx-tile__seat" aria-hidden="true">${seat}</span>` +
+      `<span class="sx-tile__badge k-t-fine k-signal" data-badge="${item.id}" hidden></span>` +
+      `<span class="sx-tile__label">${labelGlyph}${escapeMarkup(item.label)}</span>` +
+      (kind === 'act' ? `<span class="sx-tile__cost k-t-fine k-38" data-cost="${item.id}">—</span>` : '') +
+    `</button></li>`
+  );
+}
+
+/**
+ * @param {object} cfg
+ * @param {Array} cfg.destinations [{id,label,title}]
+ * @param {Array} cfg.actions      [{id,label,title}]
+ * @param {(id:string)=>void} cfg.onNavigate
+ * @param {(id:string)=>void} cfg.onAction
+ */
+export function createCommandDock(cfg) {
+  const { destinations = [], actions = [], onNavigate, onAction, allowMotion = () => true } = cfg;
+  const el = document.createElement('div');
+  el.className = 'sx-dock';
+  el.setAttribute('role', 'toolbar');
+  el.setAttribute('aria-label', 'Station destinations');
+  el.setAttribute('aria-orientation', 'horizontal');
+  el.innerHTML =
+    `<ul class="k-words k-words--row sx-dock__group sx-dock__group--nav" role="tablist" aria-orientation="horizontal" aria-label="Destinations">` +
+      destinations.map((d) => tileHtml(d, 'nav')).join('') +
+    `</ul>` +
+    (actions.length
+      ? `<ul class="k-words k-words--row sx-dock__group sx-dock__group--act">${actions.map((a) => tileHtml(a, 'act')).join('')}</ul>`
+      : '');
+
+  el.addEventListener('click', (ev) => {
+    const nav = ev.target.closest('[data-nav]');
+    if (nav) { onNavigate && onNavigate(nav.getAttribute('data-nav')); return; }
+    const act = ev.target.closest('[data-act]');
+    if (act && !act.classList.contains('is-disabled')) { onAction && onAction(act.getAttribute('data-act')); }
+  });
+
+  function setActive(id) {
+    el.querySelectorAll('[data-nav]').forEach((t) => {
+      const on = t.getAttribute('data-nav') === id;
+      t.classList.toggle('is-active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (on) t.setAttribute('aria-current', 'true'); else t.removeAttribute('aria-current');
+      t.setAttribute('tabindex', on ? '0' : '-1');
+      if (on) t.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); // roving tab stop
+    });
+  }
+
+  // Arrow / Home / End move between destinations (Enter+Space activate natively on <button>).
+  const navGroup = el.querySelector('.sx-dock__group--nav');
+  const narrowQuery = typeof matchMedia === 'function' ? matchMedia('(max-width: 899px)') : null;
+  const syncOrientation = () => {
+    const direction = 'horizontal';
+    el.setAttribute('aria-orientation', direction);
+    navGroup.setAttribute('aria-orientation', direction);
+  };
+  syncOrientation();
+  narrowQuery?.addEventListener?.('change', syncOrientation);
+  navGroup.addEventListener('keydown', (ev) => {
+    const tabs = [...navGroup.querySelectorAll('[data-nav]')];
+    const cur = tabs.indexOf(document.activeElement);
+    if (cur < 0) return;
+    let next = -1;
+    if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') next = (cur + 1) % tabs.length;
+    else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') next = (cur - 1 + tabs.length) % tabs.length;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = tabs.length - 1;
+    else return;
+    ev.preventDefault();
+    tabs[next].focus();
+    onNavigate && onNavigate(tabs[next].getAttribute('data-nav'));
+  });
+
+  // The distance field is event-bound. Only icon artwork uses it; hitboxes remain fixed.
+  const motionQuery = typeof matchMedia === 'function'
+    ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+  const tiles = [...el.querySelectorAll('.sx-tile')];
+  let fieldFrame = 0;
+  let fieldTimer = 0;
+  let pendingPointerX = null;
+
+  function resetField() {
+    for (const tile of tiles) {
+      tile.style.setProperty('--dock-scale', '1');
+      tile.style.setProperty('--dock-lift', '0px');
+      tile.style.setProperty('--dock-near', '0');
+    }
+  }
+
+  function applyPointerField(clientX) {
+    fieldFrame = 0;
+    if (!allowMotion() || (motionQuery && motionQuery.matches)) { resetField(); return; }
+    const bounds = tiles.map(tile => tile.getBoundingClientRect());
+    // The field reaches about one and a half stations either side, however far apart the rail
+    // spaces them, so a neighbour always answers and the far end of the rail never does.
+    const centres = bounds.map((r) => r.left + r.width / 2);
+    const pitch = centres.length > 1 ? (centres[centres.length - 1] - centres[0]) / (centres.length - 1) : 112;
+    const radius = Math.max(112, Math.min(210, pitch * 1.45));
+    for (let i = 0; i < tiles.length; i++) {
+      const tile = tiles[i], rect = bounds[i];
+      const distance = Math.abs(clientX - (rect.left + rect.width / 2));
+      const proximity = Math.max(0, 1 - distance / radius);
+      const eased = (1 - Math.cos(proximity * Math.PI)) / 2;
+      const peak = tile.hasAttribute('data-act') ? 0.18 : 0.30;
+      tile.style.setProperty('--dock-scale', (1 + peak * eased).toFixed(4));
+      tile.style.setProperty('--dock-lift', `${(-3 * eased).toFixed(2)}px`);
+      tile.style.setProperty('--dock-near', eased.toFixed(4));
+    }
+  }
+
+  function runPointerField() {
+    if (fieldFrame) { cancelAnimationFrame(fieldFrame); fieldFrame = 0; }
+    if (fieldTimer) { clearTimeout(fieldTimer); fieldTimer = 0; }
+    applyPointerField(pendingPointerX);
+  }
+
+  function queuePointerField(clientX) {
+    pendingPointerX = clientX;
+    if (fieldFrame || fieldTimer) return;
+    fieldFrame = requestAnimationFrame(runPointerField);
+    // The docked station is event-rendered: on a starved host (headless software GL, a pinned
+    // main thread) the next compositor frame can land far behind the input — the same stall
+    // decrypt()'s timer backstop exists for. Physical feedback is the response, not decoration:
+    // bound it with a timer too. Whichever scheduler fires first wins; the burst still coalesces
+    // to one write.
+    fieldTimer = setTimeout(runPointerField, 64);
+  }
+
+  function applyKeyboardField(target) {
+    resetField();
+    if (!target || !allowMotion() || (motionQuery && motionQuery.matches)) return;
+    const index = tiles.indexOf(target);
+    if (index < 0) return;
+    tiles.forEach((tile, i) => {
+      const steps = Math.abs(i - index);
+      const proximity = steps === 0 ? 1 : (steps === 1 ? 0.28 : 0);
+      const peak = tile.hasAttribute('data-act') ? 0.16 : 0.25;
+      tile.style.setProperty('--dock-scale', (1 + peak * proximity).toFixed(4));
+      tile.style.setProperty('--dock-lift', `${(-3 * proximity).toFixed(2)}px`);
+      tile.style.setProperty('--dock-near', proximity.toFixed(4));
+    });
+  }
+
+  const onPointerMove = (ev) => queuePointerField(ev.clientX);
+  const onPointerLeave = () => {
+    pendingPointerX = null;
+    if (fieldFrame) cancelAnimationFrame(fieldFrame);
+    fieldFrame = 0;
+    if (fieldTimer) clearTimeout(fieldTimer);
+    fieldTimer = 0;
+    resetField();
+  };
+  const onFocusIn = (ev) => applyKeyboardField(ev.target.closest('.sx-tile'));
+  const onFocusOut = (ev) => {
+    if (!el.contains(ev.relatedTarget)) resetField();
+  };
+  el.addEventListener('pointermove', onPointerMove, { passive: true });
+  el.addEventListener('pointerleave', onPointerLeave);
+  el.addEventListener('focusin', onFocusIn);
+  el.addEventListener('focusout', onFocusOut);
+  resetField();
+
+  /** cost = { text, disabled?, tone? } tone ∈ 'warn'|'gain'|'' */
+  function setActionCost(id, cost) {
+    const tile = el.querySelector(`[data-act="${id}"]`);
+    const label = el.querySelector(`[data-cost="${id}"]`);
+    if (!tile || !label) return;
+    const text = (cost && cost.text != null) ? String(cost.text) : '—';
+    if (label.textContent !== text) label.textContent = text;
+    tile.classList.toggle('is-disabled', !!(cost && cost.disabled));
+    setAttributeIfChanged(tile, 'aria-disabled', cost && cost.disabled ? 'true' : 'false');
+    if (cost && cost.title) {
+      setAttributeIfChanged(tile, 'title', cost.title);
+      setAttributeIfChanged(tile, 'aria-label', cost.title);
+    }
+    const tone = cost && ['warn', 'gain', 'loss'].includes(cost.tone) ? `is-${cost.tone}` : '';
+    for (const name of ['is-warn', 'is-gain', 'is-loss']) label.classList.toggle(name, name === tone);
+  }
+
+  /**
+   * Badge a destination word so the player knows which one needs them (a fine-print signal mark
+   * before the word; no pulse).
+   * @param {string|null} id destination id, or null to clear all
+   * @param {{ badge?: string|number, title?: string }|null} opts
+   */
+  function setAttention(id, opts = null) {
+    el.querySelectorAll('[data-nav]').forEach((tile) => {
+      const navId = tile.getAttribute('data-nav');
+      const on = id != null && navId === id;
+      tile.classList.toggle('is-attention', on);
+      const badge = tile.querySelector(`[data-badge="${navId}"]`);
+      if (!badge) return;
+      if (on && opts && opts.badge != null && opts.badge !== '') {
+        if (badge.hidden) badge.hidden = false;
+        const badgeText = String(opts.badge);
+        if (badge.textContent !== badgeText) badge.textContent = badgeText;
+      } else {
+        if (!badge.hidden) badge.hidden = true;
+        if (badge.textContent) badge.textContent = '';
+      }
+      // The spoken name stays the help line on the tile. Attention is the badge and the tooltip.
+      if (on && opts && opts.title) {
+        setAttributeIfChanged(tile, 'title', opts.title);
+      } else if (tile.hasAttribute('title')) {
+        tile.removeAttribute('title');
+      }
+    });
+  }
+
+  function dispose() {
+    narrowQuery?.removeEventListener?.('change', syncOrientation);
+    if (fieldFrame) cancelAnimationFrame(fieldFrame);
+    if (fieldTimer) clearTimeout(fieldTimer);
+    el.removeEventListener('pointermove', onPointerMove);
+    el.removeEventListener('pointerleave', onPointerLeave);
+    el.removeEventListener('focusin', onFocusIn);
+    el.removeEventListener('focusout', onFocusOut);
+  }
+
+  return { el, setActive, setActionCost, setAttention, dispose };
+}
+
+function setAttributeIfChanged(node, name, value) {
+  const next = String(value);
+  if (node.getAttribute(name) !== next) node.setAttribute(name, next);
+}

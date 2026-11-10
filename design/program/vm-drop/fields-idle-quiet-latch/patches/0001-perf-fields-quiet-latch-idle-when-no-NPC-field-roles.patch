@@ -1,0 +1,409 @@
+From 8b020a8173af1c3bb99a93b4dcb085a9f3efa65a Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 10:17:40 -0400
+Subject: [PATCH] =?UTF-8?q?perf(fields):=20quiet-latch=20idle=20fields=20w?=
+ =?UTF-8?q?hen=20no=20NPC=20field=20roles=20(~2.6=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet idle still paid cadenced NPC discover + empty publish every tick
+with no cone/deployed/anchored/npc/skim and an empty kernel. Latch when
+idle and no awake scavenger/sweeper/salvor/anchor roles; wake on
+entity-index membership, 0.5s rescan, or leaving idle. Soft-GPU fps not
+claimed.
+---
+ src/systems/fields.js                 | 125 ++++++++++++++--
+ test/fields-idle-quiet-latch.test.mjs | 201 ++++++++++++++++++++++++++
+ 2 files changed, 311 insertions(+), 15 deletions(-)
+ create mode 100644 test/fields-idle-quiet-latch.test.mjs
+
+diff --git a/src/systems/fields.js b/src/systems/fields.js
+index 12d3d5fc8..0265ca4b3 100644
+--- a/src/systems/fields.js
++++ b/src/systems/fields.js
+@@ -45,7 +45,7 @@ import {
+   resetOrbitWorld,
+   syncOrbitRuntime,
+ } from './orbitNodeRuntime.js';
+-import { planNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
++import { planNpcFieldDeploy, npcFieldRole } from '../ai/npcFieldDeploy.js';
+ 
+ const EMITTER_TYPE = 'fieldEmitter';
+ const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
+@@ -74,6 +74,57 @@ function hasOwnEnumKey(obj) {
+   return false;
+ }
+ 
++/** Bench A/B: production default ON. Quiet latch skips idle discover+_publish. */
++let FIELDS_IDLE_QUIET_LATCH = true;
++export function setFieldsIdleQuietLatchForBench(enabled) {
++  FIELDS_IDLE_QUIET_LATCH = enabled !== false;
++}
++export function getFieldsIdleQuietLatchForBench() {
++  return FIELDS_IDLE_QUIET_LATCH !== false;
++}
++
++/** Membership / scavenger-discover rescan while latched (0.5 s @ 60 Hz). */
++const FIELDS_IDLE_QUIET_RESCAN_TICKS = 30;
++
++function entityIndexVersion(state) {
++  const index = state && state.entityIndex;
++  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
++    ? index.version
++    : null;
++}
++
++function fieldsIdleSnapshot(rt, kernel) {
++  const kernelCount = kernel && typeof kernel.list === 'function'
++    ? kernel.list().length
++    : 0;
++  return !rt.coneActive
++    && !rt.skimActive
++    && !rt.skimFieldId
++    && kernelCount === 0
++    && !hasOwnEnumKey(rt.deployed)
++    && !hasOwnEnumKey(rt.anchored)
++    && !hasOwnEnumKey(rt.npcFields)
++    && !hasOwnEnumKey(rt.hitches);
++}
++
++/** Awake ships that can arm an NPC cone/well — latch refuses while any are present. */
++function anyNpcFieldRoleInterest(state) {
++  const index = state && state.entityIndex;
++  const ships = (index && index.aiShips)
++    || (index && index.ships)
++    || (state && state.entityList)
++    || [];
++  const playerId = state && state.playerId;
++  for (let i = 0; i < ships.length; i++) {
++    const entity = ships[i];
++    if (!entity || entity.type !== 'ship' || entity.id === playerId) continue;
++    if (entity.alive === false) continue;
++    if (entity.physicsSleeping === true) continue;
++    if (npcFieldRole(entity)) return true;
++  }
++  return false;
++}
++
+ function finite(value, fallback = 0) { return Number.isFinite(value) ? value : fallback; }
+ function positive(value, fallback) { return Number.isFinite(value) && value > 0 ? value : fallback; }
+ function nowOf(state) { return Number.isFinite(state.simTime) ? state.simTime : state.tick / 60; }
+@@ -356,6 +407,7 @@ export const fields = {
+     this._bodyProfile ={ mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1, boosting: false, hitchedTo: null, primed: false };
+     this._coneCenter = { x: 0, z: 0 };
+     this._coneDir = { x: 1, z: 0 };
++    this._fieldsIdleQuiet = null;
+     ensureRuntime(ctx.state);
+     if (this.bus && typeof this.bus.on === 'function') {
+       this._lifecycleUnsubs = [
+@@ -579,6 +631,9 @@ export const fields = {
+       this._syncSkimSheet(state, rt);
+       this._syncEmitters(state, rt, /*applyForces*/ false, dt);
+       this._publish(state, rt, 0, 0, 0);
++      this._fieldsIdleQuiet = null;
++      state.fieldsRuntime = state.fieldsRuntime || {};
++      state.fieldsRuntime.quietLatched = false;
+       return;
+     }
+     this._handleInput(state, rt);
+@@ -587,21 +642,56 @@ export const fields = {
+     this._syncSkimSheet(state, rt);
+     // Quiet flight: no player cone/deployed/anchored/npc/skim and an empty kernel — still run the
+     // cadenced NPC discover walk so a scavenger can spin up, but skip cone/anchor/orbit/force work.
+-    const kernelCount = this._kernel && typeof this._kernel.list === 'function'
+-      ? this._kernel.list().length
+-      : 0;
+-    const idle = !rt.coneActive
+-      && !rt.skimActive
+-      && !rt.skimFieldId
+-      && kernelCount === 0
+-      && !hasOwnEnumKey(rt.deployed)
+-      && !hasOwnEnumKey(rt.anchored)
+-      && !hasOwnEnumKey(rt.npcFields)
+-      && !hasOwnEnumKey(rt.hitches);
++    // After #npc-plan-cadence: deepen with an idle quiet latch — skip discover+_publish for up to
++    // 0.5 s while membership is stable; wake on entity-index bump, rescan, or leaving idle
++    // (input/skim already ran above and clear idle when the player deploys).
++    let idle = fieldsIdleSnapshot(rt, this._kernel);
+     if (idle) {
+-      this._syncNpcFields(state, rt);
+-      this._publish(state, rt, 0, 0, 0);
+-      return;
++      if (FIELDS_IDLE_QUIET_LATCH !== false) {
++        const membership = entityIndexVersion(state);
++        const tick = state.tick | 0;
++        const quiet = this._fieldsIdleQuiet;
++        if (quiet
++          && quiet.membership === membership
++          && ((tick - (quiet.armedTick | 0)) < FIELDS_IDLE_QUIET_RESCAN_TICKS)) {
++          state.fieldsRuntime = state.fieldsRuntime || {};
++          state.fieldsRuntime.quietLatched = true;
++          return;
++        }
++        // Refuse latch while any awake scavenger/sweeper/salvor/anchor role exists — those
++        // still need the cadenced discover walk so loose-mass cones can arm (PQ-147.01).
++        if (anyNpcFieldRoleInterest(state)) {
++          this._fieldsIdleQuiet = null;
++          this._syncNpcFields(state, rt);
++          idle = fieldsIdleSnapshot(rt, this._kernel);
++          if (idle) {
++            this._publish(state, rt, 0, 0, 0);
++            state.fieldsRuntime = state.fieldsRuntime || {};
++            state.fieldsRuntime.quietLatched = false;
++            return;
++          }
++          // Discover armed an NPC cone — fall through to the live force path.
++        } else {
++          this._syncNpcFields(state, rt);
++          idle = fieldsIdleSnapshot(rt, this._kernel);
++          if (idle) {
++            this._fieldsIdleQuiet = { membership, armedTick: tick };
++            this._publish(state, rt, 0, 0, 0);
++            state.fieldsRuntime = state.fieldsRuntime || {};
++            state.fieldsRuntime.quietLatched = true;
++            return;
++          }
++          this._fieldsIdleQuiet = null;
++        }
++      } else {
++        this._syncNpcFields(state, rt);
++        this._publish(state, rt, 0, 0, 0);
++        state.fieldsRuntime = state.fieldsRuntime || {};
++        state.fieldsRuntime.quietLatched = false;
++        return;
++      }
++    } else if (this._fieldsIdleQuiet) {
++      this._fieldsIdleQuiet = null;
+     }
+     this._syncCone(state, rt);
+     this._syncNpcFields(state, rt);
+@@ -612,6 +702,8 @@ export const fields = {
+     // be published. Order: geometry settled → forces → publish.
+     const applied = this._applyForces(dt, state, rt);
+     this._publish(state, rt, applied.queries, applied.affected, applied.accelSum);
++    state.fieldsRuntime = state.fieldsRuntime || {};
++    state.fieldsRuntime.quietLatched = false;
+   },
+ 
+   _onEntitySpawned(payload) {
+@@ -1157,6 +1249,9 @@ export const fields = {
+     }
+     this.bus && this.bus.emit && this.bus.emit('fields:cleared', { reason, why });
+     state.fields = defaultRuntime();
++    this._fieldsIdleQuiet = null;
++    state.fieldsRuntime = state.fieldsRuntime || {};
++    state.fieldsRuntime.quietLatched = false;
+   },
+ 
+   // ── PQ-013 external authored profiles (the planet's attraction rides the SAME kernel) ─────────
+diff --git a/test/fields-idle-quiet-latch.test.mjs b/test/fields-idle-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..21b466425
+--- /dev/null
++++ b/test/fields-idle-quiet-latch.test.mjs
+@@ -0,0 +1,201 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { FIELD_FLAGS } from '../src/data/fields.js';
++import {
++  fields,
++  setFieldsIdleQuietLatchForBench,
++  getFieldsIdleQuietLatchForBench,
++} from '../src/systems/fields.js';
++
++function withFlag(on, fn) {
++  const prev = FIELD_FLAGS.enabled;
++  FIELD_FLAGS.enabled = on;
++  try {
++    return fn();
++  } finally {
++    FIELD_FLAGS.enabled = prev;
++  }
++}
++
++function makeState(opts = {}) {
++  const ships = [];
++  const n = opts.ships || 32;
++  for (let i = 0; i < n; i++) {
++    ships.push({
++      id: i + 1,
++      type: 'ship',
++      alive: true,
++      isPlayer: i === 0,
++      pos: { x: i * 40, z: i * 13 },
++      rot: 0.1 * i,
++      vel: { x: 0, z: 0 },
++      flags: {},
++      physicsSleeping: i > 2,
++      data: {
++        ai: { doctrine: 'patrol' },
++        trafficRole: 'hauler',
++        fittings: [],
++      },
++    });
++  }
++  const entities = new Map(ships.map((s) => [s.id, s]));
++  return {
++    mode: 'flight',
++    tick: 1,
++    simTime: 1,
++    playerId: 1,
++    entities,
++    entityList: ships,
++    entityIndex: {
++      __spacefaceEntityIndexV1: true,
++      ready: true,
++      version: 1,
++      ships,
++      aiShips: ships.slice(1),
++      projectiles: [],
++    },
++    input: { actions: {} },
++    ui: { screenStack: [] },
++    planet: { player: { collectorOn: false } },
++    fields: null,
++  };
++}
++
++function makeHost(state) {
++  const host = Object.create(fields);
++  host.init({
++    state,
++    bus: { on() { return () => {}; }, emit() {} },
++    helpers: {},
++    registry: null,
++  });
++  host.state = state;
++  return host;
++}
++
++function step(host, state) {
++  state.tick++;
++  state.simTime += 1 / 60;
++  host.update(1 / 60, state);
++  return state.fieldsRuntime;
++}
++
++test('quiet latch engages on idle flight with no field interest', () => {
++  withFlag(true, () => {
++    setFieldsIdleQuietLatchForBench(true);
++    const state = makeState();
++    const host = makeHost(state);
++    const rt = step(host, state);
++    assert.equal(rt.quietLatched, true);
++    assert.ok(host._fieldsIdleQuiet);
++    const rt2 = step(host, state);
++    assert.equal(rt2.quietLatched, true);
++  });
++});
++
++test('membership bump wakes idle quiet latch', () => {
++  withFlag(true, () => {
++    setFieldsIdleQuietLatchForBench(true);
++    const state = makeState();
++    const host = makeHost(state);
++    step(host, state);
++    assert.equal(state.fieldsRuntime.quietLatched, true);
++    state.entityIndex.version++;
++    const scavenger = {
++      id: 900,
++      type: 'ship',
++      alive: true,
++      pos: { x: 10, z: 10 },
++      rot: 0,
++      vel: { x: 0, z: 0 },
++      flags: {},
++      physicsSleeping: false,
++      data: {
++        ai: { doctrine: 'scavenger' },
++        trafficRole: 'scavenger',
++      },
++    };
++    state.entityIndex.ships.push(scavenger);
++    state.entityIndex.aiShips.push(scavenger);
++    state.entities.set(900, scavenger);
++    state.entityList.push(scavenger);
++    // Also drop loose mass so the scavenger plan can arm a cone and leave idle.
++    const wreck = {
++      id: 901,
++      type: 'wreck',
++      alive: true,
++      pos: { x: 12, z: 10 },
++      data: {},
++    };
++    state.entities.set(901, wreck);
++    state.entityList.push(wreck);
++    state.entityIndex.wrecks = [wreck];
++    state.entityIndex.pickups = [];
++    state.entityIndex.payloads = [];
++    // Force discover cadence this tick.
++    state.tick = 3; // next step → tick 4, % 4 === 0
++    const rt = step(host, state);
++    // Awake scavenger role refuses the idle latch so cadenced discover can arm a cone.
++    assert.equal(host._fieldsIdleQuiet, null, 'scavenger interest must refuse latch');
++    assert.equal(rt.quietLatched, false);
++  });
++});
++
++test('player cone deploy leaves idle and clears latch', () => {
++  withFlag(true, () => {
++    setFieldsIdleQuietLatchForBench(true);
++    const state = makeState();
++    const host = makeHost(state);
++    step(host, state);
++    assert.equal(state.fieldsRuntime.quietLatched, true);
++    // Toggle cone via runtime directly (input path is more involved).
++    state.fields.coneActive = true;
++    state.fields.coneFieldId = 'field_cone_test';
++    // Register a cone in the kernel so idle snapshot sees kernelCount > 0 after sync paths.
++    host._kernel.register({
++      id: 'field_cone_test',
++      kind: 'cone',
++      center: { x: 0, z: 0 },
++      dir: { x: 1, z: 0 },
++      radius: 100,
++      strength: 1,
++      falloff: 1,
++      halfAngleRad: 0.5,
++      durationS: Infinity,
++      sourceId: 1,
++      ownerId: 1,
++      createdAt: state.simTime,
++    });
++    const rt = step(host, state);
++    assert.equal(rt.quietLatched, false);
++    assert.equal(host._fieldsIdleQuiet, null);
++  });
++});
++
++test('bench toggle restores always-walk idle path', () => {
++  withFlag(true, () => {
++    setFieldsIdleQuietLatchForBench(false);
++    assert.equal(getFieldsIdleQuietLatchForBench(), false);
++    const state = makeState();
++    const host = makeHost(state);
++    const rt = step(host, state);
++    assert.equal(rt.quietLatched, false);
++    assert.equal(host._fieldsIdleQuiet, null);
++    setFieldsIdleQuietLatchForBench(true);
++  });
++});
++
++test('latched idle skips discover until rescan window', () => {
++  withFlag(true, () => {
++    setFieldsIdleQuietLatchForBench(true);
++    const state = makeState();
++    const host = makeHost(state);
++    step(host, state);
++    assert.ok(host._fieldsIdleQuiet);
++    const armed = host._fieldsIdleQuiet.armedTick;
++    // Several quiet ticks keep the same armedTick.
++    for (let i = 0; i < 10; i++) step(host, state);
++    assert.equal(host._fieldsIdleQuiet.armedTick, armed);
++    assert.equal(state.fieldsRuntime.quietLatched, true);
++  });
++});
+-- 
+2.47.3
+

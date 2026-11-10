@@ -1,0 +1,847 @@
+{
+  "baseCommit": "60415197397351f988b85e51884fa8624fb71939",
+  "fileCount": 120,
+  "status": "629 full cases,62 native compatibility and51 independent collision cases pass; live visual/player-feel acceptance remains open",
+  "files": [
+    {
+      "path": "assets/ships/motions/anvil-storm-orchard.motion.json",
+      "bytes": 5206,
+      "sha256": "618a3e256d75664c5e13e3230e0c4ba6734be59602e1cd44c1ec1bd916e4db03",
+      "gitBlob": "cf264ddf97fdec20e8a1bc8677e51edb158e6566",
+      "baseBlob": null
+    },
+    {
+      "path": "assets/ships/parts/parts_manifest.json",
+      "bytes": 283509,
+      "sha256": "55812bb25f87b02f6d2080bed10dc335610d84b142299e813bebdd499706dd20",
+      "gitBlob": "b528ceceee1db25097761167be68555f68be9fb0",
+      "baseBlob": "14fd7370b29bf556d686ccb8cddb0875310e5f8a"
+    },
+    {
+      "path": "assets/ships/parts/places/place_anvil_condensate_pod.glb",
+      "bytes": 376512,
+      "sha256": "17d7596e9295e5f70af688ed9f296238de84d28f5b77e49a29b4a06f58079542",
+      "gitBlob": "a87da226d5717a50ef7bfab72f3d6d7a8e6509e2",
+      "baseBlob": null
+    },
+    {
+      "path": "assets/ships/parts/places/place_anvil_storm_orchard.glb",
+      "bytes": 2845612,
+      "sha256": "0b425bc62b694737db3110cb01a677aa96aa0c47e7a792d6224554b72e18de64",
+      "gitBlob": "cca3a200263fd50ef74b9aac62f8a064032c7c54",
+      "baseBlob": null
+    },
+    {
+      "path": "assets/ships/release/parts/places/place_anvil_condensate_pod.glb",
+      "bytes": 192204,
+      "sha256": "aedba02cf4262ced915a82827144b259637fba9ed8e1b1cdd5637770f085c274",
+      "gitBlob": "d431a9f34a4789d76650e3040fe41886089a8da4",
+      "baseBlob": null
+    },
+    {
+      "path": "assets/ships/release/parts/places/place_anvil_storm_orchard.glb",
+      "bytes": 890644,
+      "sha256": "3fb008e52abfdfd4b3108b0ebd732dd09ff242939954a96b98bd6ee3e4823ff6",
+      "gitBlob": "047455a0886af4781a09ceeab3bedc5087caa12b",
+      "baseBlob": null
+    },
+    {
+      "path": "assets/ships/release/release_manifest.json",
+      "bytes": 262403,
+      "sha256": "50ef9ac3f1a6dec942177052a0358c797992bc5524f8901b479a0297aab1b7a5",
+      "gitBlob": "8c562f7b598f5da9bafbae1aaa10404b4c4e90fb",
+      "baseBlob": "f6414a2f3cb2ea4bf8999718ee52150609fa9da2"
+    },
+    {
+      "path": "assets/ships/release/render-packages/anvil-condensate-pod/render-package.json",
+      "bytes": 43253,
+      "sha256": "e60f1164de975c56f181e5aa8a8896c3875dc82feac63017ff18cfcfb86064e9",
+      "gitBlob": "5c24d584c6d0630274b21e51a7d2631306123e09",
+      "baseBlob": null
+    },
+    {
+      "path": "assets/ships/release/render-packages/anvil-condensate-pod/render.glb",
+      "bytes": 244312,
+      "sha256": "a2ff0029747a9aca425e1e2a1606db2860c7240738a1894cbf92414f201d7885",
+      "gitBlob": "4ce3c2e8d5a4e41249fd7a763ea79424c9565a22",
+      "baseBlob": null
+    },
+    {
+      "path": "assets/ships/release/render-packages/anvil-storm-orchard/render-package.json",
+      "bytes": 194716,
+      "sha256": "d2b34d5adc0ea89b96c22c41902f07dec61216073f944c9153c5e3cedfecbffd",
+      "gitBlob": "21c2a264ece6b15afd8c0ac530be7ee5ea780e16",
+      "baseBlob": null
+    },
+    {
+      "path": "assets/ships/release/render-packages/anvil-storm-orchard/render.glb",
+      "bytes": 1648472,
+      "sha256": "2b73bf98ab60dddbf7394fce01b4586854c13884c81f77d0c237dfdecafccce2",
+      "gitBlob": "64c02d8c13ae6f7d3611457a9cb497218f840539",
+      "baseBlob": null
+    },
+    {
+      "path": "assets/ships/render-packages/pilots.json",
+      "bytes": 272571,
+      "sha256": "df41d51fb9dd9b8030fadf18c757a4fceedd9be0dd636cd8271e725ed85441f7",
+      "gitBlob": "971fbd01e243f5cb9c6c97d0d0788bb4b5090c2a",
+      "baseBlob": "9a4eafbace493b0b83b6c945a6d8191aeaa6b04e"
+    },
+    {
+      "path": "scripts/build-anvil-orchard-motion-bank.mjs",
+      "bytes": 2463,
+      "sha256": "2884309d6bde4f3580b54420edb0eb01df31cf3f947304c9d3d1368b98d81556",
+      "gitBlob": "a319c5024a694f946f46eecb9ce9a56e56e87f66",
+      "baseBlob": null
+    },
+    {
+      "path": "scripts/build-render-package-pilots.mjs",
+      "bytes": 31006,
+      "sha256": "b2c52e9eda782ce4f0c61fa0e2d994033fbc57d396eba69ab4373932fbe214e2",
+      "gitBlob": "0c2aba446616512183e43cc00a77ca9089e0cbc7",
+      "baseBlob": "04339f67168833d9a6fe4b5e762cfb4c659713bd"
+    },
+    {
+      "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
+      "bytes": 11328,
+      "sha256": "05a45c2ccbe6707ba7a095edf69c5c3cb392b2e0cadbfa294979800efded1b90",
+      "gitBlob": "fa79d4517c17b3ebac95e6cef735bff4a03ddd90",
+      "baseBlob": "039992cd31193ef024a984580074ae0535237f45"
+    },
+    {
+      "path": "scripts/model-truth-census.mjs",
+      "bytes": 35044,
+      "sha256": "ac11e94a6fb4e79627d477f77010cfb560df62419740c36ffaad886ef18ed340",
+      "gitBlob": "9f1d69ade96f40e71efc1faa864117c9459af9c5",
+      "baseBlob": "097b15bd579e9081aa34c0cb4fbc27934413289f"
+    },
+    {
+      "path": "src/combat/impulseKernel.js",
+      "bytes": 29844,
+      "sha256": "52f1d8e087c69fef3a5923f1eebfdae3f29c6d6b3e2bbf248555222f31eedcb7",
+      "gitBlob": "853e5469c3735eb51da0e91bd477f143c1b3e20a",
+      "baseBlob": "1ceaefcf5e0bc5a4a61d477c915631c4a142635b"
+    },
+    {
+      "path": "src/core/anvilOrchardCollarQuery.js",
+      "bytes": 39286,
+      "sha256": "0d1da54fb8c9ab3f5511de42e238809f91ded34802d3ef9f6c732055620b7ac2",
+      "gitBlob": "3fa2ef2c12fe8132248e84859848b198253158dc",
+      "baseBlob": null
+    },
+    {
+      "path": "src/core/anvilOrchardNative.js",
+      "bytes": 149688,
+      "sha256": "f1f18375a7c34f4129230dc00392807a0c7a53a0919356cf0061452055ae199d",
+      "gitBlob": "dffa0846fb684bf75deaa2293a2367ab7044e99c",
+      "baseBlob": null
+    },
+    {
+      "path": "src/core/coreSystem.js",
+      "bytes": 89177,
+      "sha256": "6098e65fa7e94a262ccb205048d4560887c8ccb6e2bb2a56772de4c64e194c54",
+      "gitBlob": "cdb2b82d1b0cf85ec2decc0ce420ebb43d59bd58",
+      "baseBlob": "752844249e8cb21e1cb18d825fefaaf64a73c3ac"
+    },
+    {
+      "path": "src/core/physics.js",
+      "bytes": 112860,
+      "sha256": "ba8f9e7cd8b11751311d848814f3a15bb73aac9af70219f8a7c58a0e54787a6e",
+      "gitBlob": "682430eb36ef239c7d204a4b67ee2ec66dcde7a5",
+      "baseBlob": "7cad9534bf99a263e2e82778a6a89ae657c57bcd"
+    },
+    {
+      "path": "src/core/physicsAuthority.js",
+      "bytes": 43506,
+      "sha256": "9989cdbf3753b62c8178e4b1cdc90f38beb07d2aec2ef10d9bc81f94cafc9e68",
+      "gitBlob": "9d2a849804b309492fad43e94358c68bca576cc6",
+      "baseBlob": "de8dbc9360682005c201c117014b85270ec5d6a9"
+    },
+    {
+      "path": "src/core/presentationAdmission.js",
+      "bytes": 9708,
+      "sha256": "a767f22fa272ae6d3b64f21c97fe3df82d079c842333238ccce0064162fbdc49",
+      "gitBlob": "89096f85e09632d8257d25bd71579d381e7af151",
+      "baseBlob": "7f9179c864f2b3ae673499ab106f207e34d73b9b"
+    },
+    {
+      "path": "src/core/rapierCompatRuntime.js",
+      "bytes": 7272,
+      "sha256": "d6d0ff60bcaca766171fe9ac752174916458ee7d4b9d0389d4da20dc4f96c3bf",
+      "gitBlob": "46218917d133621106bd8689e4a631d56e9b702a",
+      "baseBlob": "169636df6ed6638afe9b0ade9229e70a8508996d"
+    },
+    {
+      "path": "src/core/sg02DynamicBodyOwner.js",
+      "bytes": 273907,
+      "sha256": "63f867729bfb44d8d904520a0ba1f46f0874e1175b0969266a419a83d3590d59",
+      "gitBlob": "68f7b8ffcd5946bc0a1be1c7ad0dd834d00d4a1b",
+      "baseBlob": "3ed2177bc8b339d653a9a27c6ec62d763c062179"
+    },
+    {
+      "path": "src/data/anvilOrchardBody.js",
+      "bytes": 3613,
+      "sha256": "e3264eaf12d8bc196b649a46f6d270bae4a23724b58e2ad378c1b1838a5b4a34",
+      "gitBlob": "dd395a4c9d086e6bafabc0864b08eacac3ab7f1d",
+      "baseBlob": null
+    },
+    {
+      "path": "src/data/anvilOrchardGeometry.json",
+      "bytes": 46393,
+      "sha256": "06e5fe26acf320884df16cefd23424e1e1920c1913e6fe9cecda5515e370108e",
+      "gitBlob": "166a5041ad3dde8948239f8ee371e721e3d385f7",
+      "baseBlob": null
+    },
+    {
+      "path": "src/data/anvilOrchardIdentity.js",
+      "bytes": 3150,
+      "sha256": "60c495bf6ece186b172a076e6f67e9d52532aa93c8d2a6101d1f14fd4a408d7f",
+      "gitBlob": "5c17d146c1226a5351082684366e8c2145215a5a",
+      "baseBlob": null
+    },
+    {
+      "path": "src/data/environmentalMachinery.js",
+      "bytes": 65172,
+      "sha256": "9923f4767a4c1cd214bd5d73bd1b7b27c856a57b27236fc5777372c0b1d1e6f3",
+      "gitBlob": "6d8ead301757d4b1c693af5930a8f5bb65aca589",
+      "baseBlob": "14aff56f690d99de21d089eb099f2a8046f4d503"
+    },
+    {
+      "path": "src/data/modelTruthCensus.generated.js",
+      "bytes": 2525526,
+      "sha256": "e36afb28d017b532b4a04c0761276b5c8a27caafa0f73f30d1a6365ddea48536",
+      "gitBlob": "58958993a9fb7e3c024ba3090d11beec5632e5d4",
+      "baseBlob": "076099343ea5ea5dcc143e8a986d0645d66a93d9"
+    },
+    {
+      "path": "src/data/modelTruthCensus.json",
+      "bytes": 2265753,
+      "sha256": "328805ade48ae2a6d28f90f9de7aa7b060fd03638ef6c6fb501a936aadb755ff",
+      "gitBlob": "7c9326536b5cb6d42d832cf1adb70a225a860728",
+      "baseBlob": "54c1f5b35376504cb1686100c1faa8c668b3a6ec"
+    },
+    {
+      "path": "src/render/anvilOrchardVisuals.js",
+      "bytes": 6694,
+      "sha256": "3e998932eb942e20c03dfcc76923d5e19269f7e1d24c7c1811323fab72a064ba",
+      "gitBlob": "938a34dbc90dfb8a6488f06cb97cf202a109a216",
+      "baseBlob": null
+    },
+    {
+      "path": "src/render/authoredMotion.js",
+      "bytes": 65928,
+      "sha256": "b1cffebe832115f3d42100d97f945209053d95f07e2f39616c7f74898ef515c9",
+      "gitBlob": "eb3e4028fe54bf731fb9a64a31700fefcc4dc12f",
+      "baseBlob": "b395b95a988d47f25cc864193b02eeffa2359898"
+    },
+    {
+      "path": "src/render/partsLibrary.js",
+      "bytes": 825350,
+      "sha256": "7023baa226f589c2677ae42dd5b2a1524fff54f915b9353241c7fd125b0436b7",
+      "gitBlob": "c0ac01772595e9b5c93d1bec557cd8493ff46e1c",
+      "baseBlob": "2cdf8bafaa51e917ed0be8c17a9059fd6d5d8f0b"
+    },
+    {
+      "path": "src/render/renderPackageManifest.js",
+      "bytes": 186527,
+      "sha256": "ebdfe8ab8938234a13c28d56642594597527cbe5b67f201e15b1adf4771a86af",
+      "gitBlob": "f04638d814c6ec0e0b663f9d8179b2c98d5c0fd9",
+      "baseBlob": "a9cb9fc5f110e199bc45ad31e90a1a328eb4cc11"
+    },
+    {
+      "path": "src/render/renderer.js",
+      "bytes": 1765982,
+      "sha256": "0e75bfd3e1569fd05dc09bade1d1d8a415e7eeb11c3b5d9d7fc6e213fda3f62b",
+      "gitBlob": "69e96f3e32ab3e8fea51c68a87c7791f1109c9e3",
+      "baseBlob": "6865333a7d459ae4d8cea7e50f35fb35841f5219"
+    },
+    {
+      "path": "src/render/visualFactory.js",
+      "bytes": 319399,
+      "sha256": "a5698ca487d0709bf75e37ebe34ba7287785ebe6ccf9efd1a88de7cfe7a0e93d",
+      "gitBlob": "1f3c508014920736c5671ef1d68a15a431848d24",
+      "baseBlob": "dc25aa433077fc34fc6ee1bade77605e79d8e4c9"
+    },
+    {
+      "path": "src/render/visualOverrides.js",
+      "bytes": 78154,
+      "sha256": "88ffcd5b02bd23cc226d63879641ddd2b79558dc87975c3ab281f4f3820ab904",
+      "gitBlob": "86fbc6bc9daa0189b890e46ed70970a2aa3d0efd",
+      "baseBlob": "307d8ebcc16080a5209449032322edc9a7ac0403"
+    },
+    {
+      "path": "src/systems/cargo.js",
+      "bytes": 64417,
+      "sha256": "efb56b3dc1c8c728284ac5976d7f9d48fddc94de5628f977c7177b47f0886024",
+      "gitBlob": "58e11c214f5571c115acecae2532d32c880f2cb2",
+      "baseBlob": "6ecb985e23b86e85fc1401dc86d96e8137ccde9a"
+    },
+    {
+      "path": "src/systems/collisionConsequences.js",
+      "bytes": 43873,
+      "sha256": "1f70bd8abdc55ec101aaaa113190ee0063ef51d3ab767646c69ed74cc1176069",
+      "gitBlob": "e33ccadd4b767428f3c9e7d424147970fcb52637",
+      "baseBlob": "d93ae4e24f25ae6a5ea1baa447efc32da9d0a6a5"
+    },
+    {
+      "path": "src/systems/environmentalMachinery.js",
+      "bytes": 73883,
+      "sha256": "a91e2fe932b29f21e9ac318be0e7d4da0012040c2eab27a90a3916f6995196f6",
+      "gitBlob": "2e4a6a62c5486a8d90b63a2d22079576ac453f3a",
+      "baseBlob": "7b2dfa3f7ff3245079b8fc5ea76fc862ec942ee7"
+    },
+    {
+      "path": "src/systems/fields.js",
+      "bytes": 143612,
+      "sha256": "6a95a52651ab55780cfc7b0ef567e4630b04ef170cd08470707817c2f1bccd1d",
+      "gitBlob": "1be8b5315ba222cc9fcdd97cb2eca41dba259107",
+      "baseBlob": "5c6d07eb91e5275fe5c7370fdf9b3adf6891299f"
+    },
+    {
+      "path": "src/systems/interactionDescriptors.js",
+      "bytes": 18252,
+      "sha256": "bc176dd2cd3d783322d9c29adcefed68b3bce34e99d029ef2e56519eff85de2c",
+      "gitBlob": "8c9b11b38708e313d884a2a879723c78a3f9abcc",
+      "baseBlob": "2bdd794a5a429245f44301730dfff3479eb34ffe"
+    },
+    {
+      "path": "src/systems/mining.js",
+      "bytes": 161150,
+      "sha256": "58f5b3746cdb3d8722662696d48e64febcd64936f26561b67adbc06c089f4fce",
+      "gitBlob": "257baa219b10c12f331073fb4d9e81d512732a39",
+      "baseBlob": "ab93eaa901a9bde4889185e07dd80cc02c94c7e3"
+    },
+    {
+      "path": "src/systems/planetRuntime.js",
+      "bytes": 47843,
+      "sha256": "2e83e7e1c4bcb246ebc8732527a3d5b19d5f3bddde5763475960fd44b86a2841",
+      "gitBlob": "fed5aaa622b4e5036456d03c4598999bd5814526",
+      "baseBlob": "40b9644a6db71a543f784fbba73428ee3e327356"
+    },
+    {
+      "path": "src/ui/fieldHud.js",
+      "bytes": 20315,
+      "sha256": "4536bac5d676d5dfcfe98d5eefd2a9a2d2707edd4fd6a2c975a9a36c6336e323",
+      "gitBlob": "a8c124211fb79c512b7d3bb6f2ba37b5c35f8f2c",
+      "baseBlob": "e037540ceee25cb05bfb98a3c6a7952d226ae725"
+    },
+    {
+      "path": "src/world/activityRuntime.js",
+      "bytes": 102951,
+      "sha256": "f6949e63dfaa74823e219083a083d060bf93d58bed4a5a75e11308d278526681",
+      "gitBlob": "93401e647fd286b2f8b8033da0805d2b64c3ec48",
+      "baseBlob": "6646d2be4252b05e32603fe1aff643932ea67b6c"
+    },
+    {
+      "path": "test/anvil-orchard-activity-partition-handoff.test.mjs",
+      "bytes": 3985,
+      "sha256": "88eeb92f11ef223d0812f03d797984e8e415295ea70bd11d8e4a9baed3cd8985",
+      "gitBlob": "6b657e724be7b29f07b9099a2bc4653bf88c3adb",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-authored-tow-pocket.test.mjs",
+      "bytes": 17935,
+      "sha256": "b560fb6c08f357b18881b81186108a543fd5006ea350a05e4d7429e182fe6623",
+      "gitBlob": "035d0d5b2fe18bc737542580acb33cac7dc96014",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-away-sector-continue.test.mjs",
+      "bytes": 9688,
+      "sha256": "7e00c17e6e3674dad0b24a3ebd6d7ff832ede3b29878d1c6ada14a833f9703ab",
+      "gitBlob": "7f91dcb7a63e85a3cb1248312fadc32f22591dd6",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-bearing-material.test.mjs",
+      "bytes": 9018,
+      "sha256": "701f49a89b924195b07f78784f2d201c20d89226c779f989522e98974ffb67b3",
+      "gitBlob": "6ba5eb93c5599be3289846a76c1c989230bb3a12",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-bearing-query.test.mjs",
+      "bytes": 28085,
+      "sha256": "b5f8fe5be8ee455346b8b898f98cd9c092609606738c7ef5d7c9cd4000bcfe55",
+      "gitBlob": "1221319c24794f4407c371abd757bb786d4cd140",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-census.test.mjs",
+      "bytes": 6496,
+      "sha256": "14456576a2c28b8819d9840a04477f0f6b0c35e676cc9a8237d32a93b4ac4d23",
+      "gitBlob": "10791d5063f73ca7ff943c63ad5f80bbedaa8fb5",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-capability-contract.test.mjs",
+      "bytes": 2968,
+      "sha256": "1711b7c4c908f058e73c69e9691559668070f3d45316c8e3289560ce76b4e72d",
+      "gitBlob": "ec0dd1824c43ce5d887723c7a542fee51ce63760",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-cavity.test.mjs",
+      "bytes": 3328,
+      "sha256": "91259d084665d42b9d4307306afc78bfea7d2fb1efd02b192bfc9291961a7d31",
+      "gitBlob": "2ec944b71ee6e90ea84f67c94bb2ef09bf6dbc15",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-cold-boundary.test.mjs",
+      "bytes": 1305,
+      "sha256": "7c9d0ceffefcfb4e595f50df87c3d61f1e0e0ec3c987ebd65beac4c05ee8e305",
+      "gitBlob": "f5d0a7bb252a173573e770b6bfc9cc4ef869f4ed",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-cold-bypass.test.mjs",
+      "bytes": 747,
+      "sha256": "0f3691c27b5f1164841a3daa1576a3ca623ed837358c519d3c1cfe51468d5b61",
+      "gitBlob": "39230303371f1f4476a6a93474cdbceb0164f038",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-cold-callback.test.mjs",
+      "bytes": 6899,
+      "sha256": "42f2fddb985801fca50cb2634e7e4e8e723652d8956e50c4811a29a2e053465e",
+      "gitBlob": "812842e35e0fa0bae7c4a1d33b53c8902a2b38d9",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-cold-cancel-boundary.test.mjs",
+      "bytes": 1346,
+      "sha256": "14f69efe9e82b2f4508e73a5ecf9885577e3ff451882786e4988ebeb2b22b3c9",
+      "gitBlob": "a5d2cd4c9e7ceb4084f35e4b2a34e4a6fa554d32",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-cold-input-contract.test.mjs",
+      "bytes": 3962,
+      "sha256": "16824b633dcc8c725e2ef845db1b84b47eb1f858cc5d74da4d312a4e5618014a",
+      "gitBlob": "97c2e06988f8268c0514d10d203915e3acd25190",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-collection.test.mjs",
+      "bytes": 8391,
+      "sha256": "35f0d75c7682bd0efb1fa2363116382483de607c00d768dad612c360bbc16d8d",
+      "gitBlob": "a60d937a4512e7ad5e62fc282638af44e182ad3d",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-consumer-bound-compat.test.mjs",
+      "bytes": 19125,
+      "sha256": "7161d1c5309096e5bde67f25b8d2978df1f79eafea25b95e5cab52b67c484f1b",
+      "gitBlob": "6a896b3cdd437ecb5af2d9405e26240a234a7753",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-direct-cold-authority.test.mjs",
+      "bytes": 1161,
+      "sha256": "937dc685d3c6fd430129e8b226354709c54564dc64462ace2841c9885f6650cc",
+      "gitBlob": "e5c0930c7b2b4f62e0bf47ef6e471bc9ff27735e",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-empty-source-continue.test.mjs",
+      "bytes": 2116,
+      "sha256": "752adad2a3625d981490b8c8f0fab5c26d7f5d73a85d433b7edd1b766f3e3349",
+      "gitBlob": "13be538cc7ea93ef48515d1389b222c850639c0f",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-empty-source-residency.test.mjs",
+      "bytes": 1755,
+      "sha256": "5c6dcf7f889bb1fcd108758575de59720d73a4fd857b22de138dc70381524d2b",
+      "gitBlob": "17847104267b03dae81683d00c58054d735dd297",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-empty-source-retirement.test.mjs",
+      "bytes": 2010,
+      "sha256": "0ddaa851f1f172f6c2fbc241af9f070e4a92bc3022e14c0759bfd90110422983",
+      "gitBlob": "09c71990301f6ce34c93e98fe10ff524d70637dc",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-final-container-contract.test.mjs",
+      "bytes": 1668,
+      "sha256": "1566086532e1d8fa4e3408840f1590c2c35e0a7e949b0c8a499f84bd04c8b70e",
+      "gitBlob": "2a7c30d78da73f36f3d9d3317699a0d59b64db92",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-final-origin-owner-cells.test.mjs",
+      "bytes": 1207,
+      "sha256": "cd2b878cca1571126447de68fe114ee0975c0023bbab2fdad0f1f80693201285",
+      "gitBlob": "e96e074a524baa71e994a63ce9ea1f48bf7ea1c0",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-final-owner-cells.test.mjs",
+      "bytes": 1206,
+      "sha256": "e0837bf507eba798c12fc29735b81c6c65b800540f11626b2010e0f6e909b602",
+      "gitBlob": "c3786030a7d7c937cfc49c876f8e69178e445dbb",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-final-pod-handle.test.mjs",
+      "bytes": 1502,
+      "sha256": "4f795afe702a7fb9867dfd9dcb0fc809d22e20941a610327950508d3310d0000",
+      "gitBlob": "3c8bd947c8ebbd117644e1b184ef512bb9b02ae5",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-final-read-cells.test.mjs",
+      "bytes": 1084,
+      "sha256": "cd49b6c81327895633e3ad372e518d118705dd2099f8bcae3fb725eb070a7067",
+      "gitBlob": "b634aedc46855d379715ccede9dd420378ffc8a6",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-fixed-pod-adoption.test.mjs",
+      "bytes": 2787,
+      "sha256": "a13aac2c83ee2be41e037d1b903b805b6921f190a1d3419b8d7a09cea2d0ffb1",
+      "gitBlob": "dace8df2a6047b2b1ea32ada2d38a5575bbf2b67",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-handoff.test.mjs",
+      "bytes": 11146,
+      "sha256": "8c9878989efa68a39a51ce9cbf8882d8e836754ac5440391e001dbe3ac8975a9",
+      "gitBlob": "6627cf7a74a6112b5599d884b51e4f621514aaab",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-index-publication.test.mjs",
+      "bytes": 3912,
+      "sha256": "af29eea9a0d4d447f67a5e16f2eccc485589ae0333ddc569e8d7c0882d57b478",
+      "gitBlob": "6dda723cbb2f1a6b01a9e681ff32780fcdf3ec36",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-insertion.test.mjs",
+      "bytes": 22611,
+      "sha256": "9f88caf6b7655162eae7c0a89e5b590e22c00f82e8b0668a8b995b48d0bfc642",
+      "gitBlob": "54f66062fb234debf2cce06122f256b2836a01db",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-late-origin-refusal.test.mjs",
+      "bytes": 1433,
+      "sha256": "93031746428743be375c959f46aa38aa937475764bd9223aa0e0f36ed95eec81",
+      "gitBlob": "2fc6227ae06da08b282950f4e7359cc6860d28b3",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-native-dynamics.test.mjs",
+      "bytes": 2448,
+      "sha256": "39ef2881aec856f38f19f2689ca16f44dbee1b72a76f99dfdb9b9f66f738161e",
+      "gitBlob": "00abf19307d5689043391d5109d5d81f63fed0eb",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-ordinary-boundary.test.mjs",
+      "bytes": 3656,
+      "sha256": "b41e666c4c5bbbb66baddfedeb5d5b9f942f90714d5f0870ab850be28c9c4f8d",
+      "gitBlob": "2ab61163e174edd46be6486eff2ef38928bbabf9",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-origin-refusal.test.mjs",
+      "bytes": 3849,
+      "sha256": "31b4482b2b68dc174202ac9e29c3e785a387bb3aa1599392d1102bb25cdcb458",
+      "gitBlob": "2b3c10630aad6c715c8215b8b999a6b6c15b84a2",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-prepared-body.test.mjs",
+      "bytes": 2409,
+      "sha256": "cc4632a18c0df497cef14f39dfa6b0d77dd8f63fd50bc3b5e55ef487790d0788",
+      "gitBlob": "9250552f19b6dee8900775dab02c31baee9debde",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-ready.test.mjs",
+      "bytes": 7373,
+      "sha256": "e8dc81051672837f7d41e8e29d03aae0a9d3b87efeb889017c2098220fd58bde",
+      "gitBlob": "0fb2e0c85633a19095ac431d4e3c8e59cb1d4ca7",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-release.test.mjs",
+      "bytes": 13837,
+      "sha256": "a11ac2f60a1267fcde536147cc65a5b0471588a064732fb2783021792627da03",
+      "gitBlob": "74bf065962d2dc6d2a745590abef3252a0e75483",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-residency-lifetime.test.mjs",
+      "bytes": 3429,
+      "sha256": "64b9b6a09b0035dddd47a438bd231ff64523263a09ec056da7e2cbd02f1e0eb3",
+      "gitBlob": "3049973c6e0ad0020acc7f6859e9de16ef844131",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-residency.test.mjs",
+      "bytes": 3506,
+      "sha256": "92095ea756eb2871f8291e77256699cda621fe9450a9b7d1a517dd796b84854c",
+      "gitBlob": "a47aba02153d0e817b143646148b202783c2f034",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-restore-steps.test.mjs",
+      "bytes": 2425,
+      "sha256": "71a69161f244617fad2c152b1f58fc6e94487777e34e7d1c0147df090c6aa253",
+      "gitBlob": "5ddfe8e76c0b30c1cf1ffa0ad86622a8c4ea9d10",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-retirement-continue.test.mjs",
+      "bytes": 2897,
+      "sha256": "8a281f2dc0914ba0df84d0d422bd3c8298038e8f8828d4d09d505b4bedf52963",
+      "gitBlob": "bade3507bde4fec8a1908ab13623329e1b669e40",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-retirement-failure.test.mjs",
+      "bytes": 3495,
+      "sha256": "b259d3fcc1171ef6ac8d0db953426419d22160f0be1c35a14ec4cf7d8426611e",
+      "gitBlob": "19f100137dc3fb2118b46fef50dd4bcf594b258f",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-retirement-recovery.test.mjs",
+      "bytes": 2918,
+      "sha256": "4032c5885eb6f6b226aa057902ff92ddc4326a745e0feb6095002fd238212f79",
+      "gitBlob": "5e64cba8cddf04c4ed7ae9f3aca3166415bbb264",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-custody-staged-core.test.mjs",
+      "bytes": 11583,
+      "sha256": "673e7e64a81e28363711326da9cbc51ba69977016ec22fc7682d66194ba5838c",
+      "gitBlob": "d0522c1f333cc122443f95c0d0bb5e65395a99a8",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-exact-root-resync.test.mjs",
+      "bytes": 5267,
+      "sha256": "7852e3d67d9970c145d3900faf8b4f26d6f5327aba739ae9f931e21caec5b26c",
+      "gitBlob": "c39d511126476cd3596fc21c357099f7de51a336",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-fixed-root-recoil.test.mjs",
+      "bytes": 2118,
+      "sha256": "f678fb2d2fee5748cff21d87d22974fbafa3f9f1f36c3d207c714dd3d96093bf",
+      "gitBlob": "290f1d14c393d886d47cb725cfeaa49ad8739bbd",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-geometry.test.mjs",
+      "bytes": 10204,
+      "sha256": "5b46a151a58cd579710ffff48f2f915fc87348799df0304581383f3617c9735c",
+      "gitBlob": "99bdad946b7d62b81fd3f785916d17e257773ab2",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-gust.test.mjs",
+      "bytes": 18495,
+      "sha256": "f144256130da359f4fe980d088d263899db673f8012772fa031e5aee05feb349",
+      "gitBlob": "4bbf8b49da90150b63c68b47d76b30db6ec34e12",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-input-route.test.mjs",
+      "bytes": 9598,
+      "sha256": "14c2fb0416731f9a81b53d7ddc3542d06d419fbc59e5643170c1e1d10ddb2072",
+      "gitBlob": "2dd68330b41da7308b621688661e106384bc6064",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-motor.test.mjs",
+      "bytes": 20097,
+      "sha256": "161481d0f9c332f217cf10bbf7911ce7334b688d8d40977d8553ee435ca400d4",
+      "gitBlob": "de178ac587d0ee859c8d1c38d72af680ab6da31b",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-mutation-observer.test.mjs",
+      "bytes": 4669,
+      "sha256": "0d136a509f1e8a85577c255f5102c6531759e01a0a3e4b0c7ef392cb3e3ab934",
+      "gitBlob": "911b947af005b4965bf17de0c409cb20f1555772",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-native-foundation.test.mjs",
+      "bytes": 25792,
+      "sha256": "bdcb32c159f09670631e4673e2629883307b978e29423763b51bdd0a41effedc",
+      "gitBlob": "e79269fc5f7020634fb4f8cf2b65748a3c8cb1ba",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-package-pose.test.mjs",
+      "bytes": 33159,
+      "sha256": "1c22a66d70601930810f0a8aff5e13692798c026cf43c6c4d08ac62feafe3b23",
+      "gitBlob": "ae3f0c6b491c3fa2d30fdf09591f5b4b50e6e5cb",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-player-release.test.mjs",
+      "bytes": 10532,
+      "sha256": "94105df7aecf8d46596c6a752bcafb813904db724e79bb47bcf89c7a32819b78",
+      "gitBlob": "21e91dbcdeadfc02d584f6220b2fa2ef563477b7",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-pod-shock.test.mjs",
+      "bytes": 15400,
+      "sha256": "b0252ead48ab64d0e993581f7fbe294d6cb5d5d26a5106d304a365aa12c296a2",
+      "gitBlob": "e0c4ac607945c251686b7d4f9570089e53b021ec",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-pod-thermal-exposure.test.mjs",
+      "bytes": 12224,
+      "sha256": "5ee31099a1923ad3825f68be3cc70cca198b99d35988dcd347a1a51096b71264",
+      "gitBlob": "8b6fb83b8db5d2b265ff1a17e42e5b63c6b947f3",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-pose-publication.test.mjs",
+      "bytes": 4229,
+      "sha256": "29bda279b8713e727ea06989ce8a4496532b2e5ddf99f50d313a9a09aa164502",
+      "gitBlob": "2ae909106c172e421b74a0a142f7e361d90ecb68",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-post-step-continue.test.mjs",
+      "bytes": 2069,
+      "sha256": "274f44b48c11aa8da4cd6ab7b82b76308978a4dbdcbd2f80c1601c7ccc1e1328",
+      "gitBlob": "a7e0f33f07e1f27149979bf1c5cb712ddf7a6a95",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-presentation.test.mjs",
+      "bytes": 7320,
+      "sha256": "52b5de48e221e900c2a6b3bf16369389b876657d3616b005d279086476d6e8e6",
+      "gitBlob": "9208eacbebec9d6acb8dc3f4622a5052d9c79fbd",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-recovery.test.mjs",
+      "bytes": 10641,
+      "sha256": "ddc426b6a2ebc0c444057cbb2d024e79176b2335c64fa127b6c9dc6d88765990",
+      "gitBlob": "0bf488b1b40009bcb569f8711a868f30e382ff49",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-release-assets.test.mjs",
+      "bytes": 6047,
+      "sha256": "d04521199d303b271bef15e567cf486dbb9bb5d208567c35dfffc2214fc02e9f",
+      "gitBlob": "c946e05f2b7f8a86f04162252373d647c1392f09",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-tow-acquisition.test.mjs",
+      "bytes": 11813,
+      "sha256": "92441d62e2dbbef856181a69b37fad23f991296742d482bbccbc86bc0a8cc06d",
+      "gitBlob": "b811d0342a11305ee7026b7495234d314d5e612f",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-tow-safe-pocket.test.mjs",
+      "bytes": 15515,
+      "sha256": "338c2cb33710fe745df117f419b55de830cd4602bd2f495f4cf406598a9eff73",
+      "gitBlob": "7913b558c51cf02aff2da5a4fd5d70f854e591d4",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-trusted-read.test.mjs",
+      "bytes": 9991,
+      "sha256": "9202c3d2b3d9225e6224cca05225d56c1d47137150deb117b52810d97363005b",
+      "gitBlob": "8001d4eade0ea1afdfec9c5dae79fa3b1a9144b2",
+      "baseBlob": null
+    },
+    {
+      "path": "test/anvil-orchard-visual-admission-continue.test.mjs",
+      "bytes": 7443,
+      "sha256": "71e7ec19098ca13c331db036a35b686fef5a9d84fcdfacfb58092d13dd082d6a",
+      "gitBlob": "248fa5e2ed374af5008b072d2c7fe96a6ce705d2",
+      "baseBlob": null
+    },
+    {
+      "path": "test/fixtures/anvil-orchard-custody-origin-source.mjs",
+      "bytes": 1789,
+      "sha256": "3b93ead48ecfd45d1c2b2659f8ac854effa665000e219187e84d953c637f3e4f",
+      "gitBlob": "e533971020de2b5d6f67c242809534dbe62fbcd5",
+      "baseBlob": null
+    },
+    {
+      "path": "test/fixtures/anvil-orchard-custody-ready.mjs",
+      "bytes": 805,
+      "sha256": "5632ad05835e4a1a0ece736b3ae8e89372c4929bd9942578fe8ff7a2f489ed72",
+      "gitBlob": "fa3b9c27db0a871c81ac016f096e71ad18d7968a",
+      "baseBlob": null
+    },
+    {
+      "path": "test/fixtures/anvil-orchard-custody-residency-fixture.mjs",
+      "bytes": 1325,
+      "sha256": "b03b19dafcd89e94dd0ed5f0184d4d9854f523c9488aef19e14d46ea452bf2fb",
+      "gitBlob": "0786d966ad689489e5871adec95d888ebefbd258",
+      "baseBlob": null
+    },
+    {
+      "path": "test/fixtures/anvil-orchard-custody-retirement-fixture.mjs",
+      "bytes": 892,
+      "sha256": "7ed49ee5c826144c537d18d901054393edd5acdbac6dcf18be673ba8c213df83",
+      "gitBlob": "e7bbc8af598f9c4d3631c56fa12ad24fb5b3230a",
+      "baseBlob": null
+    },
+    {
+      "path": "test/fixtures/anvil-orchard-custody-source.mjs",
+      "bytes": 2039,
+      "sha256": "1bf251527783cd76afa219b8b862ca51945af0d26c8e475772ef96f7f52bb958",
+      "gitBlob": "aae92132490e827640a2b6be0dda333583efcd44",
+      "baseBlob": null
+    },
+    {
+      "path": "test/planet-runtime-anvil-orchard-route.test.mjs",
+      "bytes": 7672,
+      "sha256": "7060b5613f3a855da6e90455873ca36256a4daadf29d6f70d926b84af06953a3",
+      "gitBlob": "a516d81baac5a56e9e30d696dae3ebbbdba81976",
+      "baseBlob": null
+    },
+    {
+      "path": "test/render-package-orchard-helpers.test.mjs",
+      "bytes": 2633,
+      "sha256": "4d8df06c07fd022184f0f6c3e0bf21b0409ffb59e143c6878c986f45a234e254",
+      "gitBlob": "7f5cca6d6acbb028c49401893c1edf4627b37c06",
+      "baseBlob": null
+    },
+    {
+      "path": "tools/blender/forge/fleet.json",
+      "bytes": 48885,
+      "sha256": "0e81b96bc7731551fda5924fb5dd456ee2678348e0647eaf2def73feb078ff54",
+      "gitBlob": "24ab7f5f3d28c9f174596d51bd5f281fb69a747f",
+      "baseBlob": "4770ebf424ee148689de5ce7a776d9bb96aa4109"
+    },
+    {
+      "path": "tools/blender/forge/ships/place_anvil_condensate_pod.py",
+      "bytes": 359,
+      "sha256": "291815db9848a509c600562beaa9d76842ca4c7d1c96db794dd4ca7077ba5471",
+      "gitBlob": "848c788825e4976944fc55b426d78f60ef6e77b3",
+      "baseBlob": null
+    },
+    {
+      "path": "tools/blender/forge/ships/place_anvil_storm_orchard.py",
+      "bytes": 23694,
+      "sha256": "0d4d5eac9af957ba7f83dd0d2c5a58ddee801e239e90f03f09f9d5a72c9c820f",
+      "gitBlob": "c6a343d3e4ce75d05d67d9f291b83eac6dcf3d9a",
+      "baseBlob": null
+    }
+  ]
+}

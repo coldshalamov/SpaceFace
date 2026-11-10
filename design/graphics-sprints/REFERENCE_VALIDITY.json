@@ -1,0 +1,44 @@
+{
+  "schema": "spaceface.gfxReferenceValidity.v1",
+  "applied": true,
+  "total": 5,
+  "offBrief": 1,
+  "note": "Off-brief references are quarantined, not deleted. A frame set in space cannot win a background comparison against a reference with a sky and a ground.",
+  "report": [
+    {
+      "scene": "combat",
+      "img": "cm-01.jpg",
+      "onBrief": false,
+      "setting": "in-atmosphere",
+      "reason": "The image shows spacecraft combat above a visible planet horizon with clouds and illuminated ground terrain, so it is not open space."
+    },
+    {
+      "scene": "combat",
+      "img": "cm-02.jpg",
+      "onBrief": true,
+      "setting": "open-space",
+      "reason": "The image shows spacecraft fighting in open space with laser fire and explosions, with no visible sky, horizon, clouds, or ground terrain."
+    },
+    {
+      "scene": "combat",
+      "img": "cm-03.jpg",
+      "onBrief": true,
+      "setting": "open-space",
+      "reason": "The image shows spacecraft fighting amid asteroids/debris in outer space with weapon beams and explosive shield effects, with no sky, clouds, horizon, or ground terrain visible."
+    },
+    {
+      "scene": "combat",
+      "img": "cm-04.jpg",
+      "onBrief": true,
+      "setting": "open-space",
+      "reason": "The image shows spacecraft combat around station structures in space with weapons fire and explosions, with no sky, horizon, clouds, or ground terrain visible."
+    },
+    {
+      "scene": "combat",
+      "img": "cm-05.jpg",
+      "onBrief": true,
+      "setting": "open-space",
+      "reason": "The image shows spacecraft in open space around a large station with visible weapons fire and no sky, horizon, clouds, or ground terrain."
+    }
+  ]
+}

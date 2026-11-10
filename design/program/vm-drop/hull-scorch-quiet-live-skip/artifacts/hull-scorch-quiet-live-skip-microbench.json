@@ -1,0 +1,67 @@
+{
+  "label": "hull-scorch-quiet-live-skip",
+  "primary": "quiet-hull-scorch-live-zero-update",
+  "iters": 200000,
+  "capacity": 32,
+  "pairs": [
+    {
+      "beforeMs": 10.937,
+      "afterMs": 2.054,
+      "speedup": 5.324
+    },
+    {
+      "beforeMs": 11.073,
+      "afterMs": 2.046,
+      "speedup": 5.412
+    },
+    {
+      "beforeMs": 10.599,
+      "afterMs": 1.93,
+      "speedup": 5.491
+    },
+    {
+      "beforeMs": 10.916,
+      "afterMs": 1.957,
+      "speedup": 5.576
+    },
+    {
+      "beforeMs": 11.727,
+      "afterMs": 2.077,
+      "speedup": 5.647
+    },
+    {
+      "beforeMs": 10.689,
+      "afterMs": 1.858,
+      "speedup": 5.753
+    },
+    {
+      "beforeMs": 10.666,
+      "afterMs": 1.806,
+      "speedup": 5.907
+    },
+    {
+      "beforeMs": 10.533,
+      "afterMs": 1.755,
+      "speedup": 6.002
+    },
+    {
+      "beforeMs": 10.847,
+      "afterMs": 1.795,
+      "speedup": 6.044
+    },
+    {
+      "beforeMs": 11.644,
+      "afterMs": 1.873,
+      "speedup": 6.216
+    },
+    {
+      "beforeMs": 10.971,
+      "afterMs": 1.753,
+      "speedup": 6.257
+    }
+  ],
+  "medianSpeedup": 5.753,
+  "minSpeedup": 5.324,
+  "maxSpeedup": 6.257,
+  "note": "Picture unchanged: no scorch marks when idle; one idle publish then skip."
+}

@@ -1,0 +1,581 @@
+{
+  "schemaVersion": 1,
+  "campaignId": "open_reach",
+  "notice": "Read-only dependency ordering of this requested implementation pack, not a global task scheduler or runtime completion claim. Only LW-00 authoring deliverable is implemented here.",
+  "tasks": [
+    {
+      "id": "LW-00",
+      "title": "Authored district pack and executable briefs",
+      "status": "implemented",
+      "dependsOn": [],
+      "districtIds": [
+        "district_helios_lantern_ward",
+        "district_dione_niner_bastion",
+        "district_tethys_switchyard",
+        "district_ceres_cathedral",
+        "district_pallas_widows_run",
+        "district_charon_memorial_gardens",
+        "district_ashfall_iron_maw",
+        "district_phoebe_fourth_toll"
+      ],
+      "packet": "tasks/LW-00.md",
+      "outcome": "Deliver the creative seed, 8 district specifications, 24 routines, 24 opportunities and a read-only source-reference/dependency validator. This is authoring infrastructure, not gameplay.",
+      "ownerPaths": [
+        "design/program/living-world",
+        "scripts/living-world.mjs",
+        "scripts/lib/livingWorldPlan.mjs",
+        "test/living-world-plan.test.mjs"
+      ],
+      "checks": [
+        "node test/living-world-plan.test.mjs",
+        "node scripts/living-world.mjs --validate"
+      ],
+      "priority": 0
+    },
+    {
+      "id": "LW-01",
+      "title": "Lantern Ward: one neighborhood that answers",
+      "status": "planned",
+      "dependsOn": [
+        "LW-00",
+        "LW-A1"
+      ],
+      "districtIds": [
+        "district_helios_lantern_ward"
+      ],
+      "packet": "tasks/LW-01.md",
+      "outcome": "From normal Helios arrival, watch a lamp service and a shuttle yield; interrupt one, recover it, and see the same neighborhood changed after returning.",
+      "ownerPaths": [
+        "src/data/sectorActivityPockets.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/data/worldCalendar.js",
+        "src/data/sectorAnchors.js",
+        "src/systems/faction_choir.js",
+        "src/world/worldRecords.js"
+      ],
+      "checks": [
+        "Focused physical service/custody/return tests using existing owners",
+        "Native Helios approach with no mission accepted",
+        "Applicable Adventure player-truth verdict",
+        "Complete all three district routines and the following indexed opportunities: lw_helios_empty_plinth; lw_helios_shift_change; lw_helios_borrowed_cradle. Include their authored failure, recovery and revisit behavior."
+      ],
+      "priority": 1
+    },
+    {
+      "id": "LW-02",
+      "title": "Reusable district composition and continuity",
+      "status": "planned",
+      "dependsOn": [
+        "LW-01"
+      ],
+      "districtIds": [
+        "district_helios_lantern_ward"
+      ],
+      "packet": "tasks/LW-02.md",
+      "outcome": "Extract only the reusable composition, occupation and continuity seams proven by Lantern Ward; migrate that district to them without changing its experience.",
+      "ownerPaths": [
+        "src/data/authoredPlaces.js",
+        "src/data/sectorZones.js",
+        "src/data/sectorActivityPockets.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/world/worldRecords.js",
+        "src/world/farActorTable.js",
+        "src/save/saveSystem.js"
+      ],
+      "checks": [
+        "Nonzero-origin fixture and floating-origin return",
+        "Finite stock and stable actor/object identity after save/Continue",
+        "Native Lantern Ward before/after parity"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "LW-03",
+      "title": "The Switchyard: inhabited freight",
+      "status": "planned",
+      "dependsOn": [
+        "LW-02",
+        "LW-A1"
+      ],
+      "districtIds": [
+        "district_tethys_switchyard"
+      ],
+      "packet": "tasks/LW-03.md",
+      "outcome": "Make a navigable freight town with three readable courts, domestic services and the physically wrong delivery that the player can resolve several ways.",
+      "ownerPaths": [
+        "src/data/sectorAnchors.js",
+        "src/data/sectorCausalChains.js",
+        "src/systems/trafficCausalChainOps.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/data/stationLife.js",
+        "src/systems/faction_fulfillment.js"
+      ],
+      "checks": [
+        "Finite shipment conservation across spill, seizure and delivery",
+        "Both Split Station halves retain saved identity",
+        "Two ordinary arrivals find the clinic without a technical panel",
+        "Complete all three district routines and the following indexed opportunities: lw_tethys_wrong_address; lw_tethys_free_lunch; lw_tethys_switching_fee. Include their authored failure, recovery and revisit behavior."
+      ],
+      "priority": 10
+    },
+    {
+      "id": "LW-04",
+      "title": "Niner Bastion: a finite standing army",
+      "status": "planned",
+      "dependsOn": [
+        "LW-02",
+        "LW-A2"
+      ],
+      "districtIds": [
+        "district_dione_niner_bastion"
+      ],
+      "packet": "tasks/LW-04.md",
+      "outcome": "Create an optional military place with visible guards, drills, repair/reserve berths, readable restricted boundaries and a finite causal response to intrusion.",
+      "ownerPaths": [
+        "src/data/factionPresence.js",
+        "src/systems/factionPresence.js",
+        "src/data/gateThree.js",
+        "src/systems/gateThreeWeir.js",
+        "src/ai/engagementAuthority.js",
+        "src/ai/shipDecision.js",
+        "src/systems/heat.js",
+        "src/systems/lawSecurity.js",
+        "src/systems/spawnBudget.js"
+      ],
+      "checks": [
+        "Finite roster conservation through two alarms and a return",
+        "First-session civilian route remains safe; explicit challenge is escapable",
+        "Garrison/pursuit/native shared-cap integration",
+        "Complete all three district routines and the following indexed opportunities: lw_dione_target_practice; lw_dione_last_bus. Include their authored failure, recovery and revisit behavior."
+      ],
+      "priority": 11
+    },
+    {
+      "id": "LW-05",
+      "title": "COUNTERSIGN: steal and use the same machine",
+      "status": "planned",
+      "dependsOn": [
+        "LW-04"
+      ],
+      "districtIds": [
+        "district_dione_niner_bastion"
+      ],
+      "packet": "tasks/LW-05.md",
+      "outcome": "Complete Borrowed Authority: gain access, infiltrate or fight into Niner, transfer control of the physical tender, escape, use its clamps elsewhere and resolve the abandoned original hull.",
+      "ownerPaths": [
+        "src/systems/shipjack.js",
+        "src/systems/shipControlTransfer.js",
+        "src/shipjack/model.js",
+        "src/shipjack/ownedOperations.js",
+        "src/shipjack/fleetPersistence.js",
+        "src/data/shipjackEquipment.js",
+        "src/systems/gateThreeWeir.js"
+      ],
+      "checks": [
+        "Generation-guarded transfer denial/rollback and exact-hull success",
+        "Cargo, fittings, original hull and disabled targets survive Continue",
+        "Native quiet and loud approaches with usable post-theft tender",
+        "Complete the actual-hull theft, escape and continuing custody opportunity against LW-04’s existing routines: lw_dione_borrowed_authority. Include their authored failure, recovery and revisit behavior."
+      ],
+      "priority": 12
+    },
+    {
+      "id": "LW-06",
+      "title": "Widow's Run: society in a wreck gauntlet",
+      "status": "planned",
+      "dependsOn": [
+        "LW-02",
+        "LW-A2"
+      ],
+      "districtIds": [
+        "district_pallas_widows_run"
+      ],
+      "packet": "tasks/LW-06.md",
+      "outcome": "Build Quiet Berths behind a navigable wreck route, with inhabitants, real salvage crews, funeral freight and a medical shipment that can be protected or stolen.",
+      "ownerPaths": [
+        "src/data/sectorAnchors.js",
+        "src/data/sectorActivityPockets.js",
+        "src/data/wreckAftermathDressing.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/data/factionConduct.js",
+        "src/systems/shipjack.js"
+      ],
+      "checks": [
+        "Native passage clearance for light ship, tug and towed load",
+        "Independent occupied-hull rescue/theft receipts",
+        "Return after destructive route change retains repair and memory",
+        "Complete all three district routines and the following indexed opportunities: lw_pallas_funeral_freight; lw_pallas_short_cut; lw_pallas_salvage_ram. Include their authored failure, recovery and revisit behavior."
+      ],
+      "priority": 13
+    },
+    {
+      "id": "LW-07",
+      "title": "Nine-Mouth Cut: the rock is a place",
+      "status": "planned",
+      "dependsOn": [
+        "LW-02",
+        "LW-A3"
+      ],
+      "districtIds": [
+        "district_ceres_cathedral"
+      ],
+      "packet": "tasks/LW-07.md",
+      "outcome": "Deliver contiguous ship-scale interior flight through a huge mined rock with work, traffic, clear camera behavior, a recoverable crisis and persistent route changes.",
+      "ownerPaths": [
+        "src/data/sectorAnchors.js",
+        "src/data/sectorCoordinates.js",
+        "src/systems/theBolus.js",
+        "src/render/camera.js",
+        "src/render/racingCameraBlend.js",
+        "src/render/cameraOccluders.js",
+        "src/core/physicsAuthority.js",
+        "src/systems/npcJobsRuntime.js"
+      ],
+      "checks": [
+        "3 shipping + 6 service mouths and 2 chambers traverse with measured hull/load clearance",
+        "Entry/reverse/exit and Continue mid-tunnel, including nonzero-origin rebase",
+        "Native brace, evacuation and blockage outcomes; accessibility modes",
+        "Complete all three district routines and the following indexed opportunities: lw_ceres_ninth_mouth; lw_ceres_bell_load; lw_ceres_winching. Include their authored failure, recovery and revisit behavior."
+      ],
+      "priority": 14
+    },
+    {
+      "id": "LW-08",
+      "title": "The Iron Maw: a surface that replaces the sky",
+      "status": "planned",
+      "dependsOn": [
+        "LW-07",
+        "LW-A3"
+      ],
+      "districtIds": [
+        "district_ashfall_iron_maw"
+      ],
+      "packet": "tasks/LW-08.md",
+      "outcome": "Deliver a continuous manufactured terrain district, inhabited relief court and machinery throat around the saved Iron Maw/Deep-Mother/vault identities.",
+      "ownerPaths": [
+        "src/data/sectorWonders.js",
+        "src/render/sectorLandmarkBackground.js",
+        "src/data/sectorCoordinates.js",
+        "src/render/camera.js",
+        "src/data/lookMoods.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/world/worldRecords.js"
+      ],
+      "checks": [
+        "Continuous macro silhouette/local contact alignment across surface and interior",
+        "Headlight/material/camera evidence at normal play distance",
+        "Native detachable plate, power, evacuation, boss-state and Continue checks",
+        "Complete all three district routines and the following indexed opportunities: lw_ashfall_last_relief; lw_ashfall_headlight; lw_ashfall_surface_rights. Include their authored failure, recovery and revisit behavior."
+      ],
+      "priority": 16
+    },
+    {
+      "id": "LW-09",
+      "title": "Memorial Gardens: ecology people depend on",
+      "status": "planned",
+      "dependsOn": [
+        "LW-02",
+        "LW-A4"
+      ],
+      "districtIds": [
+        "district_charon_memorial_gardens"
+      ],
+      "packet": "tasks/LW-09.md",
+      "outcome": "Make the existing garden sites an inhabited frontier with route-changing growth, productive pruning, occupied-wreck rescue and a portable Shepherd capability.",
+      "ownerPaths": [
+        "src/systems/alienEcology.js",
+        "src/data/alienEcology.js",
+        "src/systems/faction_understory.js",
+        "src/systems/aftermathWrecks.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/world/worldRecords.js"
+      ],
+      "checks": [
+        "Garden/salvage/cargo custody conservation under competing actions",
+        "Native growth and pruning match collider/navigation/presentation after Continue",
+        "Rescue, quarantine and sever/rebuild approaches each produce distinct return state",
+        "Complete all three district routines and the following indexed opportunities: lw_charon_green_debt; lw_charon_second_skin; lw_charon_shepherd_borrow. Include their authored failure, recovery and revisit behavior."
+      ],
+      "priority": 15
+    },
+    {
+      "id": "LW-10",
+      "title": "Fourth Toll: life without a firefight",
+      "status": "planned",
+      "dependsOn": [
+        "LW-02",
+        "LW-A4"
+      ],
+      "districtIds": [
+        "district_phoebe_fourth_toll"
+      ],
+      "packet": "tasks/LW-10.md",
+      "outcome": "Deliver an inhabited quiet refuge with an audible/visible local ritual, real repair and a story where choosing silence can be a completed outcome.",
+      "ownerPaths": [
+        "src/data/phoebePracticeConnection.js",
+        "src/systems/struckBellRuntime.js",
+        "src/systems/faction_choir.js",
+        "src/data/worldCalendar.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/audio",
+        "src/world/worldRecords.js"
+      ],
+      "checks": [
+        "Idle full-shift ordinary activity with no accepted mission",
+        "Muted/reduced-motion equivalence for all actionable ritual cues",
+        "Attended repair and resonator custody retain identity across return",
+        "Complete all three district routines and the following indexed opportunities: lw_phoebe_quiet_bell; lw_phoebe_home_signal; lw_phoebe_bell_weapon. Include their authored failure, recovery and revisit behavior."
+      ],
+      "priority": 15
+    },
+    {
+      "id": "LW-11",
+      "title": "Gate Audits: pressure that travels between places",
+      "status": "planned",
+      "dependsOn": [
+        "LW-03",
+        "LW-05"
+      ],
+      "districtIds": [
+        "district_helios_lantern_ward",
+        "district_dione_niner_bastion",
+        "district_tethys_switchyard",
+        "district_pallas_widows_run"
+      ],
+      "packet": "tasks/LW-11.md",
+      "outcome": "Make regional policy a physical disruption with alternate routes: visible closure work, rerouted finite traffic, local service consequences and player counterplay.",
+      "ownerPaths": [
+        "src/systems/gateControlDirector.js",
+        "src/data/gateControl.js",
+        "src/systems/faction_helix.js",
+        "src/systems/trafficCausalChainOps.js",
+        "src/systems/sectorSim.js",
+        "src/story/campaign47a"
+      ],
+      "checks": [
+        "Reachability of all required sectors/missions after every gate-state combination supported by campaign",
+        "No shipment duplication across diverted routes",
+        "Physical scaffold intervention has real local outcome and legal attribution"
+      ],
+      "priority": 18
+    },
+    {
+      "id": "LW-12",
+      "title": "THE WEIGHT with an open future: campaign integration",
+      "status": "planned",
+      "dependsOn": [
+        "LW-06",
+        "LW-08",
+        "LW-09",
+        "LW-10",
+        "LW-11"
+      ],
+      "districtIds": [
+        "district_helios_lantern_ward",
+        "district_dione_niner_bastion",
+        "district_tethys_switchyard",
+        "district_ceres_cathedral",
+        "district_pallas_widows_run",
+        "district_charon_memorial_gardens",
+        "district_ashfall_iron_maw",
+        "district_phoebe_fourth_toll"
+      ],
+      "packet": "tasks/LW-12.md",
+      "outcome": "Integrate the authored opening, district arcs, Books0–7, five existing ending IDs and visible aftermath without invalidating prior saves or successful player interventions.",
+      "ownerPaths": [
+        "src/story/campaign47a",
+        "src/systems/story.js",
+        "src/systems/missions.js",
+        "src/save/saveSystem.js",
+        "docs/worldbuilding",
+        "src/data/stationLife.js"
+      ],
+      "checks": [
+        "Mission dependency and reachable-state traversal for all endings",
+        "Old-save migration, duplicate receipt and skipped/dead contact handling",
+        "Native helpful, criminal and mixed routes with visible post-ending state"
+      ],
+      "priority": 21
+    },
+    {
+      "id": "LW-13",
+      "title": "The other seventeen sectors belong to this world",
+      "status": "planned",
+      "dependsOn": [
+        "LW-03",
+        "LW-06",
+        "LW-09",
+        "LW-10"
+      ],
+      "districtIds": [
+        "district_helios_lantern_ward",
+        "district_dione_niner_bastion",
+        "district_tethys_switchyard",
+        "district_ceres_cathedral",
+        "district_pallas_widows_run",
+        "district_charon_memorial_gardens",
+        "district_ashfall_iron_maw",
+        "district_phoebe_fourth_toll"
+      ],
+      "packet": "tasks/LW-13.md",
+      "outcome": "Give every supporting sector a distinct navigational/work role and a connection to flagship supply, people or consequences, preserving all existing sector identities.",
+      "ownerPaths": [
+        "src/data/sectorWayOfLife.js",
+        "src/data/sectorWonders.js",
+        "src/data/sectorPhysicalLaws.js",
+        "src/data/sectorCausalChains.js",
+        "src/data/sectorActivityPockets.js",
+        "src/data/worldOneOffs.js",
+        "src/systems/sweepWindowRuntime.js",
+        "src/data/gravedigger.js",
+        "src/systems/gravedigger.js"
+      ],
+      "checks": [
+        "Current 25-sector coverage with stable IDs and real source/destination relationships",
+        "Distinct normal-entry route and interruption case for each changed supporting sector",
+        "Bounded actor/residency and save behavior per selected batch"
+      ],
+      "priority": 22
+    },
+    {
+      "id": "LW-14",
+      "title": "A world that holds together under a bad pilot",
+      "status": "planned",
+      "dependsOn": [
+        "LW-12",
+        "LW-13"
+      ],
+      "districtIds": [
+        "district_helios_lantern_ward",
+        "district_dione_niner_bastion",
+        "district_tethys_switchyard",
+        "district_ceres_cathedral",
+        "district_pallas_widows_run",
+        "district_charon_memorial_gardens",
+        "district_ashfall_iron_maw",
+        "district_phoebe_fourth_toll"
+      ],
+      "packet": "tasks/LW-14.md",
+      "outcome": "Finish actual failures found by an integrated helpful/thieving/destructive journey, including presentation, recovery, accessibility, save growth and performance.",
+      "ownerPaths": [
+        "src/testing/lab",
+        "scripts/player-truth",
+        "src/world",
+        "src/systems",
+        "src/render",
+        "src/save"
+      ],
+      "checks": [
+        "Focused regressions for defects actually found",
+        "Applicable Adventure player-truth route and representative rendered district scenes",
+        "Named hardware/profile performance traces and bounded save/residency soak"
+      ],
+      "priority": 25
+    },
+    {
+      "id": "LW-A1",
+      "title": "Habitation and civic machinery art kit",
+      "status": "planned",
+      "dependsOn": [
+        "LW-00"
+      ],
+      "districtIds": [
+        "district_helios_lantern_ward",
+        "district_tethys_switchyard"
+      ],
+      "packet": "tasks/LW-A1.md",
+      "outcome": "Ship the 15-ID catalog's civic subset: lamp cradle, Switchyard truss and impulse shunter, plus targeted dressing/articulation improvements to existing habitat/passenger assets. Own the shared OR-A23 human-work assembly kit for readable citizens and EVA service. Completion is asset-ready with representative native integration; full district acceptance belongs to the dependent gameplay packet.",
+      "ownerPaths": [
+        "tools/blender/forge",
+        "assets/ships",
+        "src/render",
+        "src/data/everydaySpaceKitDressing.js"
+      ],
+      "checks": [
+        "Forge/source/release manifest and actual asset identity checks",
+        "Gameplay-camera material/light/scale review",
+        "Socket/collider/LOD and articulation integration with native job phase",
+        "Human-work poses driven by a real service phase in representative renderer integration"
+      ],
+      "priority": 3
+    },
+    {
+      "id": "LW-A2",
+      "title": "Garrison and inhabited-wreck art kit",
+      "status": "planned",
+      "dependsOn": [
+        "LW-00"
+      ],
+      "districtIds": [
+        "district_dione_niner_bastion",
+        "district_pallas_widows_run"
+      ],
+      "packet": "tasks/LW-A2.md",
+      "outcome": "Ship Niner hangar, COUNTERSIGN, ferry habitat and wreck-throat families with truthful occupied/empty/damaged states and usable openings. Completion is asset-ready with representative native integration; full district acceptance belongs to the dependent gameplay packet.",
+      "ownerPaths": [
+        "tools/blender/forge",
+        "assets/ships",
+        "src/render/ships",
+        "src/render"
+      ],
+      "checks": [
+        "Current source/release identity and attachment-socket validation",
+        "Representative overhead/stern views with player/load silhouette",
+        "Native blocker/collider/damage-state agreement"
+      ],
+      "priority": 4
+    },
+    {
+      "id": "LW-A3",
+      "title": "Rock interiors and manufactured terrain art kit",
+      "status": "planned",
+      "dependsOn": [
+        "LW-00"
+      ],
+      "districtIds": [
+        "district_ceres_cathedral",
+        "district_ashfall_iron_maw"
+      ],
+      "packet": "tasks/LW-A3.md",
+      "outcome": "Ship Nine-Mouth shell/quarry bell and Iron Maw surface/relief court/crane as coherent modular local terrain plus macro silhouette. Completion is asset-ready with representative native integration; full district acceptance belongs to the dependent gameplay packet.",
+      "ownerPaths": [
+        "tools/blender/forge",
+        "assets/ships",
+        "src/render",
+        "src/data/sectorCoordinates.js"
+      ],
+      "checks": [
+        "Portal width/height and swept hull+load collision fixtures",
+        "Shared frame/origin and local-to-macro alignment",
+        "Normal camera/headlight/LOD entry/exit review with no popping or hidden solid shells"
+      ],
+      "priority": 4
+    },
+    {
+      "id": "LW-A4",
+      "title": "Living growth and quiet ritual art kit",
+      "status": "planned",
+      "dependsOn": [
+        "LW-00"
+      ],
+      "districtIds": [
+        "district_charon_memorial_gardens",
+        "district_phoebe_fourth_toll"
+      ],
+      "packet": "tasks/LW-A4.md",
+      "outcome": "Ship Greenwake bridges/greenhouse and Fourth Toll berth, integrating existing ecology and bell assets with persistent state and accessible signals. Completion is asset-ready with representative native integration; full district acceptance belongs to the dependent gameplay packet.",
+      "ownerPaths": [
+        "tools/blender/forge",
+        "assets/ships",
+        "src/render",
+        "src/audio"
+      ],
+      "checks": [
+        "Growth-stage material/geometry/collision agreement",
+        "Visible work/cut/repair/empty states at gameplay camera",
+        "Muted/reduced-flash signals and correct spatial audio/occlusion"
+      ],
+      "priority": 5
+    }
+  ]
+}

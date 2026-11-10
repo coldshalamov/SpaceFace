@@ -1,0 +1,528 @@
+// Pure purchase, fit, and engineering guidance shared by Station tooling and checks.
+// This module intentionally has no panel factory or DOM lifecycle.
+import {
+  buildSlotList,
+  exclusivityLockLabel,
+  exclusivityRepMet,
+  findMasslineHeadConflict,
+  fits,
+  outfitBudgetBlocker,
+  stationShopOffer,
+} from '../../systems/ships.js';
+import { SHIPS } from '../../data/ships.js';
+import { MODULES } from '../../data/modules.js';
+import { WEAPONS } from '../../data/weapons.js';
+import { SECTORS } from '../../data/sectors.js';
+import { TECH_NODES } from '../../data/tech.js';
+import { FACTION_META } from '../../data/factions.js';
+import { HULL_BURST_TYPES } from '../../data/hullBurst.js';
+
+const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
+const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
+
+const DRIVE_FAMILY_LABEL = {
+  reaction: 'Reaction', gravimetric: 'Gravimetric', pulse_plate: 'Pulse Plate',
+  torch: 'Torch', field_sail: 'Field Sail',
+};
+function driveLabelFor(defId) {
+  const def = SHIP_BY_ID.get(defId);
+  const driveId = def && def.driveId;
+  if (!driveId) return '';
+  if (driveId.startsWith('drive_gravimetric')) return DRIVE_FAMILY_LABEL.gravimetric;
+  if (driveId.startsWith('drive_pulse_plate')) return DRIVE_FAMILY_LABEL.pulse_plate;
+  if (driveId.startsWith('drive_torch')) return DRIVE_FAMILY_LABEL.torch;
+  if (driveId.startsWith('drive_field_sail')) return DRIVE_FAMILY_LABEL.field_sail;
+  if (driveId.startsWith('drive_reaction')) return DRIVE_FAMILY_LABEL.reaction;
+  return '';
+}
+const FITTABLE_BY_ID = new Map();
+for (const m of MODULES) FITTABLE_BY_ID.set(m.id, m);
+for (const w of WEAPONS) if (!FITTABLE_BY_ID.has(w.id)) FITTABLE_BY_ID.set(w.id, w);
+
+// Retired arsenal (`retiredInto`, the five powers, owner 2026-10-22) is off the shop, so it is never
+// the next buy either; an owned copy still reads through FITTABLE_BY_ID above.
+const ALL_BUYABLE = [...MODULES, ...WEAPONS].filter((d) => d.price > 0 && !d.retiredInto);
+ALL_BUYABLE.sort((a, b) => {
+  if (a.slotType < b.slotType) return -1;
+  if (a.slotType > b.slotType) return 1;
+  if (a.tier !== b.tier) return a.tier - b.tier;
+  return a.price - b.price;
+});
+
+
+function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
+function techName(id) {
+  const node = TECH_BY_ID.get(id);
+  return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
+}
+function factionDisplayName(factionId) {
+  const meta = FACTION_META.find((f) => f && f.id === factionId);
+  return (meta && (meta.name || meta.short)) || String(factionId || 'its faction');
+}
+
+function fitBlockerForSlot(shipDef, fittings, slotIndex, def) {
+  const conflict = findMasslineHeadConflict(fittings, slotIndex, def);
+  if (conflict) return { reason: 'massline_head_conflict', text: 'Unfit ' + conflict.name + ' before fitting another head' };
+  if (!shipDef) return null;
+  const prospective = Array.isArray(fittings) ? fittings.slice() : [];
+  prospective[slotIndex] = def.id;
+  return outfitBudgetBlocker(shipDef, prospective);
+}
+
+export function describeOutfittingPurchase(def, player = {}, slots = [], fittings = [], shipDef = null, opts = {}) {
+  if (!def) {
+    return {
+      state: 'missing',
+      unlocked: false,
+      afford: false,
+      hasSlot: false,
+      fitSlotIndex: -1,
+      disabled: true,
+      label: 'Unavailable',
+      title: 'Select a module to inspect purchase options.',
+      price: 0,
+    };
+  }
+  const researched = new Set(player.researchedNodes || player.researched || []);
+  const credits = Math.max(0, Number(player.credits) || 0);
+  const offer = stationShopOffer(def, opts.stationId);
+  const price = offer ? offer.price : Math.max(0, Number(def.price) || 0);
+  // REP-EXCLUSIVE — the standing lock, parallel to the research lock below. The faction rep
+  // record rides in as opts.factions (state.factions); without it a rep-gated def fails closed.
+  // No station-rack exception: a faction exclusive never unlocks off a shop offer.
+  const standingLocked = !!def.exclusivity
+    && !exclusivityRepMet(def.exclusivity, opts.factions);
+  const unlocked = !standingLocked
+    && (!def.requiresTech || researched.has(def.requiresTech) || (!def.exclusivity && !!offer));
+  const afford = credits >= price;
+  const safeSlots = Array.isArray(slots) ? slots : [];
+  const safeFittings = Array.isArray(fittings) ? fittings : [];
+  // One fit rule (PQ-176.02): a launcher on a ring-only hull has no slot, not a full one.
+  const hasSlot = safeSlots.some((s) => fits(s, def));
+  const emptyCompatibleSlots = safeSlots
+    .map((slot, index) => ({ slot, index }))
+    .filter(({ slot, index }) => !safeFittings[index] && fits(slot, def));
+  const fitSlotIndex = emptyCompatibleSlots.find(({ index }) =>
+    !fitBlockerForSlot(shipDef, safeFittings, index, def))?.index ?? -1;
+  const fitBlocker = fitSlotIndex < 0 && emptyCompatibleSlots.length
+    ? fitBlockerForSlot(shipDef, safeFittings, emptyCompatibleSlots[0].index, def)
+    : null;
+
+  if (standingLocked) {
+    const factionName = factionDisplayName(def.exclusivity.factionId);
+    return {
+      state: 'standing',
+      unlocked: false,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: true,
+      label: exclusivityLockLabel(def.exclusivity) || ('Requires Allied — ' + factionName),
+      title: def.name + ' is fitted only for captains ' + factionName + ' trusts at Allied standing.',
+      price,
+    };
+  }
+  if (!unlocked) {
+    const req = techName(def.requiresTech);
+    return {
+      state: 'locked',
+      unlocked,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: true,
+      label: 'Research ' + req,
+      title: def.name + ' requires ' + req + ' before purchase.',
+      price,
+    };
+  }
+  if (!afford) {
+    const missing = Math.max(0, price - credits);
+    const earnHint = opts.state ? outfittingWorkDirection(opts.state, missing, opts) : '';
+    return {
+      state: 'funding',
+      unlocked,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: true,
+      label: 'Need ' + fmtCr(missing) + ' cr',
+      title: def.name + ' costs ' + fmtCr(price) + ' cr. You need ' + fmtCr(missing) + ' more credits.'
+        + (earnHint ? ' ' + earnHint : ''),
+      earnHint,
+      price,
+    };
+  }
+  if (fitSlotIndex >= 0) {
+    const slot = safeSlots[fitSlotIndex] || {};
+    return {
+      state: 'fit',
+      unlocked,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: false,
+      label: 'Buy & Fit',
+      title: 'Buy ' + def.name + ' and fit it to the ' + (slot.type || def.slotType) + ' ' + (slot.size || def.size) + ' slot.',
+      price,
+    };
+  }
+  if (hasSlot) {
+    return {
+      state: 'inventory',
+      unlocked,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: false,
+      label: 'Buy to Inventory',
+      title: fitBlocker && fitBlocker.text
+        ? def.name + ' cannot fit now: ' + fitBlocker.text + '. Buy it into inventory or lighten the build first.'
+        : def.name + ' fits this hull, but every compatible slot is full. Buy it into inventory or unfit a module first.',
+      fitBlocker,
+      price,
+    };
+  }
+  const ownedHulls = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const berthOnAnyOwnedHull = !ownedHulls.length || ownedHulls.some((owned) => {
+    const hull = owned && SHIP_BY_ID.get(typeof owned === 'string' ? owned : owned.defId);
+    return hull && buildSlotList(hull).some((slot) => fits(slot, def));
+  });
+  if (!berthOnAnyOwnedHull) {
+    // A dead-end purchase: no hull the pilot owns could ever carry it, so it is not offered.
+    return {
+      state: 'noberth',
+      unlocked,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: true,
+      label: 'No berth on your hull can take this',
+      title: def.name + ' needs a ' + def.slotType + ' ' + def.size + ' slot that none of your hulls has. Buy a hull with one first.',
+      price,
+    };
+  }
+  return {
+    state: 'inventory',
+    unlocked,
+    afford,
+    hasSlot,
+    fitSlotIndex,
+    disabled: false,
+    label: 'Buy to Inventory',
+    title: 'No compatible ' + def.slotType + ' ' + def.size + ' slot on this hull. Buy it into inventory for another ship.',
+    price,
+  };
+}
+
+function normalizeWantedSlots(value) {
+  if (value instanceof Set) return new Set([...value].filter(Boolean));
+  if (Array.isArray(value)) return new Set(value.filter(Boolean));
+  return value ? new Set([value]) : new Set();
+}
+
+function tierAllows(def, tier) {
+  const stationTierValue = Number(tier);
+  if (!Number.isFinite(stationTierValue)) return true;
+  return (Number(def && def.tier) || 0) <= stationTierValue + 1;
+}
+
+function purchaseRecommendationScore(def, purchase, wantedSlots) {
+  const wanted = wantedSlots.size === 0 || wantedSlots.has(def.slotType);
+  let score = wanted ? 10000 : 0;
+  if (!purchase.disabled && purchase.hasSlot) score += 5000;
+  if (purchase.state === 'fit') score += 1500;
+  else if (purchase.state === 'inventory' && purchase.hasSlot) score += 900;
+  else if (purchase.state === 'funding') score += 700;
+  else if (purchase.state === 'locked') score += 500;
+  else if (!purchase.hasSlot) score += 250;
+  score += (Number(def.tier) || 0) * 100;
+  score -= Math.max(0, Number(def.price) || 0) / 1000;
+  return score;
+}
+
+export function recommendOutfittingPurchase(player = {}, slots = [], fittings = [], opts = {}) {
+  const wantedSlots = normalizeWantedSlots(opts.wantedSlots);
+  const buyable = Array.isArray(opts.items) ? opts.items : ALL_BUYABLE;
+  const candidates = buyable
+    .filter((def) => def && tierAllows(def, opts.tier))
+    .map((def) => ({
+      def,
+      purchase: describeOutfittingPurchase(def, player, slots, fittings, opts.shipDef || null, opts),
+    }));
+  const missionPool = wantedSlots.size
+    ? candidates.filter((entry) => wantedSlots.has(entry.def.slotType))
+    : candidates;
+  const pool = missionPool.length ? missionPool : candidates;
+
+  if (!pool.length) {
+    return {
+      state: 'empty',
+      kind: 'info',
+      title: 'No next buy',
+      detail: 'This station has no modules that match the current job or hull tier.',
+    };
+  }
+
+  const sorted = pool.slice().sort((a, b) =>
+    purchaseRecommendationScore(b.def, b.purchase, wantedSlots) -
+    purchaseRecommendationScore(a.def, a.purchase, wantedSlots));
+  const currentHullBuy = sorted.find((entry) => entry.purchase.state === 'fit');
+  const pick = currentHullBuy || sorted[0];
+  const missionFit = wantedSlots.has(pick.def.slotType);
+
+  if (currentHullBuy) {
+    return {
+      state: pick.purchase.state,
+      kind: 'ok',
+      defId: pick.def.id,
+      title: 'Next buy: ' + pick.def.name,
+      label: pick.purchase.label,
+      detail: pick.purchase.title + (missionFit ? ' Matches the tracked job fit.' : ' Improves the current hull.'),
+    };
+  }
+
+  if (!pick.purchase.hasSlot) {
+    return {
+      state: 'hull',
+      kind: 'warn',
+      defId: pick.def.id,
+      title: 'Need compatible hull slot: ' + pick.def.name,
+      label: 'Hull slot',
+      detail: pick.purchase.title + ' Switch hulls or buy a ship with the required slot before making this the job fit.',
+    };
+  }
+
+  const blockerTail = pick.purchase.state === 'locked'
+    ? ' Track the prerequisite in the Tech Tree before buying.'
+    : (pick.purchase.state === 'funding'
+      ? (pick.purchase.earnHint ? '' : ' Run a contract or trade loop to fund the upgrade.')
+      : (pick.purchase.state === 'standing'
+        ? ' Earn the faction\'s trust to Allied before its yard will fit it.'
+        : ' Clear the blocker, then return to Outfitting.'));
+  return {
+    state: pick.purchase.state,
+    kind: 'warn',
+    defId: pick.def.id,
+    title: pick.purchase.label + ': ' + pick.def.name,
+    label: pick.purchase.label,
+    detail: pick.purchase.title + blockerTail,
+  };
+}
+
+function activeFittings(state) {
+  const player = state && state.player;
+  const owned = player && Array.isArray(player.ownedShips)
+    ? player.ownedShips[player.activeShipIndex || 0] : null;
+  return (owned && typeof owned === 'object' && Array.isArray(owned.fittings)) ? owned.fittings : [];
+}
+
+function jobRequiredModule(job) {
+  return (job && job.params && job.params.requiredModule) || null;
+}
+
+function jobReward(job) {
+  return Math.max(0, Math.round(Number(job && job.reward_cr) || 0));
+}
+
+function boardJobs(state, stationId) {
+  const board = stationId && state && state.missions && state.missions.boards
+    ? state.missions.boards[stationId] : null;
+  return board && Array.isArray(board.slots) ? board.slots.filter(Boolean) : [];
+}
+
+/**
+ * Starter-progression: a concrete earning direction for an unaffordable buy, drawn from work that
+ * actually exists — the tracked or active job first, then a row on this station's board the
+ * active ship can take today (the hull's starter job leads). Never a generic "get more money".
+ */
+export function outfittingWorkDirection(state, shortfall, opts = {}) {
+  if (!state) return '';
+  const need = Math.max(0, Math.round(Number(shortfall) || 0));
+  const carried = new Set(activeFittings(state).filter(Boolean));
+  const canRun = (job) => !jobRequiredModule(job) || carried.has(jobRequiredModule(job));
+  const active = (state.missions && Array.isArray(state.missions.active) ? state.missions.active : [])
+    .filter((m) => m && jobReward(m) > 0 && m.status !== 'failed' && m.status !== 'completed');
+  const trackedId = state.ui && state.ui.trackedMissionId;
+  const running = active.find((m) => m.id === trackedId) || active.find(canRun);
+  if (running) {
+    return 'Finish ' + (running.title || 'your active job') + ' (+' + fmtCr(jobReward(running)) + ' cr)'
+      + (jobReward(running) >= need ? ' to cover it.' : ' toward it.');
+  }
+  const stationId = opts.stationId || (state.ui && state.ui.dockedStationId) || null;
+  const offers = boardJobs(state, stationId).filter((o) => jobReward(o) > 0 && canRun(o)
+    && !(Number(o.riskTier) > 1));
+  if (offers.length) {
+    const starter = offers.find((o) => o.source === 'starterJob');
+    const covering = offers.filter((o) => jobReward(o) >= need)
+      .sort((a, b) => jobReward(a) - jobReward(b))[0];
+    const pick = starter || covering || offers.slice().sort((a, b) => jobReward(b) - jobReward(a))[0];
+    return 'Earn it here: ' + (pick.title || 'a board job') + ' pays ' + fmtCr(jobReward(pick)) + ' cr on this board'
+      + (jobReward(pick) >= need ? '.' : ', or sell salvage and ore at the Market.');
+  }
+  return 'Sell salvage and ore at the Market, or take a haul, bounty or survey from the board.';
+}
+
+/**
+ * Starter-progression: what fitting `def` (replacing `replacedDefId`, if any) does to the jobs the
+ * player holds or is offered here. Jobs gate on params.requiredModule; this names the job that
+ * pauses when its tool leaves the hull, and the job this fit qualifies for.
+ */
+export function outfittingJobImpact(state, def, replacedDefId = null, opts = {}) {
+  if (!state || !def) return '';
+  const stationId = opts.stationId || (state.ui && state.ui.dockedStationId) || null;
+  const active = state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  const jobs = [
+    ...active.filter((m) => m && m.status !== 'failed' && m.status !== 'completed'),
+    ...boardJobs(state, stationId).filter((o) => o.source === 'starterJob'),
+  ];
+  const seen = new Set();
+  const lines = [];
+  for (const job of jobs) {
+    const need = jobRequiredModule(job);
+    if (!need || seen.has(need + ':' + (job.title || job.id))) continue;
+    seen.add(need + ':' + (job.title || job.id));
+    const isActive = active.includes(job);
+    if (replacedDefId && need === replacedDefId && def.id !== need) {
+      const toolName = (MODULE_BY_ID.get(need) || {}).name || 'its tool';
+      lines.push((job.title || 'That job') + ' needs ' + toolName + (isActive
+        ? '; it stops progressing until you refit it from inventory.'
+        : '; the board will refuse it until you refit it from inventory.'));
+    } else if (need === def.id) {
+      lines.push((job.title || 'That job') + ' needs this fit.');
+    }
+    if (lines.length >= 2) break;
+  }
+  return lines.join(' ');
+}
+
+function stationTier(stationId) {
+  for (const sec of SECTORS) {
+    for (const st of sec.stations || []) {
+      if (st.id === stationId) return sec.tier;
+    }
+  }
+  return 0;
+}
+
+export function masslineHeadOutcome(def) {
+  const headId = def && def.mods && def.mods.masslineHeadId;
+  const outcomes = {
+    tractor: 'Pick up, spin, throw',
+    elastic_whip: 'Massline spring-energy head',
+    frame_coupler: 'Massline separation-damping head',
+    monofilament_sweep: 'Massline hostile-cut sweep head',
+    transverse_snare: 'Massline free-target crossing snare',
+    twin_bridle: 'Massline two-endpoint world tether',
+  };
+  return outcomes[headId] || '';
+}
+
+export function statSnippet(def) {
+  const parts = [];
+  if (def.dps != null) parts.push(Math.round(def.dps) + ' dps');
+  if (def.range != null) parts.push(def.range + ' rng');
+  if (def.dmg != null && def.rof != null) parts.push(def.dmg + 'x' + def.rof.toFixed(1));
+  const m = def.mods;
+  if (m) {
+    if (m.shieldFlat) parts.push('+' + m.shieldFlat + ' shd');
+    if (m.shieldRegenFlat) parts.push('+' + m.shieldRegenFlat + ' regen');
+    if (m.topSpeed) parts.push(m.topSpeed + ' spd');
+    if (m.accelMult != null) parts.push(m.accelMult.toFixed(1) + 'x accel');
+    if (m.cargoFlat) parts.push('+' + m.cargoFlat + ' cargo');
+    if (m.cargoCapPct) parts.push('+' + Math.round(m.cargoCapPct * 100) + '% cap');
+    if (m.damageReductionPct) parts.push('-' + Math.round(m.damageReductionPct * 100) + '% dmg');
+    if (m.ramDamageDealtMult) parts.push('+' + Math.round((m.ramDamageDealtMult - 1) * 100) + '% ram dmg');
+    if (m.boostTopSpeedPct) parts.push('+' + Math.round(m.boostTopSpeedPct * 100) + '% boost');
+    if (Number.isFinite(m.magnetRange) && m.magnetRange > 0) parts.push(Math.round(m.magnetRange) + ' u ore magnet');
+    const masslineOutcome = masslineHeadOutcome(def);
+    if (masslineOutcome) parts.push(masslineOutcome.replace(/^Massline\s+/i, ''));
+    if (m.swingDrive) parts.push('dash swings around a taut line');
+    if (m.phaseBlink) parts.push('hold shift, release to step');
+    if (m.hullBurst) parts.push(`burst key: ${(HULL_BURST_TYPES[m.hullBurst] && HULL_BURST_TYPES[m.hullBurst].blurb) || 'lights the nose'}`);
+    if (m.cloakBaseRadius) parts.push(m.cloakBaseRadius + ' detection ring');
+    if (m.cloakDrainPerS) parts.push(Math.round(m.cloakDrainPerS * 100) + '% cloak drain/s');
+    if (m.cloakRechargePerS) parts.push(Math.round(m.cloakRechargePerS * 100) + '% cloak recharge/s');
+    if (m.impulseChargeCapacity) parts.push(m.impulseChargeCapacity + ' charges');
+    if (m.bombPropulsion) parts.push('aft-drop enabled');
+    if (m.weaponRangePct) parts.push('+' + Math.round(m.weaponRangePct * 100) + '% wpn rng');
+    if (m.weaponDmgPct) parts.push('+' + Math.round(m.weaponDmgPct * 100) + '% wpn dmg');
+    if (m.weaponHeatDissipPct) parts.push('+' + Math.round(m.weaponHeatDissipPct * 100) + '% wpn cool');
+    if (m.radarRangePct) parts.push('+' + Math.round(m.radarRangePct * 100) + '% radar');
+    if (m.hullRepairOOC) parts.push('+' + m.hullRepairOOC + ' hull/s');
+    if (m.droneBay) parts.push('drone bay');
+    if (m.jumpDriveTier) parts.push('jump T' + m.jumpDriveTier);
+    if (m.revealCargo) parts.push('scan cargo');
+    if (m.marketIntel) parts.push('live market feed');
+  }
+  if (def.dps != null && def.slotType === 'mining') {
+    parts.length = 0;
+    parts.push(def.dps + ' ore/s');
+    if (def.range) parts.push(def.range + ' rng');
+    if (def.rareOreChance) parts.push(Math.round(def.rareOreChance * 100) + '% rare');
+    if (def.directToCargo) parts.push('direct');
+  }
+  return parts.join(' · ');
+}
+
+function missionId(m) {
+  return m && (m.id != null ? m.id : m.missionId);
+}
+
+function prettyMissionType(t) {
+  if (!t) return 'Contract';
+  return String(t).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+export function missionPickForOutfitting(state) {
+  const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  if (trackedId != null) {
+    const tracked = active.find((m) => m && m.status === 'active' && String(missionId(m)) === String(trackedId));
+    if (tracked) return { mission: tracked, tracked: true };
+  }
+  const fallback = active.find((m) => m && m.status === 'active') || null;
+  return { mission: fallback, tracked: false };
+}
+
+export function missionFitGuide(mission) {
+  if (!mission) return null;
+  switch (mission.type) {
+    case 'cargo_delivery':
+    case 'bulk_trade':
+      return { label: 'Haulage Fit', text: 'Cargo space is the payout lever; add engine or shield margin only after the hold can carry the contract cleanly.', wants: ['cargo', 'engine', 'shield'] };
+    case 'mining_quota':
+      return { label: 'Mining Fit', text: 'Mining beams and cargo racks shorten the loop; shields keep the ore run from turning into debris.', wants: ['mining', 'cargo', 'shield'] };
+    case 'salvage_retrieval':
+      return { label: 'Recovery Fit', text: 'Bring cargo space for the claim and enough shield or utility support to survive the wreck field.', wants: ['cargo', 'shield', 'utility'] };
+    case 'smuggling_run':
+      return { label: 'Smuggling Fit', text: 'Speed and cargo beat fair fights here; shields are the apology letter if a patrol gets curious.', wants: ['engine', 'cargo', 'shield'] };
+    case 'passenger_transport':
+      return { label: 'Courier Fit', text: 'Engine and shield upgrades protect the schedule; cargo is secondary unless the job also asks for freight.', wants: ['engine', 'shield', 'utility'] };
+    case 'bounty_hunt':
+    case 'patrol_clear':
+      return { label: 'Combat Fit', text: 'Weapons make the timer honest; shields and engines decide whether you leave with the bounty or become it.', wants: ['weapon', 'shield', 'engine'] };
+    case 'escort':
+      return { label: 'Escort Fit', text: 'Sustained weapons and shields matter more than cargo; fit to stay alive beside the convoy.', wants: ['weapon', 'shield', 'utility'] };
+    case 'recon_scan':
+      return { label: 'Scout Fit', text: 'Utility and engine upgrades shorten the sweep; shields cover mistakes in dirty lanes.', wants: ['utility', 'engine', 'shield'] };
+    default:
+      return { label: 'Mission Fit', text: 'Use the tracked contract to buy toward a job instead of buying anonymous numbers in a vacuum.', wants: ['weapon', 'shield', 'cargo'] };
+  }
+}
+
+export function slotReadiness(slots, owned, slotType) {
+  const fittings = owned && owned.fittings || [];
+  let total = 0, fitted = 0, open = 0;
+  for (let i = 0; i < slots.length; i++) {
+    if (slots[i].type !== slotType) continue;
+    total++;
+    if (fittings[i]) fitted++;
+    else open++;
+  }
+  if (!total) return { kind: 'bad', text: slotType.toUpperCase() + ': no slot' };
+  if (fitted > 0) return { kind: 'ok', text: slotType.toUpperCase() + ': ' + fitted + ' fitted' };
+  if (open > 0) return { kind: 'warn', text: slotType.toUpperCase() + ': ' + open + ' open' };
+  return { kind: 'bad', text: slotType.toUpperCase() + ': blocked' };
+}

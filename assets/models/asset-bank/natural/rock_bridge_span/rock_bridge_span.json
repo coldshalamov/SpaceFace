@@ -1,0 +1,184 @@
+{
+  "assetId": "rock_bridge_span",
+  "category": "geology",
+  "description": "rock bridge span; reusable geology assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_A",
+      "position": [
+        -2.6,
+        2.05,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_B",
+      "position": [
+        2.6,
+        2.05,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.8,
+          -0.0
+        ],
+        "size": [
+          1.2,
+          1.8,
+          1.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.8,
+          -0.0
+        ],
+        "size": [
+          1.2,
+          1.8,
+          1.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.93,
+          -0.0
+        ],
+        "size": [
+          4.4,
+          0.3,
+          1.15
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "geology",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -2.782245635986328,
+      -0.5729778409004211,
+      -1.0476891994476318
+    ],
+    "max": [
+      2.731511116027832,
+      2.1998558044433594,
+      1.1155532598495483
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "rock_bridge_span_lod0.glb",
+      "triangles": 3566,
+      "draws": 3,
+      "bytes": 337820,
+      "method": "source",
+      "sha256": "ca29fa4e8d88d884c50a5a636af4290b8567bfc3c433665478bf6f1f208ab7c9"
+    },
+    {
+      "level": 1,
+      "file": "rock_bridge_span_lod1.glb",
+      "triangles": 1426,
+      "draws": 3,
+      "bytes": 145684,
+      "method": "Forge-decimation",
+      "sha256": "62a936afb6445d9d2fa5f93da4f80417786fb75a8b6bdd775e619c91f6b91a56"
+    },
+    {
+      "level": 2,
+      "file": "rock_bridge_span_lod2.glb",
+      "triangles": 640,
+      "draws": 3,
+      "bytes": 68468,
+      "method": "Forge-decimation",
+      "sha256": "cb808fd14613283ee3f382b3d0b4ef561012fc5844e90828bbb2392a5ab8ba02"
+    }
+  ]
+}

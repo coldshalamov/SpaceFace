@@ -1,0 +1,981 @@
+// src/ui/screens/techTree.js — Tech-tree progression screen (ARCHITECTURE §5, spec 09).
+// ORRERY (design/frontend/ORRERY.md §6 Meta, "a constellation — nodes as stars, links as Beams"): the
+// tree is the Research Constellation (src/ui/orrery/constellation.js), an orrery seen from above whose
+// orbits are the tiers (the roots on the outermost, research falling inward to the core) and whose
+// sectors are the branches. A node's state is its light: researched is full bone, open is a lit ring,
+// locked is a dim point. The one amber Hand pivots at the core and swings to the chosen star; beside
+// the dial the chosen node is a reading (its cost as two gauges of what you hold, the unlock as the one
+// Lamp Key, what it unlocks and what it needs). The dial opens on the first node you can research now.
+// Click, focus or arrow to a star to choose it; Unlock emits ui:unlockTech{nodeId} (ships handles it).
+// READ-ONLY on state; emits intents only. The labelled node selector stays as the second keyboard
+// and screen-reader route. This file owns no CSS (the composition is
+// src/ui/orrery/constellationLayouts.js, plus this screen's pacing-ladder instrument in
+// src/ui/orrery/tech-treeLayouts.js). ctx.font cannot resolve var(), so the canvas that measures
+// the stars' names spells its faces below.
+//
+// Export: techTreeScreen  (id 'techTree'). No 'three' import.
+
+import { dressLampKey } from '../orrery/lampKey.js';
+import { createConstellation } from '../orrery/constellation.js';
+import { injectConstellationScreens, legendStarSvg } from '../orrery/constellationLayouts.js';
+import { deferScreenCssReady } from '../orrery/cssSidecar.js';
+import { injectTechTreeScreens } from '../orrery/tech-treeLayouts.js';
+import { rollTo, decrypt } from '../orrery/text.js';
+import { reducedMotion } from '../kit/motion.js';
+import { TECH_NODES } from '../../data/tech.js';
+import { HOUR_VERB_CURVE, hourVerbCurveLine, verbForNodeId } from '../../data/techVerbLadder.js';
+import { SHIPS } from '../../data/ships.js';
+import { MODULES } from '../../data/modules.js';
+import { WEAPONS } from '../../data/weapons.js';
+import { BODY_MODULES } from '../../data/claimableBodies.js';
+import { escapeMarkup as escapeHtml } from '../views/identity.js';
+import { entitySpanHtml } from '../entityResolver.js';
+import { el, settle, cue } from '../kit/index.js';
+import { wrapCanvasLines } from '../../localization/layout.js';
+import { injectDeckplate, dpIcon } from '../deckplate/index.js';
+
+
+/** Keep the hour-verb curve under the title; full string belongs on title=. */
+function clipHourVerbCurve(line, maxChars) {
+  const s = String(line || '');
+  const parts = s.split(' · ');
+  let out = '';
+  for (const part of parts) {
+    const next = out ? out + ' · ' + part : part;
+    if (next.length > maxChars) break;
+    out = next;
+  }
+  // the separator holds to the item before it, so a wrapped curve never opens a line on "·"
+  return (s.length <= maxChars ? s : out || parts[0].slice(0, maxChars)).replaceAll(' · ', '\u00a0· ');
+}
+
+// Branch -> sector, clockwise from the tier spoke at the top of the dial. Colour is by MEANING
+// (researched / open / locked), never by branch. Combat, the largest, takes the left of the dial so its
+// names read into the open margin; the smaller branches face the reading.
+const BRANCHES = [
+  { id: 'logistics', label: 'Logistics' },
+  { id: 'industry',  label: 'Industry' },
+  { id: 'drives',    label: 'Drives' },
+  { id: 'combat',    label: 'Combat' },
+];
+const UNLOCK_NAME_BY_ID = new Map(
+  [...SHIPS, ...MODULES, ...WEAPONS, ...BODY_MODULES].map((entry) => [entry.id, entry.name]),
+);
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+// Each branch's star is produced art (assets/ui/generated/research/, see its manifest).
+const STAR_ART = Object.freeze(Object.fromEntries(BRANCHES.map((b) => {
+  try { return [b.id, new URL(`../../../assets/ui/generated/research/star-${b.id}.webp`, import.meta.url).href]; }
+  catch (_) { return [b.id, `/assets/ui/generated/research/star-${b.id}.webp`]; }
+})));
+
+// Each star's body carries the glyph of what the node gives you (the kit's one icon family).
+const NODE_GLYPH = Object.freeze({
+  tech_combat_basics: 'fighter', tech_beam_focusing: 'spark', tech_kinetic_drivers: 'munitions', tech_guided_ordnance: 'target',
+  tech_plasma_dynamics: 'energy-core', tech_deflector_theory: 'shield', tech_hardened_deflectors: 'repel', tech_strike_craft: 'patrol',
+  tech_fire_control: 'scan', tech_warship_license: 'hull', tech_capital_weapons: 'weapon', tech_capital_hulls: 'shipworks',
+  tech_flagship_command: 'beacon', tech_attack_topology: 'cone', tech_ricochet_ballistics: 'route', tech_payload_conduction: 'heat',
+  tech_orbit_cryo: 'cooling', tech_industrial_mining: 'miner', tech_focused_extraction: 'mining', tech_deep_core_mining: 'ore',
+  tech_bulk_logistics: 'freighter', tech_matter_compression: 'cargo', tech_drive_tuning: 'engine', tech_impulse_ballistics: 'boost',
+  tech_graviton_drives: 'well', tech_long_range_survey: 'range', tech_tractor_systems: 'tow', tech_drone_control: 'pod',
+  tech_drone_swarm: 'utility', tech_autonomous_fleets: 'track', tech_nanofabrication: 'repair', tech_outpost_charter: 'industry',
+});
+/** The icon's paths without its own svg wrapper (the star draws them in its own frame). */
+function iconBody(name) {
+  const markup = dpIcon(name, 24) || dpIcon('module', 24) || '';
+  return markup.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+}
+function nodeGlyphName(node) {
+  if (NODE_GLYPH[node.id]) return NODE_GLYPH[node.id];
+  const u = node.unlocks || {};
+  if (u.ships && u.ships.length) return 'hull';
+  if ((u.modules || []).some((m) => /^wpn_/.test(m))) return 'weapon';
+  return 'module';
+}
+/** An unlock's picture on its ledger line: the hull's lit silhouette when one was rendered, else its kind's glyph. */
+const HULL_JIG = new Set(['ship_wasp', 'ship_hornet', 'ship_kestrel', 'ship_pelican']);
+function unlockArtHtml(ref) {
+  const [kind, id] = String(ref).split(':');
+  if (kind === 'hull' && HULL_JIG.has(id)) {
+    let url = `/assets/ui/renders/hulls/${id}.holo.webp`;
+    try { url = new URL(`../../../assets/ui/renders/hulls/${id}.holo.webp`, import.meta.url).href; } catch (_) { /* the root path */ }
+    return `<img class="con-row__img" src="${url}" alt="" draggable="false" decoding="async">`;
+  }
+  let icon = 'module';
+  if (kind === 'hull') icon = 'hull';
+  else if (/^wpn_/.test(id)) icon = 'weapon';
+  else if (/shield|aegis|deflect|chaff|decoy/.test(id)) icon = 'shield';
+  else if (/mining|pulverizer/.test(id)) icon = 'mining';
+  else if (/engine|afterburner|jump|swing_drive|warp/.test(id)) icon = 'engine';
+  else if (/cargo|hold|compactor/.test(id)) icon = 'cargo';
+  else if (/sensor|scrambler|triangulation|targeting|ecm/.test(id)) icon = 'scan';
+  else if (/drone/.test(id)) icon = 'pod';
+  else if (/repair|nanobot/.test(id)) icon = 'repair';
+  else if (/tractor|tether|whip|coupler|massline|bridle|snare|flail|magnet/.test(id)) icon = 'tow';
+  else if (/thermal|cryo|sink/.test(id)) icon = 'cooling';
+  return dpIcon(icon, 24) || '';
+}
+
+// The canvas measures each star's name in the face the label is drawn in. ctx.font cannot resolve
+// var(), so the faces are spelled: the kit's text face (styles/kit.css --k-text / --dp-face-read) for
+// names, the display face for the cost readings.
+const KIT_TEXT_FACE = '"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
+const KIT_DISPLAY_FACE = 'Archivo, system-ui, sans-serif';
+
+/** A canvas font at `px` on screen, never under the 12 px floor. */
+function kitFont(weight, px, face = KIT_TEXT_FACE) {
+  const screenPx = Math.max(12, Number.isFinite(px) ? px : 12);
+  return weight + ' ' + screenPx + 'px ' + face;
+}
+
+function setText(node, text) { if (node && node.textContent !== text) node.textContent = text; }
+
+function nodeName(id, nodes = TECH_NODES) {
+  const node = (nodes || []).find((n) => n && n.id === id);
+  return (node && node.name) || cleanId(id);
+}
+
+function researchedSetFrom(stateOrIds) {
+  if (Array.isArray(stateOrIds)) return new Set(stateOrIds);
+  const player = stateOrIds && stateOrIds.player || {};
+  return new Set(player.researchedNodes || []);
+}
+
+function missingCostParts(cost, player) {
+  const credits = Math.max(0, Number(player && player.credits) || 0);
+  const rp = Math.max(0, Number(player && player.researchPoints) || 0);
+  const neededCredits = Math.max(0, Math.round((cost && cost.credits || 0) - credits));
+  const neededRp = Math.max(0, Math.round((cost && cost.rp || 0) - rp));
+  const parts = [];
+  if (neededCredits > 0) parts.push(fmtCr(neededCredits) + ' cr');
+  if (neededRp > 0) parts.push(neededRp.toLocaleString() + ' RP');
+  return { neededCredits, neededRp, parts };
+}
+
+export function describeTechNodeReadiness(node, state, nodes = TECH_NODES) {
+  if (!node) return { state: 'missing', actionLabel: 'Select a node', actionTitle: 'Select a tech node to inspect it.' };
+  const player = state && state.player || {};
+  const researched = researchedSetFrom(player.researchedNodes || []);
+  const prereqs = node.prereqs || [];
+  const missingPrereqs = prereqs.filter((id) => !researched.has(id)).map((id) => nodeName(id, nodes));
+  if (researched.has(node.id)) {
+    return {
+      state: 'researched',
+      actionLabel: 'Already researched',
+      actionTitle: node.name + ' is already researched.',
+      missingPrereqs,
+      missingCost: [],
+    };
+  }
+  if (missingPrereqs.length) {
+    const label = missingPrereqs.length === 1
+      ? 'Research ' + missingPrereqs[0] + ' first'
+      : 'Research ' + missingPrereqs.length + ' prerequisites first';
+    return {
+      state: 'locked',
+      actionLabel: label,
+      actionTitle: 'Missing prerequisites: ' + missingPrereqs.join(', '),
+      missingPrereqs,
+      missingCost: [],
+    };
+  }
+  const missing = missingCostParts(node.cost || {}, player);
+  if (missing.parts.length) {
+    return {
+      state: 'funding',
+      actionLabel: 'Need ' + missing.parts.join(' / '),
+      actionTitle: 'Missing resources: ' + missing.parts.join(', '),
+      missingPrereqs,
+      missingCost: missing.parts,
+      neededCredits: missing.neededCredits,
+      neededRp: missing.neededRp,
+    };
+  }
+  return {
+    state: 'available',
+    actionLabel: '⟫ Research',
+    actionTitle: 'Research ' + node.name,
+    missingPrereqs,
+    missingCost: [],
+  };
+}
+
+/** Every prerequisite a node stands on, transitively (the path back to its roots). */
+function depthOf(id, byId, seen = new Set()) {
+  const n = byId.get(id);
+  if (!n || !n.prereqs || !n.prereqs.length || seen.has(id)) return 0;
+  seen.add(id);
+  let d = 0;
+  for (const p of n.prereqs) if (byId.has(p)) d = Math.max(d, depthOf(p, byId, seen) + 1);
+  seen.delete(id);
+  return d;
+}
+
+/** A reading beside the dial: the number the corner shows, with its word. */
+function reading(parent, word, hook) {
+  const block = el('div', 'con-read');
+  const n = el('span', 'con-read__n', '0');
+  n.setAttribute(hook, '');
+  block.append(n, el('span', 'con-read__w', word));
+  parent.appendChild(block);
+  return n;
+}
+
+export const techTreeScreen = {
+  id: 'techTree',
+  _ctx: null,
+  _root: null,
+  _sky: null,
+  _g: null,
+  _selectedId: null,
+  _els: null,
+  _drawSig: '',
+  _sidebarSig: '',
+  _researchedBefore: null,
+  _held: null,
+
+  mount(rootEl, ctx) {
+
+    injectDeckplate();
+    this._markCssReady = deferScreenCssReady(rootEl, injectConstellationScreens());
+    injectTechTreeScreens();
+    this._ctx = ctx;
+    this._root = rootEl;
+    // Resource readings belong to this DOM mount. A retained singleton may be
+    // mounted into fresh elements with unchanged balances.
+    this._held = null;
+    rootEl.id = 'sf-techtree';
+    rootEl.innerHTML = '';
+    rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-techtree', 'of-research', 'fh-shell');
+    rootEl.classList.add('k-screen', 'con-research');
+    rootEl.dataset.kReady = '0';
+    rootEl.removeAttribute('data-fh-register');
+    rootEl.setAttribute('aria-label', 'Research');
+
+    // .k-title — "Research"; what the player can do here, in numbers, as the second line.
+    const head = el('header', 'k-title con-head');
+    const heading = el('h1', 'k-display k-t-title con-title', 'Research');
+    head.appendChild(heading);
+    const branchLine = el('p', 'k-t-emph k-62 con-sub', 'Select a node');
+    head.appendChild(branchLine);
+    // .con-curve — the pacing line as an instrument: the collapsed reading names the promise (a new
+    // verb every hour) and shows the first rungs; hover, keyboard focus or a pinned click opens the
+    // full ten-hour ladder beside the dial (styled by src/ui/orrery/tech-treeLayouts.js). A real
+    // control, not a hover tip: keyboard reachable, aria-expanded, Esc closes, and the sky lays its
+    // rim words out clear of it (it rides in the avoid list below).
+    const curve = el('div', 'con-curve');
+    curve.dataset.hourVerbCurve = '1';
+    const curveBtn = el('button', 'con-curve__head');
+    curveBtn.type = 'button';
+    curveBtn.setAttribute('aria-expanded', 'false');
+    curveBtn.setAttribute('aria-controls', 'sf-curve-ladder');
+    curveBtn.appendChild(el('span', 'con-curve__key', 'A verb every hour'));
+    const curveFull = hourVerbCurveLine();
+    // Each rung is its own nowrap span on a one-line wrapping row, so a narrow head drops whole
+    // rungs instead of cutting one mid-word with an ellipsis (tech-treeLayouts.js).
+    const curveRungs = el('span', 'con-curve__rungs');
+    const curveShown = curveFull ? clipHourVerbCurve(curveFull, 46) : '';
+    curveShown.split(/\u00a0· | · /).filter(Boolean).forEach((part, i) => {
+      const rung = el('span', 'con-curve__rung');
+      if (i) rung.appendChild(el('span', 'con-curve__sep', ' · '));
+      rung.appendChild(document.createTextNode(part));
+      curveRungs.appendChild(rung);
+    });
+    curveBtn.appendChild(curveRungs);
+    const curveFly = el('ul', 'con-rows con-curve__fly');
+    curveFly.id = 'sf-curve-ladder';
+    curveFly.setAttribute('aria-label', 'Verbs by research hour');
+    curveFly.hidden = true;
+    for (const row of HOUR_VERB_CURVE) {
+      const li = el('li', 'con-row');
+      li.appendChild(el('span', 'con-row__name', row.label));
+      li.appendChild(el('span', 'con-row__sub', 'Hour ' + row.hour));
+      curveFly.appendChild(li);
+    }
+    curve.append(curveBtn);
+    head.appendChild(curve);
+    // The open ladder portals to the screen root instead of hanging off the header: an absolute
+    // overlay that escapes the header's own box neither paints nor hit-tests inside it (the screen
+    // root's zoom clips the header's composited layer), while a child of the root does both. The
+    // ladder anchors to the curve's live rect when it opens (this._bindCurve).
+    rootEl.appendChild(curveFly);
+    this._curve = { root: curve, btn: curveBtn, fly: curveFly, rungs: curveRungs };
+    this._bindCurve();
+    rootEl.appendChild(head);
+
+    // .k-corner — credits, research points, unlocked n/N as three thin readings.
+    const corner = el('div', 'k-corner con-corner');
+    corner.setAttribute('aria-label', 'Research resources');
+    const crEl = reading(corner, 'Credits', 'data-cr');
+    const rpEl = reading(corner, 'Research points', 'data-rp');
+    const countEl = reading(corner, 'Unlocked', 'data-count');
+    setText(countEl, '0/' + TECH_NODES.length);
+    rootEl.appendChild(corner);
+
+    // .k-stage — the constellation.
+    const stage = el('section', 'k-stage con-stage');
+    stage.setAttribute('aria-label', 'Tech tree');
+    const skyHost = el('div', 'con-skyhost');
+    stage.appendChild(skyHost);
+    rootEl.appendChild(stage);
+
+    // the chosen node, as a reading beside the dial
+    const side = el('aside', 'con-side');
+    side.setAttribute('aria-label', 'Selected node');
+    const selected = el('div', 'con-dossier');
+    selected.setAttribute('data-sel', '');
+    const actions = el('div', 'con-actions');
+    actions.setAttribute('data-actions', '');
+    side.appendChild(selected);
+    side.appendChild(actions);
+    rootEl.appendChild(side);
+
+    // .k-foot — Back, the legend (each word beside the star its nodes are), the node picker.
+    const foot = el('footer', 'k-foot con-foot');
+    foot.setAttribute('aria-label', 'Legend and actions');
+    const back = el('button', 'k-word k-word--emph sf-back con-back', 'Back');
+    back.type = 'button';
+    back.dataset.action = 'back';
+    back.addEventListener('click', () => {
+      const mgr = ctx && (ctx.screenManager || (ctx.screens && typeof ctx.screens.popScreen === 'function' ? ctx.screens : null));
+      if (mgr && typeof mgr.popScreen === 'function') mgr.popScreen();
+      else if (ctx && ctx.bus) ctx.bus.emit('ui:popScreen', {});
+    });
+    foot.appendChild(back);
+    const legend = el('div', 'con-legend');
+    legend.setAttribute('aria-label', 'Legend');
+    for (const [kind, word] of [['researched', 'Researched'], ['available', 'Open'], ['locked', 'Locked']]) {
+      const item = el('span', 'con-legend__item');
+      item.dataset.legend = kind;
+      item.innerHTML = legendStarSvg(kind, STAR_ART.combat);
+      item.appendChild(el('span', 'con-legend__word', word));
+      legend.appendChild(item);
+    }
+    foot.appendChild(legend);
+    // the view: a reading of the zoom, and the one verb that puts the sky back
+    const viewRead = el('div', 'con-view');
+    viewRead.setAttribute('aria-live', 'off');
+    const viewWord = el('span', 'con-view__word', 'Drag to pan · wheel to zoom');
+    const viewZoom = el('span', 'con-view__zoom', '1.0×');
+    const recentre = el('button', 'con-view__reset', 'Recentre');
+    recentre.type = 'button';
+    recentre.dataset.action = 'recentre';
+    recentre.hidden = true;
+    recentre.addEventListener('click', () => { if (this._sky && this._sky.recentre) this._sky.recentre(); });
+    viewRead.append(viewZoom, viewWord, recentre);
+    foot.appendChild(viewRead);
+    // Stars are keyboard and pad reachable; the labelled selector is the second route. Selecting a
+    // locked node is allowed: it reveals the exact prerequisite reason without pretending it can be
+    // researched.
+    const picker = el('div', 'con-picker');
+    const nodeLabel = el('label', 'con-picker__label', 'Research node');
+    const nodeSelect = el('select', 'k-select con-select');
+    nodeSelect.id = 'sf-research-node'; nodeLabel.htmlFor = nodeSelect.id;
+    const placeholder = el('option', '', 'Select a node'); placeholder.value = ''; nodeSelect.appendChild(placeholder);
+    for (const node of this._nodes()) {
+      const option = el('option', '', node.name); option.value = node.id; nodeSelect.appendChild(option);
+    }
+    nodeSelect.addEventListener('change', () => this._selectNode(nodeSelect.value));
+    picker.appendChild(nodeLabel); picker.appendChild(nodeSelect);
+    foot.appendChild(picker);
+    this._nodeSelect = nodeSelect;
+    rootEl.appendChild(foot);
+
+    // the measuring canvas: never drawn, never in the document
+    let g = null;
+    try { g = typeof document !== 'undefined' && document.createElement('canvas').getContext('2d'); } catch (_) { g = null; }
+    this._g = g && typeof g.measureText === 'function' ? g : null;
+    const measure = (text, px, face) => {
+      if (!this._g) return 0;
+      this._g.font = face === 'label' ? kitFont(650, px, KIT_DISPLAY_FACE) : kitFont(500, px);
+      return this._g.measureText(String(text)).width;
+    };
+    const wrap = (text, maxW, px) => {
+      if (!this._g) return [String(text)];
+      this._g.font = kitFont(500, px);
+      return wrapCanvasLines((value) => this._g.measureText(value).width, text, maxW);
+    };
+    this._sky = createConstellation(skyHost, {
+      measure,
+      wrap,
+      // the dial stands clear of the title, its line and the pacing ladder tucked into the corner
+      // the elements themselves: the sky measures them as laid out, whatever the screen's arrival is doing
+      avoid: () => [heading, branchLine, curve].filter((node) => node && typeof node.offsetWidth === 'number'),
+      onPick: (id, how) => this._selectNode(id, { how }),
+    });
+
+    if (this._sky && typeof this._sky.onView === 'function') {
+      this._sky.onView(({ zoom, moved }) => {
+        setText(viewZoom, `${zoom.toFixed(1)}×`);
+        recentre.hidden = !moved;
+        viewRead.dataset.moved = moved ? '1' : '0';
+      });
+    }
+    this._regions = { head, corner, stage, side, foot };
+    this._els = { cr: crEl, rp: rpEl, count: countEl, branch: branchLine, selected, actions };
+
+    actions.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (btn) this._onAction(btn.dataset.act);
+    });
+
+    // Web fonts land after first paint: measure the names again in the real face.
+    if (typeof document !== 'undefined' && document.fonts && document.fonts.addEventListener) {
+      document.fonts.addEventListener('loadingdone', () => {
+        if (!this._root || !this._root.isConnected || !this._sky) return;
+        this._sky.relayout({ fonts: true });
+      });
+    }
+  },
+
+  onShow(ctx) {
+    if (ctx) this._ctx = ctx;
+    // The reading is never empty: the dial opens on the first node the player can research now.
+    if (!this._selectedId || !this._nodes().some((n) => n.id === this._selectedId)) {
+      this._selectedId = this._defaultNodeId();
+    }
+    if (this._nodeSelect) this._nodeSelect.value = this._selectedId || '';
+    this._drawSig = '';
+    this._sidebarSig = '';
+    this._researchedBefore = null;
+    this.refresh(this._ctx);
+    if (this._sky) {
+      this._sky.choose(this._selectedId, { instant: true });
+      this._sky.arrive();
+    }
+    this._decryptName();
+    cue('open');
+    if (typeof requestAnimationFrame === 'function' && this._regions) {
+      try {
+        settle(this._regions.head, { from: 'top', state: 'techTree:open' });
+        settle(this._regions.corner, { from: 'top', state: 'techTree:open' });
+        settle(this._regions.side, { from: 'right', state: 'techTree:open' });
+        settle(this._regions.foot, { from: 'bottom', state: 'techTree:open' });
+      } catch (e) { /* motion is cosmetic */ }
+    }
+    if (this._markCssReady) this._markCssReady();
+    // keyboard and pad land on the chosen star
+    const focus = () => { if (this._sky && this._root && this._root.isConnected) this._sky.focusChosen(); };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(focus)); else focus();
+  },
+
+  onHide() { cue('close'); this._curveReset && this._curveReset(); /* cached DOM retained */ },
+
+  dispose() { if (this._rungsObserver) { this._rungsObserver.disconnect(); this._rungsObserver = null; } },
+
+  /**
+   * Sky names the open pacing ladder stands over yield (the screen's .is-curve-covered state,
+   * styled in tech-treeLayouts.js). The ladder's shade cannot be trusted to occlude by itself:
+   * under the screen root's zoom the fly rasterizes beside the sky's layer, and a rim word at its
+   * edge ("Combat Basics") read through it as a half-lit smudge whatever the shade's alpha. Run
+   * once at open and again after the entrance settles (the arrival transform skews the first
+   * rects), and on close to hand the names back.
+   */
+  _syncCurveCover() {
+    const fly = this._curve && this._curve.fly;
+    if (!fly || !this._sky || typeof this._sky.button !== 'function') return;
+    const open = !fly.hidden;
+    const fr = open ? fly.getBoundingClientRect() : null;
+    for (const n of this._nodes()) {
+      const btn = this._sky.button(n.id);
+      const label = btn && btn.querySelector('.con-label');
+      if (!label) continue;
+      let under = false;
+      if (fr) {
+        const r = label.getBoundingClientRect();
+        under = r.left < fr.right - 6 && r.right > fr.left + 6 && r.top < fr.bottom - 6 && r.bottom > fr.top + 6;
+      }
+      label.classList.toggle('is-curve-covered', under);
+    }
+  },
+
+  /**
+   * The pacing ladder's open/close. Hover or keyboard focus previews it; click pins it open (a
+   * second click, Esc, a click elsewhere or leaving the screen closes it); the pointer leaving the
+   * line closes an unpinned ladder after a short grace so the gap between the line and the fly can
+   * be crossed. Arrival rides the kit's settle (top); leaving fades over the settle duration and is
+   * instant under reduced motion.
+   */
+  _bindCurve() {
+    const curve = this._curve && this._curve.root;
+    const btn = this._curve && this._curve.btn;
+    const fly = this._curve && this._curve.fly;
+    if (!curve || !btn || !fly || !this._root) return;
+    let pinned = false;
+    let hideTimer = 0;
+    const isReduced = () => { try { return reducedMotion() === true; } catch (_) { return false; } };
+    // the ladder hangs below the collapsed line, in root coordinates (it portals to the root; the
+    // root is its containing block, and both rects share the root's zoom). The fly's padding band
+    // is the shade's dissolve, so the anchor seats the rows (the content box) to the curve.
+    const anchor = () => {
+      const cr = curve.getBoundingClientRect();
+      const rr = this._root.getBoundingClientRect();
+      fly.style.left = Math.round(cr.left - rr.left - 26) + 'px';
+      fly.style.top = Math.round(cr.bottom - rr.top - 8) + 'px';
+    };
+    const open = () => {
+      window.clearTimeout(hideTimer);
+      fly.classList.remove('is-closing');
+      if (!fly.hidden) return;
+      anchor();
+      fly.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+      curve.classList.add('is-open');
+      try { settle(fly, { from: 'top', state: 'techTree:curve' }); } catch (_) { /* motion is cosmetic */ }
+      this._syncCurveCover();
+      window.clearTimeout(this._curveCoverTimer);
+      this._curveCoverTimer = window.setTimeout(() => this._syncCurveCover(), 320);
+    };
+    const close = ({ instant = false } = {}) => {
+      window.clearTimeout(hideTimer);
+      if (fly.hidden) return;
+      btn.setAttribute('aria-expanded', 'false');
+      curve.classList.remove('is-open');
+      const finish = () => {
+        fly.hidden = true;
+        fly.classList.remove('is-closing');
+        this._syncCurveCover();
+      };
+      if (instant || isReduced()) { finish(); return; }
+      fly.classList.add('is-closing');
+      hideTimer = window.setTimeout(finish, 150);
+    };
+    this._curveReset = () => { pinned = false; close({ instant: true }); };
+    // The rungs row is a clipped box (one line, or a two-rung stack on a tall desktop head, set in
+    // tech-treeLayouts.js): hide any rung that falls below it, so the head shows whole rungs and
+    // nothing half-hidden (re-checked whenever the row's size changes).
+    const rungs = this._curve.rungs;
+    if (rungs && typeof ResizeObserver === 'function') {
+      const fitRungs = () => {
+        const items = [...rungs.children];
+        for (const r of items) r.hidden = false;
+        const top = items.length ? items[0].offsetTop : 0;
+        const room = rungs.clientHeight + 1;
+        items.forEach((r, i) => { if (i && r.offsetTop - top + r.offsetHeight > room) r.hidden = true; });
+      };
+      // one observer per screen: a re-mount re-binds, so drop the last one first (and in dispose)
+      if (this._rungsObserver) this._rungsObserver.disconnect();
+      // fit on the next frame: hiding a rung resizes the observed row, which inside the callback
+      // itself raised "ResizeObserver loop completed with undelivered notifications"
+      let fitFrame = 0;
+      this._rungsObserver = new ResizeObserver(() => { cancelAnimationFrame(fitFrame); fitFrame = requestAnimationFrame(fitRungs); });
+      this._rungsObserver.observe(rungs);
+    }
+    btn.addEventListener('pointerenter', open);
+    btn.addEventListener('mouseenter', open); // synthetic hovers (the walk) dispatch mouseenter only
+    const leave = () => {
+      if (pinned) return;
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => close(), 160);
+    };
+    curve.addEventListener('pointerleave', leave);
+    fly.addEventListener('pointerenter', () => window.clearTimeout(hideTimer));
+    fly.addEventListener('pointerleave', leave);
+    btn.addEventListener('focus', open);
+    btn.addEventListener('blur', () => { if (!pinned) close({ instant: isReduced() }); });
+    btn.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || fly.hidden) return;
+      pinned = false;
+      close();
+      e.stopPropagation();
+    });
+    btn.addEventListener('click', () => {
+      pinned = !pinned;
+      if (pinned) open();
+      else close();
+    });
+    // a pinned ladder retracts when the player commits elsewhere on this screen (the listener dies
+    // with the root — no document-level lease outliving the mount)
+    this._root.addEventListener('pointerdown', (e) => {
+      if (!pinned || curve.contains(e.target) || fly.contains(e.target)) return;
+      pinned = false;
+      close();
+    }, true);
+  },
+
+  refresh(ctx, opts = {}) {
+    if (ctx) this._ctx = ctx;
+    if (!this._root) return;
+    this._syncHeader();
+    // Both halves repaint only when what they show changed: a rebuilt reading under the player's
+    // focus (the Unlock key, an unlock's name) would drop that focus.
+    const sidebarSig = this._sidebarSignature();
+    if (sidebarSig !== this._sidebarSig) {
+      this._sidebarSig = sidebarSig;
+      this._syncSidebar();
+    }
+    const drawSig = this._drawSignature();
+    if (drawSig !== this._drawSig) {
+      this._drawSig = drawSig;
+      const before = this._researchedBefore;
+      const now = new Set(this._researched());
+      this._pushSky();
+      // A node just researched: light runs down the beams into it.
+      if (before && this._sky) {
+        const fresh = [...now].filter((id) => !before.has(id));
+        if (fresh.length) this._sky.sweepInto(fresh);
+      }
+      this._researchedBefore = now;
+    }
+  },
+
+  // ---- internals ----------------------------------------------------------
+  _nodes() {
+    const st = this._ctx && this._ctx.state;
+    const c = st && st.content && st.content.techNodes;
+    if (c && c.length) return c;
+    return TECH_NODES;
+  },
+
+  _researched() {
+    const st = this._ctx && this._ctx.state;
+    return (st && st.player && st.player.researchedNodes) || [];
+  },
+
+  _isResearched(id) { return this._researched().includes(id); },
+
+  _prereqsMet(node) {
+    if (!node.prereqs || !node.prereqs.length) return true;
+    const r = this._researched();
+    return node.prereqs.every((p) => r.includes(p));
+  },
+
+  // state: 'researched' | 'available' | 'locked'
+  _nodeState(node) {
+    if (this._isResearched(node.id)) return 'researched';
+    if (this._prereqsMet(node)) return 'available';
+    return 'locked';
+  },
+
+  /** First node the player can research right now; else the first open one; else the next one. */
+  _defaultNodeId() {
+    const nodes = this._nodes();
+    const st = this._ctx && this._ctx.state;
+    const ready = nodes.find((n) => describeTechNodeReadiness(n, st, nodes).state === 'available');
+    if (ready) return ready.id;
+    const open = nodes.find((n) => this._nodeState(n) === 'available');
+    if (open) return open.id;
+    const next = nodes.find((n) => !this._isResearched(n.id));
+    return (next || nodes[0] || {}).id || null;
+  },
+
+  /** Hand the constellation the tree and every star's state. */
+  _pushSky() {
+    if (!this._sky) return;
+    const nodes = this._nodes();
+    const states = {};
+    const ready = {};
+    const costs = {};
+    for (const n of nodes) {
+      states[n.id] = this._nodeState(n);
+      ready[n.id] = states[n.id] === 'available' && this._affordable(n);
+      const cost = n.cost || {};
+      const rp = Math.round(cost.rp || 0);
+      costs[n.id] = fmtCostCompact(cost.credits || 0) + ' cr' + (rp ? ' · ' + rp.toLocaleString() + ' RP' : '');
+    }
+    this._sky.set({
+      nodes: nodes.map((n) => ({ id: n.id, name: n.name, branch: n.branch, prereqs: n.prereqs || [] })),
+      branches: BRANCHES,
+      states,
+      ready,
+      costs,
+      art: STAR_ART,
+      glyphs: Object.fromEntries(nodes.map((n) => [n.id, iconBody(nodeGlyphName(n))])),
+      chosen: this._selectedId,
+    });
+  },
+
+  /** Whether the player holds the credits and research points a node costs. */
+  _affordable(node) {
+    const cost = (node && node.cost) || {};
+    const player = (this._ctx && this._ctx.state && this._ctx.state.player) || {};
+    return Math.round(cost.credits || 0) <= (Number(player.credits) || 0)
+      && Math.round(cost.rp || 0) <= (Number(player.researchPoints) || 0);
+  },
+
+  _selectNode(id, { how = 'pick' } = {}) {
+    if (!this._nodes().some((node) => node.id === id)) return;
+    if (id === this._selectedId && how === 'focus') return;
+    const changed = id !== this._selectedId;
+    this._selectedId = id;
+    if (this._nodeSelect) this._nodeSelect.value = id;
+    if (changed) cue('move');
+    this._syncSidebar();
+    if (this._sky) this._sky.choose(id);
+    if (changed) this._decryptName();
+    // On a short frame the reading scrolls inside its own column; a new choice reads from its name.
+    const side = changed && this._els && this._els.selected && this._els.selected.parentNode;
+    if (side && side.scrollTop) side.scrollTop = 0;
+  },
+
+  /** The chosen node's name resolves like telemetry when the choice changes. */
+  _decryptName() {
+    const name = this._els && this._els.selected && this._els.selected.querySelector('.con-dossier__name');
+    if (name) decrypt(name, name.textContent, { duration: 240 });
+  },
+
+  _syncHeader() {
+    const st = this._ctx.state;
+    const player = st.player || {};
+    const credits = Math.round(player.credits || 0);
+    const rp = Math.round(player.researchPoints || 0);
+    const held = this._held || (this._held = {});
+    if (held.cr !== credits) { held.cr = credits; rollTo(this._els && this._els.cr, credits); }
+    if (held.rp !== rp) { held.rp = rp; rollTo(this._els && this._els.rp, rp); }
+    // Count only ids the live node table still knows: saves can carry ids of folded nodes.
+    const known = new Set(this._nodes().map((n) => n.id));
+    const researchedCount = this._researched().filter((id) => known.has(id)).length;
+    setText(this._els && this._els.count, `${researchedCount}/${this._nodes().length}`);
+    // The line under the title says what the player can do here, in numbers.
+    const nodes = this._nodes();
+    const ready = nodes.filter((n) => describeTechNodeReadiness(n, st, nodes).state === 'available').length;
+    const open = nodes.filter((n) => this._nodeState(n) === 'available').length;
+    const line = ready
+      ? (ready === 1 ? 'One node' : ready + ' nodes') + ' ready to research now'
+      : open
+        ? (open === 1 ? 'One node is' : open + ' nodes are') + ' open; earn credits and research points to unlock them'
+        : researchedCount >= nodes.length ? 'Every node researched' : 'Research the open nodes to reach the rest';
+    setText(this._els && this._els.branch, line);
+  },
+
+  _paintDossier() {
+    const actions = this._els && this._els.actions;
+    if (!actions) return;
+    const btn = actions.querySelector('button');
+    if (btn && btn.getAttribute('data-act') === 'unlock' && btn.childNodes) dressLampKey(btn);
+  },
+
+  _syncSidebar() {
+    const sel = this._els && this._els.selected;
+    const actions = this._els && this._els.actions;
+    if (!sel || !actions) return;
+    this._sidebarSig = this._sidebarSignature();
+    if (!this._selectedId) {
+      if (actions.parentNode === sel && sel.parentNode) sel.parentNode.appendChild(actions);
+      sel.innerHTML = `<p class="con-empty">Choose a star to read its cost, what it unlocks and what it needs.</p>`;
+      actions.innerHTML = '';
+      return;
+    }
+    const nodes = this._nodes();
+    const byId = new Map(nodes.map((x) => [x.id, x]));
+    const n = byId.get(this._selectedId);
+    if (!n) { sel.innerHTML = ''; actions.innerHTML = ''; return; }
+    // a rebuild under the player's focus (Unlock just pressed) hands focus to the new verb
+    const active = typeof document !== 'undefined' ? document.activeElement : null;
+    const hadFocus = !!(active && ((typeof sel.contains === 'function' && sel.contains(active)) || (typeof actions.contains === 'function' && actions.contains(active))));
+    const st = this._ctx.state;
+    const player = st.player || {};
+    const cost = n.cost || {};
+    const readiness = describeTechNodeReadiness(n, st, nodes);
+    const branch = BRANCHES.find((b) => b.id === n.branch);
+    const branchLabel = branch ? branch.label : String(n.branch || '');
+    const tier = depthOf(n.id, byId) + 1;
+
+    const prereqHtml = (n.prereqs && n.prereqs.length)
+      ? `<ul class="con-rows con-reqs" aria-label="Prerequisites">` + n.prereqs.map((p) => {
+          const pn = (byId.get(p) || {}).name || p;
+          const ok = this._isResearched(p);
+          return `<li class="con-row" data-met="${ok ? '1' : '0'}"><span class="con-row__name">${escapeHtml(pn)}</span><span class="con-row__sub">${ok ? 'researched' : 'not yet researched'}</span></li>`;
+        }).join('') + `</ul>`
+      : `<p class="con-sentence">No prerequisites.</p>`;
+    const unlockRows = unlockRowsHtml(n.unlocks);
+    const effects = formatUnlocks(n.unlocks);
+    // FB-053 — the dossier reads as the thing you can DO: the verb-ladder line, then the
+    // efficiency rider on its own line when the node folds one, then any remaining effect notes.
+    const reading = techNodeReading(n);
+    // The three faucet nodes (heat lure, containment seal, capture cradle) have no authored verb,
+    // so the ladder hands back the node's own name — printed here it would sit twice on one
+    // reading (once as the "verb", again in UNLOCKS). The unlock row already names it.
+    const verbLine = reading.verb
+      && reading.verb.trim().toLowerCase() !== String(n.name || '').trim().toLowerCase()
+      ? reading.verb : '';
+    // A locked node's first question is what stands in the way, so its requirements come first.
+    const requiresHtml = `<div class="con-caps">Requires</div>${prereqHtml}`;
+    const owned = readiness.state === 'researched';
+
+    sel.innerHTML = `
+      <p class="con-dossier__kicker">${escapeHtml(branchLabel)} <span aria-hidden="true">·</span> tier ${ROMAN[tier - 1] || tier}</p>
+      <h2 class="con-dossier__name">${escapeHtml(n.name)}</h2>
+      <p class="con-dossier__state" data-state="${escapeHtml(readiness.state)}">${escapeHtml(stateSentence(readiness))}</p>
+      ${owned
+        ? `<p class="con-dossier__cost con-dossier__paid" aria-label="Cost">Paid ${escapeHtml(fmtCr(cost.credits || 0))} cr${cost.rp ? ' · ' + escapeHtml(Math.round(cost.rp).toLocaleString()) + ' RP' : ''}</p>`
+        : `<dl class="con-dossier__cost" aria-label="Cost">
+        ${costCellHtml('Credits', Math.round(cost.credits || 0), Math.round(player.credits || 0), fmtCr)}
+        ${costCellHtml('Research points', Math.round(cost.rp || 0), Math.round(player.researchPoints || 0), (v) => v.toLocaleString())}
+      </dl>`}
+      ${readiness.state === 'locked' ? requiresHtml : ''}
+      ${verbLine ? `<p class="con-sentence con-dossier__verb">${escapeHtml(verbLine)}</p>` : ''}
+      ${reading.rider ? `<p class="con-sentence con-dossier__rider">${reading.rider}</p>` : ''}
+      ${effects ? `<p class="con-sentence">${effects}</p>` : ''}
+      ${unlockRows ? `<div class="con-caps">Unlocks</div><ul class="con-rows con-unlocks" aria-label="Unlocks">${unlockRows}</ul>` : ''}
+      ${readiness.state === 'locked' ? '' : requiresHtml}
+    `;
+
+    if (readiness.state === 'available') {
+      actions.innerHTML = `<button class="con-unlock tt-unlock" data-act="unlock" data-why="${escapeHtml(readiness.actionTitle)}" aria-label="${escapeHtml(readiness.actionTitle)}">Unlock</button>`;
+    } else {
+      actions.innerHTML = disabledActionHtml(readiness);
+    }
+    actions.dataset.state = readiness.state;
+    // The verb sits under the price it spends, above the lists, so a node with six unlocks never
+    // pushes Unlock (or the reason it is locked) below the reading.
+    const costEl = sel.querySelector('.con-dossier__cost');
+    if (costEl) costEl.insertAdjacentElement('afterend', actions);
+    this._paintDossier();
+    if (hadFocus) {
+      const verb = actions.querySelector('button');
+      if (verb) { try { verb.focus({ preventScroll: true }); } catch (_) { /* focus is a nicety */ } }
+    }
+  },
+
+  _onAction(act) {
+    if (act !== 'unlock' || !this._selectedId) return;
+    const n = this._nodes().find((x) => x.id === this._selectedId);
+    if (!n) return;
+    cue('confirm');
+    // ships handles ui:unlockTech (charges credits/RP, sets researchedNodes, emits tech:researched).
+    // Research P07 residual: that owner is synchronous and toasts the one terminal line itself —
+    // "Researched X" on success, the blocker-naming error on refusal — so this screen adds no
+    // toast of its own. An optimistic "Researching…" here landed AFTER the owner's line on both
+    // outcomes: on a refusal the player read the real error plus a false promise of work.
+    this._ctx.bus.emit('ui:unlockTech', { nodeId: n.id });
+    this.refresh(this._ctx);
+  },
+
+  _researchSignature() {
+    return this._researched().join(',');
+  },
+
+  _drawSignature() {
+    const player = (this._ctx && this._ctx.state && this._ctx.state.player) || {};
+    const ready = this._nodes().filter((n) => this._nodeState(n) === 'available' && this._affordable(n)).map((n) => n.id).join(',');
+    return [this._researchSignature(), ready, this._nodes().length, Math.round(player.researchPoints || 0)].join('|');
+  },
+
+  _sidebarSignature() {
+    const st = this._ctx.state;
+    const player = st.player || {};
+    return [
+      this._selectedId || '',
+      this._researchSignature(),
+      Math.round(player.credits || 0),
+      player.researchPoints || 0,
+      this._nodes().length,
+    ].join('|');
+  },
+};
+
+// ---- helpers ----------------------------------------------------------------
+/** The node's state as one sentence; the disabled word beneath it names the exact blocker. */
+function stateSentence(readiness) {
+  const s = readiness && readiness.state;
+  if (s === 'researched') return 'Researched.';
+  if (s === 'locked') return 'Locked.';
+  if (s === 'funding') return 'Open, not yet affordable.';
+  return 'Open, and you hold what it costs.';
+}
+
+/**
+ * One cost as a reading: the figure it costs, thin and large, inside an arc of how much of it you hold.
+ * A cost you cannot meet names what is short; a cost of nothing reads as none.
+ */
+function costCellHtml(word, cost, have, fmt) {
+  const free = !(cost > 0);
+  const short = free ? 0 : Math.max(0, cost - have);
+  // affordable: the share of what you hold it spends; short: how much of the price you hold, a tick at the price
+  const k = free ? 0 : short > 0 ? Math.max(0, Math.min(1, have / cost)) : Math.max(0.02, Math.min(1, cost / Math.max(1, have)));
+  // a 300-degree gauge open at the foot, so a full one still reads as a gauge and not a ring
+  const arc = 'M 13.5 36.72 A 17 17 0 1 1 30.5 36.72';
+  const pct = have > 0 ? Math.max(1, Math.round((cost / have) * 100)) : 0;
+  const sub = free ? 'none needed' : short > 0 ? `short ${fmt(short)}` : `${pct}% of ${fmt(have)} held`;
+  // the price's tick sits at the gauge's end (bearing 150), just outside the arc
+  const tick = short > 0 ? '<path class="con-cost__tick" d="M 30.5 36.72 L 33.5 41.9"></path>' : '';
+  return `<div class="con-cost" data-short="${short > 0 ? '1' : '0'}" data-free="${free ? '1' : '0'}">`
+    + `<svg class="con-cost__gauge" viewBox="0 0 44 44" aria-hidden="true" focusable="false">`
+    + `<path class="con-cost__track" d="${arc}"></path>`
+    + `<path class="con-cost__fill" d="${arc}" pathLength="1" stroke-dasharray="${k.toFixed(3)} 1"${k > 0 ? '' : ' opacity="0"'}></path>`
+    + tick
+    + `</svg>`
+    + `<dt>${escapeHtml(word)}</dt><dd>${escapeHtml(free ? '0' : fmt(cost))}</dd>`
+    + `<span class="con-cost__sub">${escapeHtml(sub)}</span></div>`;
+}
+
+function disabledActionHtml(readiness) {
+  const label = readiness && readiness.actionLabel || 'Unavailable';
+  const title = readiness && readiness.actionTitle || label;
+  // aria-disabled, not disabled: a disabled control cannot take focus, so the reason a locked node
+  // is locked would be hover-only — the exact defect this sweep removes. The button carries no
+  // data-act, so it stays inert; focus only reveals the why.
+  return `<button class="con-why" aria-disabled="true" tabindex="0" data-why="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${escapeHtml(label)}</button>`;
+}
+
+/** The ships and modules a node unlocks, as ledger lines (name · kind). */
+function unlockRowsHtml(u) {
+  if (!u) return '';
+  const row = (name, kind, ref) => `<li class="con-row has-art"><span class="con-row__art" aria-hidden="true">${ref ? unlockArtHtml(ref) : ''}</span><span class="con-row__name">${ref ? entitySpanHtml(ref, name) : name}</span><span class="con-row__sub">${kind}</span></li>`;
+  const rows = [];
+  if (u.ships && u.ships.length) {
+    const names = u.ships.map(unlockDisplayName);
+    rows.push(...u.ships.map((id, i) => row(names[i], 'ship', 'hull:' + id)));
+  }
+  if (u.modules && u.modules.length) {
+    const names = u.modules.map(unlockDisplayName);
+    rows.push(...u.modules.map((id, i) => row(names[i], 'module', 'module:' + id)));
+  }
+  return rows.join('');
+}
+
+/** The node's effects beyond its unlock rows, as one sentence (escaped; '' when there are none). */
+function formatUnlocks(u) {
+  if (!u) return '';
+  const parts = [];
+  if (u.droneTierCap != null) parts.push(`Drone tier cap ${escapeHtml(String(u.droneTierCap))}`);
+  if (u.npcTraderHiring) parts.push('Unlocks NPC trader hiring');
+  if (u.outpostConstruction) parts.push('Unlocks outpost construction');
+  if (u.extraDronePerBay) parts.push(`+${escapeHtml(String(u.extraDronePerBay))} drone per bay`);
+  if (u.flags && u.flags.length) parts.push(`Flags: ${u.flags.map(escapeHtml).join(', ')}`);
+  return parts.length ? parts.join(' · ') + '.' : '';
+}
+
+/** The efficiency rider (FB-053): the node's folded passive bonuses, its own line ('' absent). */
+function formatEfficiencyRider(u) {
+  if (!u || !u.efficiency) return '';
+  const e = Object.entries(u.efficiency).map(([k, v]) => `${escapeHtml(k)} ${(v > 0 ? '+' : '') + Math.round(v * 100)}%`);
+  return `Bonuses: ${e.join(', ')}.`;
+}
+
+/**
+ * The node's player-facing reading (FB-053): `verb` is the authored one-line action from the
+ * verb ladder — what you can DO with this research — and `rider` is the efficiency line printed
+ * beneath it when the node folds a passive bonus. `verb` is raw text (escape at render);
+ * `rider` arrives pre-escaped like the formatUnlocks sentence.
+ */
+export function techNodeReading(node) {
+  const u = (node && node.unlocks) || {};
+  return {
+    verb: verbForNodeId(node && node.id),
+    rider: formatEfficiencyRider(u),
+  };
+}
+
+function cleanId(id) {
+  return escapeHtml(String(id).replace(/^(ship_|mod_|wpn_)/, '').replace(/_/g, ' '));
+}
+
+export function unlockDisplayName(id) {
+  const authored = UNLOCK_NAME_BY_ID.get(id);
+  return authored ? escapeHtml(authored) : cleanId(id);
+}
+
+/** One compact cost voice on the stars: 6k, 12k, 2.5M (fmtCr keeps exact thousands elsewhere). */
+function fmtCostCompact(v) {
+  v = Math.round(v || 0);
+  if (v >= 1e6) return (v / 1e6).toFixed(v % 1e6 === 0 || v >= 1e7 ? 0 : 1) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(v % 1e3 === 0 || v >= 1e4 ? 0 : 1) + 'k';
+  return String(v);
+}
+function fmtCr(v) {
+  v = Math.round(v || 0);
+  if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 1) + 'M';
+  if (v >= 1e4) return (v / 1e3).toFixed(0) + 'k';
+  return v.toLocaleString();
+}

@@ -1,0 +1,156 @@
+CRUCIBLE SUITE CRITIC — r2 (2026-09-28)
+Suite: arena run mode — door, draft/Armory, refit, results.
+Stills: .devshots/ui-review/view/cru-r2-{door,draft,refit,results}-{1920,1280}.png
+Build: b1704b199 "orrery: crucible r2". Scoring law: CRITIC_BRIEF.md + owner (a)/(b), bar 8.0.
+Method: every still opened; px sampled with sharp .raw() (scripts in /tmp, not repo);
+motion-only mechanisms verified in code (frozen stills can't show them).
+
+SUITE-WIDE CLOSE-OUT: KEY-CAP PURGE — DONE.
+Row/col scans around every named cap site show glyph strokes only, glass above/below:
+refit ENTER top/bottom (y372 glyph ticks / y418 all-glass), draft foot "1 2 3 BUY
+Tab BROWSE" (y972 ticks / y1008 all-glass), results ENTER plain word (lum 145).
+Stylesheet: foot kbd rules now border:0 + box-shadow:none (screenLayouts.js:272-274
+refit, :562+ draft, results rule). Zero boxed caps on any screen.
+RESIDUAL (not a named cap, ranked fix on draft): ladder numerals keep a 20px
+1px-inset-outline circle (screenLayouts.js:203-204; ring lum 90, 1px). Circular,
+not boxed — lawful by the letter, chrome by the spirit. One-line fix owed.
+
+SUITE PALETTE: door — amber ONLY on LAUNCH SWARM left of the art (40-sample sweep
+x<760, all 242,206,132 Lamp pixels); draft — amber at exactly two clusters,
+chevron (104,352 = 242,185,80) + BUY verb; refit — 03 arm/node + FIT + TAKE THE
+WIN (see refit note); results — Lamp + threat-red only. Bone cores 236,230,216 /
+246,241,230. No ice frozen anywhere (lawful). No red outside results.
+
+================================================================================
+1. DOOR — PASSED, overall 8.2 (previous 7.8)
+================================================================================
+Axes: Composition 8.5 (8.5) — unchanged, holds both widths. Hierarchy 8.5 (8.5) —
+unchanged. Legibility 8.0 (7.5) — GHOST lum 185 ≈ 12:1, was 64 ≈ 1.9:1.
+ORRERY fidelity 7.5 (7.0) — Hand verified live (bone at rest is CORRECT: amber
+only on :focus-within/:hover per stopDial.js:44-47 + spring); Lamp still the
+underline variant (suite idiom, on record). Craft/detail 8.5 (8.5). Interaction
+clarity 8.0 (7.5) — hint line present (lum 129, x95-330 y1040-1068) + wrap orbit.
+7(a) weight/generic: PASS. No bands; 100px+ type + produced room art + amber verb.
+7(b) signature: PASS (was FAIL). The Orbit Carousel is built: Left/Right wrap the
+arena row and select-on-orbit (crucible.js:1474-1498); each room cross-fades the
+hero art + caption with 150ms word settle (crucible.js:775-805, preloaded, turn
+token); seed Counter tumbles and locks L-to-R (crucible.js:1228-1258). Frozen
+still can't show it; the mechanism is verified with reduced-motion fallbacks.
+Reduced motion: carousel swaps words instantly; seed sets straight; needle is CSS
+with no motion-carried info. No info lost frozen. Live check still owed: orbit
+with sf-reduce-motion and confirm art swaps with zero dip.
+1280: RECORDS › restored (lum 190, x60-210 y535-560); practice description
+present (one line). Both gates PASS.
+rs1 list close-out:
+1. GHOST legibility — DONE (185 ≈ 12:1; "No ghost for this seed yet" caption
+   marks unavailability at 1920; dotted-strike code at crucible.js:1003 not
+   visible in still — verify live).
+2. Orbit Carousel — DONE (code-verified, see (b)).
+3. Amber Hand needle — DONE (stopDial.js:44-47; still correctly bone at rest).
+4. 1280 RECORDS + practice desc — DONE.
+5. Hint line — DONE ("← → choose · Enter launch", x95 y1040-1068).
+6. Seed Counter — DONE (code-verified roll; still shows static value, correct).
+RANKED FIXES:
+1. 1280 practice desc (x255-770 y510-540 @1280) truncates mid-word ("…re…") —
+   truncate at a word boundary ("…collision —" + "…"). crucible.js door practice row.
+2. 1280 drops "No ghost for this seed yet", leaving GHOST unexplained at compact
+   width — keep a 3-word tag ("No ghost yet") under the mode scale at ≤1500px.
+3. GHOST dotted strike (crucible.js:1003): strike dots not measurable in still
+   (inter-glyph gaps all glass at y214) — confirm it renders live, else the
+   dimmer-bone + caption carries it alone.
+Memorable-ought (rs1, unattempted): mode choice re-lights the room art (Swarm =
+furnace, Ghost = cold bone). The carousel now makes this a one-line art swap.
+
+================================================================================
+2. DRAFT / ARMORY — PASSED, overall 8.1 (previous 7.4)
+================================================================================
+Axes: Composition 8.0 (8.0). Hierarchy 8.0 (8.0). Legibility 8.0 (7.0) —
+SIDEARM/CHARGES full at 1920 (was "CHARG…"); 1280 uses SID/CHG dictionary +
+"1–6 OF 28" counter, whole rows only. ORRERY fidelity 8.0 (6.0) — amber exactly
+×2 (chevron + BUY); lit-row price bone 241, HARDPOINT 3 bone 196, wallet bone
+241; zero boxes. Craft/detail 8.0 (7.5) — ladder rings are the last nit.
+Interaction clarity 8.5 (8.0) — beam pulse verified live (see fix 3).
+7(a) weight/generic: PASS. Hull core 2px at L220 + outer bloom skirt 2px ≥60
+(x800 L60, x802 L91) + interior fill L34 vs glass L11 (3:1 body) + inner line
+structure. Reads as a lit object, not a line drawing.
+7(b) signature: PASS, now strong. Fit-preview leader + "one ice pass along the
+leader beam and a pulse of the node ring" on row change, re-armed per row
+(crucibleDraft.js:968-978, off under reduced motion, bone at rest).
+Reduced motion: pulse off, counters/thumb instant; frozen still fully legible.
+1280: tags + counter gates PASS; compass numerals dropped (acceptable, ruled).
+rs1 list close-out:
+1. Palette (3 unlawful ambers) — DONE, all bone; amber only chevron + BUY.
+2. Hull fill + bloom — DONE (measured above; inner skirt subsumed by fill).
+3. Leader-beam pulse — DONE (code-verified).
+4. Six caps → words — DONE (scanned, zero boxes).
+5. Slot tags + fold — DONE (full @1920, dictionary @1280, no half-cut row).
+6. Counter + ladder cursor — DONE ("1–12/1–6 OF 28" both widths; rail thumb
+   crucibleDraft.js:1099-1103 re-reads the fold).
+RANKED FIXES:
+1. Ladder numeral rings (x118-142 y345-372 @1920; 20px 1px-inset circle,
+   screenLayouts.js:203-204 + crucibleDraft.js:1118): delete the inset outline,
+   keep plain bone 12px numerals. Last chrome on the screen.
+2. Hull inner edge (x806 L32 @y600): outer skirt measured, inner has fill but no
+   ≥60 skirt — extend the 5px 22% under-stroke inside, or accept fill as the
+   inner body (critic accepts; builder's call, no score held).
+Memorable-ought (rs1, unattempted): the bought glyph flies the beam into its
+hardpoint with a Salvage Burst into the fit arc. Still the purchase moment this
+screen wants.
+
+================================================================================
+3. REFIT — PASSED, overall 8.3 (previous 8.0, fidelity floor fail)
+================================================================================
+Axes: Composition 8.5 (8.5). Hierarchy 8.5 (8.5) — two amber verbs share the
+crown (see note) without breaking the read. Legibility 8.0 (8.0). ORRERY
+fidelity 8.0 (6.5) — zero caps; fit arc all bone (0 amber samples x800-1130
+y790-840); TAKE THE WIN takes the Lamp underline (amber 242,185,80 + rule).
+Craft/detail 8.5 (8.0). Interaction clarity 8.5 (8.5).
+AMBER NOTE (not a score hold): FIT (03 callout) + TAKE THE WIN are both amber —
+rs1's own fixes blessed each ("03 arm + node + FIT stay the Hand + Lamp pair"
+AND "TAKE THE WIN takes the Lamp").So one screen now holds Hand + two verbs.
+Ruling owed from the program, not this builder: either FIT goes bone once a
+settlement commit exists, or Hand-verb + settlement-Lamp is accepted law.
+7(a) weight/generic: PASS (unchanged — filled rings, dashed arcs, amber arm,
+segmented arc, hold dot).
+7(b) signature: PASS (unchanged — exploded schematic is the suite's best memory).
+Reduced motion: hold ring must fill instantly-with-confirm while keeping deliberate
+intent — still a live check; nothing else carries info in motion.
+1280: "5 OF 8 FITTED" inline reading restored (lum 232, x545-730 y515-540). PASS.
+rs1 list close-out:
+1. Three caps → words — DONE (ENTER lum 207 plain; HOLD F·X plain + lawful hold
+   ring; SPACE·Y plain; scanned, zero boxes).
+2. Fit arc all bone — DONE (0 amber samples).
+3. TAKE THE WIN Lamp — DONE (amber + underline, x565-780 y900-935).
+4. 1280 fit count — DONE (inline reading, code crucibleDraft.js:1694-1698).
+5. Dash idiom all empties — DONE (code crucibleDraft.js:1654-1663; 05 leader
+   measured dashed: bright dots x1144/1198/1216 with glass between).
+6. 01/02 nose gap — DONE (12px relaxation crucibleDraft.js:1665-1692; clusters
+   separated in still at both widths).
+RANKED FIXES:
+1. Amber-verb pairing (above): needs a program ruling, then a one-line change.
+2. 1280 nose (x595-740 y195-240 @1280): 01/02/03 separated but tight — if the
+   relaxation cap (15px) ever binds, widen travel before allowing touch.
+Memorable-ought (rs1, unattempted): strip slides the module glyph off along its
+leader and the node goes dark. The schematic is still built for exactly this.
+
+================================================================================
+4. RESULTS — APPROVED 8.3 HELD, no regression
+================================================================================
+Not re-litigated per brief. Regression scan: ENTER is a plain word (lum 145, no
+box); 1280 hit legend present abbreviated ("HA Autocannon · PL Pulse · ?
+unknown", x755-1080 y575-600); timeline beads brightened (116/304/492 all
+194-241, fix 4 DONE); Lamp rule spans the verb's own words (code
+crucible.js:2670, fix 5 DONE). Still owed, non-blocking: fix 3, Score line is
+still ~8px-cap small text (col x130: glyph rows y323-325/328-330) — promote to a
+15px+ Counter reading. No axis moved down; approval stands.
+
+================================================================================
+SUMMARY
+================================================================================
+DOOR 8.2 PASSED — carousel + Hand + Counter + hint line close (b); GHOST 12:1.
+DRAFT 8.1 PASSED — amber ×2 exactly, zero boxes, hull has body, beam pulses live.
+REFIT 8.3 PASSED — zero caps, arc bone, Lamp set, 1280 count restored, dashes all empties.
+RESULTS 8.3 APPROVED HELD — no regression; score-counter promotion still owed.
+Suite residual: ladder numeral rings (draft fix 1) + amber-verb pairing ruling
+(refit fix 1) + three live reduced-motion confirmations (door orbit, refit hold,
+draft pulse-off). Nothing blocking.

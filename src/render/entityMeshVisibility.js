@@ -1,0 +1,114 @@
+// Submit-side visibility for presentation roots.
+//
+// The query retains a short approach runway for pose sync and preparation. Only
+// the live camera's glass (including visual envelopes and the frame skirt)
+// owns submission; the wider deterministic sim frame is a fallback for callers
+// without a live camera verdict.
+
+export function isAuthoredPendingStatus(status) {
+  return status === 'loading'
+    || status === 'awaiting-authored-admission'
+    || status === 'compiling-pipelines';
+}
+
+export function shouldSubmitEntityMesh(options = {}) {
+  // A missing fenced pose is a fail-closed condition for ordinary roots, but the player and
+  // renderer-forced roots retain their last safe mesh state until the next completed publication.
+  // Hiding one of those roots on a transient publication gap would turn a render-boundary miss
+  // into a gameplay-visible disappearance.
+  const protectedRoot = isProtectedEntityMesh(options);
+  if (options.snapshotMissing === true && !protectedRoot) return false;
+  // A protected root is never hidden: the residency manager refuses to hold it and clears any
+  // stale hold on its next draw (admit-inline/fail-open). So the protected verdict wins here,
+  // and the submit pass never re-hides the player for a measurement lane.
+  if (protectedRoot) return true;
+  // Held by the residency manager until its geometry is on the GPU. The root never enters
+  // the submit list early, so "visible" always means "has resident data to draw".
+  if (options.residencyHeld === true) return false;
+  // Stand-in contract: the caller passes standInResident when this root is already drawing a
+  // resident, already-linked low-detail proxy. Pending gates then must not blank the picture;
+  // the glass/tier verdicts below still apply.
+  const standIn = options.standInResident === true;
+  // First draw of an uncompiled material links the driver program inside bloomScene.
+  // Hold ordinary roots until compileObjectPipelines has actually linked them —
+  // once they have, a re-admission re-links variants behind the scenes and the
+  // already-linked root keeps drawing (bloom's per-material guard skips any
+  // still-unlinked drawable instead of the whole root disappearing).
+  if (!standIn && options.pipelinesPending === true && options.sfAdmittedOnce !== true) return false;
+  // Nearby opening extras that are still decoding must not enter bloomScene.
+  // Their first authored draw is the 100 ms+ Intel compile brick. A resolving marker is exempt:
+  // it draws from the shared, already-linked Standard family and is the only drawable in the
+  // substrate, so submitting it costs nothing extra and keeps a pending contact on screen.
+  if (!standIn && options.authoredPending === true && !protectedRoot && options.resolvingMarker !== true) return false;
+  // compile() does not upload vertex buffers. Hold ordinary rocks/props until the
+  // 1x1 residency pass has registered those geometries.
+  if (!standIn && options.geometryPending === true && !protectedRoot) return false;
+  if (options.hidden === true) return false;
+  // The sim glass uses a conservative aspect and can lag camera zoom/glide. Letting its
+  // membership override a measured miss submits off-screen roots; letting a stale tier
+  // override a measured hit makes a ready body pop out until the next sim publication.
+  if (typeof options.onLiveGlass === 'boolean') return options.onLiveGlass;
+  const frame = options.activityFrame;
+  const entityId = options.entityId;
+  if (frame && entityId != null) {
+    const glass = frame.renderGlassIds || frame.glassIds;
+    const runway = frame.renderRunwayIds || frame.runwayIds;
+    const has = (collection) => collection && typeof collection.has === 'function'
+      ? collection.has(entityId)
+      : Array.isArray(collection) && collection.includes(entityId);
+    if (has(glass)) return true;
+    // Runway roots remain resident for approach-time warmup but are not submitted
+    // until the activity frame promotes them onto the readable glass.
+    if (has(runway)) return false;
+    // Ledger rows (far, field and dressing tables) are not combat-list members, so a complete
+    // frame never names them. isEntityRenderRelevant keeps their mesh under distance policy; hiding
+    // them here left accepted props resident on the GPU but never drawn. Their tier still decides.
+    if (frame.complete === true && options.ledgerRow !== true) return false;
+  }
+  const tier = options.presentationTier;
+  if (tier === 'R2_METADATA' || tier === 'R3_UNLOADED' || tier === 'R1_RUNWAY') return false;
+  return true;
+}
+
+export function isProtectedEntityMesh(options = {}) {
+  return options.isPlayer === true || options.forceRender === true || options.neverCull === true;
+}
+
+/**
+ * A body the camera is already drawing stays on the glass while the
+ * frustum still contains it. A pending latch or a query miss would blank that
+ * picture, and the reveal is the in-view pop. The hold does not reveal a root
+ * that has not been shown, and it does not keep a root whose pose is missing.
+ * Off the frustum, the ordinary submit rule releases it.
+ */
+export function retainShownCameraGlass(options = {}) {
+  if (options.alreadyVisible !== true) return false;
+  if (options.onFrustum !== true) return false;
+  if (options.snapshotMissing === true) return false;
+  if (options.alive === false) return false;
+  return true;
+}
+
+export function retainShownSurvivalGlass(options = {}) {
+  return options.survival === true && retainShownCameraGlass(options);
+}
+
+export function applyEntityMeshVisibility(mesh, submit) {
+  if (!mesh) return false;
+  const next = submit !== false;
+  if (mesh.visible === next) return false;
+  mesh.visible = next;
+  return true;
+}
+
+/**
+ * Restore a freshly bound root's prior visibility without overwriting a residency hold. The bind
+ * commit used to write `visible = true` over the hold flag, so the next submit pass re-showed an
+ * unready root for a frame (the bind-then-submit blink). The submit pass remains the only place a
+ * normal visibility verdict is written; this helper only refuses to clear a live hold.
+ */
+export function applyBoundMeshVisibility(mesh, priorVisible, residencyHeld = false) {
+  if (!mesh) return false;
+  if (residencyHeld === true) return applyEntityMeshVisibility(mesh, false);
+  return applyEntityMeshVisibility(mesh, priorVisible !== false);
+}

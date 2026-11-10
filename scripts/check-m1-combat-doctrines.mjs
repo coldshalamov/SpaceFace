@@ -1,0 +1,28 @@
+#!/usr/bin/env node
+import { spawnSync } from 'node:child_process';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+assert.equal(pkg.scripts['check:m1:combat-doctrines'], 'node scripts/check-m1-combat-doctrines.mjs');
+for (const aggregate of ['check:ai', 'check:sg06']) {
+  const matches = pkg.scripts[aggregate].match(/npm run check:m1:combat-doctrines/g) || [];
+  assert.equal(matches.length, 1, `${aggregate} wires the M1.5 doctrine gate exactly once`);
+}
+
+const result = spawnSync(process.execPath, [
+  '--test',
+  'test/combat-doctrines.test.mjs',
+  'test/interceptor-reform.test.mjs',
+  'test/professional-enemy-maneuvers.test.mjs',
+  'test/ai-engagement-authority.test.mjs',
+  'test/ai-engagement-sg03.test.mjs',
+  // PQ-140.02 specialist counterplay and the tether-control contest are doctrine-runtime proofs.
+  'test/pq-140-02-specialists.test.mjs',
+  'test/tether-control-raider.test.mjs',
+], {
+  cwd: new URL('..', import.meta.url),
+  stdio: 'inherit',
+});
+if (result.status !== 0) process.exit(result.status || 1);
+console.log('M1 combat doctrine checks OK');

@@ -1,0 +1,514 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.pod-repair-patch",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "26fdaf801aa7f20360e81400899777388cb15f04e72b9945a8d97c3c94c8b2ca",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.843500852584839,
+          0.2300697116995675,
+          -1.158399069613379
+        ],
+        "min": [
+          0.04880698770284653,
+          0.14993029843322211,
+          -1.575309312039453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1a1ac95727f185292ef9eafbbf878d17b396f2b8d41dd3c5cda62ba00c5b8803",
+      "id": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-accent-merged.primitive.0",
+      "indexCount": 4800,
+      "indexed": true,
+      "materialHash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "materialPipelineKey": "opaque",
+      "meshName": "pod_repair_patch_Material_Accent_Merged",
+      "nodeId": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-accent-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 1128
+    },
+    {
+      "bounds": {
+        "max": [
+          4.403451442718506,
+          0.22995388449349355,
+          1.470769975347935
+        ],
+        "min": [
+          0.04654828459024429,
+          0.08847785799584437,
+          -1.5728261210159649
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "46d36d2e5c880f85b8ebe27d1b44caf496b4673cab53161f5148dff56db6ca0f",
+      "id": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-mechanical-merged.primitive.0",
+      "indexCount": 20304,
+      "indexed": true,
+      "materialHash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "materialPipelineKey": "opaque",
+      "meshName": "pod_repair_patch_Material_Mechanical_Merged",
+      "nodeId": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 4746
+    },
+    {
+      "bounds": {
+        "max": [
+          4.619626522064209,
+          0.1178806490002862,
+          1.5685894887659166
+        ],
+        "min": [
+          -0.2694820761680603,
+          -0.07788064989435588,
+          -1.5256923835489367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b7b2fde69621bc33dea763f3c849868e07df69d26212c621511c6391a06ff7eb",
+      "id": "sf.render.pod-repair-patch.mesh.repair-patch.primitive.0",
+      "indexCount": 1044,
+      "indexed": true,
+      "materialHash": "41756d73679628e0615d3e4a5a0fdd85a6224b6596ad6a46127cb477812260cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "Repair_Patch",
+      "nodeId": "sf.render.pod-repair-patch.mesh.repair-patch",
+      "primitiveIndex": 0,
+      "vertexCount": 251
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "id": "material:0d612528a03bab333df5b88a",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "id": "material:26ac8e79234691141b934c6c",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "41756d73679628e0615d3e4a5a0fdd85a6224b6596ad6a46127cb477812260cf",
+      "id": "material:41756d73679628e0615d3e4a",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-accent-merged",
+      "localTransform": [
+        1.8973469324409962,
+        0,
+        0,
+        0,
+        0,
+        1.8973469324409962,
+        0,
+        0,
+        0,
+        0,
+        1.8973469324409962,
+        0,
+        1.9461539201438427,
+        0.1900000050663948,
+        -1.366854190826416,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_repair_patch_Material_Accent_Merged",
+      "nodeName": "pod_repair_patch_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.pod-repair-patch.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-repair-patch.body",
+      "worldTransform": [
+        1.8973469324409962,
+        0,
+        0,
+        0,
+        0,
+        1.8973469324409962,
+        0,
+        0,
+        0,
+        0,
+        1.8973469324409962,
+        0,
+        1.9461539201438427,
+        0.1900000050663948,
+        -1.366854190826416,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-mechanical-merged",
+      "localTransform": [
+        2.178451579064131,
+        0,
+        0,
+        0,
+        0,
+        2.178451579064131,
+        0,
+        0,
+        0,
+        0,
+        2.178451579064131,
+        0,
+        2.224999863654375,
+        0.15921587124466896,
+        -0.05102807283401489,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_repair_patch_Material_Mechanical_Merged",
+      "nodeName": "pod_repair_patch_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.pod-repair-patch.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-repair-patch.body",
+      "worldTransform": [
+        2.178451579064131,
+        0,
+        0,
+        0,
+        0,
+        2.178451579064131,
+        0,
+        0,
+        0,
+        0,
+        2.178451579064131,
+        0,
+        2.224999863654375,
+        0.15921587124466896,
+        -0.05102807283401489,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-repair-patch.mesh.repair-patch",
+      "localTransform": [
+        2.4445542991161346,
+        0,
+        0,
+        0,
+        0,
+        2.4445542991161346,
+        0,
+        0,
+        0,
+        0,
+        2.4445542991161346,
+        0,
+        2.1750722229480743,
+        0.019999999552965164,
+        0.02144855260848999,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Repair_Patch",
+      "nodeName": "Repair_Patch",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.pod-repair-patch.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-repair-patch.body",
+      "worldTransform": [
+        2.4445542991161346,
+        0,
+        0,
+        0,
+        0,
+        2.4445542991161346,
+        0,
+        0,
+        0,
+        0,
+        2.4445542991161346,
+        0,
+        2.1750722229480743,
+        0.019999999552965164,
+        0.02144855260848999,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-repair-patch.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "pod_repair_patch",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-repair-patch.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "3941087c4bbb9b5d0f3395a7e3d862d8b9045937d22ebe0321c5ce57135dc7dc"
+    },
+    "sourceGlb": {
+      "bytes": 326780,
+      "sha256": "edf1648576b0461ec2f19e24bdb02bc7a6aec52c7e2a89bc73db39b984b123d0",
+      "uri": "pod_repair_patch.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 295472,
+    "sha256": "c8b11681e77c9adb6d925de74e3bfe584917dca6558e4a48895fe557f8f5b02b",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        2.1750722229480743,
+        0.07609453090260582,
+        -0.003359911636768187
+      ],
+      "max": [
+        4.619626522064209,
+        0.2300697116995675,
+        1.5685894887659166
+      ],
+      "min": [
+        -0.2694820761680603,
+        -0.07788064989435588,
+        -1.575309312039453
+      ],
+      "size": [
+        4.889108598232269,
+        0.30795036159392336,
+        3.1438988008053697
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 26,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.8973469324409962,
+          0,
+          0,
+          0,
+          0,
+          1.8973469324409962,
+          0,
+          0,
+          0,
+          0,
+          1.8973469324409962,
+          0,
+          1.9461539201438427,
+          0.1900000050663948,
+          -1.366854190826416,
+          1
+        ],
+        "name": "pod_repair_patch_Material_Accent_Merged",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.178451579064131,
+          0,
+          0,
+          0,
+          0,
+          2.178451579064131,
+          0,
+          0,
+          0,
+          0,
+          2.178451579064131,
+          0,
+          2.224999863654375,
+          0.15921587124466896,
+          -0.05102807283401489,
+          1
+        ],
+        "name": "pod_repair_patch_Material_Mechanical_Merged",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.4445542991161346,
+          0,
+          0,
+          0,
+          0,
+          2.4445542991161346,
+          0,
+          0,
+          0,
+          0,
+          2.4445542991161346,
+          0,
+          2.1750722229480743,
+          0.019999999552965164,
+          0.02144855260848999,
+          1
+        ],
+        "name": "Repair_Patch",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "pod",
+    "url": "assets/ships/release/parts/pods/pod_repair_patch.glb"
+  },
+  "runtimeHash": "d2404877f93dc38e15524e5a8c2fc2f550f77166c0f94da464794bb0e96bfe5b",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          4.619626522064209,
+          0.2300697116995675,
+          1.5685894887659166
+        ],
+        "min": [
+          -0.2694820761680603,
+          -0.07788064989435588,
+          -1.575309312039453
+        ]
+      },
+      "id": "sf.render.pod-repair-patch.body",
+      "nodeIds": [
+        "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-accent-merged",
+        "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-mechanical-merged",
+        "sf.render.pod-repair-patch.mesh.repair-patch",
+        "sf.render.pod-repair-patch.root"
+      ]
+    }
+  ]
+}

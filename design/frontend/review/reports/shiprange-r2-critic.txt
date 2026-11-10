@@ -1,0 +1,197 @@
+SHIP + RANGE r2 CRITIC — ORRERY frontend overhaul, build round r2
+Critic: ship-range r2 critic. Stills opened with own eyes + crops measured with sharp.
+Scoring law: design/frontend/review/CRITIC_BRIEF.md (PASS = overall >= 8.0 AND no axis
+< 7.0 AND owner (a) band-weight/generic AND owner (b) signature interaction).
+Axes: Composition / Hierarchy / Legibility / ORRERY fidelity / Craft-detail /
+Interaction clarity. Previous: shiprange-r1-critic.txt (SHIP 6.8, RANGE 7.6, both NOT PASSED).
+Px in the named shot's own pixels. 1280 = 1280x720, 1920 = 1920x1080.
+Still IDs: w2r2-ship-1920 / w2r2-ship-1280 / w2r2-ship-selected-1920 (live-click proof) /
+w2r2-range-1920 / w2r2-range-1280. Bench sources byte-identical to the 1280 views
+(sha256 prefix match: ship b1f3ca628add13e2, range 16d20221839d98cf).
+Contrast = WCAG on composited pixels. Bone = rgb(236 230 216), Hand/Lamp = #F2B950.
+
+================================================================================
+1. SHIP (Hitch fit screen) — 7.7 — NOT PASSED (r1 6.8; all r1 fixes closed, new
+   choosing-mode craft debt keeps it under the bar)
+================================================================================
+Axes (score, previous, note):
+- Composition 7.5 (was 6.5): rest states strong both sizes, hull restored at 1280;
+  choosing mode cramped (chooser/prose 25px apart, divider rule crosses both).
+- Hierarchy 8.0 (was 7.5): title / prose / hull / readings / rail clear; chooser +
+  proposed-fit slot in legibly.
+- Legibility 8.0 (was 7.5): >=12px held, zero glyph collisions at 1280, block
+  gutters 20px+; one leader crosses the delta line in choosing mode.
+- ORRERY fidelity 7.5 (was 6.5): pills purged, amber exact, wheel gone — but blue
+  delta coding is unlegislated color and the rail wash is a boxed row.
+- Craft/detail 7.5 (was 7.0): bar bloom landed (~10px envelope), bead+arm both
+  ends, full delta set; wash-box edges + rule crossing cost the point.
+- Interaction clarity 7.5 (was 6.0): signature alive and playable (bead+arm on
+  hull AND rail, preview, chooser, ghosts) — focus splits to bright prose over
+  the dimmed hull.
+
+r1 fixes item by item (SH1-SH7):
+- SH1 hull at <=1366: DONE. 1280 teal census in x300-700 y120-330 = 9.20%
+  (1933/21000, vs r1 0.03%); teal bbox x429-783 y70-448. S1/S2 hold: S1/S2 +
+  DOCK TO EXTEND visible ~y500-545, SAVE FIT ~y620-660, all above the fold.
+- SH2 slot-pick proof: DONE (alive) with new owed polish. Proof still shows:
+  amber bead+arm on the hull Drive dot (bbox x575-610 y375-381, peak 241,189,95)
+  AND on the rail Drive row (bbox x1611-1632 y329-382, bead #F2B950 exact);
+  two-line proposed-fit delta (x598-866 y368 + x601-768 y382); chooser with 2
+  compatible modules + stats; band deltas (18t->24t, 0->4), bar delta (18->24),
+  summary line. CHOOSING-MODE RULING (as charged): no glyph overlap (chooser
+  max x~300, prose min x~325), but tangled-by-proximity: divider rule spans both
+  columns, 25px column gap over busy hangar, Cargo leader crosses the delta
+  line, deltas coded in unlegislated blue — owed fixes SH8/SH9/SH11, not free.
+- SH3 pills -> dotted words: DONE. Verbs are bone dotted words on glass (dotted
+  underlines confirmed in sr2-verbs crop; band bg varies with scene 47,24,19 to
+  246,211,198 = glass, no uniform pill fill). Zero pills.
+- SH4 wheel: DONE BY DELETION. No disc anywhere (rail head now STARTER/80/CORE
+  readout, sr2-wheel crop confirms). RULING (as charged): deletion ACCEPTABLE —
+  the rail is now a true Ladder (readout + spine + per-row ticks) and the screen
+  does not miss the disc; no further instrument owed. Optional only: a small
+  draw arc under "80 CORE . 0 DRAW" would restore the wheel's lost function.
+- SH5 amber audit: DONE. Title rule now neutral (450,128 = 146,129,119), badge
+  edge bone (211,199,186); region counts: title 0, badge 0, rail 0, SAVE FIT
+  1170 (the Lamp). End state: ONE Lamp at rest, Hand appears on selection (hull
+  + rail arm pair). Verbs-region (94) + hull (703) amber hits are smooth scene/
+  livery gradients (e.g. 208-251,132-157,103-129), not UI — excluded per r1.
+- SH6 gutter hardening: DONE. Block-level gutters 20-30px+ (1280 y210: 29px at
+  x479->509; y192: 20px at x512->532); gutter crop shows ~30-40px prose/callout
+  separation; no collisions. 1px gaps remaining are inter-glyph, not inter-block.
+- SH7 bar bloom: DONE. Agility fill: 2px core (229) + shoulders to ~13px total;
+  y780/783 = 80,74,69 ≈ 2.2:1, so ~4px/side >= 2:1 bloom. Reads as light.
+
+Section 7 — owner criteria, SHIP:
+(a) PASS. No hairline-only instruments (bars bloom, callouts lawful, verbs
+  unboxed) and no generic web components (pills and dead disc gone; hull is
+  produced art). The rail wash (SH10) is a law nit, not a generic component.
+(b) PASS. Signature = "pick a slot on the hull, preview compatible hardware
+  with live delta ghosts" — distinct per-screen, stateful, and visible in the
+  proof (bead+arm pair, proposed fit, 2 modules, band+bar+summary deltas).
+  Strong; the chooser-composition polish (SH8) would make it memorable.
+Palette law: bone exact on leaders/dots/readings; amber exactly Lamp (+ Hand
+  pair when selected); red absent (correct); ice absent at rest (correct) BUT
+  static delta numerals use light blue (140,192,242) — unlegislated hue, see
+  SH9. 4.5:1 ✓ (10-19:1). >=12px ✓. Dotted words throughout ✓. Reduced-motion:
+  frozen arrival states, no evidence of info loss.
+1280 gate: PASS. Hull present, zero collisions, S1/S2 + SAVE FIT above fold.
+
+VERDICT SHIP: NOT PASSED, overall 7.7 (previous 6.8). Math: (7.5+8.0+8.0+7.5+
+  7.5+7.5)/6 = 7.67. Every r1 fix SH1-SH7 closed and (a)+(b) pass, but the new
+  choosing-mode debt (blue deltas, chooser cramp, wash box) holds it 0.3 under
+  the bar. r3 = SH8 + SH9 + SH10, then re-shoot the proof still only.
+
+================================================================================
+2. RANGE (flight drill room) — 8.2 — PASSED (r1 7.6; polish landed)
+================================================================================
+Axes (score, previous, note):
+- Composition 8.0 (was 7.5): dossier row + foot instrument complete the stack;
+  foot floats 100px above the bottom edge (RG7).
+- Hierarchy 8.5 (was 8.0): title -> instrument -> ladder -> dossier -> foot; the
+  Lamp Key leads unambiguously.
+- Legibility 8.0 (was 7.5): numerals 12-14px ink on 10:1+; foot microcopy 9px
+  ink is the one miss (RG8).
+- ORRERY fidelity 8.5 (was 8.0): amber exactly Hand + Lamp, bone exact, dotted
+  words, zero boxes; origin grammar unique.
+- Craft/detail 8.0 (was 7.0): 6px gate under-strokes, beam envelope, fully
+  ticked ring, 2-3px pentagon, dashed flown trail, gauge bead.
+- Interaction clarity 8.5 (was 7.5): run state fully readable (GATE 1/4, 0.3S,
+  BEST, 0/9, dossier NOT CLEARED); origin mystery resolved by grammar.
+
+r1 fixes item by item (RG1-RG6):
+- RG1 foot instrument + dead band: HALF. Landed: RULE 1/9 MASS / NOT CLEARED
+  dossier row (~y900) + foot with gauge bead (peak 252,249,240, 19:1) and
+  GATE 1/4 0.3S BEST readout (~y955). Remains: y980-1080 is 100px of 0.00%
+  void and y700-780 is ~80px void — the foot floats instead of docking. Owed:
+  RG7 (dock foot to y~1030-1055, grow the gauge arc).
+- RG2 bloom width: DONE, measured. Gate1 @y450: core x597-598 (227) with
+  x595-600 (80-227) >= 2:1 = 6px under-stroke; gate3 identical (x1294-1299).
+  Beam: 2px core (227 @y529-530) + ~3px/side bloom, solid x380-597 (off-row
+  "decay" re-checked on-column: core 227 at x520/550/575 — no defect).
+- RG3 type law: HALF. Numerals: "3" ink h=12, "1" ink h=14 ✓ (>=12px on ink).
+  Foot contrast ✓ (peak 252,249,240 vs 6,7,10 = 19.1:1; RULE row 10.3:1).
+  Owed: foot microcopy ink is 9px tall (rows 955-963) — bump to 12px (RG8).
+- RG4 obstacle richness: DONE. Ring fully ticked all around; pentagon 2-3px
+  bone, clean; gate-2 numeral legible at the crossing.
+- RG5 origin bead: DONE — RULED, not passed silently. Origin reads as origin
+  BY GRAMMAR: it is the only ringed+haloed bead on screen, the only parent of
+  dashes (dashed flown trail x250-395, alternating ~103-136/18-40), and bone
+  (origin region amber count 0) vs the amber gate bead. No legend word needed.
+  Note (not owed): the arrowhead (x188-208, bone 236,230,216) points LEFT,
+  backward along travel — see minor RG9.
+- RG6 1280 clearance: DONE. Gate4 spine ~x1065-1075, numeral "4" right ~x1090;
+  corner ticks left ~x1145 (crop-confirmed). Clearance >= 34px (spec >= 24px).
+
+Section 7 — owner criteria, RANGE:
+(a) PASS. Gates are 6px >=2:1 ruled scales, pentagon 2-3px bone, ring ticked,
+  beam an envelope — body everywhere, no wires; zero generic components.
+(b) PASS. Signature = the gate-run made visible (origin ring + dashed flown
+  trail + solid beam + amber bead riding the active gate + dossier + live
+  state). Distinct, stateful, visible. Strong; the best-run ghost-line would
+  make it memorable (still unattempted — the 8.5 screen, not owed).
+Palette law: EXACTLY one amber Hand (gate-1 bead) + one amber Lamp (NEXT RULE;
+  census: lamp 1758, bead 18, origin 0, foot 0) ✓. Bone exact ✓. Ice absent at
+  rest ✓. Red absent ✓. Dotted words ✓. 4.5:1 ✓ (10-19:1). Numerals >=12px ✓;
+  foot 9px ink (RG8). Reduced-motion: frozen states, no info-loss evidence.
+1280 gate: PASS. Title + keys + hero + ladder + dossier + foot all fit; nothing
+  overlaps; gate4/tick clearance >= 34px.
+
+VERDICT RANGE: PASSED, overall 8.2 (previous 7.6). Math: (8.0+8.5+8.0+8.5+8.0+
+  8.5)/6 = 8.25. No axis < 7.0, (a) and (b) pass, palette and 1280 gate clean.
+  RG7 + RG8 are ranked r3 polish, not blockers.
+
+================================================================================
+RANKED FIXES (shipworks.js = src/ui/station/screens/shipworks.js; ship css =
+styles/station.css; range = src/ui/screens/range.js, canvas-rendered via kit)
+================================================================================
+1. (SHIP P0) SH8 choosing-mode column composition. Proof still x40-360 y300-520:
+  chooser rules span into the prose column and long module lines end ~25px from
+  prose over busy hangar. End all chooser rules at x<=300, cap chooser lines to
+  x<=295, and dim the prose block one step while choosing. Files: shipworks.js
+  chooser renderer + css.
+2. (SHIP P0) SH9 delta color recode. Proposed-fit block (x600-870 y360-395) and
+  chooser stats (x100-300 y330-420): positive deltas are light blue
+  (140,192,242) — an unlegislated hue (ice is motion-only). Recode ALL deltas
+  bone with +/- glyphs (negatives already grey — unify to one code).
+  File: shipworks.js selection renderer.
+3. (RANGE P1) RG7 dock the foot + grow the gauge. Foot (y940-965) floats above
+  100px of 0.00% void (y980-1080). Move foot row to y~1030-1055 and grow the
+  gauge from bead-on-thin-arc to a true GATE n/4 progress arc (x~1540-1620).
+  File: range.js foot renderer.
+4. (SHIP P1) SH10 rail chosen-row wash. Proof still x1624-1810 y330-385: wash
+  fill (35,28,29) vs bg (18,11,13) with sharp vertical cutoffs = a boxed row.
+  Remove the fill (bead+arm+bone carry selection) or feather to a soft glow
+  with no cut edge. File: shipworks.js rail renderer + css.
+5. (RANGE P2) RG8 foot microcopy size. Foot readout ink 9px tall (x1620-1800
+  y955-963) and RULE row caps small — raise to >=12px ink at 1920. File:
+  range.js foot/dossier text.
+6. (SHIP P2) SH11 leader through delta line. Proof still x600-770 y385-395: the
+  dim Cargo leader crosses the "+32.5 thrust" line. Route non-selected leaders
+  below the delta block or dim them one further step in choosing mode. File:
+  shipworks.js leader layout (may fold into SH9's edit).
+7. (RANGE P3 minor) RG9 origin arrowhead direction. 1920 x188-208 y528-544: the
+  bone arrowhead points left, backward along the flown path. Either accept as
+  the start glyph (no change) or move the head to the beam's leading end aimed
+  at the active gate. File: range.js beam renderer. Optional — RG5 passes
+  either way.
+
+Memorable if — SHIP: the bead+arm pair already spans hull and rail; a small
+  draw-arc under "80 CORE . 0 DRAW" that fills as modules preview would make
+  the fit screen a live instrument. Nothing here attempts that yet.
+Memorable if — RANGE: your best run's ghost-line hanging in the air behind the
+  beam when you press the Lamp Key. Nothing here attempts that yet; it + RG7
+  is the 8.5 screen.
+
+================================================================================
+CROSS-SURFACE
+================================================================================
+- Key-cap purge: complete on both (0 pills/chips; verbs dotted words on glass).
+- Amber audit: range exactly Hand + Lamp; ship exactly Lamp at rest (+ Hand
+  hull/rail pair when selected). Scene/livery ambers excluded as produced art.
+- 1280 gates: both PASS (ship: hull 9.2% in target box, S1/S2 hold, zero
+  collisions; range: all zones fit, gate4/tick >= 34px).
+- Bands >= 2:1 measured: ship bars (4px/side bloom) ✓, range gates (6px) ✓,
+  range beam (envelope) ✓, pentagon/ring ✓.
+- Blue-delta coding (SH9) is the only palette-law violation in the round.
+- Reduced-motion: arrival states frozen as designed; per-screen info-keeping
+  shows no loss from stills — builders to confirm.

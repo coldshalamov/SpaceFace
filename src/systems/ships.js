@@ -1,0 +1,3850 @@
+// ships system — owns ship/module/tech runtime: derived-stat computation (the single source of
+// truth other systems read), fitting (fit/unfit), shipyard buy/sell, and tech research.
+// ARCHITECTURE refs: §0.6 (ships is sole writer of derived stats), §0.10 (Kestrel starter),
+// §0.18 (fitting rule), §3.4.1 (entity shape), §4.4 (event table). Pure-data sources:
+//   SHIPS, WEAPONS, MODULES, TECH_NODES, BEAMS, NEW_GAME.
+//
+// getDerivedStats() and makeShipEntitySpec() are exported as pure-ish builders so other systems
+// (save/newGame, render previews, UI stat readouts) can call them without going through the bus.
+import { SHIPS } from '../data/ships.js';
+import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+import { isModelTruthCensusLoaded } from '../data/modelTruth.js';
+import { SAUCER_ID, SAUCER_WEAPON_SLOTS, saucerFittingRefusal } from '../data/saucer.js';
+import { FLIGHT_TUNING } from '../data/flightTuning.js';
+import { HARDPOINT_ACCEPTS, TURRET_RING_OUTPUT, WEAPONS, WEAPON_MOUNT_CLASSES } from '../data/weapons.js';
+import { MODULES } from '../data/modules.js';
+import { TECH_NODES, techDisplayName } from '../data/tech.js';
+import { BEAMS } from '../data/mining.js';
+import { NEW_GAME } from '../data/newGameDefaults.js';
+import { SECTORS } from '../data/sectors.js';
+import { sableShipworksAvailable } from '../data/sableVenn.js';
+import { LINE_HEAD_BY_ID, lineHeadBehavior, lineMetaEarned, normalizeModuleProvenance, PROVENANCE_TIERS } from '../data/lineProgression.js';
+import {
+  describeHullRole,
+  flightClassForHull,
+  getLatticeRow,
+  roleOperationalBiases,
+} from '../data/shipRoleLattice.js';
+import { syncDerivedPhysicsMass } from '../core/physicsAuthority.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { resolveTravelCeiling } from '../core/flight/propulsionKernel.js';
+import {
+  defaultShipAppearance,
+  normalizeShipAppearance,
+  shipAppearanceSignature,
+  SHIP_DECALS,
+} from '../core/shipAppearance.js';
+import {
+  defaultLivingHull,
+  livingHullAfterWash,
+  livingHullRenown,
+  livingHullScars,
+  livingHullWithGraffiti,
+  livingHullWithKill,
+  livingHullWithPatchedScars,
+  livingHullWithRenown,
+  livingHullWithRepair,
+  livingHullWithScar,
+  livingHullWithTrinket,
+  livingHullWithVent,
+  normalizeLivingHull,
+  sameLivingHull,
+} from '../core/livingHull.js';
+import { derivedWithOverbore, impoundListingFor } from './impoundLot.js';
+import { mintImpoundShadow } from './impoundGrudge.js';
+import {
+  scarFromPlayerContact,
+  scarFromPlayerDamage,
+  shouldAdmitScar,
+} from '../combat/hullScars.js';
+import { cleanShipName, hullNameForOwnedShip } from '../data/hullIdentity.js';
+import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCrossover.js';
+import { FACTION_META } from '../data/factions.js';
+import { hash32 } from '../core/rng.js';
+import { applySwarmWeaponLevels } from '../data/swarmWeaponLevels.js';
+import { captureAndTransfer, admitCapturedVessel } from './shipControlTransfer.js';
+import { settleOwnedVesselYardOperation } from '../shipjack/ownedOperations.js';
+import { componentAfterRemoval, quoteModuleSale, validateModuleSaleQuote } from '../shipjack/componentProvenance.js';
+
+/** Non-negative finite reading of a receipt amount; a missing measurement stays zero, never NaN. */
+function finiteAmount(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, number) : 0;
+}
+
+// ---- catalog lookup tables (built once at module load) ------------------------------------
+const SHIP_DECAL_SET = new Set(SHIP_DECALS);
+const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
+const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
+const BEAM_BY_ID = new Map(BEAMS.map((b) => [b.id, b]));
+const SHIPWORKS_STATION_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) SHIPWORKS_STATION_BY_ID.set(station.id, station);
+}
+// any fittable def (weapon OR module) by id
+function defById(id) { return MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id) || null; }
+
+/** A station's shop listing on a fittable def or hull: docked there, the shop stocks it at the
+ *  listed price and the catalog research gate does not apply at the counter. `exclusive` marks
+ *  the hull a single yard builds — it is absent from every other ledger. Returns null elsewhere. */
+export function stationShopOffer(def, stationId) {
+  const offers = def && def.shopOffers;
+  const offer = offers && stationId ? offers[stationId] : null;
+  const price = offer && Number(offer.price);
+  return Number.isFinite(price) ? { price: Math.max(0, price), exclusive: offer.exclusive === true } : null;
+}
+
+/** FB-062 — the one yard that builds this hull, when an offer marks itself exclusive; else null. */
+export function hullExclusiveStationId(def) {
+  const offers = def && def.shopOffers;
+  if (!offers) return null;
+  for (const stationId of Object.keys(offers)) {
+    const offer = offers[stationId];
+    if (offer && offer.exclusive === true && Number.isFinite(Number(offer.price))) return stationId;
+  }
+  return null;
+}
+
+/**
+ * The refusal line a locked def earns. A swarmEarned def is not behind research — the ledger
+ * says exactly how it opens, so the toast says that instead of naming a tech that cannot help.
+ * A standing-exclusive names the standing rung instead of a tech for the same reason.
+ */
+export function defLockReasonText(def) {
+  if (def && typeof def.swarmEarned === 'string' && def.swarmEarned) {
+    const row = SWARM_CROSSOVER_CATALOG.find((entry) => entry.id === def.swarmEarned);
+    return row && row.blurb
+      ? `Earned in Swarm — ${row.blurb}`
+      : 'Earned in Swarm';
+  }
+  if (def && def.exclusivity) return exclusivityLockLabel(def.exclusivity);
+  return 'Research required: ' + techDisplayName(def && def.requiresTech);
+}
+
+// ── REP-EXCLUSIVE HARDWARE (`exclusivity: { factionId, minRep }`) ───────────────────────────
+// The owning faction fits these only at Allied standing (rep ≥ 400 — the tier systems/factions.js
+// names at min 400). The rep read mirrors rankForState there: state.factions[id].rep, guarded,
+// 0 when the record is absent. Kept a local pure read so ships never imports the faction system;
+// an unknown faction, a missing record, or a non-finite minRep fails CLOSED.
+const KNOWN_FACTION_IDS = new Set(FACTION_META.map((f) => f && f.id));
+
+export function exclusivityRepMet(exclusivity, factions) {
+  if (!exclusivity || typeof exclusivity !== 'object') return true;
+  if (!KNOWN_FACTION_IDS.has(exclusivity.factionId)) return false;
+  const rec = factions && typeof factions === 'object' ? factions[exclusivity.factionId] : null;
+  const rep = rec && Number.isFinite(rec.rep) ? rec.rep : 0;
+  return rep >= Number(exclusivity.minRep);
+}
+
+/** The standing sentence a rep-locked def refuses with, or null when it cannot name one. */
+export function exclusivityLockLabel(exclusivity) {
+  if (!exclusivity || typeof exclusivity !== 'object') return null;
+  const meta = FACTION_META.find((f) => f && f.id === exclusivity.factionId);
+  const name = (meta && (meta.name || meta.short)) || 'its faction';
+  return 'Requires Allied — ' + name;
+}
+
+/**
+ * FB-062 — what one yard's ship ledger says about a hull: whether it is listed at all, and the
+ * price the yard writes on the chit (a `shopOffers` price overrides the catalog price; an
+ * exclusive hull is absent from every other yard's list). Pure read; no tech-gate change.
+ */
+export function shipyardHullInfo(defId, stationId) {
+  const def = typeof defId === 'string' ? SHIP_BY_ID.get(defId) : defId;
+  if (!def) return { listed: false, price: 0, exclusive: false, exclusiveStationId: null, offer: false };
+  const exclusiveStationId = hullExclusiveStationId(def);
+  const offer = stationShopOffer(def, stationId);
+  return {
+    listed: exclusiveStationId ? exclusiveStationId === stationId : true,
+    price: offer ? offer.price : (Number.isFinite(def.price) ? def.price : 0),
+    exclusive: !!exclusiveStationId,
+    exclusiveStationId,
+    offer: !!offer,
+  };
+}
+
+function shopStationName(stationId) {
+  const station = SHIPWORKS_STATION_BY_ID.get(stationId);
+  return (station && station.name) || 'another yard';
+}
+
+function dockedShopStationId(state) {
+  const ui = state && state.ui;
+  return ui && ui.docked === true ? ui.dockedStationId : null;
+}
+
+/** The one open impound listing, when it is this hull at the dock the player is standing in.
+ *  The quote path takes the same normalize-on-read every other seam does — the price a
+ *  screen shows is always the healed book's price, never a divergent raw field. */
+function impoundOfferFor(state, defId) {
+  const lot = impoundListingFor(state);
+  if (!lot || !defId || lot.defId !== defId) return null;
+  const stationId = dockedShopStationId(state);
+  if (!stationId || lot.stationId !== stationId) return null;
+  return lot;
+}
+
+/** The purchase screen and its intent quote the same concrete hull at the current dock. */
+export function shipyardPurchaseQuote(state, defId) {
+  const yard = shipyardHullInfo(defId, dockedShopStationId(state));
+  const usedHull = impoundOfferFor(state, defId);
+  return usedHull
+    ? { ...yard, listed: true, price: usedHull.price, offer: false, usedHull }
+    : { ...yard, usedHull: null };
+}
+
+function derivedForOwned(defId, fittings, player, owned) {
+  let derived = getDerivedStats(defId, fittings || [], player);
+  // Recovered component condition has a physical consequence without a second fitting model.
+  // Clone the nested profile before changing it: getDerivedStats caches catalog profiles.
+  for (const [slotIndex, instance] of Object.entries(owned?.fittedInstances || {})) {
+    if (typeof instance?.condition !== 'number' || !Number.isFinite(instance.condition)
+      || instance.defId !== fittings?.[slotIndex]) continue;
+    const component = defById(instance.defId);
+    const factor = 0.35 + 0.65 * clamp01(instance.condition);
+    if (component?.slotType === 'engine') {
+      derived.thrust *= factor;
+      if (derived.propulsion) {
+        derived.propulsion = { ...derived.propulsion };
+        for (const key of ['mainAccel', 'reverseAccel', 'strafeAccel', 'maxAccel', 'maxBrakeAccel',
+          'rcsForwardAccel', 'rcsReverseAccel', 'rcsStrafeAccel', 'fieldAccel', 'trimAccel', 'yawAccel', 'yawBrake', 'baseImpulseDv', 'maxImpulseDv']) {
+          if (Number.isFinite(derived.propulsion[key])) derived.propulsion[key] *= factor;
+        }
+      }
+    }
+    if (component?.slotType === 'reactor' && Number.isFinite(derived.capRegen)) derived.capRegen *= factor;
+    if (component?.slotType === 'shield' && Number.isFinite(derived.shieldMax)) derived.shieldMax *= factor;
+    if (component?.slotType === 'sensor' && Number.isFinite(derived.radarRange)) derived.radarRange *= factor;
+  }
+  // The head id is def-level and cache-safe; the behavior payload is not — it depends on the
+  // fitted instance's provenance, which the derived-stats key cannot see. Resolve it here on a
+  // shallow clone so the shared cached block is never mutated; no instance → the authored floor.
+  if (derived.lineHeadId) {
+    let headInstance = null, headDef = null;
+    for (const [slotIndex, instance] of Object.entries(owned && owned.fittedInstances || {})) {
+      const def = defById(instance && instance.defId);
+      if (def && def.mods && def.mods.lineHeadId === derived.lineHeadId) {
+        headInstance = instance;
+        headDef = def;
+        break;
+      }
+    }
+    derived = {
+      ...derived,
+      lineHead: lineHeadBehavior(derived.lineHeadId, normalizeModuleProvenance(headInstance, headDef)),
+    };
+  }
+  const quirk = owned && owned.impoundQuirk;
+  if (!quirk || quirk.kind !== 'overbored') return derived;
+  return derivedWithOverbore(derived, quirk.accelMult);
+}
+
+/** Resolve the two distinct station capabilities exposed by Shipworks. Hull acquisition/switching
+ * requires a shipyard; module purchase/fitting also works at a module fabricator. */
+export function shipworksAccessForServices(services) {
+  const offered = Array.isArray(services) ? services : [];
+  const hull = offered.includes('shipyard');
+  const outfit = hull || offered.includes('module_craft');
+  return {
+    hull,
+    outfit,
+    hullReason: hull ? null : 'No shipyard service at this station',
+    outfitReason: outfit ? null : 'No outfitting bay at this station',
+  };
+}
+
+/** Fail-closed UI-intent authority for the exact berth currently occupied by the player. Direct
+ * ships-system methods intentionally remain available to crafting, rewards, and sandbox callers. */
+export function shipworksStationAccess(state) {
+  const ui = state && state.ui;
+  if (!ui || ui.docked !== true || typeof ui.dockedStationId !== 'string' || !ui.dockedStationId) {
+    return {
+      hull: false,
+      outfit: false,
+      stationId: null,
+      hullReason: 'Dock at a shipyard to buy or switch ships',
+      outfitReason: 'Dock at a shipyard or fabricator to fit modules',
+    };
+  }
+  const station = SHIPWORKS_STATION_BY_ID.get(ui.dockedStationId);
+  if (!station || !Array.isArray(station.services)) {
+    return {
+      hull: false,
+      outfit: false,
+      stationId: ui.dockedStationId,
+      hullReason: 'Shipworks services unavailable at this berth',
+      outfitReason: 'Shipworks services unavailable at this berth',
+    };
+  }
+  const access=shipworksAccessForServices(station.services);
+  if(!access.outfit&&sableShipworksAvailable(state,station.id))return {...access,outfit:true,outfitReason:null,stationId:station.id};
+  return { ...access, stationId: station.id };
+}
+
+// Heads share the existing Massline input grammar and are mutually exclusive fittings. This fixed
+// priority is only a defensive read for manually-authored/old data; live fitting rejects multiples,
+// so array slot order can never silently decide the active physics law.
+const MASSLINE_HEAD_PRIORITY = Object.freeze({
+  tractor: 1,
+  elastic_whip: 2,
+  frame_coupler: 3,
+  monofilament_sweep: 4,
+  transverse_snare: 5,
+  twin_bridle: 6,
+});
+function masslineHeadIdForDef(def) {
+  const id = def && def.mods && def.mods.masslineHeadId;
+  return MASSLINE_HEAD_PRIORITY[id] ? id : null;
+}
+
+// The §7.1 behavior heads are the same kind of mutually exclusive fitting as the specialized-line
+// heads above: live fitting rejects multiples (same findMasslineHeadConflict seam is extended in
+// the fit UI), and this tier read keeps a malformed/manual fit deterministic — the rarest head
+// wins rather than whichever array slot happens to come first.
+function lineHeadIdForDef(def) {
+  const id = def && def.mods && def.mods.lineHeadId;
+  return LINE_HEAD_BY_ID[id] ? id : null;
+}
+function lineHeadTierFor(id) {
+  const head = LINE_HEAD_BY_ID[id];
+  const tier = head && PROVENANCE_TIERS[head.rarityFloor];
+  return tier ? tier.index + 1 : 0;
+}
+
+/** Return the differently slotted head that makes this requested fit exclusive, checked per
+ * axis: the §7.4 line-law heads (masslineHeadId) and the §7.1 behavior heads (lineHeadId) are
+ * independent fittings — a hull runs one law and one behavior, e.g. twin_bridle + Breaker is a
+ * legal ship. A head that carries both ids (Multi-latch) conflicts on both axes. */
+export function findMasslineHeadConflict(fittings, slotIndex, requestedDef) {
+  const wantsLaw = masslineHeadIdForDef(requestedDef) != null;
+  const wantsBehavior = lineHeadIdForDef(requestedDef) != null;
+  if (!wantsLaw && !wantsBehavior) return null;
+  const safeFittings = Array.isArray(fittings) ? fittings : [];
+  for (let index = 0; index < safeFittings.length; index += 1) {
+    const fittedId = safeFittings[index];
+    if (index === slotIndex || !fittedId) continue;
+    const fittedDef = defById(fittedId);
+    if (wantsLaw && masslineHeadIdForDef(fittedDef)) return fittedDef;
+    if (wantsBehavior && lineHeadIdForDef(fittedDef)) return fittedDef;
+  }
+  return null;
+}
+
+const SIZE_RANK = { S: 1, M: 2, L: 3 };
+// PQ-176.01: `thruster` is LAST on purpose. `buildSlotList` numbers slots in this order, so a new
+// bay anywhere else would renumber every saved `fittings` array and need a migration; appended, an
+// older save is simply one entry short and `asFittingsArray` pads it to the hull's stock set.
+const SLOT_TYPES = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility', 'thruster'];
+
+function fmtCr(value) {
+  return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
+}
+
+function purchaseFundingText(def, price, credits) {
+  const missing = Math.max(0, (Number(price) || 0) - (Number(credits) || 0));
+  return 'Need ' + fmtCr(missing) + ' more cr for ' + ((def && def.name) || 'this purchase');
+}
+
+const LOADOUT_PRESET_CAP_PER_HULL = 6;
+const LOADOUT_PRESET_LABEL_KEYS = new Set([
+  'tow_and_swing',
+  'spring_and_release',
+  'coupled_pair',
+  'line_cutter',
+  'snare',
+  'twin_bridle',
+  'quiet_approach',
+  'prospector',
+  'hauler',
+  'long_reach',
+  'knife_fight',
+  'wrangler',
+  'support',
+  'brawler',
+  'role',
+]);
+const CONTROL_GUN_TOKEN_RE = /(gravity_marker|momentum_sink|concussion|rcs_disruptor|vector_mine)/;
+
+function isLoadoutPresetLabelKey(value) {
+  return typeof value === 'string' && LOADOUT_PRESET_LABEL_KEYS.has(value);
+}
+
+function normalizeLoadoutPresetLabelKey(value) {
+  return isLoadoutPresetLabelKey(value) ? value : 'role';
+}
+
+function asDefId(value) {
+  return typeof value === 'string' && value ? value : null;
+}
+
+function asFittingsArray(value, slotCount = null) {
+  const source = Array.isArray(value) ? value : [];
+  const out = source.map((entry) => asDefId(entry));
+  if (!Number.isInteger(slotCount) || slotCount < 0) return out;
+  if (out.length > slotCount) {
+    const extra = out.slice(slotCount);
+    if (extra.some((entry) => entry)) return null;
+    return out.slice(0, slotCount);
+  }
+  while (out.length < slotCount) out.push(null);
+  return out;
+}
+
+function countDefIds(fittings) {
+  const counts = new Map();
+  const source = Array.isArray(fittings) ? fittings : [];
+  for (const entry of source) {
+    const defId = asDefId(entry);
+    if (!defId) continue;
+    counts.set(defId, (counts.get(defId) || 0) + 1);
+  }
+  return counts;
+}
+
+function countInventoryDefIds(moduleInventory) {
+  const counts = new Map();
+  const source = Array.isArray(moduleInventory) ? moduleInventory : [];
+  for (const item of source) {
+    const defId = asDefId(item && item.defId);
+    if (!defId) continue;
+    counts.set(defId, (counts.get(defId) || 0) + 1);
+  }
+  return counts;
+}
+
+// ---- AL-LG-11 — the hull that did the rams owns the plate -------------------------------------
+//
+// `design/VISION.md` Part II: a hull that has done something carries the evidence of it. Three
+// committed player rams (a `combat:collisionConsequence` receipt with direct-contact or
+// ram-plate provenance against a hostile ship) mint ONE Scarred Ram Plate instance, bound to the
+// earning hull's `ramPlateHistory.rewardInstanceId`. The binding — never the defId — is what a
+// fitting gate checks, so an identical twin, a sold-hull souvenir and a New Run+ keepsake are
+// all readable objects that simply cannot be fitted.
+export const SCARRED_RAM_PLATE_DEF_ID = 'mod_ram_plate_scarred';
+export const RAM_PLATE_HISTORY_VERSION = 1;
+export const RAM_PLATE_HISTORY_HIT_MAX = 3;
+// A stranded end-of-step contact resolves one to three ticks late carrying the tick it happened
+// (collisionConsequences' deferred sweep). Four ticks stale is a different fight's receipt.
+export const RAM_PLATE_RECEIPT_TICK_WINDOW = 3;
+const RAM_PLATE_HIT_RE = /^\d+:\d+$/;
+const RAM_PLATE_INSTANCE_ID_RE = /^mi_\d+_\d+$/;
+const RAM_PLATE_PROVENANCE_TAGS = new Set(['direct_contact', 'ram_plate']);
+const RAM_PLATE_EARNED_TOAST = 'Scarred Ram Plate earned — fit it to this hull at Shipworks.';
+const RAM_PLATE_UNEARNED_TEXT = 'This hull has not earned a Scarred Ram Plate.';
+
+/**
+ * The bounded per-owned-hull record `{ version:1, hits:['<tick>:<targetId>',…≤3], rewardInstanceId? }`.
+ * A record with a malformed hit, a wrong version or more than three keys is dropped whole — never
+ * repaired, never granted progress it cannot prove. An absent record stays absent: zero rams.
+ * A rewardInstanceId that fails the instance-id shape is stripped (evidence kept, binding lost —
+ * the plate becomes a permanently unfittable souvenir, the same fate as a sold hull's).
+ */
+export function normalizeRamPlateHistory(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  if (input.version !== RAM_PLATE_HISTORY_VERSION) return null;
+  const rawHits = Array.isArray(input.hits) ? input.hits : [];
+  if (rawHits.length > RAM_PLATE_HISTORY_HIT_MAX) return null;
+  const hits = [];
+  const seen = new Set();
+  for (const entry of rawHits) {
+    if (typeof entry !== 'string' || !RAM_PLATE_HIT_RE.test(entry)) return null;
+    if (seen.has(entry)) continue;
+    seen.add(entry);
+    hits.push(entry);
+  }
+  const out = { version: RAM_PLATE_HISTORY_VERSION, hits };
+  if (typeof input.rewardInstanceId === 'string' && RAM_PLATE_INSTANCE_ID_RE.test(input.rewardInstanceId)) {
+    out.rewardInstanceId = input.rewardInstanceId;
+  }
+  return out;
+}
+
+// ---- AL-LG-10 — the resale quote names the hull's deeds ---------------------------------------
+//
+// `design/VISION.md` Part II: a hull that has done something is not the same hull as its showroom
+// twin, and the yard pays for that. The baseline is the half-price the yard always offered; what
+// the durable living-hull record proves moves the number inside a bounded window: witnessed
+// renown acts (kill / ram / rescue) add a capped premium, and the marks the buyer inherits take
+// a capped discount — an open scar costs more than one a yard already patched. The quote carries
+// its reasons as player words, so the line that names the price also names the deeds that made
+// it. Two identical hulls with different records quote differently; a hull with no record still
+// quotes the plain half. Every input is bounded by the living-hull caps AND by the caps below —
+// a forged record cannot mint an uncapped number, and the answer is never above the buy price.
+export const RESALE_BASE_FRACTION = 0.5;
+export const RESALE_RENOWN_PREMIUM_PER_ACT = 0.02;
+export const RESALE_RENOWN_PREMIUM_CAP = 0.10;
+// An open scar is damage the buyer inherits, priced by the band the record already kept.
+export const RESALE_OPEN_SCAR_DISCOUNT = Object.freeze({ graze: 0.01, hard: 0.02, heavy: 0.03, crushing: 0.04 });
+export const RESALE_PATCHED_SCAR_DISCOUNT = 0.005;
+export const RESALE_SCAR_DISCOUNT_CAP = 0.15;
+
+const RESALE_ACT_WORD = Object.freeze({ kill: 'kill', ram: 'ram', rescue: 'rescue' });
+// Deeds read in a stable order — kill, ram, rescue — so the same record always quotes the same line.
+const RESALE_ACT_ORDER = Object.freeze(['kill', 'ram', 'rescue']);
+
+function resaleCountPhrase(count, singular) {
+  return count === 1 ? `a ${singular}` : `${count} ${singular}s`;
+}
+
+function resaleJoinEnglish(bits) {
+  if (bits.length <= 1) return bits.join('');
+  if (bits.length === 2) return `${bits[0]} and ${bits[1]}`;
+  return `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}`;
+}
+
+/**
+ * The yard's read of one owned hull: `{ base, amount, fraction, premium, discount, reasons }`.
+ * `amount` is the credits the sale pays — `floor(base * fraction)` clamped to `[0, base]`, so the
+ * deeds can move the price inside the half-price window and can NEVER quote above the buy price.
+ * `reasons` are the player-word lines naming the counted deeds; a hull with no record gets an
+ * empty list and the plain half. Pure: same record in, same quote out, nothing mutated.
+ */
+export function deedResaleQuote(owned, shipDef) {
+  const rawBase = shipDef && (shipDef.buyback != null ? shipDef.buyback : shipDef.price);
+  const base = Number.isFinite(Number(rawBase)) ? Math.max(0, Number(rawBase)) : 0;
+  const hull = owned && owned.livingHull;
+  const renown = livingHullRenown(hull);
+  const scars = livingHullScars(hull);
+
+  const actCounts = {};
+  let renownCount = 0;
+  for (const act of renown) {
+    if (!act || !RESALE_ACT_WORD[act.act]) continue;
+    actCounts[act.act] = (actCounts[act.act] || 0) + 1;
+    renownCount += 1;
+  }
+  const premium = Math.min(RESALE_RENOWN_PREMIUM_CAP, renownCount * RESALE_RENOWN_PREMIUM_PER_ACT);
+
+  let openCount = 0;
+  let patchedCount = 0;
+  let rawDiscount = 0;
+  for (const scar of scars) {
+    if (!scar) continue;
+    if (scar.patchedAtT == null) {
+      openCount += 1;
+      rawDiscount += RESALE_OPEN_SCAR_DISCOUNT[scar.band] != null
+        ? RESALE_OPEN_SCAR_DISCOUNT[scar.band]
+        : RESALE_OPEN_SCAR_DISCOUNT.graze;
+    } else {
+      patchedCount += 1;
+      rawDiscount += RESALE_PATCHED_SCAR_DISCOUNT;
+    }
+  }
+  const discount = Math.min(RESALE_SCAR_DISCOUNT_CAP, rawDiscount);
+
+  const fraction = RESALE_BASE_FRACTION + premium - discount;
+  const amount = Math.min(base, Math.max(0, Math.floor(base * fraction)));
+
+  const reasons = [];
+  const actBits = RESALE_ACT_ORDER
+    .filter((act) => actCounts[act])
+    .map((act) => resaleCountPhrase(actCounts[act], RESALE_ACT_WORD[act]));
+  if (actBits.length) reasons.push(`${resaleJoinEnglish(actBits)} on the record`);
+  const scarBits = [];
+  if (openCount) scarBits.push(resaleCountPhrase(openCount, 'open scar'));
+  if (patchedCount) scarBits.push(resaleCountPhrase(patchedCount, 'patched scar'));
+  if (scarBits.length) reasons.push(`${resaleJoinEnglish(scarBits)} the buyer reads`);
+
+  return Object.freeze({ base, amount, fraction, premium, discount, reasons: Object.freeze(reasons) });
+}
+
+function missingModulesText(missingCount) {
+  const count = Math.max(1, Math.round(Number(missingCount) || 0));
+  return `${count} module${count === 1 ? '' : 's'} not in hold`;
+}
+
+function createLoadoutPresetId(defId, fittings, createdAt, seed = 0) {
+  const safeFittings = asFittingsArray(fittings) || [];
+  const digest = hash32('loadout-preset', defId, Math.round(Number(createdAt) || 0), safeFittings.join(','), seed);
+  return `lp_${digest.toString(16).padStart(8, '0')}`;
+}
+
+// Legacy fallback for pre-explicit-loadout saves. NEW_GAME now fits this weapon directly; the
+// fallback keeps old saves playable without letting the current starter gun hide from loadout UI.
+const STARTER_WEAPON_ID = 'wpn_pulse_laser_s';
+const DEFAULT_MINING_BEAM_TIER = 'beam_mk1'; // §0.10 Kestrel mines at 18 ore-HP/s
+
+// ---- Weapon hardpoint facings (Phase 2) -----------------------------------------------------
+// A hardpoint's facing is a base world angle offset from the nose. front faces forward, rear aft,
+// left/right are broadsides, turret is omni (tracks within its turretArcDeg). A fixed hardpoint
+// fires along (nose + facingAngle) and gimbal-assists toward the aim direction within GIMBAL_ARC.
+export const FACING_ANGLE = { front: 0, right: Math.PI / 2, rear: Math.PI, left: -Math.PI / 2, turret: 0 };
+export const GIMBAL_ARC_DEFAULT = 22 * Math.PI / 180;   // ~22° half-angle gimbal cone for fixed guns
+export const PLAYER_GIMBAL_ARC = Math.PI;               // player fixed mounts bear full 360° around the hull
+// Muzzle offset per facing (in ship-radius fractions) so shots visibly leave the hull at the mount.
+export const FACING_OFFSET = { front: [0.8, 0], right: [0.1, 0.6], rear: [-0.8, 0], left: [0.1, -0.6], turret: [0.5, 0] };
+
+/** Normalize a weapon-slot entry (bare size OR {size, facing}) into {size, facing}. */
+function weaponSlotSpec(entry) {
+  if (typeof entry === 'string') return { size: entry, facing: 'front' };
+  if (entry && typeof entry === 'object') return { size: entry.size || 'S', facing: entry.facing || 'front' };
+  return { size: 'S', facing: 'front' };
+}
+
+// Handling / mass formulas. flight.js uses entity.thrust as a per-axis accel coefficient and
+// vel += (a - drag*vel)*dt, so real terminal ~= thrust/drag; maxSpeed is the safety clamp.
+// Constants are tuned so a fresh Kestrel (mass 18 + ion+booster+laser modules) lands on the
+// current bootstrap feel: thrust~48, turnRate~3.0, maxSpeed~135, drag~1.25.
+const BASE_TURN = 4.4;     // rad/s reference (before handling/mass/turnMult)
+const SPEED_SCALE = 2.6;   // engine.topSpeed -> maxSpeed clamp scale
+const THRUST_SCALE = 0.99; // engine.topSpeed -> thrust accel scale
+const BASE_RADAR_RANGE = 4000;
+const PLAYER_TURN_RATE_MULT = 0.78;
+const PLAYER_TURN_RATE_CAP = 3.8;
+
+const HULL_YAW_INERTIA_PER_MASS = new WeakMap();
+
+function hullYawInertiaPerMass(shipDef) {
+  if (!isModelTruthCensusLoaded() || !shipDef || typeof shipDef !== 'object') return null;
+  const cached = HULL_YAW_INERTIA_PER_MASS.get(shipDef);
+  if (cached !== undefined) return cached;
+
+  const radius = Math.max(0.1, Number(shipDef.collisionRadius) || 1);
+  const entity = { type: 'ship', radius, data: { defId: shipDef.id } };
+  const manifest = resolveCollisionProxyManifest(entity);
+  const vertices = manifest?.compactHull || manifest?.planarPolygon;
+  let ratio = 0;
+  if (Array.isArray(vertices) && vertices.length >= 3) {
+    let twiceArea = 0;
+    let polarMomentTimes12 = 0;
+    for (let i = 0; i < vertices.length; i += 1) {
+      const a = vertices[i];
+      const b = vertices[(i + 1) % vertices.length];
+      const cross = a.x * b.z - b.x * a.z;
+      twiceArea += cross;
+      polarMomentTimes12 += cross * (
+        a.x * a.x + a.x * b.x + b.x * b.x
+        + a.z * a.z + a.z * b.z + b.z * b.z
+      );
+    }
+    if (Number.isFinite(twiceArea) && Math.abs(twiceArea) > 1e-9
+      && Number.isFinite(polarMomentTimes12)) {
+      ratio = (polarMomentTimes12 / (6 * twiceArea)) * radius * radius;
+    }
+  }
+  // Measured skins use the polygon's uniform-area polar moment. Unmeasured legacy hulls use a
+  // disk estimate at the same collision radius, so their inertia remains dimensionally scaled.
+  if (!(ratio > 0) || !Number.isFinite(ratio)) ratio = 0.5 * radius * radius;
+  HULL_YAW_INERTIA_PER_MASS.set(shipDef, ratio);
+  return ratio;
+}
+
+const FLIGHT_CLASS_TUNING = {
+  scout: { accel: 1.05, strafe: 0.58, turn: 1.08, brake: 1.1, assist: 1.15, inertia: 0.92 },
+  fighter: { accel: 1.18, strafe: 0.68, turn: 1.28, brake: 1.18, assist: 1.25, inertia: 0.75 },
+  miner: { accel: 0.92, strafe: 0.46, turn: 0.82, brake: 0.95, assist: 1.18, inertia: 1.12 },
+  hauler: { accel: 0.72, strafe: 0.36, turn: 0.58, brake: 0.86, assist: 1.08, inertia: 1.35 },
+  capital: { accel: 0.42, strafe: 0.24, turn: 0.34, brake: 0.62, assist: 0.92, inertia: 1.85 },
+};
+
+/** Build the canonical list of slots [{type,size,index,facing?}] for a ship def, in a stable order
+ *  (weapon, shield, engine, cargo, mining, utility) so fittings[] indices are deterministic.
+ *  Weapon slots carry a `facing` ('front'|'left'|'right'|'rear'|'turret'); other slot types don't. */
+export function buildSlotList(shipDef) {
+  const slots = [];
+  for (const type of SLOT_TYPES) {
+    const arr = (shipDef.slots && shipDef.slots[type]) || [];
+    for (const entry of arr) {
+      const slot = { type, size: (typeof entry === 'string') ? entry : (entry && entry.size) || 'S', index: slots.length };
+      if (type === 'weapon') slot.facing = weaponSlotSpec(entry).facing;
+      slots.push(slot);
+    }
+  }
+  return slots;
+}
+
+/** §0.18 fitting rule: a module fits a slot iff types match, the slot is large enough, and (for a
+ *  weapon) the hardpoint class carries the weapon's mount class (PQ-176.02, `mountRefusal`). */
+export function fits(slot, def) {
+  if (!slot || !def) return false;
+  if (slot.type !== def.slotType || !sizeFits(slot, def)) return false;
+  return slot.type !== 'weapon' || !mountRefusal(slot, def);
+}
+
+/** Size half of the fit rule on its own, so a chooser can tell "wrong size" from "wrong mount". */
+export function sizeFits(slot, def) {
+  return !!slot && !!def && SIZE_RANK[slot.size] >= SIZE_RANK[def.size];
+}
+
+// ---- PQ-176.02 mount classes ---------------------------------------------------------------
+// The data (weapons.js HARDPOINT_ACCEPTS / TURRET_RING_OUTPUT) says what a ring carries and what
+// an aimed gun pays there; these are the only readers, so the chooser, the presets, the Crucible
+// draft, the lab schema and the runtime all agree.
+
+/** A weapon's mount class. Authored `mount` wins; otherwise the tracking mode says it. */
+export function mountClassOf(def) {
+  if (!def || def.slotType !== 'weapon') return null;
+  if (typeof def.mount === 'string' && WEAPON_MOUNT_CLASSES.includes(def.mount)) return def.mount;
+  const tracking = def.tracking || 'fixed';
+  if (tracking === 'auto_turret') return 'turret';
+  if (tracking === 'homing' || tracking === 'deploy') return 'launcher';
+  return 'gun';
+}
+
+/** A weapon slot's hardpoint class: 'ring' (facing turret) or 'fixed'. Null for other slot types. */
+export function hardpointClassOf(slot) {
+  if (!slot || slot.type !== 'weapon') return null;
+  return slot.facing === 'turret' ? 'ring' : 'fixed';
+}
+
+const MOUNT_CLASS_WORD = { gun: 'an aimed gun', turret: 'a turret', launcher: 'a launcher', spinal: 'a spinal gun' };
+const HARDPOINT_WORD = { ring: 'turret ring', fixed: 'fixed hardpoint' };
+
+/** The sentence a weapon slot refuses a weapon with, or null when the mount is legal. */
+export function mountRefusal(slot, def) {
+  if (!slot || !def || slot.type !== 'weapon' || def.slotType !== 'weapon') return null;
+  const hardpoint = hardpointClassOf(slot);
+  const where = HARDPOINT_WORD[hardpoint] || 'hardpoint';
+  if (!sizeFits(slot, def)) {
+    return `${def.name} does not fit here: it needs a size ${def.size} hardpoint and this ${where} is size ${slot.size}.`;
+  }
+  const mount = mountClassOf(def);
+  const accepts = HARDPOINT_ACCEPTS[hardpoint] || HARDPOINT_ACCEPTS.fixed;
+  if (accepts.includes(mount)) return null;
+  return `${def.name} does not fit a ${where}: it is ${MOUNT_CLASS_WORD[mount] || 'the wrong class'}, and a ring carries only guns and turrets. Fit it on a fixed hardpoint.`;
+}
+
+/** Output an aimed gun keeps on this slot: TURRET_RING_OUTPUT on a ring, 1 everywhere else. "Output"
+ *  is everything the round delivers — damage, splash, knock and tumble — so a concussion cannon on a
+ *  ring shoves a third less too; the pilot who aims it keeps the whole hit. */
+export function mountOutputFactor(def, slot) {
+  if (!def || !slot) return 1;
+  return hardpointClassOf(slot) === 'ring' && mountClassOf(def) === 'gun' ? TURRET_RING_OUTPUT : 1;
+}
+
+/** Refusal sentence for any slot/module pair the fit rule rejects; null when it fits. */
+export function fitRefusalText(slot, def) {
+  if (!slot || !def || fits(slot, def)) return null;
+  const mount = mountRefusal(slot, def);
+  if (mount) return mount;
+  if (slot.type === def.slotType && !sizeFits(slot, def)) {
+    return `${def.name} does not fit here: it is size ${def.size} and this ${slot.type} slot takes size ${slot.size}.`;
+  }
+  return `${def.name} does not fit this slot`;
+}
+
+function outfitLimit(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 0 ? numeric : Infinity;
+}
+
+/** Read the nested mass budgets for one loadout. This is deliberately separate from derived flight
+ * mass: capacity decides whether a module may be fitted, while getDerivedStats remains the sole
+ * authority for how the accepted mass changes flight. Legacy/custom hulls without authored caps
+ * remain unrestricted instead of becoming unloadable. */
+export function outfitBudgetForFittings(shipDefOrId, fittings = []) {
+  const shipDef = typeof shipDefOrId === 'string' ? SHIP_BY_ID.get(shipDefOrId) : shipDefOrId;
+  if (!shipDef) return null;
+  const slots = buildSlotList(shipDef);
+  const safeFittings = Array.isArray(fittings) ? fittings : [];
+  let used = 0;
+  let weaponUsed = 0;
+  let engineUsed = 0;
+  for (let index = 0; index < slots.length; index += 1) {
+    const def = defById(safeFittings[index]);
+    if (!def) continue;
+    const mass = Math.max(0, Number(def.mass) || 0);
+    used += mass;
+    if (def.slotType === 'weapon') weaponUsed += mass;
+    if (def.slotType === 'engine') engineUsed += mass;
+  }
+  const outfitSpace = outfitLimit(shipDef.outfitSpace);
+  const weaponCapacity = outfitLimit(shipDef.weaponCapacity);
+  const engineCapacity = outfitLimit(shipDef.engineCapacity);
+  return Object.freeze({
+    used,
+    weaponUsed,
+    engineUsed,
+    outfitSpace,
+    weaponCapacity,
+    engineCapacity,
+    fits: used <= outfitSpace && weaponUsed <= weaponCapacity && engineUsed <= engineCapacity,
+  });
+}
+
+/** Return the first player-legible nested-budget violation for a prospective loadout. */
+export function outfitBudgetBlocker(shipDefOrId, fittings = []) {
+  const budget = outfitBudgetForFittings(shipDefOrId, fittings);
+  if (!budget) return { reason: 'missing_fit_target', text: null };
+  if (budget.weaponUsed > budget.weaponCapacity) {
+    return {
+      reason: 'weapon_capacity',
+      text: 'Weapon capacity exceeded (' + budget.weaponUsed + '/' + budget.weaponCapacity + ' t)',
+      budget,
+    };
+  }
+  if (budget.engineUsed > budget.engineCapacity) {
+    return {
+      reason: 'engine_capacity',
+      text: 'Engine capacity exceeded (' + budget.engineUsed + '/' + budget.engineCapacity + ' t)',
+      budget,
+    };
+  }
+  if (budget.used > budget.outfitSpace) {
+    return {
+      reason: 'outfit_space',
+      text: 'Outfit space exceeded (' + budget.used + '/' + budget.outfitSpace + ' t)',
+      budget,
+    };
+  }
+  return null;
+}
+
+/**
+ * Dry-run one whole loadout preset against a ship and module hold.
+ * Returns an apply plan on success; otherwise returns an enumerated blocker.
+ */
+export function dryRunLoadoutPresetApply({
+  shipDefId,
+  currentFittings = [],
+  targetFittings = [],
+  moduleInventory = [],
+  player = null,
+  enforceCargo = true,
+  isUnlockedFn = null,
+} = {}) {
+  const shipDef = SHIP_BY_ID.get(shipDefId);
+  if (!shipDef) return { ok: false, reason: 'missing_fit_target', text: null };
+  const slots = buildSlotList(shipDef);
+  const afterFittings = asFittingsArray(targetFittings, slots.length);
+  if (!afterFittings) {
+    return { ok: false, reason: 'invalid_preset', text: 'Preset does not match this hull layout' };
+  }
+  // NXI-115 — collect every slot-level blocker instead of stopping at the first, so the
+  // saved-loadout detail can name each required part that prevents application. The primary
+  // reason stays the first blocker in slot order, the same answer the early return gave.
+  const slotBlockers = [];
+  for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
+    const defId = afterFittings[slotIndex];
+    if (!defId) continue;
+    const def = defById(defId);
+    if (!def) {
+      slotBlockers.push({
+        reason: 'unknown_module',
+        defId,
+        name: null,
+        slotIndex,
+        text: `Preset contains unknown hardware (${defId})`,
+      });
+      continue;
+    }
+    if (!fits(slots[slotIndex], def)) {
+      slotBlockers.push({
+        reason: 'incompatible_slot',
+        defId,
+        name: def.name,
+        slotIndex,
+        slotType: slots[slotIndex].type,
+        slotSize: slots[slotIndex].size,
+        text: fitRefusalText(slots[slotIndex], def),
+      });
+      continue;
+    }
+    const saucerRefusal = saucerFittingRefusal(shipDef.id, def);
+    if (saucerRefusal) {
+      slotBlockers.push({ reason: 'intrinsic_saucer_drive', defId, name: def.name, slotIndex, text: saucerRefusal });
+      continue;
+    }
+    const unlocked = typeof isUnlockedFn === 'function'
+      ? !!isUnlockedFn(def)
+      // No injected resolver: a swarmEarned def fails CLOSED here — a pure caller cannot
+      // see the crossover ledger, so the honest answer is "cannot confirm the earn", not
+      // a guessed unlock. RequiresTech keeps its own read.
+      : !(def.requiresTech && !(player && Array.isArray(player.researchedNodes)
+        && player.researchedNodes.includes(def.requiresTech)))
+        && !def.swarmEarned;
+    if (!unlocked) {
+      slotBlockers.push({
+        reason: 'research_required',
+        defId,
+        name: def.name,
+        slotIndex,
+        text: defLockReasonText(def),
+      });
+      continue;
+    }
+    const conflictingDef = findMasslineHeadConflict(afterFittings, slotIndex, def);
+    if (conflictingDef) {
+      slotBlockers.push({
+        reason: 'massline_head_conflict',
+        defId,
+        name: def.name,
+        slotIndex,
+        conflictDefId: conflictingDef.id,
+        text: 'Unfit ' + conflictingDef.name + ' before fitting another head',
+      });
+    }
+  }
+  const currentCounts = countDefIds(asFittingsArray(currentFittings, slots.length) || []);
+  const targetCounts = countDefIds(afterFittings);
+  const inventoryCounts = countInventoryDefIds(moduleInventory);
+  const takeByDefId = new Map();
+  const returnByDefId = new Map();
+  const blockedDefIds = new Set(slotBlockers.map((blocker) => blocker.defId));
+  const missingParts = [];
+  let missingCount = 0;
+  for (const [defId, targetCount] of targetCounts.entries()) {
+    const keepCount = Math.min(targetCount, currentCounts.get(defId) || 0);
+    const needCount = Math.max(0, targetCount - keepCount);
+    if (needCount <= 0) continue;
+    takeByDefId.set(defId, needCount);
+    const availableCount = inventoryCounts.get(defId) || 0;
+    const shortfall = needCount - availableCount;
+    if (shortfall <= 0) continue;
+    missingCount += shortfall;
+    // A part already named under a slot cause (unavailable, will not fit, needs research)
+    // is not also "missing stock" — each required part is listed once, under its
+    // strongest cause, so missing stock stays distinguishable from slot trouble.
+    if (blockedDefIds.has(defId)) continue;
+    const missingDef = defById(defId);
+    missingParts.push({
+      defId,
+      name: missingDef ? missingDef.name : String(defId),
+      missing: shortfall,
+      need: needCount,
+      have: availableCount,
+    });
+  }
+  for (const [defId, currentCount] of currentCounts.entries()) {
+    const keepCount = Math.min(currentCount, targetCounts.get(defId) || 0);
+    const returnCount = Math.max(0, currentCount - keepCount);
+    if (returnCount > 0) returnByDefId.set(defId, returnCount);
+  }
+  if (slotBlockers.length) {
+    const first = slotBlockers[0];
+    return {
+      ok: false,
+      reason: first.reason,
+      text: first.text,
+      slotBlockers,
+      ...(missingParts.length ? { missingParts } : {}),
+      afterFittings,
+      takeByDefId,
+      returnByDefId,
+    };
+  }
+  const budgetBlocker = outfitBudgetBlocker(shipDef, afterFittings);
+  if (budgetBlocker) return { ok: false, ...budgetBlocker };
+  if (enforceCargo) {
+    const usedVolume = Math.max(0, Number(player && player.cargo && player.cargo.usedVolume) || 0);
+    const targetDerived = getDerivedStats(shipDef.id, afterFittings, player);
+    if (usedVolume > targetDerived.cargoCap) {
+      return { ok: false, reason: 'cargo_overflow', text: 'Cargo would overflow — jettison first' };
+    }
+  }
+  if (missingCount > 0) {
+    return {
+      ok: false,
+      reason: 'missing_modules',
+      missingCount,
+      missingParts,
+      text: missingModulesText(missingCount),
+      afterFittings,
+      takeByDefId,
+      returnByDefId,
+    };
+  }
+  return {
+    ok: true,
+    reason: null,
+    text: '',
+    missingCount: 0,
+    afterFittings,
+    takeByDefId,
+    returnByDefId,
+  };
+}
+
+/** Resolve a fittings array (defIds | null, parallel to slots) into the equipped defs per slot. */
+function resolveFittings(shipDef, fittings) {
+  const slots = buildSlotList(shipDef);
+  const out = [];
+  for (let i = 0; i < slots.length; i++) {
+    const id = fittings && fittings[i];
+    out.push(id ? defById(id) : null);
+  }
+  return { slots, equipped: out };
+}
+
+/** Count capacity-bearing Drone Bays in compatible slots on one exact hull loadout. */
+export function droneBayCountForFittings(defId, fittings = []) {
+  const shipDef = SHIP_BY_ID.get(defId);
+  if (!shipDef) return 0;
+  const { slots, equipped } = resolveFittings(shipDef, fittings);
+  let count = 0;
+  for (let index = 0; index < equipped.length; index += 1) {
+    const def = equipped[index];
+    if (!def || !fits(slots[index], def)) continue;
+    const value = def.mods && def.mods.droneBay;
+    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) continue;
+    const next = count + value;
+    if (Number.isSafeInteger(next)) count = next;
+  }
+  return count;
+}
+
+/** Number of slots on a hull that can physically accept the canonical Drone Bay L. */
+export function droneBayCompatibleSlotCount(defId) {
+  const shipDef = SHIP_BY_ID.get(defId);
+  const bayDef = MODULE_BY_ID.get('mod_drone_bay_l');
+  if (!shipDef || !bayDef) return 0;
+  return buildSlotList(shipDef).filter((slot) => fits(slot, bayDef)).length;
+}
+
+/** Add a positive finite fitted percentage without contaminating derived state. */
+function addFinitePositivePct(current, value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return current;
+  const next = current + value;
+  return Number.isFinite(next) ? next : current;
+}
+
+/** Scale a runtime damage/range value from its immutable catalog base without overflow. */
+function scaleWeaponRuntimeStat(baseValue, multiplier) {
+  const base = Number(baseValue);
+  const factor = Number(multiplier);
+  if (!Number.isFinite(base) || base < 0) return 0;
+  if (!Number.isFinite(factor) || factor <= 0) return base;
+  const result = base * factor;
+  return Number.isFinite(result) ? result : base;
+}
+
+/** Build a render-facing fittings array (defId | null, parallel to buildSlotList order).
+ *  NPC fittings pass through unchanged; their weapons[] are already real fittings. The only
+ *  backfill path is the legacy pre-explicit starter-gun fallback for old player saves. */
+function fittingsForView(shipDef, fittings, weapons) {
+  const slots = buildSlotList(shipDef);
+  const view = new Array(slots.length).fill(null);
+  for (let i = 0; i < slots.length; i++) {
+    const id = fittings && fittings[i];
+    if (id) view[i] = id;
+  }
+  // If a legacy fallback weapon resolved but the weapon slot is empty in fittings, backfill the
+  // first matching weapon slot so the barrel renders. Current NEW_GAME loadouts fit it directly.
+  if (weapons && weapons.length) {
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i].type !== 'weapon' || view[i]) continue;
+      const w = weapons.find((ww) => ww.slotIndex === i);
+      if (w && w.defId) { view[i] = w.defId; }
+    }
+  }
+  return view;
+}
+
+/** Re-derive a render-facing fittings array purely from a resolved weapons[] list. Used by NPC
+ *  spawners (combat/traffic) that bypass the fittings path and assign weapons directly — calling
+ *  this keeps their `data.fittings` in sync so their barrels render at the right hardpoints. */
+export function fittingsFromWeapons(shipDef, weapons) {
+  return fittingsForView(shipDef, [], weapons || []);
+}
+
+function pickEngine(equipped) {
+  for (const d of equipped) if (d && d.slotType === 'engine') return d;
+  return null;
+}
+
+function pickThruster(equipped) {
+  for (const d of equipped) if (d && d.slotType === 'thruster') return d;
+  return null;
+}
+
+// PQ-176.01 — DRIVE AND THRUSTER SPLIT.
+//
+// The drive owns forward thrust and top speed; the manoeuvring thrusters own turn torque, strafe
+// and brake. Before this, a fitted engine changed only the legacy stat block and the Travel Burn
+// ceiling, and NOTHING a player could fit changed how a V3 hull turned — the two halves of "how
+// does my ship handle" were one authored drive profile with no player input at all.
+//
+// Both references are the baseline tier-1 parts, and both are neutral. An unfitted hull (every NPC,
+// every bench spawn) and the shipped starter fit therefore multiply by exactly one, which is why
+// this split moves no golden: only a deliberately refitted bay changes anything.
+const REFERENCE_DRIVE_ACCEL_MULT = 1.0;   // mod_engine_ion_m
+const REFERENCE_DRIVE_TOP_SPEED = 70;     // mod_engine_ion_m
+export const DRIVE_SCALED_ACCEL_KEYS = Object.freeze(['mainAccel', 'maxAccel', 'rcsForwardAccel', 'fieldAccel']);
+// The drive owns TOP speed, and top speed lives ABOVE the governed cap. FEEL_CONTRACT B3 measures
+// the crossing time at the cap and the camera only opens ABOVE it, so a purchasable drive must
+// never raise the cap itself: a Warp Coil that lifts `combatSpeed` (or `maxSpeed`, which IS the
+// cap on the gravimetric hulls) hands the camera a ship it cannot hold and re-breaks PQ-137.03.
+// The drive's travel authority is `travelCeilingMult` -- propulsionKernel's own words, 'drive-tier
+// upgrades hang off this' -- plus the boost ceiling, both of which sit above the cap by design.
+export const DRIVE_SCALED_SPEED_KEYS = Object.freeze(['boostMaxSpeed']);
+const THRUSTER_TURN_KEYS = Object.freeze(['yawAccel', 'yawBrake']);
+// The bay owns TORQUE. The yaw-rate ceiling is the balance between that torque and the hull's own
+// damping, so it follows on the square root: a bay with twice the authority does not give the hull
+// twice the top rotation rate, it gets there far sooner and holds a tighter arc. Scaling it
+// linearly turned an interceptor into a cursor (FEEL_CONTRACT §C: "a controllable mass").
+const THRUSTER_RATE_KEYS = Object.freeze(['maxYawRate']);
+const THRUSTER_STRAFE_KEYS = Object.freeze(['strafeAccel', 'rcsStrafeAccel', 'brakeStrafeAccel', 'trimAccel']);
+const THRUSTER_BRAKE_KEYS = Object.freeze(['reverseAccel', 'brakeAccel', 'maxBrakeAccel', 'rcsReverseAccel']);
+
+function positiveMult(value, fallback = 1) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+/** Scale a set of profile keys off the AUTHORED base, so repeated recomputes never compound. */
+function scaleProfileKeys(target, base, keys, mult) {
+  if (!(mult > 0) || mult === 1) return;
+  for (let i = 0; i < keys.length; i += 1) {
+    const key = keys[i];
+    const authored = base[key];
+    if (Number.isFinite(authored)) target[key] = authored * mult;
+  }
+}
+
+/** How a fitted engine module advances the hull's authored drive. Neutral with nothing fitted. */
+function driveScaling(engine) {
+  if (!engine || engine === FALLBACK_ENGINE) return { accel: 1, speed: 1 };
+  const mods = engine.mods || {};
+  return {
+    accel: positiveMult(mods.accelMult) / REFERENCE_DRIVE_ACCEL_MULT,
+    speed: positiveMult(mods.topSpeed, REFERENCE_DRIVE_TOP_SPEED) / REFERENCE_DRIVE_TOP_SPEED,
+  };
+}
+
+/** The manoeuvring set in the bay, or the hull's authored stock set. Stock is exactly neutral. */
+export function thrusterScaling(shipDef, equipped) {
+  const fitted = pickThruster(equipped || []);
+  const stock = fitted ? null : (shipDef && shipDef.thrusterId ? MODULE_BY_ID.get(shipDef.thrusterId) : null);
+  const def = fitted || stock;
+  const mods = (def && def.mods) || {};
+  return {
+    id: def ? def.id : null,
+    name: def ? def.name : null,
+    fitted: !!fitted,
+    turn: positiveMult(mods.turnMult),
+    strafe: positiveMult(mods.strafeMult),
+    brake: positiveMult(mods.brakeMult),
+  };
+}
+
+// Default engine modifiers when no engine module is fitted (a ship must still move). Mirrors the
+// Ion Thruster M baseline so an un-outfitted hull is sluggish but functional.
+const FALLBACK_ENGINE = {
+  topSpeed: 60,
+  accelMult: 0.9,
+  turnMult: 0.9,
+  mass: 0,
+  mods: { topSpeed: 60, accelMult: 0.9, turnMult: 0.9, travelCeilingMult: 1.0 },
+};
+function engineMods(def) {
+  const m = (def && def.mods) || (def === FALLBACK_ENGINE ? FALLBACK_ENGINE.mods : null);
+  return {
+    topSpeed: (m && m.topSpeed) || FALLBACK_ENGINE.mods.topSpeed,
+    accelMult: (m && m.accelMult) || FALLBACK_ENGINE.mods.accelMult,
+    turnMult: (m && m.turnMult) || FALLBACK_ENGINE.mods.turnMult,
+    travelCeilingMult: Number.isFinite(m && m.travelCeilingMult) && m.travelCeilingMult > 0
+      ? m.travelCeilingMult
+      : FALLBACK_ENGINE.mods.travelCeilingMult,
+  };
+}
+
+// PQ-176.00 — MASS IS THE LAW.
+//
+// A drive makes FORCE. The propulsion catalog authors accelerations because that is what the
+// kernel's solver consumes (`makeResult` turns them back into force with `acceleration * body.mass`),
+// so before this law a hull's accelerations were the same whether its hold was empty or carrying
+// three hundred tonnes: mass cancelled out and a gun boat flew exactly like a scout.
+//
+// The fix is one division in the one place that already owns derived flight state. Every
+// acceleration in the derived profile is divided by the overload ratio (operational mass ÷ the
+// hull's authored `designMass`). Nothing writes velocity, nothing adds drag, no cap is placed on
+// momentum the ship was GIVEN: the hull's own motor simply pushes a heavier ship less hard, which
+// is the only honest way for cargo and hardware to be felt in the hands.
+//
+// Three deliberate boundaries:
+//   * `ceiling: 1` — being LIGHTER than the rating buys nothing. A hull at or under its design mass
+//     flies bit-identically to how it flew before this law, which keeps every bare-hull bench, every
+//     NPC (they spawn unfitted) and every default-fit tape exactly where it was.
+//   * `exponent` below 1 — the raw a = F/m curve makes a full hold a two-hundred-tonne brick on an
+//     eighteen-tonne scout. Softening the exponent keeps the whole load range legible in the hands
+//     instead of saturating at the floor after the first few tonnes.
+//   * `floor` — no fit can ever make a hull unsteerable. Same shape, and the same reason, as
+//     TERRAIN_CRUMPLE_LAW.massFloor.
+//
+// Speeds are NOT scaled. Mass costs you acceleration — how long you take to get there and how long
+// you take to stop — never the ceiling you are governed to. That is the FEEL_CONTRACT §C reading of
+// "a controllable mass, not a cursor".
+export const MASS_LOAD_LAW = Object.freeze({
+  exponent: 0.65,
+  floor: 0.30,
+  ceiling: 1,
+});
+
+// Every acceleration-shaped key a propulsion profile may carry, across all five drive families.
+// Speeds (`combatSpeed`, `precisionSpeed`, `maxSpeed`, `boostMaxSpeed`, `travelCeiling`), rate caps
+// (`maxYawRate`) and solver instructions are deliberately absent.
+const MASS_SCALED_PROFILE_KEYS = Object.freeze([
+  'mainAccel', 'reverseAccel', 'strafeAccel',
+  'maxAccel', 'maxBrakeAccel',
+  'rcsForwardAccel', 'rcsReverseAccel', 'rcsStrafeAccel',
+  'fieldAccel', 'trimAccel',
+  'yawAccel', 'yawBrake',
+  'baseImpulseDv', 'maxImpulseDv',
+]);
+
+/** The hull's authored drive rating, in operational tonnes. Hulls without one fall back to the dry
+ *  hull mass so a hand-authored or legacy def is never divided by zero or silently over-rated. */
+export function designMassForHull(shipDefOrId) {
+  const shipDef = typeof shipDefOrId === 'string' ? SHIP_BY_ID.get(shipDefOrId) : shipDefOrId;
+  if (!shipDef) return 0;
+  const authored = Number(shipDef.designMass);
+  if (Number.isFinite(authored) && authored > 0) return authored;
+  const dry = Number(shipDef.mass);
+  return Number.isFinite(dry) && dry > 0 ? dry : 0;
+}
+
+/**
+ * How much of its authored acceleration this hull keeps at `operationalMass`.
+ * 1 at or under the rating, falling toward MASS_LOAD_LAW.floor as the ship is loaded past it.
+ */
+export function massLoadFactor(shipDefOrId, operationalMass) {
+  const design = designMassForHull(shipDefOrId);
+  const mass = Number(operationalMass);
+  if (!(design > 0) || !Number.isFinite(mass) || !(mass > 0)) return MASS_LOAD_LAW.ceiling;
+  if (mass <= design) return MASS_LOAD_LAW.ceiling;
+  const raw = Math.pow(design / mass, MASS_LOAD_LAW.exponent);
+  if (!Number.isFinite(raw)) return MASS_LOAD_LAW.floor;
+  return Math.max(MASS_LOAD_LAW.floor, Math.min(MASS_LOAD_LAW.ceiling, raw));
+}
+
+/** Build the complete propulsion profile once per derived-stat recompute. The underlying profile is
+ * the hull's authored drive, with class/mass retained for legacy fallback. PQ-176.01: the fitted drive advances forward thrust (DRIVE_SCALED_ACCEL_KEYS)
+ * and boost top speed (DRIVE_SCALED_SPEED_KEYS), the thruster bay advances turning/strafe/brake,
+ * and the engine's travelCeilingMult moves Travel Burn V-MAX. The governed cap (combatSpeed/maxSpeed)
+ * and the drive's identity/family are never for sale; the ship's operational mass is the one thing
+ * that moves its accelerations after fitting (MASS_LOAD_LAW). */
+function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped) {
+  const base = resolvePropulsionProfile({ driveId: shipDef.driveId, flightClass, mass: totalMass });
+  const mult = engineMods(engine).travelCeilingMult;
+  const derived = {
+    ...base,
+    travelCeiling: resolveTravelCeiling(base) * mult,
+  };
+
+  // PQ-176.01, in order: the drive advances forward thrust and top speed, the thruster bay advances
+  // turning, strafe and brake, and then PQ-176.00's mass law divides every acceleration by what the
+  // ship is actually carrying. Applied in that order, "I fitted a bigger drive" and "I loaded the
+  // hold" compose instead of overwriting each other.
+  const drive = driveScaling(engine);
+  const thruster = thrusterScaling(shipDef, equipped);
+  scaleProfileKeys(derived, base, DRIVE_SCALED_ACCEL_KEYS, drive.accel);
+  scaleProfileKeys(derived, base, DRIVE_SCALED_SPEED_KEYS, drive.speed);
+  scaleProfileKeys(derived, base, THRUSTER_TURN_KEYS, thruster.turn);
+  scaleProfileKeys(derived, base, THRUSTER_RATE_KEYS, Math.sqrt(thruster.turn));
+  scaleProfileKeys(derived, base, THRUSTER_STRAFE_KEYS, thruster.strafe);
+  scaleProfileKeys(derived, base, THRUSTER_BRAKE_KEYS, thruster.brake);
+
+  const load = massLoadFactor(shipDef, totalMass);
+  if (load < 1) {
+    for (let i = 0; i < MASS_SCALED_PROFILE_KEYS.length; i += 1) {
+      const key = MASS_SCALED_PROFILE_KEYS[i];
+      const current = derived[key];
+      if (Number.isFinite(current)) derived[key] = current * load;
+    }
+  }
+  derived.designMass = designMassForHull(shipDef);
+  derived.massLoadFactor = load;
+  derived.driveAccelMult = drive.accel;
+  derived.driveSpeedMult = drive.speed;
+  // The travel ceiling is where a fitted drive's speed actually lands, so the screen needs the
+  // multiplier that moved IT -- quoting the boost ratio next to a travel number reads as a lie.
+  derived.driveTravelMult = mult;
+  derived.thrusterTurnMult = thruster.turn;
+  derived.thrusterStrafeMult = thruster.strafe;
+  derived.thrusterBrakeMult = thruster.brake;
+  derived.thrusterId = thruster.id;
+  // Infinity is a runtime solver instruction, not authoritative entity state. Keep finite envelope
+  // limits in the descriptor; an omitted limit is hydrated back to Infinity by the profile owner.
+  if (!Number.isFinite(derived.solverSpeedLimit)) delete derived.solverSpeedLimit;
+  return Object.freeze(derived);
+}
+
+/** Role lattice owns flight-class identity; fallback keeps legacy string matching. */
+function flightClassForShip(shipDef) {
+  return flightClassForHull(shipDef);
+}
+
+function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling, thrust, turnRate, maxSpeed, drag, bankFactor }) {
+  const t = FLIGHT_CLASS_TUNING[flightClass] || FLIGHT_CLASS_TUNING.scout;
+  const hullInertiaPerMass = hullYawInertiaPerMass(shipDef);
+  // Handling still shapes commanded angular acceleration above. Passive contact/impulse inertia
+  // comes from the hull's measured planar mass footprint; flightV3 and AI scale their requested
+  // angular acceleration by this value before the native body divides torque by its inertia.
+  const inertia = Math.max(1, hullInertiaPerMass == null
+    ? (totalMass / Math.max(0.3, handling)) * t.inertia
+    : totalMass * hullInertiaPerMass * t.inertia);
+  const maxYawRate = Math.min(turnRate * PLAYER_TURN_RATE_MULT * t.turn, PLAYER_TURN_RATE_CAP);
+  return {
+    flightClass,
+    mass: totalMass,
+    inertia,
+    mainAccel: thrust * t.accel,
+    reverseAccel: thrust * FLIGHT_TUNING.reverseThrustScale * t.accel,
+    strafeAccel: thrust * t.strafe,
+    angularAccel: Math.max(5, turnRate * 8.5 * t.turn / Math.sqrt(Math.max(0.4, massRatio))),
+    angularBrake: Math.max(12, turnRate * 15 * t.brake / Math.pow(Math.max(0.4, massRatio), 0.25)),
+    maxYawRate,
+    linearDrag: drag,
+    lateralDrag: drag * 0.42,
+    assistStrength: t.assist,
+    reverseBrake: 2.4 + 0.35 * handling,
+    maxSpeed,
+    boostMult: 2.2,
+    normalMaxSpeedMult: 1.15,
+    boostMaxSpeedMult: 2.0,
+    bankMax: 0.68,
+    bankFactor,
+    role: shipDef.role || 'ship',
+  };
+}
+
+/**
+ * getDerivedStats(defId, fittings, player) -> full derived stat block (§0.6, §3.4.1).
+ * Folds equipped module modifiers over the hull base, applies player.efficiencyMods, and
+ * recomputes handling from mass. Starts the ship at FULL hull/shield/cap.
+ */
+/** Module mass the derived-stat fold adds. Cards print this, not a second copy. */
+export function moduleSimMass(def) {
+  const mass = Number(def && def.mass);
+  return Number.isFinite(mass) ? mass : 0;
+}
+
+export function moduleSimPrice(def) {
+  const price = Number(def && def.price);
+  return Number.isFinite(price) ? price : 0;
+}
+
+/** Numbers a hull card is allowed to print. Same function the simulation folds. */
+export function catalogHullFacts(defId, fittings = [], player = null) {
+  const derived = getDerivedStats(defId, fittings, player);
+  const ship = typeof defId === 'string' ? SHIP_BY_ID.get(defId) : defId;
+  const propulsion = derived && derived.propulsion;
+  const speed = propulsion && Number.isFinite(propulsion.combatSpeed) && propulsion.combatSpeed > 0
+    ? propulsion.combatSpeed
+    : (propulsion && Number.isFinite(propulsion.maxSpeed) ? propulsion.maxSpeed : derived.maxSpeed);
+  const weapon = Number.isFinite(derived.weaponDmgMult) ? derived.weaponDmgMult : 1;
+  return {
+    price: ship && Number.isFinite(ship.price) ? ship.price : 0,
+    speed,
+    mass: derived.operationalMass,
+    cargo: derived.cargoCap,
+    shield: derived.shieldMax,
+    hull: derived.hullMax,
+    weapon,
+  };
+}
+
+export function getDerivedStats(defId, fittings = [], player = null) {
+  const key = derivedStatsKey(defId, fittings, player);
+  const hit = derivedStatsCache.get(key);
+  if (hit) {
+    // LRU refresh; the clone keeps the canonical immune to key-rebinding writers (combat).
+    derivedStatsCache.delete(key);
+    derivedStatsCache.set(key, hit);
+    return { ...hit };
+  }
+  const fresh = computeDerivedStats(defId, fittings, player);
+  if (derivedStatsCache.size >= DERIVED_STATS_CACHE_MAX) {
+    const oldest = derivedStatsCache.keys().next();
+    if (!oldest.done) derivedStatsCache.delete(oldest.value);
+  }
+  derivedStatsCache.set(key, fresh);
+  return { ...fresh };
+}
+
+/**
+ * INF-097: derived-stat memo. Shipworks re-derives the same hull composition on every
+ * refresh/hover, and each full fold walks every fitted module. The cache keys on the EXACT
+ * inputs the fold reads (hull, positional fittings, the player fields that alter numbers:
+ * efficiency mults/presence, cargo usedMass, identity flags, combat profile). Any change that
+ * alters numbers misses the key and recomputes — invalidation is structural, not manual.
+ *
+ * Contract: the cached canonical is never handed out. Every call returns a fresh TOP-LEVEL
+ * clone, because combat rebinds `derived.propulsion` on entity-owned blocks and ship code
+ * stores blocks on entities. Nested blocks (propulsion, flightModel, roleIdentity) are shared
+ * and must be treated read-only — replace keys, never mutate in place (no such writer exists).
+ * LRU-bounded (64) so ghost-hover spam cannot grow it.
+ *
+ * The key does NOT cover catalog contents (SHIPS / MODULES records): the game treats them as
+ * immutable authored data and nothing in src/ writes them. A fixture that patches a catalog
+ * record in place (e.g. `MODULES[i].mods.radarRangePct = NaN`) must call
+ * resetDerivedStatsCache() after the patch AND after restoring it, or it reads a stale entry.
+ */
+const DERIVED_STATS_CACHE_MAX = 64;
+const derivedStatsCache = new Map();
+
+/** Drop every memoized derived block. Test seam for in-place catalog patches (see above). */
+export function resetDerivedStatsCache() {
+  derivedStatsCache.clear();
+}
+
+function derivedStatsKey(defId, fittings, player) {
+  const eff = (player && player.efficiencyMods) || {};
+  return JSON.stringify([
+    defId || 'ship_kestrel',
+    isModelTruthCensusLoaded(),
+    Array.isArray(fittings) ? fittings : [],
+    player ? {
+      s: eff.shieldRegenMult, e: eff.energyRegenMult, c: eff.cargoCapMult,
+      h: eff.hiddenCargoPct, k: eff.scannerCloak, ep: player.efficiencyMods != null,
+      m: player.cargo && player.cargo.usedMass,
+      ip: player.isPlayer, id: player.id, st: player.stats != null, cp: player.combatProfile,
+    } : null,
+  ]);
+}
+
+function computeDerivedStats(defId, fittings = [], player = null) {
+  const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
+  const eff = (player && player.efficiencyMods) || {};
+  const miningYieldMult = 1; // not applied to ship stats; mining system reads efficiencyMods itself
+  const shieldRegenMult = eff.shieldRegenMult || 1;
+  const energyRegenMult = eff.energyRegenMult || 1;
+  const cargoCapMult = eff.cargoCapMult || 1;
+  const { equipped, slots } = resolveFittings(shipDef, fittings);
+  const droneBayCount = droneBayCountForFittings(defId, fittings);
+
+  // (1) additive flats + mass + cargo pct + utility aggregates
+  let shieldFlat = 0, shieldRegenFlat = 0, hullFlat = 0, cargoFlat = 0, cargoCapPct = 0;
+  let weaponRangePct = 0;
+  let weaponDmgPct = 0;
+  let weaponHeatDissipPct = 0;
+  let radarRangePct = 0;
+  let hullRepairOOC = 0;
+  // FB-054 — afterburner burn envelope: top-speed gain, burn length, cooldown. Capability
+  // ratings like jumpDriveTier/hullRepairOOC — a valid fitted slot is required, max wins.
+  let boostTopSpeedPct = 0, boostDurS = 0, boostCdS = 0;
+  // Every hull has its authored T1 drive. Fitted drive modules can only advance that capability;
+  // the world owner resolves the canonical jump_tN key against its supported drive table.
+  let jumpDriveTier = 1;
+  let moduleMass = 0, continuousDrain = 0;
+  let tetherSpoolMult = 1, tetherReelRateMult = 1;
+  let ramDamageDealtMult = 0;
+  let magnetRange = 0;
+  let lootMagnetRange = 0;
+  let masslineHeadId = null;
+  // §7.1 behavior heads: derived id only here — the behavior payload resolves in derivedForOwned
+  // where the fitted instance (and its provenance) is reachable; the derived-stats cache key
+  // covers defs, not instances.
+  let lineHeadId = null, lineHeadTier = 0;
+  // TOY CHEST T13: a trophy head's higher break ceiling. Only a module that IS a Massline head can
+  // carry it, and heads are mutually exclusive, so this can never raise another head's line.
+  let masslineLoadCapacityMult = 1;
+  let swingDrive = false;
+  let towFlail = false;
+  let phaseBlink = false;
+  // Hull burst: ONE per hull. The higher rank wins, ties break by kind name, so a hand-edited fit
+  // with two burst modules is deterministic instead of slot-ordered.
+  let hullBurstKind = shipDef.id === SAUCER_ID ? 'saucer_horizon' : null;
+  let hullBurstRank = shipDef.id === SAUCER_ID ? 1 : 0;
+  let controlWeaponCount = 0;
+  let chaffCount = 0;
+  let ecmCount = 0;
+  let hiddenCargoPct = Math.max(0, Math.min(1, Number(eff.hiddenCargoPct) || 0));
+  let scannerCloak = Math.max(0, Math.min(1, Number(eff.scannerCloak) || 0));
+  let damageReductionMult = 1; // multiplicative stacking of hardeners (§ formulas)
+  const miningSlotsTotal = slots.reduce((count, slot) => count + (slot.type === 'mining' ? 1 : 0), 0);
+  let miningSlotsFilled = 0;
+  for (let index = 0, length = equipped.length; index < length; index += 1) {
+    const d = equipped[index] || null;
+    if (!d) continue;
+    moduleMass += moduleSimMass(d);
+    continuousDrain += d.energyDraw || 0;
+    const mods = d.mods || {};
+    shieldFlat += mods.shieldFlat || 0;
+    shieldRegenFlat += mods.shieldRegenFlat || 0;
+    hullFlat += mods.hullFlat || 0;
+    cargoFlat += mods.cargoFlat || 0;
+    cargoCapPct += mods.cargoCapPct || 0;
+    // Fire-control is an ordinary additive stat modifier, not a capability rating. Only a
+    // compatible fitted slot may contribute, so malformed hand-authored arrays cannot grant it.
+    const occupiesCompatibleSlot = fits(slots[index], d);
+    if (occupiesCompatibleSlot) {
+      if (slots[index].type === 'mining') miningSlotsFilled += 1;
+      if (slots[index].type === 'weapon' && CONTROL_GUN_TOKEN_RE.test(d.id || '')) {
+        controlWeaponCount += 1;
+      }
+      weaponRangePct = addFinitePositivePct(weaponRangePct, mods.weaponRangePct);
+      weaponDmgPct = addFinitePositivePct(weaponDmgPct, mods.weaponDmgPct);
+      weaponHeatDissipPct = addFinitePositivePct(weaponHeatDissipPct, mods.weaponHeatDissipPct);
+      // Radar is a sensory capability: valid compatible modules select the strongest authored
+      // coverage rather than stacking duplicate arrays. Reject a finite-but-unrepresentable value
+      // here so it cannot discard an earlier usable range during final scaling.
+      if (typeof mods.radarRangePct === 'number'
+        && Number.isFinite(mods.radarRangePct)
+        && mods.radarRangePct > radarRangePct) {
+        const candidateRadarRange = BASE_RADAR_RANGE * (1 + mods.radarRangePct);
+        if (Number.isFinite(candidateRadarRange) && candidateRadarRange > 0) {
+          radarRangePct = mods.radarRangePct;
+        }
+      }
+      // Drive tier is a capability rating: strongest compatible fitted module wins. Keep the
+      // source primitive-only so hand-authored/malformed module records cannot leak NaN, strings,
+      // or objects into the world jump state machine.
+      if (typeof mods.jumpDriveTier === 'number'
+        && Number.isFinite(mods.jumpDriveTier)
+        && Number.isInteger(mods.jumpDriveTier)
+        && mods.jumpDriveTier > 0) {
+        jumpDriveTier = Math.max(jumpDriveTier, mods.jumpDriveTier);
+      }
+      // Autonomous hull repair is a capability rating. It must come from a valid fitted utility
+      // module, and the strongest fitted variant wins instead of stacking repair per slot.
+      if (typeof mods.hullRepairOOC === 'number'
+        && Number.isFinite(mods.hullRepairOOC)
+        && mods.hullRepairOOC > 0) {
+        hullRepairOOC = Math.max(hullRepairOOC, mods.hullRepairOOC);
+      }
+      // FB-054 — the afterburner's three authored numbers are capability ratings the same way:
+      // strongest compatible fitted burner wins, never summed across slots.
+      if (Number.isFinite(mods.boostTopSpeedPct) && mods.boostTopSpeedPct > 0) {
+        boostTopSpeedPct = Math.max(boostTopSpeedPct, mods.boostTopSpeedPct);
+      }
+      if (Number.isFinite(mods.boostDurS) && mods.boostDurS > 0) {
+        boostDurS = Math.max(boostDurS, mods.boostDurS);
+      }
+      if (Number.isFinite(mods.boostCdS) && mods.boostCdS >= 0) {
+        boostCdS = Math.max(boostCdS, mods.boostCdS);
+      }
+      const countermeasureKind = mods && mods.countermeasure && mods.countermeasure.kind;
+      if (countermeasureKind === 'chaff') chaffCount += 1;
+      else if (countermeasureKind === 'ecm') ecmCount += 1;
+    }
+    if (Number.isFinite(mods.tetherSpoolMult) && mods.tetherSpoolMult > 0) {
+      tetherSpoolMult = Math.max(tetherSpoolMult, mods.tetherSpoolMult);
+    }
+    if (Number.isFinite(mods.tetherReelRateMult) && mods.tetherReelRateMult > 0) {
+      tetherReelRateMult = Math.max(tetherReelRateMult, mods.tetherReelRateMult);
+    }
+    if (Number.isFinite(mods.ramDamageDealtMult) && mods.ramDamageDealtMult > 0) {
+      ramDamageDealtMult = Math.max(ramDamageDealtMult, mods.ramDamageDealtMult);
+    }
+    // Tractor magnet radius is a capability rating (max wins) — mining scoop reads derived.magnetRange.
+    if (Number.isFinite(mods.magnetRange) && mods.magnetRange > 0) {
+      magnetRange = Math.max(magnetRange, mods.magnetRange);
+    }
+    // Salvage reach is a capability rating (max wins) — lootShards reads derived.lootMagnetRange.
+    if (Number.isFinite(mods.lootMagnetRange) && mods.lootMagnetRange > 0) {
+      lootMagnetRange = Math.max(lootMagnetRange, mods.lootMagnetRange);
+    }
+    // Pendulum dash and tow-as-weapon are capability flags: the verb exists or it does not.
+    // Malformed/manual data cannot half-grant them — truthy only, and only from a fitted slot
+    // the hull actually has (same slot-compat gate the countermeasure kinds use below).
+    if (occupiesCompatibleSlot && mods.swingDrive) swingDrive = true;
+    if (occupiesCompatibleSlot && mods.towFlail) towFlail = true;
+    if (occupiesCompatibleSlot && mods.phaseBlink) phaseBlink = true;
+    if (occupiesCompatibleSlot && typeof mods.hullBurst === 'string' && mods.hullBurst) {
+      const rank = Number.isFinite(mods.hullBurstRank) && mods.hullBurstRank > 0 ? Math.trunc(mods.hullBurstRank) : 1;
+      if (rank > hullBurstRank || (rank === hullBurstRank && mods.hullBurst < hullBurstKind)) {
+        hullBurstKind = mods.hullBurst;
+        hullBurstRank = rank;
+      }
+    }
+    // Specialized heads are fitted capabilities, not input modes. Live fitting keeps them mutually
+    // exclusive; fixed priority makes malformed/manual data deterministic instead of slot-ordered.
+    const candidateHeadId = masslineHeadIdForDef(d);
+    if (candidateHeadId && Number.isFinite(mods.loadCapacityMult) && mods.loadCapacityMult > 1) {
+      masslineLoadCapacityMult = Math.max(masslineLoadCapacityMult, mods.loadCapacityMult);
+    }
+    if ((MASSLINE_HEAD_PRIORITY[candidateHeadId] || 0) > (MASSLINE_HEAD_PRIORITY[masslineHeadId] || 0)) {
+      masslineHeadId = candidateHeadId;
+    }
+    const candidateLineHeadId = lineHeadIdForDef(d);
+    const candidateLineTier = candidateLineHeadId ? lineHeadTierFor(candidateLineHeadId) : 0;
+    if (candidateLineTier > lineHeadTier
+      || (candidateLineTier === lineHeadTier && candidateLineHeadId && (!lineHeadId || candidateLineHeadId < lineHeadId))) {
+      lineHeadId = candidateLineHeadId;
+      lineHeadTier = candidateLineTier;
+    }
+    // Smuggling utilities are capability ratings, not additive economy bonuses. Taking the
+    // strongest fitted module prevents stacking the same hidden volume or scan evasion twice.
+    if (Number.isFinite(mods.hiddenCargoPct)) {
+      hiddenCargoPct = Math.max(hiddenCargoPct, Math.max(0, Math.min(1, mods.hiddenCargoPct)));
+    }
+    if (Number.isFinite(mods.scannerCloak)) {
+      scannerCloak = Math.max(scannerCloak, Math.max(0, Math.min(1, mods.scannerCloak)));
+    }
+    if (mods.damageReductionPct) damageReductionMult *= (1 - mods.damageReductionPct);
+  }
+
+  // (2) mass + handling baseline — role lattice biases operating-mass feel + handling identity.
+  // Catalog dry/cargo mass stay truthful; opMassBias only scales the flight massRatio so haulers
+  // wallow and scouts stay light without inventing new HP currencies.
+  const lattice = getLatticeRow(shipDef.id);
+  const biases = roleOperationalBiases(shipDef.id);
+  const baseMass = shipDef.mass;
+  const dryMass = baseMass + moduleMass;
+  const cargoMass = Math.max(0, Number(player && player.cargo && player.cargo.usedMass) || 0);
+  const totalMass = dryMass + cargoMass;
+  const feelMass = totalMass * biases.opMassBias;
+  const massRatio = feelMass / Math.max(0.001, baseMass);
+  const handling = (shipDef.handling || 1) * biases.handlingBias;
+  // Banking: per-hull roll-into-turn aggressiveness. Heavier loads bank less (mass dampens it),
+  // so a fully-loaded freighter feels even more ponderous in a turn.
+  const bankFactor = (shipDef.bankFactor != null ? shipDef.bankFactor : 0.6) / Math.sqrt(massRatio);
+
+  const speedMass = 2 / (1 + massRatio);     // 1.0 at hull baseline, falls as mass grows
+  const turnMass = 1.4 / (0.4 + massRatio);
+
+  // (3) engine-derived movement.
+  // The semi-Newtonian model gives steady-state speed = thrust/drag. Previously thrust/drag was
+  // ~1/3 of maxSpeed, so ships crept and never reached their own ceiling (felt dead). We now solve
+  // thrust from a desired CRUISE velocity so every hull actually reaches a satisfying speed, and
+  // pick drag for responsiveness (~1/drag is the accelerate/stop time constant in seconds).
+  const engine = pickEngine(equipped) || FALLBACK_ENGINE;
+  const eng = engineMods(engine);
+  const maxSpeed = eng.topSpeed * SPEED_SCALE * handling * speedMass;   // boost ceiling
+  const drag = 1.7 + 0.6 * massRatio;                                   // ~0.4–0.6s time constant
+  const cruiseFrac = Math.min(0.85, 0.60 + 0.14 * eng.accelMult);       // 0.72 baseline; better engines cruise faster
+  const cruise = maxSpeed * cruiseFrac;
+  const thrust = cruise * drag * THRUST_SCALE * biases.thrustBias;      // terminal velocity ≈ cruise
+  const turnRate = BASE_TURN * eng.turnMult * handling * turnMass * biases.turnBias;
+  // PQ-176.01: the compatibility flight model already carries the DRIVE half -- `maxSpeed` is built
+  // from `eng.topSpeed` and `cruiseFrac` from `eng.accelMult` two lines up -- so re-applying the
+  // drive multipliers here would count the same engine twice (a Warp Coil would read 1.86x on top
+  // of a maxSpeed that is already 130-based). The one half this model never had is the BAY, so the
+  // bay is the only thing added: a Vernier Cluster moves the fit screen's agility bar, and the
+  // Warp Coil moves its top-speed bar the way it always did.
+  const splitThruster = thrusterScaling(shipDef, equipped);
+  const legacyTurnRate = turnRate * splitThruster.turn;
+  const legacyThrust = thrust;
+  const legacyMaxSpeed = maxSpeed;
+
+  // (4) health / energy / cargo — hull/shield stay catalog-truthful (no fake tank currency).
+  // Resilient Self-Recharging Shields (docs/GAMEPLAY_QOL_OVERHAUL.md §4):
+  // Across all player hulls, shields act as a generous regenerative buffer (3x capacity, 3.5x regen).
+  const isPlayerHull = Boolean(player && (player.isPlayer !== false && (player.isPlayer || player.id === 'player' || player.efficiencyMods != null || player.stats != null)));
+  const adventureShieldAssist = isPlayerHull && player.combatProfile !== 'crucible';
+  const playerShieldMult = adventureShieldAssist ? 3.0 : 1.0;
+  const playerShieldRegenMult = adventureShieldAssist ? 3.5 : 1.0;
+
+  const hullMax = shipDef.hull + hullFlat;
+  const shieldMax = (shipDef.shield + shieldFlat) * playerShieldMult;
+  const shieldRegenRate = ((shipDef.baseShieldRegen * playerShieldRegenMult) + shieldRegenFlat) * shieldRegenMult;
+  const capMax = shipDef.energyCap;
+  const capRegen = shipDef.energyRegen * energyRegenMult;
+  const cargoCap = Math.floor((shipDef.cargo + cargoFlat) * (1 + cargoCapPct) * cargoCapMult);
+  const weaponRangeMult = weaponRangePct + 1;
+  const weaponDmgMult = weaponDmgPct + 1;
+  const weaponHeatDissipMult = weaponHeatDissipPct + 1;
+  const radarRangeMult = radarRangePct + 1;
+  let maxWeaponRange = 0;
+  for (let index = 0; index < equipped.length; index += 1) {
+    const def = equipped[index];
+    if (!def || def.slotType !== 'weapon' || !fits(slots[index], def)) continue;
+    const runtimeRange = scaleWeaponRuntimeStat(def.range, weaponRangeMult);
+    if (runtimeRange > maxWeaponRange) maxWeaponRange = runtimeRange;
+  }
+  const rawRadarRange = BASE_RADAR_RANGE * radarRangeMult;
+  const radarRange = Number.isFinite(rawRadarRange) && rawRadarRange > 0
+    ? rawRadarRange
+    : BASE_RADAR_RANGE;
+
+  // (5) boost/dash config (Phase 3). regenRate rides the energy efficiency multiplier so better
+  // power systems help boost recharge. A ship with no boost block gets a near-zero pool (can't boost).
+  const bdef = shipDef.boost || {};
+  // A doubled reservoir should not double the wait between runs. Preserve each hull's authored
+  // recovery time by scaling recharge with the larger meter.
+  const boostRegen = (bdef.regenRate || 18) * 2 * energyRegenMult;
+  const flightClass = flightClassForShip(shipDef);
+  const propulsion = buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped);
+  const flightModel = buildFlightModel({
+    shipDef,
+    flightClass,
+    totalMass,
+    massRatio,
+    handling,
+    thrust: legacyThrust,
+    turnRate: legacyTurnRate,
+    maxSpeed: legacyMaxSpeed,
+    drag,
+    bankFactor,
+  });
+
+  const roleIdentity = lattice
+    ? {
+      shipId: lattice.shipId,
+      role: lattice.role,
+      roleLabel: lattice.roleLabel,
+      flightClass: lattice.flightClass,
+      shortWhy: lattice.shortWhy,
+      primaryCareers: lattice.primaryCareers,
+      upgradeAdjacency: lattice.upgradeAdjacency,
+      counterRoles: lattice.counterRoles,
+    }
+    : null;
+
+  if (shipDef.id === SAUCER_ID) {
+    hullBurstKind = 'saucer_horizon'; hullBurstRank = 1;
+    lootMagnetRange = Math.max(lootMagnetRange, 300);
+  }
+
+  return {
+    hull: hullMax, hullMax,
+    armorHp: 0, armorMax: 0, armorFlat: 0,
+    shield: shieldMax, shieldMax,
+    shieldRegenRate, shieldRegenDelay: 3,
+    cap: capMax, capMax, capRegen,
+    thrust: legacyThrust, turnRate: legacyTurnRate, maxSpeed: legacyMaxSpeed, drag,
+    bankFactor,
+    flightClass,
+    flightModel,
+    propulsion,
+    dryMass, cargoMass, operationalMass: totalMass,
+    operationalFeelMass: feelMass,
+    // PQ-176.00: the hull's drive rating and how much of its authored acceleration this fit keeps.
+    // The fit screen reads these to say, in words, what loading the ship costs you.
+    designMass: propulsion.designMass,
+    massLoadFactor: propulsion.massLoadFactor,
+    mass: totalMass, radius: shipDef.collisionRadius || 14,
+    tetherSpoolMult, tetherReelRateMult, masslineHeadId, masslineLoadCapacityMult, magnetRange,
+    lineHeadId,
+    lootMagnetRange, swingDrive, towFlail, phaseBlink, hullBurstKind, hullBurstRank,
+    weaponRangePct,
+    weaponDmgPct,
+    weaponHeatDissipPct,
+    radarRangePct,
+    weaponRangeMult,
+    weaponDmgMult,
+    weaponHeatDissipMult,
+    radarRangeMult,
+    radarRange,
+    jumpDriveTier: `jump_t${jumpDriveTier}`,
+    hullRepairOOC,
+    droneBayCount,
+    cargoCap,
+    maxWeaponRange,
+    controlWeaponCount,
+    chaffCount,
+    ecmCount,
+    miningSlotsFilled,
+    miningSlotsTotal,
+    boost: {
+      max: bdef.max || 0,
+      drainRate: bdef.drainRate || 40,
+      regenRate: boostRegen,
+      dashImpulse: bdef.dashImpulse || 0,
+      dashCooldown: bdef.dashCooldown || 3,
+      // FB-054 afterburner envelope (zero without a fitted burner): topSpeedPct scales the boost
+      // speed cap while a burn runs, burnDurS bounds one burn, burnCdS gates the next light.
+      topSpeedPct: boostTopSpeedPct,
+      burnDurS: boostDurS,
+      burnCdS: boostCdS,
+    },
+    // informational extras (read by combat/ui; not part of the flat copy)
+    continuousDrain, damageReductionMult, hiddenCargoPct, scannerCloak, ramDamageDealtMult,
+    // M5 role lattice identity (recomputed; not serialized)
+    roleIdentity,
+    roleBiases: biases,
+  };
+}
+
+/** Public lattice read for UI/tests — ships remains derived-stat authority. */
+export function getShipRoleIdentity(defId) {
+  return describeHullRole(defId);
+}
+
+/** Resolve equipped weapon modules into the data.weapons[] runtime list (§ shared shape). */
+export function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null) {
+  const { slots, equipped } = resolveFittings(shipDef, fittings);
+  const weapons = [];
+  for (let i = 0; i < equipped.length; i++) {
+    const d = equipped[i];
+    if (!d || d.slotType !== 'weapon') continue;
+    // An illegal mount (a launcher on a turret ring in a save older than the mount law) fires
+    // nothing, the same way it already counts for nothing in getDerivedStats; save:loaded moves it
+    // to inventory with its sentence.
+    if (!fits(slots[i], d)) continue;
+    weapons.push(makeWeaponRuntime(d, slots[i], i, isPlayer, derivedStats));
+  }
+  // Alien emitters are part of the ship, not inventory. Empty mounts recover their emitter
+  // on construction, refit, ship switch and old-save load, without minting sellable copies.
+  if (isPlayer && shipDef.id === SAUCER_ID) {
+    let ordinal = 0;
+    for (const slot of slots) {
+      if (slot.type !== 'weapon') continue;
+      const def = WEAPON_BY_ID.get(SAUCER_WEAPON_SLOTS[ordinal++]);
+      if (!def || weapons.some(w => w.slotIndex === slot.index)) continue;
+      const weapon = makeWeaponRuntime(def, { ...slot, facing: 'turret' }, slot.index, true, derivedStats);
+      weapon.intrinsic = true;
+      weapons.push(weapon);
+    }
+    return weapons.sort((a, b) => a.slotIndex - b.slotIndex);
+  }
+  // Legacy player saves before the explicit NEW_GAME weapon may still have no weapon fitted. Prefer
+  // a front-facing slot so the fallback starter gun never fires backward or as an unturreted mount.
+  if (weapons.length === 0 && isPlayer) {
+    const wslot = slots.find((s) => s.type === 'weapon' && (s.facing === 'front' || !s.facing))
+               || slots.find((s) => s.type === 'weapon');
+    const w = WEAPON_BY_ID.get(STARTER_WEAPON_ID);
+    if (wslot && w) weapons.push(makeWeaponRuntime(w, wslot, wslot.index, isPlayer, derivedStats));
+  }
+  return weapons;
+}
+
+function makeWeaponRuntime(def, slot, slotIndex, isPlayer = false, derivedStats = null) {
+  // Hardpoint facing (Phase 2): turret/gimbal tracking determines how a gun acquires its aim.
+  const tracking = def.tracking || 'fixed';
+  const facing = (slot && slot.facing) || 'front';
+  const facingAngle = FACING_ANGLE[facing] != null ? FACING_ANGLE[facing] : 0;
+  const turretArc = def.turretArcDeg ? def.turretArcDeg * Math.PI / 180 : 0;
+  // turret mounts track freely within their arc; fixed mounts gimbal-assist within GIMBAL_ARC;
+  // homing weapons lock a target and steer in flight (no gimbal — they fire toward the target).
+  const isTurret = facing === 'turret' || tracking === 'auto_turret';
+  const isHoming = tracking === 'homing';
+  const gimbalArc = isTurret ? (turretArc || Math.PI)
+    : (isHoming ? Math.PI : (isPlayer ? PLAYER_GIMBAL_ARC : GIMBAL_ARC_DEFAULT));
+  const muzzleOffset = FACING_OFFSET[facing] || FACING_OFFSET.front;
+  // PQ-176.02: an aimed gun on a turret ring aims itself and pays the ring's output margin.
+  const mountClass = mountClassOf(def);
+  const hardpointClass = hardpointClassOf(slot) || 'fixed';
+  const mountOutput = mountOutputFactor(def, slot);
+  const fitDmgMult = Number(derivedStats && derivedStats.weaponDmgMult);
+  const dmgMult = (Number.isFinite(fitDmgMult) && fitDmgMult > 0 ? fitDmgMult : 1) * mountOutput;
+  return {
+    slotIndex, defId: def.id, name: def.name, facing, facingAngle, gimbalArc, muzzleOffset,
+    mountClass, hardpointClass, mountOutput,
+    dmg: scaleWeaponRuntimeStat(def.dmg, dmgMult), rof: def.rof, energyCost: def.energyCost,
+    ...(def.splashDmg != null ? {
+      splashDmg: scaleWeaponRuntimeStat(def.splashDmg, dmgMult),
+    } : {}),
+    // Knock pays the mount margin (not the fit's damage multiplier — fire control is a damage stat).
+    ...(mountOutput !== 1 && Number.isFinite(Number(def.impulsePerHit)) ? {
+      impulsePerHit: scaleWeaponRuntimeStat(def.impulsePerHit, mountOutput),
+    } : {}),
+    ...(mountOutput !== 1 && Number.isFinite(Number(def.tumbleTorque)) ? {
+      tumbleTorque: scaleWeaponRuntimeStat(def.tumbleTorque, mountOutput),
+    } : {}),
+    heat: def.heatPerShot || def.heatPerSec || 0, heatMax: def.heatMax || 100,
+    heatDissip: scaleWeaponRuntimeStat(def.heatDissip, derivedStats && derivedStats.weaponHeatDissipMult),
+    projSpeed: def.projSpeed, range: scaleWeaponRuntimeStat(def.range, derivedStats && derivedStats.weaponRangeMult), spread: def.spreadDeg || 0,
+    tracking, lockTimeS: def.lockTimeS || 0,
+    damageType: def.damageType, arc: turretArc ? { turret: turretArc } : (gimbalArc ? { gimbal: gimbalArc } : 'fixed'),
+    _cooldown: 0, _heat: 0,
+  };
+}
+
+/** Place each default-fitted module/weapon defId into its first compatible empty slot. */
+export function fittingsFromDefaultModules(defId, moduleIds) {
+  const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
+  const slots = buildSlotList(shipDef);
+  const fittings = new Array(slots.length).fill(null);
+  for (const mid of moduleIds || []) {
+    const def = defById(mid);
+    if (!def) continue;
+    const idx = slots.findIndex((s, i) => fittings[i] == null && fits(s, def));
+    if (idx >= 0) fittings[idx] = mid;
+  }
+  return fittings;
+}
+
+function validRareOreChance(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+/** Resolve the equipped mining laser into data.miningBeam, defaulting the player Kestrel to mk1. */
+function buildMiningBeam(shipDef, fittings, isPlayer) {
+  const { slots, equipped } = resolveFittings(shipDef, fittings);
+  let mod = null;
+  for (let i = 0; i < equipped.length; i++) {
+    const d = equipped[i];
+    if (d && d.slotType === 'mining' && fits(slots[i], d)) { mod = d; break; }
+  }
+  let beam = null;
+  if (mod) {
+    // map the mining module's dps onto the canonical beam tier table (§0.11)
+    beam = BEAMS.find((b) => b.dps === mod.dps) || null;
+    return {
+      tierId: beam ? beam.id : DEFAULT_MINING_BEAM_TIER,
+      dps: mod.dps, range: mod.range, directToCargo: !!mod.directToCargo,
+      ...(validRareOreChance(mod.rareOreChance) ? { rareOreChance: mod.rareOreChance } : {}),
+    };
+  }
+  if (isPlayer) {
+    const b = BEAM_BY_ID.get(DEFAULT_MINING_BEAM_TIER);
+    return {
+      tierId: DEFAULT_MINING_BEAM_TIER,
+      dps: b.dps, range: b.range, directToCargo: false,
+    };
+  }
+  return null;
+}
+
+/**
+ * makeShipEntitySpec(defId, opts) -> a spawnEntity spec (type:'ship') with the derived stat fields
+ * copied onto the top level AND a full data block per the shared shape (§3.4.1).
+ */
+export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], appearance = null, livingHull = null, isPlayer = false, player = null, pos = null, rot = 0, ai = null } = {}) {
+  const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
+  const derived = getDerivedStats(shipDef.id, fittings, player);
+  const weapons = buildWeaponList(shipDef, fittings, isPlayer, derived || null);
+  const miningBeam = buildMiningBeam(shipDef, fittings, isPlayer);
+
+  return {
+    type: 'ship', factionId, team, isPlayer: !!isPlayer,
+    pos: pos || { x: 0, z: 0 }, rot,
+    radius: derived.radius, mass: derived.mass,
+    flightClass: derived.flightClass, flightModel: derived.flightModel,
+    propulsion: derived.propulsion,
+    // flat health/energy/flight fields (flight + physics read these directly) — §shared shape
+    hull: derived.hull, hullMax: derived.hullMax,
+    armorHp: derived.armorHp, armorMax: derived.armorMax, armorFlat: derived.armorFlat,
+    shield: derived.shield, shieldMax: derived.shieldMax,
+    shieldRegenRate: derived.shieldRegenRate, shieldRegenDelay: derived.shieldRegenDelay,
+    cap: derived.cap, capMax: derived.capMax, capRegen: derived.capRegen,
+    thrust: derived.thrust, turnRate: derived.turnRate, maxSpeed: derived.maxSpeed, drag: derived.drag,
+    // Phase 3 boost/dash runtime: energy starts full; dashCdT is the current cooldown countdown.
+    boost: {
+      energy: derived.boost.max, max: derived.boost.max,
+      drainRate: derived.boost.drainRate, regenRate: derived.boost.regenRate,
+      dashImpulse: derived.boost.dashImpulse, dashCd: derived.boost.dashCooldown, dashCdT: 0,
+      topSpeedPct: derived.boost.topSpeedPct,
+      burnDurS: derived.boost.burnDurS, burnCdS: derived.boost.burnCdS,
+    },
+    data: {
+      defId: shipDef.id,
+      derived,
+      weapons,
+      miningBeam,
+      // Effective loadout (defId | null, parallel to buildSlotList order) for the render track to
+      // read tier + place visible props. Current starter weapons are explicit fittings; legacy
+      // fallback weapons are still backfilled here so old saves show the barrel they can fire.
+      fittings: fittingsForView(shipDef, fittings, weapons),
+      appearance: appearance ? normalizeShipAppearance(appearance, shipDef.id) : null,
+      livingHull: isPlayer ? normalizeLivingHull(livingHull, 0) : null,
+      combat: { targetId: null, lockTarget: null, lockProgress: 0 },
+      intent: null,
+      ai,
+      factionId, team,
+      lootTableId: null, bountyCr: 0,
+    },
+  };
+}
+
+// Same physical hull/armor values used by a parked Shipjack body. The owned hull record carries
+// these while it has no live entity; repair remains on the live hull and is captured on departure.
+function parkedHullCondition(entity) {
+  if (!entity || !Number.isFinite(entity.hull)) return null;
+  const out = { hull: entity.hull };
+  if (Number.isFinite(entity.armorHp)) out.armorHp = entity.armorHp;
+  if (Number.isFinite(entity.armorMax)) out.armorMax = entity.armorMax;
+  return out;
+}
+
+function restoreParkedHullCondition(entity, condition) {
+  if (!entity || !condition) return;
+  if (Number.isFinite(condition.hull)) entity.hull = Math.max(0, Math.min(entity.hullMax, condition.hull));
+  if (Number.isFinite(condition.armorMax)) entity.armorMax = condition.armorMax;
+  if (Number.isFinite(condition.armorHp)) entity.armorHp = Math.max(0, Math.min(entity.armorMax, condition.armorHp));
+}
+
+// ---- the system singleton ------------------------------------------------------------------
+
+export const ships = {
+  name: 'ships',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers;
+    this._registry = ctx.registry || null;
+    this._cargoMassRefreshPending = false;
+    this._lastScarByCause = { weapon: null, slam: null };
+    const bus = this.bus;
+    bus.on('game:new', () => {
+      if (this.state.player) delete this.state.player.shipControlTransfers;
+      if (this.state.player) delete this.state.player.moduleSales;
+    });
+
+    // re-derive on fit/research changes coming from other systems
+    bus.on('module:equipped', ({ shipId }) => this.recomputeEntity(shipId));
+    bus.on('module:unequipped', ({ shipId }) => this.recomputeEntity(shipId));
+    // Canonical grant intent: career ladders, keepsakes, and mission rewards route module grants
+    // through the ships-owned inventory authority. Callers own idempotent reward receipts.
+    bus.on('ships:grantModule', (p) => this.grantModule({
+      defId: p && p.defId,
+      reason: (p && p.reason) || 'reward',
+    }));
+    bus.on('tech:researched', () => this.recomputeActiveShip());
+    bus.on('cargo:changed', () => { this._cargoMassRefreshPending = true; });
+    bus.on('cargo:massSettled', () => this.flushCargoMassRefresh());
+    bus.on('save:loaded', () => {
+      this._reconcileRamPlateHistories();
+      this.reconcileIllegalFittings();
+      this.flushCargoMassRefresh();
+      this._resetScarAdmission();
+      this.reconcileLivingHull({ announce: true });
+      // Role identity is derived from the restored active hull. Publish once per Continue so the
+      // presentation adapter can surface a one-time briefing without serializing lattice copy.
+      this.publishActiveRoleContext({ source: 'save_loaded', announce: true });
+    });
+
+    // UI intent events (§4.4): the UI emits these; ships owns the mutation + credit emits. The
+    // adapter validates the physical berth, while direct methods remain available to internal
+    // crafting/reward/sandbox owners that do not originate at a station screen.
+    const withShipworksAccess = (capability, action, onRefuse = null) => (payload) => {
+      const access = shipworksStationAccess(this.state);
+      if (!access[capability]) {
+        this.bus.emit('toast', {
+          text: access[capability + 'Reason'],
+          kind: 'error',
+          ttl: 3,
+        });
+        if (onRefuse) onRefuse(payload || {});
+        return false;
+      }
+      return action(payload || {});
+    };
+    // FB-062 — yard exclusives are enforced at the counter: a hull another yard builds alone is
+    // absent here even when researched. Direct buyShip callers (rewards, crafting, sandbox) keep
+    // their unconditional path, the same way they already bypass the dock gate.
+    bus.on('ui:buyShip', withShipworksAccess('hull', (p) => {
+      // Shipworks is a paid capability surface. The UI packet is deliberately narrower than
+      // buyShip's internal grant API: rewards, drafts, and sandbox setup may grant a hull, but a
+      // station click can only name a real, priced catalog hull. Do not forward control flags from
+      // an untrusted DOM/event payload.
+      const defId = p && p.defId;
+      // A used purchase names the quoted lot. A stale lot must never become a stock purchase.
+      if (p.listingId != null) {
+        const listing = shipyardPurchaseQuote(this.state, defId).usedHull;
+        if (listing && listing.listingId === p.listingId) return this.buyImpound(listing);
+        this.bus.emit('toast', { text: 'That used hull is no longer on this lot.', kind: 'error', ttl: 3 });
+        return false;
+      }
+      const def = SHIP_BY_ID.get(defId);
+      const stationId = dockedShopStationId(this.state);
+      const offer = stationShopOffer(def, stationId);
+      const price = offer ? offer.price : (def && def.price);
+      if (!def || !Number.isFinite(Number(price)) || Number(price) <= 0) {
+        this.bus.emit('toast', {
+          text: def ? 'That hull is not a paid Shipworks option.' : 'Unknown ship',
+          kind: 'error',
+          ttl: 3,
+        });
+        return false;
+      }
+      const exclusiveAt = hullExclusiveStationId(def);
+      if (exclusiveAt && exclusiveAt !== stationId) {
+        this.bus.emit('toast', {
+          text: `${def.name} is only on the ways at ${shopStationName(exclusiveAt)}.`,
+          kind: 'error',
+          ttl: 4,
+        });
+        return false;
+      }
+      return this.buyShip({ defId });
+    }));
+    bus.on('ui:setActiveShip', withShipworksAccess('hull', (p) => this.setActiveShip(p && p.index)));
+    bus.on('ui:buyModule', withShipworksAccess('outfit', (p) => this.buyModule(p)));
+    bus.on('ui:sellModule', (p) => this.sellModule({ instanceId: p?.instanceId, quote: p?.quote, operationId: p?.operationId }));
+    bus.on('ui:fitModule', withShipworksAccess('outfit', (p) => {
+      // Inventory identity is the only UI fitting authority. A catalog defId is intentionally
+      // ignored here: fitModule's defId-only form is reserved for internal draft/reward paths
+      // and would mint a fresh copy from a forged station intent.
+      const shipIndex = p && p.shipIndex;
+      const slotIndex = p && p.slotIndex;
+      const instanceId = p && typeof p.instanceId === 'string' && p.instanceId ? p.instanceId : null;
+      return this.fitModule({ shipIndex, slotIndex, instanceId, operationId: p.operationId });
+    }, (p) => {
+      if (p.operationId) this.bus.emit('module:fitRefused', {
+        shipIndex: p.shipIndex, slotIndex: p.slotIndex, instanceId: p.instanceId,
+        operationId: p.operationId, reason: 'station_unavailable',
+      });
+    }));
+    bus.on('ui:unfitModule', withShipworksAccess('outfit', (p) => this.unfitModule(p), (p) => {
+      if (p.operationId) this.bus.emit('module:fitRefused', {
+        shipIndex: p.shipIndex, slotIndex: p.slotIndex, operationId: p.operationId, reason: 'station_unavailable',
+      });
+    }));
+    // Saving a preset snapshots the CURRENT fit — it mutates only the preset store, not the
+    // ship, so it needs no station service and works on the flight host too (J13 packet).
+    // Apply and delete DO change the fit / preset ownership: they stay behind the outfit gate.
+    bus.on('ui:saveLoadoutPreset', (p) => this.saveLoadoutPreset(p));
+    bus.on('ui:applyLoadoutPreset', withShipworksAccess('outfit', (p) => this.applyLoadoutPreset(p)));
+    bus.on('ui:deleteLoadoutPreset', withShipworksAccess('outfit', (p) => this.deleteLoadoutPreset(p)));
+    bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
+    bus.on('ui:setShipAppearance', (p) => this.setShipAppearance(p || {}));
+    // FB-057 — the owner names a hull. Ungated like appearance/preset writes: the record is
+    // ship metadata, not a yard service; ships owns the write, the UI only emits the intent.
+    bus.on('ui:setShipName', (p) => this.setShipName(p || {}));
+    // Canonical gameplay receipts feed a small per-owned-ship history record. Presentation gets a
+    // rare in-place update event; none of these events requests a ship rebuild or asset admission.
+    bus.on('lossLedger:recorded', (p) => {
+      if (p && p.kind === 'ship' && p.killedByPlayer === true) {
+        this._reduceLivingHull((hull, now) => livingHullWithKill(hull, now), 'player_kill');
+        // The same durable receipt also attaches the act to THIS hull. `renown` is a new field on
+        // the living-hull record; it is not faction standing and never touches it — factions.js
+        // remains the sole writer of reputation.
+        this._reduceLivingHull((hull, now) => livingHullWithRenown(hull, {
+          id: `kill:${p.lossId || p.assetId || now}`,
+          act: 'kill',
+          factionId: p.factionId || null,
+          sectorId: p.sectorId || null,
+          atT: Number(p.t) || now,
+          tick: this.state.tick,
+        }, now), 'witnessed_kill');
+      }
+    });
+    // PQ-142.01 ship history. Scars come from the impact receipts the player hull actually takes —
+    // never from a paint shop. `combat:damage` is the shot that reached hull; `physics:impact` is
+    // the contact. Both guards are the FIRST statement so the quiet path allocates nothing.
+    bus.on('combat:damage', (p) => {
+      if (!p || p.isPlayer !== true || !(Number(p.hullDamage) > 0)) return;
+      this._recordHullScar(scarFromPlayerDamage(p, this.activeShipEntity(), this.state.tick));
+    });
+    bus.on('physics:impact', (p) => {
+      if (!p || p.playerInvolved !== true) return;
+      this._recordContactScar(p);
+    });
+    // AL-LG-11 — a committed, player-caused ram is the only mint evidence for the Scarred Ram
+    // Plate. The receipt's own provenance says who hit whom and how; raw contact notices,
+    // incoming collisions, rope/weapon causes, friendly or dead outcomes count nothing.
+    bus.on('combat:collisionConsequence', (p) => this._recordRamPlateHistory(p));
+    bus.on('service:completed', (p) => {
+      if (!p) return;
+      if (p.type === 'repair') {
+        this._reduceLivingHull((hull, now) => livingHullWithRepair(hull, p, now), 'heavy_repair');
+        // Any yard repair that put hull or armour back covers the open marks. The scar is not
+        // deleted: a patched scar is the record of "repaired here", which is what makes the hull
+        // read as worked-on rather than new.
+        if (finiteAmount(p.restoredHull) + finiteAmount(p.restoredArmor) > 0) {
+          this._reduceLivingHull((hull, now) => livingHullWithPatchedScars(hull, now), 'scars_patched');
+        }
+      } else if (p.type === 'hull_wash') {
+        this._reduceLivingHull((hull, now) => livingHullAfterWash(hull, now), 'hull_wash');
+      }
+    });
+    bus.on('weapons:vent', (p) => {
+      if (p && p.phase === 'start' && p.ownerId === this.state.playerId) {
+        this._reduceLivingHull((hull, now) => livingHullWithVent(hull, now), 'weapon_vent');
+      }
+    });
+    bus.on('graffiti:show', (p) => {
+      if (p && p.where === 'bulkhead' && p.line) {
+        this._reduceLivingHull((hull, now) => livingHullWithGraffiti(hull, p, now), 'bulkhead_graffiti');
+      }
+    });
+    // PULSE-HISTORY — keepsakes and the earned decal arrive as intents from historyWear; the hull
+    // record and the appearance stay single-writer here. A keepsake id is the dedupe key, so a
+    // replayed dock batch grants nothing twice; the decal only repaints when the record argues
+    // for a different tag than the hull already wears.
+    bus.on('history:trinket', (p) => {
+      if (!p || !p.id || !p.label) return;
+      this._reduceLivingHull((hull, now) => livingHullWithTrinket(hull, p, now), 'deed_trinket');
+    });
+    bus.on('history:decal', (p) => {
+      const decalId = p && String(p.decalId || '');
+      if (!decalId || !SHIP_DECAL_SET.has(decalId)) return;
+      const owned = this.ownedShip(null);
+      const current = owned && owned.appearance ? owned.appearance.decalId : 'none';
+      if (current === decalId) return;
+      this.setShipAppearance({
+        appearance: { ...(owned && owned.appearance ? owned.appearance : {}), decalId },
+      });
+    });
+    bus.on('game:started', () => {
+      this._resetScarAdmission();
+      this._reconcileRamPlateHistories();
+      this.reconcileLivingHull({ announce: false });
+    });
+    bus.on('run:loadoutReady', () => {
+      if (this.state.run?.kind !== 'survival') return;
+      // Arena survival uses the hull's authored shield, with the same fitting bonuses.
+      // Adventure's generous recovery assist would erase the first packs' entire damage.
+      this.state.player.combatProfile = 'crucible';
+      this.recomputeEntity(this.state.playerId);
+    });
+  },
+
+  // Event-only system. Cargo owns the registered per-tick coalescing boundary and emits one
+  // cargo:massSettled receipt after all synchronous mutations in its update.
+  update(/* dt, state */) {},
+
+  // ---- helpers ----------------------------------------------------------------------------
+
+  /** The entity currently flown by the player (the active owned ship). */
+  activeShipEntity() {
+    const e = this.state.entities.get(this.state.playerId);
+    return e && e.alive ? e : null;
+  },
+  ownedShip(index) {
+    const p = this.state.player;
+    const i = (index == null) ? p.activeShipIndex : index;
+    return p.ownedShips[i] || null;
+  },
+
+  /** PQ-176.02: a fitting the mount law now refuses (a launcher on a turret ring in an older save)
+   *  moves to inventory with its refusal sentence, so no hull carries a weapon that fires nothing. */
+  reconcileIllegalFittings() {
+    const p = this.state && this.state.player;
+    if (!p || !Array.isArray(p.ownedShips)) return 0;
+    let moved = 0;
+    p.ownedShips.forEach((owned, shipIndex) => {
+      const shipDef = owned && SHIP_BY_ID.get(owned.defId);
+      if (!shipDef || !Array.isArray(owned.fittings)) return;
+      const slots = buildSlotList(shipDef);
+      let movedHere = 0;
+      owned.fittings.forEach((defId, slotIndex) => {
+        if (!defId) return;
+        const def = defById(defId);
+        const slot = slots[slotIndex];
+        if (!def || !slot || fits(slot, def)) return;
+        const inst = this._takeFittedInstance(owned, slotIndex);
+        owned.fittings[slotIndex] = null;
+        if (!Array.isArray(p.moduleInventory)) p.moduleInventory = [];
+        p.moduleInventory.push(inst ? { ...inst } : { instanceId: this.nextInstanceId(), defId });
+        movedHere += 1;
+        this.bus.emit('toast', {
+          text: (fitRefusalText(slot, def) || def.name + ' does not fit this slot') + ' It is in your inventory.',
+          kind: 'warn',
+          ttl: 6,
+        });
+        this.bus.emit('module:unequipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });
+      });
+      if (movedHere) {
+        moved += movedHere;
+        this.recomputeIfActive(shipIndex, owned.fittings);
+      }
+    });
+    return moved;
+  },
+
+  reconcileLivingHull({ announce = false } = {}) {
+    const player = this.state && this.state.player;
+    if (!player || !Array.isArray(player.ownedShips)) return null;
+    const now = Number(this.state.simTime) || 0;
+    for (const owned of player.ownedShips) {
+      if (owned) owned.livingHull = normalizeLivingHull(owned.livingHull, now);
+    }
+    const owned = this.ownedShip();
+    const entity = this.activeShipEntity();
+    if (!owned) return null;
+    if (entity && entity.data) entity.data.livingHull = owned.livingHull;
+    if (announce && entity) {
+      this.bus.emit('ship:livingHullChanged', {
+        id: entity.id,
+        shipIndex: player.activeShipIndex,
+        defId: owned.defId,
+        source: 'reconciled',
+        livingHull: owned.livingHull,
+      });
+    }
+    return owned.livingHull;
+  },
+
+  /**
+   * PQ-142.01 — admit one derived scar onto the active hull. The admission gate lives in
+   * src/combat/hullScars.js so a sustained firefight leaves a history, not a log; the record
+   * itself is bounded at LIVING_HULL_SCAR_MAX by the reducer.
+   */
+  _recordHullScar(scar) {
+    if (!scar) return false;
+    if (!this._lastScarByCause) this._lastScarByCause = { weapon: null, slam: null };
+    if (!shouldAdmitScar(this._lastScarByCause[scar.cause] || null, scar)) return false;
+    const changed = this._reduceLivingHull(
+      (hull, now) => livingHullWithScar(hull, { ...scar, atT: now }, now),
+      scar.cause === 'slam' ? 'hull_slam' : 'hull_hit',
+    );
+    if (changed) this._lastScarByCause[scar.cause] = scar;
+    return changed;
+  },
+
+  _recordContactScar(payload) {
+    const state = this.state;
+    const player = this.activeShipEntity();
+    if (!player) return false;
+    const otherId = payload.aId === player.id ? payload.bId : payload.aId;
+    const other = otherId == null ? null : state.entities && state.entities.get(otherId);
+    return this._recordHullScar(scarFromPlayerContact(payload, player, other, state.tick));
+  },
+
+  /** Transient admission memory only — the durable marks live in the saved hull record. */
+  _resetScarAdmission() {
+    this._lastScarByCause = { weapon: null, slam: null };
+  },
+
+  /**
+   * AL-LG-11 — consume one committed `combat:collisionConsequence` receipt. Only a player-caused,
+   * damaging hit on a hostile ship counts, and only inside a bounded tick window so the deferred
+   * end-of-step contact sweep still credits (it arrives with the tick it happened). Each admitted
+   * ram is one `<tick>:<targetId>` key — deeds, not victims — so a replayed receipt is the same
+   * ram, and the record stops at three. Store extracted scalars only; never retain stuntEvidence.
+   */
+  _recordRamPlateHistory(receipt) {
+    const state = this.state;
+    if (!state || state.mode !== 'flight' || !receipt || typeof receipt !== 'object') return false;
+    const playerId = state.playerId;
+    const tick = receipt.tick;
+    if (!Number.isInteger(tick) || tick < 0) return false;
+    const stateTick = Number.isInteger(state.tick) ? state.tick : 0;
+    if (stateTick - tick < 0 || stateTick - tick > RAM_PLATE_RECEIPT_TICK_WINDOW) return false;
+    if (receipt.otherId !== playerId) return false;
+    const targetId = receipt.targetId;
+    if (targetId == null || targetId === playerId) return false;
+    if (receipt.targetType !== 'ship' || receipt.targetHostile !== true) return false;
+    if (receipt.damageApplied !== true) return false;
+    if (!(Number.isFinite(receipt.impactDamage) && receipt.impactDamage > 0)) return false;
+    const provenance = receipt.provenance;
+    if (!provenance || provenance.actorId !== playerId || !RAM_PLATE_PROVENANCE_TAGS.has(provenance.tag)) return false;
+    const owned = this.ownedShip();
+    if (!owned || !this.activeShipEntity()) return false;
+
+    const key = `${tick}:${targetId}`;
+    const history = normalizeRamPlateHistory(owned.ramPlateHistory)
+      || { version: RAM_PLATE_HISTORY_VERSION, hits: [] };
+    if (history.hits.includes(key) || history.hits.length >= RAM_PLATE_HISTORY_HIT_MAX) return false;
+    history.hits.push(key);
+    owned.ramPlateHistory = history;
+
+    // The same act also lives on the hull's durable renown sheet — the ledger reads it there,
+    // and the existing ship:livingHullChanged event publishes progress.
+    this._reduceLivingHull((hull, now) => livingHullWithRenown(hull, {
+      id: `ram:${key}`,
+      act: 'ram',
+      atT: now,
+      tick,
+    }, now), 'hull_ram');
+
+    if (history.hits.length === RAM_PLATE_HISTORY_HIT_MAX && !history.rewardInstanceId) {
+      this._awardScarredRamPlate(owned);
+    }
+    return true;
+  },
+
+  /**
+   * Mint the ONE bound plate at the third admitted ram. The record's rewardInstanceId is set
+   * before any receipt publishes, so a listener can never observe the earned state without the
+   * binding. A hull whose history already names a reward never mints again — unfit, transferred,
+   * sold or reloaded, the keepsake fate is a souvenir, not a second plate.
+   */
+  _awardScarredRamPlate(owned) {
+    const p = this.state && this.state.player;
+    const history = owned && normalizeRamPlateHistory(owned.ramPlateHistory);
+    if (!p || !Array.isArray(p.moduleInventory) || !history || history.rewardInstanceId) return false;
+    const seed = Number(this.state.meta && this.state.meta.seed);
+    const shipIndex = Math.max(0, (p.ownedShips || []).indexOf(owned));
+    const name = hullNameForOwnedShip(owned, shipIndex, Number.isFinite(seed) ? seed : 0);
+    // Two hulls can resolve to the same spoken name (two owner-named twins): the keepsake label
+    // carries the berth so Shipworks' hold rows and the instance identity text stay distinct.
+    const nameCollision = (p.ownedShips || []).filter((other, otherIndex) => other
+      && hullNameForOwnedShip(other, otherIndex, Number.isFinite(seed) ? seed : 0) === name).length > 1;
+    const label = `Three rams aboard ${name}` + (nameCollision ? ` · berth ${shipIndex + 1}` : '');
+    const item = {
+      instanceId: this.nextInstanceId(),
+      defId: SCARRED_RAM_PLATE_DEF_ID,
+      condition: 'scarred',
+      provenance: { label, source: 'hull_ram_history' },
+    };
+    p.moduleInventory.push(item);
+    history.rewardInstanceId = item.instanceId;
+    owned.ramPlateHistory = history;
+    this.bus.emit('module:granted', { defId: item.defId, instanceId: item.instanceId, reason: 'hull_ram_history' });
+    this.bus.emit('toast', { text: RAM_PLATE_EARNED_TOAST, kind: 'success', ttl: 6 });
+    return true;
+  },
+
+  /**
+   * The shared ownership predicate. Def-level (`instanceId` omitted): this hull earned a plate at
+   * all — the fitting blocker and preset stock-count ask that question. Instance-level: THIS
+   * instance is the bound keepsake — `fitModule`, preset take and restored-fitting reconciliation
+   * all require the exact identity match, so a twin's plate and a keepsake souvenir both fail.
+   */
+  _scarredRamPlateEligible(owned, instanceId = null) {
+    const history = normalizeRamPlateHistory(owned && owned.ramPlateHistory);
+    if (!history || history.hits.length < RAM_PLATE_HISTORY_HIT_MAX || !history.rewardInstanceId) return false;
+    return instanceId == null || instanceId === history.rewardInstanceId;
+  },
+
+  /**
+   * save:loaded / game:started — normalize every owned hull's ram record (malformed drops whole,
+   * absent stays absent, restoration never awards), then move an illegally fitted scarred
+   * instance back to the hold with its exact identity — never deleted, never a fresh mint.
+   */
+  _reconcileRamPlateHistories() {
+    const p = this.state && this.state.player;
+    if (!p || !Array.isArray(p.ownedShips)) return 0;
+    let moved = 0;
+    for (const owned of p.ownedShips) {
+      if (!owned || typeof owned !== 'object') continue;
+      if (Object.hasOwn(owned, 'ramPlateHistory')) {
+        const normalized = normalizeRamPlateHistory(owned.ramPlateHistory);
+        if (normalized) owned.ramPlateHistory = normalized;
+        else delete owned.ramPlateHistory;
+      }
+      if (!Array.isArray(owned.fittings)) continue;
+      let movedHere = 0;
+      for (let slotIndex = 0; slotIndex < owned.fittings.length; slotIndex += 1) {
+        if (owned.fittings[slotIndex] !== SCARRED_RAM_PLATE_DEF_ID) continue;
+        const inst = owned.fittedInstances && owned.fittedInstances[slotIndex];
+        if (this._scarredRamPlateEligible(owned, inst && inst.instanceId)) continue;
+        const taken = this._takeFittedInstance(owned, slotIndex);
+        owned.fittings[slotIndex] = null;
+        if (!Array.isArray(p.moduleInventory)) p.moduleInventory = [];
+        p.moduleInventory.push(taken ? { ...taken } : { instanceId: this.nextInstanceId(), defId: SCARRED_RAM_PLATE_DEF_ID });
+        moved += 1;
+        movedHere += 1;
+      }
+      if (movedHere) this.recomputeIfActive(p.ownedShips.indexOf(owned), owned.fittings);
+    }
+    return moved;
+  },
+
+  _reduceLivingHull(reducer, source) {
+    const owned = this.ownedShip();
+    if (!owned || typeof reducer !== 'function') return false;
+    const now = Number(this.state.simTime) || 0;
+    const before = normalizeLivingHull(owned.livingHull, now);
+    const after = normalizeLivingHull(reducer(before, now), now);
+    if (sameLivingHull(before, after)) return false;
+    owned.livingHull = after;
+    const entity = this.activeShipEntity();
+    if (entity && entity.data) entity.data.livingHull = after;
+    this.bus.emit('ship:livingHullChanged', {
+      id: entity && entity.id,
+      shipIndex: this.state.player.activeShipIndex,
+      defId: owned.defId,
+      source,
+      livingHull: after,
+    });
+    return true;
+  },
+
+  /**
+   * Canonical player-facing role packet for the active owned hull. The role lattice remains the
+   * only identity source for known hulls; missing/legacy defIds fall back to best-effort catalog
+   * fields so Continue never drops the briefing seam. Packet is transient event/UI context and is
+   * never serialized onto player ownership.
+   */
+  activeRoleContext({ source = 'query', previousDefId = null } = {}) {
+    const p = this.state && this.state.player;
+    if (!p || !Array.isArray(p.ownedShips)) return null;
+    const activeShipIndex = Number.isInteger(p.activeShipIndex) ? p.activeShipIndex : 0;
+    const owned = p.ownedShips[activeShipIndex] || null;
+    if (!owned) return null;
+    const identity = describeHullRole(owned.defId) || legacyRoleIdentity(owned.defId);
+    if (!identity) return null;
+    const path = identity.rolePath || null;
+    const fallback = !!identity.fallback;
+    return Object.freeze({
+      schema: 'spaceface.shipRoleContext.v1',
+      source,
+      tick: Number(this.state.tick) || 0,
+      activeShipIndex,
+      previousDefId: previousDefId || null,
+      defId: owned.defId,
+      name: identity.name,
+      role: identity.role,
+      roleLabel: identity.roleLabel,
+      flightClass: identity.flightClass,
+      identityLine: identity.identityLine,
+      signatureVerb: path ? path.signatureVerb : (identity.signatureVerb || identity.shortWhy),
+      counterplay: path
+        ? path.counterplay
+        : (identity.counterplay || (identity.weaknesses || []).join(', ')),
+      primaryCareers: Object.freeze((identity.primaryCareers || []).slice()),
+      fallback,
+    });
+  },
+
+  /**
+   * Publish active role continuity. Visible briefing is owned by presentationAdapters via
+   * ship:roleContext — ships never touches the DOM and never emits toast from this path.
+   */
+  publishActiveRoleContext({ source = 'query', previousDefId = null, announce = false } = {}) {
+    const base = this.activeRoleContext({ source, previousDefId });
+    if (!base) return null;
+    const context = Object.freeze({
+      ...base,
+      announce: !!announce,
+    });
+    this.bus.emit('ship:roleContext', context);
+    return context;
+  },
+
+  /** Recompute derived stats for an entity from its def + fittings, copy onto the entity, and
+   *  emit ship:statsChanged + ship:cargoCapChanged (§4.4). Returns the derived block. */
+  recomputeEntity(shipId, fittings, options = {}) {
+    const e = this.state.entities.get(shipId);
+    if (!e || !e.data) return null;
+    const defId = e.data.defId;
+    const isPlayer = e.id === this.state.playerId;
+    // prefer the owned-ship fittings for the player so research/efficiency apply consistently
+    let fit = fittings;
+    if (!fit) {
+      const owned = isPlayer ? this.ownedShip() : null;
+      fit = (owned && owned.fittings) || [];
+    }
+    const player = isPlayer ? this.state.player : null;
+    const prev = e.data.derived || {};
+    const ownedForQuirk = isPlayer ? this.ownedShip() : (options.owned || null);
+    const derived = derivedForOwned(defId, fit, player, ownedForQuirk);
+
+    // preserve current hull/shield/cap fractions so a refit doesn't fully heal a damaged ship,
+    // but lift caps that grew. (Fresh spawn already starts full via getDerivedStats.)
+    const hullFrac = prev.hullMax ? clamp01(e.hull / prev.hullMax) : 1;
+    const shieldFrac = prev.shieldMax ? clamp01(e.shield / prev.shieldMax) : 1;
+    const capFrac = prev.capMax ? clamp01(e.cap / prev.capMax) : 1;
+    const armorHp = e.armorHp;
+    const armorMax = e.armorMax;
+
+    copyDerivedOntoEntity(e, derived);
+    e.hull = derived.hullMax * hullFrac;
+    e.shield = derived.shieldMax * shieldFrac;
+    e.cap = derived.capMax * capFrac;
+    // The fitting derivation does not own physical armor; preserve its existing condition.
+    if (Number.isFinite(armorMax) && Number.isFinite(armorHp)) {
+      e.armorMax = armorMax;
+      e.armorHp = Math.max(0, Math.min(armorMax, armorHp));
+    }
+
+    // refresh boost config (Phase 3) — preserve current energy fraction + cooldown timer so a
+    // refit doesn't silently refill or reset boost.
+    const boostFrac = (e.boost && e.boost.max) ? clamp01(e.boost.energy / e.boost.max) : 1;
+    const prevDashCdT = (e.boost && e.boost.dashCdT) || 0;
+    const prevBurnCdT = (e.boost && e.boost._burnCdT) || 0;
+    e.boost = {
+      energy: derived.boost.max * boostFrac,
+      max: derived.boost.max,
+      drainRate: derived.boost.drainRate, regenRate: derived.boost.regenRate,
+      dashImpulse: derived.boost.dashImpulse,
+      dashCd: derived.boost.dashCooldown, dashCdT: Math.min(prevDashCdT, derived.boost.dashCooldown),
+      topSpeedPct: derived.boost.topSpeedPct,
+      burnDurS: derived.boost.burnDurS, burnCdS: derived.boost.burnCdS,
+      // a refit may not dodge a lit afterburner's cooldown
+      _burnCdT: Math.min(prevBurnCdT, derived.boost.burnCdS),
+    };
+
+    // snapshot the appearance signature BEFORE we overwrite weapons/fittings so we can detect a
+    // visible change (hull def or loadout) and ask the render track to rebuild the mesh.
+    const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
+    const prevAppearance = e.data._appearance || '';
+    const newWeapons = buildWeaponList(shipDef, fit, isPlayer, derived || null);
+    if (ownedForQuirk?.shipjackNoLegacyWeapon && !fit.some(id => WEAPON_BY_ID.has(id))) {
+      // A physically stripped socket is empty. The pre-fitting legacy-save starter gun is
+      // compatibility, never an equipment replenishment service for captured hulls.
+      for (let i = newWeapons.length - 1; i >= 0; i -= 1) if (!newWeapons[i].intrinsic) newWeapons.splice(i, 1);
+    }
+    if (ownedForQuirk) for (const weapon of newWeapons) {
+      const instance = ownedForQuirk.fittedInstances?.[weapon.slotIndex];
+      if (instance?.defId === weapon.defId && typeof instance.condition === 'number' && Number.isFinite(instance.condition)) {
+        weapon.dmg = scaleWeaponRuntimeStat(weapon.dmg, 0.35 + 0.65 * clamp01(instance.condition));
+      }
+    }
+    // SEED-SW-13 — a rebuilt gun list comes from the catalog rate. The run's purchased
+    // levels go back on after that, or a wave-boundary recompute would wipe the feel.
+    // Only the player's guns. Another hull in the room does not inherit the receipt.
+    if (isPlayer) {
+      applySwarmWeaponLevels(newWeapons, this.state && this.state.run && this.state.run.modifiers);
+    }
+    const newViewFittings = fittingsForView(shipDef, fit, newWeapons);
+    const newAppearance = defId + '|' + newViewFittings.join(',') + '|'
+      + shipAppearanceSignature(e.data.appearance, defId);
+
+    e.data.derived = derived;
+    // The §7.1 behavior head rides data.lineHeadId — the same stamp faction carriers hold — so
+    // every head owner (player or authored NPC) reads through one seam. Only the player's equip
+    // may clear it: an authored holder with no fitted module keeps its stamped head.
+    if (isPlayer) {
+      if (derived.lineHeadId) e.data.lineHeadId = derived.lineHeadId;
+      else delete e.data.lineHeadId;
+    } else if (derived.lineHeadId) e.data.lineHeadId = derived.lineHeadId;
+    if (ownedForQuirk?.shipjackDriveRemoved) e.data.shipjackDriveRemoved = true;
+    else if (Object.hasOwn(e.data, 'shipjackDriveRemoved')) delete e.data.shipjackDriveRemoved;
+    if (isPlayer && this.state.ui) this.state.ui.radarRange = derived.radarRange;
+    e.data.weapons = newWeapons;
+    e.data.miningBeam = buildMiningBeam(shipDef, fit, isPlayer);
+    e.data.fittings = newViewFittings;
+    e.data._appearance = newAppearance;
+
+    if (!options.quiet) {
+      this.bus.emit('ship:statsChanged', { shipId: e.id, derived });
+      this.bus.emit('ship:cargoCapChanged', { shipId: e.id, cargoCap: derived.cargoCap });
+    }
+    // Appearance changed (hull swap or loadout change) → render track rebuilds the mesh so visible
+    // weapons/engines/tier reflect the current ship. Emitted only on an actual change to avoid
+    // rebuilding the mesh on every pure-stat recompute (e.g. research efficiency ticks).
+    if (!options.quiet && newAppearance !== prevAppearance) {
+      this.bus.emit('ship:appearanceChanged', { id: e.id });
+    }
+    return derived;
+  },
+
+  recomputeActiveShip() {
+    const e = this.activeShipEntity();
+    if (e) this.recomputeEntity(e.id);
+  },
+
+  // ---- tech research ----------------------------------------------------------------------
+
+  researchable(nodeId) {
+    const node = TECH_BY_ID.get(nodeId);
+    if (!node) return false;
+    const p = this.state.player;
+    if (p.researchedNodes.includes(nodeId)) return false;
+    for (const pre of node.prereqs) if (!p.researchedNodes.includes(pre)) return false;
+    if (p.credits < node.cost.credits) return false;
+    if ((p.researchPoints || 0) < node.cost.rp) return false;
+    return true;
+  },
+
+  unlockTech(nodeId, { silent = false } = {}) {
+    const node = TECH_BY_ID.get(nodeId);
+    if (!node) return false;
+    const p = this.state.player;
+    if (!this.researchable(nodeId)) {
+      // Name the blocker: a bare "Cannot research X" leaves the player guessing which of the
+      // four gates (already done, prerequisite, credits, RP) closed it.
+      const name = node.name || nodeId;
+      const missingPre = (node.prereqs || []).filter((pre) => !p.researchedNodes.includes(pre));
+      let text = 'Cannot research ' + name;
+      if (p.researchedNodes.includes(nodeId)) text = name + ' is already researched';
+      else if (missingPre.length) text = 'Research ' + missingPre.map((pre) => (TECH_BY_ID.get(pre) || {}).name || pre).join(' and ') + ' first';
+      else if (p.credits < node.cost.credits) text = 'Need ' + Math.ceil(node.cost.credits - p.credits).toLocaleString('en-US') + ' more cr to research ' + name;
+      else if ((p.researchPoints || 0) < node.cost.rp) text = 'Need ' + Math.ceil(node.cost.rp - (p.researchPoints || 0)).toLocaleString('en-US') + ' more RP to research ' + name;
+      this.bus.emit('toast', { text, kind: 'error', ttl: 3 });
+      return false;
+    }
+    // spend: credits via economy (single writer §0.6); RP is ours to deduct.
+    if (node.cost.credits) this.bus.emit('economy:chargeCredits', { amount: node.cost.credits, reason: 'research:' + nodeId });
+    p.researchPoints = Math.max(0, (p.researchPoints || 0) - (node.cost.rp || 0));
+    p.researchedNodes.push(nodeId);
+    this.applyUnlocks(node.unlocks || {});
+
+    this.bus.emit('tech:researched', { nodeId, unlocks: node.unlocks || {} });
+    if (!silent) this.bus.emit('toast', { text: 'Researched ' + (node.name || nodeId), kind: 'success', ttl: 3 });
+    this.recomputeActiveShip();
+    return true;
+  },
+
+  /** Apply a tech node's unlock effects we own: efficiencyMods + droneTierCap. (Ship/module buy
+   *  gating is read live from researchedNodes, so no flag bookkeeping needed.) */
+  applyUnlocks(unlocks) {
+    const p = this.state.player;
+    if (unlocks.efficiency) {
+      for (const k in unlocks.efficiency) {
+        // efficiency values are deltas added to the multiplier baseline of 1.0
+        p.efficiencyMods[k] = (p.efficiencyMods[k] || 1) + unlocks.efficiency[k];
+      }
+    }
+    if (typeof unlocks.droneTierCap === 'number') {
+      p.droneTierCap = Math.max(p.droneTierCap || 0, unlocks.droneTierCap);
+    }
+  },
+
+  /** A ship/module def is buyable iff it has no requiresTech, that tech is researched, or the
+   *  docked station stocks it on the shop rack. A `swarmEarned` def answers a different ledger
+   *  entirely (SWARM-06): the crossover row the player's Swarm runs wrote — research never
+   *  opens it, and the station-rack exception is the only other door. An `exclusivity` def
+   *  answers the owning faction's standing ledger: rep ≥ minRep is the whole gate, the research
+   *  tree plays no part, and no station rack bypasses it — faction yards do not stock rivals'
+   *  exclusives. The buy price still quotes through the normal standing-discount path. */
+  isUnlocked(def) {
+    if (!def || def.intrinsicHull) return false;
+    if (def.swarmEarned) {
+      return swarmCrossoverEarned(def.swarmEarned)
+        || !!stationShopOffer(def, dockedShopStationId(this.state));
+    }
+    // Row 489: a Line-head the between-run ledger has not earned is not for
+    // sale; the station rack remains the only other door, same as swarmEarned.
+    if (def.lineGate) {
+      return lineMetaEarned(def.lineGate)
+        || !!stationShopOffer(def, dockedShopStationId(this.state));
+    }
+    if (def.exclusivity && !exclusivityRepMet(def.exclusivity, this.state && this.state.factions)) {
+      return false;
+    }
+    if (!def.requiresTech) return true;
+    if (this.state.player.researchedNodes.includes(def.requiresTech)) return true;
+    return !!stationShopOffer(def, dockedShopStationId(this.state));
+  },
+
+  quoteModuleSale(request) { return quoteModuleSale(this.state, request); },
+
+  /** Consume the exact spare once, before publishing the canonical credit intent. */
+  sellModule(request = {}) {
+    const refuse = reason => {
+      this.bus.emit('toast', { text: reason, kind: 'error', ttl: 4 });
+      return { ok: false, reason };
+    };
+    const { instanceId, operationId } = request;
+    if (typeof operationId !== 'string' || !/^[A-Za-z0-9_:.\-]{1,128}$/.test(operationId)) return refuse('A unique component sale receipt is required');
+    const player = this.state.player;
+    const journal = player.moduleSales;
+    if (journal && (journal.version !== 1 || !Array.isArray(journal.receipts) || journal.receipts.length > 1024
+      || journal.receipts.some(row => !row || typeof row.operationId !== 'string' || typeof row.instanceId !== 'string'
+        || !Number.isFinite(row.amount) || row.amount < 0))) return refuse('Component sale journal is invalid');
+    const prior = journal?.receipts.find(row => row.operationId === operationId);
+    if (prior) return prior.instanceId === instanceId ? { ...prior, replayed: true } : refuse('Sale receipt identifies a different component');
+    if ((journal?.receipts.length || 0) >= 1024) return refuse('Component sale ledger is full');
+    const result = validateModuleSaleQuote(this.state, request);
+    if (!result.ok) return refuse(result.reason);
+    const item = this.takeInventoryModuleInstance(instanceId);
+    if (!item) return refuse('That exact spare component is no longer available');
+    const receipt = { ok: true, operationId, instanceId, defId: item.defId,
+      amount: result.quote.amount, stationId: result.quote.stationId, at: Number(this.state.simTime) || 0 };
+    player.moduleSales ||= { version: 1, receipts: [] };
+    player.moduleSales.receipts.push(receipt);
+    this.bus.emit('economy:grantCredits', { amount: receipt.amount, reason: `sellModule:${operationId}` });
+    this.bus.emit('module:sold', receipt);
+    this.bus.emit('toast', { text: `Component sold for ${receipt.amount} cr${result.quote.fenceId ? ' after the fence cut' : ''}`, kind: 'success', ttl: 3 });
+    return { ...receipt };
+  },
+
+  // ---- module shop: buy a module/weapon into inventory -----------------------------------
+
+  /** Purchase a module or weapon by defId. Validates tech, credits, then deducts credits and
+   *  pushes a new instance into moduleInventory. Returns true on success. */
+  buyModule({ defId, fitSlotIndex = null, shipIndex = null, expectedPrice = null, hullDefId = null }) {
+    const refuse = (reason) => {
+      this.bus.emit('module:fitRefused', {
+        shipIndex,
+        slotIndex: fitSlotIndex,
+        defId,
+        reason: reason || 'refused',
+      });
+      return false;
+    };
+    const def = defById(defId);
+    const p = this.state.player;
+    if (!def) { this.bus.emit('toast', { text: 'Unknown module', kind: 'error', ttl: 2 }); return refuse('unknown_module'); }
+    // AL-LG-11 — reward-only def: price 0 plus no requiresTech would otherwise free-mint the
+    // earned plate at the counter. The gate is load-bearing, not decorative.
+    if (def.id === SCARRED_RAM_PLATE_DEF_ID) {
+      this.bus.emit('toast', { text: 'A Scarred Ram Plate is earned by the hull that did the rams — it is not for sale.', kind: 'error', ttl: 4 });
+      return refuse('hull_history_required');
+    }
+    if (!this.isUnlocked(def)) {
+      this.bus.emit('toast', { text: defLockReasonText(def), kind: 'error', ttl: 3 });
+      return refuse('research_required');
+    }
+    if (hullDefId != null) {
+      const namedHull = this.ownedShip(shipIndex);
+      if (!namedHull || namedHull.defId !== hullDefId) {
+        this.bus.emit('toast', {
+          text: 'That confirmation was for a different hull. Review it and confirm again.',
+          kind: 'error',
+          ttl: 3,
+        });
+        return refuse('different_hull');
+      }
+    }
+    const offer = stationShopOffer(def, dockedShopStationId(this.state));
+    const price = offer ? offer.price : (def.price || 0);
+    if (expectedPrice != null && Number.isFinite(Number(expectedPrice)) && Math.round(Number(expectedPrice)) !== Math.round(Number(price) || 0)) {
+      this.bus.emit('toast', {
+        text: `Price changed since the quote (${Math.round(Number(price) || 0)} vs ${Math.round(Number(expectedPrice))} cr) — review and confirm again.`,
+        kind: 'error',
+        ttl: 3,
+      });
+      return refuse('price_changed');
+    }
+    if (price > 0 && p.credits < price) {
+      this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
+      return refuse('insufficient_credits');
+    }
+    const shouldFit = Number.isInteger(fitSlotIndex);
+    if (shouldFit) {
+      const blocker = this.moduleFitBlocker({ shipIndex, slotIndex: fitSlotIndex, def });
+      if (blocker) {
+        if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
+        return refuse(blocker.reason);
+      }
+    }
+    const item = { instanceId: this.nextInstanceId(), defId };
+    p.moduleInventory.push(item);
+    const equipped = shouldFit ? this.fitModule({ shipIndex, slotIndex: fitSlotIndex, instanceId: item.instanceId }) : false;
+    if (shouldFit && !equipped) {
+      const rollbackIndex = p.moduleInventory.findIndex((entry) => entry.instanceId === item.instanceId);
+      if (rollbackIndex >= 0) p.moduleInventory.splice(rollbackIndex, 1);
+      return false;
+    }
+    // Charge only after an explicit Buy & Fit has succeeded, so a rejected fit cannot spend credits.
+    if (price > 0) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyModule:' + defId });
+    this.bus.emit('module:purchased', { defId, price, fitSlotIndex: equipped ? fitSlotIndex : null,
+      instanceId: item.instanceId, shipIndex: equipped ? shipIndex : null });
+    this.bus.emit('toast', { text: (equipped ? 'Purchased and equipped ' : 'Purchased ') + def.name, kind: 'success', ttl: 3 });
+    return true;
+  },
+
+  /** Add a mission/career reward through the ships-owned inventory authority, without charging
+   *  credits. Callers own idempotent reward receipts; ships owns validation + mutation. */
+  grantModule({ defId, reason = 'reward', provenance, condition }) {
+    const def = defById(defId);
+    const p = this.state.player;
+    if (!def || !p || !Array.isArray(p.moduleInventory)) return false;
+    // AL-LG-11 — the earned plate can never be a generic grant. The ONE sanctioned second door
+    // (PLAN-GATE §8): a New Run+ keepsake mint is an unbound souvenir — scarred, named, and
+    // permanently unfittable, exactly like a sold hull's orphan. crafting.js/cargo pickups mint
+    // moduleInventory directly and bypass this gate, but no recipe or pickup can mint this def.
+    if (def.id === SCARRED_RAM_PLATE_DEF_ID) {
+      if (typeof reason === 'string' && reason.startsWith('new-game-plus')) {
+        const item = {
+          instanceId: this.nextInstanceId(),
+          defId,
+          condition: 'scarred',
+          provenance: {
+            label: 'Scarred Ram Plate — three rams aboard a hull you no longer fly',
+            source: 'new-game-plus',
+          },
+        };
+        p.moduleInventory.push(item);
+        this.bus.emit('module:granted', { defId, instanceId: item.instanceId, reason });
+        return true;
+      }
+      return false;
+    }
+    const item = { instanceId: this.nextInstanceId(), defId };
+    // NXB-032 — supported optional instance fields ride along unchanged; absence is
+    // legitimate ('unrecorded' fallback), never fabricated.
+    if (provenance != null) item.provenance = provenance;
+    if (condition != null) item.condition = condition;
+    p.moduleInventory.push(item);
+    this.bus.emit('module:granted', { defId, instanceId: item.instanceId, reason });
+    return true;
+  },
+
+  flushCargoMassRefresh() {
+    if (!this._cargoMassRefreshPending) return null;
+    this._cargoMassRefreshPending = false;
+    const e = this.activeShipEntity();
+    if (!e || !e.data) return null;
+    const previous = e.data.derived || {};
+    const cargoMass = Math.max(0, Number(this.state.player && this.state.player.cargo && this.state.player.cargo.usedMass) || 0);
+    if (previous.cargoMass === cargoMass) return previous;
+    const owned = this.ownedShip();
+    const next = derivedForOwned(e.data.defId, (owned && owned.fittings) || [], this.state.player, owned);
+    e.data.derived = next;
+    copyOperationalMassOntoEntity(e, next);
+    this.bus.emit('ship:massChanged', {
+      shipId: e.id,
+      dryMass: next.dryMass,
+      cargoMass: next.cargoMass,
+      operationalMass: next.operationalMass,
+    });
+    return next;
+  },
+
+  // ---- shipyard: buy / sell ship ----------------------------------------------------------
+
+  /** Buy the open lot hull: its scars, papers, and bored thrusters, at the listing price. */
+  buyImpound(listing) {
+    // Normalize-on-read, same as every other seam: the charged price is the
+    // healed book's priceSync — never a raw field that diverged from ask/hold.
+    const current = impoundListingFor(this.state);
+    if (!current || !listing || current.listingId !== listing.listingId) return false;
+    const def = SHIP_BY_ID.get(current.defId);
+    const p = this.state.player;
+    const price = Number(current.price);
+    if (!def || !p || !Number.isFinite(price) || price <= 0) return false;
+    if (p.credits < price) {
+      this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
+      return false;
+    }
+    const quirk = current.quirk && current.quirk.kind === 'overbored'
+      && Number.isFinite(Number(current.quirk.accelMult)) && Number(current.quirk.accelMult) > 1
+      ? { kind: 'overbored', accelMult: Number(current.quirk.accelMult) }
+      : null;
+    const slots = buildSlotList(def);
+    const owned = {
+      defId: def.id,
+      fittings: new Array(slots.length).fill(null),
+      fittedInstances: {},
+      appearance: defaultShipAppearance(def.id),
+      livingHull: normalizeLivingHull(current.livingHull, this.state.simTime || 0),
+      rapSheet: current.deed || null,
+      rapSheetLine: current.deedLine || null,
+      impoundLossId: current.lossId || null,
+    };
+    if (quirk) owned.impoundQuirk = quirk;
+    // AL-LG-11 (PLAN-GATE §8.3) — defensive carry, not a live path today: postImpoundListing
+    // never lists the player's own hull, but a lot that somehow carries a ram history hands it
+    // to the bought hull verbatim. A malformed record is not carried at all.
+    const carriedRamHistory = normalizeRamPlateHistory(current.ramPlateHistory);
+    if (carriedRamHistory) owned.ramPlateHistory = carriedRamHistory;
+    const shadow = mintImpoundShadow(current, this.state.simTime || 0);
+    if (shadow) owned.impoundShadow = shadow;
+    p.ownedShips.push(owned);
+    delete this.state.lossLedger.impound;
+    this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyShip:' + def.id });
+    this.bus.emit('ship:purchased', {
+      defId: def.id,
+      ...purchasedHullNameField(def),
+      price,
+      rapSheet: owned.rapSheet,
+      rapSheetLine: owned.rapSheetLine,
+      history: current.historyLine || null,
+    });
+    return true;
+  },
+
+  buyShip({ defId, setActive = false, grant = false }) {
+    const def = SHIP_BY_ID.get(defId);
+    const p = this.state.player;
+    if (!def) return false;
+    // FB-062 — a yard's shopOffers price is the price on the chit, the same rule modules follow.
+    const offer = grant ? null : stationShopOffer(def, dockedShopStationId(this.state));
+    const price = offer ? offer.price : (def.price || 0);
+    // grant=true: crafted ship — materials were the cost, tech already gated by the blueprint.
+    if (!grant) {
+      if (!this.isUnlocked(def)) {
+        this.bus.emit('toast', { text: defLockReasonText(def), kind: 'error', ttl: 3 });
+        return false;
+      }
+      if (p.credits < price) {
+        this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
+        return false;
+      }
+      if (price) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyShip:' + defId });
+    }
+    const slots = buildSlotList(def);
+    p.ownedShips.push({
+      defId,
+      fittings: new Array(slots.length).fill(null),
+      fittedInstances: {},
+      appearance: defaultShipAppearance(defId),
+      livingHull: defaultLivingHull(this.state.simTime || 0),
+    });
+    const newIndex = p.ownedShips.length - 1;
+    this.bus.emit('ship:purchased', { defId, ...purchasedHullNameField(def), price: grant ? 0 : price });
+    if (setActive) this.setActiveShip(newIndex);
+    return true;
+  },
+
+  // The owned record holds the custody link; the automation fleet row remains the job owner.
+  claimFleetHull(index, fleetId) {
+    const p = this.state.player;
+    const owned = p && Array.isArray(p.ownedShips) ? p.ownedShips : [];
+    if (!Number.isInteger(index) || index < 0 || !owned[index]) return { ok: false, reason: 'missing' };
+    if (index === p.activeShipIndex) return { ok: false, reason: 'active' };
+    const ship = owned[index];
+    if (ship.vesselId) {
+      const sj = this.state.player?.shipjack || this.state.shipjack;
+      const vessel = sj?.vesselsById?.[ship.vesselId];
+      const stationId = this.state.ui?.docked === true ? this.state.ui.dockedStationId : null;
+      const shipjack = this._registry?.get('shipjack');
+      const body = vessel?.location?.entityId != null ? this.state.entities?.get(vessel.location.entityId) : null;
+      const anyLive = (this.state.entityList || []).some(e => e?.alive && e.data?.vesselId === ship.vesselId);
+      if (!vessel || vessel.defId !== ship.defId || vessel.custodian !== 'player'
+        || !stationId || vessel.location?.kind !== 'berth' || vessel.location.stationId !== stationId
+        || !shipjack?.stationEntity?.(stationId) || anyLive || (body?.alive && body.data?.vesselId === ship.vesselId)
+        || sj.yards?.[ship.vesselId] || sj.fleetOperations?.[ship.vesselId]
+        || !(vessel.condition?.hull > 0)) return { ok: false, reason: 'tracked_vessel' };
+    }
+    if (!ship.vesselId && Number.isFinite(ship.parkedBody?.hull) && ship.parkedBody.hull <= 0) {
+      return { ok: false, reason: 'destroyed' };
+    }
+    const prior = ship.fleetAssignmentId;
+    if (prior != null) {
+      // An ambiguous or still-live link is never silently stolen. A unique orphaned link
+      // can be replaced, for example after the existing fleet-loss path removed its row.
+      if (owned.filter((row) => row && row.fleetAssignmentId === prior).length !== 1
+        || (this.state.automation?.fleet || []).some((row) => row && row.id === prior)) {
+        return { ok: false, reason: 'assigned' };
+      }
+    }
+    ship.fleetAssignmentId = fleetId;
+    return { ok: true, ship };
+  },
+
+  fleetOwnedHull(fleetId) {
+    const matches = (this.state.player?.ownedShips || []).filter((ship) => ship && ship.fleetAssignmentId === fleetId);
+    return matches.length === 1 ? matches[0] : null;
+  },
+
+  fleetHullCondition(entity) { return parkedHullCondition(entity); },
+
+  fleetHullFraction(owned) {
+    const vessel = owned?.vesselId && (this.state.player?.shipjack || this.state.shipjack)?.vesselsById?.[owned.vesselId];
+    if (vessel && Number.isFinite(vessel.condition?.hull)) return clamp01(vessel.condition.hull);
+    if (!Number.isFinite(owned?.parkedBody?.hull)) return 1;
+    const max = derivedForOwned(owned.defId, owned.fittings || [], null, owned).hullMax;
+    return max > 0 ? clamp01(owned.parkedBody.hull / max) : 1;
+  },
+
+  configureFleetHull(entity, fleet) {
+    const owned = this.fleetOwnedHull(fleet.id);
+    if (!owned || !entity?.data) return false;
+    entity.data.appearance = normalizeShipAppearance(owned.appearance, owned.defId);
+    this.recomputeEntity(entity.id, owned.fittings || [], { owned, quiet: true });
+    restoreParkedHullCondition(entity, fleet.parkedBody || owned.parkedBody);
+    return true;
+  },
+
+  releaseFleetHull(fleetId, entity, fleet) {
+    const owned = this.state.player?.ownedShips || [];
+    const matches = owned.filter((ship) => ship && ship.fleetAssignmentId === fleetId);
+    if (matches.length !== 1) return false;
+    const condition = parkedHullCondition(entity) || fleet?.parkedBody;
+    if (condition) matches[0].parkedBody = { ...condition };
+    delete matches[0].fleetAssignmentId;
+    return true;
+  },
+
+  sellShip(index, { confirmedCargoUnits = null } = {}) {
+    const p = this.state.player;
+    if (index === p.activeShipIndex) {
+      this.bus.emit('toast', { text: 'Cannot sell the active ship', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const owned = p.ownedShips[index];
+    if (!owned) return false;
+    if (owned.fleetAssignmentId != null && (this.state.automation?.fleet || []).some((row) => row && row.id === owned.fleetAssignmentId)) {
+      this.bus.emit('toast', { text: 'Return this wingman to the hangar before selling its hull.', kind: 'warn', ttl: 4 });
+      this.bus.emit('automation:fleetChanged', { id: owned.fleetAssignmentId, action: 'hullSaleRejected' });
+      return false;
+    }
+    if (owned.vesselId) {
+      // Tracked vessels require the same physical-inventory appraisal and terminal custody
+      // receipt as the Registry. Legacy half-price sale also refunds every fitted module,
+      // which would bypass liens, condition, title and disjoint hull/parts valuation.
+      this.bus.emit('toast', { text: 'Use the Black Flag Registry appraisal to release this vessel and settle its title, fittings and liens.', kind: 'warn', ttl: 4 });
+      return false;
+    }
+    // FB-061 — the hold is part of the hull. A parked ship still carrying units cannot leave
+    // without an explicit confirmation that names them; the caller passes the unit count it
+    // showed the player, so a stale quote cannot silently take a loaded hold.
+    const parkedUnits = owned.cargo && owned.cargo.items
+      ? Object.values(owned.cargo.items).reduce((sum, qty) => sum + (Number(qty) || 0), 0)
+      : 0;
+    if (parkedUnits > 0 && confirmedCargoUnits !== parkedUnits) {
+      this.bus.emit('toast', {
+        text: `Hold still carries ${parkedUnits} unit${parkedUnits === 1 ? '' : 's'} — empty it or confirm the sale takes them.`,
+        kind: 'error',
+        ttl: 4,
+      });
+      return false;
+    }
+    const def = SHIP_BY_ID.get(owned.defId);
+    // AL-LG-10 — the quote reads the hull's record: renown adds a capped premium, scars a capped
+    // discount, the number stays inside the half-price window and never passes the buy price.
+    // The reasons ride ship:sold so the line that pays also names the deeds that moved it.
+    const quote = deedResaleQuote(owned, def);
+    const refund = quote.amount;
+    // return fitted modules to inventory before scrapping the hull — NXB-032: the same
+    // instance (id + provenance) goes back to the hold, never a fresh mint.
+    for (let i = 0; i < owned.fittings.length; i++) {
+      if (!owned.fittings[i]) continue;
+      const inst = this._takeFittedInstance(owned, i);
+      p.moduleInventory.push(inst ? { ...inst } : { instanceId: this.nextInstanceId(), defId: owned.fittings[i] });
+    }
+    p.ownedShips.splice(index, 1);
+    if (p.activeShipIndex > index) p.activeShipIndex--;
+    if (refund) this.bus.emit('economy:grantCredits', { amount: refund, reason: 'sellShip:' + owned.defId });
+    this.bus.emit('ship:sold', { defId: owned.defId, refund, quote });
+    if (quote.reasons.length) {
+      this.bus.emit('toast', { text: 'The yard read the record — ' + quote.reasons.join(' · '), kind: 'info', ttl: 5 });
+    }
+    return true;
+  },
+
+  setActiveShip(index) {
+    const p = this.state.player;
+    const owned = p.ownedShips[index];
+    if (!owned) return false;
+    if (index !== p.activeShipIndex && owned.fleetAssignmentId != null
+      && (this.state.automation?.fleet || []).some((row) => row && row.id === owned.fleetAssignmentId)) {
+      this.bus.emit('toast', { text: 'Return this wingman to the hangar before flying its hull.', kind: 'warn', ttl: 4 });
+      this.bus.emit('automation:fleetChanged', { id: owned.fleetAssignmentId, action: 'hullSwitchRejected' });
+      return false;
+    }
+    const vessel = owned.vesselId && this.state.shipjack?.vesselsById?.[owned.vesselId];
+    if (index !== p.activeShipIndex && vessel
+      && (vessel.location?.kind !== 'berth' || vessel.location.stationId !== this.state.ui?.dockedStationId)) {
+      this.bus.emit('toast', { text: 'That hull is in space. Recover it or approach it for a physical helm transfer.', kind: 'warn', ttl: 4 });
+      return false;
+    }
+    const isTransition = index !== p.activeShipIndex;
+    const previousOwned = p.ownedShips[p.activeShipIndex] || null;
+    const target = getDerivedStats(owned.defId, owned.fittings || [], p);
+    // FB-061 — the hold travels with the hull. Before the berth flips, cargo parks the live
+    // hold on the outgoing record and loads the incoming hull's stored hold into the player,
+    // honouring the new capacity (overflow stays parked). Cargo owns that mutation; ships only
+    // announces the berth swap on the bus. With no cargo owner bound, the legacy overflow
+    // refusal below is the unchanged behaviour.
+    if (isTransition) {
+      const swap = {
+        fromIndex: p.activeShipIndex,
+        toIndex: index,
+        cargoCapVolume: target.cargoCap,
+      };
+      this.bus.emit('ship:parkedHoldSwap', swap);
+      // The cargo owner can refuse the swap outright (sealed freight that cannot park and does
+      // not fit the incoming hold). Its refusal is written back on the packet it was handed.
+      if (swap.refused) {
+        this.bus.emit('toast', {
+          text: 'Sealed freight will not fit the new hold — deliver or transfer it first',
+          kind: 'error',
+          ttl: 4,
+        });
+        return false;
+      }
+    }
+    const cargo = p.cargo || {};
+    if ((cargo.usedVolume || 0) > target.cargoCap) {
+      this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
+      return false;
+    }
+    if (isTransition) this.bus.emit('ship:berthSwitching', {
+      fromId: this.state.playerId, fromVesselId: previousOwned?.vesselId || null, toVesselId: owned.vesselId || null,
+    });
+    if (isTransition && previousOwned && !previousOwned.vesselId) {
+      const condition = parkedHullCondition(this.activeShipEntity());
+      if (condition) previousOwned.parkedBody = condition;
+    }
+    p.activeShipIndex = index;
+    // re-derive the player entity onto the new hull if it exists
+    const e = this.state.entities.get(this.state.playerId);
+    if (e) {
+      e.data.defId = owned.defId;
+      e.data.shipName = cleanShipName(owned.name) || null;
+      e.data.appearance = normalizeShipAppearance(owned.appearance, owned.defId);
+      e.data.livingHull = normalizeLivingHull(owned.livingHull, this.state.simTime || 0);
+      if (owned.vesselId) {
+        e.data.vesselId = owned.vesselId;
+        e.data.shipjackGeneration = vessel?.generation || e.occupantGeneration;
+      } else {
+        delete e.data.vesselId;
+        delete e.data.shipjackGeneration;
+      }
+      this.recomputeEntity(e.id, owned.fittings);
+      if (isTransition && vessel) {
+        // The ordinary berth adapter keeps its player body, but the incoming hull brings its
+        // own damage. Outgoing hull integrity cannot repair a captured ship for free.
+        const parked = vessel.parkedBody || {};
+        if (Number.isFinite(parked.armorMax)) e.armorMax = Math.max(0, parked.armorMax);
+        e.hull = Math.min(e.hullMax, Number.isFinite(parked.hull) ? parked.hull
+          : e.hullMax * Math.max(0, Math.min(1, Number(vessel.condition?.hull) || 0)));
+        for (const [key, max] of [['armorHp','armorMax'], ['shield','shieldMax'], ['cap','capMax']]) {
+          e[key] = Math.max(0, Math.min(e[max] || 0, Number.isFinite(parked[key]) ? parked[key] : 0));
+        }
+        if (parked.subsystems) this.helpers?.restoreShipjackSubsystems?.({ entityId: e.id, subsystems: parked.subsystems });
+      } else if (isTransition && owned.parkedBody) {
+        restoreParkedHullCondition(e, owned.parkedBody);
+      }
+    }
+    if (isTransition) {
+      this.publishActiveRoleContext({
+        source: 'active_ship_changed',
+        previousDefId: previousOwned && previousOwned.defId,
+        announce: true,
+      });
+    }
+    return true;
+  },
+
+  /** In-flight custody transfers move the pilot, never swap a station hull into a body. */
+  captureAndTransfer(request) { return captureAndTransfer(this, request); },
+
+  admitCapturedVessel(request) { return admitCapturedVessel(this, request); },
+
+  linkVesselToOwned({ index = this.state.player.activeShipIndex, vesselId } = {}) {
+    const owned = this.state.player.ownedShips[index];
+    if (!owned || typeof vesselId !== 'string' || !/^[A-Za-z0-9_:.\-]{1,128}$/.test(vesselId)
+      || (owned.vesselId && owned.vesselId !== vesselId)
+      || this.state.player.ownedShips.some((other, i) => i !== index && other.vesselId === vesselId)) return false;
+    owned.vesselId = vesselId;
+    return true;
+  },
+
+  getTransferCargoCapacity(owned) {
+    return getDerivedStats(owned.defId, owned.fittings || [], this.state.player).cargoCap;
+  },
+
+  validateTransferFittings(owned) {
+    if (!Array.isArray(owned.fittings) || owned.fittings.length > 64) return false;
+    const slots = buildSlotList(SHIP_BY_ID.get(owned.defId));
+    return owned.fittings.every((id, index) => !id || (defById(id) && slots[index] && fits(slots[index], defById(id))));
+  },
+
+  ownedVesselLocationBlocker(owned, shipIndex) {
+    if (owned?.fleetAssignmentId != null && (this.state.automation?.fleet || []).some((row) => row?.id === owned.fleetAssignmentId)) {
+      return { reason: 'fleet_assigned', text: 'Return this wingman to the hangar before changing its fittings.' };
+    }
+    if (!owned?.vesselId || shipIndex == null || shipIndex === this.state.player.activeShipIndex) return null;
+    const vessel = this.state.shipjack?.vesselsById?.[owned.vesselId];
+    if (!vessel || (vessel.location?.kind === 'berth' && vessel.location.stationId === this.state.ui?.dockedStationId)) return null;
+    return { reason: 'remote_vessel', text: 'Deliver that hull to this berth before moving its equipment.' };
+  },
+
+  /** Yard settlement enters through the canonical owned-hull/module writer. */
+  settleVesselYardOperation(request) { return settleOwnedVesselYardOperation(this, request); },
+
+  setShipAppearance({ shipIndex = null, appearance = null } = {}) {
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return false;
+    const normalized = normalizeShipAppearance(appearance, owned.defId);
+    if (shipAppearanceSignature(owned.appearance, owned.defId)
+        === shipAppearanceSignature(normalized, owned.defId)) return true;
+    owned.appearance = normalized;
+    const index = shipIndex == null ? this.state.player.activeShipIndex : shipIndex;
+    if (index === this.state.player.activeShipIndex) {
+      const entity = this.activeShipEntity();
+      if (entity && entity.data) {
+        entity.data.appearance = normalized;
+        entity.data._appearance = owned.defId + '|' + (entity.data.fittings || []).join(',') + '|'
+          + shipAppearanceSignature(normalized, owned.defId);
+      }
+      if (entity) this.bus.emit('ship:appearanceChanged', { id: entity.id, appearance: normalized });
+    }
+    this.bus.emit('ship:appearanceSaved', { shipIndex: index, appearance: normalized });
+    return true;
+  },
+
+  /**
+   * FB-057 — write the owner-given name onto one owned hull record. The word is trimmed,
+   * whitespace-collapsed, and capped (cleanShipName); clearing the field deletes the override
+   * so the canon/banked name answers again. The resolved name surfaces through
+   * hullNameForOwnedShip for every reader, so nothing else recomputes it.
+   */
+  setShipName({ shipIndex = null, name = null } = {}) {
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return false;
+    const index = shipIndex == null ? this.state.player.activeShipIndex : shipIndex;
+    const cleaned = cleanShipName(name);
+    const current = typeof owned.name === 'string' ? cleanShipName(owned.name) : '';
+    if (cleaned === current) return true;
+    if (cleaned) owned.name = cleaned;
+    else delete owned.name;
+    if (index === this.state.player.activeShipIndex) {
+      const entity = this.activeShipEntity();
+      if (entity && entity.data) entity.data.shipName = cleaned || null;
+    }
+    this.bus.emit('ship:nameChanged', { shipIndex: index, name: cleaned || null });
+    return true;
+  },
+
+  // ---- outfitting: fit / unfit modules ----------------------------------------------------
+
+  moduleFitBlocker({ shipIndex, slotIndex, def }) {
+    const owned = this.ownedShip(shipIndex);
+    if (!owned || !def) return { reason: 'missing_fit_target', text: null };
+    const locationBlocker = this.ownedVesselLocationBlocker(owned, shipIndex);
+    if (locationBlocker) return locationBlocker;
+    const shipDef = SHIP_BY_ID.get(owned.defId);
+    const slot = buildSlotList(shipDef)[slotIndex];
+    if (!slot) return { reason: 'unknown_slot', text: null };
+    if (!fits(slot, def)) {
+      return { reason: 'incompatible_slot', text: fitRefusalText(slot, def) };
+    }
+    // AL-LG-11 — the earned plate is hull-bound: a hull without three admitted rams and a reward
+    // binding cannot mount it, whichever instance the caller later names.
+    if (def.id === SCARRED_RAM_PLATE_DEF_ID && !this._scarredRamPlateEligible(owned)) {
+      return { reason: 'hull_history_required', text: RAM_PLATE_UNEARNED_TEXT };
+    }
+    const saucerRefusal = saucerFittingRefusal(shipDef.id, def);
+    if (saucerRefusal) return { reason: 'intrinsic_saucer_drive', text: saucerRefusal };
+    if (!this.isUnlocked(def)) {
+      return { reason: 'research_required', text: defLockReasonText(def) };
+    }
+    const conflictingDef = findMasslineHeadConflict(owned.fittings, slotIndex, def);
+    if (conflictingDef) {
+      return {
+        reason: 'massline_head_conflict',
+        text: 'Unfit ' + conflictingDef.name + ' before fitting another head',
+      };
+    }
+    const prospective = { ...owned, fittings: (owned.fittings || []).slice() };
+    prospective.fittings[slotIndex] = def.id;
+    const budgetBlocker = outfitBudgetBlocker(shipDef, prospective.fittings);
+    if (budgetBlocker) return budgetBlocker;
+    if (this.wouldOverflowCargo(owned, prospective.fittings)) {
+      return { reason: 'cargo_overflow', text: 'Cargo would overflow — jettison first' };
+    }
+    return null;
+  },
+
+  /** NXB-032 — `owned.fittings[]` owns slot occupancy (defIds consumed by stats/UI/save);
+   *  `owned.fittedInstances` owns the IDENTITY of that occupancy so a recovered unique
+   *  module survives fit/unfit/displacement/sale as the same instance. Reconcile is
+   *  lazy: an occupancy without a matching record gets one minted (legacy saves and
+   *  direct fittings writers spawn no provenance), and a record whose defId no longer
+   *  matches occupancy is dropped — the writer that changed occupancy already routed
+   *  the module. Never mints a second copy of a live occupancy. */
+  _reconcileFittedInstance(owned, slotIndex) {
+    const defId = owned.fittings[slotIndex];
+    if (!owned.fittedInstances) owned.fittedInstances = {};
+    const inst = owned.fittedInstances[slotIndex];
+    if (!defId) {
+      delete owned.fittedInstances[slotIndex];
+      return null;
+    }
+    if (inst && inst.defId === defId && inst.instanceId) return inst;
+    const minted = { instanceId: this.nextInstanceId(), defId };
+    owned.fittedInstances[slotIndex] = minted;
+    return minted;
+  },
+
+  /** Remove the slot's identity record and return it — the caller routes it somewhere
+   *  real (hold, sale); the record must not linger or the module duplicates. */
+  _takeFittedInstance(owned, slotIndex) {
+    const inst = componentAfterRemoval(this.state, this._reconcileFittedInstance(owned, slotIndex));
+    if (inst && owned.fittedInstances) delete owned.fittedInstances[slotIndex];
+    return inst;
+  },
+
+  /** Fit a module (by inventory instanceId, or by defId — buying directly into a slot) into a
+   *  slot on the active (or given) owned ship. */
+  fitModule({ shipIndex, slotIndex, instanceId, defId, operationId }) {
+    const refuse = (reason) => {
+      this.bus.emit('module:fitRefused', {
+        shipIndex,
+        slotIndex,
+        defId,
+        instanceId,
+        reason: reason || 'refused',
+        ...(operationId ? { operationId } : {}),
+      });
+      return false;
+    };
+    const p = this.state.player;
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return refuse('missing_ship');
+    const shipDef = SHIP_BY_ID.get(owned.defId);
+    const slots = buildSlotList(shipDef);
+    const slot = slots[slotIndex];
+    if (!slot) return refuse('unknown_slot');
+
+    // resolve the module def + whether it comes from inventory
+    let invIdx = -1;
+    let def = null;
+    if (instanceId == null && defId == null) return refuse('missing_identity');
+    if (instanceId != null) {
+      invIdx = p.moduleInventory.findIndex((m) => m.instanceId === instanceId);
+      if (invIdx < 0) return refuse('missing_module');
+      def = defById(p.moduleInventory[invIdx].defId);
+      defId = p.moduleInventory[invIdx].defId;
+    } else if (defId != null) {
+      def = defById(defId);
+    }
+    if (!def) return refuse('unknown_module');
+    const blocker = this.moduleFitBlocker({ shipIndex, slotIndex, def });
+    if (blocker) {
+      if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
+      return refuse(blocker.reason);
+    }
+    // AL-LG-11 — even on an earning hull, only THE bound instance fits: a defId-only mint, a
+    // twin's plate, or a keepsake souvenir all stop here, before anything is displaced.
+    if (def.id === SCARRED_RAM_PLATE_DEF_ID
+      && (instanceId == null || !this._scarredRamPlateEligible(owned, instanceId))) {
+      this.bus.emit('toast', { text: RAM_PLATE_UNEARNED_TEXT, kind: 'error', ttl: 3 });
+      return refuse('hull_history_required');
+    }
+
+    const existing = owned.fittings[slotIndex];
+    // NXB-032 — lift the displaced module's identity record before the slot is overwritten.
+    const displaced = existing ? this._takeFittedInstance(owned, slotIndex) : null;
+
+    // remove the module from inventory if it came from there
+    const fittedInventoryItem = invIdx >= 0 ? p.moduleInventory.splice(invIdx, 1)[0] : null;
+
+    owned.fittings[slotIndex] = defId;
+    if (!owned.fittedInstances) owned.fittedInstances = {};
+    // A defId-only fit (bought straight into the slot) mints a fresh record; an inventory
+    // fit carries its provenance/condition through unchanged.
+    owned.fittedInstances[slotIndex] = fittedInventoryItem
+      ? { ...fittedInventoryItem, defId }
+      : { instanceId: this.nextInstanceId(), defId };
+    if (def.type === 'engine' || def.category === 'engine' || def.slotType === 'engine') delete owned.shipjackDriveRemoved;
+
+    // Unfit whatever previously occupied the slot back to inventory after validation succeeds.
+    if (displaced) p.moduleInventory.push({ ...displaced });
+
+    this.bus.emit('module:equipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId,
+      ...(operationId ? { operationId, instanceId } : {}) });
+    this.recomputeIfActive(shipIndex, owned.fittings);
+    return true;
+  },
+
+  unfitModule({ shipIndex, slotIndex, operationId }) {
+    // A refused unfit travels the same authoritative outcome channel as a refused fit.
+    // A worker-lane caller can correlate that receipt with its own pending action.
+    const refuse = (reason, refusedDefId = null, refusedInstanceId = null) => {
+      this.bus.emit('module:fitRefused', {
+        shipIndex,
+        slotIndex,
+        defId: refusedDefId,
+        instanceId: refusedInstanceId,
+        reason,
+        ...(operationId ? { operationId } : {}),
+      });
+      return false;
+    };
+    const p = this.state.player;
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return refuse('missing_ship');
+    const locationBlocker = this.ownedVesselLocationBlocker(owned, shipIndex);
+    if (locationBlocker) {
+      this.bus.emit('toast', { text: locationBlocker.text, kind: 'warn', ttl: 4 });
+      return refuse(locationBlocker.reason);
+    }
+    const defId = owned.fittings[slotIndex];
+    if (!defId) return refuse('empty_slot');
+
+    const inst = this._takeFittedInstance(owned, slotIndex);
+    owned.fittings[slotIndex] = null;
+    if (this.wouldOverflowCargo(owned)) {
+      const used = Number(p.cargo?.usedVolume) || 0;
+      const capacity = getDerivedStats(owned.defId, owned.fittings, p).cargoCap;
+      owned.fittings[slotIndex] = defId; // revert
+      if (inst) {
+        if (!owned.fittedInstances) owned.fittedInstances = {};
+        owned.fittedInstances[slotIndex] = inst;
+      }
+      this.bus.emit('toast', { text: `Cargo would overflow: ${used.toLocaleString('en-US', { maximumFractionDigits: 2 })} used / ${capacity.toLocaleString('en-US')} capacity without this module. Sell or transfer cargo first.`, kind: 'error', ttl: 5 });
+      return refuse('cargo_overflow', defId, inst ? inst.instanceId : null);
+    }
+    p.moduleInventory.push(inst ? { ...inst } : { instanceId: this.nextInstanceId(), defId });
+    this.bus.emit('module:unequipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId,
+      ...(operationId ? { operationId } : {}) });
+    this.recomputeIfActive(shipIndex, owned.fittings);
+    return true;
+  },
+
+  /** NXI-128 — the consume-path twin of unfitModule: a sale/craft router takes the exact
+   *  record the slot carried (never a minted stand-in for a same-defId duplicate), clears
+   *  occupancy, and recomputes. Returns the consumed instance record; null when the slot
+   *  is empty. The record leaves the world with its defId — no hold push, no orphan on
+   *  a null fitting. */
+  takeFittedModuleInstance(shipIndex, slotIndex) {
+    const owned = this.ownedShip(shipIndex);
+    if (!owned || !Array.isArray(owned.fittings)) return null;
+    if (this.ownedVesselLocationBlocker(owned, shipIndex)) return null;
+    const defId = owned.fittings[slotIndex];
+    if (!defId) return null;
+    const inst = this._takeFittedInstance(owned, slotIndex);
+    owned.fittings[slotIndex] = null;
+    this.recomputeIfActive(shipIndex, owned.fittings);
+    return inst || { instanceId: null, defId };
+  },
+
+  /** SWARM-05 — the hold-side twin of takeFittedModuleInstance: a sale consumes the exact
+   *  spare record the instanceId names (never a same-defId stand-in), so a stack of identical
+   *  parts loses precisely the one the player pointed at. Returns the record; null when the
+   *  hold no longer carries it. Silent like its twin — the caller owns the receipt. */
+  takeInventoryModuleInstance(instanceId) {
+    const p = this.state.player;
+    const inventory = p && Array.isArray(p.moduleInventory) ? p.moduleInventory : null;
+    if (!inventory || instanceId == null) return null;
+    const index = inventory.findIndex((item) => item && item.instanceId === instanceId);
+    if (index < 0) return null;
+    const [record] = inventory.splice(index, 1);
+    return record || null;
+  },
+
+  loadoutPresets() {
+    const p = this.state.player;
+    if (!Array.isArray(p.loadoutPresets)) p.loadoutPresets = [];
+    return p.loadoutPresets;
+  },
+
+  saveLoadoutPreset({ shipIndex, presetId = null, labelKey = 'role', createdAt = null } = {}) {
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return false;
+    const shipDef = SHIP_BY_ID.get(owned.defId);
+    if (!shipDef) return false;
+    const presets = this.loadoutPresets();
+    const hullPresetCount = presets.reduce((count, row) => (
+      row && row.hullDefId === owned.defId ? count + 1 : count
+    ), 0);
+    if (hullPresetCount >= LOADOUT_PRESET_CAP_PER_HULL) {
+      this.bus.emit('toast', {
+        text: `All ${LOADOUT_PRESET_CAP_PER_HULL} build banks are full on this hull — delete one to save another`,
+        kind: 'error',
+        ttl: 3,
+      });
+      return false;
+    }
+    const slots = buildSlotList(shipDef);
+    const fittings = asFittingsArray(owned.fittings, slots.length);
+    if (!fittings) return false;
+    const stampedAt = Math.max(0, Math.round(
+      Number.isFinite(createdAt) ? Number(createdAt) : Number(this.state.simTime) || 0,
+    ));
+    let id = (typeof presetId === 'string' && presetId) ? presetId : createLoadoutPresetId(shipDef.id, fittings, stampedAt);
+    let seed = 1;
+    while (presets.some((row) => row && row.id === id)) {
+      id = createLoadoutPresetId(shipDef.id, fittings, stampedAt, seed++);
+    }
+    const preset = {
+      id,
+      hullDefId: shipDef.id,
+      fittings: fittings.slice(),
+      labelKey: normalizeLoadoutPresetLabelKey(labelKey),
+      createdAt: stampedAt,
+    };
+    // NXB-029 — the loadout names the bomb rack layout too (one payload family per socket,
+    // ids only — rounds are consumables, never serialized into the preset).
+    const rack = this.state.bombs && this.state.bombs.rack;
+    if (owned === this.ownedShip() && rack && Array.isArray(rack.cells)) {
+      preset.rackSockets = Number.isSafeInteger(rack.sockets) ? rack.sockets : rack.cells.length;
+      preset.rackPayloadIds = rack.cells.map((cell) => (cell && cell.id) || null);
+    }
+    presets.push(preset);
+    this.bus.emit('ship:loadoutPresetSaved', {
+      presetId: preset.id,
+      hullDefId: preset.hullDefId,
+      labelKey: preset.labelKey,
+      createdAt: preset.createdAt,
+    });
+    this.bus.emit('toast', { text: 'Build saved', kind: 'success', ttl: 2.5 });
+    return true;
+  },
+
+  deleteLoadoutPreset({ shipIndex, presetId, hullDefId = null } = {}) {
+    if (typeof presetId !== 'string' || !presetId) return false;
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return false;
+    if (hullDefId != null && owned.defId !== hullDefId) {
+      this.bus.emit('toast', {
+        text: 'That confirmation was for a different hull. Review it and confirm again.',
+        kind: 'error',
+        ttl: 3,
+      });
+      return false;
+    }
+    const presets = this.loadoutPresets();
+    const index = presets.findIndex((row) => row && row.id === presetId && row.hullDefId === owned.defId);
+    if (index < 0) {
+      this.bus.emit('toast', { text: 'Build not found on this hull', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const [removed] = presets.splice(index, 1);
+    this.bus.emit('ship:loadoutPresetDeleted', {
+      presetId: removed.id,
+      hullDefId: removed.hullDefId,
+    });
+    this.bus.emit('toast', { text: 'Build deleted', kind: 'info', ttl: 2.5 });
+    return true;
+  },
+
+  applyLoadoutPreset({ shipIndex, presetId } = {}) {
+    if (typeof presetId !== 'string' || !presetId) return false;
+    const p = this.state.player;
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return false;
+    const locationBlocker = this.ownedVesselLocationBlocker(owned, shipIndex);
+    if (locationBlocker) {
+      this.bus.emit('ship:loadoutPresetApplyRejected', { presetId, hullDefId: owned.defId, reason: locationBlocker.reason });
+      this.bus.emit('toast', { text: locationBlocker.text, kind: 'warn', ttl: 4 });
+      return false;
+    }
+    const shipDef = SHIP_BY_ID.get(owned.defId);
+    if (!shipDef) return false;
+    const preset = this.loadoutPresets().find((row) => row && row.id === presetId);
+    if (!preset) {
+      this.bus.emit('toast', { text: 'Build not found', kind: 'error', ttl: 3 });
+      return false;
+    }
+    if (preset.hullDefId !== shipDef.id) {
+      this.bus.emit('toast', { text: 'Build belongs to another hull', kind: 'error', ttl: 3 });
+      return false;
+    }
+    // The bomb rack is the active hull's runtime. Applying a parked hull's build must
+    // never prepare or purchase ammunition for the different ship the pilot is flying.
+    if (Array.isArray(preset.rackPayloadIds) && owned !== this.ownedShip()) {
+      this.bus.emit('ship:loadoutPresetApplyRejected', {
+        presetId, hullDefId: shipDef.id, reason: 'rack_inactive_hull',
+      });
+      this.bus.emit('toast', { text: 'Switch to this hull before preparing its bomb rack', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const slots = buildSlotList(shipDef);
+    const targetFittings = asFittingsArray(preset.fittings, slots.length);
+    if (!targetFittings) {
+      this.bus.emit('toast', { text: 'Preset does not match this hull layout', kind: 'error', ttl: 3 });
+      return false;
+    }
+    // AL-LG-11 — the stock count sees only what THIS hull may seat: a twin's bound plate and a
+    // keepsake souvenir are real objects but not this hull's stock, so a preset naming the
+    // scarred plate reports missing_modules instead of borrowing the wrong identity.
+    const eligibleInventory = (Array.isArray(p.moduleInventory) ? p.moduleInventory : [])
+      .filter((item) => !item || item.defId !== SCARRED_RAM_PLATE_DEF_ID
+        || this._scarredRamPlateEligible(owned, item.instanceId));
+    const dryRun = dryRunLoadoutPresetApply({
+      shipDefId: shipDef.id,
+      currentFittings: owned.fittings,
+      targetFittings,
+      moduleInventory: eligibleInventory,
+      player: p,
+      enforceCargo: owned === this.ownedShip(),
+      isUnlockedFn: (def) => this.isUnlocked(def),
+    });
+    if (!dryRun.ok) {
+      if (dryRun.text) this.bus.emit('toast', { text: dryRun.text, kind: 'error', ttl: 3 });
+      this.bus.emit('ship:loadoutPresetApplyRejected', {
+        presetId,
+        hullDefId: shipDef.id,
+        reason: dryRun.reason || 'invalid_preset',
+      });
+      return false;
+    }
+    // NXB-029 — rack half of the loadout. Preview + commit run through the bombs owner's
+    // existing berth-gated intents, so the same quote engine, credit writer and atomic
+    // commit apply here as at the rack panel. A refused PLAN aborts the whole apply
+    // before anything moves; a credit-limited plan still commits (authored restock
+    // semantics — affordable rounds only, limitingReason reported by the owner).
+    let rackQuote = null;
+    if (Array.isArray(preset.rackPayloadIds)) {
+      const preview = {
+        options: {
+          socketCount: Number.isSafeInteger(preset.rackSockets) ? preset.rackSockets : undefined,
+          payloadIds: preset.rackPayloadIds,
+        },
+        quote: null,
+      };
+      this.bus.emit('ui:previewBombRackPreparation', preview);
+      rackQuote = preview.quote || null;
+      if (!rackQuote || !rackQuote.plan || rackQuote.plan.ok === false) {
+        const reason = (rackQuote && rackQuote.plan && rackQuote.plan.reason) || 'no_rack_owner';
+        this.bus.emit('ship:loadoutPresetApplyRejected', {
+          presetId, hullDefId: shipDef.id, reason: 'rack_' + reason,
+        });
+        this.bus.emit('toast', { text: 'Build cannot prepare the bomb rack', kind: 'error', ttl: 3 });
+        return false;
+      }
+    }
+
+    // NXB-029/NXB-032 — the swap keeps instance identity. Displaced modules carry their
+    // records back to the hold; a module moving between slots keeps its own record.
+    const inventory = Array.isArray(p.moduleInventory) ? p.moduleInventory.slice() : [];
+    const takenByDef = new Map();
+    for (const [defId, takeCount] of dryRun.takeByDefId.entries()) {
+      const items = [];
+      for (let i = inventory.length - 1; i >= 0 && items.length < takeCount; i -= 1) {
+        if (!inventory[i] || inventory[i].defId !== defId) continue;
+        // AL-LG-11 — same eligibility read the dry run used: another hull's bound plate and the
+        // keepsake souvenir stay in the hold (and ride back into p.moduleInventory untouched).
+        if (defId === SCARRED_RAM_PLATE_DEF_ID && !this._scarredRamPlateEligible(owned, inventory[i].instanceId)) continue;
+        items.unshift(inventory.splice(i, 1)[0]);
+      }
+      if (items.length < takeCount) {
+        this.bus.emit('toast', { text: missingModulesText(takeCount - items.length), kind: 'error', ttl: 3 });
+        return false;
+      }
+      takenByDef.set(defId, items);
+    }
+    const afterFittings = dryRun.afterFittings;
+    const displacedByDef = new Map();
+    const nextInstances = {};
+    // Pass 1: slots whose occupant already matches the target keep their record; the rest
+    // lift theirs into the displaced pool.
+    for (let i = 0; i < afterFittings.length; i += 1) {
+      const cur = this._reconcileFittedInstance(owned, i);
+      if (cur && cur.defId === afterFittings[i]) {
+        nextInstances[i] = cur;
+        continue;
+      }
+      if (cur) {
+        const pool = displacedByDef.get(cur.defId) || [];
+        pool.push(componentAfterRemoval(this.state, cur));
+        displacedByDef.set(cur.defId, pool);
+      }
+    }
+    // Pass 2: fill each unfilled target slot — the displaced module first (it is the same
+    // physical item coming back), then the hold, then a fresh mint only when the dry run
+    // proved none was needed but the record is absent.
+    for (let i = 0; i < afterFittings.length; i += 1) {
+      if (nextInstances[i] || !afterFittings[i]) continue;
+      const defId = afterFittings[i];
+      const displaced = displacedByDef.get(defId);
+      const fromDisplaced = displaced && displaced.length ? displaced.shift() : null;
+      const fromHold = !fromDisplaced && takenByDef.get(defId) && takenByDef.get(defId).length
+        ? takenByDef.get(defId).shift() : null;
+      // AL-LG-11 — the earned plate is never minted by a preset: only this hull's bound copy can
+      // fill the slot. The eligibility sweep below rejects the plan atomically otherwise.
+      const freshMint = defId === SCARRED_RAM_PLATE_DEF_ID
+        ? { instanceId: null, defId }
+        : { instanceId: this.nextInstanceId(), defId };
+      nextInstances[i] = fromDisplaced || (fromHold && { ...fromHold }) || freshMint;
+    }
+    // The bound-instance check runs BEFORE the rack commit and any ownership mutation: a missing
+    // or wrong-bound scarred plate fails the whole apply atomically, inventory untouched.
+    for (let i = 0; i < afterFittings.length; i += 1) {
+      if (afterFittings[i] !== SCARRED_RAM_PLATE_DEF_ID) continue;
+      const inst = nextInstances[i];
+      if (inst && inst.defId === SCARRED_RAM_PLATE_DEF_ID && this._scarredRamPlateEligible(owned, inst.instanceId)) continue;
+      this.bus.emit('ship:loadoutPresetApplyRejected', {
+        presetId, hullDefId: shipDef.id, reason: 'hull_history_required',
+      });
+      this.bus.emit('toast', { text: RAM_PLATE_UNEARNED_TEXT, kind: 'error', ttl: 3 });
+      return false;
+    }
+    for (const pool of displacedByDef.values()) {
+      for (const inst of pool) inventory.push({ ...inst });
+    }
+    // Any taken item the slot pass did not consume is a dry-run contradiction — put it back.
+    for (const items of takenByDef.values()) {
+      for (const item of items) inventory.push(item);
+    }
+
+    // Commit order: rack first (its commit is the fallible one — the module write below is
+    // a pure assignment the dry run already proved). A rack failure leaves the fit intact.
+    if (rackQuote) {
+      const commit = { quote: rackQuote, result: false };
+      this.bus.emit('ui:prepareBombRack', commit);
+      if (commit.result !== true) {
+        this.bus.emit('ship:loadoutPresetApplyRejected', {
+          presetId, hullDefId: shipDef.id, reason: 'rack_commit_failed',
+        });
+        this.bus.emit('toast', { text: 'Rack preparation failed — build not applied', kind: 'error', ttl: 3 });
+        return false;
+      }
+    }
+    p.moduleInventory = inventory;
+    owned.fittings = afterFittings.slice();
+    owned.fittedInstances = nextInstances;
+    this.bus.emit('ship:loadoutPresetApplied', {
+      presetId,
+      hullDefId: shipDef.id,
+      slotCount: dryRun.afterFittings.length,
+    });
+    this.bus.emit('toast', { text: 'Build applied', kind: 'success', ttl: 2.5 });
+    this.recomputeIfActive(shipIndex, owned.fittings);
+    return true;
+  },
+
+  /** Would the given owned ship's cargo capacity drop below currently-used volume? (active only)
+   * `prospectiveFittings` tests a candidate loadout without tripping the identity guard — the
+   * guard keys on the canonical owned record, so validation copies must pass fittings explicitly. */
+  wouldOverflowCargo(owned, prospectiveFittings = null) {
+    if (owned !== this.ownedShip()) return false; // only the flown ship holds cargo
+    const cargo = this.state.player.cargo;
+    if (!cargo) return false;
+    const derived = getDerivedStats(owned.defId, prospectiveFittings || owned.fittings, this.state.player);
+    return (cargo.usedVolume || 0) > derived.cargoCap;
+  },
+
+  recomputeIfActive(shipIndex, fittings) {
+    const isActive = (shipIndex == null) || shipIndex === this.state.player.activeShipIndex;
+    if (isActive) {
+      const e = this.activeShipEntity();
+      if (e) this.recomputeEntity(e.id, fittings);
+    }
+  },
+
+  shipIdFor(shipIndex) {
+    const isActive = (shipIndex == null) || shipIndex === this.state.player.activeShipIndex;
+    return isActive ? this.state.playerId : -1;
+  },
+
+  nextInstanceId() {
+    // Continue restores ownership and the tick, but this owner's sequence is transient.
+    // A paused berth can therefore reuse a saved id on its first purchase/reward. Reserve
+    // both loose and fitted identities (including parked hulls) before minting another.
+    const player = this.state.player || {};
+    const used = new Set();
+    for (const item of player.moduleInventory || []) {
+      if (item && item.instanceId != null) used.add(item.instanceId);
+    }
+    for (const owned of player.ownedShips || []) {
+      for (const item of Object.values((owned && owned.fittedInstances) || {})) {
+        if (item && item.instanceId != null) used.add(item.instanceId);
+      }
+    }
+    let id;
+    do {
+      this._instSeq = (this._instSeq || 0) + 1;
+      id = 'mi_' + this.state.tick + '_' + this._instSeq;
+    } while (used.has(id));
+    return id;
+  },
+
+  // ---- new game ---------------------------------------------------------------------------
+
+  /** Populate ship/fitting/research state from NEW_GAME defaults (§4.5 player save-key). Called by
+   *  the save system's newGame(); also safe to call directly. Does NOT spawn the entity — the
+   *  caller spawns it via makeShipEntitySpec + helpers.spawnEntity. */
+  newGame() {
+    const p = this.state.player;
+    delete p.combatProfile;
+    p.ownedShips = [{
+      defId: NEW_GAME.shipId,
+      fittings: this.fittingsFromDefaults(NEW_GAME.shipId, NEW_GAME.fittedModules || []),
+      appearance: defaultShipAppearance(NEW_GAME.shipId),
+      livingHull: defaultLivingHull(this.state.simTime || 0),
+    }];
+    p.activeShipIndex = 0;
+    p.moduleInventory = [];
+    p.loadoutPresets = [];
+    p.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
+    p.researchPoints = NEW_GAME.researchPoints || 0;
+    p.droneTierCap = 0;
+    p.efficiencyMods = { miningYieldMult: 1, shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, tradeFeeMult: 1 };
+    // One-time New Game role packet for presentationAdapters (no permanent HUD, no mission text).
+    this.publishActiveRoleContext({ source: 'new_game', announce: true });
+  },
+
+  /** Place each default-fitted module/weapon defId into its first compatible empty slot. */
+  fittingsFromDefaults(defId, moduleIds) {
+    return fittingsFromDefaultModules(defId, moduleIds);
+  },
+};
+
+// ---- small utils ---------------------------------------------------------------------------
+
+/** The chronicler title-cases the defId when a purchase receipt carries no name
+ *  (`ship_kestrel` -> "Kestrel"). Send `name` only when the catalog name tells the ledger
+ *  something the id cannot — the starter's callsign is "Hitch" — so hulls whose id already
+ *  names them keep the minimal receipt shape. */
+function purchasedHullNameField(def) {
+  if (!def || !def.name) return {};
+  const fromId = String(def.id || '').replace(/^ship_/, '').replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+  return def.name !== fromId ? { name: def.name } : {};
+}
+
+function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+
+/** Best-effort identity when a save carries a hull outside the live lattice (legacy / missing). */
+function legacyRoleIdentity(defId) {
+  if (defId == null || defId === '') return null;
+  const def = SHIP_BY_ID.get(defId);
+  const role = String((def && def.role) || 'multirole');
+  const name = (def && def.name) || String(defId);
+  const roleLabel = role
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || 'Multirole';
+  return Object.freeze({
+    name,
+    role,
+    roleLabel,
+    flightClass: flightClassForHull(def || defId) || 'medium',
+    identityLine: 'Restored hull using a best-effort role read for a missing lattice entry.',
+    shortWhy: 'Fly the restored hull; verify loadout at the next shipyard.',
+    signatureVerb: 'Fly the restored hull; verify loadout at the next shipyard.',
+    counterplay: 'Treat unfamiliar or legacy hulls cautiously until fittings are confirmed.',
+    weaknesses: Object.freeze(['Unverified legacy loadout']),
+    primaryCareers: Object.freeze(['hauler', 'hunter', 'prospector']),
+    rolePath: null,
+    fallback: true,
+  });
+}
+
+/** Copy the flat derived stat fields onto the entity top level so flight/physics read them. */
+function copyDerivedOntoEntity(e, d) {
+  e.hullMax = d.hullMax;
+  e.armorHp = d.armorHp; e.armorMax = d.armorMax; e.armorFlat = d.armorFlat;
+  e.shieldMax = d.shieldMax; e.shieldRegenRate = d.shieldRegenRate; e.shieldRegenDelay = d.shieldRegenDelay;
+  e.capMax = d.capMax; e.capRegen = d.capRegen;
+  e.thrust = d.thrust; e.turnRate = d.turnRate; e.maxSpeed = d.maxSpeed; e.drag = d.drag;
+  e.bankFactor = d.bankFactor;
+  e.flightClass = d.flightClass;
+  e.flightModel = d.flightModel;
+  e.propulsion = d.propulsion;
+  e.radius = d.radius; e.mass = d.mass;
+  syncDerivedPhysicsMass(e, d.operationalMass, d.flightModel && d.flightModel.inertia, d.radius);
+}
+
+/** Apply only fields that depend on operational mass; cargo churn must not rebuild combat/runtime
+ * arrays or emit the broad refit events owned by recomputeEntity(). */
+function copyOperationalMassOntoEntity(e, d) {
+  e.thrust = d.thrust; e.turnRate = d.turnRate; e.maxSpeed = d.maxSpeed; e.drag = d.drag;
+  e.bankFactor = d.bankFactor;
+  e.flightClass = d.flightClass;
+  e.flightModel = d.flightModel;
+  e.propulsion = d.propulsion;
+  e.mass = d.operationalMass;
+  syncDerivedPhysicsMass(e, d.operationalMass, d.flightModel && d.flightModel.inertia);
+}
