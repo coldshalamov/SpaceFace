@@ -1534,8 +1534,8 @@ export const automationScreen = {
         const readout = curTpl === 'mine_to_depot' ? describeProgrammedMinerOperation(d, def) : null;
         const opsHtml = readout ? `
             <div class="au-miner-ops" data-state="${escapeHtml(readout.state)}" role="img" aria-label="${escapeHtml(readout.accessibleSummary)}">
-              <div><span class="au-flow-k">Gross cut</span><strong>${escapeHtml(String(readout.grossUnits))} u</strong></div>
-              <div><span class="au-flow-k">Stored</span><strong>${escapeHtml(String(readout.stored))}/${escapeHtml(String(readout.cap))} u</strong></div>
+              <div><span class="au-flow-k">Gross cut</span><strong>${escapeHtml(String(readout.grossUnits))} ${Number(readout.grossUnits) === 1 ? 'unit' : 'units'}</strong></div>
+              <div><span class="au-flow-k">Stored</span><strong>${escapeHtml(String(readout.stored))}/${escapeHtml(String(readout.cap))} ${Number(readout.cap) === 1 ? 'unit' : 'units'}</strong></div>
               <div><span class="au-flow-k">Limit</span><strong class="au-operation-status ${escapeHtml(readout.tone)}">${escapeHtml(readout.statusLabel)}</strong></div>
               <div><span class="au-flow-k">Last sale</span><strong>${escapeHtml(readout.lastText)}</strong></div>
             </div>
