@@ -12,6 +12,8 @@
 
 **Written out, 2026-11-10:** the whole of Swarm — the loop, what is on the floor, the drops, the freight lanes, every enemy and its answer, all thirty rounds by name, the bosses and Madame Kiln's lines — is in [12 — Swarm: the Pit](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/12_SWARM_THE_PIT.md). The guns, power bends and mods it hands out are in [11 — The Armory](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/11_THE_ARMORY.md). Build from those; do not invent rounds, enemies or drops.
 
+**Also written out, 2026-11-10:** what brings a player back after winning — Kiln's Dares, the Nightly, marks — is in [17 — The ladder, the prices and the long game](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/17_THE_LADDER_AND_THE_LONG_GAME.md) §5; the results screen and the five-second restart are in [19 — What players expect](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/19_WHAT_PLAYERS_EXPECT.md).
+
 ### How to build this and check your own work
 
 Swarm has the best fast tools in the project. Use them in this order.
