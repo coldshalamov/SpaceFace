@@ -1,21 +1,27 @@
 // Local yard calls describe the original site's actual work. This is a transient presentation
 // cursor, never an operation, cargo owner, saved job, or source of control over the workfleet.
-import { CERES_WORKFLEET_CONTRACT as C } from '../data/ceresWorkfleet.js';
+import { CERES_WORKFLEET_CONTRACT as C, ceresWorkfleetPoint } from '../data/ceresWorkfleet.js';
+import { ceresPlayerWinchReadyLineId } from './ceresPlayerWinching.js';
 
 const visits = new WeakMap();
 const HEARING_RADIUS = 420;
 const CALL_SPACING_S = 8;
 const STALL_S = 5;
+const CRADLE_POS = ceresWorkfleetPoint({ ...C.sitePlacement.pos, rot: C.sitePlacement.rot }, C.route.receiverPose);
 const calls = Object.freeze({
   awaiting_brace: 'Long plate is still clamped. Use the site beam on the marked long-plate brace: the yard pays 400 credits for the completed brace. Brace before cutting; the support cannot catch a freed plate. You can leave it alone.',
   unbraced_cut: 'That seam was cut before the brace. The long plate is free, and the support cannot catch it now. This lift cannot start; keep clear of the loose plate.',
   awaiting_release: 'The seam is cut. The support clamp still holds the long plate. Cut that clamp to release it, then leave the breaker room to take the original plate to the cradle.',
   cutting: 'Brace is in. Cut the long-plate seam and release its clamp yourself to get the breaker moving sooner.',
-  lifting: 'The breaker has the plate on its own line. It is too heavy for a small tug; keep the path clear.',
+  lifting: 'The breaker has the plate on its own line. That 1,800-tonne load pulls a light tug toward it; keep the path clear.',
   receiving: 'The plate is at the cradle. Give the breaker room to withdraw.',
   stalled: 'The cutter has not lined up. If you are in the work area, clear the head and seam to let it settle.',
   secured: 'Long plate secured. The cradle has it.',
-  retained: 'Work stopped: someone has taken custody of the equipment or plate.',
+  retained: 'Work stopped: someone has taken custody of the equipment or plate. That plate weighs 1,800 tonnes; a light tug gets pulled toward it. Line it up with the open cradle, almost stopped and level. Stay 200 to 380 metres from the cradle and wait for the ready call before releasing your Line. Its anchored winch can finish the lift.',
+  player_winch: 'The cradle has your plate on its winch. Keep the mouth clear while it reels in and closes the pads. To take it back, use target cycling to select the Long Plate, then latch your Line. The winch will let go.',
+  player_winch_ready: 'Cradle winch ready. Release your Line now. Stay clear while it takes up the load.',
+  player_winch_jammed: 'The plate is caught at an angle. The winch cannot seat it like that. Use target cycling to select the Long Plate, then take it back on your Line. Ease it out through the open mouth and straighten it before trying again.',
+  player_winch_obstructed: 'Something is blocking the cradle pads. The winch is holding. Clear the obstruction, or use target cycling to select the Long Plate and take it back on your Line.',
   destroyed: 'Long plate is gone. The crew cannot finish that lift.',
   disabled: 'Work stopped. The breaker or cutter is disabled.',
   interrupted: 'Work stopped. The load is out of the crew’s safe handling path.',
@@ -28,6 +34,8 @@ export function ceresWorkfleetYardCall(record, job, blockedSeconds = 0) {
   // A destroyed original outranks a still-visible last job phase during its next tick.
   if (phase === 'section-destroyed' || record.payloads?.long_plate?.destroyed) return 'destroyed';
   if (phase === 'secured') return 'secured';
+  if (phase === 'pads' && job.playerWinching === true) return job.blockedReason === 'receiver-load-misaligned'
+    ? 'player_winch_jammed' : job.blockedReason === 'receiver-seating-obstructed' ? 'player_winch_obstructed' : 'player_winch';
   if (phase === 'player-retained') return 'retained';
   if (phase === 'worker-disabled' || phase === 'head-disabled') return 'disabled';
   if (phase === 'recovery-interrupted') return 'interrupted';
@@ -60,11 +68,12 @@ export function stepCeresWorkfleetStagecraft(owner, record) {
   const player = state.entities?.get(state.playerId);
   const inside = state.mode === 'flight' && state.world?.currentSectorId === C.sectorId
     && player?.alive !== false && player?.pos && !player.flags?.docked && !state.ui?.docked
-    && Math.hypot(player.pos.x - C.sitePlacement.pos.x, player.pos.z - C.sitePlacement.pos.z) <= HEARING_RADIUS;
+    && Math.min(Math.hypot(player.pos.x - C.sitePlacement.pos.x, player.pos.z - C.sitePlacement.pos.z),
+      Math.hypot(player.pos.x - CRADLE_POS.x, player.pos.z - CRADLE_POS.z)) <= HEARING_RADIUS;
   if (!inside) { visit.inside = false; visit.blockedAt = null; return; }
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   if (!visit.inside || now < visit.lastCall) {
-    visit.inside = true; visit.sent.clear(); visit.lastCall = -Infinity; visit.blockedAt = null;
+    visit.inside = true; visit.sent.clear(); visit.lastCall = -Infinity; visit.blockedAt = null; visit.readyLineId = null;
   }
   // Do not spend the one arrival call while the pilot is passing at travel speed.
   // It stays available as soon as the ship actually slows near the worksite.
@@ -73,8 +82,18 @@ export function stepCeresWorkfleetStagecraft(owner, record) {
   const blocked = job?.phase === 'head_cut' && job.blockedReason === 'physical-cutter-not-ready';
   if (blocked && visit.blockedAt == null) visit.blockedAt = now;
   if (!blocked) visit.blockedAt = null;
-  const key = ceresWorkfleetYardCall(record, job, visit.blockedAt == null ? 0 : Math.max(0, now - visit.blockedAt));
-  if (!key || visit.sent.has(key) || now - visit.lastCall < CALL_SPACING_S) return;
-  visit.sent.add(key); visit.lastCall = now;
+  const readyLineId = ceresPlayerWinchReadyLineId(state);
+  const key = readyLineId ? 'player_winch_ready'
+    : ceresWorkfleetYardCall(record, job, visit.blockedAt == null ? 0 : Math.max(0, now - visit.blockedAt));
+  if (readyLineId) {
+    // This is an actionable handover window, not a routine arrival call. Do not
+    // delay it past a light Line's physical limit or suppress a fresh attempt.
+    if (visit.readyLineId === readyLineId) return;
+    visit.readyLineId = readyLineId;
+  } else {
+    if (!key || visit.sent.has(key) || now - visit.lastCall < CALL_SPACING_S) return;
+    visit.sent.add(key);
+  }
+  visit.lastCall = now;
   owner.bus.emit('comms:message', { sender: 'SECOND MEASURE YARD', channel: 'machine', text: calls[key] });
 }

@@ -9,6 +9,7 @@ import { applyCutIntakeCourtesy } from '../world/cutIntakeCourtesy.js';
 import { tallyPassageTarget, tallyAdvanceDt, isTallyPassageJob } from './tethysTallyPassage.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
+import { serializeCeresPlayerWinching } from './ceresPlayerWinching.js';
 import {
   stepLanternWard, serializeLanternWard, restoreLanternWard,
   clearLanternWardControls, lanternWardCompletionReceipt, lanternWardStatus,
@@ -7335,7 +7336,7 @@ export const npcJobsRuntime = {
     const out = { byId: {} };
     const ward = serializeLanternWard(this);
     if (ward) out.lanternWard = ward;
-    if(this.state.npcJobs?.ceresWorkfleet)out.ceresWorkfleet=JSON.parse(JSON.stringify(this.state.npcJobs.ceresWorkfleet));
+    if(this.state.npcJobs?.ceresWorkfleet)out.ceresWorkfleet=serializeCeresPlayerWinching(this.state,this.state.npcJobs.ceresWorkfleet);
     for (const jobId of Object.keys(byId)) {
       const entry = byId[jobId];
       if (!entry || !entry.job || entry.transient === true) continue;

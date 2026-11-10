@@ -2,6 +2,7 @@ import { asteroidSiteReadMethods } from './asteroidSiteReadModel.js';
 export { getAsteroidSiteFromState, findAsteroidSiteFromState, projectAsteroidSiteFromState, canInstallAsteroidSiteFromState } from './asteroidSiteReadModel.js';
 import { readOrchardSaveSection } from '../data/anvilOrchard.js';
 import { validateCeresWorkfleetOperation, ceresWorkfleetContactRetained, CERES_WORKFLEET_REQUEST_STREAM, CERES_WORKFLEET_JOB_ID } from './ceresWorkfleet.js';
+import { ceresPlayerWinchReceiverLine } from './ceresPlayerWinching.js';
 import { CERES_WORKFLEET_CONTRACT as CERES_FLEET } from '../data/ceresWorkfleet.js';
 const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
 // Asteroid sites — durable machine-design surface grown inside drilled asteroids.
@@ -1192,9 +1193,10 @@ export const asteroidSites = {
       ||!ceresWorkfleetContactRetained(cradle,section,state,'cradle'))return {ok:false,reason:'receiver-not-physically-retained'};
     const line=this._registry?.get('combat')?.kernel?.attachments?.get(job.receiverId);
     const worker=state.entities.get(request.workerId);
-    if(line?.state!=='active'||line.ownerId!==cradle.id||line.targetId!==section.id
+    const playerWinch=ceresPlayerWinchReceiverLine(state,job,cradle,section,this._registry?.get('combat')?.kernel?.attachments);
+    if(!playerWinch&&(line?.state!=='active'||line.ownerId!==cradle.id||line.targetId!==section.id
       ||worker?.data?.worldRecordId!==CERES_FLEET.identities.worker
-      ||Math.hypot(worker.pos.x-cradle.pos.x,worker.pos.z-cradle.pos.z)<200)return {ok:false,reason:'receiver-coupling-invalid'};
+      ||Math.hypot(worker.pos.x-cradle.pos.x,worker.pos.z-cradle.pos.z)<200))return {ok:false,reason:'receiver-coupling-invalid'};
     this._captureWorldSitePayloads(CERES_FLEET.sectorId,{force:true});
     const record=this.getWorldSite(CERES_FLEET.siteId),manifest=worldSiteManifestById(CERES_FLEET.siteId);
     const result=retainCeresWorkfleetPayload(manifest,record,{receiverWorldRecordId:CERES_FLEET.identities.cradle,
