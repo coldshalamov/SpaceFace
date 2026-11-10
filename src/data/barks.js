@@ -1084,6 +1084,92 @@ export function hullRecognitionBarkFor(factionId, rng, tokens = {}) {
   return String(line).replace(/\{ship\}/g, ship).replace(/\{class\}/g, shipClass);
 }
 
+// ── Vent press — the crew across from you reads your guns going cold ──────────────────────────
+//
+// The pilot's forced heat vent locks every mount for its window. These are the lines the nearest
+// engaged crew calls when it sees the vent and pushes in (src/ai/ventPress.js). Same contract as
+// hull recognition — an event line, not a BARK_SITUATION, so the WAV index and the cell floor
+// are untouched. Every line names the vent itself; none claims a kill or a hit that did not land.
+export const VENT_PRESS_BARKS = Object.freeze({
+  faction_scn: Object.freeze([
+    'Thermal lockout observed on the subject. Close the interval while the form is open.',
+    'Subject weapons venting. Ref 44-C authorizes the closing approach.',
+    'Their guns are cooling. Advance and file the result.',
+  ]),
+  faction_mts: Object.freeze([
+    'Their guns are cooling. Nothing is cheaper than now. Move in.',
+    'Overheated. Collect while the price is low.',
+    'Venting heat is a discount. Close the distance.',
+  ]),
+  faction_dmc: Object.freeze([
+    'Their guns cooked off. Go, while they cool.',
+    'Heat lockout on them. Push in before it clears.',
+    'They ran it too hot. Close it up, quick.',
+  ]),
+  faction_reach: Object.freeze([
+    'Guns are cooked! Push, push!',
+    'They overheated! Get in close and take it!',
+    'Venting! Now, before they cool!',
+  ]),
+  faction_quiet: Object.freeze([
+    'Vent. Close.',
+    'Their guns are down. Move.',
+    'Heat lock. Now.',
+  ]),
+  faction_choir: Object.freeze([
+    'Their fire gutters. Advance while the flame is out.',
+    'The vessel breathes out its heat. Close upon it.',
+    'Their guns fall silent. The Choir does not.',
+  ]),
+  faction_free: Object.freeze([
+    'Their guns are venting. Close in, quick.',
+    'They ran too hot. Move up while they cool.',
+    'Guns down on that hull. Push now.',
+  ]),
+  faction_vael: Object.freeze([
+    'Clause 4: the counterparty’s arms are vented. Approach is permitted.',
+    'Thermal default observed. The interval is ours to occupy.',
+    'Their instruments cool. We advance under the term.',
+  ]),
+  faction_archive: Object.freeze([
+    'Their guns have gone quiet. Close and record.',
+    'Thermal gap noted. Advance before it is amended.',
+    'Weapons venting. The record favours the near.',
+  ]),
+  faction_fulfillment: Object.freeze([
+    'Target weapons offline for cooling. Expedite approach.',
+    'Thermal hold detected on target. Rerouting to close range.',
+    'Venting window open. Delivery accelerated.',
+  ]),
+  faction_pitborn: Object.freeze([
+    'Their guns are cooked! Yard rules, go get it!',
+    'Venting heat, the fool! Close and strip!',
+    'Hot guns are no guns! In we go!',
+  ]),
+  faction_understory: Object.freeze([
+    'The prey has spent its heat. Close the petals.',
+    'Its guns cool like a dying sun. Feed now.',
+    'Venting. The garden moves in.',
+  ]),
+  faction_verge_layers: Object.freeze([
+    'Thermal null on the subject. The lattice closes.',
+    'Its fire is vented. Unmaking proceeds at close range.',
+    'Heat discharge observed. Contract the interval.',
+  ]),
+  faction_helix: Object.freeze([
+    'Helix variance: the subject’s guns are venting. Close the interval.',
+    'Helix variance: thermal lockout on the target. Lawful approach.',
+    'Helix variance: weapons cold. Advance before the window closes.',
+  ]),
+});
+
+/** One vent-press line for a faction (unknown ids speak the Frontier's plain register). */
+export function ventPressBarkFor(factionId, rng) {
+  const lines = (factionId && Object.hasOwn(VENT_PRESS_BARKS, factionId) && VENT_PRESS_BARKS[factionId])
+    || VENT_PRESS_BARKS.faction_free;
+  return String(lines[pickIndex(rng, lines.length)]);
+}
+
 // ── Living-world history recognition ──────────────────────────────────────────────────────────
 //
 // Where HULL_RECOGNITION names the hull, HISTORY_RECOGNITION names what the hull DID: the count of
