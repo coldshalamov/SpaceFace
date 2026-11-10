@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-station-nightside",
-      "wf": "WF-04",
-      "reason": "Released station window and berth-light surfaces retain their authored emission on the dark side without new geometry or point lights",
-      "fingerprint": "verb=light,subject=station-windows,sector=stations,domain=wf-04",
-      "date": "2026-11-04",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "references": [],
-      "integration": "live",
-      "commit": "b1c33da3aa98",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-berth-remembers",
       "date": "2026-11-04",
       "wf": "WF-04",
@@ -1690,6 +1677,23 @@
       "integration": "live",
       "commit": "8dee7ad35fc3",
       "verification": "focused_green"
+    },
+    {
+      "id": "class-counted-plurals",
+      "date": "2026-11-10",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Raw number-to-noun glue in ~120 places and six-plus per-screen chooser copies; counted()/pluralWord() is now the one chooser and the lint fails if it comes back.",
+      "fingerprint": "verb=counts-plurals,subject=player-facing-number-strings,sector=game-wide,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "448fef14e300",
+      "verification": "focused_green",
+      "evidence": "design/program/receipts/class-counts-plurals.md",
+      "kind": "class",
+      "player": "Every count in the game reads one entry / two entries — the ledger, prompts, HUD chips, station tabs and system messages no longer say '1 entries' or '2 unit'.",
+      "check": "test/player-counts.test.mjs"
     }
   ],
   "knownDefects": [
