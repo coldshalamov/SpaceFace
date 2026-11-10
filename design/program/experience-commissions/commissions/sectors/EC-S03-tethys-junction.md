@@ -20,6 +20,8 @@
 
 **Director's amendment, 2026-11-10** — see [10 — The game](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/10_THE_GAME.md). **Registrar Kessler lives here** — canon, and the first voice of the story. Kessler is this town's fourth face and its most important: give Kessler a berth at Customs, a face, and the Scale. The first trip of the game now ends here, so Tethys has to be safe to arrive in and readable at a glance.
 
+**Written out, 2026-11-10:** this town's jobs, its heist and its street moments are written beat by beat in [13 — Jobs and heists](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/13_JOBS_AND_HEISTS.md). Build those as written; where a job there shares a name with one in the brief below, they are the same job.
+
 ### How to build this town and check your own work
 
 Work in this order. Each step ends with something you looked at.
