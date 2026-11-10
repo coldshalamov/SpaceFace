@@ -1043,7 +1043,7 @@ export function createBroodEngine(deps = {}) {
     }
     // Admit the whole vignette atomically before the usual gate arrivals. It spends the
     // existing plan and never moves the chosen rock or an already-live brood body.
-    if (!bankPlayed && !spawnRequestedBankAttempted) {
+    if (!bankPlayed && !spawnRequestedBankAttempted && foundryScore?.id !== 'slip_the_lance') {
       spawnRequestedBankAttempted = true;
       const layout = planSwarmBank(state, state?.run, liveWave, pendingPlan);
       const charger = familyIndex.get('charger'), spitter = familyIndex.get('spitter');

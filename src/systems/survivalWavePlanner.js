@@ -576,6 +576,7 @@ function planSwarmWave({ seed, arenaId, wave, rng, mutators, buildSummary, swarm
   }
   if (foundry) {
     packages = packages.map(pkg => ({ ...pkg,
+      ...(pkg.debut && Number.isInteger(foundry.debutAtTick) ? { atTick: foundry.debutAtTick } : {}),
       readAfterTicks: pkg.champion ? 0 : pkg.debut ? foundry.debutReadTicks : foundry.shipReadTicks,
     }));
   }

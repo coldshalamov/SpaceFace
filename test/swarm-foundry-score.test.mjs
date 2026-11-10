@@ -86,7 +86,7 @@ for (let wave = 1; wave <= 7; wave++) test(`round ${wave} owns one score without
 test('other arenas, altered rooms, Circuit, Gauntlet and later waves retain their owners', () => {
   for (const options of [{ arenaId: 'the_hive' }, { mutators: ['heavies_only'] },
     { circuitRound: { kind: 'survive' } }]) assert.equal(planFor(6, options).swarm.foundry, undefined);
-  assert.equal(planFor(8).swarm.foundry, undefined);
+  assert.equal(planFor(9).swarm.foundry, undefined);
   assert.equal(planFor(7).swarm.character, undefined, 'the Bank is the round-seven foreground');
   assert.ok(planFor(19).swarm.character, 'later Kraken seats remain');
   assert.ok(planFor(7, { arenaId: 'the_hive' }).swarm.character);
@@ -218,14 +218,14 @@ test('actual event owner obeys the plan and later minor preview matches its real
   h.bus.emit('run:waveStarted', { wave: 2 });
   assert.equal(h.events.some(e => e.type === 'swarm:eventTelegraphed'), false);
   h.bus.emit('run:waveCleared', { wave: 2 });
-  h.state.run.wave = 8;
-  director.setPlan(planFor(8), 8);
-  h.bus.emit('run:waveStarted', { wave: 8 });
+  h.state.run.wave = 12;
+  director.setPlan(planFor(12), 12);
+  h.bus.emit('run:waveStarted', { wave: 12 });
   const receipt = h.events.find(e => e.type === 'swarm:eventTelegraphed');
   assert.ok(receipt);
-  const next = swarmRoundPreview({ arenaId: 'helios_core', wave: 8, seed: 4242 });
+  const next = swarmRoundPreview({ arenaId: 'helios_core', wave: 12, seed: 4242 });
   assert.equal(next.event.name, receipt.payload.name);
-  assert.equal(next.event.name, swarmMinorEventFor({ arenaId: 'helios_core', wave: 8, seed: 4242 }).name);
+  assert.equal(next.event.name, swarmMinorEventFor({ arenaId: 'helios_core', wave: 12, seed: 4242 }).name);
   director.destroy();
 });
 
@@ -265,9 +265,9 @@ test('the actual room host installs quiet-event policy after rearm and releases 
   bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
   bus.emit('run:waveStarted', { wave: 2 });
   assert.equal(events.length, 0);
-  state.run.wave = 8;
-  bus.emit('run:wavePlanned', { wave: 8, plan: planFor(8) });
-  bus.emit('run:waveStarted', { wave: 8 });
+  state.run.wave = 12;
+  bus.emit('run:wavePlanned', { wave: 12, plan: planFor(12) });
+  bus.emit('run:waveStarted', { wave: 12 });
   assert.equal(events.length, 1);
 });
 

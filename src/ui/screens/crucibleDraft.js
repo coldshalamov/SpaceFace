@@ -835,6 +835,15 @@ export function foundryAftermathIntermission(run, offers = []) {
     : `Round 6 cleared.${service} The next charge can break against surviving wreckage. Repair or Fortify, then launch when ready.`;
 }
 
+/** Round seven hands its close-range charge lesson to the existing rail sniper. */
+export function foundryLancerIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || run.wave !== 7 || (run.telemetry?.startWave || 1) > 7
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 8,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  return 'Round 7 cleared. A Lancer opens next: when it charges, strafe sideways, then close while it resets. Repair, check your Fortify ammunition, or save your purse before launch.';
+}
+
 /** One no-admissions-promised forecast sentence shared by the Armory and Refit surfaces. */
 export function swarmNextLine(next) {
   if (!next) return '';
@@ -1522,6 +1531,7 @@ export const crucibleDraftScreen = {
       && Number.isInteger(context.state.run.telemetry.startWave)
       ? context.state.run.telemetry.startWave : 1;
     this._sub.textContent = foundryAftermathIntermission(context.state?.run, offers)
+      ?? foundryLancerIntermission(context.state?.run)
       ?? firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'

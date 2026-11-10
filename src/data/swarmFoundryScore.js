@@ -8,6 +8,7 @@ const rows = [
   ['break_the_maw', 'Break Iron Maw', 'Read the Maw first. Acid and fuse-lit reinforcements arrive later.', 0, 720, 360, 480],
   ['use_the_wreck', 'Make the wreck work', 'If the Maw offcut survives nearby with a clear lane, use it against the pack. Guns work too; Jackal mines follow.', 360, 480, 0, 0],
   ['spend_the_charge', 'Let the charge spend itself', 'Leave the Maw offcut as cover, or throw it. Bait the charge and sidestep.', 480, 0, 0, 0],
+  ['slip_the_lance', 'Slip the rail shot', 'The Lancer opens alone. When it charges, strafe sideways, then close while it resets. The crowd follows.', 480, 1, 480, 480],
 ];
 
 export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparation,
@@ -22,10 +23,11 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparati
   broodPacketSize: 18,
   broodPacketGapS: 0.75,
   bankReadS: index === 6 ? 8 : 0,
+  ...(index === 7 ? { debutAtTick: 0 } : {}),
 })));
 
 export function swarmFoundryRound({ arenaId, wave, mutators = [], circuitRound = null } = {}) {
-  if (arenaId !== 'helios_core' || !Number.isInteger(wave) || wave < 1 || wave > 7
+  if (arenaId !== 'helios_core' || !Number.isInteger(wave) || wave < 1 || wave > SWARM_FOUNDRY_SCORE.length
     || (Array.isArray(mutators) && mutators.length > 0) || circuitRound) return null;
   return SWARM_FOUNDRY_SCORE[wave - 1];
 }
