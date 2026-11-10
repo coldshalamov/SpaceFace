@@ -1,0 +1,76 @@
+```json
+{
+  "answers": [
+    {
+      "q": 1,
+      "question": "Can I tell what the player did from the frames alone?",
+      "answer": "yes",
+      "frameIndex": 56,
+      "note": "A glowing Massline tether anchored to the asteroid and the curved blue engine trail clearly show the player latched onto the rock and swung around it."
+    },
+    {
+      "q": 2,
+      "question": "Did the world answer within a third of a second (motion, light, or a visible receipt)?",
+      "answer": "yes",
+      "frameIndex": 7,
+      "note": "Within a third of a second of forward input at 46.02s, bright blue engine plumes flare and velocity surges from 13.75 to 57.33 WU/s."
+    },
+    {
+      "q": 3,
+      "question": "Did something the player did not directly touch change because of it?",
+      "answer": "yes",
+      "frameIndex": 78,
+      "note": "Hostile ships collide with debris and each other, detonating in large fireball explosions across the arena without direct player contact."
+    },
+    {
+      "q": 4,
+      "question": "Would the vision's sentence for this verb be true here? (quote the sentence)",
+      "answer": "no",
+      "frameIndex": 123,
+      "note": "\"Thrusters have a cap; physics-earned speed does not get eaten by the brakes.\" fails as speed decays from 65.51 to 2.90 WU/s after release with hands off."
+    },
+    {
+      "q": 5,
+      "question": "Is the ship a controllable mass (turns inside the screen, stops when braked, keeps earned speed)?",
+      "answer": "no",
+      "frameIndex": 123,
+      "note": "The ship fails to keep earned speed, braking to a near-halt at 2.90 WU/s after rope release with hands off instead of coasting on earned momentum."
+    },
+    {
+      "q": 6,
+      "question": "Are the light ships ammunition here, rather than only targets?",
+      "answer": "no",
+      "frameIndex": 123,
+      "note": "Light hostiles remain swarm targets rather than projectiles; hostilesAlive stays at 10 across all frames and none are flung as ammunition."
+    },
+    {
+      "q": 7,
+      "question": "Is anything on screen a glowing sphere standing in for a designed event?",
+      "answer": "no",
+      "frameIndex": 78,
+      "note": "Spherical elements on screen are authored Fresnel shield bubbles around ships with shield generators, not placeholder spheres standing in for events."
+    },
+    {
+      "q": 8,
+      "question": "Did anyone flee, choose, or arrive because of the violence?",
+      "answer": "no",
+      "frameIndex": 134,
+      "note": "No NPCs flee, choose, or arrive in reaction to the violence; all 10 hostile swarmers persist on their default swarm trajectories through frame 134."
+    },
+    {
+      "q": 9,
+      "question": "Would a stranger tell a \"so then\" story about these twelve seconds?",
+      "answer": "yes",
+      "frameIndex": 56,
+      "note": "A stranger would describe latching a giant asteroid with the Massline, swinging in a high-speed arc through the swarm, and releasing as hostiles exploded behind."
+    }
+  ],
+  "fundamental": {
+    "rule": "reactionAssistAcceleration neutral-counterthrust",
+    "file": "src/core/flight/propulsionKernel.js",
+    "does": "applies reverse counter-thrust when hands off in assisted flight, braking the ship to a dead stop and eating momentum earned from the Massline swing",
+    "breaksSentence": "Thrusters have a cap; physics-earned speed does not get eaten by the brakes.",
+    "frameIndex": 123
+  }
+}
+```

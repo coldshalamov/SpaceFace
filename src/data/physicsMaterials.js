@@ -1,0 +1,16 @@
+export const PHYSICS_MATERIALS = Object.freeze({
+  ship: Object.freeze({ friction: 0, restitution: 0.0, angularDamping: 0.4, restitutionCombine: 'min', ghost: false, density: 0 }),
+  projectile: Object.freeze({ friction: 0, restitution: 0.0, angularDamping: 0.0, ghost: true, density: 0 }),
+  rock: Object.freeze({ friction: 0, restitution: 0.22, angularDamping: 0.02, ghost: false, density: 0.25 }),
+  station: Object.freeze({ friction: 0, restitution: 0.06, angularDamping: 0.0, ghost: false, density: 0 }),
+  debris: Object.freeze({ friction: 0, restitution: 0.16, angularDamping: 0.06, ghost: false, density: 0.10 }),
+  payload: Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.15, ghost: false, density: 0.08 }),
+  massline_sensor: Object.freeze({ friction: 0, restitution: 0.0, angularDamping: 0.15, ghost: true, density: 0 }),
+  sensor: Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.10, ghost: false, density: 0 }),
+  wreck: Object.freeze({ friction: 0, restitution: 0.16, angularDamping: 0.06, ghost: false, density: 0.10 }),
+  pod: Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.15, ghost: false, density: 0.08 }),
+  buoy: Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.15, ghost: false, density: 0.06 }),
+  prop: Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.15, ghost: false, density: 0.06 }),
+  pickup: Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.15, ghost: false, density: 0 }),
+  default: Object.freeze({ friction: 0, restitution: 0.15, angularDamping: 0.05, ghost: false, density: 0.10 }),
+});

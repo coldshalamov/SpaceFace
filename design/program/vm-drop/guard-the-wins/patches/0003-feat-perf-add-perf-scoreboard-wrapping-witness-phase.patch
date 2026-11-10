@@ -1,0 +1,110 @@
+From fd5b3c81a19612db29bc172b2a22c725b1ccca25 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 21:11:02 -0400
+Subject: [PATCH 3/4] feat(perf): add perf:scoreboard wrapping witness phases
+
+One command runs launch-to-flight profile, sector-entry runtime witness, and the
+zero-shader-links guard so before/after scoreboard runs are a single invocation.
+---
+ scripts/perf-scoreboard.mjs | 89 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 89 insertions(+)
+ create mode 100644 scripts/perf-scoreboard.mjs
+
+diff --git a/scripts/perf-scoreboard.mjs b/scripts/perf-scoreboard.mjs
+new file mode 100644
+index 000000000..75ec51282
+--- /dev/null
++++ b/scripts/perf-scoreboard.mjs
+@@ -0,0 +1,89 @@
++#!/usr/bin/env node
++// perf:scoreboard — backlog #70: one command wrapping the witness phases.
++//
++// Runs the instruments from design/perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md
++// "How every change is judged (the scoreboard)" as a single entry point so a
++// before/after pair is one invocation, not three remembered recipes.
++//
++//   npm run perf:scoreboard              # run all phases
++//   npm run perf:scoreboard -- --list    # show the plan
++//   npm run perf:scoreboard -- --dry-run # print commands without executing
++//   npm run perf:scoreboard -- --only=sector-entry-witness
++
++import { spawn } from 'node:child_process';
++import { fileURLToPath } from 'node:url';
++
++import { planScoreboardPhases, SCOREBOARD_PHASES } from './lib/guardTheWins.mjs';
++
++const ROOT = fileURLToPath(new URL('../', import.meta.url));
++
++function argValue(name) {
++  const hit = process.argv.find((a) => a.startsWith(`${name}=`));
++  return hit ? hit.slice(name.length + 1) : null;
++}
++
++const LIST = process.argv.includes('--list');
++const DRY = process.argv.includes('--dry-run');
++const ONLY = argValue('--only');
++const SKIP = argValue('--skip');
++const HELP = process.argv.includes('--help') || process.argv.includes('-h');
++
++if (HELP) {
++  console.log(`Usage: node scripts/perf-scoreboard.mjs [--list] [--dry-run] [--only=id,id] [--skip=id]
++
++Phases (in order):
++${SCOREBOARD_PHASES.map((p) => `  ${p.id}  ${p.title}`).join('\n')}
++`);
++  process.exit(0);
++}
++
++const phases = planScoreboardPhases({
++  include: ONLY ? ONLY.split(',').map((s) => s.trim()).filter(Boolean) : null,
++  exclude: SKIP ? SKIP.split(',').map((s) => s.trim()).filter(Boolean) : [],
++});
++
++if (LIST || DRY) {
++  for (const phase of phases) {
++    const cmdline = [phase.command, ...phase.args].join(' ');
++    console.log(`${phase.id}\n  ${phase.title}\n  ${cmdline}\n  feels: ${phase.feels.join('; ')}`);
++  }
++  if (LIST && !DRY) process.exit(0);
++  if (DRY) {
++    console.log(`[perf:scoreboard] dry-run: ${phases.length} phase(s) planned, nothing executed`);
++    process.exit(0);
++  }
++}
++
++async function runPhase(phase) {
++  console.log(`\n[perf:scoreboard] ▶ ${phase.id}: ${phase.title}`);
++  const child = spawn(phase.command, phase.args, {
++    cwd: ROOT,
++    stdio: 'inherit',
++    env: process.env,
++    shell: false,
++  });
++  const code = await new Promise((resolve) => child.on('close', resolve));
++  if (code !== 0) {
++    const err = new Error(`scoreboard phase ${phase.id} exited ${code}`);
++    err.exitCode = code;
++    throw err;
++  }
++}
++
++async function main() {
++  if (phases.length === 0) {
++    console.error('[perf:scoreboard] no phases selected');
++    process.exitCode = 2;
++    return;
++  }
++  const started = Date.now();
++  for (const phase of phases) {
++    await runPhase(phase);
++  }
++  console.log(`\n[perf:scoreboard] PASS ${phases.length} phase(s) in ${Date.now() - started} ms`);
++}
++
++main().catch((err) => {
++  console.error(`[perf:scoreboard] FAIL: ${err.message}`);
++  process.exitCode = Number(err.exitCode) || 1;
++});
+-- 
+2.47.3
+

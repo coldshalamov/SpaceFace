@@ -1,0 +1,248 @@
+From 9a5b7c409df5eb8320ada710b179f279428e9f5b Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 09:32:09 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20gas=20empt?=
+ =?UTF-8?q?y=20a11y+update=20(~2.7=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid resolveVfxAccessibilityProfile +
+setAccessibility + empty GasVolumeField.update every tick while
+liveCount===0. Latch after first empty observe; wake on liveCount
+(emit). Different angle from held gas-a11y profile-id retain.
+Soft-GPU fps not claimed. Picture unchanged.
+---
+ src/render/vfx.js                   |  35 +++++--
+ test/gas-quiet-empty-latch.test.mjs | 156 ++++++++++++++++++++++++++++
+ 2 files changed, 181 insertions(+), 10 deletions(-)
+ create mode 100644 test/gas-quiet-empty-latch.test.mjs
+
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 4a19e52eb..40e1047db 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1375,6 +1375,12 @@ export const vfx = {
+     this._overlayQuartetTetherPhase = null;
+     this._overlayQuartetTetherTargetId = null;
+     this._overlayQuartetGhostRef = null;
++    // Quiet settled flight: empty gas pool still paid resolveVfxAccessibilityProfile
++    // + setAccessibility + empty update every tick. Latch after first empty observe
++    // (liveCount===0 after update publishes 0); wake on liveCount>0 (emit). Different
++    // angle from held gas-a11y profile-id retain (which still resolved a11y every tick).
++    // Soft-GPU fps not claimed.
++    this._gasQuietEmpty = false;
+     this._seamMarkersWereRelevant = false;
+     // Quiet settled flight: irrelevant seam path used to re-walk asteroids +
+     // commitDynamicBufferOwner(0) every tick. Latch after first sleep; clear on
+@@ -2269,12 +2275,12 @@ export const vfx = {
+     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
+     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
+     add('heat:changed', (p) => this._onLawHeatChanged(p));
+-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._gasQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
+     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
+-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._gasQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('save:restoring', () => this._resetRibbonTrails());
+-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._gasQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('world:playerRelocated', () => this._resetRibbonTrails());
+     add('settings:changed', (p) => {
+       if (!p || p.section !== 'video') return;
+@@ -11849,13 +11855,22 @@ export const vfx = {
+       sub.combatBeams = 0;
+     }
+     if (this._gas) {
+-      // Phase runs on the SIM clock, never the display clock: a paused sim holds the gas still
+-      // while frames keep being produced. An empty pool costs one branch and uploads nothing.
+-      const gasSimTime = this.state && Number.isFinite(this.state.simTime)
+-        ? this.state.simTime
+-        : this._t;
+-      this._gas.setAccessibility(resolveVfxAccessibilityProfile(this.state && this.state.settings));
+-      this._gas.update(gasSimTime, cam);
++      // Quiet settled flight: empty gas still paid a11y resolve + setAccessibility +
++      // empty update every tick. Latch after first empty observe; wake on liveCount
++      // (emit). Soft-GPU fps not claimed. Different angle from held profile-id retain.
++      if (this._gasQuietEmpty && !(this._gas.liveCount > 0)) {
++        /* latched */
++      } else {
++        this._gasQuietEmpty = false;
++        // Phase runs on the SIM clock, never the display clock: a paused sim holds the gas still
++        // while frames keep being produced. An empty pool costs one branch and uploads nothing.
++        const gasSimTime = this.state && Number.isFinite(this.state.simTime)
++          ? this.state.simTime
++          : this._t;
++        this._gas.setAccessibility(resolveVfxAccessibilityProfile(this.state && this.state.settings));
++        this._gas.update(gasSimTime, cam);
++        if (!(this._gas.liveCount > 0)) this._gasQuietEmpty = true;
++      }
+     }
+     if (this._liveCount > 0) {
+       this._integrateParticles(dt);
+diff --git a/test/gas-quiet-empty-latch.test.mjs b/test/gas-quiet-empty-latch.test.mjs
+new file mode 100644
+index 000000000..9471f8bd9
+--- /dev/null
++++ b/test/gas-quiet-empty-latch.test.mjs
+@@ -0,0 +1,156 @@
++/**
++ * #124 gas-quiet-empty-latch — quiet empty gas skips a11y resolve + setAccessibility
++ * + empty update; dirty-wake on liveCount (emit). Soft-GPU fps not claimed.
++ */
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import { createBus } from '../src/core/eventBus.js';
++import { vfx } from '../src/render/vfx.js';
++
++const PLAYER_ID = 1;
++const DT = 1 / 60;
++
++function makeHarness() {
++  const scene = new THREE.Scene();
++  const player = {
++    id: PLAYER_ID,
++    type: 'ship',
++    alive: true,
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    radius: 6,
++    mass: 10,
++  };
++  const state = {
++    playerId: PLAYER_ID,
++    mode: 'flight',
++    entities: new Map([[PLAYER_ID, player]]),
++    entityList: [player],
++    entityIndex: {
++      __spacefaceEntityIndexV1: true,
++      ready: true,
++      version: 1,
++      projectiles: [],
++      ships: [player],
++    },
++    simTime: 0,
++    tick: 0,
++    camera: { focus: { x: 0, z: 0 } },
++    world: { frameOrigin: { x: 0, z: 0 } },
++    settings: {
++      video: { particleQuality: 'low', motionReduce: false, engineTrails: false },
++      accessibility: { flashReduce: false },
++    },
++    render: {
++      scene,
++      camera: new THREE.PerspectiveCamera(),
++      viewport: { height: 720 },
++      interpolationAlpha: 1,
++    },
++    player: {
++      heatZone: { active: false, center: { x: 0, z: 0 }, radius: 0, level: 0, untilS: 0, clearAfterS: 0 },
++      nav: { autopilot: { active: false, target: null }, waypoint: null },
++      tether: { phase: 'idle', targetId: null, active: false },
++      masslineTelemetry: { payloadReleaseGhost: null },
++    },
++    lawSecurity: { customsWeir: null },
++    fields: { active: [] },
++    combat: { entities: {}, statusNextPendingSeq: 0 },
++  };
++  const bus = createBus();
++  const system = Object.create(vfx);
++  system.init({
++    state,
++    bus,
++    helpers: { player: () => player },
++  });
++  return { system, state, bus, player, scene };
++}
++
++test('gas quiet-latches after first empty observe', () => {
++  const { system, state } = makeHarness();
++  assert.ok(system._gas, 'gas pool must init');
++  assert.equal(system._gasQuietEmpty, false);
++
++  // Drive the production call site via update() — opens with empty gas.
++  system.update(DT);
++  assert.equal(system._gas.liveCount, 0);
++  assert.equal(system._gasQuietEmpty, true, 'must latch after empty observe');
++
++  let setCalls = 0;
++  let updateCalls = 0;
++  const gas = system._gas;
++  const origSet = gas.setAccessibility.bind(gas);
++  const origUpdate = gas.update.bind(gas);
++  gas.setAccessibility = (...args) => { setCalls += 1; return origSet(...args); };
++  gas.update = (...args) => { updateCalls += 1; return origUpdate(...args); };
++
++  system.update(DT);
++  system.update(DT);
++  system.update(DT);
++  assert.equal(setCalls, 0, 'latched ticks must skip setAccessibility');
++  assert.equal(updateCalls, 0, 'latched ticks must skip update');
++  assert.equal(system._gasQuietEmpty, true);
++});
++
++test('gas emit (liveCount) dirty-wakes the quiet latch', () => {
++  const { system, state } = makeHarness();
++  system.update(DT);
++  assert.equal(system._gasQuietEmpty, true);
++
++  assert.equal(system._gas.emitCombustion({ x: 1, y: 0, z: 2, scale: 6, severity: 1 }), true);
++  assert.ok(system._gas.liveCount > 0);
++
++  let setCalls = 0;
++  let updateCalls = 0;
++  const gas = system._gas;
++  const origSet = gas.setAccessibility.bind(gas);
++  const origUpdate = gas.update.bind(gas);
++  gas.setAccessibility = (...args) => { setCalls += 1; return origSet(...args); };
++  gas.update = (...args) => { updateCalls += 1; return origUpdate(...args); };
++
++  state.simTime = (state.simTime || 0) + DT;
++  system.update(DT);
++  assert.equal(setCalls, 1, 'emit must wake setAccessibility');
++  assert.equal(updateCalls, 1, 'emit must wake update');
++  assert.equal(system._gasQuietEmpty, false, 'live gas must not re-latch');
++  assert.ok(system._gas.liveCount > 0);
++});
++
++test('gas re-latches after bodies retire', () => {
++  const { system, state } = makeHarness();
++  system.update(DT);
++  assert.equal(system._gasQuietEmpty, true);
++
++  system._gas.emitCombustion({ x: 0, y: 0, z: 0, scale: 4, severity: 1, lifeScale: 0.05 });
++  state.simTime = 0.02;
++  system.update(DT);
++  assert.equal(system._gasQuietEmpty, false);
++
++  // Age past life so the body retires.
++  for (let i = 0; i < 40; i++) {
++    state.simTime += 0.05;
++    system.update(DT);
++  }
++  assert.equal(system._gas.liveCount, 0, 'body must retire');
++  assert.equal(system._gasQuietEmpty, true, 'must re-latch once empty again');
++
++  let updateCalls = 0;
++  const gas = system._gas;
++  const origUpdate = gas.update.bind(gas);
++  gas.update = (...args) => { updateCalls += 1; return origUpdate(...args); };
++  system.update(DT);
++  system.update(DT);
++  assert.equal(updateCalls, 0, 're-latched empty must stay quiet');
++});
++
++test('sector:enter clears gas quiet latch', () => {
++  const { system, bus } = makeHarness();
++  system.update(DT);
++  assert.equal(system._gasQuietEmpty, true);
++  bus.emit('sector:enter', { sectorId: 'ceres' });
++  assert.equal(system._gasQuietEmpty, false, 'boundary must clear latch');
++});
+-- 
+2.47.3
+

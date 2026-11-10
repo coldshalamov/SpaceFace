@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "asset": "ship_ranger",
+  "revision": "chase_form_v6a",
+  "lod": 2,
+  "source": "/workspace/spaceface-scratch/ranger-c5/ranger_production_v1_lod2.glb",
+  "output": "/workspace/spaceface/design/program/vm-drop/ranger-chase/ranger_c6_lod2.glb",
+  "greenhouse": {
+    "tub": true,
+    "windshield": false
+  },
+  "surveyWell": {
+    "mouth": true
+  },
+  "nacelle": {
+    "throat_Port": true,
+    "throat_Stbd": true
+  },
+  "drive": {
+    "Port": true,
+    "Stbd": true
+  },
+  "size": [
+    16.08,
+    7.036,
+    2.9
+  ],
+  "boundsMin": [
+    -8.62,
+    -3.518,
+    -1.02
+  ],
+  "boundsMax": [
+    7.46,
+    3.518,
+    1.88
+  ],
+  "triangles": 31426,
+  "hullTriangles": 27276,
+  "objects": [
+    "COLLISION_HULL.002",
+    "LOD0_Beacon_Aft",
+    "LOD0_Beacon_Fore",
+    "LOD0_Bell_Bore_Port",
+    "LOD0_Bell_Bore_Stbd",
+    "LOD0_Bell_Nozzle_Port",
+    "LOD0_Bell_Nozzle_Stbd",
+    "LOD0_Bell_Port",
+    "LOD0_Bell_Stbd",
+    "LOD0_Collar_Port",
+    "LOD0_Dish_Fore",
+    "LOD0_GunAft_Port",
+    "LOD0_GunForeBrow_Port",
+    "LOD0_GunForeBrow_Stbd",
+    "LOD0_Hull",
+    "LOD0_RadFin_0"
+  ],
+  "bytes": 4095588
+}

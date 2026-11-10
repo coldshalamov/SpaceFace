@@ -1,0 +1,1635 @@
+import * as THREE from 'three';
+import { beginBootWork } from '../core/bootWork.js';
+import { makeGpuQueuePacer, makeGpuQueueSubmitter } from './gpuQueuePace.js';
+import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
+import {
+  detachPackageGeometry,
+  detachPackageTexture,
+  detachedGeometryUploadPending,
+  rehydrateDetachedGeometries,
+  rehydrateDetachedTextures,
+  refillPresentedCompressedUploads,
+  retainPackageGeometryCpu,
+  retainPresentedTextureLeases,
+  assertPackageGeometryRefillReady,
+  assertPackageTextureRefillReady,
+  isPackageTextureDetached,
+  noteGeometryGpuResident,
+  packageTextureDetachCovers,
+} from './packageCpuDetach.js';
+import { releaseSharedImageSource } from './imageSourceDedupe.js';
+import { pacedBootShellYield } from '../core/bootShellPacing.js';
+import { compileShadowDepthPipelines, prepareShadowDepthTextureLease } from './shadowDepthAdmission.js';
+import {
+  geometryGpuResident,
+  instanceResidencyReason,
+  stampGeometryGpuResident,
+  stampInstanceResidency,
+} from './residencyManager.js';
+
+const STARTUP_GEOMETRY_BATCH_DRAWABLES = 4;
+const STARTUP_GEOMETRY_BATCH_BYTES = 8 * 1024 * 1024;
+
+// One 1x1 scratch target per renderer, shared by every geometry-residency admission for the
+// context's lifetime. A fresh WebGLRenderTarget per admission used to orphan its texture and
+// framebuffer whenever the admission was abandoned mid-yield — a soak's repeated dock/load cycles
+// measured the residue directly. Shadow-depth admission already caches its scratch target the same
+// way; the GL objects die with the context and re-upload on restore through the normal path.
+const residencyScratchTargets = new WeakMap();
+
+function residencyScratchTargetFor(renderer) {
+  let target = residencyScratchTargets.get(renderer);
+  if (!target) {
+    target = new THREE.WebGLRenderTarget(1, 1, {
+      depthBuffer: false,
+      stencilBuffer: false,
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+    });
+    target.texture.generateMipmaps = false;
+    target.texture.name = 'SF_StartupGeometryResidencyTarget';
+    residencyScratchTargets.set(renderer, target);
+  }
+  return target;
+}
+
+// One residency material per renderer for the context's lifetime. The material is stateless
+// (no uniforms, no per-render mutation), but a fresh RawShaderMaterial per call mints new
+// shader IDs — so every in-flight admission paid a novel program link and an immediate
+// release, the +21 s link/upload churn cluster in the crucible probe. Sharing it means the
+// first cook links the program once and every later census reuses the cached program.
+const residencyMaterials = new WeakMap();
+
+function residencyMaterialFor(renderer) {
+  let material = residencyMaterials.get(renderer);
+  if (!material) {
+    material = createResidencyMaterial();
+    residencyMaterials.set(renderer, material);
+  }
+  return material;
+}
+
+// The scratch pass binds shared render-target state, so admissions cannot interleave: a second
+// caller that captured the scratch target as its "previous" target would restore the renderer to a
+// 1x1 buffer instead of the canvas. Serializing the batch loops per renderer keeps every capture/
+// restore honest while each admission's texture uploads still overlap freely.
+const residencyBatchChains = new WeakMap();
+
+// The deadline lane keeps its own chain: an on-glass pending root cannot queue
+// behind ambient residency passes (a sector cook may hold seconds of uploads).
+// Each batch self-contains capture/render/restore inside one synchronous turn,
+// so the two chains interleave safely at batch boundaries.
+const residencyUrgentBatchChains = new WeakMap();
+
+// Texture residency stamps, per renderer. renderer.initTexture() bottoms out in
+// setTexture2D/uploadTexture, which uploads only while texture.version moved — a repeat
+// call against an unchanged texture is a properties lookup plus a bind/unbind pair after
+// a full yield slot. Repeat residency passes (material variant rebuilds sharing decoded
+// packages, the pre-first-picture scene walk, live-sector pool seals) re-pay that for
+// every already-resident map, so a stamp recorded after a successful upload skips the
+// whole slice. texture.needsUpdate bumps texture.version, so any real re-upload request
+// invalidates the stamp; weak texture keys keep the stamp off userData (a texture.clone()
+// cannot inherit a stale stamp) and the renderer key keeps contexts honest.
+const textureUploadVersions = new WeakMap();
+
+function textureUploadVersionMap(renderer) {
+  let map = textureUploadVersions.get(renderer);
+  if (!map) {
+    map = new WeakMap();
+    textureUploadVersions.set(renderer, map);
+  }
+  return map;
+}
+
+/**
+ * F3 residency predicate: whether this renderer holds a live upload stamp for `texture` — the
+ * same `uploadVersions.get(texture) === texture.version` contract the loop enforces at :836.
+ * releaseSharedImageSource consults it per dedupe user before freeing the canonical payload.
+ */
+export function textureGpuResident(texture, renderer) {
+  const map = textureUploadVersions.get(renderer);
+  if (!map || map.get(texture) !== texture.version) return false;
+  if (!isPackageTextureDetached(texture)) return true;
+  const properties = renderer && renderer.properties;
+  if (!properties || typeof properties.get !== 'function') return true;
+  const current = properties.get(texture);
+  return !!current && current.__version === texture.version && !!current.__webglTexture;
+}
+
+function enqueueGeometryResidencyBatches(renderer, work, options = {}) {
+  const chains = options.urgent === true ? residencyUrgentBatchChains : residencyBatchChains;
+  const prior = chains.get(renderer) || Promise.resolve();
+  const run = prior.then(work, work);
+  chains.set(renderer, run.catch(() => null));
+  return run;
+}
+
+function materialTextures(material, textures, seenMaterials) {
+  if (!material || typeof material !== 'object') return;
+  // Cloned ship parts and pooled VFX share materials. Census each material once per pass:
+  // walking every mesh otherwise repeats its full property/uniform scan, even though the
+  // texture set already deduplicates the result. Keep this local so later passes see edits.
+  if (seenMaterials.has(material)) return;
+  seenMaterials.add(material);
+  // Keep the own-enumerable census used by Object.values without allocating its
+  // value array for every material in each admission/restore pass.
+  for (const key in material) {
+    if (!Object.prototype.hasOwnProperty.call(material, key)) continue;
+    const value = material[key];
+    if (value && value.isTexture) textures.add(value);
+  }
+  const uniforms = material.uniforms;
+  if (!uniforms || typeof uniforms !== 'object') return;
+  for (const key in uniforms) {
+    if (!Object.prototype.hasOwnProperty.call(uniforms, key)) continue;
+    const uniform = uniforms[key];
+    const value = uniform && uniform.value;
+    if (value && value.isTexture) textures.add(value);
+  }
+}
+
+function subjectRoots(subjects) {
+  return Array.isArray(subjects) ? subjects : [subjects];
+}
+
+/**
+ * Live resources owned by the exact first-picture plan. The plan separates drawable leaves
+ * (required now) from declared pool resources (allowed to grow from 0→N during first flight).
+ * Keeping this scope explicit avoids turning the final picture seal into an unrelated whole-scene
+ * census; late authored roots and later-use pools retain their own admission owners.
+ */
+export function collectOpeningResidencySubjects(plan) {
+  if (!plan || typeof plan !== 'object') return [];
+  const subjects = new Set();
+  for (const field of ['residencySubjects', 'pooledResourceSubjects', 'textureRefs']) {
+    const values = plan[field];
+    if (!Array.isArray(values)) continue;
+    for (const value of values) {
+      if (value && (value.isObject3D === true || value.isTexture === true)) subjects.add(value);
+    }
+  }
+  return [...subjects];
+}
+
+export function collectStartupTextures(subjects) {
+  const textures = new Set();
+  const seenMaterials = new Set();
+  const roots = subjectRoots(subjects);
+  for (const root of roots) {
+    if (root && root.isTexture === true) {
+      textures.add(root);
+      continue;
+    }
+    if (!root || typeof root.traverse !== 'function') continue;
+    root.traverse((object) => {
+      const material = object.material;
+      if (Array.isArray(material)) {
+        for (let i = 0; i < material.length; i++) {
+          materialTextures(material[i], textures, seenMaterials);
+        }
+      } else {
+        materialTextures(material, textures, seenMaterials);
+      }
+    });
+  }
+  return [...textures];
+}
+
+/**
+ * Stepped twin — identical traversal (explicit stack, same pre-order as
+ * traverse) and identical texture-set contents; yields every `sliceEvery`
+ * visited objects so an async admission driver paces a cohort's collect
+ * instead of paying the whole traverse inside one task.
+ */
+export function* collectStartupTexturesSteps(subjects, sliceEvery = 256) {
+  const textures = new Set();
+  const seenMaterials = new Set();
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  let visited = 0;
+  // Row-count yields alone under-pace: a fat stride of material-heavy nodes
+  // can still overrun — same wall-clock disjunct as the census family.
+  let strideAt = clockNow();
+  for (const root of subjectRoots(subjects)) {
+    if (root && root.isTexture === true) {
+      textures.add(root);
+      continue;
+    }
+    if (!root || typeof root.traverse !== 'function') continue;
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
+        yield;
+        // Reset AFTER the yield: the driver awaits a present (a whole frame) before resuming, and a stride
+        // clock stamped before that wait reads as >= 2 ms over on the very next node, so every node after the
+        // first stride yielded too (680 frame-long waits for no work in the 2026-10-13 warm launch).
+        strideAt = clockNow();
+      }
+      const material = object.material;
+      if (Array.isArray(material)) {
+        for (let i = 0; i < material.length; i++) {
+          materialTextures(material[i], textures, seenMaterials);
+        }
+      } else {
+        materialTextures(material, textures, seenMaterials);
+      }
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+  }
+  return [...textures];
+}
+
+function drawableHasWork(object, options = {}) {
+  if (!object || !object.geometry) return false;
+  if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite)) return false;
+  // Authored-fallback layers stay hidden for the object's whole live life once flagged —
+  // uploading their buffers in a residency pass pays for a draw no presented frame can issue
+  // (compilePresentSlice skips them for the same reason).
+  if (object.userData && object.userData.authoredReadableFallbackLayer === true) return false;
+  // includeEmpty admits count-0 pools and not-yet-ranged buffers: the upload is what matters,
+  // and an empty submission still uploads the backing buffers so a later 0->N growth does not
+  // first-land inside a presented frame.
+  if (options.includeEmpty === true) return true;
+  if (object.isInstancedMesh && Number.isFinite(Number(object.count)) && Number(object.count) <= 0) {
+    return false;
+  }
+  const drawRange = object.geometry.drawRange;
+  if (drawRange && Number.isFinite(Number(drawRange.count)) && Number(drawRange.count) <= 0) {
+    return false;
+  }
+  return true;
+}
+
+/** Exact drawable objects whose vertex/index/instance buffers can reach a later submission. */
+export function collectStartupGeometryDrawables(subjects, options = {}) {
+  const drawables = [];
+  const seen = new Set();
+  for (const root of subjectRoots(subjects)) {
+    if (!root) continue;
+    const visit = (object) => {
+      if (!drawableHasWork(object, options) || seen.has(object)) return;
+      seen.add(object);
+      drawables.push(object);
+      // Quality-tier systems (continuous plume, RCS impulse) carry alternate geometries and swap
+      // mesh.geometry on a live frame; an unstamped tier uploads inside the presented pass.
+      const tiers = object.userData && object.userData.spacefaceQualityTierGeometries;
+      if (Array.isArray(tiers)) {
+        for (const tierGeo of tiers) {
+          if (!tierGeo || tierGeo === object.geometry) continue;
+          const facade = Object.create(object);
+          facade.geometry = tierGeo;
+          drawables.push(facade);
+        }
+      }
+    };
+    if (typeof root.traverse === 'function') root.traverse(visit);
+    else visit(root);
+  }
+  return drawables;
+}
+
+/**
+ * Stepped twin — identical drawable set via an explicit stack (same pre-order as traverse),
+ * yielding every `sliceEvery` visited objects so an async residency leg paces the cohort
+ * collect instead of paying the whole traverse inside one task.
+ */
+export function* collectStartupGeometryDrawablesSteps(subjects, options = {}, sliceEvery = 256) {
+  const drawables = [];
+  const seen = new Set();
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  let visited = 0;
+  let strideAt = clockNow();
+  const visit = (object) => {
+    if (!drawableHasWork(object, options) || seen.has(object)) return;
+    seen.add(object);
+    drawables.push(object);
+    const tiers = object.userData && object.userData.spacefaceQualityTierGeometries;
+    if (Array.isArray(tiers)) {
+      for (const tierGeo of tiers) {
+        if (!tierGeo || tierGeo === object.geometry) continue;
+        const facade = Object.create(object);
+        facade.geometry = tierGeo;
+        drawables.push(facade);
+      }
+    }
+  };
+  for (const root of subjectRoots(subjects)) {
+    if (!root) continue;
+    if (typeof root.traverse !== 'function') {
+      visit(root);
+      continue;
+    }
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
+        yield;
+        // Reset AFTER the yield: the driver awaits a present (a whole frame) before resuming, and a stride
+        // clock stamped before that wait reads as >= 2 ms over on the very next node, so every node after the
+        // first stride yielded too (680 frame-long waits for no work in the 2026-10-13 warm launch).
+        strideAt = clockNow();
+      }
+      visit(object);
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+  }
+  return drawables;
+}
+
+/**
+ * Unique drawable geometries under the subjects — the pending-gate census for cpu-detached
+ * package geometry. Quality-tier alternates ride the drawable collector's facade objects, so
+ * their geometries land in the same set.
+ */
+export function collectStartupGeometries(subjects, options = {}) {
+  const geometries = new Set();
+  for (const drawable of collectStartupGeometryDrawables(subjects, options)) {
+    if (drawable && drawable.geometry) geometries.add(drawable.geometry);
+  }
+  return [...geometries];
+}
+
+/** Stepped twin of collectStartupGeometries — same set, paced collect. */
+export function* collectStartupGeometriesSteps(subjects, options = {}, sliceEvery = 256) {
+  const it = collectStartupGeometryDrawablesSteps(subjects, options, sliceEvery);
+  let drawables;
+  for (;;) {
+    const step = it.next();
+    if (step.done) { drawables = step.value; break; }
+    yield;
+  }
+  const geometries = new Set();
+  for (const drawable of drawables) {
+    if (drawable && drawable.geometry) geometries.add(drawable.geometry);
+  }
+  return [...geometries];
+}
+
+/**
+ * Instanced drawables whose backing geometry never passed a residency prepare. Scene-level
+ * instance pools (authored package pools, asteroid batches) have no per-subject admission
+ * owner: the only stamp they ever get comes from a whole-scene seal, so a cook that skips or
+ * bounds that seal leaves them to upload inside the first presented pass. Collecting just the
+ * unstamped instanced set gives the bounded post-cook seal its exact work list.
+ */
+export function collectUnresidentInstancedDrawables(subjects) {
+  const drawables = [];
+  for (const root of subjectRoots(subjects)) {
+    if (!root) continue;
+    const visit = (object) => {
+      if (!object || object.isInstancedMesh !== true || !object.geometry) return;
+      // A capacity-0 pool has no instance bytes to upload; the driver's proxy is deliberately
+      // not uploadable. Treat it as resident so it is not re-listed forever (growth is covered
+      // by the manager's capacity proof when the pool activates).
+      if (geometryGpuResident(object.geometry)) {
+        // Stamped = proven upload: instanced pools share package leaf geometry and never run a
+        // per-subject residency, so retry the mirror release here (idempotent until it lands).
+        detachPackageGeometry(object.geometry);
+        return;
+      }
+      if (!(Number(object.instanceMatrix && object.instanceMatrix.count) > 0)) return;
+      drawables.push(object);
+    };
+    if (typeof root.traverse === 'function') root.traverse(visit);
+    else visit(root);
+  }
+  return drawables;
+}
+
+/** Stepped twin — same unstamped-instanced set via an explicit stack, yielding per slice. */
+export function* collectUnresidentInstancedDrawablesSteps(subjects, sliceEvery = 256) {
+  const drawables = [];
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  let visited = 0;
+  let strideAt = clockNow();
+  const visit = (object) => {
+    if (!object || object.isInstancedMesh !== true || !object.geometry) return;
+    if (geometryGpuResident(object.geometry)) {
+      detachPackageGeometry(object.geometry);
+      return;
+    }
+    if (!(Number(object.instanceMatrix && object.instanceMatrix.count) > 0)) return;
+    drawables.push(object);
+  };
+  for (const root of subjectRoots(subjects)) {
+    if (!root) continue;
+    if (typeof root.traverse !== 'function') {
+      visit(root);
+      continue;
+    }
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
+        yield;
+        // Reset AFTER the yield: the driver awaits a present (a whole frame) before resuming, and a stride
+        // clock stamped before that wait reads as >= 2 ms over on the very next node, so every node after the
+        // first stride yielded too (680 frame-long waits for no work in the 2026-10-13 warm launch).
+        strideAt = clockNow();
+      }
+      visit(object);
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+  }
+  return drawables;
+}
+
+/**
+ * Whether any drawable under root holds geometry the residency lane has never uploaded.
+ * Shared cached geometries carry the stamp from their first admission, so live-built
+ * meshes that reuse them stay instantly drawable; only meshes that would pay a real
+ * upload inside the presented pass report unready.
+ */
+export function hasUnresidentGeometry(root) {
+  if (!root) return false;
+  const options = { includeEmpty: true };
+  const unresident = (object) => {
+    // Match the admission census: hidden authored fallback geometry is never
+    // uploaded, while alternate quality geometries can become live on any frame.
+    if (!drawableHasWork(object, options)) return false;
+    // A capacity-0 InstancedMesh has no instance bytes for the driver proxy to upload
+    // (`uploadable:false`); counting it unready made fail-open the only exit. Growth is
+    // covered by the manager's capacity proof when the pool activates.
+    if (object.isInstancedMesh === true
+        && !(Number(object.instanceMatrix && object.instanceMatrix.count) > 0)) return false;
+    // A capacity/version the instance proof has never covered still uploads at bind even
+    // when the shared vertex geometry is stamped.
+    if (instanceResidencyReason(object)) return true;
+    if (!geometryGpuResident(object.geometry)) return true;
+    const tiers = object.userData?.spacefaceQualityTierGeometries;
+    return Array.isArray(tiers) && tiers.some((geometry) => geometry
+      && !geometryGpuResident(geometry));
+  };
+  if (typeof root.traverse !== 'function') return unresident(root);
+  // traverse() cannot early-exit, so a live consult visited every descendant
+  // before answering. Explicit-stack DFS stops at the first unresident
+  // geometry — an all-resident subtree still walks in full.
+  const stack = [root];
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (!object) continue;
+    if (unresident(object)) return true;
+    const children = object.children;
+    if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+  return false;
+}
+
+function attributeByteLength(attribute) {
+  const array = attribute && (attribute.array || attribute.data && attribute.data.array);
+  return Number(array && array.byteLength) || 0;
+}
+
+function geometryByteLength(geometry) {
+  if (!geometry) return 0;
+  let bytes = attributeByteLength(geometry.index);
+  for (const attribute of Object.values(geometry.attributes || {})) {
+    bytes += attributeByteLength(attribute);
+  }
+  for (const attributes of Object.values(geometry.morphAttributes || {})) {
+    for (const attribute of attributes || []) bytes += attributeByteLength(attribute);
+  }
+  return bytes;
+}
+
+function createGeometryWorkItems(drawables, options = {}) {
+  const work = [];
+  const seenGeometries = new Set();
+  // Context restore leaves the stamps on the CPU-side objects while every GPU-side buffer died
+  // with the old context; the restore pass must ignore them or nothing is re-uploaded.
+  const ignoreStamps = options.ignoreResidentStamps === true;
+  for (const object of drawables) {
+    const geometry = object.geometry;
+    const firstGeometryUse = !seenGeometries.has(geometry);
+    if (firstGeometryUse) seenGeometries.add(geometry);
+    // Ordinary meshes sharing one BufferGeometry need one upload. InstancedMesh owns additional
+    // per-object instanceMatrix / instanceColor buffers, so every live instanced object remains work.
+    if (!firstGeometryUse && !object.isInstancedMesh) continue;
+    // F9 recook must not 1x1 ordinary geos the first cook already stamped.
+    if (!ignoreStamps
+        && geometryGpuResident(geometry)
+        && !object.isInstancedMesh) {
+      // Sealed by an earlier pass: retry the CPU-mirror release (deferred releases are the
+      // texture-detach retry semantics applied to geometry).
+      detachPackageGeometry(geometry);
+      continue;
+    }
+    let estimatedBytes = firstGeometryUse ? geometryByteLength(geometry) : 0;
+    if (object.isInstancedMesh) {
+      estimatedBytes += attributeByteLength(object.instanceMatrix);
+      estimatedBytes += attributeByteLength(object.instanceColor);
+    }
+    work.push({ object, geometry, estimatedBytes });
+  }
+  return { work, uniqueGeometries: seenGeometries.size };
+}
+
+// Stepped twin — the drawable scan is linear but unbounded; a cohort of tens
+// of thousands paid one atomic mint behind the boundary yield. Yields at
+// stride boundaries keep the same work list semantics.
+function* createGeometryWorkItemsSteps(drawables, options = {}) {
+  const work = [];
+  const seenGeometries = new Set();
+  const ignoreStamps = options.ignoreResidentStamps === true;
+  let visited = 0;
+  for (const object of drawables) {
+    if ((++visited % 1024) === 0) yield;
+    const geometry = object.geometry;
+    const firstGeometryUse = !seenGeometries.has(geometry);
+    if (firstGeometryUse) seenGeometries.add(geometry);
+    if (!firstGeometryUse && !object.isInstancedMesh) continue;
+    if (!ignoreStamps
+        && geometryGpuResident(geometry)
+        && !object.isInstancedMesh) {
+      detachPackageGeometry(geometry);
+      continue;
+    }
+    let estimatedBytes = firstGeometryUse ? geometryByteLength(geometry) : 0;
+    if (object.isInstancedMesh) {
+      estimatedBytes += attributeByteLength(object.instanceMatrix);
+      estimatedBytes += attributeByteLength(object.instanceColor);
+    }
+    work.push({ object, geometry, estimatedBytes });
+  }
+  return { work, uniqueGeometries: seenGeometries.size };
+}
+
+function partitionGeometryWork(work, options = {}) {
+  const maxDrawables = Math.max(1, Number(options.geometryBatchDrawables)
+    || STARTUP_GEOMETRY_BATCH_DRAWABLES);
+  const maxBytes = Math.max(1, Number(options.geometryBatchBytes)
+    || STARTUP_GEOMETRY_BATCH_BYTES);
+  const batches = [];
+  let current = [];
+  let bytes = 0;
+  for (const item of work) {
+    if (current.length > 0
+        && (current.length >= maxDrawables || bytes + item.estimatedBytes > maxBytes)) {
+      batches.push({ work: current, estimatedBytes: bytes });
+      current = [];
+      bytes = 0;
+    }
+    current.push(item);
+    bytes += item.estimatedBytes;
+  }
+  if (current.length > 0) batches.push({ work: current, estimatedBytes: bytes });
+  return batches;
+}
+
+// Stepped twin — same linear scan; yields at stride boundaries so a giant
+// work list does not mint its batches inside one atomic leg.
+function* partitionGeometryWorkSteps(work, options = {}) {
+  const maxDrawables = Math.max(1, Number(options.geometryBatchDrawables)
+    || STARTUP_GEOMETRY_BATCH_DRAWABLES);
+  const maxBytes = Math.max(1, Number(options.geometryBatchBytes)
+    || STARTUP_GEOMETRY_BATCH_BYTES);
+  const batches = [];
+  let current = [];
+  let bytes = 0;
+  let visited = 0;
+  for (const item of work) {
+    if ((++visited % 1024) === 0) yield;
+    if (current.length > 0
+        && (current.length >= maxDrawables || bytes + item.estimatedBytes > maxBytes)) {
+      batches.push({ work: current, estimatedBytes: bytes });
+      current = [];
+      bytes = 0;
+    }
+    current.push(item);
+    bytes += item.estimatedBytes;
+  }
+  if (current.length > 0) batches.push({ work: current, estimatedBytes: bytes });
+  return batches;
+}
+
+function residencyProgramLinked(renderer, material) {
+  try {
+    const properties = renderer && renderer.properties && typeof renderer.properties.get === 'function'
+      ? renderer.properties.get(material) : null;
+    const programs = properties && properties.programs;
+    return !!(material && material.isRawShaderMaterial === true && programs
+      && typeof programs.size === 'number' && programs.size > 0 && properties.currentProgram);
+  } catch {
+    return false;
+  }
+}
+
+function residencyProgramReady(renderer, material, programWrapperDead) {
+  if (!residencyProgramLinked(renderer, material)) return false;
+  try {
+    const gl = renderer.getContext();
+    const program = renderer.properties.get(material).currentProgram;
+    return !!gl && gl.isContextLost?.() !== true
+      && !programWrapperDead(gl, program)
+      && typeof program.isReady === 'function' && program.isReady() === true;
+  } catch {
+    return false;
+  }
+}
+
+function createResidencyMaterial() {
+  // WebGLObjects.update() uploads every BufferGeometry attribute before renderBufferDirect() binds
+  // the program. The shader stays tiny and clips every vertex outside the 1x1 target.
+  return new THREE.RawShaderMaterial({
+    name: 'SF_StartupGeometryResidency',
+    vertexShader: `
+      precision highp float;
+      void main() {
+        gl_PointSize = 1.0;
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      void main() { gl_FragColor = vec4(0.0); }
+    `,
+    depthTest: false,
+    depthWrite: false,
+    colorWrite: false,
+    toneMapped: false,
+  });
+}
+
+function createResidencyProxy(source, material, geometry = source.geometry) {
+  let proxy;
+  let cleanup = null;
+  if (source.isInstancedMesh) {
+    // Point the proxy at the production instance buffers. Restore its owned buffers before dispose
+    // so releasing the proxy cannot release production GPU state.
+    proxy = new THREE.InstancedMesh(geometry, material, 1);
+    const ownedMatrix = proxy.instanceMatrix;
+    const ownedColor = proxy.instanceColor;
+    proxy.instanceMatrix = source.instanceMatrix;
+    proxy.instanceColor = source.instanceColor;
+    // Three skips count-0 InstancedMeshes before attribute upload. A scratch
+    // proxy may submit one existing-capacity instance without changing the live pool.
+    const capacity = Math.max(0, Number(source.instanceMatrix?.count) || 0);
+    proxy.count = capacity > 0 ? Math.max(1, Number(source.count) || 0) : 0;
+    cleanup = () => {
+      proxy.instanceMatrix = ownedMatrix;
+      proxy.instanceColor = ownedColor;
+      proxy.dispose();
+    };
+  } else if (source.isPoints) {
+    proxy = new THREE.Points(geometry, material);
+  } else if (source.isLineSegments) {
+    proxy = new THREE.LineSegments(geometry, material);
+  } else if (source.isLineLoop) {
+    proxy = new THREE.LineLoop(geometry, material);
+  } else if (source.isLine) {
+    proxy = new THREE.Line(geometry, material);
+  } else {
+    proxy = new THREE.Mesh(geometry, material);
+  }
+  proxy.name = `SF_ResidencyProxy:${source.name || source.type || source.id || 'drawable'}`;
+  proxy.frustumCulled = false;
+  proxy.matrixAutoUpdate = false;
+  proxy.matrix.identity();
+  proxy.matrixWorld.identity();
+  return { proxy, cleanup, uploadable: !proxy.isInstancedMesh || proxy.count > 0 };
+}
+
+function rendererMemoryGeometries(renderer) {
+  const value = renderer && renderer.info && renderer.info.memory
+    && renderer.info.memory.geometries;
+  return Number.isFinite(Number(value)) ? Number(value) : null;
+}
+
+function reportBlockingSlice(observer, slice) {
+  if (!observer) return;
+  try { observer(slice); } catch {
+    // Diagnostic observers never own admission semantics.
+  }
+}
+
+function captureRendererState(renderer) {
+  const state = {
+    target: typeof renderer.getRenderTarget === 'function' ? renderer.getRenderTarget() : null,
+    viewport: null,
+    scissor: null,
+    scissorTest: null,
+    autoClear: renderer.autoClear,
+    xrEnabled: renderer.xr && typeof renderer.xr.enabled === 'boolean'
+      ? renderer.xr.enabled : null,
+    shadowAutoUpdate: renderer.shadowMap && typeof renderer.shadowMap.autoUpdate === 'boolean'
+      ? renderer.shadowMap.autoUpdate : null,
+    shadowNeedsUpdate: renderer.shadowMap && typeof renderer.shadowMap.needsUpdate === 'boolean'
+      ? renderer.shadowMap.needsUpdate : null,
+  };
+  if (typeof renderer.getViewport === 'function') {
+    state.viewport = renderer.getViewport(new THREE.Vector4()).clone();
+  }
+  if (typeof renderer.getScissor === 'function') {
+    state.scissor = renderer.getScissor(new THREE.Vector4()).clone();
+  }
+  if (typeof renderer.getScissorTest === 'function') {
+    state.scissorTest = renderer.getScissorTest();
+  }
+  return state;
+}
+
+function applyResidencyRendererState(renderer, target) {
+  renderer.setRenderTarget(target);
+  if (typeof renderer.setViewport === 'function') renderer.setViewport(0, 0, 1, 1);
+  if (typeof renderer.setScissor === 'function') renderer.setScissor(0, 0, 1, 1);
+  if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(true);
+  renderer.autoClear = false;
+  if (renderer.xr && typeof renderer.xr.enabled === 'boolean') renderer.xr.enabled = false;
+  if (renderer.shadowMap) {
+    if (typeof renderer.shadowMap.autoUpdate === 'boolean') renderer.shadowMap.autoUpdate = false;
+    if (typeof renderer.shadowMap.needsUpdate === 'boolean') renderer.shadowMap.needsUpdate = false;
+  }
+}
+
+function restoreRendererState(renderer, state) {
+  renderer.setRenderTarget(state.target || null);
+  if (state.viewport && typeof renderer.setViewport === 'function') renderer.setViewport(state.viewport);
+  if (state.scissor && typeof renderer.setScissor === 'function') renderer.setScissor(state.scissor);
+  if (state.scissorTest !== null && typeof renderer.setScissorTest === 'function') {
+    renderer.setScissorTest(state.scissorTest);
+  }
+  renderer.autoClear = state.autoClear;
+  if (state.xrEnabled !== null && renderer.xr) renderer.xr.enabled = state.xrEnabled;
+  if (renderer.shadowMap) {
+    if (state.shadowAutoUpdate !== null) renderer.shadowMap.autoUpdate = state.shadowAutoUpdate;
+    if (state.shadowNeedsUpdate !== null) renderer.shadowMap.needsUpdate = state.shadowNeedsUpdate;
+  }
+}
+
+// Optional cook-ledger timing. Submission time includes its synchronous work; syncMs is
+// reported separately so callers can distinguish that work from queue/drain waiting.
+async function timeResidencySubmission(timing, now, submit) {
+  if (!timing) return submit();
+  const started = now();
+  timing.submissions += 1;
+  try { return await submit(); }
+  finally { timing.submissionMs += now() - started; }
+}
+
+/**
+ * Upload exact vertex/index/instance buffers through Three's public render path.
+ *
+ * compileAsync() prepares programs only. WebGLObjects.update(), reached by render(), owns geometry
+ * registration and buffer upload. This isolated clipped pass admits late Continue roots without
+ * attaching them to the visible scene or changing their production materials.
+ */
+export async function prepareStartupGeometryResidency(renderer, subjects, options = {}) {
+  const collectYield = typeof options.yieldToMain === 'function'
+    ? options.yieldToMain
+    : yieldToBrowser;
+  let drawables;
+  if (typeof collectStartupGeometryDrawablesSteps === 'function') {
+    const collectIt = collectStartupGeometryDrawablesSteps(subjects, options);
+    for (;;) {
+      const collectStep = collectIt.next();
+      if (collectStep.done) { drawables = collectStep.value; break; }
+      await collectYield();
+    }
+  } else {
+    drawables = collectStartupGeometryDrawables(subjects, options);
+  }
+  // The work-list mint rides its Steps twin under the boundary yield — a big
+  // cohort no longer pays the whole drawable scan inside one task, while the
+  // unconditional yield keeps a small cohort's collect->mint fuse broken the
+  // way the boundary always did.
+  await collectYield();
+  let work, uniqueGeometries;
+  if (typeof createGeometryWorkItemsSteps === 'function') {
+    const workIt = createGeometryWorkItemsSteps(drawables, options);
+    for (;;) {
+      const workStep = workIt.next();
+      if (workStep.done) {
+        ({ work, uniqueGeometries } = workStep.value);
+        break;
+      }
+      await collectYield();
+    }
+  } else {
+    ({ work, uniqueGeometries } = createGeometryWorkItems(drawables, options));
+  }
+  if (!renderer || typeof renderer.render !== 'function'
+      || typeof renderer.setRenderTarget !== 'function'
+      || typeof renderer.getRenderTarget !== 'function') {
+    return {
+      skipped: true,
+      reason: 'render-target render unavailable',
+      drawables: drawables.length,
+      geometries: uniqueGeometries,
+      batches: [],
+    };
+  }
+  if (work.length === 0) {
+    return {
+      skipped: true,
+      reason: 'no drawable geometry',
+      drawables: drawables.length,
+      geometries: uniqueGeometries,
+      batches: [],
+    };
+  }
+
+  const yieldToMain = typeof options.yieldToMain === 'function'
+    ? options.yieldToMain
+    : yieldToBrowser;
+  const onBlockingSlice = typeof options.onBlockingSlice === 'function'
+    ? options.onBlockingSlice
+    : null;
+  const now = typeof options.now === 'function' ? options.now : clockNow;
+  // Serial-route queue pacing: null where KHR_parallel_shader_compile exists. Each 1x1 upload
+  // pass queues GL work; without a per-batch drain the whole census piles into the command
+  // buffer and drains inside one forced compositor finish (headless SwiftShader starved the
+  // page's task queue for ~25 s this way — CI run 36486329212).
+  const paceQueue = typeof options.paceQueue === 'function'
+    ? options.paceQueue
+    : makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
+  const submitSerial = makeGpuQueueSubmitter(renderer, {
+    scheduleTask: postTaskAtBackgroundPriorityBounded, paceQueue,
+  });
+  await yieldToMain();
+  let batches;
+  if (typeof partitionGeometryWorkSteps === 'function') {
+    const partitionIt = partitionGeometryWorkSteps(work, options);
+    for (;;) {
+      const partitionStep = partitionIt.next();
+      if (partitionStep.done) { batches = partitionStep.value; break; }
+      await yieldToMain();
+    }
+  } else {
+    batches = partitionGeometryWork(work, options);
+  }
+  const geometryProgress = beginBootWork(renderer, 'geometry', batches.length);
+  const material = residencyMaterialFor(renderer);
+  const target = residencyScratchTargetFor(renderer);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 10);
+  camera.layers.enableAll();
+  camera.updateMatrixWorld(true);
+  const results = [];
+  let interrupted = null;
+  const geometriesBefore = rendererMemoryGeometries(renderer);
+
+  try {
+    const counters = options.counters || null;
+    await enqueueGeometryResidencyBatches(renderer, async () => {
+      const compiler = typeof renderer.compileAsync === 'function' ? await import('./bloom.js') : null;
+      for (let index = 0; index < batches.length; index++) {
+        const batch = batches[index];
+        if (!submitSerial && paceQueue) await paceQueue();
+        await yieldToMain();
+        const scene = new THREE.Scene();
+        scene.name = `SF_StartupGeometryResidencyBatch:${index + 1}`;
+        // The live owner can swap LOD geometry after the work census yields. Use the
+        // captured geometry so proxy submission, CPU lease and residency stamp agree.
+        const proxyEntries = batch.work.map(({ object, geometry }) => createResidencyProxy(object, material, geometry));
+        for (const entry of proxyEntries) scene.add(entry.proxy);
+        let releaseCpu = null;
+        let uploadSucceeded = false;
+        try {
+          // The residency material is a RawShaderMaterial, whose program cache key is only its
+          // shader source and defines (no instancing/points/line/morph parameters), so every proxy
+          // in every batch shares one program. Once that program is linked on this renderer the
+          // compile unit is a pure serial-route round trip (a presented-frame wait + gl.finish per
+          // batch on SwiftShader); skip it. A miss is still safe: the draw links synchronously.
+          // KHR cache presence alone is not readiness: an urgent batch can overlap a pending
+          // ordinary link. Reuse only a live wrapper that actually reports ready, with bloom's
+          // context-generation guard so a lost/restored context cannot inherit the old proof.
+          const programReady = compiler && (submitSerial
+            ? residencyProgramLinked(renderer, material)
+            : residencyProgramReady(renderer, material, compiler.programWrapperDead));
+          if (compiler && !programReady) {
+            const { compilePipelinesContextSafe } = compiler;
+            const compile = () => {
+              if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
+              if (typeof options.isActive === 'function' && !options.isActive()) {
+                throw new Error('Residency program admission was superseded');
+              }
+              const compileState = captureRendererState(renderer);
+              try {
+                applyResidencyRendererState(renderer, target);
+                // A reserved unit must never join a surrounding cook batch: its owner may
+                // itself be waiting for this reservation before it can drain that batch.
+                return compilePipelinesContextSafe(renderer, scene, camera, scene, { skipSharedBatch: true });
+              } finally {
+                // Presented draws may run while the driver links this private variant.
+                restoreRendererState(renderer, compileState);
+              }
+            };
+            // Compile and draw are separate serial units. Release the compiled prefix before
+            // yielding and queueing the draw, so sibling uploads cannot pile onto either unit.
+            const ready = await timeResidencySubmission(options.cookTiming, now, () => submitSerial
+              ? submitSerial(compile, { urgent: options.urgent === true })
+              : compile());
+            if (ready?.skipped && ready?.contextLost) { interrupted = ready; break; }
+            if (ready?.contextLost || ready?.readinessTimedOut
+                || (typeof options.isActive === 'function' && !options.isActive())) {
+              throw new Error('Residency program was not ready');
+            }
+            await yieldToMain();
+            if ((typeof options.isActive === 'function' && !options.isActive())
+                || renderer.getContext?.()?.isContextLost?.() === true) {
+              throw new Error('Residency program admission was superseded');
+            }
+          }
+          // The work list can contain shared package geometry detached by another context
+          // while this batch waited. Hold its CPU bytes through this renderer's actual upload.
+          const batchGeometries = [...new Set(batch.work.map(item => item.geometry).filter(Boolean))];
+          releaseCpu = retainPackageGeometryCpu(batchGeometries);
+          const pending = batchGeometries.filter(geometry => detachedGeometryUploadPending(geometry, renderer));
+          if (pending.length) {
+            const refill = await rehydrateDetachedGeometries(pending, { yieldToMain });
+            assertPackageGeometryRefillReady(pending, refill);
+          }
+          const upload = () => {
+            if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
+            if (typeof options.isActive === 'function' && !options.isActive()) {
+              throw new Error('Residency program admission was superseded');
+            }
+            const state = captureRendererState(renderer);
+            const started = now();
+            let success = false;
+            // Upload events inherit the caller's admission label; swap in the batch's source names so
+            // the probe can say WHICH meshes still reach first-bind inside a live round.
+            const priorSubject = counters ? counters.admissionSubject : null;
+            if (counters) {
+              counters.admissionSubject = `res:${batch.work
+                .map((item) => item.object && (item.object.name || item.object.type) || 'mesh')
+                .slice(0, 10)
+                .join(',')}`;
+            }
+            try {
+              applyResidencyRendererState(renderer, target);
+              renderer.render(scene, camera);
+              success = true;
+              uploadSucceeded = true;
+            } finally {
+              if (counters) counters.admissionSubject = priorSubject;
+              const durationMs = now() - started;
+              if (options.cookTiming) options.cookTiming.syncMs += durationMs;
+              restoreRendererState(renderer, state);
+              const receipt = {
+                kind: 'gpuGeometryResidency',
+                durationMs,
+                index,
+                count: batches.length,
+                drawables: batch.work.length,
+                geometries: new Set(batch.work.map((item) => item.geometry)).size,
+                estimatedBytes: batch.estimatedBytes,
+                success,
+              };
+              if (success) {
+                for (let i = 0; i < batch.work.length; i++) {
+                  const item = batch.work[i];
+                  const object = item.object;
+                  // Three uploads instanceMatrix at bind. Prove the capacity/version THIS batch's
+                  // proxy uploaded (not the live draw count) so an activated pool does not hold.
+                  if (object && object.isInstancedMesh === true) stampInstanceResidency(object);
+                  if (!proxyEntries[i].uploadable) continue;
+                  const geometry = item.geometry;
+                  if (geometry) {
+                    // The proxy render proved this context's attribute records. Record it now;
+                    // the outer finally releases the CPU lease before detaching the arrays.
+                    stampGeometryGpuResident(geometry);
+                    noteGeometryGpuResident(geometry, renderer);
+                  }
+                }
+                results.push(receipt);
+              }
+              reportBlockingSlice(onBlockingSlice, receipt);
+              geometryProgress.update(index + 1, success);
+            }
+          };
+          if (submitSerial) {
+            const outcome = await timeResidencySubmission(options.cookTiming, now,
+              () => submitSerial(upload, { urgent: options.urgent === true }));
+            if (outcome && outcome.contextLost) { interrupted = outcome; break; }
+          } else upload();
+        } finally {
+          if (releaseCpu) releaseCpu();
+          if (uploadSucceeded) {
+            for (let i = 0; i < batch.work.length; i++) {
+              if (proxyEntries[i].uploadable) detachPackageGeometry(batch.work[i].geometry, renderer);
+            }
+          }
+          for (const entry of proxyEntries) {
+            scene.remove(entry.proxy);
+            if (entry.cleanup) entry.cleanup();
+          }
+        }
+      }
+    }, { urgent: options.urgent === true });
+  } finally {
+    // The material is renderer-scoped and shared — disposing it here would release the linked
+    // program and force every later admission to relink it. It dies with the GL context.
+  }
+
+  if (interrupted) return { ...interrupted, batches: results };
+  const geometriesAfter = rendererMemoryGeometries(renderer);
+  return {
+    skipped: false,
+    mode: 'bounded-1x1-render',
+    drawables: drawables.length,
+    geometryWorkItems: work.length,
+    geometries: uniqueGeometries,
+    estimatedBytes: work.reduce((sum, item) => sum + item.estimatedBytes, 0),
+    geometriesBefore,
+    geometriesAfter,
+    newGeometries: geometriesBefore !== null && geometriesAfter !== null
+      ? geometriesAfter - geometriesBefore : null,
+    batches: results,
+  };
+}
+
+// Rough upload size of one texture, for the optional batch byte cap below. Mip chains and
+// compressed payloads count their own bytes; a plain image counts width*height*4 (+1/3 when it
+// will generate mipmaps). Unknown sizes count 0, so they only ever share a batch by count.
+export function estimateTextureUploadBytes(texture) {
+  try {
+    const mipmaps = texture && Array.isArray(texture.mipmaps) ? texture.mipmaps : null;
+    if (mipmaps && mipmaps.length) {
+      let bytes = 0;
+      for (const mip of mipmaps) {
+        const data = mip && mip.data;
+        if (data && typeof data.byteLength === 'number') bytes += data.byteLength;
+        else if (mip && mip.width && mip.height) bytes += mip.width * mip.height * 4;
+      }
+      return bytes;
+    }
+    const data = texture && (texture.image || (texture.source && texture.source.data));
+    if (data && data.data && typeof data.data.byteLength === 'number') return data.data.byteLength;
+    const width = Number(data && data.width) || 0;
+    const height = Number(data && data.height) || 0;
+    const depth = Number(data && data.depth) || 1;
+    const base = width * height * depth * 4;
+    return texture && texture.generateMipmaps === true ? Math.ceil(base * 4 / 3) : base;
+  } catch {
+    return 0;
+  }
+}
+
+export async function prepareStartupGpuResidency(renderer, subjects, options = {}) {
+  if (!renderer || typeof renderer.initTexture !== 'function') {
+    return { skipped: true, reason: 'initTexture unavailable', textures: 0 };
+  }
+  const yieldToMain = typeof options.yieldToMain === 'function'
+    ? options.yieldToMain
+    : yieldToBrowser;
+  const onBlockingSlice = typeof options.onBlockingSlice === 'function'
+    ? options.onBlockingSlice
+    : null;
+  const now = typeof options.now === 'function' ? options.now : clockNow;
+  // Same serial-route pacing as the geometry census: every initTexture queues a GL upload, and
+  // without a per-texture drain the queue drains inside one forced finish downstream.
+  const paceQueue = typeof options.paceQueue === 'function'
+    ? options.paceQueue
+    : makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
+  const submitSerial = makeGpuQueueSubmitter(renderer, {
+    scheduleTask: postTaskAtBackgroundPriorityBounded, paceQueue,
+  });
+  let textures;
+  if (typeof collectStartupTexturesSteps === 'function') {
+    const collectIt = collectStartupTexturesSteps(subjects);
+    for (;;) {
+      const collectStep = collectIt.next();
+      if (collectStep.done) { textures = collectStep.value; break; }
+      await yieldToMain();
+    }
+  } else {
+    textures = collectStartupTextures(subjects);
+  }
+  for (const texture of Array.isArray(options.textures) ? options.textures : []) {
+    if (texture && texture.isTexture === true && !textures.includes(texture)) textures.push(texture);
+  }
+  // This pass yields before queued uploads execute. Keep each selected CPU payload alive
+  // until the texture phase finishes, including while other residency owners run between slices.
+  const releaseTextureLeases = retainPresentedTextureLeases(textures);
+  const releaseTexturePhase = () => {
+    releaseTextureLeases();
+    // Detachment attempted while our lease was held is deferred until this phase ends.
+    // Other upload owners retain their own leases and the existing shared-source guards.
+    for (const texture of textures) {
+      if (!textureGpuResident(texture, renderer)) continue;
+      detachPackageTexture(texture);
+      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
+    }
+  };
+  try {
+  // Clones retain a copied package mark but are not canonical manifest entries. Rehydrating
+  // that manifest alone leaves their own mip arrays empty; refill the exact upload subjects too.
+  await refillPresentedCompressedUploads(textures, renderer);
+  // Context restore rebuilt every GL object, so stamps recorded against the dead context lie:
+  // that call site passes ignoreResidentStamps, and clearing the map makes the pass re-upload
+  // everything (matching the geometry spacefaceGpuResident handling) then stamp fresh.
+  if (options.ignoreResidentStamps === true) textureUploadVersions.delete(renderer);
+  const uploadVersions = textureUploadVersionMap(renderer);
+  const uploads = [];
+  let residentTextures = 0;
+  const count = textures.length;
+  const textureProgress = beginBootWork(renderer, 'textures', count);
+  const deadlineMs = Number(options.deadlineMs);
+  const hasDeadline = Number.isFinite(deadlineMs) && deadlineMs >= 0;
+  const startedAt = now();
+  let hitDeadline = false;
+  let scanStrideAt = startedAt;
+  // Optional upload batching (serial-link route behind the loading shell only; callers pass
+  // these). By default every upload is its own serial unit, so on SwiftShader each texture pays a
+  // yield plus a presented-frame wait + gl.finish; the 131 opening textures made cook.buffers
+  // mostly idle main thread. A batch shares one yield and one serial unit, capped by count and
+  // bytes. Count 1 (the default) is exactly the per-texture path.
+  const textureBatchCount = Math.max(1, Math.floor(Number(options.textureBatchCount)) || 1);
+  const textureBatchBytes = Number(options.textureBatchBytes) > 0 ? Number(options.textureBatchBytes) : Infinity;
+  let pendingUploads = [];
+  let pendingBytes = 0;
+  const flushUploads = async () => {
+    if (!pendingUploads.length) return null;
+    const batch = pendingUploads;
+    pendingUploads = [];
+    pendingBytes = 0;
+    const runBatch = () => {
+      for (const upload of batch) {
+        upload();
+        if (hitDeadline) break;
+      }
+    };
+    if (submitSerial) {
+      const outcome = await timeResidencySubmission(options.cookTiming, now,
+        () => submitSerial(runBatch, { urgent: options.urgent === true }));
+      if (outcome && outcome.contextLost) return outcome;
+    } else {
+      runBatch();
+      if (paceQueue) await timeResidencySubmission(options.cookTiming, now, () => paceQueue());
+    }
+    return null;
+  };
+  for (let index = 0; index < count; index++) {
+    if (hasDeadline && now() - startedAt >= deadlineMs) {
+      hitDeadline = true;
+      break;
+    }
+    const texture = textures[index];
+    // Video/external textures bypass three's version gate inside the upload path
+    // (updateVideoTexture runs on every call; ExternalTexture refreshes __webglTexture),
+    // so they always have live work and never take the residency stamp path.
+    if (typeof texture.version === 'number'
+      && texture.isVideoTexture !== true
+      && texture.isExternalTexture !== true
+        && textureGpuResident(texture, renderer)) {
+      // A stamped package texture may still carry its CPU mirror: detach is deferred while
+      // dedupe siblings share its payload records, so retry the release — once this texture is
+      // the entry's last live user the bytes can actually leave. F3 also attempts the shared
+      // release: canonical source.data leaves once EVERY live user is stamped on this renderer.
+      detachPackageTexture(texture);
+      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
+      residentTextures += 1;
+      textureProgress.update(index + 1);
+      // Resident rows skip the upload path's yield — a mostly-resident
+      // re-verify (recook/F9/context restore) would otherwise run the whole
+      // O(N) scan atomically: detach + DOM progress write per row.
+      if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
+        await yieldToMain();
+        // Stamp AFTER the wait: the wait is a whole frame, so a stamp before it leaves the next row 16 ms over
+        // the 2 ms stride and every resident row after the first yields its own frame.
+        scanStrideAt = now();
+      }
+      continue;
+    }
+    if (isPackageTextureDetached(texture)) {
+      // A released mirror is only resident in the context that proved its upload. A fresh
+      // context or invalidated version must refill the canonical package before submission.
+      const receipt = await rehydrateDetachedTextures([texture], { yieldToMain });
+      assertPackageTextureRefillReady([texture], receipt);
+    }
+    if (!pendingUploads.length) {
+      await yieldToMain();
+      if (hasDeadline && now() - startedAt >= deadlineMs) {
+        hitDeadline = true;
+        break;
+      }
+    }
+    const upload = () => {
+      if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
+      if (hasDeadline && now() - startedAt >= deadlineMs) {
+        hitDeadline = true;
+        return;
+      }
+      // A sibling root can finish this shared texture while this unit waits for its turn.
+      if (typeof texture.version === 'number' && texture.isVideoTexture !== true
+          && texture.isExternalTexture !== true && textureGpuResident(texture, renderer)) {
+        residentTextures += 1;
+        textureProgress.update(index + 1);
+        return;
+      }
+      const started = now();
+      let success = false;
+      try {
+        renderer.initTexture(texture);
+        success = true;
+      } finally {
+        const durationMs = now() - started;
+        if (options.cookTiming) options.cookTiming.syncMs += durationMs;
+        const name = texture.name || texture.source?.data?.name || 'unnamed';
+        const width = Number(texture.image?.width) || Number(texture.source?.data?.width) || 0;
+        const height = Number(texture.image?.height) || Number(texture.source?.data?.height) || 0;
+        if (success) {
+          uploads.push({ name, width, height, durationMs });
+          uploadVersions.set(texture, texture.version);
+          // The GPU copy is proven: release the decoded CPU mirror (mipmaps/source.data) for
+          // marked render-package textures. Context restore rehydrates them on demand. The same
+          // stamp may complete a dedupe entry's all-resident set — attempt the shared release.
+          detachPackageTexture(texture);
+          releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
+        }
+        reportBlockingSlice(onBlockingSlice, {
+          kind: 'gpuResidencyUpload',
+          durationMs,
+          name,
+          width,
+          height,
+          index,
+          count,
+          success,
+        });
+        textureProgress.update(index + 1, success);
+      }
+    };
+    pendingUploads.push(upload);
+    if (textureBatchBytes !== Infinity) pendingBytes += estimateTextureUploadBytes(texture);
+    if (pendingUploads.length >= textureBatchCount || pendingBytes >= textureBatchBytes || index === count - 1) {
+      const outcome = await flushUploads();
+      if (outcome) return { ...outcome, textures: uploads.length, uploads, residentTextures };
+    }
+    if (hitDeadline) break;
+  }
+  // A batch still open when the scan ended on resident rows (or hit the deadline) runs now;
+  // each upload re-checks the deadline and the residency stamp itself.
+  {
+    const outcome = await flushUploads();
+    if (outcome) return { ...outcome, textures: uploads.length, uploads, residentTextures };
+  }
+  // All queued texture submissions have settled. Geometry uses texture-free proxies, so
+  // completed texture mirrors need not overlap its census, compile and buffer uploads.
+  releaseTexturePhase();
+  let geometryResidency;
+  if (hitDeadline) {
+    geometryResidency = { skipped: true, reason: 'loading-deadline' };
+  } else if (options.includeGeometry === false) {
+    geometryResidency = { skipped: true, reason: 'geometry residency owned by exact opening admission' };
+  } else {
+    geometryResidency = await prepareStartupGeometryResidency(renderer, subjects, {
+      ...options,
+      yieldToMain,
+      onBlockingSlice,
+      paceQueue,
+      now,
+    });
+  }
+  await yieldToMain();
+  if (hitDeadline) {
+    // Soft-GPU opening cook must still freeze a receipt after a bounded upload slice.
+    // Mark partial, but do not skip — callers that treat skipped as "abandon cook" would
+    // re-open the identity/plan hole we just closed.
+    return {
+      skipped: false,
+      reason: 'loading-deadline-partial',
+      textures: uploads.length,
+      uploads,
+      residentTextures,
+      geometryResidency,
+      partial: true,
+    };
+  }
+  return {
+    skipped: false,
+    textures: textures.length,
+    uploads,
+    residentTextures,
+    geometryResidency,
+  };
+  } finally {
+    // Keep exceptional exits and any payloads refilled during geometry under the original
+    // final cleanup. Releasing this phase's lease again is idempotent.
+    releaseTexturePhase();
+  }
+}
+
+export function yieldToBrowser() {
+  // Boot-shell pacing: while the intro visualizer is the picture, the cook's yields hand
+  // compositor frames back before the next slice (see bootShellPacing.js). After boot the
+  // wrapper is a pass-through to the plain task-queue yield below.
+  return pacedBootShellYield(() => {
+    if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
+      return globalThis.scheduler.yield();
+    }
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+/**
+ * Resume from a macrotask after rAF so GPU work cannot run inside the protected display
+ * callback. The resume must also land after that frame's present: a timer-priority task races
+ * the compositor beat, so the default dispatches at background priority like
+ * armCallbackAfterPresent — bounded, so a saturated main thread cannot starve the admission
+ * chain while it waits for an idle slot that never opens.
+ *
+ * options.boundMs tightens the unstick arm when a caller wants degraded cadence to keep
+ * draining: racing present-vs-bound means a healthy cadence always resumes post-present
+ * (identical behavior), while below ~1/boundMs fps each slice stops waiting a whole
+ * present for its slot. The default 48 stays the starved-rAF unstick it was written as.
+ */
+export function yieldToNextPresent(options = {}) {
+  return new Promise((resolve) => {
+    const requestFrame = typeof options.requestFrame === 'function'
+      ? options.requestFrame
+      : (typeof globalThis.requestAnimationFrame === 'function'
+        ? globalThis.requestAnimationFrame.bind(globalThis)
+        : null);
+    const scheduleTask = typeof options.scheduleTask === 'function'
+      ? options.scheduleTask
+      : postTaskAtBackgroundPriorityBounded;
+    if (requestFrame) {
+      let fired = false;
+      const fire = () => {
+        if (fired) return;
+        fired = true;
+        scheduleTask(resolve);
+      };
+      requestFrame(fire);
+      // An occluded or minimized headed window can starve rAF indefinitely; a parked admission
+      // would hold its GPU work (and any scratch state) forever. Same unstick window
+      // armCallbackAfterPresent documents for headless/background stalls.
+      const boundMs = Number.isFinite(Number(options.boundMs))
+        ? Math.max(0, Number(options.boundMs))
+        : 48;
+      setTimeout(fire, boundMs);
+      return;
+    }
+    scheduleTask(resolve);
+  });
+}
+
+function clockNow() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
+function programCacheKeyOf(program) {
+  if (!program) return '';
+  return String(program.cacheKey || program.name || '');
+}
+
+/** Program cache keys Three has already acquired on this renderer, in list order. */
+export function rendererProgramCacheKeys(renderer) {
+  const programs = renderer && renderer.info && renderer.info.programs;
+  if (!Array.isArray(programs)) return [];
+  const keys = [];
+  const seen = new Set();
+  for (const program of programs) {
+    const key = programCacheKeyOf(program);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    keys.push(key);
+  }
+  return keys;
+}
+
+/**
+ * Keys acquired between two snapshots. This is the program count a presented
+ * frame linked: Three appends to info.programs as it compiles.
+ */
+export function worksPresentedFrameLinkedKeys(beforeKeys, afterKeys) {
+  const before = beforeKeys instanceof Set ? beforeKeys : new Set(beforeKeys || []);
+  const linked = [];
+  const seen = new Set();
+  for (const key of afterKeys || []) {
+    const value = String(key || '');
+    if (!value || before.has(value) || seen.has(value)) continue;
+    seen.add(value);
+    linked.push(value);
+  }
+  linked.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+  return linked;
+}
+
+function absorbProgramKeys(target, keys) {
+  for (const key of keys || []) {
+    const value = String(key || '');
+    if (value) target.add(value);
+  }
+}
+
+function boundMaterialProgramKey(renderer, material) {
+  if (!renderer || !material || !renderer.properties
+      || typeof renderer.properties.get !== 'function') return '';
+  try {
+    const props = renderer.properties.get(material);
+    return programCacheKeyOf(props && props.currentProgram);
+  } catch (_) {
+    return '';
+  }
+}
+
+function captureWorksObjectHome(object) {
+  const parent = object && object.parent ? object.parent : null;
+  return {
+    object,
+    parent,
+    index: parent && Array.isArray(parent.children) ? parent.children.indexOf(object) : -1,
+  };
+}
+
+function restoreWorksObjectHome(home) {
+  const object = home && home.object;
+  if (!object) return;
+  const parent = home.parent;
+  object.matrixWorldNeedsUpdate = true;
+  if (!parent) {
+    if (object.parent && typeof object.parent.remove === 'function') object.parent.remove(object);
+    return;
+  }
+  if (object.parent !== parent && typeof parent.add === 'function') parent.add(object);
+  const children = parent.children;
+  if (!Array.isArray(children)) return;
+  const current = children.indexOf(object);
+  const index = home.index;
+  if (current < 0 || index < 0 || current === index) return;
+  children.splice(current, 1);
+  children.splice(Math.min(index, children.length), 0, object);
+}
+
+/**
+ * Link the programs the first presented Asteroid Works picture used to compile
+ * inside the draw. This context is not the flight renderer, so the flight
+ * opening warm never reaches it: bloom's post materials, the scene color
+ * cohort, and the shadow-depth variants public compile() does not build.
+ * The returned keys are the ones a later presented frame must not link again.
+ */
+export async function warmWorksOpeningPrograms(options = {}) {
+  const renderer = options.renderer || null;
+  const yieldToMain = typeof options.yieldToMain === 'function'
+    ? options.yieldToMain
+    : yieldToBrowser;
+  // Leave the display callback before any link. The presented frame that asked
+  // for this warm returns without drawing.
+  await yieldToMain();
+  const keys = new Set();
+  const notes = [];
+  const bloom = options.bloom || null;
+
+  if (bloom && typeof bloom.prepareResources === 'function') {
+    const before = rendererProgramCacheKeys(renderer);
+    let prepared = null;
+    try {
+      prepared = await bloom.prepareResources(yieldToMain);
+    } catch (_) {
+      prepared = { skipped: true, reason: 'post-prepare-failed' };
+    }
+    if (!prepared || prepared.skipped === true) {
+      notes.push(String((prepared && prepared.reason) || 'post-skipped'));
+    }
+    absorbProgramKeys(keys, worksPresentedFrameLinkedKeys(before, rendererProgramCacheKeys(renderer)));
+    if (typeof bloom.openingProgramMaterials === 'function') {
+      const materials = bloom.openingProgramMaterials() || [];
+      for (const material of materials) {
+        const key = boundMaterialProgramKey(renderer, material);
+        if (key) keys.add(key);
+      }
+    }
+  } else {
+    notes.push('no-bloom');
+  }
+
+  if (typeof options.compileScene === 'function') {
+    const before = rendererProgramCacheKeys(renderer);
+    try {
+      await options.compileScene();
+    } catch (_) {
+      notes.push('scene-compile-failed');
+    }
+    absorbProgramKeys(keys, worksPresentedFrameLinkedKeys(before, rendererProgramCacheKeys(renderer)));
+  }
+
+  let depth = null;
+  const scene = options.scene || null;
+  const camera = options.camera || null;
+  const light = options.light || null;
+  if (renderer && scene && camera && light) {
+    let shadowLease = null;
+    try {
+      const collect = async (iterator) => {
+        for (;;) {
+          const step = iterator.next();
+          if (step.done) return step.value;
+          await yieldToMain();
+        }
+      };
+      const textures = await collect(collectStartupTexturesSteps(scene));
+      const geometries = await collect(collectStartupGeometriesSteps(scene, { includeEmpty: true }));
+      shadowLease = await prepareShadowDepthTextureLease({ renderer,
+        textures, geometries,
+        state: options.state, isActive: options.isActive, yieldToMain });
+      if (!shadowLease.ready) throw new Error(shadowLease.reason || 'shadow-depth-residency-unavailable');
+      depth = compileShadowDepthPipelines({
+        renderer,
+        light,
+        camera,
+        subjects: [scene],
+        lightingScene: scene,
+        forceEnable: true,
+        THREE: options.THREE || THREE,
+        captureObjectHome: options.captureObjectHome || captureWorksObjectHome,
+        restoreObjectHome: options.restoreObjectHome || restoreWorksObjectHome,
+        stagingName: 'SF_WorksOpeningShadowDepth',
+      });
+    } catch (_) {
+      depth = { skipped: true, reason: 'depth-compile-failed', programCacheKeys: [] };
+    } finally {
+      shadowLease?.release();
+    }
+    if (depth && Array.isArray(depth.programCacheKeys)) absorbProgramKeys(keys, depth.programCacheKeys);
+    if (!depth || depth.skipped === true) {
+      const reason = depth && depth.reason ? String(depth.reason) : 'depth-skipped';
+      if (reason !== 'no shadow-casting subjects') notes.push(reason);
+    }
+  } else {
+    notes.push('no-depth-rig');
+    depth = { skipped: true, reason: 'no-depth-rig' };
+  }
+
+  return {
+    keys: Object.freeze([...keys].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))),
+    depthSkipped: !depth || depth.skipped === true,
+    depthReason: depth && depth.reason ? String(depth.reason) : '',
+    notes: Object.freeze(notes),
+  };
+}
+
+function warmedKeySet(keys) {
+  const warmed = new Set();
+  absorbProgramKeys(warmed, keys);
+  return warmed;
+}
+
+/**
+ * One opening per works context. The first bloom.render waits until the warm
+ * owns its program keys. A context loss drops the linked programs with the
+ * GL context, so reset() arms the warm again.
+ */
+export function createWorksOpeningGate() {
+  let generation = 0;
+  let warmed = null;
+  let pending = null;
+  return {
+    ready() { return warmed != null; },
+    reset() {
+      generation += 1;
+      warmed = null;
+      pending = null;
+    },
+    settle(keys) {
+      warmed = warmedKeySet(keys);
+      pending = Promise.resolve(warmed);
+      return warmed;
+    },
+    ensure(startWarm) {
+      if (warmed) return Promise.resolve(warmed);
+      if (pending) return pending;
+      const gen = generation;
+      pending = Promise.resolve()
+        .then(() => (typeof startWarm === 'function' ? startWarm() : { keys: [] }))
+        .then((receipt) => {
+          if (gen !== generation) return warmed;
+          warmed = warmedKeySet(receipt && receipt.keys);
+          return warmed;
+        })
+        .catch((error) => {
+          if (gen === generation) pending = null;
+          throw error;
+        });
+      return pending;
+    },
+    frameLinkedKeys(observedKeys) {
+      if (!warmed) return worksPresentedFrameLinkedKeys([], observedKeys);
+      return worksPresentedFrameLinkedKeys(warmed, observedKeys);
+    },
+  };
+}
+
+/**
+ * Present one works frame. While the opening warm is unfinished the frame
+ * does not draw, so it cannot link the cohort inside the picture.
+ */
+export function runWorksPresentedFrame(gate, draw) {
+  if (!gate || typeof gate.ready !== 'function' || gate.ready() !== true) {
+    return { drew: false, linkedKeys: [] };
+  }
+  const observed = typeof draw === 'function' ? draw() : [];
+  const linkedKeys = typeof gate.frameLinkedKeys === 'function'
+    ? gate.frameLinkedKeys(observed)
+    : worksPresentedFrameLinkedKeys([], observed);
+  return { drew: true, linkedKeys };
+}

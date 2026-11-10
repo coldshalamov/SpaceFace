@@ -1,0 +1,62 @@
+{
+  "mule_production_v1": {
+    "sourcePath": "assets/ships/parts/wholeships/mule_production_v1.glb",
+    "sourceBlob": "14f834672576b2c4711607b215a7af31b5338b72",
+    "sha256": "d775655733aeb80285c3ef173694f5b76990ed4050e2d0aaba45630bcb88c369"
+  },
+  "mule_production_v1_lod1": {
+    "sourcePath": "assets/ships/parts/wholeships/mule_production_v1_lod1.glb",
+    "sourceBlob": "699cad4b369564b9a4a595ce2f6c73ddf7ac12f7",
+    "sha256": "b15b4b6ce9cc1ca115ef7cf8b26a0914e39e3e0163cc761b053902fe8c4f67e8"
+  },
+  "mule_production_v1_lod2": {
+    "sourcePath": "assets/ships/parts/wholeships/mule_production_v1_lod2.glb",
+    "sourceBlob": "c3d7cd032033344a13b32aebddfcbb5fef4968fa",
+    "sha256": "4af3abf1ca3093b4f01dacbffe097015bd1906ff2ea4111d518c806ff29b6748"
+  },
+  "atlas_production_v1": {
+    "sourcePath": "assets/ships/parts/wholeships/atlas_production_v1.glb",
+    "sourceBlob": "0c314e9a4291e9271d3ca6ec01bdb8219a199178",
+    "sha256": "dc0820bcbcdfc882e951161ebae767cd87ed03281cc612a0a19701b15ef02079"
+  },
+  "atlas_production_v1_lod1": {
+    "sourcePath": "assets/ships/parts/wholeships/atlas_production_v1_lod1.glb",
+    "sourceBlob": "22383227ec53192c50b8d4906091e4506892338a",
+    "sha256": "4a5e5b18dabb7082f03253eac1d9d4709e7481868f418d76b2c9a6773192769a"
+  },
+  "atlas_production_v1_lod2": {
+    "sourcePath": "assets/ships/parts/wholeships/atlas_production_v1_lod2.glb",
+    "sourceBlob": "df839a14eed7e105180ea158d5f9ab459cd6161a",
+    "sha256": "e3efe6bb2fcab10a9d52df493415eb2c61d219d0807a9c9d0e1a0f66dc15db73"
+  },
+  "helios_span_dmc": {
+    "sourcePath": "assets/ships/parts/wholeships/helios_span_dmc.glb",
+    "sourceBlob": "653b685a15decd4a01fbcbb41d108cb563a4fc5d",
+    "sha256": "58b42437737d3b0bf5d727dc5f0151de5e3bcaafcc58d139159db3b78db67135"
+  },
+  "helios_span_mts": {
+    "sourcePath": "assets/ships/parts/wholeships/helios_span_mts.glb",
+    "sourceBlob": "e1d2bd601278da851d79aaa7b0ed7126e8e84fc8",
+    "sha256": "460631e9ec2e2837215657872e8f786b81028e7f37db4af44b0cbbe8a127fee9"
+  },
+  "helios_span_reach": {
+    "sourcePath": "assets/ships/parts/wholeships/helios_span_reach.glb",
+    "sourceBlob": "aa38ab884f3dde464b890e5088220f559bf62583",
+    "sha256": "c0803108e66c19ad2362d1ae85cde13dde7e253cdcdc4b9d8713f3b166ef9269"
+  },
+  "wasp_free_militia": {
+    "sourcePath": "assets/ships/parts/wholeships/wasp_free_militia.glb",
+    "sourceBlob": "45e12a94c21c137a2beb77fbf265d4cb6709c061",
+    "sha256": "8e7c868b7711e7a9fabe95cf4b51b2053816331842b08f6db0199e68186758ac"
+  },
+  "wasp_mts_escort": {
+    "sourcePath": "assets/ships/parts/wholeships/wasp_mts_escort.glb",
+    "sourceBlob": "0cda9f667daeb5cec103eed38b879775aaf7838e",
+    "sha256": "b9ceb93a26cef0a2e79f77ff234e674b279dd6f2391ddd7cc881935e0afaeaba"
+  },
+  "wasp_scn_patrol": {
+    "sourcePath": "assets/ships/parts/wholeships/wasp_scn_patrol.glb",
+    "sourceBlob": "8925160f84e172976b57d9b88157c57e2d50aea6",
+    "sha256": "75db7ce1c0c6b00a4d203c8f80f36bf530c568f055138e2b96f732bf5b63eb4b"
+  }
+}

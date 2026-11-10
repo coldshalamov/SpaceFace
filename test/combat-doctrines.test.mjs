@@ -1,0 +1,1161 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+import { ContactKind, ManeuverKind, ObjectiveKind } from '../src/ai/contracts.js';
+import { ActivityKind, RulesOfEngagement, normalizeActivity, perceptionForWingOrderCombatDoctrine } from '../src/ai/doctrine.js';
+import { ManeuverPlanner } from '../src/ai/maneuver.js';
+import { PerceptionMemory } from '../src/ai/perception.js';
+import { createSG03ActionPort } from '../src/ai/sg03ActionPort.js';
+import { getCombatKernel } from '../src/combat/kernel.js';
+import { ENEMY_TYPES } from '../src/data/enemies.js';
+import { ENCOUNTERS, NAMED_CAPTAINS } from '../src/data/encounters.js';
+import { sampleFactionBehavior } from '../src/data/factionDoctrines.js';
+import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { planEncounterShape } from '../src/systems/encounterDirector.js';
+import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
+
+let doctrineModule = null;
+try {
+  doctrineModule = await import('../src/ai/combatDoctrine.js');
+} catch (_) {
+  // The first RED is an assertion, not an opaque module-loader crash.
+}
+assert(doctrineModule, 'combatDoctrine.js must exist as the pure M1.5 doctrine owner');
+
+const {
+  CombatDoctrineId,
+  CombatDoctrineRuntime,
+  DOCTRINE_TELEGRAPH_TICKS,
+  applyCombatDoctrineToSelection,
+  normalizeCombatDoctrineId,
+  overrideDirectiveForCombatDoctrine,
+  selectDoctrineTarget,
+} = doctrineModule;
+
+assert(Object.isFrozen(CombatDoctrineId), 'combat doctrine ids are an immutable typed vocabulary');
+assert.deepEqual(Object.values(CombatDoctrineId).sort(), [
+  'brawler_commit',
+  'capital_broadside',
+  'capital_broadside_ala',
+  'capital_broadside_tollman',
+  'detonator_run',
+  'escort_screen',
+  'field_anchor_controller',
+  'interceptor_flyby',
+  'mine_layer_wake',
+  'pack_pursuit',
+  'ranged_disengager',
+  'ranged_stalker',
+  'scissorwake',
+  'shield_breaker',
+  'swarm_pack',
+  'tether_control_raider',
+]);
+assert.equal(DOCTRINE_TELEGRAPH_TICKS, 30, 'every attack telegraph lasts at least 30 fixed ticks');
+assert.equal(normalizeCombatDoctrineId('unknown'), null, 'unknown doctrine ids fail closed');
+
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 47 });
+  const frame = () => perception([shipContact(1, { x: 620, mobilityBand: 'high', threat: 1 })], {
+    id: 'iron_maw', combatDoctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+  });
+  let result = runtime.update({
+    tick: 0, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+    perception: frame(), directive: baseDirective(),
+  });
+  assert.equal(result.phase, 'broadside_charge');
+  assert.equal(result.telegraphStarted, true);
+  assert.equal(result.fireWindow, false);
+  const firstSide = result.side;
+
+  result = runtime.update({
+    tick: 30, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+    perception: frame(), directive: baseDirective(),
+  });
+  assert.equal(result.phase, 'broadside_fire');
+  assert.equal(result.fireWindow, true);
+  assert.equal(result.allowedActionId, 'action_burst');
+  assert.equal(result.maneuverKind, ManeuverKind.ORBIT);
+  assert.equal(result.faceTarget, true);
+
+  result = runtime.update({
+    tick: 90, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+    perception: frame(), directive: baseDirective(),
+  });
+  assert.equal(result.phase, 'broadside_shift');
+  assert.equal(result.fireWindow, false);
+  assert.equal(result.side, -firstSide, 'the capital crosses to its opposite firing side between salvos');
+
+  result = runtime.update({
+    tick: 180, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+    perception: frame(), directive: baseDirective(),
+  });
+  assert.equal(result.phase, 'broadside_charge');
+  assert.equal(result.cycle, 1);
+  assert.equal(result.telegraphStarted, true, 'each capital salvo receives a fresh readable charge');
+}
+
+{
+  const geometryForSide = (side, phase) => {
+    const selection = applyCombatDoctrineToSelection({
+      actionId: null,
+      targetId: null,
+      targetContact: null,
+      maneuver: {
+        kind: ManeuverKind.INTERCEPT,
+        targetId: 1,
+        preferredRange: 150,
+        formationSlot: { x: 0, z: 0 },
+        formationVelocity: { x: 0, z: 0 },
+        formationBound: 170,
+        breakFormation: true,
+        reason: 'fixture',
+      },
+    }, {
+      doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+      phase,
+      targetId: 1,
+      actionTargetId: 1,
+      maneuverKind: ManeuverKind.INTERCEPT,
+      preferredRange: 150,
+      allowedActionId: null,
+      side,
+      lateralSign: phase === 'ingress' ? 0 : side,
+      maneuverTargetId: 1,
+      flightPoint: null,
+      formationLocked: phase === 'ingress',
+    });
+    return new ManeuverPlanner({ seed: 47 }).plan({
+      tick: 0,
+      entityId: `side_${side}`,
+      perception: perception([shipContact(1, { x: 300, z: 0 })]),
+      behavior: { maneuver: selection.maneuver },
+      directive: baseDirective(),
+    });
+  };
+  const ingressLeft = geometryForSide(-1, 'ingress');
+  const ingressRight = geometryForSide(1, 'ingress');
+  assert(Math.abs(ingressLeft.targetHeading - ingressRight.targetHeading) < 0.05,
+    'formation ingress stays coherent before the authored break');
+  const left = geometryForSide(-1, 'engine_flare');
+  const right = geometryForSide(1, 'engine_flare');
+  assert(left.targetHeading * right.targetHeading < 0,
+    `doctrine side must produce mirrored approach headings; left=${left.targetHeading} right=${right.targetHeading}`);
+  assert(Math.abs(left.targetHeading - right.targetHeading) > 0.2, 'doctrine side must visibly alter maneuver geometry');
+}
+
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 17 });
+  const peacefulDirective = baseDirective();
+  const idleDoctrine = runtime.update({
+    tick: 0, entityId: 'lawful_idle', doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { hostile: false })]), directive: peacefulDirective,
+  });
+  assert.equal(idleDoctrine.targetId, null);
+  assert.strictEqual(overrideDirectiveForCombatDoctrine(peacefulDirective, idleDoctrine), peacefulDirective,
+    'a doctrine with no legal hostile target cannot break a lawful/peaceful squad directive');
+}
+
+const contacts = [
+  shipContact(9, { threat: 0.9, mobilityBand: 'low', operationalMassBand: 'heavy', cargoBand: 'valuable', tetherabilityBand: 'good' }),
+  shipContact(4, { threat: 0.9, mobilityBand: 'high', operationalMassBand: 'light', cargoBand: 'empty', tetherabilityBand: 'poor' }),
+  shipContact(7, { threat: 0.6, mobilityBand: 'medium', operationalMassBand: 'capital', cargoBand: 'rich', tetherabilityBand: 'excellent' }),
+];
+assert.equal(selectDoctrineTarget(CombatDoctrineId.INTERCEPTOR_FLYBY, perception(contacts)).id, 4,
+  'interceptor prioritizes mobile high-threat contacts');
+assert.equal(selectDoctrineTarget(CombatDoctrineId.TETHER_CONTROL_RAIDER, perception(contacts)).id, 7,
+  'tether raider prioritizes untethered high-mass/value tetherable contacts');
+assert.equal(selectDoctrineTarget(CombatDoctrineId.TETHER_CONTROL_RAIDER, perception([
+  shipContact(21, { threat: 0.5, operationalMassBand: 'light', cargoBand: 'empty', tetherabilityBand: 'good' }),
+  shipContact(22, { threat: 0.5, operationalMassBand: 'capital', cargoBand: 'empty', tetherabilityBand: 'good' }),
+])).id, 22, 'tether raider consumes the live operationalMassBand contract');
+assert.equal(selectDoctrineTarget(CombatDoctrineId.RANGED_DISENGAGER, perception(contacts)).id, 9,
+  'ranged doctrine prioritizes low-mobility high-threat contacts');
+assert.equal(selectDoctrineTarget(CombatDoctrineId.RANGED_DISENGAGER, perception([
+  shipContact(12, { threat: 0.5, mobilityBand: 'low' }),
+  shipContact(11, { threat: 0.5, mobilityBand: 'low' }),
+])).id, 11, 'target ties resolve by stable id');
+for (const [label, values] of [
+  ['dead', { alive: false }],
+  ['invalid', { valid: false }],
+  ['remembered', { visible: false, ageTicks: 1 }],
+  ['weakly sensed', { confidence: 0.54 }],
+]) {
+  assert.equal(selectDoctrineTarget(CombatDoctrineId.INTERCEPTOR_FLYBY, perception([
+    shipContact(`ineligible_${label}`, values),
+  ])), null, `${label} contacts cannot become doctrine attack targets`);
+}
+
+{
+  const memory = new PerceptionMemory({ freezeResults: true });
+  const snapshot = memory.observe(2, stackSensorFrame(2, 0, [stackTargetContact()]), 0);
+  assert.equal(selectDoctrineTarget(CombatDoctrineId.INTERCEPTOR_FLYBY, snapshot)?.id, 99,
+    'frozen perception snapshots preserve live hostile/valid/visible doctrine target fields');
+}
+
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 43 });
+  runtime.update({
+    tick: 0, entityId: 'visibility_guard', doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 190 })]), directive: baseDirective(),
+  });
+  const result = runtime.update({
+    tick: 30, entityId: 'visibility_guard', doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 190, visible: false, ageTicks: 30 })]), directive: baseDirective(),
+  });
+  assert.equal(result.targetId, null, 'a remembered contact cannot advance a telegraph into attack');
+  assert.equal(result.phase, 'ingress');
+  assert.equal(result.fireWindow, false);
+}
+
+{
+  // PQ-138.00: a CONTROL-dispatched offender beyond the responder's sensor reach arrives as a
+  // reported (visible:false) track. perceptionForWingOrderCombatDoctrine tags the named target
+  // so the doctrine can maneuver on the assignment; untagged remembered contacts stay excluded.
+  const dispatchPerception = perception([
+    shipContact(1, { x: 5000, z: 0, visible: false, confidence: 0.6 }),
+    shipContact(3, { x: 40, z: 0 }),
+  ]);
+  dispatchPerception.self.activity = {
+    ...dispatchPerception.self.activity,
+    reason: 'security_response:law:test',
+    targetId: 1,
+  };
+  const filtered = perceptionForWingOrderCombatDoctrine(dispatchPerception, baseDirective());
+  const tagged = filtered.contacts.find((c) => c.id === 1);
+  assert.equal(tagged.dispatchedTarget, true, 'the dispatched offender contact is tagged for doctrine maneuvering');
+  assert.equal(tagged.visible, false, 'the reported track keeps its honest unseen flag');
+  assert.equal(filtered.contacts.some((c) => c.kind === ContactKind.SHIP && c.id !== 1), false,
+    'unrelated ship contacts stay out of the doctrine view');
+  assert.equal(
+    selectDoctrineTarget(CombatDoctrineId.INTERCEPTOR_FLYBY, filtered)?.id, 1,
+    'a dispatched reported track is a legal doctrine maneuver target');
+  assert.equal(
+    selectDoctrineTarget(CombatDoctrineId.INTERCEPTOR_FLYBY, perception([
+      shipContact(1, { visible: false, confidence: 0.6 }),
+    ])), null,
+    'an untagged reported contact still cannot drive doctrine target selection');
+  const runtime = new CombatDoctrineRuntime({ seed: 5 });
+  const decision = runtime.update({
+    tick: 0, entityId: 'responder', doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: filtered, directive: baseDirective(),
+  });
+  assert.equal(decision.maneuverTargetId, 1, 'the doctrine commits its maneuver onto the reported track');
+  assert.equal(decision.maneuverKind, ManeuverKind.INTERCEPT);
+}
+
+const directive = baseDirective();
+
+for (const [label, selfOverrides, contactOverrides] of [
+  ['defensive screen', { activity: ActivityKind.SCREEN, roe: RulesOfEngagement.DEFENSIVE }, {}],
+  ['flee', { activity: ActivityKind.FLEE, roe: RulesOfEngagement.WEAPONS_FREE }, {}],
+  ['passive loiter', { activity: ActivityKind.LOITER, roe: RulesOfEngagement.HOLD_FIRE }, {}],
+  ['trader transit', { activity: ActivityKind.TRANSIT, roe: RulesOfEngagement.HOLD_FIRE }, {}],
+  ['lawful clean patrol', { activity: ActivityKind.PATROL_ROUTE, roe: RulesOfEngagement.LAWFUL_WANTED_ONLY }, { hostile: false }],
+]) {
+  const runtime = new CombatDoctrineRuntime({ seed: 31 });
+  const result = runtime.update({
+    tick: 0,
+    entityId: `inactive_${label}`,
+    doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 190, ...contactOverrides })], selfOverrides),
+    directive,
+  });
+  assert.equal(result, null, `${label} skips doctrine ownership entirely`);
+}
+
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 47 });
+  let result = runtime.update({
+    tick: 0, entityId: 2, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 620, mobilityBand: 'high', threat: 0.9 })]), directive,
+  });
+  assert.equal(result.phase, 'ingress');
+  assert.equal(result.fireWindow, false);
+  assert.equal(result.maneuverKind, ManeuverKind.INTERCEPT);
+
+  result = runtime.update({
+    tick: 5, entityId: 2, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 210, mobilityBand: 'high', threat: 0.9 })]), directive,
+  });
+  assert.equal(result.phase, 'engine_flare');
+  assert.equal(result.telegraphStarted, true);
+  assert.deepEqual(result.telegraph, { kind: 'engine_flare', durationTicks: 30, startedTick: 5 });
+  assert.equal(result.fireWindow, false);
+
+  result = runtime.update({
+    tick: 34, entityId: 2, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 180, mobilityBand: 'high', threat: 0.9 })]), directive,
+  });
+  assert.equal(result.fireWindow, false, 'fire remains impossible for the whole telegraph');
+  result = runtime.update({
+    tick: 35, entityId: 2, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 160, mobilityBand: 'high', threat: 0.9 })]), directive,
+  });
+  assert.equal(result.phase, 'strike');
+  assert.equal(result.fireWindow, true);
+  result = runtime.update({
+    tick: 59, entityId: 2, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 120, vx: -60, mobilityBand: 'high', threat: 0.9 })], { x: 160, vx: 70 }), directive,
+  });
+  assert.equal(result.phase, 'extend');
+  assert.equal(result.maneuverKind, ManeuverKind.INTERCEPT, 'interceptor extends on a committed flight point instead of orbiting forever');
+  assert.equal(result.maneuverTargetId, null);
+  assert(result.flightPoint, 'interceptor extension owns a stable target-independent flight point');
+}
+
+{
+  // A parked offender cannot exploit a CONTROL-dispatched responder's boom-zoom extend: after the
+  // pass the lawman wheels straight back into reform and re-commits instead of flying the long
+  // egress leg. Only the dispatch takes that shortcut. An ordinary interceptor past a parked
+  // target still extends and returns (PQ-140.00): a player at rest is not a license to skip the
+  // readable gap between passes.
+  const dispatch = Object.freeze({
+    ...directive,
+    formation: Object.freeze({ ...directive.formation, breakFormation: true, breakReason: 'security_response_target' }),
+  });
+  for (const [label, passDirective, expected] of [
+    ['dispatched responder', dispatch, 'reform'],
+    ['ordinary interceptor', directive, 'extend'],
+  ]) {
+    const runtime = new CombatDoctrineRuntime({ seed: 61 });
+    let result = runtime.update({
+      tick: 0, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+      perception: perception([shipContact(1, { x: 210, threat: 0.9 })]), directive: passDirective,
+    });
+    assert.equal(result.phase, 'engine_flare', label);
+    result = runtime.update({
+      tick: 30, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+      perception: perception([shipContact(1, { x: 160, threat: 0.9 })]), directive: passDirective,
+    });
+    assert.equal(result.phase, 'strike', label);
+    result = runtime.update({
+      tick: 60, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+      perception: perception([shipContact(1, { x: 40, threat: 0.9 })], { x: 160, vx: 70 }), directive: passDirective,
+    });
+    assert.equal(result.phase, expected, `${label} past a stationary target`);
+  }
+}
+
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 109 });
+  let result = runtime.update({
+    tick: 0, entityId: 'raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([shipContact(1, { x: 300, operationalMassBand: 'heavy', cargoBand: 'rich', tetherabilityBand: 'excellent' })]), directive,
+  });
+  assert.equal(result.phase, 'flank');
+  result = runtime.update({
+    tick: 10, entityId: 'raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([shipContact(1, { x: 120, operationalMassBand: 'heavy', cargoBand: 'rich', tetherabilityBand: 'excellent' })]), directive,
+  });
+  assert.equal(result.phase, 'spool_cue');
+  assert.equal(result.telegraph.durationTicks, 30);
+  assert.equal(result.fireWindow, false);
+  result = runtime.update({
+    tick: 40, entityId: 'raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([shipContact(1, { x: 110, operationalMassBand: 'heavy', cargoBand: 'rich', tetherabilityBand: 'excellent' })]), directive,
+  });
+  assert.equal(result.phase, 'attach_window');
+  assert.equal(result.allowedActionId, 'action_attach', 'raider uses the canonical SG-03 attach verb');
+  const attachDirective = overrideDirectiveForCombatDoctrine(directive, result);
+  assert.equal(attachDirective.objective.kind, ObjectiveKind.TUG);
+  assert.equal(attachDirective.objective.targetId, 1);
+
+  const tether = tetherContact('att_1', { ownerId: 'raider', targetId: 1 });
+  result = runtime.update({
+    tick: 41, entityId: 'raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([shipContact(1, { x: 112, tethered: true }), tether]), directive,
+  });
+  assert.equal(result.phase, 'control');
+  assert.equal(result.allowedActionId, 'action_reel');
+  assert.equal(result.actionTargetId, 'att_1');
+  result = runtime.update({
+    tick: 44, entityId: 'raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([shipContact(1, { x: 130, tethered: false })]), directive,
+  });
+  assert.equal(result.phase, 'escape');
+  assert.equal(result.outcome, 'line_lost', 'cut/overload/lost line changes the raider outcome');
+}
+
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 113 });
+  const target = shipContact(1, { x: 110, operationalMassBand: 'heavy', cargoBand: 'rich', tetherabilityBand: 'excellent' });
+  runtime.update({
+    tick: 0, entityId: 'slack_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([target]), directive,
+  });
+  runtime.update({
+    tick: 30, entityId: 'slack_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([target]), directive,
+  });
+  runtime.update({
+    tick: 31, entityId: 'slack_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([shipContact(1, { x: 112, tethered: true }), tetherContact('att_slack', {
+      ownerId: 'slack_raider', targetId: 1,
+    })]), directive,
+  });
+  const result = runtime.update({
+    tick: 32, entityId: 'slack_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([shipContact(1, { x: 105, tethered: true }), tetherContact('att_slack', {
+      ownerId: 'slack_raider', targetId: 1, tags: ['massline', 'owned_by_self', 'slack'],
+    })]), directive,
+  });
+  assert.equal(result.phase, 'escape');
+  assert.equal(result.outcome, 'slack_line', 'a slack cable changes control outcome instead of reeling forever');
+}
+
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 127 });
+  const openTarget = shipContact(1, {
+    x: 110, operationalMassBand: 'heavy', cargoBand: 'rich', tetherabilityBand: 'excellent',
+  });
+  runtime.update({
+    tick: 0, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([openTarget]), directive,
+  });
+  runtime.update({
+    tick: 30, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([openTarget]), directive,
+  });
+  const foreignTether = tetherContact('att_foreign', { ownerId: 'rival_raider', targetId: 1 });
+  let result = runtime.update({
+    tick: 31, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([shipContact(1, { x: 112, tethered: true }), foreignTether]), directive,
+  });
+  assert.equal(result.phase, 'escape', 'a foreign tether makes the target contested instead of entering control');
+  assert.equal(result.outcome, 'target_contested');
+  assert.equal(result.allowedActionId, null, 'a raider never sends action_reel for another owner tether');
+  result = runtime.update({
+    tick: 121, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([shipContact(1, { x: 112, tethered: true }), foreignTether], { x: -650, vx: -80 }), directive,
+  });
+  assert.equal(result.phase, 'reform', 'contested target reforms only after a committed escape');
+  result = runtime.update({
+    tick: 166, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([shipContact(1, { x: 112, tethered: true }), foreignTether]), directive,
+  });
+  assert.equal(result.phase, 'flank', 'reform dwell completes before the next attach cycle');
+  result = runtime.update({
+    tick: 167, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    perception: perception([shipContact(1, { x: 112, tethered: true }), foreignTether]), directive,
+  });
+  assert.equal(result.phase, 'spool_cue');
+  assert.equal(result.telegraphStarted, true, 'the next owned attach attempt receives a fresh readable cue');
+}
+
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 211 });
+  let result = runtime.update({
+    tick: 0, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: perception([shipContact(1, { x: 640, mobilityBand: 'low', threat: 0.95 })]), directive,
+  });
+  assert.equal(result.phase, 'outer_standoff');
+  assert.equal(result.faceTarget, true, 'standoff translation must pre-align fixed guns before the cue');
+  result = runtime.update({
+    tick: 45, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: perception([shipContact(1, { x: 620, mobilityBand: 'low', threat: 0.95 })]), directive,
+  });
+  assert.equal(result.phase, 'charge_cue');
+  assert.equal(result.telegraph.durationTicks, 30);
+  assert.equal(result.faceTarget, false, 'a committed corridor owns the nose once the cue starts');
+  assert(Number.isFinite(result.faceAngle) && result.faceAngle === result.aimCommit.bearing,
+    'the cue must publish the committed corridor bearing the guns are committed to');
+  result = runtime.update({
+    tick: 74, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: perception([shipContact(1, { x: 620, mobilityBand: 'low', threat: 0.95 })]), directive,
+  });
+  assert.equal(result.fireWindow, false);
+  result = runtime.update({
+    tick: 75, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: perception([shipContact(1, { x: 610, mobilityBand: 'low', threat: 0.95 })]), directive,
+  });
+  assert.equal(result.phase, 'fire_window');
+  assert.equal(result.fireWindow, true);
+  assert.equal(result.faceTarget, false, 'the fire window holds the corridor, not the live contact');
+  assert.equal(result.faceAngle, result.aimCommit.bearing,
+    'the window keeps the corridor it was announced with');
+  assert(result.aimCommit && result.aimCommit.capRad > 0,
+    'the window advertises the bounded-correction budget of the committed shot');
+
+  const aimedSelection = applyCombatDoctrineToSelection({
+    actionId: 'action_burst',
+    targetId: 1,
+    targetContact: shipContact(1, { x: 0, z: 300 }),
+    maneuver: {
+      kind: ManeuverKind.HOLD,
+      targetId: 1,
+      formationSlot: { x: 300, z: 0 },
+      formationVelocity: { x: 0, z: 0 },
+      formationBound: 170,
+      breakFormation: true,
+      reason: 'fixture',
+    },
+  }, result);
+  const aimedRequest = new ManeuverPlanner({ seed: 211 }).plan({
+    tick: 75,
+    entityId: 'sniper',
+    perception: perception([shipContact(1, { x: 0, z: 300 })]),
+    behavior: { maneuver: aimedSelection.maneuver },
+    directive: baseDirective(),
+  });
+  assert(Math.abs(aimedRequest.targetHeading - result.aimCommit.bearing) < 1e-9,
+    'ranged HOLD translation must decouple from yaw while the nose rides the committed corridor');
+  assert(aimedRequest.forceLocal.forward > 0 && Math.abs(aimedRequest.forceLocal.right) < 1e-9,
+    'target-facing yaw must preserve translation toward the authored formation slot');
+  const ordinaryHold = new ManeuverPlanner({ seed: 211 }).plan({
+    tick: 75,
+    entityId: 'ordinary_hold',
+    perception: perception([shipContact(1, { x: 0, z: 300 })]),
+    behavior: {
+      maneuver: {
+        kind: ManeuverKind.HOLD,
+        targetId: 1,
+        formationSlot: { x: 300, z: 0 },
+        formationVelocity: { x: 0, z: 0 },
+        formationBound: 170,
+        breakFormation: true,
+        reason: 'ordinary_hold_fixture',
+      },
+    },
+    directive: baseDirective(),
+  });
+  assert(Math.abs(ordinaryHold.targetHeading) < 1e-9,
+    'ordinary HOLD without the opt-in must still face its formation/desired vector');
+
+  result = runtime.update({
+    tick: 76, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: perception([shipContact(1, { x: 180, vx: -90, mobilityBand: 'low', threat: 0.95 })]), directive,
+  });
+  assert.equal(result.phase, 'retreat');
+  assert.equal(result.fireWindow, false, 'closing inside the inner band interrupts ranged aim');
+  assert.equal(result.maneuverKind, ManeuverKind.RETREAT);
+}
+
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 223 });
+  const frame = () => perception([shipContact(1, { x: 620, mobilityBand: 'low', threat: 0.95 })]);
+  runtime.update({
+    tick: 0, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: frame(), directive,
+  });
+  runtime.update({
+    tick: 45, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: frame(), directive,
+  });
+  runtime.update({
+    tick: 75, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: frame(), directive,
+  });
+  let result = runtime.update({
+    tick: 93, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: frame(), directive,
+  });
+  assert.equal(result.phase, 'reset', 'ranged doctrine enters an explicit post-shot dwell');
+  assert.equal(result.fireWindow, false);
+  result = runtime.update({
+    tick: 110, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: frame(), directive,
+  });
+  assert.equal(result.phase, 'reset', 'post-shot dwell lasts the full authored 18 ticks');
+  result = runtime.update({
+    tick: 111, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: frame(), directive,
+  });
+  assert.equal(result.phase, 'outer_standoff');
+  result = runtime.update({
+    tick: 156, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: frame(), directive,
+  });
+  assert.equal(result.phase, 'charge_cue');
+  assert.equal(result.telegraphStarted, true, 'every repeated ranged shot receives a fresh 30-tick warning after repositioning');
+  result = runtime.update({
+    tick: 185, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: frame(), directive,
+  });
+  assert.equal(result.fireWindow, false);
+  result = runtime.update({
+    tick: 186, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: frame(), directive,
+  });
+  assert.equal(result.phase, 'fire_window');
+  assert.equal(result.fireWindow, true);
+}
+
+// SF-050: the ranged shot is a committed corridor, not a tracking solution — a timed lateral
+// change during the wind-up leaves the corridor stale, and the window releases on the line the
+// pilot was shown, never re-solving onto the dodge.
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 919 });
+  const approach = () => perception([shipContact(1, { x: 620, vz: 60, mobilityBand: 'low', threat: 0.95 })]);
+  let result = runtime.update({
+    tick: 0, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: approach(), directive,
+  });
+  result = runtime.update({
+    tick: 45, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: approach(), directive,
+  });
+  assert.equal(result.phase, 'charge_cue');
+  const corridor = result.aimCommit.bearing;
+  assert(Number.isFinite(corridor), 'the cue commits a forecast corridor bearing');
+  // The corridor is the forecast intercept line, not the raw bearing: a closing mover at 60 WU/s
+  // projects ~109 WU downrange over a nominal bolt flight, so the corridor leads the nose line.
+  const rawBearing = Math.atan2(0, 620);
+  assert(Math.abs(corridor - rawBearing) > 0.05,
+    'the corridor must lead the target, not point at its current position');
+  // A hard lateral reversal mid-cue: the corridor must not re-track.
+  const dodged = () => perception([shipContact(1, { x: 600, z: 210, vz: -110, mobilityBand: 'low', threat: 0.95 })]);
+  result = runtime.update({
+    tick: 74, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: dodged(), directive,
+  });
+  assert.equal(result.phase, 'charge_cue');
+  assert.equal(result.aimCommit.bearing, corridor, 'a dodge during the wind-up leaves the corridor stale');
+  assert.equal(result.faceAngle, corridor, 'the nose rides the corridor through the dodge');
+  result = runtime.update({
+    tick: 75, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: dodged(), directive,
+  });
+  assert.equal(result.phase, 'fire_window');
+  assert.equal(result.aimCommit.bearing, corridor, 'the window releases on the announced corridor');
+  assert.equal(result.fireWindow, true);
+  // Release/cancellation: the post-shot dwell drops the corridor — a stale bearing must never
+  // leak into the next cycle.
+  result = runtime.update({
+    tick: 94, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: dodged(), directive,
+  });
+  assert.equal(result.phase, 'reset');
+  assert.equal(result.aimCommit, null, 'reset drops the committed corridor');
+  assert.equal(result.faceAngle, null, 'the nose returns to live facing after the corridor ends');
+  assert.equal(result.faceTarget, true, 'post-window tracking resumes');
+}
+
+// The corridor forecast must fly the speed the battery actually shoots: perception.self
+// carries aiPorts' aimProjectileSpeed hint, and a 700-speed railgun leads far less than the
+// 340 nominal — the telegraphed line and the released volley stay inside the correction band.
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 919 });
+  const contact = shipContact(1, { x: 620, vz: 60, mobilityBand: 'low', threat: 0.95 });
+  const railgun = (values) => perception([contact], { aimProjectileSpeed: 700, ...values });
+  runtime.update({
+    tick: 0, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: railgun(), directive,
+  });
+  const result = runtime.update({
+    tick: 45, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: railgun(), directive,
+  });
+  assert.equal(result.phase, 'charge_cue');
+  const expectedLead = Math.atan2(60 * (620 / 700), 620);
+  assert(Math.abs(result.aimCommit.bearing - expectedLead) < 0.005,
+    `700-speed corridor ${result.aimCommit.bearing} must track the true lead ${expectedLead}`);
+  const nominalLead = Math.atan2(60 * (620 / 340), 620);
+  assert(Math.abs(nominalLead - result.aimCommit.bearing) > 0.04,
+    'a railgun corridor that ignored the battery speed would overlead by ~0.09 rad');
+}
+
+// SF-051: the brawler's commit is a mass-committed charge through a fixed forecast point, not a
+// sticky orbit — a sidestep leaves the run stale and the pass ends in an honest breakaway.
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 424 });
+  const inbound = (targetValues, selfValues = {}) => perception(
+    [shipContact(1, { x: 400, z: 0, mobilityBand: 'low', threat: 0.9, ...targetValues })],
+    { vx: 90, ...selfValues },
+  );
+  let result = runtime.update({
+    tick: 0, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    perception: inbound(), directive,
+  });
+  assert.equal(result.phase, 'engine_flare', 'inside the run-in band the heavy telegraphs immediately');
+  result = runtime.update({
+    tick: 30, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    perception: inbound(), directive,
+  });
+  assert.equal(result.phase, 'commit');
+  assert.equal(result.maneuverKind, ManeuverKind.INTERCEPT,
+    'commit drives at a fixed point, not a live-tracking orbit');
+  assert.equal(result.faceTarget, false, 'the nose rides the charge line, not the dodged target');
+  const runPoint = result.flightPoint;
+  assert(runPoint && Number.isFinite(runPoint.x) && Number.isFinite(runPoint.z),
+    'commit publishes the committed run point');
+  assert(runPoint.x > 400 + 300,
+    'the run point drives through and past the forecast position so arrival never brakes the charge');
+  // A hard lateral dodge mid-commit: the run point is fixed world geometry and must not move.
+  const dodged = perception(
+    [shipContact(1, { x: 380, z: 220, vx: 40, vz: -60, mobilityBand: 'low', threat: 0.9 })],
+    { vx: 140 },
+  );
+  result = runtime.update({
+    tick: 60, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    perception: dodged, directive,
+  });
+  assert.equal(result.phase, 'commit');
+  assert.deepEqual(result.flightPoint, runPoint, 'a dodged target cannot re-plan the committed run');
+  // The overshoot: the hull crosses the target's original line and keeps burning — once it is
+  // behind the contact the committed pass ends in the authored breakaway, not a snap-back.
+  result = runtime.update({
+    tick: 90, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    perception: perception([shipContact(1, { x: 380, z: 60 })], { x: 260, vx: 150 }), directive,
+  });
+  assert.equal(result.phase, 'commit', 'still committed while driving through the pass');
+  result = runtime.update({
+    tick: 122, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    perception: perception([shipContact(1, { x: 300, z: 60 })], { x: 520, vx: 150 }), directive,
+  });
+  assert.equal(result.phase, 'breakaway', 'a blown pass ends in the authored recovery, not a re-track');
+  assert.equal(result.outcome, 'brawler_commit_complete');
+  assert(result.flightPoint && result.flightPoint.x !== runPoint.x,
+    'breakaway replaces the charge point with a real egress point');
+}
+
+{
+  const run = () => {
+    const runtime = new CombatDoctrineRuntime({ seed: 31337 });
+    const trace = [];
+    for (let tick = 0; tick <= 90; tick += 3) {
+      trace.push(runtime.update({
+        tick, entityId: 77, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+        perception: perception([shipContact(1, { x: tick < 9 ? 500 : 180, mobilityBand: 'high', threat: 0.8 })]), directive,
+      }));
+    }
+    return trace;
+  };
+  assert.deepEqual(run(), run(), 'same seed and sensor frames produce identical doctrine traces');
+}
+
+{
+  // A completed disable parks the interceptor in 'breakaway' so it never re-approaches the
+  // spared hull — but the egress must stay bounded: a repaired target releases the ship back
+  // into its cycle instead of freezing on a stale egress point.
+  const runtime = new CombatDoctrineRuntime({ seed: 4242 });
+  const spared = shipContact(1, { x: 900, mobilityBand: 'high', threat: 0.9 });
+  // Pitborn's authored profile carries disableThenRun — the doctrine's disabled-target fallback
+  // only evaluates a real normalized faction profile, not a partial shape.
+  const selfOpts = { factionBehavior: sampleFactionBehavior('faction_pitborn', 4242, 1)[0] };
+  const call = (tick) => runtime.update({
+    tick, entityId: 55, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([spared], selfOpts), directive,
+  });
+  call(0);
+  spared.disabled = true;
+  assert.equal(call(30).phase, 'breakaway', 'a completed disable takes the breakaway egress');
+  for (let t = 60; t <= 600; t += 60) {
+    assert.equal(call(t).phase, 'breakaway', `the hold persists while the hull stays disabled (tick ${t})`);
+  }
+  spared.disabled = false;
+  let released = false;
+  for (let t = 630; t <= 1400; t += 10) {
+    if (call(t).phase === 'ingress') { released = true; break; }
+  }
+  assert.ok(released, 'a repaired target releases the interceptor back into its cycle');
+}
+
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 99 });
+  const first = runtime.update({
+    tick: 0, entityId: 7, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 500 })]), directive,
+  });
+  assert(Object.isFrozen(first));
+  assert.equal(runtime.inspect(7).cycle, 0);
+  runtime.forget(7);
+  assert.equal(runtime.inspect(7), null, 'roster removal clears transient doctrine state');
+  const reset = runtime.update({
+    tick: 100, entityId: 7, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 500 })]), directive,
+  });
+  assert.equal(reset.cycle, 0, 'returning roster members start a fresh deterministic cycle');
+  runtime.reset();
+  assert.equal(runtime.inspect(7), null, 'new/load reset clears every transient doctrine record');
+}
+
+for (const def of ENEMY_TYPES.filter((entry) => entry.id !== 'mule_trader')) {
+  assert(Object.values(CombatDoctrineId).includes(def.combatDoctrineId), `${def.id} has a typed combatDoctrineId`);
+  const spec = makeEnemySpawnSpec(def.id, def.levelRange?.[0] || 1, { x: 20, z: -5 });
+  assert.equal(spec.data.ai.combatDoctrineId, def.combatDoctrineId, `${def.id} live spawn preserves combat doctrine`);
+}
+const mule = ENEMY_TYPES.find((entry) => entry.id === 'mule_trader');
+assert.equal(mule.combatDoctrineId, null, 'noncombat trader archetype has no combat doctrine assignment');
+assert.equal(makeEnemySpawnSpec(mule.id, 1, { x: 20, z: -5 }).data.ai.combatDoctrineId, null,
+  'noncombat trader spawn skips doctrine gating entirely');
+const sable = NAMED_CAPTAINS.find((captain) => captain.id === 'cap_sable_iask');
+assert.equal(sable.combatDoctrineId, CombatDoctrineId.RANGED_DISENGAGER, 'Sable Iask stages as the ranged doctrine');
+const ironMaw = makeEnemySpawnSpec('dreadnought_boss', 10, { x: 20, z: -5 });
+assert.equal(ironMaw.data.ai.combatDoctrineId, CombatDoctrineId.CAPITAL_BROADSIDE);
+assert.equal(ironMaw.data.ai.approachTelegraph, 'broadside_charge');
+assert.match(ironMaw.data.counterHint, /opposite flank/);
+const ambush = planEncounterShape(ENCOUNTERS.ambush_snare, {
+  id: 'zone_ambush', name: 'Snare', type: 'ambush_lane', center: { x: 100, z: 20 }, radius: 240, danger: 0.4,
+}, 'sector_helios', 1, 1, seeded([0.2, 0.8, 0.3, 0.4, 0.6, 0.1, 0.7, 0.5]));
+assert(ambush.ships.length >= 2);
+for (const ship of ambush.ships) {
+  assert(Object.values(CombatDoctrineId).includes(ship.combatDoctrineId), 'ambush plan carries typed doctrine staging');
+}
+
+{
+  const sensorCalls = [];
+  const maneuvers = [];
+  const starts = [];
+  let hideDoctrineTarget = false;
+  const actorIds = [1, 2, 3, 4, 5];
+  const state = {
+    tick: 0,
+    playerId: 99,
+    player: { heat: 0 },
+    meta: { seed: 47 },
+    combat: { trace: { events: [] } },
+    entities: new Map(),
+  };
+  for (const id of actorIds) state.entities.set(id, stackActor(id, id === 2));
+  state.entities.set(99, {
+    id: 99, type: 'ship', alive: true, team: 2,
+    pos: { x: 190, z: 0 }, vel: { x: 0, z: 0 }, data: {},
+  });
+  const tactical = createTacticalAISystem({
+    seed: 47,
+    config: { trace: { enabled: false } },
+    sensors: {
+      frameFor(entityId, tick) {
+        sensorCalls.push(`${tick}:${entityId}`);
+        return stackSensorFrame(entityId, tick,
+          entityId === 2 && (tick === 2 || hideDoctrineTarget) ? [] : [stackTargetContact()]);
+      },
+    },
+    roster: {
+      listSquads() {
+        return [{
+          id: 'five_ship_default_batch', doctrine: 'scavenger', faction: 'fixture', formation: 'wedge',
+          members: actorIds.map((id) => ({
+            id,
+            // Keep the doctrine actor in an allocated striker lane. A ranged role would make id 2
+            // the squad support member, which correctly screens once the two light-target attack
+            // slots are owned; that reserve must not run a combat doctrine.
+            capabilities: id === 2
+              ? ['drive', 'sensor', 'weapon']
+              : ['drive', 'sensor', 'weapon', 'ranged'],
+            combatDoctrineId: id === 2 ? CombatDoctrineId.INTERCEPTOR_FLYBY : null,
+          })),
+        }];
+      },
+    },
+    maneuver: { request(request) { maneuvers.push(request); return true; } },
+    actionPortFactory: () => stackActionPort(starts),
+  });
+  tactical.init({ state, bus: null, helpers: {} });
+  tactical.update(1 / 60, state);
+  let doctrineDecision = tactical.stack.lastResult.decisions.find((entry) => entry.entityId === 2);
+  assert.equal(doctrineDecision.directive.objective.kind, 'focus',
+    'doctrine fixture actor must own a current squad attack allocation');
+  assert.equal(doctrineDecision.combatDoctrine.phase, 'engine_flare',
+    'default-stack doctrine actor starts from a current live sensor frame');
+
+  for (const tick of [1, 2, 3]) {
+    state.tick = tick;
+    tactical.update(1 / 60, state);
+  }
+  doctrineDecision = tactical.stack.lastResult.decisions.find((entry) => entry.entityId === 2);
+  assert(sensorCalls.includes('2:2'), 'doctrine member receives a fresh frame in its deterministic stagger slot');
+  assert.equal(sensorCalls.includes('3:3'), false,
+    'ordinary non-doctrine members retain one-member-per-tick production batching');
+  assert.equal(doctrineDecision.combatDoctrine.targetId, null,
+    'fresh negative perception clears the non-active doctrine target instead of advancing stale memory');
+  assert.equal(doctrineDecision.combatDoctrine.fireWindow, false);
+  assert.equal(state.entities.get(2).data.intent.fire, false);
+  assert(maneuvers.length >= actorIds.length * 2, 'N>=4 fixture exercises active and non-active maneuver decisions');
+  for (let tick = 4; tick <= 36; tick++) {
+    state.tick = tick;
+    tactical.update(1 / 60, state);
+  }
+  const doctrineStarts = starts.filter((entry) => entry.entityId === 2 && entry.actionId === 'action_burst');
+  assert.equal(doctrineStarts[0]?.startedTick, 35,
+    'staggered decision cadence preserves the restarted 30-tick telegraph before action start');
+  hideDoctrineTarget = true;
+  for (const tick of [37, 38, 39]) {
+    state.tick = tick;
+    tactical.update(1 / 60, state);
+  }
+  doctrineDecision = tactical.stack.lastResult.decisions.find((entry) => entry.entityId === 2);
+  assert.equal(doctrineDecision.combatDoctrine.targetId, null);
+  assert.equal(doctrineDecision.action.actionId, null,
+    'losing current visibility hard-stops an in-flight doctrine attack despite default min-commit');
+  assert.equal(state.entities.get(2).data.intent.fire, false);
+}
+
+// Real SG-03 cancellation regression is kept separate from the lightweight stack fixture.
+{
+  const actor = realPortShip(701, 1, 0);
+  const target = realPortShip(702, 0, 100);
+  actor.data.ai = {
+    passive: false,
+    hostileTeams: [0],
+    motive: 'assigned_interdiction',
+    engagementTrigger: 'authorized_hostile_spawn',
+    zoneId: 'zone_real_port_fixture',
+    approachTelegraph: 'engine_flare',
+    noFireResponseWindowS: 1,
+    combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    activity: normalizeActivity({ kind: ActivityKind.ATTACK_RUN, reason: 'real_port_fixture', anchor: actor.pos, leashRadius: 1200, startedTick: 0 }),
+    roe: RulesOfEngagement.WEAPONS_FREE,
+  };
+  const state = {
+    tick: 60, playerId: target.id, player: { heat: 0 },
+    world: { currentSectorId: 'sector_ceres_belt' },
+    entities: new Map([[actor.id, actor], [target.id, target]]),
+    entityList: [actor, target],
+  };
+  const ctx = { state, bus: null, helpers: {} };
+  const kernel = getCombatKernel(ctx);
+  assert.equal(kernel.catalog.actions.get('action_burst').cancelWindows.length, 0,
+    'real cancellation fixture uses an action with no authored cancel window');
+  const port = createSG03ActionPort(ctx, { controllerId: 'doctrine_cancel_test' });
+  const handle = port.start(actor.id, 'action_burst', {
+    tick: 60, targetId: target.id,
+    target: { id: target.id, kind: ContactKind.SHIP, pos: target.pos },
+    squadId: 'real_port_fixture', objective: ObjectiveKind.FOCUS,
+    objectiveReason: 'combat_doctrine:interceptor_flyby:strike',
+  });
+  assert(handle, 'real SG-03 port queues the non-cancel-window burst action');
+  kernel.actions.advance();
+  assert.equal(state.combat.actions.activeByActor[String(actor.id)]?.actionId, 'action_burst');
+  const interrupted = port.interrupt(actor.id, handle, {
+    tick: 60, reason: 'doctrine_target_invalid', source: 'ai', nextActionId: null, nextTargetId: null,
+  });
+  assert.equal(interrupted, true, 'real SG-03 port directly cancels an invalid-target action into hold');
+  assert.equal(state.combat.actions.activeByActor[String(actor.id)], undefined,
+    'invalid-target cancellation removes the active burst immediately');
+  assert(state.combat.trace.events.some((event) => event.kind === 'action.cancelled' &&
+    event.actorId === actor.id && event.reason === 'doctrine_target_invalid'));
+}
+const source = readFileSync(new URL('../src/ai/combatDoctrine.js', import.meta.url), 'utf8');
+for (const forbidden of ['Math.random', 'Date.now', 'performance.now', 'GameState', 'state.']) {
+  assert.equal(source.includes(forbidden), false, `pure doctrine source cannot reference ${forbidden}`);
+}
+const stackSource = readFileSync(new URL('../src/ai/stack.js', import.meta.url), 'utf8');
+assert.equal(stackSource.includes('!doctrineId'), false,
+  'authored doctrine ships should participate in the bounded stagger instead of forcing every-tick refresh');
+assert(stackSource.includes('clearCachedDoctrineEdges'),
+  'cached doctrine decisions must clear one-shot phase and telegraph edges between authored refreshes');
+const squadSource = readFileSync(new URL('../src/ai/squad.js', import.meta.url), 'utf8');
+assert(squadSource.includes('combatDoctrineId: member.combatDoctrineId'),
+  'squad directives must carry the normalized doctrine identity into the live decision stack');
+
+console.log('Combat doctrine unit checks OK');
+
+function perception(contactsValue, selfOverrides = {}) {
+  return {
+    self: {
+      // Extra self fields (e.g. aimProjectileSpeed) flow through the spread; the named fields
+      // below keep their constructed shape so activity/roe stay normalized.
+      ...selfOverrides,
+      id: selfOverrides.id ?? 2,
+      team: 1,
+      pos: { x: selfOverrides.x ?? 0, z: selfOverrides.z ?? 0 },
+      vel: { x: selfOverrides.vx ?? 0, z: selfOverrides.vz ?? 0 },
+      rot: 0,
+      combatDoctrineId: selfOverrides.combatDoctrineId || null,
+      activity: {
+        kind: selfOverrides.activity || ActivityKind.ATTACK_RUN,
+        reason: 'combat_doctrine_test',
+        anchor: { x: 0, z: 0 },
+        leashRadius: 2600,
+        preferredRange: 180,
+        startedTick: 0,
+      },
+      roe: selfOverrides.roe || RulesOfEngagement.WEAPONS_FREE,
+    },
+    contacts: contactsValue,
+    events: [],
+  };
+}
+
+function shipContact(id, values = {}) {
+  return {
+    id,
+    kind: ContactKind.SHIP,
+    alive: values.alive ?? true,
+    valid: values.valid ?? true,
+    visible: values.visible ?? true,
+    ageTicks: values.ageTicks ?? 0,
+    hostile: values.hostile ?? true,
+    confidence: values.confidence ?? 1,
+    threat: values.threat ?? 0.7,
+    pos: { x: values.x ?? 400, z: values.z ?? 0 },
+    vel: { x: values.vx ?? 0, z: values.vz ?? 0 },
+    tethered: values.tethered ?? false,
+    operationalMassBand: values.operationalMassBand || 'medium',
+    mobilityBand: values.mobilityBand || 'medium',
+    cargoBand: values.cargoBand || 'empty',
+    tetherabilityBand: values.tetherabilityBand || 'good',
+    tags: values.tags || [],
+  };
+}
+
+function tetherContact(id, values = {}) {
+  return {
+    id,
+    attachmentId: id,
+    kind: ContactKind.TETHER,
+    ownerId: values.ownerId,
+    targetId: values.targetId,
+    hostile: true,
+    confidence: 1,
+    pos: { x: 60, z: 0 },
+    vel: { x: 0, z: 0 },
+    tags: values.tags || ['massline', 'owned_by_self'],
+  };
+}
+
+function baseDirective() {
+  return Object.freeze({
+    tick: 0,
+    squadId: 'fixture',
+    memberId: 2,
+    role: 'striker',
+    tactic: 'standoff_focus',
+    focusTargetId: 1,
+    objective: Object.freeze({ kind: ObjectiveKind.FOCUS, targetId: 1, reason: 'fixture' }),
+    formation: Object.freeze({
+      kind: 'wedge', slot: Object.freeze({ x: 0, z: 0 }), velocity: Object.freeze({ x: 0, z: 0 }),
+      bound: 170, breakFormation: false, breakReason: null,
+    }),
+  });
+}
+
+function seeded(values) {
+  let index = 0;
+  return () => values[index++ % values.length];
+}
+
+function stackActor(id, doctrineActor) {
+  return {
+    id,
+    type: 'ship',
+    alive: true,
+    team: 1,
+    pos: { x: 0, z: id * 12 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    radius: 12,
+    data: {
+      ai: {
+        combatDoctrineId: doctrineActor ? CombatDoctrineId.INTERCEPTOR_FLYBY : null,
+        activity: {
+          kind: ActivityKind.ATTACK_RUN,
+          reason: 'default_batch_fixture',
+          anchor: { x: 0, z: 0 },
+          leashRadius: 2600,
+          preferredRange: 180,
+          startedTick: 0,
+        },
+        roe: RulesOfEngagement.WEAPONS_FREE,
+      },
+      intent: {},
+      weapons: [{ projSpeed: 420 }],
+    },
+  };
+}
+
+function stackSensorFrame(entityId, tick, contacts) {
+  return {
+    tick,
+    self: {
+      id: entityId,
+      team: 1,
+      pos: { x: 0, z: entityId * 12 },
+      vel: { x: 0, z: 0 },
+      rot: 0,
+      radius: 12,
+      hullFraction: 1,
+      energyFraction: 1,
+      heatFraction: 0,
+      disabled: false,
+      tethered: false,
+      capabilities: ['drive', 'sensor', 'weapon', 'ranged'],
+      subsystemFractions: {},
+      activity: {
+        kind: ActivityKind.ATTACK_RUN,
+        reason: 'default_batch_fixture',
+        anchor: { x: 0, z: 0 },
+        leashRadius: 2600,
+        preferredRange: 180,
+        startedTick: 0,
+      },
+      roe: RulesOfEngagement.WEAPONS_FREE,
+      combatDoctrineId: entityId === 2 ? CombatDoctrineId.INTERCEPTOR_FLYBY : null,
+    },
+    contacts,
+    events: [],
+  };
+}
+
+function stackTargetContact() {
+  return {
+    id: 99,
+    kind: ContactKind.SHIP,
+    team: 2,
+    classification: 'live_hostile',
+    pos: { x: 190, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 12,
+    confidence: 1,
+    threat: 0.9,
+    hostile: true,
+    alive: true,
+    valid: true,
+    visible: true,
+    tags: ['armed'],
+  };
+}
+
+function stackActionPort(starts) {
+  return {
+    list() {
+      return [{
+        id: 'action_burst', tags: ['attack'], range: 700, preferredRange: 220,
+        targetKinds: [ContactKind.SHIP],
+      }];
+    },
+    canStart() { return { ok: true, reason: 'fixture_ok' }; },
+    start(entityId, actionId, request) {
+      const handle = { entityId, actionId, startedTick: request.tick };
+      starts.push(handle);
+      return handle;
+    },
+    status() { return 'running'; },
+    interrupt() { return true; },
+  };
+}
+
+function realPortShip(id, team, x) {
+  return {
+    id, type: 'ship', alive: true, team,
+    pos: { x, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 12,
+    hull: 200, hullMax: 200, armorHp: 40, armorMax: 40,
+    shield: 50, shieldMax: 50, cap: 100, capMax: 100,
+    data: {},
+  };
+}
+
+// SF-056 persistence: a pack pursuer loaded with woundedFallbackSpent on self must re-arm once
+// the subsystem heals past the exit band — the rebuilt record starts armed, so the re-arm pulse
+// has to read the persisted latch too; without it the saved latch holds every retreat closed.
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 11 });
+  const frame = (driveFraction, spent) => perception(
+    [shipContact(9, { x: 150 })],
+    { id: 7, subsystemFractions: { subsystem_drive: driveFraction }, woundedFallbackSpent: spent },
+  );
+
+  let result = runtime.update({
+    tick: 0, entityId: 7, doctrineId: CombatDoctrineId.PACK_PURSUIT,
+    perception: frame(0.9, true), directive: baseDirective(),
+  });
+  assert.equal(result.fallbackRearmed, true, 'a healed hull clears the saved spent latch');
+
+  result = runtime.update({
+    tick: 10, entityId: 7, doctrineId: CombatDoctrineId.PACK_PURSUIT,
+    perception: frame(0.4, false), directive: baseDirective(),
+  });
+  assert.equal(result.outcome, 'wounded_fallback', 're-wounding buys one fresh retreat');
+}

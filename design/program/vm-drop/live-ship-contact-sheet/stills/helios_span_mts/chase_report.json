@@ -1,0 +1,138 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/helios_span_mts.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_span_mts",
+  "focus": [
+    -0.0875,
+    0.0,
+    0.83
+  ],
+  "boundsMin": [
+    -14.325,
+    -4.46,
+    -2.3
+  ],
+  "boundsMax": [
+    14.15,
+    4.46,
+    3.96
+  ],
+  "size": [
+    28.475,
+    8.92,
+    6.26
+  ],
+  "lightScale": 2.6366,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "triangles": 2064,
+      "materials": [
+        "Material_BrushedMetal_RemasterNickel"
+      ]
+    },
+    {
+      "name": "LOD0_Gun_Assembly",
+      "triangles": 44,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "triangles": 272,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "triangles": 288,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Cyan",
+      "triangles": 348,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Glass",
+      "triangles": 408,
+      "materials": [
+        "Material_Glass"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Hull",
+      "triangles": 11332,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Mechanical",
+      "triangles": 22776,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Warm",
+      "triangles": 4092,
+      "materials": [
+        "Material_Warm"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_MTS_blister0",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_MTS_blister1",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_MTS_blister2",
+      "triangles": 20,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_MTS_cabinstrip",
+      "triangles": 60,
+      "materials": [
+        "KitMat_Emissive"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_MTS_logo",
+      "triangles": 60,
+      "materials": [
+        "KitMat_Emissive"
+      ]
+    }
+  ],
+  "triangles": 41804,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_span_mts/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_span_mts/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_span_mts/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

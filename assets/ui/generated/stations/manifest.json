@@ -1,0 +1,331 @@
+{
+ "schema": "spaceface.generatedArt.v1",
+ "set": "station establishing shots",
+ "use": "ORRERY (design/frontend/ORRERY.md section 5): the station hub backdrop, the chart inspector, contract destinations",
+ "generator": "OpenAI image generation via codex exec -m gpt-5.5 (ChatGPT account), 1536x1024, one style bible prompt per station type",
+ "date": "2026-09-23",
+ "license": "Generated for SpaceFace by the project; no third-party source image supplied.",
+ "promptTemplate": "cinematic concept-art establishing shot of {name}, a {kind} space station in the {sector} system ... warm sodium-orange practical lights, cold starlight rim light ... no text, no logos, no UI, no people, no lens flare (full template and per-type details: tools/art/station_batch.py)",
+ "files": {
+  "station_helios": {
+   "file": "station_helios.webp",
+   "thumb": "station_helios.thumb.webp",
+   "name": "Helios Station",
+   "sector": "Helios Prime",
+   "type": "trade_hub",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "00ac5cb2ed3889381b6652ac8d1edfe398761958a6769ce3f56c2537224b830d"
+  },
+  "station_coalition": {
+   "file": "station_coalition.webp",
+   "thumb": "station_coalition.thumb.webp",
+   "name": "Coalition HQ",
+   "sector": "Helios Prime",
+   "type": "military",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "8387cc17077389ab74365491b8f85c9f42506d4741ca3a34253dc50f85767c7f"
+  },
+  "station_ceres": {
+   "file": "station_ceres.webp",
+   "thumb": "station_ceres.thumb.webp",
+   "name": "Ceres Refinery",
+   "sector": "Ceres Belt",
+   "type": "refinery",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "08348e969a40fce717d757524a62da443430511c3d4f56210e98de6ef4ec55be"
+  },
+  "station_beltout": {
+   "file": "station_beltout.webp",
+   "thumb": "station_beltout.thumb.webp",
+   "name": "Belt Outpost",
+   "sector": "Ceres Belt",
+   "type": "mining",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "73dafa6a1caef66a3a4b690c1ef0dbbc5247ee9400acff08c00dad0450bc4436"
+  },
+  "station_tethys": {
+   "file": "station_tethys.webp",
+   "thumb": "station_tethys.thumb.webp",
+   "name": "Tethys Trade Hub",
+   "sector": "Tethys Junction",
+   "type": "trade_hub",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "96ee59a72ed5b50def0c6f48fec21360a2b21cbf40f31200419139224ab78f2e"
+  },
+  "station_customs": {
+   "file": "station_customs.webp",
+   "thumb": "station_customs.thumb.webp",
+   "name": "Customs Gate",
+   "sector": "Tethys Junction",
+   "type": "military",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "da7742c7f1463c56e099f2965a7558613c83ec355bf120e1aceaf9a8cf6029ec"
+  },
+  "station_forge": {
+   "file": "station_forge.webp",
+   "thumb": "station_forge.thumb.webp",
+   "name": "Forge Foundry",
+   "sector": "Vesta Forge",
+   "type": "fab",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "dcdaa014f9edbcb60eff651a9f775bb7bd79af628b68f6636c6caaf85fd4a7fb"
+  },
+  "station_depot3": {
+   "file": "station_depot3.webp",
+   "thumb": "station_depot3.thumb.webp",
+   "name": "Refuel Depot",
+   "sector": "Vesta Forge",
+   "type": "mining",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "95a7eab7702159efb32d62a1f97fe9a793c6b89221ccf988be2c55dc3a4cbde5"
+  },
+  "station_drift": {
+   "file": "station_drift.webp",
+   "thumb": "station_drift.thumb.webp",
+   "name": "Drift Market",
+   "sector": "Pallas Drift",
+   "type": "trade_hub",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "0680d6276dc576d645ef31d4c51fb4cc431ed00d77bce6a28635ca66afa46faa"
+  },
+  "station_smuggler": {
+   "file": "station_smuggler.webp",
+   "thumb": "station_smuggler.thumb.webp",
+   "name": "Smuggler Den",
+   "sector": "Pallas Drift",
+   "type": "blackmarket",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "3d8a1dace5c56a8b04fbbac3d72b678ce9e090e25c40856a041ab24eebe2bab6"
+  },
+  "station_reach": {
+   "file": "station_reach.webp",
+   "thumb": "station_reach.thumb.webp",
+   "name": "Reach Station",
+   "sector": "Io Reach",
+   "type": "trade_hub",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "38279b56779bff0e30964a96757363f56a2d1a22bc62ae6481e732ff9009f4df"
+  },
+  "station_expanse": {
+   "file": "station_expanse.webp",
+   "thumb": "station_expanse.thumb.webp",
+   "name": "Expanse Refinery",
+   "sector": "Charon Expanse",
+   "type": "refinery",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "0e42764d054959c051db80c84933658fa102801a6e2613c66d96a6d77e5b1933"
+  },
+  "station_sker": {
+   "file": "station_sker.webp",
+   "thumb": "station_sker.thumb.webp",
+   "name": "Sker Bazaar",
+   "sector": "Sker Haven",
+   "type": "blackmarket",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "8140ae503674d72ffe474e727961e4239cad9dfff0a080d676d409a221e7f47d"
+  },
+  "station_veil": {
+   "file": "station_veil.webp",
+   "thumb": "station_veil.thumb.webp",
+   "name": "Research Station Veil",
+   "sector": "Veil Nebula",
+   "type": "research",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "1fb18aad8c979bbedc3041dec11760c73825b8dfde0e12a4c92c9a7b79b459fd"
+  },
+  "station_ashcache": {
+   "file": "station_ashcache.webp",
+   "thumb": "station_ashcache.thumb.webp",
+   "name": "Ruined Cache Station",
+   "sector": "Ashfall Reach",
+   "type": "blackmarket",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "a0f035ce9896a350924fdb8b9358f7e131a0d5f401cf7e9adb205ce7e45653e1"
+  },
+  "station_nyx_march": {
+   "file": "station_nyx_march.webp",
+   "thumb": "station_nyx_march.thumb.webp",
+   "name": "Nyx Fence",
+   "sector": "Nyx March",
+   "type": "blackmarket",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "1b6aa10d7599458cc8acfc2e2b72907bf8c5c671bed685b035e7d0146719a283"
+  },
+  "station_hyperion_cut": {
+   "file": "station_hyperion_cut.webp",
+   "thumb": "station_hyperion_cut.thumb.webp",
+   "name": "Cut Refinery",
+   "sector": "Hyperion Cut",
+   "type": "refinery",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "7e03ca65abc64770c074cbb692a96e42a0f5c354ce3d97d4cb62d6d64eb55e14"
+  },
+  "station_hyperion_claim": {
+   "file": "station_hyperion_claim.webp",
+   "thumb": "station_hyperion_claim.thumb.webp",
+   "name": "Cut Claim Outpost",
+   "sector": "Hyperion Cut",
+   "type": "mining",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "89675f8c08611e0c639fd563fd7762574219f17343989393877b04e2c7c84b4f"
+  },
+  "station_kepler_scar": {
+   "file": "station_kepler_scar.webp",
+   "thumb": "station_kepler_scar.thumb.webp",
+   "name": "Scar Bazaar",
+   "sector": "Kepler Scar",
+   "type": "blackmarket",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "5c35d43756ac0342d4c4d21c55890c0ffcf9f21b82b100b501df254f6866ac28"
+  },
+  "station_orcus_shadow": {
+   "file": "station_orcus_shadow.webp",
+   "thumb": "station_orcus_shadow.thumb.webp",
+   "name": "Shadow Cache",
+   "sector": "Orcus Shadow",
+   "type": "research",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "9e1b7cc9f27e1c6a0abcb26d1c1bfa66bd084007c4c11224f1205ec1767dc12c"
+  },
+  "station_rhea_cinder": {
+   "file": "station_rhea_cinder.webp",
+   "thumb": "station_rhea_cinder.thumb.webp",
+   "name": "Cinder Claim",
+   "sector": "Rhea Cinder",
+   "type": "mining",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "20d44a9736289489908367e5d080b18a9127fb0133786858259711b87cd0cb16"
+  },
+  "station_haumea_rift": {
+   "file": "station_haumea_rift.webp",
+   "thumb": "station_haumea_rift.thumb.webp",
+   "name": "Rift Observatory",
+   "sector": "Haumea Rift",
+   "type": "research",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "1c81bf2ce94b0dd553b5b8e331a5f747544c9c4021c751a6bb589e3b25401da1"
+  },
+  "station_eris_margin": {
+   "file": "station_eris_margin.webp",
+   "thumb": "station_eris_margin.thumb.webp",
+   "name": "Margin Fence",
+   "sector": "Eris Margin",
+   "type": "blackmarket",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "c9909ad55297a7d7bd23f0370b14a1da3a45596f2d8e5d02e31aa24af912a6a4"
+  },
+  "station_phoebe_echo": {
+   "file": "station_phoebe_echo.webp",
+   "thumb": "station_phoebe_echo.thumb.webp",
+   "name": "Echo Shrine",
+   "sector": "Phoebe Echo",
+   "type": "research",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "7b5420266caf4a664ca3616dacc2424b5ca8cc4df8b8148ffc4979ff4161dafe"
+  },
+  "station_nereid": {
+   "file": "station_nereid.webp",
+   "thumb": "station_nereid.thumb.webp",
+   "name": "Nereid Waystation",
+   "sector": "Nereid Shoal",
+   "type": "trade_hub",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "55ad520cbffca5d7ea7fbc1d64cec8b64af9b4a60002c1ec02e606cd26f4c023"
+  },
+  "station_nereid_claim": {
+   "file": "station_nereid_claim.webp",
+   "thumb": "station_nereid_claim.thumb.webp",
+   "name": "Shoal Claim",
+   "sector": "Nereid Shoal",
+   "type": "mining",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "61a6a2d78369f0a00529b7b16bbc30644d9c2c0e5b4f9cec1e75ca0a44c46c3a"
+  },
+  "station_proteus": {
+   "file": "station_proteus.webp",
+   "thumb": "station_proteus.thumb.webp",
+   "name": "Proteus Den",
+   "sector": "Proteus Well",
+   "type": "blackmarket",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "517c1de6e45c31f239cd47b5056da248b4bb8d69ffe07e1e6d9969749d78976a"
+  },
+  "station_triton": {
+   "file": "station_triton.webp",
+   "thumb": "station_triton.thumb.webp",
+   "name": "Triton Wake Lab",
+   "sector": "Triton Wake",
+   "type": "research",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "9d17eb9c94e1e8ac7570b9746be6407295fc303f5abbd34533d6d65bb7ffd89f"
+  },
+  "station_eunomia": {
+   "file": "station_eunomia.webp",
+   "thumb": "station_eunomia.thumb.webp",
+   "name": "Eunomia Fence",
+   "sector": "Eunomia Gulf",
+   "type": "blackmarket",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "52d24e42142ec0d6f8de18524e0ab61d24cefc70cae5b2b8cbf761fc3b5a38a0"
+  },
+  "station_sedna": {
+   "file": "station_sedna.webp",
+   "thumb": "station_sedna.thumb.webp",
+   "name": "Sedna Survey Post",
+   "sector": "Sedna Dark",
+   "type": "research",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "3a76ab5a504768fb1a40fd476ee5950b20b284e0df1c1af013910642102f01d7"
+  },
+  "station_dione": {
+   "file": "station_dione.webp",
+   "thumb": "station_dione.thumb.webp",
+   "name": "Dione Exchange",
+   "sector": "Dione Lane",
+   "type": "trade_hub",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "9e9fed71df9eade974ba40966dcc3b4354db8dab2e75b744449adb7ee5ae1f6b"
+  },
+  "station_dione_customs": {
+   "file": "station_dione_customs.webp",
+   "thumb": "station_dione_customs.thumb.webp",
+   "name": "Dione Customs",
+   "sector": "Dione Lane",
+   "type": "military",
+   "width": 1536,
+   "height": 1024,
+   "sourceSha256": "543afb1010cd4789f8ec3c8bf5c8c4d481c354259a20380c998225ffb0b017f7"
+  }
+ }
+}

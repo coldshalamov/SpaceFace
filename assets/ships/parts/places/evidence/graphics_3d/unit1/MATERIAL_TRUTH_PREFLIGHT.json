@@ -1,0 +1,71 @@
+{
+  "schema": "spaceface.graphics3d.unit1.materialTruthPreflight.v1",
+  "campaign": "GRAPHICS_3D unit 1 — nav buoy + lane beacon",
+  "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "camera": "tools/blender/spaceface_chase_camera.py 60deg/FOV50 D=144 and D=58",
+  "liveChaseFinding": {
+    "place_nav_buoy": "1% frame width at D=144, 3% at D=58; reads as a charcoal needle with a cyan slit, orange postage stamp, and four fins",
+    "place_lane_beacon": "5% at D=144, 11% at D=58; reads as a post + arm + cube stack",
+    "hitchPlay": "10% frame width; mixed materials, wells, manufactured hull"
+  },
+  "componentReferenceDecision": "not_needed",
+  "referenceReason": "Role is existing IALA-style navigation hardware already in the live slot. Chase stills of the live GLB are the defect crop. No generated redesign sheet.",
+  "frozenIdentity": {
+    "place_nav_buoy": {
+      "root": "SF_M4_HELIOS_NAV_SPIRE_ROOT",
+      "socket": "SOCKET_Structure_Core",
+      "collision": "COLLISION_HULL empty helper",
+      "materials": ["Buoy_Pressure_Shell", "Buoy_Stabilizer_Frame", "Buoy_Nav_Optic", "Buoy_Solar_Cell", "Buoy_Service_Marking"],
+      "envelopeBlenderAfterImport": { "min": [-1.4, -1.4, -5.0], "max": [1.575, 1.4, 10.3] }
+    },
+    "place_lane_beacon": {
+      "root": "SF_M4_HELIOS_GANTRY_ROOT",
+      "socket": "SOCKET_Structure_Core",
+      "collision": "COLLISION_HULL empty helper",
+      "hookMesh": "LOD*_HOOK_EMISSIVE",
+      "materials": ["Material_Hull", "Material_Mechanical", "Material_Warm", "Material_Accent"],
+      "envelopeBlenderAfterImport": { "min": [-1.75, -1.75, -5.1], "max": [9.1, 1.75, 9.4] },
+      "silhouetteToKeep": "L-gantry: mast + outbound arm, not a 30m spire replacement"
+    }
+  },
+  "billedZones": [
+    {
+      "id": "buoy_ballast_cage",
+      "asset": "place_nav_buoy",
+      "fiction": "Zero-g inertial cage: thick cruciform yoke and ring so the planform is a cross, not a stick.",
+      "material": "cast stabilizer alloy, unmapped charcoal metal, roughness ~0.48",
+      "chaseMustShow": "dark cross at the keel on play_chase"
+    },
+    {
+      "id": "buoy_service_drum",
+      "asset": "place_nav_buoy",
+      "fiction": "Replaceable coated pressure can. Orange IALA daymark is a physical band, not a decal stamp.",
+      "material": "neutral coated shell + finite orange service marking",
+      "chaseMustShow": "narrow coated spine and an orange daymark band at D=58"
+    },
+    {
+      "id": "buoy_lantern_house",
+      "asset": "place_nav_buoy",
+      "fiction": "Four-azimuth nav lantern. Chase looks down, so the roof well is the player-visible optic.",
+      "material": "near-black dielectric optic, opaque, no transmission; recessed in the roof",
+      "chaseMustShow": "dark well with a rim on play_chase_close, not a cyan sticker"
+    },
+    {
+      "id": "beacon_mast_and_plinth",
+      "asset": "place_lane_beacon",
+      "fiction": "Load-spreading plinth and a thick painted mast. Existing L identity, manufactured section.",
+      "material": "warm grey coated hull over alloy collars",
+      "chaseMustShow": "square base and a thick post, not a ladder of holes in a wafer"
+    },
+    {
+      "id": "beacon_arm_lantern",
+      "asset": "place_lane_beacon",
+      "fiction": "Outbound rangefinder / lane lantern. Box truss arm, hooded well on the pod roof because chase looks down.",
+      "material": "alloy truss, coated pod, dark optic well, amber only on contact hardware",
+      "chaseMustShow": "arm with thickness and a dark hole on the far pod"
+    }
+  ],
+  "allSupportedViewZonesClassified": false,
+  "workingScene": "tools/blender/build_graphics3d_unit1_nav.py",
+  "gateScope": "whole_asset chase stills vs Hitch; sockets/collision frozen; no partsLibrary.js edit"
+}

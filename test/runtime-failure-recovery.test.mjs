@@ -1,0 +1,738 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { LOOP_FIXED_DT, startLoop, createSimulationRunner } from '../src/core/loop.js';
+import { createBus } from '../src/core/eventBus.js';
+import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
+import { createRuntimeFailurePresenter, describeBootFailure } from '../src/ui/runtimeFailurePresenter.js';
+import { fakeDom, findAll } from './helpers/fake-dom.mjs';
+
+function createRaf() {
+  let nextId = 1;
+  const pending = new Map();
+  return {
+    requestFrame(callback) {
+      const id = nextId++;
+      pending.set(id, callback);
+      return id;
+    },
+    cancelFrame(id) {
+      pending.delete(id);
+    },
+    flushOne(now) {
+      const entry = pending.entries().next().value;
+      assert.ok(entry, 'expected one presentation callback');
+      pending.delete(entry[0]);
+      entry[1](now);
+    },
+    count: () => pending.size,
+  };
+}
+
+function silenceConsoleError(fn) {
+  const original = console.error;
+  console.error = () => {};
+  try {
+    fn();
+  } finally {
+    console.error = original;
+  }
+}
+
+function createFlightState() {
+  return {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+    settings: { video: {} },
+  };
+}
+
+test('a quarantined simulation step notifies once, stops scheduling, and keeps the cause', () => {
+  const raf = createRaf();
+  const state = createFlightState();
+  let steps = 0;
+  let draws = 0;
+  const failures = [];
+  const registry = {
+    step() {
+      steps++;
+      state.tick++;
+      throw new Error('fault-injection: broken component');
+    },
+    renderUpdate() { draws++; },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+    onSimulationFailure(failure) { failures.push(failure); },
+  });
+
+  silenceConsoleError(() => {
+    raf.flushOne(1000 + 40);
+  });
+
+  assert.equal(steps, 1, 'the quarantined tick must never be advanced a second time');
+  assert.equal(draws, 0, 'a frame whose simulation was corrupted must never present');
+  assert.equal(raf.count(), 0, 'no further frame may be scheduled after quarantine');
+  assert.equal(failures.length, 1, 'the failure hook fires exactly once');
+  const failure = failures[0];
+  assert.equal(Object.isFrozen(failure), true);
+  assert.equal(failure.message, 'fault-injection: broken component');
+  assert.equal(failure.site, controller.simulationRunner.getDiagnostics().closeCauseSite);
+  assert.equal(failure.tick, 1);
+  assert.equal(failure.simTime, 0);
+
+  const diagnostics = controller.getDiagnostics();
+  assert.equal(diagnostics.simulationFailureNotified, true);
+  assert.equal(diagnostics.simulationFailure, failure);
+  assert.equal(diagnostics.destroyed, true);
+  assert.equal(diagnostics.stopCount, 1);
+  assert.equal(diagnostics.frameErrorCount, 1);
+  assert.equal(diagnostics.lastFrameError, 'fault-injection: broken component',
+    'the recorded cause is the original step error, not "SimulationRunner is closed"');
+  assert.equal(diagnostics.simulation.closed, true);
+  assert.equal(diagnostics.simulation.closeCauseMessage, 'fault-injection: broken component');
+});
+
+test('a real worker-lane error recovers through simulation failure on the first frame', async (t) => {
+  const posts = [];
+  let receive = null;
+  const bus = createBus();
+  const state = createFlightState();
+  state.entities = new Map();
+  state.entityList = [];
+  state.ui = { screenStack: [] };
+  state.meta = { seed: 1 };
+  const registry = { renderUpdate() {}, get() { return null; } };
+  const lane = createSimLaneRuntime({
+    state,
+    registry,
+    bus,
+    flags: { lane: 'worker', warnings: [], sab: false },
+    channelFactory: () => ({
+      post(message) { posts.push(message); },
+      onMessage(handler) { receive = handler; },
+      terminate() {},
+    }),
+  });
+  assert.ok(lane);
+  t.after(() => lane.close());
+  receive({ kind: 'ready', seq: posts[0].seq });
+  await lane.readyPromise;
+
+  const raf = createRaf();
+  const simulationFailures = [];
+  const graphicsFailures = [];
+  const controller = startLoop(state, registry, {
+    simulationRunner: lane.runner,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+    onSimulationFailure(failure) { simulationFailures.push(failure); },
+    onPresentationFailure(failure) { graphicsFailures.push(failure); },
+  });
+  t.after(() => controller.destroy());
+
+  // The injected lane is the actual worker transport runner, not a stub. A
+  // directive failure closes it before the next presentation callback; that
+  // callback must surface the original worker cause through the established
+  // simulation recovery path.
+  lane.runner.stepOnce();
+  const flight = posts.at(-1);
+  assert.equal(flight.kind, 'tick');
+  receive({
+    kind: 'error',
+    seq: flight.seq,
+    message: 'fault-injection: real worker failure',
+    stack: 'Error: fault-injection: real worker failure\n    at worker.tick (worker.js:1:1)',
+  });
+
+  silenceConsoleError(() => raf.flushOne(1040));
+  assert.equal(simulationFailures.length, 1, 'worker failure is recovered once on the next frame');
+  assert.equal(simulationFailures[0].message, 'sim worker directive failed: fault-injection: real worker failure');
+  assert.equal(graphicsFailures.length, 0, 'a simulation failure must not be misreported as graphics failure');
+  assert.equal(raf.count(), 0, 'simulation recovery stops rAF immediately');
+
+  // There is no live callback to feed a 30-frame presentation-stall counter;
+  // explicitly preserve that invariant for a closed real lane.
+  assert.equal(controller.getDiagnostics().presentationFailureNotified, false);
+  assert.equal(controller.getDiagnostics().simulation.closeCauseMessage,
+    simulationFailures[0].message);
+});
+
+test('a throwing failure hook cannot resurrect the loop or replace the recorded cause', () => {
+  const raf = createRaf();
+  const state = createFlightState();
+  let steps = 0;
+  let hookCalls = 0;
+  const registry = {
+    step() {
+      steps++;
+      state.tick++;
+      throw new Error('fault-injection: broken component');
+    },
+    renderUpdate() {},
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+    onSimulationFailure() {
+      hookCalls++;
+      throw new Error('recovery hook exploded');
+    },
+  });
+
+  silenceConsoleError(() => {
+    raf.flushOne(1000 + 40);
+  });
+
+  assert.equal(hookCalls, 1);
+  assert.equal(steps, 1);
+  assert.equal(raf.count(), 0);
+  const diagnostics = controller.getDiagnostics();
+  assert.equal(diagnostics.destroyed, true);
+  assert.equal(diagnostics.simulationFailureNotified, true);
+  assert.equal(diagnostics.simulationFailure.message, 'fault-injection: broken component');
+  assert.equal(diagnostics.lastFrameError, 'fault-injection: broken component');
+});
+
+test('a manual simulation close without a close cause is teardown, never a fault', () => {
+  const raf = createRaf();
+  const state = createFlightState();
+  const failures = [];
+  const registry = {
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+    },
+    renderUpdate() {},
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+    onSimulationFailure(failure) { failures.push(failure); },
+  });
+
+  controller.simulationRunner.close();
+  assert.equal(controller.simulationRunner.getDiagnostics().closed, true);
+  assert.equal(controller.simulationRunner.getDiagnostics().closeCauseMessage, null);
+
+  silenceConsoleError(() => {
+    raf.flushOne(1000 + 40);
+  });
+
+  assert.equal(failures.length, 0, 'intentional teardown must not raise the failure hook');
+  const diagnostics = controller.getDiagnostics();
+  assert.equal(diagnostics.simulationFailureNotified, false);
+  assert.equal(diagnostics.simulationFailure, null);
+  assert.equal(diagnostics.destroyed, false, 'manual sim close alone does not stop presentation');
+  controller.destroy();
+});
+
+test('recoverable draw exceptions keep rescheduling and never raise the failure hook', () => {
+  const raf = createRaf();
+  const state = createFlightState();
+  let draws = 0;
+  const failures = [];
+  const registry = {
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+    },
+    renderUpdate() {
+      draws++;
+      throw new Error('transient draw failure');
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+    onSimulationFailure(failure) { failures.push(failure); },
+  });
+
+  silenceConsoleError(() => {
+    for (let i = 0; i < 3; i++) raf.flushOne(1000 + 20 * (i + 1));
+  });
+
+  assert.equal(draws, 3, 'every frame still reaches the draw and is retried');
+  assert.equal(raf.count(), 1, 'the loop reschedules after a recoverable draw throw');
+  assert.equal(failures.length, 0);
+  const diagnostics = controller.getDiagnostics();
+  assert.equal(diagnostics.simulationFailureNotified, false);
+  assert.equal(diagnostics.simulationFailure, null);
+  assert.equal(diagnostics.simulation.closed, false);
+  assert.equal(diagnostics.frameErrorCount, 3);
+  controller.destroy();
+});
+
+function enhanceNode(node, focused) {
+  node.hasAttribute = (name) => Object.prototype.hasOwnProperty.call(node.attributes, name);
+  node.removeAttribute = (name) => { delete node.attributes[name]; };
+  node.removeChild = (child) => {
+    const index = node.children.indexOf(child);
+    if (index >= 0) node.children.splice(index, 1);
+    child.parentNode = null;
+    return child;
+  };
+  node.contains = (other) => {
+    for (let cur = other; cur; cur = cur.parentNode) {
+      if (cur === node) return true;
+    }
+    return false;
+  };
+  const matches = (n, selector) => {
+    if (selector.startsWith('.')) {
+      return n.className.split(/\s+/).includes(selector.slice(1));
+    }
+    return n.tagName === selector;
+  };
+  const visit = (n, selector, out) => {
+    for (const child of n.children || []) {
+      if (matches(child, selector)) out.push(child);
+      visit(child, selector, out);
+    }
+    return out;
+  };
+  node.querySelector = (selector) => visit(node, selector, [])[0] || null;
+  node.querySelectorAll = (selector) => visit(node, selector, []);
+  node.focus = () => { focused.push(node); };
+  return node;
+}
+
+function createBootFixture() {
+  const doc = fakeDom();
+  const focused = [];
+  const make = (tag) => enhanceNode(doc._make(tag), focused);
+  doc.createElement = make;
+  const host = {
+    listeners: [],
+    addEventListener(type, fn, capture) { this.listeners.push({ type, fn, capture }); },
+    removeEventListener(type, fn) {
+      const index = this.listeners.findIndex((l) => l.type === type && l.fn === fn);
+      if (index >= 0) this.listeners.splice(index, 1);
+    },
+    keydown(key, target = null, extra = {}) {
+      const event = {
+        ...extra,
+        key,
+        target,
+        defaultPrevented: false,
+        stopped: false,
+        preventDefault() { this.defaultPrevented = true; },
+        stopPropagation() { this.stopped = true; },
+        stopImmediatePropagation() { this.stopped = true; },
+      };
+      for (const capture of [true, false]) {
+        for (const entry of [...this.listeners]) {
+          if (event.stopped) return event;
+          if (entry.type === 'keydown' && !!entry.capture === capture) entry.fn(event);
+        }
+      }
+      return event;
+    },
+    location: { reloads: 0, reload() { this.reloads++; } },
+  };
+  doc.defaultView = host;
+
+  const overlay = make('div');
+  overlay.id = 'boot-overlay';
+  overlay.classList.add('hidden');
+  overlay.setAttribute('aria-busy', 'true');
+  const lockup = make('div');
+  lockup.className = 'boot-lockup';
+  const label = make('span');
+  label.textContent = 'Initializing systems…';
+  lockup.appendChild(label);
+  overlay.appendChild(lockup);
+  const hud = make('div');
+  hud.id = 'hud';
+  const screens = make('div');
+  screens.id = 'screens';
+  const glCanvas = make('canvas');
+  glCanvas.id = 'gl-canvas';
+  doc.head.appendChild(hud);
+  doc.head.appendChild(screens);
+  doc.head.appendChild(overlay);
+  doc.head.appendChild(glCanvas);
+  return { doc, host, overlay, lockup, hud, screens, glCanvas, focused };
+}
+
+function withDocument(doc, fn) {
+  const previous = globalThis.document;
+  globalThis.document = doc;
+  try {
+    return fn();
+  } finally {
+    globalThis.document = previous;
+  }
+}
+
+test('the failure pane mounts once over the boot overlay with the authored copy', () => {
+  const fixture = createBootFixture();
+  let restarts = 0;
+  const presenter = createRuntimeFailurePresenter({
+    document: fixture.doc,
+    host: fixture.host,
+    onRestart() { restarts++; },
+  });
+
+  const shown = withDocument(fixture.doc, () => presenter.show({
+    message: 'fault-injection: broken component',
+    site: 'at registry.step',
+    tick: 12,
+    simTime: 4.5,
+  }));
+
+  assert.equal(shown, true);
+  assert.equal(fixture.overlay.classList.contains('hidden'), false);
+  assert.equal(fixture.overlay.style.display, 'flex');
+  assert.equal(fixture.overlay.getAttribute('aria-busy'), 'false');
+  const panes = findAll(fixture.overlay, (n) => n.className.split(/\s+/).includes('sf-state'));
+  assert.equal(panes.length, 1);
+  const pane = panes[0];
+  assert.equal(pane.classList.contains('boot-error'), true);
+  assert.equal(pane.getAttribute('role'), 'alertdialog');
+  assert.equal(pane.getAttribute('aria-modal'), 'true');
+  const head = pane.querySelector('.sf-state__head');
+  const detail = pane.querySelector('.sf-state__detail');
+  assert.equal(head.textContent, 'Flight interrupted');
+  assert.equal(detail.textContent,
+    'Restart from the main menu to recover. Progress since your last save may be lost.');
+  assert.equal(pane.getAttribute('aria-labelledby'), head.id);
+  assert.equal(pane.getAttribute('aria-describedby'), detail.id);
+  assert.equal(pane.querySelector('.sf-state__word').textContent, 'FLIGHT INTERRUPTED');
+  assert.equal(pane.querySelector('.sf-state__fills').textContent,
+    'The simulation stopped before another frame could be completed.');
+  assert.equal(fixture.focused[0], pane.sfStateVerb,
+    'the real restart button takes focus when the pane opens');
+
+  withDocument(fixture.doc, () => presenter.show({ message: 'second fault' }));
+  assert.equal(findAll(fixture.overlay, (n) => n.className.split(/\s+/).includes('sf-state')).length,
+    1, 'a repeated show must not stack a second pane');
+  assert.equal(restarts, 0, 'showing the pane never navigates on its own');
+  presenter.destroy();
+});
+
+test('the restart verb fires on click and passes native Enter/Space, nothing else', () => {
+  const fixture = createBootFixture();
+  let restarts = 0;
+  const presenter = createRuntimeFailurePresenter({
+    document: fixture.doc,
+    host: fixture.host,
+    onRestart() { restarts++; },
+  });
+  const order = [];
+  fixture.host.addEventListener('keydown', () => order.push('global-capture'), true);
+  fixture.host.addEventListener('keydown', () => order.push('global-bubble'), false);
+  withDocument(fixture.doc, () => presenter.show({ message: 'fault' }));
+  const pane = findAll(fixture.overlay, (n) => n.className.split(/\s+/).includes('sf-state'))[0];
+  const verb = pane.sfStateVerb;
+
+  pane.sfStateVerb.click();
+  assert.equal(restarts, 1, 'the verb button activates on click');
+
+  const enter = fixture.host.keydown('Enter', verb);
+  assert.equal(enter.defaultPrevented, false, 'native Enter on the button is allowed through');
+  assert.equal(enter.stopped, true,
+    'allowed native activation still stops propagation to gameplay/save listeners');
+  assert.deepEqual(order, ['global-capture'],
+    'the earlier capture listener sees the event but no bubble listener ever does');
+  const space = fixture.host.keydown(' ', verb);
+  assert.equal(space.defaultPrevented, false, 'native Space on the button is allowed through');
+  assert.equal(space.stopped, true);
+
+  order.length = 0;
+  const f5 = fixture.host.keydown('F5', verb);
+  assert.equal(f5.defaultPrevented, true, 'F5 must not reload-and-save during the hold');
+  assert.equal(f5.stopped, true);
+  const gameplayKey = fixture.host.keydown('s', verb);
+  assert.equal(gameplayKey.defaultPrevented, true, 'gameplay/save keys stay blocked');
+  assert.equal(gameplayKey.stopped, true);
+  const escape = fixture.host.keydown('Escape', verb);
+  assert.equal(escape.defaultPrevented, true, 'Escape does not dismiss the safe hold');
+  assert.deepEqual(order, ['global-capture', 'global-capture', 'global-capture'],
+    'each blocked key stops in the presenter before any bubble listener runs');
+
+  // The pane now holds two controls (Retry, Copy details): Tab cycles between them, forward and
+  // back, and never leaves the dialog. (Deliberate change: it used to wrap onto the one control.)
+  order.length = 0;
+  fixture.focused.length = 0;
+  const copy = pane.sfCopyButton;
+  assert.ok(copy, 'the pane carries a Copy details control');
+  const tab = fixture.host.keydown('Tab', verb);
+  assert.equal(tab.defaultPrevented, true);
+  assert.equal(tab.stopped, true, 'Tab stops propagation after moving focus');
+  assert.deepEqual(order, ['global-capture']);
+  assert.equal(fixture.focused[fixture.focused.length - 1], copy, 'Tab moves from Retry to Copy details');
+  fixture.host.keydown('Tab', copy);
+  assert.equal(fixture.focused[fixture.focused.length - 1], verb, 'Tab wraps from Copy details back to Retry');
+  fixture.host.keydown('Tab', verb, { shiftKey: true });
+  assert.equal(fixture.focused[fixture.focused.length - 1], copy, 'Shift+Tab wraps backward onto Copy details');
+  fixture.host.keydown('Tab', null);
+  assert.equal(fixture.focused[fixture.focused.length - 1], verb, 'Tab from outside the dialog lands on Retry');
+  assert.equal(fixture.host.keydown('Enter', copy).defaultPrevented, false, 'native Enter on Copy details is allowed');
+  assert.equal(fixture.host.keydown(' ', copy).stopped, true);
+
+  assert.equal(fixture.host.location.reloads, 0, 'no autonavigation happened');
+  presenter.destroy();
+});
+
+test('an HTML-shaped cause stays inert text and the hold releases cleanly on destroy', () => {
+  const fixture = createBootFixture();
+  const presenter = createRuntimeFailurePresenter({
+    document: fixture.doc,
+    host: fixture.host,
+    onRestart() {},
+  });
+  withDocument(fixture.doc, () => presenter.show({
+    message: '<img src=x onerror=alert(1)><script>alert(2)</script>',
+    site: null,
+    tick: 1,
+    simTime: 0,
+  }));
+
+  assert.equal(findAll(fixture.overlay, (n) => n.tagName === 'img').length, 0);
+  assert.equal(findAll(fixture.overlay, (n) => n.tagName === 'script').length, 0);
+  const pane = findAll(fixture.overlay, (n) => n.className.split(/\s+/).includes('sf-state'))[0];
+  assert.equal(pane.getAttribute('data-failure-message'),
+    '<img src=x onerror=alert(1)><script>alert(2)</script>',
+    'the cause is stored as text data, never parsed as markup');
+
+  assert.equal(fixture.hud.getAttribute('aria-hidden'), 'true');
+  assert.equal(fixture.hud.hasAttribute('inert'), true);
+  assert.equal(fixture.screens.getAttribute('aria-hidden'), 'true');
+  assert.equal(fixture.glCanvas.getAttribute('aria-hidden'), 'true');
+  assert.equal(fixture.lockup.style.display, 'none',
+    'the stale boot lockup is hidden while the pane owns the overlay');
+  assert.equal(fixture.host.listeners.length, 1);
+
+  presenter.destroy();
+  assert.equal(fixture.hud.hasAttribute('inert'), false);
+  assert.equal(fixture.hud.getAttribute('aria-hidden'), null);
+  assert.equal(fixture.glCanvas.hasAttribute('inert'), false);
+  assert.equal(fixture.lockup.style.display, '');
+  assert.equal(fixture.overlay.classList.contains('hidden'), true);
+  assert.equal(fixture.host.listeners.length, 0, 'the keydown capture is removed on destroy');
+  assert.equal(findAll(fixture.overlay, (n) => n.className.split(/\s+/).includes('sf-state')).length, 0);
+
+  assert.doesNotThrow(() => presenter.destroy(), 'repeated destroy is safe');
+  assert.equal(fixture.host.keydown('F5').defaultPrevented, false,
+    'after destroy nothing intercepts keys');
+});
+
+test('the presenter stays inert when the boot overlay is absent', () => {
+  const doc = fakeDom();
+  let restarts = 0;
+  const presenter = createRuntimeFailurePresenter({
+    document: doc,
+    host: doc.defaultView,
+    onRestart() { restarts++; },
+  });
+  assert.equal(presenter.show({ message: 'fault' }), false);
+  assert.equal(restarts, 0);
+  assert.doesNotThrow(() => presenter.destroy());
+});
+
+// ---------------------------------------------------------------------------------------------
+// "Copy details": the second control on the failure pane. A beta tester who hits a dead end can
+// put the diagnostics report plus the failure's code and wording on the clipboard and paste it
+// into an issue; if the clipboard refuses, the same text appears in a read-only box.
+
+async function settle() {
+  for (let i = 0; i < 4; i++) await Promise.resolve();
+}
+
+function mountWithCopy({ copyResult = true, state = { mode: 'flight', simTime: 12.5, tick: 750 } } = {}) {
+  const fixture = createBootFixture();
+  const copied = [];
+  let restarts = 0;
+  const presenter = createRuntimeFailurePresenter({
+    document: fixture.doc,
+    host: fixture.host,
+    onRestart() { restarts++; },
+    getDiagnosticsState: () => state,
+    copyText: (text) => {
+      copied.push(text);
+      if (copyResult === 'throw') throw new Error('clipboard exploded');
+      const value = typeof copyResult === 'function' ? copyResult() : copyResult;
+      return value instanceof Promise ? value : Promise.resolve(value);
+    },
+  });
+  return { fixture, presenter, copied, restarts: () => restarts };
+}
+
+function paneOf(fixture) {
+  return findAll(fixture.overlay, (n) => n.className.split(/\s+/).includes('sf-state'))[0];
+}
+
+test('Copy details sits beside Retry and copies the report with the failure code and wording', async () => {
+  const { fixture, presenter, copied, restarts } = mountWithCopy();
+  withDocument(fixture.doc, () => presenter.show({
+    message: 'fault-injection: broken component',
+    site: 'at registry.step',
+    tick: 12,
+    simTime: 4.5,
+  }));
+  const pane = paneOf(fixture);
+  const verb = pane.sfStateVerb;
+  const copy = pane.sfCopyButton;
+  assert.ok(copy, 'the pane mounts a Copy details control');
+  assert.equal(copy.querySelector('span').textContent, 'Copy details');
+  assert.equal(copy.getAttribute('type'), 'button');
+  assert.ok(copy.className.split(/\s+/).includes('sf-state__verb'), 'it reuses the kit verb class');
+  assert.equal(copy.parentNode, verb.parentNode, 'Copy details shares a row with Retry');
+  assert.equal(verb.parentNode.className, 'sf-state__actions');
+  assert.equal(verb.parentNode.children[0], verb, 'Retry stays first in reading and tab order');
+  assert.equal(pane.querySelector('.sf-state__verb'), verb, 'existing lookups still find Retry first');
+  const status = pane.querySelector('.sf-state__copy-status');
+  assert.equal(status.getAttribute('role'), 'status', 'the answer is announced');
+  assert.equal(status.textContent, '', 'silent until asked');
+  assert.equal(pane.sfReportBox.getAttribute('hidden'), '', 'the report box stays hidden while copying works');
+
+  withDocument(fixture.doc, () => copy.click());
+  await settle();
+  assert.equal(copied.length, 1);
+  assert.match(copied[0], /^SpaceFace diagnostics\n/);
+  assert.match(copied[0], /Mode: flight/, 'live game state is in the report');
+  assert.match(copied[0], /Code: FLIGHT_INTERRUPTED/);
+  assert.match(copied[0], /What: Flight interrupted/);
+  assert.match(copied[0], /Next step: Restart from the main menu to recover\./);
+  assert.match(copied[0], /Message: fault-injection: broken component/);
+  assert.match(copied[0], /Site: at registry\.step/);
+  assert.match(copied[0], /Tick: 12/);
+  assert.equal(status.textContent, 'Copied — paste it into your report.');
+  assert.equal(pane.sfReportShown, false);
+  assert.equal(restarts(), 0, 'copying never triggers Retry');
+  presenter.destroy();
+});
+
+test('a boot failure copies its named code and advice even before the game state exists', async () => {
+  const { fixture, presenter, copied } = mountWithCopy({ state: null });
+  withDocument(fixture.doc, () => presenter.show(describeBootFailure(
+    new Error('Unable to load scenario contract ./data/scenarios/47a.scenario.json: HTTP 404'))));
+  withDocument(fixture.doc, () => paneOf(fixture).sfCopyButton.click());
+  await settle();
+  assert.match(copied[0], /Game state: not created yet/);
+  assert.match(copied[0], /Code: BOOT_SCENARIO_UNAVAILABLE/);
+  assert.match(copied[0], /What: The opening scenario could not be loaded/);
+  assert.match(copied[0], /Next step: Your saved games are unaffected\./);
+  assert.match(copied[0], /Message: Unable to load scenario contract \.\/data\/scenarios\/47a\.scenario\.json: HTTP 404/);
+  presenter.destroy();
+});
+
+test('when the clipboard refuses, the report appears in a read-only box and takes focus', async () => {
+  for (const copyResult of [false, 'throw', () => Promise.reject(new Error('NotAllowedError'))]) {
+    const { fixture, presenter, copied } = mountWithCopy({ copyResult });
+    withDocument(fixture.doc, () => presenter.show({ message: 'fault' }));
+    const pane = paneOf(fixture);
+    const box = pane.sfReportBox;
+    fixture.focused.length = 0;
+    withDocument(fixture.doc, () => pane.sfCopyButton.click());
+    await settle();
+    assert.equal(pane.querySelector('.sf-state__copy-status').textContent,
+      'Could not copy — select the text below.');
+    assert.equal(box.hasAttribute('hidden'), false, 'the box is revealed');
+    assert.equal(box.getAttribute('readonly'), '');
+    assert.equal(box.value, copied[0], 'the box holds exactly the text that failed to copy');
+    assert.equal(fixture.focused.at(-1), box, 'focus moves to the box so Ctrl+A / Ctrl+C work at once');
+    assert.equal(pane.sfReportShown, true);
+    presenter.destroy();
+  }
+});
+
+test('the report box keeps selection keys; Tab cycles Retry, Copy details, then the box', async () => {
+  const { fixture, presenter } = mountWithCopy({ copyResult: false });
+  withDocument(fixture.doc, () => presenter.show({ message: 'fault' }));
+  const pane = paneOf(fixture);
+  const verb = pane.sfStateVerb;
+  const copy = pane.sfCopyButton;
+  const box = pane.sfReportBox;
+  withDocument(fixture.doc, () => copy.click());
+  await settle();
+
+  for (const [key, extra] of [['ArrowDown', {}], ['ArrowLeft', {}], ['End', {}], ['a', { ctrlKey: true }], ['c', { metaKey: true }]]) {
+    const event = fixture.host.keydown(key, box, extra);
+    assert.equal(event.defaultPrevented, false, `${key} reaches the text box natively`);
+    assert.equal(event.stopped, true, `${key} never reaches gameplay listeners`);
+  }
+  for (const [key, extra] of [['F5', {}], ['s', {}], ['Escape', {}], ['v', { ctrlKey: true }], ['x', { ctrlKey: true }]]) {
+    const event = fixture.host.keydown(key, box, extra);
+    assert.equal(event.defaultPrevented, true, `${key} stays blocked inside the box`);
+  }
+
+  fixture.focused.length = 0;
+  fixture.host.keydown('Tab', verb);
+  fixture.host.keydown('Tab', copy);
+  fixture.host.keydown('Tab', box);
+  assert.deepEqual(fixture.focused, [copy, box, verb], 'forward ring: Retry -> Copy -> box -> Retry');
+  fixture.focused.length = 0;
+  fixture.host.keydown('Tab', verb, { shiftKey: true });
+  assert.deepEqual(fixture.focused, [box], 'Shift+Tab from Retry wraps to the box');
+  presenter.destroy();
+});
+
+test('the box keys stay blocked while the box is hidden, and repeat clicks do not stack copies', async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const { fixture, presenter, copied } = mountWithCopy({ copyResult: gate });
+  withDocument(fixture.doc, () => presenter.show({ message: 'fault' }));
+  const pane = paneOf(fixture);
+  const arrow = fixture.host.keydown('ArrowDown', pane.sfReportBox);
+  assert.equal(arrow.defaultPrevented, true, 'a hidden box has no business taking keys');
+  withDocument(fixture.doc, () => { pane.sfCopyButton.click(); pane.sfCopyButton.click(); });
+  assert.equal(copied.length, 1, 'a second click while the first is pending is ignored');
+  release(true);
+  await settle();
+  assert.equal(pane.querySelector('.sf-state__copy-status').textContent, 'Copied — paste it into your report.');
+  withDocument(fixture.doc, () => pane.sfCopyButton.click());
+  assert.equal(copied.length, 2, 'it can be copied again afterwards');
+  presenter.destroy();
+});
+
+test('a copy that finishes after the pane is gone changes nothing', async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const { fixture, presenter } = mountWithCopy({ copyResult: gate });
+  withDocument(fixture.doc, () => presenter.show({ message: 'fault' }));
+  const pane = paneOf(fixture);
+  const status = pane.querySelector('.sf-state__copy-status');
+  withDocument(fixture.doc, () => pane.sfCopyButton.click());
+  presenter.destroy();
+  release(false);
+  await settle();
+  assert.equal(status.textContent, '', 'no late status write, no focus grab, after destroy');
+  assert.equal(pane.sfReportShown, false);
+});
+
+test('the report text is plain: no HTML is ever parsed from a failure message', async () => {
+  const { fixture, presenter, copied } = mountWithCopy();
+  withDocument(fixture.doc, () => presenter.show({ message: '<img src=x onerror=alert(1)>' }));
+  withDocument(fixture.doc, () => paneOf(fixture).sfCopyButton.click());
+  await settle();
+  assert.match(copied[0], /Message: <img src=x onerror=alert\(1\)>/, 'copied verbatim as text');
+  assert.equal(findAll(fixture.overlay, (n) => n.tagName === 'img').length, 0, 'and never mounted as markup');
+  presenter.destroy();
+});

@@ -1,0 +1,47 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SpaceFace — production market controller fixture</title>
+<link rel="stylesheet" href="/styles/ui.css">
+<link rel="stylesheet" href="/styles/accessibility.css">
+<link rel="stylesheet" href="/styles/kit.css">
+<style>
+/* Fixture host only. The market, berth frame, and all their styles are production imports.
+   No renderer/assets are loaded here: this is NOT the full-game acceptance route. */
+html,body { margin:0; width:100%; height:100%; background:#090c10; }
+#screens { display:block !important; position:fixed; inset:0; }
+#screens > .screen { display:grid !important; visibility:visible !important; opacity:1 !important; }
+.sxb-berth__world,.sxb-berth__plate { display:none !important; }
+</style>
+<div id="screens"><div class="screen sx-berth sx-observatory dp-frame dp-frame--screen orr-station" data-dp="1" data-fh-temp="docked" data-fh-register="bench"></div></div>
+<script type="module">
+import { createSimulation } from '/src/core/sim.js';
+import { economy } from '/src/systems/economy.js';
+import { createMarketScreen } from '/src/ui/station/screens/market.js';
+import { stationFrameHtml } from '/src/ui/views/stationFrames.js';
+import { ensureStylesheet } from '/src/ui/station/stationStyles.js';
+import { injectOrreryStation } from '/src/ui/orrery/stationLayouts.js';
+import { injectDeckplate } from '/src/ui/deckplate/index.js';
+import { computeBestTrades } from '/src/ui/market/tradeLogic.js';
+const sim = createSimulation({ seed:4242, systems:[economy] });
+const {state,bus,registry}=sim, owner=registry.get('economy');
+const HERE='station_helios', THERE='station_coalition';
+state.mode='flight'; state.simTime=600; state.ui.docked=true; state.ui.dockedStationId=HERE;
+state.player.credits=1000; state.player.cargo.capVolume=250;
+for (const sid of [HERE,THERE]) { owner.ensureMarket(sid); owner.snapshotIntel(sid); }
+injectDeckplate(document); ensureStylesheet(); injectOrreryStation(document);
+const host=document.querySelector('#screens>.screen'); host.innerHTML=stationFrameHtml();
+host.querySelector('.sxb-berth__name').textContent='Helios Anchorage';
+host.querySelector('.sxb-berth__ident').textContent='Market controller fixture · seed 4242';
+host.querySelector('.sxb-purse__value').textContent='1,000';
+const ctx={state,bus,registry,helpers:sim.helpers||{}};
+const screen=createMarketScreen(ctx);
+host.querySelector('#sx-panel').appendChild(screen.el);
+const events=[];
+for(const key of ['economy:tradeCompleted','economy:tradeFailed','ui:setCourse','toast']) bus.on(key,p=>events.push({key,p}));
+bus.on('economy:tradeCompleted',()=>{host.querySelector('.sxb-purse__value').textContent=state.player.credits.toLocaleString('en-US');});
+screen.onShow(ctx);
+const snapshot=()=>({credits:state.player.credits,cargo:JSON.parse(JSON.stringify(state.player.cargo)),stock:Object.fromEntries(Object.entries(owner.getMarket(HERE)).map(([id,e])=>[id,e.stock])),waypoint:JSON.parse(JSON.stringify(state.world?.waypoint||state.ui?.waypoint||null)),events:JSON.parse(JSON.stringify(events))});
+window.economyFixture={snapshot,planned:()=>computeBestTrades(state,HERE,{quote:owner.quote.bind(owner)}),quote:(id,side,qty)=>owner.quote(HERE,id,side,qty),refresh:()=>screen.refresh(ctx),state,owner,sim,screen};
+window.fixtureReady=true;
+</script>

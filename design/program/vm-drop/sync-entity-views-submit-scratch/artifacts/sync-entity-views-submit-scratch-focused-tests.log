@@ -1,0 +1,65 @@
+TAP version 13
+# Subtest: player and forced roots stay submitted; only true off-screen roots drop
+ok 1 - player and forced roots stay submitted; only true off-screen roots drop
+  ---
+  duration_ms: 1.658905
+  ...
+# Subtest: uncompiled ordinary roots stay off the submit list; the player still submits
+ok 2 - uncompiled ordinary roots stay off the submit list; the player still submits
+  ---
+  duration_ms: 0.194703
+  ...
+# Subtest: ordinary roots still decoding an authored body stay off the submit list
+ok 3 - ordinary roots still decoding an authored body stay off the submit list
+  ---
+  duration_ms: 0.132458
+  ...
+# Subtest: ordinary roots wait for 1x1 geometry residency before the first bloom submit
+ok 4 - ordinary roots wait for 1x1 geometry residency before the first bloom submit
+  ---
+  duration_ms: 0.121471
+  ...
+# Subtest: missing fenced poses retain protected roots but fail closed for ordinary roots
+ok 5 - missing fenced poses retain protected roots but fail closed for ordinary roots
+  ---
+  duration_ms: 0.228801
+  ...
+# Subtest: the completed activity frame owns glass submission while runway stays resident-only
+ok 6 - the completed activity frame owns glass submission while runway stays resident-only
+  ---
+  duration_ms: 0.267959
+  ...
+# Subtest: a root inside the live glass submits even when the sim frame still classes it runway
+ok 7 - a root inside the live glass submits even when the sim frame still classes it runway
+  ---
+  duration_ms: 0.264122
+  ...
+# Subtest: visibility helper only writes when the flag changes
+ok 8 - visibility helper only writes when the flag changes
+  ---
+  duration_ms: 0.221697
+  ...
+# Subtest: authored station and place commits merge static plates before freeze
+ok 9 - authored station and place commits merge static plates before freeze
+  ---
+  duration_ms: 11.061317
+  ...
+# Subtest: default video settings still request full picture quality
+ok 10 - default video settings still request full picture quality
+  ---
+  duration_ms: 1.662242
+  ...
+# Subtest: live entity view sync hides off-runway roots through the helper
+ok 11 - live entity view sync hides off-runway roots through the helper
+  ---
+  duration_ms: 7.046243
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 174.287488

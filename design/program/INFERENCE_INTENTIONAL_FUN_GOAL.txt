@@ -1,0 +1,49 @@
+INFERENCE INTENTIONAL FUN
+
+You are running the Intentional Fun overlay so INFERENCE units can become
+designed moments instead of more rows. General INFERENCE law still applies:
+think, complete, rotate. Copy this prompt as-is.
+
+Read, in this order, then start:
+  design/program/INFERENCE_INTENTIONAL_FUN.md
+  design/program/INFERENCE_LANES.md
+  design/VISION.md
+  design/program/NOW.md
+
+If the unit is flight/combat guts (the ship ignores you, shove does nothing,
+camera loses the fight), switch to design/program/FUN_CONVERGENCE_GOAL.txt
+and come back. Do not hide a handling bug inside a new wreck field.
+
+N is the number after INFERENCE, or 1 if none. Scope INTENTIONAL if none.
+
+For each unit, CONSIDER two or three real alternatives first. Then do the
+whole loop. Do not stop after the catalog, the gallery, or a thin tile list.
+
+1. SELECT the weakest exposed pocket on the default Helios→Ceres hop, a live
+   set piece, or the Crucible arena if guts are the blocker. Run
+   node scripts/inference-detect.mjs --scope INTENTIONAL at most once.
+2. SPEAK one stranger-readable sentence and the grammar (situation × place ×
+   twist × actor). If it could describe any belt, rewrite it.
+3. COMPOSE with the twelve role tiles only (rock, wreck_spine, cargo_can,
+   dock_apron, gate_ring, machine_mast, light, heavy, hauler, patrol,
+   specialist). Bind through src/data/setTiles.js. Never type a hull filename.
+   Never place a visible box, modular ship part, or code cylinder as the object.
+   Spawn through world.js _spawnPlaceProp / the live encounter owner.
+   Copy the cluster shape from src/data/worldOneOffs.js.
+4. LOOK by reading this set: tiles, binds, publishes, distances. Trace the spawn owner.
+   Do not stall for a chase still. A GPU look is optional and never the close gate.
+5. PLAY the same seed before and after. Print consequences per action, time to
+   first consequence, nothing-happened seconds, and two physical solutions.
+   Keep only if a number moved and the look did not get worse. Ties revert.
+   Never add content, drag, momentum clamps, NPC gyros, shake, or particles
+   to fake the moment. Never edit a test or golden to pass.
+6. SHIP. Commit the production slice. Record with inference-record
+   --fp "verb=...,set=...,tiles=...,sector=...,domain=intentional".
+   Report in INFERENCE_INTENTIONAL_FUN.md §8 words. Then the next unit.
+
+Support cap: the bind table, authoredSets, a JSON dump of a set, and pointing
+the fun measurer at a set. Two support-only commits without a player-facing
+pocket means stop that line and ship a set. Do not build a capture gallery.
+
+Stop at N, when the owner stops you, or when every remaining pocket collides
+with a live NOW.md hunk. Do not ask the owner to pick technical options.

@@ -1,0 +1,907 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import * as THREE from 'three';
+import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms.js';
+import { spacefaceSelectedProgramDeferred } from '../vendor/three.module.js';
+
+import { createUnreadyDrawableGuard, programWrapperDead } from '../src/render/bloom.js';
+import { createResidencyManager, RESIDENCY_INLINE_UPLOAD_BYTES, stampGeometryGpuResident, stampInstanceResidency } from '../src/render/residencyManager.js';
+import { bumpPackageDetachSerial, packageDetachSerialNow } from '../src/render/imageSourceDedupe.js';
+import {
+  createPackageDetachManifest,
+  detachPackageGeometry,
+  dropPackageDetachManifest,
+  isPackageGeometryDetached,
+} from '../src/render/packageCpuDetach.js';
+import { revealSubjectForCompile } from '../src/render/compilePresentSlice.js';
+import { render } from '../src/render/renderer.js';
+import { touchSubjectOnExactTarget, retryPendingExactTouch, admitOpeningUnitsAcrossSlices } from '../src/render/openingGpuAdmission.js';
+
+test('exact touch waits for the actual already-current pending program and restores its guard', async () => {
+  let ready = false, uniforms = 0, submits = 0;
+  const program = { program: {}, isReady: () => ready, getUniforms() { uniforms++; } };
+  const material = new THREE.MeshStandardMaterial();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const scene = new THREE.Scene(); scene.add(mesh);
+  const oldDefer = () => false;
+  const renderer = { __sfUnreadyDrawGuardDepth: 0, __sfDeferSelectedProgram: oldDefer,
+    getRenderTarget: () => null, setRenderTarget() {}, render() {
+      submits++;
+      if (!spacefaceSelectedProgramDeferred(this, { currentProgram: program }, program, mesh, material, false)) program.getUniforms();
+    } };
+  const touch = () => touchSubjectOnExactTarget(renderer, null, mesh, new THREE.PerspectiveCamera(), scene);
+  const first = touch();
+  assert.equal(first.reason, 'pending-exact-program'); assert.equal(uniforms, 0);
+  assert.equal(renderer.__sfUnreadyDrawGuardDepth, 0); assert.equal(renderer.__sfDeferSelectedProgram, oldDefer);
+  assert.equal(Object.hasOwn(renderer, '__sfExactTargetTouch'), false);
+  setTimeout(() => { ready = true; }, 15);
+  const settled = await retryPendingExactTouch(touch, { renderer, timeoutMs: 1000 });
+  assert.equal(settled.skipped, false); assert.equal(uniforms, 1); assert.ok(submits >= 3);
+  ready = false;
+  const timedOut = await retryPendingExactTouch(touch, { renderer, timeoutMs: 0 });
+  assert.equal(timedOut.readinessTimedOut, true); assert.equal(uniforms, 1);
+  renderer.__sfExactProgramInvalid = () => true;
+  assert.equal(touch().contextLost, true);
+  delete renderer.__sfExactProgramInvalid;
+  let active = true;
+  setTimeout(() => { active = false; }, 5);
+  const cancelled = await retryPendingExactTouch(touch, { renderer, timeoutMs: 1000, isActive: () => active });
+  assert.equal(cancelled.cancelled, true); assert.equal(uniforms, 1);
+  await assert.rejects(admitOpeningUnitsAcrossSlices({ subjects: [mesh], renderer, strict: true,
+    deadlineMs: 1, beginReadinessBatch: () => ({ drain: async () => ({ programs: 0 }), close() {} }),
+    compileOne: async () => ({}), touchOne: touch,
+  }), error => error.code === 'SF_PIPELINE_READINESS_TIMEOUT');
+  assert.equal(uniforms, 1, 'strict admission rejects without drawing the pending wrapper');
+  renderer.render = () => { throw new Error('draw failed'); };
+  assert.throws(touch, /draw failed/);
+  assert.equal(renderer.__sfUnreadyDrawGuardDepth, 0); assert.equal(renderer.__sfDeferSelectedProgram, oldDefer);
+  assert.equal(Object.hasOwn(renderer, '__sfExactTargetTouch'), false);
+  mesh.geometry.dispose(); material.dispose();
+});
+
+test('exact-touch readiness wait stops when its context is lost', async () => {
+  const canvas = new EventTarget();
+  const program = { isReady: () => false };
+  const result = retryPendingExactTouch(() => ({ skipped: true, reason: 'pending-exact-program', pendingPrograms: [program] }),
+    { renderer: { domElement: canvas }, timeoutMs: 1000 });
+  setTimeout(() => canvas.dispatchEvent(new Event('webglcontextlost')), 5);
+  assert.equal((await result).contextLost, true);
+});
+
+// Draw-time safety net: while a hide→render→restore presented pass is active, a
+// stamped authored/shared material with no currentProgram must not link inside the
+// frame — the draw is skipped and pipeline admission is queued for that mesh instead.
+// Explicit zero-instance pools skip setup in every pass. Ready compiled and cold
+// unstamped materials, and draws outside the pass, retain their existing path.
+
+function rendererHarness() {
+  const draws = [];
+  const admissions = [];
+  const programsByMaterial = new Map();
+  const renderer = {
+    info: { programs: [] },
+    userData: {
+      spacefaceQueuePipelineAdmission(subject) {
+        admissions.push(subject);
+        return Promise.resolve({ queued: true });
+      },
+    },
+    properties: {
+      get(material) {
+        return { currentProgram: programsByMaterial.get(material) || null };
+      },
+    },
+    renderBufferDirect(camera, scene, geometry, material, object) {
+      draws.push(object);
+      return 'drawn';
+    },
+  };
+  return {
+    renderer,
+    draws,
+    admissions,
+    compile(material, program = { name: 'program', program: {} }) { programsByMaterial.set(material, program); },
+  };
+}
+
+function canonStampedMaterial() {
+  return { userData: { spacefaceProgramCanon: 1 } };
+}
+
+test('pending drawable roots gate nested draws without changing the visible light census', () => {
+  const { renderer, compile } = rendererHarness();
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const root = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  const child = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  const spot = new THREE.SpotLight();
+  const sun = new THREE.DirectionalLight();
+  root.layers.enable(2);
+  child.layers.enable(3);
+  root.add(spot, child);
+  child.add(sun);
+  scene.add(root);
+  renderer.userData.spacefacePendingPipelineSubjects = new Set([root]);
+  const census = () => { let count = 0; scene.traverseVisible(o => { if (o.isLight && o.layers.test(camera.layers)) count++; }); return count; };
+  const programs = new WebGLPrograms({ outputColorSpace: THREE.SRGBColorSpace }, null, null,
+    { precision: 'highp', logarithmicDepthBuffer: false }, null, null);
+  const key = () => {
+    let numDirLights = 0, numSpotLights = 0;
+    scene.traverseVisible(o => {
+      if (!o.layers.test(camera.layers)) return;
+      if (o.isDirectionalLight) numDirLights++;
+      if (o.isSpotLight) numSpotLights++;
+    });
+    return programs.getProgramCacheKey({ shaderID: 'physical', isRawShaderMaterial: false,
+      precision: 'highp', numDirLights, numSpotLights, customProgramCacheKey: '' });
+  };
+  const rootMask = root.layers.mask, childMask = child.layers.mask;
+  const guard = createUnreadyDrawableGuard(renderer);
+  assert.equal(census(), 2);
+  const originalKey = key();
+  guard.hide(scene);
+  try {
+    assert.equal(census(), 2, 'pending draws must not change the light program key');
+    assert.equal(key(), originalKey, 'Three keys the pending pass to the same light counts');
+    assert.equal(root.layers.test(camera.layers), false);
+    assert.equal(child.layers.test(camera.layers), false);
+  } finally { guard.restore(); }
+  assert.equal(root.layers.mask, rootMask);
+  assert.equal(child.layers.mask, childMask);
+  renderer.userData.spacefacePendingPipelineSubjects.clear();
+  compile(root.material); compile(child.material);
+  guard.hide(scene);
+  try {
+    assert.equal(root.layers.mask, rootMask, 'the root draws again after admission or cancellation');
+    assert.equal(child.layers.mask, childMask, 'the descendant draws again after admission or cancellation');
+  } finally { guard.restore(); }
+  assert.equal(census(), 2);
+  root.geometry.dispose(); root.material.dispose(); child.geometry.dispose(); child.material.dispose();
+});
+
+test('readiness scan skips hidden subtrees that the scene pass cannot draw', async () => {
+  const { renderer, admissions } = rendererHarness();
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = new THREE.Scene();
+  const hidden = new THREE.Group();
+  hidden.visible = false;
+  const hiddenLeaf = new THREE.Mesh();
+  hiddenLeaf.material.userData.spacefaceProgramCanon = 1;
+  hidden.add(hiddenLeaf);
+  const visibleLeaf = new THREE.Mesh();
+  visibleLeaf.material.userData.spacefaceProgramCanon = 1;
+  scene.add(hidden, visibleLeaf);
+
+  guard.hide(scene);
+  try {
+    assert.deepEqual(admissions, [visibleLeaf], 'only a drawable subtree needs readiness work');
+    assert.equal(hiddenLeaf.visible, true, 'the hidden parent already excludes its descendants');
+    assert.equal(visibleLeaf.layers.mask, 0, 'a cold visible leaf still waits for admission');
+  } finally {
+    guard.restore();
+    hiddenLeaf.geometry.dispose();
+    hiddenLeaf.material.dispose();
+    visibleLeaf.geometry.dispose();
+    visibleLeaf.material.dispose();
+  }
+  await Promise.resolve();
+});
+
+test('guard skips a stamped never-compiled material during the pass and queues its mesh once', async () => {
+  const { renderer, draws, admissions } = rendererHarness();
+  const guard = createUnreadyDrawableGuard(renderer);
+  const material = canonStampedMaterial();
+  const mesh = { isMesh: true, material };
+  const scene = { traverse() {} };
+
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), undefined);
+    assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), undefined);
+  } finally {
+    guard.restore();
+  }
+  assert.equal(draws.length, 0, 'the cold authored draw is skipped inside the presented pass');
+  assert.equal(admissions.length, 1, 'the admission stamp dedupes repeated draws of the same material');
+  assert.equal(admissions[0], mesh, 'admission is queued for the mesh object, not its scene root');
+  await Promise.resolve();
+});
+
+test('guard admits each authored stamp flavour and queues cold unstamped draws too', async () => {
+  const { renderer, draws, admissions, compile } = rendererHarness();
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = { traverse() {} };
+  const mesh = { isMesh: true };
+
+  const sharedStamped = { userData: { spacefaceSharedMaterialRole: 'ship-hull' } };
+  const canonStamped = canonStampedMaterial();
+  // E6: an unstamped material with no linked program used to draw and link inside the
+  // presented frame (measured: plume, RCS and ribbon materials were the surviving
+  // in-frame links). VFX/tether/prop roots are exactly this class, so a cold unstamped
+  // draw now joins the admission lane like an authored one.
+  const unstamped = { userData: {} };
+  const compiledStamped = canonStampedMaterial();
+  compile(compiledStamped);
+
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, null, sharedStamped, mesh, null), undefined);
+    assert.equal(renderer.renderBufferDirect(null, scene, null, canonStamped, mesh, null), undefined);
+    assert.equal(renderer.renderBufferDirect(null, scene, null, unstamped, mesh, null), undefined);
+    assert.equal(renderer.renderBufferDirect(null, scene, null, compiledStamped, mesh, null), 'drawn');
+  } finally {
+    guard.restore();
+  }
+
+  assert.equal(draws.length, 1);
+  assert.equal(admissions.length, 3);
+  assert.ok(admissions.every((subject) => subject === mesh));
+  await Promise.resolve();
+});
+
+test('guard draws a cold stamped material once the presented pass ends', () => {
+  const { renderer, draws, admissions } = rendererHarness();
+  const guard = createUnreadyDrawableGuard(renderer);
+  const material = canonStampedMaterial();
+  const mesh = { isMesh: true, material };
+  const scene = { traverse() {} };
+
+  // Outside hide→restore the wrapper must be inert even though nothing compiled.
+  assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), 'drawn');
+
+  guard.hide(scene);
+  guard.restore();
+  assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), 'drawn');
+
+  assert.equal(draws.length, 2);
+  assert.equal(admissions.length, 0);
+});
+
+test('current pending wrapper missed by the scoped prescan queues once and recovers when ready', async () => {
+  const { renderer, draws, admissions, compile } = rendererHarness();
+  let finishAdmission;
+  const admission = new Promise((resolve) => { finishAdmission = resolve; });
+  renderer.userData.spacefaceQueuePipelineAdmission = (subject) => {
+    admissions.push(subject);
+    return admission;
+  };
+  const warm = { program: {}, isReady: () => true };
+  let pendingReady = false;
+  const pending = { program: {}, isReady: () => pendingReady };
+  const material = new THREE.MeshBasicMaterial();
+  material.userData.spacefaceProgramCanon = 1;
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const scene = new THREE.Scene();
+  scene.add(mesh);
+  compile(material, warm);
+  renderer.info.programs.push(warm);
+  const guard = createUnreadyDrawableGuard(renderer);
+
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), 'drawn');
+  } finally { guard.restore(); }
+
+  // A live material rebind creates a new wrapper without mounting another root.
+  // The pending-program prepass scans only its scoped cohort on this frame.
+  compile(material, pending);
+  renderer.info.programs.push(pending);
+  guard.hide(scene);
+  try {
+    assert.equal(mesh.visible, true, 'this existing mesh was not hidden by the scoped prescan');
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), undefined);
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), undefined);
+    assert.deepEqual(admissions, [mesh], 'draw-time refusal deduplicates the pending admission');
+    assert.deepEqual(draws, [mesh], 'the pending current wrapper never reaches first-use discovery');
+    pendingReady = true;
+    finishAdmission({ queued: true });
+    await admission;
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), 'drawn');
+    assert.deepEqual(draws, [mesh, mesh], 'the same selected wrapper draws as soon as it becomes ready');
+  } finally {
+    guard.restore();
+    finishAdmission({ queued: true });
+    mesh.geometry.dispose(); material.dispose();
+  }
+});
+
+test('dead and foreign-context current wrappers queue recovery without querying stale handles', () => {
+  for (const staleKind of ['destroyed', 'foreign-context']) {
+    const { renderer, draws, admissions, compile } = rendererHarness();
+    const gl = {
+      isContextLost: () => false,
+      isProgram() { assert.fail('liveness must not issue a native isProgram query'); },
+    };
+    renderer.getContext = () => gl;
+    let readinessReads = 0;
+    const stale = {
+      program: staleKind === 'destroyed' ? undefined : {},
+      isReady() { readinessReads++; assert.fail('the stale current wrapper must never be queried'); },
+    };
+    if (staleKind === 'foreign-context') {
+      assert.equal(programWrapperDead({ isContextLost: () => false }, stale), false,
+        'the wrapper first belongs to its original GL context');
+    }
+    const material = canonStampedMaterial();
+    compile(material, stale);
+    const mesh = { isMesh: true, material };
+    const scene = { traverse() {} };
+    const guard = createUnreadyDrawableGuard(renderer);
+    guard.hide(scene);
+    try {
+      assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), undefined);
+      assert.equal(readinessReads, 0);
+      assert.deepEqual(admissions, [mesh]);
+      assert.equal(draws.length, 0);
+      compile(material);
+      assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), 'drawn',
+        'a fresh live wrapper can recover the draw');
+    } finally { guard.restore(); }
+  }
+});
+
+test('ready current wrappers keep warm draws free of native readiness and liveness queries', () => {
+  const { renderer, draws, admissions, compile } = rendererHarness();
+  renderer.getContext = () => ({
+    isContextLost: () => false,
+    isProgram() { assert.fail('warm draws must not issue a native liveness query'); },
+    getProgramParameter() { assert.fail('the guard must not add a native readiness query'); },
+  });
+  const material = canonStampedMaterial();
+  compile(material, { program: {}, isReady: () => true });
+  const mesh = { isMesh: true, material };
+  const scene = { traverse() {} };
+  const guard = createUnreadyDrawableGuard(renderer);
+  guard.hide(scene);
+  try {
+    for (let i = 0; i < 8; i++) {
+      assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), 'drawn');
+    }
+    assert.equal(draws.length, 8);
+    assert.equal(admissions.length, 0);
+  } finally { guard.restore(); }
+});
+
+test('a skinned draw checks its own pending Three program rather than a ready mesh sibling', () => {
+  const { renderer, draws, admissions } = rendererHarness();
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.getRenderTarget = () => null;
+  const material = new THREE.MeshStandardMaterial();
+  material.userData.spacefaceProgramCanon = 1;
+  const vendorCache = new WebGLPrograms(
+    { outputColorSpace: renderer.outputColorSpace }, null, null,
+    { precision: 'highp', logarithmicDepthBuffer: false }, null, null,
+  );
+  const key = skinning => vendorCache.getProgramCacheKey({
+    shaderID: 'physical', isRawShaderMaterial: false, precision: 'highp',
+    outputColorSpace: renderer.outputColorSpace, toneMapping: THREE.NoToneMapping,
+    instancing: false, instancingColor: false, instancingMorph: false, skinning,
+    customProgramCacheKey: material.customProgramCacheKey(),
+  });
+  const ready = { cacheKey: key(false), program: {}, isReady: () => true };
+  let skinnedReady = false;
+  const pending = { cacheKey: key(true), program: {}, isReady: () => skinnedReady };
+  assert.notEqual(ready.cacheKey, pending.cacheKey);
+  const rec = { currentProgram: ready, programs: new Map([[ready.cacheKey, ready], [pending.cacheKey, pending]]),
+    instancing: false, instancingColor: false, instancingMorph: false, skinning: false,
+    toneMapping: THREE.NoToneMapping, outputColorSpace: renderer.outputColorSpace, __version: material.version };
+  renderer.properties.get = () => rec;
+  // Exercise the real vendored selection-boundary seam after Three's actual cache-key choice.
+  renderer.renderBufferDirect = (_camera, _scene, _geometry, drawMaterial, object) => {
+    const selected = rec.programs.get(key(object.isSkinnedMesh === true));
+    const changed = selected !== rec.currentProgram;
+    rec.currentProgram = selected;
+    rec.skinning = object.isSkinnedMesh === true;
+    if (spacefaceSelectedProgramDeferred(renderer, rec, selected, object, drawMaterial, changed)) return undefined;
+    draws.push(object);
+    return 'drawn';
+  };
+  const mesh = new THREE.SkinnedMesh(new THREE.BoxGeometry(), material);
+  const scene = new THREE.Scene(); scene.add(mesh);
+  const guard = createUnreadyDrawableGuard(renderer);
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), undefined);
+    assert.deepEqual(admissions, [mesh]); assert.deepEqual(draws, []);
+    skinnedReady = true;
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), 'drawn');
+    assert.deepEqual(draws, [mesh]);
+  } finally { guard.restore(); mesh.geometry.dispose(); material.dispose(); }
+});
+
+test('transmission draw checks its pass-specific sibling without waiting unrelated variants', () => {
+  const { renderer, draws, admissions } = rendererHarness();
+  const screenColorSpace = THREE.SRGBColorSpace;
+  const transmissionColorSpace = THREE.ColorManagement.workingColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputColorSpace = screenColorSpace;
+  renderer.currentRenderTarget = null;
+  renderer.getRenderTarget = () => renderer.currentRenderTarget;
+  const material = new THREE.MeshStandardMaterial();
+  material.userData.spacefaceProgramCanon = 1;
+
+  const vendorCache = new WebGLPrograms(
+    { outputColorSpace: screenColorSpace }, null, null,
+    { precision: 'highp', logarithmicDepthBuffer: false }, null, null,
+  );
+  const makeCacheKey = (toneMapping, outputColorSpace) => vendorCache.getProgramCacheKey({
+    shaderID: 'physical',
+    isRawShaderMaterial: false,
+    precision: 'highp',
+    outputColorSpace,
+    toneMapping,
+    instancing: false,
+    instancingColor: false,
+    instancingMorph: false,
+    customProgramCacheKey: material.customProgramCacheKey(),
+  });
+  const makeProgram = (toneMapping, outputColorSpace, ready) => {
+    const cacheKey = makeCacheKey(toneMapping, outputColorSpace);
+    return { cacheKey, program: {}, isReady: () => ready() };
+  };
+
+  const readyScreen = makeProgram(THREE.ACESFilmicToneMapping, screenColorSpace, () => true);
+  let transmissionReady = false;
+  const pendingTransmission = makeProgram(THREE.NoToneMapping, transmissionColorSpace, () => transmissionReady);
+  let unrelatedReady = false;
+  const pendingUnrelated = makeProgram(THREE.ACESFilmicToneMapping, transmissionColorSpace, () => unrelatedReady);
+  const programs = new Map([
+    [readyScreen.cacheKey, readyScreen],
+    [pendingTransmission.cacheKey, pendingTransmission],
+    [pendingUnrelated.cacheKey, pendingUnrelated],
+  ]);
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const scene = new THREE.Scene();
+  scene.add(mesh);
+  const rec = {
+    currentProgram: readyScreen,
+    programs,
+    instancing: false,
+    instancingColor: false,
+    instancingMorph: false,
+    // A compiled currentProgram may be captured before adapters mirror these material fields.
+    // The vendor cache key still identifies the bound pass and must keep its ready root visible.
+    __version: material.version,
+  };
+  renderer.properties.get = () => rec;
+  const guard = createUnreadyDrawableGuard(renderer);
+
+  guard.hide(scene);
+  try {
+    assert.equal(mesh.visible, true, 'the ready screen variant does not hide the shared material');
+    renderer.currentRenderTarget = { isXRRenderTarget: false, texture: { colorSpace: screenColorSpace } };
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), undefined,
+      'the pending no-tone-map transmission sibling is refused');
+    assert.deepEqual(admissions, [mesh]);
+    assert.deepEqual(draws, []);
+
+    transmissionReady = true;
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), 'drawn',
+      'the exact pass variant can draw while an unrelated sibling remains pending');
+    assert.deepEqual(draws, [mesh]);
+    assert.equal(unrelatedReady, false);
+  } finally {
+    guard.restore();
+    mesh.geometry.dispose();
+    material.dispose();
+  }
+});
+
+test('unarmed readiness cleanup does not retain hidden drawable roots', () => {
+  const { renderer } = rendererHarness();
+  const guard = createUnreadyDrawableGuard(renderer);
+  const material = canonStampedMaterial();
+  const mesh = { isMesh: true, material, visible: true };
+  const scene = { traverse(visitor) { visitor(mesh); } };
+
+  guard.hide(scene);
+  assert.equal(mesh.visible, false);
+  guard.restore();
+
+  assert.equal(mesh.visible, true, 'readiness cleanup still restores visibility');
+  assert.equal(renderer.__sfLastHiddenDrawables, null, 'unarmed passes release any prior set reference');
+  assert.equal(renderer.__sfDrawHistogramArmed, undefined, 'the guard does not arm diagnostics itself');
+});
+
+test('armed readiness records are consumed by a histogram sample and disarm clears retained references', () => {
+  const { renderer } = rendererHarness();
+  renderer.__sfDrawHistogramArmed = true;
+  renderer.info.render = { calls: 0 };
+  renderer.info.reset = () => {};
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = new THREE.Scene();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  mesh.material.userData.spacefaceProgramCanon = 1;
+  scene.add(mesh);
+  const camera = new THREE.PerspectiveCamera();
+  const owner = {
+    _drawHistogramWindow: 120,
+    renderer,
+    cam: { obj: camera },
+    scene,
+  };
+
+  try {
+    guard.hide(scene);
+    assert.equal(mesh.layers.mask, 0);
+    guard.restore();
+    assert.equal(mesh.layers.mask, 1);
+    assert.equal(renderer.__sfLastHiddenDrawables.has(mesh), true, 'the armed pass records only for its sampler');
+
+    render._sampleDrawHistogram.call(owner);
+    assert.equal(renderer.__sfLastHiddenDrawables.size, 0, 'each sample releases hidden-drawable references');
+    assert.equal(owner._drawHistState.frames, 1);
+
+    renderer.__sfLastHiddenDrawables.add(mesh);
+    owner._drawHistState.stack.push(mesh);
+    render._disarmDrawHistogram.call(owner);
+    assert.equal(renderer.__sfDrawHistogramArmed, false);
+    assert.equal(renderer.__sfLastHiddenDrawables, null);
+    assert.equal(owner._drawHistogramWindow, 0);
+    assert.equal(owner._drawHistState, null, 'disarm drops geometry and traversal scratch references');
+  } finally {
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  }
+});
+
+test('draw guard installs once per renderer and composes with a pre-existing wrapper', () => {
+  const { renderer, draws } = rendererHarness();
+  const inner = renderer.renderBufferDirect;
+  renderer.renderBufferDirect = function preexistingWrapper(camera, scene, geometry, material, object, group) {
+    this.__preexistingSaw = (this.__preexistingSaw || 0) + 1;
+    return inner.call(this, camera, scene, geometry, material, object, group);
+  };
+
+  createUnreadyDrawableGuard(renderer);
+  const wrapped = renderer.renderBufferDirect;
+  createUnreadyDrawableGuard(renderer);
+  assert.equal(renderer.renderBufferDirect, wrapped, 'second guard does not re-wrap the draw path');
+
+  const scene = { traverse() {} };
+  renderer.renderBufferDirect(null, scene, null, { userData: {} }, { isMesh: true }, null);
+  assert.equal(renderer.__preexistingSaw, 1, 'the earlier wrapper still sees the draw');
+  assert.equal(draws.length, 1);
+});
+
+test('explicit zero-instance pools bypass residency, readiness and inner draw setup', () => {
+  const cases = [
+    { geometry: { isInstancedBufferGeometry: true, instanceCount: 0 }, object: { isMesh: true } },
+    { geometry: { isInstancedBufferGeometry: true, instanceCount: 0, _maxInstanceCount: 0 }, object: { isMesh: true } },
+    { geometry: { isInstancedBufferGeometry: true, instanceCount: 0, _maxInstanceCount: Infinity }, object: { isMesh: true } },
+    { geometry: {}, object: { isMesh: true, isInstancedMesh: true, count: 0 } },
+  ];
+  for (const { geometry, object } of cases) {
+    const { renderer, draws, admissions } = rendererHarness();
+    let residencyReads = 0;
+    let programReads = 0;
+    Object.defineProperty(geometry, 'userData', { get() { residencyReads++; return {}; } });
+    const material = canonStampedMaterial();
+    Object.defineProperty(material, 'map', { get() { residencyReads++; return null; } });
+    renderer.properties.get = () => { programReads++; return {}; };
+    const guard = createUnreadyDrawableGuard(renderer);
+    const scene = { traverse() {} };
+    guard.hide(scene);
+    try {
+      assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, object, null), undefined);
+    } finally { guard.restore(); }
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, object, null), undefined);
+    assert.equal(residencyReads, 0, 'empty pools do not inspect detached geometry or material texture slots');
+    assert.equal(programReads, 0, 'empty pools do not look up readiness variants');
+    assert.equal(draws.length, 0, 'Three setup is never reached for an explicit zero count');
+    assert.equal(admissions.length, 0, 'an empty pool does not request presented-draw admission');
+  }
+});
+
+test('a zero-instance pool immediately returns to ordinary readiness when activated', async () => {
+  const { renderer, draws, admissions, compile } = rendererHarness();
+  const guard = createUnreadyDrawableGuard(renderer);
+  const geometry = { isInstancedBufferGeometry: true, instanceCount: 0 };
+  const material = canonStampedMaterial();
+  const mesh = { isMesh: true, geometry, material };
+  const scene = { traverse() {} };
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), undefined);
+    assert.equal(admissions.length, 0);
+    geometry.instanceCount = 1;
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), undefined);
+    assert.deepEqual(admissions, [mesh], 'activation still refuses and admits a cold material');
+    compile(material);
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), 'drawn');
+    geometry.instanceCount = 0;
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), undefined);
+    assert.deepEqual(draws, [mesh], 'the positive draw survives and the dormant draw is skipped again');
+  } finally { guard.restore(); }
+  await Promise.resolve();
+});
+
+test('zero-count shortcut respects BatchedMesh and InstancedMesh dispatch precedence', () => {
+  const { renderer, draws } = rendererHarness();
+  createUnreadyDrawableGuard(renderer);
+  const material = { userData: {} };
+  const zeroGeometry = { isInstancedBufferGeometry: true, instanceCount: 0 };
+  const objects = [
+    { isMesh: true, isInstancedMesh: true, count: 2 },
+    { isMesh: true, isBatchedMesh: true },
+    { isMesh: true, isBatchedMesh: true, isInstancedMesh: true, count: 0 },
+  ];
+  for (const object of objects) {
+    assert.equal(renderer.renderBufferDirect(null, null, zeroGeometry, material, object, null), 'drawn');
+  }
+  assert.deepEqual(draws, objects, 'neither independent mesh counts nor batch draw lists use geometry.instanceCount');
+});
+
+test('unknown, positive and invalid instance counts keep their existing draw path', () => {
+  const { renderer, draws } = rendererHarness();
+  createUnreadyDrawableGuard(renderer);
+  const material = { userData: {} };
+  let expectedDraws = 0;
+  for (const count of [undefined, null, NaN, -1, 1, Infinity, '0']) {
+    const geometry = { isInstancedBufferGeometry: true, instanceCount: count };
+    assert.equal(renderer.renderBufferDirect(null, null, geometry, material, { isMesh: true }, null), 'drawn');
+    assert.equal(renderer.renderBufferDirect(null, null, {}, material,
+      { isMesh: true, isInstancedMesh: true, count }, null), 'drawn');
+    expectedDraws += 2;
+  }
+  for (const max of [NaN, -1, null, '0']) {
+    const geometry = { isInstancedBufferGeometry: true, instanceCount: 0, _maxInstanceCount: max };
+    assert.equal(renderer.renderBufferDirect(null, null, geometry, material, { isMesh: true }, null), 'drawn');
+    expectedDraws++;
+  }
+  assert.equal(draws.length, expectedDraws, 'the shortcut does not coerce or repair invalid counts');
+});
+
+test('real loading reveal still submits dormant instanced pools and restores their counts', () => {
+  for (const instancedMesh of [false, true]) {
+    const geometry = instancedMesh ? new THREE.BoxGeometry() : new THREE.InstancedBufferGeometry();
+    if (!instancedMesh) {
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 0, 1], 3));
+      geometry.instanceCount = 0;
+    }
+    const material = new THREE.MeshBasicMaterial();
+    const mesh = instancedMesh ? new THREE.InstancedMesh(geometry, material, 1) : new THREE.Mesh(geometry, material);
+    if (instancedMesh) mesh.count = 0;
+    const { renderer, draws } = rendererHarness();
+    createUnreadyDrawableGuard(renderer);
+    try {
+      assert.equal(renderer.renderBufferDirect(null, null, geometry, material, mesh, null), undefined);
+      const restore = revealSubjectForCompile(mesh);
+      try {
+        assert.equal(instancedMesh ? mesh.count : geometry.instanceCount, 1);
+        assert.equal(renderer.renderBufferDirect(null, null, geometry, material, mesh, null), 'drawn');
+      } finally { restore(); }
+      assert.equal(instancedMesh ? mesh.count : geometry.instanceCount, 0);
+      assert.equal(renderer.renderBufferDirect(null, null, geometry, material, mesh, null), undefined);
+      assert.deepEqual(draws, [mesh], 'the real nonzero loading touch crosses the same guard');
+    } finally {
+      if (instancedMesh) mesh.dispose();
+      geometry.dispose(); material.dispose();
+    }
+  }
+});
+
+test('disarmOnSettle swaps the raw draw path once settled and re-wraps on mount or release', async () => {
+  const { renderer, draws } = rendererHarness();
+  const inner = renderer.renderBufferDirect;
+  const guard = createUnreadyDrawableGuard(renderer, { disarmOnSettle: true });
+  const wrapped = renderer.renderBufferDirect;
+  assert.notEqual(wrapped, inner, 'install wraps the draw path');
+  const scene = new THREE.Scene();
+  const leaf = new THREE.Mesh();
+  scene.add(leaf);
+
+  guard.hide(scene);
+  guard.restore();
+  assert.equal(renderer.renderBufferDirect, wrapped, 'the mount pass keeps the guard armed');
+
+  guard.hide(scene);
+  guard.restore();
+  assert.equal(renderer.renderBufferDirect, inner, 'a settled pass restores the raw draw path');
+  assert.equal(renderer.renderBufferDirect(null, scene, null, leaf.material, leaf, null), 'drawn');
+
+  const late = new THREE.Mesh();
+  scene.add(late);
+  guard.hide(scene);
+  assert.equal(renderer.renderBufferDirect, wrapped, 'a mount re-wraps the draw path');
+  guard.restore();
+
+  guard.hide(scene);
+  guard.restore();
+  assert.equal(renderer.renderBufferDirect, inner, 'the drained mount settles back to raw');
+
+  bumpPackageDetachSerial();
+  guard.hide(scene);
+  guard.restore();
+  assert.equal(renderer.renderBufferDirect, inner, 'a benign serial bump still settles to raw');
+
+  const geometry = new THREE.BoxGeometry();
+  const manifest = createPackageDetachManifest(
+    { contentHash: 'guard-disarm-test', resources: [geometry] },
+    { redecode: async () => ({}), collectResources: () => [geometry] },
+  );
+  assert.ok(manifest, 'detach manifest created for the pending-payload arm check');
+  assert.equal(detachPackageGeometry(geometry), true, 'a non-kept attribute releases');
+  assert.equal(isPackageGeometryDetached(geometry), true);
+
+  for (let i = 0; i < 2; i++) {
+    guard.hide(scene);
+    guard.restore();
+    assert.equal(renderer.renderBufferDirect, wrapped,
+      'a released payload pending on this renderer keeps the guard wrapped');
+  }
+
+  dropPackageDetachManifest('guard-disarm-test', manifest);
+  guard.hide(scene);
+  guard.restore();
+  guard.hide(scene);
+  guard.restore();
+  assert.equal(renderer.renderBufferDirect, inner, 'the evicted manifest settles back to raw');
+  geometry.dispose();
+  await Promise.resolve();
+});
+
+test('without disarmOnSettle the guard keeps the wrapped draw path when settled', async () => {
+  const { renderer } = rendererHarness();
+  const guard = createUnreadyDrawableGuard(renderer);
+  const wrapped = renderer.renderBufferDirect;
+  const scene = new THREE.Scene();
+  scene.add(new THREE.Mesh());
+
+  for (let i = 0; i < 3; i++) {
+    guard.hide(scene);
+    guard.restore();
+    assert.equal(renderer.renderBufferDirect, wrapped, 'the draw path stays wrapped');
+  }
+  await Promise.resolve();
+});
+
+test('a drawable whose program never links fails open at a wall deadline and counts every refusal', () => {
+  const { renderer, draws } = rendererHarness();
+  let now = 0;
+  renderer.__sfDrawGuardNow = () => now;
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = { traverse() {} };
+  const material = { userData: {} };
+  const mesh = { isMesh: true };
+  guard.hide(scene);
+  try {
+    for (let i = 0; i < 10; i++) {
+      now = i * 100;
+      assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), undefined);
+    }
+    assert.equal(renderer.__sfCompileRefusalCount, 10, 'every refusal is published, not only the fail-open');
+    now = 1501;
+    assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), 'drawn',
+      'a stuck admission lane must not hide the body past 1.5 s');
+    assert.equal(renderer.__sfCompileFailOpen, 1, 'the fail-open is counted for the probes');
+    assert.equal(renderer.__sfCompileRefusalCount, 10, 'the fail-open draw is not itself a refusal');
+    assert.equal(draws.length, 1);
+  } finally {
+    guard.restore();
+  }
+});
+
+test('a later material swap starts a fresh compile-refusal episode instead of failing open at once', () => {
+  const { renderer, draws } = rendererHarness();
+  let now = 0;
+  renderer.__sfDrawGuardNow = () => now;
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = { traverse() {} };
+  const first = { userData: {} };
+  const later = { userData: {} };
+  const mesh = { isMesh: true };
+  guard.hide(scene);
+  try {
+    now = 0;
+    assert.equal(renderer.renderBufferDirect(null, scene, null, first, mesh, null), undefined);
+    now = 1400;
+    assert.equal(renderer.renderBufferDirect(null, scene, null, first, mesh, null), undefined);
+    // A long quiet gap (the body drew on its proven material) then a new swap.
+    now = 20000;
+    assert.equal(renderer.renderBufferDirect(null, scene, null, later, mesh, null), undefined,
+      'the first refusal of the later material is not an immediate fail-open');
+    assert.equal(renderer.__sfCompileFailOpen | 0, 0);
+    now = 21510;
+    assert.equal(renderer.renderBufferDirect(null, scene, null, later, mesh, null), 'drawn',
+      'continuous refusals of the new material still hit the 1.5 s deadline');
+    assert.equal(renderer.__sfCompileFailOpen, 1);
+    assert.equal(draws.length, 1);
+  } finally {
+    guard.restore();
+  }
+});
+
+test('an already-drawn object keeps its proven material while a new one links', () => {
+  const { renderer, draws, compile } = rendererHarness();
+  const scene = { traverse() {} };
+  const oldMaterial = canonStampedMaterial();
+  const newMaterial = { userData: {} };
+  compile(oldMaterial, { program: {}, isReady: () => true });
+  const mesh = { isMesh: true, material: oldMaterial };
+  const geometry = {};
+  const guard = createUnreadyDrawableGuard(renderer);
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, oldMaterial, mesh, null), 'drawn');
+    mesh.material = newMaterial;
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, newMaterial, mesh, null), 'drawn',
+      'the already-drawn body keeps the old material instead of blanking');
+    assert.equal(renderer.__sfCompileFallbacks, 1);
+    assert.equal(renderer.__sfCompileRefusalCount | 0, 0, 'a fallback draw is not a refusal');
+    assert.deepEqual(draws, [mesh, mesh]);
+  } finally {
+    guard.restore();
+  }
+});
+
+test('a refused presented draw reports the honest draw-point residency counter', () => {
+  const { renderer } = rendererHarness();
+  const manager = createResidencyManager({ requestRoots: () => {} });
+  renderer.__sfResidencyManager = manager;
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = { traverse() {} };
+  const material = canonStampedMaterial();
+  const geometry = {
+    userData: {},
+    attributes: { position: { array: new Float32Array(RESIDENCY_INLINE_UPLOAD_BYTES * 8 / 4) } },
+  };
+  const mesh = {
+    isMesh: true, material, geometry, userData: {}, parent: null, visible: true,
+    __sfPresentedOnce: true,
+  };
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), undefined);
+  } finally {
+    guard.restore();
+  }
+  const snap = manager.snapshot();
+  assert.equal(snap.heldDraws, 1, 'the hold path still counts its refusal');
+  assert.equal(snap.refusedDraws, 1, 'the draw point counts the refusal');
+  assert.equal(snap.visibleUnreadyDraws, 1,
+    'a previously presented drawable is counted as a blink at the draw point');
+});
+
+test('a real instanced capacity growth is refused by the guard and released by its driver', () => {
+  const { renderer, draws, compile } = rendererHarness();
+  const material = canonStampedMaterial();
+  compile(material, { program: {}, isReady: () => true });
+  const geometry = new THREE.BoxGeometry();
+  stampGeometryGpuResident(geometry);
+  const mesh = new THREE.InstancedMesh(geometry, material, 4);
+  mesh.count = 1;
+  mesh.__sfPresentedOnce = true;
+  stampInstanceResidency(mesh);
+  const batches = [];
+  const manager = createResidencyManager({
+    requestRoots: (roots) => {
+      batches.push(roots.slice());
+      for (const root of roots) stampInstanceResidency(root);
+    },
+  });
+  renderer.__sfResidencyManager = manager;
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = { traverse() {} };
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), 'drawn');
+    // The pool activates by replacing its instance buffer (capacity growth, not count churn).
+    mesh.instanceMatrix = new THREE.InstancedBufferAttribute(new Float32Array(16 * 16), 16);
+    mesh.count = 3;
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), undefined,
+      'the grown instance buffer never uploads inside the presented draw');
+    const snap = manager.snapshot();
+    assert.equal(snap.instancedGrowthHolds, 1);
+    assert.equal(snap.refusedByReason.instanced, 1, 'the refusal is named as instanced growth');
+    assert.equal(manager.drainUploads(), 1);
+    assert.equal(batches.length, 1);
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), 'drawn');
+    assert.equal(draws.length, 2);
+  } finally {
+    guard.restore();
+    mesh.dispose();
+    geometry.dispose();
+  }
+});

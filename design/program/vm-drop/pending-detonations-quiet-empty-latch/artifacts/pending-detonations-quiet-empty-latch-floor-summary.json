@@ -1,0 +1,20 @@
+{
+  "name": "pending-detonations-quiet-empty-latch-floor",
+  "iters": 400000,
+  "medians": [
+    2.647,
+    2.763,
+    2.728,
+    2.806,
+    2.752
+  ],
+  "mins": [
+    2.224,
+    1.939,
+    2.219,
+    1.769,
+    2.526
+  ],
+  "floorMin": 1.769,
+  "medianOfMedians": 2.752
+}

@@ -1,0 +1,153 @@
+From d056da1fae5ce0c522ebaaf23fcdb8404037a84c Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 21:43:54 -0400
+Subject: [PATCH 2/4] feat(perf): plumb postFx, bloomLevels, and opt-in sharpen
+ for presets
+
+resolveEffectiveSectorPost zeroes grade/vignette/grain when postFx is
+false. Bloom accepts bloomLevels/maxLevels and a WebGL1-safe sharpen
+uniform (default 0 keeps the shipped picture identical).
+---
+ src/render/bloom.js | 66 ++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 59 insertions(+), 7 deletions(-)
+
+diff --git a/src/render/bloom.js b/src/render/bloom.js
+index 0b385343e..2318e66c1 100644
+--- a/src/render/bloom.js
++++ b/src/render/bloom.js
+@@ -260,18 +260,31 @@ export function resolveEffectiveSectorPost(video = {}, sectorPost = null, fallba
+     return finiteNumber(defaults[key]);
+   };
+ 
++  // postFx is an opt-in kill switch for grade/vignette/grain (integrated preset). Default
++  // remains on so the shipped picture is unchanged unless the player picks that preset.
++  const postFx = settings.postFx !== false;
++  const grade = postFx ? presentation('grade') : 0;
++  const vignette = postFx ? presentation('vignette') : 0;
++  const toe = postFx ? presentation('toe') : 0;
++  const grain = postFx ? presentation('grain') : 0;
++
+   return {
+     bloom: typeof settings.bloom === 'boolean' ? settings.bloom : defaults.bloom,
+     bloomStrength: Math.max(0, Math.min(1, bloomStrength * strengthScale)),
+     bloomThreshold: Math.max(0, bloomThreshold + thresholdBias),
++    bloomLevels: Number.isFinite(settings.bloomLevels)
++      ? Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, settings.bloomLevels | 0))
++      : BALANCED_BLOOM_MAX_LEVELS,
+     exposure: playerExposure !== undefined
+       ? playerExposure
+       : (sectorExposure !== undefined ? sectorExposure : fallbackExposure),
+     acesToneMapping: settings.acesToneMapping !== false,
+-    grade: presentation('grade'),
+-    vignette: presentation('vignette'),
+-    toe: presentation('toe'),
+-    grain: presentation('grain'),
++    postFx,
++    sharpen: settings.sharpen === true,
++    grade,
++    vignette,
++    toe,
++    grain,
+   };
+ }
+ 
+@@ -840,6 +853,8 @@ const COMPOSITE_FRAG = /* glsl */`
+   uniform float uGrade;     // color-grade blend 0..1 (0 = off, 1 = full cyberpunk-noir LUT)
+   uniform float uToe;       // lifted black floor 0..0.06 (0 = true blacks, the default)
+   uniform float uGrainFrame;
++  uniform float uSharpen; // 0 = off (default picture); >0 = cheap unsharp after compose
++  uniform vec2 uSceneTexel; // 1/drawing-buffer size (WebGL1-safe; no textureSize)
+ 
+   ${SPACE_POST_PRESENTATION_GLSL}
+ 
+@@ -849,10 +864,26 @@ const COMPOSITE_FRAG = /* glsl */`
+     vec3 bloom = texture2D(tBloom0, vUv).rgb * uBloomW0
+                + texture2D(tBloom1, vUv).rgb * uBloomW1;
+     vec3 spill = bloom * uStrength * uBloomNorm;
+-    gl_FragColor = vec4(composeSpacePostPresentation(
++    vec3 color = composeSpacePostPresentation(
+       scene, spill, vUv, gl_FragCoord.xy, uExposure, uAces,
+       uGrade, uToe, uVignette, uGrain, uGrainFrame
+-    ), 1.0);
++    );
++    // Opt-in sharpen for renderScale < 1 (integrated preset). Neighbour average unsharp —
++    // no extra RT. uSharpen defaults to 0 so the shipped picture is byte-identical.
++    if (uSharpen > 0.001) {
++      vec2 texel = uSceneTexel;
++      vec3 blur = (
++        texture2D(tScene, vUv + vec2(texel.x, 0.0)).rgb +
++        texture2D(tScene, vUv - vec2(texel.x, 0.0)).rgb +
++        texture2D(tScene, vUv + vec2(0.0, texel.y)).rgb +
++        texture2D(tScene, vUv - vec2(0.0, texel.y)).rgb
++      ) * 0.25;
++      // Sharpen the composed LDR color using a scene-luma proxy so we don't re-tonemap.
++      float sharpLuma = dot(color, vec3(0.2126, 0.7152, 0.0722));
++      float blurLuma = dot(blur, vec3(0.2126, 0.7152, 0.0722));
++      color = clamp(color + (sharpLuma - blurLuma) * uSharpen, 0.0, 1.0);
++    }
++    gl_FragColor = vec4(color, 1.0);
+   }
+ `;
+ 
+@@ -877,6 +908,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+   // tunables (overridable via setOptions; defaults match settings.video.*)
+   let enabled = true;
+   let strength = DEFAULT_BLOOM_STRENGTH;
++  let maxLevelsCap = BALANCED_BLOOM_MAX_LEVELS;
++  let sharpenAmount = 0;
+   let threshold = 1.0;
+   const knee = 0.25;
+   let exposure = 1.0;
+@@ -924,8 +957,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+   function levelCountForSize(w, h) {
+     const halfW = Math.max(1, w >> 1);
+     const halfH = Math.max(1, h >> 1);
++    const cap = Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, maxLevelsCap | 0));
+     if (halfW < 320 || halfH < 180) return 1;
+-    return BALANCED_BLOOM_MAX_LEVELS;
++    return cap;
+   }
+ 
+   function allocRenderTarget(w, h, opts, reason) {
+@@ -997,6 +1031,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+     uGrade:     { value: grade },     // teal-shadow/amber-highlight color grade
+     uToe:       { value: toe },       // lifted black floor (0 = true blacks)
+     uGrainFrame: { value: 0 },
++    uSharpen:    { value: 0 },        // 0 = default picture; integrated preset opt-in
++    uSceneTexel: { value: new THREE.Vector2(1 / W, 1 / H) },
+   });
+ 
+   function postStyleScale() {
+@@ -1636,6 +1672,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+     H = nextH;
+     halfW = Math.max(1, W >> 1);
+     halfH = Math.max(1, H >> 1);
++    if (compositeMat.uniforms.uSceneTexel) {
++      compositeMat.uniforms.uSceneTexel.value.set(1 / W, 1 / H);
++    }
+     const newLevels = levelCountForSize(W, H);
+     resizeRenderTarget(rtScene, W, H, 'resize');
+     // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
+@@ -1688,6 +1727,19 @@ export function createBloom(renderer, width, height, instrumentation = null) {
+     if (typeof o.vignette === 'number') vignette = Math.max(0, Math.min(1, o.vignette));
+     if (typeof o.grade === 'number') grade = Math.max(0, Math.min(1, o.grade));
+     if (typeof o.toe === 'number') toe = Math.max(0, Math.min(0.06, o.toe));
++    if (typeof o.maxLevels === 'number' || typeof o.bloomLevels === 'number') {
++      const next = Number(o.maxLevels != null ? o.maxLevels : o.bloomLevels);
++      if (Number.isFinite(next)) {
++        const capped = Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, next | 0));
++        if (capped !== maxLevelsCap) {
++          maxLevelsCap = capped;
++          setSize(W, H);
++        }
++      }
++    }
++    if (typeof o.sharpen === 'boolean') sharpenAmount = o.sharpen ? 0.35 : 0;
++    if (typeof o.sharpen === 'number') sharpenAmount = Math.max(0, Math.min(1, o.sharpen));
++    if (compositeMat.uniforms.uSharpen) compositeMat.uniforms.uSharpen.value = sharpenAmount;
+     applyPostStyleUniforms();
+   }
+ 
+-- 
+2.47.3
+

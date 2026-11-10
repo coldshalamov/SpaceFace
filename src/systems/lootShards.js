@@ -1,0 +1,1330 @@
+// Loot shards (Wave M2 §4.3, design/revamp/MASSLINE_PHYSICS_IDENTITY.md).
+//
+// The finding that reframed this feature: pickup MAGNETISM already ships (mining._updatePickups —
+// homing vacuum: inherits player velocity + relative approach, pickups only). The real chore was
+// that a ship kill drops ONLY a salvage wreck you must sit on with the beam. So: on a player kill
+// of a hostile ship, ALSO emit the shipped `loot:drop` seam with an immediate victim-scaled burst —
+// materials from hull class/cargo, plus physical credit chips. Mining spawns each entry as its own
+// pickup; cargo still owns commodity collection, and credit chips settle through economy on scoop.
+// The bulk salvage wreck (and the whole salvage career) is untouched.
+//
+// Deterministic: each victim gets a stateless roll derived from the CURRENT run seed plus durable
+// victim identity. There is no private cursor to serialize or accidentally carry across New Game.
+// The core sim PRNG is never consumed by reward selection; pickup presentation still owns its
+// ordinary placement draws downstream.
+//
+// D2 — civilian manifest cargo body (AQUARIUM-REPAIRS):
+// A destroyed manifest-carrying civilian hull used to leave only cargoManifest strings on a dead
+// entity. On death we spawn EXACTLY ONE tetherable `payload` via spawnPayloadEntity (industrial-beam
+// pattern) whose salvagePool is that manifest. Cargo state stays cargo-owned — the payload carries
+// a salvagePool snapshot, not a second cargo writer. Hostiles still take the shard path only.
+//
+// Payload cost / cap declaration:
+// - Entity: one dynamic `payload` (collides, mass ≥ 20, hull, ownership stamp).
+// - Save: flags.persistent so save/Continue round-trips the body (type `payload` is NOT a
+//   world-record durable candidate — entityHasDurableMarkers excludes it).
+// - Cap: MAX_CIVILIAN_MANIFEST_PAYLOADS live bodies. Excess disposes the oldest
+//   (lowest entity id) — same bounded-eviction idea as aftermath wreck markers. Sector transition
+//   despawns un-anchored transient payloads via handlePayloadSectorTransition; these bodies set
+//   transientSector:false so a claimed/persistent body survives sector change while the cap still
+//   bounds total residency.
+//
+// PQ-148.00 — jettisoned hold pods use the same spawnPayloadEntity body (JETTISONED_CARGO_PAYLOAD_TYPE),
+// mass by contents, flags.persistent, cap MAX_JETTISONED_CARGO_PODS. Cargo.js remains the inventory writer.
+//
+// PQ-148.01 — volatile classes (agy catalog: src/data/commodityVolatileClasses.js). Explosive slam
+// publishes a radial impulse; corrosive contact ticks hull (not a distance aura); superdense couples
+// harder to fields and cannot be thrown far. Silhouette/lamp live on the pod for render to read later.
+//
+// PQ-148.02 — field pods stamp legality/owner for a customs scan cone (lawSecurity). An outlaw
+// catch-net body can stop a flying pod; heat still rises only via contraband:scanned → heat.js.
+//
+// PQ-148.03 — pods carry origin/destination/owner. A spilled named pod's owner reacts
+// (restitution / bounty / thanks) through barkDirector + comms:log.
+import { spawnPayloadEntity } from '../combat/industrialBeam.js';
+import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { ensureCombatant } from '../combat/runtime.js';
+import { CRYO_LOCK_STATUS_ID, CRYO_LOCK_DURATION_TICKS } from '../combat/cryoLock.js';
+import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { cargoIdentityOf, identityFromManifest } from '../data/cargoIdentity.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { JETTISONED_CARGO_PAYLOAD_TYPE } from '../data/cargoPayloadTypes.js';
+import { UNDERSTORY_GARDENS } from '../data/factions/understory.js';
+import { gardenGrowthRadius } from '../data/understoryReceiver.js';
+import { writePickupRemainder } from '../core/pickupAcceptance.js';
+import { volatileClassOf } from '../data/commodityVolatileClasses.js';
+import { massline2Flag } from '../data/featureFlags.js';
+import { rollKillRewardItems } from '../data/killRewards.js';
+import { forEachJobInteractable, indexedShipLikeScan, indexedTypeScan, entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
+
+// Catch-net census members are jettisoned-cargo pods (payloads) and outlaw nets (shipLike)
+// — latch those lanes so combat projectile churn can't wake the empty latch every tick.
+const CATCH_NETS_LANES = ['payloads', 'shipLike'];
+function catchNetsMembershipVersion(state) {
+  const laneVersion = entityIndexLaneVersion(state, CATCH_NETS_LANES);
+  // -1 (index unready) plays the old null role: the latch refuses to arm.
+  return laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+}
+import { isHostileToPlayer } from './scannerReadModel.js';
+
+export { JETTISONED_CARGO_PAYLOAD_TYPE };
+
+const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
+const COMPOST_COMMODITY_MASS = new Map(COMMODITIES.map(row => [row.id, row.massPerU]));
+
+/** Live-resident cap for civilian-manifest cargo bodies (see file header). */
+export const MAX_CIVILIAN_MANIFEST_PAYLOADS = 6;
+export const CIVILIAN_MANIFEST_PAYLOAD_TYPE = 'civilian_manifest';
+
+/**
+ * PQ-148.00 — player-jettisoned / spilled hold pods reuse the industrial-beam payload body.
+ * Cap matches the packet budget (≤ 48 live pods per sector). TTL is not applied; residency is
+ * `flags.persistent` plus this eviction bound. Cargo inventory stays cargo-owned.
+ */
+export const MAX_JETTISONED_CARGO_PODS = 48;
+export const JETTISONED_CARGO_MASS_FLOOR = 20;
+// LOOT MAGNET ring pull: peak acceleration (WU/s²) at the ring's centre, falling linearly to
+// zero at the ring edge. Enough to close a 420 WU ring in a few seconds against drift, never
+// enough to yank a pod out of a passing hauler's wake.
+export const LOOT_MAGNET_ACCEL = 26;
+
+/** PQ-148.01 — slam bar (WU/s closing) before an explosive pod cooks off a radial shove. */
+export const EXPLOSIVE_SLAM_CLOSING_SPEED = 12;
+export const EXPLOSIVE_BLAST_RADIUS = 80;
+export const EXPLOSIVE_BLAST_IMPULSE = 900;
+export const CORROSIVE_HULL_TICK = 8;
+export const CORROSIVE_TICK_COOLDOWN_S = 0.35;
+export const THROWN_EXPLOSIVE_GRACE_S = 0.45;
+export const THROWN_EXPLOSIVE_PROXIMITY = 48;
+/** Extra fieldResponseMult on top of mass-shrug; fields.js still applies the unmarked pull. */
+export const SUPERDENSE_FIELD_RESPONSE = 2.5;
+
+/** PQ-148.02 — outlaw catch-net body that stops a flying pod past a customs cone. */
+export const OUTLAW_CATCH_NET_TYPE = 'outlaw_catch_net';
+
+/** Bench A/B: production default ON. Quiet latch skips catch-net census
+ * (payloads + shipLike isOutlawCatchNet / isJettisonedCargoPod) when both bags
+ * stay empty. Soft-GPU fps not claimed. */
+let CATCH_NETS_EMPTY_QUIET_LATCH = true;
+export function setCatchNetsEmptyQuietLatchForBench(enabled) {
+  CATCH_NETS_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getCatchNetsEmptyQuietLatchForBench() {
+  return CATCH_NETS_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const CATCH_NETS_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function publishCatchNetsQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.lootShardsRuntime || (state.lootShardsRuntime = {});
+  rt.catchNetsQuietLatched = !!latched;
+}
+
+
+const LEGALITY_BY_ID = new Map((COMMODITIES || []).map((row) => [row.id, row.legality || 'legal']));
+
+const VOLATILE_BLAST_TYPES = new Set(['ship', 'drone', 'payload']);
+const VOLATILE_HULL_TYPES = new Set(['ship', 'drone']);
+const _nearbyScratch = [];
+const _thrownFuseScratch = [];
+const _catchNetScratch = [];
+const _catchPodScratch = [];
+const _fieldDense = { ax: 0, az: 0 };
+const _fieldBase = { ax: 0, az: 0 };
+const _denseProfile = { mass: 1, type: 'payload', id: null, fieldResponseMult: 1 };
+const _baseProfile = { mass: 1, type: 'payload', id: null, fieldResponseMult: 1 };
+
+export function lootShardItemsFor(seed, victim) {
+  const rng = createVictimRewardRng(seed, victim, SHARD_REWARD_SALT);
+  return rollKillRewardItems(rng, victim);
+}
+
+/** Expected-value helper for tests and balance audit (basePrice at equilibrium). */
+export function lootShardBasePriceEv(items, commodityBasePriceById) {
+  if (!Array.isArray(items) || !commodityBasePriceById) return 0;
+  let total = 0;
+  for (const it of items) {
+    if (!it || !it.commodityId) continue;
+    const price = Number(commodityBasePriceById.get?.(it.commodityId)
+      ?? commodityBasePriceById[it.commodityId]) || 0;
+    total += price * Math.max(0, Number(it.qty) || 0);
+  }
+  return total;
+}
+
+/** True when a cargoManifest carries at least one positive commodity line. */
+export function validCivilianManifestForPayload(manifest) {
+  if (!manifest || !Array.isArray(manifest.lines) || manifest.lines.length === 0) return false;
+  let total = 0;
+  for (let i = 0; i < manifest.lines.length; i++) {
+    const line = manifest.lines[i];
+    if (!line || typeof line.commodityId !== 'string' || !line.commodityId) return false;
+    const qty = Math.floor(Number(line.qty));
+    if (!Number.isFinite(qty) || qty <= 0) return false;
+    total += qty;
+  }
+  return total > 0;
+}
+
+/** Map manifest lines → salvagePool object (industrial-beam / mining drain shape). */
+export function salvagePoolFromManifest(manifest) {
+  const pool = {};
+  if (!manifest || !Array.isArray(manifest.lines)) return pool;
+  for (let i = 0; i < manifest.lines.length; i++) {
+    const line = manifest.lines[i];
+    if (!line || typeof line.commodityId !== 'string') continue;
+    const qty = Math.floor(Number(line.qty));
+    if (!Number.isFinite(qty) || qty <= 0) continue;
+    pool[line.commodityId] = (pool[line.commodityId] || 0) + qty;
+  }
+  return pool;
+}
+
+export function isCivilianManifestPayload(entity) {
+  return !!(entity
+    && entity.alive !== false
+    && entity.type === 'payload'
+    && entity.data
+    && entity.data.payloadType === CIVILIAN_MANIFEST_PAYLOAD_TYPE);
+}
+
+function payloadScanList(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.payloads)) return index.payloads;
+  return state && state.entityList;
+}
+
+export function isJettisonedCargoPod(entity) {
+  return !!(entity
+    && entity.alive !== false
+    && entity.type === 'payload'
+    && entity.data
+    && entity.data.payloadType === JETTISONED_CARGO_PAYLOAD_TYPE);
+}
+
+export function isOutlawCatchNet(entity) {
+  return !!(entity
+    && entity.alive !== false
+    && entity.data
+    && (entity.data.outlawCatchNet === true || entity.data.payloadType === OUTLAW_CATCH_NET_TYPE));
+}
+
+export function commodityLegality(commodityId) {
+  if (typeof commodityId !== 'string' || !commodityId) return 'legal';
+  return LEGALITY_BY_ID.get(commodityId) || 'legal';
+}
+
+/** Mass of a cargo pod body: contents × unit mass, never below the payload floor. */
+export function cargoPodMassForContents(unitMass, amount) {
+  const qty = Math.max(0, Number(amount) || 0);
+  const per = Number.isFinite(unitMass) ? unitMass : 0.5;
+  return Math.max(JETTISONED_CARGO_MASS_FLOOR, qty * per);
+}
+
+/** Jettison eject scale from the volatile catalog (superdense throwRangeMult = 0.5). */
+export function volatileThrowSpeedScale(commodityId) {
+  const klass = volatileClassOf(commodityId);
+  const mult = klass && Number(klass.throwRangeMult);
+  return Number.isFinite(mult) && mult > 0 ? mult : 1;
+}
+
+/** PQ-148.03 — copy origin/destination/owner onto pod data without inventing a second cargo writer. */
+export function stampCargoIdentity(target, spec = {}) {
+  if (!target || !spec || typeof spec !== 'object') return target;
+  const identity = spec.cargoIdentity && typeof spec.cargoIdentity === 'object'
+    ? spec.cargoIdentity
+    : (identityFromManifest(spec, spec) || cargoIdentityOf(spec));
+  const originId = spec.originId ?? spec.originStationId ?? (identity && identity.originId);
+  const destinationId = spec.destinationId ?? spec.destStationId ?? (identity && identity.destinationId);
+  const ownerId = spec.ownerId != null ? spec.ownerId : (identity && identity.ownerId);
+  const ownerName = spec.ownerName != null ? spec.ownerName : (identity && identity.ownerName);
+  if (originId != null) target.originId = originId;
+  if (destinationId != null) target.destinationId = destinationId;
+  if (ownerId != null) target.ownerId = ownerId;
+  if (ownerName != null) target.ownerName = ownerName;
+  const stamped = cargoIdentityOf(target);
+  if (stamped) target.cargoIdentity = stamped;
+  return target;
+}
+
+function displayNameOf(entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  return data.displayName || data.name || data.freighterLabel || data.freighterName || entity.name || null;
+}
+
+/** Lamp + silhouette the render can read later. Does not import src/render. */
+export function stampVolatilePresentation(target, commodityId) {
+  if (!target) return target;
+  const klass = volatileClassOf(commodityId);
+  if (!klass) return target;
+  target.volatileClass = klass.id;
+  target.volatileLamp = klass.lamp;
+  target.volatileSilhouette = klass.silhouetteNote;
+  return target;
+}
+
+/**
+ * NXI-029 — the dominant volatile lot inside a multi-commodity pool. The pod's hazard reads from
+ * the lot it mostly IS: largest quantity wins, ties break lexically so the pick is deterministic.
+ * Inert pools return null — inert cargo stays inert.
+ */
+export function dominantVolatileCommodityId(pool) {
+  if (!pool || typeof pool !== 'object') return null;
+  let best = null;
+  let bestQty = 0;
+  for (const id of Object.keys(pool)) {
+    const qty = Math.max(0, Math.floor(Number(pool[id]) || 0));
+    if (qty <= 0 || !volatileClassOf(id)) continue;
+    if (qty > bestQty || (qty === bestQty && best != null && id < best)) {
+      best = id;
+      bestQty = qty;
+    }
+  }
+  return best;
+}
+
+/**
+ * NXI-029 — keep volatile identity through dump and recovery on pooled manifest bodies. A pod
+ * whose whole cargo is one commodity already stamps via applyJettisonedCargoData; a pooled
+ * manifest body carries salvagePool instead, so its headline commodity goes to
+ * `primaryCommodityId` (the freightCausality convention: lexical first) and its dominant
+ * volatile lot gets the class/lamp/silhouette stamp. Inert pools mark nothing.
+ */
+export function stampManifestVolatilePresentation(data) {
+  const pool = data && data.salvagePool;
+  if (!data || !pool || typeof pool !== 'object') return data;
+  if (data.primaryCommodityId == null) {
+    const ids = Object.keys(pool).filter((id) => (Math.floor(Number(pool[id])) || 0) > 0).sort();
+    if (ids.length) data.primaryCommodityId = ids[0];
+  }
+  stampVolatilePresentation(data, dominantVolatileCommodityId(pool));
+  return data;
+}
+
+export function fieldProfileForVolatilePod(pod, out = null) {
+  const klass = volatileClassOf(pod && pod.data);
+  const body = pod && pod.physicsBody;
+  const mass = Number.isFinite(body && body.mass) && body.mass > 0
+    ? body.mass
+    : (Number.isFinite(pod && pod.mass) && pod.mass > 0 ? pod.mass : JETTISONED_CARGO_MASS_FLOOR);
+  const profile = out || {};
+  profile.mass = mass;
+  profile.type = (pod && pod.type) || 'payload';
+  profile.id = pod && pod.id;
+  profile.fieldResponseMult = (klass && klass.fieldPull) ? SUPERDENSE_FIELD_RESPONSE : 1;
+  return profile;
+}
+
+function simNow(state) {
+  if (!state) return 0;
+  return Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+}
+
+function entityById(state, id) {
+  if (id == null || !state || !state.entities || typeof state.entities.get !== 'function') return null;
+  return state.entities.get(id) || null;
+}
+
+function impactClosingSpeed(payload) {
+  if (Number.isFinite(payload && payload.preSolveClosingSpeed)) {
+    return Math.abs(payload.preSolveClosingSpeed);
+  }
+  if (Number.isFinite(payload && payload.playerDeltaV)) {
+    return Math.abs(payload.playerDeltaV);
+  }
+  return Math.max(0, Number(payload && payload.dp) || Number(payload && payload.impulse) || 0);
+}
+
+function combatKernelOf(host) {
+  const combat = host.registry && host.registry.get && host.registry.get('combat');
+  if (combat && combat.kernel) return combat.kernel;
+  if (combat && typeof combat.ensureKernel === 'function') return combat.ensureKernel();
+  const actions = host.registry && host.registry.get && host.registry.get('actions');
+  return actions && actions.kernel ? actions.kernel : null;
+}
+
+function applyRadialPublishedImpulse(host, origin, skipId, magnitude, radius, reason, tick) {
+  const physics = host.helpers && host.helpers.combatPhysics;
+  if (!physics || typeof physics.applyImpulse !== 'function' || !origin) return 0;
+  const state = host.state;
+  const nearby = queryNearbyEntities(
+    state,
+    origin,
+    radius,
+    _nearbyScratch,
+    (state && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1
+      && Array.isArray(state.entityIndex.collidables))
+      ? state.entityIndex.collidables
+      : (state && state.entityList),
+  );
+  let applied = 0;
+  for (let i = 0; i < nearby.length; i++) {
+    const entity = nearby[i];
+    if (!entity || entity.alive === false || entity.id === skipId || !entity.pos) continue;
+    if (!VOLATILE_BLAST_TYPES.has(entity.type)) continue;
+    const dx = entity.pos.x - origin.x;
+    const dz = entity.pos.z - origin.z;
+    const dist = Math.hypot(dx, dz);
+    if (!(dist > 1e-4) || dist > radius) continue;
+    const fall = 1 - dist / radius;
+    const mag = magnitude * fall;
+    if (!(mag > 0)) continue;
+    const inv = 1 / dist;
+    const accepted = physics.applyImpulse({
+      entityId: entity.id,
+      impulse: { x: dx * inv * mag, z: dz * inv * mag },
+      point: null,
+      reason,
+      tick,
+    });
+    if (accepted !== false) applied += mag;
+  }
+  return applied;
+}
+
+function routeCorrosiveHullTick(host, target, damage, pos, pod = null) {
+  const packet = scalarHitToDamagePacket({
+    damage,
+    damageType: 'thermal',
+    pos: pos && Number.isFinite(pos.x) ? { x: pos.x, z: pos.z } : (target.pos || null),
+    source: { kind: 'volatile_corrosive' },
+    shieldBypass: 1,
+  });
+  packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+  const attackerId = pod && pod.ownerId != null
+    ? pod.ownerId
+    : (pod && pod.data && pod.data.ownerId != null ? pod.data.ownerId : null);
+  const origin = { kind: 'volatile_corrosive', id: pod && pod.id != null ? pod.id : (target && target.id) };
+  const helpers = host.helpers;
+  if (helpers && typeof helpers.routeCombatDamage === 'function') {
+    return helpers.routeCombatDamage({
+      attackerId,
+      targetId: target.id,
+      packet,
+      origin,
+    });
+  }
+  const kernel = combatKernelOf(host);
+  if (kernel && typeof kernel.routeDamage === 'function') {
+    return kernel.routeDamage({
+      attackerId,
+      targetId: target.id,
+      packet,
+      origin,
+    });
+  }
+  return null;
+}
+
+/**
+ * Stamp cargo-collection fields onto a payload spec/entity without inventing a second cargo writer.
+ * `pickup:collected` still reads kind/commodityId/amount/richLotSource from the body.
+ */
+function applyJettisonedCargoData(target, spec) {
+  if (!target) return target;
+  const amount = Math.max(0, Math.floor(Number(spec.amount) || 0));
+  const commodityId = spec.commodityId;
+  const richSource = spec.richSource;
+  target.kind = 'cargo';
+  target.commodityId = commodityId;
+  target.amount = amount;
+  target.jettisonedCargo = true;
+  // Player custody outlives the numeric ship id (ship transfer / Save-Continue). Only
+  // this actual producer can originate the stamp; every ownership mirror must still agree.
+  if (spec.playerJettisonOrigin) target.playerJettisonOrigin = Object.freeze({ ...spec.playerJettisonOrigin });
+  if (richSource) target.richLotSource = { ...richSource, richQty: amount };
+  if (spec.pickupEmbargoUntil != null) target.pickupEmbargoUntil = spec.pickupEmbargoUntil;
+  if (target.despawnAt != null) delete target.despawnAt;
+  target.legality = commodityLegality(commodityId);
+  stampCargoIdentity(target, spec);
+  stampVolatilePresentation(target, commodityId);
+  return target;
+}
+
+/**
+ * Spawn one tetherable colliding cargo pod via spawnPayloadEntity (same path as civilian manifests).
+ * Save/Continue residency is `flags.persistent`. Does not write player cargo.
+ */
+export function spawnJettisonedCargoPod(state, spec = {}, helpers = null) {
+  const amount = Math.max(0, Math.floor(Number(spec.amount) || 0));
+  if (!(amount > 0) || typeof spec.commodityId !== 'string' || !spec.commodityId) return null;
+
+  const mass = cargoPodMassForContents(spec.unitMass, amount);
+  const radius = Math.max(3, Math.min(25, Number(spec.radius) || 3));
+  const cargoStamp = {
+    commodityId: spec.commodityId,
+    amount,
+    richSource: spec.richSource || null,
+    pickupEmbargoUntil: spec.pickupEmbargoUntil,
+    ownerId: spec.ownerId,
+    ownerName: spec.ownerName,
+    originId: spec.originId ?? spec.originStationId,
+    destinationId: spec.destinationId ?? spec.destStationId,
+    cargoIdentity: spec.cargoIdentity,
+    playerJettisonOrigin: Number.isSafeInteger(state?.playerId) && state.playerId > 0
+      && spec.ownerId === state.playerId ? { version: 1, ownerId: state.playerId } : null,
+  };
+
+  const spawnHelpers = helpers && typeof helpers.spawnEntity === 'function'
+    ? {
+      spawnEntity(payloadSpec) {
+        if (payloadSpec && payloadSpec.data) applyJettisonedCargoData(payloadSpec.data, cargoStamp);
+        payloadSpec.flags = Object.assign({}, payloadSpec.flags, { persistent: true });
+        return helpers.spawnEntity(payloadSpec);
+      },
+    }
+    : helpers;
+
+  const entity = spawnPayloadEntity(state, {
+    pos: spec.pos ? { x: spec.pos.x, z: spec.pos.z } : { x: 0, z: 0 },
+    vel: spec.vel ? { x: spec.vel.x, z: spec.vel.z } : { x: 0, z: 0 },
+    radius,
+    mass,
+    // Contents-derived mass is physics truth for a cargo pod — without the authored
+    // physicsBody stamp, payload-type bodies fall back to volumetric mass and the pod
+    // carries ~1/16 of its real momentum into collisions (the ore-shotgun defect).
+    physicsBody: { mass },
+    hull: 100,
+    hullMax: 100,
+    ownerId: spec.ownerId != null ? spec.ownerId : null,
+    factionId: spec.factionId || 'player',
+    salvagePool: { [spec.commodityId]: amount },
+    payloadType: JETTISONED_CARGO_PAYLOAD_TYPE,
+    worldRecordId: null,
+    transientSector: false,
+  }, spawnHelpers);
+
+  if (entity) {
+    entity.data = entity.data || {};
+    applyJettisonedCargoData(entity.data, cargoStamp);
+    entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    if (entity.data.despawnAt != null) delete entity.data.despawnAt;
+  }
+
+  enforceJettisonedCargoPodCap(
+    state,
+    helpers && helpers.removeEntity,
+    MAX_JETTISONED_CARGO_PODS,
+  );
+  return entity || null;
+}
+
+/**
+ * Bound live civilian-manifest payloads. Disposes oldest (lowest id) first — mirrors the
+ * aftermath-wreck MAX_PER_SECTOR bounded eviction pattern without inventing a new ledger.
+ */
+export function enforceCivilianManifestPayloadCap(
+  state,
+  removeEntity,
+  max = MAX_CIVILIAN_MANIFEST_PAYLOADS,
+) {
+  if (!state || !Number.isFinite(max) || max < 0) return 0;
+  const found = [];
+  const list = payloadScanList(state);
+  if (Array.isArray(list)) {
+    for (let i = 0; i < list.length; i++) {
+      if (isCivilianManifestPayload(list[i])) found.push(list[i]);
+    }
+  } else if (state.entities && typeof state.entities.values === 'function') {
+    for (const entity of state.entities.values()) {
+      if (isCivilianManifestPayload(entity)) found.push(entity);
+    }
+  }
+  if (found.length <= max) return 0;
+  found.sort((a, b) => (a.id | 0) - (b.id | 0));
+  const drop = found.length - max;
+  let removed = 0;
+  for (let i = 0; i < drop; i++) {
+    const entity = found[i];
+    if (!entity) continue;
+    if (typeof removeEntity === 'function') {
+      removeEntity(entity.id, { immediate: true, reason: 'manifest_payload_cap' });
+    } else entity.alive = false;
+    removed += 1;
+  }
+  return removed;
+}
+
+/**
+ * Bound live jettisoned-cargo pods. Disposes oldest (lowest id) first — same eviction as
+ * civilian-manifest payloads. Unowned scraps are not given a TTL here; the cap is the bound.
+ */
+export function enforceJettisonedCargoPodCap(
+  state,
+  removeEntity,
+  max = MAX_JETTISONED_CARGO_PODS,
+) {
+  if (!state || !Number.isFinite(max) || max < 0) return 0;
+  const found = [];
+  const list = payloadScanList(state);
+  if (Array.isArray(list)) {
+    for (let i = 0; i < list.length; i++) {
+      if (isJettisonedCargoPod(list[i])) found.push(list[i]);
+    }
+  } else if (state.entities && typeof state.entities.values === 'function') {
+    for (const entity of state.entities.values()) {
+      if (isJettisonedCargoPod(entity)) found.push(entity);
+    }
+  }
+  if (found.length <= max) return 0;
+  found.sort((a, b) => (a.id | 0) - (b.id | 0));
+  const drop = found.length - max;
+  let removed = 0;
+  for (let i = 0; i < drop; i++) {
+    const entity = found[i];
+    if (!entity) continue;
+    if (typeof removeEntity === 'function') {
+      removeEntity(entity.id, { immediate: true, reason: 'jettisoned_cargo_pod_cap' });
+    } else entity.alive = false;
+    removed += 1;
+  }
+  return removed;
+}
+
+export const lootShards = {
+  id: 'lootShards',
+  name: 'lootShards',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers;
+    this.registry = ctx.registry || null;
+    this._catchNetsQuiet = null;
+    this._unsubs = [];
+    if (this.bus && typeof this.bus.on === 'function') {
+      this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p || {})));
+      this._unsubs.push(this.bus.on('physics:impact', (p) => this._onPodImpact(p || {})));
+      this._unsubs.push(this.bus.on('massline:throw', (p) => this._onThrownPayload(p || {})));
+      this._unsubs.push(this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {})));
+      // Transient bookkeeping rides every session/sector boundary: entity ids recycle through
+      // the LIFO free-list, so a pod captured last sector would swallow a recycled id's emit.
+      const resetTransient = () => {
+        if (this._magnetTracked) this._magnetTracked.clear();
+        this._catchNetsQuiet = null;
+      };
+      for (const evt of ['game:started', 'game:new', 'game:newGame', 'save:loaded', 'sector:enter']) {
+        this._unsubs.push(this.bus.on(evt, resetTransient));
+      }
+    }
+  },
+
+  /** Read only: edible contents of this ordinary player-jettisoned pod, not its physics floor. */
+  gardenFeedMass(entity) {
+    const state = this.state, data = entity && entity.data, flags = entity && entity.flags || {};
+    const origin = data?.playerJettisonOrigin, playerOwnerId = origin?.ownerId;
+    if (!origin || origin.version !== 1 || !Number.isSafeInteger(playerOwnerId) || playerOwnerId <= 0) return null;
+    if (!state || state.playerId == null || !isJettisonedCargoPod(entity)
+      || state.entities?.get(entity.id) !== entity || data.jettisonedCargo !== true
+      || data.kind !== 'cargo' || data.ownerId !== playerOwnerId
+      || (entity.ownerId != null && entity.ownerId !== playerOwnerId)
+      || (data.ownership?.ownerId != null && data.ownership.ownerId !== playerOwnerId)
+      || !Number.isFinite(entity.hull) || entity.hull <= 0 || !Number.isFinite(entity.mass) || entity.mass <= 0
+      || data.understoryConsumed === true || Object.isFrozen(data)) return null;
+    // Persistence alone is ordinary for this producer. Every other custody/mission/site
+    // identity remains protected; a jettison stamp is never an ownership override.
+    if (flags.missionPinned || flags.durable || flags.invuln || flags.protected
+      || data.missionId || data.missionTag || data.missionPinned || data.wreckMissionId
+      || data.persistenceOwner || data.runtimeOwner || data.worldRecordId || data.identityKey
+      || data.resourceBodyId || data.worldSiteId || data.worldSitePayloadId || data.worldSiteStructural
+      || data.worldObjectId || data.siteId || data.activityObjectSlotId || data.durable
+      || data.claimId || data.claimedBy || data.custodyOwner || data.freightCustodyPod || data.freightCustody
+      || data.caughtByNet || data.contractClaimSiteOf || data.salvorClaimedBy || data.recoveryEncounterId
+      || data.survivorPod || data.storyPropKind || data.authored || data.authoredCharacter
+      || data.uniqueWreckId || data.authoredWreckId || data.poiId || data.protected || data.anchored
+      || data.interventionId || data.onboarding || data.worldOneOff || data.oneOffId || data.berthConsign
+      || data.physicalCustodyOnly || data.orchardId || data.alienSiteId || data.fieldId
+      || data.markerId || data.provenance || data.claimable || data.living || data.playerOwned
+      || data.persistent || data.arenaShardOf || data.reefMineId || data.reefMine
+      || data.originId || data.destinationId || data.originStationId || data.destStationId
+      || (data.cargoIdentity?.ownerId != null && String(data.cargoIdentity.ownerId) !== String(playerOwnerId))
+      || data.cargoIdentity?.originId || data.cargoIdentity?.destinationId) return null;
+    const identity = cargoIdentityOf(entity);
+    if (!identity || identity.ownerId !== String(playerOwnerId) || identity.originId || identity.destinationId) return null;
+    const amount = data.amount, pool = data.salvagePool, commodityId = data.commodityId;
+    const unitMass = COMPOST_COMMODITY_MASS.get(commodityId);
+    if (!Number.isSafeInteger(amount) || amount <= 0 || !Number.isFinite(unitMass) || unitMass <= 0
+      || !pool || typeof pool !== 'object' || Array.isArray(pool)
+      || Object.keys(pool).length !== 1 || pool[commodityId] !== amount) return null;
+    const mass = amount * unitMass;
+    // A partially stripped pod keeps a conservative collider mass; only real remaining
+    // commodity units count. One iron unit never turns the 20t collider floor into 20t food.
+    return Number.isFinite(mass) && mass > 0 && mass <= entity.mass + 1e-6 ? mass : null;
+  },
+
+  /** Retire both pickup and salvage views before the garden removes this exact live pod. */
+  consumeByGarden(entity, garden) {
+    const mass = this.gardenFeedMass(entity);
+    if (!(mass > 0) || !garden || this.state.entities?.get(garden.id) !== garden
+      || garden.alive === false || garden.type !== 'garden' || garden.factionId !== 'faction_understory'
+      || garden.data?.understoryGarden !== true || !garden.data.gardenId
+      || garden.data.gardenDestroyed === true || garden.data.gardenRetired === true
+      || !Number.isFinite(garden.hull) || garden.hull <= 0
+      || !Number.isFinite(garden.radius) || garden.radius <= 0) return null;
+    const reach = gardenGrowthRadius(garden) * UNDERSTORY_GARDENS.absorbPadding + Math.max(0, Number(entity.radius) || 0);
+    const distance = Math.hypot(entity.pos?.x - garden.pos?.x, entity.pos?.z - garden.pos?.z);
+    if (!Number.isFinite(reach) || reach <= 0 || !Number.isFinite(distance) || distance > reach) return null;
+    writePickupRemainder(entity.data, 0);
+    return mass;
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) { if (typeof off === 'function') off(); }
+    this._unsubs = [];
+  },
+
+  update(dt, state) {
+    const live = state || this.state;
+    this._catchPodsInNets(live);
+    this._tickThrownExplosiveFuse(live);
+    this._pullSuperdensePods(dt, live);
+    this._pullLootWithMagnet(dt, live);
+  },
+
+  // LOOT MAGNET (mod_loot_magnet_s → derived.lootMagnetRange): free salvage bodies inside the
+  // ring drift to the hull, so salvage is a fly-by instead of a chase-and-latch per pod. The
+  // pull is a bounded physics-authority attraction with linear falloff — custody is NOT granted
+  // here; the pods still have to be claimed by the ordinary beam/tether verbs, this only brings
+  // them to the mouth. Deterministic: no rng, index-ordered scan, one impulse per pod per tick.
+  _pullLootWithMagnet(dt, state) {
+    if (!state || state.mode !== 'flight') return;
+    const step = Number(dt);
+    if (!(step > 0)) return;
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const range = player && player.data && player.data.derived
+      ? Number(player.data.derived.lootMagnetRange) || 0 : 0;
+    if (!(range > 0) || !player || player.alive === false || !player.pos) return;
+    const physics = this.helpers && this.helpers.combatPhysics;
+    if (!physics || typeof physics.applyImpulse !== 'function') return;
+    const list = payloadScanList(state);
+    if (!Array.isArray(list)) return;
+    const r2 = range * range;
+    for (let i = 0; i < list.length; i++) {
+      const pod = list[i];
+      if (!pod || pod.alive === false || !pod.pos) continue;
+      if (pod.data && pod.data.caughtByNet) continue;
+      if (!isJettisonedCargoPod(pod) && !isCivilianManifestPayload(pod)) continue;
+      const dx = player.pos.x - pod.pos.x;
+      const dz = player.pos.z - pod.pos.z;
+      const dist2 = dx * dx + dz * dz;
+      if (dist2 > r2 || dist2 < 1) continue;
+      const dist = Math.sqrt(dist2);
+      const mass = Math.max(1, Number(pod.physicsBody && pod.physicsBody.mass) || Number(pod.mass) || 1);
+      const accel = LOOT_MAGNET_ACCEL * (1 - dist / range);
+      physics.applyImpulse({
+        entityId: pod.id,
+        impulse: { x: (dx / dist) * accel * mass * step, z: (dz / dist) * accel * mass * step },
+        point: null,
+        reason: 'loot_magnet',
+        tick: state.tick,
+      });
+      this._noteMagnetCapture(pod, state);
+    }
+  },
+
+  // One readable event per pod id per sector window (not per tick, not per ring-entry):
+  // presentation and the archetype harness count captures, not pull volume. The tracker is
+  // bounded, self-pruning, and cleared on session/sector boundaries because ids recycle.
+  _noteMagnetCapture(pod, state) {
+    if (!this._magnetTracked) this._magnetTracked = new Set();
+    if (this._magnetTracked.has(pod.id)) return;
+    if (this._magnetTracked.size > 256) this._magnetTracked.clear();
+    this._magnetTracked.add(pod.id);
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('loot:magnetCaptured', {
+        schemaVersion: 1, podId: pod.id, playerId: state.playerId, tick: state.tick,
+        // Where the field took the pod, so the capture beat can hold the catch point even
+        // if the pod is consumed before the presentation pass reads it.
+        pos: { x: pod.pos.x, z: pod.pos.z },
+      });
+    }
+  },
+
+  _catchPodsInNets(state) {
+    if (!state || state.mode !== 'flight') {
+      publishCatchNetsQuiet(state, false);
+      return;
+    }
+    // Quiet open flight: any non-jettisoned payloads still force a payloads+shipLike
+    // census of isOutlawCatchNet / isJettisonedCargoPod every tick while no nets and
+    // no flying pods exist. Latch when both bags stay empty; wake on membership, a
+    // live net/pod, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh lootShards
+    // residual after #145 customs cones (same helpers, different owner).
+    if (CATCH_NETS_EMPTY_QUIET_LATCH !== false) {
+      const membership = catchNetsMembershipVersion(state);
+      const tick = state.tick | 0;
+      const quiet = this._catchNetsQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && ((tick - (quiet.armedTick | 0)) < CATCH_NETS_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishCatchNetsQuiet(state, true);
+        return;
+      }
+    } else if (this._catchNetsQuiet) {
+      this._catchNetsQuiet = null;
+      publishCatchNetsQuiet(state, false);
+    }
+    const index = state.entityIndex;
+    // Prior empty-payloads early-out: no payload bucket means no pods to catch.
+    // Preserve it (nets authored as payloads today). Latch covers the residual when
+    // non-jettisoned payloads exist but neither nets nor flying pods do.
+    if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.payloads)
+      && index.payloads.length === 0) {
+      if (CATCH_NETS_EMPTY_QUIET_LATCH !== false) {
+        const membership = catchNetsMembershipVersion(state);
+        if (membership != null) {
+          this._catchNetsQuiet = { membership, armedTick: state.tick | 0 };
+          publishCatchNetsQuiet(state, true);
+        }
+      }
+      return;
+    }
+    const nets = _catchNetScratch;
+    const pods = _catchPodScratch;
+    nets.length = 0;
+    pods.length = 0;
+    const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.payloads) && Array.isArray(index.shipLike));
+    if (indexed) {
+      for (const entity of indexedTypeScan(state, 'payloads')) {
+        if (isOutlawCatchNet(entity) && entity.pos) nets.push(entity);
+        else if (isJettisonedCargoPod(entity) && entity.pos && entity.data && !entity.data.caughtByNet) {
+          pods.push(entity);
+        }
+      }
+      for (const entity of indexedShipLikeScan(state)) {
+        if (isOutlawCatchNet(entity) && entity.pos) nets.push(entity);
+      }
+    } else {
+      forEachJobInteractable(state, (entity) => {
+        if (isOutlawCatchNet(entity) && entity.pos) nets.push(entity);
+        else if (isJettisonedCargoPod(entity) && entity.pos && entity.data && !entity.data.caughtByNet) {
+          pods.push(entity);
+        }
+      });
+    }
+    if (nets.length === 0 || pods.length === 0) {
+      if (CATCH_NETS_EMPTY_QUIET_LATCH !== false) {
+        const membership = catchNetsMembershipVersion(state);
+        if (membership != null && nets.length === 0 && pods.length === 0) {
+          this._catchNetsQuiet = { membership, armedTick: state.tick | 0 };
+          publishCatchNetsQuiet(state, true);
+        } else {
+          this._catchNetsQuiet = null;
+          publishCatchNetsQuiet(state, false);
+        }
+      }
+      return;
+    }
+    this._catchNetsQuiet = null;
+    publishCatchNetsQuiet(state, false);
+    for (let n = 0; n < nets.length; n++) {
+      const net = nets[n];
+      const netR = Math.max(1, Number(net.radius) || 8);
+      for (let p = 0; p < pods.length; p++) {
+        const pod = pods[p];
+        if (pod.data.caughtByNet) continue;
+        const dx = pod.pos.x - net.pos.x;
+        const dz = pod.pos.z - net.pos.z;
+        const reach = netR + Math.max(1, Number(pod.radius) || 3);
+        if (dx * dx + dz * dz > reach * reach) continue;
+        this._markCaughtByNet(pod, net);
+      }
+    }
+  },
+
+  _markCaughtByNet(pod, net) {
+    if (!pod || !pod.data || pod.data.caughtByNet) return;
+    const state = this.state;
+    pod.data.caughtByNet = true;
+    pod.data.caughtByNetId = net && net.id;
+    const physics = this.helpers && this.helpers.combatPhysics;
+    const vx = Number(pod.vel && pod.vel.x) || 0;
+    const vz = Number(pod.vel && pod.vel.z) || 0;
+    const mass = Number.isFinite(pod.mass) && pod.mass > 0 ? pod.mass : JETTISONED_CARGO_MASS_FLOOR;
+    if (physics && typeof physics.applyImpulse === 'function' && (vx || vz)) {
+      physics.applyImpulse({
+        entityId: pod.id,
+        impulse: { x: -vx * mass, z: -vz * mass },
+        point: null,
+        reason: 'outlaw_catch_net',
+        tick: state && state.tick,
+      });
+    }
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:caughtByNet', { podId: pod.id, netId: net && net.id });
+    }
+  },
+
+  _onPodImpact(payload) {
+    this._onCatchNetImpact(payload);
+    this._onVolatileImpact(payload);
+  },
+
+  _onCatchNetImpact(payload) {
+    const state = this.state;
+    if (!state || !payload) return;
+    const a = entityById(state, payload.aId);
+    const b = entityById(state, payload.bId);
+    const pod = isJettisonedCargoPod(a) ? a : (isJettisonedCargoPod(b) ? b : null);
+    const net = isOutlawCatchNet(a) ? a : (isOutlawCatchNet(b) ? b : null);
+    if (!pod || !net) return;
+    this._markCaughtByNet(pod, net);
+  },
+
+  _onThrownPayload(payload) {
+    const id = payload && payload.payloadId;
+    if (id == null) return;
+    const pod = entityById(this.state, id);
+    if (!isJettisonedCargoPod(pod) || !pod.data) return;
+    const klass = volatileClassOf(pod.data) || volatileClassOf(pod.data.volatileClass);
+    if (!klass || klass.slam !== 'radial_impulse') return;
+    pod.data.playerThrownFuse = true;
+    pod.data.thrownAt = simNow(this.state);
+    pod.data.thrownBy = this.state && this.state.playerId;
+  },
+
+  _tickThrownExplosiveFuse(state) {
+    if (!state || state.mode !== 'flight') return;
+    const now = simNow(state);
+    const playerId = state.playerId;
+    const list = payloadScanList(state);
+    if (!Array.isArray(list)) return;
+    for (let i = 0; i < list.length; i++) {
+      const pod = list[i];
+      if (!isJettisonedCargoPod(pod) || !pod.data || !pod.pos) continue;
+      if (pod.data.playerThrownFuse !== true || pod.data.volatileDetonated) continue;
+      const klass = volatileClassOf(pod.data) || volatileClassOf(pod.data.volatileClass);
+      if (!klass || klass.slam !== 'radial_impulse') continue;
+      const thrownAt = Number(pod.data.thrownAt) || 0;
+      const nearby = queryNearbyEntities(
+        state,
+        pod.pos,
+        THROWN_EXPLOSIVE_PROXIMITY,
+        _thrownFuseScratch,
+        (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1
+          && Array.isArray(state.entityIndex.shipLike))
+          ? state.entityIndex.shipLike
+          : state.entityList,
+      );
+      let victim = null;
+      for (let n = 0; n < nearby.length; n++) {
+        const entity = nearby[n];
+        if (!entity || entity.alive === false || !entity.pos) continue;
+        if (entity.id === pod.id) continue;
+        if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+        if (entity.id === playerId && now - thrownAt < THROWN_EXPLOSIVE_GRACE_S) continue;
+        const dist = Math.hypot(entity.pos.x - pod.pos.x, entity.pos.z - pod.pos.z);
+        if (dist <= THROWN_EXPLOSIVE_PROXIMITY) {
+          victim = entity;
+          break;
+        }
+      }
+      if (!victim) continue;
+      this._detonateThrownExplosive(pod, klass);
+    }
+  },
+
+  _detonateThrownExplosive(pod, klass) {
+    if (!pod || !pod.data || pod.data.volatileDetonated) return;
+    const amount = Math.max(1, Number(pod.data.amount) || 1);
+    const magnitude = EXPLOSIVE_BLAST_IMPULSE * Math.min(2, 0.5 + amount / 16);
+    const applied = applyRadialPublishedImpulse(
+      this,
+      pod.pos,
+      pod.id,
+      magnitude,
+      EXPLOSIVE_BLAST_RADIUS,
+      'volatile_explosive_throw',
+      this.state && this.state.tick,
+    );
+    pod.data.volatileDetonated = true;
+    pod.data.volatileSlamImpulse = applied;
+    pod.data.thrownFuseDetonated = true;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:volatileSlam', {
+        class: klass.id,
+        podId: pod.id,
+        appliedImpulse: applied,
+        thrownFuse: true,
+      });
+    }
+  },
+
+  _onVolatileImpact(payload) {
+    const state = this.state;
+    if (!state || !payload) return;
+    const a = entityById(state, payload.aId);
+    const b = entityById(state, payload.bId);
+    const pod = isJettisonedCargoPod(a) ? a : (isJettisonedCargoPod(b) ? b : null);
+    if (!pod || !pod.data) return;
+    const klass = volatileClassOf(pod.data) || volatileClassOf(pod.data.volatileClass);
+    if (!klass) return;
+    const other = pod === a ? b : a;
+    if (klass.slam === 'radial_impulse') {
+      this._detonateExplosiveSlam(pod, payload, klass);
+      return;
+    }
+    if (klass.slam === 'hull_tick') {
+      this._tickCorrosiveContact(pod, other, payload, klass);
+      return;
+    }
+    if (klass.slam === 'cryo_flash') {
+      this._detonateCryoFlash(pod, other, payload, klass);
+      return;
+    }
+  },
+
+  _detonateExplosiveSlam(pod, payload, klass) {
+    if (pod.data.volatileDetonated) return;
+    const closing = impactClosingSpeed(payload);
+    const dp = Math.max(0, Number(payload.dp) || Number(payload.impulse) || 0);
+    if (closing < EXPLOSIVE_SLAM_CLOSING_SPEED && dp < 80) return;
+    const amount = Math.max(1, Number(pod.data.amount) || 1);
+    const magnitude = EXPLOSIVE_BLAST_IMPULSE * Math.min(2, 0.5 + amount / 16);
+    const origin = payload.pos && Number.isFinite(payload.pos.x)
+      ? payload.pos
+      : pod.pos;
+    const applied = applyRadialPublishedImpulse(
+      this,
+      origin,
+      pod.id,
+      magnitude,
+      EXPLOSIVE_BLAST_RADIUS,
+      'volatile_explosive_slam',
+      this.state && this.state.tick,
+    );
+    if (!(applied > 0)) return;
+    pod.data.volatileDetonated = true;
+    pod.data.volatileSlamImpulse = applied;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:volatileSlam', {
+        class: klass.id,
+        podId: pod.id,
+        appliedImpulse: applied,
+        closingSpeed: closing,
+      });
+    }
+  },
+
+  _tickCorrosiveContact(pod, other, payload, klass) {
+    if (!other || other.alive === false || !VOLATILE_HULL_TYPES.has(other.type)) return;
+    const now = simNow(this.state);
+    const last = Number(pod.data.volatileCorrosiveAt);
+    if (Number.isFinite(last) && now - last < CORROSIVE_TICK_COOLDOWN_S) return;
+    const hullBefore = Number(other.hull);
+    const result = routeCorrosiveHullTick(this, other, CORROSIVE_HULL_TICK, payload.pos || pod.pos, pod);
+    const hullAfter = Number(other.hull);
+    const lost = Number.isFinite(hullBefore) && Number.isFinite(hullAfter)
+      ? Math.max(0, hullBefore - hullAfter)
+      : CORROSIVE_HULL_TICK;
+    if (!(lost > 0) && !result) return;
+    pod.data.volatileCorrosiveAt = now;
+    pod.data.volatileCorrosiveTick = lost > 0 ? lost : CORROSIVE_HULL_TICK;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:volatileCorrosive', {
+        class: klass.id,
+        podId: pod.id,
+        targetId: other.id,
+        hullTick: pod.data.volatileCorrosiveTick,
+      });
+    }
+  },
+
+  _detonateCryoFlash(pod, other, payload, klass) {
+    if (pod.data.volatileDetonated) return;
+    const closing = impactClosingSpeed(payload);
+    const dp = Math.max(0, Number(payload.dp) || Number(payload.impulse) || 0);
+    if (closing < EXPLOSIVE_SLAM_CLOSING_SPEED && dp < 80) return;
+    pod.data.volatileDetonated = true;
+
+    if (other && other.alive !== false && VOLATILE_HULL_TYPES.has(other.type)) {
+      other.flags = other.flags || {};
+      other.flags.cryoChilled = true;
+      const kernel = combatKernelOf(this);
+      if (kernel && kernel.statuses) {
+        const runtime = ensureCombatant(this.state, other, kernel.catalog);
+        if (runtime) {
+          kernel.statuses.schedule(other, runtime, {
+            id: CRYO_LOCK_STATUS_ID,
+            stacks: 1,
+            durationTicks: CRYO_LOCK_DURATION_TICKS,
+          }, {
+            attackerId: pod.id,
+            actionId: 'volatile_cryo_flash',
+          });
+        }
+      }
+    }
+
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:volatileCryo', {
+        class: klass.id,
+        podId: pod.id,
+        targetId: other ? other.id : null,
+        closingSpeed: closing,
+        durationTicks: CRYO_LOCK_DURATION_TICKS,
+      });
+    }
+  },
+
+  _pullSuperdensePods(dt, state) {
+    if (!state || state.mode !== 'flight') return;
+    const step = Number(dt);
+    if (!(step > 0)) return;
+    const snapshot = state.fields && Array.isArray(state.fields.snapshot) ? state.fields.snapshot : null;
+    if (!snapshot || snapshot.length === 0) return;
+    const physics = this.helpers && this.helpers.combatPhysics;
+    if (!physics || typeof physics.applyImpulse !== 'function') return;
+    const index = state.entityIndex;
+    const list = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.payloads)
+      ? index.payloads
+      : state.entityList;
+    if (!Array.isArray(list)) return;
+    const now = simNow(state);
+    for (let i = 0; i < list.length; i++) {
+      const pod = list[i];
+      if (!isJettisonedCargoPod(pod) || !pod.pos) continue;
+      const klass = volatileClassOf(pod.data);
+      if (!klass || !klass.fieldPull) continue;
+      const dense = fieldProfileForVolatilePod(pod, _denseProfile);
+      _baseProfile.mass = dense.mass;
+      _baseProfile.type = dense.type;
+      _baseProfile.id = dense.id;
+      _baseProfile.fieldResponseMult = 1;
+      sampleFieldAcceleration(pod.pos, pod.vel, snapshot, now, dense, _fieldDense);
+      sampleFieldAcceleration(pod.pos, pod.vel, snapshot, now, _baseProfile, _fieldBase);
+      const ax = _fieldDense.ax - _fieldBase.ax;
+      const az = _fieldDense.az - _fieldBase.az;
+      if (ax === 0 && az === 0) continue;
+      const mass = dense.mass;
+      physics.applyImpulse({
+        entityId: pod.id,
+        impulse: { x: ax * mass * step, z: az * mass * step },
+        point: null,
+        reason: 'volatile_superdense_field',
+        tick: state.tick,
+      });
+    }
+  },
+
+  _onKilled(payload) {
+    if (!massline2Flag('lootShards')) return;
+    const state = this.state;
+    const victim = payload.id != null && state.entities && state.entities.get
+      ? state.entities.get(payload.id) : null;
+    const type = victim ? victim.type : payload.type;
+    if (type !== 'ship' && type !== 'drone') return;
+    if (payload.id === state.playerId) return;
+    if (!victim) return;
+    // The Unclosed pays an inertial datum, not the hostile-drone scrap burst.
+    if (victim.data && victim.data.foldAberrant) return;
+    // Contracts own contract-target rewards. Fail closed for mission hulls.
+    if (missionOwnsReward(victim)) return;
+    // Survival bodies drop their own run-wallet chip through survivalRewards. A second campaign
+    // shard burst on the same hull would pay the Adventure purse mid-run (PQ-133 CRU-015).
+    if (runOwnsReward(victim)) return;
+
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    // Production combat snapshots canonical hostility before synchronous damage consequences can
+    // grant a clean victim retaliation authority. Older publishers fall back to current live truth.
+    const targetHostileToPlayer = typeof payload.targetHostileToPlayer === 'boolean'
+      ? payload.targetHostileToPlayer
+      : !!(player && isHostileToPlayer(victim, player.team, state));
+
+    // D2: non-hostile (civilian / traffic / convoy) hull with a real manifest → one cargo body.
+    // Any killer: ambient predation and player piracy both leave a takeable body in the world.
+    if (!targetHostileToPlayer) {
+      this._trySpawnCivilianManifestPayload(payload, victim);
+      return;
+    }
+
+    // Hostile path: player-earned shard burst only.
+    if (payload.killerId !== state.playerId) return;
+    if (!player) return;
+    const pos = (victim && victim.pos) || payload.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+
+    const items = lootShardItemsFor(state.meta && state.meta.seed, victim);
+    const vel = victim.vel && typeof victim.vel === 'object'
+      ? {
+        x: Number.isFinite(victim.vel.x) ? victim.vel.x : 0,
+        z: Number.isFinite(victim.vel.z) ? victim.vel.z : 0,
+      }
+      : { x: 0, z: 0 };
+    // Credits stay inside the physical chip items. A top-level credits field would look like
+    // the authored combat grant-at-death receipt; AC-01 settles only on collection.
+    this.bus.emit('loot:drop', {
+      pos: { x: pos.x, z: pos.z },
+      items,
+      vel,
+      source: 'kill_burst',
+    });
+  },
+
+  /**
+   * Spawn exactly one payload carrying the victim's cargoManifest as salvagePool.
+   * Cap: one per hull death; MAX_CIVILIAN_MANIFEST_PAYLOADS live bodies.
+   */
+  _trySpawnCivilianManifestPayload(payload, victim) {
+    if (!victim || !victim.data) return null;
+    // One payload per hull death — stamp survives if the dead entity lingers for a tick.
+    if (victim.data.manifestPayloadDropped === true) return null;
+    // PQ-047 freight custody owns the physical spill for authored manifest carriers (disable/death
+    // pods through encounterScripts). Do not invent a second conserved body on the same hull.
+    if (victim.data.freightRewardOwner === 'manifest_custody') return null;
+    const custody = victim.data.freightCustody;
+    if (custody && (custody.status === 'carrier' || custody.status === 'spilled'
+      || custody.custodyId != null)) return null;
+    const manifest = victim.data.cargoManifest;
+    if (!validCivilianManifestForPayload(manifest)) return null;
+
+    const pos = victim.pos || payload.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+
+    const pool = salvagePoolFromManifest(manifest);
+    const radius = Math.max(3, Math.min(25, Math.round((Number(victim.radius) || 10) * 0.4)));
+    const mass = Math.max(20, radius * 12);
+    const vel = victim.vel && typeof victim.vel === 'object'
+      ? {
+        x: Number.isFinite(victim.vel.x) ? victim.vel.x * 0.15 : 0,
+        z: Number.isFinite(victim.vel.z) ? victim.vel.z * 0.15 : 0,
+      }
+      : { x: 0, z: 0 };
+
+    // D65 / cc93d8461: spawn beside the wreck's line, never on it. The SG-02 coincident-spawn
+    // guard now seats near-co-centered bodies as an ordinary contact pair, so a payload dropped
+    // at victim.pos plows into the victim-speed wreck and bleeds ~30% of its momentum
+    // (PQ-138.03). wreckR replicates boundedVictimRadius() in aftermathWrecks.js (finite>0
+    // else the 9 WU fallback) so the clearance matches the wreck that is actually spawned.
+    const victimR = Number(victim.radius);
+    const wreckR = Number.isFinite(victimR) && victimR > 0 ? victimR : 9;
+    const clearance = wreckR + radius + 4;
+    const vvX = victim.vel && Number.isFinite(victim.vel.x) ? victim.vel.x : 0;
+    const vvZ = victim.vel && Number.isFinite(victim.vel.z) ? victim.vel.z : 0;
+    const vLen = Math.hypot(vvX, vvZ);
+    let perpX;
+    let perpZ;
+    if (vLen > 1e-3) {
+      perpX = -vvZ / vLen;
+      perpZ = vvX / vLen;
+    } else {
+      // No drift to side off: use right of the authored heading (forward = cos/sin in XZ).
+      const rot = Number.isFinite(Number(victim.rot)) ? Number(victim.rot) : 0;
+      perpX = -Math.sin(rot);
+      perpZ = Math.cos(rot);
+    }
+    const side = Number(victim.id) % 2 ? 1 : -1;
+    const spawnPos = {
+      x: pos.x + side * perpX * clearance,
+      z: pos.z + side * perpZ * clearance,
+    };
+
+    const entity = spawnPayloadEntity(this.state, {
+      pos: { x: spawnPos.x, z: spawnPos.z },
+      vel,
+      radius,
+      mass,
+      hull: 100,
+      hullMax: 100,
+      // Unclaimed jettison: player takes custody via tether/beam, not auto-ownership.
+      ownerId: null,
+      factionId: victim.factionId || 'neutral',
+      salvagePool: pool,
+      payloadType: CIVILIAN_MANIFEST_PAYLOAD_TYPE,
+      worldRecordId: null,
+      transientSector: false,
+    }, this.helpers);
+    entity.data.sourceVictimId = victim.id;
+    entity.data.manifestId = typeof manifest.manifestId === 'string' ? manifest.manifestId : null;
+    stampCargoIdentity(entity.data, identityFromManifest(manifest, {
+      ownerId: manifest.ownerId || victim.id,
+      ownerName: manifest.ownerName || displayNameOf(victim),
+      originId: manifest.originId || manifest.originStationId,
+      destinationId: manifest.destinationId || manifest.destStationId,
+      role: manifest.role || 'civilian',
+      isCivilian: true,
+    }) || {
+      ownerId: victim.id,
+      ownerName: displayNameOf(victim),
+      originId: manifest.originId || manifest.originStationId || null,
+      destinationId: manifest.destinationId || manifest.destStationId || null,
+    });
+    // Save/Continue: payloads are not world-record candidates; persist via entity flags.
+    entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    // NXI-029 — a volatile haul keeps its hazard identity on the spilled body: the lamp and slam
+    // class the player can read before deciding whether to slam it, scoop it, or leave it.
+    stampManifestVolatilePresentation(entity.data);
+    victim.data.manifestPayloadDropped = true;
+
+    enforceCivilianManifestPayloadCap(
+      this.state,
+      this.helpers && this.helpers.removeEntity,
+      MAX_CIVILIAN_MANIFEST_PAYLOADS,
+    );
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('loot:manifestPayload', {
+        payloadId: entity.id,
+        victimId: victim.id,
+        salvagePool: { ...entity.data.salvagePool },
+      });
+    }
+    return entity;
+  },
+
+  /**
+   * Freight pods spawn in encounterScripts (pickup + freightCustodyPod). Stamp the named
+   * origin/destination/owner onto those bodies when the existing spill event fires.
+   */
+  _onFreightCargoSpilled(payload) {
+    const state = this.state;
+    if (!state || !payload) return 0;
+    const carrier = entityById(state, payload.carrierId);
+    const manifest = (carrier && carrier.data && carrier.data.cargoManifest)
+      || payload.manifest
+      || null;
+    const identity = identityFromManifest(manifest || payload, {
+      ownerId: payload.ownerId || (manifest && manifest.ownerId) || (carrier && carrier.id),
+      ownerName: payload.ownerName || (manifest && manifest.ownerName) || displayNameOf(carrier),
+      originId: payload.originId,
+      destinationId: payload.destinationId,
+      role: (manifest && manifest.role) || payload.role || 'civilian',
+      isCivilian: true,
+    });
+    if (!identity) return 0;
+    const index = state.entityIndex;
+    const lists = index && index.__spacefaceEntityIndexV1
+      ? [index.pickups, index.payloads]
+      : [state.entityList];
+    let stamped = 0;
+    for (let l = 0; l < lists.length; l++) {
+      const list = lists[l];
+      if (!list) continue;
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        const data = entity && entity.data;
+        if (!data) continue;
+        const freight = data.freightCustodyPod;
+        const freightMatch = freight && typeof freight === 'object'
+          && (freight.custodyId === payload.custodyId
+            || freight.manifestId === payload.manifestId
+            || freight.encounterId === payload.encounterId);
+        const payloadMatch = entity.type === 'payload'
+          && (data.sourceVictimId === payload.carrierId
+            || (data.jettisonedCargo === true
+              && (data.ownerId == null || String(data.ownerId) === String(identity.ownerId))));
+        if (!freightMatch && !payloadMatch) continue;
+        stampCargoIdentity(data, identity);
+        stampManifestVolatilePresentation(data);
+        stamped += 1;
+      }
+    }
+    return stamped;
+  },
+};

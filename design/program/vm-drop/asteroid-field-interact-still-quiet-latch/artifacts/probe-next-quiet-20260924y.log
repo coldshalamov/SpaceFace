@@ -1,0 +1,56 @@
+[
+  {
+    "name": "field-interact-still-player-near-nonempty",
+    "medianSpeedup": 22.582,
+    "minSpeedup": 12.478,
+    "maxSpeedup": 25.612
+  },
+  {
+    "name": "field-interact-still-player-touching",
+    "medianSpeedup": 21.075,
+    "minSpeedup": 19.814,
+    "maxSpeedup": 22.735
+  },
+  {
+    "name": "field-interact-still-player-empty",
+    "medianSpeedup": 4.323,
+    "minSpeedup": 3.368,
+    "maxSpeedup": 5.41
+  },
+  {
+    "name": "field-interact-empty-latch-far-rocks",
+    "medianSpeedup": 5.975,
+    "minSpeedup": 1.731,
+    "maxSpeedup": 7.104
+  },
+  {
+    "name": "hazards-far-latch@0,0",
+    "medianSpeedup": 4.082,
+    "minSpeedup": 0.984,
+    "maxSpeedup": 6.237
+  },
+  {
+    "name": "hazards-far-latch@-2000,2000",
+    "medianSpeedup": 4.612,
+    "minSpeedup": 4.223,
+    "maxSpeedup": 5.934
+  },
+  {
+    "name": "hazards-far-latch@600,-400",
+    "medianSpeedup": 0.82,
+    "minSpeedup": 0.785,
+    "maxSpeedup": 1.67
+  },
+  {
+    "name": "poi-scan-all-identified-latch",
+    "medianSpeedup": 48.898,
+    "minSpeedup": 5.676,
+    "maxSpeedup": 52.193
+  },
+  {
+    "name": "poi-scan-unidentified-counter-noop",
+    "medianSpeedup": 0.986,
+    "minSpeedup": 0.959,
+    "maxSpeedup": 1.05
+  }
+]

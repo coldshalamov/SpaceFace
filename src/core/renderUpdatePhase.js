@@ -1,0 +1,219 @@
+// Presentation-frame owner for render / VFX / feel / HUD.
+//
+// A VFX or draw failure used to abort before feel.frame and ui.frame. That froze the overlay on
+// the last successful paint (Massline still reading LOCKED after MASSLINE BROKEN) even though the
+// sim kept running. Cosmetic lanes must not strand the HUD or hit-stop clock.
+
+import { updateBombPresentation, releaseBombPresentation } from '../render/bombPresentation.js';
+import { vfx as liveVfx } from '../render/vfx.js';
+import { installNpcJobLiveSignatureDraw } from '../render/npcJobSignatureVfx.js';
+import { shouldFreezeFlightSubmit, shouldPresentPausedPhotoFrame, shouldSkipFlightDraw } from './presentationFreeze.js';
+import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
+import { presentProExperiencesFrame, releaseProExperiencesPresentation } from '../features/proExperiencesBrowser.js';
+
+installNpcJobLiveSignatureDraw(liveVfx);
+import {
+  presentUiStage,
+  releaseUiStage,
+  tickUiStagePrewarm,
+  uiStageResident,
+  warmUiStagePrewarm,
+} from '../render/uiStage.js';
+
+const VFX_ERROR_LOG_CAP = 20;
+let vfxErrorLogCount = 0;
+// A persistently-throwing resident UI stage used to error every presented
+// frame for the session's life. Same cap shape the vfx lane already carries.
+const UI_STAGE_ERROR_LOG_CAP = 20;
+let uiStageErrorLogCount = 0;
+let uiStagePrewarmErrorLogCount = 0;
+
+export function runRenderUpdatePhase({
+  state,
+  bus,
+  render,
+  vfx,
+  feel,
+  ui,
+  alpha,
+  frameDt,
+  presentationFrame = null,
+  recordPhase,
+  now,
+} = {}) {
+  const record = typeof recordPhase === 'function' ? recordPhase : noopPhase;
+  const clock = typeof now === 'function' ? now : defaultNow;
+  const splitRender = !!(render
+    && typeof render.prepareFrame === 'function'
+    && typeof render.drawPreparedFrame === 'function');
+  const photoFrame = splitRender && shouldPresentPausedPhotoFrame(state);
+  // The world/fence is wall-paced by the accumulated present elapsed, not the last rAF callback.
+  // VFX, camera follow, feel and the UI's frame clock must advance at the same wall speed or a
+  // 30 Hz cap makes them run at 0.5x (0.25x on a 120 Hz panel) while the ship moves at 1x.
+  const presentDt = presentationFrame && Number.isFinite(presentationFrame.presentElapsedS)
+    ? Math.max(0, presentationFrame.presentElapsedS) : frameDt;
+
+  if (state?.mode !== 'flight') {
+    releaseBombPresentation(state);
+    releaseProExperiencesPresentation(state);
+  }
+
+  if (feel && typeof feel.isDeathBellFrameHeld === 'function' && feel.isDeathBellFrameHeld(state)) {
+    // Preserve the submitted framebuffer, including against a death-sheet stage or prewarm.
+    // Feel drains its own lease on presentation time; UI and the simulation retain their
+    // existing clocks. Nothing prepared/consumed this frame's journal range, so reject it.
+    record('render', 0);
+    record('vfx', 0);
+    const errors = runFeelAndUi({ feel, ui, frameDt, state, record, clock });
+    if (errors.feelError) throw errors.feelError;
+    if (errors.uiError) throw errors.uiError;
+    return false;
+  }
+
+  if (shouldFreezeFlightSubmit(state) && !photoFrame) {
+    // The flight submit is frozen; the picture is not. A screen that asked for a stage gets its own
+    // lit world drawn here, in the game's one context, while the simulation stays stopped. A screen
+    // that asked for nothing leaves the canvas exactly as it found it (pause keeps the held flight
+    // frame), and the stage costs nothing at all.
+    const stageStart = clock();
+    let stageMs = 0;
+    try {
+      presentUiStage({ render, state, frameDt });
+    } catch (error) {
+      uiStageErrorLogCount++;
+      if (uiStageErrorLogCount <= UI_STAGE_ERROR_LOG_CAP) console.error('[loop] ui stage error:', error);
+      else if (uiStageErrorLogCount === UI_STAGE_ERROR_LOG_CAP + 1) console.error('[loop] further ui stage errors suppressed');
+    } finally {
+      stageMs = clock() - stageStart;
+    }
+    record('render', stageMs);
+    record('vfx', 0);
+    record('feel', 0);
+    runFeelAndUi({ feel, ui, frameDt, state, record, clock });
+    // A stage draw is not a world presentation frame: `prepareFrame` never ran, so the journal range
+    // this frame carries has not been consumed and must not be acknowledged.
+    return false;
+  }
+
+  // A stage cannot cover a flight/loading or Photo picture in the one GL context.
+  if (uiStageResident() && state && (state.mode === 'flight' || state.mode === 'loading' || photoFrame)) {
+    releaseUiStage(photoFrame ? 'photo-entered' : state.mode === 'loading' ? 'loading-started' : 'flight-resumed');
+  }
+
+  let t = clock();
+  let renderMs = 0;
+  let renderedPreparedScene = false;
+  // The berth prewarm (D67): a dock in range starts building the berth stage now, during the
+  // approach, so the docked frame adopts a warm stage instead of compiling one under the station
+  // screen. Its one warm-up draw is only ever taken directly ahead of a world draw in this same
+  // task — the flight picture lands over it before the browser presents anything.
+  if (state && state.mode === 'flight') {
+    try { tickUiStagePrewarm({ render, state }); }
+    catch (error) {
+      uiStagePrewarmErrorLogCount++;
+      if (uiStagePrewarmErrorLogCount <= UI_STAGE_ERROR_LOG_CAP) console.error('[loop] ui stage prewarm error:', error);
+      else if (uiStagePrewarmErrorLogCount === UI_STAGE_ERROR_LOG_CAP + 1) console.error('[loop] further ui stage prewarm errors suppressed');
+    }
+  }
+  const worldDrawFollows = !!(state && state.mode === 'flight' && !shouldSkipFlightDraw(state));
+  let renderError = null;
+  try {
+    // Photo advances only its camera controls. Every world presenter inside prepareFrame gets
+    // zero elapsed time, even the lanes that do not multiply their delta by timeScale.
+    if (splitRender) renderedPreparedScene = render.prepareFrame(alpha, photoFrame ? 0 : presentDt,
+      presentationFrame, presentDt) !== false;
+    else if (render && typeof render.renderFrame === 'function') {
+      if (worldDrawFollows) warmUiStagePrewarm({ render, state });
+      render.renderFrame(alpha, presentDt, presentationFrame);
+    }
+  } catch (err) {
+    renderError = err;
+  } finally {
+    renderMs += clock() - t;
+  }
+
+  let vfxError = null;
+  t = clock();
+  if (!photoFrame) {
+    try { updateBombPresentation(state, alpha); }
+    catch (err) { vfxError = err; }
+    try { presentProExperiencesFrame(state, bus, alpha); }
+    catch (err) { vfxError ||= err; }
+    // One cosmetic lane failing cannot suppress the existing detonation presenter either.
+    if (vfx && typeof vfx.update === 'function') {
+      try { vfx.update(presentDt, state); }
+      catch (err) { vfxError ||= err; }
+    }
+  }
+  record('vfx', photoFrame ? 0 : clock() - t);
+
+  let drawError = null;
+  if (splitRender) {
+    t = clock();
+    try {
+      if (!renderError && renderedPreparedScene) {
+        if (worldDrawFollows) warmUiStagePrewarm({ render, state });
+        const submitted = render.drawPreparedFrame();
+        if (submitted === true) publishSceneTruthPlayStep(render);
+      }
+    } catch (err) {
+      drawError = err;
+    } finally {
+      renderMs += clock() - t;
+      record('render', renderMs);
+    }
+  } else {
+    record('render', renderMs);
+  }
+
+  let feelError = null;
+  let uiError = null;
+  const overlayErrors = runFeelAndUi({ feel, ui, frameDt: presentDt, feelFrameDt: photoFrame ? 0 : presentDt,
+    state, record, clock });
+  feelError = overlayErrors.feelError;
+  uiError = overlayErrors.uiError;
+
+  // HUD/feel already ran. World-lane failures still throw so the loop logger sees them. A VFX-only
+  // failure returns true so the presentation journal can advance: prepare already consumed the range.
+  const worldError = renderError || drawError;
+  if (worldError) throw worldError;
+  if (feelError) throw feelError;
+  if (uiError) throw uiError;
+  if (vfxError) {
+    vfxErrorLogCount++;
+    if (vfxErrorLogCount <= VFX_ERROR_LOG_CAP) console.error('[loop] vfx error:', vfxError);
+    else if (vfxErrorLogCount === VFX_ERROR_LOG_CAP + 1) console.error('[loop] further vfx errors suppressed');
+    return true;
+  }
+  return true;
+}
+
+function runFeelAndUi({ feel, ui, frameDt, feelFrameDt = frameDt, state, record, clock }) {
+  let feelError = null;
+  let uiError = null;
+  if (feel && typeof feel.frame === 'function') {
+    const t = clock();
+    try { feel.frame(feelFrameDt, state); }
+    catch (err) { feelError = err; }
+    finally { record('feel', clock() - t); }
+  } else {
+    record('feel', 0);
+  }
+  if (ui && typeof ui.frame === 'function') {
+    const t = clock();
+    try { ui.frame(frameDt, state); }
+    catch (err) { uiError = err; }
+    finally { record('ui', clock() - t); }
+  } else {
+    record('ui', 0);
+  }
+  return { feelError, uiError };
+}
+
+function noopPhase() {}
+
+function defaultNow() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : 0;
+}

@@ -1,0 +1,131 @@
+From e16cc07d53e0dcf91a247174c08fb0ff67799940 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 03:23:12 -0400
+Subject: [PATCH] =?UTF-8?q?perf(core):=20cache=20stampNearWorkBudget=20alw?=
+ =?UTF-8?q?ays-awake=20bit=20(~1.65=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet stamp walked owner.ai / data.ai / activityActorSlotId for every
+shipLike each tick. Cache the always-awake bit on the entity; refresh on
+the same volatile AI cadence as aiShips. Soft-GPU fps not claimed.
+---
+ src/core/activityScheduler.js | 33 +++++++++++++++++++++++++++++++--
+ src/core/coreSystem.js        | 18 +++++++++++++-----
+ 2 files changed, 44 insertions(+), 7 deletions(-)
+
+diff --git a/src/core/activityScheduler.js b/src/core/activityScheduler.js
+index 6ed9d5993..f123bab73 100644
+--- a/src/core/activityScheduler.js
++++ b/src/core/activityScheduler.js
+@@ -137,6 +137,30 @@ function ownerIsAlwaysAwake(owner, state) {
+   return slot != null && slot !== '';
+ }
+ 
++/**
++ * Cache always-awake near-work membership on the entity. Invalidated when the
++ * volatile AI/weapon index rebuilds (mid-life combatant/slot attach) so stamp
++ * does not re-walk owner.ai / data.ai / activityActorSlotId every tick.
++ */
++export function refreshNearWorkAlwaysAwake(entity, state) {
++  if (!entity) return false;
++  const awake = ownerIsAlwaysAwake(entity, state);
++  entity._nearWorkAlwaysAwake = awake;
++  return awake;
++}
++
++export function invalidateNearWorkAlwaysAwake(entity) {
++  if (!entity) return;
++  entity._nearWorkAlwaysAwake = undefined;
++}
++
++function entityNearWorkAlwaysAwake(entity, state) {
++  if (!entity) return false;
++  const cached = entity._nearWorkAlwaysAwake;
++  if (cached === true || cached === false) return cached;
++  return refreshNearWorkAlwaysAwake(entity, state);
++}
++
+ /**
+  * Deterministic slice of S1 civilians that may think this tick. Hostiles and the
+  * player are always included and do not consume the budget. Walk order is the
+@@ -155,7 +179,12 @@ export function stampNearWorkBudget(state, budget = NEAR_WORK_TOKEN_BUDGET) {
+   for (let i = 0; i < n; i++) {
+     const entity = ships[(start + i) % n];
+     if (!entity || entity.alive === false) continue;
+-    if (ownerIsAlwaysAwake(entity, state)) {
++    // Hot path: cached bit (filled on first touch / volatile AI cadence).
++    let awake = entity._nearWorkAlwaysAwake;
++    if (awake !== true && awake !== false) {
++      awake = refreshNearWorkAlwaysAwake(entity, state);
++    }
++    if (awake === true) {
+       set.add(entity.id);
+       continue;
+     }
+@@ -171,7 +200,7 @@ export function stampNearWorkBudget(state, budget = NEAR_WORK_TOKEN_BUDGET) {
+ 
+ export function hasNearWorkSlot(state, entity) {
+   if (!entity) return false;
+-  if (ownerIsAlwaysAwake(entity, state)) return true;
++  if (entityNearWorkAlwaysAwake(entity, state)) return true;
+   const set = state && state.nearWorkIds;
+   if (!set) return true;
+   return set.has(entity.id);
+diff --git a/src/core/coreSystem.js b/src/core/coreSystem.js
+index 9e772c0b3..b94d15fdb 100644
+--- a/src/core/coreSystem.js
++++ b/src/core/coreSystem.js
+@@ -7,7 +7,7 @@ import { hasActiveSpatialHash } from './spatialQuery.js';
+ import { initializePresentationAdmission } from './presentationAdmission.js';
+ import { packCombatTable } from './combatTable.js';
+ import { beginDirtyTick, markDirty, collectDirtyIds, DIRTY } from './dirtyJournal.js';
+-import { stampNearWorkBudget } from './activityScheduler.js';
++import { stampNearWorkBudget, refreshNearWorkAlwaysAwake } from './activityScheduler.js';
+ 
+ const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
+ 
+@@ -205,7 +205,7 @@ export const core = {
+     state.meta.playtimeS += dt;
+     const index = ensureEntityIndex(state);
+     reconcileEntityIndexSource(index, state.entityList);
+-    refreshVolatileEntityIndex(index, state.tick);
++    refreshVolatileEntityIndex(index, state);
+     beginDirtyTick(state, state.tick);
+     // index.movables is append-gated by isMovableEntity. Re-checking every tick re-entered
+     // isDynamicPhysicsBodyEntity → authoredPhysicsBody/defaultDynamic on the quiet preStep
+@@ -715,12 +715,13 @@ function markEntityIndexSourceSynced(index, list) {
+ // ticks without paying the walk 60 Hz.
+ const VOLATILE_INDEX_PERIOD_TICKS = 8;
+ 
+-function refreshVolatileEntityIndex(index, tick = 0) {
++function refreshVolatileEntityIndex(index, stateOrTick = 0) {
+   if (!index || !index.__spacefaceEntityIndexV1) return false;
++  const state = stateOrTick && typeof stateOrTick === 'object' ? stateOrTick : null;
++  const tick = state ? (state.tick | 0) : (Number.isInteger(stateOrTick) ? stateOrTick : Math.floor(Number(stateOrTick) || 0));
+   if (index._volatileReady === true) {
+     const period = VOLATILE_INDEX_PERIOD_TICKS;
+-    const t = Number.isInteger(tick) ? tick : Math.floor(Number(tick) || 0);
+-    if (((t % period) + period) % period !== 0) return false;
++    if (((tick % period) + period) % period !== 0) return false;
+   }
+   index.aiShips.length = 0;
+   index.weaponShips.length = 0;
+@@ -731,6 +732,13 @@ function refreshVolatileEntityIndex(index, tick = 0) {
+     if (e.data && e.data.ai) index.aiShips.push(e);
+     if (e.data && e.data.weapons && e.data.weapons.length) index.weaponShips.push(e);
+   }
++  // Mid-life combatant / activity-slot attach shares this cadence. Refresh the
++  // near-work always-awake cache here so stampNearWorkBudget stays a boolean
++  // read on the quiet 60 Hz path (same staleness window as aiShips).
++  const shipLike = index.shipLike;
++  for (let i = 0; i < shipLike.length; i++) {
++    refreshNearWorkAlwaysAwake(shipLike[i], state);
++  }
+   index._volatileReady = true;
+   return true;
+ }
+-- 
+2.47.3
+

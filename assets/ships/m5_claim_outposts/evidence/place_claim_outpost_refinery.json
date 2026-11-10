@@ -1,0 +1,99 @@
+{
+  "schema": "spaceface.claimOutpostBuild.v1",
+  "packet": "M5-CLAIM-OUTPOST-VISUAL-GROWTH-001",
+  "family": "player_claim_growth_family",
+  "assetId": "place_claim_outpost_refinery",
+  "claimSpecId": "spec_refinery",
+  "title": "Industrial Refinery Claim",
+  "source": "assets/ships/m5_claim_outposts/source/places/place_claim_outpost_refinery.glb",
+  "blend": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_refinery.blend",
+  "bytes": 12409820,
+  "lod": {
+    "lod0": {
+      "triangles": 56760,
+      "drawGroups": 5
+    },
+    "lod1": {
+      "triangles": 17856,
+      "drawGroups": 5
+    },
+    "lod2": {
+      "triangles": 4404,
+      "drawGroups": 5
+    }
+  },
+  "aabb": {
+    "min": [
+      -50.8652,
+      -17.6696,
+      -50.8652
+    ],
+    "max": [
+      55.5,
+      30.93,
+      47.0226
+    ],
+    "size": [
+      106.3652,
+      48.5996,
+      97.8878
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_CLAIM_OUTPOST_REFINERY",
+    "partId": "place_claim_outpost_refinery",
+    "liveId": "place_claim_outpost_refinery",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "player_claim_growth_family",
+    "packet": "M5-CLAIM-OUTPOST-VISUAL-GROWTH-001",
+    "role": "spec_refinery",
+    "title": "Industrial Refinery Claim",
+    "kind": "claim_outpost",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 56760,
+    "lodTriangles": {
+      "lod0": 56760,
+      "lod1": 17856,
+      "lod2": 4404
+    },
+    "drawGroupsPerLod": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "lod0AabbSize": [
+      106.3652,
+      48.5996,
+      97.8878
+    ],
+    "wiringStatus": "production_source",
+    "sourceGenerator": "tools/blender/build_claim_outpost_family.py",
+    "sourceBlenderVersion": "5.1"
+  },
+  "builtAt": "2026-07-12T08:57:12Z",
+  "sha256": "00ea8e50883d3121298f53f7fcab0092b4d170e8c6e1e19696aef1c32b7e12ef",
+  "canonical": "assets/ships/parts/places/place_claim_outpost_refinery.glb"
+}

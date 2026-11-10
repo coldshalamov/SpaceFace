@@ -1,0 +1,277 @@
+TAP version 13
+# Subtest: quiet empty field-force latches after first empty publish
+ok 1 - quiet empty field-force latches after first empty publish
+  ---
+  duration_ms: 3.937954
+  ...
+# Subtest: fields.active dirty-wake resumes update then re-latches when empty
+ok 2 - fields.active dirty-wake resumes update then re-latches when empty
+  ---
+  duration_ms: 3.330118
+  ...
+# Subtest: picture unchanged while latched — mesh stays hidden/count 0
+ok 3 - picture unchanged while latched — mesh stays hidden/count 0
+  ---
+  duration_ms: 3.413012
+  ...
+# Subtest: INF-043: well working surface runs outer->inner (inward verb), inside the boundary
+ok 4 - INF-043: well working surface runs outer->inner (inward verb), inside the boundary
+  ---
+  duration_ms: 4.685724
+  ...
+# Subtest: INF-043: repulsor shells run inner->outer (outward verb), nested inside the boundary
+ok 5 - INF-043: repulsor shells run inner->outer (outward verb), nested inside the boundary
+  ---
+  duration_ms: 3.106379
+  ...
+# Subtest: INF-043: strip counts are unchanged (no reskin, no new strips)
+ok 6 - INF-043: strip counts are unchanged (no reskin, no new strips)
+  ---
+  duration_ms: 6.813331
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: seed: ignition, geometric build, infinite sustain, finite release
+ok 7 - seed: ignition, geometric build, infinite sustain, finite release
+  ---
+  duration_ms: 1.900024
+  ...
+# Subtest: seed: production adapter advances shader clock with NO affected targets
+ok 8 - seed: production adapter advances shader clock with NO affected targets
+  ---
+  duration_ms: 5.133387
+  ...
+# Subtest: well: ignition, geometric build, infinite sustain, finite release
+ok 9 - well: ignition, geometric build, infinite sustain, finite release
+  ---
+  duration_ms: 0.142528
+  ...
+# Subtest: well: production adapter advances shader clock with NO affected targets
+ok 10 - well: production adapter advances shader clock with NO affected targets
+  ---
+  duration_ms: 1.7127
+  ...
+# Subtest: repulsor: ignition, geometric build, infinite sustain, finite release
+ok 11 - repulsor: ignition, geometric build, infinite sustain, finite release
+  ---
+  duration_ms: 0.139583
+  ...
+# Subtest: repulsor: production adapter advances shader clock with NO affected targets
+ok 12 - repulsor: production adapter advances shader clock with NO affected targets
+  ---
+  duration_ms: 1.527628
+  ...
+# Subtest: cone: ignition, geometric build, infinite sustain, finite release
+ok 13 - cone: ignition, geometric build, infinite sustain, finite release
+  ---
+  duration_ms: 0.137343
+  ...
+# Subtest: cone: production adapter advances shader clock with NO affected targets
+ok 14 - cone: production adapter advances shader clock with NO affected targets
+  ---
+  duration_ms: 0.784582
+  ...
+# Subtest: sheet: ignition, geometric build, infinite sustain, finite release
+ok 15 - sheet: ignition, geometric build, infinite sustain, finite release
+  ---
+  duration_ms: 0.197039
+  ...
+# Subtest: sheet: production adapter advances shader clock with NO affected targets
+ok 16 - sheet: production adapter advances shader clock with NO affected targets
+  ---
+  duration_ms: 0.903021
+  ...
+# Subtest: interrupted birth releases from its current envelope, never jumps to full scale
+ok 17 - interrupted birth releases from its current envelope, never jumps to full scale
+  ---
+  duration_ms: 0.162347
+  ...
+# Subtest: simulation pause freezes lifecycle and motion even if presentation dt is positive
+ok 18 - simulation pause freezes lifecycle and motion even if presentation dt is positive
+  ---
+  duration_ms: 3.985616
+  ...
+# Subtest: reused producer records cannot mutate the last pose of a retiring effect
+ok 19 - reused producer records cannot mutate the last pose of a retiring effect
+  ---
+  duration_ms: 0.765427
+  ...
+# Subtest: same-id toggle restarts growth while old residue retires separately
+ok 20 - same-id toggle restarts growth while old residue retires separately
+  ---
+  duration_ms: 0.570053
+  ...
+# Subtest: float-origin reproject moves source pivots and strip origins together
+ok 21 - float-origin reproject moves source pivots and strip origins together
+  ---
+  duration_ms: 0.59432
+  ...
+# Subtest: shader interface stays finite for existing 24-float weapon descriptors
+ok 22 - shader interface stays finite for existing 24-float weapon descriptors
+  ---
+  duration_ms: 0.495031
+  ...
+# Subtest: seven active fields survive repeated replacement under bounded residue pressure
+ok 23 - seven active fields survive repeated replacement under bounded residue pressure
+  ---
+  duration_ms: 3.651985
+  ...
+# Subtest: frozen authoritative snapshot is read-only through full lifecycle
+ok 24 - frozen authoritative snapshot is read-only through full lifecycle
+  ---
+  duration_ms: 0.623245
+  ...
+# Subtest: source discharge formula has extrusion, sustain peak, cooling, extinction
+ok 25 - source discharge formula has extrusion, sustain peak, cooling, extinction
+  ---
+  duration_ms: 0.230319
+  ...
+# Subtest: full vfx.update integration wakes fields, ticks no-target motion, and drains removal
+ok 26 - full vfx.update integration wakes fields, ticks no-target motion, and drains removal
+  ---
+  duration_ms: 104.326193
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: five tool signatures are distinct; unknown tools never impersonate gravity
+ok 27 - five tool signatures are distinct; unknown tools never impersonate gravity
+  ---
+  duration_ms: 1.376452
+  ...
+# Subtest: seed: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 28 - seed: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 3.545327
+  ...
+# Subtest: well: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 29 - well: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 1.910334
+  ...
+# Subtest: repulsor: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 30 - repulsor: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 2.079359
+  ...
+# Subtest: cone: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 31 - cone: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 1.263932
+  ...
+# Subtest: sheet: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 32 - sheet: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 0.904001
+  ...
+# Subtest: empty-space and contact field motion is uniform-driven; steady descriptors do not re-upload
+ok 33 - empty-space and contact field motion is uniform-driven; steady descriptors do not re-upload
+  ---
+  duration_ms: 3.34012
+  ...
+# Subtest: six ordinary fields plus appended Seed are visible; bounded pool does not drop Seed
+ok 34 - six ordinary fields plus appended Seed are visible; bounded pool does not drop Seed
+  ---
+  duration_ms: 1.110431
+  ...
+# Subtest: Seed phase is read-only, never emits gravity flow, re-launch resets a constant published id
+ok 35 - Seed phase is read-only, never emits gravity flow, re-launch resets a constant published id
+  ---
+  duration_ms: 1.236372
+  ...
+# Subtest: removal retires perimeter immediately; authored body breaks up, then uploads sleep
+ok 36 - removal retires perimeter immediately; authored body breaks up, then uploads sleep
+  ---
+  duration_ms: 2.562443
+  ...
+# Subtest: deployment born at simTime zero does not reset; origin shifts update local positions
+ok 37 - deployment born at simTime zero does not reset; origin shifts update local positions
+  ---
+  duration_ms: 0.682596
+  ...
+# Subtest: reduced motion freezes flows without deleting silhouettes; reduced flash keeps boundary geometry
+ok 38 - reduced motion freezes flows without deleting silhouettes; reduced flash keeps boundary geometry
+  ---
+  duration_ms: 0.589168
+  ...
+# Subtest: malformed/unknown records are skipped and do not poison GPU attributes
+ok 39 - malformed/unknown records are skipped and do not poison GPU attributes
+  ---
+  duration_ms: 0.71283
+  ...
+# Subtest: surface batch is bounded and precompile material is the runtime program
+ok 40 - surface batch is bounded and precompile material is the runtime program
+  ---
+  duration_ms: 0.722407
+  ...
+# Subtest: mechanical, rail and coherent sources have different geometry, not just different colors
+ok 41 - mechanical, rail and coherent sources have different geometry, not just different colors
+  ---
+  duration_ms: 2.313697
+  ...
+# Subtest: muzzle follows socket pose, expires, coalesces owner fire, and preserves fallback for unregistered sources
+ok 42 - muzzle follows socket pose, expires, coalesces owner fire, and preserves fallback for unregistered sources
+  ---
+  duration_ms: 0.893995
+  ...
+# Subtest: every weapon recipe ignites a swept source; shield and hull contacts differ by structure
+ok 43 - every weapon recipe ignites a swept source; shield and hull contacts differ by structure
+  ---
+  duration_ms: 1.90966
+  ...
+# Subtest: live presenter routes pulse to surfaces, not stacked muzzle/bore cards, preserving bolt recipe
+ok 44 - live presenter routes pulse to surfaces, not stacked muzzle/bore cards, preserving bolt recipe
+  ---
+  duration_ms: 40.538715
+  ...
+1..44
+# tests 44
+# suites 0
+# pass 44
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 517.201288
+TAP version 13
+# Subtest: inactive plan is frozen and only tumbling or thrown trails look active
+ok 1 - inactive plan is frozen and only tumbling or thrown trails look active
+  ---
+  duration_ms: 1.244357
+  ...
+# Subtest: a shield contact carries propagation and radiance on SEPARATE channels
+ok 2 - a shield contact carries propagation and radiance on SEPARATE channels
+  ---
+  duration_ms: 1.93867
+  ...
+# Subtest: contacts retire on the authored life and keep the inbound-direction contract
+ok 3 - contacts retire on the authored life and keep the inbound-direction contract
+  ---
+  duration_ms: 0.462004
+  ...
+# Subtest: two contacts landing on one frame do not ring in lockstep
+ok 4 - two contacts landing on one frame do not ring in lockstep
+  ---
+  duration_ms: 0.191473
+  ...
+# Subtest: the shell owns a clock, and it is the simulation clock
+ok 5 - the shell owns a clock, and it is the simulation clock
+  ---
+  duration_ms: 0.549444
+  ...
+# Subtest: field surfaces carry authored member material in ALREADY-RESERVED floats
+ok 6 - field surfaces carry authored member material in ALREADY-RESERVED floats
+  ---
+  duration_ms: 2.636198
+  ...
+# Subtest: every powered tool is built from stiff hardware AND a working membrane, at no extra cost
+ok 7 - every powered tool is built from stiff hardware AND a working membrane, at no extra cost
+  ---
+  duration_ms: 11.711076
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 199.711898

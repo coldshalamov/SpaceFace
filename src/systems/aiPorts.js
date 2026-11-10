@@ -1,0 +1,2259 @@
+import { isSwarmSpecialistRun, swarmSpecialistKind } from '../data/swarmSpecialists.js';
+import { swarmWardCandidateId } from '../ai/swarmSpecialistRuntime.js';
+import { currentSolidDressingRows, physicalObstacleRadius } from '../core/physicalObstacleQuery.js';
+import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
+import { mothlightGunCadence } from '../data/mothlight.js';
+import {
+  AI_CONTRACT_VERSION,
+  ContactKind,
+  DirectorPhase,
+  NORMALIZED_SENSOR_FRAME_FLAG,
+  NORMALIZED_THRUSTER_REQUEST_FLAG,
+  makeTrustedSensorFrame,
+  normalizeSensorFrame,
+  stableId,
+  wrapAngle,
+} from '../ai/contracts.js';
+import { activityAllowsOffense, authoritativeAssignmentTargetId, effectiveActivityForAI, normalizeRoe } from '../ai/doctrine.js';
+import { towedLureContactFor } from '../ai/towedLure.js';
+import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
+import { mountFollowsAimAngle } from '../ai/fireDiscipline.js';
+import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
+import { authorizeAIEngagement, isHostileForAI, isOffensiveActionDef } from '../ai/engagementAuthority.js';
+import { isDynamicPhysicsBodyEntity, measureThrusterAuthority, writePhysicsControl, writeOwnedPhysicsControl, cancelOwnedPhysicsControl, ensurePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { resolveFlightProfile } from '../core/flightDynamics.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { hasActiveSpatialHash } from '../core/spatialQuery.js';
+import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
+import { massline2Flag } from '../data/featureFlags.js';
+import { cloakHidesEntityFrom, cloakRuntimeFor, cloakTimeS } from './cloak.js';
+import { modelTruthPlanarRadius } from '../data/modelTruth.js';
+import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
+import {
+  CERES_ACTIVITY_POCKETS,
+  CERES_ACTIVITY_SECTOR_ID,
+} from '../data/sectorActivityPockets.js';
+import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
+import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
+import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
+import { isRecovering, isTumbling } from '../combat/tumbleStatus.js';
+import { turretPhaseEdges as turretPhaseEdgesFor, turretLossCount } from '../combat/turretSubsystems.js';
+import {
+  ensureActivityClassified,
+  entityNeedsAiThink,
+  getActivityOwnerEntities,
+  getActivityTransitionEntities,
+  getActivityInitialInactiveEntities,
+} from '../world/activityRuntime.js';
+
+const DEFAULT_SENSOR_RANGE = 1600;
+const DEFAULT_FORMATION_SPACING = 72;
+const DEFAULT_FORMATION_BOUND = 170;
+const RECENT_EVENT_TICKS = 90;
+export const ENCOUNTER_COMMAND_RING_CAPACITY = 128;
+const ENCOUNTER_COMMAND_TYPES = new Set(['phase', 'request_reinforcement', 'order_retreat', 'narrative_beat']);
+const DIRECTOR_PHASES = new Set(Object.values(DirectorPhase));
+const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
+const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
+const EMPTY_ATTACHMENTS = Object.freeze([]);
+const AI_SPATIAL_MIN_COLLIDABLES = 96;
+// INF-029: reported-track grade for a dispatched offender with a dispatch snapshot. Credible
+// (above the doctrine 0.55 engagement floor) but never certain: the sighting is old.
+const REPORTED_TRACK_CONFIDENCE = 0.6;
+const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
+const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
+  pocket.actorSlots
+    .filter((slot) => slot.lawful === true && slot.jobKind === 'patrol')
+    .map((slot) => [slot.id, slot])
+)));
+const OWNED_TETHER_TAGS = Object.freeze(['cuttable_by_self', 'massline', 'owned_by_self', 'severable']);
+const HOSTILE_TETHER_TAGS = Object.freeze(['hostile', 'massline', 'overloadable']);
+const ATTACHMENT_DEF_BY_ID = new Map(ATTACHMENT_DEFS.map((row) => [row.id, row]));
+const SOLID_TAGS = Object.freeze(['solid']);
+const COLD_DRESSING_TAGS = Object.freeze(['cold_dressing', 'solid']);
+const EMPTY_SUBSYSTEM_FRACTIONS = Object.freeze({});
+const CAPABILITY_DEPENDENCIES = Object.freeze({
+  drive: Object.freeze(['drive']),
+  weapon: Object.freeze(['weapon']),
+  sensor: Object.freeze(['sensor']),
+  tether: Object.freeze(['tether']),
+  power: Object.freeze(['power']),
+  ranged: Object.freeze(['weapon', 'sensor']),
+  disable: Object.freeze(['weapon', 'sensor']),
+  screen: Object.freeze(['drive']),
+  steal: Object.freeze(['drive']),
+  tug: Object.freeze(['tether']),
+  counter_tether_cut: Object.freeze(['sensor']),
+  counter_tether_overload: Object.freeze(['drive']),
+});
+
+export const aiPorts = {
+  name: 'aiPorts',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus || null;
+    this.helpers = ctx.helpers || (ctx.helpers = {});
+    this._pendingManeuvers = new Map();
+    // O12: last flushed maneuver per entity, replayed on the extra fixed steps of a catch-up frame.
+    this._heldManeuvers = new Map();
+    this._capabilityCacheTick = -1;
+    this._capabilityCache = new Map();
+    this._tagCacheTick = -1;
+    this._tagCache = new Map();
+    this._subsystemFractionCacheTick = -1;
+    this._subsystemFractionCache = new Map();
+    this._contactBaseCacheTick = -1;
+    this._contactBaseCache = new Map();
+    this._attachmentCacheTick = -1;
+    this._attachmentIndexCache = { all: EMPTY_ATTACHMENTS, byEntity: new Map() };
+    this._recentEventCacheTick = -1;
+    this._recentEventsByTarget = new Map();
+    this._sensorCandidateScratch = [];
+    this._sensorContactsScratch = [];
+    this._sensorContactRecordsScratch = [];
+    this._sensorTetherContactsScratch = [];
+    this._liveSensorFrameScratch = {
+      tick: -1,
+      self: null,
+      contacts: this._sensorContactsScratch,
+      events: EMPTY_ATTACHMENTS,
+    };
+    Object.defineProperty(this._liveSensorFrameScratch, NORMALIZED_SENSOR_FRAME_FLAG, { value: true });
+    this._liveSensorFramesScratch = new Map();
+    this._liveSensorBatchRequests = [];
+    this._liveSensorBatchEntries = [];
+    this._liveSensorBatchEntryCount = 0;
+    this._pendingFlushScratch = [];
+    this._rosterCandidateScratch = [];
+    this._rosterSquadsScratch = new Map();
+    this._liveRosterScratch = null;
+    this._liveRosterMembershipKey = '';
+    ensureEncounterState(this.state);
+    this._diag = {
+      schemaVersion: AI_CONTRACT_VERSION,
+      sensorsInstalled: true,
+      rosterInstalled: true,
+      maneuverInstalled: true,
+      encounterInstalled: true,
+      acceptedManeuvers: 0,
+      flushedManeuvers: 0,
+      droppedManeuvers: 0,
+      lastDropReason: null,
+      acceptedEncounterCommands: 0,
+      rejectedEncounterCommands: 0,
+      lastEncounterDropReason: null,
+      sensorFrames: 0,
+      sensorBatches: 0,
+    };
+
+    this.helpers.aiSensors = Object.freeze({
+      frameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick),
+      liveFrameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick, { freezeResults: false }),
+      liveFramesFor: (entityIds, tick, options) => this._sensorFramesFor(entityIds, tick, options),
+      disabledNonlethalTargetFor: (entityId) => {
+        const entity = getEntity(this.state, entityId);
+        const ai = entity && ((entity.data && entity.data.ai) || entity.ai);
+        return disabledNonlethalTargetFor(this.state, entity, ai);
+      },
+    });
+    this.helpers.aiRoster = Object.freeze({
+      listSquads: (tick) => this._listSquads(tick),
+      liveListSquads: (tick) => this._listSquads(tick, { freezeResults: false }),
+    });
+    this._maneuverActivityOwners = new WeakMap();
+    this._maneuverActivityRecords = new WeakMap();
+    this._maneuverEntryOwners = new WeakMap();
+    this._maneuverActivityReceipts = new WeakMap();
+    this.helpers.aiManeuver = Object.freeze({
+      request: (request) => this._requestActivityManeuver(request),
+      claimActivity: (entity, activity, options) => this._claimManeuverActivity(entity, activity, options),
+      captureActivity: (entity) => this._captureManeuverActivity(entity),
+      cancelActivity: (lease) => this._cancelManeuverActivity(lease),
+    });
+    this.helpers.aiEncounter = Object.freeze({
+      issue: (command) => this._issueEncounterCommand(command),
+    });
+    this.helpers.reauthorizeAICombatAction = (request, actor, def) =>
+      reauthorizeQueuedAICombatAction(this.state, request, actor, def);
+    this.helpers.inspectAIPorts = () => this.inspect();
+  },
+
+  update(dt, state) {
+    clearIneligibleAIFiringIntents(state, this.helpers);
+    // O12: a physics control is consumed once per fixed step, but the AI decides once per frame -
+    // its stack is a near owner and skips the extra steps of a catch-up frame. Without a replay,
+    // a 30 fps frame (two steps) gave every AI hull thrust on one step and coasting on the other.
+    // This port is a table owner so it runs on every step; on an extra step it re-issues each
+    // maneuver the frame's first step flushed. A full step never replays, so single-step frames
+    // (and the deterministic sims) are untouched.
+    const extraStep = (state.simCatchupIndex | 0) > 0;
+    const held = this._heldManeuvers || (this._heldManeuvers = new Map());
+    // Hulls that stopped requesting (dead, despawned, re-tasked) leave their held entry behind
+    // on full steps; sweep the stale ones now and then so the map stays the size of the roster.
+    if (!extraStep && held.size > 0 && (state.tick & 63) === 0) {
+      for (const [key, entry] of held) if (state.tick - entry.acceptedTick > 4) held.delete(key);
+    }
+    const hasPending = !!this._pendingManeuvers && this._pendingManeuvers.size > 0;
+    if (!hasPending && !(extraStep && held.size > 0)) return;
+    if (!usesSg02DynamicAuthority(state) || !sg02Ready(state)) {
+      held.clear();
+      if (hasPending) this._dropPending(usesSg02DynamicAuthority(state) ? 'physics_owner_unavailable' : 'physics_backend_unavailable');
+      return;
+    }
+    if (!hasPending) {
+      this._replayHeldManeuvers(dt, state, held);
+      return;
+    }
+
+    const pending = this._pendingFlushScratch || (this._pendingFlushScratch = []);
+    pending.length = 0;
+    for (const entry of this._pendingManeuvers.values()) pending.push(entry);
+    pending.sort((a, b) => compareIds(a.request.entityId, b.request.entityId));
+    this._pendingManeuvers.clear();
+    for (const entry of pending) {
+      const entity = getEntity(state, entry.request.entityId);
+      if (!isLiveCraft(entity)) {
+        this._diag.droppedManeuvers++;
+        this._diag.lastDropReason = 'entity_unavailable';
+        continue;
+      }
+      if (this.helpers.npcJobs?.crewResponseOwnsFlight?.(entity)) {
+        this._rejectManeuver('crew_response_owned');
+        continue;
+      }
+      if (this.helpers.npcJobs?.ceresTenderOwnsFlight?.(entity)) {
+        this._rejectManeuver('ceres_tender_owned');
+        continue;
+      }
+      if (!this._writeActivityManeuver(entity, entry, dt, state)) {
+        this._diag.droppedManeuvers++;
+        this._diag.lastDropReason = 'activity_lease_released';
+        continue;
+      }
+      held.set(stableId(entry.request.entityId), entry);
+      this._diag.flushedManeuvers++;
+    }
+    pending.length = 0;
+    if (extraStep) this._replayHeldManeuvers(dt, state, held);
+  },
+
+  // Re-issue maneuvers accepted earlier in this same frame for hulls that got no fresh request on
+  // this extra step. The tick gap equals the catch-up index only inside the frame that flushed it,
+  // so an older held maneuver is retired here instead of thrusting on stale orders.
+  _replayHeldManeuvers(dt, state, held) {
+    const index = state.simCatchupIndex | 0;
+    for (const [key, entry] of held) {
+      if (entry.acceptedTick >= state.tick) continue;            // fresh this step: already written
+      if (state.tick - entry.acceptedTick > index) { held.delete(key); continue; }
+      const entity = getEntity(state, entry.request.entityId);
+      if (!isLiveCraft(entity)) { held.delete(key); continue; }
+      if (!this._writeActivityManeuver(entity, entry, dt, state)) held.delete(key);
+    }
+  },
+
+  inspect() {
+    return Object.freeze({
+      ...this._diag,
+      pendingManeuvers: this._pendingManeuvers ? this._pendingManeuvers.size : 0,
+    });
+  },
+
+
+  // Activity owners opt in; ordinary tactical requests carry no additional lease metadata.
+  _claimManeuverActivity(entity, activity, options = {}) {
+    const ai = entity && entity.data && entity.data.ai;
+    if (!entity || getEntity(this.state, entity.id) !== entity || !ai || ai.activity !== activity || !activity) return null;
+    ensurePhysicsBodySpec(entity);
+    const previous = this._maneuverActivityOwners.get(entity);
+    if (previous) this._cancelManeuverActivity(previous);
+    const lease = Object.freeze({});
+    this._maneuverActivityRecords.set(lease, { entity, generation: entity.occupantGeneration,
+      body: entity.physicsBody, ai, activity,
+      onCapture: typeof options?.onCapture === 'function' ? options.onCapture : null });
+    this._maneuverActivityOwners.set(entity, lease);
+    return lease;
+  },
+
+  // Capture snapshots the outgoing lease before title/helm commit, then releases only
+  // that owner's packets before capture subscribers can flush or serialize the hull.
+  _captureManeuverActivity(entity) {
+    const lease = entity && this._maneuverActivityOwners.get(entity);
+    const record = lease && this._maneuverActivityRecords.get(lease);
+    if (!record || !this._maneuverActivityCurrent(lease)) return null;
+    return () => {
+      if (this._maneuverActivityRecords.get(lease) !== record
+        || getEntity(this.state, entity.id) !== entity || entity.occupantGeneration !== record.generation
+        || entity.physicsBody !== record.body) return false;
+      const ownsActivity = this._maneuverActivityOwners.get(entity) === lease
+        && entity.data?.ai === record.ai && record.ai.activity === record.activity;
+      this._cancelManeuverActivity(lease);
+      // Title/helm commit already succeeded. A cleanup callback cannot roll it back
+      // or skip the other hull's release; the owned physics packet is already cancelled.
+      if (ownsActivity && record.onCapture) {
+        try { record.onCapture(); } catch (_) { return false; }
+      }
+      return true;
+    };
+  },
+
+  _maneuverActivityCurrent(lease) {
+    const record = lease && this._maneuverActivityRecords.get(lease);
+    const e = record && record.entity;
+    return !!e && this._maneuverActivityOwners.get(e) === lease && getEntity(this.state, e.id) === e && e.occupantGeneration === record.generation
+      && e.physicsBody === record.body && e.data
+      && e.data.ai === record.ai && record.ai.activity === record.activity;
+  },
+
+  _requestActivityManeuver(request) {
+    const accepted = this._requestManeuver(request);
+    if (!accepted) return accepted;
+    const entity = getEntity(this.state, request.entityId);
+    const lease = entity && this._maneuverActivityOwners.get(entity);
+    if (this._maneuverActivityCurrent(lease)) {
+      const entry = this._pendingManeuvers.get(stableId(request.entityId));
+      if (entry) this._maneuverEntryOwners.set(entry, lease);
+    }
+    return accepted;
+  },
+
+  _writeActivityManeuver(entity, entry, dt, state) {
+    if (this.helpers.npcJobs?.crewResponseOwnsFlight?.(entity)) return this._rejectManeuver('crew_response_owned');
+    if (this.helpers.npcJobs?.ceresTenderOwnsFlight?.(entity)) return this._rejectManeuver('ceres_tender_owned');
+    const lease = this._maneuverEntryOwners.get(entry);
+    if (lease) {
+      if (!this._maneuverActivityCurrent(lease)) return false;
+      const receipt = writeOwnedPhysicsControl(entity, controlFromManeuver(entity, entry.request, dt, state));
+      this._maneuverActivityReceipts.set(lease, receipt);
+    } else {
+      writePhysicsControl(entity, controlFromManeuver(entity, entry.request, dt, state));
+    }
+    return true;
+  },
+
+  _cancelManeuverActivity(lease) {
+    const record = lease && this._maneuverActivityRecords.get(lease);
+    const entity = record && record.entity;
+    if (!entity || getEntity(this.state, entity.id) !== entity || entity.occupantGeneration !== record.generation
+      || entity.physicsBody !== record.body) return false;
+    const key = stableId(entity.id);
+    for (const entries of [this._pendingManeuvers, this._heldManeuvers]) {
+      const entry = entries && entries.get(key);
+      if (entry && this._maneuverEntryOwners.get(entry) === lease) entries.delete(key);
+    }
+    const receipt = this._maneuverActivityReceipts.get(lease);
+    if (receipt) cancelOwnedPhysicsControl(entity, receipt);
+    this._maneuverActivityReceipts.delete(lease);
+    if (this._maneuverActivityOwners.get(entity) === lease) this._maneuverActivityOwners.delete(entity);
+    this._maneuverActivityRecords.delete(lease);
+    return true;
+  },
+
+  _requestManeuver(request = {}) {
+    const state = this.state;
+    if (!usesSg02DynamicAuthority(state)) return this._rejectManeuver('physics_backend_unavailable');
+    if (!sg02Ready(state)) return this._rejectManeuver('physics_owner_unavailable');
+    if (!request || request.version !== AI_CONTRACT_VERSION) return this._rejectManeuver('contract_version_mismatch');
+    const entity = getEntity(state, request.entityId);
+    if (!isLiveCraft(entity)) return this._rejectManeuver('entity_unavailable');
+    if (this.helpers.npcJobs?.crewResponseOwnsFlight?.(entity)) return this._rejectManeuver('crew_response_owned');
+    if (this.helpers.npcJobs?.ceresTenderOwnsFlight?.(entity)) return this._rejectManeuver('ceres_tender_owned');
+    if (entity.physicsBody && entity.physicsBody.dynamic === false) return this._rejectManeuver('body_not_dynamic');
+    const normalized = normalizeManeuverRequest(request, state.tick);
+    this._pendingManeuvers.set(stableId(normalized.entityId), Object.freeze({
+      request: normalized,
+      acceptedTick: state.tick,
+    }));
+    this._diag.acceptedManeuvers++;
+    return true;
+  },
+
+  _rejectManeuver(reason) {
+    this._diag.droppedManeuvers++;
+    this._diag.lastDropReason = reason;
+    return false;
+  },
+
+  _dropPending(reason) {
+    this._diag.droppedManeuvers += this._pendingManeuvers.size;
+    this._diag.lastDropReason = reason;
+    this._pendingManeuvers.clear();
+  },
+
+  _issueEncounterCommand(command = {}) {
+    const state = this.state;
+    const normalized = normalizeEncounterCommand(command, state && state.tick);
+    if (!normalized.ok) {
+      this._diag.rejectedEncounterCommands++;
+      this._diag.lastEncounterDropReason = normalized.reason;
+      return false;
+    }
+    const encounter = ensureEncounterState(state);
+    const record = Object.freeze({
+      seq: encounter.nextSeq++,
+      ...normalized.command,
+    });
+    encounter.commands.push(record);
+    while (encounter.commands.length > ENCOUNTER_COMMAND_RING_CAPACITY) encounter.commands.shift();
+    this._diag.acceptedEncounterCommands++;
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('ai:encounterCommand', record);
+    return true;
+  },
+
+  _sensorFrameFor(entityId, tick, options = {}) {
+    const state = this.state;
+    const live = options.freezeResults === false;
+    const freeze = live ? identity : Object.freeze;
+    const entity = getEntity(state, entityId);
+    if (!entity || !entity.alive) return normalizeSensorFrame(null, entityId, tick);
+    const range = sensorRangeFor(state, entity);
+    const attachmentIndex = this._attachmentIndex();
+    const contacts = entityContacts(
+      state,
+      entity,
+      range,
+      this.helpers,
+      attachmentIndex,
+      freeze,
+      this._sensorCandidateScratch,
+      options.contactsScratch || (live ? this._sensorContactsScratch : null),
+      this,
+      options.candidates || null,
+      options.contactRecords || null,
+    );
+    const tetherContacts = attachmentContacts(
+      state,
+      entity,
+      range,
+      attachmentIndex.all,
+      freeze,
+      options.tetherContactsScratch || (live ? this._sensorTetherContactsScratch : null),
+    );
+    for (const contact of tetherContacts) contacts.push(contact);
+    appendWellObstacles(state, entity, range, contacts, freeze);
+    appendDressingObstacles(state, entity, range, contacts, attachmentIndex, freeze);
+    if (freeze !== identity) contacts.sort(contactSort);
+    if (live) {
+      const frame = options.frameScratch || this._liveSensorFrameScratch;
+      if (frame[NORMALIZED_SENSOR_FRAME_FLAG] !== true) {
+        Object.defineProperty(frame, NORMALIZED_SENSOR_FRAME_FLAG, { value: true });
+      }
+      frame.tick = tick;
+      frame.self = sensorSelf(state, entity, this._capabilitiesFor(entity, tick), attachmentIndex, freeze, this);
+      frame.contacts = contacts;
+      frame.events = this._recentEventsFor(entity, tick, freeze);
+      return frame;
+    }
+    const frame = {
+      tick,
+      self: sensorSelf(state, entity, this._capabilitiesFor(entity, tick), attachmentIndex, freeze, this),
+      contacts,
+      events: this._recentEventsFor(entity, tick, freeze),
+    };
+    return options.freezeResults === false
+      ? makeTrustedSensorFrame(frame, entityId, tick, options)
+      : normalizeSensorFrame(frame, entityId, tick);
+  },
+
+  _sensorFramesFor(entityIds, tick, options = null) {
+    const ids = Array.isArray(entityIds) ? entityIds : [];
+    if (options && options.ephemeral === true) return this._ephemeralSensorFramesFor(ids, tick);
+    const singleton = ids.length === 1;
+    const frames = singleton
+      ? (this._liveSensorFramesScratch || (this._liveSensorFramesScratch = new Map()))
+      : new Map();
+    frames.clear();
+    if (!ids.length) return frames;
+    if (singleton) {
+      const id = ids[0];
+      const frame = this._sensorFrameFor(id, tick, {
+        freezeResults: false,
+        contactsScratch: this._sensorContactsScratch,
+        contactRecords: this._sensorContactRecordsScratch,
+        tetherContactsScratch: this._sensorTetherContactsScratch,
+        frameScratch: this._liveSensorFrameScratch,
+      });
+      frames.set(id, frame);
+      this._diag.sensorFrames++;
+      return frames;
+    }
+    const state = this.state;
+    const index = state && state.entityIndex;
+    const dense = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables) &&
+      index.collidables.length >= AI_SPATIAL_MIN_COLLIDABLES;
+    const hash = state && state.spatialHash;
+    const canBatch = dense && hash && typeof hash.queryRadiusBatch === 'function';
+    const requests = [];
+    if (canBatch) {
+      for (const id of ids) {
+        const entity = getEntity(state, id);
+        if (!entity || !entity.alive) continue;
+        requests.push({ id, x: entity.pos.x, z: entity.pos.z, r: sensorRangeFor(state, entity), out: [] });
+      }
+      hash.queryRadiusBatch(requests, { shareResults: true, shareSupersetResults: true });
+      this._diag.sensorBatches++;
+    }
+    const candidatesById = new Map(requests.map((request) => [request.id, request.out]));
+    for (const id of ids) {
+      const frame = this._sensorFrameFor(id, tick, {
+        freezeResults: false,
+        candidates: candidatesById.get(id) || null,
+        contactsScratch: [],
+        tetherContactsScratch: [],
+        frameScratch: {},
+      });
+      frames.set(id, frame);
+      this._diag.sensorFrames++;
+    }
+    return frames;
+  },
+
+  /**
+   * Production-only sensor batch. TacticalAIStack consumes every frame synchronously before the
+   * next call, so these containers may return to retained high-water scratch. The public two-arg
+   * liveFramesFor route above keeps its durable independent-map behavior for tools and tests.
+   */
+  _ephemeralSensorFramesFor(ids, tick) {
+    const frames = this._liveSensorFramesScratch;
+    const requests = this._liveSensorBatchRequests;
+    const entries = this._liveSensorBatchEntries;
+    const previousEntryCount = this._liveSensorBatchEntryCount;
+    frames.clear();
+    requests.length = 0;
+
+    const state = this.state;
+    const index = state && state.entityIndex;
+    const dense = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables) &&
+      index.collidables.length >= AI_SPATIAL_MIN_COLLIDABLES;
+    const hash = state && state.spatialHash;
+    const canBatch = ids.length > 1 && dense && hash && typeof hash.queryRadiusBatch === 'function';
+
+    for (let index = 0; index < ids.length; index++) {
+      const id = ids[index];
+      const entry = liveSensorBatchEntry(entries, index);
+      entry.contacts.length = 0;
+      entry.tetherContacts.length = 0;
+      entry.frame.self = null;
+      entry.frame.events = EMPTY_ATTACHMENTS;
+      entry.requestActive = false;
+      if (!canBatch) continue;
+      const entity = getEntity(state, id);
+      if (!entity || !entity.alive) continue;
+      const request = entry.request;
+      entry.candidates.length = 0;
+      request.id = id;
+      request.x = entity.pos.x;
+      request.z = entity.pos.z;
+      request.r = sensorRangeFor(state, entity);
+      request.out = entry.candidates;
+      entry.requestActive = true;
+      requests.push(request);
+    }
+
+    if (requests.length) {
+      // This caller consumes candidates synchronously and never exposes them. Keeping the shared
+      // arrays mutable is what lets the next decision reuse them instead of allocating/freeze-GC.
+      hash.queryRadiusBatch(requests, {
+        shareResults: true,
+        shareSupersetResults: true,
+        mutableSharedResults: true,
+      });
+      this._diag.sensorBatches++;
+    }
+
+    for (let index = 0; index < ids.length; index++) {
+      const id = ids[index];
+      const entry = liveSensorBatchEntry(entries, index);
+      const frame = this._sensorFrameFor(id, tick, {
+        freezeResults: false,
+        candidates: entry.requestActive ? entry.request.out : null,
+        contactsScratch: entry.contacts,
+        contactRecords: entry.contactRecords,
+        tetherContactsScratch: entry.tetherContacts,
+        frameScratch: entry.frame,
+      });
+      frames.set(id, frame);
+      this._diag.sensorFrames++;
+    }
+
+    // Candidate arrays contain authoritative entity references. Release them immediately after
+    // contacts have been copied, while retaining only their capacity for the next decision.
+    for (let index = 0; index < ids.length; index++) {
+      const entry = entries[index];
+      if (!entry || !entry.requestActive) continue;
+      const shared = entry.request.out;
+      if (Array.isArray(shared) && !Object.isFrozen(shared)) shared.length = 0;
+      entry.request.out = entry.candidates;
+      entry.candidates.length = 0;
+      entry.requestActive = false;
+    }
+    requests.length = 0;
+
+    // A one-time larger formation may establish capacity, but inactive slots must not retain old
+    // contact/self/event graphs when the live formation shrinks again.
+    for (let index = ids.length; index < previousEntryCount; index++) {
+      const entry = entries[index];
+      if (!entry) continue;
+      entry.candidates.length = 0;
+      entry.contacts.length = 0;
+      entry.tetherContacts.length = 0;
+      entry.frame.self = null;
+      entry.frame.events = EMPTY_ATTACHMENTS;
+      entry.request.out = entry.candidates;
+      entry.requestActive = false;
+    }
+    this._liveSensorBatchEntryCount = ids.length;
+    return frames;
+  },
+
+  _listSquads(tick, options = {}) {
+    const state = this.state;
+    ensureActivityClassified(state);
+    const live = options.freezeResults === false;
+    const freeze = live ? identity : Object.freeze;
+    const squads = this._rosterSquadsScratch || (this._rosterSquadsScratch = new Map());
+    squads.clear();
+    const source = getActivityOwnerEntities(state, 'ai');
+    const candidates = this._rosterCandidateScratch || (this._rosterCandidateScratch = []);
+    const authorityRadius = tableSimAuthorityWuFromState(state);
+    const player = getEntity(state, state && state.playerId);
+    const playerId = player ? player.id : state && state.playerId;
+    const playerTeam = player && player.team;
+    const authorityOrigin = player && player.pos || null;
+    candidates.length = 0;
+    for (const entity of source) {
+      if (!isLiveCraft(entity) || entity.id === state.playerId) continue;
+      const ai = (entity.data && entity.data.ai) || entity.ai;
+      // Explicit passive navigation is also used by civilian vignette choreography.
+      // It needs collision-aware movement, not a faction combat doctrine or fire authority.
+      if (!ai || (ai.passive && ai.allowPassiveManeuver !== true)) continue;
+      // The activity owner view already excludes far S2/S3/S4 actors until their wake. Keep all
+      // S0/S1 members in the roster so a near cadence skip does not make a squad disappear; the
+      // tactical stack applies the deterministic near cadence (`entityNeedsAiThink`) at its
+      // decision boundary.
+      candidates.push(entity);
+    }
+    candidates.sort((a, b) => compareIds(a && a.id, b && b.id));
+
+    // Quiet live path: when membership + signature identity fields are unchanged, keep the
+    // retained roster and only refresh per-tick mutable fields (pos/activity/alive/authority).
+    // Avoids re-allocating members and rebuilding rosterSignature strings every tactical tick.
+    if (live) {
+      const membershipKey = liveRosterMembershipKey(candidates, (entity) => this._capabilitiesFor(entity, tick));
+      const retained = this._liveRosterScratch;
+      if (retained && membershipKey === this._liveRosterMembershipKey) {
+        refreshLiveRosterMembers(retained, candidates, playerId, playerTeam, authorityOrigin, authorityRadius);
+        candidates.length = 0;
+        return retained;
+      }
+      this._liveRosterMembershipKey = membershipKey;
+    } else {
+      this._liveRosterScratch = null;
+      this._liveRosterMembershipKey = '';
+    }
+
+    for (const entity of candidates) {
+      const ai = (entity.data && entity.data.ai) || entity.ai;
+      const factionBehavior = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
+      const doctrine = String(ai.doctrine || doctrineFor(entity));
+      const faction = String(entity.factionId || ai.faction || `team_${entity.team == null ? 'unknown' : entity.team}`);
+      const squadId = String(ai.squadId || ai.wingId || `${doctrine}:${faction}`);
+      let squad = squads.get(squadId);
+      if (!squad) {
+        squad = {
+          id: squadId,
+          doctrine,
+          faction,
+          formation: String(ai.formation || defaultFormation(doctrine)),
+          formationSpacing: positive(ai.formationSpacing, DEFAULT_FORMATION_SPACING),
+          formationBound: positive(ai.formationBound, DEFAULT_FORMATION_BOUND),
+          factionBehavior,
+          members: [],
+          tick,
+        };
+        squads.set(squadId, squad);
+      }
+      squad.members.push(freeze({
+        id: entity.id,
+        preferredRole: ai.preferredRole || ai.role || null,
+        capabilities: this._capabilitiesFor(entity, tick),
+        combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
+        factionBehavior,
+        team: entity.team,
+        alive: entity.alive !== false,
+        pos: entity.pos || null,
+        passive: ai.passive === true,
+        playerId,
+        playerTeam,
+        authorityOrigin,
+        authorityRadius,
+        activity: entity.activity || null,
+      }));
+    }
+
+    const roster = [];
+    for (const squad of squads.values()) {
+      const members = freeze(squad.members.sort((a, b) => compareIds(a.id, b.id)));
+      const entry = {
+        id: squad.id,
+        doctrine: squad.doctrine,
+        faction: squad.faction,
+        formation: squad.formation,
+        formationSpacing: squad.formationSpacing,
+        formationBound: squad.formationBound,
+        factionBehavior: squad.factionBehavior,
+        members,
+      };
+      Object.defineProperty(entry, ROSTER_SIGNATURE_FLAG, { value: rosterSignature(entry) });
+      roster.push(freeze(entry));
+    }
+    roster.sort((a, b) => compareText(a.id, b.id));
+    Object.defineProperty(roster, NORMALIZED_ROSTER_FLAG, { value: true });
+    candidates.length = 0;
+    squads.clear();
+    if (live) this._liveRosterScratch = roster;
+    return freeze(roster);
+  },
+
+  _capabilitiesFor(entity, tickOverride = null) {
+    const state = this.state;
+    const tick = Number.isInteger(tickOverride) ? tickOverride : (Number.isInteger(state && state.tick) ? state.tick : -1);
+    if (this._capabilityCacheTick !== tick) {
+      this._capabilityCacheTick = tick;
+      this._capabilityCache.clear();
+    }
+    const key = stableId(entity && entity.id);
+    let capabilities = this._capabilityCache.get(key);
+    if (!capabilities) {
+      capabilities = Object.freeze(capabilitiesFor(state, entity));
+      this._capabilityCache.set(key, capabilities);
+    }
+    return capabilities;
+  },
+
+  _tagsFor(entity, runtime) {
+    const state = this.state;
+    const tick = Number.isInteger(state && state.tick) ? state.tick : -1;
+    if (this._tagCacheTick !== tick) {
+      this._tagCacheTick = tick;
+      this._tagCache.clear();
+    }
+    const key = stableId(entity && entity.id);
+    let tags = this._tagCache.get(key);
+    if (!tags) {
+      tags = tagsFor(entity, runtime, Object.freeze);
+      this._tagCache.set(key, tags);
+    }
+    return tags;
+  },
+
+  _subsystemFractionsFor(entity, runtime) {
+    const state = this.state;
+    const tick = Number.isInteger(state && state.tick) ? state.tick : -1;
+    if (this._subsystemFractionCacheTick !== tick) {
+      this._subsystemFractionCacheTick = tick;
+      this._subsystemFractionCache.clear();
+    }
+    const key = stableId(entity && entity.id);
+    let fractions = this._subsystemFractionCache.get(key);
+    if (!fractions) {
+      fractions = Object.freeze(subsystemFractions(runtime));
+      this._subsystemFractionCache.set(key, fractions);
+    }
+    return fractions;
+  },
+
+  _contactBaseFor(entity, runtime, attachmentIndex, kind) {
+    const state = this.state;
+    const tick = Number.isInteger(state && state.tick) ? state.tick : -1;
+    if (this._contactBaseCacheTick !== tick) {
+      this._contactBaseCacheTick = tick;
+      this._contactBaseCache.clear();
+    }
+    const key = stableId(entity && entity.id);
+    let base = this._contactBaseCache.get(key);
+    if (!base) {
+      base = buildContactBase(state, entity, runtime, attachmentIndex, kind, identity, this);
+      this._contactBaseCache.set(key, base);
+    }
+    return base;
+  },
+
+  _attachmentIndex() {
+    const state = this.state;
+    const tick = Number.isInteger(state && state.tick) ? state.tick : -1;
+    if (this._attachmentCacheTick === tick && this._attachmentIndexCache) return this._attachmentIndexCache;
+    const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId || {};
+    const all = [];
+    const byEntity = new Map();
+    for (const attachment of Object.values(attachments)) {
+      if (!attachment || attachment.state !== 'active') continue;
+      all.push(attachment);
+      addAttachment(byEntity, attachment.ownerId, attachment);
+      addAttachment(byEntity, attachment.targetId, attachment);
+    }
+    all.sort((a, b) => compareText(String(a.id), String(b.id)));
+    this._attachmentCacheTick = tick;
+    this._attachmentIndexCache = { all, byEntity };
+    return this._attachmentIndexCache;
+  },
+
+  _recentEventsFor(entity, tick, freeze = Object.freeze) {
+    if (this._recentEventCacheTick !== tick) {
+      this._recentEventCacheTick = tick;
+      this._recentEventsByTarget = recentEventIndexFor(this.state, tick);
+    }
+    const list = this._recentEventsByTarget.get(entity && entity.id) || EMPTY_ATTACHMENTS;
+    if (freeze === identity) return list;
+    const out = new Array(list.length);
+    for (let i = 0; i < list.length; i++) out[i] = freeze({ ...list[i] });
+    return out;
+  },
+};
+
+/**
+ * Passive/hold-fire actors are intentionally absent from tactical decisions, so they need a
+ * separate fail-closed disarm sweep. This runs before the AI maneuver port's early return and
+ * prevents a fire bit from surviving an encounter phase or save/load role transition.
+ */
+function clearIneligibleAIFiringSource(state, helpers, source, demoted = false) {
+  let cleared = 0;
+  for (const entity of source || EMPTY_ATTACHMENTS) {
+    if (!entity || entity.id === state.playerId || entity.type !== 'ship' || entity.alive === false) continue;
+    const data = entity.data;
+    const intent = (data && data.intent) || entity.intent;
+    if (!intent || (!intent.fire && intent.fireGroup == null)) continue;
+    const ai = (data && data.ai) || entity.ai;
+    const disabledNonlethalTarget = disabledNonlethalTargetFor(state, entity, ai);
+    const teamTwoDisarmed = entity.team === 2
+      && !authorizedCeresLawJobResponse(state, entity, ai, helpers);
+    const ineligible = demoted || !ai || ai.passive || teamTwoDisarmed
+      || normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free') === 'hold_fire'
+      || !activityAllowsOffense(effectiveActivityForAI(ai))
+      || disabledNonlethalTarget;
+    if (!ineligible) continue;
+    intent.fire = false;
+    intent.fireGroup = null;
+    if (disabledNonlethalTarget) {
+      intent.fireBlockReason = 'target_disabled_nonlethal';
+      intent.fireBlockerId = disabledNonlethalTarget.id;
+    }
+    cleared++;
+  }
+  return cleared;
+}
+
+export function clearIneligibleAIFiringIntents(state, helpers = null) {
+  if (!state) return 0;
+  // Production flight owns a classified activity frame. Direct callers and non-flight fixtures
+  // may intentionally omit the frame; retain the broad fallback there so this fail-closed
+  // transition sweep remains usable outside the fixed-step owner.
+  const useActivityView = state.mode === 'flight' && Number.isFinite(state.simTime);
+  if (useActivityView) {
+    return clearIneligibleAIFiringSource(state, helpers, getActivityOwnerEntities(state, 'ai'))
+      + clearIneligibleAIFiringSource(state, helpers, getActivityTransitionEntities(state), true)
+      + clearIneligibleAIFiringSource(state, helpers, getActivityInitialInactiveEntities(state), true);
+  }
+  const index = state.entityIndex;
+  const source = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.aiShips)
+    ? index.aiShips
+    : (Array.isArray(state.entityList)
+      ? state.entityList
+      : (state.entities && typeof state.entities.values === 'function'
+        ? state.entities.values()
+        : EMPTY_ATTACHMENTS));
+  return clearIneligibleAIFiringSource(state, helpers, source);
+}
+
+// NXI-053: SG-03 authorization at request time is advisory — the request can sit queued behind
+// notBeforeTick while compliance changes (hold-fire order, motive satisfied, target drifting into
+// station protection). The combat kernel calls this hook at the final commit gate so the queued
+// shot re-runs the same engagement authority on live state. Response-window and jurisdiction
+// checks are not bypassed: they re-evaluate at the commit tick.
+export function reauthorizeQueuedAICombatAction(state, request, actor, def) {
+  if (!actor || actor.alive === false) return { ok: false, reason: 'actor_missing' };
+  if (!isOffensiveActionDef(def)) return { ok: true, reason: 'not_offensive' };
+  const entityTargetId = request && request.target && request.target.kind === 'entity'
+    ? request.target.entityId
+    : null;
+  const target = entityTargetId == null ? null : getEntity(state, entityTargetId);
+  const authorization = authorizeAIEngagement({
+    state,
+    self: actor,
+    target,
+    tick: state && state.tick,
+    objectiveReason: request && request.metadata && request.metadata.objectiveReason || null,
+  });
+  if (!authorization.ok) return { ok: false, reason: `engagement:${authorization.reason}` };
+  return { ok: true };
+}
+
+function authorizedCeresLawJobResponse(state, entity, ai, helpers) {
+  if (!state || !entity || !ai || entity.team !== 2 || ai.lawful !== true || ai.passive !== false
+    || ai.engagementTrigger !== 'security_response'
+    || state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
+  const doctrineId = normalizeCombatDoctrineId(ai.combatDoctrineId);
+  if (doctrineId !== CombatDoctrineId.INTERCEPTOR_FLYBY) return false;
+  const data = entity.data;
+  const slotId = typeof data?.activityActorSlotId === 'string' ? data.activityActorSlotId : null;
+  const slot = slotId && CERES_LAW_JOB_SLOTS_BY_ID.get(slotId);
+  const worldRecordId = slot ? stableRecordId(
+    state.meta?.seed,
+    CERES_ACTIVITY_SECTOR_ID,
+    RECORD_KIND.CONVOY,
+    slot.worldRecordSlotId,
+  ) : null;
+  const jobId = worldRecordId ? `job:${worldRecordId}` : null;
+  const targetId = ai.securityTargetId;
+  const combat = data && data.combat;
+  if (!jobId || !slot || data.worldRecordId !== worldRecordId || data.jobId !== jobId
+    || data.ceresActivityCast !== true || data.ceresActivityJobOwned !== true
+    || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || targetId == null
+    || (data.homeSectorId != null && data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID)
+    || (entity.homeSectorId != null && entity.homeSectorId !== CERES_ACTIVITY_SECTOR_ID)
+    || !combat || combat.targetId !== targetId || getEntity(state, entity.id) !== entity) return false;
+
+  const target = getEntity(state, targetId);
+  if (!target || target.alive === false || !isHostileForAI(state, entity, target)) return false;
+  const jobs = helpers && helpers.npcJobs;
+  if (!jobs || typeof jobs.byEntity !== 'function' || typeof jobs.controlClaim !== 'function') return false;
+  const entry = jobs.byEntity(entity.id);
+  const claim = jobs.controlClaim(jobId);
+  if (!entry || entry.entityId !== entity.id || entry.sectorId !== CERES_ACTIVITY_SECTOR_ID
+    || entry.kind !== 'patrol' || entry.worldRecordId !== worldRecordId
+    || entry.job?.kind !== 'patrol' || entry.job?.id !== jobId
+    || !claim || claim.holder !== LAW_JOB_RESPONSE_HOLDER || claim.claimedEntityId !== entity.id) {
+    return false;
+  }
+
+  const incidents = state.lawSecurity && state.lawSecurity.incidents;
+  if (!incidents || typeof incidents !== 'object') return false;
+  let boundIncident = null;
+  for (const key in incidents) {
+    if (!Object.prototype.hasOwnProperty.call(incidents, key)) continue;
+    const incident = incidents[key];
+    if (!incident || incident.status !== 'responding' || incident.attackerId !== targetId
+      || !Array.isArray(incident.responderIds) || !incident.responderIds.includes(entity.id)) continue;
+    if (claim.claimId === `${LAW_JOB_RESPONSE_HOLDER}:${incident.id}:${jobId}`) {
+      boundIncident = incident;
+      break;
+    }
+  }
+  if (!boundIncident) return false;
+  return authorizeAIEngagement({
+    state,
+    self: entity,
+    target,
+    tick: state.tick,
+    objectiveReason: `combat_doctrine:${doctrineId}:strike`,
+  }).ok;
+}
+
+function disabledNonlethalTargetFor(state, entity, ai) {
+  const profile = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
+  if (!profile || profile.destroyTarget !== false) return null;
+  const data = entity && entity.data || {};
+  const activity = effectiveActivityForAI(ai);
+  const combat = data.combat || {};
+  const targetId = combat.targetId ?? (activity && activity.targetId) ?? ai.retaliationTargetId;
+  const target = targetId == null ? null : getEntity(state, targetId);
+  if (!target || target.alive === false) return null;
+  return isDisabled(combatRuntimeFor(state, target.id), target) ? target : null;
+}
+
+function ensureEncounterState(state) {
+  if (!state.aiEncounter || typeof state.aiEncounter !== 'object') {
+    state.aiEncounter = { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] };
+  }
+  if (state.aiEncounter.schemaVersion !== AI_CONTRACT_VERSION) state.aiEncounter.schemaVersion = AI_CONTRACT_VERSION;
+  if (!Number.isInteger(state.aiEncounter.nextSeq) || state.aiEncounter.nextSeq < 1) state.aiEncounter.nextSeq = 1;
+  if (!Array.isArray(state.aiEncounter.commands)) state.aiEncounter.commands = [];
+  if (state.aiEncounter.commands.length > ENCOUNTER_COMMAND_RING_CAPACITY) {
+    state.aiEncounter.commands.splice(0, state.aiEncounter.commands.length - ENCOUNTER_COMMAND_RING_CAPACITY);
+  }
+  return state.aiEncounter;
+}
+
+function normalizeEncounterCommand(command, fallbackTick = 0) {
+  if (!command || typeof command !== 'object') return rejectEncounterCommand('command_invalid');
+  const type = String(command.type || '');
+  if (!ENCOUNTER_COMMAND_TYPES.has(type)) return rejectEncounterCommand('command_type_invalid');
+  const base = {
+    version: AI_CONTRACT_VERSION,
+    tick: Number.isInteger(command.tick) ? command.tick : (Number.isInteger(fallbackTick) ? fallbackTick : 0),
+    type,
+  };
+  if (type === 'phase') {
+    const phase = String(command.phase || '');
+    if (!DIRECTOR_PHASES.has(phase)) return rejectEncounterCommand('phase_invalid');
+    return acceptEncounterCommand({ ...base, phase });
+  }
+  if (type === 'request_reinforcement') {
+    return acceptEncounterCommand({
+      ...base,
+      packageId: command.packageId == null ? null : String(command.packageId),
+      budgetRemaining: Math.max(0, finiteInt(command.budgetRemaining, 0)),
+    });
+  }
+  if (type === 'order_retreat') {
+    return acceptEncounterCommand({ ...base, reason: String(command.reason || 'unspecified') });
+  }
+  if (type === 'narrative_beat') {
+    return acceptEncounterCommand({ ...base, beatIndex: Math.max(0, finiteInt(command.beatIndex, 0)) });
+  }
+  return rejectEncounterCommand('command_type_invalid');
+}
+
+function acceptEncounterCommand(command) {
+  return { ok: true, command: Object.freeze(command) };
+}
+
+function rejectEncounterCommand(reason) {
+  return { ok: false, reason };
+}
+
+function controlFromManeuver(entity, request, dt, state) {
+  const profile = resolveFlightProfile(entity, state);
+  const authority = measureThrusterAuthority(entity);
+  const axes = localAxes(entity.rot || 0);
+  const boostMult = request.boost ? profile.boostMult : 1;
+  // Ambient hulls (traffic convoys, job patrol actors) carry an all-zero legacy flightModel —
+  // they cruise on the propulsion catalog, not on derived thrust. When a claim re-tasks one for
+  // tactical duty (a dispatched responder, a WANTED-status patrol going hostile), the job drive
+  // stops and the legacy profile leaves it inert at zero force. The catalog drive is still the
+  // hull's real propulsion: fall back to it so the hull can actually answer the order. Tuned
+  // combat ships keep their authored flight model untouched.
+  const propulsion = (profile.mainAccel > 0 && profile.maxSpeed > 0)
+    ? null
+    : resolvePropulsionProfile(entity, state);
+  const mainAccel = profile.mainAccel > 0
+    ? profile.mainAccel
+    : finite(propulsion && propulsion.mainAccel, finite(propulsion && propulsion.maxAccel));
+  const reverseAccel = profile.reverseAccel > 0
+    ? profile.reverseAccel
+    : finite(propulsion && propulsion.reverseAccel, mainAccel * 0.6);
+  const strafeAccel = profile.strafeAccel > 0
+    ? profile.strafeAccel
+    : finite(propulsion && propulsion.strafeAccel, mainAccel * 0.7);
+  const maxSpeed = profile.maxSpeed > 0
+    ? profile.maxSpeed
+    : finite(propulsion && propulsion.combatSpeed, finite(propulsion && propulsion.maxSpeed, 120));
+  const forwardInput = clamp(request.forceLocal.forward, -1, 1);
+  const rightInput = clamp(request.forceLocal.right, -1, 1) * 0.75;  // damp strafe vs forward to make NPCs behave more like they must broadly face their velocity (more regular ship physics)
+  const forwardAuthority = forwardInput >= 0 ? authority.forward : authority.reverse;
+  const forwardAccel = forwardInput * (forwardInput >= 0 ? mainAccel : reverseAccel) * forwardAuthority * boostMult;
+  const rightAccel = rightInput * strafeAccel * authority.strafe * boostMult;
+  const force = {
+    x: (axes.fx * forwardAccel + axes.rx * rightAccel) * profile.mass,
+    y: 0,
+    z: (axes.fz * forwardAccel + axes.rz * rightAccel) * profile.mass,
+  };
+  if (request.brake) addBrakeForce(force, entity, profile, dt);
+  // Torque must be sized against the body that actually rotates. Tuned hulls keep
+  // physicsBody.inertiaY synced to the flight model, but ambient hulls carry the geometric
+  // fallback (0.5·mass·radius²) while their zeroed legacy profile reports ~200 — scaling by
+  // profile.inertia there undersizes torque ~50× and the hull can never answer a turn order.
+  const angularAccel = profile.angularAccel > 0
+    ? profile.angularAccel
+    : finite(propulsion && propulsion.yawAccel, 0);
+  const inertia = positive(entity.physicsBody && entity.physicsBody.inertiaY, positive(profile.inertia, 1));
+  const torqueYaw = clamp(request.torqueYaw, -1, 1) * angularAccel * inertia * authority.yaw;
+  return {
+    source: 'sg06-ai-maneuver',
+    mode: profile.mode,
+    force,
+    torque: { x: 0, y: torqueYaw, z: 0 },
+    authority,
+    maxSpeed: maxSpeed * (request.boost ? profile.boostMaxSpeedMult : profile.normalMaxSpeedMult),
+  };
+}
+
+function addBrakeForce(force, entity, profile, dt) {
+  const dtSafe = Math.max(1e-6, Number.isFinite(dt) && dt > 0 ? dt : 1 / 60);
+  const vx = finite(entity.vel && entity.vel.x);
+  const vz = finite(entity.vel && entity.vel.z);
+  const lambda = Math.max(0, profile.linearDrag + profile.reverseBrake);
+  const scale = Math.exp(-lambda * dtSafe);
+  force.x += ((vx * scale) - vx) * profile.mass / dtSafe;
+  force.z += ((vz * scale) - vz) * profile.mass / dtSafe;
+}
+
+// Steering clearance follows the collider physics actually builds. A measured skin is fixed-body
+// geometry only (resolveCollisionProxyManifest refuses it on a dynamic body), so a dynamic hull
+// steers on the same gameplay radius its capsule/ball uses; stations and other fixed solids keep
+// the measured planar radius. `modelTruthPlanarRadius` returns this exact value for a body with
+// no skin, and maneuver's bodyRadius() falls back to `radius` when it is 0.
+// Fixed solids resolve their census row once (the lookup allocates); a changed radius, dock
+// radius, or data object re-measures.
+const STEERING_PLANAR_RADIUS_CACHE = new WeakMap();
+function steeringPlanarRadius(entity) {
+  if (!entity || isDynamicPhysicsBodyEntity(entity)) return Number(entity && entity.radius) || 0;
+  const data = entity.data || null;
+  const radius = entity.radius;
+  const dockRadius = data ? data.dockRadius : undefined;
+  const cached = STEERING_PLANAR_RADIUS_CACHE.get(entity);
+  if (cached && cached.data === data && cached.radius === radius && cached.dockRadius === dockRadius) return cached.value;
+  const value = modelTruthPlanarRadius(entity);
+  STEERING_PLANAR_RADIUS_CACHE.set(entity, { data, radius, dockRadius, value });
+  return value;
+}
+
+function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity), attachmentIndex = null, freeze = Object.freeze, cacheOwner = null) {
+  const runtime = combatRuntimeFor(state, entity.id);
+  const ai = entity.data && entity.data.ai || {};
+  const heatMax = positive(runtime && runtime.heatMax, 100);
+  const subsystemFractionView = cacheOwner && typeof cacheOwner._subsystemFractionsFor === 'function'
+    ? cacheOwner._subsystemFractionsFor(entity, runtime)
+    : freeze(subsystemFractions(runtime));
+  const activity = effectiveActivityForAI(ai);
+  const bands = operationalBandsFor(state, entity, runtime, attachmentIndex);
+  const ramAuthorized = explicitRamAuthorization(entity, ai, activity, bands)
+    || acePassAuthorization(state, entity, ai, activity);
+  const specialistKind = isSwarmSpecialistRun(state) && entity.data?.runCohort === 'survival'
+    ? swarmSpecialistKind(entity.data?.lootTableId || entity.data?.enemyTypeId) : null;
+  const self = {
+    id: entity.id,
+    team: entity.team == null ? null : entity.team,
+    pos: vec2(entity.pos, freeze),
+    vel: vec2(entity.vel, freeze),
+    rot: wrapAngle(finite(entity.rot)),
+    radius: positive(entity.radius, 1),
+    planarRadius: steeringPlanarRadius(entity),
+    hullFraction: fraction(entity.hull, entity.hullMax, 1),
+    moraleImmune: ai.moraleImmune === true,
+    arenaPursuit: entity.data?.runCohort === 'survival' && ai.forcePlayerTarget === true,
+    swarmSpecialistKind: specialistKind,
+    swarmWardTargetId: specialistKind === 'warden' ? swarmWardCandidateId(state, entity) : null,
+    energyFraction: fraction(entity.cap, entity.capMax, 1),
+    heatFraction: clamp(finite(runtime && runtime.heat, 0) / heatMax, 0, 1),
+    disabled: isDisabled(runtime, entity),
+    // INF-021: the helm reads decontrol off the same frame as everything else, so a yanked
+    // ship relents instead of thrusting through its own tumble.
+    tumbling: isTumbling(state, entity),
+    // INF-027: post-tumble stabilization reads off the same frame, so tactics can tell a
+    // recovering helm (disrupted thrust, silent guns) from a fully re-engaged one.
+    recovering: isRecovering(state, entity),
+    tethered: attachmentsFor(attachmentIndex, entity.id).length > 0,
+    capabilities,
+    subsystemFractions: subsystemFractionView,
+    activity,
+    roe: normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free'),
+    combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
+    factionBehavior: normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine),
+    // SF-050: the committed-corridor telegraph must forecast with the speed the battery actually
+    // shoots — a doctrine committed at a nominal bolt speed would release a volley visibly off
+    // the line the pilot was shown on railgun-fast mounts.
+    aimProjectileSpeed: bestAimProjectileSpeed(entity.data && entity.data.weapons),
+    // FB-020: capital phase edges read physical mount loss, not hull fraction. The edges are
+    // authored on the enemy row; the loss count is the combat runtime's own truth.
+    turretPhaseEdges: turretPhaseEdgesFor(entity),
+    turretsLost: turretLossCount(runtime),
+    ramAuthorized,
+    woundedFallbackSpent: ai.woundedFallbackSpent === true,
+    // S10: the wave's last-three commit marker — the pursuit doctrine reads it to
+    // press the innermost ring and to never buy a wounded retreat.
+    swarmLastStand: ai.swarmLastStand === true,
+    // S7: the character sheet's 0.6 s tell floor — cohort hulls stretch every doctrine
+    // cue beat; unmarked hulls keep the adventure beat.
+    swarmTellFloor: ai.swarmTellFloor === true,
+    ...bands,
+  };
+  // The id allocator recycles numbers. Copy the occupant token the spawn just
+  // stamped; omit it when the body has none so a tokenless self stays tokenless.
+  const cadence = mothlightGunCadence(state, entity);
+  if (cadence) self.mothlightGunCadence = cadence;
+  const generation = entity.occupantGeneration;
+  if (generation != null && generation !== '') self.occupantGeneration = generation;
+  return freeze(self);
+}
+
+/**
+ * The fastest projectile speed among mounts whose barrels follow the ship's aim angle
+ * (fireDiscipline.mountFollowsAimAngle). This is the speed the doctrine corridor must forecast
+ * with — turret/homing/deploy mounts solve their own directions and never fly a committed line.
+ * Null when no aim-following mount carries a usable speed; the doctrine falls back to a nominal.
+ */
+function bestAimProjectileSpeed(weapons) {
+  let best = 0;
+  for (const w of weapons || []) {
+    if (!mountFollowsAimAngle(w)) continue;
+    const s = w && w.projSpeed;
+    if (Number.isFinite(s) && s > best) best = s;
+  }
+  return best > 0 ? best : null;
+}
+
+// T8 — a named ace that remembers a bungee/slingshot/ram player is authorized ONE head-on ram pass
+// per return, whatever its mass band, when it carries the `ram-plate` gimmick. aceMemory arms the
+// record (`data.acePass`), speaks the telegraph, and stamps the window; this only reads it, so the
+// pass opens one beat after the bark and closes on its own. The impact itself is the ordinary
+// collision path — mass and momentum decide, no damage constant lives here.
+function acePassAuthorization(state, entity, ai, activity) {
+  const data = entity && entity.data;
+  const pass = data && data.acePass;
+  if (!pass || pass.state !== 'telegraphed') return false;
+  if (data.gimmickTag !== 'ram-plate' || !data.styleKit || data.styleKit.style !== 'ram') return false;
+  const tick = state && Number.isFinite(state.tick) ? state.tick : 0;
+  if (!(tick >= pass.authorizedAtTick && tick <= pass.untilTick)) return false;
+  return !!ai && ai.passive !== true
+    && ai.sanctuaryWithdrawn !== true
+    && !!activity && activity.kind === 'attack_run'
+    && !String(activity.reason || '').includes('station_jurisdiction');
+}
+
+function explicitRamAuthorization(entity, ai, activity, bands) {
+  const intent = entity && entity.data && entity.data.intent || {};
+  const trigger = String(ai && ai.engagementTrigger || '');
+  const telegraph = String(ai && ai.approachTelegraph || '');
+  const activityReason = String(activity && activity.reason || '');
+  const heavyEnough = bands && (bands.operationalMassBand === 'heavy' || bands.operationalMassBand === 'capital');
+  return intent.ramPlate === true
+    && heavyEnough
+    && ai && ai.passive !== true
+    && ai.sanctuaryWithdrawn !== true
+    && activity && activity.kind === 'attack_run'
+    && !activityReason.includes('station_jurisdiction')
+    && trigger.length > 0 && trigger !== 'demand_pending'
+    && telegraph.length > 0;
+}
+
+// Massline cloak perception gate (Wave M2 §4.2). True when the cloak runtime is active and the
+// observing entity sits OUTSIDE the player's live detection radius — and false while a scanner
+// pulse has the cloak burned open (revealUntil). The predicate itself lives in cloak.js
+// (cloakHidesEntityFrom) so contacts, weapon locks, and seekers share one rule for the player
+// and for cloaked NPCs alike. Exported for check:massline2 (the perception promise is
+// contract-tested directly).
+export function cloakHidesPlayerFrom(state, self, player) {
+  return cloakHidesEntityFrom(state, self, player);
+}
+
+// --- Cloak contact-fade ledger --------------------------------------------------------------
+// When an established contact goes dark, the sensor frame keeps reporting a GHOST: the last real
+// fix dead-reckoned along its last velocity, flagged visible:false with confidence bleeding
+// toward the perception floor. PerceptionMemory (read-only) then does the rest — the ghost stays
+// out of doctrine reselection (visible===true required), keeps a directive's stale targetId
+// resolvable for a couple of seconds, and drops out of snapshots the tick our emitted confidence
+// crosses below its 0.08 floor. The ledger lives on state.massline2.cloakTracks: sim-runtime
+// truth, never serialized, cleared by cloak.newGame.
+const CLOAK_CONTACT_FADE_S = 2.0;   // an established contact goes dark over this window
+const CLOAK_TRACK_STALE_S = 30;     // ledger hygiene horizon — far past any tactical need
+const CLOAK_TRACK_OBSERVER_CAP = 128;
+const CLOAK_TRACK_TARGET_CAP = 64;
+
+function cloakTrackLedger(state) {
+  const root = state.massline2 || (state.massline2 = {});
+  return root.cloakTracks || (root.cloakTracks = new Map());
+}
+
+/** Record the live fix for a cloak-capable contact — the seed the ghost fades from. */
+function noteCloakTrackSeen(state, self, other, confidence, now) {
+  const selfId = self && self.id;
+  const targetId = other && other.id;
+  if (selfId == null || targetId == null) return;
+  const ledger = cloakTrackLedger(state);
+  let tracks = ledger.get(selfId);
+  if (!tracks) {
+    if (ledger.size >= CLOAK_TRACK_OBSERVER_CAP) pruneCloakTrackLedger(ledger, now);
+    tracks = new Map();
+    ledger.set(selfId, tracks);
+  }
+  let track = tracks.get(targetId);
+  if (!track) {
+    if (tracks.size >= CLOAK_TRACK_TARGET_CAP) pruneCloakTrackMap(tracks, now);
+    track = {
+      x: 0, z: 0, vx: 0, vz: 0,
+      conf: 1, seenAt: -Infinity,
+      hideStart: -1, lost: false, fadedEmitted: false,
+    };
+    tracks.set(targetId, track);
+  }
+  track.x = finite(other.pos && other.pos.x);
+  track.z = finite(other.pos && other.pos.z);
+  track.vx = finite(other.vel && other.vel.x);
+  track.vz = finite(other.vel && other.vel.z);
+  track.conf = Number.isFinite(confidence) ? confidence : 1;
+  track.seenAt = now;
+  track.hideStart = -1;
+  track.lost = false;
+  track.fadedEmitted = false;
+}
+
+/**
+ * While a cloak-hidden target's ghost still has life in it, emit a stale-track contact: the last
+ * fix drifting on its last velocity, visible:false, confidence decaying linearly to zero. When
+ * the fade completes we stop emitting — the memory record then ages out and deletes itself, and
+ * 'cloak:faded' fires once so audio/VFX/UI lanes can mark the moment a ship truly went dark.
+ */
+function emitCloakFadeContact(state, self, other, kind, now, attachmentIndex, freeze, out, records, cacheOwner) {
+  const selfId = self && self.id;
+  const targetId = other && other.id;
+  if (selfId == null || targetId == null) return;
+  const ledger = state.massline2 && state.massline2.cloakTracks;
+  const track = ledger && ledger.get(selfId) && ledger.get(selfId).get(targetId);
+  // No stored fix (never actually seen, e.g. cloaked before first detection) or already faded:
+  // the contact is simply absent — no ghost appears out of thin air.
+  if (!track || !Number.isFinite(track.seenAt) || track.lost) return;
+  if (track.hideStart < 0) {
+    // Anchor the bleed at the true go-dark moment when the cloak runtime stamps one and this
+    // observer has not sighted the ship since (a sighting newer than the engage means the hull
+    // was still inside the ring — the read itself is then the honest mark). First hidden read
+    // stays the fallback; a lazy sensor cadence must not stretch the fade past its window.
+    const rt = cloakRuntimeFor(state, other);
+    const engagedAt = rt && Number.isFinite(rt.engagedAt) ? rt.engagedAt : -Infinity;
+    track.hideStart = (engagedAt > track.seenAt && engagedAt <= now) ? engagedAt : now;
+  }
+  const age = Math.max(0, now - track.hideStart);
+  const fraction = 1 - age / CLOAK_CONTACT_FADE_S;
+  if (fraction <= 0) {
+    track.lost = true;
+    if (!track.fadedEmitted) {
+      track.fadedEmitted = true;
+      const bus = cacheOwner && cacheOwner.bus;
+      if (bus && typeof bus.emit === 'function') {
+        bus.emit('cloak:faded', { observerId: selfId, targetId, simTime: now });
+      }
+    }
+    return;
+  }
+  const confidence = Math.max(0, track.conf * fraction);
+  const runtime = combatRuntimeFor(state, targetId);
+  const hostile = isHostileForAI(state, self, other);
+  const base = cacheOwner && typeof cacheOwner._contactBaseFor === 'function'
+    ? cacheOwner._contactBaseFor(other, runtime, attachmentIndex, kind)
+    : buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner);
+  const threat = threatFor(state, self, other, hostile);
+  const ghostPos = freeze({ x: track.x + track.vx * age, z: track.z + track.vz * age });
+  const ghostVel = freeze({ x: track.vx, z: track.vz });
+  if (records) {
+    const rec = fillSensorContact(ensureSensorContactRecord(records, out.length), base, confidence, threat, hostile);
+    rec.pos = ghostPos;
+    rec.vel = ghostVel;
+    rec.visible = false;
+    out.push(rec);
+  } else {
+    out.push({
+      ...base,
+      pos: ghostPos,
+      vel: ghostVel,
+      visible: false,
+      confidence,
+      threat,
+      hostile,
+    });
+  }
+}
+
+function pruneCloakTrackMap(tracks, now) {
+  for (const [key, track] of tracks) {
+    if (track.lost || now - track.seenAt > CLOAK_TRACK_STALE_S) tracks.delete(key);
+    if (tracks.size <= CLOAK_TRACK_TARGET_CAP) return;
+  }
+}
+
+function pruneCloakTrackLedger(ledger, now) {
+  for (const [observerId, tracks] of ledger) {
+    let fresh = false;
+    for (const track of tracks.values()) {
+      if (!track.lost && now - track.seenAt <= CLOAK_TRACK_STALE_S) { fresh = true; break; }
+    }
+    if (!fresh) ledger.delete(observerId);
+    if (ledger.size <= CLOAK_TRACK_OBSERVER_CAP) return;
+  }
+}
+
+function makeSensorContactRecord() {
+  return {
+    id: null,
+    kind: null,
+    team: null,
+    classification: null,
+    pos: null,
+    vel: null,
+    radius: 0,
+    planarRadius: 0,
+    alive: true,
+    valid: true,
+    visible: true,
+    targetId: null,
+    ownerId: null,
+    disabled: false,
+    tumbling: false,
+    tethered: false,
+    exposed: false,
+    ownedBySelf: false,
+    objectiveValue: 0,
+    massClass: 1,
+    operationalMassBand: null,
+    mobilityBand: null,
+    cargoBand: null,
+    tetherabilityBand: null,
+    tags: null,
+    confidence: 0,
+    threat: 0,
+    hostile: false,
+  };
+}
+
+function ensureSensorContactRecord(records, index) {
+  let rec = records[index];
+  if (rec) return rec;
+  rec = makeSensorContactRecord();
+  records[index] = rec;
+  return rec;
+}
+
+/** Fill a retained contact record from a cached base + observer-relative fields (no object spread). */
+function fillSensorContact(out, base, confidence, threat, hostile) {
+  out.id = base.id;
+  out.kind = base.kind;
+  out.team = base.team;
+  out.classification = base.classification;
+  out.pos = base.pos;
+  out.vel = base.vel;
+  out.radius = base.radius;
+  out.planarRadius = base.planarRadius;
+  out.alive = base.alive;
+  out.valid = base.valid;
+  out.visible = base.visible;
+  out.targetId = base.targetId;
+  out.ownerId = base.ownerId;
+  out.disabled = base.disabled;
+  out.tumbling = base.tumbling;
+  out.tethered = base.tethered;
+  out.exposed = base.exposed;
+  out.ownedBySelf = base.ownedBySelf;
+  out.objectiveValue = base.objectiveValue;
+  out.fortifyTarget = base.fortifyTarget === true;
+  out.massClass = base.massClass;
+  out.operationalMassBand = base.operationalMassBand;
+  out.mobilityBand = base.mobilityBand;
+  out.cargoBand = base.cargoBand;
+  out.tetherabilityBand = base.tetherabilityBand;
+  out.tags = base.tags;
+  out.confidence = confidence;
+  out.threat = threat;
+  out.hostile = hostile;
+  // Drop tether-only keys so recycled slots match spread-alloc shape (no undefined own props).
+  if ('attachmentId' in out) delete out.attachmentId;
+  if ('sourceSocketId' in out) delete out.sourceSocketId;
+  if ('targetSocketId' in out) delete out.targetSocketId;
+  return out;
+}
+
+function hasActiveCloakRuntime(state, other) {
+  const runtime = cloakRuntimeFor(state, other);
+  return !!runtime && runtime.active === true;
+}
+
+function entityContacts(state, self, range, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null, candidateOverride = null, contactRecords = null) {
+  const out = outScratch || [];
+  out.length = 0;
+  const records = Array.isArray(contactRecords) ? contactRecords : null;
+  const candidates = candidateOverride || nearbyEntities(state, self.pos, range, helpers, candidateScratch);
+  const rangeSq = range * range;
+  // Massline cloak (Wave M2 §4.2, flag massline2.cloak — OFF headless): a cloaked ship OUTSIDE
+  // its live detection radius is never made a fresh contact, so the tactical stack genuinely
+  // cannot select or fire on it — honest gating at the single perception seam, no downstream
+  // special cases; inside the ring it is an ordinary contact again. And going dark is a verb,
+  // not teleportation: an observer who HAD the contact keeps a fading dead-reckoned ghost for a
+  // couple of seconds (visible:false, confidence bleeding to the floor) before losing it — the
+  // ship exits the picture the way a sensor actually loses a hull. Symmetric for the player
+  // (state.massline2.cloak) and any cloaked NPC (entity.data.cloak) via the shared gate.
+  const cloakLive = massline2Flag('cloak', state.runtime && state.runtime.features);
+  const cloakNow = cloakLive ? cloakTimeS(state) : 0;
+  for (const other of candidates) {
+    if (!other || other === self || !other.alive) continue;
+    const kind = contactKindFor(other);
+    if (!kind) continue;
+    const dx = finite(self.pos && self.pos.x) - finite(other.pos && other.pos.x);
+    const dz = finite(self.pos && self.pos.z) - finite(other.pos && other.pos.z);
+    const distanceSq = dx * dx + dz * dz;
+    const outOfRange = distanceSq > rangeSq;
+    // Shared spatial supersets include distant bodies. Only an active cloak can
+    // still emit an established ghost outside sensor range; preserve that path.
+    if (cloakLive && (!outOfRange || hasActiveCloakRuntime(state, other))
+      && cloakHidesEntityFrom(state, self, other)) {
+      emitCloakFadeContact(state, self, other, kind, cloakNow, attachmentIndex, freeze, out, records, cacheOwner);
+      continue;
+    }
+    if (outOfRange) continue;
+    const distance = Math.sqrt(distanceSq);
+    const runtime = combatRuntimeFor(state, other.id);
+    const hostile = isHostileForAI(state, self, other);
+    const base = cacheOwner && typeof cacheOwner._contactBaseFor === 'function'
+      ? cacheOwner._contactBaseFor(other, runtime, attachmentIndex, kind)
+      : buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner);
+    const confidence = confidenceFor(distance, range, state, self);
+    const threat = threatFor(state, self, other, hostile);
+    if (records) {
+      out.push(fillSensorContact(ensureSensorContactRecord(records, out.length), base, confidence, threat, hostile));
+    } else {
+      out.push({
+        ...base,
+        confidence,
+        threat,
+        hostile,
+      });
+    }
+    // Keep the per-observer last fix for every live SHIP contact — any ship may go dark next
+    // tick (an NPC's data.cloak only exists from the moment its producer engages it), and the
+    // fade ledger needs the fix that was current at that moment. A never-seen target has no
+    // ghost; hazards, pickups and rounds can never cloak, so they never eat a ledger row.
+    if (cloakLive && kind === ContactKind.SHIP) noteCloakTrackSeen(state, self, other, confidence, cloakNow);
+  }
+  // The Crucible pilot is the cohort's broadcast objective. Track that one ship beyond
+  // ordinary sensor range so boosting creates a chase, not abandoned enemies. Cloaking
+  // still breaks the lock; weapon range and the final firing authority stay unchanged.
+  const pilot = self.data?.runCohort === 'survival' && self.data?.ai?.forcePlayerTarget
+    ? getEntity(state, state.playerId) : null;
+  if (pilot?.alive && !out.some(c => c.id === pilot.id) && !cloakHidesPlayerFrom(state, self, pilot)) {
+    const hostile = isHostileForAI(state, self, pilot);
+    {
+      const base = buildContactBase(state, pilot, combatRuntimeFor(state, pilot.id),
+        attachmentIndex, 'ship', freeze, cacheOwner);
+      const threat = threatFor(state, self, pilot, hostile);
+      if (records) {
+        out.push(fillSensorContact(ensureSensorContactRecord(records, out.length), base, 1, threat, hostile));
+      } else {
+        out.push({ ...base, confidence: 1, threat, hostile });
+      }
+    }
+  }
+  // A CONTROL-dispatched responder carries its offender as a reported track, not a sensor guess —
+  // the same broadcast-objective semantics as the Crucible pilot. The jurisdiction witnessed the
+  // offense and feeds the assignment to its own units; a responder dispatched from beyond its own
+  // sensor reach still closes on the scene instead of drifting on a null intercept. Cloaking still
+  // breaks the track; hostility and fire authority are resolved per contact as usual.
+  const selfAi = (self.data && self.data.ai) || self.ai || {};
+  const securityTargetId = selfAi.securityTargetId;
+  const offender = securityTargetId != null ? getEntity(state, securityTargetId) : null;
+  if (offender && offender.alive && !out.some(c => c.id === offender.id)
+    && !cloakHidesPlayerFrom(state, self, offender)) {
+    // INF-029: the reported track carries last-seen information, never a live feed. When the
+    // dispatch snapshot exists the contact holds the scene's position with unknown velocity,
+    // marked reported (unseen, reported confidence); live sightings still win outright via the
+    // guard above, so reacquisition restores the accurate picture.
+    const snap = selfAi.securityTargetPos;
+    const reported = snap && Number.isFinite(Number(snap.x)) && Number.isFinite(Number(snap.z))
+      ? { ...offender, pos: { x: Number(snap.x), z: Number(snap.z) }, vel: { x: 0, z: 0 } }
+      : offender;
+    const hostile = isHostileForAI(state, self, offender);
+    const base = buildContactBase(state, reported, combatRuntimeFor(state, offender.id),
+      attachmentIndex, 'ship', freeze, cacheOwner);
+    const threat = threatFor(state, self, reported, hostile);
+    const confidence = reported === offender ? 1 : REPORTED_TRACK_CONFIDENCE;
+    if (records) {
+      const rec = fillSensorContact(ensureSensorContactRecord(records, out.length), base, confidence, threat, hostile);
+      if (reported !== offender) rec.visible = false;
+      out.push(rec);
+    } else {
+      out.push({
+        ...base,
+        ...(reported === offender
+          ? { confidence: 1 }
+          : { visible: false, confidence: REPORTED_TRACK_CONFIDENCE }),
+        threat,
+        hostile,
+      });
+    }
+  }
+  // D93: an AUTHORITATIVE ASSIGNMENT (doctrine.authoritativeAssignmentTargetId — the PQ-195 heist
+  // pressure element's attack_run on the tug, an ambush's marked prey, a warrant) is a
+  // dispatcher's report, not a sensor guess — the same broadcast-objective semantics as the two
+  // tracks above. Without it a raider dispatched from beyond its own sensor reach
+  // (DEFAULT_SENSOR_RANGE 1600 WU; the PQ-195 launch parks the tug ~2500 WU from the assembly)
+  // never perceives its assignment: the squad commander reads a weak contact picture, allocates
+  // HOLD, and the wedge station-keeps around the anchor — measured 1966 -> 2225 WU AWAY from the
+  // tug over 360 ticks. The track is reported (unseen, reported confidence) so a live sighting
+  // still wins outright via the guard; hostility and fire authority are resolved per contact as
+  // usual (fire needs its own sighting), and cloaking breaks it.
+  const assignedTargetId = authoritativeAssignmentTargetId(selfAi.activity);
+  const assigned = assignedTargetId != null && assignedTargetId !== self.id
+    ? getEntity(state, assignedTargetId) : null;
+  const assignedKind = assigned ? contactKindFor(assigned) : null;
+  const fortifyObjective = assignedKind === ContactKind.OBJECTIVE
+    && assigned?.data?.swarmFortify?.schemaVersion === 1;
+  if (assigned && assigned.alive && (assignedKind === ContactKind.SHIP || fortifyObjective)
+    && !out.some(c => c.id === assigned.id) && !cloakHidesPlayerFrom(state, self, assigned)) {
+    const hostile = isHostileForAI(state, self, assigned);
+    const base = buildContactBase(state, assigned, combatRuntimeFor(state, assigned.id),
+      attachmentIndex, assignedKind, freeze, cacheOwner);
+    const threat = threatFor(state, self, assigned, hostile);
+    if (records) {
+      const rec = fillSensorContact(ensureSensorContactRecord(records, out.length), base, REPORTED_TRACK_CONFIDENCE, threat, hostile);
+      rec.visible = false;
+      out.push(rec);
+    } else {
+      out.push({ ...base, visible: false, confidence: REPORTED_TRACK_CONFIDENCE, threat, hostile });
+    }
+  }
+  // RW-02 second slice — the towed bell is LOUD. An observer already prosecuting the towing
+  // hull (or holding its own lure claim on it) hears the signature as an objective contact —
+  // the same sensed-objective family a freight pod reads as — so the pursuit can re-acquire
+  // the bell through the ordinary contact→intercept path instead of steering on a ghost.
+  // Range-gated like any live sighting: no signature, no contact, and a cold lure simply
+  // drops out of the frame again.
+  const towedLure = towedLureContactFor(state, self, state.player && state.player.tether);
+  if (towedLure && towedLure.alive !== false && towedLure.pos
+    && !out.some(c => c.id === towedLure.id)) {
+    const dxl = finite(self.pos && self.pos.x) - finite(towedLure.pos && towedLure.pos.x);
+    const dzl = finite(self.pos && self.pos.z) - finite(towedLure.pos && towedLure.pos.z);
+    const lureDistanceSq = dxl * dxl + dzl * dzl;
+    if (lureDistanceSq <= rangeSq) {
+      const base = buildContactBase(state, towedLure, combatRuntimeFor(state, towedLure.id),
+        attachmentIndex, ContactKind.OBJECTIVE, freeze, cacheOwner);
+      const hostile = isHostileForAI(state, self, towedLure);
+      const threat = threatFor(state, self, towedLure, hostile);
+      const confidence = confidenceFor(Math.sqrt(lureDistanceSq), range, state, self);
+      if (records) {
+        out.push(fillSensorContact(ensureSensorContactRecord(records, out.length), base, confidence, threat, hostile));
+      } else {
+        out.push({ ...base, confidence, threat, hostile });
+      }
+    }
+  }
+  return out;
+}
+
+const WELL_OBSTACLE_TAGS = Object.freeze(['solid', 'field_well']);
+
+function appendWellObstacles(state, observer, range, contacts, freeze) {
+  const data = observer.data || {};
+  if (data.silhouette !== 'corsair_blade' && observer.silhouette !== 'corsair_blade'
+    && data.ai?.combatDoctrineId !== 'interceptor_flyby'
+    && !data.aceId && !data.aceMemory?.aceId && !data.ai?.aceId) return;
+  const active = state.fields?.active;
+  const wells = active?.length ? active : state.fields?.snapshot || [];
+  for (let i = 0; i < wells.length; i++) {
+    const well = wells[i];
+    if (!well || well.kind !== 'well' || well.alive === false
+      || (well.ownerId != null && well.ownerId !== state.playerId)) continue;
+    const center = well.center || well;
+    if (!Number.isFinite(center.x) || !Number.isFinite(center.z) || !(well.radius > 0)
+      || Math.hypot(center.x - observer.pos.x, center.z - observer.pos.z) > range) continue;
+    contacts.push(freeze({ id: `well:${well.id ?? i}`, kind: ContactKind.WAYPOINT,
+      tags: WELL_OBSTACLE_TAGS, pos: freeze({ x: center.x, z: center.z }),
+      vel: freeze({ x: 0, z: 0 }), radius: well.radius, planarRadius: well.radius,
+      alive: true, valid: true, visible: true, hostile: false, threat: 0, confidence: 1, team: null }));
+  }
+}
+
+// Cold fixed dressing is not a combat target or entity-index member. Add only its
+// physical footprint to navigation, keeping threat, cloak and target selection unchanged.
+function appendDressingObstacles(state, observer, range, contacts, attachmentIndex, freeze) {
+  for (const row of currentSolidDressingRows(state)) {
+    if (!row || row.id === observer.id) continue;
+    const radius = physicalObstacleRadius(row);
+    if (!(radius > 0)) continue;
+    const dx = row.pos.x - observer.pos.x, dz = row.pos.z - observer.pos.z;
+    if (dx * dx + dz * dz > (range + radius) ** 2) continue;
+    // Range gate first: the duplicate scan only runs for the few rows actually in reach.
+    if (contacts.some(contact => contact.id === row.id)) continue;
+    const base = buildContactBase(state, row, null, attachmentIndex, ContactKind.HAZARD, freeze, null);
+    contacts.push({ ...base, radius, planarRadius: radius, team: null, targetId: null,
+      objectiveValue: 0, fortifyTarget: false, tags: COLD_DRESSING_TAGS, confidence: 1, threat: 0, hostile: false });
+  }
+}
+
+function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner) {
+  const tethered = attachmentsFor(attachmentIndex, other.id).length > 0;
+  const disabled = isDisabled(runtime, other);
+  const tags = cacheOwner && typeof cacheOwner._tagsFor === 'function'
+    ? cacheOwner._tagsFor(other, runtime)
+    : tagsFor(other, runtime, freeze);
+  return {
+    id: other.id,
+    kind,
+    team: other.team == null ? null : other.team,
+    classification: classificationFor(other),
+    pos: vec2(other.pos, freeze),
+    vel: vec2(other.vel, freeze),
+    radius: positive(other.radius, 0),
+    planarRadius: steeringPlanarRadius(other),
+    alive: true,
+    valid: true,
+    visible: true,
+    targetId: other.data && other.data.combat ? other.data.combat.targetId : null,
+    ownerId: other.ownerId == null ? null : other.ownerId,
+    disabled,
+    tumbling: isTumbling(state, other),
+    tethered,
+    exposed: false,
+    ownedBySelf: false,
+    objectiveValue: objectiveValueFor(other),
+    fortifyTarget: other.data?.swarmFortify?.schemaVersion === 1,
+    massClass: Math.max(1, Math.round(Math.log2(positive(other.mass, 1) + 1))),
+    ...operationalBandsFor(state, other, runtime, attachmentIndex, { tethered, disabled }),
+    tags,
+  };
+}
+
+function attachmentContacts(state, self, range, activeAttachments = null, freeze = Object.freeze, outScratch = null) {
+  const out = outScratch || [];
+  out.length = 0;
+  const attachments = activeAttachments || Object.values(state.combat && state.combat.attachments && state.combat.attachments.byId || {})
+    .filter((attachment) => attachment && attachment.state === 'active')
+    .sort((a, b) => compareText(String(a.id), String(b.id)));
+  for (const attachment of attachments) {
+    const owner = getEntity(state, attachment.ownerId);
+    const target = getEntity(state, attachment.targetId);
+    if (!owner || !target) continue;
+    const pos = midpoint(owner.pos, target.pos);
+    const distance = distance2(self.pos, pos);
+    const endpointVisible = attachment.ownerId === self.id || attachment.targetId === self.id;
+    if (!endpointVisible && distance > range) continue;
+    const hostile = isHostileForAI(state, self, attachment.ownerId === self.id ? target : owner);
+    const ownedBySelf = attachment.ownerId === self.id;
+    out.push({
+      id: attachment.id,
+      kind: ContactKind.TETHER,
+      team: owner.team == null ? null : owner.team,
+      classification: attachment.defId || 'massline',
+      pos: freeze(pos),
+      vel: freeze(relativeVelocity(owner, target)),
+      radius: 2,
+      alive: true,
+      valid: true,
+      visible: true,
+      confidence: endpointVisible ? 1 : confidenceFor(distance, range, state, self),
+      hostile,
+      threat: hostile ? 0.85 : 0.25,
+      targetId: attachment.targetId,
+      ownerId: attachment.ownerId,
+      attachmentId: attachment.id,
+      sourceSocketId: attachment.sourceSocketId || null,
+      targetSocketId: attachment.targetSocketId || null,
+      exposed: ownedBySelf,
+      tethered: attachment.targetId === self.id || attachment.ownerId === self.id,
+      disabled: false,
+      ownedBySelf,
+      objectiveValue: 0,
+      massClass: 1,
+      operationalMassBand: 'light',
+      mobilityBand: 'low',
+      cargoBand: 'empty',
+      tetherabilityBand: 'poor',
+      tags: tetherTags(ownedBySelf, attachment, owner, target),
+    });
+  }
+  return out;
+}
+
+function tetherTags(ownedBySelf, attachment, owner, target) {
+  const base = ownedBySelf ? OWNED_TETHER_TAGS : HOSTILE_TETHER_TAGS;
+  const length = distance2(owner && owner.pos, target && target.pos);
+  const slack = positive(attachment && attachment.restLength, 0) - length;
+  let tags = base;
+  // 'overloadable' must mean a real escape option. Lines whose massline policy only yields to
+  // extreme endpoints (the standard player tether) can never be snapped by ship thrust, so a
+  // tethered member must not be diverted into a futile overload objective against them.
+  if (!ownedBySelf) {
+    const def = ATTACHMENT_DEF_BY_ID.get(attachment && attachment.defId) || null;
+    if (!automaticMasslineBreakAllowed(def, owner, target)) {
+      tags = Object.freeze(base.filter((tag) => tag !== 'overloadable'));
+    }
+  }
+  return slack >= 6 ? Object.freeze([...tags, 'slack']) : tags;
+}
+
+function recentEventIndexFor(state, tick) {
+  const events = state.combat && state.combat.trace && Array.isArray(state.combat.trace.events)
+    ? state.combat.trace.events : [];
+  const byTarget = new Map();
+  for (let index = events.length - 1; index >= 0; index--) {
+    const event = events[index];
+    if (!event || event.targetId == null) continue;
+    const age = tick - (Number.isInteger(event.tick) ? event.tick : tick);
+    if (age < 0 || age > RECENT_EVENT_TICKS) continue;
+    let out = byTarget.get(event.targetId);
+    if (!out) {
+      out = [];
+      byTarget.set(event.targetId, out);
+    }
+    if (out.length >= 12) continue;
+    if (event.kind === 'damage.routed') {
+      out.push({
+        type: 'damage_received',
+        sourceId: event.attackerId == null ? null : event.attackerId,
+        targetId: event.targetId,
+        magnitude: finite(event.totalApplied, finite(event.hullDamage, 0)),
+        tags: ['combat'],
+      });
+    } else if (event.kind === 'subsystem.disabled') {
+      out.push({
+        type: 'subsystem_disabled',
+        sourceId: event.attackerId == null ? null : event.attackerId,
+        targetId: event.targetId,
+        magnitude: 1,
+        tags: [String(event.subsystemId || 'unknown')],
+      });
+    }
+  }
+  for (const out of byTarget.values()) out.reverse();
+  return byTarget;
+}
+
+function normalizeManeuverRequest(request, fallbackTick) {
+  if (request && request[NORMALIZED_THRUSTER_REQUEST_FLAG] === true && request.tick === fallbackTick) return request;
+  const forceLocal = request.forceLocal || {};
+  return Object.freeze({
+    version: AI_CONTRACT_VERSION,
+    entityId: request.entityId,
+    tick: Number.isInteger(request.tick) ? request.tick : fallbackTick,
+    kind: String(request.kind || 'hold'),
+    forceLocal: Object.freeze({
+      forward: clamp(finite(forceLocal.forward), -1, 1),
+      right: clamp(finite(forceLocal.right), -1, 1),
+    }),
+    torqueYaw: clamp(finite(request.torqueYaw), -1, 1),
+    boost: !!request.boost,
+    brake: !!request.brake,
+    targetHeading: wrapAngle(finite(request.targetHeading)),
+    horizonTicks: clamp(Number.isInteger(request.horizonTicks) ? request.horizonTicks : 30, 1, 240),
+    trajectory: Object.freeze(Array.isArray(request.trajectory) ? request.trajectory.slice(0, 8).map((point) => Object.freeze({
+      x: finite(point && point.x),
+      z: finite(point && point.z),
+      tick: Number.isInteger(point && point.tick) ? point.tick : fallbackTick,
+    })) : []),
+    reason: String(request.reason || 'no_reason'),
+  });
+}
+
+function capabilitiesFor(state, entity) {
+  const runtime = combatRuntimeFor(state, entity.id);
+  const out = new Set();
+  const base = runtime && runtime.capabilities || {};
+  const disabled = new Set();
+  for (const [name, enabled] of Object.entries(base)) if (enabled === false) disabled.add(name);
+  const add = (capability) => {
+    if (typeof capability !== 'string') return;
+    if (capabilityBlocked(capability, disabled)) return;
+    out.add(capability);
+  };
+  for (const [name, enabled] of Object.entries(base)) if (enabled !== false) out.add(name);
+  const ai = entity.data && entity.data.ai || {};
+  for (const capability of ai.capabilities || []) add(capability);
+  const weapons = entity.data && Array.isArray(entity.data.weapons) ? entity.data.weapons : [];
+  if (weapons.length > 0) add('ranged');
+  if (weapons.some((weapon) => weapon && weapon.damageType === 'emp')) add('disable');
+  const role = String(ai.role || ai.preferredRole || ai.archetype || '').toLowerCase();
+  if (role.includes('sniper')) add('ranged');
+  if (role.includes('tug')) add('tug');
+  if (role.includes('thief')) add('steal');
+  if (role.includes('screen')) add('screen');
+  if (role.includes('support')) add('disable');
+  return [...out].sort();
+}
+
+function capabilityBlocked(capability, disabled) {
+  const dependencies = CAPABILITY_DEPENDENCIES[capability] || [capability];
+  return dependencies.some((dependency) => disabled.has(dependency));
+}
+
+function subsystemFractions(runtime) {
+  const subsystems = runtime && runtime.subsystems || {};
+  if (!Object.keys(subsystems).length) return EMPTY_SUBSYSTEM_FRACTIONS;
+  const out = {};
+  for (const [id, subsystem] of Object.entries(subsystems)) {
+    out[id] = fraction(subsystem.health, subsystem.maxHealth, 1);
+  }
+  return out;
+}
+
+function tagsFor(entity, runtime, freeze = Object.freeze) {
+  if ((!runtime || !runtime.capabilities) && entity && entity.collides === true && !entity.factionId) return SOLID_TAGS;
+  const tags = new Set();
+  if (entity.collides) tags.add('solid');
+  if (entity.data && Array.isArray(entity.data.weapons) && entity.data.weapons.length) tags.add('armed');
+  if (entity.factionId) tags.add(String(entity.factionId));
+  for (const capability of Object.keys(runtime && runtime.capabilities || {})) {
+    if (runtime.capabilities[capability] !== false) tags.add(capability);
+  }
+  return freeze([...tags].sort());
+}
+
+function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
+  const helper = helpers && helpers.queryRadius;
+  const out = scratch || [];
+  out.length = 0;
+  const tableHits = queryCombatTableEntities(
+    state,
+    pos && pos.x,
+    pos && pos.z,
+    range,
+    nearbyCombatScratch,
+    COMBAT_TABLE_FLAGS.SHIP | COMBAT_TABLE_FLAGS.PROJECTILE | COMBAT_TABLE_FLAGS.WRECK,
+  );
+  const seen = nearbySeen;
+  seen.clear();
+  for (let i = 0; i < tableHits.length; i++) {
+    const entity = tableHits[i];
+    if (!entity || seen.has(entity.id)) continue;
+    seen.add(entity.id);
+    out.push(entity);
+  }
+  const index = state && state.entityIndex;
+  const collidables = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables)
+    ? index.collidables
+    : null;
+  if (collidables && collidables.length > 0 && collidables.length < AI_SPATIAL_MIN_COLLIDABLES && pos) {
+    for (let i = 0; i < collidables.length; i++) {
+      const entity = collidables[i];
+      if (!entity || seen.has(entity.id) || entity.alive === false || !entity.pos) continue;
+      const dx = entity.pos.x - pos.x;
+      const dz = entity.pos.z - pos.z;
+      if (dx * dx + dz * dz > range * range) continue;
+      seen.add(entity.id);
+      out.push(entity);
+    }
+    return out;
+  }
+  if (hasActiveSpatialHash(state && state.spatialHash) && typeof (state.spatialHash.queryRadius) === 'function') {
+    nearbyHashScratch.length = 0;
+    state.spatialHash.queryRadius(pos.x, pos.z, range, nearbyHashScratch);
+    for (let i = 0; i < nearbyHashScratch.length; i++) {
+      const entity = nearbyHashScratch[i];
+      if (!entity || seen.has(entity.id)) continue;
+      seen.add(entity.id);
+      out.push(entity);
+    }
+    return out;
+  }
+  if (typeof helper === 'function') {
+    nearbyHashScratch.length = 0;
+    helper(pos, range, nearbyHashScratch);
+    for (let i = 0; i < nearbyHashScratch.length; i++) {
+      const entity = nearbyHashScratch[i];
+      if (!entity || seen.has(entity.id)) continue;
+      seen.add(entity.id);
+      out.push(entity);
+    }
+    return out;
+  }
+  if (collidables && pos) {
+    for (let i = 0; i < collidables.length; i++) {
+      const entity = collidables[i];
+      if (!entity || seen.has(entity.id) || entity.alive === false || !entity.pos) continue;
+      const dx = entity.pos.x - pos.x;
+      const dz = entity.pos.z - pos.z;
+      if (dx * dx + dz * dz > range * range) continue;
+      seen.add(entity.id);
+      out.push(entity);
+    }
+    return out;
+  }
+  if (Array.isArray(state.entityList) && out.length === 0) return state.entityList;
+  return out;
+}
+
+const nearbyCombatScratch = [];
+const nearbyHashScratch = [];
+const nearbySeen = new Set();
+
+function liveSensorBatchEntry(entries, index) {
+  let entry = entries[index];
+  if (entry) return entry;
+  const candidates = [];
+  entry = {
+    candidates,
+    contacts: [],
+    contactRecords: [],
+    tetherContacts: [],
+    frame: {},
+    request: { id: null, x: 0, z: 0, r: 0, out: candidates },
+    requestActive: false,
+  };
+  entries[index] = entry;
+  return entry;
+}
+
+function addAttachment(byEntity, entityId, attachment) {
+  if (entityId == null) return;
+  let list = byEntity.get(entityId);
+  if (!list) {
+    list = [];
+    byEntity.set(entityId, list);
+  }
+  list.push(attachment);
+}
+
+function attachmentsFor(index, entityId) {
+  if (!index || !index.byEntity || entityId == null) return EMPTY_ATTACHMENTS;
+  return index.byEntity.get(entityId) || EMPTY_ATTACHMENTS;
+}
+
+
+/** Membership + signature identity for live roster retain (excludes pos/activity/authority). */
+function liveRosterMembershipKey(candidates, capabilitiesFor) {
+  let key = '';
+  for (let i = 0; i < candidates.length; i++) {
+    const entity = candidates[i];
+    const ai = (entity.data && entity.data.ai) || entity.ai;
+    const doctrine = String(ai.doctrine || doctrineFor(entity));
+    const faction = String(entity.factionId || ai.faction || `team_${entity.team == null ? 'unknown' : entity.team}`);
+    const squadId = String(ai.squadId || ai.wingId || `${doctrine}:${faction}`);
+    const formation = String(ai.formation || defaultFormation(doctrine));
+    const preferredRole = ai.preferredRole || ai.role || '';
+    const combatDoctrineId = normalizeCombatDoctrineId(ai.combatDoctrineId) || '';
+    const caps = capabilitiesFor(entity) || [];
+    const factionBehavior = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
+    key += `${entity.id}:${squadId}:${doctrine}:${faction}:${formation}:`;
+    key += `${positive(ai.formationSpacing, DEFAULT_FORMATION_SPACING)}:`;
+    key += `${positive(ai.formationBound, DEFAULT_FORMATION_BOUND)}:`;
+    key += `${preferredRole}:${combatDoctrineId}:${caps.join('+')}:`;
+    key += `${profileSignature(factionBehavior)}:${entity.team == null ? '' : entity.team};`;
+  }
+  return key;
+}
+
+function refreshLiveRosterMembers(roster, candidates, playerId, playerTeam, authorityOrigin, authorityRadius) {
+  // Candidates are sorted by id; roster members within each squad are sorted by id.
+  // Walk candidates once via id map for O(n) refresh.
+  const byId = refreshLiveRosterMembers._byId || (refreshLiveRosterMembers._byId = new Map());
+  byId.clear();
+  for (let i = 0; i < candidates.length; i++) {
+    const entity = candidates[i];
+    byId.set(entity.id, entity);
+  }
+  for (let s = 0; s < roster.length; s++) {
+    const members = roster[s].members;
+    for (let m = 0; m < members.length; m++) {
+      const member = members[m];
+      const entity = byId.get(member.id);
+      if (!entity) continue;
+      const ai = (entity.data && entity.data.ai) || entity.ai;
+      member.alive = entity.alive !== false;
+      member.pos = entity.pos || null;
+      member.activity = entity.activity || null;
+      member.team = entity.team;
+      member.passive = !!(ai && ai.passive === true);
+      member.playerId = playerId;
+      member.playerTeam = playerTeam;
+      member.authorityOrigin = authorityOrigin;
+      member.authorityRadius = authorityRadius;
+    }
+  }
+}
+
+function rosterSignature(squad) {
+  let text = `${squad.id}|${squad.doctrine}|${squad.faction}|${squad.formation}|${squad.formationSpacing}|${squad.formationBound}|${profileSignature(squad.factionBehavior)}`;
+  for (const member of squad.members) {
+    text += `;${stableId(member.id)}:${member.preferredRole || ''}:${member.combatDoctrineId || ''}:${profileSignature(member.factionBehavior)}:${(member.capabilities || []).join('+')}`;
+  }
+  return text;
+}
+
+function profileSignature(profile) {
+  const value = normalizeFactionBehaviorProfile(profile);
+  return value
+    ? [
+        value.pursuitCommitment,
+        value.preferredRange,
+        value.liveFormation,
+        value.retreatHullFraction,
+        value.combatDoctrineId,
+        Number(value.disableThenRun),
+        Number(value.firstFire),
+        JSON.stringify(value.firstFireAgainst),
+        value.firstFireCondition || '',
+        value.stationDefenseAggression,
+        value.disableChance,
+        Number(value.destroyTarget),
+        Number(value.fixedRoute),
+      ].join('/')
+    : '';
+}
+
+function operationalBandsFor(state, entity, runtime, attachmentIndex, facts = null) {
+  const mass = operationalMassFor(state, entity);
+  const maxSpeed = positive(entity && entity.maxSpeed, positive(entity && entity.flightModel && entity.flightModel.maxSpeed, 0));
+  const turnRate = positive(entity && entity.turnRate, positive(entity && entity.flightModel && entity.flightModel.maxYawRate, 0));
+  const cargoMass = cargoMassFor(state, entity);
+  const tethered = facts && typeof facts.tethered === 'boolean'
+    ? facts.tethered
+    : attachmentsFor(attachmentIndex, entity && entity.id).length > 0;
+  const disabled = facts && typeof facts.disabled === 'boolean'
+    ? facts.disabled
+    : isDisabled(runtime, entity);
+  return {
+    operationalMassBand: mass < 40 ? 'light' : mass < 140 ? 'medium' : mass < 700 ? 'heavy' : 'capital',
+    mobilityBand: maxSpeed >= 135 || turnRate >= 2 ? 'high' : (maxSpeed > 0 && maxSpeed < 80) || (turnRate > 0 && turnRate < 0.8) ? 'low' : 'medium',
+    cargoBand: cargoMass < 1 ? 'empty' : cargoMass < 10 ? 'light' : cargoMass < 40 ? 'valuable' : 'rich',
+    tetherabilityBand: tethered ? 'poor' : disabled ? 'excellent' : mass >= 700 ? 'fair' : mass >= 140 ? 'good' : 'excellent',
+  };
+}
+
+function operationalMassFor(state, entity) {
+  if (!entity) return 1;
+  if (state && entity.id === state.playerId) {
+    const derived = entity.data && entity.data.derived;
+    if (Number.isFinite(derived && derived.operationalMass)) return Math.max(1, derived.operationalMass);
+  }
+  return positive(entity.mass, positive(entity.physicsBody && entity.physicsBody.mass, 1));
+}
+
+function cargoMassFor(state, entity) {
+  if (!entity) return 0;
+  const data = entity.data || {};
+  return Math.max(0, finite(data.cargoMass, finite(data.derived && data.derived.cargoMass)));
+}
+
+function combatRuntimeFor(state, entityId) {
+  return state.combat && state.combat.entities && state.combat.entities[String(entityId)] || null;
+}
+
+function sensorRangeFor(state, entity) {
+  const ai = entity.data && entity.data.ai || {};
+  const runtime = combatRuntimeFor(state, entity.id);
+  const sensorFraction = subsystemFraction(runtime, 'subsystem_sensor');
+  const base = positive(ai.sensorRange, positive(entity.sensorRange, DEFAULT_SENSOR_RANGE));
+  const sensorOnline = !runtime || !runtime.capabilities || runtime.capabilities.sensor !== false;
+  return base * (sensorOnline ? 1 : 0.25) * clamp(0.35 + sensorFraction * 0.65, 0.2, 1);
+}
+
+function subsystemFraction(runtime, id) {
+  const subsystem = runtime && runtime.subsystems && runtime.subsystems[id];
+  return subsystem ? fraction(subsystem.health, subsystem.maxHealth, 1) : 1;
+}
+
+function contactKindFor(entity) {
+  if (entity.type === 'ship' || entity.type === 'drone') return ContactKind.SHIP;
+  if (entity.type === 'projectile') return ContactKind.PROJECTILE;
+  if (entity.data?.swarmFortify?.schemaVersion === 1) return ContactKind.OBJECTIVE;
+  if (entity.type === 'asteroid' || entity.type === 'station' || entity.type === 'wreck'
+      || entity.type === 'masslineSnare' || entity.type === 'masslineSnareAnchor') return ContactKind.HAZARD;
+  // Deliberately jettisoned freight uses a payload body; it remains a sensed cargo objective.
+  if (entity.type === 'pickup' || (entity.type === 'payload'
+    && entity.data?.kind === 'cargo' && typeof entity.data?.commodityId === 'string'
+    && Number(entity.data?.amount) > 0)) return ContactKind.OBJECTIVE;
+  // Non-cargo payloads are still physical freight/assembly obstacles. Keep them
+  // out of objective/attack selection while exposing solid bodies to navigation.
+  if (entity.type === 'payload' && entity.collides === true && entity.physicsBody !== false) {
+    const spec = entity.physicsBody;
+    const material = spec?.material || 'payload';
+    const ghost = spec?.contact?.ghost ?? PHYSICS_MATERIALS[material]?.ghost;
+    if (!ghost) return ContactKind.HAZARD;
+  }
+  return null;
+}
+
+function classificationFor(entity) {
+  const role = entity.data && (entity.data.scenarioRole || entity.data.role || entity.data.archetype);
+  if (role) return String(role);
+  if (entity.type === 'ship' && entity.factionId) return `${entity.factionId}_ship`;
+  return String(entity.type || 'unknown');
+}
+
+function objectiveValueFor(entity) {
+  if (entity.type === 'pickup') return 0.7;
+  if (entity.data && entity.data.objectiveValue != null) return Math.max(0, finite(entity.data.objectiveValue));
+  return 0;
+}
+
+function threatFor(state, self, other, hostile = isHostileForAI(state, self, other)) {
+  if (!hostile) return 0;
+  const armed = other.data && Array.isArray(other.data.weapons) && other.data.weapons.length ? 0.2 : 0;
+  return clamp(0.45 + armed + positive(other.mass, 1) / 400, 0, 1);
+}
+
+function isDisabled(runtime, entity) {
+  if (!entity || entity.alive === false) return true;
+  return !!(runtime && runtime.capabilities && runtime.capabilities.drive === false);
+}
+
+function doctrineFor(entity) {
+  const ai = entity.data && entity.data.ai || {};
+  if (ai.doctrine) return ai.doctrine;
+  if (entity.factionId === 'faction_scn') return 'official';
+  if (entity.factionId === 'faction_vael' || entity.factionId === 'faction_reach') return 'scavenger';
+  return 'balanced';
+}
+
+function defaultFormation(doctrine) {
+  return doctrine === 'official' ? 'line' : 'wedge';
+}
+
+function usesSg02DynamicAuthority(state) {
+  const gameplay = state && state.settings && state.settings.gameplay;
+  return !!(gameplay && gameplay.physicsBackend === 'rapier-dynamic');
+}
+
+function sg02Ready(state) {
+  const diag = state && state.physicsRuntime && state.physicsRuntime.diagnostics;
+  return !!(diag && diag.backend === 'rapier-dynamic' && diag.sg02Ready === true);
+}
+
+function getEntity(state, id) {
+  return state && state.entities && state.entities.get ? state.entities.get(id) || null : null;
+}
+
+function isLiveCraft(entity) {
+  return !!(entity && entity.alive !== false && (entity.type === 'ship' || entity.type === 'drone'));
+}
+
+function localAxes(rot) {
+  const fx = Math.cos(rot);
+  const fz = Math.sin(rot);
+  return { fx, fz, rx: -fz, rz: fx };
+}
+
+function vec2(value, freeze = Object.freeze) {
+  return freeze({ x: finite(value && value.x), z: finite(value && value.z) });
+}
+
+function midpoint(a, b) {
+  return { x: (finite(a && a.x) + finite(b && b.x)) * 0.5, z: (finite(a && a.z) + finite(b && b.z)) * 0.5 };
+}
+
+function relativeVelocity(a, b) {
+  return { x: finite(b.vel && b.vel.x) - finite(a.vel && a.vel.x), z: finite(b.vel && b.vel.z) - finite(a.vel && a.vel.z) };
+}
+
+function distance2(a, b) {
+  return Math.hypot(finite(a && a.x) - finite(b && b.x), finite(a && a.z) - finite(b && b.z));
+}
+
+function confidenceFor(distance, range, state, entity) {
+  const sensorFraction = subsystemFraction(combatRuntimeFor(state, entity.id), 'subsystem_sensor');
+  return clamp((1 - distance / Math.max(1, range)) * (0.55 + sensorFraction * 0.45), 0.1, 1);
+}
+
+function contactSort(a, b) {
+  const kind = compareText(a.kind, b.kind);
+  return kind || compareIds(a.id, b.id);
+}
+
+function compareIds(a, b) {
+  if (Number.isFinite(a) && Number.isFinite(b)) return a - b;
+  return compareText(stableId(a), stableId(b));
+}
+
+function compareText(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function fraction(value, max, fallback) {
+  const denom = positive(max, 0);
+  if (!(denom > 0)) return fallback;
+  return clamp(finite(value, denom) / denom, 0, 1);
+}
+
+function positive(value, fallback) {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function finiteInt(value, fallback = 0) {
+  return Number.isInteger(value) ? value : fallback;
+}
+
+function clamp(value, min, max) {
+  return value < min ? min : value > max ? max : value;
+}
+
+function identity(value) {
+  return value;
+}

@@ -1,0 +1,1360 @@
+#!/usr/bin/env node
+// Real-browser MASSLINE Physics Identity acceptance probe.
+//
+// The probe boots the canonical root route, launches a normal new game, then uses window.SF only
+// to arrange deterministic actors and inventory. Outcomes are driven by the shipped input,
+// system, event, HUD, and Rapier paths: no latch/throw/kill/loot/cloak events are synthesized.
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
+import { createServer as createNetServer } from 'node:net';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
+import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
+import { MASSLINE_LIVE_FIXED_SEED, createMasslineLiveManifest } from './validation-manifests/massline-live.mjs';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const OUT_DIR = join(ROOT, '.devshots', 'spec2');
+const MASSLINE_ARTIFACT_ROOT = join(ROOT, '.devshots', 'massline-live');
+const SCREENSHOT = join(OUT_DIR, 'massline2-live.png');
+const ORBIT_SCREENSHOT = join(OUT_DIR, 'massline-orbit-assist-live.png');
+const RELEASE_SCREENSHOT = join(OUT_DIR, 'massline-release-window-live.png');
+const RELEASE_REDUCED_SCREENSHOT = join(OUT_DIR, 'massline-release-window-reduced-live.png');
+const START_TIMEOUT_MS = 120_000;
+const WIDTH = 1440;
+const HEIGHT = 900;
+const ORBIT_ASSIST_ONLY = process.argv.includes('--orbit-assist-only');
+const RELEASE_ONLY = process.argv.includes('--release-only');
+const DIAGNOSTIC = process.argv.includes('--diagnostic');
+const REPORT_SCHEMA = RELEASE_ONLY
+  ? 'spaceface.masslineReleaseLiveProbe.v1'
+  : ORBIT_ASSIST_ONLY
+    ? 'spaceface.masslineOrbitAssistLiveProbe.v1'
+    : 'spaceface.massline2LiveProbe.v1';
+// Automated New Game must never fall through to wall-clock / Math.random seeding.
+const FIXED_SEED = Number(process.env.SF_PROBE_SEED) > 0
+  ? Number(process.env.SF_PROBE_SEED)
+  : MASSLINE_LIVE_FIXED_SEED;
+
+// Fail-closed direct execution: require a broker-issued one-use claim unless diagnostic.
+const masslineManifest = createMasslineLiveManifest();
+const brokerGate = await requireBrokerClaimOrDiagnostic({
+  outputRoot: MASSLINE_ARTIFACT_ROOT,
+  manifest: masslineManifest,
+  tokenOrPath: process.env.SF_BROKER_CLAIM ?? null,
+  diagnostic: DIAGNOSTIC,
+  explicitDiagnostic: DIAGNOSTIC,
+  // Bind claim authorization to current source digests (stale claim → reject).
+  root: ROOT,
+});
+if (!brokerGate.ok) {
+  console.error(`[massline2-live] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
+  console.error('[massline2-live] invoke via: npm run check:massline2:live  (validation broker)');
+  console.error('[massline2-live] or pass --diagnostic for non-promoting local inspection');
+  process.exit(2);
+}
+
+// Load Playwright only after broker authorization (no browser spawn without claim).
+const { loadPlaywright } = await import('./lib/load-playwright.mjs');
+const { chromium } = await loadPlaywright();
+let server = null;
+let browser = null;
+let report = null;
+let pageIssues = null;
+let recordedSeed = null;
+let page = null;
+
+try {
+  await mkdir(OUT_DIR, { recursive: true });
+  server = process.env.SF_PROBE_URL
+    ? { baseUrl: process.env.SF_PROBE_URL, child: null }
+    : await startFreshServer();
+  browser = await chromium.launch({ headless: !process.argv.includes('--headed') });
+  page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
+  // This acceptance is intentionally strict: a warning is evidence of a dirty player route.
+  pageIssues = collectPageIssues(page, { playerStoreMounted: false,
+    includeWarnings: true,
+    // The focused route takes a screenshot, so Chrome may publish the same ReadPixels/unsupported
+    // extension diagnostics already classified by the clean-flight probe. App warnings stay fatal.
+    // SF_MASSLINE2_IGNORE_PROBE_WARNINGS=1 is an explicit opt-in for contended-host diagnostic
+    // runs: it only filters the two classified environmental patterns (ReadPixels stall under the
+    // probe's own screenshot, and the optional KHR_parallel_shader_compile capability notice under
+    // software GL). Page errors — including D74 shader link failures — still fail the run.
+    ignoreProbeWarnings: ORBIT_ASSIST_ONLY || RELEASE_ONLY
+      || process.env.SF_MASSLINE2_IGNORE_PROBE_WARNINGS === '1',
+  });
+  // Under the same explicit flag, the game's own `[GPU brick]` bloom telemetry warn is
+  // software-GL rasterization cost on a contended host — the same environmental class as the
+  // ReadPixels/KHR notices the shared filter drops. Errors (incl. the D74 shader link
+  // failure) never filter; neither do warnings outside that one pattern.
+  const envIssues = () => process.env.SF_MASSLINE2_IGNORE_PROBE_WARNINGS !== '1'
+    ? pageIssues.issues
+    : pageIssues.issues.filter((i) => !(i.type === 'warning' && /\[GPU brick\]/.test(String(i.text || ''))));
+
+  await page.addInitScript(() => {
+    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+  });
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
+  assert.equal(new URL(page.url()).search, '', 'probe must boot the normal root route without debug query flags');
+  // On a starved host module eval + shader compile can eat well past 20 s before window.SF
+  // exists at all — the wait is for boot completion, not a responsiveness assertion.
+  await page.waitForFunction(() => !!(window.SF && window.SF.state && window.SF.bus && window.SF.registry && window.SF.helpers), null, { timeout: 90_000 });
+
+  const flagState = await page.evaluate(async () => {
+    const mod = await import('/src/data/featureFlags.js');
+    for (const key of Object.keys(mod.MASSLINE2_FLAGS)) mod.MASSLINE2_FLAGS[key] = true;
+    return Object.fromEntries(Object.keys(mod.MASSLINE2_FLAGS).map((key) => [key, mod.massline2Flag(key)]));
+  });
+  assert.ok(Object.values(flagState).every(Boolean), 'every MASSLINE2 flag must be enabled in the browser page');
+
+  await page.waitForSelector('[data-screen="mainMenu"]', { state: 'visible', timeout: 30_000 });
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('button')).some((button) =>
+    /new game/i.test((button.textContent || '').trim()) && !button.disabled), null, { timeout: 30_000 });
+  await clickNamedButton(page, 'New Game');
+  await page.waitForSelector('[data-screen="newGame"]', { timeout: 20_000 });
+  // Explicit deterministic seed (broker/manifest); never blank → Date.now ^ Math.random.
+  await page.fill('#sf-ng-seed', String(FIXED_SEED));
+  await clickNamedButton(page, 'Launch');
+  await page.waitForFunction(() => {
+    const state = window.SF && window.SF.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    return !!(state && state.mode === 'flight' && player && player.alive !== false && player.hull > 0);
+  }, null, { timeout: START_TIMEOUT_MS });
+  recordedSeed = await page.evaluate(() => window.SF?.state?.meta?.seed ?? null);
+  assert.equal(recordedSeed, FIXED_SEED, 'live probe must record the fixed broker seed, not wall-clock seed');
+  await dismissTutorial(page);
+  await page.evaluate(() => window.SF.bus.emit('ui:closeAll', {}));
+  await waitForSimTicks(page, 8);
+
+  const fixture = await installFixture(page, RELEASE_ONLY);
+  await waitForSimTicks(page, RELEASE_ONLY ? 8 : 18);
+  const physicsBefore = await physicsEvidence(page);
+  assertRapierV3(physicsBefore);
+
+  if (RELEASE_ONLY) {
+    const release = await exerciseReleasePredictor(page, fixture.anchorId, fixture.secondAnchorId);
+    assert.equal(release.cue.visible, true, 'the self-sling release cue must remain visible on the player route');
+    assert.match(release.cue.label, /^(ALIGN|RELEASE)$/,
+      'the release cue must name its state without relying on color or animation');
+    assert.match(release.cue.ariaLabel, /Massline self-sling waypoint release window/,
+      'the same cue must expose an accessible release-window announcement');
+    assert.equal(release.reduced.motionReduced, true, 'reduced motion must select the static cue path');
+    assert.equal(release.reduced.flashReduced, true, 'reduced flash must select the static cue path');
+    assert.equal(release.selfSling.source, 'massline', 'earned-speed provenance must name Massline');
+    assert.equal(release.selfSling.physicsEarned, true, 'the camera cue must be gated by physics-earned speed');
+    assert.ok(release.selfSling.bonusDv > 0, 'the real authority path must grant positive earned speed');
+    assert.equal(release.validation.releaseId, release.selfSling.releaseId,
+      'post-authority validation must settle the same release receipt');
+    assert.equal(release.camera.releaseId, release.selfSling.releaseId,
+      'the camera presentation receipt must consume the earned release event');
+
+    const physicsAfter = await physicsEvidence(page);
+    assertRapierV3(physicsAfter);
+    const issues = envIssues();
+    const checks = {
+      normalRootRoute: new URL(page.url()).search === '',
+      allMasslineFlagsOn: Object.values(flagState).every(Boolean),
+      rapierDynamicV3: physicsAfter.backend === 'rapier-dynamic' && physicsAfter.rapierReady
+        && physicsAfter.sg02Ready && physicsAfter.flightIsV3,
+      accessibleReleaseWindow: release.cue.visible && /^(ALIGN|RELEASE)$/.test(release.cue.label)
+        && /Massline self-sling waypoint release window/.test(release.cue.ariaLabel),
+      reducedMotionAndFlash: release.reduced.motionReduced && release.reduced.flashReduced
+        && release.reduced.animationName === 'none',
+      earnedSpeedReceipt: release.selfSling.source === 'massline' && release.selfSling.physicsEarned
+        && release.selfSling.bonusDv > 0 && release.validation.releaseId === release.selfSling.releaseId,
+      boundedCameraCue: release.camera.releaseId === release.selfSling.releaseId
+        && release.camera.zoomFactor >= 0.06 && release.camera.zoomFactor <= 0.14,
+      firstAnchorToSecondWaypoint: release.firstLatch.targetId === fixture.anchorId
+        && /waypoint/.test(release.cue.ariaLabel),
+      noPageErrorsOrWarnings: issues.length === 0,
+    };
+    report = {
+      schema: REPORT_SCHEMA,
+      ok: Object.values(checks).every(Boolean),
+      route: server.baseUrl,
+      screenshots: [RELEASE_SCREENSHOT, RELEASE_REDUCED_SCREENSHOT],
+      fixedSeed: FIXED_SEED,
+      recordedSeed,
+      checks,
+      flags: flagState,
+      physics: { before: physicsBefore, after: physicsAfter },
+      release,
+      pageIssues: summarizeIssues(issues),
+    };
+    assert.deepEqual(issues, [], 'focused release route must produce no page errors or warnings');
+    assert.ok(report.ok, 'all live PQ-006 release checks must pass');
+  } else if (ORBIT_ASSIST_ONLY) {
+    // Arrange a lighter moving ship, latch it through the public Space edge, then use ordinary
+    // forward + turn without holding Massline. The one-second dwell avoids stealing quick carves.
+    // Pointer motion proves weapon aim remains independent; the HUD must stay quiet.
+    const orbitAssist = await exerciseOrbitAssist(page, fixture.hostileId);
+    assert.equal(orbitAssist.pending.active, false, 'ordinary flight keeps authority during the deliberate hold');
+    assert.equal(orbitAssist.pending.reason, 'engage-pending');
+    assert.equal(orbitAssist.engaged.active, true, 'held forward + one turn direction must engage orbit correction');
+    assert.equal(orbitAssist.engaged.targetId, fixture.hostileId, 'orbit correction must remain target-relative');
+    assert.equal(orbitAssist.engaged.targetType, 'ship');
+    assert.ok(orbitAssist.engaged.targetMass < orbitAssist.engaged.playerMass,
+      'the live route must prove a lighter dynamic ship, not a fixed heavy anchor');
+    assert.doesNotMatch(orbitAssist.engaged.hudText, /ORBIT ASSIST/,
+      'the internal correction must not add another HUD announcement');
+    assert.equal(orbitAssist.afterPointer.active, true, 'trackpad aim motion must not drop held orbit intent');
+    assert.equal(orbitAssist.afterPointer.direction, orbitAssist.engaged.direction,
+      'trackpad aim motion must not become the orbit controller');
+    assert.notEqual(orbitAssist.afterPointer.aimAngle, orbitAssist.engaged.aimAngle,
+      'the pointer still owns independent weapon aim while orbit assist is active');
+    // Releasing the turn key now drops the assist only when the hull is not really swinging on a
+    // loaded line (orbitAssist.swingFollow); a followed swing legitimately stays active.
+    assert.ok(!orbitAssist.afterLateralRelease.active || orbitAssist.afterLateralRelease.reason === 'engaged',
+      'lateral release must either drop assist or hand over to the swing follow-through');
+
+    const physicsAfter = await physicsEvidence(page);
+    assertRapierV3(physicsAfter);
+    const issues = envIssues();
+    const checks = {
+      normalRootRoute: new URL(page.url()).search === '',
+      allMasslineFlagsOn: Object.values(flagState).every(Boolean),
+      rapierDynamicV3: physicsAfter.backend === 'rapier-dynamic' && physicsAfter.rapierReady
+        && physicsAfter.sg02Ready && physicsAfter.flightIsV3,
+      anyTargetDirectOrbitInput: orbitAssist.pending.reason === 'engage-pending'
+        && orbitAssist.engaged.active
+        && orbitAssist.engaged.targetId === fixture.hostileId
+        && orbitAssist.engaged.targetType === 'ship'
+        && orbitAssist.engaged.targetMass < orbitAssist.engaged.playerMass,
+      orbitHudSilent: !/ORBIT ASSIST/.test(orbitAssist.engaged.hudText),
+      trackpadAimIndependent: orbitAssist.afterPointer.active
+        && orbitAssist.afterPointer.direction === orbitAssist.engaged.direction
+        && orbitAssist.afterPointer.aimAngle !== orbitAssist.engaged.aimAngle,
+      lateralReleaseOneTick: !orbitAssist.afterLateralRelease.active
+        ? orbitAssist.afterLateralRelease.reason === 'no-lateral-intent'
+        : orbitAssist.afterLateralRelease.reason === 'engaged',
+      noPageErrorsOrWarnings: issues.length === 0,
+    };
+    report = {
+      schema: REPORT_SCHEMA,
+      ok: Object.values(checks).every(Boolean),
+      route: server.baseUrl,
+      screenshot: ORBIT_SCREENSHOT,
+      fixedSeed: FIXED_SEED,
+      recordedSeed,
+      checks,
+      flags: flagState,
+      physics: { before: physicsBefore, after: physicsAfter },
+      orbitAssist,
+      pageIssues: summarizeIssues(issues),
+    };
+    assert.deepEqual(issues, [], 'normal player route must produce no page errors or warnings');
+    assert.ok(report.ok, 'all live PQ-005 orbit-assist checks must pass');
+  } else {
+  // Case A: the real F edge latches the selected hostile. Holding F after the latch grace reels
+  // the live joint; LMB is routed through weapons and tether-lock fire control.
+  await aimAt(page, fixture.hostileId);
+  await page.keyboard.press('KeyF');
+  await waitForProbeEvent(page, 'tether:latched', 8_000, { payloadField: 'targetId', payloadValue: fixture.hostileId });
+  await waitForSimTicks(page, 8);
+  const latch = await tetherEvidence(page);
+  assert.equal(latch.active, true, 'KeyF must create a live player tether');
+  assert.equal(latch.targetId, fixture.hostileId, 'the selected hostile must be the latch target');
+  assert.ok(latch.attachment && latch.attachment.physicsHandle, 'live tether must own a Rapier attachment handle');
+
+  await page.waitForTimeout(650);
+  const restBefore = (await tetherEvidence(page)).attachment.restLength;
+  // Cadence grammar (authored, massline-input-grammar.test): a motionless F hold is line
+  // control holding POSITION — it commands no reel axis. The shipped reel-in gesture is
+  // F held to keep line control + W on the forward axis (lineLength < 0). Drive that.
+  await page.keyboard.down('KeyF');
+  await waitForSimTicks(page, 12); // > 0.16 s hold window: line control must be entered first
+  await page.keyboard.down('KeyW');
+  await waitForSimTicks(page, 4); // reelRate 69 u/s: ~4 ticks >> the 1 u assertion margin
+  const reelDuringHold = await tetherEvidence(page);
+  await page.keyboard.up('KeyW');
+  await page.keyboard.up('KeyF');
+  await waitForSimTicks(page, 3);
+  const reel = await tetherEvidence(page);
+  const reelReleaseDiagnostics = await reelFailureEvidence(page, latch.attachment.id, fixture.hostileId);
+  assert.equal(reelDuringHold.active, true, 'holding F must keep the line live while it reels');
+  assert.ok(reelDuringHold.attachment.restLength < restBefore - 1,
+    `the reel-in gesture (F held + W) must shorten the real joint (${restBefore} -> ${reelDuringHold.attachment.restLength})`);
+  assert.equal(reel.active, true,
+    `releasing a completed reel gesture must not cut the line: ${JSON.stringify(reelReleaseDiagnostics)}`);
+  assert.ok(reel.mirror && reel.mirror.reeling === false && reel.mirror.phase,
+    'the player-facing tether mirror must expose the settled physical phase');
+
+  const firesBefore = await probeEventCount(page, 'combat:fire');
+  await aimAt(page, fixture.hostileId);
+  await page.mouse.down({ button: 'left' });
+  await page.waitForTimeout(1_500);
+  await page.mouse.up({ button: 'left' });
+  await page.waitForFunction((before) => {
+    const events = window.__SF_MASSLINE_LIVE_EVENTS__ || [];
+    return events.filter((event) => event.type === 'combat:fire' && event.payload && event.payload.ownerId === window.SF.state.playerId).length > before;
+  }, firesBefore, { timeout: 8_000 });
+  const fire = await playerFireEvidence(page, fixture.hostileId);
+  assert.ok(fire.count > firesBefore, 'held LMB must release player rounds while tethered');
+  assert.ok(fire.targetStillTethered, 'tether-lock fire evidence must be sampled while the target is still constrained');
+
+  // Case D: switch the throw aim to the large anchor and use the actual RMB arbitration. The
+  // release assist is set to OFF only to make the browser probe deterministic; OFF is a shipped
+  // player option and still executes the requested throw through masslineThrow.
+  await page.evaluate((anchorId) => {
+    const sf = window.SF;
+    const state = sf.state;
+    state.player.targetId = anchorId;
+    state.settings.gameplay.masslineReleaseAssist = 'off';
+    // A player can only hold the reticle on an anchor that is on the glass. The fixed-tilt
+    // chase view follows the player while the spin-up slings the tethered pair, so an anchor
+    // parked at spawn distance can leave the viewport mid-press. Move the fixture anchor to a
+    // point the game's own inverse projection says is on the glass right now — through the
+    // same pos+revision path the release-predictor case uses — rather than asking the probe
+    // to aim at empty space.
+    const player = state.entities.get(state.playerId);
+    const anchor = state.entities.get(anchorId);
+    if (player && anchor && anchor.pos && sf.helpers
+      && typeof sf.helpers.raycastToPlane === 'function'
+      && typeof sf.helpers.worldToScreen === 'function') {
+      const tetherTarget0 = state.entities.get(state.player.tether && state.player.tether.targetId);
+      // Measure the NDC->world map on THIS camera (it is inverted and zoom-tight: the live
+      // half-view is only ~105 wu wide, so fixed world offsets leave the glass entirely).
+      // NB: the helper drops the `out` sink and returns a shared scratch — copy x/z between calls.
+      const rc = (n) => { const r = sf.helpers.raycastToPlane(n); return r ? { x: r.x, z: r.z } : null; };
+      const c0 = rc({ x: 0, y: 0 });
+      const pxd = rc({ x: 0.3, y: 0 });
+      const pzd = rc({ x: 0, y: 0.3 });
+      const mapOk = [c0, pxd, pzd].every((p) => p && Number.isFinite(p.x) && Number.isFinite(p.z));
+      let placed = false;
+      if (mapOk) {
+        const ax = (pxd.x - c0.x) / 0.3, az = (pxd.z - c0.z) / 0.3;
+        const bx = (pzd.x - c0.x) / 0.3, bz = (pzd.z - c0.z) / 0.3;
+        for (const ndc of [{ x: 0.8, y: 0.55 }, { x: -0.8, y: 0.55 }, { x: 0.8, y: -0.55 },
+          { x: -0.8, y: -0.55 }, { x: 0, y: 0.85 }, { x: 0, y: -0.85 },
+          { x: 0.9, y: 0 }, { x: -0.9, y: 0 }]) {
+          const wx = c0.x + ax * ndc.x + bx * ndc.y;
+          const wz = c0.z + az * ndc.x + bz * ndc.y;
+          const dPair = Math.min(
+            Math.hypot(wx - player.pos.x, wz - player.pos.z),
+            tetherTarget0 && tetherTarget0.pos
+              ? Math.hypot(wx - tetherTarget0.pos.x, wz - tetherTarget0.pos.z) : Infinity,
+          );
+          if (dPair < 75) continue; // keep the anchor face clear of the swinging pair
+          const scr = sf.helpers.worldToScreen({ x: wx, y: 0, z: wz });
+          if (!scr || scr.x < 60 || scr.x > innerWidth - 60 || scr.y < 60 || scr.y > innerHeight - 60) continue;
+          anchor.pos.x = wx; anchor.pos.z = wz;
+          if (anchor.prevPos) { anchor.prevPos.x = wx; anchor.prevPos.z = wz; }
+          if (anchor.vel) { anchor.vel.x = 0; anchor.vel.z = 0; }
+          if (anchor.physicsBody) anchor.physicsBody.revision = (anchor.physicsBody.revision || 0) + 1;
+          placed = true;
+          break;
+        }
+      }
+      // The anchor rides the spatial hash's STATIC layer (asteroid = fixed collider), which
+      // only re-buckets when the index's static authority versions move — the same counters
+      // spawn/remove bump. Without this the relocated anchor stays registered at its old
+      // cells and _resolveThrowAim can never see it at the new spot (PQ-011's trap class).
+      if (placed && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1) {
+        state.entityIndex.spatialStaticVersion = (state.entityIndex.spatialStaticVersion || 0) + 1;
+        state.entityIndex.physicsStaticVersion = (state.entityIndex.physicsStaticVersion || 0) + 1;
+      }
+      window.__SF_MASSLINE_ANCHOR_PLACED__ = placed ? { x: anchor.pos.x, z: anchor.pos.z } : null;
+    }
+    const tetherTarget = state.entities.get(state.player.tether.targetId);
+    if (tetherTarget && sf.helpers.combatPhysics && typeof sf.helpers.combatPhysics.applyImpulse === 'function') {
+      const speed = Math.hypot(tetherTarget.vel.x || 0, tetherTarget.vel.z || 0);
+      if (speed < 38) {
+        const mass = Math.max(1, tetherTarget.mass || 1);
+        sf.helpers.combatPhysics.applyImpulse({
+          entityId: tetherTarget.id,
+          impulse: { x: 0, z: (24 - (tetherTarget.vel.z || 0)) * mass },
+          point: null,
+          reason: 'massline_live_probe_spinup',
+          tick: state.tick,
+        });
+      }
+    }
+  }, fixture.anchorId);
+  // The spin-up slings the tethered pair — a parked cursor goes stale while the view
+  // scrolls, exactly like a real player's would. A real player keeps the reticle on
+  // the aim target through the throw, so the probe tracks the anchor with the real
+  // cursor until the release lands instead of trusting a one-shot projection.
+  let tracking = true;
+  const tracker = (async () => {
+    while (tracking) {
+      try {
+        await moveCursorToEntity(page, fixture.anchorId);
+        await waitForSimTicks(page, 2);
+      } catch (_) { /* a transient mid-swing read must not kill the press window */ }
+    }
+  })();
+  const hudBeforeThrow = await hudEvidence(page);
+  try {
+    await page.mouse.down({ button: 'right' });
+    try {
+      await waitForProbeEvent(page, 'massline:throw', 8_000);
+    } catch (error) {
+      // Under host dilation 8 s wall is <1 sim-second — name the stalled lane (input vs arm vs emit)
+      // instead of a bare timeout, so flake vs product is decidable from the report alone.
+      const diagnostic = await page.evaluate(() => {
+        const state = window.SF && window.SF.state;
+        const tether = state && state.player && state.player.tether;
+        const target = tether && tether.targetId != null && state.entities.get(tether.targetId);
+        const inp = state && state.input;
+        const player = state && state.entities && state.entities.get(state.playerId);
+        return {
+          simTime: state && state.simTime,
+          tick: state && state.tick,
+          tetherActive: tether && tether.active,
+          tetherPhase: tether && tether.phase,
+          tetherStrain: tether && Number(tether.strain != null ? tether.strain.toFixed(3) : tether.strain),
+          targetId: tether && tether.targetId,
+          targetAlive: target && target.alive,
+          targetType: target && target.type,
+          targetTeam: target && target.team,
+          targetAi: target && target.data && JSON.stringify(target.data.ai),
+          playerTeam: player && player.team,
+          playerTargetId: state && state.player && state.player.targetId,
+          fireGroup: inp && inp.fireGroup,
+          aimedMine: inp && inp.actions && inp.actions.aimedMine,
+          throwArm: inp && inp.actions && inp.actions.throwArm,
+          events: (window.__SF_MASSLINE_LIVE_EVENTS__ || []).slice(-16).map((e) => `${Number(e.simTime).toFixed(1)} ${e.type}`),
+        };
+      }).catch(() => null);
+      throw new Error(`RMB throw wait stalled: ${JSON.stringify(diagnostic)}; ${error.message}`);
+    }
+  } finally {
+    tracking = false;
+    await tracker.catch(() => {});
+    await page.mouse.up({ button: 'right' });
+  }
+  await waitForSimTicks(page, 5);
+  const thrown = await throwEvidence(page, fixture.anchorId);
+  assert.equal(thrown.tetherActive, false, 'RMB throw must cut the live tether');
+  assert.equal(thrown.lastThrow.payloadId, fixture.hostileId, 'RMB must throw THEM, not the player');
+  assert.equal(thrown.lastThrow.aimTargetId, fixture.anchorId,
+    `throw must preserve the selected large-anchor aim (aim=${JSON.stringify(thrown.aim)} placed=${JSON.stringify(thrown.anchorPlacement)} anchor=${JSON.stringify(thrown.anchorNow)} player=${JSON.stringify(thrown.playerPos)} lastThrow={synthetic:${thrown.lastThrow.aimSynthetic},mode:${thrown.lastThrow.mode}})`);
+
+  // A second actual combat target proves hostile kill -> loot:drop -> pickup magnetism. It is
+  // deliberately fragile and broad, but still dies only from the player's real LMB weapon path.
+  const lootFixture = await installLootTarget(page);
+  await aimAt(page, lootFixture.id);
+  await page.mouse.down({ button: 'left' });
+  await waitForProbeEvent(page, 'entity:killed', 12_000, { payloadField: 'id', payloadValue: lootFixture.id });
+  await page.mouse.up({ button: 'left' });
+  await waitForProbeEvent(page, 'loot:drop', 5_000);
+  await waitForSimTicks(page, 12);
+  const loot = await lootEvidence(page, lootFixture);
+  assert.ok(loot.dropCount > 0, 'a real player hostile kill must emit the loot shard seam');
+  assert.ok(loot.spawnedPickupCount > 0 || loot.collectedCount > 0,
+    'loot shards must become live pickups or already have magnet-collected');
+
+  // Cloak uses the real Backquote edge and HUD. The AI sensor port and customs initiation gate
+  // are sampled with one observer outside and one inside the live detection ring.
+  await page.keyboard.press('Backquote');
+  await page.waitForFunction(() => !!(window.SF.state.massline2 && window.SF.state.massline2.cloak && window.SF.state.massline2.cloak.active), null, { timeout: 5_000 });
+  await waitForSimTicks(page, 8);
+  // The observers were seated at fixture time; ~40 s of patrol AI can drift them across the
+  // ring before this sample. Re-seat both relative to the live player and the live ring so
+  // the assertion measures the cloak gate, not fixture geography.
+  await page.evaluate((ids) => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const ring = Math.max(80, (state.massline2.cloak && state.massline2.cloak.radius) || 320);
+    const seat = (id, dist) => {
+      const e = state.entities.get(id);
+      if (!e || !e.pos) return;
+      e.pos.x = player.pos.x - dist; e.pos.z = player.pos.z;
+      if (e.prevPos) { e.prevPos.x = e.pos.x; e.prevPos.z = e.pos.z; }
+      if (e.vel) { e.vel.x = 0; e.vel.z = 0; }
+      if (e.physicsBody) e.physicsBody.revision = (e.physicsBody.revision || 0) + 1;
+    };
+    seat(ids.outside, Math.round(ring * 1.6));
+    seat(ids.inside, Math.round(ring * 0.4));
+  }, { outside: fixture.outsideObserverId, inside: fixture.insideObserverId });
+  await waitForSimTicks(page, 3);
+  const cloak = await cloakEvidence(page);
+  assert.equal(cloak.active, true, 'Backquote must engage the fitted cloak');
+  assert.equal(cloak.outsideSensorSeesPlayer, false,
+    `outside-ring AI sensor frame must not contain the player (r=${cloak.radius} dOut=${cloak.outsideDistance.toFixed(1)} dIn=${cloak.insideDistance.toFixed(1)})`);
+  assert.equal(cloak.insideSensorSeesPlayer, true,
+    `inside-ring AI sensor frame must contain the player (r=${cloak.radius} dOut=${cloak.outsideDistance.toFixed(1)} dIn=${cloak.insideDistance.toFixed(1)})`);
+  assert.equal(cloak.outsidePatrolCanScan, false, 'outside-ring customs patrol must not initiate a scan');
+  assert.equal(cloak.insidePatrolCanScan, true, 'inside-ring customs patrol must still initiate a scan');
+  assert.equal(cloak.hud.ringVisible, true, 'cloak detection ring must be visible in the player HUD');
+  assert.equal(cloak.hud.cloakPillVisible, true, 'cloak energy pill must be visible in the player HUD');
+
+  await page.screenshot({ path: SCREENSHOT });
+  await page.keyboard.press('Backquote');
+  await page.waitForFunction(() => window.SF.state.massline2 && window.SF.state.massline2.cloak && !window.SF.state.massline2.cloak.active, null, { timeout: 5_000 });
+
+  // Cargo has no flight shortcut; the HUD calls cargo.jettison(), so the probe calls that same
+  // registered method. First prove story-locked cargo cannot leave or kick, then prove a legal dump
+  // emits the receipt and changes the Rapier-owned player velocity.
+  const jettison = await exerciseJettison(page);
+  assert.equal(jettison.lockedDumped, 0, 'persistent story cargo must remain jettison-locked');
+  assert.equal(jettison.lockedEventsAdded, 0, 'a rejected locked dump must not emit cargo:jettisoned');
+  assert.ok(jettison.scrapDumped > 0, 'ordinary cargo must jettison through the registered cargo system');
+  assert.ok(jettison.speedAfter > jettison.speedBefore + 0.5,
+    `jettison receipt must produce a Rapier reaction kick (${jettison.speedBefore} -> ${jettison.speedAfter})`);
+
+  const physicsAfter = await physicsEvidence(page);
+  assertRapierV3(physicsAfter);
+  const issues = envIssues();
+  const checks = {
+    normalRootRoute: new URL(page.url()).search === '',
+    allMasslineFlagsOn: Object.values(flagState).every(Boolean),
+    rapierDynamicV3: physicsAfter.backend === 'rapier-dynamic' && physicsAfter.rapierReady && physicsAfter.sg02Ready && physicsAfter.flightIsV3,
+    latchViaKeyF: latch.active && latch.targetId === fixture.hostileId,
+    physicalAttachment: !!(latch.attachment && latch.attachment.physicsHandle),
+    reelViaHeldF: reelDuringHold.attachment.restLength < restBefore - 1, // F-held line control + W axis (Cadence grammar)
+    tetheredFireViaLmb: fire.count > firesBefore && fire.targetStillTethered,
+    throwViaRmb: thrown.lastThrow && thrown.lastThrow.payloadId === fixture.hostileId,
+    hostileKillLoot: loot.dropCount > 0 && (loot.spawnedPickupCount > 0 || loot.collectedCount > 0),
+    cloakDetectionAndCustoms: cloak.active && !cloak.outsideSensorSeesPlayer && cloak.insideSensorSeesPlayer
+      && !cloak.outsidePatrolCanScan && cloak.insidePatrolCanScan,
+    playerFacingHud: cloak.hud.ringVisible && cloak.hud.cloakPillVisible,
+    jettisonLockAndImpulse: jettison.lockedDumped === 0 && jettison.lockedEventsAdded === 0
+      && jettison.scrapDumped > 0 && jettison.speedAfter > jettison.speedBefore + 0.5,
+    noPageErrorsOrWarnings: issues.length === 0,
+  };
+  report = {
+    schema: 'spaceface.massline2LiveProbe.v1',
+    ok: Object.values(checks).every(Boolean),
+    route: server.baseUrl,
+    screenshot: SCREENSHOT,
+    fixedSeed: FIXED_SEED,
+    recordedSeed,
+    checks,
+    flags: flagState,
+    physics: { before: physicsBefore, after: physicsAfter },
+    latch: { ...latch, restBefore, restDuringHold: reelDuringHold.attachment.restLength, restAfter: reel.attachment.restLength, phaseAfter: reel.mirror && reel.mirror.phase },
+    fire,
+    throw: { hudBeforeThrow, ...thrown },
+    loot,
+    cloak,
+    jettison,
+    pageIssues: summarizeIssues(issues),
+  };
+  assert.deepEqual(issues, [], 'normal player route must produce no page errors or warnings');
+  assert.ok(report.ok, 'all live MASSLINE browser checks must pass');
+  }
+} catch (error) {
+  const message = String(error && error.stack || error && error.message || error);
+  let tailEvents;
+  try {
+    tailEvents = page && await page.evaluate(() =>
+      (window.__SF_MASSLINE_LIVE_EVENTS__ || []).slice(-24).map((event) =>
+        `${event.simTime != null ? event.simTime.toFixed(1) : '?'}s ${event.type}`));
+  } catch (_) { /* page may already be closed */ }
+  report = report || {
+    schema: REPORT_SCHEMA,
+    ok: false,
+    error: message,
+    fixedSeed: FIXED_SEED,
+    recordedSeed,
+    eventTail: tailEvents,
+    pageIssues: pageIssues ? summarizeIssues(pageIssues.issues) : undefined,
+  };
+  report.ok = false;
+  report.error = message;
+  if (tailEvents && tailEvents.length) report.eventTail = tailEvents;
+  report.fixedSeed = FIXED_SEED;
+  if (recordedSeed != null) report.recordedSeed = recordedSeed;
+  process.exitCode = 1;
+} finally {
+  if (browser) await browser.close().catch(() => {});
+  if (server && server.child) server.child.kill();
+}
+
+console.log(JSON.stringify(report, null, 2));
+
+async function installFixture(page, releaseOnly = false) {
+  return page.evaluate((releaseOnly) => {
+    const sf = window.SF;
+    const state = sf.state;
+    const player = state.entities.get(state.playerId);
+    if (!player || typeof sf.helpers.spawnEntity !== 'function') throw new Error('runtime fixture helpers unavailable');
+    state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+    state.settings.gameplay.flightBackend = 'v3';
+    state.settings.gameplay.controlScheme = 'pilot';
+    state.settings.controls.flightMode = 'newtonian';
+    state.settings.gameplay.masslineReleaseAssist = releaseOnly ? 'arm' : 'off';
+    state.physicsRuntime = state.physicsRuntime || {};
+    state.physicsRuntime.publishSg02Snapshot = true;
+    sf.eventTrace && sf.eventTrace.clear && sf.eventTrace.clear();
+    window.__SF_MASSLINE_LIVE_EVENTS__ = [];
+    const names = [
+      'tether:latched', 'tether:strain', 'tether:cut', 'tether:released', 'tether:broke', 'tether:releaseRated',
+      'combat:fire', 'combat:damage', 'entity:killed', 'massline:throw', 'massline:selfSling',
+      'massline:releaseValidated',
+      'loot:drop', 'pickup:collected', 'cloak:engaged', 'cloak:dropped', 'cargo:jettisoned',
+    ];
+    for (const type of names) {
+      sf.bus.on(type, (payload = {}) => {
+        window.__SF_MASSLINE_LIVE_EVENTS__.push({ type, payload: clone(payload), tick: state.tick, simTime: state.simTime });
+      });
+    }
+
+    let lane = 0;
+    for (const entity of state.entities.values()) {
+      if (!entity || entity.id === state.playerId) continue;
+      if (!['ship', 'drone', 'projectile', 'payload', 'wreck', 'pickup'].includes(entity.type)) continue;
+      entity.alive = false;
+      entity.collides = false;
+      if (entity.pos) { entity.pos.x = 50_000 + lane * 80; entity.pos.z = 50_000 + lane * 80; }
+      if (entity.vel) { entity.vel.x = 0; entity.vel.z = 0; }
+      if (entity.physicsBody) entity.physicsBody.revision = (entity.physicsBody.revision || 0) + 1;
+      lane++;
+    }
+    resetBody(player, { x: 0, z: 0 }, { x: 0, z: 0 }, 0);
+    state.input.autoFire = false;
+    state.player.targetId = null;
+    const owned = state.player.ownedShips && state.player.ownedShips[state.player.activeShipIndex];
+    if (owned) {
+      if (!Array.isArray(owned.fittings)) owned.fittings = [];
+      if (!owned.fittings.includes('mod_cloak_mk1')) {
+        const empty = owned.fittings.findIndex((id) => !id);
+        if (empty >= 0) owned.fittings[empty] = 'mod_cloak_mk1'; else owned.fittings.push('mod_cloak_mk1');
+      }
+    }
+
+    const hostile = sf.helpers.spawnEntity({
+      // team 2 is the civilian carve-out (isHostileToPlayer returns false for it), which silently
+      // disarms the RMB throw — a real hostile hull needs a non-civilian team + hostileTeams.
+      type: 'ship', factionId: 'faction_pirates', team: 3,
+      // Start the reel contract from a controlled hold. The throw case below supplies its own
+      // Rapier impulse after this assertion, so reel-release is not confounded by a preloaded snap.
+      pos: { x: 105, z: 0 }, vel: { x: 0, z: 0 }, rot: Math.PI,
+      radius: 18, mass: 52, inertia: 160, hull: 900, hullMax: 900,
+      shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0, cap: 0, capMax: 0,
+      collides: true,
+      // No weapons and no forcePlayerTarget: it reads hostile for the throw arm but never
+      // actually hunts or fires (combat:{} stays empty — the fixture stays controlled).
+      data: { probe: 'massline-live-hostile', combat: {}, ai: { hostileTeams: [0] } },
+    });
+    const anchor = sf.helpers.spawnEntity({
+      type: 'asteroid', pos: { x: 250, z: 0 }, vel: { x: 0, z: 0 },
+      radius: 36, mass: 9_000, hull: 9_000, hullMax: 9_000, collides: true,
+      data: { typeId: 'ast_common_rock', probe: 'massline-live-anchor', terrainAnchor: true },
+    });
+    const secondAnchor = releaseOnly ? sf.helpers.spawnEntity({
+      type: 'asteroid', pos: { x: 0, z: 330 }, vel: { x: 0, z: 0 },
+      radius: 34, mass: 7_500, hull: 7_500, hullMax: 7_500, collides: true,
+      data: { typeId: 'ast_common_rock', probe: 'massline-live-second-anchor', terrainAnchor: true },
+    }) : null;
+    const outside = sf.helpers.spawnEntity({
+      type: 'ship', factionId: 'faction_scn', team: 2,
+      pos: { x: -520, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
+      radius: 14, mass: 40, hull: 500, hullMax: 500, collides: true,
+      data: { probe: 'massline-live-outside-observer', combat: {}, ai: { passive: true, lawful: true } },
+    });
+    const inside = sf.helpers.spawnEntity({
+      type: 'ship', factionId: 'faction_scn', team: 2,
+      pos: { x: -120, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
+      radius: 14, mass: 40, hull: 500, hullMax: 500, collides: true,
+      data: { probe: 'massline-live-inside-observer', combat: {}, ai: { passive: true, lawful: true } },
+    });
+    state.player.targetId = hostile.id;
+    return {
+      hostileId: hostile.id,
+      anchorId: anchor.id,
+      secondAnchorId: secondAnchor ? secondAnchor.id : null,
+      outsideObserverId: outside.id,
+      insideObserverId: inside.id,
+    };
+
+    function clone(value) {
+      try { return JSON.parse(JSON.stringify(value)); } catch (_) { return { uncloneable: true }; }
+    }
+    function resetBody(entity, pos, vel, rot) {
+      entity.pos.x = pos.x; entity.pos.z = pos.z;
+      if (entity.prevPos) { entity.prevPos.x = pos.x; entity.prevPos.z = pos.z; }
+      entity.vel.x = vel.x; entity.vel.z = vel.z;
+      entity.rot = rot; entity.prevRot = rot; entity.angVel = 0;
+      if (entity.physicsBody) entity.physicsBody.revision = (entity.physicsBody.revision || 0) + 1;
+      if (entity.data) entity.data.propulsionRuntime = null;
+    }
+  }, releaseOnly);
+}
+
+async function exerciseReleasePredictor(page, anchorId, secondAnchorId) {
+  assert.ok(secondAnchorId, 'PQ-006 fixture requires a second physical anchor');
+
+  // First anchor: enter through the shipped terrain-latch grammar. The fixture then supplies only
+  // a deterministic tangential impulse through the live physics authority, never a velocity write.
+  await page.evaluate(({ anchorId, secondAnchorId }) => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const anchor = state.entities.get(anchorId);
+    const second = state.entities.get(secondAnchorId);
+    if (!player || !anchor || !second) throw new Error('release anchors unavailable');
+    player.pos.x = 0; player.pos.z = 0; player.vel.x = 0; player.vel.z = 0;
+    if (player.prevPos) { player.prevPos.x = 0; player.prevPos.z = 0; }
+    if (player.physicsBody) player.physicsBody.revision = (player.physicsBody.revision || 0) + 1;
+    anchor.pos.x = 90; anchor.pos.z = 0; anchor.vel.x = 0; anchor.vel.z = 0;
+    if (anchor.prevPos) { anchor.prevPos.x = 90; anchor.prevPos.z = 0; }
+    if (anchor.physicsBody) anchor.physicsBody.revision = (anchor.physicsBody.revision || 0) + 1;
+    second.pos.x = 0; second.pos.z = 300; second.vel.x = 0; second.vel.z = 0;
+    if (second.prevPos) { second.prevPos.x = 0; second.prevPos.z = 300; }
+    if (second.physicsBody) second.physicsBody.revision = (second.physicsBody.revision || 0) + 1;
+    state.player.targetId = anchorId;
+  }, { anchorId, secondAnchorId });
+  await latchTerrainAnchor(page, anchorId);
+  await waitForSimTicks(page, 8);
+  const firstLatch = await tetherEvidence(page);
+  assert.equal(firstLatch.targetId, anchorId, 'the first public F edge must latch the heavy anchor');
+
+  const arranged = await page.evaluate((secondAnchorId) => {
+    const sf = window.SF;
+    const state = sf.state;
+    const player = state.entities.get(state.playerId);
+    const second = state.entities.get(secondAnchorId);
+    const physics = sf.helpers.combatPhysics;
+    if (!player || !second || !physics || typeof physics.applyImpulse !== 'function') {
+      throw new Error('release fixture requires player, second anchor, and physics authority');
+    }
+    state.player.targetId = null;
+    state.nav.waypoint = {
+      targetEntityId: second.id,
+      pos: { x: second.pos.x, z: second.pos.z },
+      arrivalRadius: second.radius,
+      label: 'PQ-006 second anchor',
+    };
+    state.settings.gameplay.masslineReleaseAssist = 'arm';
+    state.settings.video.motionReduce = false;
+    state.settings.accessibility.motionPreference = 'full';
+    state.settings.accessibility.flashReduce = false;
+    const mass = Math.max(1, Number(player.mass) || 1);
+    const accepted = !!physics.applyImpulse({
+      entityId: player.id,
+      impulse: { x: 0, z: 82 * mass },
+      point: null,
+      reason: 'massline_release_live_probe_spinup',
+      tick: state.tick,
+    });
+    return { accepted, tick: state.tick, playerId: player.id };
+  }, secondAnchorId);
+  assert.equal(arranged.accepted, true, 'release fixture impulse must enter the live physics queue');
+
+  await page.waitForFunction(() => {
+    const state = window.SF && window.SF.state;
+    const solution = state && state.massline2 && state.massline2.throw && state.massline2.throw.selfSolution;
+    const cue = document.querySelector('#sf-ml2 .ml2-self');
+    return !!(solution && solution.valid && solution.targetKind === 'waypoint'
+      && solution.anticipatedBonusDv > 0 && solution.sampleIntervalTicks === 4
+      && cue && getComputedStyle(cue).display !== 'none');
+  }, null, { timeout: 90_000 }); // starved hosts still need the real sim beats to land
+  const cue = await releaseCueEvidence(page);
+  await page.screenshot({ path: RELEASE_SCREENSHOT });
+
+  await page.emulateMedia({ reducedMotion: 'reduce', forcedColors: 'active' });
+  await page.evaluate(() => {
+    const settings = window.SF.state.settings;
+    settings.accessibility.motionPreference = 'reduce';
+    settings.accessibility.flashReduce = true;
+  });
+  await page.waitForFunction(() => {
+    const root = document.getElementById('sf-ml2');
+    return !!(root && root.classList.contains('ml2-reduced-motion')
+      && root.classList.contains('ml2-reduced-flash'));
+  }, null, { timeout: 5_000 });
+  const reduced = await releaseCueEvidence(page);
+  await page.screenshot({ path: RELEASE_REDUCED_SCREENSHOT });
+  await page.emulateMedia({ reducedMotion: 'no-preference', forcedColors: 'none' });
+  await page.evaluate(() => {
+    const settings = window.SF.state.settings;
+    settings.video.motionReduce = false;
+    settings.accessibility.motionPreference = 'full';
+    settings.accessibility.flashReduce = false;
+  });
+
+  // A fresh F edge performs the real cut. Wait on event/authority conditions rather than a wall
+  // delay so this remains stable under slow CI frame pacing.
+  await waitForSimTicks(page, 42);
+  await page.keyboard.press('KeyF');
+  await waitForProbeEvent(page, 'massline:selfSling', 30_000);
+  await waitForProbeEvent(page, 'massline:releaseValidated', 30_000);
+  await waitForSimTicks(page, 3);
+  const settled = await page.evaluate(() => {
+    const events = window.__SF_MASSLINE_LIVE_EVENTS__ || [];
+    const latest = (type) => events.filter((event) => event.type === type).at(-1);
+    return {
+      selfSling: latest('massline:selfSling') && latest('massline:selfSling').payload,
+      validation: latest('massline:releaseValidated') && latest('massline:releaseValidated').payload,
+      camera: window.SF.state.render && window.SF.state.render.lastMasslineReleaseCue,
+    };
+  });
+  assert.ok(settled.selfSling && settled.validation && settled.camera,
+    'release event, post-authority validation, and camera receipt must all settle');
+
+  return {
+    arranged,
+    firstLatch,
+    cue,
+    reduced,
+    selfSling: settled.selfSling,
+    validation: settled.validation,
+    camera: settled.camera,
+  };
+}
+
+async function latchTerrainAnchor(page, anchorId) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.evaluate((anchorId) => {
+      window.SF.state.player.targetId = anchorId;
+    }, anchorId);
+    await aimAt(page, anchorId);
+    await page.keyboard.down('ControlLeft');
+    await page.keyboard.down('Space');
+    try {
+      await page.waitForFunction((anchorId) => {
+        const tether = window.SF && window.SF.state && window.SF.state.player.tether;
+        return !!(tether && tether.active && tether.targetId === anchorId);
+      }, anchorId, { timeout: 3_000 });
+      return;
+    } catch (error) {
+      lastError = error;
+    } finally {
+      await page.keyboard.up('Space');
+      await page.keyboard.up('ControlLeft');
+    }
+    await waitForSimTicks(page, 4);
+  }
+  const evidence = await tetherEvidence(page);
+  throw new Error(`terrain latch did not settle after three public-input attempts: ${JSON.stringify(evidence)}; ${lastError && lastError.message}`);
+}
+
+async function releaseCueEvidence(page) {
+  return page.evaluate(() => {
+    const root = document.getElementById('sf-ml2');
+    const cue = root && root.querySelector('.ml2-self');
+    const label = cue && cue.querySelector('.ml2-mark-label');
+    const style = cue ? getComputedStyle(cue) : null;
+    return {
+      visible: !!(cue && style && style.display !== 'none'),
+      label: label ? (label.textContent || '').trim() : '',
+      ariaLabel: cue ? cue.getAttribute('aria-label') || '' : '',
+      state: cue ? cue.getAttribute('data-window-state') || '' : '',
+      direction: cue ? cue.getAttribute('data-direction') || '' : '',
+      offscreen: !!(cue && cue.classList.contains('ml2-offscreen')),
+      motionReduced: !!(root && root.classList.contains('ml2-reduced-motion')),
+      flashReduced: !!(root && root.classList.contains('ml2-reduced-flash')),
+      animationName: style ? style.animationName : '',
+      forcedColors: matchMedia('(forced-colors: active)').matches,
+    };
+  });
+}
+
+async function installLootTarget(page) {
+  return page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf.state;
+    const player = state.entities.get(state.playerId);
+    player.pos.x = 0; player.pos.z = 0; player.vel.x = 0; player.vel.z = 0;
+    player.rot = 0; player.prevRot = 0; player.angVel = 0;
+    if (player.prevPos) { player.prevPos.x = 0; player.prevPos.z = 0; }
+    if (player.physicsBody) player.physicsBody.revision = (player.physicsBody.revision || 0) + 1;
+    const target = sf.helpers.spawnEntity({
+      type: 'ship', factionId: 'faction_pirates', team: 3,
+      pos: { x: 82, z: 0 }, vel: { x: 0, z: 0 }, rot: Math.PI,
+      radius: 24, mass: 35, hull: 1, hullMax: 1,
+      shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0, cap: 0, capMax: 0,
+      // Must be genuinely hostile to the player (team 0): the kill-burst seam loot:drop only
+      // fires through lootShards for a hostile victim — a team-2 civilian hull spills a custody
+      // payload instead, so the old fixture could never emit the event it waited on.
+      collides: true, data: { probe: 'massline-live-loot-target', combat: {}, ai: { hostileTeams: [0] } },
+    });
+    state.player.targetId = target.id;
+    const cargo = state.player.cargo;
+    return {
+      id: target.id,
+      scrapBefore: Number(cargo.items.cmdty_scrap_metal || 0),
+      electronicsBefore: Number(cargo.items.cmdty_salvage_electronics || 0),
+      eventIndex: (window.__SF_MASSLINE_LIVE_EVENTS__ || []).length,
+    };
+  });
+}
+
+async function physicsEvidence(page) {
+  return page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf.state;
+    const diag = state.physicsRuntime && state.physicsRuntime.diagnostics || {};
+    const flight = sf.registry && sf.registry.get && sf.registry.get('flight');
+    const playerBody = Array.isArray(state.physicsRuntime && state.physicsRuntime.sg02Snapshot)
+      ? state.physicsRuntime.sg02Snapshot.find((body) => body && body.id === state.playerId) : null;
+    return {
+      backend: diag.backend || state.settings.gameplay.physicsBackend,
+      rapierReady: diag.rapierReady === true,
+      sg02Ready: diag.sg02Ready === true,
+      sg02Bodies: diag.sg02Bodies || 0,
+      flightName: flight && flight.name || null,
+      flightIsV3: !!(flight && (flight.id === 'flightV3' || flight.name === 'flight' && typeof flight._stepCraft === 'function')),
+      playerBody,
+      tick: state.tick,
+    };
+  });
+}
+
+function assertRapierV3(evidence) {
+  assert.equal(evidence.backend, 'rapier-dynamic', 'normal route must use rapier-dynamic');
+  assert.equal(evidence.rapierReady, true, 'Rapier runtime must be ready');
+  assert.equal(evidence.sg02Ready, true, 'SG-02 authority must be ready');
+  assert.ok(evidence.sg02Bodies > 0, 'SG-02 must own dynamic bodies');
+  assert.equal(evidence.flightIsV3, true, 'registered flight system must be V3');
+  assert.ok(evidence.playerBody, 'published SG-02 snapshot must contain the player body');
+}
+
+async function tetherEvidence(page) {
+  return page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf.state;
+    const mirror = state.player.tether || null;
+    const combat = sf.registry.get('combat');
+    const actions = sf.registry.get('actions');
+    const attachments = actions && actions.kernel && actions.kernel.attachments
+      || combat && combat.kernel && combat.kernel.attachments;
+    const attachment = mirror && mirror.attachmentId != null && attachments && attachments.get
+      ? attachments.get(mirror.attachmentId) : null;
+    return {
+      active: !!(mirror && mirror.active), targetId: mirror && mirror.targetId,
+      mirror: mirror ? { ...mirror } : null,
+      attachment: attachment ? {
+        id: attachment.id, state: attachment.state, restLength: attachment.restLength,
+        lastTension: attachment.lastTension, lastImpulse: attachment.lastImpulse,
+        physicsHandle: attachment.physicsHandle ? { ...attachment.physicsHandle } : null,
+        runtimeState: attachment.masslineRuntime && attachment.masslineRuntime.state,
+      } : null,
+    };
+  });
+}
+
+async function reelFailureEvidence(page, attachmentId, targetId) {
+  return page.evaluate(({ attachmentId, targetId }) => {
+    const sf = window.SF;
+    const state = sf.state;
+    const target = state.entities.get(targetId);
+    const combat = sf.registry.get('combat');
+    const actions = sf.registry.get('actions');
+    const attachments = actions && actions.kernel && actions.kernel.attachments
+      || combat && combat.kernel && combat.kernel.attachments;
+    const attachment = attachments && attachments.get ? attachments.get(attachmentId) : null;
+    const retained = state.combat && state.combat.attachments && state.combat.attachments.byId
+      ? state.combat.attachments.byId[attachmentId] : null;
+    const tetherSystem = sf.registry.get('tetherGameplay');
+    return {
+      tick: state.tick,
+      simTime: state.simTime,
+      mirror: state.player.tether ? { ...state.player.tether } : null,
+      actions: state.input && state.input.actions ? { ...state.input.actions } : null,
+      gesture: tetherSystem ? {
+        active: tetherSystem._active ? { ...tetherSystem._active } : null,
+        pendingCut: tetherSystem._pendingCut ? { ...tetherSystem._pendingCut } : null,
+        ignoreReleaseCutUntilReelIdle: tetherSystem._ignoreReleaseCutUntilReelIdle,
+        latchGraceUntil: tetherSystem._latchGraceUntil,
+        noRelatchUntil: tetherSystem._noRelatchUntil,
+      } : null,
+      attachment: summarizeAttachment(attachment || retained),
+      target: target ? {
+        alive: target.alive !== false,
+        speed: Math.hypot(target.vel && target.vel.x || 0, target.vel && target.vel.z || 0),
+        pos: target.pos && { x: target.pos.x, z: target.pos.z },
+      } : null,
+      tetherEvents: (window.__SF_MASSLINE_LIVE_EVENTS__ || [])
+        .filter((event) => event.type.startsWith('tether:')),
+    };
+
+    function summarizeAttachment(value) {
+      if (!value) return null;
+      return {
+        id: value.id,
+        state: value.state,
+        breakReason: value.breakReason,
+        restLength: value.restLength,
+        lastTension: value.lastTension,
+        lastImpulse: value.lastImpulse,
+        break: value.break ? { ...value.break } : null,
+        masslineRuntime: value.masslineRuntime ? { ...value.masslineRuntime } : null,
+        masslineTelemetry: value.masslineTelemetry ? { ...value.masslineTelemetry } : null,
+        physicsHandle: value.physicsHandle ? { ...value.physicsHandle } : null,
+      };
+    }
+  }, { attachmentId, targetId });
+}
+
+async function playerFireEvidence(page, targetId) {
+  return page.evaluate((targetId) => {
+    const events = window.__SF_MASSLINE_LIVE_EVENTS__ || [];
+    const state = window.SF.state;
+    return {
+      count: events.filter((event) => event.type === 'combat:fire' && event.payload && event.payload.ownerId === state.playerId).length,
+      targetStillTethered: !!(state.player.tether && state.player.tether.active && state.player.tether.targetId === targetId),
+      damageEvents: events.filter((event) => event.type === 'combat:damage' && event.payload && event.payload.targetId === targetId).length,
+    };
+  }, targetId);
+}
+
+async function throwEvidence(page, anchorId) {
+  return page.evaluate((anchorId) => {
+    const state = window.SF.state;
+    const inp = state.input || {};
+    const rt = state.massline2 && state.massline2.throw && state.massline2.throw.releaseTarget;
+    const anchor = state.entities.get(anchorId);
+    const anchorScreen = anchor && anchor.pos && window.SF.helpers && window.SF.helpers.worldToScreen
+      ? window.SF.helpers.worldToScreen({ x: anchor.pos.x, y: 0, z: anchor.pos.z }) : null;
+    return {
+      tetherActive: !!(state.player.tether && state.player.tether.active),
+      lastThrow: state.massline2 && state.massline2.throw && state.massline2.throw.lastThrow,
+      events: (window.__SF_MASSLINE_LIVE_EVENTS__ || []).filter((event) => event.type === 'massline:throw'),
+      // Aim-lane diagnosis: which half of the cursor-aim chain was live at read time.
+      // aimIntentActive=false means the pointer was never registered; a point-kind
+      // releaseTarget means the cursor landed but no entity was within grace.
+      aim: {
+        aimIntentActive: inp.aimIntentActive === true,
+        aimWorld: inp.aimWorld ? { x: Number(inp.aimWorld.x && inp.aimWorld.x.toFixed(1)), z: Number(inp.aimWorld.z && inp.aimWorld.z.toFixed(1)) } : null,
+        pointerScreen: inp.pointerScreen ? { x: Number(inp.pointerScreen.x), y: Number(inp.pointerScreen.y), active: inp.pointerScreen.active === true } : null,
+        releaseTarget: rt ? { kind: rt.kind, source: rt.source, targetId: rt.targetId, pos: rt.pos ? { x: Number(rt.pos.x && rt.pos.x.toFixed(1)), z: Number(rt.pos.z && rt.pos.z.toFixed(1)) } : null } : null,
+      },
+      anchorPlacement: window.__SF_MASSLINE_ANCHOR_PLACED__ || null,
+      anchorNow: anchor && anchor.pos
+        ? {
+          pos: { x: Number(anchor.pos.x.toFixed(1)), z: Number(anchor.pos.z.toFixed(1)) },
+          screen: anchorScreen && Number.isFinite(anchorScreen.x)
+            ? { x: Number(anchorScreen.x.toFixed(1)), y: Number(anchorScreen.y.toFixed(1)), onScreen: anchorScreen.onScreen === true }
+            : null,
+        }
+        : null,
+      playerPos: state.player && state.entities.get(state.playerId) && state.entities.get(state.playerId).pos
+        ? { x: Number(state.entities.get(state.playerId).pos.x.toFixed(1)), z: Number(state.entities.get(state.playerId).pos.z.toFixed(1)) }
+        : null,
+    };
+  }, anchorId);
+}
+
+async function lootEvidence(page, fixture) {
+  return page.evaluate((fixture) => {
+    const state = window.SF.state;
+    const events = (window.__SF_MASSLINE_LIVE_EVENTS__ || []).slice(fixture.eventIndex);
+    const pickups = Array.from(state.entities.values()).filter((entity) => entity && entity.alive !== false
+      && entity.type === 'pickup' && entity.data && !entity.data.jettisonedCargo);
+    const cargo = state.player.cargo;
+    return {
+      dropCount: events.filter((event) => event.type === 'loot:drop').length,
+      collectedCount: events.filter((event) => event.type === 'pickup:collected').length,
+      spawnedPickupCount: pickups.length,
+      nearestPickupDistance: pickups.length ? Math.min(...pickups.map((pickup) => {
+        const player = state.entities.get(state.playerId);
+        return Math.hypot(pickup.pos.x - player.pos.x, pickup.pos.z - player.pos.z);
+      })) : null,
+      cargoDelta: {
+        scrap: Number(cargo.items.cmdty_scrap_metal || 0) - fixture.scrapBefore,
+        electronics: Number(cargo.items.cmdty_salvage_electronics || 0) - fixture.electronicsBefore,
+      },
+    };
+  }, fixture);
+}
+
+async function exerciseOrbitAssist(page, targetId) {
+  await page.evaluate((targetId) => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const target = state.entities.get(targetId);
+    // A 90 m fixture keeps the line readable. The target is deliberately lighter than the player
+    // and remains a dynamic ship so this is a moving two-body swing, not a fixed-anchor shortcut.
+    player.pos.x = 0; player.pos.z = 0; player.vel.x = 0; player.vel.z = 0;
+    player.rot = 0; player.prevRot = 0; player.angVel = 0;
+    if (player.prevPos) { player.prevPos.x = 0; player.prevPos.z = 0; }
+    if (player.physicsBody) player.physicsBody.revision = (player.physicsBody.revision || 0) + 1;
+    target.pos.x = 90; target.pos.z = 0; target.vel.x = -2; target.vel.z = 3;
+    target.mass = Math.max(1, player.mass * 0.75);
+    target.data = target.data || {};
+    target.data.ai = { passive: true, lawful: false };
+    if (target.prevPos) { target.prevPos.x = 90; target.prevPos.z = 0; }
+    if (target.physicsBody) {
+      target.physicsBody.mass = target.mass;
+      target.physicsBody.revision = (target.physicsBody.revision || 0) + 1;
+    }
+    state.player.targetId = targetId;
+    state.settings.gameplay.orbitAssistStrength = 'standard';
+  }, targetId);
+  await aimAt(page, targetId);
+
+  await page.keyboard.press('Space');
+  await waitForProbeEvent(page, 'tether:latched', 8_000, { payloadField: 'targetId', payloadValue: targetId });
+  await page.keyboard.down('ArrowUp');
+  await page.keyboard.down('ArrowRight');
+  await waitForSimTicks(page, 30);
+  const pending = await orbitAssistEvidence(page);
+  await page.waitForFunction(() => {
+    const state = window.SF && window.SF.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    return !!(player && player._flightFrame && player._flightFrame.orbitAssist
+      && player._flightFrame.orbitAssist.active);
+  }, null, { timeout: 8_000 });
+
+  const engaged = await orbitAssistEvidence(page);
+  await page.screenshot({ path: ORBIT_SCREENSHOT });
+
+  await page.mouse.move(WIDTH * 0.18, HEIGHT * 0.22);
+  await waitForSimTicks(page, 4);
+  const afterPointer = await orbitAssistEvidence(page);
+
+  await page.keyboard.up('ArrowRight');
+  await waitForSimTicks(page, 1);
+  const afterLateralRelease = await orbitAssistEvidence(page);
+  await page.keyboard.up('ArrowUp');
+  await waitForSimTicks(page, 2);
+
+  return { pending, engaged, afterPointer, afterLateralRelease };
+}
+
+async function orbitAssistEvidence(page) {
+  return page.evaluate(() => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const telemetry = player && player._flightFrame && player._flightFrame.orbitAssist || {};
+    const target = state.player.tether && state.entities.get(state.player.tether.targetId);
+    const tetherHud = document.querySelector('#sf-tetherstat [data-k=tether]');
+    return {
+      active: !!telemetry.active,
+      reason: telemetry.reason || null,
+      direction: Number(telemetry.direction || 0),
+      selectedDirection: Number(telemetry.selectedDirection || 0),
+      targetId: state.player.tether && state.player.tether.targetId,
+      targetType: target && target.type || null,
+      targetMass: Number(target && target.mass || 0),
+      playerMass: Number(player && player.mass || 0),
+      aimAngle: Number(state.input.aimAngle || 0),
+      hudText: tetherHud ? String(tetherHud.textContent || '').trim() : '',
+    };
+  });
+}
+
+async function cloakEvidence(page) {
+  return page.evaluate(async () => {
+    const sf = window.SF;
+    const state = sf.state;
+    const player = state.entities.get(state.playerId);
+    const outside = Array.from(state.entities.values()).find((e) => e && e.data && e.data.probe === 'massline-live-outside-observer');
+    const inside = Array.from(state.entities.values()).find((e) => e && e.data && e.data.probe === 'massline-live-inside-observer');
+    if (!outside || !inside || !sf.helpers.aiSensors) throw new Error('cloak observer fixture unavailable');
+    // liveFrameFor returns one shared scratch frame — each call overwrites the previous, so
+    // the verdict must be extracted before the next call is issued.
+    const outsideFrame = sf.helpers.aiSensors.liveFrameFor(outside.id, state.tick);
+    const outsideSees = outsideFrame.contacts.some((contact) => contact.id === player.id);
+    const insideFrame = sf.helpers.aiSensors.liveFrameFor(inside.id, state.tick);
+    const insideSees = insideFrame.contacts.some((contact) => contact.id === player.id);
+    const scripts = await import('/src/systems/encounterScripts.js');
+    const ring = document.querySelector('#sf-ml2 svg.ml2-ring');
+    const pill = document.querySelector('#sf-ml2 .ml2-pill.ml2-cloak');
+    return {
+      active: !!state.massline2.cloak.active,
+      radius: state.massline2.cloak.radius,
+      outsideDistance: Math.hypot(outside.pos.x - player.pos.x, outside.pos.z - player.pos.z),
+      insideDistance: Math.hypot(inside.pos.x - player.pos.x, inside.pos.z - player.pos.z),
+      outsideSensorSeesPlayer: outsideSees,
+      insideSensorSeesPlayer: insideSees,
+      outsidePatrolCanScan: scripts.patrolCanInitiateScan(state, outside, player),
+      insidePatrolCanScan: scripts.patrolCanInitiateScan(state, inside, player),
+      hud: {
+        rootPresent: !!document.getElementById('sf-ml2'),
+        ringVisible: !!(ring && getComputedStyle(ring).display !== 'none'),
+        cloakPillVisible: !!(pill && getComputedStyle(pill).display !== 'none' && pill.classList.contains('ml2-on')),
+      },
+    };
+  });
+}
+
+async function hudEvidence(page) {
+  return page.evaluate(() => {
+    const q = (selector) => document.querySelector(selector);
+    const visible = (selector) => {
+      const el = q(selector); return !!(el && getComputedStyle(el).display !== 'none');
+    };
+    return {
+      rootPresent: !!q('#sf-ml2'),
+      selfReleaseMarkVisible: visible('#sf-ml2 .ml2-self'),
+      throwMarkVisible: visible('#sf-ml2 .ml2-throw'),
+    };
+  });
+}
+
+async function exerciseJettison(page) {
+  // Rest the hull through the physics authority: a direct entity.vel write plus a revision
+  // bump schedules a body resync on the NEXT step, which would erase the cargo_jettison
+  // impulse applied moments later in the same evaluate (the resync re-reads entity.vel=0).
+  await page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf.state;
+    const player = state.entities.get(state.playerId);
+    const snap = state.physicsRuntime && state.physicsRuntime.sg02Snapshot;
+    const body = Array.isArray(snap) ? snap.find((b) => b && b.id === state.playerId) : null;
+    const bx = body ? Number(body.vx) || 0 : Number(player.vel && player.vel.x) || 0;
+    const bz = body ? Number(body.vz) || 0 : Number(player.vel && player.vel.z) || 0;
+    const spd = Math.hypot(bx, bz);
+    if (spd > 0.05 && sf.helpers.combatPhysics && typeof sf.helpers.combatPhysics.applyImpulse === 'function') {
+      const m = Math.max(0.1, Number(player.mass) || 18);
+      sf.helpers.combatPhysics.applyImpulse({
+        entityId: player.id,
+        impulse: { x: -bx * m, z: -bz * m },
+        point: null,
+        reason: 'massline_live_probe_rest',
+        tick: state.tick,
+      });
+    }
+  });
+  await waitForSimTicks(page, 3);
+  const before = await page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf.state;
+    const player = state.entities.get(state.playerId);
+    const cargo = sf.registry.get('cargo');
+    state.story.persistentCargo = state.story.persistentCargo || [];
+    if (!state.story.persistentCargo.includes('cmdty_47a_assay_sample')) state.story.persistentCargo.push('cmdty_47a_assay_sample');
+    cargo.addCargo('cmdty_47a_assay_sample', 1);
+    cargo.addCargo('cmdty_scrap_metal', 20);
+    const eventsBefore = (window.__SF_MASSLINE_LIVE_EVENTS__ || []).filter((event) => event.type === 'cargo:jettisoned').length;
+    const lockedDumped = cargo.jettison('cmdty_47a_assay_sample', 1);
+    const eventsAfterLock = (window.__SF_MASSLINE_LIVE_EVENTS__ || []).filter((event) => event.type === 'cargo:jettisoned').length;
+    return {
+      lockedDumped,
+      lockedEventsAdded: eventsAfterLock - eventsBefore,
+      speedBefore: Math.hypot(player.vel.x || 0, player.vel.z || 0),
+      scrapDumped: cargo.jettison('cmdty_scrap_metal', 20),
+    };
+  });
+  await waitForProbeEvent(page, 'cargo:jettisoned', 5_000);
+  await waitForSimTicks(page, 5);
+  const after = await page.evaluate(() => {
+    const state = window.SF.state;
+    const player = state.entities.get(state.playerId);
+    const snapshot = state.physicsRuntime && state.physicsRuntime.sg02Snapshot;
+    const body = Array.isArray(snapshot) ? snapshot.find((entry) => entry && entry.id === state.playerId) : null;
+    return {
+      speedAfter: Math.hypot(player.vel.x || 0, player.vel.z || 0),
+      physicsBodySpeedAfter: body ? Math.hypot(body.vx || 0, body.vz || 0) : null,
+    };
+  });
+  return { ...before, ...after };
+}
+
+async function moveCursorToEntity(page, entityId) {
+  const screen = await page.evaluate((entityId) => {
+    const sf = window.SF;
+    const entity = sf.state.entities.get(entityId);
+    if (!entity) throw new Error('aim entity missing: ' + entityId);
+    const projected = sf.helpers.worldToScreen && sf.helpers.worldToScreen({ x: entity.pos.x, y: 0, z: entity.pos.z });
+    return projected && Number.isFinite(projected.x) && Number.isFinite(projected.y)
+      ? { x: projected.x, y: projected.y }
+      : { x: innerWidth * 0.62, y: innerHeight * 0.5 };
+  }, entityId);
+  await page.mouse.move(Math.max(4, Math.min(WIDTH - 4, screen.x)), Math.max(4, Math.min(HEIGHT - 4, screen.y)));
+}
+
+async function aimAt(page, entityId, stabilizeTicks = 3) {
+  await moveCursorToEntity(page, entityId);
+  if (stabilizeTicks <= 0) return;
+  try {
+    await waitForSimTicks(page, stabilizeTicks);
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      tick: window.SF && window.SF.state && window.SF.state.tick,
+      mode: window.SF && window.SF.state && window.SF.state.mode,
+      timeScale: window.SF && window.SF.state && window.SF.state.timeScale,
+      uiModal: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.modal,
+      uiScreen: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.screen,
+      focused: document.hasFocus(),
+      hidden: document.hidden,
+    }));
+    throw new Error(`aim stabilization stalled: ${JSON.stringify(diagnostic)}; ${error.message}`);
+  }
+}
+
+async function waitForProbeEvent(page, type, timeoutMs, match = null) {
+  await page.waitForFunction(({ type, match }) => {
+    return (window.__SF_MASSLINE_LIVE_EVENTS__ || []).some((event) => {
+      if (event.type !== type) return false;
+      if (!match) return true;
+      return event.payload && event.payload[match.payloadField] === match.payloadValue;
+    });
+  }, { type, match }, { timeout: timeoutMs });
+}
+
+async function probeEventCount(page, type) {
+  return page.evaluate((type) => (window.__SF_MASSLINE_LIVE_EVENTS__ || []).filter((event) => event.type === type).length, type);
+}
+
+async function waitForSimTicks(page, count) {
+  const start = await page.evaluate(() => window.SF.state.tick);
+  try {
+    await page.waitForFunction(({ start, count }) => window.SF && window.SF.state && window.SF.state.tick >= start + count,
+      { start, count }, { timeout: Math.max(5_000, count * 300) });
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => {
+      const state = window.SF && window.SF.state;
+      const player = state && state.entities && state.entities.get(state.playerId);
+      return {
+        tick: state && state.tick,
+        mode: state && state.mode,
+        timeScale: state && state.timeScale,
+        playerAlive: player && player.alive,
+        playerHull: player && player.hull,
+        ui: state && state.ui,
+      };
+    });
+    if (Number(diagnostic.tick) >= start + count) return;
+    throw new Error(`fixed ticks stalled from ${start}: ${JSON.stringify(diagnostic)}; ${error.message}`);
+  }
+}
+
+async function clickNamedButton(page, label) {
+  const clicked = await page.evaluate((label) => {
+    const re = new RegExp(label, 'i');
+    const button = Array.from(document.querySelectorAll('button')).find((el) => re.test((el.textContent || '').trim()));
+    if (!button || button.disabled) return false;
+    button.click();
+    return true;
+  }, label);
+  assert.equal(clicked, true, `button must be available: ${label}`);
+}
+
+async function dismissTutorial(page) {
+  try {
+    await page.waitForFunction(() => Array.from(document.querySelectorAll('button')).some((b) => /begin/i.test(b.textContent || '')), null, { timeout: 3_000 });
+    await clickNamedButton(page, 'Begin');
+  } catch (_) {
+    // Some first-hour paths skip the modal; flight readiness above remains authoritative.
+  }
+}
+
+async function startFreshServer() {
+  const port = await freePort();
+  const child = spawn(process.execPath, ['server.js'], {
+    cwd: ROOT,
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', PORT: String(port), SF_PORT: String(port) },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let stderr = '';
+  child.stderr.on('data', (chunk) => { stderr += String(chunk); });
+  const baseUrl = `http://127.0.0.1:${port}/`;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (child.exitCode != null) throw new Error(`server exited early (${child.exitCode}): ${stderr.slice(-1000)}`);
+    try {
+      const response = await fetch(baseUrl);
+      if (response.ok) return { child, baseUrl };
+    } catch (_) {}
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  child.kill();
+  throw new Error(`server failed to start: ${stderr.slice(-1000)}`);
+}
+
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const server = createNetServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      server.close(() => resolve(address.port));
+    });
+  });
+}

@@ -1,0 +1,58 @@
+// 334 - Tether-control raider. Rare specialist: enemy Massline contest.
+import { deepFreeze, defineEncounter } from './catalog.js';
+
+export const encounterOrder = 334;
+export const trigger = deepFreeze({
+  id: 'tether_control_raider_ambush',
+  tier: 'minor',
+  deck: 'combat',
+  weight: 0.5,
+  // Counter-first law (PQ-030.02, 2026-09-19 ruling): the teaching encounter must
+  // reach the player inside the fire-control saving window, so the shape schedules
+  // densely across a sector's first 30 days.
+  earlyWindowDays: 30,
+  earlyWindowWeight: 14,
+  earlyWindowGuaranteeDay: 2,
+  zoneTypes: ['ambush_lane', 'outlaw_zone'],
+  script: 'ambush',
+  pressureCost: 54,
+  cooldownS: 900,
+  proximity: true,
+  rare: true,
+  gates: {
+    minSectorTier: 3,
+    maxSecurity: 0.55,
+    storyBeatMin: 1,
+  },
+});
+
+export default defineEncounter(trigger, {
+  shape: {
+    situation: 'ambush',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_reach',
+  },
+  motive: 'massline_interdiction',
+  engagementTrigger: 'player_massline_active',
+  factionId: 'faction_reach',
+  context: 'encounter',
+  title: 'TETHER-CONTROL RAIDER',
+  primaryLine: 'SPECIALIST CONTACT: enemy Massline spooling. Displace, break anchor, or outmass it.',
+  squad: {
+    anchorArchetype: 'tether_control_raider',
+    archetypes: ['wasp_swarmer', 'reaver_pirate'],
+    size: [3, 4],
+    doctrine: 'scavenger',
+    formation: 'wedge',
+    // WF-02 terrain lee: the specialist lurks behind cover until your line is live — the
+    // interdiction reads as a concealed cut, not a ring of ships in the void.
+    terrain: 'lee',
+  },
+  bark: 'ambush_tele',
+  telegraph: 'Enemy Massline spooling. Displace, break anchor, or outmass it.',
+  aftermath: {
+    flee: 'The specialist drops the contested line and burns out of the wake.',
+    kill: 'The hostile Massline dies with the specialist hull.',
+  },
+});

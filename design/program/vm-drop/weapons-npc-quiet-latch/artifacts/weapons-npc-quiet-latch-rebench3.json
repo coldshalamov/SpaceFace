@@ -1,0 +1,93 @@
+{
+  "name": "weapons-npc-quiet-latch",
+  "note": "isolated child; before=latch OFF after=latch ON; player service stays live",
+  "iterations": 80000,
+  "runs": 11,
+  "npc": 36,
+  "pairs": [
+    {
+      "beforeMs": 394.390106,
+      "afterMs": 147.08953200000002,
+      "speedup": 2.6812928196684993,
+      "afterLatched": true,
+      "quietLatchedEnd": true
+    },
+    {
+      "beforeMs": 362.523962,
+      "afterMs": 154.568356,
+      "speedup": 2.345395728993844,
+      "afterLatched": true,
+      "quietLatchedEnd": true
+    },
+    {
+      "beforeMs": 364.132083,
+      "afterMs": 170.69598799999997,
+      "speedup": 2.1332199266452596,
+      "afterLatched": true,
+      "quietLatchedEnd": true
+    },
+    {
+      "beforeMs": 362.66095399999995,
+      "afterMs": 141.603607,
+      "speedup": 2.56109969006651,
+      "afterLatched": true,
+      "quietLatchedEnd": true
+    },
+    {
+      "beforeMs": 414.597307,
+      "afterMs": 175.98645900000002,
+      "speedup": 2.355847770083265,
+      "afterLatched": true,
+      "quietLatchedEnd": true
+    },
+    {
+      "beforeMs": 380.733922,
+      "afterMs": 141.27651600000002,
+      "speedup": 2.694955487152585,
+      "afterLatched": true,
+      "quietLatchedEnd": true
+    },
+    {
+      "beforeMs": 418.92506399999996,
+      "afterMs": 144.405936,
+      "speedup": 2.901023847108335,
+      "afterLatched": true,
+      "quietLatchedEnd": true
+    },
+    {
+      "beforeMs": 363.35416599999996,
+      "afterMs": 153.09838900000003,
+      "speedup": 2.373337618856328,
+      "afterLatched": true,
+      "quietLatchedEnd": true
+    },
+    {
+      "beforeMs": 401.5834970000001,
+      "afterMs": 148.113551,
+      "speedup": 2.711321781759186,
+      "afterLatched": true,
+      "quietLatchedEnd": true
+    },
+    {
+      "beforeMs": 405.021501,
+      "afterMs": 171.105323,
+      "speedup": 2.3670888427007033,
+      "afterLatched": true,
+      "quietLatchedEnd": true
+    },
+    {
+      "beforeMs": 381.548387,
+      "afterMs": 143.620132,
+      "speedup": 2.656649744619368,
+      "afterLatched": true,
+      "quietLatchedEnd": true
+    }
+  ],
+  "medianSpeedup": 2.56109969006651,
+  "minSpeedup": 2.1332199266452596,
+  "dirtyWake": {
+    "ok": true,
+    "projId": 38,
+    "playerId": 1
+  }
+}

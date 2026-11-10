@@ -1,0 +1,160 @@
+TAP version 13
+# Subtest: trick names alone have no reputation, salvage-rights or credit entitlement
+ok 1 - trick names alone have no reputation, salvage-rights or credit entitlement
+  ---
+  duration_ms: 1.670968
+  ...
+# Subtest: kill burst credits ignore style; salvage rights are not chips
+ok 2 - kill burst credits ignore style; salvage rights are not chips
+  ---
+  duration_ms: 2.033188
+  ...
+# Subtest: seed 15530: unsupported legacy physics receipts cannot grant fame or invent positive recognition
+ok 3 - seed 15530: unsupported legacy physics receipts cannot grant fame or invent positive recognition
+  ---
+  duration_ms: 11.36276
+  ...
+# Subtest: Bank Job: real flight, emitted shot, physical reflection, cover and routed kill
+ok 4 - Bank Job: real flight, emitted shot, physical reflection, cover and routed kill
+  ---
+  duration_ms: 163.620776
+  ...
+# Subtest: stationary/straight flight automatic banks and uncovered targets do not award
+ok 5 - stationary/straight flight automatic banks and uncovered targets do not award
+  ---
+  duration_ms: 28.604593
+  ...
+# Subtest: Return to Sender: actual hostile emission and applied Rapier impulse return the same bullet
+ok 6 - Return to Sender: actual hostile emission and applied Rapier impulse return the same bullet
+  ---
+  duration_ms: 8.582061
+  ...
+# Subtest: consumed projectile contacts survive a save as consumed; a pending shot restores only onto its own body
+ok 7 - consumed projectile contacts survive a save as consumed; a pending shot restores only onto its own body
+  ---
+  duration_ms: 16.771768
+  ...
+# Subtest: sampleProjectileEvidence records near reflective surfaces only
+ok 8 - sampleProjectileEvidence records near reflective surfaces only
+  ---
+  duration_ms: 4.44927
+  ...
+# Subtest: distance-first still advances surface frames on later ticks
+ok 9 - distance-first still advances surface frames on later ticks
+  ---
+  duration_ms: 0.679515
+  ...
+# Subtest: worked A: three primary families bank 460 style plus 300 neutral base score
+ok 10 - worked A: three primary families bank 460 style plus 300 neutral base score
+  ---
+  duration_ms: 3.233101
+  ...
+# Subtest: worked B: fodder lifetime caps a spectacular signature at 100
+ok 11 - worked B: fodder lifetime caps a spectacular signature at 100
+  ---
+  duration_ms: 0.402514
+  ...
+# Subtest: worked C: repeats retain fractions until one final floor and never raise multiplier
+ok 12 - worked C: repeats retain fractions until one final floor and never raise multiplier
+  ---
+  duration_ms: 0.673686
+  ...
+# Subtest: Razor Bolas collateral has one primary, deterministic proportional allocations and bounded amendment
+ok 13 - Razor Bolas collateral has one primary, deterministic proportional allocations and bounded amendment
+  ---
+  duration_ms: 1.713539
+  ...
+# Subtest: nonlethal half-budget then death unlocks only remainder, including save round-trip
+ok 14 - nonlethal half-budget then death unlocks only remainder, including save round-trip
+  ---
+  duration_ms: 0.710473
+  ...
+# Subtest: two other distinct paid IDs restore repetition; modifiers and zero-budget acts do not
+ok 15 - two other distinct paid IDs restore repetition; modifiers and zero-budget acts do not
+  ---
+  duration_ms: 0.497612
+  ...
+# Subtest: quiet requires explicit safe physical context; bridges require useful setup and are bounded
+ok 16 - quiet requires explicit safe physical context; bridges require useful setup and are bounded
+  ---
+  duration_ms: 0.617036
+  ...
+# Subtest: pending descendant bounded by root horizon; pressure timeout retains full multiplier
+ok 17 - pending descendant bounded by root horizon; pressure timeout retains full multiplier
+  ---
+  duration_ms: 0.242994
+  ...
+# Subtest: escape has finite shared threat budget and only one escape multiplier contribution
+ok 18 - escape has finite shared threat budget and only one escape multiplier contribution
+  ---
+  duration_ms: 0.83782
+  ...
+# Subtest: hard crash and death settle at one without touching previous banks; postmortem remains bounded
+ok 19 - hard crash and death settle at one without touching previous banks; postmortem remains bounded
+  ---
+  duration_ms: 0.67667
+  ...
+# Subtest: safe carry decays only in active simulation, has next-round protection and is consumed once
+ok 20 - safe carry decays only in active simulation, has next-round protection and is consumed once
+  ---
+  duration_ms: 1.737883
+  ...
+# Subtest: threat admission and death aliases are immutable, numeric ID zero is retained
+ok 21 - threat admission and death aliases are immutable, numeric ID zero is retained
+  ---
+  duration_ms: 0.395396
+  ...
+# Subtest: quiet-iter collidables lane still records near reflective surfaces
+ok 22 - quiet-iter collidables lane still records near reflective surfaces
+  ---
+  duration_ms: 5.26637
+  ...
+# Subtest: quiet-iter falls back to entities.values without index
+ok 23 - quiet-iter falls back to entities.values without index
+  ---
+  duration_ms: 2.891753
+  ...
+# Subtest: quiet-iter keeps warming frames once surfaceHistory is hot
+ok 24 - quiet-iter keeps warming frames once surfaceHistory is hot
+  ---
+  duration_ms: 0.577244
+  ...
+# Subtest: bench toggle off still records near plate
+ok 25 - bench toggle off still records near plate
+  ---
+  duration_ms: 0.371886
+  ...
+# Subtest: sixteen recognitions: thirteen primaries in six families, two modifiers, one bridge, rarity bases 50/90/140/200
+ok 26 - sixteen recognitions: thirteen primaries in six families, two modifiers, one bridge, rarity bases 50/90/140/200
+  ---
+  duration_ms: 2.56013
+  ...
+# Subtest: a receipt without a live physical root, a hostile target or a material consequence names nothing
+ok 27 - a receipt without a live physical root, a hostile target or a material consequence names nothing
+  ---
+  duration_ms: 0.851232
+  ...
+# Subtest: each primary card reads its own physical witnesses and no button-side fact
+ok 28 - each primary card reads its own physical witnesses and no button-side fact
+  ---
+  duration_ms: 1.314019
+  ...
+# Subtest: escape receipts need a tracked threat and a completed escape; Kickstart needs a retained launch
+ok 29 - escape receipts need a tracked threat and a completed escape; Kickstart needs a retained launch
+  ---
+  duration_ms: 0.432242
+  ...
+# Subtest: precedence names one primary for one physical achievement and settles the same victim once
+ok 30 - precedence names one primary for one physical achievement and settles the same victim once
+  ---
+  duration_ms: 1.434754
+  ...
+1..30
+# tests 30
+# suites 0
+# pass 30
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 598.004928

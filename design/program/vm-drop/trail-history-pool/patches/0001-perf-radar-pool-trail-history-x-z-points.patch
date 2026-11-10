@@ -1,0 +1,93 @@
+From d352c55af696f32f638c9dce78b81330ae554f39 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Wed, 23 Sep 2026 00:01:19 -0400
+Subject: [PATCH] perf(radar): pool trail history {x,z} points
+
+updateTrail allocated a fresh point and GC'd the shifted tip every ~20 wu of
+contact motion. Recycle the dropped tip at TRAIL_MAX and draw growth slots from
+a retained free list; prune/sector/destroy return points to the pool. Picture
+unchanged (same FIFO trail).
+---
+ src/ui/radar.js | 38 +++++++++++++++++++++++++++++++++-----
+ 1 file changed, 33 insertions(+), 5 deletions(-)
+
+diff --git a/src/ui/radar.js b/src/ui/radar.js
+index d1c3cb4c3..a8be1c047 100644
+--- a/src/ui/radar.js
++++ b/src/ui/radar.js
+@@ -83,6 +83,20 @@ const CAPITAL_DEFS = new Set(
+ );
+ 
+ const trailMap = new Map();
++// Retained {x,z} slots for contact trails. updateTrail used to allocate a fresh point and
++// shift() the dropped one into GC every time a contact moved ~20 wu — steady radar.draw churn.
++const trailPointPool = [];
++
++function releaseTrailHistory(history) {
++  if (!history || !history.length) return;
++  for (let i = 0; i < history.length; i += 1) trailPointPool.push(history[i]);
++  history.length = 0;
++}
++
++function clearAllTrails() {
++  for (const history of trailMap.values()) releaseTrailHistory(history);
++  trailMap.clear();
++}
+ 
+ /**
+  * Range-ring policy: show the farthest positive finite range among the active entity's live
+@@ -165,8 +179,19 @@ function updateTrail(entity) {
+   const dx = last ? entity.pos.x - last.x : Infinity;
+   const dz = last ? entity.pos.z - last.z : Infinity;
+   if (!last || dx * dx + dz * dz > 400) {
+-    history.push({ x: entity.pos.x, z: entity.pos.z });
+-    if (history.length > TRAIL_MAX) history.shift();
++    let pt;
++    if (history.length >= TRAIL_MAX) {
++      // Recycle the dropped tip — same FIFO picture, no alloc and no orphaned point.
++      pt = history.shift();
++      pt.x = entity.pos.x;
++      pt.z = entity.pos.z;
++      history.push(pt);
++    } else {
++      pt = trailPointPool.length ? trailPointPool.pop() : { x: 0, z: 0 };
++      pt.x = entity.pos.x;
++      pt.z = entity.pos.z;
++      history.push(pt);
++    }
+   }
+ }
+ 
+@@ -613,7 +638,7 @@ export function createRadar(ctx) {
+   }
+ 
+   function onSectorEnter() {
+-    trailMap.clear();
++    clearAllTrails();
+     if (expanded) setExpanded(false);
+     markContactsDirty();
+   }
+@@ -822,7 +847,10 @@ export function createRadar(ctx) {
+     if (trailPruneCountdown-- <= 0) {
+       trailPruneCountdown = TRAIL_PRUNE_INTERVAL;
+       for (const id of trailMap.keys()) {
+-        if (!state.entities.has(id)) trailMap.delete(id);
++        if (!state.entities.has(id)) {
++          releaseTrailHistory(trailMap.get(id));
++          trailMap.delete(id);
++        }
+       }
+     }
+ 
+@@ -1203,7 +1231,7 @@ export function createRadar(ctx) {
+       try { unsubscribe(); } catch (_) {}
+     }
+     try { parityTeardown(); } catch (_) {}
+-    trailMap.clear();
++    clearAllTrails();
+   }
+ 
+   return { el: wrap, draw, invalidate, destroy };
+-- 
+2.47.3
+

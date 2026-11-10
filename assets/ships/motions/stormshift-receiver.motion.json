@@ -1,0 +1,91 @@
+{
+ "schema": "spaceface.rigidMotionBank.v1",
+ "rigId": "stormshift_receiver",
+ "sourceAssetId": "SF_STORMSHIFT_RECEIVER_V01",
+ "sourceGlbSha256": "a52eab433d89cb52c1995d5dde990a02049c0f2e5b7cfdcb483f3aaebc8cb471",
+ "fps": 60,
+ "bindings": [
+  {
+   "id": "stormshift_receiver_status",
+   "node": "MOTION_STORMSHIFT_RECEIVER_STATUS",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -5.199999809265137,
+     2.309999942779541,
+     3.200000047683716
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0
+   ]
+  }
+ ],
+ "clips": [
+  {
+   "name": "receiver_ready",
+   "durationS": 0.3,
+   "loop": false,
+   "endMode": "hold",
+   "channels": [
+    {
+     "group": "stormshift_receiver_status",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.3
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.1741081327199936,
+      0.0,
+      0.98472660779953
+     ],
+     "interpolation": "slerp"
+    }
+   ]
+  },
+  {
+   "name": "receiver_closed",
+   "durationS": 0.3,
+   "loop": false,
+   "endMode": "hold",
+   "channels": [
+    {
+     "group": "stormshift_receiver_status",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.3
+     ],
+     "values": [
+      0.0,
+      0.1741081327199936,
+      0.0,
+      0.98472660779953,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "interpolation": "slerp"
+    }
+   ]
+  }
+ ]
+}

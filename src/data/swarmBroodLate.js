@@ -1,0 +1,789 @@
+// Late Brood families. The base roster in src/data/swarmBrood.js stays the early clock.
+// This module is the continuation: each row is a light instanced body, budget-counted
+// by folding its count out of the mite share. The engine merges the tables.
+
+import {
+  SWARM_BROOD_FAMILIES,
+  SWARM_BROOD_QUEEN_ID,
+  swarmBroodBossFor,
+} from './swarmBrood.js';
+import { isSwarmBossWave } from './swarmMode.js';
+
+export const SWARM_BROOD_LATE_FAMILIES = Object.freeze([
+  {
+    id: 'burrower',
+    name: 'Burrower',
+    role: 'ambush',
+    fromWave: 19,
+    weight: 2,
+    // How many of this family replace mites on a wave that has unlocked it.
+    cohort: 8,
+    radius: 3.2,
+    mass: 18,
+    hull: 16,
+    speed: 48,
+    turn: 3.2,
+    credits: 3,
+    score: 28,
+    telegraph: {
+      bark: 'warn',
+      line: 'The rock cracks — a burrower is coming out.',
+      cue: 'weapon_charge',
+    },
+    counter: 'It hides in the rock. Clear the silhouette before it bursts.',
+    deathLeaves: 'a cracked shell',
+    // W-BLOOM-LOW remains: the carapace piece survives the burst as one latched plate —
+    // already cracked, so the first solid hit shatters it onto the pack around it. Same
+    // spec vocabulary the base roster authors (swarmBrood.js).
+    remains: { kind: 'cracked_shell', name: 'Cracked shell', mass: 14, radius: 3.4, splashRadius: 26 },
+    bodyColor: [0.28, 0.22, 0.16],
+    bodyEmissive: [0.18, 0.10, 0.04],
+    // Low and wide: a rock-crab, not the mite dart.
+    stretch: Object.freeze([0.72, 0.48, 1.28]),
+    burrows: true,
+    burstRange: 64,
+    windupS: 0.5,
+  },
+  {
+    id: 'splitter',
+    name: 'Splitter',
+    role: 'brood',
+    fromWave: 21,
+    weight: 2,
+    cohort: 8,
+    radius: 5.4,
+    mass: 28,
+    hull: 20,
+    speed: 34,
+    turn: 2.4,
+    credits: 4,
+    score: 36,
+    telegraph: {
+      bark: 'warn',
+      line: 'The splitter cracks — three smaller bodies take its place.',
+      cue: 'weapon_charge',
+    },
+    counter: 'Kill it and three mites step out of the same budget. Sweep the pieces.',
+    deathLeaves: 'three mites',
+    bodyColor: [0.45, 0.18, 0.32],
+    bodyEmissive: [0.40, 0.08, 0.22],
+    stretch: Object.freeze([1.15, 1.05, 1.15]),
+    splits: true,
+  },
+  {
+    id: 'brood_mother',
+    name: 'Brood Mother',
+    role: 'sac',
+    fromWave: 23,
+    weight: 2,
+    cohort: 1,
+    radius: 6.4,
+    mass: 70,
+    hull: 48,
+    speed: 22,
+    turn: 1.2,
+    credits: 6,
+    score: 60,
+    telegraph: {
+      bark: 'warn',
+      line: 'The brood mother is walking — she is dropping mites.',
+      cue: 'engine_flare',
+    },
+    counter: 'Kill the mother. Her mite tide stops when she does.',
+    deathLeaves: 'the rest of her tide, unspent',
+    bodyColor: [0.36, 0.14, 0.18],
+    bodyEmissive: [0.42, 0.10, 0.12],
+    stretch: Object.freeze([1.35, 1.2, 1.45]),
+    births: true,
+    birthEveryS: 1,
+    birthBudget: 12,
+  },
+  // ── The deep band: waves 31–55 ────────────────────────────────────────────────────────
+  // Ship silhouettes stop arriving at 22 and this table's own clock stopped at 23; the rows
+  // below keep the late clock moving inside the same mite share, so the room reads different
+  // instead of simply fuller. The ship catalog holds no legal late body (the only unfielded
+  // silhouette, the scissorwake, outruns every starter at stock stats — the handling law
+  // forbids it), so the band lives here: five veteran variants through flag recipes the
+  // engine already runs — no new kill math, no stat scaling, same population band.
+  {
+    id: 'remora',
+    name: 'Remora',
+    role: 'wake-mine',
+    fromWave: 31,
+    weight: 2,
+    cohort: 5,
+    radius: 2.6,
+    mass: 10,
+    hull: 12,
+    speed: 66,
+    turn: 3.6,
+    credits: 3,
+    score: 30,
+    telegraph: {
+      bark: 'warn',
+      line: 'A remora rides your wake — it is winding up astern.',
+      cue: 'weapon_charge',
+    },
+    counter: 'It swims your own wake and bursts at your stern. Turn hard to shed it, or pop it far out.',
+    deathLeaves: 'a spent charge',
+    // W-BLOOM-LOW remains: the riding bomb's casing outlives its burst — a dead-fuse pod
+    // that still pops, a weak splash well under the live charge's own burstRadius, and
+    // then the body is spent for good.
+    remains: { kind: 'spent_charge', name: 'Spent charge', mass: 9, radius: 2.8, splashRadius: 34 },
+    bodyColor: [0.60, 0.26, 0.10],
+    bodyEmissive: [0.50, 0.14, 0.04],
+    // A dart, not a boulder: low and long like the burrower, hot like the cyst.
+    stretch: Object.freeze([0.72, 0.50, 1.30]),
+    // `trails` rides astern of the signature; `primeRange` arms the fuse once it has your
+    // stern — the escape line feeds the bomb to you. Shed the trail or pop it far out.
+    trails: true,
+    primeRange: 46,
+    primeS: 1.5,
+    burstRadius: 78,
+    burstDv: 135,
+  },
+  {
+    id: 'gloomcap',
+    name: 'Gloomcap',
+    role: 'armed-sac',
+    fromWave: 37,
+    weight: 2,
+    cohort: 3,
+    radius: 4.5,
+    mass: 20,
+    hull: 22,
+    speed: 30,
+    turn: 1.6,
+    credits: 4,
+    score: 38,
+    telegraph: {
+      bark: 'warn',
+      line: 'The rock splits — a gloomcap swells out.',
+      cue: 'weapon_charge',
+    },
+    counter: 'Your hit arms it; the fuse finishes it. Strike it twice far from you — or not at all.',
+    deathLeaves: 'a burst on the pack',
+    bodyColor: [0.30, 0.26, 0.34],
+    bodyEmissive: [0.26, 0.10, 0.30],
+    stretch: Object.freeze([1.15, 1.05, 1.15]),
+    // The burrower's ambush carrying the bellows' law: `burrows` sleeps it in a rock
+    // silhouette until the pilot is inside `burstRange` — the eruption IS its debut tell —
+    // and `swells` means the first strike only arms the fuse. Your fire, not the room, turns
+    // it into the bomb; where it floats when the fuse ends is the placement the pilot owns.
+    burrows: true,
+    burstRange: 72,
+    windupS: 0.6,
+    swells: true,
+    swellS: 2.8,
+    burstRadius: 88,
+    burstDv: 110,
+  },
+  {
+    id: 'ashwisp',
+    name: 'Ash Wisp',
+    role: 'fused-seeker',
+    fromWave: 43,
+    weight: 2,
+    cohort: 4,
+    radius: 2.0,
+    mass: 5,
+    hull: 9,
+    speed: 46,
+    turn: 4.0,
+    credits: 3,
+    score: 34,
+    telegraph: {
+      bark: 'warn',
+      line: 'An ash wisp is alight — your shots pass through the glow.',
+      cue: 'weapon_charge',
+    },
+    counter: 'No shot stops it. It bursts on its own fuse — run the fuse out, or feed it a blast.',
+    deathLeaves: 'grey ash',
+    bodyColor: [0.42, 0.40, 0.38],
+    bodyEmissive: [0.48, 0.20, 0.05],
+    // `blastOnly` refuses every cause but 'explosive' — guns, whips and walls all ping off.
+    // It still seeks the signature and still primes in range, so the body is a deadline the
+    // pilot answers by moving, not by shooting; a blast (or a long carry) pops it early.
+    blastOnly: true,
+    primeRange: 60,
+    primeS: 1.7,
+    burstRadius: 80,
+    burstDv: 125,
+  },
+  {
+    id: 'keelback',
+    name: 'Keelback',
+    role: 'armored-tail',
+    fromWave: 49,
+    weight: 2,
+    cohort: 3,
+    radius: 5.0,
+    mass: 70,
+    hull: 40,
+    speed: 58,
+    turn: 2.2,
+    credits: 4,
+    score: 44,
+    telegraph: {
+      bark: 'warn',
+      line: 'A keelback has your wake — guns will only sing off the shell.',
+      cue: 'pd_curtain',
+    },
+    counter: 'Armor on your six. Only mass cracks it — turn and feed it, and it shatters its own pack.',
+    deathLeaves: 'a shatter on the pack',
+    bodyColor: [0.34, 0.30, 0.30],
+    bodyEmissive: [0.30, 0.12, 0.08],
+    stretch: Object.freeze([1.20, 0.90, 1.25]),
+    // The glassback's law moved to a pursuit body: `massOnly` means no shot moves it off
+    // your tail, `trails` keeps it astern, and its `shardRadius` pays the feed by shattering
+    // the pack around it when it finally cracks.
+    trails: true,
+    massOnly: true,
+    shardRadius: 44,
+  },
+  {
+    id: 'undertow',
+    name: 'Undertow',
+    role: 'drag-field',
+    fromWave: 55,
+    weight: 2,
+    cohort: 4,
+    radius: 3.0,
+    mass: 12,
+    hull: 14,
+    speed: 58,
+    turn: 3.8,
+    credits: 3,
+    score: 36,
+    telegraph: {
+      bark: 'warn',
+      line: 'The undertow holds your wake — the drag is on you until you shed it.',
+      cue: 'engine_flare',
+    },
+    counter: 'A brake that follows your escape line. Cut hard across your own wake to shed it, or burn it down.',
+    deathLeaves: 'a slack eddy',
+    bodyColor: [0.16, 0.30, 0.40],
+    bodyEmissive: [0.06, 0.20, 0.30],
+    // The drift's hazard law made mobile: `trails` keeps it on the pilot's escape line while
+    // `hazard`+`slowRadius` brakes the signature inside it. A leech brakes by latching; the
+    // undertow brakes by outrunning you along your own trail — shedding the wake sheds it.
+    trails: true,
+    hazard: true,
+    slowRadius: 84,
+    slowAccel: 18,
+  },
+  // ── The third band: waves 61–75 ────────────────────────────────────────────────────
+  // The deep band's clock stops at 55 and the roster then runs silent until the wrapped
+  // champions at 140 — an 85-wave plateau of rooms the pilot has already solved. These
+  // three keep the band's own law: flag recipes the engine already runs, folded out of
+  // the mite share, gated on the same 6-8 wave cadence. Each is a problem the roster
+  // does not already pose — a brake that is also the bomb, an egg only mass can hatch,
+  // and a mother only a blast can stop.
+  {
+    id: 'mirebulb',
+    name: 'Mirebulb',
+    role: 'brake-bomb',
+    fromWave: 61,
+    weight: 2,
+    cohort: 4,
+    radius: 3.4,
+    mass: 14,
+    hull: 16,
+    speed: 40,
+    turn: 2.6,
+    credits: 4,
+    score: 40,
+    telegraph: {
+      bark: 'warn',
+      line: 'A mirebulb\'s pitch drags your hull — and the bulb is cooking.',
+      cue: 'engine_flare',
+    },
+    counter: 'The drag is the fuse\'s delivery. Burn out of the pitch before the pop — or burst it far out.',
+    deathLeaves: 'a pitch burst that shoves the pack',
+    bodyColor: [0.46, 0.40, 0.12],
+    bodyEmissive: [0.40, 0.30, 0.04],
+    // A round bladder on the drift's hazard law carrying the wisp's deadline:
+    // `hazard`+`slowRadius` brakes the signature inside its reach while `primeRange`+
+    // `primeS` runs the fuse — the undertow's grip with a pop at the end of it. The
+    // brake bites first (slowRadius > primeRange), so the fuse arms while the escape
+    // is already taxed. Where it dies it bursts: kill it close and the shove still
+    // lands — burst it far out, or burn clear before primeS ends.
+    stretch: Object.freeze([1.05, 0.90, 1.10]),
+    hazard: true,
+    slowRadius: 80,
+    slowAccel: 26,
+    primeRange: 56,
+    primeS: 1.6,
+    burstRadius: 78,
+    burstDv: 115,
+  },
+  {
+    id: 'clutchstone',
+    name: 'Clutchstone',
+    role: 'armored-egg',
+    fromWave: 67,
+    weight: 2,
+    cohort: 3,
+    radius: 5.4,
+    mass: 60,
+    hull: 34,
+    speed: 24,
+    turn: 1.4,
+    credits: 5,
+    score: 48,
+    telegraph: {
+      bark: 'warn',
+      line: 'The clutchstone cracks — three mites spill out of the shell.',
+      cue: 'weapon_charge',
+    },
+    counter: 'Guns only sing off the egg. Crack it with mass — and crack it away from you.',
+    deathLeaves: 'three mites out of the shell',
+    bodyColor: [0.38, 0.34, 0.30],
+    bodyEmissive: [0.16, 0.10, 0.06],
+    stretch: Object.freeze([1.20, 1.00, 1.15]),
+    // The glassback's armor wrapped around the splitter's law: `massOnly` means a
+    // collision is the only way to hatch it — a thrown body, a fast rock, a ram —
+    // and `splits` pays the splitter's three mites out of the wave's own held share
+    // the moment the shell gives. Where it hatches is where the brood lands, so the
+    // feed is the placement the pilot owns: crack it out there, never on the hull.
+    massOnly: true,
+    splits: true,
+  },
+  {
+    id: 'poxsac',
+    name: 'Pox Sac',
+    role: 'blast-mother',
+    fromWave: 75,
+    weight: 2,
+    cohort: 1,
+    radius: 6.0,
+    mass: 75,
+    hull: 44,
+    speed: 20,
+    turn: 1.0,
+    credits: 6,
+    score: 64,
+    telegraph: {
+      bark: 'warn',
+      line: 'The pox sac is walking — her tide only stops for a blast.',
+      cue: 'engine_flare',
+    },
+    counter: 'Guns, walls and whips all ping off her. Only a detonation stops the tide — carry her a bomb.',
+    deathLeaves: 'the rest of her tide, unspent',
+    bodyColor: [0.42, 0.30, 0.36],
+    bodyEmissive: [0.36, 0.10, 0.20],
+    stretch: Object.freeze([1.30, 1.15, 1.40]),
+    // The brood mother's tide behind the wisp's kill-gate: `births` walks her dropping
+    // mites paid from the wave's own held share, and `blastOnly` means every cause but
+    // 'explosive' pings off — guns, whips, rocks, rams. The answer the mother taught
+    // (focus fire) is inverted: a cyst, an acid sac, a mine, a charge — bring a blast
+    // or eat the whole tide. Excluded from the late reserve by her own `births` flag.
+    blastOnly: true,
+    births: true,
+    birthEveryS: 1.2,
+    birthBudget: 10,
+  },
+]);
+
+/** The late family def for an id, or null. Pure. */
+export function swarmBroodLateFamily(id) {
+  if (typeof id !== 'string') return null;
+  for (const family of SWARM_BROOD_LATE_FAMILIES) if (family.id === id) return family;
+  return null;
+}
+
+/**
+ * Replace mite count with late families the wave has unlocked. The plan total does not
+ * grow. The queen's flood stays mites. Unknown plans pass through as a copy.
+ */
+export function foldBroodLatePlan(plan, wave) {
+  const w = Math.max(1, Math.trunc(Number(wave) || 1));
+  const copy = Array.isArray(plan)
+    ? plan.map((part) => ({ id: part.id, count: part.count }))
+    : [];
+  if (swarmBroodBossFor(w) === SWARM_BROOD_QUEEN_ID) return copy;
+  const legal = SWARM_BROOD_LATE_FAMILIES.filter((fam) => w >= fam.fromWave);
+  if (legal.length === 0) return copy;
+  const mite = copy.find((part) => part.id === 'mite');
+  if (!mite || !(mite.count > 1)) return copy;
+  for (const fam of legal) {
+    const room = mite.count - 1;
+    if (room <= 0) break;
+    const authored = Math.max(1, Math.trunc(Number(fam.cohort) || 8));
+    const take = Math.min(room, authored);
+    mite.count -= take;
+    const row = copy.find((part) => part.id === fam.id);
+    if (row) row.count += take;
+    else copy.push({ id: fam.id, count: take });
+  }
+  return copy.filter((part) => part.count > 0);
+}
+
+// ── The late reserve: a specialist group held back for a mid-wave drop ─────────
+//
+// The last base/early-late family gate is wave 23 and the population ceiling arrives
+// at wave 21 — from wave 25 on, every non-Hive room fields the same full-strength
+// cohort at the open and then runs dry. The Hive answers that plateau with its sac
+// reserve (src/data/swarmBrood.js §B4); every other arena gets the same pressure axis
+// through the late band itself: one small group of an unlocked late family is held
+// out of the wave's own plan and dropped mid-wave, so clearing the room still has a
+// second act. Champion waves are exempt — the boss is already the wave's pressure
+// story and the population law keeps it legible (SWARM_BROOD_BOSS_FRACTION).
+//
+// Budget law is identical to the sac reserve and to foldBroodLatePlan: the held
+// bodies spend out of the mite share, so immediate plus reserve never exceeds
+// swarmBroodPopulation(wave) — texture, never population growth.
+
+/** First wave a non-Hive, non-champion room may hold a late specialist reserve. */
+export const SWARM_BROOD_RESERVE_FROM_WAVE = 25;
+/** Reserve size band — small on purpose; the reserve is texture, not a second wave. */
+export const SWARM_BROOD_RESERVE_MIN = 4;
+export const SWARM_BROOD_RESERVE_MAX = 8;
+/** Seconds after the wave's spawn lands before the reserve drops (a mid-wave beat). */
+export const SWARM_BROOD_RESERVE_DELAY_S = 45;
+
+/**
+ * The specialist group a late wave holds back, or null when the wave keeps no
+ * reserve: below the band, a champion wave (the boss is that room's pressure
+ * story), or no eligible late family unlocked yet. `roll` is the caller's
+ * deterministic stream (run seed + wave); exactly two draws — family, then size —
+ * so the same (seed, wave) always fields the same reserve. Families carrying their
+ * own hold-back machinery (`births`, `splits`) are ineligible: a reserve mother or
+ * splitter would drop bodies the plan never budgeted. The seeded size is capped by
+ * the family's authored cohort, so the group stays inside the family's own scale.
+ */
+export function swarmBroodLateReserve(wave, roll) {
+  const w = Math.max(1, Math.trunc(Number(wave) || 1));
+  if (w < SWARM_BROOD_RESERVE_FROM_WAVE) return null;
+  if (isSwarmBossWave(w)) return null;
+  const eligible = SWARM_BROOD_LATE_FAMILIES.filter(
+    (fam) => w >= fam.fromWave && !fam.births && !fam.splits,
+  );
+  if (eligible.length === 0) return null;
+  const draw = typeof roll === 'function' ? roll : () => 0.5;
+  const family = eligible[Math.min(eligible.length - 1, Math.floor(draw() * eligible.length))];
+  const authored = Math.max(1, Math.trunc(Number(family.cohort) || SWARM_BROOD_RESERVE_MAX));
+  const count = Math.max(1, Math.min(
+    authored,
+    SWARM_BROOD_RESERVE_MIN
+      + Math.floor(draw() * (SWARM_BROOD_RESERVE_MAX - SWARM_BROOD_RESERVE_MIN + 1)),
+  ));
+  return { familyId: family.id, count };
+}
+
+// ── The strain mark: waves 83+ hatch a cooked share of the fodder ──────────────
+//
+// Band 3's clock stops at 75 and the roster then runs silent until the wrapped
+// champions at 140 — the last plateau. The flag matrix is also nearly spent: every
+// composition left is a kill-gate mirror of a family already fielded (blastOnly+splits
+// is the clutchstone's egg, massOnly+births is the poxsac's tide), so a fourth band
+// would be padding. Instead the Hive stops inventing silhouettes and adulterates the
+// flesh it already floods: from wave 83 a seeded share of the wave's MITE share hatches
+// carrying a strain — the ship-side veteran-affix law (swarmThreats.js §6.4) moved onto
+// the brood's own per-body buffers. One mark byte per body, one honored effect per
+// strain, and ONE strain per wave — the picker's first draw chooses which cooking the
+// room fields, so the plateau alternates its lessons (a card can only teach one trick;
+// a wave that mixed marks would have no lesson at all). The strains tax different
+// solved verbs, never the same one twice:
+//   * 'volatile' (83+) pops where it dies — a small blast and a shove on the
+//     signature, never a kill on the pack — taxing WHERE the fodder dies (sweep the
+//     marked ones out there — never on your hull).
+//   * 'plated' (97+) carries the keelback's shell law on a single body — only mass
+//     cracks it (collision/terrain); a blast it survives still throws it — taxing
+//     WHAT kills the fodder (the detonation that used to clear the room).
+//   * 'commander' (111+) completes the trio on the last axis — WHO FIRST: the mark
+//     is not a share of the fodder but one or two LEADERS driving the pack around
+//     them (bodies inside the leader's aura steer harder and run faster), so killing
+//     the leader breaks the buff that same tick. Its count band — `markMin`/
+//     `markMax` — is the strain law's own per-row mark law: a pack keeps heads, never
+//     a fifth of the room wearing the same mark.
+// Champion waves stay exempt — the boss is that room's pressure story, same law as
+// the late reserve.
+
+/** First wave a non-champion room may hatch marked fodder. */
+export const SWARM_BROOD_STRAIN_FROM_WAVE = 83;
+/** First wave the plated cooking joins the draw (its own debut wave, own card). */
+export const SWARM_BROOD_STRAIN_PLATED_FROM_WAVE = 97;
+/** First wave the commander cooking joins the draw (its own debut wave, own card). */
+export const SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE = 111;
+/** The marked share of the wave's mite row, seeded inside this band each wave. */
+export const SWARM_BROOD_STRAIN_SHARE_MIN = 0.12;
+export const SWARM_BROOD_STRAIN_SHARE_MAX = 0.22;
+/** A share-band strain always marks at least this many bodies (mite count permitting).
+ *  A leader strain's own count band (markMin/markMax) is its mark law instead. */
+export const SWARM_BROOD_STRAIN_MIN_MARKED = 6;
+
+/**
+ * The brood strain catalog — the veteran-affix vocabulary's brood half. `familyId` is
+ * the carrier: which family's bodies may hatch marked (the strain rides the wave's
+ * own planned bodies — it never adds one). Each row owns exactly ONE honored effect,
+ * spoken in the engine's existing law vocabulary: `blastRadius`/`blastDamage`/`shoveDv`
+ * are the volatile pop's authored size (a burst, never a kill on neighbouring cells —
+ * the pop is the pilot's problem, not free crowd-clearing); `massOnly` is the
+ * keelback's kill-gate moved onto the single body (only collision/terrain cracks it —
+ * a refused blast still throws it); `commandRadius`/`commandAccel`/`commandSpeed` are
+ * the commander's pack aura (every other body inside the radius steers at the
+ * signature harder and runs faster while the leader lives). `counter` is the
+ * slam-card lesson at the debut; `tint` is the standing read on the field. A strain
+ * owns no telegraph — the mark is a standing property, like the glassback's shell:
+ * the card says it once, the colour keeps saying it.
+ */
+export const SWARM_BROOD_STRAINS = Object.freeze([
+  Object.freeze({
+    id: 'volatile',
+    name: 'Volatile Brood',
+    fromWave: SWARM_BROOD_STRAIN_FROM_WAVE,
+    familyId: 'mite',
+    blastRadius: 46,
+    blastDamage: 5,
+    shoveDv: 58,
+    counter: 'The pale-hot mites pop where they die. Sweep the marked ones out there — never on your hull.',
+    // The presentation tint the marked bodies burn toward — pale-hot over the mite's rust.
+    tint: Object.freeze([1.0, 0.74, 0.22]),
+  }),
+  Object.freeze({
+    id: 'plated',
+    name: 'Plated Brood',
+    fromWave: SWARM_BROOD_STRAIN_PLATED_FROM_WAVE,
+    familyId: 'mite',
+    // The keelback's shell law on the fodder: a marked mite refuses every cause but
+    // mass — the blast that can't crack it still throws it. The counter verbs are the
+    // tier's own: whip it, ram it, feed it a rock.
+    massOnly: true,
+    counter: 'The iron-pale mites only crack under mass — blasts just scatter them. Whip them, ram them, feed them a rock.',
+    // Cold iron sheen over the mite's rust — the glazed shell reads before it pings.
+    tint: Object.freeze([0.66, 0.74, 0.88]),
+  }),
+  Object.freeze({
+    id: 'commander',
+    name: 'Commander Brood',
+    fromWave: SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE,
+    familyId: 'mite',
+    // The trio's WHO FIRST axis: the mark is one or two LEADERS, not a share of the
+    // fodder — `markMin`/`markMax` is a count band, the strain law's own mark law.
+    // A live leader drives the pack around it: every OTHER body inside
+    // `commandRadius` steers at the signature `commandAccel`× harder and runs
+    // `commandSpeed`× faster. The buff is rebuilt off the live marks every tick —
+    // kill the leader and its pack calms that same tick. The leader itself is still
+    // one mite; the mark, not the body, is the lesson.
+    markMin: 1,
+    markMax: 2,
+    commandRadius: 64,
+    commandAccel: 1.9,
+    commandSpeed: 1.5,
+    counter: 'The violet-lit mite whips its pack — bodies near the leader fly faster and dive harder. Kill the leader first; the pack calms the moment it drops.',
+    // The leader's standing read: a hot violet-white over the mite's rust — hotter
+    // than the volatile amber, warmer than the plated iron.
+    tint: Object.freeze([0.80, 0.60, 1.00]),
+  }),
+]);
+
+/**
+ * The wave's strain pick, or null when the room hatches clean: below the gate, a
+ * champion wave, or too few mites to mark. `miteCount` is the wave's planned mite row
+ * AFTER every hold-back — the share is of the fodder that actually fields. Exactly
+ * two draws (strain, then count) so the same (seed, wave) hatches the same mark. The
+ * strain draw is over the rows the wave has unlocked — one cooking per room, never a
+ * mix: waves 97+ alternate volatile and plated as the seed deals them, waves 111+
+ * deal from the whole trio, each wave's card still teaching a single trick. The
+ * count draw's law is the strain's own: a share-band row marks a seeded fraction of
+ * the fodder (floored at SWARM_BROOD_STRAIN_MIN_MARKED); a leader row's `markMin`/
+ * `markMax` is a count band — a pack keeps heads, never a marked fifth.
+ */
+export function swarmBroodStrainFor(wave, miteCount, roll) {
+  const w = Math.max(1, Math.trunc(Number(wave) || 1));
+  if (isSwarmBossWave(w)) return null;
+  const eligible = SWARM_BROOD_STRAINS.filter((strain) => w >= strain.fromWave);
+  if (eligible.length === 0) return null;
+  const mites = Math.max(0, Math.trunc(Number(miteCount) || 0));
+  if (mites <= 1) return null;
+  const draw = typeof roll === 'function' ? roll : () => 0.5;
+  const strainDraw = draw();
+  // A strain's own debut wave always fields that cooking — the slam card's lesson
+  // is on the field that wave, whatever the draw says (a family debut works the
+  // same way: the fold always fields its new silhouette). The draw is still spent
+  // either way — the stream stays two-draws deep.
+  const strain = swarmBroodStrainDebutFor(w)
+    || eligible[Math.min(eligible.length - 1, Math.floor(strainDraw * eligible.length))];
+  let count;
+  if (strain.markMax > 0) {
+    // The leader band: a small authored COUNT, seeded inside its own band — the
+    // second draw is still spent, so the stream stays two-draws deep either way.
+    const lo = Math.max(1, Math.trunc(Number(strain.markMin) || 1));
+    const hi = Math.max(lo, Math.trunc(Number(strain.markMax)));
+    count = Math.min(mites - 1, lo + Math.floor(draw() * (hi - lo + 1)));
+  } else {
+    const share = SWARM_BROOD_STRAIN_SHARE_MIN
+      + draw() * (SWARM_BROOD_STRAIN_SHARE_MAX - SWARM_BROOD_STRAIN_SHARE_MIN);
+    count = Math.max(0, Math.min(
+      mites - 1,
+      Math.max(Math.min(mites - 1, SWARM_BROOD_STRAIN_MIN_MARKED), Math.round(mites * share)),
+    ));
+  }
+  if (count <= 0) return null;
+  return { strain, count };
+}
+
+/** The strain row debuting on exactly this wave (the slam-card seam), or null. Pure. */
+export function swarmBroodStrainDebutFor(wave) {
+  const w = Math.max(1, Math.trunc(Number(wave) || 1));
+  for (const strain of SWARM_BROOD_STRAINS) {
+    if (strain.fromWave === w) return strain;
+  }
+  return null;
+}
+
+/** The strain row for an id, or null. Pure. */
+export function swarmBroodStrainById(id) {
+  if (typeof id !== 'string') return null;
+  for (const strain of SWARM_BROOD_STRAINS) if (strain.id === id) return strain;
+  return null;
+}
+
+/** The mark byte a strain writes into the per-slot affix buffer (1-based; 0 = unmarked). */
+export function swarmBroodStrainMark(id) {
+  const idx = SWARM_BROOD_STRAINS.findIndex((strain) => strain.id === id);
+  return idx < 0 ? 0 : idx + 1;
+}
+
+/** Authoring check for the late table. Empty when honest. Does not touch the base table. */
+export function swarmBroodLateIssues() {
+  const issues = [];
+  const seen = new Set(SWARM_BROOD_FAMILIES.map((row) => row.id));
+  let prevWave = 0;
+  for (const family of SWARM_BROOD_FAMILIES) {
+    if (family && family.fromWave > prevWave) prevWave = family.fromWave;
+  }
+  SWARM_BROOD_LATE_FAMILIES.forEach((family, i) => {
+    const path = `swarmBroodLateFamilies[${i}]`;
+    if (!family || typeof family.id !== 'string' || !family.id) {
+      issues.push({ path, message: 'family has no id' });
+      return;
+    }
+    if (seen.has(family.id)) issues.push({ path, message: `duplicate family id ${family.id}` });
+    seen.add(family.id);
+    if (!(family.fromWave > prevWave)) {
+      issues.push({ path, message: `${family.id} does not continue the roster clock` });
+    }
+    prevWave = family.fromWave;
+    if (!(family.weight > 0)) issues.push({ path, message: `${family.id} has no composition weight` });
+    if (!(family.radius > 0) || !(family.radius < 12)) {
+      issues.push({ path, message: `${family.id} radius outside the light-body band` });
+    }
+    if (!(family.hull > 0)) issues.push({ path, message: `${family.id} has no hull` });
+    if (!(family.speed > 0)) issues.push({ path, message: `${family.id} has no speed` });
+    const tele = family.telegraph;
+    if (!tele || typeof tele.bark !== 'string' || typeof tele.line !== 'string' || typeof tele.cue !== 'string'
+      || !tele.bark || !tele.line || !tele.cue) {
+      issues.push({ path, message: `${family.id} telegraph is not {bark,line,cue}` });
+    }
+    if (typeof family.counter !== 'string' || family.counter.length < 10) {
+      issues.push({ path, message: `${family.id} has no counter card line` });
+    }
+    if (!Array.isArray(family.bodyColor) || family.bodyColor.length !== 3) {
+      issues.push({ path, message: `${family.id} has no body colour recipe` });
+    }
+    // Same remains contract as the base roster's (swarmBroodIssues): a late family that
+    // authors a throwable body carries the same lawful shape.
+    const rem = family.remains;
+    if (rem != null) {
+      if (typeof rem !== 'object' || typeof rem.kind !== 'string' || !rem.kind) {
+        issues.push({ path, message: `${family.id} remains has no kind` });
+      } else {
+        if (!(rem.mass > 0) || !(rem.radius > 0)) {
+          issues.push({ path, message: `${family.id} remains has no physical size` });
+        }
+        if (rem.splashRadius != null && !(rem.splashRadius > 0)) {
+          issues.push({ path, message: `${family.id} remains splashRadius is not positive` });
+        }
+        if (rem.glueS != null && !(rem.glueS > 0)) {
+          issues.push({ path, message: `${family.id} remains glueS is not positive` });
+        }
+        if (rem.whipMult != null && !(rem.whipMult > 1)) {
+          issues.push({ path, message: `${family.id} remains whipMult does not widen the whip` });
+        }
+      }
+    }
+  });
+  // The strain table: each row needs an id, a carrier family the roster actually
+  // fields, and a counter like any debut. A telegraph is OPTIONAL — only a strain
+  // with a real transition would speak (the mark itself is standing, like the
+  // glassback's shell) — and honest blast numbers: a pop that kills the pack
+  // would be free clearing, not a problem.
+  const strainSeen = new Set();
+  let strainPrevWave = 0;
+  SWARM_BROOD_STRAINS.forEach((strain, i) => {
+    const path = `swarmBroodStrains[${i}]`;
+    if (!strain || typeof strain.id !== 'string' || !strain.id) {
+      issues.push({ path, message: 'strain has no id' });
+      return;
+    }
+    if (strainSeen.has(strain.id)) issues.push({ path, message: `duplicate strain id ${strain.id}` });
+    strainSeen.add(strain.id);
+    if (!(strain.fromWave > 0)) issues.push({ path, message: `${strain.id} has no fromWave` });
+    // Same ten-clock law as the families: a debut on a champion row would deal the
+    // card while the engine stamps nothing — the boss is that room's pressure story.
+    if (isSwarmBossWave(strain.fromWave)) {
+      issues.push({ path, message: `${strain.id} lands on a champion row` });
+    }
+    // A silhouette debut outranks the mark on the slam card — a strain sharing the
+    // wave would debut silent. Give the strain its own wave so its counter speaks.
+    const shadow = SWARM_BROOD_LATE_FAMILIES.some((family) => family.fromWave === strain.fromWave)
+      || SWARM_BROOD_FAMILIES.some((family) => family.fromWave === strain.fromWave);
+    if (shadow) issues.push({ path, message: `${strain.id} debuts under a family silhouette` });
+    if (strain.fromWave < strainPrevWave) {
+      issues.push({ path, message: `${strain.id} regresses the strain clock` });
+    }
+    strainPrevWave = Math.max(strainPrevWave, strain.fromWave);
+    if (!seen.has(strain.familyId)) {
+      issues.push({ path, message: `${strain.id} marks an unknown carrier family ${strain.familyId}` });
+    }
+    const tele = strain.telegraph;
+    if (tele !== undefined
+      && (!tele || typeof tele.bark !== 'string' || typeof tele.line !== 'string' || typeof tele.cue !== 'string'
+        || !tele.bark || !tele.line || !tele.cue)) {
+      issues.push({ path, message: `${strain.id} telegraph is not {bark,line,cue}` });
+    }
+    if (typeof strain.counter !== 'string' || strain.counter.length < 10) {
+      issues.push({ path, message: `${strain.id} has no counter card line` });
+    }
+    // The mark's tint is its standing read — every strain needs one.
+    if (!Array.isArray(strain.tint) || strain.tint.length !== 3) {
+      issues.push({ path, message: `${strain.id} needs a mark tint` });
+    }
+    // Every strain owns ONE honored effect in the engine's existing vocabulary: a
+    // death burst (the volatile blast numbers), a kill-gate (plated's massOnly), or
+    // a pack aura (commander's radius plus its two multipliers). A row with none
+    // marks fodder that obeys nothing — tint without a law.
+    const ownsBurst = strain.blastRadius > 0 && strain.shoveDv > 0;
+    const ownsAura = strain.commandRadius > 0 && strain.commandAccel > 1 && strain.commandSpeed > 1;
+    if (strain.massOnly !== true && !ownsBurst && !ownsAura) {
+      issues.push({ path, message: `${strain.id} carries no honored effect` });
+    }
+    // A count band is the leader strains' own mark law — it exists so a commander
+    // fields heads, not a share of the room. It must stay under the share floor:
+    // a big count band is just a share dodging the band law.
+    if (strain.markMax != null) {
+      const lo = Math.trunc(Number(strain.markMin) || 0);
+      const hi = Math.trunc(Number(strain.markMax) || 0);
+      if (!(lo >= 1) || !(hi >= lo) || !(hi <= SWARM_BROOD_STRAIN_MIN_MARKED)) {
+        issues.push({ path, message: `${strain.id} mark band is not a small leader count` });
+      }
+    }
+    if (strain.id === 'volatile') {
+      if (!(strain.blastRadius > 0) || !(strain.blastDamage >= 0) || !(strain.shoveDv > 0)) {
+        issues.push({ path, message: 'volatile needs a positive blast radius and shove' });
+      }
+    }
+    if (strain.id === 'plated' && strain.massOnly !== true) {
+      issues.push({ path, message: 'plated needs its massOnly kill-gate' });
+    }
+    if (strain.id === 'commander') {
+      if (!(strain.commandRadius > 0) || !(strain.commandAccel > 1) || !(strain.commandSpeed > 1)
+        || !(Number.isFinite(strain.markMax) && strain.markMax >= 1)) {
+        issues.push({ path, message: 'commander needs its pack aura and a leader count band' });
+      }
+    }
+  });
+  return issues;
+}

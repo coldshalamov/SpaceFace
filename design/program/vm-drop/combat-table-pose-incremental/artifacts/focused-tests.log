@@ -1,0 +1,130 @@
+TAP version 13
+# Subtest: combat SoA packs ships and projectiles and answers a radius query
+ok 1 - combat SoA packs ships and projectiles and answers a radius query
+  ---
+  duration_ms: 2.485592
+  ...
+# Subtest: combat SoA reuses last packed columns when pose and membership stay still
+ok 2 - combat SoA reuses last packed columns when pose and membership stay still
+  ---
+  duration_ms: 0.419438
+  ...
+# Subtest: dirty journal clears per tick and unions bits
+ok 3 - dirty journal clears per tick and unions bits
+  ---
+  duration_ms: 0.310996
+  ...
+# Subtest: NEAR token budget always wakes the player and combatants
+ok 4 - NEAR token budget always wakes the player and combatants
+  ---
+  duration_ms: 0.72215
+  ...
+# Subtest: spatial hash stays on at sparse density and reuses a still dynamic query
+ok 5 - spatial hash stays on at sparse density and reuses a still dynamic query
+  ---
+  duration_ms: 1.374292
+  ...
+# Subtest: far hostile pairs in one cell resolve on a seeded delay
+ok 6 - far hostile pairs in one cell resolve on a seeded delay
+  ---
+  duration_ms: 0.678497
+  ...
+# Subtest: Rapier island sleep is save-safe and skips player, projectiles, and taut lines
+ok 7 - Rapier island sleep is save-safe and skips player, projectiles, and taut lines
+  ---
+  duration_ms: 0.297469
+  ...
+# Subtest: after-present compile admits one queued subject
+ok 8 - after-present compile admits one queued subject
+  ---
+  duration_ms: 3.229858
+  ...
+# Subtest: snapshot fence packs and interpolates bank/pitch without entity refs
+ok 9 - snapshot fence packs and interpolates bank/pitch without entity refs
+  ---
+  duration_ms: 1.531693
+  ...
+# Subtest: packed-ORM family keys drop compile-source concatenation
+ok 10 - packed-ORM family keys drop compile-source concatenation
+  ---
+  duration_ms: 5.237288
+  ...
+# Subtest: NEAR owner slice resumes leftover work in stable id order
+ok 11 - NEAR owner slice resumes leftover work in stable id order
+  ---
+  duration_ms: 0.64816
+  ...
+# Subtest: dirty journal uses generation-skipped typed bitsets
+ok 12 - dirty journal uses generation-skipped typed bitsets
+  ---
+  duration_ms: 0.180061
+  ...
+# Subtest: program binary cache is a no-op without WEBGL_get_program_binary
+ok 13 - program binary cache is a no-op without WEBGL_get_program_binary
+  ---
+  duration_ms: 0.256949
+  ...
+# Subtest: next-contact warm picks a real pending inbound mesh
+ok 14 - next-contact warm picks a real pending inbound mesh
+  ---
+  duration_ms: 0.433871
+  ...
+# Subtest: still NPCs do not need a flight command; live intent or residual motion does
+ok 15 - still NPCs do not need a flight command; live intent or residual motion does
+  ---
+  duration_ms: 0.301611
+  ...
+# Subtest: hitch compile waits for leftover sim and sleeping islands skip extra WASM
+ok 16 - hitch compile waits for leftover sim and sleeping islands skip extra WASM
+  ---
+  duration_ms: 1.408913
+  ...
+# Subtest: sleeping still dynamics skip spatial-hash cell-span; noInterp still rehashes
+ok 17 - sleeping still dynamics skip spatial-hash cell-span; noInterp still rehashes
+  ---
+  duration_ms: 0.402424
+  ...
+# Subtest: a teleport without velocity dirties pose so combat SoA repacks
+ok 18 - a teleport without velocity dirties pose so combat SoA repacks
+  ---
+  duration_ms: 1.164782
+  ...
+# Subtest: a claim beacon lures only hostiles inside the lure radius
+ok 19 - a claim beacon lures only hostiles inside the lure radius
+  ---
+  duration_ms: 0.534243
+  ...
+# Subtest: map, station, and pause freeze 3D submit and skip full-tick systems
+ok 20 - map, station, and pause freeze 3D submit and skip full-tick systems
+  ---
+  duration_ms: 0.322693
+  ...
+# Subtest: hidden screens keep input and save while the clock and physics stay still
+ok 21 - hidden screens keep input and save while the clock and physics stay still
+  ---
+  duration_ms: 2.163954
+  ...
+# Subtest: sector:enter listeners slice by count tokens when a budget is set
+ok 22 - sector:enter listeners slice by count tokens when a budget is set
+  ---
+  duration_ms: 0.375713
+  ...
+# Subtest: sector:enter stays synchronous when slice budget is off
+ok 23 - sector:enter stays synchronous when slice budget is off
+  ---
+  duration_ms: 0.144447
+  ...
+# Subtest: arrival slice materializes the current sector now and neighbors on later ticks
+ok 24 - arrival slice materializes the current sector now and neighbors on later ticks
+  ---
+  duration_ms: 36.908113
+  ...
+1..24
+# tests 24
+# suites 0
+# pass 24
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 432.149829

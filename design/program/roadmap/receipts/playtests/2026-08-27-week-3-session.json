@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "sessionId": "playtest_20260827_week3",
+  "startedAt": 1787932800000,
+  "endedAt": 1787935500000,
+  "durationMs": 2700000,
+  "testerId": "tester_owner",
+  "sessionNumber": 3,
+  "cohort": {
+    "cohortId": "alpha_playtest_cohort_202608",
+    "testersTotal": 4,
+    "testersReturnedSession2": 3
+  },
+  "trades": {
+    "buy": 5,
+    "sell": 9,
+    "byCommodity": {
+      "cmdty_ore_common": { "buy": 0, "sell": 7, "qty": 42 },
+      "cmdty_components_basic": { "buy": 3, "sell": 2, "qty": 12 },
+      "cmdty_fuel_cell": { "buy": 2, "sell": 0, "qty": 8 }
+    }
+  },
+  "credits": {
+    "earned": 16200,
+    "spent": 5200,
+    "byReason": {
+      "trade:sell": { "earned": 8200, "spent": 0 },
+      "bounty": { "earned": 5000, "spent": 0 },
+      "mission:completed": { "earned": 3000, "spent": 0 },
+      "service:repair": { "earned": 0, "spent": 700 },
+      "outfitting:module": { "earned": 0, "spent": 4500 }
+    }
+  },
+  "kills": {
+    "total": 8,
+    "byVictimClass": { "fighter": 6, "gunship": 1, "scout": 1 },
+    "byFaction": { "faction_reach": 5, "faction_pirates": 3 }
+  },
+  "deaths": {
+    "total": 1,
+    "byCause": { "ship:heavy": 1 }
+  },
+  "ore": {
+    "unitsTotal": 56,
+    "byType": { "cmdty_ore_common": 42, "cmdty_ore_rare": 14 }
+  },
+  "missions": {
+    "accepted": 4,
+    "completed": 3,
+    "failed": 0,
+    "expired": 0,
+    "byType": {
+      "cargo_delivery": { "accepted": 2, "completed": 2, "failed": 0, "expired": 0 },
+      "bounty_hunt": { "accepted": 2, "completed": 1, "failed": 0, "expired": 0 }
+    }
+  },
+  "progression": {
+    "techResearched": 3,
+    "factionTierUps": 2,
+    "techNodes": ["tech_cargo_racks", "tech_kinetic_drivers", "tech_shield_boosters"],
+    "tierUps": [
+      { "atMs": 1420000, "factionId": "faction_scn", "newTier": "trusted" },
+      { "atMs": 2210000, "factionId": "faction_miners", "newTier": "allied" }
+    ]
+  },
+  "navigation": {
+    "docks": 6,
+    "jumps": 3,
+    "sectorsVisited": ["sector_helios_prime", "sector_ceres_belt", "sector_tethys_junction", "sector_vesta_forge"]
+  },
+  "verbs": {
+    "thrust": 145,
+    "brake": 41,
+    "boost": 26,
+    "latch": 19,
+    "reel": 13,
+    "release": 17,
+    "throw": 5,
+    "shove": 16,
+    "well": 4,
+    "stroke": 9,
+    "fire": 68,
+    "dock": 6,
+    "mine": 15,
+    "trade": 14,
+    "jump": 3
+  },
+  "funnel": {
+    "firstFlightAt": 11000,
+    "firstSwingAt": 80000,
+    "firstShoveAt": 195000,
+    "firstDockAt": 360000,
+    "firstHeatAt": 650000,
+    "firstTradeAt": 410000,
+    "firstMineAt": 260000,
+    "firstKillAt": 520000,
+    "firstMissionAcceptAt": 580000,
+    "firstMissionCompleteAt": 990000,
+    "firstJumpAt": 1280000,
+    "firstTierUpAt": 1420000,
+    "first1000crAt": 420000,
+    "firstModuleAt": 760000
+  },
+  "deathLog": [
+    {
+      "atMs": 1820000,
+      "simTime": 1820,
+      "cause": "ship:heavy",
+      "killerId": 112,
+      "killerType": "heavy",
+      "killerFaction": "faction_reach",
+      "pos": { "x": 420, "z": -610 },
+      "lifespanMs": 1820000
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "name": "law-heat-telegraph-quiet-skip",
+  "primary": "quiet-law-heat-telegraph-idle-latch",
+  "iterations": 200000,
+  "runs": 11,
+  "lightPool": 6,
+  "pairs": [
+    {
+      "beforeMs": 11.542394999999999,
+      "afterMs": 3.0348929999999967,
+      "speedup": 3.8032296361024955,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 11.537605,
+      "afterMs": 3.3843709999999874,
+      "speedup": 3.4090839922691814,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 11.775485000000003,
+      "afterMs": 3.5833820000000003,
+      "speedup": 3.286137230136224,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 12.064255000000003,
+      "afterMs": 3.3409660000000088,
+      "speedup": 3.611008013849878,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 12.217026000000004,
+      "afterMs": 3.348156000000003,
+      "speedup": 3.648881951737014,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 12.244787000000002,
+      "afterMs": 3.3027760000000086,
+      "speedup": 3.707422786165326,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 11.879850000000005,
+      "afterMs": 3.1849050000000005,
+      "speedup": 3.730048462983983,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 11.776836000000003,
+      "afterMs": 3.3168370000000067,
+      "speedup": 3.5506224755693387,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 11.610660999999993,
+      "afterMs": 3.88899099999999,
+      "speedup": 2.9855201516280245,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 11.620572999999993,
+      "afterMs": 3.1937440000000095,
+      "speedup": 3.63854241291724,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 11.873703000000006,
+      "afterMs": 3.387544999999996,
+      "speedup": 3.505105614833167,
+      "afterSkips": 200000
+    }
+  ],
+  "median": 3.611008013849878,
+  "minSpeedup": 2.9855201516280245,
+  "dirtyWake": {
+    "ok": true
+  }
+}

@@ -1,0 +1,220 @@
+{
+  "assetId": "rubble_berm",
+  "category": "geology",
+  "description": "rubble berm; reusable geology assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -2.2,
+          0.36,
+          0.12
+        ],
+        "size": [
+          0.85,
+          0.5,
+          0.62
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.45,
+          0.4,
+          -0.2
+        ],
+        "size": [
+          0.8,
+          0.58,
+          0.66
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.6,
+          0.53,
+          0.05
+        ],
+        "size": [
+          0.95,
+          0.74,
+          0.71
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.3,
+          0.36,
+          -0.25
+        ],
+        "size": [
+          0.78,
+          0.55,
+          0.66
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.45,
+          0.12
+        ],
+        "size": [
+          0.82,
+          0.64,
+          0.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.8,
+          0.34,
+          -0.14
+        ],
+        "size": [
+          0.75,
+          0.46,
+          0.61
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.4,
+          0.23,
+          -0.05
+        ],
+        "size": [
+          0.5,
+          0.33,
+          0.45
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "geology",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -2.9336509704589844,
+      -0.13281039893627167,
+      -0.8187274932861328
+    ],
+    "max": [
+      2.808842420578003,
+      1.0822311639785767,
+      0.7385236024856567
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "rubble_berm_lod0.glb",
+      "triangles": 2560,
+      "draws": 2,
+      "bytes": 237124,
+      "method": "source",
+      "sha256": "2e00d7cd62dc7b6ee5a0d0f993c0e55bb62ec0807c0d2cca83c09c9d6808d4e8"
+    },
+    {
+      "level": 1,
+      "file": "rubble_berm_lod1.glb",
+      "triangles": 1024,
+      "draws": 2,
+      "bytes": 109956,
+      "method": "Forge-decimation",
+      "sha256": "eacabe3101d0a6a1e531e1e3f1380a5905524230d28423a07286482c9ae9f5a0"
+    },
+    {
+      "level": 2,
+      "file": "rubble_berm_lod2.glb",
+      "triangles": 460,
+      "draws": 2,
+      "bytes": 53520,
+      "method": "Forge-decimation",
+      "sha256": "eb2c32832003b43b18c10564704bbe48b87c95e86ae52c23364ebe8d52758a11"
+    }
+  ]
+}

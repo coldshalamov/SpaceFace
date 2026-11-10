@@ -1,0 +1,3655 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-aft-engine-section.anchor.socket-hazard-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2524642944335938,
+        0.04525113105773926,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Hazard_Core",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentNodeId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2524642944335938,
+        0.04525113105773926,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.anchor.socket-salvage-drive",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.936672210693359,
+        5.04525089263916,
+        -5.1315789222717285,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Drive",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentNodeId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.936672210693359,
+        5.04525089263916,
+        -5.1315789222717285,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-aft-engine-section",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "cf364891b3dbab9a06ec7ca01daab3f9f506e4913e1e13b460d0ddd85e4641ca",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          4.604056197315547,
+          5.849269796488112,
+          11.988814966277047
+        ],
+        "min": [
+          -7.554136496553285,
+          -4.8528085140072035,
+          -11.988814966277047
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aaa424d699bb9bfd3c6c94d3cdc53455ca857f7395311202482c7ff5ae0b3d02",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.0",
+      "indexCount": 6948,
+      "indexed": true,
+      "materialHash": "b7b0be5052ab4f1138a547dbaf6e6c56dd50226bde0061c42d8958e0f9ff4ae0",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 0,
+      "vertexCount": 2344
+    },
+    {
+      "bounds": {
+        "max": [
+          4.080663759802194,
+          3.4276260695677343,
+          11.4013336588641
+        ],
+        "min": [
+          -7.5526105710794855,
+          -5.75920824544432,
+          -11.4013336588641
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6230c3da131ae8eb654d63ee0829f99d2178307a68287889dff734e371e2ddb2",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.1",
+      "indexCount": 3843,
+      "indexed": true,
+      "materialHash": "9e925530abc8aa063cee7e347eb47c4d67b6c1de375e4fa2da9a057c7b8de817",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 1,
+      "vertexCount": 1384
+    },
+    {
+      "bounds": {
+        "max": [
+          0.14186863055630686,
+          6.756051009293678,
+          12.303155613879818
+        ],
+        "min": [
+          -9.594680336392146,
+          -5.612719399959534,
+          -12.303155613879818
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72ba8ef5103d412be60cd9fdd049b97f7386ecd22473d6904ee38307dba1a4fb",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.10",
+      "indexCount": 4152,
+      "indexed": true,
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 10,
+      "vertexCount": 1392
+    },
+    {
+      "bounds": {
+        "max": [
+          -8.239277034289422,
+          4.178381402677266,
+          6.63243507187109
+        ],
+        "min": [
+          -8.239277034289422,
+          -4.0867939261596735,
+          -6.63243507187109
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b6fa1b20481d2075854253e016f24d6ba4044043cb0ee6b7f4000f1b0b49cdba",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.11",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "f14da993a92f546d13e369181f470a393fc468943d53f27ef381ff5377e04307",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 11,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          1.3839719662293926,
+          5.841640169119112,
+          12.365718558305613
+        ],
+        "min": [
+          -9.594680336392146,
+          -5.43113426857735,
+          -12.365718558305613
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "af6e896ec035e23e932122eaca6771ad57811cf7b7f9082e6d74546e4a99d11d",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.2",
+      "indexCount": 4365,
+      "indexed": true,
+      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 2,
+      "vertexCount": 1473
+    },
+    {
+      "bounds": {
+        "max": [
+          4.179848915599186,
+          5.913358666387706,
+          12.052903836176641
+        ],
+        "min": [
+          -1.0147828785839867,
+          -5.823297115343915,
+          -12.052903836176641
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9f85d667dba35995cf2e2034c0e23da9007ef31dc73a1b2bc3459875b9098ea0",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.3",
+      "indexCount": 3873,
+      "indexed": true,
+      "materialHash": "15ed238ec68bfce5920f3de3318a46f7ec374c6e52a293abe76f742a2ee51e7e",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 3,
+      "vertexCount": 1263
+    },
+    {
+      "bounds": {
+        "max": [
+          3.3848417437494587,
+          5.885892007859308,
+          12.026963103122043
+        ],
+        "min": [
+          -5.87218514305739,
+          -5.795830456815517,
+          -12.026963103122043
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "530d7e07814aa74b07426bca15ab7946e60cf075057943967e89c07a55067cee",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.4",
+      "indexCount": 3762,
+      "indexed": true,
+      "materialHash": "82b7377d75c8e24eb65947a25b571ac6de1e2e087f1b592921c54430db9301a9",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 4,
+      "vertexCount": 1193
+    },
+    {
+      "bounds": {
+        "max": [
+          5.295300436946883,
+          7.425932292291817,
+          11.543244727927487
+        ],
+        "min": [
+          3.0777492421472368,
+          -7.425900344202217,
+          -11.20754112369152
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3682f6bfe747b47c4f5242d3905cb6189cbe7592f8f8624f84e45abb4eea30e4",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.5",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 5,
+      "vertexCount": 270
+    },
+    {
+      "bounds": {
+        "max": [
+          9.594595459377986,
+          6.601932536439892,
+          11.581392864772484
+        ],
+        "min": [
+          3.0411270307760403,
+          -6.810952378260873,
+          -11.105304116946927
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b5fa0dc29cb72b9a56ca43d5f726f05f8bb6b8aeda02168eb9c2135668f84302",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.6",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 6,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          4.604056197315547,
+          3.9433888797120873,
+          10.053941465498825
+        ],
+        "min": [
+          2.82597153897026,
+          -4.137149466795069,
+          -10.050889614551226
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa7d7ab7ee8f33b10a86cfa6111cbf963e4ae0e7b9b926239b939fc4dfb99761",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.7",
+      "indexCount": 1455,
+      "indexed": true,
+      "materialHash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 7,
+      "vertexCount": 702
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.3840568432435527,
+          2.952681765847528,
+          -11.711096530045474
+        ],
+        "min": [
+          -2.17296031319808,
+          2.400296744331979,
+          -12.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "544f19acb2f8060cddedc5573b7deecae91d671821a89ee5c3c7456f6a23f853",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.8",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "58f6989fbe83662f9735ef6588fe4c5c668490c4734d0789ce10dc6e506aa39c",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 8,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.3840568432435527,
+          2.952681765847528,
+          12.5
+        ],
+        "min": [
+          -2.17296031319808,
+          2.400296744331979,
+          11.711096530045474
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f05639dc65b3a0d8fc1ac1e0e0f47825c92213bfb6e95d773c45104d4e6e8ce2",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.9",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "56d7ff668e29accaa352d247689ad564414281a6fa27387be325f9fa677794f2",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 9,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "id": "material:0dac9b269e88e4a2a6e51b7b",
+      "name": "Forge_ore_barge_gunmetal",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "15ed238ec68bfce5920f3de3318a46f7ec374c6e52a293abe76f742a2ee51e7e",
+      "id": "material:15ed238ec68bfce5920f3de3",
+      "name": "Forge_ore_barge_stripe",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
+      "id": "material:26127603b853d7f44c27cfbb",
+      "name": "Forge_ore_barge_wk_torn",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "56d7ff668e29accaa352d247689ad564414281a6fa27387be325f9fa677794f2",
+      "id": "material:56d7ff668e29accaa352d247",
+      "name": "Forge_ore_barge_glow_green",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "58f6989fbe83662f9735ef6588fe4c5c668490c4734d0789ce10dc6e506aa39c",
+      "id": "material:58f6989fbe83662f9735ef65",
+      "name": "Forge_ore_barge_glow_red",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "82b7377d75c8e24eb65947a25b571ac6de1e2e087f1b592921c54430db9301a9",
+      "id": "material:82b7377d75c8e24eb65947a2",
+      "name": "Forge_ore_barge_hazard",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
+      "id": "material:998e0169135cb83ed523b293",
+      "name": "Forge_ore_barge_dark",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9e925530abc8aa063cee7e347eb47c4d67b6c1de375e4fa2da9a057c7b8de817",
+      "id": "material:9e925530abc8aa063cee7e34",
+      "name": "Forge_ore_barge_paint2",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b7b0be5052ab4f1138a547dbaf6e6c56dd50226bde0061c42d8958e0f9ff4ae0",
+      "id": "material:b7b0be5052ab4f1138a547db",
+      "name": "Forge_ore_barge_paint",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
+      "id": "material:c36a4bf93ab869729a357a6a",
+      "name": "Forge_ore_barge_wk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f14da993a92f546d13e369181f470a393fc468943d53f27ef381ff5377e04307",
+      "id": "material:f14da993a92f546d13e36918",
+      "name": "Forge_ore_barge_glow_drive",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "aft_engine_section",
+      "nodeName": "aft_engine_section",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.drive",
+      "localTransform": [
+        12.5,
+        0,
+        0,
+        0,
+        0,
+        12.5,
+        0,
+        0,
+        0,
+        0,
+        12.5,
+        0,
+        -0.000042438507080078125,
+        0.000015974044799804688,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Drive",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        12.5,
+        0,
+        0,
+        0,
+        0,
+        12.5,
+        0,
+        0,
+        0,
+        0,
+        12.5,
+        0,
+        -0.000042438507080078125,
+        0.000015974044799804688,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_f_rib0",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_f_rib1",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_f_rib2",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_f_rib3",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_f_rib4",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_f_rib5",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_f_rib6",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_f_rib7",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_f_rib8",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_t_tear0",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_t_tear1",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_t_tear2",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_t_tear3",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_t_tear4",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_t_tear5",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "engCut_t_tear6",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Hull",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.navport",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "NavPort",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.navstarboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "NavStarboard",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Nozzle-19_-10",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Nozzle-19_10",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.nozzle19-10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Nozzle19_-10",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.nozzle19-10-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Nozzle19_10",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.radiator-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Radiator_0",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.radiator-0-m",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Radiator_0_M",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.radiator-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Radiator_1",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.radiator-1-m",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Radiator_1_M",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.radiator-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Radiator_2",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.radiator-2-m",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Radiator_2_M",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.radiator-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Radiator_3",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.radiator-3-m",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Radiator_3_M",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.radiator-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Radiator_4",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.radiator-4-m",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "Radiator_4_M",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "RCSAft",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-m",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "RCSAft_M",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-07-0-05",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "RCSAft_N-0.07-0.05",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-07-0-05-m",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "RCSAft_N-0.07-0.05_M",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-070-05",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "RCSAft_N-0.070.05",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-070-05-m",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "RCSAft_N-0.070.05_M",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-07-0-05",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "RCSAft_N0.07-0.05",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-07-0-05-m",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "RCSAft_N0.07-0.05_M",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-070-05",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "RCSAft_N0.070.05",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-070-05-m",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "RCSAft_N0.070.05_M",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.socket-hazard-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2524642944335938,
+        0.04525113105773926,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Hazard_Core",
+      "nodeName": "SOCKET_Hazard_Core",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2524642944335938,
+        0.04525113105773926,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-engine-section.node.socket-salvage-drive",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.936672210693359,
+        5.04525089263916,
+        -5.1315789222717285,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Salvage_Drive",
+      "nodeName": "SOCKET_Salvage_Drive",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.936672210693359,
+        5.04525089263916,
+        -5.1315789222717285,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "eb535cbb17ed81d8a2abf9aefd7f7f51d68b92acec3c3fc139b08b50442749f3"
+    },
+    "sourceGlb": {
+      "bytes": 327388,
+      "sha256": "dbcf64fa6791f972ff03495dc27b78f04236a688cc502cf8fb8c5f30137993ce",
+      "uri": "place_aftermath_aft_engine_section.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 177828,
+    "resources": [
+      {
+        "bytes": 29332,
+        "mimeType": "image/ktx2",
+        "sha256": "1f399eb85acd5548c35aef3c0525443cf838c59954c327fe95b7f105f391347d",
+        "uri": "../_shared/images/1f399eb85acd5548c35aef3c0525443cf838c59954c327fe95b7f105f391347d.ktx2"
+      },
+      {
+        "bytes": 10835,
+        "mimeType": "image/ktx2",
+        "sha256": "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
+        "uri": "../_shared/images/26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9.ktx2"
+      },
+      {
+        "bytes": 5381,
+        "mimeType": "image/ktx2",
+        "sha256": "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+        "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
+      },
+      {
+        "bytes": 22990,
+        "mimeType": "image/ktx2",
+        "sha256": "56ec2f38df0a78756ca9f379026eb1c9f367d908df537147096bdf4e7d02277a",
+        "uri": "../_shared/images/56ec2f38df0a78756ca9f379026eb1c9f367d908df537147096bdf4e7d02277a.ktx2"
+      },
+      {
+        "bytes": 13407,
+        "mimeType": "image/ktx2",
+        "sha256": "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
+        "uri": "../_shared/images/622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0.ktx2"
+      },
+      {
+        "bytes": 21717,
+        "mimeType": "image/ktx2",
+        "sha256": "6920431fb8ec4fe7b0acc3ad2e96b869f9d5a7aa0b72b00c85e1f5ee18d4f444",
+        "uri": "../_shared/images/6920431fb8ec4fe7b0acc3ad2e96b869f9d5a7aa0b72b00c85e1f5ee18d4f444.ktx2"
+      }
+    ],
+    "sha256": "76c08e444271472d34e1f8afbc4d05b04b068fa68c6d6354a30995d4c629d71c",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.000042438507080078125,
+        0.000015974044799804688,
+        0
+      ],
+      "max": [
+        9.594595459377986,
+        7.425932292291817,
+        12.5
+      ],
+      "min": [
+        -9.594680336392146,
+        -7.425900344202217,
+        -12.5
+      ],
+      "size": [
+        19.189275795770133,
+        14.851832636494034,
+        25
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.2524642944335938,
+          0.04525113105773926,
+          0,
+          1
+        ],
+        "name": "SOCKET_Hazard_Core",
+        "planIndex": 58,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Hazard_Core",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Hazard_Core",
+            "recordIds": [
+              "sf.render.aftermath-aft-engine-section.anchor.socket-hazard-core",
+              "sf.render.aftermath-aft-engine-section.node.socket-hazard-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.936672210693359,
+          5.04525089263916,
+          -5.1315789222717285,
+          1
+        ],
+        "name": "SOCKET_Salvage_Drive",
+        "planIndex": 59,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Drive",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Drive",
+            "recordIds": [
+              "sf.render.aftermath-aft-engine-section.anchor.socket-salvage-drive",
+              "sf.render.aftermath-aft-engine-section.node.socket-salvage-drive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "ceramic": 1,
+      "drive": 1,
+      "hull": 2,
+      "mechanical": 4,
+      "signal": 2,
+      "warning": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "drive"
+      }
+    ],
+    "nodeCount": 60,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_2",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_3",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_4",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_5",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_6",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_7",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_8",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_9",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_10",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          0,
+          0,
+          0,
+          12.5,
+          0,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_11",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_aft_engine_section.glb"
+  },
+  "runtimeHash": "6dff12a1fa83094b75e185cf30e432f2e60bcc06b0613a6de257212abfafc170",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          9.594595459377986,
+          7.425932292291817,
+          12.5
+        ],
+        "min": [
+          -9.594680336392146,
+          -7.425900344202217,
+          -12.5
+        ]
+      },
+      "id": "sf.render.aftermath-aft-engine-section.body",
+      "nodeIds": [
+        "sf.render.aftermath-aft-engine-section.node.aft-engine-section",
+        "sf.render.aftermath-aft-engine-section.node.drive",
+        "sf.render.aftermath-aft-engine-section.node.engcut-f-rib0",
+        "sf.render.aftermath-aft-engine-section.node.engcut-f-rib1",
+        "sf.render.aftermath-aft-engine-section.node.engcut-f-rib2",
+        "sf.render.aftermath-aft-engine-section.node.engcut-f-rib3",
+        "sf.render.aftermath-aft-engine-section.node.engcut-f-rib4",
+        "sf.render.aftermath-aft-engine-section.node.engcut-f-rib5",
+        "sf.render.aftermath-aft-engine-section.node.engcut-f-rib6",
+        "sf.render.aftermath-aft-engine-section.node.engcut-f-rib7",
+        "sf.render.aftermath-aft-engine-section.node.engcut-f-rib8",
+        "sf.render.aftermath-aft-engine-section.node.engcut-t-tear0",
+        "sf.render.aftermath-aft-engine-section.node.engcut-t-tear1",
+        "sf.render.aftermath-aft-engine-section.node.engcut-t-tear2",
+        "sf.render.aftermath-aft-engine-section.node.engcut-t-tear3",
+        "sf.render.aftermath-aft-engine-section.node.engcut-t-tear4",
+        "sf.render.aftermath-aft-engine-section.node.engcut-t-tear5",
+        "sf.render.aftermath-aft-engine-section.node.engcut-t-tear6",
+        "sf.render.aftermath-aft-engine-section.node.hull",
+        "sf.render.aftermath-aft-engine-section.node.navport",
+        "sf.render.aftermath-aft-engine-section.node.navstarboard",
+        "sf.render.aftermath-aft-engine-section.node.nozzle-19-10",
+        "sf.render.aftermath-aft-engine-section.node.nozzle-19-10-2",
+        "sf.render.aftermath-aft-engine-section.node.nozzle19-10",
+        "sf.render.aftermath-aft-engine-section.node.nozzle19-10-2",
+        "sf.render.aftermath-aft-engine-section.node.radiator-0",
+        "sf.render.aftermath-aft-engine-section.node.radiator-0-m",
+        "sf.render.aftermath-aft-engine-section.node.radiator-1",
+        "sf.render.aftermath-aft-engine-section.node.radiator-1-m",
+        "sf.render.aftermath-aft-engine-section.node.radiator-2",
+        "sf.render.aftermath-aft-engine-section.node.radiator-2-m",
+        "sf.render.aftermath-aft-engine-section.node.radiator-3",
+        "sf.render.aftermath-aft-engine-section.node.radiator-3-m",
+        "sf.render.aftermath-aft-engine-section.node.radiator-4",
+        "sf.render.aftermath-aft-engine-section.node.radiator-4-m",
+        "sf.render.aftermath-aft-engine-section.node.rcsaft",
+        "sf.render.aftermath-aft-engine-section.node.rcsaft-m",
+        "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-07-0-05",
+        "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-07-0-05-m",
+        "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-070-05",
+        "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-070-05-m",
+        "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-07-0-05",
+        "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-07-0-05-m",
+        "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-070-05",
+        "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-070-05-m",
+        "sf.render.aftermath-aft-engine-section.node.socket-hazard-core",
+        "sf.render.aftermath-aft-engine-section.node.socket-salvage-drive"
+      ]
+    }
+  ]
+}

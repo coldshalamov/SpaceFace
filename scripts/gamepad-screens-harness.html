@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PQ-164.00 pad screen walk</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three.module.js",
+      "three/addons/": "/vendor/addons/",
+      "three.quarks": "/node_modules/three.quarks/dist/three.quarks.esm.js",
+      "quarks.core": "/node_modules/quarks.core/dist/quarks.core.esm.js",
+      "@dimforge/rapier3d-compat": "/vendor/rapier3d-compat/rapier.mjs",
+      "@floating-ui/dom": "/node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs",
+      "@floating-ui/core": "/node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs",
+      "@floating-ui/utils": "/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="screens"></div>
+  <div id="modal-backdrop"></div>
+  <div id="hud"></div>
+  <div id="sf-confirm-root"></div>
+  <script type="module">
+    try {
+      const { runGamepadScreenWalk, SEED } = await import('./lib/pq16400-gamepad-screens.mjs');
+      window.__sfPadWalk = await runGamepadScreenWalk({ seed: SEED });
+    } catch (err) {
+      window.__sfPadWalk = { error: String(err && err.stack || err) };
+    }
+    window.__sfPadWalkReady = true;
+  </script>
+</body>
+</html>

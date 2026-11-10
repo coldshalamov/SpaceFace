@@ -1,0 +1,335 @@
+From df665a6bcc3c11558dc6704900a5eea9677f95b9 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 03:02:38 -0400
+Subject: [PATCH] =?UTF-8?q?perf(core):=20typed=20ship:thrust=20event-trace?=
+ =?UTF-8?q?=20sanitize=20(~7.15=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet held-thrust flight records ship:thrust every frame through
+createDeterministicEventTrace. sanitizePayload's sorted Object.keys walk
+dominated that self time. Typed sanitizeThrustPayload matches JSON key
+order for the flightV3 envelope; bench toggle restores the legacy path.
+
+Picture contract untouched. Soft-GPU fps not claimed.
+---
+ ...vent-trace-thrust-sanitize-microbench.json |  11 ++
+ ...event-trace-thrust-sanitize-microbench.mjs |  77 ++++++++++++
+ ...used-tests-event-trace-thrust-sanitize.log | 113 ++++++++++++++++++
+ src/core/eventTrace.js                        |  70 ++++++++++-
+ 4 files changed, 269 insertions(+), 2 deletions(-)
+ create mode 100644 artifacts/event-trace-thrust-sanitize-microbench.json
+ create mode 100644 artifacts/event-trace-thrust-sanitize-microbench.mjs
+ create mode 100644 artifacts/focused-tests-event-trace-thrust-sanitize.log
+
+diff --git a/artifacts/event-trace-thrust-sanitize-microbench.json b/artifacts/event-trace-thrust-sanitize-microbench.json
+new file mode 100644
+index 000000000..b1754eaaf
+--- /dev/null
++++ b/artifacts/event-trace-thrust-sanitize-microbench.json
+@@ -0,0 +1,11 @@
++{
++  "iters": 30000,
++  "runs": 7,
++  "beforeMedMs": 27.671,
++  "afterMedMs": 3.873,
++  "minSpeedup": 3.181,
++  "medSpeedup": 7.145,
++  "maxSpeedup": 8.768,
++  "jsonMismatches": 0,
++  "primary": "~7.15×"
++}
+diff --git a/artifacts/event-trace-thrust-sanitize-microbench.mjs b/artifacts/event-trace-thrust-sanitize-microbench.mjs
+new file mode 100644
+index 000000000..dfe16d2b4
+--- /dev/null
++++ b/artifacts/event-trace-thrust-sanitize-microbench.mjs
+@@ -0,0 +1,77 @@
++/**
++ * Primary KPI: sanitize cost for the every-frame ship:thrust envelope.
++ * Before = sorted Object.keys sanitizePayload (bench toggle off).
++ * After  = typed sanitizeThrustPayload fast path.
++ * Soft-GPU fps not claimed.
++ */
++import { writeFileSync } from 'node:fs';
++import { performance } from 'node:perf_hooks';
++import {
++  sanitizePayload,
++  sanitizeThrustPayload,
++  setThrustTraceSanitizeFastForBench,
++  getThrustTraceSanitizeFastForBench,
++} from '../src/core/eventTrace.js';
++
++const ITERS = 30000;
++const RUNS = 7;
++
++function makePayload(i) {
++  return {
++    id: 1,
++    shipId: 1,
++    throttle: 0.55 + (i % 10) * 0.01,
++    reverse: 0,
++    strafe: (i % 5) * 0.02,
++    boost: false,
++    nozzles: [
++      { role: 'main', strength: 0.55 + (i % 10) * 0.01, angle: 0 },
++    ],
++  };
++}
++
++function bench(fn) {
++  for (let i = 0; i < 2000; i++) fn(makePayload(i));
++  const times = [];
++  for (let run = 0; run < RUNS; run++) {
++    const t0 = performance.now();
++    for (let i = 0; i < ITERS; i++) fn(makePayload(i));
++    times.push(performance.now() - t0);
++  }
++  times.sort((a, b) => a - b);
++  return { med: times[(RUNS / 2) | 0], min: times[0], max: times[RUNS - 1], times };
++}
++
++const restore = getThrustTraceSanitizeFastForBench();
++setThrustTraceSanitizeFastForBench(false);
++const before = bench((p) => sanitizePayload(p));
++setThrustTraceSanitizeFastForBench(true);
++const after = bench((p) => sanitizeThrustPayload(p));
++setThrustTraceSanitizeFastForBench(restore);
++
++let mismatches = 0;
++for (let i = 0; i < 200; i++) {
++  const p = makePayload(i);
++  if (JSON.stringify(sanitizePayload(p)) !== JSON.stringify(sanitizeThrustPayload(p))) mismatches += 1;
++}
++
++const speedup = before.med / after.med;
++const result = {
++  iters: ITERS,
++  runs: RUNS,
++  beforeMedMs: +before.med.toFixed(3),
++  afterMedMs: +after.med.toFixed(3),
++  minSpeedup: +(before.min / after.max).toFixed(3),
++  medSpeedup: +speedup.toFixed(3),
++  maxSpeedup: +(before.max / after.min).toFixed(3),
++  jsonMismatches: mismatches,
++  primary: `~${speedup.toFixed(2)}×`,
++};
++
++writeFileSync(
++  new URL('./event-trace-thrust-sanitize-microbench.json', import.meta.url),
++  `${JSON.stringify(result, null, 2)}\n`,
++);
++console.log(JSON.stringify(result, null, 2));
++if (mismatches !== 0) process.exit(2);
++if (speedup < 1.5) process.exit(3);
+diff --git a/artifacts/focused-tests-event-trace-thrust-sanitize.log b/artifacts/focused-tests-event-trace-thrust-sanitize.log
+new file mode 100644
+index 000000000..ee4f34212
+--- /dev/null
++++ b/artifacts/focused-tests-event-trace-thrust-sanitize.log
+@@ -0,0 +1,113 @@
++TAP version 13
++# Subtest: feel.chain_reaction: one player action, three or more secondary consequences, twice the same
++not ok 1 - feel.chain_reaction: one player action, three or more secondary consequences, twice the same
++  ---
++  duration_ms: 1059.445477
++  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/chain-reaction-determinism.test.mjs:22:1'
++  failureType: 'testCodeFailure'
++  error: 'Consequences or it is thin. — 1 secondary consequences from one shove: ["slam_detonation@t100: plate on #2 went off on impact"]'
++  code: 'ERR_ASSERTION'
++  name: 'AssertionError'
++  expected: true
++  actual: false
++  operator: '=='
++  stack: |-
++    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/chain-reaction-determinism.test.mjs:32:10)
++    async Test.run (node:internal/test_runner/test:797:9)
++    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
++  ...
++# boots the real rapier-dynamic path twice; allow a minute
++# Subtest: feel.chain_reaction: the well converges craft into the authored band and primes what it grinds
++not ok 2 - feel.chain_reaction: the well converges craft into the authored band and primes what it grinds
++  ---
++  duration_ms: 221.633635
++  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/chain-reaction-determinism.test.mjs:48:1'
++  failureType: 'testCodeFailure'
++  error: 'a well converges ships to 30-60 WU/s relative; measured 72.25382122150953'
++  code: 'ERR_ASSERTION'
++  name: 'AssertionError'
++  expected: true
++  actual: false
++  operator: '=='
++  stack: |-
++    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/chain-reaction-determinism.test.mjs:52:10)
++    async Test.run (node:internal/test_runner/test:797:9)
++    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
++  ...
++# Subtest: kernel weave cannot manufacture planar speed — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
++ok 3 - kernel weave cannot manufacture planar speed — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
++  ---
++  duration_ms: 25.121833
++  ...
++# Subtest: assisted translation publishes one finite control-made bound — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
++ok 4 - assisted translation publishes one finite control-made bound — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
++  ---
++  duration_ms: 0.923898
++  ...
++# Subtest: authored travel ceilings are byte-for-byte unchanged
++ok 5 - authored travel ceilings are byte-for-byte unchanged
++  ---
++  duration_ms: 0.37725
++  ...
++# Subtest: feel.governor_integrity is deterministic on seed 4242 and meets every clause
++ok 6 - feel.governor_integrity is deterministic on seed 4242 and meets every clause
++  ---
++  duration_ms: 1403.118045
++  ...
++# Subtest: feel.governor_integrity meets every clause on seed 8008
++ok 7 - feel.governor_integrity meets every clause on seed 8008
++  ---
++  duration_ms: 388.85761
++  ...
++#  Particle system powered by three.quarks. https://quarks.art/
++# {
++#   "ok": true,
++#   "test": "vfx-settings-runtime-truth",
++#   "caps": {
++#     "low": {
++#       "cap": 1500,
++#       "burst": 0.55
++#     },
++#     "med": {
++#       "cap": 3000,
++#       "burst": 0.8
++#     },
++#     "medium": {
++#       "cap": 3000,
++#       "burst": 0.8
++#     },
++#     "high": {
++#       "cap": 4000,
++#       "burst": 1
++#     }
++#   },
++#   "passed": [
++#     "boot cap/burst [low]",
++#     "boot cap/burst [medium]",
++#     "boot cap/burst [high]",
++#     "boot[high]: no quality cap (full 4000 / burst 1.0)",
++#     "current→max→current: cap/burst live-apply",
++#     "current→max: pool migration without duplicate pools/listeners",
++#     "current→max: preserve existing live particles (upsize)",
++#     "max→current: preserve live particles within new cap (downsize)",
++#     "sanity: raw _initPools/_subscribe without teardown duplicates",
++#     "integration seam: VFX must listen for settings:changed"
++#   ],
++#   "failed": [],
++#   "defect": null
++# }
++# [vfx-settings-runtime-truth] all 10 checks passed
++# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-settings-runtime-truth.test.mjs
++ok 3 - /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-settings-runtime-truth.test.mjs
++  ---
++  duration_ms: 616.411383
++  ...
++1..8
++# tests 8
++# suites 0
++# pass 6
++# fail 2
++# cancelled 0
++# skipped 0
++# todo 0
++# duration_ms 3034.983251
+diff --git a/src/core/eventTrace.js b/src/core/eventTrace.js
+index 6582910d2..b54986012 100644
+--- a/src/core/eventTrace.js
++++ b/src/core/eventTrace.js
+@@ -74,7 +74,11 @@ export function createDeterministicEventTrace(bus, state, options = {}) {
+       tick: state && Number.isFinite(state.tick) ? state.tick : 0,
+       simTime: round6(state && state.simTime),
+       type,
+-      payload: sanitizePayload(payload),
++      // ship:thrust is every powered flight frame — sorted Object.keys walk dominated quiet
++      // sanitizePayload self time. Typed fast path keeps identical JSON key order.
++      payload: (type === 'ship:thrust' && THRUST_TRACE_SANITIZE_FAST)
++        ? sanitizeThrustPayload(payload)
++        : sanitizePayload(payload),
+     });
+     if (records.length > cap) records.splice(0, records.length - cap);
+   }));
+@@ -93,7 +97,69 @@ export function createDeterministicEventTrace(bus, state, options = {}) {
+   };
+ }
+ 
+-function sanitizePayload(value, depth = 0) {
++let THRUST_TRACE_SANITIZE_FAST = true;
++
++/** Bench-only: restore sorted Object.keys sanitize for ship:thrust A/B. */
++export function setThrustTraceSanitizeFastForBench(enabled) {
++  THRUST_TRACE_SANITIZE_FAST = enabled !== false;
++}
++
++export function getThrustTraceSanitizeFastForBench() {
++  return THRUST_TRACE_SANITIZE_FAST !== false;
++}
++
++/**
++ * Typed sanitize for the every-frame ship:thrust envelope.
++ * Key order matches Object.keys(payload).sort() for the flightV3 shape so golden
++ * JSON.stringify tapes stay byte-identical.
++ */
++export function sanitizeThrustPayload(payload) {
++  if (payload == null || typeof payload !== 'object') return sanitizePayload(payload);
++  // Only the known flightV3 envelope takes the fast path. Any other shape falls
++  // back so extra/missing keys keep legacy Object.keys().sort() semantics.
++  if (!Object.prototype.hasOwnProperty.call(payload, 'boost')
++    || !Object.prototype.hasOwnProperty.call(payload, 'id')
++    || !Object.prototype.hasOwnProperty.call(payload, 'nozzles')
++    || !Object.prototype.hasOwnProperty.call(payload, 'reverse')
++    || !Object.prototype.hasOwnProperty.call(payload, 'shipId')
++    || !Object.prototype.hasOwnProperty.call(payload, 'strafe')
++    || !Object.prototype.hasOwnProperty.call(payload, 'throttle')
++    || Object.keys(payload).length !== 7) {
++    return sanitizePayload(payload);
++  }
++  const nozzlesIn = Array.isArray(payload.nozzles) ? payload.nozzles : null;
++  if (!nozzlesIn) return sanitizePayload(payload);
++  const n = nozzlesIn.length < 40 ? nozzlesIn.length : 40;
++  const nozzles = new Array(n);
++  for (let i = 0; i < n; i++) {
++    const nozzle = nozzlesIn[i];
++    if (nozzle == null || typeof nozzle !== 'object'
++      || !Object.prototype.hasOwnProperty.call(nozzle, 'angle')
++      || !Object.prototype.hasOwnProperty.call(nozzle, 'role')
++      || !Object.prototype.hasOwnProperty.call(nozzle, 'strength')
++      || Object.keys(nozzle).length !== 3) {
++      nozzles[i] = sanitizePayload(nozzle, 1);
++      continue;
++    }
++    // Alphabetical: angle, role, strength — same as sorted Object.keys on the nozzle.
++    nozzles[i] = {
++      angle: round6(nozzle.angle),
++      role: typeof nozzle.role === 'string' ? nozzle.role : sanitizePayload(nozzle.role, 2),
++      strength: round6(nozzle.strength),
++    };
++  }
++  return {
++    boost: payload.boost,
++    id: payload.id,
++    nozzles,
++    reverse: round6(payload.reverse),
++    shipId: payload.shipId,
++    strafe: round6(payload.strafe),
++    throttle: round6(payload.throttle),
++  };
++}
++
++export function sanitizePayload(value, depth = 0) {
+   if (value == null) return value;
+   if (depth > 5) return '[depth]';
+   const t = typeof value;
+-- 
+2.47.3
+

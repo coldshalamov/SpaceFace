@@ -1,0 +1,1365 @@
+diff --git a/src/render/assetLoader.js b/src/render/assetLoader.js
+index 0724496b..7ecc8802 100644
+--- a/src/render/assetLoader.js
++++ b/src/render/assetLoader.js
+@@ -84,6 +84,7 @@ export const ASSET_RUNTIME_DECODER_CONTRACT = Object.freeze({
+ });
+ 
+ const warned = new Set();
++const CALLER_ASSET_LOAD_ABORTED = Symbol('caller-asset-load-aborted');
+ const WHOLE_SHIP_ACCESSORY_TOKENS = Object.freeze(['antenna', 'decal', 'canopy', 'lens', 'clamp', 'brace', 'identity', 'cockpit']);
+ const GLB_MAGIC = 0x46546c67;
+ const GLB_VERSION = 2;
+@@ -116,7 +117,7 @@ export class AssetContractError extends Error {
+ export function admitAuthoredAssetTask(runtime, cacheKey, createTask) {
+   if (!runtime || runtime.retiring) return null;
+   if (!runtime.assets.has(cacheKey)) {
+-    const task = Promise.resolve().then(createTask);
++    const task = Promise.resolve().then(() => createTask(runtime.signal));
+     runtime.assets.set(cacheKey, task);
+     const pendingTasks = runtime.pendingAssetTasks || (runtime.pendingAssetTasks = new Set());
+     pendingTasks.add(task);
+@@ -137,7 +138,11 @@ export function retireAuthoredAssetRuntime(runtime) {
+   if (!runtime) return Promise.resolve();
+   if (runtime.retirementPromise) return runtime.retirementPromise;
+ 
++  // Invalidate before touching caches or decoders. A task that is already inside a loader cannot
++  // always be aborted, but all of its continuations must observe this dead generation.
+   runtime.retiring = true;
++  runtime.generation = (Number(runtime.generation) || 0) + 1;
++  try { runtime.abortController?.abort('authored-runtime-retired'); } catch (_) { /* best effort */ }
+   const ownedTasks = runtime.pendingAssetTasks
+     ? [...runtime.pendingAssetTasks]
+     : [...runtime.assets.values()];
+@@ -145,6 +150,9 @@ export function retireAuthoredAssetRuntime(runtime) {
+   runtime.failures.clear();
+   if (runtime.pendingAssetTasks) runtime.pendingAssetTasks.clear();
+ 
++  // Close package-cache visibility synchronously. The package loader owns its own immutable
++  // decoded resources and its dispose() is idempotent; late package completions then self-evict.
++  disposeRuntimePackages(runtime);
+   runtime.retirementPromise = Promise.allSettled(ownedTasks)
+     .then(() => disposeRuntimeDecoders(runtime), () => disposeRuntimeDecoders(runtime))
+     .then(() => undefined, () => undefined);
+@@ -158,12 +166,15 @@ export function retireAuthoredAssetRuntime(runtime) {
+ export function createAuthoredAssetRuntimeRegistry(runtimeFactory) {
+   const activeByRenderer = new WeakMap();
+   const retirementByRenderer = new WeakMap();
++  const generationByRenderer = new WeakMap();
+ 
+   function get(renderer) {
+     let runtimePromise = activeByRenderer.get(renderer);
+     if (!runtimePromise) {
+       retirementByRenderer.delete(renderer);
+-      runtimePromise = Promise.resolve().then(() => runtimeFactory(renderer));
++      const generation = (Number(generationByRenderer.get(renderer)) || 0) + 1;
++      generationByRenderer.set(renderer, generation);
++      runtimePromise = Promise.resolve().then(() => runtimeFactory(renderer, generation));
+       activeByRenderer.set(renderer, runtimePromise);
+     }
+     return runtimePromise;
+@@ -178,6 +189,7 @@ export function createAuthoredAssetRuntimeRegistry(runtimeFactory) {
+     if (!runtimePromise) return retirementByRenderer.get(renderer) || Promise.resolve();
+ 
+     activeByRenderer.delete(renderer);
++    generationByRenderer.set(renderer, (Number(generationByRenderer.get(renderer)) || 0) + 1);
+     const retirementPromise = runtimePromise
+       .then((runtime) => retireAuthoredAssetRuntime(runtime))
+       .catch(() => undefined);
+@@ -189,7 +201,7 @@ export function createAuthoredAssetRuntimeRegistry(runtimeFactory) {
+ }
+ 
+ function disposeRuntimeDecoders(runtime) {
+-  try { runtime.renderPackages?.dispose('authored-runtime-retired'); } catch (_) {}
++  disposeRuntimePackages(runtime);
+   const decoders = runtime.disposableDecoders || [];
+   runtime.disposableDecoders = [];
+   for (const decoder of decoders) {
+@@ -197,6 +209,13 @@ function disposeRuntimeDecoders(runtime) {
+   }
+ }
+ 
++function disposeRuntimePackages(runtime) {
++  if (!runtime || runtime.packageDisposalStarted === true) return false;
++  runtime.packageDisposalStarted = true;
++  try { runtime.renderPackages?.dispose('authored-runtime-retired'); } catch (_) {}
++  return true;
++}
++
+ /**
+  * Process-wide shared KTX2Loader ownership for authored-asset runtimes.
+  *
+@@ -460,7 +479,9 @@ export async function loadAuthoredPart(url, options = {}) {
+     return null;
+   }
+ 
+-  if (runtime.retiring) return null;
++  const runtimeGeneration = Number(runtime.generation) || 0;
++  if (!runtimeIsActive(runtime, runtimeGeneration)) return null;
++  if (!loadOptionSignalIsActive(options)) return null;
+   if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return null;
+ 
+   const renderPackagePilot = renderPackagePilotForSourceUrl(url);
+@@ -484,7 +505,9 @@ export async function loadAuthoredPart(url, options = {}) {
+   }
+ 
+   const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
+-    loadGltfDocument(url, runtime.gltf)
++    loadGltfDocument(url, runtime.gltf, globalThis.fetch, {
++      signal: runtime.signal,
++    })
+       .then((gltf) => {
+         // Tier-1 causal count: a full semantic compile of a source GLB into a runtime blueprint.
+         const tier1 = tier1CountersForRenderer(renderer);
+@@ -493,13 +516,17 @@ export async function loadAuthoredPart(url, options = {}) {
+           cacheKey,
+           residency,
+           onEvict() {
+-            runtime.assets.delete(cacheKey);
+-            runtime.failures.delete(cacheKey);
++            if (runtime.assets.get(cacheKey) === task) {
++              runtime.assets.delete(cacheKey);
++              runtime.failures.delete(cacheKey);
++            }
+           },
+         });
+       })
+       .catch((error) => {
+-        if (!runtime.retiring) {
++        const aborted = isAbortError(error);
++        if (aborted) evictAbortedAuthoredTask(runtime, cacheKey, task);
++        if (!runtime.retiring && !aborted) {
+           runtime.failures.set(cacheKey, error);
+           if (error instanceof AssetContractError) {
+             if (!optional) warnOnce(cacheKey, error.message);
+@@ -514,7 +541,15 @@ export async function loadAuthoredPart(url, options = {}) {
+     if (request) request.cancel('runtime-retired-before-decode');
+     return null;
+   }
+-  const blueprint = await task;
++  const blueprint = await waitForAuthoredAssetTask(task, options.signal);
++  if (!runtimeIsActive(runtime, runtimeGeneration)) {
++    if (request) request.cancel('runtime-retired-during-decode');
++    return null;
++  }
++  if (!loadOptionSignalIsActive(options)) {
++    if (request) request.cancel('asset-load-aborted-after-decode');
++    return null;
++  }
+   if (!blueprint) {
+     if (request) request.cancel('decode-failed');
+     return null;
+@@ -726,25 +761,57 @@ export async function invalidateFailedAuthoredAssets(renderer) {
+ 
+ export function disposeAuthoredAssetRuntime(renderer) {
+   const retirement = authoredAssetRuntimeRegistry.dispose(renderer);
+-  return Promise.resolve(retirement).finally(() => {
+-    disposeAssetResidency(renderer, 'authored-runtime-disposed');
+-  });
++  // Renderer-scoped residency is not shared with another renderer generation. Close it now so a
++  // late decode cannot publish resources into the dead generation; the runtime retirement receipt
++  // still waits for owned tasks before decoder handles are finally released.
++  disposeAssetResidency(renderer, 'authored-runtime-disposed');
++  return Promise.resolve(retirement);
+ }
+ 
+ function runtimeFor(renderer) {
+   return authoredAssetRuntimeRegistry.get(renderer);
+ }
+ 
++function runtimeIsActive(runtime, generation = Number(runtime && runtime.generation) || 0) {
++  return !!runtime && runtime.retiring !== true
++    && (Number(runtime.generation) || 0) === generation;
++}
++
++function loadOptionSignalIsActive(options) {
++  return options?.signal?.aborted !== true;
++}
++
++function waitForAuthoredAssetTask(task, signal) {
++  if (signal?.aborted === true) return Promise.resolve(CALLER_ASSET_LOAD_ABORTED);
++  if (!signal || typeof signal.addEventListener !== 'function') return task;
++  let onAbort;
++  const callerAbort = new Promise((resolve) => {
++    onAbort = () => resolve(CALLER_ASSET_LOAD_ABORTED);
++    signal.addEventListener('abort', onAbort, { once: true });
++  });
++  return Promise.race([task, callerAbort]).finally(() => {
++    try { signal.removeEventListener('abort', onAbort); } catch (_) { /* best effort */ }
++  });
++}
++
++function evictAbortedAuthoredTask(runtime, cacheKey, task) {
++  if (!runtime || runtime.assets.get(cacheKey) !== task) return false;
++  runtime.assets.delete(cacheKey);
++  runtime.failures.delete(cacheKey);
++  return true;
++}
++
+ /** Tier-1 causal counter sink explicitly owned by this renderer, or null when counting is off. */
+ function tier1CountersForRenderer(renderer) {
+   const tier1 = boundPerfCountersForRenderer(renderer);
+   return tier1 && tier1.isEnabled() ? tier1 : null;
+ }
+ 
+-async function createRuntime(renderer) {
++async function createRuntime(renderer, generation = 0) {
+   const decoders = { gltf: false, ktx2: false, draco: false, meshopt: false };
+   const paths = { ...ASSET_RUNTIME_DECODER_CONTRACT };
+   const disposableDecoders = [];
++  const abortController = typeof AbortController === 'function' ? new AbortController() : null;
+   let gltf;
+   let source = 'three/addons/loaders/GLTFLoader.js';
+ 
+@@ -787,8 +854,12 @@ async function createRuntime(renderer) {
+     decoders,
+     paths,
+     disposableDecoders,
++    abortController,
++    signal: abortController ? abortController.signal : null,
++    generation,
+     retiring: false,
+     retirementPromise: null,
++    packageDisposalStarted: false,
+     defaultResidencyOwner: Object.freeze({ type: 'authored-runtime-cache' }),
+   };
+ }
+@@ -874,15 +945,21 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
+   const slot = options.slot || null;
+   const optional = options.optional === true;
+   const cacheKey = `${url}::${slot || '*'}`;
++  const runtimeGeneration = Number(runtime.generation) || 0;
++  if (!runtimeIsActive(runtime, runtimeGeneration)) return null;
++  if (!loadOptionSignalIsActive(options)) return null;
+   const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
+     runtime.renderPackages.load(pilot.metadataUrl, {
+       expectedContentHash: pilot.expectedContentHash,
+       ...(pilot.flightStaticV3 === true ? { expectedRuntimeHash: pilot.expectedRuntimeHash } : {}),
++      signal: runtime.signal,
+     }).then((renderPackage) => assembleRenderPackageRecord(renderPackage, url, pilot.assetId, {
+       flightStaticV3: pilot.flightStaticV3 === true,
+     }))
+       .catch((error) => {
+-        if (!runtime.retiring) {
++        const aborted = isAbortError(error);
++        if (aborted) evictAbortedAuthoredTask(runtime, cacheKey, task);
++        if (!runtime.retiring && !aborted) {
+           runtime.failures.set(cacheKey, error);
+           if (!optional) warnOnce(cacheKey, `[assetLoader] production render package failed for ${url}`, error);
+         }
+@@ -891,7 +968,9 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
+   ));
+   if (!task) return null;
+ 
+-  const record = await task;
++  const record = await waitForAuthoredAssetTask(task, options.signal);
++  if (!runtimeIsActive(runtime, runtimeGeneration)) return null;
++  if (!loadOptionSignalIsActive(options)) return null;
+   if (!record) return null;
+   if (record.renderPackage?.evicted === true) {
+     // `renderPackageLoader` evicts by content hash, while this outer cache is keyed by source URL.
+@@ -1715,16 +1794,26 @@ export function hasNonEmptyWholeShipHullBody(hullTriangles) {
+   return Number.isFinite(hullTriangles) && hullTriangles > 0;
+ }
+ 
+-export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch) {
++export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch, options = {}) {
++  // Keep the historical third-argument fetch override while allowing runtime-owned cancellation
++  // without widening the loader contract for callers that do not need it.
++  if (fetchImpl && typeof fetchImpl !== 'function' && typeof fetchImpl === 'object') {
++    options = fetchImpl;
++    fetchImpl = globalThis.fetch;
++  }
++  const signal = options && options.signal;
++  if (signal?.aborted) throw createAbortError('GLB load aborted before fetch');
+   if (!isWholeShipUrl(url) || typeof fetchImpl !== 'function' || typeof loader?.parseAsync !== 'function') {
+     return loader.loadAsync(url);
+   }
+   // Electron intentionally keeps a stable localhost origin so saves persist. Revalidate whole-ship
+   // bodies on that origin, but parse the same response. Fetching once for validation and again through
+   // GLTFLoader transferred the 20+ MiB Kestrel twice on every New Game and Continue transition.
+-  const response = await fetchImpl(url, { cache: 'no-cache' });
++  const response = await fetchImpl(url, { cache: 'no-cache', ...(signal ? { signal } : {}) });
++  if (signal?.aborted) throw createAbortError('GLB load aborted during fetch');
+   if (!response.ok) throw new AssetContractError(url, [`whole-ship GLB fetch failed: HTTP ${response.status}`]);
+   const buffer = await response.arrayBuffer();
++  if (signal?.aborted) throw createAbortError('GLB load aborted during response decode');
+   const bytes = new Uint8Array(buffer);
+   const gltf = parseGlbJson(bytes);
+   const errors = validateWholeShipJsonDocument(url, gltf);
+@@ -1732,6 +1821,16 @@ export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch
+   return loader.parseAsync(buffer, assetBasePath(url));
+ }
+ 
++function createAbortError(message) {
++  const error = new Error(message);
++  error.name = 'AbortError';
++  return error;
++}
++
++function isAbortError(error) {
++  return String(error && error.name || '').toLowerCase() === 'aborterror';
++}
++
+ function assetBasePath(url) {
+   const clean = String(url || '').split(/[?#]/, 1)[0];
+   const slash = clean.lastIndexOf('/');
+diff --git a/src/render/assetResidency.js b/src/render/assetResidency.js
+index 4792f691..71738e06 100644
+--- a/src/render/assetResidency.js
++++ b/src/render/assetResidency.js
+@@ -66,6 +66,8 @@ export function createAssetResidencyRegistry(options = {}) {
+   let disposedResources = 0;
+   let abandonedResources = 0;
+   let evictedAssets = 0;
++  let disposed = false;
++  let registryGeneration = 0;
+   const governor = createResourceGovernor({
+     maxCpuBytes: options.maxCpuBytes,
+     maxGpuBytes: options.maxGpuBytes,
+@@ -111,6 +113,7 @@ export function createAssetResidencyRegistry(options = {}) {
+   }
+ 
+   function registerAsset(key, gpuResources, registration = {}) {
++    if (disposed) throw new Error('Asset residency registry has been disposed.');
+     const exactKey = String(key || '');
+     if (!exactKey) throw new Error('Asset residency registration requires a stable key.');
+     const list = [...new Set((gpuResources || []).filter(Boolean))];
+@@ -193,6 +196,7 @@ export function createAssetResidencyRegistry(options = {}) {
+   }
+ 
+   function retain(key, owner, metadata = {}) {
++    if (disposed) return false;
+     const entry = assets.get(String(key || ''));
+     if (!entry || entry.state !== 'resident' || owner == null) return false;
+     const state = ownerState(owner);
+@@ -242,14 +246,19 @@ export function createAssetResidencyRegistry(options = {}) {
+ 
+   function beginRequest(key, owner, metadata = {}) {
+     const exactKey = String(key || '');
++    const requestGeneration = registryGeneration;
+     const state = ownerState(owner);
+     const request = {
+       key: exactKey,
+       owner,
+       metadata: { ...metadata },
+-      active: !!state && !state.released,
++      generation: requestGeneration,
++      active: !disposed && !!state && !state.released,
+       startedAtMs: now(),
+-      shouldDecode() { return request.active && !!state && !state.released; },
++      shouldDecode() {
++        return !disposed && request.generation === registryGeneration
++          && request.active && !!state && !state.released;
++      },
+       commit() {
+         const active = request.shouldDecode();
+         finishRequest(request, active ? 'completed' : 'cancelled-after-decode');
+@@ -457,6 +466,7 @@ export function createAssetResidencyRegistry(options = {}) {
+   }
+ 
+   function rotateSector(nextSectorId) {
++    if (disposed) return false;
+     const exactNext = nextSectorId == null ? null : String(nextSectorId);
+     if (exactNext === currentSectorId) return false;
+     if (warmOwner && warmSectorId === currentSectorId) {
+@@ -495,6 +505,7 @@ export function createAssetResidencyRegistry(options = {}) {
+   }
+ 
+   function prepareSectorExit(sectorId = currentSectorId, options = {}) {
++    if (disposed) return 0;
+     const exactSectorId = sectorId == null ? null : String(sectorId);
+     if (exactSectorId == null) return 0;
+     const includePlayer = options.includePlayer === true;
+@@ -519,6 +530,7 @@ export function createAssetResidencyRegistry(options = {}) {
+   }
+ 
+   function handleContextLost() {
++    if (disposed) return false;
+     if (contextLost) return false;
+     contextLost = true;
+     emit('context-lost', { contextGeneration });
+@@ -526,6 +538,7 @@ export function createAssetResidencyRegistry(options = {}) {
+   }
+ 
+   function handleContextRestored() {
++    if (disposed) return false;
+     if (!contextLost) return false;
+     contextLost = false;
+     contextGeneration++;
+@@ -534,12 +547,21 @@ export function createAssetResidencyRegistry(options = {}) {
+   }
+ 
+   function disposeAll(reason = 'registry-disposed', disposeResources = true) {
++    if (disposed) return false;
++    // Close the generation before cancelling anything. Late decode/upload continuations can still
++    // settle, but they cannot register, retain, or commit resources into this dead registry.
++    disposed = true;
++    registryGeneration += 1;
+     const wasContextLost = contextLost;
+     if (!disposeResources) contextLost = true;
+     for (const request of [...pendingRequests]) request.cancel(reason);
+     for (const owner of [...owners.keys()]) releaseOwner(owner, reason);
+     for (const entry of [...assets.values()]) evictIfUnowned(entry, reason);
++    warmOwner = null;
++    warmSectorId = null;
++    currentSectorId = null;
+     contextLost = wasContextLost;
++    return true;
+   }
+ 
+   function diagnostics(diagnosticOptions = {}) {
+@@ -596,6 +618,8 @@ export function createAssetResidencyRegistry(options = {}) {
+       warmSectorId,
+       contextLost,
+       contextGeneration,
++      disposed,
++      generation: registryGeneration,
+       assets: Object.freeze(assetRows),
+       eventHistorySize: events.length,
+       events: Object.freeze(includeEvents ? events.slice() : []),
+@@ -758,6 +782,8 @@ export function createAssetResidencyRegistry(options = {}) {
+     handleContextLost,
+     handleContextRestored,
+     disposeAll,
++    get disposed() { return disposed; },
++    get generation() { return registryGeneration; },
+     has,
+     enforceBudget,
+     diagnostics,
+diff --git a/src/render/partsLibrary.js b/src/render/partsLibrary.js
+index 3d850a94..88cad2f1 100644
+--- a/src/render/partsLibrary.js
++++ b/src/render/partsLibrary.js
+@@ -63,6 +63,43 @@ import {
+ import { PRESENTATION_TIER } from '../world/activityClassification.js';
+ import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
+ 
++function combineAbortSignals(signals) {
++  const unique = [...new Set((signals || []).filter((signal) => (
++    signal && typeof signal === 'object'
++  )))];
++  if (unique.length === 0) return { signal: null, dispose() {} };
++  if (unique.length === 1) return { signal: unique[0], dispose() {} };
++  if (typeof AbortController !== 'function') return { signal: unique[0], dispose() {} };
++
++  const controller = new AbortController();
++  const listeners = [];
++  let disposed = false;
++  const abortFrom = (source) => {
++    if (controller.signal.aborted) return;
++    try { controller.abort(source && source.reason); } catch { controller.abort(); }
++  };
++  for (const source of unique) {
++    if (source.aborted === true) {
++      abortFrom(source);
++      continue;
++    }
++    if (typeof source.addEventListener !== 'function') continue;
++    const listener = () => abortFrom(source);
++    source.addEventListener('abort', listener, { once: true });
++    listeners.push([source, listener]);
++  }
++  const dispose = () => {
++    if (disposed) return;
++    disposed = true;
++    for (const [source, listener] of listeners) {
++      try { source.removeEventListener('abort', listener); } catch { /* best effort */ }
++    }
++    listeners.length = 0;
++  };
++  if (controller.signal.aborted) dispose();
++  return { signal: controller.signal, dispose };
++}
++
+ const flightRenderPackages = createFlightRenderPackageCache();
+ // A composed root is reusable only when it has no renderer-owned package/instance slots. Those
+ // slots carry scene and residency ownership and must be created through their package API. The
+@@ -147,6 +184,9 @@ const sharedReadabilityShellVariants = new Map();
+ const ownerReleaseState = new WeakMap();
+ const compositionPrimitiveCache = new WeakMap();
+ const upgradeQueuesByScene = new WeakMap();
++const upgradeScenesByRenderer = new WeakMap();
++const libraryGenerationByRenderer = new WeakMap();
++const disposedLibraryRenderers = new WeakSet();
+ const bootstrapResidencyOwnersByRenderer = new WeakMap();
+ const authoredInstancedMeshDisposeRegistrationByRenderer = new WeakMap();
+ const authoredInstancedMeshDisposeProbeByRenderer = new WeakMap();
+@@ -224,6 +264,8 @@ export function invalidatePartsLibraryCaches(renderer) {
+   sharedMaterialVariants.clear();
+   sharedReadabilityShellVariants.clear();
+   if (renderer) {
++    disposedLibraryRenderers.delete(renderer);
++    bumpLibraryGeneration(renderer);
+     const bootstrapOwner = bootstrapResidencyOwnersByRenderer.get(renderer);
+     if (bootstrapOwner) {
+       const residency = getAssetResidency(renderer);
+@@ -239,6 +281,55 @@ export function invalidatePartsLibraryCaches(renderer) {
+   }
+ }
+ 
++/**
++ * Retire every renderer-owned authored-library admission. Shared immutable flight/package caches
++ * intentionally remain process-owned; only this renderer's bootstrap leases, promise maps, and
++ * scene queues are released here. A later initialization receives a new generation.
++ */
++export function disposeAuthoredPartLibrary(renderer, reason = 'parts-library-disposed') {
++  if (!renderer) return false;
++  if (disposedLibraryRenderers.has(renderer)) return false;
++  disposedLibraryRenderers.add(renderer);
++  bumpLibraryGeneration(renderer);
++  const scenes = upgradeScenesByRenderer.get(renderer);
++  if (scenes) {
++    for (const scene of [...scenes]) {
++      disposeAuthoredUpgradeQueue(scene, reason);
++    }
++    scenes.clear();
++    upgradeScenesByRenderer.delete(renderer);
++  }
++  const bootstrapOwner = bootstrapResidencyOwnersByRenderer.get(renderer);
++  if (bootstrapOwner) {
++    try { getAssetResidency(renderer)?.releaseOwner(bootstrapOwner, reason); } catch (_) { /* best effort */ }
++    bootstrapResidencyOwnersByRenderer.delete(renderer);
++  }
++  libraryByRenderer.get(renderer)?.clear();
++  resolvedLibraryByRenderer.get(renderer)?.clear();
++  planAdmissionByRenderer.get(renderer)?.clear();
++  decodeAdmissionDiagnosticsByRenderer.delete(renderer);
++  return true;
++}
++
++// Short alias for renderer lifecycle callers that own the complete parts-library boundary.
++export const disposePartsLibrary = disposeAuthoredPartLibrary;
++
++function currentLibraryGeneration(renderer) {
++  if (!renderer) return 0;
++  return Number(libraryGenerationByRenderer.get(renderer)) || 0;
++}
++
++function bumpLibraryGeneration(renderer) {
++  if (!renderer) return 0;
++  const next = currentLibraryGeneration(renderer) + 1;
++  libraryGenerationByRenderer.set(renderer, next);
++  return next;
++}
++
++function libraryGenerationIsCurrent(renderer, generation) {
++  return currentLibraryGeneration(renderer) === generation;
++}
++
+ export function syncAuthoredInstancePools(scene, opts = {}) {
+   const state = scene && sceneStates.get(scene);
+   return state ? syncSceneState(state, opts) : null;
+@@ -1638,6 +1729,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
+       residencyRole: options.residencyRole,
+       sectorId: options.sectorId,
+       isResidencyOwnerActive: options.isResidencyOwnerActive,
++      signal: options.signal,
+     });
+   } catch (error) {
+     return failAuthoredCargoCapsuleAdmission(
+@@ -2180,6 +2272,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
+       residencyRole: options.residencyRole,
+       sectorId: options.sectorId,
+       isResidencyOwnerActive: options.isResidencyOwnerActive,
++      signal: options.signal,
+     });
+   } catch (error) {
+     handoffBootstrapIfCovered(renderer);
+@@ -3074,6 +3167,7 @@ function placeFileForEntity(entity) {
+ 
+ export function enqueueBoundaryUpgrade(scene, job) {
+   const state = upgradeQueueState(scene);
++  if (state.disposed === true) return Promise.resolve({ status: 'cancelled-after-dispose', boundary: job?.boundary || null });
+   if (!job || !job.boundary) return Promise.resolve({ status: 'invalid-upgrade-request' });
+   const boundaryJob = state.byBoundary.get(job.boundary);
+   if (boundaryJob) return boundaryJob.completion;
+@@ -3084,6 +3178,10 @@ export function enqueueBoundaryUpgrade(scene, job) {
+   const completion = new Promise((resolve) => { resolveCompletion = resolve; });
+   const queuedJob = {
+     ...job,
++    // Own a shallow options envelope so installing the queue's signal/active predicate never
++    // mutates a caller-owned object that may be reused by a later renderer generation.
++    options: { ...(job.options || {}) },
++    abortController: typeof AbortController === 'function' ? new AbortController() : null,
+     priority: authoredUpgradePriority(job),
+     key: authoredUpgradeKey(job),
+     sequence: state.nextSequence++,
+@@ -3093,10 +3191,30 @@ export function enqueueBoundaryUpgrade(scene, job) {
+     resolveCompletion,
+     completionSettled: false,
+     lifecycle: 'queued',
++    queueGeneration: state.generation,
++    initialBoundaryState: job.boundary?.userData?.authoredAssetState,
++    signalBinding: null,
+   };
++  queuedJob.signalBinding = combineAbortSignals([
++    queuedJob.options.signal,
++    queuedJob.abortController && queuedJob.abortController.signal,
++  ]);
++  if (queuedJob.signalBinding.signal) queuedJob.options.signal = queuedJob.signalBinding.signal;
++  if (queuedJob.renderer) {
++    state.renderers.add(queuedJob.renderer);
++    let scenes = upgradeScenesByRenderer.get(queuedJob.renderer);
++    if (!scenes) {
++      scenes = new Set();
++      upgradeScenesByRenderer.set(queuedJob.renderer, scenes);
++    }
++    scenes.add(scene);
++  }
+   const keyedJob = state.byKey.get(queuedJob.key);
+   if (keyedJob) {
+-    if (jobStillNeeded(state, keyedJob)) return keyedJob.completion;
++    if (jobStillNeeded(state, keyedJob)) {
++      queuedJob.signalBinding?.dispose?.();
++      return keyedJob.completion;
++    }
+     if (keyedJob.lifecycle === 'queued') {
+       const staleIndex = state.jobs.indexOf(keyedJob);
+       if (staleIndex >= 0) state.jobs.splice(staleIndex, 1);
+@@ -3121,6 +3239,14 @@ function invalidateScheduledUpgradeFrame(state) {
+   state.frameScheduleToken = (Number(state.frameScheduleToken) || 0) + 1;
+   const invalidated = state.frameScheduled === true;
+   state.frameScheduled = false;
++  const handle = state.frameHandle;
++  state.frameHandle = null;
++  if (handle != null) {
++    try {
++      if (typeof globalThis.cancelAnimationFrame === 'function') globalThis.cancelAnimationFrame(handle);
++      else clearTimeout(handle);
++    } catch (_) { /* generation token remains the final guard */ }
++  }
+   return invalidated;
+ }
+ 
+@@ -3133,6 +3259,7 @@ function invalidateScheduledUpgradeFrame(state) {
+  */
+ export async function prepareFirstQueuedAuthoredBoundaryForOpening(scene) {
+   const state = upgradeQueueState(scene);
++  if (state.disposed === true) return { prepared: false, cancelled: true, source: 'disposed' };
+   state.openingHandoffHold = true;
+   invalidateScheduledUpgradeFrame(state);
+ 
+@@ -3166,21 +3293,74 @@ export async function prepareFirstQueuedAuthoredBoundaryForOpening(scene) {
+ export function resumeAuthoredUpgradeQueueAfterOpening(scene) {
+   const state = scene && upgradeQueuesByScene.get(scene);
+   if (!state) return false;
++  if (state.disposed === true) return false;
+   const held = state.openingHandoffHold === true;
+   state.openingHandoffHold = false;
+   scheduleNextUpgradeFrame(state);
+   return held;
+ }
+ 
++/** Retire one scene's authored upgrade lane. In-flight user work is never forcibly replaced; its
++ * owner token is invalidated and any late result is ignored, while queued jobs settle cancelled
++ * immediately so renderer teardown cannot leave receipts pending forever. */
++export function disposeAuthoredUpgradeQueue(scene, reason = 'authored-upgrade-queue-disposed') {
++  const state = scene && upgradeQueuesByScene.get(scene);
++  if (!state) return false;
++  if (state.disposed === true) return false;
++  state.disposed = true;
++  state.generation += 1;
++  const renderers = new Set(state.renderers || []);
++  state.openingHandoffHold = false;
++  invalidateScheduledUpgradeFrame(state);
++
++  for (const job of [...state.jobs]) {
++    const index = state.jobs.indexOf(job);
++    if (index >= 0) state.jobs.splice(index, 1);
++    cancelQueuedJob(state, job, reason);
++  }
++  for (const job of [...state.byBoundary.values()]) {
++    if (job.lifecycle !== 'in-flight') continue;
++    job.cancelRequested = true;
++    try { job.abortController?.abort(reason); } catch (_) { /* only an owned controller is used */ }
++    job.signalBinding?.dispose?.();
++    try { job.cancel?.(reason); } catch (_) { /* optional owner cancellation is best effort */ }
++    releaseBoundaryResidency(job.renderer, job.boundary, reason);
++    job.lifecycle = 'cancelled';
++    settleUpgradeJob(job, 'cancelled-after-dispose');
++  }
++  state.jobs.length = 0;
++  state.byBoundary.clear();
++  state.byKey.clear();
++  state.running = false;
++  state.frameScheduled = false;
++  if (state.scene && state.scene.userData
++      && state.scene.userData.authoredUpgradeDiagnostics === state.diagnostics) {
++    state.scene.userData.authoredUpgradeDiagnostics = null;
++  }
++  upgradeQueuesByScene.delete(scene);
++  for (const renderer of renderers) {
++    const scenes = upgradeScenesByRenderer.get(renderer);
++    if (!scenes) continue;
++    scenes.delete(scene);
++    if (scenes.size === 0) upgradeScenesByRenderer.delete(renderer);
++  }
++  state.renderers?.clear?.();
++  return true;
++}
++
+ function upgradeQueueState(scene) {
+   let state = upgradeQueuesByScene.get(scene);
+   if (!state) {
+     state = {
+       scene,
++      disposed: false,
++      generation: 0,
++      renderers: new Set(),
+       jobs: [],
+       running: false,
+       inFlight: 0,
+       frameScheduled: false,
++      frameHandle: null,
+       frameScheduleToken: 0,
+       openingHandoffHold: false,
+       lateSkips: 0,
+@@ -3351,6 +3531,7 @@ function residencyOptionsForBoundary(entity, boundary, renderer) {
+       && typeof liveState.render.prepareAuthoredGpuResidency === 'function'
+       ? (root, admissionOptions = {}) => liveState.render.prepareAuthoredGpuResidency(root, {
+           isActive: admissionOptions.isResidencyOwnerActive,
++          signal: admissionOptions.signal,
+         })
+       : null,
+     overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
+@@ -3427,12 +3608,15 @@ function cleanupQueuedJob(state, job) {
+   if (state.byKey.get(job.key) === job) state.byKey.delete(job.key);
+ }
+ 
+-function cancelQueuedJob(state, job) {
++function cancelQueuedJob(state, job, reason = 'upgrade-job-cancelled') {
+   if (!job || job.lifecycle === 'in-flight' || job.lifecycle === 'settled') return false;
++  job.cancelRequested = true;
+   job.lifecycle = 'cancelled';
++  try { job.abortController?.abort(reason); } catch (_) { /* only this queue's controller is owned */ }
++  job.signalBinding?.dispose?.();
+   cleanupQueuedJob(state, job);
+   const residency = job && job.renderer && getAssetResidency(job.renderer);
+-  if (residency && job.boundary) residency.releaseOwner(job.boundary, 'upgrade-job-cancelled');
++  if (residency && job.boundary) residency.releaseOwner(job.boundary, reason);
+   if (job.boundary && job.boundary.userData) {
+     job.boundary.userData.authoredAssetState = 'cancelled-before-load';
+   }
+@@ -3485,17 +3669,18 @@ function scheduleUpgradeFrame(callback) {
+   const raf = globalThis && typeof globalThis.requestAnimationFrame === 'function'
+     ? globalThis.requestAnimationFrame.bind(globalThis)
+     : null;
+-  if (raf) raf(callback);
+-  else setTimeout(callback, 16);
++  if (raf) return raf(callback);
++  return setTimeout(callback, 16);
+ }
+ 
+ function processUpgradeQueue(state) {
++  if (!state || state.disposed === true) return;
+   state.running = true;
+   scheduleNextUpgradeFrame(state);
+ }
+ 
+ function scheduleNextUpgradeFrame(state) {
+-  if (!state || state.frameScheduled || state.openingHandoffHold === true) return;
++  if (!state || state.disposed === true || state.frameScheduled || state.openingHandoffHold === true) return;
+   if (state.jobs.length === 0) {
+     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
+     publishUpgradeDiagnostics(state);
+@@ -3507,13 +3692,17 @@ function scheduleNextUpgradeFrame(state) {
+   state.frameScheduled = true;
+   const token = (Number(state.frameScheduleToken) || 0) + 1;
+   state.frameScheduleToken = token;
+-  scheduleUpgradeFrame(() => {
+-    if (state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
++  const queueGeneration = state.generation;
++  state.frameHandle = scheduleUpgradeFrame(() => {
++    state.frameHandle = null;
++    if (state.disposed === true || state.generation !== queueGeneration
++      || state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
+     admitNextUpgradeJob(state);
+   });
+ }
+ 
+ function admitNextUpgradeJob(state) {
++  if (!state || state.disposed === true) return null;
+   state.frameScheduled = false;
+   const live = authoredRuntimeState();
+   if (live && live.mode === 'flight') {
+@@ -3546,6 +3735,18 @@ function admitNextUpgradeJob(state) {
+ 
+   job.lifecycle = 'in-flight';
+   state.inFlight++;
++  const queueGeneration = state.generation;
++  const jobIsActive = () => state.disposed !== true
++    && state.generation === queueGeneration
++    && job.cancelRequested !== true
++    && job.lifecycle === 'in-flight'
++    && job.options?.signal?.aborted !== true;
++  if (job.options && Object.isExtensible(job.options)) {
++    const priorIsActive = job.options.isResidencyOwnerActive;
++    job.options.isResidencyOwnerActive = () => (
++      jobIsActive() && (typeof priorIsActive !== 'function' || priorIsActive() === true)
++    );
++  }
+   const diagnostic = beginUpgradeDiagnostic(state, job);
+   let serialSlotReleased = false;
+   const releaseSerialSlotAfterPipelineStaging = () => {
+@@ -3578,12 +3779,31 @@ function admitNextUpgradeJob(state) {
+     );
+   let result = null;
+   let failure = null;
+-  Promise.resolve().then(run).then((value) => {
++  Promise.resolve().then(() => {
++    if (!jobIsActive()) return { status: 'cancelled-after-dispose' };
++    return run({
++      signal: job.options?.signal || null,
++      isActive: jobIsActive,
++    });
++  }).then((value) => {
++    if (!jobIsActive()) {
++      result = null;
++      diagnostic.status = 'cancelled-after-dispose';
++      return;
++    }
+     result = value;
+-    diagnostic.status = job.boundary && job.boundary.userData
+-      ? job.boundary.userData.authoredAssetState || 'completed'
++    const boundaryState = job.boundary && job.boundary.userData
++      ? job.boundary.userData.authoredAssetState
++      : null;
++    diagnostic.status = boundaryState && boundaryState !== job.initialBoundaryState
++      ? boundaryState
+       : 'completed';
+   }).catch((error) => {
++    if (!jobIsActive()) {
++      failure = null;
++      diagnostic.status = 'cancelled-after-dispose';
++      return;
++    }
+     failure = error;
+     diagnostic.status = 'fallback-after-error';
+     diagnostic.error = error && error.message ? error.message : String(error);
+@@ -3592,12 +3812,13 @@ function admitNextUpgradeJob(state) {
+     console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
+   })
+     .finally(() => {
++      job.signalBinding?.dispose?.();
+       if (!serialSlotReleased) state.inFlight = Math.max(0, state.inFlight - 1);
+       job.lifecycle = 'settled';
+       finishUpgradeDiagnostic(state, job, diagnostic);
+       cleanupQueuedJob(state, job);
+       settleUpgradeJob(job, diagnostic.status, result, failure);
+-      scheduleNextUpgradeFrame(state);
++      if (state.disposed !== true) scheduleNextUpgradeFrame(state);
+     });
+   scheduleNextUpgradeFrame(state);
+   return job.completion;
+@@ -3758,6 +3979,7 @@ function resourceBytesForUrls(urls) {
+ }
+ 
+ function publishUpgradeDiagnostics(state, renderer = null) {
++  if (!state || state.disposed === true) return;
+   const decode = renderer && decodeAdmissionDiagnosticsByRenderer.get(renderer);
+   if (decode) {
+     state.diagnostics.maxConcurrentDecode = Math.max(state.diagnostics.maxConcurrentDecode, decode.maxConcurrent);
+@@ -3996,6 +4218,7 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
+   const gpuResidency = typeof prepareResidency === 'function'
+     ? await prepareResidency(root, {
+         isResidencyOwnerActive: options.isResidencyOwnerActive,
++        signal: options.signal,
+       })
+     : { skipped: true, reason: 'GPU residency uploader unavailable' };
+   assertAuthoredVisualPreparationActive(options, 'after-gpu-residency');
+@@ -4054,6 +4277,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene,
+   let swapped = false;
+   let authored = null;
+   try {
++    if (!authoredBoundaryPreparationActive(options)) return false;
+     if (!mayComposeAuthoredShipLive({
+       ...options,
+       fallbackRoot,
+@@ -4078,6 +4302,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene,
+       try { await prefetchedLibrary; } catch { /* live admission below is authoritative */ }
+     }
+     const library = await preloadAuthoredAssetsForEntity(renderer, entity, options);
++    if (!authoredBoundaryPreparationActive(options)) return false;
+     const compositionStartedAtMs = monotonicNow();
+     try {
+       authored = buildComposedShip(entity, library, scene, boundary, options);
+@@ -4086,6 +4311,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene,
+       const tier1 = tier1CausalCounters();
+       if (tier1) tier1.countAuthoredAdmissionJob('composition');
+     }
++    if (!authoredBoundaryPreparationActive(options)) return false;
+     if (!authored) {
+       boundary.userData.authoredAssetState = 'unavailable';
+       boundary.userData.authoredVisualRoot = 'none-build-failed';
+@@ -4101,6 +4327,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene,
+     }
+     boundary.userData.authoredAssetState = 'compiling-pipelines';
+     const completeAdmission = async () => {
++      if (!authoredBoundaryPreparationActive(options)) return false;
+       let pipelineReady;
+       const pipelineStartedAtMs = monotonicNow();
+       try {
+@@ -4111,6 +4338,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene,
+         if (tier1) tier1.countAuthoredAdmissionJob('pipeline-prepare');
+       }
+       await pipelineReady;
++      if (!authoredBoundaryPreparationActive(options)) return false;
+       const commitStartedAtMs = monotonicNow();
+       try {
+         swapped = await commitAuthoredBoundary(
+@@ -4146,11 +4374,20 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene,
+     }
+     return await completeAdmission();
+   } catch (error) {
++    if (!authoredBoundaryPreparationActive(options)) {
++      releaseBoundaryResidency(renderer, boundary, 'authored-upgrade-owner-retired');
++      return false;
++    }
+     await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored);
+     return false;
+   }
+ }
+ 
++function authoredBoundaryPreparationActive(options) {
++  return !(typeof options?.isResidencyOwnerActive === 'function')
++    || options.isResidencyOwnerActive() === true;
++}
++
+ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored = null) {
+   if (!swapped) {
+     releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed');
+@@ -4570,6 +4807,8 @@ function syncActiveSurface(boundary, active) {
+ }
+ 
+ function loadCanonicalLibrary(renderer, options = {}) {
++  disposedLibraryRenderers.delete(renderer);
++  const rendererGeneration = currentLibraryGeneration(renderer);
+   const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
+   const bootstrapPlan = bootstrapPlanForOptions(options);
+   const cacheKey = libraryCacheKey(partRoot, options, bootstrapPlan);
+@@ -4586,9 +4825,13 @@ function loadCanonicalLibrary(renderer, options = {}) {
+       residencyOwner: bootstrapOwner,
+       residencyRole: 'bootstrap',
+       sectorId: 'sector_helios_prime',
+-      isResidencyOwnerActive: () => true,
++      isResidencyOwnerActive: () => libraryGenerationIsCurrent(renderer, rendererGeneration),
+     }, new Map(), bootstrapPlan)
+       .then((loaded) => {
++        if (!libraryGenerationIsCurrent(renderer, rendererGeneration)) {
++          try { getAssetResidency(renderer)?.releaseOwner(bootstrapOwner, 'stale-library-generation'); } catch (_) {}
++          throw new Error('Authored parts library generation retired during load.');
++        }
+         const library = assertLibraryPlanUsable(loaded, bootstrapPlan, options.libraryScope);
+         let resolved = resolvedLibraryByRenderer.get(renderer);
+         if (!resolved) {
+@@ -4608,12 +4851,14 @@ function loadCanonicalLibrary(renderer, options = {}) {
+ }
+ 
+ async function ensureEntityLibrary(renderer, entity, options = {}) {
++  const rendererGeneration = currentLibraryGeneration(renderer);
+   const library = await loadCanonicalLibrary(renderer, options);
+   let plan = authoredPreloadPlanForEntity(entity, options);
+   // Combat/traffic identity can land while a captured plan's GLB is still decoding. Keep admitting
+   // until the live selector's records are in the library Map — sector prewarm residency is not
+   // that Map, so compose would otherwise throw on a hull that was never admitted.
+   for (let attempt = 0; attempt < 4; attempt++) {
++    if (!libraryGenerationIsCurrent(renderer, rendererGeneration)) return library;
+     if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
+       return library;
+     }
+@@ -4633,6 +4878,7 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
+ }
+ 
+ function admitEntityPlan(renderer, options, library, plan) {
++  const rendererGeneration = currentLibraryGeneration(renderer);
+   const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
+   let lanes = planAdmissionByRenderer.get(renderer);
+   if (!lanes) {
+@@ -4641,6 +4887,7 @@ function admitEntityPlan(renderer, options, library, plan) {
+   }
+   const previous = lanes.get(partRoot) || Promise.resolve();
+   const task = previous.catch(() => {}).then(async () => {
++    if (!libraryGenerationIsCurrent(renderer, rendererGeneration)) return library;
+     // Re-check only after earlier demand has committed its records. Checking before joining the lane
+     // permits duplicate decodes; copying slot arrays outside the lane permits last-writer data loss.
+     if (!libraryHasPreloadPlan(library, plan)) {
+@@ -4686,10 +4933,12 @@ async function loadPlanIntoLibrary(renderer, options, library, plan) {
+           residencyRole: options.residencyRole,
+           sectorId: options.sectorId,
+           isResidencyOwnerActive: options.isResidencyOwnerActive,
++          signal: options.signal,
+         });
+       } finally {
+         finishDecodeAdmission(renderer, diagnostic);
+       }
++      if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) break;
+       if (record) records.push(record);
+     }
+     library.set(slot, records);
+diff --git a/src/render/pipelineReadiness.js b/src/render/pipelineReadiness.js
+index e3845ad4..b6442fcb 100644
+--- a/src/render/pipelineReadiness.js
++++ b/src/render/pipelineReadiness.js
+@@ -1,5 +1,42 @@
+ import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
+ 
++function combineAbortSignals(signals) {
++  const unique = [...new Set((signals || []).filter((signal) => (
++    signal && typeof signal === 'object'
++  )))];
++  if (unique.length === 0) return { signal: null, dispose() {} };
++  if (unique.length === 1) return { signal: unique[0], dispose() {} };
++  if (typeof AbortController !== 'function') return { signal: unique[0], dispose() {} };
++
++  const controller = new AbortController();
++  const listeners = [];
++  let disposed = false;
++  const abortFrom = (source) => {
++    if (controller.signal.aborted) return;
++    try { controller.abort(source && source.reason); } catch { controller.abort(); }
++  };
++  for (const source of unique) {
++    if (source.aborted === true) {
++      abortFrom(source);
++      continue;
++    }
++    if (typeof source.addEventListener !== 'function') continue;
++    const listener = () => abortFrom(source);
++    source.addEventListener('abort', listener, { once: true });
++    listeners.push([source, listener]);
++  }
++  const dispose = () => {
++    if (disposed) return;
++    disposed = true;
++    for (const [source, listener] of listeners) {
++      try { source.removeEventListener('abort', listener); } catch { /* best effort */ }
++    }
++    listeners.length = 0;
++  };
++  if (controller.signal.aborted) dispose();
++  return { signal: controller.signal, dispose };
++}
++
+ function gpuContextIsLost(state) {
+   const render = state && state.render;
+   if (!render) return false;
+@@ -66,15 +103,39 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
+   let boundedResume = false;
+   let resumeScheduled = false;
+   let skippedResumeForLatePresent = false;
++  let resumeHandle = null;
++  let disposed = false;
++  let generation = 0;
++
++  function cancellationResult(reason = 'pipeline-admission-disposed') {
++    return Object.freeze({ skipped: true, cancelled: true, reason });
++  }
++
++  function cancelScheduledResume() {
++    if (resumeHandle == null) return;
++    const handle = resumeHandle;
++    resumeHandle = null;
++    try {
++      if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(handle);
++      // A test/host scheduler may use setTimeout even when rAF exists. Clearing both host timer
++      // classes is harmless and makes the owner cleanup complete for either scheduler.
++      clearTimeout(handle);
++    } catch {
++      // A custom scheduler may return a non-cancellable receipt. Generation checks still prevent
++      // its late callback from doing work.
++    }
++  }
+ 
+   function clearTimers() {
+     if (quietTimer != null) clearTimeout(quietTimer);
+     if (maxTimer != null) clearTimeout(maxTimer);
+     quietTimer = null;
+     maxTimer = null;
++    cancelScheduledResume();
+   }
+ 
+   function scheduleFlush() {
++    if (disposed) return;
+     if (deferAutoFlush()) return;
+     if (boundedResume) {
+       scheduleResumedBatch();
+@@ -120,6 +181,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
+     batchLimit = Number.POSITIVE_INFINITY,
+     scheduleRemaining = true,
+   ) {
++    if (disposed) return Promise.resolve(cancellationResult());
+     const batch = [];
+     const remaining = [];
+     for (const entry of queued) {
+@@ -130,13 +192,27 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
+     clearTimers();
+     queued = remaining;
+     const subjects = batch.map((entry) => entry.subject);
+-    const run = compileTail.then(() => invokeCompileBatch(subjects, path));
++    const runGeneration = generation;
++    const run = compileTail.then(() => {
++      if (disposed || generation !== runGeneration) return cancellationResult();
++      return invokeCompileBatch(subjects, path);
++    });
+     // Render-target selection is global renderer state. Keep batches serialized even if a second
+     // runway fills while the first one is still waiting on the graphics driver.
+     compileTail = run.catch(() => null);
+     run.then(
+-      (result) => { for (const entry of batch) entry.resolve(result); },
+-      (error) => { for (const entry of batch) entry.reject(error); },
++      (result) => {
++        for (const entry of batch) {
++          if (entry.cancelled) continue;
++          entry.resolve(result);
++        }
++      },
++      (error) => {
++        for (const entry of batch) {
++          if (entry.cancelled) continue;
++          entry.reject(error);
++        }
++      },
+     );
+     if (scheduleRemaining && queued.length > 0) scheduleFlush();
+     return run;
+@@ -147,9 +223,12 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
+   }
+ 
+   function scheduleResumedBatch() {
+-    if (!boundedResume || resumeScheduled || deferAutoFlush() || queued.length === 0) return;
++    if (disposed || !boundedResume || resumeScheduled || deferAutoFlush() || queued.length === 0) return;
+     resumeScheduled = true;
+-    scheduleResume(() => {
++    const scheduledGeneration = generation;
++    resumeHandle = scheduleResume(() => {
++      resumeHandle = null;
++      if (disposed || generation !== scheduledGeneration) return;
+       resumeScheduled = false;
+       const lastPresentDtMs = typeof options.getLastPresentDtMs === 'function'
+         ? options.getLastPresentDtMs()
+@@ -165,6 +244,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
+   }
+ 
+   function flushResumedBatch() {
++    if (disposed) return Promise.resolve(cancellationResult());
+     if (deferAutoFlush() || queued.length === 0) return compileTail;
+     const run = flushQueuedThrough(
+       Number.POSITIVE_INFINITY,
+@@ -210,6 +290,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
+   }
+ 
+   async function waitForPending() {
++    if (disposed) return { skipped: true, cancelled: true, pendingCount: 0 };
+     while (pending.size > 0) {
+       flushQueued();
+       await Promise.all([...pending].map((entry) => entry.completion));
+@@ -221,8 +302,29 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
+     return { skipped: false, pendingCount: 0 };
+   }
+ 
++  function dispose(reason = 'pipeline-admission-disposed') {
++    if (disposed) return false;
++    // Invalidate first. A compileBatch promise already inside Three cannot be cancelled by this
++    // owner, but its late settlement must not resolve a later renderer generation's receipts.
++    disposed = true;
++    generation += 1;
++    clearTimers();
++    boundedResume = false;
++    resumeScheduled = false;
++    skippedResumeForLatePresent = false;
++    const cancelled = cancellationResult(reason);
++    queued = [];
++    for (const entry of [...pending]) {
++      entry.cancelled = true;
++      entry.resolve(cancelled);
++    }
++    pending.clear();
++    return true;
++  }
++
+   return {
+     compile(subject) {
++      if (disposed) return Promise.resolve(cancellationResult());
+       let resolve;
+       let reject;
+       const compilation = new Promise((res, rej) => { resolve = res; reject = rej; });
+@@ -232,6 +334,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
+         resolve,
+         reject,
+         completion: null,
++        cancelled: false,
+       };
+       entry.completion = compilation.finally(() => pending.delete(entry));
+       pending.add(entry);
+@@ -245,18 +348,28 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
+     compileExplicit(subject) {
+       // Diagnostics may deliberately compile a complete installed scene after a render-target
+       // switch. Keep that opt-in pass serialized, but never attach the startup moving-fixpoint wait.
++      if (disposed) return Promise.resolve(cancellationResult());
+       flushQueued();
+-      const run = compileTail.then(() => invokeCompileBatch([subject], 'explicit'));
++      const runGeneration = generation;
++      const run = compileTail.then(() => {
++        if (disposed || generation !== runGeneration) return cancellationResult();
++        return invokeCompileBatch([subject], 'explicit');
++      });
+       compileTail = run.catch(() => null);
+       return run;
+     },
+     resumeAutoFlush() {
++      if (disposed) return Promise.resolve(cancellationResult());
+       boundedResume = true;
+       clearTimers();
+       if (deferAutoFlush()) return compileTail;
+       return flushResumedBatch();
+     },
+     waitForPending,
++    dispose,
++    cancel: dispose,
++    get disposed() { return disposed; },
++    get generation() { return generation; },
+     get pendingCount() { return pending.size; },
+   };
+ }
+@@ -271,6 +384,8 @@ export function createGpuResidencyAdmissionTracker(prepare) {
+   const pendingBySubject = new Map();
+   const capturedPlans = new WeakMap();
+   let nextAdmissionId = 0;
++  let disposed = false;
++  let generation = 0;
+ 
+   function captureEntries(entries, pendingCount, extra = {}) {
+     const plan = Object.freeze({
+@@ -310,6 +425,7 @@ export function createGpuResidencyAdmissionTracker(prepare) {
+   }
+ 
+   async function waitForPending() {
++    if (disposed) return { skipped: true, cancelled: true, pendingCount: 0 };
+     while (pending.size > 0) {
+       await Promise.all([...pending].map((entry) => entry.completion));
+     }
+@@ -320,35 +436,112 @@ export function createGpuResidencyAdmissionTracker(prepare) {
+     return { skipped: false, pendingCount: 0 };
+   }
+ 
++  function dispose(reason = 'gpu-residency-admission-disposed') {
++    if (disposed) return false;
++    disposed = true;
++    generation += 1;
++    const cancelled = Object.freeze({ skipped: true, cancelled: true, reason });
++    for (const entry of [...pending]) {
++      entry.cancelled = true;
++      entry.settled = true;
++      try { entry.controller?.abort(reason); } catch { /* best effort */ }
++      entry.signalBinding?.dispose?.();
++      entry.resolveCompletion(cancelled);
++      pending.delete(entry);
++      const subjectEntries = pendingBySubject.get(entry.subject);
++      if (subjectEntries) {
++        subjectEntries.delete(entry);
++        if (subjectEntries.size === 0) pendingBySubject.delete(entry.subject);
++      }
++    }
++    return true;
++  }
++
+   return {
+     prepare(subject, options = {}) {
+-      const preparation = Promise.resolve().then(() => prepare(subject, options));
+       const entry = {
+         id: ++nextAdmissionId,
+         subject,
+         completion: null,
++        resolveCompletion: null,
++        rejectCompletion: null,
++        settled: false,
++        cancelled: false,
++        generation,
++        controller: typeof AbortController === 'function' ? new AbortController() : null,
+       };
+-      entry.completion = preparation.finally(() => {
++      entry.completion = new Promise((resolve, reject) => {
++        entry.resolveCompletion = resolve;
++        entry.rejectCompletion = reject;
++      });
++      const cancellationResult = () => {
++        const ownerCancelled = disposed || generation !== entry.generation || entry.cancelled;
++        const signalCancelled = entry.signalBinding?.signal?.aborted === true;
++        if (!ownerCancelled && !signalCancelled) return null;
++        return Object.freeze({
++          skipped: true,
++          cancelled: true,
++          reason: ownerCancelled
++            ? 'gpu-residency-admission-disposed'
++            : 'gpu-residency-admission-aborted',
++        });
++      };
++      const finish = (result, error = null) => {
++        if (entry.settled) return;
++        entry.settled = true;
+         pending.delete(entry);
+-        const entries = pendingBySubject.get(subject);
+-        if (entries) {
+-          entries.delete(entry);
+-          if (entries.size === 0) pendingBySubject.delete(subject);
++        const subjectEntries = pendingBySubject.get(subject);
++        if (subjectEntries) {
++          subjectEntries.delete(entry);
++          if (subjectEntries.size === 0) pendingBySubject.delete(subject);
+         }
++        entry.signalBinding?.dispose?.();
++        if (error) entry.rejectCompletion(error);
++        else entry.resolveCompletion(result);
++      };
++      const preparation = Promise.resolve().then(() => {
++        const beforeBinding = cancellationResult();
++        if (beforeBinding) return beforeBinding;
++        entry.signalBinding = combineAbortSignals([
++          options.signal,
++          entry.controller && entry.controller.signal,
++        ]);
++        const afterBinding = cancellationResult();
++        if (afterBinding) return afterBinding;
++        const nextOptions = entry.signalBinding.signal
++          ? { ...options, signal: entry.signalBinding.signal }
++          : options;
++        return prepare(subject, nextOptions);
+       });
++      entry.work = preparation;
++      preparation.then(
++        (result) => finish(cancellationResult() || result),
++        (error) => {
++          const cancelled = cancellationResult();
++          if (cancelled) finish(cancelled);
++          else finish(null, error);
++        },
++      );
++      // Disposal can settle the public receipt before underlying work settles. Observe that work
++      // separately so a late rejection cannot become an unhandled promise rejection.
++      preparation.catch(() => {});
+       pending.add(entry);
+-      let entries = pendingBySubject.get(subject);
+-      if (!entries) {
+-        entries = new Set();
+-        pendingBySubject.set(subject, entries);
++      let subjectEntries = pendingBySubject.get(subject);
++      if (!subjectEntries) {
++        subjectEntries = new Set();
++        pendingBySubject.set(subject, subjectEntries);
+       }
+-      entries.add(entry);
++      subjectEntries.add(entry);
+       return entry.completion;
+     },
+     capturePending,
+     captureSubjects,
+     waitForCaptured,
+     waitForPending,
++    dispose,
++    cancel: dispose,
++    get disposed() { return disposed; },
++    get generation() { return generation; },
+     get pendingCount() { return pending.size; },
+   };
+ }

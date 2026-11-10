@@ -1,0 +1,149 @@
+// stationSideEvents.js — BP-11 packet A6 "Station Side-Events", PURE DATA + SEEDED PLANNER.
+// (See design/revamp/detail/A_sector_station.md packet A6.)
+//
+// A station has a life that isn't about the player: a hauler eases into dock, a patrol wing
+// launches, a repair drone crawls a hull, a cargo tractor tugs a pod. This file is the "what
+// could happen at a station today" layer — pure shape defs + a deterministic per-station-day
+// planner, mirroring encounters.js + encounterDirector's planEncounters() split. No imports beyond
+// core/rng, no state reads, no DOM, no Math.random.
+//
+// Budget model (packet contract): most side-events are COSMETIC ambient traffic (budget 0 — drawn
+// by the graphics lane from the `station:sideEvent` seam, never a counted sim ship). Only a
+// launching PATROL is a real spawnBudget client (budget 1, one slot, released when it leaves the
+// bubble). The director (stationSideEventDirector.js) enforces this; here budget is just data.
+//
+// Determinism: the planner draws EXACTLY three floats per item in a fixed order (gap, kind,
+// bearing) so a later edit to one field can never reshuffle another's stream; delays are built
+// cumulatively so the schedule is constructed already-ascending (no sort — no stable-sort trap).
+
+import { hash32, mulberry32 } from '../core/rng.js';
+import { stationShiftAt, RUSH_AFTER_S } from './worldCalendar.js';
+
+// Side-event shape catalogue. `affinity: null` = fits any station type. `budget` is the spawnBudget
+// cost (0 cosmetic seam, 1 real launched patrol). `path` is a symbolic movement the graphics lane
+// resolves against the A2 bubble geometry. `durationS` = how long the mover lives before it leaves.
+export const SIDE_EVENTS = Object.freeze({
+  hauler_dock:   Object.freeze({ budget: 0, path: 'inbound-to-docking',    durationS: 45, affinity: Object.freeze(['trade_hub', 'refinery', 'fab', 'mining']) }),
+  patrol_launch: Object.freeze({ budget: 1, path: 'outbound-past-traffic', durationS: 60, affinity: Object.freeze(['military', 'trade_hub']) }),
+  repair_drone:  Object.freeze({ budget: 0, path: 'hull-crawl',            durationS: 90, affinity: null }),
+  cargo_tractor: Object.freeze({ budget: 0, path: 'docking-orbit',         durationS: 40, affinity: Object.freeze(['trade_hub', 'mining', 'refinery', 'fab', 'blackmarket']) }),
+  // A research array slews a calibration boom across its near-field arc and reads the telemetry
+  // return: the research station's own line of work, never a launched combat ship. Cosmetic seam
+  // (budget 0), same as the other ambient movers.
+  sensor_sweep:  Object.freeze({ budget: 0, path: 'dish-arc',              durationS: 70, affinity: Object.freeze(['research']) }),
+  // A black market's business is hulls nobody logs: an unmanifested runner slips in lights-out.
+  // No declared freight (hauler_dock reads wrong here), no patrol — just the den doing den work.
+  quiet_dock:    Object.freeze({ budget: 0, path: 'inbound-to-docking',    durationS: 35, affinity: Object.freeze(['blackmarket']) }),
+  // A foundry expels spent slag from its crucible vents along an outbound chute: molten matter
+  // spilling past the apron where traffic on the lane can see the incandescent run. Cosmetic seam
+  // (budget 0), never a launched combat ship.
+  slag_pour:     Object.freeze({ budget: 0, path: 'outbound-past-traffic', durationS: 50, affinity: Object.freeze(['fab', 'foundry']) }),
+});
+
+// Stable id order for the seeded pick (static literal → insertion-order-safe; never Object.keys of
+// a runtime-populated map).
+export const SIDE_EVENT_IDS = Object.freeze(['hauler_dock', 'patrol_launch', 'repair_drone', 'cargo_tractor', 'sensor_sweep', 'quiet_dock', 'slag_pour']);
+
+const TWO_PI = Math.PI * 2;
+
+/**
+ * planStationSideEvents(seed, sectorId, dayIndex, stationId, stationTypeId)
+ *   -> Array<{ eventId, kind, budget, path, durationS, delay, bearing }>
+ *
+ * PURE + deterministic: same (seed, sectorId, dayIndex, stationId) → identical schedule. Filtered
+ * by station-type affinity (unknown/typeless station → the universal repair_drone). Missing key
+ * parts → [] (never plan a phantom 'undefined' schedule — hash32 joins with '|', so an undefined
+ * part would silently hash to a valid-looking key). Delays ascend by construction.
+ */
+export function planStationSideEvents(seed, sectorId, dayIndex, stationId, stationTypeId) {
+  if (sectorId == null || stationId == null) return [];
+  const day = dayIndex | 0;
+  const rng = mulberry32(hash32(seed == null ? 0 : seed, String(sectorId), day, String(stationId)));
+
+  const typeId = stationTypeId == null ? '' : String(stationTypeId);
+  const eligible = SIDE_EVENT_IDS.filter((id) => {
+    const aff = SIDE_EVENTS[id].affinity;
+    return aff == null || aff.includes(typeId);
+  });
+  const pool = eligible.length ? eligible : ['repair_drone'];  // typeless/unknown → universal drone
+
+  const count = 3 + Math.floor(rng() * 3);   // 3..5 side-events per station-day
+  const out = [];
+  let delay = 0;
+  for (let i = 0; i < count; i++) {
+    // Fixed three-draw vector, fixed order — reshuffle-proof.
+    const gapRoll = rng();
+    const kindRoll = rng();
+    const bearingRoll = rng();
+    // First event lands ≤ 90 s (satisfies "a few minutes near a station → ≥1 event"); the rest space out.
+    delay += i === 0 ? (20 + gapRoll * 70) : (45 + gapRoll * 90);
+    const kind = pool[Math.floor(kindRoll * pool.length) % pool.length];
+    const def = SIDE_EVENTS[kind];
+    out.push({
+      eventId: `sse:${stationId}#${day}#${i}`,
+      kind,
+      budget: def.budget | 0,
+      path: def.path,
+      durationS: def.durationS,
+      delay: Math.round(delay * 1e3) / 1e3,
+      bearing: Math.round(bearingRoll * TWO_PI * 1e6) / 1e6,
+    });
+  }
+  return out;
+}
+
+/**
+ * rushHourSideEvents(seed, sectorId, dayIndex, stationId, stationTypeId, nowS)
+ *   -> Array of extra mover events whose delays land inside the station's next rush windows.
+ *
+ * PULSE-TIME: the world calendar's rush hours (worldCalendar.js — the brackets around each
+ * shift change) thicken the traffic the planner already draws. Two crew hulls ride each rush
+ * window — an inbound crew run and an outbound off-watch haul — as budget-0 cosmetic seams,
+ * the same lane the daily movers use. Deterministic on a separate salt so the daily plan's
+ * stream is never reshuffled by adding rush items; delays are absolute within the day so a
+ * station planned mid-rush still gets its changeover visible.
+ */
+export function rushHourSideEvents(seed, sectorId, dayIndex, stationId, stationTypeId, nowS = 0) {
+  if (sectorId == null || stationId == null) return [];
+  const rng = mulberry32(hash32(seed == null ? 0 : seed, 'rush', String(sectorId), dayIndex | 0, String(stationId)));
+  const typeId = stationTypeId == null ? '' : String(stationTypeId);
+  const eligible = SIDE_EVENT_IDS.filter((id) => {
+    const aff = SIDE_EVENTS[id].affinity;
+    return aff == null || aff.includes(typeId);
+  });
+  const pool = (eligible.length ? eligible : ['repair_drone'])
+    .filter((id) => (SIDE_EVENTS[id].budget | 0) === 0);   // crew runs are never spawned ships
+
+  const dayStartS = (dayIndex | 0) * 600;
+  const out = [];
+  // Three shift boundaries a day; each draws two crew movers across the post-change surge.
+  for (let b = 0; b < 3; b++) {
+    for (let k = 0; k < 2; k++) {
+      const kindRoll = rng();
+      const offsetRoll = rng();
+      const bearingRoll = rng();
+      // Find the boundary instant: the start of the (b+1)th watch in station-local time.
+      const boundaryLocalS = ((b + 1) * 200 + 600) % 600;
+      // Convert station-local boundary to a delay from nowS: the shift clock's own local
+      // fraction is authoritative — never re-derive the offset here.
+      const local = stationShiftAt(stationId, nowS).dayFrac * 600;
+      let delay = boundaryLocalS - local + offsetRoll * (RUSH_AFTER_S - 15);
+      if (delay < -45) delay += 600;                       // a window that just closed waits for next time
+      if (delay < 2) delay = 2 + offsetRoll * 20;          // never stack on "now" exactly
+      const kind = pool[Math.floor(kindRoll * pool.length) % pool.length] || 'repair_drone';
+      const def = SIDE_EVENTS[kind];
+      out.push({
+        eventId: `sse-rush:${stationId}#${dayIndex | 0}#${b}#${k}`,
+        kind,
+        budget: 0,
+        path: def.path,
+        durationS: def.durationS,
+        delay: Math.round(delay * 1e3) / 1e3,
+        bearing: Math.round(bearingRoll * TWO_PI * 1e6) / 1e6,
+      });
+    }
+  }
+  return out;
+}
+
+export default { SIDE_EVENTS, SIDE_EVENT_IDS, planStationSideEvents, rushHourSideEvents };

@@ -1,0 +1,288 @@
+// Opening waypoint ownership — New Game cold-start must not install a competing
+// kind:'mission' marker while the staged tutorial owns the first-session rail.
+// Mission Log CURRENT ACTION must carry the story first-route ("Follow the anomaly")
+// during teaching so the public first-15 route has one unmistakable opening objective.
+//
+// Companion to check:first-15-runtime (browser) and contract-47a-first-loop
+// (tutorial off). Run:
+//   node --test test/opening-waypoint-ownership.test.mjs
+
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
+import {
+  CONTRACT_47A_B0_TAG,
+  missions as missionsProto,
+} from '../src/systems/missions.js';
+import {
+  BEATS,
+  buildOnboardingObjectiveWaypoint,
+  onboarding as onboardingProto,
+} from '../src/systems/onboarding.js';
+import {
+  recommendedActions,
+  stagedOpeningOwnsCommand,
+} from '../src/ui/screens/missionLog.js';
+import { commitCoursePayload } from '../src/ui/galaxyMap.js';
+import { flightV3 } from '../src/systems/flightV3.js';
+import { world as worldProto } from '../src/systems/world.js';
+
+function harness({ tutorialHints = true, seed = 47 } = {}) {
+  const state = createGameState(seed);
+  state.mode = 'flight';
+  // Recovery may select only a body in the contract's actual sector.
+  state.world.currentSectorId = 'sector_helios_prime';
+  state.simTime = 0;
+  state.playerId = 1;
+  state.settings.gameplay.tutorialHints = tutorialHints;
+  state.entities.set(1, {
+    id: 1, type: 'ship', alive: true,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+  });
+  const beacon = {
+    id: 2, type: 'beacon', alive: true,
+    pos: { x: 220, z: -40 },
+    data: { kind: 'kessler_handoff_beacon' },
+  };
+  const asteroid = {
+    id: 3, type: 'asteroid', alive: true,
+    pos: { x: 180, z: -60 }, data: { typeId: 'ast_common_rock' },
+  };
+  const station = {
+    id: 4, type: 'station', alive: true,
+    pos: { x: -420, z: 100 },
+    data: { stationId: 'station_helios', name: 'Helios Station' },
+  };
+  state.entities.set(2, beacon);
+  state.entities.set(3, asteroid);
+  state.entities.set(4, station);
+  state.entityList.push(beacon, asteroid, station);
+  // Default new-game onboarding is absent until game:started; leave unset so
+  // _tutorialOwnsOpening treats the opening as tutorial-owned when hints are on.
+
+  const bus = createBus();
+  const helpers = {
+    voice: { say: () => true },
+    mulberry32: (value) => {
+      let a = value >>> 0;
+      return () => ((a = (a + 0x6D2B79F5) >>> 0) / 4294967296);
+    },
+  };
+  const missions = Object.assign({}, missionsProto);
+  const onboarding = Object.assign({}, onboardingProto);
+  // Headless: skip DOM panel injection from game:started.
+  onboarding._injectStyle = () => {};
+  onboarding._buildPanel = () => {};
+  onboarding._refreshBeatPanel = () => {};
+  missions.init({ state, bus, helpers, registry: { get: () => null } });
+  onboarding.init({ state, bus, helpers, registry: { get: () => null } });
+  return { state, bus, missions, onboarding, beacon, asteroid };
+}
+
+function isStoryOrOnboardingOwned(wp) {
+  return !!(wp && (wp.kind === 'story' || wp.onboarding === true));
+}
+
+test('default New Game: cold-start tracks 47-A without claiming a mission waypoint while tutorial owns opening', () => {
+  const h = harness({ tutorialHints: true });
+  h.bus.emit('game:started');
+
+  const mission = h.state.missions.active.find((m) => m && m.storyTag === CONTRACT_47A_B0_TAG);
+  assert.ok(mission, 'cold-start still installs the 47-A recovery contract');
+  assert.equal(h.state.ui.trackedMissionId, mission.id, 'contract remains tracked for later handoff');
+  assert.equal(h.state.onboarding.active, true, 'tutorial is active after game:started');
+  assert.equal(h.state.onboarding.finished, false);
+  assert.equal(stagedOpeningOwnsCommand(h.state), true);
+
+  // Mission must not leave an unowned / mission-kind opening marker.
+  const wp0 = h.state.nav.waypoint;
+  if (wp0) {
+    assert.ok(
+      isStoryOrOnboardingOwned(wp0),
+      `opening waypoint must be story/onboarding-owned (got kind=${wp0.kind} onboarding=${wp0.onboarding})`,
+    );
+    assert.notEqual(wp0.kind, 'mission', 'mission kind must not own the opening marker during tutorial');
+  }
+
+  // Onboarding lesson stamps a beat-stable marker; mission refresh must not clobber it.
+  // The thrust lesson was B0 when this test was written. The thesis-first route (614bec27d,
+  // design/program/roadmap/receipts/onboarding/2026-09-19-thesis-first-first-hour.md) moved the
+  // Massline attach to beat 0 (tether -> raid -> claimed -> thrust ...), so drive the thrust
+  // lesson by key, as the other beat-FSM tests do; the ownership contract is unchanged.
+  h.state.onboarding.currentBeat = BEATS.findIndex((beat) => beat.key === 'thrust');
+  assert.ok(h.state.onboarding.currentBeat >= 0, 'the authored rail still teaches thrust');
+  h.state.onboarding.beatAction = 'Thrust toward the beacon.';
+  h.onboarding._setObjectiveWaypoint(true);
+  const onboardingWp = h.state.nav.waypoint;
+  assert.ok(onboardingWp, 'the thrust lesson must plant its beacon waypoint');
+  assert.equal(onboardingWp.onboarding, true);
+  assert.equal(onboardingWp.markerId, 'onboarding:thrust');
+  assert.deepEqual(onboardingWp.pos, h.beacon.pos);
+
+  // Stale mission-kind claims are reclaimed by the teaching rail.
+  h.state.nav.waypoint = {
+    kind: 'mission',
+    missionId: mission.id,
+    label: '47-A Recovery Site',
+    pos: h.asteroid.pos,
+  };
+  h.onboarding._setObjectiveWaypoint(false);
+  assert.equal(h.state.nav.waypoint.onboarding, true, 'periodic onboarding update reclaims mission marker');
+  assert.equal(h.state.nav.waypoint.markerId, 'onboarding:thrust');
+
+  h.missions.update(1.0, h.state);
+  assert.equal(h.state.nav.waypoint.onboarding, true, 'mission update must preserve onboarding waypoint');
+  assert.equal(h.state.nav.waypoint.markerId, 'onboarding:thrust');
+  assert.notEqual(h.state.nav.waypoint.kind, 'mission');
+
+  // Mission Log CURRENT ACTION: story first-route, not competing 47-A TRACKED card.
+  const actions = recommendedActions(
+    h.state,
+    h.state.missions.active,
+    h.state.ui.trackedMissionId,
+  );
+  assert.equal(actions[0].label, 'STORY', 'opening CURRENT ACTION is the story first-route');
+  assert.match(actions[0].title, /Follow the anomaly/i);
+});
+
+test('automatic tether entry yields to an armed player course, which can explicitly retarget the derelict', () => {
+  const h = harness();
+  h.bus.emit('game:started');
+  const derelict = {
+    id: 5, type: 'wreck', alive: true, pos: { x: 40, z: -25 },
+    data: { kind: 'derelict', onboarding: true },
+  };
+  h.state.entities.set(derelict.id, derelict);
+  h.state.entityList.push(derelict);
+  h.onboarding._derelictId = derelict.id;
+  h.state.onboarding.active = true;
+  h.state.onboarding.finished = false;
+  h.state.onboarding.currentBeat = BEATS.findIndex((beat) => beat.key === 'tether');
+  h.state.onboarding.beatAction = BEATS[h.state.onboarding.currentBeat].line;
+
+  const helioCourse = {
+    kind: 'nav', label: 'Helios Station', targetEntityId: 4,
+    pos: { x: -420, z: 100 },
+  };
+  const helioAutopilot = {
+    active: true, status: 'braking', label: 'Helios Station', targetEntityId: 4,
+    target: { x: -420, z: 100 },
+  };
+  h.state.nav.waypoint = { ...helioCourse };
+  h.state.nav.autopilot = { ...helioAutopilot };
+
+  // This is the production automatic lesson-entry path, including its forced objective stamp.
+  h.onboarding._enterBeat(BEATS[h.state.onboarding.currentBeat]);
+  assert.deepEqual(h.state.nav.waypoint, helioCourse,
+    'the tether lesson must not replace the active player-selected route');
+  assert.deepEqual(h.state.nav.autopilot, helioAutopilot,
+    'lesson entry leaves the canonical autopilot target alone');
+  assert.equal(h.state.onboarding.active, true, 'the tutorial remains live');
+  assert.equal(h.state.entities.get(derelict.id), derelict,
+    'the objective actor remains available to track from the map');
+
+  // The real map course resolver marks an asteroid as a local course. Its canonical waypoint
+  // kind carries course ownership even though it is not `nav` and autopilot later stops.
+  const mapCourse = commitCoursePayload(h.state, {
+    kind: 'asteroid', entityId: h.asteroid.id,
+    x: h.asteroid.pos.x, z: h.asteroid.pos.z,
+    name: 'Training asteroid',
+  });
+  assert.equal(mapCourse.waypointKind, 'local');
+  const world = Object.assign({}, worldProto, { state: h.state, bus: h.bus });
+  h.bus.on('ui:setCourse', (payload) => world._onSetCourse(payload || {}));
+  h.bus.emit('ui:setCourse', mapCourse);
+  assert.equal(h.state.nav.waypoint.kind, 'local');
+  assert.equal(h.state.nav.waypoint.targetEntityId, h.asteroid.id);
+  assert.equal(h.state.nav.autopilot.active, true);
+  h.onboarding._setObjectiveWaypoint(true);
+  assert.equal(h.state.nav.waypoint.targetEntityId, h.asteroid.id,
+    'tutorial refresh preserves the active map-issued local asteroid course');
+
+  // Arrival is the real ownership boundary: flightV3 clears its transient target id, but
+  // the player's local waypoint remains until the player clears or replaces it.
+  const flight = Object.assign({}, flightV3);
+  flight.init({ state: h.state, bus: h.bus });
+  const player = h.state.entities.get(h.state.playerId);
+  player.pos.x = h.asteroid.pos.x;
+  player.pos.z = h.asteroid.pos.z;
+  player.vel = { x: 0, z: 0 };
+  h.state.input = { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false };
+  flight._stepCraft(player, h.state.input, 1 / 60, h.state, true);
+  assert.equal(h.state.nav.autopilot.active, false);
+  assert.equal(h.state.nav.autopilot.status, 'arrived');
+  assert.equal(h.state.nav.autopilot.targetEntityId, null);
+  assert.equal(h.state.nav.waypoint.targetEntityId, h.asteroid.id,
+    'arrival clears only the transient autopilot bind');
+
+  h.onboarding._setObjectiveWaypoint(true);
+  assert.equal(h.state.nav.waypoint.targetEntityId, h.asteroid.id,
+    'tutorial refresh preserves an actual map-issued local asteroid course after arrival');
+  assert.equal(h.state.nav.waypoint.onboarding, undefined,
+    'the preserved waypoint remains the player course, not a tutorial objective');
+
+  // Reuse the canonical public course owner: explicitly selecting the tutorial actor still works.
+  h.bus.emit('ui:setCourse', {
+    kind: 'nav', label: 'Derelict', pos: derelict.pos, targetEntityId: derelict.id,
+  });
+  assert.equal(h.state.nav.waypoint.kind, 'nav');
+  assert.equal(h.state.nav.waypoint.targetEntityId, derelict.id);
+  assert.equal(h.state.nav.autopilot.targetEntityId, derelict.id);
+  h.onboarding._setObjectiveWaypoint(true);
+  assert.equal(h.state.nav.waypoint.targetEntityId, derelict.id,
+    'later automatic lesson refreshes preserve the pilot’s explicit objective course');
+});
+
+test('tutorial:finished hands nav ownership back to the tracked 47-A mission', () => {
+  const h = harness({ tutorialHints: true });
+  h.bus.emit('game:started');
+  const mission = h.state.missions.active.find((m) => m && m.storyTag === CONTRACT_47A_B0_TAG);
+  assert.ok(mission);
+
+  h.state.nav.waypoint = buildOnboardingObjectiveWaypoint(
+    { key: 'dock', line: 'Dock at Helios.' },
+    { pos: { x: -420, z: 100 }, label: 'HELIOS' },
+  );
+  // Finish tutorial the same way production does (finished first, then event).
+  h.state.onboarding.finished = true;
+  h.state.onboarding.active = false;
+  h.state.nav.waypoint = null; // _clearObjectiveWaypoint
+  h.bus.emit('tutorial:finished', {});
+
+  assert.ok(h.state.nav.waypoint, 'mission/story nav must restore a waypoint after tutorial handoff');
+  assert.equal(h.state.nav.waypoint.kind, 'mission', 'tracked 47-A owns nav after tutorial');
+  assert.equal(h.state.nav.waypoint.missionId, mission.id);
+  assert.match(h.state.nav.waypoint.label, /47-A|Recovery/i);
+
+  const actions = recommendedActions(
+    h.state,
+    h.state.missions.active,
+    h.state.ui.trackedMissionId,
+  );
+  assert.equal(actions[0].label, 'TRACKED', 'post-tutorial CURRENT ACTION returns to tracked 47-A');
+  assert.match(actions[0].title, /47-A|Sample/i);
+});
+
+test('tutorialHints off: cold-start still installs mission-owned 47-A waypoint immediately', () => {
+  const h = harness({ tutorialHints: false });
+  // Match contract-47a-first-loop: no active tutorial.
+  h.state.onboarding = { active: false, finished: true };
+  h.missions.newGame();
+
+  const mission = h.state.missions.active.find((m) => m && m.storyTag === CONTRACT_47A_B0_TAG);
+  assert.ok(mission);
+  assert.ok(h.state.nav.waypoint, 'without tutorial, cold-start claims nav immediately');
+  assert.equal(h.state.nav.waypoint.kind, 'mission');
+  assert.equal(h.state.nav.waypoint.missionId, mission.id);
+  assert.deepEqual(h.state.nav.waypoint.pos, h.asteroid.pos);
+  assert.equal(stagedOpeningOwnsCommand(h.state), false);
+
+  const actions = recommendedActions(
+    h.state,
+    h.state.missions.active,
+    h.state.ui.trackedMissionId,
+  );
+  assert.equal(actions[0].label, 'TRACKED');
+});

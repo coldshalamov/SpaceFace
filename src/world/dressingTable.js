@@ -1,0 +1,169 @@
+// Presenter/atlas dressing. POI markers, landmarks, and band props are not combat entities.
+
+import { allocateEntityId, clearEntityRuntime, Masks } from '../core/entity.js';
+import { initializePresentationAdmission } from '../core/presentationAdmission.js';
+import { racingDressingSpec } from './racingCorridor.js';
+import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
+
+export const DRESSING_TABLE_SCHEMA = 'spaceface.dressingTable.v1';
+
+function finite(n, fallback = 0) {
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export function ensureDressingTable(state) {
+  if (!state || typeof state !== 'object') return null;
+  const world = state.world || (state.world = {});
+  let table = world.dressing;
+  if (table && table.schema === DRESSING_TABLE_SCHEMA && Array.isArray(table.rows)) {
+    if (!(table.byId instanceof Map)) table.byId = new Map(table.rows.map((row) => [row.id, row]));
+    if (!(table.dirtyPoseIds instanceof Set)) table.dirtyPoseIds = new Set();
+    return table;
+  }
+  table = {
+    schema: DRESSING_TABLE_SCHEMA,
+    version: 0,
+    rows: [],
+    byId: new Map(),
+    dirtyPoseIds: new Set(),
+  };
+  world.dressing = table;
+  return table;
+}
+
+function allocateDressingId(state, table, reserved = 0) {
+  if (Number.isSafeInteger(reserved) && reserved > 0
+    && !table.byId.has(reserved)
+    && !(state && state.entities && state.entities.has(reserved))) {
+    // A caller-supplied id claims the authoritative allocator slot, just like a live entity id.
+    // Otherwise the next automatic presentation row can collide with this reserved row.
+    if (Array.isArray(state && state.freeIds)) {
+      for (let i = state.freeIds.length - 1; i >= 0; i--) {
+        if (state.freeIds[i] === reserved) state.freeIds.splice(i, 1);
+      }
+    }
+    if (Number.isSafeInteger(state && state.nextEntityId)
+      && state.nextEntityId <= reserved
+      && reserved < Number.MAX_SAFE_INTEGER) {
+      state.nextEntityId = reserved + 1;
+    }
+    return reserved;
+  }
+  if (Number.isSafeInteger(state && state.nextEntityId) && state.nextEntityId >= 1) {
+    return allocateEntityId(state);
+  }
+  let id = 1;
+  while (table.byId.has(id) || (state && state.entities && state.entities.has(id))) id++;
+  return id;
+}
+
+export function insertDressingRow(state, spec = {}) {
+  spec = racingDressingSpec(state, spec);
+  const table = ensureDressingTable(state);
+  const id = allocateDressingId(state, table, spec.id);
+  const row = {
+    id,
+    type: spec.type || 'fx',
+    alive: true,
+    dressingResident: true,
+    pos: { x: finite(spec.pos && spec.pos.x), z: finite(spec.pos && spec.pos.z) },
+    rot: finite(spec.rot),
+    radius: Math.max(0.5, finite(spec.radius, 10)),
+    // Default stays a presentation ghost. Solid dressing rows opt in through their spec
+    // (solidDressing.js census plan): collides plus an authored fixed-body spec; the measured
+    // collider itself rides data.collisionProxy = 'skin:<census row>'.
+    collides: spec.collides === true,
+    homeSectorId: spec.homeSectorId || (spec.data && spec.data.homeSectorId) || null,
+    data: spec.data && typeof spec.data === 'object' ? spec.data : {},
+  };
+  if (row.collides && spec.physicsBody && typeof spec.physicsBody === 'object') {
+    row.physicsBody = { ...spec.physicsBody };
+    // Station-category structure for the projectile-sweep and pair mask gates (physics.js).
+    row.collisionMask = Masks.STATION;
+  }
+  initializePresentationAdmission(row);
+  table.rows.push(row);
+  table.byId.set(id, row);
+  table.dirtyPoseIds.add(id);
+  table.version++;
+  markAuxRowDirty(table, id);
+  return row;
+}
+
+export function getDressingRow(state, id) {
+  const table = state && state.world && state.world.dressing;
+  if (!table || !table.byId) return null;
+  return table.byId.get(id) || null;
+}
+
+/** Journal a pose-affecting write to a live row; the version bump fires the renderer pose gate. */
+export function markDressingRowPoseDirty(state, id) {
+  const table = state && state.world && state.world.dressing;
+  if (!table || !table.byId || !table.byId.has(id)) return false;
+  if (!(table.dirtyPoseIds instanceof Set)) table.dirtyPoseIds = new Set();
+  table.dirtyPoseIds.add(id);
+  table.version++;
+  return true;
+}
+
+export function dropDressingRow(state, id) {
+  const table = state && state.world && state.world.dressing;
+  if (!table || id == null) return false;
+  const row = table.byId && table.byId.get(id);
+  if (!row) return false;
+  const idx = table.rows.indexOf(row);
+  // Stamp dead before unlinking: a stepped journal collect holding a snapshot
+  // ref must read alive=false at publish or the dropped row respawns.
+  row.alive = false;
+  if (idx >= 0) table.rows.splice(idx, 1);
+  table.byId.delete(id);
+  table.version++;
+  markAuxRowRemoved(table, id);
+  clearEntityRuntime(row);
+  return true;
+}
+
+/** Drop every row homed in `sectorId`; an optional `keep(row)` predicate retains matching rows. */
+export function dropDressingSector(state, sectorId, keep = null) {
+  const table = state && state.world && state.world.dressing;
+  if (!table || !sectorId) return 0;
+  let dropped = 0;
+  for (let i = table.rows.length - 1; i >= 0; i--) {
+    const row = table.rows[i];
+    const home = row && (row.homeSectorId || (row.data && row.data.homeSectorId));
+    if (home !== sectorId) continue;
+    if (typeof keep === 'function' && keep(row)) continue;
+    // Same dead stamp — snapshot refs held by an in-flight collect skip it.
+    row.alive = false;
+    table.rows.splice(i, 1);
+    table.byId.delete(row.id);
+    markAuxRowRemoved(table, row.id);
+    clearEntityRuntime(row);
+    dropped++;
+  }
+  if (dropped) table.version++;
+  return dropped;
+}
+
+export function dressingCensus(state) {
+  const table = state && state.world && state.world.dressing;
+  const rows = table && Array.isArray(table.rows) ? table.rows.length : 0;
+  let liveFx = 0;
+  for (const e of state && state.entityList || []) {
+    if (e && e.alive !== false && e.type === 'fx') liveFx++;
+  }
+  return { dressingRows: rows, liveFx };
+}
+
+export function forEachDressingRow(state, fn) {
+  const table = state && state.world && state.world.dressing;
+  if (!table || typeof fn !== 'function') return 0;
+  let n = 0;
+  for (let i = 0; i < table.rows.length; i++) {
+    const row = table.rows[i];
+    if (!row || row.alive === false) continue;
+    fn(row);
+    n++;
+  }
+  return n;
+}

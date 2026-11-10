@@ -1,0 +1,78 @@
+From 330d70d7a16209b7cfe653f5c554f281d3bcbe30 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 17:47:14 -0400
+Subject: [PATCH 1/2] =?UTF-8?q?perf(presentation):=20read=20performance.me?=
+ =?UTF-8?q?mory=20only=20while=20Tier-1=20counters=20are=20live=20(~50-60?=
+ =?UTF-8?q?=20=C2=B5s/frame)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The presentation loop read performance.memory.usedJSHeapSize every frame and handed it to tier1.sampleHeap, which discards it while Tier-1 counters are off (production default). The Chromium getter builds a MemoryInfo from V8 heap statistics: ~50-61 µs per frame at frame cadence on the quiet VM (Electron, 5 isolated runs). Gate the read on tier1.isEnabled(); captures are unchanged.
+---
+ src/core/presentationRunner.js |  8 +++++++-
+ test/perf-counters.test.mjs    | 29 +++++++++++++++++++++++++++++
+ 2 files changed, 36 insertions(+), 1 deletion(-)
+
+diff --git a/src/core/presentationRunner.js b/src/core/presentationRunner.js
+index 2a1d1f1c0..ccb3d85ac 100644
+--- a/src/core/presentationRunner.js
++++ b/src/core/presentationRunner.js
+@@ -803,7 +803,13 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
+       // performance.memory is Chromium-only: every link in this chain is optional so the absent
+       // case is a no-op — a throw here would escape into the rAF loop's catch and be logged
+       // every frame (handoff §9 trap 8).
+-      perf.tier1?.sampleHeap(globalThis.performance?.memory?.usedJSHeapSize);
++      // The getter is not free in Chromium (it builds a MemoryInfo from V8 heap statistics —
++      // ~50–90 µs per frame on the quiet VM profile), and sampleHeap discards the value while
++      // Tier-1 counters are off (the production default). Read it only when a capture is live.
++      const tier1 = perf.tier1;
++      if (tier1 && (typeof tier1.isEnabled !== 'function' || tier1.isEnabled())) {
++        tier1.sampleHeap(globalThis.performance?.memory?.usedJSHeapSize);
++      }
+       const fixedDt = Number.isFinite(simulationRunner.fixedDt)
+         ? simulationRunner.fixedDt
+         : LOOP_FIXED_DT;
+diff --git a/test/perf-counters.test.mjs b/test/perf-counters.test.mjs
+index 0ec7fa9c0..3a7351d0c 100644
+--- a/test/perf-counters.test.mjs
++++ b/test/perf-counters.test.mjs
+@@ -1142,6 +1142,35 @@ test('the presentation loop samples the heap once per frame when performance.mem
+   }
+ });
+ 
++test('with Tier-1 counters off the presentation loop never reads performance.memory', () => {
++  // Production default: counters off. sampleHeap would discard the value, and the Chromium getter
++  // costs tens of microseconds per frame, so the loop must not touch it at all.
++  const loop = startHeapTestLoop();
++  const tier1 = ensurePerfRuntime(loop.state).tier1;
++  assert.equal(tier1.isEnabled(), false, 'counters are off by default');
++  const originalMemory = Object.getOwnPropertyDescriptor(globalThis.performance, 'memory');
++  let reads = 0;
++  Object.defineProperty(globalThis.performance, 'memory', {
++    configurable: true,
++    get() { reads++; return { usedJSHeapSize: 1_000_000 }; },
++  });
++  try {
++    loop.raf.flushOne(1020);
++    loop.raf.flushOne(1040);
++    loop.raf.flushOne(1060);
++    assert.equal(reads, 0, 'performance.memory must not be read while counters are off');
++    assert.equal(tier1.snapshot().nondeterministic.allocation.samples, 0);
++    tier1.setEnabled(true);
++    loop.raf.flushOne(1080);
++    assert.equal(reads, 1, 'a live capture samples once per frame again');
++    assert.equal(tier1.snapshot().nondeterministic.allocation.samples, 1);
++  } finally {
++    if (originalMemory) Object.defineProperty(globalThis.performance, 'memory', originalMemory);
++    else delete globalThis.performance.memory;
++    loop.controller.destroy();
++  }
++});
++
+ test('heap samples stay out of the deterministic counter fields', () => {
+   // GC scheduling is at the VM's discretion; a heap figure must never become a bisectable signal.
+   for (const field of COUNTER_FIELDS) assert.ok(!/heap/i.test(field), field);
+-- 
+2.53.0.windows.2
+

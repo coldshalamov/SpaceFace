@@ -1,0 +1,5910 @@
+// src/systems/encounterDirector.js — the LIVING-UNIVERSE CAMPAIGN DIRECTOR.
+//
+// Deterministically plans a weighted schedule of encounter shapes per sector-day (two decks:
+// COMBAT pressure and CIVILIAN world-life), anchored to the NAMED zones in sectorZones.js, then
+// paces their firing through a pressure/pacing gate so the world breathes: majors rare, minors
+// paced, quiet after spending, never during docking or protected tutorial beats, never within
+// 30 s of the last meaningful encounter, never two combat shapes at once.
+//
+// Optional session layer: systems/tensionDirector.js supplies a leased pacing policy.
+// It changes cadence/selection only; all authored gates, quotas, caps and live scripts below remain.
+//
+// Layers (each independently testable):
+//   1. PLANNER (pure, exported): planEncounters(seed, sectorId, dayIndex, zones) — everything
+//      derives from mulberry32(hash32(seed, sectorId, dayIndex)); same inputs → same schedule.
+//   2. PACING GATE (1 Hz): accrues per-deck pressure from deterministic state (zone threat,
+//      sector security, cargo value, WANTED heat, mining noise, standing bounty) and releases
+//      due schedule items only when pressure, spacing caps, gates, zone proximity, and the
+//      session-rhythm phase allow. Spending pressure IS the pacing valve — a fired encounter
+//      buys quiet time after it. Combat shapes defer with reason `'rhythm'` in work / aftermath
+//      / quiet. The eight-phase model is exported pure functions plus live-only
+//      `state.encounterDirector.sessionRhythm` (never saved).
+//      PQ-138 witness / spill / flee tokens append a bounded escalation-seed queue (≤ 16). Each
+//      seed is a future beat (bounty, ace, shortage, rumor) with a delay, a place, and a cause.
+//      Seeds never spawn on the player.
+//   3. PHASE SCRIPTS (encounterScripts.js): telegraph → offer/choice → conflict/resolution →
+//      outcome → receipt. Choices arrive via the bus (`encounter:choose`) or PHYSICAL verbs
+//      (brake to pay, fly off to run, open fire to refuse); timeout defaults are deterministic.
+//
+// Ownership (§0.6): owns state.encounterDirector ONLY. Every consequence is an intent:
+//   credits → economy:chargeCredits/grantCredits · rep → faction:repDelta · contraband justice →
+//   patrol:proximity → economy.runScan (fines/confiscation/rep/heat, the real machinery) ·
+//   bribes → contraband:bribe · markets → economy:applyTradePressure (bounded) · sector danger →
+//   sectorsim:impulse · rescues → distress:rescued · leads → mission:offered (via salvage) ·
+//   cargo jettison → cargo.removeCargo (the cargo owner's exported writer).
+// It NEVER writes credits/rep/cargo/heat/sector-ownership directly, and it never makes lawful
+// patrols attack a clean player — the ai.lawful → isPlayerWanted gate is the architecture.
+//
+// Determinism (§0.5): no Math.random, no wall clock. Schedules from seeded streams; runtime
+// timers from state.simTime; per-encounter rolls from hash32(seed, encounterId, label).
+// Save/load: only the DURABLE subset persists (named captains, receipts, cooldowns, stats);
+// live entity references are never saved — save:loaded rebuilds transients and keeps the rest.
+//
+// Additive + guarded: no zones → nothing schedules; missing helpers → shapes no-op cleanly.
+// factionId is READABILITY only; hostility is team/passive/lawful/context (scanner + aiPorts).
+
+import {
+  readTensionPolicy, tensionAccrualScale, tensionCandidateRank, tensionPacingBlockReason,
+} from '../ai/tensionPolicy.js';
+import { applyNestSavedSpawnSpec, applyNestBroodSpawnSpec, NEST_BAY_OFFSETS, normalizeNestSnapshot, settleRestoredNestDeath } from '../data/encounters/705-the-nest.js';
+import { tickNestVisit, captureNestVisit, recordNestOutcome, leaveNestVisit, nestSiteClear } from './nestVisit.js';
+import { normalizeNestVisit } from '../data/nestVisit.js';
+import { raceLeaseActive } from './racingSteer.js';
+import { tickEarlyTrailerEncounters } from './trailerEncounterStaging.js';
+import { hash32, mulberry32 } from '../core/rng.js';
+import { laneSetNavWaypoint } from '../core/simLaneCommands.js';
+import { dedupWarn } from '../core/warnDedup.js';
+import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
+import { writePickupRemainder } from '../core/pickupAcceptance.js';
+import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
+import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
+import {
+  globalToSectorLocalForSector,
+  sectorLocalToGlobalForSector,
+} from '../data/sectorCoordinates.js';
+import {
+  addEncounterSquad,
+  planAuthoredEncounterItem as planAuthoredEncounterItemPure,
+  planEncounterShape as planEncounterShapePure,
+  resolveEncounterShape,
+  PURSUIT_RESOLVE_S,
+  sectorSecurityOf,
+} from '../data/encounters/planning.js';
+export { PURSUIT_RESOLVE_S, sectorSecurityOf };
+import { makeEnemySpawnSpec } from './combat.js';
+import { patrolJurisdictionFor } from '../data/factionContactGrammar.js';
+import { patrolInterventionHailFor } from '../data/barks.js';
+import {
+  ENCOUNTER_REPETITION_DAY_SECONDS,
+  ENCOUNTER_SHAPE_BUDGET_PER_HOUR,
+  ENCOUNTER_SHAPE_HOUR_SECONDS,
+  encounterGrammarKey,
+  emitPredationStalkTelegraph,
+  captureFreightCustodyControl,
+} from './encounterScripts.js';
+import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptTextWithFallback } from '../data/encounters.js';
+import { ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
+import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
+import { ENCOUNTER_SCRIPTS } from './encounterScripts.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { SECTORS } from '../data/sectors.js';
+import {
+  isResonanceObeliskSignal,
+  RESONANCE_OBELISK,
+  resonanceObeliskResponse,
+} from '../data/resonanceObelisk.js';
+import { removeCargo } from './cargo.js';
+import {
+  effectiveRegionalSecurity,
+  regionalEcologyReadout,
+  regionalEncounterWeight,
+} from './regionalEcology.js';
+import {
+  DUST_FIRE_GAP_S,
+  DUST_LANE_STREAM_LABEL,
+  DUST_LIVE_STREAM_LABEL,
+  DUST_MAX_PER_DAY,
+  DUST_SCAN_S,
+  DUST_UNSEEN_WEIGHT,
+  isDustLaneEncounter,
+} from '../data/dustLane.js'; // DUST P1b: additive widening lane (design/program/dust/)
+import { ecologyEncounterWeights } from '../data/alienEcology.js'; // AE-072 contamination→deck bias
+import {
+  ActivityKind,
+  RulesOfEngagement,
+  activityForEncounterSpawn,
+  normalizeActivity,
+  roeForActivity,
+  setEntityDoctrine,
+} from '../ai/doctrine.js';
+import {
+  markMoralDebtReturned,
+  nextMoralDebt,
+  rememberAceMemoryTransition,
+  rememberMoralDebt,
+} from './moralMemory.js';
+import {
+  buildEncounterCausality,
+  resolvedEncounterFingerprint,
+} from '../world/encounterCausality.js';
+import {
+  buildLossIntent,
+  filterNewFreightIntents,
+} from '../economy/freightCausality.js';
+import { publishEscalationSeeds, publishSessionRhythmPhase } from '../ai/director.js';
+import {
+  pirateDoctrineForEntity,
+  reachCultureDoctrineById,
+} from '../data/pirateDoctrines.js';
+import { isHostileForAI, isAmbientRaidId } from '../ai/engagementAuthority.js';
+import {
+  accelerateBoundRaiderEscape,
+  ambientJettisonUnderPressure,
+  ambientPickupCollected,
+  ambientRaiderDestroyed,
+  clearAmbientPredationBinding,
+  releaseBoundRaiderForRetaliation,
+  updateAmbientPredation,
+} from '../ai/ambientPredation.js';
+import {
+  lootSweepOnEscortDown,
+  lootSweepPickupCollected,
+  sweepStaleLootSweeps,
+  tickLootSweeps,
+} from '../ai/lootSweep.js';
+import { tickTowedLurePursuits } from '../ai/towedLure.js';
+import { tickPatrolBaits } from './patrolBait.js';
+import {
+  tickImpoundGrudge,
+  noteImpoundGrudgeKill,
+  noteImpoundGrudgeSaveLoaded,
+} from './impoundGrudge.js';
+import { spawnJettisonedCargoPod } from './lootShards.js';
+import { clearIneligibleAIFiringIntents } from './aiPorts.js';
+import { sectorScarcityTerm } from './fieldDepletion.js';
+import { DENIABLE_CAUSE_TAG } from '../data/economyContractTemplates.js';
+import { heatLevelFor } from './heat.js'; // READ-ONLY (C11 clause tier)
+import {
+  DENIABLE_BURN_EPOCHS, DENIABLE_EMBOLDEN_EPOCHS, DENIABLE_EMBOLDEN_BONUS, DENIABLE_CLEAN_REP,
+  DENIABLE_CLEAN_BARK, deniableBurnedRumor, deniableEmboldenedRumor,
+  deniableBoardEpoch, emboldenedBonus,
+  plantDeniableSeed, pruneDeniableSeeds, sanitizeDeniableSeed,
+} from '../data/deniableAftermath.js'; // C11 follow-ups: burned / emboldened fences, quiet thanks
+import { fenceAmbushChance, sanitizeFenceLedger } from '../data/fences.js'; // U-B: fences with faces
+import { installFenceDesk } from './fenceDesk.js'; // U-B: the one writer of stats.fences
+import { admitDistressLamp, endDistressLamp } from '../render/vfx/worldCueRecipes.js'; // PIC-32
+import {
+  craftCadenceEnsure, cadenceLiveCombat, cadencePendingCombat, cadenceVerdict,
+  cadenceTravelShare, CADENCE_BACKSTOP_SHAPE_ID, CADENCE_CONTACT_GAP_MIN_S,
+} from '../data/craftCadence.js'; // row 497 CRAFT-CADENCE: first contact ≤2 min, recur ≤5
+
+const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
+const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
+  ENCOUNTER_MODULES
+    .filter((module) => module && module.trigger && module.runtime)
+    .map((module) => [module.trigger.id, module.runtime]),
+);
+
+// A shape module may publish a readiness seam (`fireReady(state)`, or the opening raid's
+// `openingRaidCarrierReady`): its authored beat only reads true once that holds. A due beat
+// waits on it for at most FIRE_READY_HOLD_S, re-checked each pump, then fires anyway.
+export const ENCOUNTER_FIRE_READY = new Map(
+  ENCOUNTER_MODULES
+    .filter((module) => module && module.trigger)
+    .map((module) => [module.trigger.id, module.fireReady || module.openingRaidCarrierReady
+      || (module.runtime && module.runtime.fireReady)])
+    .filter(([, fn]) => typeof fn === 'function'),
+);
+export const FIRE_READY_HOLD_S = 60;
+
+// ── hostile pursuit resolution (the touchable anti-pest valve) ──────────────────────────────────
+const PURSUIT_RADIUS = 1600;         // radar/engagement distance to track
+const PURSUIT_RADIUS_SQ = PURSUIT_RADIUS * PURSUIT_RADIUS;
+
+// ── schedule budget (per sector-day) ─────────────────────────────────────────────────────────────
+const MAX_MAJOR_PER_DAY = 1;
+const MAX_MINOR_PER_DAY = 2;
+const MAX_AMBIENT_PER_DAY = 3;
+const RARE_GATE = 0.75;            // 'rare' shapes need an extra seeded roll to clear this
+const SHAPE_UNSEEN_WEIGHT = 6;     // E6: shapes not yet scheduled this hour bucket draw 6x
+const DAY_SECONDS = 600;           // core time contract (10 sim-min day)
+
+// ── pacing law (spec2/04 + brief; these numbers ARE the design) ──────────────────────────────────
+const MIN_GAP_S = 30;              // between meaningful (major/minor) encounter starts
+const MAJOR_EXTRA_GAP_S = 240;     // additional spacing between majors
+const AMBIENT_GAP_S = 15;          // between ambient starts
+const AMBIENT_AFTER_MEANINGFUL_S = 8; // don't talk over a fresh encounter's opening
+const WINDOW_S = 600;              // rolling window for the 1-major/2-minor caps
+const DEFER_S = 21;                // re-check period for a due-but-ineligible item
+const MAX_GATE_DEFERS = 60;        // a gated item that never becomes eligible eventually drops
+const POOL_MAX = 140;              // pressure pool cap per deck
+const ENTRY_GRACE_COMBAT = 22;     // pressure seeded on sector entry (first beats land ~40-90s in)
+const ENTRY_GRACE_CIVIL = 30;
+const ENTRY_GRACE_PATROL = 14;     // lawful space arrives already patrolled; mystery stays cold-start
+const RECEIPT_CAP = 12;            // receipts ring buffer length (saved)
+export const ESCALATION_SEED_CAP = 16;
+export const ESCALATION_MIN_DELAY_S = 8;
+export const ESCALATION_MAX_DELAY_S = 16;
+export const ESCALATION_CAUSES = Object.freeze(['witness', 'spill', 'flee']);
+export const ESCALATION_BEATS = Object.freeze(['bounty', 'ace', 'shortage', 'rumor']);
+const ESCALATION_MIN_PLACE_DIST = 400;
+const BARK_MIN_GAP_S = 4;          // per-encounter bark spacing (danger 'alert' exempt)
+const NOISE_DECAY_PER_S = 0.02;    // mining-noise half-life ~35s
+const PROX_SLACK = 600;            // "on the zone" slack for proximity-gated shapes
+
+// ── THE WORLD ANSWERS — pressure terms (C11 / C12 / T11-half) ────────────────────────────────
+// C12 worked-out belts: combatRate += scarcityTerm(0..1) * 0.35. The rumor fires once per
+// sector the first time the term crosses 0.5 (stats.scarcityRumored[sectorId]).
+const SCARCITY_COMBAT_WEIGHT = 0.35;
+const SCARCITY_RUMOR_THRESHOLD = 0.5;
+const SCARCITY_RUMOR_TEXT = 'Belts are worked out around here \u2014 the lanes are hungry.';
+// T11 the long tow: noise.tow accrues TOW_NOISE_PER_S * min(1, mass / TOW_MASS_FULL) per sim
+// second while a tether holds a body, capped at TOW_NOISE_CAP, decaying at NOISE_DECAY_PER_S
+// like mining noise. combatRate += min(1, noise.tow) * 0.4.
+const TOW_NOISE_PER_S = 0.05;
+const TOW_NOISE_CAP = 3;
+const TOW_MASS_FULL = 200;         // towed mass at which the hulk draws full pirate attention
+const TOW_COMBAT_WEIGHT = 0.4;
+// C11 deniable job: the ambush clause is decided ONCE at accept, then staked out at the drop.
+const DENIABLE_CLAUSE_CAP = 8;          // bounded durable ledger (oldest evicted)
+const DENIABLE_DROP_OFFSET_WU = 650;    // the snare waits on the approach, not on the dock
+const DENIABLE_TRIGGER_WU = 2200;       // player this close to the drop (in sector) arms the snare
+const DENIABLE_ARM_DELAY_S = 6;         // breath between arming and the telegraph
+
+// Proximity-starved combat beats come to the player. Measured failure: every combat shape in the
+// frontier decks is proximity-gated to its authored zone; a player parked far from every zone
+// (mining a deep field, pinned by salvage, or simply off-lane) fizzle-dropped every combat beat
+// at MAX_GATE_DEFERS while prop-only ambients kept the telegraph counter alive — 0 spawned
+// encounters for hours 5–9, both hunter seeds. After the sector has seen the player fail every
+// zone reach check for PROXIMITY_STARVE_S, each gate-passing combat beat re-anchors beside the
+// player instead of dissolving. Pacing law is untouched: gaps, window quotas, pressure,
+// cooldowns, and admission all still gate the fire.
+const PROXIMITY_STARVE_S = 90;         // zone-unreachable this long → beats relocate to the player
+const RELOCATE_MIN_DIST_WU = 520;      // off the player's bearing, readable but not on top of them
+const RELOCATE_MAX_DIST_WU = 900;
+// "Never two combat shapes at once" means never two FIGHTS at once. A live combat encounter that
+// is neither close to the player nor exchanging damage (a stalled relocated convoy, a stalker
+// circling far out) is not a fight, and must not veto every future combat beat via combat_busy.
+const COMBAT_BUSY_RANGE_WU = 2200;     // squad this close counts as an active fight
+const COMBAT_BUSY_EXCHANGE_S = 240;    // recent damage either way counts as an active fight
+// A combat encounter with no player exchange for this long is a stalemate, not a story: the
+// director resolves it escaped so the lane can offer the next thing. Named captains are exempt
+// (their grudges carry their own depart/deadline lifecycle).
+const STALE_ENCOUNTER_S = 420;
+
+// ── harassment mercy (unresolvable-pin release valve) ────────────────────────────────────────────
+// Measured worst case: a prospector pinned by one harasser for seven straight sim-hours (29,535
+// damage, no possible resolution — the pilot won't fight and the threat never leaves). The watch
+// is not a raw dps test: a regen-stabilized pin keeps the player's pool flat while damage flows,
+// and a thick-target pecker makes progress so slow it can never resolve. Mercy fires when either
+// stall or hopelessness holds for an engagement old enough to have earned a resolution.
+const HARASS_TRACK_CAP = 16;          // bounded attacker watch (oldest-by-recency evicted)
+const HARASS_FORGET_S = 150;          // attacker silent this long drops off the watch
+const HARASS_MIN_ENGAGE_S = 240;      // a pin must persist this long before mercy may fire
+const HARASS_REPEAT_ENGAGE_S = 90;    // a repeat offender re-qualifies this fast
+const HARASS_TTK_WINDOW_S = 120;      // trailing window for damage rate and pool-stall reads
+const HARASS_MIN_WINDOW_DMG = 40;     // less than this in the window reads as "not really engaging"
+const HARASS_STALL_TOL = 0.02;        // pool within 2% of window-start counts as not losing ground
+const HARASS_TTK_S = 420;             // implied seconds-to-kill above this = unresolvable
+const HARASS_COOLDOWN_S = 600;        // a mercied harasser holds off the player this long
+
+// ── terrain lee (WF-02: a fight that uses the geometry) ──────────────────────────────────────────
+// Encounters whose squad declares `terrain: 'lee'` spawn behind a rock, not in open space. The
+// search runs at spawn time over live asteroid entities — the same monoliths terrainAnchors
+// furnishes on the telegraph event (26–40 wu) plus any big field rocks. Numbers: a 14 wu floor
+// keeps ordinary gravel out; the 36 wu standoff plus the batch's own spread keeps hulls clear of
+// the face; 420 wu keeps the squad inside its zone's honesty slack (PROX_SLACK is 600).
+const LEE_ROCK_MIN_RADIUS = 14;     // readable cover, not gravel (field rocks run 6–14)
+const LEE_SEARCH_RADIUS = 900;      // squad → rock scan: terrainAnchors bubble 600 + jitter 260
+const LEE_MIN_BEARING_WU = 260;     // player this close: the fight is joined, hiding is moot
+const LEE_STANDOFF_WU = 36;         // hull clearance behind the rock's face
+const LEE_MAX_SHIFT_WU = 420;       // formation-preserving shift cap (stays near the authored zone)
+const LEE_LATERAL_PENALTY = 0.25;   // prefer rocks near the player→squad line over sideways ones
+
+const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
+const CERES_ACTIVITY_AMBUSH_ZONE_ID = 'zone_ceres_ambush';
+const CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID = 'ceres:activity:throughline-ambush';
+const CERES_ACTIVITY_AMBUSH_INNER_R = 125;
+const CERES_ACTIVITY_AMBUSH_OUTER_R = 165;
+const CERES_ACTIVITY_AMBUSH_PREY_R = 900;
+const CERES_ACTIVITY_AMBUSH_HAULER_SLOT = 'ceres_ambush_loaded_hauler';
+const CERES_ACTIVITY_AMBUSH_MARKER = 'ceresActivityAmbushPhase';
+const CERES_ACTIVITY_AMBUSH_RESTORE = 'ceresActivityAmbushRestore';
+const CERES_ACTIVITY_AMBUSH_GUN_RANGE = 180;
+
+const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
+const LEGALITY_FINE_MULT = { restricted: 0.8, illegal: 1.2, contraband: 1.5 };
+const CIVIL_ZONE_TYPES = new Set(['civilian_core', 'trade_lane', 'patrol_corridor', 'border_checkpoint', 'refinery_approach', 'colony']);
+// The mystery deck banks pressure where its authored wrecks live; the patrol deck banks it where
+// its cordons stand. Both sets are the decks' own zoneTypes — accrual rewards standing where the
+// shape could actually fire.
+const MYSTERY_ZONE_TYPES = new Set(['derelict_field', 'anomaly_deep']);
+const LAWFUL_ZONE_TYPES = new Set(['border_checkpoint', 'trade_lane', 'civilian_core']);
+const FREIGHT_PICKUP_MASS_MIN = 8;
+const FREIGHT_PICKUP_MASS_MAX = 80;
+const FREIGHT_PICKUP_RADIUS_MIN = 2.2;
+const FREIGHT_PICKUP_RADIUS_MAX = 5.5;
+const FREIGHT_CUSTODY_SAVE_VERSION = 1;
+const FREIGHT_CUSTODY_SAVE_CAP = 4;
+const FREIGHT_CUSTODY_POD_SAVE_CAP = 3;
+const FREIGHT_CUSTODY_ESCAPE_RADIUS_DEFAULT = 600;
+const FREIGHT_THEFT_LAW_KIND = 'payload_theft';
+const FREIGHT_THEFT_OFFENDER_STABLE_ID = 'player';
+
+export const encounterDirector = {
+  name: 'encounterDirector',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus || null;
+    this.helpers = ctx.helpers || (ctx.helpers = {});
+    this.registry = ctx.registry || null;
+    this._saveRestoring = false;
+    this._freightCustodyRebindPasses = 0;
+    ensureDirectorState(this.state);
+    // Serializer/rollback reads must not resolve encounters or mutate the live ledger.
+    this.helpers.captureNestVisit = () => captureNestVisit(this, { settle: false, persist: false });
+    this.helpers.captureEncounterFreightControl = (entity) => captureFreightCustodyControl(this.state, entity);
+
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
+      this.bus.on('day:tick', () => this._planSector(this._currentSectorId()));
+      this.bus.on('sector:exit', (p) => this._onSectorExit(p));
+      // Durable-merge on load: keep named captains / receipts / cooldowns, rebuild transients.
+      // Settle an already-proven kill before any story/trophy snapshot is captured.
+      this.bus.on('save:started', () => { if (!this._saveRestoring) captureNestVisit(this); });
+      this.bus.on('save:restoring', () => {
+        this._saveRestoring = true;
+        // Restore is a transport boundary, not a custody outcome. The already-serialized stats
+        // envelope plus persistent actors reconstruct the coordinator after save:loaded; settling
+        // here would mint loss/news while saveSystem is merely clearing the outgoing entity set.
+        clearAllPredationBindings(this.state, 'save_restoring');
+      });
+      this.bus.on('save:started', () => this._persistentEncounterLifecycle('captureSave'));
+      this.bus.on('save:loaded', () => { this._onSaveLoaded(); noteImpoundGrudgeSaveLoaded(this.state); });
+      this.bus.on('save:error', () => { this._saveRestoring = false; });
+      // Canonical fresh-run boundary. encounterDirector is intentionally not in the central reset
+      // list, so its own event owner must clear transient live pairings before numeric IDs recycle.
+      this.bus.on('game:new', () => this.newGame());
+      // Budget bookkeeping + script event routing.
+      this.bus.on('entity:destroyed', (p) => this._onEntityGone(p));
+      this.bus.on('entity:killed', (p) => { this._onEntityKilled(p); noteImpoundGrudgeKill(this.state, p); });
+      this.bus.on('combat:subsystemDisabled', (p) => this._routeToScript('convoy', 'subsystemDisabled', p));
+      this.bus.on('pickup:collected', (p) => {
+        this._routeToScript('convoy', 'pickupCollected', p);
+        ambientPickupCollected(this.state, p);
+        lootSweepPickupCollected(this._lootSweepCtx(), p);
+      });
+      this.bus.on('freight:recovery', (p) => this._routeToScript('convoy', 'freightRecovered', p));
+      this.bus.on('freight:recoveryAbandoned', (p) => this._routeToScript('convoy', 'freightRecoveryAbandoned', p));
+      this.bus.on('encounter:namedCaptainBound', (p) => this._onExternalNamedBound(p));
+      this.bus.on('combat:damage', (p) => this._onCombatDamage(p));
+      this.bus.on('contraband:scanned', (p) => this._routeToScript('patrolScan', 'contrabandScanned', p));
+      this.bus.on('scan:pulse', (p) => {
+        this._routeToScript('distress', 'scanPulse', p);
+        this._routeToScript('whisper', 'scanPulse', p);
+        this._routeToSelfRegistered('scanPulse', p);
+      });
+      this.bus.on('tether:attached', (p) => this._routeToSelfRegistered('tetherAttached', p));
+      this.bus.on('tether:broken', (p) => this._routeToSelfRegistered('tetherBroken', p));
+      // Only705 consumes native contacts; do not fan every collision into unrelated runtimes.
+      this.bus.on('physics:impact', (p) => {
+        const liveById = this.state && this.state.encounterDirector && this.state.encounterDirector.live;
+        if (!liveById) return;
+        for (const id in liveById) {
+          const live = liveById[id];
+          if (live.shapeId === 'the_nest' && live.phase !== 'done') this._scriptEvent(live, 'physicsImpact', p);
+        }
+      });
+      this.bus.on('moralMemory:remember', (p) => rememberMoralDebt(this.state, p || {}));
+      this.bus.on('aceMemory:transition', (p) => rememberAceMemoryTransition(this.state, p || {}));
+      this.bus.on('moralMemory:vengefulReturn', (p) => markMoralDebtReturned(this.state, (p || {}).id));
+      this.bus.on('poi:discovered', (p) => this._rememberPoiVisit(p));
+      this.bus.on('poi:identified', (p) => this._rememberPoiVisit(p));
+      this.bus.on('salvage:communicatorFound', (p) => this._routeToScript('salvageSignal', 'communicatorFound', p));
+      // The deterministic choice bridge (UI/test harness both speak this).
+      this.bus.on('encounter:choose', (p) => this._onChoose(p));
+      // A claim-defense warning is the whole decode lead for the squad it will fire: publish
+      // the deterministic roster at onset so presentation can warm the hulls during the
+      // countdown instead of decoding them at the glass on arrival.
+      this.bus.on('claim:defenseWarning', (p) => this._publishClaimDefenseRoster(p));
+      // Mining noise attracts predators (decaying accumulator; player yields only).
+      this.bus.on('mining:yield', (p) => this._onMiningYield(p));
+      // C11: a deniable job's ambush clause is rolled once, here, the moment the job is taken.
+      this.bus.on('mission:accepted', (p) => this._onDeniableAccepted(p));
+      // C11 follow-ups: how the drop ended decides the fence's next beat. Outcomes are the
+      // director's own encounter:resolved, the mission settling, and the pilot going down.
+      this.bus.on('encounter:resolved', (p) => this._onDeniableEncounterResolved(p));
+      // PIC-32: the distress script mints one lamp on the broadcasting hull when it fires;
+      // every resolution path funnels through encounter:resolved, so the lamp dies with the
+      // script whichever way it ended. Other shapes find no lamp and cost one map miss.
+      this.bus.on('encounter:distressBroadcast', (p) => admitDistressLamp(this.state, p || {}));
+      this.bus.on('encounter:resolved', (p) => endDistressLamp(this.state, p || {}));
+      this.bus.on('mission:completed', (p) => this._onDeniableMissionSettled(p, 'completed'));
+      this.bus.on('mission:failed', (p) => this._onDeniableMissionSettled(p, 'failed'));
+      // A deadline is a failed delivery, not an abandon: when the snare had sprung the trap
+      // landed, so expiry settles the same 'succeeded' beat a failure does. Without this the
+      // clause row retired silently on the next tick and a sprung ambush cost the pilot nothing.
+      this.bus.on('mission:expired', (p) => this._onDeniableMissionSettled(p, 'failed'));
+      this.bus.on('player:death', () => this._onDeniablePlayerDown());
+      this.bus.on('dock:docked', (p) => this._onDeniableDock(p));
+      this.bus.on('dock:committed', (p) => this._routeToSelfRegistered('dockCommitted', p));
+      // U-B: six authored fences remember what the pilot did with their jobs (trust, route, scrub).
+      this._fenceDesk = installFenceDesk(this);
+      this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
+      this.bus.on('law:witnessChoice', (p) => this._onEscalationToken('witness', p));
+      this.bus.on('freight:cargoSpilled', (p) => this._onEscalationToken('spill', p));
+      this.bus.on('freight:loss', (p) => this._onEscalationToken('spill', p));
+      this.bus.on('ai:flee', (p) => this._onEscalationToken('flee', p));
+      this.bus.on('namedAce:fled', (p) => this._onEscalationToken('flee', p));
+    }
+  },
+
+  newGame() {
+    this._persistentEncounterLifecycle('retire', 'new_game');
+    this._saveRestoring = false;
+    this._nestVisitNextTry = 0;
+    this._nestClearanceCueAt = null;
+    this._nestWaitReason = null;
+    this._routeToScript('convoy', 'lifecycle', { reason: 'new_game' });
+    clearAllPredationBindings(this.state, 'new_game');
+    this.state.encounterDirector = freshState();
+    ensureNamed(this.state.encounterDirector);
+    publishEscalationSeeds([]);
+    // The tactical director reads this published phase — a stale 'quiet' from the previous run
+    // would hold its respite into the new session until the first flight tick republished.
+    publishSessionRhythmPhase(null);
+  },
+
+  update(dt, state) {
+    if (state.mode && state.mode !== 'flight') return;
+    if (state.physicsVenue?.active === true) return;
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (this._freightCustodyRebindPasses > 0) {
+      this._freightCustodyRebindPasses--;
+      this._restorePersistedFreightCustodies();
+      this._rebindPersistedFreightCustodyCarriers();
+    }
+    if (this._saveRestoring) return;
+    const dir = ensureDirectorState(state);
+    this._sampleCeresActivityAmbush(dir, state);
+    const now = state.simTime || 0;
+    // The director is a calendar-clock owner (≈2 Hz straddle), not a per-tick system: `dt` is
+    // always one SIM_DT quantum while ~0.5 s of sim elapses between calls. A call-count
+    // accumulator would starve the 1 Hz work to ~1/30 rate — feed it the real sim-time delta.
+    const lastNow = Number.isFinite(dir._lastUpdateNow) ? dir._lastUpdateNow : now;
+    dir._lastUpdateNow = now;
+    dir._accum = (dir._accum || 0) + Math.max(0, now - lastNow);
+    // The 1 Hz accumulator must not starve the rhythm's FIRST publish: the baseline phase is
+    // what the tactical director reads, and holding it back for a full second of sim makes an
+    // update at the same simTime as ensure (fresh boot, the pinned test) emit nothing.
+    // Fixed-step sums can land just below one second; do not lose a calendar beat to roundoff.
+    if (dir._accum + 1e-9 < 1 && dir.sessionRhythm != null) return;  // director runs at 1 Hz after baseline
+
+    const step = dir._accum;
+    dir._accum = 0;
+    this._accrue(dir, state, step);
+    this._tickSessionRhythm(dir, state, now);
+    this._tickEscalationSeeds(dir, state, now);
+    this._tickDeniableClauses(dir, state, now);
+    tickEarlyTrailerEncounters(this, dir, state, now);
+    // The onboarding rail suppresses ordinary pacing, not the authored opening beats:
+    // earlyWindowGuaranteeDay items are themselves the first-minute content the rail teaches.
+    if (!isDocked(state) && !raceLeaseActive(state)) {
+      tickNestVisit(this);
+      // DUST P1b live scan (zone-anchored, own stream): queues a lane item when the player is
+      // standing in a vignette's kind of place. Items still rank below legacy in _pump and
+      // pass every pacing/gate valve; the scan only widens WHAT can be offered.
+      this._tickDustLaneLive(dir, state, now);
+      this._pump(dir, state, now);
+      // Row 497 cadence governor: after the pump so the verdict sees this tick's admission.
+      this._tickCadence(dir, state, now, step);
+    }
+    this._tickLive(dir, state, now);
+    captureNestVisit(this);
+    this._tickStaleEncounters(dir, state, now);
+    this._tickHarassMercy(dir, state, now);
+    this._tickHostilePursuitResolution(dir, state, now);
+    this._tickAmbientPredation(state);
+    tickLootSweeps(this._lootSweepCtx());
+    // RW-02 second slice: a hot towed bell claims its pursuers on the doctrine clock, and a
+    // cooled/severed/consumed one hands them back to the hull. Seeker-round re-acquisition
+    // stays on the per-tick weapons path — this is the ship-side twin of the same signature.
+    try {
+      tickTowedLurePursuits(state, state.player && state.player.tether);
+    } catch (err) {
+      dedupWarn('encounterDirector/towed-lure-pursuit', '[encounterDirector] towed lure pursuit tick failed', err);
+    }
+    // inf-patrol-bait: a losing raider's spoofed band can turn two lawful parties on each
+    // other for one short beat; a scanner pulse (or the clock) burns the mask and they
+    // stand down. Stamps and restores ride the same 1 Hz beat as the towed-lure pass.
+    try {
+      tickPatrolBaits(state, this.bus);
+    } catch (err) {
+      dedupWarn('encounterDirector/patrol-bait', '[encounterDirector] patrol bait tick failed', err);
+    }
+    // CRT-03 second slice: the bought lot hull's nemesis — one cadenced find/track
+    // pass per director clock, spawns through the same helpers/budget the scripts use.
+    try {
+      tickImpoundGrudge(state, this._impoundGrudgeCtx());
+    } catch (err) {
+      dedupWarn('encounterDirector/impound-grudge', '[encounterDirector] impound grudge tick failed', err);
+    }
+    this._springCeresActivityAmbushOnPrey();
+  },
+
+  /**
+   * Ambient manifest predation — unscripted pirates hunting manifested civilian haulers in
+   * low-security, lane-adjacent space. Binding/clearing math lives in src/ai/ambientPredation.js;
+   * this seam only supplies the event surface and the physical cargo-pod spawn helper.
+   */
+  _ambientPredationCtx() {
+    return {
+      emit: (name, payload) => {
+        // Ambient stalks publish encounter:ambientPredationTelegraph. The telegraph
+        // path (authored motion and the rest of the convoy contract) listens for
+        // encounter:predationTelegraph. Forward once per raid, before the engage
+        // commit, without emitting that event again when the stalk commits.
+        if (name === 'encounter:ambientPredationTelegraph' && payload) {
+          emitPredationStalkTelegraph(this.state, payload, (eventName, eventPayload) => {
+            this.emit(eventName, eventPayload);
+          });
+        }
+        this.emit(name, payload);
+      },
+      docked: isDocked(this.state),
+      spawnCargoPod: (s, spec) => spawnJettisonedCargoPod(s, spec, this.helpers),
+      removeEntity: (id, opts) => (
+        this.helpers && typeof this.helpers.removeEntity === 'function'
+          ? this.helpers.removeEntity(id, opts)
+          : false
+      ),
+    };
+  },
+
+  /**
+   * FIGHT-15 loot sweep — the rule lives in src/ai/lootSweep.js; this seam only supplies the
+   * entity surface, the event bus, and the sanctioned disarm sweep (same shape survivorPod uses).
+   */
+  _lootSweepCtx() {
+    const state = this.state;
+    const tether = state && state.player && state.player.tether;
+    return {
+      state,
+      playerTowedPodId: tether ? tether.targetId : null,
+      bus: this.bus,
+      helpers: this.helpers,
+      disarm: () => clearIneligibleAIFiringIntents(state, this.helpers),
+    };
+  },
+
+  /** CRT-03 — supplies the grudge rule's spawn/spec/emit surface so the library in
+   *  src/systems/impoundGrudge.js never imports the combat spawn owner directly. */
+  _impoundGrudgeCtx() {
+    return {
+      helpers: this.helpers,
+      bus: this.bus,
+      emit: (name, payload) => this.emit(name, payload),
+      makeEnemySpec: (archetype, level, pos, opts) => makeEnemySpawnSpec(archetype, level, pos, opts),
+    };
+  },
+
+  _tickAmbientPredation(state) {
+    // Restore ordering is not guaranteed — never evaluate or sweep mid-rebuild.
+    if (this._saveRestoring) return;
+    try {
+      updateAmbientPredation(state, this._ambientPredationCtx());
+    } catch (err) {
+      dedupWarn('encounterDirector/ambient-predation-tick', '[encounterDirector] ambient predation tick failed', err);
+    }
+  },
+
+  /**
+   * Player intervention on a bound predation raider. SF-055: while the take is still aboard the
+   * hit buys speed, not revenge — the raider cuts to (or re-aims) its escape leg off the
+   * attacker's bearing and sheds cargo per hit through the jettison above. Only once the hold is
+   * empty does the release below convert it into an ordinary self-defense attacker. Without that
+   * conversion path the bounded predation branch swallowed the retaliation flags entirely and the
+   * raider could never defend itself.
+   */
+  _releasePredationRaiderForRetaliation(targetId, attackerId = null) {
+    const entities = this.state && this.state.entities;
+    const entity = targetId != null && entities && typeof entities.get === 'function'
+      ? entities.get(targetId) : null;
+    if (!entity || entity.alive === false) return false;
+    try {
+      const ctx = this._ambientPredationCtx();
+      if (accelerateBoundRaiderEscape(this.state, entity, attackerId, ctx)) return true;
+      return releaseBoundRaiderForRetaliation(this.state, entity, ctx);
+    } catch (err) {
+      dedupWarn('encounterDirector/predation-retaliation-release', '[encounterDirector] predation retaliation release failed', targetId, err);
+      return false;
+    }
+  },
+
+  /** A combat encounter the player has neither damaged nor been damaged by for STALE_ENCOUNTER_S
+   * is a stalemate, not a story — resolve it escaped so combat_busy releases the lane. Named
+   * captains are exempt: their grudges carry their own depart/deadline lifecycle. */
+  _tickStaleEncounters(dir, state, now) {
+    for (const lid of Object.keys(dir.live)) {
+      const live = dir.live[lid];
+      if (!live || live.phase === 'done' || live.deck !== 'combat') continue;
+      if (live.script === 'namedHunter') continue;
+      //705 owns finite brood and genuine departure; inactivity is neither an escape
+      // receipt nor a reason to tear down and reconstruct its persistent cast.
+      if (live.shapeId === 'the_nest') continue;
+      if (live.data && live.data.adoptedWorldActors === true) continue;
+      const lastTouch = Math.max(live.startedAt || 0, live.lastPlayerExchangeAt || 0);
+      if (now - lastTouch <= STALE_ENCOUNTER_S) continue;
+      const squadAlive = this.aliveCount(live) > 0;
+      if (!squadAlive) continue;                       // kill/teardown paths own these
+      this.resolve(live, 'escaped');
+      this.emit('encounter:stale', {
+        encounterId: lid, shapeId: live.shapeId, staleS: Math.round(now - lastTouch),
+        sectorId: live.sectorId, t: now,
+      });
+    }
+  },
+
+  _tickSessionRhythm(dir, state, now) {
+    const next = advanceSessionRhythm(dir, state, now);
+    publishSessionRhythmPhase(next.phase);
+    if (!next.changed) return next;
+    this.emit('rhythm:phase', {
+      simTime: now,
+      phase: next.phase,
+      dwellS: next.dwellS,
+      previous: next.previous,
+    });
+    return next;
+  },
+
+  _onEscalationToken(cause, payload) {
+    if (this._saveRestoring) return;
+    const dir = ensureDirectorState(this.state);
+    const seed = seedEscalationFromAct(dir, this.state, cause, payload || {});
+    if (!seed) return;
+    persistEscalationLedger(dir);
+    publishEscalationSeeds(dir.escalationSeeds);
+    this.emit('escalation:seeded', publicEscalationSeed(seed));
+  },
+
+  _tickEscalationSeeds(dir, state, now) {
+    const arrived = advanceEscalationSeeds(dir, state, now);
+    persistEscalationLedger(dir);
+    publishEscalationSeeds(dir.escalationSeeds);
+    for (const seed of arrived) {
+      if (seed.beat === 'shortage') {
+        const stationId = seed.place && seed.place.stationId;
+        const commodityId = seed.commodityId;
+        if (stationId && commodityId) this.tradePressure(stationId, commodityId, -3);
+      }
+      this.emit('escalation:arrived', publicEscalationSeed(seed));
+    }
+  },
+
+  // ═══ SCHEDULING ═══════════════════════════════════════════════════════════════════════════════
+
+  _onSectorEnter(p) {
+    // saveSystem rematerializes the target sector before it installs the incoming director bag.
+    // Ignore that early event rather than applying the outgoing timeline's one-shot phase to the
+    // incoming durable actors; save:loaded below seeds once the saved stats are authoritative.
+    if (this._saveRestoring) return;
+    // payload whose enterEpoch no longer matches the world's serial is stale — a queued tail
+    // delivered inside a newer enter's window must not reseed pressure, wipe pending, or plan
+    // beats for the sector the player already departed.
+    if (p && p.enterEpoch != null && this.state && this.state.world
+        && this.state.world.enterSerial != null && p.enterEpoch !== this.state.world.enterSerial) return;
+    // Continuous free-flight membership is a soft handoff (M2-C1). Soft exit preserves
+    // live/pending/pressure/active; continuous enter must NOT reseed grace pressure, clear the
+    // pacing window, or replan (which wipes pending for a new sector-day key). Intentional
+    // jump / load / boot enters still get the entry breath and planner.
+    const sectorId = p && typeof p === 'object' ? p.sectorId : p;
+    if (p && (p.continuous || p.noTeleport)) {
+      this._seedCeresActivityAmbush(sectorId, { continuous: true });
+      return;
+    }
+
+    const state = this.state;
+    const dir = ensureDirectorState(state);
+    const now = state.simTime || 0;
+    const sec = sectorSecurityOf(state);
+    dir.pressure.combat = Math.min(POOL_MAX, ENTRY_GRACE_COMBAT + (1 - sec) * 25);
+    dir.pressure.civilian = Math.min(POOL_MAX, ENTRY_GRACE_CIVIL + sec * 20);
+    dir.pressure.patrol = Math.min(POOL_MAX, ENTRY_GRACE_PATROL + sec * 20);
+    dir.window = [];
+    dir.lastMeaningfulAt = now;                        // sector entry breathes ≥30 s before beats
+    dir.lastAmbientAt = now - AMBIENT_GAP_S;
+    this._planSector(sectorId);
+    this._seedCeresActivityAmbush(sectorId);
+  },
+
+  _onSectorExit(p) {
+    if (this._saveRestoring) return;
+    // Continuous free-flight membership is a soft handoff — preserve live encounters, pending
+    // beats, and active spawn ledger so fights can cross Voronoi edges (M2-C1). Hard teardown
+    // only for intentional jump / load / non-continuous boundaries.
+    const sectorId = p && typeof p === 'object' ? p.sectorId : p;
+    if (p && (p.continuous || p.noTeleport)) return;
+    if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._leaveCeresActivityAmbush();
+
+    const dir = ensureDirectorState(this.state);
+    // Live encounters in the sector we left resolve as abandoned (named grudges still book).
+    for (const id of Object.keys(dir.live)) {
+      const live = dir.live[id];
+      const script = encounterScriptFor(live);
+      if (live.script === 'weirAmbush' && script) {
+        script.depart(this, live, this.state);
+      } else if (live.script === 'namedHunter' && script) {
+        script._depart(this, live, !!(live.data && live.data.engaged));
+      } else {
+        if (leaveNestVisit(this, live)) continue;
+        if (live.script === 'convoy') this._scriptEvent(live, 'lifecycle', { reason: 'sector_exit' });
+        this.abort(live, 'sector_exit');
+      }
+    }
+    dir.live = {};
+    dir.squadMembership = {};
+    dir.pending = [];
+    dir.active = {};                                   // spawnBudget hard-resets on non-continuous exit
+    dir.activeMembership = {};
+    dir.scriptProbeRows = 0;
+    dir.plannedKey = null;                             // same-day re-entry must replan
+  },
+
+  _onSaveLoaded() {
+    this._persistentEncounterLifecycle('retire', 'save_loaded');
+    this._saveRestoring = false;
+    const state = this.state;
+    const prev = state.encounterDirector;
+    clearAllPredationBindings(state, 'save_loaded');
+    sweepStaleLootSweeps(state);
+    const fresh = freshState();
+    if (prev && typeof prev === 'object') {
+      if (prev.named && typeof prev.named === 'object' && !Array.isArray(prev.named)) fresh.named = prev.named;
+      if (Array.isArray(prev.receipts)) fresh.receipts = prev.receipts.slice(-RECEIPT_CAP);
+      if (prev.cooldowns && typeof prev.cooldowns === 'object') fresh.cooldowns = prev.cooldowns;
+      if (prev.stats && typeof prev.stats === 'object') fresh.stats = { ...fresh.stats, ...prev.stats };
+    }
+    if (Object.prototype.hasOwnProperty.call(prev || {}, 'nestVisit')) fresh.nestVisit = normalizeNestVisit(prev.nestVisit);
+    this._nestVisitNextTry = 0;
+    state.encounterDirector = fresh;
+    ensureNamed(fresh);
+    for (const runtime of SELF_REGISTERED_RUNTIME_BY_ID.values()) {
+      if (typeof runtime.restoreSaved === 'function') runtime.restoreSaved(this, state);
+    }
+    const weir = ENCOUNTER_SCRIPTS.weirAmbush.restoreSaved(this, state);
+    if (weir) {
+      fresh.active[weir.squadId] = { ids: weir.ids.slice(), sectorId: weir.sectorId };
+      for (const id of weir.ids) {
+        indexSquadMember(fresh, weir, id);
+        indexActiveMember(fresh, weir, id);
+      }
+    }
+    this._restorePersistedFreightCustodies();
+    this._rebindPersistedFreightCustodyCarriers();
+    // Some load owners publish save:loaded before their final entity-index rebuild. Two bounded
+    // update passes catch that production ordering without turning this into a permanent scan.
+    this._freightCustodyRebindPasses = 2;
+    // Absolute cooldown stamps from another timeline are clamped into sane range.
+    const now = state.simTime || 0;
+    for (const k of Object.keys(fresh.cooldowns)) {
+      const shape = ENCOUNTERS[k];
+      const maxCd = now + (shape && shape.cooldownS ? shape.cooldownS : 900);
+      if (!(fresh.cooldowns[k] <= maxCd)) fresh.cooldowns[k] = maxCd;
+    }
+    // Warnings restored mid-countdown never re-emit claim:defenseWarning — republish their
+    // rosters here so the resumed countdown still covers the squad's decode lead.
+    const bodies = (state.claims && state.claims.bodies) || [];
+    for (const body of bodies) {
+      const defense = body && body.spec && body.spec.defense;
+      if (!defense || defense.phase !== 'warning' || !defense.encounterId) continue;
+      this._publishClaimDefenseRoster({
+        encounterId: defense.encounterId,
+        bodyId: body.id,
+        sectorId: body.sectorId,
+        pos: { x: body.x, z: body.z },
+        attackerCount: defense.attackerCount,
+        attackerName: defense.attackerName,
+        motive: defense.motive,
+      });
+    }
+    // A load is a non-continuous sector enter: _onSectorEnter early-returns while _saveRestoring,
+    // and this handler is where the authored entry breath and planner were promised ("jump /
+    // load / boot enters still get the entry breath and planner"). Without it, pending stayed
+    // empty until the next day:tick — up to DAY_SECONDS of dead air after every load — and
+    // pressure then warmed from zero on top of the wait.
+    const sectorId = this._currentSectorId();
+    if (sectorId) {
+      const sec = sectorSecurityOf(state);
+      fresh.pressure.combat = Math.min(POOL_MAX, ENTRY_GRACE_COMBAT + (1 - sec) * 25);
+      fresh.pressure.civilian = Math.min(POOL_MAX, ENTRY_GRACE_CIVIL + sec * 20);
+      fresh.pressure.patrol = Math.min(POOL_MAX, ENTRY_GRACE_PATROL + sec * 20);
+      fresh.window = [];
+      fresh.lastMeaningfulAt = now;                     // entry breath: first beats land ~40-90s in
+      fresh.lastAmbientAt = now - AMBIENT_GAP_S;
+      // `dustRotation` records the offers from the schedule already saved before this
+      // restore. Pending rows are intentionally transient and are regenerated here; do not
+      // count that reconstruction as a second offer against the durable rotation ledger.
+      this._planSector(sectorId, { reconstructingAfterLoad: true });
+    }
+    this._seedCeresActivityAmbush(this._currentSectorId(), { loaded: true });
+  },
+
+  // Opt-in only: other encounters retain their existing lifecycle and persistence owners.
+  _persistentEncounterLifecycle(method, reason) {
+    for (const live of Object.values(this.state.encounterDirector?.live || {})) {
+      const runtime = encounterScriptFor(live);
+      if (typeof runtime?.[method] === 'function') runtime[method](this, live, this.state, reason);
+    }
+  },
+
+  restoreEncounterRecord(item) {
+    const shape = ENCOUNTERS[item.shapeId];
+    const dir = ensureDirectorState(this.state);
+    if (!shape || dir.live[item.encounterId]) return null;
+    const live = makeEncounterLiveRecord(this.state, item, shape, this.now());
+    dir.live[live.id] = live;
+    noteScriptProbeRow(dir, live, +1);
+    // Reconstruction is not a new firing: no pressure, spawned/telegraph, or fired counter.
+    return live;
+  },
+
+  _restorePersistedFreightCustodies() {
+    const dir = ensureDirectorState(this.state);
+    const envelopes = normalizePersistedFreightCustodies(dir.stats.openFreightCustodies);
+    dir.stats.openFreightCustodies = envelopes;
+    const script = ENCOUNTER_SCRIPTS.convoy;
+    if (!script || typeof script.restoreCustody !== 'function') return 0;
+    let restored = 0;
+    for (const envelope of envelopes) {
+      const existing = dir.live[envelope.encounterId];
+      if (existing && existing.data && existing.data.freightCargoCustody
+        && existing.data.freightCargoCustody.custodyId === envelope.custodyId) continue;
+      if (script.restoreCustody(this, this.state, envelope)) restored++;
+    }
+    return restored;
+  },
+
+  _rebindPersistedFreightCustodyCarriers() {
+    // Carriers are always type === 'ship' — ride the shipLike bucket when the index is live,
+    // falling back to the entity Map for load owners that publish before the index rebuild.
+    // The rebind gate is the live carrier annotation itself, never stats.openFreightCustodies:
+    // initializeConvoyPredation stamps data.freightCustody at fire while the custody envelope is
+    // only minted at the first spill, so an envelope-gated skip dropped every pre-spill carrier
+    // rebind. The cheap annotation probe keeps the common no-custody load near-free — the full
+    // persistedFreightCarrierBinding predicate runs only on ships that could possibly rebind.
+    const scan = indexedShipLikeOrEntitiesScan(this.state);
+    let rebound = 0;
+    for (const entity of scan) {
+      const data = entity && entity.data;
+      if (!data || data.freightCustody == null) continue;
+      const binding = persistedFreightCarrierBinding(entity);
+      if (!binding || binding.custody.carrierId === entity.id) continue;
+      const previousCarrierId = binding.custody.carrierId;
+      binding.custody.carrierId = entity.id;
+      binding.data.freightCustodyCarrierIdentityKey = binding.identityKey;
+      rebound++;
+      this.emit('freight:custodyRebound', {
+        entityId: entity.id,
+        previousCarrierId,
+        encounterId: binding.custody.encounterId,
+        manifestId: binding.manifest.manifestId,
+        freighterKey: binding.manifest.freighterKey,
+        carrierIdentityKey: binding.identityKey,
+        t: this.now(),
+      });
+    }
+    return rebound;
+  },
+
+  // Build the deterministic schedule for a sector-day. Pure aside from writing dir.pending.
+  _planSector(sectorId, { reconstructingAfterLoad = false } = {}) {
+    const state = this.state;
+    const dir = ensureDirectorState(state);
+    if (!sectorId) return;
+    const dayIndex = Math.floor((state.simTime || 0) / DAY_SECONDS);
+    const key = `${sectorId}#${dayIndex}`;
+    if (dir.plannedKey === key) return;
+    dir.plannedKey = key;
+    // Ordinary sector-day rows are transient and replan from the new day seed. The one authored
+    // Ceres crossing is durable once queued, and an unfired teach-day guarantee keeps its promise
+    // past the day boundary (the rail can outlive day 0 — the opening raid must still land), so
+    // carry both across the replan rather than silently erasing them. Sector hops still drop them.
+    // Collapse any malformed duplicate fail-closed.
+    const queuedCeresActivityAmbush = sectorId === CERES_ACTIVITY_SECTOR_ID
+      ? dir.pending.find((item) => isCeresActivityAmbushItem(item))
+      : null;
+    const carriedGuarantees = dir.pending.filter((item) => item
+      && item !== queuedCeresActivityAmbush
+      && item.sectorId === sectorId
+      && isAuthoredGuaranteeItem(item));
+    dir.pending = queuedCeresActivityAmbush
+      ? [queuedCeresActivityAmbush, ...carriedGuarantees]
+      : carriedGuarantees;
+
+    const zones = zonesForSector(sectorId);
+    if (!zones.length) return;                         // no zones → schedule nothing (additive)
+
+    const schedule = planEncounters(state.meta && state.meta.seed, sectorId, dayIndex, zones, state);
+    const now = state.simTime || 0;
+    for (const s of schedule) {
+      if (sectorId === CERES_ACTIVITY_SECTOR_ID
+        && s.shapeId === 'ambush_snare'
+        && s.zoneId === CERES_ACTIVITY_AMBUSH_ZONE_ID) {
+        continue;
+      }
+      dir.pending.push({ ...s, sectorId, dueAt: now + s.delay, defers: 0 });
+    }
+    // DUST P1b: the additive widening lane. Planned AFTER the legacy schedule from its own
+    // stream (see planDustLaneDay) and appended behind it, so the legacy picks, delays, and
+    // push order above are bit-identical to a lane-less build. Dust items rank below every
+    // legacy due item in _pump and fire only through the same pacing/gates machinery.
+    const dustSchedule = planDustLaneDay(state.meta && state.meta.seed, sectorId, dayIndex, zones, {
+      started: dustSeenMap(dir),
+      rotation: dustRotationMap(dir),
+    });
+    for (const s of dustSchedule) {
+      if (!reconstructingAfterLoad) {
+        const rotation = dustRotationMap(dir);
+        rotation[s.shapeId] = (rotation[s.shapeId] | 0) + 1;
+      }
+      dir.pending.push({ ...s, sectorId, dueAt: now + s.delay, defers: 0, dustLane: true });
+    }
+    dir.lastPlanned = { sectorId, dayIndex, count: schedule.length + dustSchedule.length };
+  },
+
+  // ═══ PRESSURE (deterministic accrual from existing state only) ════════════════════════════════
+
+  // TODO(career-tags, stretch): derive miner/hauler/hunter/smuggler/salvager/explorer tags from the
+  // same deterministic inputs below and use them ONLY to bias planner weights (never lock content).
+  // Deferred: the raw inputs (mining noise, cargo value, heat, bounty) already bias pressure; tag
+  // plumbing must not perturb planner determinism without a corresponding check extension.
+  _accrue(dir, state, step) {
+    dir.noise.mining = Math.max(0, dir.noise.mining * (1 - NOISE_DECAY_PER_S * step));
+    const p = this.player();
+    const sectorId = this._currentSectorId();
+    // T11: the long tow. Decays like mining noise; accrues only while a line holds a body.
+    this._accrueTowNoise(dir, state, step, p);
+    if (!p || !sectorId) return;
+    const local = globalToSectorLocalForSector(p.pos, sectorId);
+    const zone = zoneAt(sectorId, local.x, local.z);
+    const zt = zoneThreat(zone);
+    const sec = sectorSecurityOf(state);
+    const ecology = regionalEcologyReadout(state, sectorId);
+    const ecologyDanger = ecology ? ecology.danger.effective - ecology.danger.baseline : 0;
+    const cargoBand = Math.min(1, this.cargoValue() / 2000);
+    const wanted = isWanted(state);
+    const combatRate =
+      0.25 + 0.22 * zt + (1 - sec) * 0.5 + cargoBand * 0.35 +
+      (wanted ? 0.6 : 0) + Math.min(1, dir.noise.mining) * 0.5 +
+      (((state.player && state.player.bounty) | 0) > 0 ? 0.25 : 0) + ecologyDanger * 0.45 +
+      // C12 worked-out belts + T11 a heavy tow: both exactly 0 when nothing is depleted/towed.
+      this._scarcityTerm(dir, state, sectorId) * SCARCITY_COMBAT_WEIGHT +
+      Math.min(1, dir.noise.tow || 0) * TOW_COMBAT_WEIGHT;
+    const civilRate =
+      0.35 + sec * 0.45 + (zone && CIVIL_ZONE_TYPES.has(zone.type) ? 0.35 : 0);
+    // Mystery accrues slow and strange — frontier drift plus a real pull where its wrecks lie.
+    // Patrol accrues like the law it is: security-scaled, hot inside a cordon zone.
+    // AE-072: contamination presses the mystery deck — active biological space spawns
+    // observation/crossing/carrier beats more often (doc 01 §system outputs).
+    const ecoPull = zone
+      ? (ecologyEncounterWeights(state, sectorId, zone.id).anomalyBias || 0)
+      : 0;
+    const mysteryRate =
+      0.05 + (1 - sec) * 0.12 + (zone && MYSTERY_ZONE_TYPES.has(zone.type) ? 0.25 : 0) + ecoPull * 0.3;
+    const patrolRate =
+      0.08 + sec * 0.4 + (zone && LAWFUL_ZONE_TYPES.has(zone.type) ? 0.3 : 0);
+    dir.pressure.combat = Math.min(POOL_MAX, dir.pressure.combat + combatRate * step * tensionAccrualScale(state, 'combat'));
+    dir.pressure.civilian = Math.min(POOL_MAX, dir.pressure.civilian + civilRate * step * tensionAccrualScale(state, 'civilian'));
+    dir.pressure.mystery = Math.min(POOL_MAX, dir.pressure.mystery + mysteryRate * step * tensionAccrualScale(state, 'mystery'));
+    dir.pressure.patrol = Math.min(POOL_MAX, dir.pressure.patrol + patrolRate * step * tensionAccrualScale(state, 'patrol'));
+  },
+
+  // ── T11: the long tow ────────────────────────────────────────────────────────────────────────
+  /** Mass of the non-ship body the player's line currently holds (0 when none). Reads the
+   * tether mirror tetherGameplay publishes (state.player.tether); never writes it. Live ships
+   * are a grapple fight — already priced by the combat deck — so only hulks/rocks/crates count. */
+  _towedMass(state, player) {
+    const t = state && state.player && state.player.tether;
+    if (!t || t.active !== true || t.targetId == null) return 0;
+    const target = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(t.targetId) : null;
+    if (!target || target.alive === false) return 0;
+    if (target.type === 'ship' && target.hull > 0) return 0;
+    if (player && target.id === player.id) return 0;
+    const body = target.physicsBody && Number(target.physicsBody.mass);
+    const mass = Number.isFinite(body) && body > 0 ? body : Number(target.mass);
+    return Number.isFinite(mass) && mass > 0 ? mass : 0;
+  },
+
+  _accrueTowNoise(dir, state, step, player) {
+    const prev = Number.isFinite(dir.noise.tow) ? dir.noise.tow : 0;
+    let next = Math.max(0, prev * (1 - NOISE_DECAY_PER_S * step));
+    const mass = this._towedMass(state, player);
+    if (mass > 0) {
+      next = Math.min(TOW_NOISE_CAP, next + TOW_NOISE_PER_S * Math.min(1, mass / TOW_MASS_FULL) * step);
+    }
+    // Lazy key: written only once a tow has ever happened (see ensureDirectorState).
+    if (next > 0 || prev > 0 || dir.noise.tow !== undefined) dir.noise.tow = next;
+    return next;
+  },
+
+  // ── C12: worked-out belts make the lanes hungry ──────────────────────────────────────────────
+  /** The 0..1 scarcity term for the sector (pure function of state), plus the one-time rumor the
+   * first time it crosses SCARCITY_RUMOR_THRESHOLD in that sector. */
+  _scarcityTerm(dir, state, sectorId) {
+    const term = sectorScarcityTerm(state, sectorId);
+    if (term >= SCARCITY_RUMOR_THRESHOLD && sectorId) this._scarcityRumorOnce(dir, state, sectorId, term);
+    return term;
+  },
+
+  _scarcityRumorOnce(dir, state, sectorId, term) {
+    const seen = dir.stats.scarcityRumored;
+    if (seen && seen[sectorId] === true) return false;
+    if (isTutorialActive(state)) return false;
+    if (!seen || typeof seen !== 'object') dir.stats.scarcityRumored = {};
+    dir.stats.scarcityRumored[sectorId] = true;
+    const voice = this.helpers && this.helpers.voice;
+    const said = voice && typeof voice.say === 'function'
+      ? voice.say({ channel: 'news', text: SCARCITY_RUMOR_TEXT, kind: 'rumor' })
+      : false;
+    if (!said) this.emit('toast', { text: SCARCITY_RUMOR_TEXT, kind: 'info', ttl: 4 });
+    this.emit('encounter:scarcityRumor', {
+      sectorId, scarcity: Math.round(term * 1e4) / 1e4, text: SCARCITY_RUMOR_TEXT, t: this.now(),
+    });
+    return true;
+  },
+
+  // ── C11: the deniable job's ambush clause ────────────────────────────────────────────────────
+  /** Decide the clause ONCE when the deniable job is accepted: the chance rises with the heat
+   * level the pilot is carrying (0.6 at level 1 → 1.0 at level 5), the roll is one state.rng
+   * draw. The verdict is a durable ledger row; the snare itself is staked out at the drop by
+   * _tickDeniableClauses and fired through the director's authored-encounter seam. */
+  _onDeniableAccepted(p) {
+    if (this._saveRestoring) return null;
+    const missionId = p && p.missionId;
+    if (!missionId) return null;
+    const state = this.state;
+    const active = state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+    const mission = active.find((m) => m && m.id === missionId);
+    if (!mission || !mission.cause || mission.cause.tag !== DENIABLE_CAUSE_TAG) return null;
+    const dir = ensureDirectorState(state);
+    if (!dir.stats.deniableClauses || typeof dir.stats.deniableClauses !== 'object') {
+      dir.stats.deniableClauses = {};
+    }
+    const ledger = dir.stats.deniableClauses;
+    if (ledger[missionId]) return ledger[missionId];
+    const level = Math.max(1, heatLevelFor(state.player && state.player.heat));
+    const fenceStationId = mission.stationId
+      || (mission.cause.deniable && mission.cause.deniable.fenceStationId) || null;
+    // An emboldened fence rolls bolder (C11 follow-up); 0 - and no key on the row - otherwise.
+    const bonus = emboldenedBonus(state, fenceStationId, deniableBoardEpoch(state));
+    // U-B: a trusted fence sets the pilot up less; a mercy fence never does (fenceAmbushChance).
+    const chance = fenceAmbushChance(state, fenceStationId, level, bonus);
+    const roll = typeof state.rng === 'function'
+      ? state.rng()
+      : (hash32((state.meta && state.meta.seed) || 0, String(missionId), 'deniable-clause') % 1e6) / 1e6;
+    const row = {
+      missionId,
+      stationId: mission.destStationId || null,
+      sectorId: mission.destSectorId || null,
+      level,
+      chance,
+      roll: Math.round(roll * 1e6) / 1e6,
+      hit: roll < chance,
+      decidedAt: this.now(),
+      armedAt: null,
+      fired: false,
+      fenceStationId,
+      fenceSectorId: this._sectorIdOfStation(fenceStationId),
+      fenceFactionId: mission.factionId || null,
+      ...(bonus > 0 ? { bonus: Math.round(bonus * 1e4) / 1e4 } : {}),
+    };
+    ledger[missionId] = row;
+    const ids = Object.keys(ledger);
+    if (ids.length > DENIABLE_CLAUSE_CAP) {
+      ids.sort((a, b) => (ledger[a].decidedAt - ledger[b].decidedAt) || (a < b ? -1 : 1));
+      for (const id of ids.slice(0, ids.length - DENIABLE_CLAUSE_CAP)) delete ledger[id];
+    }
+    this.emit('ambush:clauseDecided', { ...row });
+    return row;
+  },
+
+  /** The drop: the destination berth's global position pushed DENIABLE_DROP_OFFSET_WU out along a
+   * seeded bearing, so the snare waits on the approach. Pure in (seed, missionId, station). */
+  _deniableDropPoint(row) {
+    const sector = SECTORS.find((s) => s.id === row.sectorId);
+    const station = sector && (sector.stations || []).find((s) => s.id === row.stationId);
+    if (!station || !station.pos) return null;
+    const base = sectorLocalToGlobalForSector(station.pos, row.sectorId);
+    const seed = (this.state.meta && this.state.meta.seed) || 0;
+    const angle = (hash32(seed, String(row.missionId), 'deniable-drop') % 360) * (Math.PI / 180);
+    return {
+      x: base.x + Math.cos(angle) * DENIABLE_DROP_OFFSET_WU,
+      z: base.z + Math.sin(angle) * DENIABLE_DROP_OFFSET_WU,
+    };
+  },
+
+  // ── C11 follow-ups: the fence's next beat ─────────────────────────────────────────────────────
+  _sectorIdOfStation(stationId) {
+    if (!stationId) return null;
+    const sector = SECTORS.find((s) => (s.stations || []).some((st) => st.id === stationId));
+    return sector ? sector.id : null;
+  },
+
+  _stationNameOf(stationId) {
+    for (const sector of SECTORS) {
+      const st = (sector.stations || []).find((entry) => entry.id === stationId);
+      if (st) return st.name || stationId;
+    }
+    return stationId || 'the dock';
+  },
+
+  /** The live clause row for a mission that still owes an outcome (null once settled). */
+  _openDeniableRow(missionId) {
+    if (this._saveRestoring || !missionId) return null;
+    const ledger = this.state.encounterDirector && this.state.encounterDirector.stats
+      && this.state.encounterDirector.stats.deniableClauses;
+    const row = ledger && typeof ledger === 'object' ? ledger[missionId] : null;
+    return row && !row.outcome ? row : null;
+  },
+
+  /** The drop's ambush_snare ended with the pilot still flying: they beat the trap. */
+  _onDeniableEncounterResolved(p) {
+    const id = p && typeof p.encounterId === 'string' ? p.encounterId : '';
+    if (!id.startsWith('deniable:')) return;
+    if (p.outcome !== 'cleared' && p.outcome !== 'escaped') return;
+    const row = this._openDeniableRow(id.slice('deniable:'.length));
+    if (row && row.hit && row.fired) this._settleDeniable(row, 'survived');
+  },
+
+  /** The job settled. Delivered through a fired snare = survived; delivered with no clause at all
+   * = the quiet-thanks carrot; failed (not abandoned) after the snare fired = it landed. */
+  _onDeniableMissionSettled(p, kind) {
+    const row = this._openDeniableRow(p && p.missionId);
+    if (!row) return;
+    if (kind === 'completed') {
+      // A scheduled clause the pilot never walked into is still a clean delivery: without this
+      // branch the row retires silently on the next tick — no rep, no thanks, no fence beat.
+      if (row.hit && row.fired) this._settleDeniable(row, 'survived');
+      else this._settleDeniable(row, 'clean');
+      return;
+    }
+    if (row.hit && row.fired && !/abandon/i.test(String((p && p.reason) || ''))) {
+      this._settleDeniable(row, 'succeeded');
+    }
+  },
+
+  /** Going down with a fired snare still open is the ambush succeeding. */
+  _onDeniablePlayerDown() {
+    const ledger = this.state.encounterDirector && this.state.encounterDirector.stats
+      && this.state.encounterDirector.stats.deniableClauses;
+    if (!ledger || typeof ledger !== 'object') return;
+    for (const id of Object.keys(ledger).sort()) {
+      const row = this._openDeniableRow(id);
+      if (row && row.hit && row.fired) this._settleDeniable(row, 'succeeded');
+    }
+  },
+
+  _settleDeniable(row, kind) {
+    row.outcome = kind;
+    const dir = ensureDirectorState(this.state);
+    const now = this.now();
+    const epoch = deniableBoardEpoch(this.state);
+    const stationId = row.fenceStationId || null;
+    const sectorId = row.fenceSectorId || null;
+    if (kind === 'clean') {
+      // The carrot: a quiet word with the fence's faction (factions own the write) and one bark.
+      if (row.fenceFactionId) this.rep(row.fenceFactionId, DENIABLE_CLEAN_REP, 'deniable_delivered');
+      this._fenceSays(DENIABLE_CLEAN_BARK, 'bark');
+      this.emit('deniable:fenceThanked', {
+        schemaVersion: 1, stationId, sectorId, factionId: row.fenceFactionId || null, tick: this.state.tick | 0,
+      });
+      return;
+    }
+    if (!stationId) return; // an old row with no fence: nothing to burn or embolden
+    const burned = kind === 'survived';
+    const planted = plantDeniableSeed(dir, {
+      id: `deniable:${burned ? 'burned' : 'emboldened'}:${row.missionId}`,
+      beat: burned ? 'burned' : 'emboldened',
+      causeId: row.missionId,
+      stationId,
+      sectorId,
+      factionId: row.fenceFactionId || null,
+      seededAt: now,
+      untilEpoch: epoch + (burned ? DENIABLE_BURN_EPOCHS : DENIABLE_EMBOLDEN_EPOCHS),
+      rumorPending: true,
+      ...(burned ? {} : { bonus: DENIABLE_EMBOLDEN_BONUS }),
+    }, epoch);
+    if (!planted) return;
+    this.emit(burned ? 'deniable:fenceBurned' : 'deniable:fenceEmboldened', {
+      schemaVersion: 1, stationId, sectorId, tick: this.state.tick | 0,
+    });
+  },
+
+  /** The next dock at a fence with a pending seed hears the rumor, once. */
+  _onDeniableDock(p) {
+    if (this._saveRestoring) return;
+    const stationId = p && p.stationId;
+    if (!stationId) return;
+    const dir = this.state.encounterDirector;
+    if (!dir || !dir.stats || !dir.stats.deniableAftermath) return; // lazy: nothing planted, nothing to do
+    const ledger = dir.stats.deniableAftermath;
+    const epoch = deniableBoardEpoch(this.state);
+    let spoke = false;
+    for (let i = 0; i < ledger.seeds.length; i++) {
+      const seed = sanitizeDeniableSeed(ledger.seeds[i]);
+      if (!seed || !seed.rumorPending || seed.stationId !== stationId) continue;
+      ledger.seeds[i] = { ...seed, rumorPending: false };
+      const name = this._stationNameOf(stationId);
+      this._fenceSays(seed.beat === 'burned' ? deniableBurnedRumor(name) : deniableEmboldenedRumor(name), 'news');
+      spoke = true;
+    }
+    if (spoke) pruneDeniableSeeds(dir, epoch);
+  },
+
+  _fenceSays(line, channel) {
+    const voice = this.helpers && this.helpers.voice;
+    const said = voice && typeof voice.say === 'function'
+      ? voice.say(channel === 'news'
+        ? { channel: 'news', text: line, kind: 'rumor' }
+        : { channel: 'bark', text: line, kind: 'fence' })
+      : false;
+    if (!said) this.emit('toast', { text: line, kind: 'info', ttl: 4 });
+    return !!said;
+  },
+
+  _tickDeniableClauses(dir, state, now) {
+    const ledger = dir.stats && dir.stats.deniableClauses;
+    if (!ledger || typeof ledger !== 'object') return;
+    const ids = Object.keys(ledger).sort();
+    if (!ids.length) return;
+    const active = state.missions && Array.isArray(state.missions.active) ? state.missions.active : null;
+    const sectorId = this._currentSectorId();
+    for (const id of ids) {
+      const row = ledger[id];
+      if (!row) { delete ledger[id]; continue; }
+      // The job is over (delivered, failed, abandoned): the clause retires with it.
+      if (active) {
+        const mission = active.find((m) => m && m.id === id);
+        if (!mission || (mission.status && mission.status !== 'active')) { delete ledger[id]; continue; }
+      }
+      if (!row.hit || row.fired) continue;
+      if (isDocked(state) || !sectorId || row.sectorId !== sectorId) { row.armedAt = null; continue; }
+      const player = this.player();
+      const drop = this._deniableDropPoint(row);
+      if (!player || !player.pos || !drop) continue;
+      if (Math.hypot(player.pos.x - drop.x, player.pos.z - drop.z) > DENIABLE_TRIGGER_WU) {
+        row.armedAt = null;
+        continue;
+      }
+      if (row.armedAt == null) row.armedAt = now + DENIABLE_ARM_DELAY_S;
+      if (now < row.armedAt) continue;
+      const shape = ENCOUNTERS.ambush_snare;
+      if (!shape) { row.fired = true; row.failed = 'missing_shape'; continue; }
+      // Never two fights at once: a live engagement holds the snare until the lane clears.
+      const hold = encounterPacingBlockReason(dir, state, shape, now);
+      if (hold === 'combat_busy' || hold === 'meaningful_cap') continue;
+      const res = this.requestAuthoredEncounter({
+        shapeId: shape.id,
+        encounterId: `deniable:${id}`,
+        sectorId,
+        anchor: drop,
+        zoneType: 'ambush_lane',
+        zoneName: 'the drop',
+        zoneRadius: 420,
+        force: true,
+        data: { deniableClause: true, missionId: id },
+      });
+      if (res && res.ok) {
+        row.fired = true;
+        row.firedAt = now;
+        this.emit('ambush:clauseFired', { missionId: id, sectorId, encounterId: `deniable:${id}`, t: now });
+      } else if (!res || res.reason !== 'spawn_cap') {
+        row.fired = true;
+        row.failed = (res && res.reason) || 'unknown';
+      }
+    }
+  },
+
+  // ═══ THE PACING GATE (fires at most one due item per 1 Hz beat) ═══════════════════════════════
+
+  _pump(dir, state, now) {
+    if (!dir.pending.length) return;
+    while (dir.window.length && dir.window[0].t < now - WINDOW_S) dir.window.shift();
+
+    let dueIdx = -1;
+    let dueBest = Infinity;
+    // DUST P1b: dust items rank strictly below legacy due items — the lane fills only pumps
+    // the legacy schedule leaves empty (audit §5.1). The legacy comparison below is unchanged:
+    // dust items never enter it, so legacy selection is bit-identical with or without the lane.
+    let dustIdx = -1;
+    let dustBest = Infinity;
+    const tutorialActive = isTutorialActive(state);
+    for (let i = 0; i < dir.pending.length; i++) {
+      const it = dir.pending[i];
+      if (it.dueAt <= now) {
+        // Beats stamped for a departed sector (a stale enter tail can still write
+        // them — the listener guards reject the payload but pending rows written
+        // before the guard shipped persist) must never fire on the live world.
+        if (it.sectorId && it.sectorId !== this._currentSectorId()) continue;
+        if (tutorialActive && !isAuthoredGuaranteeItem(it)) continue;
+        const rank = tensionCandidateRank(state, it, ENCOUNTERS[it.shapeId], now);
+        if (it.dustLane === true) {
+          if (rank < dustBest) { dustBest = rank; dustIdx = i; }
+        } else if (rank < dueBest) { dueBest = rank; dueIdx = i; }
+      }
+    }
+    if (dueIdx < 0) dueIdx = dustIdx;
+    if (dueIdx < 0) return;
+    const item = dir.pending[dueIdx];
+    const shape = ENCOUNTERS[item.shapeId];
+    if (!shape || !encounterScriptFor(shape)) { dir.pending.splice(dueIdx, 1); return; }
+
+    const defer = () => { item.dueAt = now + DEFER_S; };
+    const gateDefer = () => {
+      item.defers = (item.defers | 0) + 1;
+      if (item.defers > MAX_GATE_DEFERS) { dir.pending.splice(dueIdx, 1); dir.stats.fizzled++; return; }
+      defer();
+    };
+
+    // DUST P1b rate cap: the lane keeps its own presentation spacing on top of the ordinary
+    // ambient valves below, so a legacy-idle stretch can never turn into a dust drumbeat.
+    if (item.dustLane === true
+      && now - (Number.isFinite(dir.stats && dir.stats.dustLastAt) ? dir.stats.dustLastAt : -Infinity) < DUST_FIRE_GAP_S) {
+      return defer();
+    }
+
+    const ceresActivityAmbush = isCeresActivityAmbushItem(item);
+    const preyInReach = ceresActivityAmbush && this._ceresAmbushPreyInReach();
+    // Authored teach-day items carry a timed promise (A1: under attack inside three minutes):
+    // the tutorial rail, the nominal spacing gap, and a tension-recovery breather are exactly
+    // what would push them past the freight they were written to meet. The opening raid's
+    // 60 s readiness hold is the wait; a 21 s gate defer walks that hold off the barge.
+    const authoredGuarantee = isAuthoredGuaranteeItem(item);
+    const pacingReason = encounterPacingBlockReason(dir, state, shape, now);
+    // The authored Throughline crossing is still a normal paced ambush when only the player is in
+    // the killbox. When the loaded pocket hauler is already inside the snare, the sector-entry
+    // breath and pressure cost are what used to hold the cohort on hold-fire until the prey had
+    // already left the lane. Session-rhythm holds (tension_recovery, rhythm) are the same class:
+    // the pirates are springing on the hauler's transit, not on the player's combat readiness —
+    // deferring them past the hauler's crossing silently spends the authored encounter.
+    if (pacingReason
+      && !(authoredGuarantee && (pacingReason === 'tutorial' || pacingReason === 'pacing_gap'
+        || pacingReason === 'tension_recovery'))
+      && !(preyInReach && (pacingReason === 'pacing_gap' || pacingReason === 'pressure'
+        || pacingReason === 'tension_recovery' || pacingReason === 'rhythm'))
+      // Row 497: a cadence backstop item exists because the contact clock hit its ceiling —
+      // quiet rhythm and spacing gaps are exactly what it overrides.
+      && !(item.cadence === true && (pacingReason === 'pacing_gap' || pacingReason === 'pressure'
+        || pacingReason === 'tension_recovery' || pacingReason === 'rhythm'))) {
+      // A guarantee item deferring on pacing must still be bounded — plain defer() would let it
+      // ride dir.pending across replans forever with no fizzle and no receipt.
+      return authoredGuarantee ? gateDefer() : defer();
+    }
+
+    // The R5 Ceres squad is a normal paced ambush_snare in a tier-1 authored pocket. Its authored
+    // crossing is the eligibility proof for only the catalog's generic min-sector-tier rule. Every
+    // other current/future authored gate remains enforced through the same fail-closed evaluator.
+    // DUST P1b: `allowExternalOnly` re-admits exactly the lane's append-only cohort (the gate
+    // that darkened them); every other authored gate still applies fail-closed to dust items.
+    if (!this._gatesPass(shape, state, {
+      ignoreMinSectorTier: ceresActivityAmbush,
+      allowExternalOnly: item.dustLane === true,
+    })) return gateDefer();
+    let relocatedToPlayer = false;
+    if (shape.proximity && !this._playerNearItemZone(item)) {
+      // The authored Ceres throughline ambush is anchored to its killbox, not to a spawnable
+      // zone: relocating it would detach the telegraph from the durable cohort still holding
+      // the authored band, and the 300 s prey deadline would spend the one-shot crossing on a
+      // fight that physically cannot happen. It waits (replan carries it) instead of fizzling.
+      if (ceresActivityAmbush) return defer();
+      // DUST P1b: lane vignettes keep their authored presentation contract — the lived lane's
+      // "player actually standing in that vignette's kind of place" rule (livedWorldDirector).
+      // When the player is inside a zone of the shape's family, the scene anchors beside the
+      // player like livedScenePlacement does; otherwise it waits for its zone like any prop.
+      if (item.dustLane === true) {
+        if (!this._relocateDustItemIntoPlayerZone(dir, state, item, shape)) return gateDefer();
+        relocatedToPlayer = true;
+      } else if (shape.deck !== 'combat' || !this._relocateProximityStarvedItem(dir, state, item)) {
+        // Proximity-starved combat beats relocate to the player instead of dissolving: a hunter
+        // parked far from every authored zone (deep mining field, salvage pin, off-lane drift)
+        // must still be offered fights. Civilian/ambient props keep their zone anchoring.
+        return gateDefer();
+      } else {
+        relocatedToPlayer = true;
+      }
+    }
+    if (shape.proximity && shape.deck === 'combat' && !relocatedToPlayer) {
+      // The player reached an authored zone: the starvation clock resets. A relocation to the
+      // player does NOT reset it — the sector is still starved of reachable zones, and wiping
+      // the record would re-arm the full PROXIMITY_STARVE_S window on every relocated beat.
+      const starve = dir.proxStarve || (dir.proxStarve = {});
+      delete starve[this._currentSectorId() || 'sector'];
+    }
+    if (ceresActivityAmbush && !this._ceresActivityAmbushCohort().length) {
+      return defer();
+    }
+    // Capacity is a fire gate, not a post-telegraph failure. A saturated encounter remains queued
+    // without spending pressure/window/voice state; genuine distress needs both a victim and one
+    // threat before it can truthfully become live.
+    if (!this._spawnAdmissionAvailable(item, shape)) return defer();
+    // The nest is a singleton: the live visit owns the shape until it ends, so a second due item
+    // waits in the queue. Reaching _fire's guard after the splice below would drop the item from
+    // the universe entirely — deferring keeps it pending until the nest frees.
+    if (shape.id === 'the_nest'
+      && Object.values(dir.live).some((l) => l && l.shapeId === 'the_nest' && l.phase !== 'done')) {
+      return defer();
+    }
+    const fireReady = ENCOUNTER_FIRE_READY.get(shape.id);
+    if (fireReady && item.fireReadyExpired !== true) {
+      let ready = false;
+      try { ready = !!fireReady(state); } catch { ready = false; }
+      if (!ready) {
+        if (!Number.isFinite(item.fireReadyHoldSince)) item.fireReadyHoldSince = now;
+        if (now - item.fireReadyHoldSince < FIRE_READY_HOLD_S) { item.dueAt = now + 1; return; }
+        item.fireReadyExpired = true;
+        dir.stats.fireReadyExpired = (dir.stats.fireReadyExpired | 0) + 1;
+      }
+    }
+    dir.pending.splice(dueIdx, 1);
+    this._fire(dir, state, item, shape, now);
+  },
+
+  // ─── Row 497 CRAFT-CADENCE ─────────────────────────────────────────────────────────────
+  // The durable cadence ledger on dir.cadence tracks first-contact time, contact gap, and the
+  // cohort travel share (elapsed hour-one time with no live in-sector combat = "in transit").
+  // When the contact clock hits its ceiling the governor injects a backstop combat shape that
+  // the pump treats like an authored guarantee for rhythm/spacing reasons only.
+  _tickCadence(dir, state, now, step) {
+    const c = craftCadenceEnsure(dir, now);
+    const sectorId = this._currentSectorId();
+    const liveCombat = cadenceLiveCombat(dir, sectorId);
+    const pendingCombat = cadencePendingCombat(dir, sectorId, ENCOUNTERS);
+    if (liveCombat) {
+      if (!c._wasLive) {
+        c.contactCount = (c.contactCount | 0) + 1;
+        if (!Number.isFinite(c.firstContactAt)) c.firstContactAt = now;
+      }
+      c.lastContactAt = now;
+      c.combatS += step;
+    } else {
+      c.travelS += step;
+    }
+    c._wasLive = liveCombat;
+    c.travelShare = cadenceTravelShare(c, now);
+    // The tutorial rail owns its own first-minute beats; cadence stays out of the classroom.
+    if (isTutorialActive(state) || isDocked(state)) return;
+    const verdict = cadenceVerdict(c, now, liveCombat, pendingCombat);
+    if (verdict === 'first_due' || verdict === 'recur_due') {
+      this._injectCadenceContact(dir, state, now, c);
+    } else if (verdict === 'pull_forward') {
+      // Inside the 3–5 minute band: pull queued combat toward the band midpoint so the gap
+      // lands inside the window instead of riding the authored day-schedule to the ceiling.
+      const target = Math.max(now, c.lastContactAt + (CADENCE_CONTACT_GAP_MIN_S + 60));
+      for (const it of dir.pending) {
+        if (!it || !it.shapeId) continue;
+        if (it.sectorId && it.sectorId !== sectorId) continue;
+        const shape = ENCOUNTERS[it.shapeId];
+        if (shape && shape.deck === 'combat' && Number.isFinite(it.dueAt) && it.dueAt > target) {
+          it.dueAt = target;
+        }
+      }
+    }
+  },
+
+  /** Inject the backstop contact: combat/minor, no authored gates, anchored on the player so
+   * the proximity check passes on the same pump instead of waiting out the starvation clock. */
+  _injectCadenceContact(dir, state, now, c) {
+    const enc = ENCOUNTERS[CADENCE_BACKSTOP_SHAPE_ID];
+    if (!enc) return false;
+    const p = this.player();
+    if (!p || !p.pos) return false;
+    c.injected = (c.injected | 0) + 1;
+    const encounterId = `cadence:${Math.round(c.bornAt)}:${c.injected}`;
+    // live.plan IS the pending item, so the squad roster must be composed at queue time
+    // exactly like a planner schedule row — a bare item telegraphs then dies in the
+    // script's fire on an unresolved plan.ships. Player pos is already galactic-global,
+    // so the zone skips resolveEncounter's local→global translation and feeds addSquad.
+    const globalZone = { id: 'cadence_drift', name: 'open drift', type: 'patrol_corridor', threat: 1, radius: 200, center: { x: p.pos.x, z: p.pos.z } };
+    const rng = mulberry32(hash32((state.meta && state.meta.seed) || 0, encounterId, 'cadence'));
+    const ships = [];
+    addSquad(ships, enc.squad, enc.factionId, enc.context || 'patrol', globalZone, [1, 4], rng, 'squad');
+    if (!ships.length) return false;
+    dir.pending.push({
+      encounterId,
+      shapeId: CADENCE_BACKSTOP_SHAPE_ID,
+      script: enc.script,
+      tier: enc.tier,
+      deck: enc.deck,
+      squadId: encounterId,
+      sectorId: this._currentSectorId(),
+      factionId: enc.factionId,
+      bark: enc.bark,
+      variantKind: null,
+      levelBand: [1, 4],
+      ships,
+      dueAt: now,
+      defers: 0,
+      cadence: true,
+      zoneCenter: { x: p.pos.x, z: p.pos.z },
+      zoneRadius: 200,
+    });
+    return true;
+  },
+
+  _gatesPass(shape, state, options = {}) {
+    const g = shape.gates || {};
+    // `externalOnly` means "an authored requester dispatches this" — EXCEPT for the DUST P1b
+    // lane, whose append-only cohort (src/data/dustLane.js) is exactly the dark vignette
+    // families that gate darkened. The option is passed by _pump for lane items only; every
+    // authored-request path is unchanged.
+    if (g.externalOnly && options.allowExternalOnly !== true) return false;
+    const sectorId = this._currentSectorId();
+    const sector = SECTORS.find((entry) => entry.id === sectorId);
+    const completed = state.story && state.story.depthProgramEncounters
+      && state.story.depthProgramEncounters.completed || {};
+    if (g.uniqueOnce && completed[shape.id]) return false;
+    if (g.blockAfterOutcome && completed[shape.id] && completed[shape.id].outcome === g.blockAfterOutcome) return false;
+    // A second chapter must know its first happened: the named shape has to be in the
+    // completed record (any outcome) before this shape can fire.
+    if (g.requiresCompletedShape && !completed[g.requiresCompletedShape]) return false;
+    if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
+    if (Number.isFinite(g.storyBeatMin) && ((state.story && state.story.beatIndex) | 0) < g.storyBeatMin) return false;
+    if (!options.ignoreMinSectorTier
+      && Number.isFinite(g.minSectorTier)
+      && (!sector || (sector.tier | 0) < g.minSectorTier)) return false;
+    if (g.requiredTech && !(state.player && Array.isArray(state.player.researchedNodes)
+      && state.player.researchedNodes.includes(g.requiredTech))) return false;
+    if (g.requiredPoiDiscovered) {
+      const discovery = state.world && state.world.discovery && state.world.discovery[sectorId];
+      const poi = discovery && discovery.pois && discovery.pois[g.requiredPoiDiscovered];
+      if (!poi || poi.discovered !== true) return false;
+      if (g.requirePriorPoiVisit) {
+        const visits = state.story && state.story.depthProgramPoiVisits;
+        const firstSeenAt = visits && visits[g.requiredPoiDiscovered] && visits[g.requiredPoiDiscovered].firstSeenAt;
+        if (!Number.isFinite(firstSeenAt) || firstSeenAt >= (state.simTime || 0)) return false;
+      }
+    }
+    if (g.moralDebtOnly && !nextMoralDebt(state)) return false;
+    if (g.minCargoValue && this.cargoValue() < g.minCargoValue) return false;
+    if (g.bountyOnly && (((state.player && state.player.bounty) | 0) <= 0)) return false;
+    if (Number.isFinite(g.maxSecurity) && sectorSecurityOf(state) > g.maxSecurity) return false;
+    if (Number.isFinite(g.minSecurity) && sectorSecurityOf(state) < g.minSecurity) return false;
+    if (g.claimsOnly) {
+      const sectorId = this._currentSectorId();
+      const bodies = (state.claims && state.claims.bodies) || [];
+      if (!bodies.some((b) => b && b.sectorId === sectorId)) return false;
+    }
+    if (g.namedPool) {
+      const named = ensureDirectorState(state).named;
+      if (!NAMED_CAPTAINS.some((c) => { const n = named[c.id]; return !n || n.alive !== false; })) return false;
+    }
+    return true;
+  },
+
+  _playerNearItemZone(item) {
+    const p = this.player();
+    if (!p || !item.zoneCenter) return false;
+    const r = (item.zoneRadius || 400) + PROX_SLACK;
+    const dx = p.pos.x - item.zoneCenter.x, dz = p.pos.z - item.zoneCenter.z;
+    return dx * dx + dz * dz <= r * r;
+  },
+
+  /** Re-anchor a proximity-gated combat item beside the player once the sector has seen the
+   * player fail every zone reach check for PROXIMITY_STARVE_S. The starvation clock is keyed by
+   * sector (it survives the sector-day replan that resets per-item defer counts) and refreshes on
+   * each relocation, so the fire rate stays bounded by the ordinary pacing law. Deterministic
+   * (seeded by the encounter identity), formation-preserving. Returns false while the starvation
+   * window is still open. */
+  _relocateProximityStarvedItem(dir, state, item) {
+    const now = this.now();
+    const starve = dir.proxStarve || (dir.proxStarve = {});
+    const key = this._currentSectorId() || 'sector';
+    const rec = starve[key];
+    if (!rec) { starve[key] = { sinceT: now }; return false; }
+    if (now - rec.sinceT < PROXIMITY_STARVE_S) return false;
+    rec.sinceT = now;
+    const p = this.player();
+    if (!p || !p.pos) return false;
+    const seed = (state.meta && state.meta.seed) || 0;
+    const rng = mulberry32(hash32(seed, String(item.encounterId || item.shapeId), 'enc-relocate'));
+    const ang = rng() * Math.PI * 2;
+    const dist = RELOCATE_MIN_DIST_WU + rng() * (RELOCATE_MAX_DIST_WU - RELOCATE_MIN_DIST_WU);
+    const oldCenter = item.zoneCenter && Number.isFinite(item.zoneCenter.x)
+      ? { x: item.zoneCenter.x, z: item.zoneCenter.z }
+      : { x: p.pos.x, z: p.pos.z };
+    const anchor = { x: p.pos.x + Math.cos(ang) * dist, z: p.pos.z + Math.sin(ang) * dist };
+    const dx = anchor.x - oldCenter.x, dz = anchor.z - oldCenter.z;
+    item.zoneCenter = anchor;
+    if (Array.isArray(item.ships)) {
+      for (const sh of item.ships) {
+        if (sh && sh.pos && Number.isFinite(sh.pos.x)) { sh.pos.x += dx; sh.pos.z += dz; }
+      }
+    }
+    if (!Number.isFinite(item.zoneRadius) || item.zoneRadius < 80) item.zoneRadius = 400;
+    item.relocated = true;   // telemetry only; zoneId/zoneName keep the authored fiction
+    return true;
+  },
+
+  /** DUST P1b: re-anchor a lane vignette beside the player when — and only when — the player
+   * currently stands inside an authored zone of the shape's family. This is the lived lane's
+   * own presentation contract (livedWorldDirector's "actually standing in that vignette's
+   * kind of place" + livedScenePlacement's beside-the-player anchor), applied to the same
+   * modules the lived tick refuses (row 459). Deterministic: the offset is seeded by
+   * (meta.seed, encounterId). Returns false when the player is elsewhere — the item keeps
+   * waiting for its authored zone like any zone-anchored prop. */
+  _relocateDustItemIntoPlayerZone(dir, state, item, shape) {
+    const p = this.player();
+    if (!p || !p.pos) return false;
+    const sectorId = this._currentSectorId();
+    if (!sectorId) return false;
+    const zoneTypes = Array.isArray(shape.zoneTypes) ? shape.zoneTypes : [];
+    if (!zoneTypes.length) return false;
+    const local = globalToSectorLocalForSector(p.pos, sectorId);
+    if (!local) return false;
+    const zone = zoneAt(sectorId, local.x, local.z);
+    if (!zone || !zone.type || !zoneTypes.includes(zone.type)) return false;
+    const seed = (state.meta && state.meta.seed) || 0;
+    const rng = mulberry32(hash32(seed, String(item.encounterId || item.shapeId), 'dust-place'));
+    const ang = rng() * Math.PI * 2;
+    const dist = 260 + rng() * 300;
+    const oldCenter = item.zoneCenter && Number.isFinite(item.zoneCenter.x)
+      ? { x: item.zoneCenter.x, z: item.zoneCenter.z }
+      : { x: p.pos.x, z: p.pos.z };
+    const anchor = { x: p.pos.x + Math.cos(ang) * dist, z: p.pos.z + Math.sin(ang) * dist };
+    const dx = anchor.x - oldCenter.x, dz = anchor.z - oldCenter.z;
+    item.zoneCenter = anchor;
+    item.zoneRadius = Math.max(Number(item.zoneRadius) || 400, 400);
+    if (Array.isArray(item.ships)) {
+      for (const sh of item.ships) {
+        if (sh && sh.pos && Number.isFinite(sh.pos.x)) { sh.pos.x += dx; sh.pos.z += dz; }
+      }
+    }
+    // The vignette is now honestly IN the zone the player stands in.
+    item.zoneId = zone.id;
+    item.zoneName = zone.name || zone.id;
+    item.relocated = true;
+    return true;
+  },
+
+  /** DUST P1b live scan: every DUST_SCAN_S seconds of calm, undocked, non-tutorial flight,
+   * when the player stands inside an authored zone, offer ONE unseen lane vignette of that
+   * zone's family — the lived tick's presentation contract (livedWorldDirector: "asks when
+   * the player is actually standing in that vignette's kind of place") carried by the dust
+   * stream. The offered item is an ordinary pending row: it ranks below every legacy due
+   * item in _pump and passes the same pacing, cooldown, pressure, and gates machinery. The
+   * lane's presentation gap (DUST_FIRE_GAP_S) and one-live-item-at-a-time bound the rate. */
+  _tickDustLaneLive(dir, state, now) {
+    const scanAt = Number(dir.stats && dir.stats.dustNextScanAt);
+    if (Number.isFinite(scanAt) && now < scanAt) return;
+    if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+    dir.stats.dustNextScanAt = now + DUST_SCAN_S;
+    // A live offer is for the place the player is in NOW: if it could not present inside its
+    // short window (player left the family's zone), it expires instead of blocking the scan —
+    // the module stays once-ever-unconsumed and can be re-offered in a later zone.
+    for (let i = dir.pending.length - 1; i >= 0; i--) {
+      const it = dir.pending[i];
+      if (it && it.dustLive === true && now - it.dueAt > 120) dir.pending.splice(i, 1);
+    }
+    if (isTutorialActive(state)) return;
+    if (Number.isFinite(dir.stats.dustLastAt) && now - dir.stats.dustLastAt < DUST_FIRE_GAP_S) return;
+    // One live-scan offer at a time (day-planner items ride pending on their own budget).
+    for (const it of dir.pending) {
+      if (it && it.dustLive === true) return;
+    }
+    const p = this.player();
+    if (!p || !p.pos) return;
+    const sectorId = this._currentSectorId();
+    if (!sectorId) return;
+    const local = globalToSectorLocalForSector(p.pos, sectorId);
+    if (!local) return;
+    const zone = zoneAt(sectorId, local.x, local.z);
+    if (!zone || !zone.type || !zone.center) return;
+    const item = planDustLivePresentation(
+      (state.meta && state.meta.seed), sectorId, Math.floor(now / DAY_SECONDS), zone, now,
+      { started: dustSeenMap(dir), rotation: dustRotationMap(dir) },
+    );
+    if (!item) return;
+    const rotation = dustRotationMap(dir);
+    rotation[item.shapeId] = (rotation[item.shapeId] | 0) + 1;
+    dir.pending.push({ ...item, sectorId, dueAt: now + item.delay, defers: 0, dustLane: true, dustLive: true });
+  },
+
+  /** Authored "in view" reach: slide the formation so its victim anchor (the hauler when one is
+   * planned, else the first ship) lands exactly `reachWu` from the player, along the existing
+   * player→anchor bearing. Deterministic — pure function of the plan positions and the player
+   * pose; consumes no rng. zoneCenter shifts with the squad so the telegraph marker stays honest;
+   * zoneId/zoneName keep the authored fiction. No-op when the anchor is already within reach. */
+  _anchorItemWithinPlayerReach(item, reachWu) {
+    const p = this.player();
+    if (!p || !p.pos || !Array.isArray(item.ships) || !item.ships.length) return;
+    const anchorShip = item.ships.find((s) => s && s.role === 'hauler' && s.pos && Number.isFinite(s.pos.x))
+      || item.ships.find((s) => s && s.pos && Number.isFinite(s.pos.x));
+    if (!anchorShip) return;
+    const dx0 = anchorShip.pos.x - p.pos.x;
+    const dz0 = anchorShip.pos.z - p.pos.z;
+    const d = Math.hypot(dx0, dz0);
+    if (!(d > reachWu)) return;
+    const k = reachWu / d;
+    const dx = (p.pos.x - anchorShip.pos.x) * (1 - k);
+    const dz = (p.pos.z - anchorShip.pos.z) * (1 - k);
+    for (const sh of item.ships) {
+      if (sh && sh.pos && Number.isFinite(sh.pos.x)) { sh.pos.x += dx; sh.pos.z += dz; }
+    }
+    if (item.zoneCenter && Number.isFinite(item.zoneCenter.x)) {
+      item.zoneCenter.x += dx;
+      item.zoneCenter.z += dz;
+    }
+    item.relocated = true;
+  },
+
+  _spawnAdmissionAvailable(item, shape) {
+    const minimum = encounterAdmissionMinimum(item, shape);
+    if (minimum <= 0) return true;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    if (!budget || typeof budget.available !== 'function') return true;
+    return budget.available() >= minimum;
+  },
+
+  /** Deterministic forcing seam for authored/self-registering encounters. Debug harnesses and
+   * future story owners provide a stable encounter id; normal calls still honor live header gates.
+   * `force` bypasses eligibility only, never RNG or sim-time. */
+  requestAuthoredEncounter(payload) {
+    if (!payload || !payload.shapeId || !payload.encounterId || !payload.sectorId) {
+      return { ok: false, reason: 'invalid_request' };
+    }
+    const state = this.state;
+    const dir = ensureDirectorState(state);
+    if (dir.live[payload.encounterId]) {
+      return { ok: true, encounterId: payload.encounterId, reused: true };
+    }
+    if (this._currentSectorId() !== payload.sectorId) return { ok: false, reason: 'wrong_sector' };
+    const shape = ENCOUNTERS[payload.shapeId];
+    if (!shape) return { ok: false, reason: 'missing_shape' };
+    if (!encounterScriptFor(shape)) return { ok: false, reason: 'missing_runtime' };
+    // The onboarding rail owns the opening beats: a shape flagged deferDuringGuidedOnboarding
+    // stays unrequested while the rail is active, and `force` skips ordinary gates, not the
+    // rail itself — the guided run must not spend or chart the encounter early.
+    if (shape.gates && shape.gates.deferDuringGuidedOnboarding && isTutorialActive(state)) {
+      return { ok: false, reason: 'guided_onboarding' };
+    }
+    const nestResume = payload.shapeId === 'the_nest' && payload.encounterId === this._nestResumePermit
+      && dir.nestVisit?.status === 'active' && payload.data?.nestResume === true;
+    if (payload.respectPacing && !nestResume) {
+      const reason = encounterPacingBlockReason(dir, state, shape, state.simTime || 0);
+      if (reason) return { ok: false, reason };
+    }
+    if (!payload.force && !this._gatesPass(shape, state)) return { ok: false, reason: 'gated' };
+
+    const planned = planAuthoredEncounterItem({
+      state,
+      payload,
+      playerPos: this.player() && this.player().pos,
+    });
+    if (!planned || !planned.item) return { ok: false, reason: 'empty_plan' };
+    const { item, zone, anchor } = planned;
+    item.encounterId = payload.encounterId;
+    item.squadId = payload.encounterId;
+    item.sectorId = payload.sectorId;
+    item.zoneCenter = { x: anchor.x, z: anchor.z };
+    item.zoneRadius = zone.radius;
+    item.data = payload.data && typeof payload.data === 'object' ? { ...payload.data } : {};
+    if (!this._spawnAdmissionAvailable(item, shape)) return { ok: false, reason: 'spawn_cap' };
+    this._fire(dir, state, item, shape, state.simTime || 0);
+    return dir.live[payload.encounterId]
+      ? { ok: true, encounterId: payload.encounterId }
+      : { ok: false, reason: 'resolved_on_fire' };
+  },
+
+  /** The deterministic claim-defense plan: seeded entirely by (meta.seed, encounterId), so the
+   * same inputs reproduce the same roster at warning onset, at request time, and after restore.
+   * Pure — a dedicated mulberry32 stream, never state.rng. */
+  _resolveClaimDefensePlan(state, payload) {
+    const shape = ENCOUNTERS.claim_threat;
+    if (!shape) return null;
+    const body = ((state.claims && state.claims.bodies) || []).find((entry) => entry && entry.id === payload.claimId);
+    if (!body || body.sectorId !== payload.sectorId) return null;
+    const local = globalToSectorLocalForSector(payload.anchor, payload.sectorId);
+    const rng = mulberry32(hash32((state.meta && state.meta.seed) || 0, payload.encounterId, 'claim-defense'));
+    const zone = {
+      id: `claim-defense:${payload.claimId}`,
+      name: body.name || 'Player claim',
+      type: 'mining_belt',
+      center: { x: local.x, z: local.z },
+      radius: 760,
+      threat: 2,
+    };
+    const item = resolveEncounter(shape, zone, payload.sectorId, Math.floor((state.simTime || 0) / DAY_SECONDS), 0, rng);
+    if (!item || !item.ships.length) return null;
+    return { item, zone, shape, rng };
+  },
+
+  _publishClaimDefenseRoster(payload) {
+    if (!payload || !payload.encounterId) return;
+    const state = this.state;
+    const dir = ensureDirectorState(state);
+    if (dir.live[payload.encounterId]) return;
+    const plan = this._resolveClaimDefensePlan(state, {
+      encounterId: payload.encounterId,
+      claimId: payload.bodyId || payload.claimId,
+      anchor: payload.pos || payload.anchor,
+      sectorId: payload.sectorId,
+      attackerCount: payload.attackerCount,
+      motive: payload.motive,
+      attackerName: payload.attackerName,
+    });
+    if (!plan) return;
+    // Ship records, not bare archetype strings: kit squads resolve faction-specific hull
+    // and hulk files, so factionId/trafficRole ride the roster for the decode runway.
+    const seen = new Set();
+    const archetypes = [];
+    for (const ship of plan.item.ships) {
+      const archetype = ship && ship.archetype;
+      if (typeof archetype !== 'string' || !archetype) continue;
+      const factionId = ship.factionId || null;
+      const trafficRole = ship.trafficRole || null;
+      const token = `${archetype}|${factionId || ''}|${trafficRole || ''}`;
+      if (seen.has(token)) continue;
+      seen.add(token);
+      archetypes.push({ archetype, factionId, trafficRole });
+    }
+    if (!archetypes.length) return;
+    this.emit('encounter:claimDefenseRoster', {
+      encounterId: payload.encounterId,
+      sectorId: payload.sectorId || null,
+      archetypes,
+    });
+  },
+
+  /** Materialize a claim-owned defense contract at its exact physical anchor. This bypasses the
+   * ambient planner but still uses the normal director spawn budget, causality, doctrine, ROE,
+   * telegraph, resolution, and receipt machinery. The durable id makes retries/save recovery
+   * idempotent. */
+  requestClaimDefense(payload) {
+    if (!payload || !payload.encounterId || !payload.claimId || !payload.anchor) {
+      return { ok: false, reason: 'invalid_request' };
+    }
+    const state = this.state;
+    const dir = ensureDirectorState(state);
+    if (dir.live[payload.encounterId]) {
+      return { ok: true, encounterId: payload.encounterId, reused: true };
+    }
+    if (this._currentSectorId() !== payload.sectorId) return { ok: false, reason: 'wrong_sector' };
+    const plan = this._resolveClaimDefensePlan(state, payload);
+    if (!plan) return { ok: false, reason: 'empty_plan' };
+    const { item, zone, shape, rng } = plan;
+    item.encounterId = payload.encounterId;
+    item.squadId = payload.encounterId;
+    item.sectorId = payload.sectorId;
+    item.zoneCenter = { x: payload.anchor.x, z: payload.anchor.z };
+    item.zoneRadius = zone.radius;
+    item.motive = payload.motive || 'Stored freight drew a stripping crew.';
+    item.engagementTrigger = 'claim_defense_arrival';
+    item.data = {
+      claimId: payload.claimId,
+      defenseId: payload.defenseId || null,
+      attackerName: payload.attackerName || 'Reach scavengers',
+      requestedCount: Math.max(1, Math.min(6, Math.round(payload.attackerCount || 2))),
+      resumed: !!payload.resume,
+    };
+    const base = item.ships.slice();
+    const count = item.data.requestedCount;
+    const anchorShip = base.find((ship) => ship.compositionRole === 'identity_anchor') || base[0];
+    const lightShips = base.filter((ship) => ship !== anchorShip
+      && ship.compositionRole !== 'identity_anchor');
+    const lightPool = lightShips.length ? lightShips : [anchorShip];
+    item.ships = [];
+    for (let i = 0; i < count; i++) {
+      const source = i === 0 ? anchorShip : lightPool[(i - 1) % lightPool.length];
+      const angle = (Math.PI * 2 * i / count) + rng() * 0.24;
+      const radius = 560 + rng() * 120;
+      item.ships.push({
+        ...source,
+        compositionRole: i === 0 ? 'identity_anchor' : 'light',
+        passive: true,
+        pos: {
+          x: payload.anchor.x + Math.cos(angle) * radius,
+          z: payload.anchor.z + Math.sin(angle) * radius,
+        },
+      });
+    }
+    if (!this._spawnAdmissionAvailable(item, shape)) return { ok: false, reason: 'spawn_cap' };
+    this._fire(dir, state, item, shape, state.simTime || 0);
+    return dir.live[payload.encounterId]
+      ? { ok: true, encounterId: payload.encounterId }
+      : { ok: false, reason: 'spawn_failed' };
+  },
+
+  _fire(dir, state, item, shape, now) {
+    // The one finite Weir visit is either resumed or terminal. A replan must not replace
+    // its coordinator (including a same-id day row) or manufacture another original lot.
+    if (shape.script === 'weirAmbush' && ENCOUNTER_SCRIPTS.weirAmbush.hasVisit(state)) return;
+    if (shape.id === 'the_nest' && Object.values(dir.live).some(l => l?.shapeId === 'the_nest' && l.phase !== 'done')) return;
+    const nestResume = shape.id === 'the_nest' && item.encounterId === this._nestResumePermit && item.data?.nestResume === true;
+    if (!nestResume) {
+      dir.pressure[shape.deck] = Math.max(0, dir.pressure[shape.deck] - shape.pressureCost);
+      dir.window.push({ t: now, tier: shape.tier });
+      if (shape.tier === 'ambient') dir.lastAmbientAt = now;
+      else dir.lastMeaningfulAt = now;
+      if (shape.tier === 'major') dir.lastMajorAt = now;
+    }
+    // DUST P1b: a lane item that reached _fire is consumed for the save (same once-ever
+    // semantics as the lived tick's startedMap — a fire that aborts still spent the scene)
+    // and stamps the lane's presentation spacing. Authored requests never carry the flag.
+    if (item.dustLane === true) {
+      if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+      dustSeenMap(dir)[shape.id] = now;
+      dir.stats.dustLastAt = now;
+    }
+
+    // A shape may author fireWithinWu (A1's "inside about two screen-depths"): when the gated
+    // fight comes due with its victim anchor still beyond that reach, the whole formation —
+    // zoneCenter included — slides toward the player until the anchor sits at the reach.
+    if (Number.isFinite(shape.fireWithinWu) && !(shape.id === 'the_nest' && item.data?.authoredNestVisit === true)) this._anchorItemWithinPlayerReach(item, shape.fireWithinWu);
+
+    const live = makeEncounterLiveRecord(state, item, shape, now);
+    dir.live[live.id] = live;
+    noteScriptProbeRow(dir, live, +1);
+    if (!nestResume) dir.stats.fired++;
+    if (live.data.ceresActivityAmbush === true) {
+      dir.stats.ceresActivityAmbush = { phase: 'revealed' };
+    }
+    this.emit('encounter:telegraph', {
+      encounterId: live.id, kind: live.shapeId, tier: live.tier, deck: live.deck,
+      sectorId: live.sectorId, zoneId: live.zoneId, zoneName: live.zoneName,
+      pos: live.anchor ? { x: live.anchor.x, z: live.anchor.z } : null,
+      relocated: item.relocated === true,
+      causality: { ...live.causality },
+    });
+    const script = encounterScriptFor(live);
+    try {
+      script.fire(this, live, state);
+    } catch (err) {
+      this.abort(live, 'script_error');
+      dedupWarn('encounterDirector/fire', '[encounterDirector] fire failed', live.shapeId, err);
+      return;
+    }
+    // Predation is a plan-level feature: a self-registered runtime (whose live.script label still
+    // reads 'convoy') gets the same carrier→raider custody wiring the convoy script installs in its
+    // own fire. A failed composition degrades to the unfurnished fight; the spawned cast stays live.
+    if (live.phase !== 'done' && live.data.predationStatus == null
+        && live.plan && live.plan.predation && live.plan.predation.enabled === true
+        && script !== ENCOUNTER_SCRIPTS.convoy && script !== ENCOUNTER_SCRIPTS.traderRun) {
+      try {
+        ENCOUNTER_SCRIPTS.convoy.initPredation(this, live, state);
+      } catch (err) {
+        dedupWarn('encounterDirector/predation-init', '[encounterDirector] predation init failed', live.shapeId, err);
+      }
+    }
+    if (dir.live[live.id] && live.ids.length) {
+      this.emit('encounter:spawned', {
+        encounterId: live.id, kind: live.shapeId, squadId: live.squadId,
+        sectorId: live.sectorId, zoneId: live.zoneId, count: live.ids.length,
+        fingerprint: live.causality.fingerprint,
+        motiveId: live.causality.motiveId,
+        terrainLee: live.data.terrainLee || null,
+      });
+    }
+  },
+
+  _tickLive(dir, state, now) {
+    const keys = Object.keys(dir.live);
+    for (const id of keys) {
+      const live = dir.live[id];
+      if (!live || live.phase === 'done') continue;
+      const script = encounterScriptFor(live);
+      // Same plan-level fan-out as the post-fire hook: custody bookkeeping runs before the
+      // shape's own resolve checks so a custody terminal state is visible the same tick.
+      if (live.plan && live.plan.predation && live.plan.predation.enabled === true
+          && script !== ENCOUNTER_SCRIPTS.convoy && script !== ENCOUNTER_SCRIPTS.traderRun) {
+        try {
+          ENCOUNTER_SCRIPTS.convoy.tickPredation(this, live, state, now);
+        } catch (err) {
+          dedupWarn('encounterDirector/predation-tick', '[encounterDirector] predation tick failed', live.shapeId, err);
+        }
+      }
+      if (!script || typeof script.tick !== 'function') continue;
+      try {
+        script.tick(this, live, state, now);
+      } catch (err) {
+        this.abort(live, 'script_error');
+        dedupWarn('encounterDirector/tick', '[encounterDirector] tick failed', live.shapeId, err);
+      }
+    }
+  },
+
+  // ═══ SCRIPT FACADE (the `d` handed to encounterScripts) ═══════════════════════════════════════
+
+  now() { return this.state.simTime || 0; },
+  player() {
+    const s = this.state;
+    return (s.entities && s.entities.get(s.playerId)) || null;
+  },
+  emit(name, payload) {
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(name, payload);
+  },
+  stream(live, label) {
+    const seed = this.state.meta && this.state.meta.seed;
+    return mulberry32(hash32(seed == null ? 0 : seed, live.id, label));
+  },
+  namedState() { return ensureDirectorState(this.state).named; },
+  sectorSecurity() { return sectorSecurityOf(this.state); },
+  cargoValue() {
+    const items = this.state.player && this.state.player.cargo && this.state.player.cargo.items;
+    if (!items) return 0;
+    let v = 0;
+    for (const id in items) { const def = CMDTY.get(id); if (def) v += (items[id] | 0) * (def.basePrice || 0); }
+    return v;
+  },
+  hasContraband() {
+    const items = this.state.player && this.state.player.cargo && this.state.player.cargo.items;
+    if (!items) return false;
+    for (const id in items) {
+      const def = CMDTY.get(id);
+      if (def && def.legality && def.legality !== 'legal' && (items[id] | 0) > 0) return true;
+    }
+    return false;
+  },
+  fineEstimate() {
+    const items = this.state.player && this.state.player.cargo && this.state.player.cargo.items;
+    if (!items) return 0;
+    let fine = 0;
+    for (const id in items) {
+      const def = CMDTY.get(id);
+      if (!def || !def.legality || def.legality === 'legal') continue;
+      const mult = LEGALITY_FINE_MULT[def.legality] != null ? LEGALITY_FINE_MULT[def.legality] : (def.fineMult || 1);
+      fine += (def.basePrice || 0) * (items[id] | 0) * mult;
+    }
+    return Math.round(fine);
+  },
+  dumpContraband() {
+    const state = this.state;
+    const items = state.player && state.player.cargo && state.player.cargo.items;
+    if (!items) return 0;
+    let dumped = 0;
+    const ids = Object.keys(items);
+    for (const id of ids) {
+      const def = CMDTY.get(id);
+      if (!def || !def.legality || def.legality === 'legal') continue;
+      dumped += removeCargo(state, id, items[id] | 0) | 0;   // cargo's own exported writer (§0.6)
+    }
+    return dumped;
+  },
+  // Cargo tithe for demand-mode ambushes (minefield wake): pirates take the best goods
+  // first — highest base price first until the tithe value is covered. Quest-persistent
+  // cargo is never touched (removeCargo refuses it). Returns what left the hold.
+  takeTithe(amount) {
+    const state = this.state;
+    const taken = [];
+    const items = state.player && state.player.cargo && state.player.cargo.items;
+    let need = Math.max(0, Math.round(Number(amount) || 0));
+    if (!items || need <= 0) return { taken, value: 0, label: 'nothing' };
+    const ids = Object.keys(items).filter((id) => (items[id] | 0) > 0 && CMDTY.get(id));
+    ids.sort((a, b) => (CMDTY.get(b).basePrice || 0) - (CMDTY.get(a).basePrice || 0));
+    let value = 0;
+    for (const id of ids) {
+      if (need <= 0) break;
+      const def = CMDTY.get(id);
+      const price = def.basePrice || 0;
+      if (price <= 0) continue;
+      const qty = Math.min(items[id] | 0, Math.ceil(need / price));
+      if (qty <= 0) continue;
+      const removed = removeCargo(state, id, qty) | 0;
+      if (removed > 0) {
+        taken.push({ id, qty: removed });
+        value += removed * price;
+        need -= removed * price;
+      }
+    }
+    const label = taken.length
+      ? taken.map((t) => `${t.qty}× ${(CMDTY.get(t.id) && CMDTY.get(t.id).name) || t.id}`).join(', ')
+      : 'nothing';
+    return { taken, value, label };
+  },
+  stationsInSector() {
+    const active = this.state.world && this.state.world.activeSector;
+    const out = [];
+    for (const s of (active && active.stations) || []) {
+      if (!s) continue;
+      const pos = s.pos || (Number.isFinite(s.x) ? { x: s.x, z: s.z } : null);
+      const id = s.id != null ? s.id : s.stationId;
+      if (id != null && pos) out.push({ id, pos: { x: pos.x, z: pos.z }, name: s.name || null });
+    }
+    return out;
+  },
+
+  // ── spawning ────────────────────────────────────────────────────────────────────────────────
+  spawnShips(live, ships) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function' || !ships || !ships.length) return [];
+    // Terrain lee (WF-02): a squad whose plan declares `terrain: 'lee'` takes its stand behind the
+    // best rock near its anchor instead of floating in open space. The batch the script actually
+    // spawns is shifted rigidly (formation preserved), once per encounter — later batches (claim
+    // victims) already anchor on the shifted lead ship.terrainAnchors furnishes big rocks on the
+    // telegraph event, which fires before script.fire, so the furnished monoliths are visible here.
+    if (live && live.plan && live.plan.terrain === 'lee'
+      && !(live.data && live.data.terrainLee)) {
+      const p = this.player();
+      if (p && p.pos) {
+        const placement = computeLeePlacement(ships, p.pos, indexedTypeScan(this.state, 'asteroids'));
+        if (placement) {
+          for (const sh of ships) {
+            if (sh && sh.pos && Number.isFinite(sh.pos.x)) { sh.pos.x += placement.dx; sh.pos.z += placement.dz; }
+          }
+          live.data.terrainLee = placement;
+        }
+      }
+    }
+    const budget = this.helpers && this.helpers.spawnBudget;
+    let grant = ships.length;
+    if (budget && typeof budget.request === 'function') {
+      grant = budget.request(ships.length, live.squadId);
+      if (grant <= 0) return [];
+    }
+    const dir = ensureDirectorState(this.state);
+    const rec = dir.active[live.squadId] || (dir.active[live.squadId] = { ids: [], sectorId: live.sectorId });
+    const spawned = [];
+    try {
+      for (let i = 0; i < ships.length && spawned.length < grant; i++) {
+        const sh = ships[i];
+        // Most encounters materialize an enemy archetype. A self-registered encounter may instead
+        // provide a complete ship spec when its identity is the mechanic (H8 mirrors the player's
+        // current hull). The spec still passes through the same budget, doctrine, causality, and
+        // live-id ownership below; it only avoids briefly spawning the wrong hull identity.
+        const spec = sh.entitySpec && sh.entitySpec.type === 'ship'
+          ? sh.entitySpec
+          : makeEnemySpawnSpec(sh.archetype, sh.level, sh.pos, {
+              factionId: sh.factionId,
+              startedTick: this.state.tick,
+            });
+        if (sh.team != null) spec.team = sh.team;
+        if (sh.hullFrac != null) spec.hull = Math.max(1, Math.round(spec.hullMax * sh.hullFrac));
+        spec.data = spec.data || {};
+        spec.data.ai = spec.data.ai || {};
+        const ai = spec.data.ai;
+        ai.squadId = live.squadId;
+        ai.doctrine = sh.doctrine || ai.doctrine;
+        if (sh.combatDoctrineId) ai.combatDoctrineId = sh.combatDoctrineId;
+        if (sh.formation) ai.formation = sh.formation;
+        // A squad declaring a fodder choreography opts its disposable hulls into the shared
+        // cohort director; anchors and heavies stay on the full tactical stack (the recipe is
+        // fodder flow, not command language). Filter at stamp time so a guaranteeArchetypes
+        // swap resolves against the final member archetype.
+        if (sh.cohortRecipe && ENEMY_BY_ID.get(sh.archetype)?.aiArchetype === 'swarmer') {
+          ai.cohortRecipe = sh.cohortRecipe;
+        }
+        // Authored squad-frame choreography outranks the auto-assigner, which never
+        // overwrites a writer-stamped recipe.
+        if (sh.squadRecipe) ai.squadRecipe = sh.squadRecipe;
+        if (sh.squadSocket) ai.squadSocket = sh.squadSocket;
+        const docDef = sh.doctrine ? pirateDoctrineForEntity(sh.doctrine) : null;
+        const cultureDef = sh.cultureId ? reachCultureDoctrineById(sh.cultureId) : null;
+        const resolvedDoctrine = sh.factionPresenceDoctrine
+          || (docDef && docDef.factionPresenceDoctrine)
+          || (cultureDef && cultureDef.factionPresenceDoctrine)
+          || null;
+        if (resolvedDoctrine) {
+          ai.factionPresenceDoctrine = {
+            ...resolvedDoctrine,
+            firstFireAgainst: Array.isArray(resolvedDoctrine.firstFireAgainst)
+              ? resolvedDoctrine.firstFireAgainst.slice()
+              : [],
+          };
+        }
+        if (sh.cultureId) {
+          ai.cultureId = sh.cultureId;
+          spec.data.cultureId = sh.cultureId;
+        }
+        if (sh.namedAceId) {
+          ai.namedAceId = sh.namedAceId;
+          spec.data.namedAceId = sh.namedAceId;
+        }
+        ai.spawnContext = sh.context;
+        ai.sectorId = live.sectorId;
+        ai.zoneId = live.zoneId;
+        ai.zoneName = live.zoneName;
+        ai.encounterId = live.id;
+        ai.encounterKind = live.shapeId;
+        if (sh.compositionRole) ai.encounterCompositionRole = sh.compositionRole;
+        ai.motive = String(live.plan.motive || live.shape.motive || ai.motive || 'assigned_interdiction');
+        ai.engagementTrigger = String(live.plan.engagementTrigger || live.shape.engagementTrigger
+          || ai.engagementTrigger || 'authorized_hostile_spawn');
+        spec.data.encounterFingerprint = live.causality && live.causality.fingerprint || null;
+        spec.data.encounterCausality = live.causality ? { ...live.causality } : null;
+        if (sh.role) ai.encounterRole = sh.role;
+        if (sh.passive != null) ai.passive = !!sh.passive;
+        ai.activity = activityForEncounterSpawn(live, sh, { now: this.now() });
+        ai.roe = roeForActivity(ai.activity, sh.roe);
+        if (sh.bossName) { ai.name = sh.bossName; spec.data.encounterBoss = true; }
+        if (sh.bountyCr != null) spec.data.bountyCr = sh.bountyCr;
+        if (sh.scanLabel) spec.data.scanLabel = sh.scanLabel;
+        // A live convoy's transit cast must physically finish its route — the marker lands on
+        // entity data before the first classification pass so the pin holds from spawn
+        // (check-living-universe-events §J; activityRuntime ctx.missionCritical).
+        if (sh.transitCritical === true) spec.data.transitCritical = true;
+        if (live.shapeId === 'the_nest') {
+          const slot = sh.role === 'squad' ? 'carrier' : /^wasp:[0-5]$/.test(sh.nestActorSlot || '') ? sh.nestActorSlot : null;
+          if (slot) { spec.data.nestEncounterId = live.id; spec.data.nestSlot = slot; }
+          if (slot === 'carrier') {
+            spec.data.nestCarrier = true;
+            spec.data.nestBayOffsets = NEST_BAY_OFFSETS;
+            spec.data.nestBayStates = [false, false];
+          }
+          applyNestBroodSpawnSpec(spec, live, slot);
+          if (sh.nestSavedActor) applyNestSavedSpawnSpec(spec, sh.nestSavedActor);
+        }
+        const ent = spawnEntity(spec);
+        if (ent && ent.id != null) {
+          spawned.push(ent.id);
+          rec.ids.push(ent.id);
+          indexActiveMember(dir, live, ent.id);
+          live.ids.push(ent.id);
+          live.roles[ent.id] = sh.role || 'squad';
+          indexSquadMember(dir, live, ent.id);
+        }
+      }
+    } finally {
+      if (budget && typeof budget.releaseSome === 'function' && spawned.length < grant) {
+        budget.releaseSome(live.squadId, grant - spawned.length);
+      }
+      if (!rec.ids.length) delete dir.active[live.squadId];
+    }
+    return spawned;
+  },
+
+  spawnWreck(live, opts) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function' || !opts || !opts.pos) return null;
+    // Same entity contract as salvage.js debris — tether/beam/scanner all just work on it.
+    const ent = spawnEntity({
+      type: 'wreck',
+      pos: { x: opts.pos.x, z: opts.pos.z },
+      radius: 9,
+      mass: 1e6,
+      hull: 1,
+      hullMax: 1,
+      // SFQ-B025: authored dead-mass stays the body's own mass through normalization.
+      physicsBody: { shape: 'capsule', mass: 1e6 },
+      data: {
+        parentType: 'debris',
+        proportions: WRECK_COLLIDER_PROPORTIONS,
+        loot: [],
+        salvagePool: opts.pool || { cmdty_scrap_metal: 2 },
+        salvageTimeLeft: 8,
+        isCommunicator: false,
+        wreckMissionId: null,
+        scanLabel: opts.scanLabel || 'Wreck Debris',
+        encounterId: live.id,
+        storyPropKind: opts.storyPropKind || null,
+        ...(opts.wreckClass ? { wreckClass: opts.wreckClass } : {}),
+        ...(opts.wreckClassLabel ? { wreckClassLabel: opts.wreckClassLabel } : {}),
+        ...(opts.provenance ? { provenance: opts.provenance } : {}),
+      },
+    });
+    // Wreck bodies are encounter-owned dressing, not squad: they ride live.propIds (lazily —
+    // live records minted before this roster exist) so resolve/despawnAll can retire them.
+    // A script that needs one in the combat roster still pushes live.ids itself (whisper, kiln).
+    if (ent && ent.id != null && live) {
+      const props = live.propIds || (live.propIds = []);
+      if (!props.includes(ent.id)) props.push(ent.id);
+    }
+    return ent;
+  },
+
+  restoreNestTerminal(visit) {
+    if (this._saveRestoring) return false;
+    const own = normalizeNestVisit(visit), snapshot = normalizeNestSnapshot(own?.snapshot);
+    if (own?.status !== 'active' || !snapshot?.contactEstablished
+        || snapshot.carrier.status !== 'dead' || !snapshot.pendingCarrierOutcome) return false;
+    const dir = ensureDirectorState(this.state);
+    if (dir.nestVisit?.receipt || dir.live[own.encounterId]) return false;
+    const shape = ENCOUNTERS.the_nest;
+    if (!shape) return false;
+    const item = { encounterId: own.encounterId, squadId: own.encounterId,
+      sectorId: own.sectorId, zoneCenter: own.anchor, ships: [],
+      zoneId: 'charon_nest_nursery_v1', zoneName: 'South radiation-lane nursery',
+      data: { authoredNestVisit: true } };
+    const live = makeEncounterLiveRecord(this.state, item, shape, this.now());
+    live.phase = 'conflict';
+    dir.live[live.id] = live;
+    if (settleRestoredNestDeath(this, live, this.state, snapshot)) return true;
+    delete dir.live[live.id];
+    return false;
+  },
+
+  adoptNestActor(live, entity, role) {
+    if (live?.shapeId !== 'the_nest' || this.state.entities.get(entity?.id) !== entity
+        || entity?.data?.nestEncounterId !== live.id || entity.alive === false) return false;
+    if (!live.ids.includes(entity.id)) live.ids.push(entity.id);
+    live.roles[entity.id] = role;
+    indexSquadMember(ensureDirectorState(this.state), live, entity.id);
+    const adopted = live.data.nestAdoptedIds || (live.data.nestAdoptedIds = []);
+    if (!adopted.includes(entity.id)) adopted.push(entity.id);
+    return true;
+  },
+
+  releaseNestActor(live, entity) {
+    if (live?.shapeId !== 'the_nest' || !live.data?.nestAdoptedIds?.includes(entity?.id)) return false;
+    live.ids = live.ids.filter(id => id !== entity.id);
+    delete live.roles[entity.id];
+    dropSquadMember(ensureDirectorState(this.state), live, entity.id);
+    live.data.nestAdoptedIds = live.data.nestAdoptedIds.filter(id => id !== entity.id);
+    return true;
+  },
+
+  canSpawnNestActor(pos, radius) {
+    return nestSiteClear(this.state, pos, radius);
+  },
+
+  spawnProp(live, opts) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function' || !opts || !opts.pos) return null;
+    const spec = {
+      type: opts.type || 'beacon',
+      pos: { x: opts.pos.x, z: opts.pos.z },
+      vel: { x: 0, z: 0 },
+      radius: Math.max(2, Number(opts.radius) || 6),
+      mass: Math.max(1, Number(opts.mass) || 1e6),
+      hull: 1,
+      hullMax: 1,
+      data: {
+        parentType: 'story_prop',
+        scanLabel: opts.scanLabel || 'Encounter signal',
+        encounterId: live.id,
+        storyPropKind: opts.storyPropKind || null,
+        ...(live.shapeId === 'the_nest' && opts.storyPropKind === 'nest_door'
+          && opts.packagedPropFile === 'places/place_aftermath_aft_cargo_module.glb'
+          ? { packagedPropFile: opts.packagedPropFile, packagedPropRadius: 12,
+              nestEncounterId: live.id, nestSlot: /^door:[01]$/.test(opts.nestActorSlot || '') ? opts.nestActorSlot : null } : {}),
+        assetRef: opts.assetRef || null,
+        tetherable: opts.tetherable !== false,
+      },
+    };
+    if (live.shapeId === 'the_nest' && opts.storyPropKind === 'nest_door' && opts.nestSavedActor) applyNestSavedSpawnSpec(spec, opts.nestSavedActor);
+    const ent = spawnEntity(spec);
+    // Same ownership seam as spawnWreck: props are encounter-owned dressing (live.propIds),
+    // never squad — a script that needs roster semantics pushes live.ids itself.
+    if (ent && ent.id != null && live) {
+      const props = live.propIds || (live.propIds = []);
+      if (!props.includes(ent.id)) props.push(ent.id);
+    }
+    return ent;
+  },
+
+  /** A loose physical cargo pod on the field — the same jettisoned-cargo path the player
+   * produces by jettisoning, so volatile classes keep their lamps, cook-off, and salvage rules.
+   * Encounters shed volatile freight through this so the spilled lot is a real colliding body. */
+  spawnCargoPod(live, spec) {
+    if (!live || !spec || !spec.commodityId) return null;
+    return spawnJettisonedCargoPod(this.state, spec, this.helpers);
+  },
+
+  /** Physical manifest cargo uses the ordinary pickup contract. Cargo remains the sole player-hold
+   * writer; the director only owns the encounter annotation and observes pickup:collected. */
+  spawnFreightPickup(live, opts) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    const qty = Math.max(0, Math.floor(Number(opts && opts.qty) || 0));
+    if (typeof spawnEntity !== 'function' || !live || !opts || !opts.pos || !opts.commodityId || qty <= 0) return null;
+    const physical = freightPickupPhysicalSpec(String(opts.commodityId), qty);
+    const entity = spawnEntity({
+      type: 'pickup',
+      pos: { x: Number(opts.pos.x) || 0, z: Number(opts.pos.z) || 0 },
+      vel: { x: Number(opts.vel && opts.vel.x) || 0, z: Number(opts.vel && opts.vel.z) || 0 },
+      radius: physical.radius,
+      mass: physical.bodyMass,
+      collides: true,
+      flags: { persistent: true },
+      data: {
+        kind: 'cargo',
+        commodityId: String(opts.commodityId),
+        amount: qty,
+        despawnAt: this.now() + Math.max(10, Number(opts.ttlS) || 90),
+        encounterId: live.id,
+        freightCustodyPod: { ...(opts.custody || {}), qty },
+        freightCargoPhysics: physical,
+      },
+    });
+    if (!entity || entity.id == null) return null;
+    live.ids.push(entity.id);
+    live.roles[entity.id] = 'freight_pod';
+    indexSquadMember(ensureDirectorState(this.state), live, entity.id);
+    return entity;
+  },
+
+  resizeFreightPickup(entity, commodityId, qty) {
+    const amount = Math.max(0, Math.floor(Number(qty) || 0));
+    if (!entity || entity.type !== 'pickup' || amount <= 0) return false;
+    const physical = freightPickupPhysicalSpec(String(commodityId || ''), amount);
+    entity.mass = physical.bodyMass;
+    entity.radius = physical.radius;
+    const data = entity.data || (entity.data = {});
+    writePickupRemainder(data, amount);
+    data.freightCargoPhysics = physical;
+    return true;
+  },
+
+  /** Report the first player seizure from this exact civilian custody chain to the law owner.
+   * The director supplies stable provenance and a canonical world point; lawSecurity alone decides
+   * jurisdiction/witnesses, and heat alone consumes an accepted receipt. */
+  reportFreightTheft(live, record, pod, entity) {
+    // a side record is already terminal (its ledger closed at the death spill) but its pods are
+    // still lawful freight in the world — a theft off a second stamped hauler reports the same
+    if (!live || !record || !pod || !entity || (record.terminal && !record.sideCustody)
+      || record.lawTheftIncidentReceiptId
+      || record.legalOwnerKind !== 'civilian'
+      || typeof record.legalOwnerStableId !== 'string' || !record.legalOwnerStableId
+      || record.carrierRecovered === true
+      || pod.custodySourceKind !== 'lawful_carrier'
+      || pod.sourceCustodianStableId !== record.carrierIdentityKey
+      || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return null;
+    const law = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('lawSecurity')
+      : null;
+    if (!law || typeof law.reportIncident !== 'function') return null;
+
+    const causalTick = Number.isInteger(this.state && this.state.tick)
+      ? Math.max(0, this.state.tick)
+      : 0;
+    const reportId = `freight:${hash32(
+      record.custodyId,
+      record.legalOwnerStableId,
+      FREIGHT_THEFT_OFFENDER_STABLE_ID,
+    ).toString(36)}:${FREIGHT_THEFT_LAW_KIND}`;
+    const receipt = law.reportIncident({
+      reportId,
+      kind: FREIGHT_THEFT_LAW_KIND,
+      offenderStableId: FREIGHT_THEFT_OFFENDER_STABLE_ID,
+      offenderEntityId: this.state && this.state.playerId,
+      payloadStableId: record.manifestId,
+      causalTick,
+      pos: { x: entity.pos.x, z: entity.pos.z },
+    });
+    if (!receipt || receipt.accepted !== true) return receipt || null;
+    record.lawTheftReportId = reportId;
+    record.lawTheftCausalTick = causalTick;
+    record.lawTheftIncidentReceiptId = receipt.incidentReceiptId;
+    return receipt;
+  },
+
+  persistOpenFreightCustody(live, record) {
+    const dir = ensureDirectorState(this.state);
+    // A second custody-stamped hauler's record is runtime-transient (encounterScripts mints it
+    // sideCustody): enqueuing it would evict a real envelope under the save cap and a restore
+    // would rebuild it into the raid's selected slot.
+    if (record && record.sideCustody === true) return false;
+    if (!record || record.terminal) return this.clearOpenFreightCustody(record && record.custodyId);
+    const envelope = buildPersistedFreightCustodyEnvelope(live, record, this.now());
+    if (!envelope) return false;
+    const envelopes = normalizePersistedFreightCustodies(dir.stats.openFreightCustodies)
+      .filter((candidate) => candidate.custodyId !== envelope.custodyId);
+    envelopes.push(envelope);
+    dir.stats.openFreightCustodies = envelopes.slice(-FREIGHT_CUSTODY_SAVE_CAP);
+    return true;
+  },
+
+  clearOpenFreightCustody(custodyId) {
+    if (typeof custodyId !== 'string' || !custodyId) return false;
+    const dir = ensureDirectorState(this.state);
+    const before = normalizePersistedFreightCustodies(dir.stats.openFreightCustodies);
+    const after = before.filter((candidate) => candidate.custodyId !== custodyId);
+    dir.stats.openFreightCustodies = after;
+    return after.length !== before.length;
+  },
+
+  retireFreightPickup(entity, reason) {
+    if (!entity || entity.type !== 'pickup') return false;
+    const data = entity.data || (entity.data = {});
+    const pod = data.freightCustodyPod;
+    if (!pod || typeof pod !== 'object') return false;
+    pod.status = reason || 'retired';
+    data.despawnAt = this.now();
+    if (entity.collides !== false) bumpCollidesFlipEpoch();
+    entity.collides = false;
+    // T→F flip: vacate the collidables/spatial rows before the despawnAt sweep
+    // carries them as stale members for the remaining dwell.
+    syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, entity);
+    if (entity.flags) delete entity.flags.persistent;
+    return true;
+  },
+
+  // ── live-entity helpers ─────────────────────────────────────────────────────────────────────
+  entsOf(live, role) {
+    const out = [];
+    const ents = this.state.entities;
+    if (!ents) return out;
+    for (const id of live.ids) {
+      if (role && live.roles[id] !== role) continue;
+      const e = ents.get(id);
+      if (e && e.alive !== false) out.push(e);
+    }
+    return out;
+  },
+  aliveCount(live, role) { return this.entsOf(live, role).length; },
+  minDist2ToSquad(live, p) {
+    let best = Infinity;
+    for (const e of this.entsOf(live)) {
+      const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < best) best = d2;
+    }
+    return best;
+  },
+  playerNearZone(live, slack) {
+    const p = this.player();
+    if (!p || !live.anchor) return false;
+    const r = (live.zoneRadius || 400) + (slack || 0);
+    const dx = p.pos.x - live.anchor.x, dz = p.pos.z - live.anchor.z;
+    return dx * dx + dz * dz <= r * r;
+  },
+  setPassive(live, passive, role) {
+    for (const e of this.entsOf(live, role || undefined)) {
+      const ai = e.data && e.data.ai;
+      if (!ai) continue;
+      ai.passive = !!passive;
+      const spawn = {
+        role: live.roles && live.roles[e.id],
+        pos: e.pos,
+        passive: !!passive,
+      };
+      let doctrineLive = live;
+      let activityNow = this.now();
+      if (!passive && live.data && live.data.ceresActivityAmbush === true) {
+        const prey = findCeresLoadedHauler(this.state);
+        const player = this.player();
+        if (prey && prey.id != null) {
+          spawn.targetId = prey.id;
+          // Hold gun range so the interceptor strike window opens before hull contact yeets the
+          // loaded hauler off the lane. Contact flee is owned elsewhere; we fire first.
+          spawn.preferredRange = ceresAmbushGunRange(e);
+        } else if (player && player.id != null) {
+          spawn.targetId = player.id;
+        }
+        const combat = e.data.combat || (e.data.combat = {});
+        if (spawn.targetId != null) combat.targetId = spawn.targetId;
+        // Script tick still flips live.phase after setPassive. Stamp conflict here so the
+        // activity reason is ambush_snare:conflict and the squad keeps the loaded hauler.
+        // The encounter telegraph already spent the no-fire second; start the activity then
+        // so the first strike window can fire at range instead of ramming.
+        doctrineLive = { ...live, phase: 'conflict' };
+        activityNow = Math.max(0, this.now() - 1);
+      }
+      setEntityDoctrine(e, {
+        activity: activityForEncounterSpawn(doctrineLive, spawn, { now: activityNow, passive: !!passive }),
+      });
+      if (live.data && live.data.ceresActivityAmbush === true) {
+        ai[CERES_ACTIVITY_AMBUSH_MARKER] = passive ? 'offer' : 'conflict';
+      }
+      if (!passive && e.data.intent) { e.data.intent.moveX = 0; e.data.intent.moveZ = 0; e.data.intent.fire = false; }
+    }
+  },
+  clearPredation(live, reason) {
+    return clearPredationBindingsForLive(this.state, live, reason || 'objective_cleared');
+  },
+  despawnAll(live, afterS, role) {
+    if (live && live.data && live.data.adoptedWorldActors === true) return;
+    const now = this.now();
+    let i = 0;
+    for (const e of this.entsOf(live, role || undefined)) {
+      // SF-150: durable/foreign-owned roster members are released, not stamped — custody pods
+      // keep their authored TTL and world actors stay under their own persistence owner.
+      if (!encounterMayScheduleDespawn(e)) continue;
+      e.data = e.data || {};
+      e.data.despawnAt = now + (afterS || 20) + i * 0.5;   // small stagger so departures read natural
+      i++;
+    }
+    // Encounter-owned props are not squad — a role filter does not name them — but a blanket
+    // despawn owns them too (otherwise abort/exit strands every wreck and story prop it made).
+    if (role == null) stampLivePropsDespawn(this.state, live, now, afterS || 20, true);
+  },
+
+  // ── one voice ───────────────────────────────────────────────────────────────────────────────
+  say(live, channel, barkIdOrText, vars, o) {
+    o = o || {};
+    const text = o.literal ? barkIdOrText : barkText(barkIdOrText, vars || live.vars, live.id);
+    if (!text) return false;
+    const now = this.now();
+    if (o.primary) {
+      if (live.primarySaid) return false;              // exactly ONE primary line per encounter
+      live.primarySaid = true;
+    } else if (channel === 'bark' && now - live.lastBarkAt < BARK_MIN_GAP_S) {
+      return false;                                    // per-shape bark cap; the receipt carries it
+    }
+    if (channel === 'bark' || o.primary) live.lastBarkAt = now;
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({ channel: channel || 'info', text, kind: o.kind || 'encounter', factionId: live.factionId });
+    } else {
+      this.emit('toast', { text, kind: 'info', ttl: 4 });
+    }
+    this.emit('encounter:voice', { encounterId: live.id, kind: live.shapeId, channel: channel || 'info', text, primary: !!o.primary, t: now });
+    return true;
+  },
+
+  offerChoices(live, optionIds, timeoutChoice, deadlineAt) {
+    const defs = live.shape.choices || [];
+    const state = this.state;
+    const options = [];
+    for (const id of optionIds) {
+      // A choice the shape never authored still needs a speakable label — never the raw
+      // snake_case id on a player-facing deck button.
+      const def = defs.find((c) => c.id === id) || { id, label: humanizeId(id, 'Respond') };
+      let available = true;
+      if (def.needs === 'credits') available = (state.player.credits | 0) >= (live.vars.amount | 0);
+      else if (def.needs === 'cargo') available = this.cargoValue() >= (live.vars.amount | 0);
+      else if (def.needs === 'contraband') available = this.hasContraband();
+      else if (def.needs === 'contraband+credits') available = this.hasContraband() && (state.player.credits | 0) >= Math.round(this.fineEstimate() * 0.3);
+      options.push({ id: def.id, label: def.label, available });
+    }
+    this.emit('encounter:choiceOffered', {
+      encounterId: live.id, kind: live.shapeId,
+      title: live.shape.title || live.zoneName || humanizeId(live.shapeId, 'Encounter'),
+      detail: live.shape.primaryLine || null,
+      options, deadlineAt,
+      timeoutChoice: timeoutChoice || live.shape.timeoutChoice || null,
+    });
+  },
+
+  // A script may point the existing nav mark at its own scene. The previous mark is
+  // remembered on the live record and put back by clearEncounterMark. The lane writer
+  // owns the nav slot; this does not mint credits, heat, or cargo.
+  markEncounter(live, waypoint) {
+    if (!live || !waypoint || waypoint.encounterId !== live.id) return false;
+    if (!live.data) live.data = {};
+    if (!live.data.markSaved) {
+      const current = this.state && this.state.nav && this.state.nav.waypoint;
+      let previous = null;
+      if (current && current.encounterId !== live.id) {
+        try { previous = JSON.parse(JSON.stringify(current)); } catch { previous = null; }
+      }
+      live.data.previousWaypoint = previous;
+      live.data.markSaved = true;
+    }
+    laneSetNavWaypoint(this.state, waypoint);
+    this.emit('nav:waypoint', waypoint);
+    return true;
+  },
+
+  clearEncounterMark(live) {
+    if (!live || !live.data || !live.data.markSaved) return false;
+    const current = this.state && this.state.nav && this.state.nav.waypoint;
+    live.data.markSaved = false;
+    if (!current || current.encounterId !== live.id) return true;
+    const restored = live.data.previousWaypoint || null;
+    live.data.previousWaypoint = null;
+    laneSetNavWaypoint(this.state, restored);
+    this.emit('nav:waypoint', restored);
+    return true;
+  },
+
+  // Offer consumption semantics for encounter:choose:
+  // - An offer dispatches at most ONE accepted choice for its lifetime (single-shot),
+  //   regardless of which non-terminal phase the handler moved to.
+  // - An unknown choiceId for a shape that HAS choices is ignored and does NOT
+  //   consume the offer (garbage input cannot burn the player's choice) — this
+  //   preserves current behavior for invalid ids.
+  // - A shape with NO choices consumes on first dispatch.
+  // - `offerConsumed` is a plain serializable field on the live record.
+  // - Handler-internal direct calls (timeoutChoice -> script.choose) are NOT
+  //   routed through _onChoose and are unaffected.
+  _onChoose(p) {
+    if (!p || !p.encounterId) return;
+    const dir = ensureDirectorState(this.state);
+    const live = dir.live[p.encounterId];
+    if (!live || live.phase === 'done') return;
+    if (live.offerConsumed) return;
+    const script = encounterScriptFor(live);
+    if (!script || typeof script.choose !== 'function') return;
+    const choices = live.shape && Array.isArray(live.shape.choices) ? live.shape.choices : [];
+    if (choices.length && !choices.some((c) => c && c.id === p.choiceId)) return;
+    live.offerConsumed = true;
+    this._recordPlayerChoiceLine(live, p.choiceId);
+    script.choose(this, live, this.state, p.choiceId);
+  },
+
+  _recordPlayerChoiceLine(live, choiceId) {
+    const choice = ((live.shape && live.shape.choices) || []).find((entry) => entry && entry.id === choiceId);
+    const line = choice && typeof choice.playerLine === 'string' ? choice.playerLine.trim() : '';
+    if (!line) return;
+    const story = this.state.story || (this.state.story = { flags: {} });
+    const lines = Array.isArray(story.playerChoiceLines) ? story.playerChoiceLines : (story.playerChoiceLines = []);
+    lines.push(line);
+    if (lines.length > 24) lines.splice(0, lines.length - 24);
+    this.emit('story:playerChoiceRecorded', {
+      encounterId: live.id, shapeId: live.shapeId, choiceId, line, t: this.now(),
+    });
+  },
+
+  // ── outcomes / receipts ─────────────────────────────────────────────────────────────────────
+  resolve(live, outcome, o) {
+    o = o || {};
+    const dir = ensureDirectorState(this.state);
+    if (!dir.live[live.id] || live.phase === 'done') return;
+    encounterScriptFor(live)?.retire?.(this, live, this.state, 'terminal');
+    const now = this.now();
+    recordNestOutcome(this, live, outcome);
+    live.phase = 'done';
+    live.outcome = outcome;
+    clearPredationBindingsForLive(this.state, live, `encounter_${outcome}`);
+    const resolvedIdentity = resolvedEncounterFingerprint(live.causality, outcome);
+    const resolvedCausality = {
+      ...live.causality,
+      resolvedFingerprint: resolvedIdentity && resolvedIdentity.fingerprint || null,
+      resolvedTuple: resolvedIdentity && resolvedIdentity.tuple || null,
+    };
+    live.causality = resolvedCausality;
+    const recentFingerprints = dir.stats.recentFingerprints || (dir.stats.recentFingerprints = []);
+    const recentVarietyKeys = dir.stats.recentVarietyKeys || (dir.stats.recentVarietyKeys = []);
+    if (resolvedCausality.resolvedFingerprint) recentFingerprints.push(resolvedCausality.resolvedFingerprint);
+    if (resolvedCausality.varietyKey) recentVarietyKeys.push(resolvedCausality.varietyKey);
+    if (recentFingerprints.length > 12) recentFingerprints.splice(0, recentFingerprints.length - 12);
+    if (recentVarietyKeys.length > 12) recentVarietyKeys.splice(0, recentVarietyKeys.length - 12);
+    dir.cooldowns[live.shapeId] = now + (live.shape.cooldownS || 300);
+    dir.lastEndAt = now;
+    dir.stats.resolved++;
+    // The durable row _gatesPass reads: uniqueOnce, blockAfterOutcome, and requiresCompletedShape
+    // chains (the salvage tail waits on the opening raid) all key off this record. Without it a
+    // chained second chapter deadlocks and every once-only shape re-offers forever.
+    noteEncounterCompleted(this.state, live, outcome, now);
+    // Stragglers spawned by the director give up rather than chain-hunting the player past the
+    // encounter's end. Adopted durable world actors return to world ownership instead.
+    if (live.data && live.data.adoptedWorldActors === true) {
+      restoreCeresActivityAmbushEntities(this.state, live.data);
+      dir.stats.ceresActivityAmbush = { phase: 'done', outcome };
+    } else {
+      for (const e of this.entsOf(live)) {
+        // SF-150: a durable or foreign-owned roster member is released intact — the encounter
+        // only retires the stragglers it actually spawned.
+        if (!encounterMayScheduleDespawn(e) || (live.shapeId === 'the_nest' && live.data?.nestAdoptedIds?.includes(e.id))) continue;
+        if (!e.data || e.data.despawnAt == null) { e.data = e.data || {}; e.data.despawnAt = now + 45; }
+      }
+    }
+    // Encounter-owned wrecks and story props ride their own roster (live.propIds — never squad:
+    // aliveCount squad-wipe reads and squadMembership kill-routing must not see set dressing).
+    // They release on the same straggler contract instead of orbiting the sector forever.
+    stampLivePropsDespawn(this.state, live, now, 45, false);
+    this.emit('encounter:resolved', {
+      encounterId: live.id, shape: live.shapeId, kind: (live.plan && live.plan.variantKind) || live.shapeId,
+      outcome, sectorId: live.sectorId, zoneId: live.zoneId, tier: live.tier, deck: live.deck, t: now,
+      causality: live.causality ? { ...live.causality } : null,
+    });
+    this.emit('encounter:fingerprint', {
+      encounterId: live.id,
+      fingerprint: resolvedCausality.resolvedFingerprint,
+      tuple: resolvedCausality.resolvedTuple,
+      instanceFingerprint: resolvedCausality.fingerprint,
+      t: now,
+    });
+    const text = (live.shape.receipts && live.shape.receipts[outcome])
+      || receiptTextWithFallback(live.shapeId, live.script, outcome, o.vars || live.vars);
+    if (text && o.speak !== false) {
+      const voice = this.helpers && this.helpers.voice;
+      if (voice && typeof voice.say === 'function') voice.say({ channel: o.channel || 'info', text, kind: 'receipt' });
+      else this.emit('toast', { text, kind: 'info', ttl: 5 });
+    }
+    // The receipt is bookkeeping, not the bark: a silent resolution ({ speak: false } or no
+    // authored line) still lands in the saved ledger and still reaches receipt listeners
+    // (recovery prompt, ace memory) — only the spoken/toasted line honors the speak gate.
+    this.emit('encounter:receipt', {
+      encounterId: live.id, shape: live.shapeId, outcome, text: text || null, t: now,
+      fingerprint: live.causality && live.causality.fingerprint || null,
+      motiveId: live.causality && live.causality.motiveId || null,
+    });
+    dir.receipts.push({
+      t: now, shape: live.shapeId, outcome, text: text || null,
+      fingerprint: live.causality && live.causality.fingerprint || null,
+      motiveId: live.causality && live.causality.motiveId || null,
+    });
+    if (dir.receipts.length > RECEIPT_CAP) dir.receipts.splice(0, dir.receipts.length - RECEIPT_CAP);
+    dropLiveSquadMembership(dir, live);
+    noteScriptProbeRow(dir, live, -1);
+    delete dir.live[live.id];
+  },
+
+  abort(live, reason) {
+    const dir = ensureDirectorState(this.state);
+    if (!dir.live[live.id] || live.phase === 'done') return;
+    encounterScriptFor(live)?.retire?.(this, live, this.state, 'terminal');
+    const now = this.now();
+    live.phase = 'done';
+    live.outcome = `aborted:${reason}`;
+    clearPredationBindingsForLive(this.state, live, `encounter_aborted:${reason}`);
+    dir.stats.fizzled++;
+    dir.cooldowns[live.shapeId] = Math.max(dir.cooldowns[live.shapeId] || 0, now + 60);
+    dir.pressure[live.deck] = Math.min(POOL_MAX, dir.pressure[live.deck] + (live.shape.pressureCost || 0)); // it never happened
+    if (live.data && live.data.adoptedWorldActors === true) {
+      restoreCeresActivityAmbushEntities(this.state, live.data);
+      dir.stats.ceresActivityAmbush = { phase: 'done', outcome: live.outcome };
+    } else {
+      this.despawnAll(live, 4);
+    }
+    this.emit('encounter:resolved', {
+      encounterId: live.id, shape: live.shapeId, kind: live.shapeId, outcome: live.outcome,
+      sectorId: live.sectorId, zoneId: live.zoneId, tier: live.tier, deck: live.deck, t: now,
+      causality: live.causality ? { ...live.causality } : null,
+    });
+    dropLiveSquadMembership(dir, live);
+    noteScriptProbeRow(dir, live, -1);
+    delete dir.live[live.id];
+  },
+
+  refundPressure(live, frac) {
+    const dir = ensureDirectorState(this.state);
+    dir.pressure[live.deck] = Math.min(POOL_MAX, dir.pressure[live.deck] + (live.shape.pressureCost || 0) * (frac || 0));
+  },
+
+  // ── consequence intents (single-writer ownership honored) ──────────────────────────────────
+  charge(amount, reason) { if (amount > 0) this.emit('economy:chargeCredits', { amount: Math.round(amount), reason }); },
+  grant(amount, reason) { if (amount > 0) this.emit('economy:grantCredits', { amount: Math.round(amount), reason }); },
+  rep(factionId, delta, reason) { if (factionId && delta) this.emit('faction:repDelta', { factionId, delta, reason }); },
+  tradePressure(stationId, commodityId, vol) {
+    if (!stationId || !commodityId || !vol) return;
+    const bounded = Math.max(-12, Math.min(12, Math.round(vol)));     // ambient life must never flatten gradients
+    this.emit('economy:applyTradePressure', { stationId, good: commodityId, vol: bounded });
+  },
+  freightLoss(live, options = {}) {
+    if (!live || !live.id || !live.data) return false;
+    const manifest = options.manifest || live.data.freightManifest;
+    if (!manifest || !Array.isArray(manifest.lines) || !manifest.lines.length) return false;
+
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const freighterKey = String(options.freighterKey || `encounter:${live.id}`);
+    const intent = buildLossIntent({
+      seed,
+      freighterKey,
+      stationId: options.stationId != null ? options.stationId : live.data.destId,
+      sectorId: options.sectorId != null ? options.sectorId : live.sectorId,
+      manifest,
+      killerId: options.killerId != null ? options.killerId : live.data.lossKillerId,
+      // Encounter identity is already unique and deterministic. Keeping the sequence fixed makes
+      // the same terminal consequence stable across repeated ticks and Continue/replay.
+      seq: 0,
+    });
+    const hasDestination = typeof intent.stationId === 'string' && intent.stationId.trim().length > 0;
+    const routablePressures = (intent.pressures || []).map((pressure) => ({
+      pressure,
+      boundedVol: pressure && Number.isFinite(pressure.vol)
+        ? Math.max(-12, Math.min(12, Math.round(pressure.vol)))
+        : 0,
+    })).filter(({ pressure, boundedVol }) => (
+      pressure
+      && typeof pressure.stationId === 'string'
+      && pressure.stationId.trim().length > 0
+      && typeof pressure.good === 'string'
+      && pressure.good.length > 0
+      && boundedVol < 0
+    ));
+    // Do not consume the stable identity until a real economy-owner route exists. A stationless
+    // transient may acquire its destination later and must remain retryable without false news.
+    if (!hasDestination || !routablePressures.length) return false;
+    const dir = ensureDirectorState(this.state);
+    // saveSystem already persists the director stats bag, so this bounded causal ledger survives
+    // Continue without making transient live encounter/entity references durable.
+    const applied = dir.stats.appliedFreightLossIds;
+    const fresh = filterNewFreightIntents([intent], applied);
+    if (!fresh.length) return false;
+
+    // Reserve before emitting because bus handlers are synchronous and may re-enter the facade.
+    dir.stats.appliedFreightLossIds = appendAppliedFreightLossIds(applied, intent.intentId, 64);
+    live.data.freightLossIntentId = intent.intentId;
+    for (const { pressure, boundedVol } of routablePressures) {
+      this.emit('economy:applyTradePressure', {
+        ...pressure,
+        stationId: pressure.stationId,
+        good: pressure.good,
+        commodityId: pressure.commodityId || pressure.good,
+        vol: boundedVol,
+        intentId: intent.intentId,
+        encounterId: live.id,
+      });
+    }
+    this.emit('freight:loss', { ...intent, encounterId: live.id });
+    // marketNews.surfaceFreightLoss owns the resolved headline for encounter losses; emitting
+    // news:headline here too would double-publish the same intentId.
+    return true;
+  },
+  dangerImpulse(live, kind, delta) {
+    const bounded = Math.max(-0.05, Math.min(0.05, delta || 0));
+    if (bounded) this.emit('sectorsim:impulse', { kind, sectorId: live.sectorId, danger: bounded });
+  },
+
+  // ═══ EVENT ROUTING ════════════════════════════════════════════════════════════════════════════
+
+  _onEntityGone(p) {
+    const id = p && p.id;
+    if (id == null) return;
+    const dir = ensureDirectorState(this.state);
+    // Entity ids recycle through freeIds — a stale pursuit row would leak onto the next hull.
+    if (dir.pursuitWatch) delete dir.pursuitWatch[id];
+    // A KILLED ambient raider drops its secured loot as ordinary residue and frees the hauler.
+    // The payload's own entity ref is the identity authority here — entity:destroyed queues
+    // AFTER the map delete, so an id lookup comes back empty or (worse) finds a recycled
+    // occupant. Storage, not death: a far-shelf row shares the entity's ai bag by reference
+    // ('virtualize'), a demoted sector's durable record clones it before despawn
+    // (worldRecordId stamped at capture), and a save wipe is tearing the world down. On any of
+    // those, respilling dumps unreachable pods AND erases the stored ledger — the durable
+    // authority already conserves the cargo. Only a dead hull with no stored owner drops.
+    const goneRaider = (p && p.entity)
+      || (this.state.entities && this.state.entities.get ? this.state.entities.get(id) : null);
+    const stored = this._saveRestoring
+      || (p && p.reason === 'virtualize')
+      || !!(goneRaider && goneRaider.data && goneRaider.data.worldRecordId != null);
+    if (!stored && goneRaider && goneRaider.alive === false) {
+      ambientRaiderDestroyed(this.state, goneRaider, this._ambientPredationCtx());
+    }
+    if (dir.patrolIntervened) delete dir.patrolIntervened[id];
+    if (dir.playerDealtDamageAt) delete dir.playerDealtDamageAt[id];
+    // The active-spawn index answers the squad question in O(1) — every rec.ids push
+    // indexes, every removal drops, so a miss is provably absent. A stale-looking row
+    // (map hit, rec missing or ids lacking the entity) falls back to the original walk.
+    const squadId = dir.activeMembership ? dir.activeMembership[id] : null;
+    if (squadId != null) {
+      const rec = dir.active[squadId];
+      const idx = rec ? rec.ids.indexOf(id) : -1;
+      if (rec && idx !== -1) {
+        delete dir.activeMembership[id];
+        rec.ids.splice(idx, 1);
+        const budget = this.helpers && this.helpers.spawnBudget;
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(squadId, 1);
+        if (!rec.ids.length) delete dir.active[squadId];
+      } else {
+        for (const sid of Object.keys(dir.active)) {
+          const row = dir.active[sid];
+          const rowIdx = row.ids.indexOf(id);
+          if (rowIdx === -1) continue;
+          delete dir.activeMembership[id];
+          row.ids.splice(rowIdx, 1);
+          const budget = this.helpers && this.helpers.spawnBudget;
+          if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(sid, 1);
+          if (!row.ids.length) delete dir.active[sid];
+          break;
+        }
+      }
+    }
+    // Cache wrecks resolve their salvage-signal encounter when stripped/destroyed. Rows
+    // whose script probes a data key (cacheId/sourceId) are not covered by the id
+    // membership map — when any such row exists (or the map answer looks stale), run
+    // the original full walk verbatim.
+    const probeRows = Number.isFinite(dir.scriptProbeRows) ? dir.scriptProbeRows : 0;
+    const memberLiveId = dir.squadMembership ? dir.squadMembership[id] : null;
+    const memberLive = memberLiveId != null ? dir.live[memberLiveId] : null;
+    const memberHit = !!(memberLive && memberLive.ids.indexOf(id) !== -1);
+    if (probeRows > 0 || (memberLiveId != null && !memberHit)) {
+      for (const lid of Object.keys(dir.live)) {
+        this._noteLiveGone(dir, dir.live[lid], id, p);
+      }
+    } else if (memberHit) {
+      this._noteLiveGone(dir, memberLive, id, p);
+    }
+  },
+
+  _noteLiveGone(dir, live, id, p) {
+    if (!live) return;
+    const liveIndex = live.ids.indexOf(id);
+    if (!this._saveRestoring && live.script === 'convoy' && liveIndex !== -1) {
+      this._scriptEvent(live, 'entityGone', { ...(p || {}), id });
+    }
+    if (live.script === 'salvageSignal' && live.data && live.data.cacheId === id) {
+      this._scriptEvent(live, 'cacheGone', { id });
+    }
+    if (live.script === 'whisper' && live.data && live.data.sourceId === id) {
+      this._scriptEvent(live, 'sourceGone', { id });
+    }
+    if (liveIndex !== -1) {
+      for (let index = live.ids.length - 1; index >= 0; index--) {
+        if (live.ids[index] === id) live.ids.splice(index, 1);
+      }
+      if (live.roles && typeof live.roles === 'object') delete live.roles[id];
+      dropSquadMember(dir, live, id);
+    }
+    const propIndex = Array.isArray(live.propIds) ? live.propIds.indexOf(id) : -1;
+    if (propIndex !== -1) live.propIds.splice(propIndex, 1);
+  },
+
+  _onEntityKilled(p) {
+    if (!p || p.id == null) return;
+    const dir = ensureDirectorState(this.state);
+    // Killed hulls may linger as wreck entities — drop pursuit bookkeeping at death, not at
+    // removal, so a recycled id never inherits a resolved row.
+    if (dir.pursuitWatch) delete dir.pursuitWatch[p.id];
+    const killedRaider = (this.state.entities && this.state.entities.get
+      ? this.state.entities.get(p.id) : null) || p.entity || null;
+    if (killedRaider && killedRaider.alive === false) {
+      ambientRaiderDestroyed(this.state, killedRaider, this._ambientPredationCtx());
+    }
+    if (dir.patrolIntervened) delete dir.patrolIntervened[p.id];
+    if (dir.playerDealtDamageAt) delete dir.playerDealtDamageAt[p.id];
+    const byPlayer = p.killerId != null && p.killerId === this.state.playerId;
+    const externalCaptainId = dir.externalNamed && dir.externalNamed[p.id];
+    if (externalCaptainId) {
+      const sectorId = this._currentSectorId();
+      const capDef = NAMED_CAPTAINS.find((c) => c.id === externalCaptainId) || null;
+      const named = dir.named[externalCaptainId] || (dir.named[externalCaptainId] = {});
+      named.alive = false;
+      named.lastSeenSector = sectorId;
+      named.killedBy = byPlayer ? 'player' : 'world';
+      named.deathSector = sectorId;
+      named.deathTick = this.state.tick | 0;
+      delete dir.externalNamed[p.id];
+      if (byPlayer) {
+        for (const survivor of NAMED_CAPTAINS) {
+          if (survivor.id === externalCaptainId) continue;
+          const srec = dir.named[survivor.id]
+            || (dir.named[survivor.id] = { alive: true, tier: 0, escapes: 0, kills: 0, lastSeenSector: null });
+          if (srec.alive !== false) srec.tier = Math.min(3, (srec.tier | 0) + 1);
+        }
+      }
+      this.emit('encounter:namedCaptainDefeated', {
+        captainId: externalCaptainId,
+        captainName: (capDef && capDef.name) || externalCaptainId,
+        entityId: p.id,
+        byPlayer,
+        sectorId,
+        t: this.now(),
+        tick: this.state.tick | 0,
+      });
+    }
+    // `kills` is the "downed you" tally the watchlist shows — it accrues when that captain's
+    // hull lands the killing blow on the player, never when the captain itself dies (the old
+    // line counted a world death against the player).
+    if (p.id === this.state.playerId && p.killerId != null && dir.externalNamed) {
+      const killerCaptainId = dir.externalNamed[p.killerId];
+      if (killerCaptainId) {
+        const named = dir.named[killerCaptainId]
+          || (dir.named[killerCaptainId] = { alive: true, tier: 0, escapes: 0, kills: 0, lastSeenSector: null });
+        named.kills = (named.kills || 0) + 1;
+      }
+    }
+    let handled = null;
+    // squadMembership answers the squad question in O(1); the walk below stays as the cold path
+    // for rows minted before the index (or lost to a stale save).
+    const memberLiveId = dir.squadMembership[p.id];
+    const memberLive = memberLiveId != null ? dir.live[memberLiveId] : null;
+    if (memberLive && memberLive.roles && memberLive.roles[p.id] !== undefined
+      && memberLive.ids.includes(p.id)) {
+      handled = memberLive;
+      this._scriptEvent(memberLive, 'squadKill', {
+        id: p.id, role: memberLive.roles[p.id], byPlayer, killerId: p.killerId,
+        pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
+      });
+    } else {
+      for (const lid of Object.keys(dir.live)) {
+        const live = dir.live[lid];
+        const role = live.roles[p.id];
+        if (role !== undefined && live.ids.includes(p.id)) {
+          handled = live;
+          this._scriptEvent(live, 'squadKill', {
+            id: p.id, role, byPlayer, killerId: p.killerId,
+            pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
+          });
+          break;
+        }
+      }
+    }
+    if (handled) this._onRaidEscortDown(handled, p);
+    if (handled || !byPlayer) return;
+    // A player kill OUTSIDE any encounter squad, near a convoy → potential guard credit.
+    for (const lid of Object.keys(dir.live)) {
+      const live = dir.live[lid];
+      if (live.script !== 'convoy' && live.script !== 'traderRun') continue;
+      for (const h of this.entsOf(live, 'hauler')) {
+        const dx = (p.pos ? p.pos.x : 0) - h.pos.x, dz = (p.pos ? p.pos.z : 0) - h.pos.z;
+        if (dx * dx + dz * dz <= 1500 * 1500) { this._scriptEvent(live, 'guardKill', p); break; }
+      }
+    }
+  },
+
+  /**
+   * FIGHT-15 — the raid's screen is the escort wing. When a squadKill removes the last living
+   * escort row, the surviving fighters of the fallen screen's faction peel onto the loose spill:
+   * physical pods, the ordinary pickup acceptance seam, ai.stolenLoot custody, a finite leave leg.
+   * Fires once per live record (escortWingDownAt latch); lawful convoy guards flip nothing because
+   * the survivors that remain must share the dead escorts' faction and hold a fighter role.
+   */
+  _onRaidEscortDown(live, p) {
+    if (!live || live.phase === 'done' || !live.data) return;
+    if (!live.roles || live.roles[p.id] !== 'escort') return;
+    if (live.data.escortWingDownAt != null) return;
+    // A freight-custody record owns its own sweep: its pods carry title, its writer books
+    // raider_secured, and its escape releases through the same custody lifecycle. The generic
+    // loose-pod sweep keeps to raids with no manifest ledger.
+    if (live.data.freightCargoCustody) return;
+    let remaining = 0;
+    for (const id of live.ids) {
+      if (live.roles[id] !== 'escort') continue;
+      const e = this.state.entities && this.state.entities.get ? this.state.entities.get(id) : null;
+      if (e && e.alive !== false) remaining++;
+    }
+    if (remaining > 0) return;
+    live.data.escortWingDownAt = this.state.simTime || 0;
+    const dead = (p.entity && p.entity.factionId)
+      || (this.state.entities && this.state.entities.get
+        ? (this.state.entities.get(p.id) || {}).factionId : null);
+    lootSweepOnEscortDown(this._lootSweepCtx(), live, dead || null);
+  },
+
+  _onExternalNamedBound(p) {
+    if (!p || !p.captainId || p.entityId == null) return;
+    const dir = ensureDirectorState(this.state);
+    const named = dir.named[p.captainId] || (dir.named[p.captainId] = { alive: true, tier: 0, escapes: 0, kills: 0, lastSeenSector: null });
+    if (named.alive === false) return;
+    named.lastSeenSector = p.sectorId || this._currentSectorId();
+    dir.externalNamed[p.entityId] = p.captainId;
+  },
+
+  _onCombatDamage(p) {
+    if (!p || p.attackerId == null) return;
+    const dir = ensureDirectorState(this.state);
+    const now = this.now();
+    // A raider still holding stolen freight sheds some of it under fire — pursuit pressure
+    // knocks loot loose piecemeal (ambient ledger or the bound raid's secured one alike). Only a
+    // hit that actually lands dents the hold; a fully absorbed shot shakes nothing free. The
+    // field probe runs per damage event, so the ctx build waits for an actual carrier.
+    if (p.targetId != null && Number(p.applied) > 0) {
+      const pressured = this.state.entities && this.state.entities.get
+        ? this.state.entities.get(p.targetId) : null;
+      const pressuredAi = pressured && pressured.data && pressured.data.ai;
+      if (pressuredAi && (pressuredAi.stolenLoot || pressuredAi.predationObjective)) {
+        ambientJettisonUnderPressure(this.state, pressured, p.attackerId,
+          this._ambientPredationCtx());
+      }
+    }
+    if (p.attackerId === this.state.playerId) {
+      const playerDealtDamageAt = dir.playerDealtDamageAt || (dir.playerDealtDamageAt = {});
+      if (p.targetId != null) playerDealtDamageAt[p.targetId] = now;
+      dir.lastPlayerDealtDamageAt = now;
+      // Player fire on a bound raider is intervention, not noise: resolve it BEFORE any other
+      // bookkeeping so the retaliation fields exist when scripts/authority read — or, while the
+      // raider still holds its take, the SF-055 wounded-cargo escape accelerates off the shooter.
+      this._releasePredationRaiderForRetaliation(p.targetId, p.attackerId);
+      for (const lid of Object.keys(dir.live)) {
+        const live = dir.live[lid];
+        if (p.targetId != null && live.ids.includes(p.targetId)) {
+          live.lastPlayerExchangeAt = now;   // the player is fighting this encounter
+          this._scriptEvent(live, 'playerHitSquad', p);
+          return;
+        }
+      }
+      return;
+    }
+    // NPC → player damage feeds the harassment-mercy watch: a pin the attacker can never resolve
+    // gets a deterministic break-off instead of running forever (see HARASS_* contract above).
+    if (p.targetId != null && p.targetId === this.state.playerId) {
+      for (const lid of Object.keys(dir.live)) {
+        const live = dir.live[lid];
+        if (live.ids.includes(p.attackerId)) live.lastPlayerExchangeAt = now;
+      }
+      this._watchHarassDamage(p);
+    }
+  },
+
+  _watchHarassDamage(p) {
+    const dir = ensureDirectorState(this.state);
+    const watch = dir.harassWatch || (dir.harassWatch = {});
+    const key = String(p.attackerId);
+    const now = this.now();
+    let row = watch[key];
+    if (!row) {
+      // Bounded: evict the stalest attacker when the watch is full.
+      const keys = Object.keys(watch);
+      if (keys.length >= HARASS_TRACK_CAP) {
+        let stalest = keys[0];
+        for (const k of keys) if (watch[k].lastAt < watch[stalest].lastAt) stalest = k;
+        delete watch[stalest];
+      }
+      row = watch[key] = { attackerId: p.attackerId, firstAt: now, lastAt: now, total: 0, ring: [] };
+    }
+    row.lastAt = now;
+    row.total += Math.max(0, Number(p.amount) || 0);
+    row.ring.push({ t: now, amt: Math.max(0, Number(p.amount) || 0) });
+    while (row.ring.length && now - row.ring[0].t > HARASS_TTK_WINDOW_S * 2) row.ring.shift();
+  },
+
+  _tickHarassMercy(dir, state, now) {
+    const watch = dir.harassWatch || (dir.harassWatch = {});
+    const rearm = dir.mercyRearm || (dir.mercyRearm = []);
+    // Stand-downs expire: restore the attacker's own passivity setting, not a permanent pacify.
+    for (let i = rearm.length - 1; i >= 0; i--) {
+      const rowR = rearm[i];
+      const ent = state.entities && state.entities.get(rowR.id);
+      if (!ent || ent.alive === false) { rearm.splice(i, 1); continue; }
+      if (now >= rowR.until) {
+        const ai = ent.data && ent.data.ai;
+        // Only un-stamp if nobody else re-stamped mercy on this attacker meanwhile.
+        if (ai && ai.mercyDisengageUntil === rowR.until) {
+          ai.passive = rowR.hadPassive === true;
+          delete ai.mercyDisengageUntil;
+        }
+        rearm.splice(i, 1);
+      }
+    }
+    if (!Object.keys(watch).length) return;
+    // Player-pool sample for the stall read (1 Hz; ring trimmed to the read window).
+    const pool = this._playerDamageablePool(state);
+    const samples = dir.harassPool || (dir.harassPool = []);
+    samples.push({ t: now, pool });
+    while (samples.length && now - samples[0].t > HARASS_TTK_WINDOW_S + 5) samples.shift();
+    for (const key of Object.keys(watch)) {
+      const row = watch[key];
+      if (now - row.lastAt > HARASS_FORGET_S) { delete watch[key]; continue; }
+      const attacker = state.entities ? state.entities.get(row.attackerId) : null;
+      if (!attacker || attacker.alive === false
+        || (attacker.type !== 'ship' && attacker.type !== 'drone')) { delete watch[key]; continue; }
+      const ai = attacker.data && attacker.data.ai;
+      if (!ai) { delete watch[key]; continue; }                 // mercy semantics only exist for driven ships
+      if (ai.mercyDisengageUntil != null && ai.mercyDisengageUntil > now) continue;
+      if (ai.namedAceId || attacker.data.encounterBoss || attacker.data.isBoss) {
+        delete watch[key]; continue;                            // authored duels own their resolution
+      }
+      // Lawful pressure on a wanted player is the law lane's jurisdiction, not mercy's.
+      if (ai.lawful && isWanted(state)) { delete watch[key]; continue; }
+      const minEngage = (ai.mercyStrikes | 0) > 0 ? HARASS_REPEAT_ENGAGE_S : HARASS_MIN_ENGAGE_S;
+      if (now - row.firstAt < minEngage) continue;
+      if (pool <= 0) continue;                                  // already terminal; nothing to resolve
+      let windowDmg = 0;
+      for (const e of row.ring) if (now - e.t <= HARASS_TTK_WINDOW_S) windowDmg += e.amt;
+      if (windowDmg < HARASS_MIN_WINDOW_DMG) continue;          // not really engaging right now
+      // STALLED: damage keeps landing but the player's pool is not being driven down (regen
+      // outpaces the attack) — this fight cannot resolve by attrition.
+      let poolStart = null;
+      for (const s of samples) if (now - s.t <= HARASS_TTK_WINDOW_S && (poolStart == null || s.t < poolStart.t)) poolStart = s;
+      const stallFloor = poolStart ? poolStart.pool * (1 - HARASS_STALL_TOL) : 0;
+      const stalled = poolStart != null && poolStart.pool > 0 && pool >= stallFloor;
+      // HOPELESS: the pool IS draining but at a rate that could not finish inside the contract.
+      const dps = windowDmg / Math.min(HARASS_TTK_WINDOW_S, Math.max(1, now - row.firstAt));
+      const hopeless = pool > 0 && dps > 0 && pool / dps > HARASS_TTK_S;
+      if (!stalled && !hopeless) continue;                      // the fight can still resolve
+      this._applyHarassMercy(dir, state, attacker, row, now);
+      delete watch[key];
+    }
+  },
+
+  _playerDamageablePool(state) {
+    const p = this.player();
+    if (!p) return 0;
+    return Math.max(0, (p.hull || 0) + (p.shield || 0));
+  },
+
+  _applyHarassMercy(dir, state, attacker, row, now) {
+    const playerId = state.playerId;
+    const data = attacker.data || (attacker.data = {});
+    const ai = data.ai || (data.ai = {});
+    // An encounter-owned squad resolves through its own script machinery; the ambient harasser
+    // gets the same stand-down the encounter scripts use (ai.passive + motive spent).
+    let encounterId = null;
+    let encounterOwned = false;
+    for (const lid of Object.keys(dir.live)) {
+      const live = dir.live[lid];
+      if (live.ids.includes(attacker.id)) {
+        encounterOwned = true;
+        // Adopted world actors (the authored Ceres ambush cohort) own their depart/deadline
+        // lifecycle: mercy cannot stand them down, so it must not claim a disengage that never
+        // happens — the strikes bump would re-qualify the pin in 90 s and repeat a false toast.
+        if (live.data && live.data.adoptedWorldActors === true) return;
+        if (live.shapeId === 'the_nest') return; // finite authored cast owns genuine departure
+        if (live.phase !== 'done') {
+          encounterId = live.id;
+          this.resolve(live, 'escaped');
+        }
+        break;
+      }
+    }
+    ai.mercyStrikes = (ai.mercyStrikes | 0) + 1;   // persists on the attacker: repeat pins re-qualify fast
+    if (!encounterOwned) {
+      const hadPassive = ai.passive === true;
+      ai.passive = true;                    // engagementAuthority denies fire; the stack resumes patrol
+      ai.motiveSatisfied = true;
+      ai.forcePlayerTarget = false;
+      ai.huntPlayer = false;
+      const combat = data.combat || (data.combat = {});
+      if (combat.targetId === playerId) combat.targetId = null;
+      ai.mercyDisengageUntil = now + HARASS_COOLDOWN_S;
+      const rearm = dir.mercyRearm || (dir.mercyRearm = []);
+      rearm.push({ id: attacker.id, until: ai.mercyDisengageUntil, hadPassive });
+    }
+    this.emit('harasser:disengaged', {
+      attackerId: attacker.id, targetId: playerId, encounterId,
+      pinnedS: Math.round(now - row.firstAt), totalDamage: Math.round(row.total),
+      strikes: ai.mercyStrikes, sectorId: this._currentSectorId(), t: now,
+    });
+    this.emit('toast', { text: 'The harasser breaks off — the chase is going nowhere.', kind: 'info', ttl: 4 });
+  },
+
+  // ── Hostile pursuit resolution: anti-pest valve for non-fighting player ─────────────────────────
+  // A hostile that sits on a player who is not fighting must eventually come into grabbing range,
+  // or a patrol must arrive in view. The pest does NOT vanish and does NOT get weaker.
+  _tickHostilePursuitResolution(dir, state, now) {
+    if (isDocked(state)) return;
+    const player = this.player();
+    if (!player || player.alive === false) return;
+    const watch = dir.pursuitWatch || (dir.pursuitWatch = {});
+    const ppos = player.pos || { x: 0, z: 0 };
+    const entities = state.entities;
+    if (!entities) return;
+
+    for (const ent of indexedShipLikeOrEntitiesScan(state)) {
+      if (!ent || ent.alive === false || ent.id === state.playerId) continue;
+      if (ent.type !== 'ship' && ent.type !== 'drone') continue;
+      if (ent.team === 0 || ent.team === 2) continue;
+
+      const ai = ent.data && ent.data.ai;
+      const combat = ent.data && ent.data.combat;
+      const isTargetingPlayer = (combat && combat.targetId === state.playerId)
+        || (ai && ai.targetId === state.playerId);
+      const isHostile = isTargetingPlayer || isHostileForAI(state, ent, player);
+      if (!isHostile) continue;
+
+      const pos = ent.pos || { x: 0, z: 0 };
+      const dx = pos.x - ppos.x;
+      const dz = pos.z - ppos.z;
+      const d2 = dx * dx + dz * dz;
+
+      if (d2 > PURSUIT_RADIUS_SQ) {
+        if (watch[ent.id]) delete watch[ent.id];
+        continue;
+      }
+
+      // Check if player dealt damage to this hostile recently
+      const lastPlayerDmg = dir.playerDealtDamageAt && dir.playerDealtDamageAt[ent.id];
+      if (lastPlayerDmg != null && now - lastPlayerDmg < 45) {
+        if (watch[ent.id]) watch[ent.id].firstAt = now;
+        continue;
+      }
+
+      let row = watch[ent.id];
+      if (!row) {
+        row = watch[ent.id] = {
+          hostileId: ent.id,
+          firstAt: now,
+          lastAt: now,
+          resolved: false,
+        };
+      } else {
+        row.lastAt = now;
+      }
+
+      if (now - row.firstAt >= PURSUIT_RESOLVE_S && !row.resolved) {
+        this._resolveHostilePursuit(dir, state, ent, row, now);
+      }
+    }
+
+    // Prune stale tracking rows
+    for (const id of Object.keys(watch)) {
+      const row = watch[id];
+      const ent = entities.get(row.hostileId);
+      if (!ent || ent.alive === false || now - row.lastAt > 30) {
+        delete watch[id];
+      }
+    }
+  },
+
+  _resolveHostilePursuit(dir, state, attacker, row, now) {
+    const sec = this.sectorSecurity();
+    const patrolIntervened = dir.patrolIntervened && dir.patrolIntervened[attacker.id];
+    if (sec >= 0.25 && !patrolIntervened) {
+      const spawned = this._spawnPatrolIntervention(dir, state, attacker, now);
+      if (spawned) {
+        dir.patrolIntervened = dir.patrolIntervened || {};
+        dir.patrolIntervened[attacker.id] = now;
+        row.resolved = true;
+        row.mode = 'patrol';
+        return;
+      }
+    }
+
+    this._commitHostileToGrabbingRange(attacker, now);
+    row.resolved = true;
+    row.mode = 'grabbing_range';
+  },
+
+  _spawnPatrolIntervention(dir, state, attacker, now) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function') return false;
+    const player = this.player();
+    if (!player) return false;
+
+    const ppos = player.pos || { x: 0, z: 0 };
+    const apos = attacker.pos || { x: ppos.x + 400, z: ppos.z };
+    const dx = apos.x - ppos.x;
+    const dz = apos.z - ppos.z;
+    const dist = Math.hypot(dx, dz);
+    // A pest parked exactly on the player still needs a deterministic bearing.
+    const bx = dist > 1 ? dx / dist : Math.SQRT1_2;
+    const bz = dist > 1 ? dz / dist : Math.SQRT1_2;
+    const spawnX = ppos.x + bx * 420;
+    const spawnZ = ppos.z + bz * 420;
+
+    // A zone is not jurisdiction by itself: live control must agree with its local role.
+    const sectorId = state.world && state.world.currentSectorId;
+    const local = globalToSectorLocalForSector(ppos, sectorId);
+    const zone = zoneAt(sectorId, local.x, local.z);
+    const jurisdiction = patrolJurisdictionFor(state, sectorId, zone);
+    // Retain the existing Concord responder where no local authority is established.
+    const responderFactionId = jurisdiction || 'faction_scn';
+
+    const spec = makeEnemySpawnSpec('patrol_lawman', 4, { x: spawnX, z: spawnZ }, {
+      factionId: responderFactionId,
+      startedTick: state.tick,
+      motive: 'jurisdiction_enforcement',
+      engagementTrigger: 'security_response',
+      zoneId: 'jurisdiction:pursuit_intervention',
+      approachTelegraph: 'patrol_challenge',
+      noFireResponseWindowS: 1,
+    });
+    spec.data = spec.data || {};
+    spec.data.ai = spec.data.ai || {};
+    const ai = spec.data.ai;
+    // A dispatched responder, not an ambient patrol: the canonical lawSecurity stamp keeps it
+    // firing inside the starter-protection bubble and exempt from the first-session cap.
+    ai.lawful = true;
+    ai.passive = false;
+    ai.moraleImmune = true;
+    ai.witnessRole = 'chase';
+    ai.securityTargetId = attacker.id;
+    ai.securityTargetPos = attacker.pos
+      ? { x: Number(attacker.pos.x) || 0, z: Number(attacker.pos.z) || 0 }
+      : undefined;
+    ai.targetId = attacker.id;
+    ai.roe = RulesOfEngagement.WEAPONS_FREE;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: 'security_response:pursuit_intervention',
+      anchor: attacker.pos ? { x: attacker.pos.x, z: attacker.pos.z } : { x: spawnX, z: spawnZ },
+      leashRadius: 2200,
+      startedTick: state.tick | 0,
+      targetId: attacker.id,
+    });
+    spec.data.combat = spec.data.combat || {};
+    spec.data.combat.targetId = attacker.id;
+    const spawned = spawnEntity(spec);
+    if (!spawned) return false;
+
+    const hail = patrolInterventionHailFor(jurisdiction);
+    const seed = state.meta && state.meta.seed;
+    const hailLine = hail.lines[
+      Math.abs(hash32(seed == null ? 0 : seed, 'patrol-intervention-hail', attacker.id, now | 0)) % hail.lines.length
+    ]?.text || hail.lines[0].text;
+    this.emit('comms:log', {
+      from: hail.name,
+      text: hailLine,
+      kind: 'encounter',
+    });
+    this.emit('encounter:patrolIntervened', {
+      patrolId: spawned.id,
+      attackerId: attacker.id,
+      factionId: responderFactionId,
+      jurisdiction,
+      zoneId: zone ? zone.id : null,
+      hailText: hailLine,
+      t: now,
+    });
+    return true;
+  },
+
+  _commitHostileToGrabbingRange(attacker, now) {
+    const ai = attacker.data && attacker.data.ai;
+    if (!ai) return;
+    ai.preferredRange = 60;
+    ai.grabbingRange = true;
+    ai.combatDoctrineId = 'brawler_commit';
+    if (ai.factionPresenceDoctrine) {
+      ai.factionPresenceDoctrine = {
+        ...ai.factionPresenceDoctrine,
+        preferredRange: 60,
+        pursuitCommitment: 1.0,
+        combatDoctrineId: 'brawler_commit',
+      };
+    }
+    // The commitment is a normalized doctrine activity, not a bare kind string — a raw string
+    // fails normalizeActivity and silently revokes the pest's fire authority mid-charge.
+    const state = this.state;
+    setEntityDoctrine(attacker, {
+      activity: {
+        kind: ActivityKind.ATTACK_RUN,
+        reason: 'pursuit_resolve:grabbing_range',
+        targetId: state && state.playerId,
+        anchor: attacker.pos,
+        preferredRange: 60,
+        startedTick: Math.round((state && state.tick) || (now || 0) * 60),
+      },
+      roe: RulesOfEngagement.WEAPONS_FREE,
+    });
+    this.emit('encounter:hostileCommitted', {
+      attackerId: attacker.id,
+      grabbingRange: true,
+      preferredRange: 60,
+      t: now,
+    });
+  },
+
+  _routeToScript(scriptName, eventName, payload) {
+    const dir = ensureDirectorState(this.state);
+    for (const lid of Object.keys(dir.live)) {
+      const live = dir.live[lid];
+      if (live.script === scriptName) this._scriptEvent(live, eventName, payload);
+    }
+  },
+
+  _routeToSelfRegistered(eventName, payload) {
+    const dir = ensureDirectorState(this.state);
+    for (const live of Object.values(dir.live)) {
+      if (SELF_REGISTERED_RUNTIME_BY_ID.has(live.shapeId)) this._scriptEvent(live, eventName, payload);
+    }
+  },
+
+  _rememberPoiVisit(payload) {
+    const poiId = payload && payload.poiId;
+    if (!poiId || !this.state) return;
+    const story = this.state.story || (this.state.story = { flags: {} });
+    const visits = story.depthProgramPoiVisits || (story.depthProgramPoiVisits = {});
+    if (!visits[poiId]) {
+      visits[poiId] = {
+        firstSeenAt: this.state.simTime || 0,
+        firstSeenTick: this.state.tick | 0,
+        sectorId: this._currentSectorId(),
+      };
+    }
+  },
+
+  _scriptEvent(live, name, payload) {
+    if (!live || live.phase === 'done') return;
+    const script = encounterScriptFor(live);
+    // Plan-level predation: the convoy script owns the custody event surface. When a
+    // self-registered runtime shadows this live record's 'convoy' script label, the custody
+    // handler still receives the kill/disable/pickup/lifecycle events its ledger needs.
+    const convoyScript = ENCOUNTER_SCRIPTS.convoy;
+    if (live.plan && live.plan.predation && live.plan.predation.enabled === true
+        && convoyScript && script !== convoyScript && script !== ENCOUNTER_SCRIPTS.traderRun) {
+      try {
+        convoyScript.event(this, live, this.state, name, payload);
+      } catch (err) {
+        this.abort(live, 'script_error');
+        dedupWarn('encounterDirector/custody-event', '[encounterDirector] custody event failed', live.shapeId, name, err);
+        return;
+      }
+    }
+    if (!script || typeof script.event !== 'function') return;
+    try {
+      script.event(this, live, this.state, name, payload);
+    } catch (err) {
+      this.abort(live, 'script_error');
+      dedupWarn('encounterDirector/event', '[encounterDirector] event failed', live.shapeId, name, err);
+    }
+  },
+
+  _onMiningYield(p) {
+    if (!p || p.minerId == null || p.minerId !== this.state.playerId) return;
+    const dir = ensureDirectorState(this.state);
+    dir.noise.mining = Math.min(3, dir.noise.mining + (p.qty || 1) * 0.06);
+  },
+
+  _onResonanceScan(payload) {
+    const sectorId = payload && payload.sectorId;
+    const poiId = payload && payload.poiId;
+    if (!isResonanceObeliskSignal(sectorId, poiId) || this._currentSectorId() !== sectorId) return false;
+    const shape = ENCOUNTERS[RESONANCE_OBELISK.patrolShapeId];
+    const zone = zonesForSector(sectorId).find((entry) => entry.id === RESONANCE_OBELISK.zoneId);
+    if (!shape || !zone || !encounterScriptFor(shape)) return false;
+
+    const response = resonanceObeliskResponse(payload.scanCount);
+    const dir = ensureDirectorState(this.state);
+    const now = Number(this.state.simTime) || 0;
+    const live = Object.values(dir.live).find((entry) => entry && entry.shapeId === shape.id);
+    if (live) return false; // one physical watch at a time; scans never multiply an active squad
+
+    const dueAt = now + response.patrolIntervalS;
+    const pending = dir.pending.find((entry) => entry && entry.shapeId === shape.id);
+    if (pending) {
+      pending.dueAt = Math.min(Number(pending.dueAt) || dueAt, dueAt);
+      pending.data = { ...(pending.data || {}), ...response };
+      return true;
+    }
+
+    const rng = mulberry32(hash32(
+      this.state.meta && this.state.meta.seed || 0,
+      sectorId,
+      response.scanCount,
+      'resonance-obelisk-patrol',
+    ));
+    const item = resolveEncounter(
+      shape,
+      zone,
+      sectorId,
+      Math.floor(now / DAY_SECONDS),
+      response.scanCount,
+      rng,
+    );
+    if (!item || !item.ships.length) return false;
+    item.encounterId = `resonance-patrol:${sectorId}:${response.scanCount}`;
+    item.squadId = item.encounterId;
+    item.dueAt = dueAt;
+    item.defers = 0;
+    item.data = { ...response, poiId };
+    dir.pending.push(item);
+    this.emit('resonance:patrolQueued', {
+      encounterId: item.encounterId,
+      sectorId,
+      zoneId: zone.id,
+      dueAt,
+      ...response,
+    });
+    return true;
+  },
+
+  _ceresActivityAmbushCohort() {
+    const list = indexedShipLikeScan(this.state);
+    const out = this._ceresAmbushCohortScratch || (this._ceresAmbushCohortScratch = []);
+    out.length = 0;
+    if (!list || !list.length) return out;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+      const data = entity.data;
+      const ai = data && data.ai;
+      if (!(ai
+        && ai.zoneId === CERES_ACTIVITY_AMBUSH_ZONE_ID
+        && ai.squadId === CERES_ACTIVITY_AMBUSH_ZONE_ID
+        && typeof data.worldRecordId === 'string'
+        && data.worldRecordId.length > 0)) continue;
+      out.push(entity);
+    }
+    return out;
+  },
+
+  _seedCeresActivityAmbush(sectorId, options = {}) {
+    const dir = ensureDirectorState(this.state);
+    if (sectorId !== CERES_ACTIVITY_SECTOR_ID) {
+      dir._ceresActivityAmbush = null;
+      return false;
+    }
+    const cohort = this._ceresActivityAmbushCohort();
+    if (!cohort.length) {
+      dir._ceresActivityAmbush = null;
+      return false;
+    }
+
+    // The durable zone squad replaces only the same-zone generic ambush candidate. Other Ceres
+    // ambushes and every non-Ceres planner row retain their ordinary seeded schedule.
+    dir.pending = dir.pending.filter((item) => !(item
+      && item.shapeId === 'ambush_snare'
+      && item.zoneId === CERES_ACTIVITY_AMBUSH_ZONE_ID
+      && !(item.data && item.data.ceresActivityAmbush === true)));
+
+    const durable = dir.stats.ceresActivityAmbush;
+    const phase = durable && durable.phase;
+    if (phase === 'done') {
+      for (const entity of cohort) clearCeresActivityAmbushMarker(entity);
+      dir._ceresActivityAmbush = null;
+      return false;
+    }
+    if (phase === 'revealed') {
+      const marked = cohort.filter((entity) => {
+        const marker = entity.data && entity.data.ai && entity.data.ai[CERES_ACTIVITY_AMBUSH_MARKER];
+        return marker === 'offer' || marker === 'conflict';
+      });
+      if (marked.length) return this._resumeCeresActivityAmbush(marked);
+      dir._ceresActivityAmbush = null;
+      return false;
+    }
+
+    const player = this.player();
+    const sampler = {
+      lastPos: player && player.pos ? { x: player.pos.x, z: player.pos.z } : null,
+      restoreByRecordId: Object.create(null),
+    };
+    dir._ceresActivityAmbush = sampler;
+    for (const entity of cohort) parkCeresActivityAmbushEntity(entity, sampler, this.now());
+
+    if (phase === 'queued') this._queueCeresActivityAmbush({ preservePhase: true });
+    else if (this._ceresAmbushActorInKillbox(player)) this._queueCeresActivityAmbush();
+    return true;
+  },
+
+  _sampleCeresActivityAmbush(dir, state) {
+    if (this._currentSectorId() !== CERES_ACTIVITY_SECTOR_ID) return;
+    const durable = dir.stats.ceresActivityAmbush;
+    if (durable && durable.phase) return;
+    const sampler = dir._ceresActivityAmbush;
+    const player = this.player();
+    if (!sampler || !player || !player.pos) return;
+    const current = { x: player.pos.x, z: player.pos.z };
+    const anchor = ceresActivityAmbushAnchorGlobal();
+    const inKillbox = this._ceresAmbushActorInKillbox(player);
+    if (!sampler.lastPos) {
+      sampler.lastPos = current;
+      if (inKillbox) this._queueCeresActivityAmbush();
+      return;
+    }
+    const previous = sampler.lastPos;
+    sampler.lastPos = current;
+    if (inKillbox || segmentCrossesCeresAmbushBand(previous, current, anchor)) {
+      this._queueCeresActivityAmbush();
+    }
+  },
+
+  _ceresAmbushActorInKillbox(entity) {
+    if (!entity || !entity.pos) return false;
+    return ceresAmbushRangeBand(entity.pos, ceresActivityAmbushAnchorGlobal()) !== 'outer';
+  },
+
+  _ceresAmbushPreyInReach() {
+    const hauler = findCeresLoadedHauler(this.state);
+    if (!hauler || !hauler.pos) return false;
+    const cohort = this._ceresActivityAmbushCohort();
+    const r2 = CERES_ACTIVITY_AMBUSH_PREY_R * CERES_ACTIVITY_AMBUSH_PREY_R;
+    if (!cohort.length) return this._ceresAmbushActorInKillbox(hauler);
+    for (const pirate of cohort) {
+      if (!pirate || !pirate.pos) continue;
+      const dx = hauler.pos.x - pirate.pos.x;
+      const dz = hauler.pos.z - pirate.pos.z;
+      if (dx * dx + dz * dz <= r2) return true;
+    }
+    return false;
+  },
+
+  _springCeresActivityAmbushOnPrey() {
+    const dir = ensureDirectorState(this.state);
+    const live = dir.live[CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID];
+    if (!live || live.phase !== 'offer') return;
+    if (!(live.data && live.data.ceresActivityAmbush === true)) return;
+    if (!this._ceresAmbushPreyInReach()) return;
+    live.phase = 'conflict';
+    this.setPassive(live, false);
+    this.say(live, 'alert', 'ambush_spring');
+  },
+
+  _queueCeresActivityAmbush(options = {}) {
+    const dir = ensureDirectorState(this.state);
+    if (dir.live[CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID]) return true;
+    if (dir.pending.some((item) => item && item.encounterId === CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID)) return true;
+    if (!this._ceresActivityAmbushCohort().length) return false;
+    const item = makeCeresActivityAmbushItem(this.state, this.now());
+    if (!item) return false;
+    dir.pending.push(item);
+    if (!options.preservePhase) dir.stats.ceresActivityAmbush = { phase: 'queued' };
+    return true;
+  },
+
+  adoptCeresActivityAmbush(live, phase = 'offer') {
+    if (!live || !(live.data && live.data.ceresActivityAmbush === true)) return [];
+    const cohort = this._ceresActivityAmbushCohort();
+    const dir = ensureDirectorState(this.state);
+    const sampler = dir._ceresActivityAmbush;
+    live.data.adoptedWorldActors = true;
+    live.data.restoreByRecordId = sampler && sampler.restoreByRecordId
+      ? sampler.restoreByRecordId
+      : Object.create(null);
+    dropLiveSquadMembership(dir, live);
+    live.ids = [];
+    live.roles = {};
+    for (const entity of cohort) {
+      live.ids.push(entity.id);
+      live.roles[entity.id] = 'squad';
+      indexSquadMember(dir, live, entity.id);
+      const ai = entity.data && entity.data.ai;
+      if (ai) {
+        const restore = ai[CERES_ACTIVITY_AMBUSH_RESTORE];
+        if (restore && typeof restore === 'object' && !Array.isArray(restore)
+          && !Object.prototype.hasOwnProperty.call(restore, 'moraleImmune')) {
+          // Pre-repair saves already carry this restore object but not the morale field. At the
+          // precise moment live adoption first claims morale ownership, the actor still carries its
+          // authoritative absent/false/true value, so migrate that value before overwriting it.
+          restore.moraleImmune = ownSnapshot(ai, 'moraleImmune');
+        }
+        // This exemption belongs only to the live authored encounter. Merely parked world actors
+        // retain their prior morale contract; adoption/resume claims it until the existing restore
+        // handoff returns the cohort to world ownership.
+        ai.moraleImmune = true;
+        ai[CERES_ACTIVITY_AMBUSH_MARKER] = phase;
+      }
+    }
+    live.data.initialCount = live.ids.length;
+    return live.ids.slice();
+  },
+
+  _resumeCeresActivityAmbush(cohort) {
+    const dir = ensureDirectorState(this.state);
+    if (dir.live[CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID]) return true;
+    const item = makeCeresActivityAmbushItem(this.state, this.now());
+    const shape = ENCOUNTERS.ambush_snare;
+    if (!item || !shape) return false;
+    const live = makeEncounterLiveRecord(this.state, item, shape, this.now());
+    live.data.restored = true;
+    dir.live[live.id] = live;
+    noteScriptProbeRow(dir, live, +1);
+    const marker = cohort.some((entity) => (
+      entity.data && entity.data.ai
+      && entity.data.ai[CERES_ACTIVITY_AMBUSH_MARKER] === 'conflict'
+    )) ? 'conflict' : 'offer';
+    const script = encounterScriptFor(live);
+    if (!script || typeof script.resume !== 'function') {
+      dropLiveSquadMembership(dir, live);
+      noteScriptProbeRow(dir, live, -1);
+      delete dir.live[live.id];
+      return false;
+    }
+    script.resume(this, live, this.state, marker);
+    return !!dir.live[live.id];
+  },
+
+  _leaveCeresActivityAmbush() {
+    const dir = ensureDirectorState(this.state);
+    const live = dir.live[CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID];
+    if (live) this.abort(live, 'sector_exit');
+    else restoreCeresActivityAmbushEntities(this.state, dir._ceresActivityAmbush);
+    dir.pending = dir.pending.filter((item) => item && item.encounterId !== CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID);
+    dir._ceresActivityAmbush = null;
+  },
+
+  _currentSectorId() {
+    const w = this.state && this.state.world;
+    return (w && w.currentSectorId) || null;
+  },
+};
+
+function ceresActivityAmbushAnchorGlobal() {
+  return sectorLocalToGlobalForSector(ZONE_CERES_THROUGHLINE.center, CERES_ACTIVITY_SECTOR_ID);
+}
+
+function findCeresLoadedHauler(state) {
+  const list = indexedShipLikeScan(state);
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+    if (entity.data && entity.data.activityActorSlotId === CERES_ACTIVITY_AMBUSH_HAULER_SLOT) {
+      return entity;
+    }
+  }
+  return null;
+}
+
+function ceresAmbushGunRange(entity) {
+  const weapons = entity && entity.data && entity.data.weapons;
+  let best = 0;
+  if (Array.isArray(weapons)) {
+    for (const weapon of weapons) {
+      const range = Number(weapon && weapon.range);
+      if (Number.isFinite(range) && range > best) best = range;
+    }
+  }
+  if (best > 0) return Math.max(140, Math.min(CERES_ACTIVITY_AMBUSH_GUN_RANGE, best * 0.4));
+  return CERES_ACTIVITY_AMBUSH_GUN_RANGE;
+}
+
+function isCeresActivityAmbushItem(item) {
+  return !!(item
+    && item.encounterId === CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID
+    && item.sectorId === CERES_ACTIVITY_SECTOR_ID
+    && item.shapeId === 'ambush_snare'
+    && item.zoneId === CERES_ACTIVITY_AMBUSH_ZONE_ID
+    && item.data
+    && item.data.ceresActivityAmbush === true);
+}
+
+function ceresAmbushRangeBand(pos, anchor) {
+  const distance = Math.hypot(pos.x - anchor.x, pos.z - anchor.z);
+  if (distance <= CERES_ACTIVITY_AMBUSH_INNER_R) return 'inner';
+  if (distance <= CERES_ACTIVITY_AMBUSH_OUTER_R) return 'band';
+  return 'outer';
+}
+
+function segmentCrossesCeresAmbushBand(previous, current, anchor) {
+  if (ceresAmbushRangeBand(previous, anchor) !== ceresAmbushRangeBand(current, anchor)) return true;
+  return segmentCrossesCircle(previous, current, anchor, CERES_ACTIVITY_AMBUSH_INNER_R)
+    || segmentCrossesCircle(previous, current, anchor, CERES_ACTIVITY_AMBUSH_OUTER_R);
+}
+
+function segmentCrossesCircle(previous, current, center, radius) {
+  const dx = current.x - previous.x;
+  const dz = current.z - previous.z;
+  const a = dx * dx + dz * dz;
+  if (!(a > 0)) return false;
+  const fx = previous.x - center.x;
+  const fz = previous.z - center.z;
+  const b = 2 * (fx * dx + fz * dz);
+  const c = fx * fx + fz * fz - radius * radius;
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) return false;
+  const root = Math.sqrt(Math.max(0, discriminant));
+  const t0 = (-b - root) / (2 * a);
+  const t1 = (-b + root) / (2 * a);
+  return (t0 > 0 && t0 <= 1) || (t1 > 0 && t1 <= 1);
+}
+
+function makeCeresActivityAmbushItem(state, now) {
+  const shape = ENCOUNTERS.ambush_snare;
+  const sourceZone = zonesForSector(CERES_ACTIVITY_SECTOR_ID)
+    .find((zone) => zone && zone.id === CERES_ACTIVITY_AMBUSH_ZONE_ID);
+  if (!shape || !sourceZone) return null;
+  const seed = state && state.meta && state.meta.seed || 0;
+  const rng = mulberry32(hash32(seed, CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID, 'r5-authored-ambush'));
+  const zone = {
+    ...sourceZone,
+    center: { x: ZONE_CERES_THROUGHLINE.center.x, z: ZONE_CERES_THROUGHLINE.center.z },
+    radius: CERES_ACTIVITY_AMBUSH_OUTER_R,
+  };
+  const item = resolveEncounter(
+    shape,
+    zone,
+    CERES_ACTIVITY_SECTOR_ID,
+    Math.floor((now || 0) / DAY_SECONDS),
+    0,
+    rng,
+  );
+  if (!item) return null;
+  item.encounterId = CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID;
+  item.squadId = CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID;
+  item.sectorId = CERES_ACTIVITY_SECTOR_ID;
+  item.ships = []; // durable zone actors are adopted; the director must never spawn a substitute
+  item.dueAt = now || 0;
+  item.defers = 0;
+  item.data = { ceresActivityAmbush: true };
+  return item;
+}
+
+function makeEncounterLiveRecord(state, item, shape, now) {
+  const live = {
+    id: item.encounterId,
+    shapeId: shape.id,
+    script: shape.script,
+    shape,
+    plan: item,
+    tier: shape.tier,
+    deck: shape.deck,
+    // Every production pending source stamps sectorId (_planSector, authored request, Ceres
+    // seed). A hand-injected item that lacks it still physically fires in the player's sector —
+    // backfill so downstream bindings (ai.sectorId, predation authority, receipts) hold.
+    sectorId: item.sectorId || (state && state.world && state.world.currentSectorId) || null,
+    zoneId: item.zoneId,
+    zoneName: item.zoneName,
+    factionId: item.factionId || shape.factionId || null,
+    squadId: item.squadId,
+    anchor: item.zoneCenter ? { x: item.zoneCenter.x, z: item.zoneCenter.z } : null,
+    zoneRadius: item.zoneRadius || 400,
+    phase: 'telegraph',
+    startedAt: now,
+    deadlineAt: 0,
+    ids: [],
+    roles: {},
+    // Encounter-owned wrecks/story props — spawned, not squad: cleanup rosters this, aliveCount
+    // and squadMembership never do. Records minted before the field lazily grow it on first spawn.
+    propIds: [],
+    vars: {},
+    data: item.data && typeof item.data === 'object' ? { ...item.data } : {},
+    outcome: null,
+    primarySaid: false,
+    lastBarkAt: -1e9,
+  };
+  live.causality = buildEncounterCausality({
+    seed: state.meta && state.meta.seed,
+    encounterId: live.id,
+    shapeId: live.shapeId,
+    variantKind: item.variantKind || live.shapeId,
+    sectorId: live.sectorId,
+    zoneId: live.zoneId,
+    zoneName: live.zoneName,
+    factionId: live.factionId,
+    doctrineId: item.ships && item.ships[0] && (item.ships[0].combatDoctrineId || item.ships[0].doctrine),
+    zoneType: item.zoneType,
+    script: live.script,
+  });
+  return live;
+}
+
+function ownSnapshot(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key)
+    ? { had: true, value: object[key] }
+    : { had: false, value: undefined };
+}
+
+function restoreSnapshot(object, key, snapshot) {
+  if (snapshot && snapshot.had) object[key] = snapshot.value;
+  else delete object[key];
+}
+
+function parkCeresActivityAmbushEntity(entity, sampler, now) {
+  const data = entity.data || (entity.data = {});
+  const ai = data.ai || (data.ai = {});
+  const recordId = data.worldRecordId;
+  let snapshot = ai[CERES_ACTIVITY_AMBUSH_RESTORE];
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+    snapshot = {
+      passive: ownSnapshot(ai, 'passive'),
+      roe: ownSnapshot(ai, 'roe'),
+      activity: ownSnapshot(ai, 'activity'),
+      moraleImmune: ownSnapshot(ai, 'moraleImmune'),
+      intentFire: data.intent ? ownSnapshot(data.intent, 'fire') : null,
+      intentMoveX: data.intent ? ownSnapshot(data.intent, 'moveX') : null,
+      intentMoveZ: data.intent ? ownSnapshot(data.intent, 'moveZ') : null,
+    };
+    ai[CERES_ACTIVITY_AMBUSH_RESTORE] = snapshot;
+  }
+  if (recordId && !sampler.restoreByRecordId[recordId]) sampler.restoreByRecordId[recordId] = snapshot;
+  ai.passive = true;
+  setEntityDoctrine(entity, {
+    activity: {
+      kind: ActivityKind.LOITER,
+      reason: 'ceres_activity_ambush:armed',
+      anchor: entity.pos,
+      startedTick: Math.round((now || 0) * 60),
+      routeId: CERES_ACTIVITY_AMBUSH_ZONE_ID,
+    },
+    roe: RulesOfEngagement.HOLD_FIRE,
+  });
+  ai[CERES_ACTIVITY_AMBUSH_MARKER] = 'armed';
+  if (data.intent) data.intent.fire = false;
+}
+
+function restoreCeresActivityAmbushEntities(state, holder) {
+  const list = indexedShipLikeScan(state);
+  if (!Array.isArray(list)) return;
+  const restoreByRecordId = holder && holder.restoreByRecordId || Object.create(null);
+  for (const entity of list) {
+    if (!entity || !entity.data || !entity.data.ai) continue;
+    const ai = entity.data.ai;
+    if (!ai[CERES_ACTIVITY_AMBUSH_MARKER]) continue;
+    const snapshot = restoreByRecordId[entity.data.worldRecordId]
+      || ai[CERES_ACTIVITY_AMBUSH_RESTORE];
+    if (snapshot) {
+      restoreSnapshot(ai, 'passive', snapshot.passive);
+      restoreSnapshot(ai, 'roe', snapshot.roe);
+      restoreSnapshot(ai, 'activity', snapshot.activity);
+      if (Object.prototype.hasOwnProperty.call(snapshot, 'moraleImmune')) {
+        restoreSnapshot(ai, 'moraleImmune', snapshot.moraleImmune);
+      }
+      if (entity.data.intent && snapshot.intentFire) {
+        restoreSnapshot(entity.data.intent, 'fire', snapshot.intentFire);
+      }
+      if (entity.data.intent && snapshot.intentMoveX) {
+        restoreSnapshot(entity.data.intent, 'moveX', snapshot.intentMoveX);
+      }
+      if (entity.data.intent && snapshot.intentMoveZ) {
+        restoreSnapshot(entity.data.intent, 'moveZ', snapshot.intentMoveZ);
+      }
+    } else {
+      ai.passive = false;
+      setEntityDoctrine(entity, {
+        activity: {
+          ...(ai.activity || {}),
+          kind: ActivityKind.ATTACK_RUN,
+          reason: 'zone_hostile:restored',
+          anchor: entity.pos,
+          encounterId: null,
+        },
+        roe: RulesOfEngagement.WEAPONS_FREE,
+      });
+    }
+    delete ai[CERES_ACTIVITY_AMBUSH_MARKER];
+    delete ai[CERES_ACTIVITY_AMBUSH_RESTORE];
+  }
+}
+
+function clearCeresActivityAmbushMarker(entity) {
+  const ai = entity && entity.data && entity.data.ai;
+  if (ai) {
+    delete ai[CERES_ACTIVITY_AMBUSH_MARKER];
+    delete ai[CERES_ACTIVITY_AMBUSH_RESTORE];
+  }
+}
+
+// ═══ PURE PLANNER (headless-testable; no Three/DOM, no bus, no Math.random) ═══════════════════════
+
+/**
+ * Deterministically plan a sector-day's encounter schedule. Everything derives from
+ * mulberry32(hash32(seed, sectorId, dayIndex)) — same inputs, same schedule, always.
+ * Fire-time gates/pressure decide WHEN (or whether) each item actually runs; the planner only
+ * decides WHAT could happen here today, WHERE it anchors, and its squad composition.
+ *
+ * @returns Array<{ encounterId, shapeId, script, tier, deck, squadId, zoneId, zoneName,
+ *                  zoneCenter, zoneRadius, factionId, bark, delay, ships:[...], variantKind?,
+ *                  levelBand }>
+ */
+export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = null, encounterCatalog = ENCOUNTERS) {
+  const out = [];
+  if (!Array.isArray(zones) || !zones.length) return out;
+  // PQ-171.01 shape budget: the meter buckets sightings by fixed sim hour
+  // (floor(t / ENCOUNTER_SHAPE_HOUR_SECONDS)), and every planned delay stays inside its day, so
+  // the budget window is the fixed hour the day falls in — SHAPE_BUCKET_DAYS sector-days. Plan
+  // the bucket's days in order, carry the grammar-key counts forward, and planEncountersDay's
+  // retry skips any key already at ENCOUNTER_SHAPE_BUDGET_PER_HOUR. At most SHAPE_BUCKET_DAYS
+  // day-plans per call — no recursion, no cache, and identical draws at any bucket position.
+  const day = dayIndex | 0;
+  const bucketStart = Math.max(0, Math.floor(day / SHAPE_BUCKET_DAYS) * SHAPE_BUCKET_DAYS);
+  const shapeCounts = new Map();
+  // E6 variety floor: shapes already scheduled inside this hour bucket lose the unseen draw
+  // bonus, so the remaining eligible shapes rotate through the window — the same shape cannot
+  // be the only offer when more eligible shapes exist. A Map, not a Set: the guarantee splice
+  // path below can drop a placed item, and only a count can un-mark it.
+  const seenShapes = new Map();
+  let items = out;
+  for (let prior = bucketStart; prior <= day; prior++) {
+    items = planEncountersDay(seed, sectorId, prior, zones, ecologyState, encounterCatalog, shapeCounts, seenShapes);
+  }
+  return items;
+}
+
+const SHAPE_BUCKET_DAYS = ENCOUNTER_SHAPE_HOUR_SECONDS / ENCOUNTER_REPETITION_DAY_SECONDS;
+
+// ── DUST P1b: the additive dust lane (design/program/dust/EXPOSURE_AUDIT.md §5) ──────────────────
+// A parallel ambient lane that lights the audit's dark vignette families (the `externalOnly`
+// cohort declared append-only in src/data/dustLane.js). It draws from its OWN
+// mulberry32(hash32(seed, sectorId, dayIndex, 'dust-lane-v1')) stream — the legacy
+// per-(seed, sector, day) stream in planEncountersDay is never read differently, so every
+// legacy pick sequence is bit-preserved. Rank-below-legacy, presentation spacing, and
+// once-ever consumption live at queue/fire time (_pump / _fire); this planner only decides
+// WHAT could happen here today, WHERE it anchors, and its composition — same contract as the
+// legacy planner. The legacy RARE_GATE deliberately does not apply: the lane's own caps
+// (≤DUST_MAX_PER_DAY offers/sector-day, once-ever per save, DUST_FIRE_GAP_S spacing) do the
+// throttling the rare gate does inside the far larger legacy pool.
+export function planDustLaneDay(seed, sectorId, dayIndex, zones, options = {}) {
+  const out = [];
+  if (!Array.isArray(zones) || !zones.length) return out;
+  const catalog = options.catalog || ENCOUNTERS;
+  const started = options.started || null;      // once-ever: ids already fired this save
+  const rotation = options.rotation || null;    // unseen-bias input: ids already offered this save
+  const rng = mulberry32(hash32(seed == null ? 0 : seed, String(sectorId), dayIndex | 0, DUST_LANE_STREAM_LABEL));
+
+  const zonesByType = new Map();
+  for (const z of zones) {
+    if (!z || !z.type || !z.center) continue;
+    if (!zonesByType.has(z.type)) zonesByType.set(z.type, []);
+    zonesByType.get(z.type).push(z);
+  }
+  if (!zonesByType.size) return out;
+  const presentTypes = new Set(zonesByType.keys());
+
+  const secDef = SECTORS.find((s) => s.id === sectorId);
+  const baselineSecurity = secDef && Number.isFinite(secDef.security) ? secDef.security : 0.5;
+  const sectorSecurity = options.ecologyState
+    ? effectiveRegionalSecurity(options.ecologyState, sectorId, baselineSecurity)
+    : baselineSecurity;
+
+  const candidates = Object.values(catalog).filter((e) => {
+    if (!isDustLaneEncounter(e)) return false;
+    if (started != null && started[e.id] != null) return false; // once-ever per save
+    if (!e.zoneTypes.some((zt) => presentTypes.has(zt))) return false;
+    // Ambient scenes keep their authored home sectors (body-level sectorIds — the same field
+    // pickLivedVignette's ambient bucket reads). The 4xx/5xx grid is sector-agnostic by
+    // design: its zone family binds it to exactly the sectors that host those zones.
+    if (e.ambientScene === true && Array.isArray(e.sectorIds) && !e.sectorIds.includes(sectorId)) return false;
+    const g = e.gates || {};
+    if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
+    if (Number.isFinite(g.minSectorTier) && (!secDef || (secDef.tier | 0) < g.minSectorTier)) return false;
+    if (Number.isFinite(g.maxSecurity) && sectorSecurity > g.maxSecurity) return false;
+    if (Number.isFinite(g.minSecurity) && sectorSecurity < g.minSecurity) return false;
+    return true;
+  });
+  if (!candidates.length) return out;
+
+  const roll = rng();
+  // Offer the full lane budget every sector-day (fire-time valves, once-ever rotation, and
+  // the lane's presentation gap decide what actually presents; the audit's sizing puts this
+  // at ≤240 offers over a 20 h route against a 187-module cohort).
+  const count = roll < 0.1 ? 0 : DUST_MAX_PER_DAY;
+  for (let i = 0; i < count; i++) {
+    // Same variety floor as the legacy pool: a vignette not yet offered this save draws
+    // DUST_UNSEEN_WEIGHT× so the lane rotates through the cohort instead of repeating.
+    const weightOf = (candidate) => (
+      (candidate.weight || 1)
+      * (rotation && !(rotation[candidate.id] > 0) ? DUST_UNSEEN_WEIGHT : 1)
+    );
+    const enc = pickWeighted(candidates, rng, weightOf);
+    if (!enc) break;
+    const zone = pickZoneFor(enc, zonesByType, rng, sectorId);
+    if (!zone) break;
+    const item = resolveEncounter(enc, zone, sectorId, dayIndex, i, rng);
+    if (!item) break;
+    item.encounterId = `dust:${item.encounterId}`;
+    item.squadId = item.encounterId;
+    // Stagger the lane's onsets inside the day (each item ≥270 s after the last) so two dust
+    // offers never stack their due times; the runtime valves still own the real spacing law.
+    item.delay = 60 + i * 270 + rng() * 240;
+    out.push(item);
+  }
+  out.sort((a, b) => a.delay - b.delay || a.encounterId.localeCompare(b.encounterId));
+  return out;
+}
+
+/** DUST P1b live presentation: pick ONE unseen lane vignette whose zone family matches the
+ * zone the player stands in (the lived tick's placement rule, on the dust stream). Pure:
+ * everything derives from mulberry32(hash32(seed, sectorId, day, zoneKey, scan, 'live')). */
+export function planDustLivePresentation(seed, sectorId, dayIndex, zone, now, options = {}) {
+  if (!zone || !zone.type || !zone.center) return null;
+  const catalog = options.catalog || ENCOUNTERS;
+  const started = options.started || null;
+  const rotation = options.rotation || null;
+  const rng = mulberry32(hash32(
+    seed == null ? 0 : seed, String(sectorId), dayIndex | 0,
+    String(zone.id || zone.type), Math.floor(now / DUST_SCAN_S), DUST_LIVE_STREAM_LABEL,
+  ));
+  const candidates = Object.values(catalog).filter((e) => {
+    if (!isDustLaneEncounter(e)) return false;
+    if (started != null && started[e.id] != null) return false;
+    if (!e.zoneTypes.includes(zone.type)) return false;
+    if (e.ambientScene === true && Array.isArray(e.sectorIds) && !e.sectorIds.includes(sectorId)) return false;
+    return true;
+  });
+  if (!candidates.length) return null;
+  const weightOf = (candidate) => (
+    (candidate.weight || 1)
+    * (rotation && !(rotation[candidate.id] > 0) ? DUST_UNSEEN_WEIGHT : 1)
+  );
+  const enc = pickWeighted(candidates, rng, weightOf);
+  if (!enc) return null;
+  const item = resolveEncounter(enc, zone, sectorId, dayIndex, 0, rng);
+  if (!item) return null;
+  item.encounterId = `dust:${item.encounterId}`;
+  item.squadId = item.encounterId;
+  item.delay = 8 + rng() * 22;   // the scan noticed the place; the scene starts shortly
+  return item;
+}
+
+// Exported for the check harness: the seeded migration matrix proves the module-split migration
+// stayed lossless, so it must plan each sector-day at its F2-era scheduling semantics — no
+// cross-day shape-budget or variety carryover (SHAPE_BUCKET_DAYS / ENCOUNTER_SHAPE_BUDGET_PER_HOUR
+// landed in b6ed59676, the E6 unseen-shape bias after that). Passing shapeCounts = null and
+// seenShapes = null gives exactly that per-day planner.
+export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState = null, encounterCatalog = ENCOUNTERS, shapeCounts = null, seenShapes = null) {
+  const out = [];
+
+  if (!Array.isArray(zones) || !zones.length) return out;
+  const rng = mulberry32(hash32(seed == null ? 0 : seed, String(sectorId), dayIndex | 0));
+
+  const zonesByType = new Map();
+  for (const z of zones) {
+    if (!z || !z.type || !z.center) continue;
+    if (!zonesByType.has(z.type)) zonesByType.set(z.type, []);
+    zonesByType.get(z.type).push(z);
+  }
+  if (!zonesByType.size) return out;
+  const presentTypes = new Set(zonesByType.keys());
+
+  // Sector security for planner gates (e.g. pirate_toll.maxSecurity — no Reach tolls in Helios).
+  const secDef = SECTORS.find((s) => s.id === sectorId);
+  const baselineSecurity = secDef && Number.isFinite(secDef.security) ? secDef.security : 0.5;
+  const sectorSecurity = ecologyState
+    ? effectiveRegionalSecurity(ecologyState, sectorId, baselineSecurity)
+    : baselineSecurity;
+
+  let seq = 0;
+  const scheduleTier = (tier, maxCount, delayLo, delaySpan) => {
+    const candidates = Object.values(encounterCatalog || ENCOUNTERS).filter((e) => {
+      const anchoredHere = e.anchorPoiId && secDef && Array.isArray(secDef.pois)
+        && secDef.pois.some((poi) => poi.id === e.anchorPoiId && poi.pos);
+      if (e.tier !== tier || !e.zoneTypes
+        || (!anchoredHere && !e.zoneTypes.some((zt) => presentTypes.has(zt)))) return false;
+      const g = e.gates || {};
+      if (g.externalOnly) return false;
+      // These gates depend only on immutable sector data, so rejecting them here prevents an
+      // impossible authored shape from consuming the sector-day slot before the fire-time gate.
+      if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
+      if (Number.isFinite(g.minSectorTier) && (!secDef || (secDef.tier | 0) < g.minSectorTier)) return false;
+      if (Number.isFinite(g.maxSecurity) && sectorSecurity > g.maxSecurity) return false;
+      if (Number.isFinite(g.minSecurity) && sectorSecurity < g.minSecurity) return false;
+      return true;
+    });
+    if (!candidates.length) return;
+    const roll = rng();
+    let count;
+    if (tier === 'major') count = roll < 0.35 ? 1 : 0;              // majors are rare
+    else if (tier === 'minor') count = 1 + Math.floor(roll * maxCount); // ≥1 minor slot per day —
+    // fire-time gates/pressure still decide whether it actually happens (quiet days stay possible)
+    else count = Math.floor(roll * (maxCount + 1));
+    count = Math.min(count, maxCount);
+    for (let i = 0; i < count; i++) {
+      // Authored early-window bias: a shape may declare earlyWindowDays /
+      // earlyWindowWeight to schedule more densely inside a sector's first days —
+      // the counter-first law needs its teaching encounter before the toy unlocks
+      // (PQ-030.02, 2026-09-19 proportional-margin ruling). Scheduling only; the
+      // runtime fire-time gates still decide whether it actually happens.
+      const earlyFactor = (candidate) => {
+        const days = Number(candidate.earlyWindowDays) || 0;
+        if (!(days > 0) || !(dayIndex < days)) return 1;
+        return Math.max(1, Number(candidate.earlyWindowWeight) || 1);
+      };
+      const weightOf = (candidate) => (
+        (ecologyState ? regionalEncounterWeight(ecologyState, sectorId, candidate) : (candidate.weight || 1))
+        * earlyFactor(candidate)
+        // E6 variety floor: a shape not yet scheduled this bucket draws at SHAPE_UNSEEN_WEIGHT
+        // — a soft bias toward rotation so a thin sector's other combat shapes are offered
+        // inside the hour window instead of the same draw repeating for three hours.
+        * (seenShapes && !(seenShapes.get(candidate.id) > 0) ? SHAPE_UNSEEN_WEIGHT : 1)
+      );
+      // A grammar key at its sim-hour budget is skipped and the draw retried, so the next
+      // eligible candidate in the same weighted order takes the slot. Re-draws re-roll the zone
+      // too — a shape locked out at one zone can still land where its key is cold.
+      let item = null;
+      let chosen = null;
+      let placedKey = null;
+      for (let attempt = 0; attempt < Math.max(1, candidates.length * 2); attempt++) {
+        const enc = pickWeighted(candidates, rng, weightOf);
+        if (!enc) break;
+        if (enc.rare && rng() < RARE_GATE) break;      // rare shapes need the extra gate
+        const zone = pickZoneFor(enc, zonesByType, rng, sectorId);
+        if (!zone) break;
+        const resolved = resolveEncounter(enc, zone, sectorId, dayIndex, seq++, rng);
+        if (!resolved) break;
+        const grammarKey = shapeCounts ? encounterGrammarKey(enc, resolved.zoneType) : null;
+        if (grammarKey && (shapeCounts.get(grammarKey) || 0) >= ENCOUNTER_SHAPE_BUDGET_PER_HOUR) continue;
+        item = resolved;
+        chosen = enc;
+        placedKey = grammarKey;
+        break;
+      }
+      if (!item) continue;
+      if (placedKey) shapeCounts.set(placedKey, (shapeCounts.get(placedKey) || 0) + 1);
+      if (seenShapes) seenShapes.set(chosen.id, (seenShapes.get(chosen.id) || 0) + 1);
+      item.regionalWeight = ecologyState ? regionalEncounterWeight(ecologyState, sectorId, chosen) : (chosen.weight || 1);
+      item.delay = delayLo + rng() * delaySpan;
+      out.push(item);
+    }
+  };
+
+  // Authored teach-day guarantee: a shape may pin earlyWindowGuaranteeDay so the
+  // counter-first law's teaching encounter is SCHEDULED deterministically inside the
+  // sector's first days instead of left to weighted sampling (rare-gated specialist
+  // shapes can starve for dozens of days — the exact drift that broke PQ-030.02).
+  // Same eligibility filters as the tier decks; the runtime fire-time gates still
+  // decide whether it actually happens.
+  scheduleTier('major', MAX_MAJOR_PER_DAY, 90, 360);
+  scheduleTier('minor', MAX_MINOR_PER_DAY, 45, 480);
+  scheduleTier('ambient', MAX_AMBIENT_PER_DAY, 30, 500);
+
+  // Authored teach-day guarantee: a shape may pin earlyWindowGuaranteeDay so the
+  // counter-first law's teaching encounter is SCHEDULED deterministically inside the
+  // sector's first days instead of left to weighted sampling (rare-gated specialist
+  // shapes can starve for dozens of days — the exact drift that broke PQ-030.02).
+  // Same eligibility filters as the tier decks; the runtime fire-time gates still
+  // decide whether it actually happens.
+  const guaranteed = Object.values(encounterCatalog || ENCOUNTERS).filter((e) => {
+    if (Number(e.earlyWindowGuaranteeDay) !== dayIndex || !Array.isArray(e.zoneTypes)) return false;
+    const anchoredHere = e.anchorPoiId && secDef && Array.isArray(secDef.pois)
+      && secDef.pois.some((poi) => poi.id === e.anchorPoiId && poi.pos);
+    if (!anchoredHere && !e.zoneTypes.some((zt) => presentTypes.has(zt))) return false;
+    const g = e.gates || {};
+    if (g.externalOnly) return false;
+    if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
+    if (Number.isFinite(g.minSectorTier) && (!secDef || (secDef.tier | 0) < g.minSectorTier)) return false;
+    if (Number.isFinite(g.maxSecurity) && sectorSecurity > g.maxSecurity) return false;
+    if (Number.isFinite(g.minSecurity) && sectorSecurity < g.minSecurity) return false;
+    return true;
+  });
+
+  // Guaranteed beats are splice-immune: the cap budgets organic draws, not authored promises.
+  // Without the shield each new same-tier guarantee evicts the previously-placed guarantee —
+  // four day-0 ambient promises then collapse to whichever one pushes last.
+  const guaranteedIds = new Set(guaranteed.map((e) => e.id));
+  for (const enc of guaranteed) {
+    // An organic pick of the same shape already holds the beat — a second copy would fire two
+    // copies of the same authored opening inside the rail (combat_busy is bypassed there). But
+    // its sampled tier delay (up to ~480 s) can exceed the authored early window, so the
+    // guarantee's promise must clamp it down rather than ride the late delay.
+    const organic = out.find((x) => x.shapeId === enc.id);
+    if (organic) {
+      const win = Array.isArray(enc.earlyDelayS) && enc.earlyDelayS.length === 2 ? enc.earlyDelayS : null;
+      if (win && organic.delay > win[1]) organic.delay = win[1];
+      continue;
+    }
+    const zone = pickZoneFor(enc, zonesByType, rng, sectorId);
+    if (!zone) continue;
+    const item = resolveEncounter(enc, zone, sectorId, dayIndex, seq++, rng);
+    if (!item) continue;
+    item.regionalWeight = ecologyState ? regionalEncounterWeight(ecologyState, sectorId, enc) : (enc.weight || 1);
+    // Teaching beats land inside their authored window (default 1–6 minutes into their day;
+    // a shape may pin earlyDelayS [lo, hi] — the opening raid must land within three minutes).
+    const win = Array.isArray(enc.earlyDelayS) && enc.earlyDelayS.length === 2 ? enc.earlyDelayS : null;
+    item.delay = win ? win[0] + rng() * Math.max(0, win[1] - win[0]) : 60 + rng() * 300;
+
+    // Guaranteed teaching encounters take precedence over budgeted tier slots.
+    // If the tier cap has already been reached by random items, drop the last random item of that tier.
+    const maxForTier = item.tier === 'major' ? MAX_MAJOR_PER_DAY : item.tier === 'minor' ? MAX_MINOR_PER_DAY : MAX_AMBIENT_PER_DAY;
+    const currentTierItems = out.filter((x) => x.tier === item.tier);
+    if (currentTierItems.length >= maxForTier) {
+      for (let i = out.length - 1; i >= 0; i--) {
+        if (out[i].tier === item.tier && !guaranteedIds.has(out[i].shapeId)) {
+          if (shapeCounts) {
+            const dropEnc = (encounterCatalog || ENCOUNTERS)[out[i].shapeId];
+            if (dropEnc) {
+              const dropKey = encounterGrammarKey(dropEnc, out[i].zoneType);
+              shapeCounts.set(dropKey, Math.max(0, (shapeCounts.get(dropKey) || 0) - 1));
+            }
+          }
+          if (seenShapes) {
+            seenShapes.set(out[i].shapeId, Math.max(0, (seenShapes.get(out[i].shapeId) || 0) - 1));
+          }
+          out.splice(i, 1);
+          break;
+        }
+      }
+    }
+    out.push(item);
+    if (shapeCounts) {
+      const guaranteedKey = encounterGrammarKey(enc, item.zoneType);
+      shapeCounts.set(guaranteedKey, (shapeCounts.get(guaranteedKey) || 0) + 1);
+    }
+    if (seenShapes) seenShapes.set(enc.id, (seenShapes.get(enc.id) || 0) + 1);
+  }
+
+  // Nominal spacing: keep planned onsets ≥45 s apart (the runtime gate enforces the real law).
+  // An authored earlyDelayS window is a hard promise — the bump may never push it past its hi.
+  // When a pinned item cannot slide later far enough to clear its predecessor, the unwindowed
+  // predecessors yield instead: pull the contiguous run ending at i-1 earlier (preserving
+  // order and the ≥45 s gaps) so the authored onset stays inside its promised window rather
+  // than silently landing <45 s behind another beat.
+  const delayWindow = (it) => {
+    const enc = (encounterCatalog || ENCOUNTERS)[it.shapeId];
+    return enc && Array.isArray(enc.earlyDelayS) && enc.earlyDelayS.length === 2 ? enc.earlyDelayS : null;
+  };
+  out.sort((a, b) => a.delay - b.delay || a.encounterId.localeCompare(b.encounterId));
+  for (let i = 1; i < out.length; i++) {
+    if (out[i].delay - out[i - 1].delay >= 45) continue;
+    const win = delayWindow(out[i]);
+    const bumped = out[i - 1].delay + 45;
+    if (!win || bumped <= win[1]) {
+      out[i].delay = bumped;
+      continue;
+    }
+    // The pinned item cannot move later — the preceding run yields earlier, each pulled item
+    // keeping ≥45 s ahead of the next. A pinned predecessor yields only down to its own
+    // window's lo; an impossible calendar (two windows that cannot coexist) surfaces as the
+    // residual <45 s pair the spacing contract already names, not a silently moved promise.
+    for (let j = i - 1; j >= 0; j--) {
+      const need = out[j + 1].delay - 45;
+      if (out[j].delay <= need) break;
+      const jWin = delayWindow(out[j]);
+      out[j].delay = jWin ? Math.max(need, jWin[0]) : Math.max(0, need);
+      if (out[j].delay > need) break;
+    }
+  }
+  return out;
+}
+
+function canonicalEncounterPlanOptions() {
+  return {
+    selfRegisteredEncounterIds: SELF_REGISTERED_RUNTIME_BY_ID,
+    namedCaptains: NAMED_CAPTAINS,
+  };
+}
+
+function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
+  return resolveEncounterShape(enc, zone, sectorId, dayIndex, seq, rng, canonicalEncounterPlanOptions());
+}
+
+/** Resolve one shape with the canonical runtime and named-captain composition. */
+export function planEncounterShape(enc, zone, sectorId, dayIndex, seq, rng) {
+  return planEncounterShapePure(enc, zone, sectorId, dayIndex, seq, rng, canonicalEncounterPlanOptions());
+}
+
+export function planAuthoredEncounterItem({ state, payload, playerPos }) {
+  return planAuthoredEncounterItemPure({
+    state,
+    payload,
+    playerPos,
+    encounters: ENCOUNTERS,
+    ...canonicalEncounterPlanOptions(),
+  });
+}
+
+function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) {
+  return addEncounterSquad(ships, squad, factionId, context, zone, levelBand, rng, role);
+}
+/** Terrain-lee spawn placement (WF-02). Pure and rng-free: the same batch, player pose and rock
+ * field always resolve the same shift, so encounters stay deterministic. Returns the rigid offset
+ * that parks the batch behind the best cover rock relative to the player's bearing — or null when
+ * no qualifying rock exists (the encounter then spawns exactly as authored; fail-open).
+ *
+ * Choice of rock: alive asteroids of readable size within LEE_SEARCH_RADIUS of the batch centroid
+ * score `radius*2 − lateral*0.25`, preferring big cover that sits near the player→squad line. The
+ * lee point is the far side of that rock along the player→rock bearing, pushed out by the rock's
+ * radius, the hull standoff and the batch's own spread, and the whole shift is clamped to
+ * LEE_MAX_SHIFT_WU so the squad never wanders out of its zone's honesty slack. */
+export function computeLeePlacement(ships, playerPos, asteroids) {
+  if (!Array.isArray(ships) || !ships.length || !playerPos || !asteroids) return null;
+  let cx = 0, cz = 0, count = 0;
+  for (const sh of ships) {
+    if (!sh || !sh.pos || !Number.isFinite(sh.pos.x) || !Number.isFinite(sh.pos.z)) continue;
+    cx += sh.pos.x; cz += sh.pos.z; count++;
+  }
+  if (!count) return null;
+  cx /= count; cz /= count;
+  let spread = 0;
+  for (const sh of ships) {
+    if (!sh || !sh.pos || !Number.isFinite(sh.pos.x) || !Number.isFinite(sh.pos.z)) continue;
+    spread = Math.max(spread, Math.hypot(sh.pos.x - cx, sh.pos.z - cz));
+  }
+  const tox = cx - playerPos.x, toz = cz - playerPos.z;
+  const toLen = Math.hypot(tox, toz);
+  // No approach bearing to hide from — or the player is already inside the wing: a lee matters
+  // for the approach, not for a fight that has already been joined (fail-open).
+  if (!(toLen > LEE_MIN_BEARING_WU)) return null;
+  const ux = tox / toLen, uz = toz / toLen;            // player → squad bearing
+  const searchR2 = LEE_SEARCH_RADIUS * LEE_SEARCH_RADIUS;
+  let best = null;
+  let bestScore = -Infinity;
+  for (const rock of asteroids) {
+    if (!rock || rock.alive === false || !rock.pos) continue;
+    // Production scans arrive as the pre-filtered `asteroids` index bucket; the fat entityList
+    // fallback (minimal states) needs the type check here so stations/wrecks never act as cover.
+    if (rock.type !== 'asteroid') continue;
+    const radius = Number.isFinite(rock.radius) ? rock.radius : 0;
+    if (radius < LEE_ROCK_MIN_RADIUS) continue;
+    const rx = rock.pos.x - cx, rz = rock.pos.z - cz;
+    if (rx * rx + rz * rz > searchR2) continue;
+    // Cover only counts when it stands on the player's side of the squad (forward hemisphere).
+    const along = (rock.pos.x - playerPos.x) * ux + (rock.pos.z - playerPos.z) * uz;
+    if (along <= radius) continue;
+    const lateral = Math.abs((rock.pos.x - playerPos.x) * uz - (rock.pos.z - playerPos.z) * ux);
+    const score = radius * 2 - lateral * LEE_LATERAL_PENALTY;
+    if (score > bestScore || (score === bestScore && best && rock.id != null && best.rockId != null
+      && rock.id < best.rockId)) {
+      bestScore = score;
+      best = { rockX: rock.pos.x, rockZ: rock.pos.z, rockRadius: radius, rockId: rock.id != null ? rock.id : null };
+    }
+  }
+  if (!best) return null;
+  // Lee point: the rock's far side along the player→rock bearing (≈ the player→squad bearing,
+  // re-derived from the rock for honesty when the cover sits off-axis).
+  let lx = best.rockX - playerPos.x, lz = best.rockZ - playerPos.z;
+  const ll = Math.hypot(lx, lz) || 1;
+  lx /= ll; lz /= ll;
+  const stand = best.rockRadius + LEE_STANDOFF_WU + spread;
+  const tx = best.rockX + lx * stand - cx;
+  const tz = best.rockZ + lz * stand - cz;
+  const tl = Math.hypot(tx, tz);
+  if (!(tl > 0.5)) return null;                        // already lee'd; nothing to do
+  const k = tl > LEE_MAX_SHIFT_WU ? LEE_MAX_SHIFT_WU / tl : 1;
+  return {
+    dx: tx * k, dz: tz * k,
+    rockRadius: best.rockRadius,
+    rockId: best.rockId,
+    shiftWU: Math.round(tl * k),
+  };
+}
+
+// Choose a zone matching the encounter's zoneTypes (seeded among matches).
+function pickZoneFor(enc, zonesByType, rng, sectorId) {
+  if (enc.anchorPoiId) {
+    const sector = SECTORS.find((entry) => entry.id === sectorId);
+    const poi = sector && Array.isArray(sector.pois)
+      ? sector.pois.find((entry) => entry.id === enc.anchorPoiId && entry.pos)
+      : null;
+    if (poi) {
+      return {
+        id: `encounter-anchor:${poi.id}`,
+        name: poi.name || enc.title || poi.id,
+        type: (enc.zoneTypes && enc.zoneTypes[0]) || 'authored',
+        center: { x: poi.pos.x, z: poi.pos.z },
+        radius: 360,
+        threat: 0,
+      };
+    }
+  }
+  const matches = [];
+  for (const zt of enc.zoneTypes) {
+    const zs = zonesByType.get(zt);
+    if (zs && zs.length) for (const z of zs) matches.push(z);
+  }
+  if (!matches.length) return null;
+  return matches[Math.floor(rng() * matches.length) % matches.length];
+}
+
+// Weighted pick over encounter shapes using their `weight`.
+function pickWeighted(list, rng, weightOf = (entry) => entry.weight) {
+  let total = 0;
+  for (const e of list) total += Math.max(0, Number(weightOf(e)) || 1);
+  if (total <= 0) return list[0] || null;
+  let r = rng() * total;
+  for (const e of list) {
+    r -= Math.max(0, Number(weightOf(e)) || 1);
+    if (r <= 0) return e;
+  }
+  return list[list.length - 1];
+}
+
+function freightPickupPhysicalSpec(commodityId, qty) {
+  const commodity = CMDTY.get(commodityId);
+  const massPerUnit = Math.max(0.05, Math.min(4, Number(commodity && commodity.massPerU) || 1));
+  const volumePerUnit = Math.max(0.05, Math.min(4, Number(commodity && commodity.volPerU) || 1));
+  const totalMass = qty * massPerUnit;
+  const totalVolume = qty * volumePerUnit;
+  const bodyMass = Math.max(
+    FREIGHT_PICKUP_MASS_MIN,
+    Math.min(FREIGHT_PICKUP_MASS_MAX, 6 + totalMass * 8 + totalVolume * 2),
+  );
+  const radius = Math.max(
+    FREIGHT_PICKUP_RADIUS_MIN,
+    Math.min(FREIGHT_PICKUP_RADIUS_MAX, 1.85 + Math.cbrt(totalVolume) * 0.8),
+  );
+  return {
+    version: 1,
+    qty,
+    massPerUnit,
+    volumePerUnit,
+    totalMass,
+    totalVolume,
+    bodyMass,
+    radius,
+  };
+}
+
+function buildPersistedFreightCustodyEnvelope(live, record, savedAt = null) {
+  if (!live || !live.data || !record) return null;
+  const data = live.data;
+  const predation = live.plan && live.plan.predation || {};
+  return normalizePersistedFreightCustodyEnvelope({
+    version: FREIGHT_CUSTODY_SAVE_VERSION,
+    custodyId: record.custodyId,
+    encounterId: live.id,
+    savedAt,
+    live: {
+      shapeId: live.shapeId,
+      script: live.script,
+      sectorId: live.sectorId,
+      zoneId: live.zoneId,
+      zoneName: live.zoneName,
+      factionId: live.factionId,
+      squadId: live.squadId,
+      anchor: live.anchor,
+      zoneRadius: live.zoneRadius,
+      phase: live.phase,
+      startedAt: live.startedAt,
+      deadlineAt: live.deadlineAt,
+      vars: live.vars,
+      plan: {
+        variantKind: live.plan && live.plan.variantKind,
+        predation,
+      },
+      data: {
+        end: data.end,
+        destId: data.destId,
+        destName: data.destName,
+        cargoId: data.cargoId,
+        perHauler: data.perHauler,
+        initialHaulerCount: data.initialHaulerCount,
+        initialCargoUnits: data.initialCargoUnits,
+        freightManifest: data.freightManifest,
+        robbed: data.robbed,
+        lossKillerId: data.lossKillerId,
+        guardKills: data.guardKills,
+        noticed: data.noticed,
+        freightCarrierRecovered: data.freightCarrierRecovered,
+        freightCarrierArrived: data.freightCarrierArrived,
+        predationStatus: data.predationStatus,
+        predationEndReason: data.predationEndReason,
+        predationTargetIdentityKey: data.predationTargetIdentityKey,
+        predationRaiderIdentityKey: data.predationRaiderIdentityKey,
+        convoyStance: data.convoyStance,
+        offerDeadlineAt: data.offerDeadlineAt,
+      },
+    },
+    record,
+  });
+}
+
+function normalizePersistedFreightCustodies(value) {
+  if (!Array.isArray(value)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const raw of value.slice(-FREIGHT_CUSTODY_SAVE_CAP * 2)) {
+    const envelope = normalizePersistedFreightCustodyEnvelope(raw);
+    if (!envelope || seen.has(envelope.custodyId)) continue;
+    seen.add(envelope.custodyId);
+    out.push(envelope);
+  }
+  return out.slice(-FREIGHT_CUSTODY_SAVE_CAP);
+}
+
+function normalizePersistedFreightCustodyEnvelope(raw) {
+  if (!raw || typeof raw !== 'object' || raw.version !== FREIGHT_CUSTODY_SAVE_VERSION) return null;
+  const custodyId = boundedFreightString(raw.custodyId);
+  const encounterId = boundedFreightString(raw.encounterId);
+  const liveRaw = raw.live && typeof raw.live === 'object' ? raw.live : null;
+  const recordRaw = raw.record && typeof raw.record === 'object' ? raw.record : null;
+  const shapeId = boundedFreightString(liveRaw && liveRaw.shapeId);
+  const script = boundedFreightString(liveRaw && liveRaw.script);
+  if (!custodyId || !encounterId || !liveRaw || !recordRaw || !ENCOUNTERS[shapeId]
+    || (script !== 'convoy' && script !== 'traderRun')
+    || boundedFreightString(recordRaw.custodyId) !== custodyId
+    || boundedFreightString(recordRaw.encounterId) !== encounterId
+    || recordRaw.terminal === true) return null;
+
+  const pods = [];
+  const rawPods = Array.isArray(recordRaw.pods) ? recordRaw.pods : [];
+  if (rawPods.length > FREIGHT_CUSTODY_POD_SAVE_CAP) return null;
+  const podIdentities = new Set();
+  for (const rawPod of rawPods) {
+    if (!rawPod || typeof rawPod !== 'object') return null;
+    const podIdentity = boundedFreightString(rawPod.podIdentity);
+    const status = boundedFreightString(rawPod.status);
+    const qty = nonnegativeFreightInt(rawPod.qty);
+    if (!podIdentity || podIdentities.has(podIdentity) || qty <= 0
+      || !['live', 'player_collected', 'raider_secured', 'lost'].includes(status)) return null;
+    podIdentities.add(podIdentity);
+    pods.push({
+      podIdentity,
+      entityId: rawPod.entityId == null ? null : rawPod.entityId,
+      podIndex: nonnegativeFreightInt(rawPod.podIndex),
+      instanceSeq: nonnegativeFreightInt(rawPod.instanceSeq),
+      qty,
+      status,
+      cause: boundedFreightString(rawPod.cause),
+      custodySourceKind: boundedFreightString(rawPod.custodySourceKind),
+      sourceCustodianStableId: boundedFreightString(rawPod.sourceCustodianStableId),
+    });
+  }
+
+  const initialQty = nonnegativeFreightInt(recordRaw.initialQty);
+  const carrierQty = nonnegativeFreightInt(recordRaw.carrierQty);
+  const playerCollectedQty = nonnegativeFreightInt(recordRaw.playerCollectedQty);
+  const raiderSecuredQty = nonnegativeFreightInt(recordRaw.raiderSecuredQty);
+  const stationRecoveredQty = nonnegativeFreightInt(recordRaw.stationRecoveredQty);
+  const deliveredQty = nonnegativeFreightInt(recordRaw.deliveredQty);
+  const lostQty = nonnegativeFreightInt(recordRaw.lostQty);
+  const livePodQty = pods.reduce((sum, pod) => sum + (pod.status === 'live' ? pod.qty : 0), 0);
+  const securedPodQty = pods.reduce((sum, pod) => sum + (pod.status === 'raider_secured' ? pod.qty : 0), 0);
+  if (initialQty <= 0 || raiderSecuredQty !== securedPodQty
+    || carrierQty + livePodQty + playerCollectedQty + raiderSecuredQty
+      + stationRecoveredQty + deliveredQty + lostQty !== initialQty) return null;
+
+  const manifestId = boundedFreightString(recordRaw.manifestId);
+  const freighterKey = boundedFreightString(recordRaw.freighterKey);
+  const commodityId = boundedFreightString(recordRaw.commodityId);
+  const carrierIdentityKey = boundedFreightString(recordRaw.carrierIdentityKey);
+  if (!manifestId || !freighterKey || !commodityId || !carrierIdentityKey) return null;
+  const raiderIdentityKey = boundedFreightString(recordRaw.raiderIdentityKey);
+  const rawLegalOwnerKind = boundedFreightString(recordRaw.legalOwnerKind);
+  const legalOwnerKind = rawLegalOwnerKind == null
+    ? 'civilian' // compatibility: every v1 persisted custody came from curtain_convoy's civilian
+    : (rawLegalOwnerKind === 'civilian' ? 'civilian' : 'other');
+  const legalOwnerStableId = boundedFreightString(recordRaw.legalOwnerStableId)
+    || (legalOwnerKind === 'civilian' ? freighterKey : null);
+  const legalOwnerFactionId = boundedFreightString(recordRaw.legalOwnerFactionId);
+  for (const pod of pods) {
+    if (pod.custodySourceKind == null) {
+      pod.custodySourceKind = inferFreightPodCustodySource(pod.cause, legalOwnerKind);
+    } else if (!['lawful_carrier', 'hostile_raider', 'other_carrier'].includes(pod.custodySourceKind)) {
+      pod.custodySourceKind = 'other_carrier'; // malformed provenance can never create a crime
+    }
+    if (!pod.sourceCustodianStableId) {
+      pod.sourceCustodianStableId = pod.custodySourceKind === 'hostile_raider'
+        ? raiderIdentityKey
+        : carrierIdentityKey;
+    }
+  }
+  const predationRaw = liveRaw.plan && liveRaw.plan.predation && typeof liveRaw.plan.predation === 'object'
+    ? liveRaw.plan.predation
+    : {};
+  const dataRaw = liveRaw.data && typeof liveRaw.data === 'object' ? liveRaw.data : {};
+  return {
+    version: FREIGHT_CUSTODY_SAVE_VERSION,
+    custodyId,
+    encounterId,
+    savedAt: finiteFreightNumber(raw.savedAt, 0),
+    live: {
+      shapeId,
+      script,
+      sectorId: boundedFreightString(liveRaw.sectorId),
+      zoneId: boundedFreightString(liveRaw.zoneId),
+      zoneName: boundedFreightString(liveRaw.zoneName),
+      factionId: boundedFreightString(liveRaw.factionId),
+      squadId: boundedFreightString(liveRaw.squadId) || `${encounterId}:squad`,
+      anchor: finiteFreightVec(liveRaw.anchor),
+      zoneRadius: Math.max(1, finiteFreightNumber(liveRaw.zoneRadius, 400)),
+      phase: boundedFreightString(liveRaw.phase) || 'transit',
+      startedAt: finiteFreightNumber(liveRaw.startedAt, 0),
+      deadlineAt: finiteFreightNumber(liveRaw.deadlineAt, 0),
+      vars: normalizeFreightVars(liveRaw.vars),
+      plan: {
+        variantKind: boundedFreightString(liveRaw.plan && liveRaw.plan.variantKind) || shapeId,
+        predation: normalizeFreightPredation(predationRaw),
+      },
+      data: {
+        end: finiteFreightVec(dataRaw.end),
+        destId: boundedFreightString(dataRaw.destId),
+        destName: boundedFreightString(dataRaw.destName),
+        cargoId: boundedFreightString(dataRaw.cargoId) || commodityId,
+        perHauler: nonnegativeFreightInt(dataRaw.perHauler),
+        initialHaulerCount: nonnegativeFreightInt(dataRaw.initialHaulerCount),
+        initialCargoUnits: nonnegativeFreightInt(dataRaw.initialCargoUnits),
+        freightManifest: normalizeFreightManifest(dataRaw.freightManifest),
+        robbed: dataRaw.robbed === true,
+        lossKillerId: dataRaw.lossKillerId == null ? null : dataRaw.lossKillerId,
+        guardKills: nonnegativeFreightInt(dataRaw.guardKills),
+        noticed: dataRaw.noticed === true,
+        freightCarrierRecovered: dataRaw.freightCarrierRecovered === true,
+        freightCarrierArrived: dataRaw.freightCarrierArrived === true,
+        predationStatus: boundedFreightString(dataRaw.predationStatus),
+        predationEndReason: boundedFreightString(dataRaw.predationEndReason),
+        predationTargetIdentityKey: boundedFreightString(dataRaw.predationTargetIdentityKey) || carrierIdentityKey,
+        predationRaiderIdentityKey: boundedFreightString(dataRaw.predationRaiderIdentityKey) || raiderIdentityKey,
+        convoyStance: ['defend', 'raid', 'pass'].includes(dataRaw.convoyStance) ? dataRaw.convoyStance : null,
+        offerDeadlineAt: finiteFreightNumber(dataRaw.offerDeadlineAt, 0),
+      },
+    },
+    record: {
+      version: 1,
+      custodyId,
+      receiptId: boundedFreightString(recordRaw.receiptId) || `${custodyId}:receipt`,
+      encounterId,
+      carrierId: recordRaw.carrierId == null ? null : recordRaw.carrierId,
+      carrierIdentityKey,
+      raiderId: recordRaw.raiderId == null ? null : recordRaw.raiderId,
+      raiderIdentityKey,
+      manifestId,
+      freighterKey,
+      commodityId,
+      legalOwnerKind,
+      legalOwnerStableId,
+      legalOwnerFactionId,
+      lawTheftReportId: boundedFreightString(recordRaw.lawTheftReportId),
+      lawTheftCausalTick: Number.isInteger(recordRaw.lawTheftCausalTick)
+        && recordRaw.lawTheftCausalTick >= 0
+        ? recordRaw.lawTheftCausalTick
+        : null,
+      lawTheftIncidentReceiptId: boundedFreightString(recordRaw.lawTheftIncidentReceiptId),
+      initialQty,
+      carrierQty,
+      playerCollectedQty,
+      raiderSecuredQty,
+      stationRecoveredQty,
+      deliveredQty,
+      lostQty,
+      pods,
+      nextPodIndex: Math.max(pods.length, nonnegativeFreightInt(recordRaw.nextPodIndex)),
+      respillSeq: nonnegativeFreightInt(recordRaw.respillSeq),
+      disableSpilled: recordRaw.disableSpilled === true,
+      deathSpilled: recordRaw.deathSpilled === true,
+      spillWindowClosed: recordRaw.spillWindowClosed === true,
+      carrierDead: recordRaw.carrierDead === true,
+      carrierAbandoned: recordRaw.carrierAbandoned === true,
+      carrierRecovered: recordRaw.carrierRecovered === true,
+      carrierArrived: recordRaw.carrierArrived === true,
+      carrierDestructionPending: recordRaw.carrierDestructionPending === true,
+      raiderDead: recordRaw.raiderDead === true,
+      raiderEscaped: recordRaw.raiderEscaped === true,
+      raiderRecoveryClosed: recordRaw.raiderRecoveryClosed === true,
+      carrierPersistenceOwned: recordRaw.carrierPersistenceOwned === true,
+      raiderPersistenceOwned: recordRaw.raiderPersistenceOwned === true,
+      terminal: false,
+      receiptEmitted: false,
+      lossAccountedQty: nonnegativeFreightInt(recordRaw.lossAccountedQty),
+      startedAt: finiteFreightNumber(recordRaw.startedAt, 0),
+      deadlineAt: finiteFreightNumber(recordRaw.deadlineAt, 0),
+      escapeStartedAt: nullableFreightNumber(recordRaw.escapeStartedAt),
+      escapeDeadlineAt: nullableFreightNumber(recordRaw.escapeDeadlineAt),
+      escapeRadius: Math.max(1, finiteFreightNumber(recordRaw.escapeRadius, FREIGHT_CUSTODY_ESCAPE_RADIUS_DEFAULT)),
+      escapeOrigin: finiteFreightVec(recordRaw.escapeOrigin),
+      escapeTarget: finiteFreightVec(recordRaw.escapeTarget),
+      raiderLastPos: finiteFreightVec(recordRaw.raiderLastPos),
+      raiderLastVel: finiteFreightVec(recordRaw.raiderLastVel),
+      transitionSeq: nonnegativeFreightInt(recordRaw.transitionSeq),
+    },
+  };
+}
+
+function normalizeFreightPredation(raw) {
+  return {
+    enabled: raw.enabled === true,
+    engagementOwner: raw.engagementOwner === 'encounter' ? 'encounter' : 'predation',
+    carrierRole: boundedFreightString(raw.carrierRole) || 'hauler',
+    raiderRole: boundedFreightString(raw.raiderRole) || 'raider',
+    motive: boundedFreightString(raw.motive) || 'cargo_raid',
+    engagementTrigger: boundedFreightString(raw.engagementTrigger) || 'manifest_predation',
+    attackerDoctrineId: boundedFreightString(raw.attackerDoctrineId),
+    approachTelegraph: boundedFreightString(raw.approachTelegraph),
+    responseWindowS: Math.max(1, finiteFreightNumber(raw.responseWindowS, 1)),
+    objectiveS: Math.max(1, finiteFreightNumber(raw.objectiveS, 90)),
+    leashRadius: Math.max(400, finiteFreightNumber(raw.leashRadius, 2600)),
+    escapeHoldS: Math.max(1, finiteFreightNumber(raw.escapeHoldS, 3)),
+  };
+}
+
+function inferFreightPodCustodySource(cause, legalOwnerKind) {
+  const value = String(cause || '');
+  if (value.startsWith('raider_') || value === 'custody_timeout_respill') return 'hostile_raider';
+  return legalOwnerKind === 'civilian' ? 'lawful_carrier' : 'other_carrier';
+}
+
+function normalizeFreightManifest(raw) {
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.lines)) return null;
+  const manifestId = boundedFreightString(raw.manifestId);
+  const freighterKey = boundedFreightString(raw.freighterKey);
+  if (!manifestId || !freighterKey) return null;
+  const lines = raw.lines.slice(0, 8).map((line) => ({
+    commodityId: boundedFreightString(line && line.commodityId),
+    qty: nonnegativeFreightInt(line && line.qty),
+  })).filter((line) => line.commodityId);
+  return {
+    manifestId,
+    freighterKey,
+    role: boundedFreightString(raw.role) || 'hauler',
+    lines,
+    totalQty: nonnegativeFreightInt(raw.totalQty),
+  };
+}
+
+function normalizeFreightVars(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out = {};
+  for (const key of Object.keys(raw).sort().slice(0, 12)) {
+    const safeKey = boundedFreightString(key, 48);
+    const value = raw[key];
+    if (!safeKey || !['string', 'number', 'boolean'].includes(typeof value)) continue;
+    out[safeKey] = typeof value === 'number' ? finiteFreightNumber(value, 0) : value;
+  }
+  return out;
+}
+
+function boundedFreightString(value, max = 160) {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  return text ? text.slice(0, max) : null;
+}
+
+function finiteFreightNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function nullableFreightNumber(value) {
+  if (value == null) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function nonnegativeFreightInt(value) {
+  return Math.max(0, Math.floor(Number(value) || 0));
+}
+
+function finiteFreightVec(value) {
+  if (!value || typeof value !== 'object') return null;
+  const x = Number(value.x), z = Number(value.z);
+  return Number.isFinite(x) && Number.isFinite(z) ? { x, z } : null;
+}
+
+// ═══ STATE ════════════════════════════════════════════════════════════════════════════════════════
+
+function freshState() {
+  return {
+    pending: [],
+    active: {},
+    live: {},
+    plannedKey: null,
+    lastPlanned: null,
+    pressure: { combat: 0, civilian: 0, mystery: 0, patrol: 0 },
+    noise: { mining: 0 },
+    window: [],
+    cooldowns: {},
+    named: {},
+    externalNamed: {},
+    receipts: [],
+    stats: {
+      fired: 0,
+      resolved: 0,
+      fizzled: 0,
+      appliedFreightLossIds: [],
+      openFreightCustodies: [],
+    },
+    lastMeaningfulAt: -1e9,
+    lastAmbientAt: -1e9,
+    lastMajorAt: -1e9,
+    lastEndAt: -1e9,
+    escalationSeeds: [],
+    // Harassment-mercy transients (never saved): attackerId → damage watch, the player-pool
+    // samples backing the stall read, and mercied attackers awaiting their stand-down expiry.
+    // Entity ids are live references, so a load rebuilds all three empty and the watchdog
+    // re-arms naturally if a pin resumes. proxStarve tracks per-sector zone-unreachability.
+    harassWatch: {},
+    harassPool: [],
+    mercyRearm: [],
+    pursuitWatch: {},
+    patrolIntervened: {},
+    playerDealtDamageAt: {},
+    proxStarve: {},
+    // Ambient predation evaluator bookkeeping — transient only (never saved): a load rebuilds the
+    // cadence clock and the raid sequence naturally while entity stamps reconcile fail-closed.
+    ambientPredation: { nextEvalAt: -Infinity, seq: 0 },
+    _accum: 0,
+  };
+}
+
+function ensureNamed(dir) {
+  for (const cap of NAMED_CAPTAINS) {
+    if (!dir.named[cap.id] || typeof dir.named[cap.id] !== 'object') {
+      dir.named[cap.id] = { alive: true, tier: 0, escapes: 0, kills: 0, lastSeenSector: null };
+    }
+  }
+}
+
+function clearPredationBindingsForLive(state, live, reason = 'objective_cleared') {
+  if (!state || !live || !live.data) return 0;
+  const hadBinding = live.data.predationStatus != null
+    || live.data.predationTargetId != null
+    || live.data.predationRaiderId != null;
+  if (!hadBinding) return 0;
+  live.data.predationStatus = 'cleared';
+  live.data.predationEndReason = String(reason || 'objective_cleared');
+  const entities = state.entities;
+  let cleared = 0;
+  for (const id of live.ids || []) {
+    const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    if (clearPredationBindingOnEntity(state, entity, live.id, reason)) cleared++;
+  }
+  return cleared;
+}
+
+function clearAllPredationBindings(state, reason = 'lifecycle_boundary') {
+  if (!state || typeof state !== 'object') return 0;
+  let cleared = 0;
+  const liveRows = state.encounterDirector && state.encounterDirector.live;
+  if (liveRows && typeof liveRows === 'object') {
+    for (const live of Object.values(liveRows)) {
+      cleared += clearPredationBindingsForLive(state, live, reason);
+    }
+  }
+  const entities = state.entities && typeof state.entities.values === 'function'
+    ? state.entities.values()
+    : (Array.isArray(state.entityList) ? state.entityList : []);
+  for (const entity of entities) {
+    const encounterId = entity && entity.data && entity.data.predationEncounterId;
+    if (encounterId && clearPredationBindingOnEntity(state, entity, encounterId, reason)) cleared++;
+  }
+  return cleared;
+}
+
+function clearPredationBindingOnEntity(state, entity, encounterId, reason) {
+  const data = entity && entity.data;
+  if (!data || data.predationEncounterId !== encounterId) return false;
+  // Ambient raid ids keep the same entity-level stamps but follow the ambient clear path:
+  // persistent world actors restore their pre-raid doctrine instead of retiring.
+  if (isAmbientRaidId(encounterId)) {
+    return clearAmbientPredationBinding(state, entity, encounterId, reason);
+  }
+  const persistedCarrier = persistedFreightCarrierBinding(entity);
+  const ai = data.ai;
+  const authoredOwner = data.predationEngagementOwner;
+  const playerOwnsActor = (entity.id === state.playerId
+    || (typeof data.vesselId === 'string' && data.vesselId.length > 0
+      && state.player?.ownedShips?.some(ship => ship.vesselId === data.vesselId)));
+  if (data.predationRole === 'raider' && ai && authoredOwner !== 'encounter' && !playerOwnsActor) {
+    ai.passive = true;
+    ai.motiveSatisfied = true;
+    ai.pirateDisengaged = true;
+    ai.predationStatus = 'cleared';
+    ai.predationEndReason = String(reason || 'objective_cleared');
+    delete ai.predationTargetId;
+    delete ai.predationTargetIdentityKey;
+    delete ai.predationObjective;
+    setEntityDoctrine(entity, {
+      activity: {
+        kind: ActivityKind.DISENGAGE,
+        reason: `predation:${String(reason || 'objective_cleared')}`,
+        anchor: entity.pos,
+        leashRadius: 2600,
+        startedTick: Number.isInteger(state.tick) ? state.tick : 0,
+        targetId: null,
+        encounterId,
+      },
+      roe: RulesOfEngagement.HOLD_FIRE,
+    });
+  }
+  delete data.predationEncounterId;
+  delete data.predationEngagementOwner;
+  // A disabled civilian recovery is persisted independently of the transient encounter. Preserve
+  // only its stable carrier key so save rematerialization can rebind the numeric entity id; every
+  // raider/spilled/malformed state still loses predation identity and cannot revive authority.
+  if (!persistedCarrier) delete data.predationIdentityKey;
+  delete data.predationRole;
+  return true;
+}
+
+function persistedFreightCarrierBinding(entity) {
+  if (!entity || entity.alive === false || entity.type !== 'ship' || entity.team !== 2) return null;
+  const data = entity.data;
+  const ai = data && data.ai;
+  const manifest = data && data.cargoManifest;
+  const custody = data && data.freightCustody;
+  const identityKey = data && data.predationIdentityKey;
+  const role = String(ai && (ai.encounterRole || ai.role) || data && data.role || '').toLowerCase();
+  if (!data || !ai || ai.passive !== true || !/(^|[\s_-])(hauler|freight|freighter)([\s_-]|$)/.test(role)
+    || typeof identityKey !== 'string' || !identityKey
+    || !manifest || typeof manifest.manifestId !== 'string' || !manifest.manifestId
+    || typeof manifest.freighterKey !== 'string' || !manifest.freighterKey
+    || !Array.isArray(manifest.lines) || !manifest.lines.some((line) => (
+      line && typeof line.commodityId === 'string' && Number(line.qty) > 0
+    ))
+    || !custody || custody.status !== 'carrier'
+    || custody.manifestId !== manifest.manifestId
+    || custody.carrierIdentityKey !== identityKey
+    || typeof custody.encounterId !== 'string' || !custody.encounterId) return null;
+  return { data, ai, manifest, custody, identityKey };
+}
+
+// entityId -> liveId, so a kill resolves its encounter row without walking every live encounter.
+// The map holds plain ids rather than live refs: it serializes like any other director row, and a
+// recycled entity id cannot claim a stale row because every drop compares before deleting.
+function indexSquadMember(dir, live, id) {
+  if (!dir.squadMembership || typeof dir.squadMembership !== 'object' || Array.isArray(dir.squadMembership)) {
+    dir.squadMembership = {};
+  }
+  dir.squadMembership[id] = live.id;
+}
+
+function dropSquadMember(dir, live, id) {
+  const membership = dir.squadMembership;
+  if (membership && membership[id] === (live && live.id)) delete membership[id];
+}
+
+function dropLiveSquadMembership(dir, live) {
+  const membership = dir.squadMembership;
+  if (!membership || !live || !Array.isArray(live.ids)) return;
+  for (const id of live.ids) {
+    if (membership[id] === live.id) delete membership[id];
+  }
+}
+
+// entityId -> squadId for the active-spawn ledger: the same coverage contract as
+// squadMembership, only for dir.active rec.ids (every push indexes, every removal drops).
+function indexActiveMember(dir, live, id) {
+  if (!dir.activeMembership || typeof dir.activeMembership !== 'object' || Array.isArray(dir.activeMembership)) {
+    dir.activeMembership = {};
+  }
+  dir.activeMembership[id] = live.squadId;
+}
+
+function dropActiveMemberId(dir, id, squadId) {
+  const membership = dir.activeMembership;
+  if (membership && membership[id] === squadId) delete membership[id];
+}
+
+// SF-150 — resolving an encounter releases temporary ownership; it must never erase an actor
+// or object whose durable persistence is owned elsewhere. The roster legitimately carries
+// things the encounter did not make: freight-custody pods (flags.persistent pickups with an
+// authored despawnAt TTL), adopted world actors (worldRecordId / persistenceOwner / traffic
+// roles), and mission-pinned bodies. A blanket despawnAt on any of those is a kill order a
+// foreign owner never agreed to. Anything carrying a durable claim is RELEASED from encounter
+// membership instead of stamped — its own persistence authority decides when it leaves. This
+// mirrors the same predicate world residency already protects (world.js protected markers).
+function encounterMayScheduleDespawn(entity) {
+  const flags = (entity && entity.flags) || {};
+  const data = (entity && entity.data) || {};
+  if (flags.persistent || flags.missionPinned) return false;
+  if (data.persistent || data.missionPinned || data.missionId || data.missionTag) return false;
+  if (data.worldRecordId != null || data.persistenceOwner != null) return false;
+  if (data.trafficRole || data.convoyId != null || data.itinerary) return false;
+  return true;
+}
+
+// dir.live rows whose script probes data.cacheId / data.sourceId in _onEntityGone — those
+// lookups are outside squadMembership coverage, so any live probe row forces the full walk.
+function noteScriptProbeRow(dir, live, sign) {
+  if (!live || (live.script !== 'salvageSignal' && live.script !== 'whisper')) return;
+  if (!Number.isFinite(dir.scriptProbeRows)) dir.scriptProbeRows = 0;
+  dir.scriptProbeRows += sign;
+}
+
+// The durable resolution record _gatesPass reads (uniqueOnce / blockAfterOutcome /
+// requiresCompletedShape) — the same ledger shape the self-registered runtimes write through
+// their own settle paths (crSituationKit, the e1 finish, the kiln's remember). Those scripts
+// record a richer row (facts, visits, sourceAnchor) before calling resolve, so a row already
+// stamped with THIS encounter's own id is left alone: resolve fills the gap, never flattens.
+function noteEncounterCompleted(state, live, outcome, now) {
+  const story = state.story || (state.story = { flags: {} });
+  if (!story.flags || typeof story.flags !== 'object') story.flags = {};
+  const memory = story.depthProgramEncounters && typeof story.depthProgramEncounters === 'object'
+    ? story.depthProgramEncounters
+    : (story.depthProgramEncounters = { schemaVersion: 1, completed: {}, history: [] });
+  if (!memory.completed || typeof memory.completed !== 'object' || Array.isArray(memory.completed)) memory.completed = {};
+  if (!Array.isArray(memory.history)) memory.history = [];
+  const prev = memory.completed[live.shapeId];
+  if (prev && prev.encounterId === live.id) return;
+  const prevFields = prev && typeof prev === 'object' && !Array.isArray(prev) ? prev : {};
+  const rec = {
+    ...prevFields,                      // repeat visits keep facts/sourceAnchor the prior row authored
+    outcome,
+    at: now,
+    tick: state.tick | 0,
+    encounterId: live.id,
+    sectorId: live.sectorId || prevFields.sectorId || null,
+    seed: prevFields.seed != null ? prevFields.seed : (state.meta && state.meta.seed),
+    visits: (prevFields.visits | 0) + 1,
+  };
+  memory.completed[live.shapeId] = rec;
+  memory.history.push({ shapeId: live.shapeId, ...rec });
+  if (memory.history.length > 64) memory.history.splice(0, memory.history.length - 64);
+}
+
+// Player-facing fallback for an id that reaches a deck button or choice title — the raw
+// snake_case slug must never render ("Pirate Toll", not "pirate_toll").
+function humanizeId(value, fallback) {
+  const s = String(value || '').replace(/[_:.-]+/g, ' ').trim();
+  if (!s) return fallback || 'Encounter';
+  return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Spawned wrecks/story props are encounter-owned but never squad: they ride live.propIds so
+// aliveCount squad-wipe reads and the squadMembership kill-routing never see them, while
+// resolve's straggler release and despawnAll can still retire them instead of leaving orphans.
+// `overwrite` mirrors the caller's contract: despawnAll restamps authored windows, resolve
+// honors a despawnAt the script already set.
+function stampLivePropsDespawn(state, live, now, afterS, overwrite) {
+  const propIds = live && live.propIds;
+  if (!Array.isArray(propIds) || !propIds.length) return;
+  const entities = state && state.entities;
+  if (!entities || typeof entities.get !== 'function') return;
+  let stagger = 0;
+  for (const id of propIds) {
+    const e = entities.get(id);
+    if (!e || e.alive === false || !encounterMayScheduleDespawn(e)) continue;
+    if (!overwrite && e.data && e.data.despawnAt != null) continue;
+    e.data = e.data || {};
+    e.data.despawnAt = now + afterS + stagger * 0.5;
+    // Provenance: the releasing encounter's own cleanup stamp is revocable on re-adoption —
+    // a foreign-scheduled despawnAt is a kill order adopters must not touch.
+    e.data.despawnBy = live.id;
+    stagger++;
+  }
+}
+
+function ensureDirectorState(state) {
+  if (!state.encounterDirector || typeof state.encounterDirector !== 'object' || Array.isArray(state.encounterDirector)) {
+    state.encounterDirector = freshState();
+  }
+  const d = state.encounterDirector;
+  if (!Array.isArray(d.pending)) d.pending = [];
+  if (!d.active || typeof d.active !== 'object' || Array.isArray(d.active)) d.active = {};
+  if (!d.live || typeof d.live !== 'object' || Array.isArray(d.live)) d.live = {};
+  if (!d.squadMembership || typeof d.squadMembership !== 'object' || Array.isArray(d.squadMembership)) d.squadMembership = {};
+  if (!d.activeMembership || typeof d.activeMembership !== 'object' || Array.isArray(d.activeMembership)) {
+    const map = {};
+    for (const squadId of Object.keys(d.active)) {
+      const rec = d.active[squadId];
+      if (!rec || !Array.isArray(rec.ids)) continue;
+      for (const id of rec.ids) map[id] = squadId;
+    }
+    d.activeMembership = map;
+  }
+  if (!Number.isFinite(d.scriptProbeRows)) {
+    d.scriptProbeRows = 0;
+    for (const live of Object.values(d.live)) {
+      if (live && (live.script === 'salvageSignal' || live.script === 'whisper')) d.scriptProbeRows += 1;
+    }
+  }
+  if (!d.pressure || typeof d.pressure !== 'object') d.pressure = { combat: 0, civilian: 0, mystery: 0, patrol: 0 };
+  if (!Number.isFinite(d.pressure.combat)) d.pressure.combat = 0;
+  if (!Number.isFinite(d.pressure.civilian)) d.pressure.civilian = 0;
+  if (!Number.isFinite(d.pressure.mystery)) d.pressure.mystery = 0;
+  if (!Number.isFinite(d.pressure.patrol)) d.pressure.patrol = 0;
+  if (!d.noise || typeof d.noise !== 'object') d.noise = { mining: 0 };
+  if (!Number.isFinite(d.noise.mining)) d.noise.mining = 0;
+  // T11: noise.tow is lazy — pre-tow saves (and every run that never tows) carry no key, so the
+  // serialized director shape (and the sim goldens) stay byte-identical; readers use `|| 0`.
+  // A key that IS present but corrupt is repaired to a quiet tow.
+  if (d.noise.tow !== undefined && !Number.isFinite(d.noise.tow)) d.noise.tow = 0;
+  // C11/C12 durable ledgers are created lazily; a malformed one is dropped, never trusted.
+  if (d.stats && d.stats.deniableClauses != null
+    && (typeof d.stats.deniableClauses !== 'object' || Array.isArray(d.stats.deniableClauses))) {
+    delete d.stats.deniableClauses;
+  }
+  // C11 follow-ups: the fence-aftermath ring is lazy too. A malformed ledger is dropped; a sound
+  // one is re-sanitized (bad rows vanish, an emptied ledger removes its key entirely).
+  if (d.stats && d.stats.deniableAftermath != null) {
+    const am = d.stats.deniableAftermath;
+    if (typeof am !== 'object' || Array.isArray(am) || !Array.isArray(am.seeds)) {
+      delete d.stats.deniableAftermath;
+    } else {
+      const rows = am.seeds.map(sanitizeDeniableSeed).filter(Boolean);
+      if (rows.length) am.seeds = rows;
+      else delete d.stats.deniableAftermath;
+    }
+  }
+  // U-B: the fence ledger is lazy and durable. Re-sanitized on load; an emptied one removes its key.
+  if (d.stats && d.stats.fences != null) {
+    const fences = sanitizeFenceLedger(d.stats.fences);
+    if (fences) d.stats.fences = fences;
+    else delete d.stats.fences;
+  }
+  if (d.stats && d.stats.scarcityRumored != null
+    && (typeof d.stats.scarcityRumored !== 'object' || Array.isArray(d.stats.scarcityRumored))) {
+    delete d.stats.scarcityRumored;
+  }
+  if (!Array.isArray(d.window)) d.window = [];
+  if (!d.cooldowns || typeof d.cooldowns !== 'object') d.cooldowns = {};
+  if (!d.named || typeof d.named !== 'object' || Array.isArray(d.named)) d.named = {};
+  if (!d.externalNamed || typeof d.externalNamed !== 'object' || Array.isArray(d.externalNamed)) d.externalNamed = {};
+  if (!Array.isArray(d.receipts)) d.receipts = [];
+  if (!d.stats || typeof d.stats !== 'object') d.stats = { fired: 0, resolved: 0, fizzled: 0 };
+  d.stats.appliedFreightLossIds = normalizeAppliedFreightLossIds(d.stats.appliedFreightLossIds, 64);
+  if (!Array.isArray(d.stats.openFreightCustodies)) d.stats.openFreightCustodies = [];
+  if (d.stats.openFreightCustodies.length > FREIGHT_CUSTODY_SAVE_CAP) {
+    d.stats.openFreightCustodies = d.stats.openFreightCustodies.slice(-FREIGHT_CUSTODY_SAVE_CAP);
+  }
+  if (!Array.isArray(d.stats.recentFingerprints)) d.stats.recentFingerprints = [];
+  if (!Array.isArray(d.stats.recentVarietyKeys)) d.stats.recentVarietyKeys = [];
+  if (d.stats.recentFingerprints.length > 12) d.stats.recentFingerprints = d.stats.recentFingerprints.slice(-12);
+  if (d.stats.recentVarietyKeys.length > 12) d.stats.recentVarietyKeys = d.stats.recentVarietyKeys.slice(-12);
+  if (!('plannedKey' in d)) d.plannedKey = null;
+  if (!Number.isFinite(d.lastMeaningfulAt)) d.lastMeaningfulAt = -1e9;
+  if (!Number.isFinite(d.lastAmbientAt)) d.lastAmbientAt = -1e9;
+  if (!Number.isFinite(d.lastMajorAt)) d.lastMajorAt = -1e9;
+  if (!Number.isFinite(d.lastEndAt)) d.lastEndAt = -1e9;
+  if (!d.ambientPredation || typeof d.ambientPredation !== 'object' || Array.isArray(d.ambientPredation)) {
+    d.ambientPredation = { nextEvalAt: -Infinity, seq: 0 };
+  }
+  if (!Number.isFinite(d.ambientPredation.nextEvalAt)) d.ambientPredation.nextEvalAt = -Infinity;
+  if (!Number.isInteger(d.ambientPredation.seq)) d.ambientPredation.seq = 0;
+  if (!Number.isFinite(d._accum)) d._accum = 0;
+  // The 1 Hz accumulator measures real sim-time between update calls, so its baseline is the
+  // moment this ledger was created/ensured — not the first update call. Falling back to `now`
+  // inside update silently eats every second elapsed between boot (or a requestAuthoredEncounter
+  // that ran ahead of the first tick) and that call, and a harness advancing ≥1 s in one step
+  // then starves _tickLive exactly once. Old saves lack the field: stamping the current simTime
+  // at ensure keeps their first post-load call a baseline, not a catch-up burst.
+  if (!Number.isFinite(d._lastUpdateNow)) {
+    d._lastUpdateNow = Number.isFinite(state.simTime) ? state.simTime : 0;
+  }
+  if (d.sessionRhythm != null && (typeof d.sessionRhythm !== 'object' || Array.isArray(d.sessionRhythm)
+    || !SESSION_RHYTHM_PHASES.includes(d.sessionRhythm.phase))) {
+    d.sessionRhythm = null;
+  }
+  if (!Array.isArray(d.escalationSeeds)) d.escalationSeeds = [];
+  const savedLedger = Array.isArray(d.stats.escalationLedger) ? d.stats.escalationLedger : null;
+  if (d.escalationSeeds.length === 0 && savedLedger && savedLedger.length) {
+    d.escalationSeeds = savedLedger.map(sanitizeEscalationSeed).filter(Boolean);
+  }
+  // Perf: sanitize once and persist the same sanitized rows. ensureDirectorState runs several
+  // times per director pass, and persistEscalationLedger used to re-run the identical
+  // map/filter/slice over the array this line had just sanitized (sanitize is idempotent, so
+  // the rows it produced were content-equal — only the second allocation tree was wasted).
+  const sanitizedSeeds = d.escalationSeeds.map(sanitizeEscalationSeed).filter(Boolean)
+    .slice(-ESCALATION_SEED_CAP);
+  d.escalationSeeds = sanitizedSeeds;
+  if (sanitizedSeeds.length) d.stats.escalationLedger = sanitizedSeeds.slice();
+  else delete d.stats.escalationLedger;
+  ensureNamed(d);
+  return d;
+}
+
+// ── DUST P1b lane ledgers (lazy maps on dir.stats; persisted with the durable stats bag) ────────
+// dustSeen mirrors livedSeen's once-ever semantics: a dust vignette that actually fired is out
+// of the lane's pool for good (presence, not truthiness — a stamp of 0 still counts). The
+// rotation map is the planner's unseen-bias input (ids already offered this save); dustLastAt
+// is the lane's own presentation spacing, so dust fills only legacy-idle pumps.
+function dustSeenMap(dir) {
+  if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+  if (!dir.stats.dustSeen || typeof dir.stats.dustSeen !== 'object' || Array.isArray(dir.stats.dustSeen)) {
+    dir.stats.dustSeen = {};
+  }
+  return dir.stats.dustSeen;
+}
+
+function dustRotationMap(dir) {
+  if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+  if (!dir.stats.dustRotation || typeof dir.stats.dustRotation !== 'object' || Array.isArray(dir.stats.dustRotation)) {
+    dir.stats.dustRotation = {};
+  }
+  return dir.stats.dustRotation;
+}
+
+// The loss ledger is an eviction queue, not a set serialization: application order is authority.
+// Older builds may have saved either an array or an object-shaped membership map; normalize both
+// without sorting so a newly appended low-lexical ID cannot evict itself at the cap boundary.
+function normalizeAppliedFreightLossIds(value, cap = 64) {
+  const source = Array.isArray(value)
+    ? value
+    : (value && typeof value === 'object' ? Object.keys(value) : []);
+  const ordered = [];
+  const seen = new Set();
+  for (let i = source.length - 1; i >= 0; i--) {
+    const id = typeof source[i] === 'string' ? source[i] : String(source[i] == null ? '' : source[i]);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ordered.push(id);
+  }
+  ordered.reverse();
+  const limit = Math.max(1, Math.floor(Number(cap) || 64));
+  return ordered.length > limit ? ordered.slice(ordered.length - limit) : ordered;
+}
+
+function appendAppliedFreightLossIds(previous, intentId, cap = 64) {
+  const ids = normalizeAppliedFreightLossIds(previous, cap);
+  const id = typeof intentId === 'string' ? intentId : String(intentId == null ? '' : intentId);
+  if (!id || ids.includes(id)) return ids;
+  ids.push(id);
+  return ids.length > cap ? ids.slice(ids.length - cap) : ids;
+}
+
+function encounterScriptFor(liveOrShape) {
+  if (!liveOrShape) return null;
+  const shapeId = liveOrShape.shapeId || liveOrShape.id;
+  return SELF_REGISTERED_RUNTIME_BY_ID.get(shapeId)
+    || ENCOUNTER_SCRIPTS[liveOrShape.script]
+    || null;
+}
+
+function encounterAdmissionMinimum(item, shape) {
+  if (item && item.data && item.data.ceresActivityAmbush === true) return 0;
+  if (item && item.predation && item.predation.enabled === true) {
+    // The premise floor is compositional (PQ-047 residual): every authored manifest carrier plus
+    // the readable PD curtain anchor and one offensive raider must fit, or the fired plan spawns
+    // without an offensive raider and fails predation composition on the spot. The historical
+    // single-carrier floor of 3 is the lower bound.
+    const ships = Array.isArray(item.ships) ? item.ships : [];
+    const carrierRole = String(item.predation.carrierRole || 'hauler');
+    const carriers = ships.filter((ship) => ship && ship.role === carrierRole).length;
+    // an all-carrier roster has no chair for the offensive raider the plan requires — refuse the
+    // admission outright (a floor it can never meet) rather than fire and abort into a cooldown
+    if (carriers >= ships.length - 1) return ships.length + 1;
+    return Math.max(3, Math.min(ships.length, carriers + 2));
+  }
+  if (item && item.variantKind === 'distress_genuine') return 2;
+  if (item && Array.isArray(item.ships) && item.ships.length > 0) return 1;
+  // Named hunters assemble their roster inside the script from durable captain state.
+  if (shape && shape.script === 'namedHunter') return 1;
+  return 0;
+}
+
+// ── small read-only helpers ───────────────────────────────────────────────────────────────────────
+
+export const SESSION_RHYTHM_PHASES = Object.freeze([
+  'work', 'travel', 'curiosity', 'opportunity', 'tension', 'violence', 'aftermath', 'quiet',
+]);
+export const SESSION_RHYTHM_MAX_DWELL_S = 12 * 60;
+
+const SESSION_RHYTHM_NEXT = Object.freeze({
+  work: 'travel',
+  travel: 'curiosity',
+  curiosity: 'opportunity',
+  opportunity: 'tension',
+  tension: 'violence',
+  violence: 'aftermath',
+  aftermath: 'quiet',
+  quiet: 'work',
+});
+
+const SESSION_RHYTHM_SOFT_DWELL_S = Object.freeze({
+  work: 90,
+  travel: 75,
+  curiosity: 75,
+  opportunity: 75,
+  tension: 60,
+  violence: 45,
+  aftermath: 60,
+  quiet: 90,
+});
+
+const SESSION_RHYTHM_COMBAT_FORBIDDEN = new Set(['work', 'aftermath', 'quiet']);
+
+function sessionRhythmHasLiveCombat(dir) {
+  const live = dir && dir.live && typeof dir.live === 'object' ? Object.values(dir.live) : [];
+  return live.some((row) => row && row.deck === 'combat' && row.phase !== 'done');
+}
+
+export function sessionRhythmAllowsCombat(phase) {
+  return !SESSION_RHYTHM_COMBAT_FORBIDDEN.has(phase);
+}
+
+export function sessionRhythmBlockReason(phase, shape) {
+  if (!shape || shape.deck !== 'combat') return null;
+  if (phase && !sessionRhythmAllowsCombat(phase)) return 'rhythm';
+  return null;
+}
+
+export function sessionRhythmOf(stateOrDir) {
+  if (!stateOrDir || typeof stateOrDir !== 'object') return null;
+  const direct = stateOrDir.sessionRhythm;
+  const nested = stateOrDir.encounterDirector && stateOrDir.encounterDirector.sessionRhythm;
+  const rhythm = direct && typeof direct === 'object' && !Array.isArray(direct) && SESSION_RHYTHM_PHASES.includes(direct.phase)
+    ? direct
+    : (nested && typeof nested === 'object' && !Array.isArray(nested) && SESSION_RHYTHM_PHASES.includes(nested.phase)
+      ? nested
+      : null);
+  return rhythm;
+}
+
+function writeSessionRhythm(dir, phase, now, previous) {
+  const rhythm = { phase, enteredAt: now, dwellS: 0 };
+  dir.sessionRhythm = rhythm;
+  return { ...rhythm, changed: true, previous: previous || null };
+}
+
+export function advanceSessionRhythm(dir, state, now) {
+  const host = dir && typeof dir === 'object' ? dir : {};
+  const t = Number.isFinite(now) ? now : 0;
+  const current = host.sessionRhythm && typeof host.sessionRhythm === 'object' && !Array.isArray(host.sessionRhythm)
+    && SESSION_RHYTHM_PHASES.includes(host.sessionRhythm.phase)
+    ? host.sessionRhythm
+    : null;
+  // The session owner publishes an expiring read-only policy. This owner alone writes
+  // sessionRhythm. With no valid policy, the original standalone rhythm remains intact.
+  const tension = readTensionPolicy(state, t);
+  if (tension) {
+    if (!current || current.phase !== tension.rhythmPhase) {
+      return writeSessionRhythm(host, tension.rhythmPhase, t, current && current.phase);
+    }
+    current.dwellS = Math.max(0, t - (Number.isFinite(current.enteredAt) ? current.enteredAt : t));
+    return { ...current, changed: false, previous: current.phase };
+  }
+  const playerDocked = isDocked(state);
+  if (!current) {
+    return writeSessionRhythm(host, playerDocked ? 'work' : 'travel', t, null);
+  }
+
+  const enteredAt = Number.isFinite(current.enteredAt) ? current.enteredAt : t;
+  const dwellS = Math.max(0, t - enteredAt);
+  current.dwellS = dwellS;
+  host.sessionRhythm = current;
+
+  const combatLive = sessionRhythmHasLiveCombat(host);
+  const endedAt = Number.isFinite(host.lastEndAt) ? host.lastEndAt : -1e9;
+  const combatEndedHere = endedAt >= enteredAt && !combatLive;
+  const phase = current.phase;
+  let next = phase;
+
+  if (dwellS >= SESSION_RHYTHM_MAX_DWELL_S) {
+    next = SESSION_RHYTHM_NEXT[phase] || 'travel';
+  } else if (phase === 'violence' && combatEndedHere) {
+    next = 'aftermath';
+  } else if (phase === 'violence' && combatLive) {
+    next = 'violence';
+  } else if (combatLive && sessionRhythmAllowsCombat(phase) && phase !== 'violence') {
+    next = 'violence';
+  } else if (phase === 'work' && !playerDocked && dwellS >= 20) {
+    next = 'travel';
+  } else if (playerDocked && (phase === 'travel' || phase === 'curiosity' || phase === 'opportunity') && dwellS >= 20) {
+    next = 'work';
+  } else if (dwellS >= (SESSION_RHYTHM_SOFT_DWELL_S[phase] || 90)) {
+    next = SESSION_RHYTHM_NEXT[phase] || 'travel';
+  }
+
+  if (next === phase) {
+    return { phase, enteredAt, dwellS, changed: false, previous: phase };
+  }
+  return writeSessionRhythm(host, next, t, phase);
+}
+
+export function encounterPacingBlockReason(dir, state, shape, now) {
+  if (isDocked(state)) return 'docked';
+  if (isTutorialActive(state)) return 'tutorial';
+  const tensionReason = tensionPacingBlockReason(dir, state, shape, now);
+  if (tensionReason) return tensionReason;
+  const rhythmReason = sessionRhythmBlockReason(dir && dir.sessionRhythm && dir.sessionRhythm.phase, shape);
+  if (rhythmReason) return rhythmReason;
+  if (now < (dir.cooldowns[shape.id] || 0)) return 'cooldown';
+  if ((dir.pressure[shape.deck] || 0) < shape.pressureCost) return 'pressure';
+
+  const liveList = Object.values(dir.live).filter(Boolean);
+  const liveCombat = liveList.some((live) => live.deck === 'combat' && encounterEngagesPlayer(live, state, now));
+  const liveMeaningful = liveList.filter((live) => live.tier !== 'ambient').length;
+  const liveAmbient = liveList.length - liveMeaningful;
+  if (shape.tier === 'ambient') {
+    if (liveAmbient >= 2) return 'ambient_cap';
+    if (now - dir.lastAmbientAt < AMBIENT_GAP_S) return 'ambient_gap';
+    if (now - dir.lastMeaningfulAt < AMBIENT_AFTER_MEANINGFUL_S) return 'ambient_after_meaningful';
+    return null;
+  }
+
+  if (now - dir.lastMeaningfulAt < MIN_GAP_S) return 'pacing_gap';
+  if (shape.deck === 'combat' && liveCombat) return 'combat_busy';
+  if (liveMeaningful >= 2) return 'meaningful_cap';
+  const window = dir.window.filter((entry) => entry && entry.t >= now - WINDOW_S);
+  const majors = window.filter((entry) => entry.tier === 'major').length;
+  const minors = window.filter((entry) => entry.tier === 'minor').length;
+  if (shape.tier === 'major' && majors >= MAX_MAJOR_PER_DAY) return 'major_quota';
+  if (shape.tier === 'major' && now - dir.lastMajorAt < MAJOR_EXTRA_GAP_S) return 'major_gap';
+  if (shape.tier === 'minor' && minors >= MAX_MINOR_PER_DAY) return 'minor_quota';
+  return null;
+}
+
+function isDocked(state) {
+  return !!((state.player && state.player.flags && state.player.flags.docked) || (state.ui && state.ui.docked));
+}
+
+/** A live combat encounter counts as "a fight in progress" only while it is actually engaging
+ * the player: a squad entity within COMBAT_BUSY_RANGE_WU, or damage exchanged either way inside
+ * COMBAT_BUSY_EXCHANGE_S. Distant stalkers and stalled squads must not veto future combat. */
+function encounterEngagesPlayer(live, state, now) {
+  const exchangeAt = Math.max(live.startedAt || 0, live.lastPlayerExchangeAt || 0);
+  if (now - exchangeAt <= COMBAT_BUSY_EXCHANGE_S) return true;
+  const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  if (!player || !player.pos) return false;
+  const r2 = COMBAT_BUSY_RANGE_WU * COMBAT_BUSY_RANGE_WU;
+  for (const id of live.ids) {
+    const e = state.entities.get(id);
+    if (!e || e.alive === false || !e.pos) continue;
+    const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
+    if (dx * dx + dz * dz <= r2) return true;
+  }
+  return false;
+}
+
+function isTutorialActive(state) {
+  const ob = state.onboarding;
+  return !!(ob && ob.active && !ob.finished);
+}
+
+/** Items whose shape pins earlyWindowGuaranteeDay are the authored opening beats themselves:
+ * they may pump while the onboarding rail is active, keep their authored delay under the
+ * nominal spacing pass, and survive an unfired sector-day replan until they fire or fizzle
+ * on the ordinary gates. */
+function isAuthoredGuaranteeItem(item) {
+  const shape = item && ENCOUNTERS[item.shapeId];
+  return !!(shape && Number.isFinite(Number(shape.earlyWindowGuaranteeDay)));
+}
+
+function isWanted(state) {
+  const h = state.player && state.player.heat;
+  return typeof h === 'number' ? h >= 0.15 : false;    // mirrors heat.WANTED_THRESHOLD (read-only)
+}
+
+function finiteEscalationNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function escalationText(value) {
+  if (typeof value !== 'string') return null;
+  const clean = value.trim();
+  return clean || null;
+}
+
+function beatForCause(cause, payload) {
+  if (cause === 'witness') return 'bounty';
+  if (cause === 'spill') return 'shortage';
+  if (cause === 'flee' && escalationText(payload && (payload.aceId || payload.namedAceId))) return 'ace';
+  if (cause === 'flee') return 'rumor';
+  return null;
+}
+
+function escalationCauseId(cause, payload) {
+  if (!payload || typeof payload !== 'object') return `${cause}:anon`;
+  if (cause === 'witness') {
+    return escalationText(payload.incidentId) || escalationText(payload.causeId) || `witness:${payload.holderId || 'hold'}`;
+  }
+  if (cause === 'spill') {
+    return escalationText(payload.intentId)
+      || escalationText(payload.custodyId)
+      || escalationText(payload.manifestId)
+      || escalationText(payload.encounterId)
+      || escalationText(payload.causeId)
+      || `spill:${payload.carrierId || payload.t || 'lot'}`;
+  }
+  return escalationText(payload.aceId)
+    || escalationText(payload.namedAceId)
+    || escalationText(payload.causeId)
+    || `flee:${payload.entityId || 'npc'}:${payload.reason || 'flee'}`;
+}
+
+function isPlayerEscalationAct(state, cause, payload) {
+  const playerId = state && state.playerId;
+  if (payload && payload.playerCaused === true) return true;
+  if (playerId != null && (payload.attackerId === playerId || payload.killerId === playerId)) return true;
+  if (cause === 'witness') return true;
+  if (cause === 'flee' && (payload.aceId || payload.namedAceId || payload.reason === 'civilian-violence')) return true;
+  return false;
+}
+
+function firstManifestCommodity(payload) {
+  const lines = payload && payload.manifest && Array.isArray(payload.manifest.lines)
+    ? payload.manifest.lines
+    : null;
+  if (lines) {
+    for (const line of lines) {
+      if (line && escalationText(line.commodityId)) return line.commodityId;
+    }
+  }
+  return escalationText(payload && payload.commodityId);
+}
+
+function placeFarFromPlayer(state, payload, sectorId) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const px = player && player.pos ? Number(player.pos.x) || 0 : 0;
+  const pz = player && player.pos ? Number(player.pos.z) || 0 : 0;
+  const zones = sectorId ? zonesForSector(sectorId) : [];
+  const wantedZoneId = escalationText(payload && payload.zoneId);
+  let chosen = wantedZoneId ? zones.find((zone) => zone && zone.id === wantedZoneId) : null;
+
+  if (!chosen && payload && payload.anchor && Number.isFinite(payload.anchor.x) && sectorId) {
+    const local = globalToSectorLocalForSector(payload.anchor, sectorId);
+    chosen = zoneAt(sectorId, local.x, local.z);
+  }
+
+  const scored = [];
+  for (const zone of zones) {
+    if (!zone || !zone.center) continue;
+    const global = sectorLocalToGlobalForSector(zone.center, sectorId);
+    const dist = Math.hypot(global.x - px, global.z - pz);
+    scored.push({ zone, global, dist });
+  }
+  scored.sort((a, b) => b.dist - a.dist || a.zone.id.localeCompare(b.zone.id));
+
+  let pick = chosen
+    ? scored.find((row) => row.zone.id === chosen.id)
+    : null;
+  if (!pick || pick.dist < ESCALATION_MIN_PLACE_DIST) {
+    pick = scored.find((row) => row.dist >= ESCALATION_MIN_PLACE_DIST) || scored[0] || null;
+  }
+
+  if (pick) {
+    return {
+      x: pick.global.x,
+      z: pick.global.z,
+      sectorId,
+      zoneId: pick.zone.id,
+      stationId: escalationText(payload && payload.stationId),
+      name: pick.zone.name || pick.zone.id,
+    };
+  }
+
+  const seed = (state && state.meta && state.meta.seed) || 1;
+  const angle = (hash32(seed, sectorId || 'no-sector', 'escalation-place') % 360) * (Math.PI / 180);
+  return {
+    // B3b: escalation spawns just outside the composed frame — a short approach leg, not a
+    // kilometer of off-screen targeting time.
+    x: px + Math.cos(angle) * 380,
+    z: pz + Math.sin(angle) * 380,
+    sectorId: sectorId || null,
+    zoneId: null,
+    stationId: escalationText(payload && payload.stationId),
+    name: 'the far lane',
+  };
+}
+
+function sanitizeEscalationPlace(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const x = finiteEscalationNumber(raw.x);
+  const z = finiteEscalationNumber(raw.z);
+  if (x == null || z == null) return null;
+  return {
+    x,
+    z,
+    sectorId: escalationText(raw.sectorId),
+    zoneId: escalationText(raw.zoneId),
+    stationId: escalationText(raw.stationId),
+    name: escalationText(raw.name),
+  };
+}
+
+function sanitizeEscalationSeed(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const cause = escalationText(raw.cause);
+  const beat = escalationText(raw.beat);
+  if (!ESCALATION_CAUSES.includes(cause) || !ESCALATION_BEATS.includes(beat)) return null;
+  const place = sanitizeEscalationPlace(raw.place);
+  if (!place) return null;
+  const delayS = finiteEscalationNumber(raw.delayS);
+  if (delayS == null || delayS <= 0) return null;
+  const seededAt = finiteEscalationNumber(raw.seededAt) || 0;
+  return {
+    id: escalationText(raw.id) || `esc:${cause}:${raw.causeId || seededAt}`,
+    cause,
+    beat,
+    causeId: escalationText(raw.causeId) || raw.id,
+    seededAt,
+    dueAt: finiteEscalationNumber(raw.dueAt) != null ? Number(raw.dueAt) : seededAt + delayS,
+    delayS,
+    arrived: raw.arrived === true,
+    arrivedAt: finiteEscalationNumber(raw.arrivedAt),
+    place,
+    commodityId: escalationText(raw.commodityId),
+    aceId: escalationText(raw.aceId),
+    playerAct: raw.playerAct !== false,
+  };
+}
+
+function persistEscalationLedger(dir) {
+  if (!dir || !dir.stats) return;
+  const rows = (dir.escalationSeeds || []).map(sanitizeEscalationSeed).filter(Boolean)
+    .slice(-ESCALATION_SEED_CAP);
+  if (rows.length) dir.stats.escalationLedger = rows;
+  else delete dir.stats.escalationLedger;
+}
+
+export function publicEscalationSeed(seed) {
+  const row = sanitizeEscalationSeed(seed);
+  return row ? { ...row, place: { ...row.place } } : null;
+}
+
+export function escalationSeedsOf(stateOrDir) {
+  if (!stateOrDir || typeof stateOrDir !== 'object') return [];
+  const direct = Array.isArray(stateOrDir.escalationSeeds) ? stateOrDir.escalationSeeds : null;
+  const nested = stateOrDir.encounterDirector && Array.isArray(stateOrDir.encounterDirector.escalationSeeds)
+    ? stateOrDir.encounterDirector.escalationSeeds
+    : null;
+  const stats = (stateOrDir.stats && Array.isArray(stateOrDir.stats.escalationLedger) && stateOrDir.stats.escalationLedger)
+    || (stateOrDir.encounterDirector && stateOrDir.encounterDirector.stats
+      && Array.isArray(stateOrDir.encounterDirector.stats.escalationLedger)
+      && stateOrDir.encounterDirector.stats.escalationLedger)
+    || [];
+  const rows = direct || nested || stats;
+  return rows.map(sanitizeEscalationSeed).filter(Boolean);
+}
+
+export function citedEscalationSeeds(stateOrDir) {
+  return escalationSeedsOf(stateOrDir).filter((seed) => (
+    seed
+    && seed.playerAct !== false
+    && ESCALATION_CAUSES.includes(seed.cause)
+    && ESCALATION_BEATS.includes(seed.beat)
+    && seed.place
+    && Number.isFinite(seed.place.x)
+    && Number.isFinite(seed.place.z)
+    && seed.delayS > 0
+  ));
+}
+
+export function seedEscalationFromAct(dir, state, cause, payload) {
+  const host = dir && typeof dir === 'object' ? dir : {};
+  if (!Array.isArray(host.escalationSeeds)) host.escalationSeeds = [];
+  if (!ESCALATION_CAUSES.includes(cause)) return null;
+  const act = payload && typeof payload === 'object' ? payload : {};
+  if (!isPlayerEscalationAct(state, cause, act)) return null;
+  const beat = beatForCause(cause, act);
+  if (!beat) return null;
+  const causeId = escalationCauseId(cause, act);
+  const openNeed = host.escalationSeeds.find((row) => (
+    row && row.causeId === causeId && row.arrived !== true && row.resolved !== true
+  ));
+  if (openNeed) return openNeed;
+  const priorNeedCount = host.escalationSeeds.reduce(
+    (count, row) => count + (row && row.causeId === causeId ? 1 : 0),
+    0,
+  );
+
+  const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  const sectorId = escalationText(act.sectorId)
+    || (state && state.world && state.world.currentSectorId)
+    || null;
+  const seedKey = (state && state.meta && state.meta.seed) || 1;
+  const span = ESCALATION_MAX_DELAY_S - ESCALATION_MIN_DELAY_S + 1;
+  const delayS = ESCALATION_MIN_DELAY_S + (hash32(seedKey, cause, causeId, 'pq14901-delay') % span);
+  const place = placeFarFromPlayer(state, act, sectorId);
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  if (player && player.pos) {
+    const dist = Math.hypot(place.x - player.pos.x, place.z - player.pos.z);
+    if (dist < ESCALATION_MIN_PLACE_DIST) return null;
+  }
+
+  const seed = sanitizeEscalationSeed({
+    id: priorNeedCount === 0 ? `esc:${cause}:${causeId}` : `esc:${cause}:${causeId}:g${priorNeedCount}`,
+    cause,
+    beat,
+    causeId,
+    seededAt: now,
+    dueAt: now + delayS,
+    delayS,
+    arrived: false,
+    place,
+    commodityId: firstManifestCommodity(act),
+    aceId: escalationText(act.aceId) || escalationText(act.namedAceId),
+    playerAct: true,
+  });
+  if (!seed) return null;
+  host.escalationSeeds.push(seed);
+  if (host.escalationSeeds.length > ESCALATION_SEED_CAP) {
+    host.escalationSeeds.splice(0, host.escalationSeeds.length - ESCALATION_SEED_CAP);
+  }
+  return seed;
+}
+
+export function advanceEscalationSeeds(dir, state, now) {
+  const host = dir && typeof dir === 'object' ? dir : {};
+  if (!Array.isArray(host.escalationSeeds)) host.escalationSeeds = [];
+  const t = Number.isFinite(now) ? now : 0;
+  const arrived = [];
+  for (const seed of host.escalationSeeds) {
+    if (!seed || seed.arrived === true) continue;
+    if (t < seed.dueAt) continue;
+    seed.arrived = true;
+    seed.arrivedAt = t;
+    arrived.push(seed);
+  }
+  return arrived;
+}

@@ -1,0 +1,1337 @@
+// src/systems/precursorMachines.js — Verge-Layer machine runtime (doc 07, AE-090..109).
+// Same seam as alienEcology.js: NOT a registered system. world.js calls
+// materializeMachineLayer from _spawnDressing and tickMachineLayer from update().
+//
+// Machines are kinematic entities (type 'machine') under faction_verge_layers IFF. They do
+// not fight, chase, or take damage as combatants — they enact procedures. Everything they
+// say is a directive line; the player's standing is ae.machineProtocol, not rep.
+
+import {
+  MACHINE_SITES,
+  MACHINE_KINDS,
+  machineSitesForSector,
+  machineKindById,
+  MACHINE_DIRECTIVES,
+  machineDirectiveLine,
+  spokenDirectiveId,
+  machineRevealsVerge,
+  advanceMachineProtocol,
+  grantWitnessMark,
+  hasWitnessMark,
+  witnessSkipsInterrogation,
+  scannerMachineLabel,
+} from '../data/precursorMachines.js';
+import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
+import { grantAlienUnique } from '../data/alienEcology.js';
+import { insertDressingRow } from '../world/dressingTable.js';
+import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+import { fittedModuleDefs } from '../core/fittedModules.js';
+import { addCargo, removeCargo } from './cargo.js';
+import { COMMODITIES, commodityIsBiohazard } from '../data/commodities.js';
+import { spawnJettisonedCargoPod } from './lootShards.js';
+import { evaluateReceiverAcceptance, commitReceiverAcceptance } from './worldSiteRuntime.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { tickCustodianWork, tickMasonWork, tickSorterWork } from './machineWork.js';
+import { nextSuhlClause } from '../data/discoveryPresentation.js';
+import { tickDiscoverySound } from './discoverySound.js';
+import { judgePresentDirective, presentMissLine, presentOrderLine } from '../data/presentDirective.js';
+import { BOUNDARY_FIELD, BOUNDARY_FIELD_ID, ensureBoundaryField } from '../data/boundaryField.js';
+import { CURL_FIELD, CURL_FIELD_ID, ensureCurlField } from '../data/curlField.js';
+import { LANE_FIELD, LANE_FIELD_ID, ensureLaneField } from '../data/laneField.js';
+import { VELOCITY_PLANE, VELOCITY_PLANE_ID, ensureVelocityPlane } from '../data/velocityPlane.js';
+
+// AE-129 (K-table): a salvaged handshake transponder halves the protocol hold window —
+// the machines read your compliance twice as fast.
+function holdWindowS(state) {
+  const fitted = fittedModuleDefs(state).some((d) => d && d.mods && d.mods.precursorHandshake === true);
+  return fitted ? 6 : 12;
+}
+
+// AE-170 (G15) — a fitted Quiet Equation decodes directive grammar into intent: the
+// comms line keeps the machine's own words, then appends the human read.
+function directiveText(state, id) {
+  const proto = state && state.world && state.world.alienEcology
+    && state.world.alienEcology.machineProtocol;
+  const line = machineDirectiveLine(id, proto);
+  const decoded = fittedModuleDefs(state).some((d) => d && d.mods && d.mods.quietEquation === true);
+  if (!decoded) return line;
+  const d = MACHINE_DIRECTIVES[spokenDirectiveId(id, proto)];
+  return d && d.resolves ? `${line} — ${d.resolves}.` : line;
+}
+
+// AE-296 — the first resolved directive mints the handshake transponder once per save.
+function grantProtocolSatisfiedUnique(world) {
+  if (!grantAlienUnique(world, 'mod_precursor_handshake_s', 'protocol_satisfied')) return;
+  world.bus.emit('comms:log', {
+    from: 'Verge Layer', kind: 'machine',
+    text: 'COMPLIANCE LOGGED. A RESPONDER IS ISSUED — YOUR WINDOWS WILL READ SHORTER.',
+  });
+}
+
+const TWO_PI = Math.PI * 2;
+const commodityNames = new Map(COMMODITIES.map(c => [c.id, c.name]));
+
+/** Membership lanes for the sector machine cast — members are e.data.machine only. */
+// 'sectorMemberships' joins the latch: a post-append re-home used to leave the
+// (laneVersion, sectorId) pair unchanged, so the cache served pre-move membership.
+const MACHINE_SCAN_LANES = ['machines', 'sectorMemberships'];
+
+/** Membership lanes for the sorter-target cast — members are wreck|pickup only
+ * ('debris' in the filter is a data-type no live entity spawns with). */
+const SORTER_TARGET_LANES = ['wrecks', 'pickups'];
+
+function dist2(ax, az, bx, bz) {
+  const dx = ax - bx;
+  const dz = az - bz;
+  return dx * dx + dz * dz;
+}
+
+function angleLerp(a, b, t) {
+  let d = (b - a) % TWO_PI;
+  if (d > Math.PI) d -= TWO_PI;
+  if (d < -Math.PI) d += TWO_PI;
+  return a + d * Math.min(1, Math.max(0, t));
+}
+
+function machineSiteRec(state, siteId) {
+  const ae = ensureAlienEcologyState(state);
+  if (!ae.machineSites || typeof ae.machineSites !== 'object') ae.machineSites = {};
+  if (!ae.machineSites[siteId]) {
+    ae.machineSites[siteId] = { seen: false, beats: {}, directiveIssued: false };
+  }
+  return ae.machineSites[siteId];
+}
+
+function biologicalManifest(state) {
+  const items = state.player?.cargo?.items || {};
+  const manifest = {};
+  for (const id of Object.keys(items).sort()) {
+    if (commodityIsBiohazard(id) && Number.isFinite(items[id]) && items[id] > 0) manifest[id] = items[id];
+  }
+  return manifest;
+}
+
+function currentManifestHull(state, player) {
+  const shipIndex = Number.isInteger(state.player?.activeShipIndex) ? state.player.activeShipIndex : 0;
+  return { shipIndex, defId: state.player?.ownedShips?.[shipIndex]?.defId || player?.data?.typeId || null };
+}
+
+function manifestHullMatches(state, player, incident) {
+  if (!incident.hull) return false;
+  const current = currentManifestHull(state, player);
+  return current.shipIndex === incident.hull.shipIndex && current.defId === incident.hull.defId;
+}
+
+function grantChamberCredentials(world, rec, site, sectorId) {
+  const state = world.state, ae = ensureAlienEcologyState(state);
+  if (rec.exceptionMinted || ['revoked', 'violation'].includes(ae.machineProtocol)) return;
+  ae.machineAccess.gates_exception = true;
+  advanceMachineProtocol(state, 'excepted');
+  if (addCargo(state, 'cmdty_unbroken_lens', 1, 'exception_chamber') < 1) return;
+  rec.exceptionMinted = true;
+  world.bus.emit('comms:log', { from: site.name, kind: 'machine',
+    text: 'EXCEPTION RECORDED. TRANSIT AUTHORITY RESTORED. THE LENS IS YOURS — DO NOT BREAK IT.' });
+  world.bus.emit('ecology:evidence', { id: 'L10', sectorId });
+  world.bus.emit('ecology:evidence', { id: 'P10', sectorId });
+}
+
+function tickManifestAppeal(world, entity, player, machines, dt, now) {
+  const state = world.state, m = entity.data.machine;
+  const ae = ensureAlienEcologyState(state), rec = machineSiteRec(state, m.siteId);
+  const incident = rec.enforcement;
+  const jury = machines.find(e => e.alive !== false && e.data.machine.kind === 'sleeping_jury'
+    && e.data.machine.siteId === m.siteId);
+  if (!player?.pos || !incident || !jury || !['revoked', 'violation'].includes(ae.machineProtocol)) return;
+  const inCounter = dist2(player.pos.x, player.pos.z, entity.pos.x, entity.pos.z)
+    < machineKindById('appeals_clerk').counterR ** 2;
+  if (!inCounter) { if (rec.appeal) rec.appeal.hold = 0; return; }
+  const appeal = rec.appeal ||= { incidentId: incident.id, hold: 0, status: 'waiting' };
+  if (appeal.incidentId !== incident.id) {
+    rec.appeal = { incidentId: incident.id, hold: 0, status: 'waiting' };
+    return;
+  }
+  if (appeal.status === 'accepted') return;
+  const manifest = biologicalManifest(state);
+  const site = MACHINE_SITES[m.siteId];
+  const center = world._toGlobal(site.center, site.sectorId);
+  let reason = null;
+  if (!manifestHullMatches(state, player, incident)) reason = 'RETURN THE CLASSIFIED HULL TO THE COMPARISON';
+  else if (Object.keys(manifest).length) reason = `ISOLATE THE FLAGGED LOTS: ${Object.keys(manifest).map(id => commodityNames.get(id) || id).join(', ')}. JETTISON OR PARK THEM BEFORE REPEATING THE CLEAN CONTROL`;
+  else if (!jury.data.machine.awake || !hasWitnessMark(state)) reason = 'JURY NOT WITNESSING. HOLD IN THE CHAMBER TO FILE YOUR WITNESS MARK';
+  else if (dist2(player.pos.x, player.pos.z, center.x, center.z) >= site.suppression.radius ** 2) reason = `MOVE INSIDE THE WITNESS VOLUME: CENTER ${Math.round(center.x)}, ${Math.round(center.z)}, RADIUS ${site.suppression.radius}`;
+  else if (Math.hypot(player.vel?.x || 0, player.vel?.z || 0) >= 8) reason = 'COMPARISON MOVING. HOLD SPEED BELOW 8';
+  if (reason) {
+    appeal.hold = 0;
+    if (appeal.reason !== reason) world.bus.emit('comms:log', { from: 'Appeals clerk', kind: 'machine',
+      text: `INCIDENT ${incident.id}. ${reason}. UNRELATED LORE IS NOT COUNTER-EVIDENCE.` });
+    appeal.reason = reason;
+    return;
+  }
+  if (appeal.reason !== 'comparing') {
+    appeal.reason = 'comparing';
+    world.bus.emit('comms:log', { from: 'Appeals clerk', kind: 'machine',
+      text: `INCIDENT ${incident.id}. CLEAN CONTROL: ZERO BIOLOGICAL LOTS. THE SAME HULL IS CLEAN; THE JURY WILL COMPARE IT FOR ${holdWindowS(state)} SECONDS. REMAIN INSIDE RADIUS ${site.suppression.radius}, SPEED BELOW 8.` });
+  }
+  appeal.hold += dt;
+  if (appeal.hold < holdWindowS(state)) return;
+  appeal.status = 'accepted';
+  appeal.acceptedAt = now;
+  appeal.comparison = { classifiedManifest: { ...incident.manifest }, controlLots: 0, observedLots: 0,
+    hull: { ...incident.hull }, siteId: m.siteId };
+  incident.status = 'appealed';
+  incident.resolvedAt = now;
+  incident.elapsed = 0;
+  advanceMachineProtocol(state, 'excepted');
+  world.bus.emit('comms:log', { from: 'Appeals clerk', kind: 'machine',
+    text: `INCIDENT ${incident.id}. WITNESSED CLEAN COMPARISON ACCEPTED. MANIFEST CLASSIFICATION OVERTURNED; TRANSIT EXCEPTION RESTORED.` });
+  world.bus.emit('machine:appealAccepted', { siteId: m.siteId, incidentId: incident.id, comparison: appeal.comparison });
+  const clause = nextSuhlClause(ae.machineAccess.suhlClauses, incident.id, m.siteId, now);
+  if (clause) {
+    ae.machineAccess.suhlClauses = [...(ae.machineAccess.suhlClauses || []), clause];
+    world.bus.emit('comms:log', { from: 'Dr. Iren Suhl', kind: 'machine',
+      text: `Clause ${clause.index + 1}, decoded from the accepted comparison: ${clause.text} Transcript filed in your Codex.` });
+  }
+  world.bus.emit('audio:cue', { id: 'scan_resolve', position: entity.pos });
+  refreshMachineLabels(world);
+}
+
+// ── Materialization (world._spawnDressing) ────────────────────────────────────────────────
+export function materializeMachineLayer(world, sector, active) {
+  const state = world && world.state;
+  const sites = machineSitesForSector(sector && sector.id);
+  if (!sites.length || !world.helpers) return;
+  const ae = ensureAlienEcologyState(state);
+
+  for (const site of sites) {
+    machineSiteRec(state, site.siteId);
+    const rng = world.helpers.mulberry32(
+      world.helpers.hash32(state.meta && state.meta.seed || 1, sector.id, 0, 'machine-layer', site.siteId));
+
+    // Structure props — machine geometry rows (partsLibrary machine builders).
+    const ring = site.propRing;
+    if (ring) {
+      for (let i = 0; i < ring.count; i += 1) {
+        // `linear` rows chain a spine through space; `rows` pack ossuary ranks.
+        const frac = ring.count > 1 ? i / (ring.count - 1) : 0;
+        let dx;
+        let dz;
+        if (ring.linear) {
+          dx = -ring.radius / 2 + ring.radius * frac;
+          dz = Math.sin(frac * Math.PI * 2) * 60;
+        } else if (ring.rows) {
+          const row = Math.floor(i / Math.ceil(ring.count / ring.rows));
+          const col = i % Math.ceil(ring.count / ring.rows);
+          dx = -ring.radius / 2 + col * (ring.radius / Math.ceil(ring.count / ring.rows));
+          dz = -ring.radius / 2 + row * (ring.radius / ring.rows);
+        } else {
+          const ang = rng() * TWO_PI;
+          const r = ring.radius * (0.9 + rng() * 0.2);
+          dx = Math.cos(ang) * r;
+          dz = Math.sin(ang) * r;
+        }
+        const row = insertDressingRow(state, {
+          type: 'fx',
+          pos: world._toGlobal({ x: site.center.x + dx, z: site.center.z + dz }, sector.id),
+          rot: rng() * TWO_PI,
+          radius: site.siteId === VELOCITY_PLANE.siteId
+            ? VELOCITY_PLANE.radius : site.kind === 'vault' ? 90 : 26,
+          homeSectorId: sector.id,
+          data: {
+            placeId: ring.propId,
+            machineSite: site.siteId,
+            scannerSignalKind: 'anomaly',
+          },
+        });
+        active.dressing.push({ id: row.id, placeId: ring.propId, pos: row.pos, paletteClass: 'machine' });
+      }
+    }
+
+    // Machine entities — kinematic; IFF faction_verge_layers makes them neutral contacts.
+    for (const spec of site.machines || []) {
+      const kind = machineKindById(spec.kind);
+      if (!kind) continue;
+      const pos = world._toGlobal({ x: site.center.x + spec.dx, z: site.center.z + spec.dz }, sector.id);
+      const ent = world.helpers.spawnEntity({
+        type: 'machine',
+        pos,
+        rot: rng() * TWO_PI,
+        radius: kind.radius,
+        collides: false,
+        physicsBody: false,
+        homeSectorId: sector.id,
+        hull: 400, // machines do not die to stray fire in this layer; they ignore damage events
+        factionId: 'faction_verge_layers',
+        data: {
+          name: scannerMachineLabel(ae.machineProtocol),
+          scanLabel: scannerMachineLabel(ae.machineProtocol),
+          scannerSignalKind: kind.scannerSignalKind,
+          machine: {
+            kind: spec.kind,
+            siteId: site.siteId,
+            phase: rng() * TWO_PI,
+            t: 0,
+            interrogated: false,
+            anchor: { x: pos.x, z: pos.z },
+            sweepT: 0,
+          },
+        },
+      });
+      if (ent) active.dressing.push({ id: ent.id, placeId: null, pos: ent.pos, paletteClass: 'machine' });
+    }
+  }
+}
+
+// ── Per-tick (world.update) ───────────────────────────────────────────────────────────────
+// Borrowed scratches for the per-tick site pass — the sector cast changes only on index
+// bumps, and the local/global pairs are consumed inside each site iteration.
+const _machineSiteLocalPos = { x: 0, z: 0 };
+const _machineSiteGlobalPos = { x: 0, z: 0 };
+
+// Field ids live on the record helpers. Sector homes live on the machine sites.
+// Leaving a sector drops that registration, including a sector with no machine sites.
+const PRECURSOR_FIELD_HOMES = [
+  { id: VELOCITY_PLANE_ID, siteId: VELOCITY_PLANE.siteId },
+  { id: CURL_FIELD_ID, siteId: CURL_FIELD.siteId },
+  { id: LANE_FIELD_ID, siteId: LANE_FIELD.siteId },
+  { id: BOUNDARY_FIELD_ID, siteId: BOUNDARY_FIELD.siteId },
+];
+
+function workCycleStatusWords(status) {
+  switch (status) {
+    case 'awaiting_mail': return 'waiting on route mail';
+    case 'repairing': return 'repairing the gantry';
+    case 'jurisdiction': return 'waiting on a custody choice';
+    case 'placing': return 'placing the ballast';
+    case 'preserved': return 'preserved';
+    case 'complete': return 'complete';
+    default: return null;
+  }
+}
+
+function emitComms(world, sender, text) {
+  if (!world?.bus?.emit || !text) return;
+  world.bus.emit('comms:message', { sender, text, channel: 'machine' });
+}
+
+// Inside the work volume and past the skirt are different questions. A crossing
+// of the band between them must not announce, and the first arrival is not a return.
+function noteMachineWorkReturn(world, site, rec, player, origin) {
+  if (!player?.pos || !origin) return;
+  const d = Math.sqrt(dist2(player.pos.x, player.pos.z, origin.x, origin.z));
+  if (d > site.radius + 600) {
+    if (rec.seen) rec.playerInRange = false;
+    return;
+  }
+  if (d >= site.radius + 400) return;
+  const status = rec.workCycle?.status;
+  if (rec.seen && rec.playerInRange === false && status
+      && rec.lastReturnAnnouncedStatus !== status) {
+    const words = workCycleStatusWords(status);
+    if (words) {
+      emitComms(world, site.name, `${site.name} work cycle is ${words}.`);
+      rec.lastReturnAnnouncedStatus = status;
+    }
+  }
+  if (rec.seen) rec.playerInRange = true;
+}
+
+function precursorFieldState(world) {
+  const state = world && world.state;
+  if (state && state.systems && state.systems.fields) return state;
+  const registry = world && world.registry;
+  const fields = registry && registry.get && registry.get('fields');
+  return { systems: { fields: fields || null } };
+}
+
+// Drop external precursor fields whose home sector is not the one being played.
+// Does not read or write any body's velocity.
+export function unregisterOffSectorPrecursorFields(state, activeSectorId) {
+  const fields = state && state.systems && state.systems.fields;
+  if (!fields || typeof fields.unregisterExternal !== 'function' || !activeSectorId) return;
+  for (let i = 0; i < PRECURSOR_FIELD_HOMES.length; i++) {
+    const home = PRECURSOR_FIELD_HOMES[i];
+    const site = MACHINE_SITES[home.siteId];
+    if (site && site.sectorId !== activeSectorId) fields.unregisterExternal(home.id);
+  }
+}
+
+export function tickMachineLayer(world, dt) {
+  const state = world && world.state;
+  if (!state || !state.entityList || dt <= 0) return;
+  const sectorId = state.world && state.world.currentSectorId;
+  if (!sectorId) return;
+  unregisterOffSectorPrecursorFields(precursorFieldState(world), sectorId);
+  const sites = machineSitesForSector(sectorId);
+  if (!sites.length) return;
+  const ae = ensureAlienEcologyState(state);
+  const player = state.playerId != null && state.entities ? state.entities.get(state.playerId) : null;
+  const now = Number(state.simTime) || 0;
+
+  const machines = machineScanForSector(state, sectorId);
+  tickDiscoverySound(world, machines, 'machine', player, now);
+
+  for (const site of sites) {
+    const rec = machineSiteRec(state, site.siteId);
+    _machineSiteLocalPos.x = site.center.x;
+    _machineSiteLocalPos.z = site.center.z;
+    const g = world._toGlobal(_machineSiteLocalPos, sectorId, _machineSiteGlobalPos);
+    if (site.siteId === 'charon_star_marker') ensureVelocityPlane(world, site, g);
+    if (site.siteId === 'charon_broken_shepherd') ensureCurlField(world, site, g);
+    if (site.siteId === 'ashfall_the_line') ensureLaneField(world, site, g);
+    if (site.siteId === 'veil_containment_ring') ensureBoundaryField(world, site, g);
+
+    // First observation: entering the site's radius is the 'seen' beat — protocol becomes
+    // 'observed' and story.verge.revealed flips (galaxy map learns the layer exists).
+    if (player && player.pos && !rec.seen) {
+      const d = Math.sqrt(dist2(player.pos.x, player.pos.z, g.x, g.z));
+      if (d < (site.radius + 400)) {
+        rec.seen = true;
+        const advanced = site.tease ? ae.machineProtocol : advanceMachineProtocol(state, 'seen');
+        const revealed = !site.tease && machineRevealsVerge(state);
+        if (site.beat) world.bus.emit('toast', { text: site.beat, kind: site.tease ? 'discovery' : 'info', ttl: 6 });
+        if (revealed) {
+          world.bus.emit('toast', {
+            text: `Scanner catalogue revised: ${scannerMachineLabel(advanced)}.`,
+            kind: 'info', ttl: 6,
+          });
+        }
+        // First directive: the site's issued instruction (protocol ask).
+        if (site.directive && !rec.directiveIssued) {
+          rec.directiveIssued = true;
+          const orderText = site.directive === 'PRESENT'
+            ? presentOrderLine(site, g)
+            : (site.directive === 'HOLD' || site.directive === 'WITNESS')
+              ? `${directiveText(state, site.directive)} CENTER ${Math.round(g.x)}, ${Math.round(g.z)}. RADIUS ${site.radius + 120}. SPEED BELOW 8. HOLD ${holdWindowS(state)} SECONDS CONTINUOUSLY.`
+              : site.directive === 'CLOSE'
+                ? directiveText(state, site.directive)
+                : `${directiveText(state, site.directive)} CLEAR RADIUS ${site.radius + 120} WITHIN 60 SECONDS.`;
+          if (site.directive === 'CLOSE') rec.closeSpoken = orderText;
+          world.bus.emit('comms:log', {
+            from: site.name,
+            text: orderText,
+            kind: 'machine',
+          });
+        }
+        // AE-251 (L-table): the site's evidence row files itself on first observation.
+        if (site.evidence) {
+          world.bus.emit('ecology:evidence', { id: site.evidence, sectorId });
+        }
+        // AE-296 — the broken shepherd's sensor spine is the lattice coupler grant.
+        if (site.siteId === 'charon_broken_shepherd'
+          && grantAlienUnique(world, 'mod_lattice_coupler_s', 'machine_site_seen')) {
+          world.bus.emit('comms:log', {
+            from: site.name, kind: 'machine',
+            text: 'The shepherd\'s sensor spine hangs loose. You pry free a tap into site memory.',
+          });
+        }
+        refreshMachineLabels(world);
+      }
+    }
+
+    // K05 lattice coupler: a fitted coupler echoes the site's standing directive through
+    // comms on first approach even before the site's own line fires — grammar by listening.
+    if (player && player.pos && !rec.couplerEcho
+      && fittedModuleDefs(state).some((d) => d && d.mods && d.mods.latticeCoupler === true)) {
+      const dC = Math.sqrt(dist2(player.pos.x, player.pos.z, g.x, g.z));
+      if (dC < site.radius + 260) {
+        rec.couplerEcho = true;
+        const spoken = spokenDirectiveId(site.directive, ae.machineProtocol);
+        const dir = spoken && MACHINE_DIRECTIVES[spoken];
+        world.bus.emit('comms:log', {
+          from: 'Lattice Coupler', kind: 'machine',
+          text: dir
+            ? `Site memory read: standing directive ${spoken} — ${dir.resolves}.`
+            : 'Site memory read: no standing directive. This site observes only.',
+        });
+      }
+    }
+
+    // Directive resolution — obeyed lines advance protocol; ignored VACATE/CLOSE → fault.
+    if (player && player.pos && rec.directiveIssued && !rec.directiveResolved && site.directive) {
+      const d = Math.sqrt(dist2(player.pos.x, player.pos.z, g.x, g.z));
+      const windowS = 60; // a directive stands for a minute of player behavior
+      rec.directiveT = (rec.directiveT || 0) + dt;
+      // CLOSE stays sealed until standing improves. Leaving the ring is not compliance.
+      if (site.directive === 'VACATE') {
+        if (d > site.radius + 120) {
+          rec.directiveResolved = true;
+          advanceMachineProtocol(state, 'satisfied');
+          grantProtocolSatisfiedUnique(world);
+          refreshMachineLabels(world);
+        } else if (rec.directiveT > windowS) {
+          rec.directiveResolved = true;
+          advanceMachineProtocol(state, 'violated');
+          world.bus.emit('comms:log', {
+            from: site.name,
+            text: 'COMPLIANCE WINDOW EXPIRED. PROTOCOL VIOLATION LOGGED.',
+            kind: 'machine',
+          });
+          refreshMachineLabels(world);
+        }
+      } else if (site.directive === 'PRESENT') {
+        const items = state.player && state.player.cargo && state.player.cargo.items;
+        const cargoCount = items ? Number(items[site.presentObject]) : 0;
+        const judged = judgePresentDirective(
+          { objectId: site.presentObject, radius: site.radius },
+          { distance: d, cargoCount },
+        );
+        rec.presentReason = judged.reason;
+        if (judged.accepted) {
+          rec.directiveResolved = true;
+          advanceMachineProtocol(state, 'satisfied');
+          grantProtocolSatisfiedUnique(world);
+          refreshMachineLabels(world);
+        } else if (rec.presentTold !== judged.reason) {
+          rec.presentTold = judged.reason;
+          const miss = presentMissLine(judged.reason, site.presentLabel || site.presentObject);
+          if (miss) world.bus.emit('comms:log', { from: site.name, text: miss, kind: 'machine' });
+        }
+      } else if (site.directive === 'HOLD' || site.directive === 'WITNESS') {
+        const pv = player.vel ? Math.sqrt(player.vel.x * player.vel.x + player.vel.z * player.vel.z) : 0;
+        if (d < site.radius + 120 && pv < 8) {
+          rec.holdFailure = null;
+          rec.holdT = (rec.holdT || 0) + dt;
+          if (rec.holdT > holdWindowS(state)) {
+            rec.directiveResolved = true;
+            advanceMachineProtocol(state, 'satisfied');
+            grantProtocolSatisfiedUnique(world);
+            if (site.directive === 'WITNESS') {
+              grantWitnessMark(state, site.siteId);
+              // AE-296 — holding through a full witness procedure teaches the decode
+              // lattice: the Quiet Equation lands with the first witness mark.
+              if (grantAlienUnique(world, 'mod_quiet_equation_s', 'protocol_witnessed')) {
+                world.bus.emit('comms:log', {
+                  from: site.name, kind: 'machine',
+                  text: 'The directive stream resolves into grammar — the sentence underneath is yours now.',
+                });
+              }
+            }
+            // K09/K10 (Phase 26): satisfying the exception chamber's witness hold mints
+            // the endgame credentials — route authority and the unbroken lens.
+            if (site.siteId === 'veil_exception_chamber' && !rec.exceptionMinted
+              && !['revoked', 'violation'].includes(ae.machineProtocol)) {
+              grantChamberCredentials(world, rec, site, sectorId);
+            }
+            if (hasWitnessMark(state) && !rec.witnessToast) {
+              rec.witnessToast = true;
+              world.bus.emit('comms:log', {
+                from: site.name,
+                text: 'WITNESS STATUS RECORDED.',
+                kind: 'machine',
+              });
+            }
+            refreshMachineLabels(world);
+          }
+        } else {
+          const cause = d >= site.radius + 120 ? 'OUTSIDE HOLD VOLUME' : 'SPEED ABOVE HOLD LIMIT';
+          if (rec.holdT > 0 && rec.holdFailure !== cause) {
+            rec.holdFailure = cause;
+            world.bus.emit('comms:log', { from: site.name, kind: 'machine',
+              text: `${cause}. HOLD TIMER RESET; RETURN INSIDE RADIUS ${site.radius + 120} AT SPEED BELOW 8.` });
+          }
+          rec.holdT = 0;
+          if (rec.directiveT > windowS) {
+            rec.directiveResolved = true;
+            advanceMachineProtocol(state, 'violated');
+            world.bus.emit('comms:log', { from: site.name, kind: 'machine',
+              text: 'HOLD WINDOW EXPIRED. PROTOCOL VIOLATION LOGGED. THE EXCEPTION CHAMBER ACCEPTS COUNTER-EVIDENCE.' });
+            refreshMachineLabels(world);
+          }
+        }
+      }
+    }
+    if (site.siteId === 'veil_exception_chamber' && rec.directiveResolved
+      && ae.machineProtocol === 'exception') grantChamberCredentials(world, rec, site, sectorId);
+    // A sealed gate speaks OPEN once standing actually opens. It does not re-issue the seal.
+    if (site.directive === 'CLOSE' && player && player.pos && rec.closeSpoken) {
+      const dClose = Math.sqrt(dist2(player.pos.x, player.pos.z, g.x, g.z));
+      if (dClose < site.radius + 400) {
+        const line = directiveText(state, 'CLOSE');
+        if (rec.closeSpoken !== line) {
+          rec.closeSpoken = line;
+          world.bus.emit('comms:log', { from: site.name, text: line, kind: 'machine' });
+        }
+      }
+    }
+    noteMachineWorkReturn(world, site, rec, player, g);
+  }
+
+  // ── Machine kinematics ──
+  for (const e of machines) {
+    if (e.data.cleanCylinderOf) continue; // escort/physics owns this moving Shepherd charge
+    if (e.data.vergeDriven) continue;     // the border authority owns this body's motion
+    const m = e.data.machine;
+    const kind = machineKindById(m.kind);
+    if (!kind) continue;
+    m.t += dt;
+    switch (m.kind) {
+      case 'surveyor_prism': {
+        // Slow inspection sweep: orbit the anchor, periodic scan ping.
+        const w = now * 0.12 + m.phase;
+        const tx = m.anchor.x + Math.cos(w) * kind.orbitR;
+        const tz = m.anchor.z + Math.sin(w) * kind.orbitR;
+        const desired = Math.atan2(tz - e.pos.z, tx - e.pos.x);
+        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+        e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        m.sweepT += dt;
+        if (m.sweepT >= kind.scanPeriodS) {
+          m.sweepT = 0;
+          world.bus.emit('audio:cue', { id: 'scan_resolve' });
+        }
+        break;
+      }
+      case 'custodian': {
+        if (tickCustodianWork(world, e, dt)) break;
+        // Patrol the structure, pause for a repair beat.
+        const w = now * 0.07 + m.phase;
+        const tx = m.anchor.x + Math.cos(w) * kind.orbitR;
+        const tz = m.anchor.z + Math.sin(w) * kind.orbitR;
+        const desired = Math.atan2(tz - e.pos.z, tx - e.pos.x);
+        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+        e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        m.sweepT += dt;
+        if (m.sweepT >= kind.repairPeriodS) m.sweepT = 0; // repair flash cadence marker
+        break;
+      }
+      case 'auditor': {
+        // Stationary protocol evaluation: face the player when near.
+        // The deploy flag is unconditional: a despawned player cannot leave the bar sweeping.
+        const auditorD = player && player.pos
+          ? Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z)) : Infinity;
+        // The audit bar only sweeps while a hull is actually inside the ring —
+        // row 384's deployed-tool read keys off this flag.
+        m.interrogating = auditorD < kind.interrogateR;
+        if (player && player.pos) {
+          const d = auditorD;
+          const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
+          e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+          if (d < kind.interrogateR && !m.interrogated) {
+            m.interrogated = true;
+            const marked = witnessSkipsInterrogation(state);
+            world.bus.emit('comms:log', {
+              from: 'Gate Auditor',
+              text: marked
+                ? 'WITNESS STATUS ON FILE. PROCEED.'
+                : `INTERROGATION. ${directiveText(state, 'APPEAL')}`,
+              kind: 'machine',
+            });
+            advanceMachineProtocol(state, 'seen');
+            refreshMachineLabels(world);
+          }
+        }
+        break;
+      }
+      // ── Phase 24 machine wave B ────────────────────────────────────────────────
+      case 'witness': {
+        // AE-232 (I05): zero motion — it has watched one site for millennia. The only
+        // beat is the slow pupil-track on the player inside observeR.
+        if (player && player.pos) {
+          const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
+          if (d < kind.observeR) {
+            const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
+            e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+          }
+        }
+        break;
+      }
+      case 'shepherd': {
+        // AE-233 (I06): patrols its corridor between anchor and counter-anchor —
+        // a moving suppression pocket (see shepherdFieldAt).
+        const w = (now / kind.patrolPeriodS + m.phase / TWO_PI) % 1;
+        const t = w < 0.5 ? w * 2 : (1 - w) * 2; // ping-pong
+        const tx = m.anchor.x - 300 + t * 600;
+        const tz = m.anchor.z - 300 + t * 600;
+        const desired = Math.atan2(tz - e.pos.z, tx - e.pos.x);
+        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+        e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        break;
+      }
+      case 'mason': {
+        const wasWorking = Boolean(m.working);
+        const onSite = tickMasonWork(world, e, dt);
+        if (!onSite) {
+          // AE-234 (I07): orbits its workpiece when no foundry job owns the frame.
+          const w = now * 0.10 + m.phase;
+          const tx = m.anchor.x + Math.cos(w) * kind.orbitR;
+          const tz = m.anchor.z + Math.sin(w) * kind.orbitR;
+          const desired = Math.atan2(tz - e.pos.z, tx - e.pos.x);
+          e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+          e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+          e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        }
+        // Placement may finish before one full cadence: weld on onset, then periodically.
+        if (Boolean(m.working)) {
+          m.sweepT = (m.sweepT || 0) + dt;
+          if (!wasWorking || m.sweepT >= kind.weldPeriodS) {
+            m.sweepT = 0;
+            world.bus.emit('audio:cue', { id: 'scan_resolve' });
+          }
+        }
+        break;
+      }
+      case 'executor': {
+        const fault = ae.machineProtocol === 'revoked' || ae.machineProtocol === 'violation';
+        const rec = machineSiteRec(state, m.siteId);
+        if (!fault) {
+          if (rec.enforcement?.status === 'active') {
+            rec.enforcement.status = 'protocol_restored';
+            rec.enforcement.resolvedAt = now;
+          }
+          m.awakened = false; m.sweepT = 0; m.enforcementInRange = false;
+          break;
+        }
+        if (!player?.pos || player.alive === false) break;
+        const manifest = biologicalManifest(state);
+        let incident = rec.enforcement;
+        const freshFault = !incident || incident.status === 'appealed' || incident.status === 'protocol_restored';
+        const newContamination = incident && ['purged', 'clean'].includes(incident.status)
+          && Object.keys(manifest).length > 0;
+        if (freshFault || newContamination) {
+          incident = rec.enforcement = { id: 'manifest:' + m.siteId + ':' + now,
+            status: 'active', classification: 'biological_manifest', hull: currentManifestHull(state, player),
+            manifest, elapsed: 0, inRange: false, warned: false, issuedAt: now };
+        }
+        m.awakened = true;
+        if (!incident.warned) {
+          incident.warned = true;
+          const flaggedLots = Object.keys(incident.manifest || {});
+          const flaggedUnits = flaggedLots.reduce((n, id) => n + (Number(incident.manifest[id]) || 0), 0);
+          // The quarantined lots are named from the incident manifest so the player
+          // knows what to jettison; display names plus ids survive unknown ids.
+          // No biological lots (mineral/metal hold) means no warning at all.
+          if (flaggedLots.length) {
+            const flaggedWords = flaggedLots
+              .map((id) => `${commodityNames.get(id) || 'unidentified lot'} ×${incident.manifest[id]}`)
+              .join(', ');
+            world.bus.emit('comms:log', { from: 'Verge lattice', kind: 'machine',
+              text: 'INCIDENT ' + incident.id + '. BIOLOGICAL MANIFEST SUBJECT TO PURGE AFTER '
+                + kind.pulsePeriodS + ' SECONDS INSIDE ' + kind.quarantinePulseR
+                + `. FLAGGED LOTS: ${flaggedUnits} UNIT(S) — ${flaggedWords}`
+                + '. JETTISON BIOLOGICAL CARGO TO ISOLATE IT, CLEAR THE RADIUS, OR BRING THIS HULL TO THE EXCEPTION CHAMBER FOR A WITNESSED CLEAN COMPARISON. NONBIOLOGICAL CARGO IS OUTSIDE SCOPE.' });
+            emitComms(world, 'Verge lattice',
+              `Quarantine warning: BIOLOGICAL MANIFEST SUBJECT TO PURGE after ${kind.pulsePeriodS} `
+              + `seconds inside ${kind.quarantinePulseR}. Flagged lots: ${flaggedUnits} unit(s) — ${flaggedWords}.`);
+          }
+        }
+        const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
+        const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
+        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        if (d > kind.shadowR) {
+          e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+          e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        }
+        const inRange = d < kind.quarantinePulseR;
+        if (!inRange) {
+          if (incident.inRange) world.bus.emit('comms:log', { from: 'Executor', kind: 'machine',
+            text: 'PURGE WINDOW CANCELLED. HULL OUTSIDE QUARANTINE RADIUS; REENTRY STARTS A FRESH WINDOW.' });
+          incident.elapsed = 0;
+          incident.inRange = false;
+          if (incident.status === 'active') incident.status = 'escaped';
+          m.sweepT = 0; m.enforcementInRange = false;
+          break;
+        }
+        if (incident.status === 'escaped') incident.status = 'active';
+        incident.inRange = true;
+        m.enforcementInRange = true;
+        if (incident.status !== 'active') { m.sweepT = 0; break; }
+        incident.elapsed = Math.max(0, Math.min(kind.pulsePeriodS, Number(incident.elapsed) || 0)) + dt;
+        m.sweepT = incident.elapsed;
+        if (incident.elapsed < kind.pulsePeriodS) break;
+        let scrubbed = 0;
+        for (const cid of Object.keys(manifest)) scrubbed += removeCargo(state, cid, manifest[cid], 'quarantine_pulse');
+        incident.status = scrubbed > 0 ? 'purged' : 'clean';
+        incident.resolvedAt = now;
+        incident.scrubbed = scrubbed;
+        incident.elapsed = 0; m.sweepT = 0;
+        rec.lastEnforcement = { incidentId: incident.id, t: now, scrubbed, resolved: incident.status };
+        world.bus.emit('comms:log', { from: 'Executor', kind: 'machine', text: scrubbed > 0
+          ? 'QUARANTINE PULSE. ' + scrubbed + ' BIOLOGICAL LOT(S) DESTROYED IN TRANSIT. OTHER CARGO RETAINED.'
+          : 'QUARANTINE PULSE. MANIFEST CLEAN; INCIDENT RESOLVED.' });
+        world.bus.emit('ecology:quarantinePulse', { sectorId, scrubbed, t: now, incidentId: incident.id });
+        break;
+      }
+      case 'courier': {
+        // AE-236 (I09): shuttles a protocol token between the sector's machine sites —
+        // in a single-site sector it runs legs between its siblings' anchors instead.
+        // SFQ-B141: the token is a physical pod in the frame's custody — see
+        // tickCourierToken. Approach alone moves nothing into the player's hold.
+        const targets = courierRouteTargets(world, e, m, sites, machines, sectorId);
+        if (!targets.length) break;
+        const legIdx = Math.floor(m.t / kind.routePeriodS) % targets.length;
+        const lg = targets[legIdx].pos;
+        const desired = Math.atan2(lg.z - e.pos.z, lg.x - e.pos.x);
+        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        const token = machineSiteRec(state, m.siteId).courierToken;
+        const receiverStop = token?.status === 'in_transit' && now >= token.readyAt
+          && dist2(e.pos.x, e.pos.z, token.destPos.x, token.destPos.z) < (kind.deliverR - 32) ** 2;
+        e.vel ||= { x: 0, z: 0 };
+        e.vel.x = receiverStop ? 0 : Math.cos(e.rot) * kind.speed;
+        e.vel.z = receiverStop ? 0 : Math.sin(e.rot) * kind.speed;
+        e.pos.x += e.vel.x * dt;
+        e.pos.z += e.vel.z * dt;
+        tickCourierToken(world, e, m, kind, targets[0], now);
+        break;
+      }
+      case 'conservator': {
+        // AE-237 (I10): refuses release of what it keeps — a polite denial on approach.
+        if (player && player.pos && !m.refused) {
+          const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
+          if (d < kind.refuseR) {
+            m.refused = true;
+            world.bus.emit('comms:log', {
+              from: 'Conservator', kind: 'machine',
+              text: 'OPEN REQUEST NOTED. RELEASE IS NOT IN SCOPE. PRESERVATION IS.',
+            });
+          }
+        }
+        break;
+      }
+      case 'measure': {
+        // AE-237 (I11): its reading files an instrument anomaly + the K04 datum.
+        if (player && player.pos && !m.read) {
+          const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
+          if (d < kind.readR) {
+            m.read = true;
+            addCargo(state, 'cmdty_inertial_datum', 1, 'measure_engine');
+            world.bus.emit('comms:log', {
+              from: 'Measure engine', kind: 'machine',
+              text: 'REFERENCE FRAME EMITTED. YOUR COORDINATE SYSTEM NOW OWNS A SECOND ZERO.',
+            });
+            world.bus.emit('ecology:evidence', { id: 'L02', sectorId });
+          }
+        }
+        break;
+      }
+      case 'boundary_walker': {
+        // AE-238 (I12): walks the quarantine line; a watched crossing is a violation.
+        const w = (now / 90 + m.phase / TWO_PI) % 1;
+        const t = w < 0.5 ? w * 2 : (1 - w) * 2;
+        const site = MACHINE_SITES[m.siteId];
+        const base = site ? world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId) : m.anchor;
+        const tx = base.x - kind.patrolLen / 2 + t * kind.patrolLen;
+        const tz = base.z;
+        const desired = Math.atan2(tz - e.pos.z, tx - e.pos.x);
+        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+        e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        if (player && player.pos && site) {
+          const insideX = Math.abs(player.pos.x - base.x) < kind.patrolLen / 2;
+          const side = Math.sign(player.pos.z - base.z);
+          const sRec = machineSiteRec(state, site.siteId);
+          const watched = dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z)
+            < kind.watchR * kind.watchR;
+          if (insideX && sRec.lineSide && sRec.lineSide !== side && watched
+            && !sRec.setpieces?.N09) {
+            sRec.setpieces = sRec.setpieces || {};
+            sRec.setpieces.N09 = true;
+            advanceMachineProtocol(state, 'violated');
+            world.bus.emit('comms:log', {
+              from: site.name, kind: 'machine',
+              text: 'BOUNDARY CROSSING LOGGED UNDER OBSERVATION. VIOLATION STANDS.',
+            });
+            world.bus.emit('ecology:evidence', { id: 'L08', sectorId });
+            refreshMachineLabels(world);
+          }
+          if (insideX) sRec.lineSide = side;
+        }
+        break;
+      }
+      case 'appeals_clerk': {
+        tickManifestAppeal(world, e, player, machines, dt, now);
+        break;
+      }
+      case 'debris_sorter': {
+        tickSorterWork(world, e, dt, sorterTargetsForSector(state, sectorId));
+        break;
+      }
+      case 'sleeping_jury': {
+        // AE-241 (I15): the jury convenes when protocol is at fault AND the player carries
+        // a witness mark AND a revoked-route site was seen anywhere — then it waits for
+        // the chamber's WITNESS hold to mint the exception.
+        if (!m.awake && hasWitnessMark(state)) {
+          const revokedSeen = Object.values(ae.machineSites || {}).some((r) => r && r.seen)
+            && (ae.machineProtocol === 'revoked' || ae.machineProtocol === 'violation');
+          if (revokedSeen) {
+            m.awake = true;
+            world.bus.emit('comms:log', {
+              from: 'Sleeping jury', kind: 'machine',
+              text: 'THE JURY CONVENES. STAND WITNESS OR BE RECORDED IN ABSENTIA.',
+            });
+          }
+        }
+        if (m.awake && player && player.pos) {
+          const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
+          e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        }
+        break;
+      }
+      default: break;
+    }
+  }
+}
+
+// ── Courier token (SFQ-B141) ──────────────────────────────────────────────────────────────
+// The route mail is a real body in space: a jettisoned-cargo pod carrying source custody
+// (ownerId = the courier frame), a route (originId -> destinationId), and recipient
+// acceptance through the world-site receiver ledger — never an addCargo on approach.
+// The durable token record lives on the machine-site row inside ae.machineSites (save-
+// carried), so rematerialization re-bodies the same token once and a settled token never
+// re-mints. The player's hold is written only by a committed pickup:collected receipt.
+
+const COURIER_TOKEN_COMMODITY = 'cmdty_gate_handshake';
+const COURIER_TOKEN_RETURN_R = 320; // bring the held token home inside this radius
+const COURIER_TOKEN_OPEN = new Set(['in_transit', 'loose']);
+// Runtime leases are never saved: the durable token survives Continue, recycled body ids do not.
+const courierTokenBodies = new WeakMap();
+function tokenBodyMatches(pod, token) {
+  const stamp = pod?.data?.machineToken;
+  return pod?.type === 'payload' && stamp?.tokenId === token.tokenId
+    && stamp.originSiteId === token.originSiteId && stamp.destSiteId === token.destSiteId;
+}
+function bindCourierTokenBody(token, pod) {
+  const lease = courierTokenBodies.get(token);
+  if (lease?.entity !== pod || lease.generation !== pod.occupantGeneration) {
+    courierTokenBodies.set(token, { entity: pod, generation: pod.occupantGeneration });
+  }
+}
+function loseCourierToken(world, token, pod) {
+  const lease = courierTokenBodies.get(token);
+  if (!COURIER_TOKEN_OPEN.has(token.status) || !tokenBodyMatches(pod, token)
+      || lease?.entity !== pod || lease.generation !== pod.occupantGeneration) return false;
+  token.status = 'lost';
+  token.lastPodPos = { x: pod.pos.x, z: pod.pos.z };
+  token.settledAt = Number(world.state.simTime) || 0;
+  world.bus.emit('comms:log', {
+    from: 'Courier frame', kind: 'machine',
+    text: 'ROUTE MAIL DESTROYED IN TRANSIT. THE SITE FILES A LOSS.',
+  });
+  return true;
+}
+
+/** Positive destruction only. Retirement, restore and an absent resident are not losses. */
+export function handleMachineTokenDestroyed(world, payload, killed = false) {
+  if (!world?.state || !payload || payload.reason) return false;
+  const pod = killed ? world.state.entities?.get(payload.id) : payload.entity;
+  if (!pod || pod.id !== payload.id || pod.alive !== false
+      || (!killed && !(pod.hull <= 0))) return false;
+  const stamp = pod.data?.machineToken;
+  const token = world.state.world?.alienEcology?.machineSites?.[stamp?.originSiteId]?.courierToken;
+  if (!token || !tokenBodyMatches(pod, token)) return false;
+  // Continue can restore a pod before the machine's first tick. A synchronous kill
+  // resolves that exact current occupant; an unbound queued/stale corpse cannot do so.
+  if (killed && !courierTokenBodies.has(token) && world.state.entities?.get(pod.id) === pod) {
+    bindCourierTokenBody(token, pod);
+  }
+  return loseCourierToken(world, token, pod);
+}
+
+function courierRouteTargets(world, e, m, sites, machines, sectorId) {
+  const targets = [];
+  for (const s of sites) {
+    if (s.siteId === m.siteId) continue;
+    targets.push({
+      pos: world._toGlobal({ x: s.center.x, z: s.center.z }, sectorId),
+      siteId: s.siteId,
+    });
+  }
+  for (const sib of machines) {
+    if (sib !== e && sib.data.machine.siteId === m.siteId && sib.data.machine.anchor) {
+      targets.push({ pos: sib.data.machine.anchor, siteId: m.siteId });
+    }
+  }
+  return targets;
+}
+
+function findCourierTokenPod(state, token) {
+  for (const e of state.entityList || []) {
+    if (!e || e.alive === false || !e.data) continue;
+    if (tokenBodyMatches(e, token)) return e;
+  }
+  return null;
+}
+
+/** Mint or resume the durable token record on the site row. One per site, ever. */
+function courierTokenRec(state, siteId, dest, now) {
+  const sRec = machineSiteRec(state, siteId);
+  if (!sRec.courierToken) {
+    sRec.courierToken = {
+      tokenId: `machine-token:${siteId}`,
+      receiptId: `machine-courier:${siteId}`,
+      status: 'in_transit',
+      originSiteId: siteId,
+      destSiteId: dest.siteId,
+      destPos: { x: dest.pos.x, z: dest.pos.z },
+      mintedAt: now,
+      lastPodPos: null,
+    };
+  }
+  return sRec.courierToken;
+}
+
+/** Body the token if no live pod carries its stamp — exactly one body per tokenId. */
+function ensureCourierTokenBody(world, e, token) {
+  const state = world.state;
+  const existing = findCourierTokenPod(state, token);
+  if (existing) return existing;
+  const spawnPos = token.status === 'loose' && token.lastPodPos
+    ? token.lastPodPos
+    : e.pos;
+  const pod = spawnJettisonedCargoPod(state, {
+    commodityId: COURIER_TOKEN_COMMODITY,
+    amount: 1,
+    pos: { x: spawnPos.x, z: spawnPos.z },
+    vel: { x: 0, z: 0 },
+    radius: 5,
+    ownerId: e.id,
+    ownerName: 'Courier frame',
+    factionId: 'faction_verge_layers',
+    originId: token.originSiteId,
+    destinationId: token.destSiteId,
+  }, world.helpers);
+  if (!pod) return null;
+  pod.data = pod.data || {};
+  pod.data.machineToken = {
+    tokenId: token.tokenId,
+    siteId: token.originSiteId,
+    originSiteId: token.originSiteId,
+    destSiteId: token.destSiteId,
+  };
+  pod.data.name = 'Route authority token';
+  pod.data.scanLabel = 'ROUTE AUTHORITY TOKEN — VERGE MAIL';
+  return pod;
+}
+
+/** The recipient site accepts the pod through the world-site receiver ledger — once. */
+function settleCourierTokenDelivery(world, token, pod, now) {
+  const state = world.state;
+  const dRec = machineSiteRec(state, token.destSiteId);
+  if (!dRec.courierReceiver) {
+    dRec.courierReceiver = { capacity: 1, stored: 0, acceptedReceipts: {} };
+  }
+  const contact = evaluateReceiverAcceptance({
+    commodityId: COURIER_TOKEN_COMMODITY,
+    quantity: 1,
+    capacity: dRec.courierReceiver.capacity,
+    stored: dRec.courierReceiver.stored,
+    entered: true,
+    relativeSpeed: Math.hypot(pod?.vel?.x || 0, pod?.vel?.z || 0),
+    open: true,
+  });
+  const commit = commitReceiverAcceptance(dRec.courierReceiver, contact, token.receiptId);
+  dRec.courierReceiver = commit.ledger;
+  if (!commit.committed && !commit.duplicate) {
+    if (token.deliveryRefusal !== commit.reason) world.bus.emit('comms:log', {
+      from: 'Courier intake', kind: 'machine',
+      text: commit.reason === 'speed-window'
+        ? 'RETURN THE TOKEN BELOW SPEED 22. TOO FAST FOR THE INTAKE; THE ROUTE MAIL REMAINS FREE.'
+        : 'ROUTE MAIL REFUSED. THE RECIPIENT HAS NO CAPACITY; CUSTODY REMAINS WITH THE TOKEN.',
+    });
+    token.deliveryRefusal = commit.reason;
+    return false;
+  }
+  delete token.deliveryRefusal;
+  token.status = 'delivered';
+  token.deliveredAt = now;
+  if (pod) pod.alive = false;
+  const dest = MACHINE_SITES[token.destSiteId];
+  world.bus.emit('comms:log', {
+    from: dest ? dest.name : 'Verge lattice', kind: 'machine',
+    text: commit.duplicate
+      ? 'ROUTE MAIL RECEIPT ALREADY ON FILE. CUSTODY CHAIN CLOSED.'
+      : 'ROUTE MAIL ACCEPTED. CUSTODY TRANSFER COMPLETE.',
+  });
+  world.bus.emit('machine:tokenDelivered', {
+    siteId: token.destSiteId, tokenId: token.tokenId, receiptId: token.receiptId,
+    duplicate: commit.duplicate === true,
+  });
+  // The receiver visibly takes custody: an authored intake cue at the acceptance point
+  // (sfx_dock_capture = the physical "guide takes hold" sound) so the player hears the
+  // handoff settle, not just reads a comm line.
+  world.bus.emit('audio:cue', {
+    id: 'presentation.dock.capture',
+    position: { x: pod ? pod.pos.x : token.destPos.x, z: pod ? pod.pos.z : token.destPos.z },
+  });
+  return true;
+}
+
+/** An intercepted token can still be returned: the recipient accepts the held unit. */
+function tickCourierTokenReturn(world, token, now) {
+  const state = world.state;
+  const player = state.playerId != null && state.entities
+    ? state.entities.get(state.playerId) : null;
+  if (!player || !player.pos) return;
+  if (dist2(player.pos.x, player.pos.z, token.destPos.x, token.destPos.z)
+      > COURIER_TOKEN_RETURN_R * COURIER_TOKEN_RETURN_R) return;
+  const cargo = state.player && state.player.cargo;
+  if (!cargo || !cargo.items || !(cargo.items[COURIER_TOKEN_COMMODITY] > 0)) return;
+  const dRec = machineSiteRec(state, token.destSiteId);
+  if (!dRec.courierReceiver) {
+    dRec.courierReceiver = { capacity: 1, stored: 0, acceptedReceipts: {} };
+  }
+  const contact = evaluateReceiverAcceptance({
+    commodityId: COURIER_TOKEN_COMMODITY,
+    quantity: 1,
+    capacity: dRec.courierReceiver.capacity,
+    stored: dRec.courierReceiver.stored,
+    entered: true,
+    relativeSpeed: Math.hypot(player.vel?.x || 0, player.vel?.z || 0),
+    open: true,
+  });
+  const commit = commitReceiverAcceptance(dRec.courierReceiver, contact, token.receiptId);
+  dRec.courierReceiver = commit.ledger;
+  if (!commit.committed && !commit.duplicate) {
+    if (token.deliveryRefusal !== commit.reason) world.bus.emit('comms:log', {
+      from: 'Courier intake', kind: 'machine', text: commit.reason === 'speed-window'
+        ? 'RETURN THE HELD TOKEN BELOW SPEED 22. INTAKE REFUSED; YOUR HOLD RETAINS THE MAIL.'
+        : 'RECIPIENT CAPACITY REFUSED. YOUR HOLD RETAINS THE MAIL.',
+    });
+    token.deliveryRefusal = commit.reason;
+    return;
+  }
+  // The cargo owner writes the unit out only after the receiver commits — no commit, no loss.
+  if (removeCargo(state, COURIER_TOKEN_COMMODITY, 1) < 1) return;
+  token.status = 'delivered';
+  delete token.deliveryRefusal;
+  token.deliveredAt = now;
+  const dest = MACHINE_SITES[token.destSiteId];
+  world.bus.emit('comms:log', {
+    from: dest ? dest.name : 'Verge lattice', kind: 'machine',
+    text: 'LATE DELIVERY ACCEPTED. CUSTODY CHAIN CLOSED.',
+  });
+  // A late return IS a delivery: same receiver commit, same consequence event, same intake
+  // cue — so downstream consumers (and the player's ears) cannot tell a late handoff from
+  // a clean one except by the comm line that says so.
+  world.bus.emit('machine:tokenDelivered', {
+    siteId: token.destSiteId, tokenId: token.tokenId, receiptId: token.receiptId,
+    duplicate: commit.duplicate === true,
+  });
+  world.bus.emit('audio:cue', {
+    id: 'presentation.dock.capture',
+    position: { x: token.destPos.x, z: token.destPos.z },
+  });
+}
+
+function tickCourierToken(world, e, m, kind, dest, now) {
+  const state = world.state;
+  const token = courierTokenRec(state, m.siteId, dest, now);
+  token.readyAt = token.readyAt != null ? token.readyAt : now + (kind.mailDwellS || 0);
+
+  if (!COURIER_TOKEN_OPEN.has(token.status)) {
+    // Terminal custody — but an intercepted token can still come home through the hold.
+    if (token.status === 'intercepted') tickCourierTokenReturn(world, token, now);
+    return;
+  }
+
+  // Adopt or re-body the token pod. The durable record is the token; the entity is its
+  // body — rematerialization scans by stamp first, so one tokenId never mints a second pod.
+  let pod = m.tokenPodId != null && state.entities ? state.entities.get(m.tokenPodId) : null;
+  if (!tokenBodyMatches(pod, token)) {
+    pod = findCourierTokenPod(state, token);
+    m.tokenPodId = pod ? pod.id : null;
+  }
+  if (pod && pod.alive === false) {
+    // A verified corpse is loss; a shelved/retired body is rematerializable instead.
+    if (pod.hull <= 0 && loseCourierToken(world, token, pod)) {
+      m.tokenPodId = null;
+      return;
+    }
+    pod = null;
+  }
+  if (!pod) {
+    // Core may remove the corpse before its queued destruction receipt drains.
+    const previous = courierTokenBodies.get(token)?.entity;
+    if (previous?.alive === false && previous.hull <= 0 && loseCourierToken(world, token, previous)) {
+      m.tokenPodId = null;
+      return;
+    }
+    pod = ensureCourierTokenBody(world, e, token);
+    m.tokenPodId = pod ? pod.id : null;
+    if (!pod) return;
+  }
+
+  bindCourierTokenBody(token, pod);
+
+  if (token.status === 'in_transit') {
+    // Custody ride: the frame tows the pod at its trailing edge. A knock or a tether pull
+    // past the stray radius drops custody — the mail becomes loose cargo in real space.
+    const strayR = kind.strayR || 220;
+    if (dist2(pod.pos.x, pod.pos.z, e.pos.x, e.pos.z) > strayR * strayR) {
+      token.status = 'loose';
+      token.lastPodPos = { x: pod.pos.x, z: pod.pos.z };
+      // Keep the body lease while loose so a death before the next tick cannot re-mint mail.
+      if (pod.data) delete pod.data.machineCarriedBy;
+      world.bus.emit('comms:log', {
+        from: 'Courier frame', kind: 'machine',
+        text: 'ROUTE MAIL ADRIFT. CUSTODY OPEN.',
+      });
+      return;
+    }
+    const back = e.rot + Math.PI;
+    const carryR = (e.radius || 10) + (pod.radius || 5) + 2;
+    pod.pos.x = e.pos.x + Math.cos(back) * carryR;
+    pod.pos.z = e.pos.z + Math.sin(back) * carryR;
+    if (pod.vel) { pod.vel.x = e.vel?.x || 0; pod.vel.z = e.vel?.z || 0; }
+    pod.data.machineCarriedBy = e.id;
+  } else {
+    token.lastPodPos = { x: pod.pos.x, z: pod.pos.z };
+    if (pod.data) delete pod.data.machineCarriedBy;
+  }
+
+  // Recipient acceptance: whoever brings the body inside the intake radius after the
+  // signing dwell — the frame, a drift, or a towed return — closes the custody chain once.
+  const deliverR = kind.deliverR || 240;
+  if (now >= token.readyAt
+      && dist2(pod.pos.x, pod.pos.z, token.destPos.x, token.destPos.z) <= deliverR * deliverR) {
+    settleCourierTokenDelivery(world, token, pod, now);
+  }
+}
+
+/**
+ * Custody resolution rides the canonical pickup:collected receipt (world.js binds it after
+ * cargo's acceptance write). The receipt is the custody transfer — never a parallel hold
+ * write. Only a committed accept settles the token; a full-hold rejection leaves it riding.
+ */
+export function handleMachinePickupCollected(world, payload) {
+  const state = world && world.state;
+  if (!state || !payload) return false;
+  const pod = payload.pickupId != null && state.entities
+    ? state.entities.get(payload.pickupId) : null;
+  const stamp = pod && pod.data && pod.data.machineToken;
+  if (!stamp || typeof stamp.tokenId !== 'string') return false;
+  if (successfulPickupAmount(payload) <= 0) return false;
+  const siteId = typeof stamp.siteId === 'string' ? stamp.siteId : stamp.originSiteId;
+  if (typeof siteId !== 'string' || !siteId) return false;
+  const sRec = machineSiteRec(state, siteId);
+  const token = sRec.courierToken;
+  if (!token || token.tokenId !== stamp.tokenId || !COURIER_TOKEN_OPEN.has(token.status)) {
+    return false;
+  }
+  const byPlayer = payload.collectorId === state.playerId;
+  token.status = byPlayer ? 'intercepted' : 'stolen';
+  token.settledBy = payload.collectorId != null ? payload.collectorId : null;
+  token.settledAt = Number(state.simTime) || 0;
+  const sectorId = (MACHINE_SITES[token.originSiteId] || {}).sectorId
+    || (state.world && state.world.currentSectorId);
+  if (byPlayer) {
+    world.bus.emit('comms:log', {
+      from: 'Courier frame', kind: 'machine',
+      text: 'ROUTE MAIL INTERCEPTED — ROUTE AUTHORITY INSTRUMENT IN YOUR HOLD.',
+    });
+    world.bus.emit('ecology:evidence', { id: 'L06', sectorId });
+    sRec.setpieces = sRec.setpieces || {};
+    sRec.setpieces.N08 = true;
+  } else {
+    world.bus.emit('comms:log', {
+      from: 'Courier frame', kind: 'machine',
+      text: 'ROUTE MAIL LOST TO A THIRD PARTY. CUSTODY CHAIN BROKEN.',
+    });
+  }
+  return true;
+}
+
+// Machine scan labels escalate with protocol state (AE-097).
+export function refreshMachineLabels(world) {
+  const state = world && world.state;
+  if (!state || !state.entityList) return;
+  const ae = ensureAlienEcologyState(state);
+  for (const e of state.entityList) {
+    if (!e || !e.data || !e.data.machine) continue;
+    const label = scannerMachineLabel(ae.machineProtocol);
+    e.data.scanLabel = label;
+    e.data.name = label;
+  }
+}
+
+// Version-latched sector machine list, shared between tickMachineLayer and shepherdFieldAt:
+// rebuilt once per entity-index version (or sector switch) instead of walked per caller.
+// `alive` is still re-checked by each consumer since deaths don't bump the index version.
+function machineScanForSector(state, sectorId) {
+  const ae = ensureAlienEcologyState(state);
+  const machinesCache = ae._machineScanCache || (ae._machineScanCache = {
+    version: -1, sectorId: null, machines: [],
+  });
+  const laneVersion = entityIndexLaneVersion(state, MACHINE_SCAN_LANES);
+  const machinesVersion = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+  // A null version means the index is not ready — walk every call rather than cache-stale.
+  if (machinesVersion == null
+      || machinesCache.version !== machinesVersion
+      || machinesCache.sectorId !== sectorId) {
+    machinesCache.version = machinesVersion == null ? -1 : machinesVersion;
+    machinesCache.sectorId = sectorId;
+    machinesCache.machines.length = 0;
+    // The sector lane holds every indexed entity under its canonical claim — walking
+    // this sector's bucket is O(members) instead of the whole list. The per-member
+    // homeSectorId predicate is unchanged, so membership answers match the old walk.
+    const index = state.entityIndex;
+    const pool = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+        && index.bySectorId instanceof Map
+      ? index.bySectorId.get(sectorId)
+      : state.entityList;
+    if (pool) for (const e of pool) {
+      if (!e || e.alive === false || !e.data || !e.data.machine) continue;
+      if (e.homeSectorId !== sectorId) continue;
+      machinesCache.machines.push(e);
+    }
+  }
+  return machinesCache.machines;
+}
+
+// ── Moving suppression (AE-233/M08) — shepherd engines carry a dead pocket with them. ────
+// Called from alienEcology.js wherever the static suppression field is consulted: if a
+// live shepherd entity is within its suppressionRadius of the point, the point is dead.
+export function shepherdFieldAt(state, sectorId, x, z) {
+  if (!state || !state.entityList) return null;
+  const kind = machineKindById('shepherd');
+  const r = (kind && kind.suppressionRadius) || 400;
+  const r2 = r * r;
+  for (const e of machineScanForSector(state, sectorId)) {
+    const m = e && e.data && e.data.machine;
+    if (!m || m.kind !== 'shepherd' || e.alive === false || e.data.suppressionOffline) continue;
+    if (dist2(e.pos.x, e.pos.z, x, z) <= r2) return e;
+  }
+  return null;
+}
+
+// Version-latched claimable-target list for idle debris sorters — same latch shape as
+// machineScanForSector. Type/homeSectorId are spawn-stable; alive/claimed/pos re-checked
+// per call since they change without an index-version bump.
+function sorterTargetsForSector(state, sectorId) {
+  const ae = ensureAlienEcologyState(state);
+  const cache = ae._sorterTargetCache || (ae._sorterTargetCache = {
+    version: -1, sectorId: null, targets: [],
+  });
+  const laneVersion = entityIndexLaneVersion(state, SORTER_TARGET_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+  if (version == null || cache.version !== version || cache.sectorId !== sectorId) {
+    cache.version = version == null ? -1 : version;
+    cache.sectorId = sectorId;
+    cache.targets.length = 0;
+    // Same sector-bucket pre-filter as machineScanForSector: homeSectorId is the
+    // canonical chain head, so the bucket holds every match; keep the per-member
+    // type/pos predicates and fall back to the list walk while the lane is unready.
+    const index = state.entityIndex;
+    const pool = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+        && index.bySectorId instanceof Map
+      ? index.bySectorId.get(sectorId)
+      : state.entityList;
+    if (pool) for (const e of pool) {
+      if (!e || !e.pos || e.homeSectorId !== sectorId) continue;
+      if (e.type !== 'wreck' && e.type !== 'pickup' && e.type !== 'debris') continue;
+      cache.targets.push(e);
+    }
+  }
+  return cache.targets;
+}
+
+// ── Route gate (AE-108) ───────────────────────────────────────────────────────────────────
+// A revoked route refuses transit while the player's protocol is a fault state. world.js
+// calls this inside _wormholeUnlocked for `machine:` gates.
+export function machineRouteOpen(state, accessKey) {
+  const ae = ensureAlienEcologyState(state);
+  if (ae.machineAccess && ae.machineAccess[accessKey]) return true;
+  const proto = ae.machineProtocol || 'unknown';
+  return proto === 'compliant' || proto === 'witnessed' || proto === 'exception';
+}

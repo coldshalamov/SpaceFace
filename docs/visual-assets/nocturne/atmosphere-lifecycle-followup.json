@@ -1,0 +1,30 @@
+{
+  "schema": "spaceface.nocturne.atmosphere-lifecycle-followup.v1",
+  "createdAt": "2026-10-23T16:53:17.255Z",
+  "scope": "CPU-only atmosphere detachment during lost-context teardown",
+  "changedFile": "src/render/bloom.js",
+  "currentSha256": "b2b83640b86f14e37d2fb2c5bf12b189610f33fe585584208df6fecef66fa863",
+  "capturedCandidates": [
+    {
+      "report": "atmosphere-evidence/atmosphere-report.json",
+      "capturedAt": "2026-10-23T16:50:31.983Z",
+      "bloomSha256": "c1fc6760e7bedb36eea39022c43dba57129d00587dd3d303387111865eaf5b2f"
+    },
+    {
+      "report": "atmosphere-graph-evidence/atmosphere-report.json",
+      "capturedAt": "2026-10-23T16:49:20.300Z",
+      "bloomSha256": "c1fc6760e7bedb36eea39022c43dba57129d00587dd3d303387111865eaf5b2f"
+    }
+  ],
+  "changes": [
+    "attachAtmosphere accepts an optional disposeGpu flag; false suppresses scene-target disposal while detaching depth.",
+    "Attachment changes clear atmospheric sampler references and disable the composite until the next normal binding."
+  ],
+  "validation": {
+    "command": "node --test test/nocturne-atmosphere-graph.test.mjs test/nocturne-atmosphere.test.mjs test/bloom-distortion.test.mjs test/bloom-packed-hdr.test.mjs test/bloom-contrast-lut.test.mjs test/bloom-pass-timing-scratch.test.mjs",
+    "passedFiles": 6,
+    "failedFiles": 0,
+    "regression": "Lost-context detach emits zero scene-target dispose events and releases depth/samplers; normal detach emits its expected dispose event and preserves pass ownership."
+  },
+  "evidenceBoundary": "Retained screenshots and GPU timings precede this cleanup-only change. Their captured source hashes remain unchanged. No shader, transport, quality, steady render path or target-size logic changed in this follow-up. Visual/GPU measurements were not repeated; do not relabel them as exact final-source captures."
+}

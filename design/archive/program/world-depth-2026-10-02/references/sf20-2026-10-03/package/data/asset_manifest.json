@@ -1,0 +1,649 @@
+{
+  "schema": "spaceface.expansion.assets.planning.v1",
+  "status": "REFERENCE_ONLY_NOT_RELEASE_ASSETS",
+  "repo_commit": "1e0cf9499613b7c3acad10f34739278136d3d469",
+  "assets": [
+    {
+      "concept_id": "SF20-01",
+      "plate": "art/01_latch_nine.png",
+      "blueprint": "art/blueprints/01_latch_nine.svg",
+      "blockout": "art/blockouts/01_latch_nine.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        18,
+        12,
+        5
+      ],
+      "proposed_lod_triangles": [
+        14000,
+        5600,
+        2500
+      ],
+      "proposed_near_draws": 10,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "ROOT_LATCH",
+        "CROSSBAR",
+        "PADDLE_A/B/C",
+        "SENSOR_SHUTTER",
+        "DRIVES"
+      ],
+      "required_phases": [
+        "Idle duty",
+        "Clearance",
+        "Hold",
+        "Acknowledgment"
+      ]
+    },
+    {
+      "concept_id": "SF20-02",
+      "plate": "art/02_sable_venn.png",
+      "blueprint": "art/blueprints/02_sable_venn.svg",
+      "blockout": "art/blockouts/02_sable_venn.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        34,
+        25,
+        9
+      ],
+      "proposed_lod_triangles": [
+        32000,
+        12800,
+        5800
+      ],
+      "proposed_near_draws": 12,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "ROOT_PATCHWORK",
+        "BRIDGES",
+        "ARM_BASE/ELBOW/CLAMP",
+        "TEST_SLED",
+        "WINDOWS/TOOLS"
+      ],
+      "required_phases": [
+        "Unfold",
+        "Demo impulse",
+        "Fit receipt",
+        "Park"
+      ]
+    },
+    {
+      "concept_id": "SF20-03",
+      "plate": "art/03_tally_3.png",
+      "blueprint": "art/blueprints/03_tally_3.svg",
+      "blockout": "art/blockouts/03_tally_3.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        22,
+        18,
+        6
+      ],
+      "proposed_lod_triangles": [
+        18000,
+        7200,
+        3200
+      ],
+      "proposed_near_draws": 10,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "ROOT_TALLY",
+        "ARM_LEFT/RIGHT",
+        "STAMP",
+        "CLAIM_CRADLE",
+        "SCAN_SOCKET"
+      ],
+      "required_phases": [
+        "Assess",
+        "Disputed",
+        "Receipt",
+        "Withdraw"
+      ]
+    },
+    {
+      "concept_id": "SF20-04",
+      "plate": "art/04_ilex_seed_ark.png",
+      "blueprint": "art/blueprints/04_ilex_seed_ark.svg",
+      "blockout": "art/blockouts/04_ilex_seed_ark.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        46,
+        30,
+        12
+      ],
+      "proposed_lod_triangles": [
+        36000,
+        14400,
+        6500
+      ],
+      "proposed_near_draws": 12,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "ROOT_ILEX",
+        "VAULT_01..06",
+        "COUPLINGS",
+        "CANOPY_PANELS",
+        "DRIVE_BANK"
+      ],
+      "required_phases": [
+        "Cruise",
+        "Coupling fail",
+        "Vault safe",
+        "Damaged"
+      ]
+    },
+    {
+      "concept_id": "SF20-05",
+      "plate": "art/05_red_kite.png",
+      "blueprint": "art/blueprints/05_red_kite.svg",
+      "blockout": "art/blockouts/05_red_kite.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        23,
+        17,
+        5
+      ],
+      "proposed_lod_triangles": [
+        18000,
+        7200,
+        3200
+      ],
+      "proposed_near_draws": 9,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "ROOT_KITE",
+        "SAIL",
+        "OUTRIGGER",
+        "CONTROL_FLAP",
+        "COURIER_CANISTER"
+      ],
+      "required_phases": [
+        "Coast",
+        "Hard turn",
+        "Challenge",
+        "Handoff"
+      ]
+    },
+    {
+      "concept_id": "SF20-06",
+      "plate": "art/06_towline_table.png",
+      "blueprint": "art/blueprints/06_towline_table.svg",
+      "blockout": "art/blockouts/06_towline_table.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        25,
+        19,
+        7
+      ],
+      "proposed_lod_triangles": [
+        22000,
+        8800,
+        4000
+      ],
+      "proposed_near_draws": 10,
+      "proposed_local_cap": 3,
+      "required_parts": [
+        "TUG_BASE",
+        "CLAMP_VARIANT",
+        "WINCH_VARIANT",
+        "SKIFF_VARIANT",
+        "COMMON_MARK"
+      ],
+      "required_phases": [
+        "Working",
+        "Acknowledge",
+        "Tow prepared",
+        "Memorial"
+      ]
+    },
+    {
+      "concept_id": "SF20-07",
+      "plate": "art/07_scissorwake.png",
+      "blueprint": "art/blueprints/07_scissorwake.svg",
+      "blockout": "art/blockouts/07_scissorwake.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        24,
+        19,
+        5
+      ],
+      "proposed_lod_triangles": [
+        20000,
+        8000,
+        3600
+      ],
+      "proposed_near_draws": 10,
+      "proposed_local_cap": 2,
+      "required_parts": [
+        "ROOT_SCISSOR",
+        "BLADE_L/R",
+        "SPOOL",
+        "DRIVES",
+        "CUT_APERTURE"
+      ],
+      "required_phases": [
+        "Acquire",
+        "Windup",
+        "Commit",
+        "Recover"
+      ]
+    },
+    {
+      "concept_id": "SF20-08",
+      "plate": "art/08_kilnback.png",
+      "blueprint": "art/blueprints/08_kilnback.svg",
+      "blockout": "art/blockouts/08_kilnback.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        29,
+        24,
+        9
+      ],
+      "proposed_lod_triangles": [
+        26000,
+        10400,
+        4700
+      ],
+      "proposed_near_draws": 11,
+      "proposed_local_cap": 2,
+      "required_parts": [
+        "ROOT_KILN",
+        "RADIATOR_SLATS",
+        "CASK_L/R",
+        "JET_MOUTH",
+        "COOLANT_LINES"
+      ],
+      "required_phases": [
+        "Preheat",
+        "Burn",
+        "Vent",
+        "Cask rupture"
+      ]
+    },
+    {
+      "concept_id": "SF20-09",
+      "plate": "art/09_pallet_jack.png",
+      "blueprint": "art/blueprints/09_pallet_jack.svg",
+      "blockout": "art/blockouts/09_pallet_jack.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        25,
+        22,
+        6
+      ],
+      "proposed_lod_triangles": [
+        22000,
+        8800,
+        4000
+      ],
+      "proposed_near_draws": 10,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "ROOT_JACK",
+        "CLAMP",
+        "LIFT_CARRIAGE",
+        "REVERSE_BANK",
+        "CARGO_SOCKET"
+      ],
+      "required_phases": [
+        "Target",
+        "Grab",
+        "Loaded",
+        "Drop"
+      ]
+    },
+    {
+      "concept_id": "SF20-10",
+      "plate": "art/10_mothlight.png",
+      "blueprint": "art/blueprints/10_mothlight.svg",
+      "blockout": "art/blockouts/10_mothlight.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        24,
+        26,
+        5
+      ],
+      "proposed_lod_triangles": [
+        24000,
+        9600,
+        4300
+      ],
+      "proposed_near_draws": 11,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "ROOT_MOTH",
+        "DISH_L/R",
+        "REAL_IRIS",
+        "LAMP_A/B",
+        "SUPPLY_HATCHES"
+      ],
+      "required_phases": [
+        "Release",
+        "False charge",
+        "True charge",
+        "Reload"
+      ]
+    },
+    {
+      "concept_id": "SF20-11",
+      "plate": "art/11_tethys_switchyard.png",
+      "blueprint": "art/blueprints/11_tethys_switchyard.svg",
+      "blockout": "art/blockouts/11_tethys_switchyard.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        120,
+        110,
+        18
+      ],
+      "proposed_lod_triangles": [
+        38000,
+        15000,
+        6800
+      ],
+      "proposed_near_draws": 14,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "YARD_ROOT",
+        "TRANSFER_FORK",
+        "RECEIVERS_A/B/C",
+        "SLED",
+        "GUIDE_BENT"
+      ],
+      "required_phases": [
+        "Normal cycle",
+        "Jam",
+        "Freed",
+        "Transfer"
+      ]
+    },
+    {
+      "concept_id": "SF20-12",
+      "plate": "art/12_borrowed_sun.png",
+      "blueprint": "art/blueprints/12_borrowed_sun.svg",
+      "blockout": "art/blockouts/12_borrowed_sun.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        160,
+        150,
+        30
+      ],
+      "proposed_lod_triangles": [
+        40000,
+        16000,
+        7200
+      ],
+      "proposed_near_draws": 14,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "HUB",
+        "PETAL_01..06",
+        "SPINE",
+        "CARGO_BANK",
+        "BEACON"
+      ],
+      "required_phases": [
+        "Unfold",
+        "Market open",
+        "Departure prepare",
+        "Transit"
+      ]
+    },
+    {
+      "concept_id": "SF20-13",
+      "plate": "art/13_thimble_door.png",
+      "blueprint": "art/blueprints/13_thimble_door.svg",
+      "blockout": "art/blockouts/13_thimble_door.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        120,
+        80,
+        28
+      ],
+      "proposed_lod_triangles": [
+        34000,
+        13600,
+        6100
+      ],
+      "proposed_near_draws": 11,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "RIM_SEGMENTS",
+        "HULL_SKIN",
+        "SHEARED_EDGE",
+        "SURVEY_LIGHTS",
+        "RECORDER"
+      ],
+      "required_phases": [
+        "Derelict idle",
+        "Survey",
+        "Contact",
+        "Recovered"
+      ]
+    },
+    {
+      "concept_id": "SF20-14",
+      "plate": "art/14_anvil_storm_orchard.png",
+      "blueprint": "art/blueprints/14_anvil_storm_orchard.svg",
+      "blockout": "art/blockouts/14_anvil_storm_orchard.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        150,
+        100,
+        35
+      ],
+      "proposed_lod_triangles": [
+        36000,
+        14400,
+        6500
+      ],
+      "proposed_near_draws": 13,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "ANCHOR_TRUSS",
+        "HARVEST_FIN_1..3",
+        "POD_1..3",
+        "SAFE_PLATFORM",
+        "WINDSOCK_MARKERS"
+      ],
+      "required_phases": [
+        "Calm",
+        "Forecast gust",
+        "Gust",
+        "Harvest release"
+      ]
+    },
+    {
+      "concept_id": "SF20-15",
+      "plate": "art/15_veil_ray_nursery.png",
+      "blueprint": "art/blueprints/15_veil_ray_nursery.svg",
+      "blockout": "art/blockouts/15_veil_ray_nursery.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        80,
+        60,
+        14
+      ],
+      "proposed_lod_triangles": [
+        20000,
+        8000,
+        3600
+      ],
+      "proposed_near_draws": 10,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "NURSERY_RIBS",
+        "RAY_ADULT",
+        "MEMBRANE_L/R",
+        "JUVENILES",
+        "FILAMENTS"
+      ],
+      "required_phases": [
+        "Forage",
+        "Notice",
+        "Scatter",
+        "Settle"
+      ]
+    },
+    {
+      "concept_id": "SF20-16",
+      "plate": "art/16_borrowed_voice.png",
+      "blueprint": "art/blueprints/16_borrowed_voice.svg",
+      "blockout": "art/blockouts/16_borrowed_voice.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        46,
+        38,
+        10
+      ],
+      "proposed_lod_triangles": [
+        24000,
+        9600,
+        4300
+      ],
+      "proposed_near_draws": 11,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "BROKEN_RING",
+        "RECORDER_A/B/C",
+        "FUNGAL_FANS",
+        "RELAY_ORGAN",
+        "SIGNAL_POINTS"
+      ],
+      "required_phases": [
+        "Dormant",
+        "Signal improves",
+        "Memory fragment",
+        "Quarantine"
+      ]
+    },
+    {
+      "concept_id": "SF20-17",
+      "plate": "art/17_open_hand_lock.png",
+      "blueprint": "art/blueprints/17_open_hand_lock.svg",
+      "blockout": "art/blockouts/17_open_hand_lock.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        100,
+        100,
+        45
+      ],
+      "proposed_lod_triangles": [
+        36000,
+        14400,
+        6500
+      ],
+      "proposed_near_draws": 10,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "FINGER_A/B/C",
+        "CRADLE",
+        "TOKEN",
+        "IRIS_LEAVES",
+        "PROTOCOL_SEAMS"
+      ],
+      "required_phases": [
+        "Interrogate",
+        "Accept",
+        "Transit open",
+        "Close pending"
+      ]
+    },
+    {
+      "concept_id": "SF20-18",
+      "plate": "art/18_last_shift.png",
+      "blueprint": "art/blueprints/18_last_shift.svg",
+      "blockout": "art/blockouts/18_last_shift.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        66,
+        42,
+        17
+      ],
+      "proposed_lod_triangles": [
+        30000,
+        12000,
+        5400
+      ],
+      "proposed_near_draws": 11,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "WRECK_FORE",
+        "WRECK_AFT",
+        "FAIRLEAD",
+        "CARGO_RACK",
+        "RECORDER"
+      ],
+      "required_phases": [
+        "Quiet wreck",
+        "Clue scan",
+        "Recovered",
+        "Evidence reconstruction"
+      ]
+    },
+    {
+      "concept_id": "SF20-19",
+      "plate": "art/19_pip_and_spanner.png",
+      "blueprint": "art/blueprints/19_pip_and_spanner.svg",
+      "blockout": "art/blockouts/19_pip_and_spanner.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        16,
+        18,
+        6
+      ],
+      "proposed_lod_triangles": [
+        18000,
+        7200,
+        3200
+      ],
+      "proposed_near_draws": 10,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "SPANNER_ROOT",
+        "CLAW_L/R",
+        "PIP_ROOT",
+        "PIP_POINTER",
+        "ITEM_CRADLE"
+      ],
+      "required_phases": [
+        "Focus",
+        "Compare",
+        "Confirm",
+        "Denied",
+        "Repair"
+      ]
+    },
+    {
+      "concept_id": "SF20-20",
+      "plate": "art/20_hundred_hand_mile.png",
+      "blueprint": "art/blueprints/20_hundred_hand_mile.svg",
+      "blockout": "art/blockouts/20_hundred_hand_mile.glb",
+      "source_status": "non-shipping approximate blockout; no rig/UV/collision approval",
+      "target_author_metres": [
+        180,
+        90,
+        25
+      ],
+      "proposed_lod_triangles": [
+        38000,
+        15200,
+        6800
+      ],
+      "proposed_near_draws": 14,
+      "proposed_local_cap": 1,
+      "required_parts": [
+        "PYLON_A/B",
+        "MODULE_SOCKET_01..05",
+        "POWER_MODULE",
+        "GUIDE_MODULE",
+        "LAMP_CHAIN",
+        "RECORD_PLAQUE"
+      ],
+      "required_phases": [
+        "Unpowered",
+        "Install",
+        "First current",
+        "Working mile"
+      ]
+    }
+  ]
+}

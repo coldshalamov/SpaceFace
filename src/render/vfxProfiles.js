@@ -1,0 +1,966 @@
+// Elite VFX profile resolver — maps authored part IDs + weapon defs to presentation lanes.
+// Cosmetic only; sim never imports this module.
+import { WEAPONS } from '../data/weapons.js';
+import { SHIPS } from '../data/ships.js';
+import { classifyWeaponFamily } from '../data/vfxProfiles.js';
+
+const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+
+const DEFAULT_ENGINE = Object.freeze({
+  id: 'engine_ion_small',
+  style: 'ion',
+  coreColor: '#88aaff',
+  tailColor: '#10204a',
+  boostCore: '#d8f0ff',
+  cruiseCore: '#a6e8ff',
+  spreadMul: 1.0,
+  particleMul: 1.0,
+  streakMul: 1.0,
+  streakLenMul: 1.0,
+  plumeCore: '#36c8ff',
+  plumeHalo: '#6a4cff',
+  plumeWidthMul: 1.0,
+  plumeLengthMul: 1.0,
+  flowSpeed: 2.4,
+  noiseScale: 1.6,
+  coreIntensity: 6.5,
+  haloIntensity: 2.6,
+  // Liquid-fire plume character (see energyMaterials.PLUME_FRAGMENT): plumeSwirl = domain-warp /
+  // spiral of the flame, plumeFork = raggedness of the flickering tongues. Distinct per engine
+  // family so the fleet's thruster trails read as different drives, not one recoloured tube.
+  plumeSwirl: 0.5,
+  plumeFork: 0.5,
+});
+
+export const ENGINE_PROFILES = Object.freeze({
+  engine_ion_small: Object.freeze({
+    ...DEFAULT_ENGINE,
+    id: 'engine_ion_small',
+    style: 'ion',
+    coreColor: '#88aaff',
+    tailColor: '#0c1838',
+    spreadMul: 0.92,
+    particleMul: 1.0,
+    streakMul: 1.05,
+    plumeCore: '#36c8ff',
+    plumeHalo: '#5a78ff',
+    flowSpeed: 2.6,
+    noiseScale: 1.5,
+    plumeSwirl: 0.45,
+    plumeFork: 0.40,
+  }),
+  engine_ion_twin: Object.freeze({
+    ...DEFAULT_ENGINE,
+    id: 'engine_ion_twin',
+    style: 'ion',
+    coreColor: '#7ec8ff',
+    tailColor: '#0a1e42',
+    spreadMul: 1.08,
+    particleMul: 1.15,
+    streakMul: 1.12,
+    streakLenMul: 1.1,
+    plumeWidthMul: 0.92,
+    plumeLengthMul: 1.08,
+    plumeCore: '#42d4ff',
+    plumeHalo: '#6888ff',
+    flowSpeed: 2.8,
+    plumeSwirl: 0.5,
+    plumeFork: 0.45,
+  }),
+  engine_industrial: Object.freeze({
+    ...DEFAULT_ENGINE,
+    id: 'engine_industrial',
+    style: 'industrial',
+    coreColor: '#ffb35c',
+    tailColor: '#2a1408',
+    boostCore: '#ffe0a8',
+    cruiseCore: '#ffc878',
+    spreadMul: 1.35,
+    particleMul: 1.25,
+    streakMul: 0.88,
+    streakLenMul: 1.2,
+    plumeCore: '#ff9a44',
+    plumeHalo: '#5c3018',
+    plumeWidthMul: 1.22,
+    plumeLengthMul: 1.18,
+    flowSpeed: 1.9,
+    noiseScale: 2.1,
+    coreIntensity: 5.8,
+    haloIntensity: 2.0,
+    plumeSwirl: 0.7,
+    plumeFork: 0.85,
+  }),
+  engine_resonator: Object.freeze({
+    ...DEFAULT_ENGINE,
+    id: 'engine_resonator',
+    style: 'resonator',
+    coreColor: '#8d66ff',
+    tailColor: '#18082a',
+    boostCore: '#c8a8ff',
+    cruiseCore: '#9a7cff',
+    spreadMul: 1.05,
+    particleMul: 1.05,
+    streakMul: 1.18,
+    plumeCore: '#7a58ff',
+    plumeHalo: '#2ad4aa',
+    plumeWidthMul: 1.05,
+    plumeLengthMul: 1.12,
+    flowSpeed: 3.1,
+    noiseScale: 2.8,
+    coreIntensity: 7.2,
+    haloIntensity: 2.8,
+    plumeSwirl: 1.15,
+    plumeFork: 0.55,
+  }),
+  engine_vector: Object.freeze({
+    ...DEFAULT_ENGINE,
+    id: 'engine_vector',
+    style: 'vector',
+    coreColor: '#39d0ff',
+    tailColor: '#081828',
+    boostCore: '#e8f8ff',
+    cruiseCore: '#6ee0ff',
+    spreadMul: 0.72,
+    particleMul: 0.95,
+    streakMul: 1.35,
+    streakLenMul: 1.28,
+    plumeWidthMul: 0.78,
+    plumeLengthMul: 1.35,
+    plumeCore: '#28b8ff',
+    plumeHalo: '#1848a8',
+    flowSpeed: 3.4,
+    noiseScale: 1.2,
+    coreIntensity: 7.8,
+    haloIntensity: 2.4,
+    plumeSwirl: 0.30,
+    plumeFork: 0.30,
+  }),
+  engine_plasma_ring: Object.freeze({
+    ...DEFAULT_ENGINE,
+    id: 'engine_plasma_ring',
+    style: 'plasma',
+    coreColor: '#c878ff',
+    tailColor: '#1a0838',
+    boostCore: '#f0d0ff',
+    cruiseCore: '#d8a0ff',
+    spreadMul: 1.22,
+    particleMul: 1.35,
+    streakMul: 1.08,
+    streakLenMul: 1.32,
+    plumeCore: '#b060ff',
+    plumeHalo: '#ff6090',
+    plumeWidthMul: 1.35,
+    plumeLengthMul: 1.42,
+    flowSpeed: 2.2,
+    noiseScale: 2.4,
+    coreIntensity: 8.2,
+    haloIntensity: 3.2,
+    plumeSwirl: 1.0,
+    plumeFork: 0.9,
+  }),
+  // The saucer's field sprint (design/FLYING_SAUCER_DESIGN.md): the resonator signature pushed
+  // to the boost envelope it owns — a wide cyan-white fan that reads as the whole disc lurching,
+  // not an exhaust trail.
+  engine_field_sprint: Object.freeze({
+    ...DEFAULT_ENGINE,
+    id: 'engine_field_sprint',
+    style: 'resonator',
+    coreColor: '#a4f0ff',
+    tailColor: '#062a3a',
+    boostCore: '#f2feff',
+    cruiseCore: '#7ce4ff',
+    spreadMul: 1.30,
+    particleMul: 1.45,
+    streakMul: 1.60,
+    streakLenMul: 1.55,
+    plumeCore: '#4fe0ff',
+    plumeHalo: '#2ad4aa',
+    plumeWidthMul: 1.50,
+    plumeLengthMul: 1.60,
+    flowSpeed: 4.6,
+    noiseScale: 3.4,
+    coreIntensity: 10.5,
+    haloIntensity: 4.2,
+    plumeSwirl: 1.5,
+    plumeFork: 0.75,
+  }),
+});
+
+const ENGINE_FILE_BY_DEF_ID = Object.freeze({
+  ship_kestrel: 'engine_ion_small',
+  ship_drifter: 'engine_ion_small',
+  ship_ranger: 'engine_ion_small',
+  ship_pelican: 'engine_ion_twin',
+  ship_ironback: 'engine_ion_twin',
+  ship_wasp: 'engine_vector',
+  ship_hornet: 'engine_vector',
+  ship_mule: 'engine_industrial',
+  ship_atlas: 'engine_industrial',
+  // Torch-driven tug reads as an industrial plume, not a warship ring.
+  ship_hawser: 'engine_industrial',
+  ship_bastion: 'engine_plasma_ring',
+  ship_warden: 'engine_plasma_ring',
+  ship_colossus: 'engine_plasma_ring',
+  ship_leviathan: 'engine_plasma_ring',
+  // The saucer's drive glow lives in its rim light chain (design/FLYING_SAUCER_DESIGN.md);
+  // the field-sprint profile is the resonator signature opened to the mega-boost envelope.
+  ship_saucer: 'engine_field_sprint',
+});
+
+const ENGINE_FILE_BY_DRIVE_ID = Object.freeze({
+  drive_inertialess_s: 'engine_field_sprint',
+  drive_reaction_s: 'engine_vector',
+  drive_reaction_m: 'engine_ion_small',
+  drive_reaction_l: 'engine_ion_twin',
+  drive_gravimetric_s: 'engine_resonator',
+  drive_pulse_plate_m: 'engine_vector',
+  drive_torch_l: 'engine_plasma_ring',
+  drive_field_sail_m: 'engine_resonator',
+});
+
+const MUZZLE_PART_PROFILES = Object.freeze({
+  weapon_pulse_cannon: Object.freeze({ lane: 'energy', sizeMul: 1.0, sparkMul: 1.0, ring: false }),
+  weapon_lance: Object.freeze({ lane: 'beam', sizeMul: 1.35, sparkMul: 0.35, ring: true }),
+  weapon_railgun: Object.freeze({ lane: 'ballistic', sizeMul: 1.25, sparkMul: 1.4, ring: true, arc: true }),
+  weapon_gatling: Object.freeze({ lane: 'ballistic', sizeMul: 0.72, sparkMul: 0.85, ring: false, rapid: true }),
+  weapon_turret_dual: Object.freeze({ lane: 'ballistic', sizeMul: 0.88, sparkMul: 1.0, ring: false }),
+  weapon_heavy_cannon: Object.freeze({ lane: 'explosive', sizeMul: 1.45, sparkMul: 1.1, ring: true, smoke: true }),
+});
+
+const DEFAULT_MUZZLE = Object.freeze({
+  lane: 'ballistic',
+  sizeMul: 1.0,
+  sparkMul: 1.0,
+  ring: false,
+  smoke: false,
+  arc: false,
+  rapid: false,
+  coreColor: null,
+  accentColor: null,
+});
+
+export function partIdFromUrl(url) {
+  if (!url) return null;
+  const name = String(url).split('/').pop() || '';
+  const base = name.replace(/\.glb$/i, '');
+  return base || null;
+}
+
+export function partIdFromSlotUrls(slots, slotName, index = 0) {
+  if (!slots || !slotName) return null;
+  const list = slots[slotName];
+  if (!list || !list.length) return null;
+  const url = list[Math.min(index, list.length - 1)];
+  return partIdFromUrl(url);
+}
+
+export function primaryEnginePartId(meta) {
+  if (!meta) return null;
+  const fromSlot = partIdFromSlotUrls(meta.slots, 'engine', 0);
+  if (fromSlot && ENGINE_PROFILES[fromSlot]) return fromSlot;
+  const defId = meta.defId;
+  if (defId && ENGINE_FILE_BY_DEF_ID[defId]) return ENGINE_FILE_BY_DEF_ID[defId];
+  const shipDef = defId ? SHIP_BY_ID.get(defId) : null;
+  const driveId = meta.driveId || (shipDef && shipDef.driveId) || null;
+  if (driveId && ENGINE_FILE_BY_DRIVE_ID[driveId]) return ENGINE_FILE_BY_DRIVE_ID[driveId];
+  const role = String(shipDef && shipDef.role || '').toLowerCase();
+  if (role.includes('miner') || role.includes('freighter')) return 'engine_industrial';
+  if (role.includes('interceptor') || role.includes('fighter')) return 'engine_vector';
+  if (role.includes('capital') || role.includes('gunship') || role.includes('corvette')) return 'engine_plasma_ring';
+  return 'engine_ion_small';
+}
+
+/**
+ * Pure engine-profile id — no object allocation. Prefer this on hot paths.
+ *
+ * Authority order (first hit wins):
+ *  1. Explicit authored engine slot on meta
+ *  2. Explicit meta.defId / meta.driveId drive tables
+ *  3. defIdFallback only when meta lacks authoritative engine data
+ *  4. Ship-def drive / role heuristics for known defIds
+ *  5. Default ion_small
+ *
+ * @param {object|null|undefined} meta mesh meta or null
+ * @param {string|null|undefined} [defIdFallback]
+ * @returns {string}
+ */
+export function resolveEngineProfileId(meta, defIdFallback = null) {
+  // 1. Authored engine slot always outranks hull/fallback defaults (including ion_small).
+  if (meta) {
+    const fromSlot = partIdFromSlotUrls(meta.slots, 'engine', 0);
+    if (fromSlot && ENGINE_PROFILES[fromSlot]) return fromSlot;
+  }
+  // 2. Explicit defId / driveId on meta.
+  if (meta && meta.defId && ENGINE_FILE_BY_DEF_ID[meta.defId]) {
+    return ENGINE_FILE_BY_DEF_ID[meta.defId];
+  }
+  if (meta && meta.driveId && ENGINE_FILE_BY_DRIVE_ID[meta.driveId]) {
+    return ENGINE_FILE_BY_DRIVE_ID[meta.driveId];
+  }
+  // 3. Caller fallback only when meta had no authoritative engine/def/drive data.
+  if (defIdFallback && ENGINE_FILE_BY_DEF_ID[defIdFallback]) {
+    return ENGINE_FILE_BY_DEF_ID[defIdFallback];
+  }
+  // 4. Role / drive heuristics from known ship defs (meta.defId or fallback).
+  const defId = (meta && meta.defId) || defIdFallback || null;
+  if (defId) {
+    const shipDef = SHIP_BY_ID.get(defId);
+    if (shipDef) {
+      if (shipDef.driveId && ENGINE_FILE_BY_DRIVE_ID[shipDef.driveId]) {
+        return ENGINE_FILE_BY_DRIVE_ID[shipDef.driveId];
+      }
+      const role = String(shipDef.role || '').toLowerCase();
+      if (role.includes('miner') || role.includes('freighter')) return 'engine_industrial';
+      if (role.includes('interceptor') || role.includes('fighter')) return 'engine_vector';
+      if (role.includes('capital') || role.includes('gunship') || role.includes('corvette')) {
+        return 'engine_plasma_ring';
+      }
+    }
+  }
+  // 5. Last resort default.
+  return 'engine_ion_small';
+}
+
+/**
+ * Frozen base profile by id — no allocation, no faction tint.
+ * @param {string|null|undefined} profileId
+ */
+export function getEngineProfileBase(profileId) {
+  if (profileId && ENGINE_PROFILES[profileId]) return ENGINE_PROFILES[profileId];
+  return DEFAULT_ENGINE;
+}
+
+/**
+ * Presentation profile. Without faction tint returns the frozen base (no alloc).
+ * Faction tint still allocates a small overlay object — avoid on dense hot paths;
+ * use getEngineProfileBase + resolveEngineProfileId instead.
+ */
+export function resolveEngineProfile(meta, factionThruster) {
+  const id = resolveEngineProfileId(meta);
+  const base = getEngineProfileBase(id);
+  if (!factionThruster) return base;
+  return {
+    ...base,
+    id,
+    coreColor: blendHex(base.coreColor, factionThruster, 0.38),
+    plumeCore: blendHex(base.plumeCore, factionThruster, 0.28),
+  };
+}
+
+// FB-071 — the weapon->family classification is owned by src/data/vfxProfiles.js so the audio
+// layer resolves the SAME family the picture does. The canonical family->presentation table
+// (WEAPON_FAMILY_PRESENTATION, incl. the gravitic / latch / ram / web provenance families) lives
+// there; this resolver is a thin alias kept for the render call sites.
+export function resolveWeaponPresentationFamily(weaponId, weaponData = null, fallbackData = null) {
+  return classifyWeaponFamily(weaponId, weaponData, fallbackData);
+}
+
+const IMPACT_PRESENTATION_PROFILES = Object.freeze({
+  kinetic: Object.freeze({
+    mode: 'directional-fragments', primaryShape: 'spray', life: 0.18, fragmentCount: 12,
+    coreColor: '#fff3d2', accentColor: '#ff9c48', lightPeak: 2.2,
+  }),
+  rail: Object.freeze({
+    mode: 'penetration-streak', primaryShape: 'line', life: 0.11, fragmentCount: 7,
+    coreColor: '#ffffff', accentColor: '#9edcff', lightPeak: 3.4,
+  }),
+  plasma: Object.freeze({
+    mode: 'thermal-splash', primaryShape: 'tendrils', life: 0.42, fragmentCount: 9,
+    coreColor: '#fff1c8', accentColor: '#ff6a28', lightPeak: 3.0,
+  }),
+  beam: Object.freeze({
+    mode: 'sustained-contact', primaryShape: 'contact-line', life: 0.08, fragmentCount: 3,
+    coreColor: '#f4fbff', accentColor: '#56cfff', lightPeak: 1.2,
+  }),
+  missile: Object.freeze({
+    mode: 'combustion-burst', primaryShape: 'irregular-burst', life: 0.62, fragmentCount: 15,
+    coreColor: '#fff0c0', accentColor: '#ff7028', lightPeak: 4.6,
+  }),
+  emp: Object.freeze({
+    mode: 'disruption-arcs', primaryShape: 'forks', life: 0.28, fragmentCount: 6,
+    coreColor: '#f2ffff', accentColor: '#668cff', lightPeak: 2.0,
+  }),
+  // SF-10 — distinct MODE + life:fragmentCount + a non-ring primaryShape from every family above.
+  // Concussion reads as a compressive slam (the payoff is really the terrain impact it sets up);
+  // the mine reads as an outward radial shove.
+  concussion: Object.freeze({
+    mode: 'concussive-slam', primaryShape: 'displacement-wave', life: 0.5, fragmentCount: 20,
+    coreColor: '#ffe9c4', accentColor: '#c98a4a', lightPeak: 3.6,
+  }),
+  mine: Object.freeze({
+    mode: 'radial-shove', primaryShape: 'shockfront', life: 0.36, fragmentCount: 18,
+    coreColor: '#cfe8ff', accentColor: '#5aa0ff', lightPeak: 2.6,
+  }),
+  web: Object.freeze({
+    mode: 'filament-snag', primaryShape: 'strand', life: 0.48, fragmentCount: 4,
+    coreColor: '#d7fff4', accentColor: '#3d8f86', lightPeak: 1.1,
+  }),
+  gravitic: Object.freeze({
+    mode: 'marker-ring', primaryShape: 'field-ring', life: 0.7, fragmentCount: 8,
+    coreColor: '#7ee7ff', accentColor: '#2450aa', lightPeak: 1.5,
+  }),
+  latch: Object.freeze({
+    mode: 'catch-loop', primaryShape: 'loop', life: 0.9, fragmentCount: 3,
+    coreColor: '#ffb15a', accentColor: '#6a3418', lightPeak: 1.3,
+  }),
+  well: Object.freeze({
+    mode: 'inward-collar', primaryShape: 'collar', life: 1.1, fragmentCount: 6,
+    coreColor: '#9ecbff', accentColor: '#3a4d88', lightPeak: 1.4,
+  }),
+  ram: Object.freeze({
+    mode: 'wedge-shove', primaryShape: 'wedge', life: 0.26, fragmentCount: 5,
+    coreColor: '#e7eefc', accentColor: '#6d7ea8', lightPeak: 2.4,
+  }),
+  sticky: Object.freeze({
+    mode: 'adhered-charge', primaryShape: 'charge', life: 0.8, fragmentCount: 2,
+    coreColor: '#ffcf70', accentColor: '#a85a18', lightPeak: 1.7,
+  }),
+  primer: Object.freeze({
+    mode: 'arc-bridge', primaryShape: 'fork', life: 0.22, fragmentCount: 6,
+    coreColor: '#d8f4ff', accentColor: '#1f8fd0', lightPeak: 1.6,
+  }),
+  cooker: Object.freeze({
+    mode: 'seam-heat', primaryShape: 'seam', life: 0.55, fragmentCount: 2,
+    coreColor: '#ff7a32', accentColor: '#ffd2a8', lightPeak: 2.1,
+  }),
+  driver: Object.freeze({
+    mode: 'slug-bar', primaryShape: 'bar', life: 0.16, fragmentCount: 4,
+    coreColor: '#f4f0e4', accentColor: '#8a8172', lightPeak: 2.8,
+  }),
+});
+
+// PQ-023 family (a). Impact identity is normally keyed by FAMILY, which left flak sharing the
+// autocannon's impact profile byte-for-byte -- a pure recolor at the one moment the leaf requires it
+// to read as its own weapon. Flak stays mechanically kinetic (it is a slug weapon and must keep the
+// kinetic trail and damage identity); only its impact gets its own entry, so the taxonomy is not
+// forked to fix a presentation problem.
+const IMPACT_PRESENTATION_BY_VARIANT = Object.freeze({
+  flak: Object.freeze({
+    // A proximity-fuzed fragmentation burst: many small fragments thrown outward, not one
+    // directional spray off a hit surface. `fragmentCount` is double the autocannon's and
+    // `lightPeak` is deliberately BELOW it -- flak fires in dense point-defense volleys, so a
+    // per-burst light as bright as a single autocannon hit would wash out the whole engagement.
+    mode: 'proximity-burst', primaryShape: 'fragment-cloud', life: 0.22, fragmentCount: 24,
+    coreColor: '#fff0cc', accentColor: '#ff8a3c', lightPeak: 1.6,
+  }),
+  // Pulse stays in the plasma *family* for taxonomy (energy packet, not a slug), but its contact
+  // must not inherit thermal-splash orange. The ion sting is a short cyan scar along the inbound
+  // path — distinct mode, life:fragmentCount, and palette from plasma, rail, beam, and kinetic.
+  'pulse-bolt': Object.freeze({
+    mode: 'ion-sting', primaryShape: 'contact-slit', life: 0.16, fragmentCount: 5,
+    coreColor: '#34cfff', accentColor: '#5f80ff', lightPeak: 1.8,
+  }),
+});
+
+export function resolveImpactPresentationProfile(weaponId, weaponData = null) {
+  const presentation = resolveWeaponPresentationFamily(weaponId, weaponData);
+  const base = IMPACT_PRESENTATION_BY_VARIANT[presentation.variant]
+    || IMPACT_PRESENTATION_PROFILES[presentation.family]
+    || IMPACT_PRESENTATION_PROFILES.kinetic;
+  const scale = presentation.variant === 'siege-lance'
+    ? 1.8
+    : (presentation.variant === 'torpedo' ? 1.5 : 1);
+  return { ...base, family: presentation.family, variant: presentation.variant, scale };
+}
+
+const VARIANT_MUZZLE_COLORS = Object.freeze({
+  filament: Object.freeze({ coreColor: '#d7fff4', accentColor: '#3d8f86', lightColor: '#b6ffe8' }),
+  'field-ring': Object.freeze({ coreColor: '#7ee7ff', accentColor: '#2450aa', lightColor: '#9af0ff' }),
+  'filament-latch': Object.freeze({ coreColor: '#ffb15a', accentColor: '#6a3418', lightColor: '#ffc888' }),
+  'well-collar': Object.freeze({ coreColor: '#9ecbff', accentColor: '#3a4d88', lightColor: '#c6dcff' }),
+  wedge: Object.freeze({ coreColor: '#e7eefc', accentColor: '#6d7ea8', lightColor: '#f4f7ff' }),
+  'sticky-charge': Object.freeze({ coreColor: '#ffcf70', accentColor: '#a85a18', lightColor: '#ffe0a0' }),
+  'primer-arc': Object.freeze({ coreColor: '#d8f4ff', accentColor: '#1f8fd0', lightColor: '#e8fbff' }),
+  'cooker-seam': Object.freeze({ coreColor: '#ff7a32', accentColor: '#ffd2a8', lightColor: '#ff9a55' }),
+  'driver-slug': Object.freeze({ coreColor: '#f4f0e4', accentColor: '#8a8172', lightColor: '#fff6e4' }),
+});
+
+function muzzleLaneForFamily(family) {
+  if (family === 'beam' || family === 'cooker') return 'beam';
+  if (family === 'plasma' || family === 'emp' || family === 'web' || family === 'gravitic'
+    || family === 'primer' || family === 'well') return 'energy';
+  if (family === 'missile' || family === 'sticky' || family === 'latch') return 'explosive';
+  // A concussion slug launches with a heavy recoil (smoke + ring), not a light tracer flash; a
+  // vector mine is lobbed. Keeps their muzzles off the autocannon's identity.
+  if (family === 'concussion') return 'explosive';
+  if (family === 'mine') return 'ballistic';
+  return 'ballistic';
+}
+
+function muzzleColorsForLane(lane) {
+  switch (lane) {
+    case 'energy':
+      return { coreColor: '#e8f8ff', accentColor: '#39d0ff', lightColor: '#66eeff' };
+    case 'explosive':
+      return { coreColor: '#fff0d0', accentColor: '#ff8844', lightColor: '#ffb35c' };
+    case 'beam':
+      return { coreColor: '#d8f0ff', accentColor: '#66ccff', lightColor: '#88ddff' };
+    default:
+      return { coreColor: '#ffffff', accentColor: '#ffcc88', lightColor: '#ffaa66' };
+  }
+}
+
+export function resolveMuzzleProfile(weaponId, weaponPartId) {
+  const partBase = weaponPartId && MUZZLE_PART_PROFILES[weaponPartId] ? MUZZLE_PART_PROFILES[weaponPartId] : null;
+  const presentation = resolveWeaponPresentationFamily(weaponId);
+  const lane = weaponId ? muzzleLaneForFamily(presentation.family) : ((partBase && partBase.lane) || 'ballistic');
+  const colors = VARIANT_MUZZLE_COLORS[presentation.variant]
+    || (presentation.variant === 'pulse-bolt'
+      ? { coreColor: '#34cfff', accentColor: '#5ff0ff', lightColor: '#39d0ff' }
+      : muzzleColorsForLane(lane));
+  const muzzle = {
+    ...DEFAULT_MUZZLE,
+    ...partBase,
+    lane,
+    family: presentation.family,
+    variant: presentation.variant,
+    weaponId: weaponId || null,
+    weaponPartId: weaponPartId || null,
+    ...colors,
+  };
+  if (presentation.variant === 'cooker-seam') muzzle.sizeMul = 1.85;
+  return muzzle;
+}
+
+function blendHex(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  if (!ca || !cb) return a || b || '#ffffff';
+  const mix = (x, y) => Math.round(x + (y - x) * t);
+  return rgbToHex(mix(ca.r, cb.r), mix(ca.g, cb.g), mix(ca.b, cb.b));
+}
+
+function hexToRgb(hex) {
+  const h = String(hex || '').replace('#', '');
+  if (h.length !== 6) return null;
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const c = (n) => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0');
+  return `#${c(r)}${c(g)}${c(b)}`;
+}
+
+// Projectile trail wisps — cosmetic lane keyed by weapon class (rail / missile / plasma / kinetic).
+const PROJECTILE_TRAIL_BASE = Object.freeze({
+  class: 'kinetic',
+  mode: 'spark',
+  life: 0.10,
+  size0: 0.45,
+  size1: 0.0,
+  stretch: 0.35,
+  streakLen: 0,
+  streakOpacity: 0,
+  particleCount: 1,
+  spawnMul: 1.0,
+  coreColor: '#ffcc88',
+  tailColor: '#5a4030',
+  drag: 0.62,
+});
+
+export const PROJECTILE_TRAIL_PROFILES = Object.freeze({
+  rail: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'rail',
+    mode: 'streak',
+    life: 0.14,
+    size0: 0.62,
+    size1: 0.0,
+    stretch: 2.2,
+    streakLen: 5.2,
+    streakOpacity: 0.86,
+    particleCount: 1,
+    coreColor: '#e8f8ff',
+    tailColor: '#4a9acc',
+    drag: 0.12,
+  }),
+  missile: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'missile',
+    mode: 'propelled',
+    life: 0.34,
+    size0: 1.45,
+    size1: 3.35,
+    stretch: 2.8,
+    streakLen: 2.9,
+    streakOpacity: 0.70,
+    particleCount: 1,
+    spawnMul: 1,
+    coreColor: '#fff0c8',
+    tailColor: '#302824',
+    drag: 0.64,
+  }),
+  plasma: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'plasma',
+    mode: 'thermal-wake',
+    // A compact, continuously overlapping inner stream plus a broader cooling sheath. Plasma used
+    // to emit three free point particles per cadence, which read as an orange bead chain in motion.
+    life: 0.12,
+    size0: 0.92,
+    size1: 0.0,
+    stretch: 1.25,
+    streakLen: 3.15,
+    streakOpacity: 0.54,
+    particleCount: 1,
+    coreColor: '#ffb05a',
+    tailColor: '#b8321d',
+    drag: 0.28,
+  }),
+  pulse: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'pulse',
+    mode: 'streak',
+    life: 0.085,
+    size0: 0.44,
+    size1: 0.0,
+    stretch: 1.7,
+    streakLen: 2.35,
+    streakOpacity: 0.20,
+    particleCount: 1,
+    coreColor: '#34cfff',
+    tailColor: '#165f9a',
+    drag: 0.18,
+  }),
+  kinetic: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'kinetic',
+    mode: 'tracer',
+    life: 0.075,
+    size0: 0.50,
+    size1: 0.0,
+    stretch: 1.45,
+    streakLen: 2.6,
+    streakOpacity: 0.68,
+    particleCount: 1,
+    coreColor: '#ffd090',
+    tailColor: '#6a5040',
+    drag: 0.68,
+  }),
+  emp: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'emp',
+    mode: 'disruption',
+    life: 0.18,
+    size0: 0.72,
+    size1: 0.08,
+    stretch: 1.35,
+    particleCount: 2,
+    coreColor: '#f4fbff',
+    tailColor: '#3c72a8',
+    drag: 0.22,
+  }),
+  // SF-10 concussion slug: a heavy, slow, THICK tracer — the wide streak (class 'concussion' takes
+  // the 0.42 width factor) reads as mass in flight, distinct from the needle rail trace and the
+  // light autocannon tracer. Connected streak, never a glowing ball.
+  concussion: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'concussion',
+    mode: 'tracer',
+    life: 0.13,
+    size0: 0.92,
+    size1: 0.0,
+    stretch: 1.05,
+    streakLen: 1.9,
+    streakOpacity: 0.5,
+    particleCount: 1,
+    coreColor: '#ffdca0',
+    tailColor: '#7a4a24',
+    drag: 0.5,
+  }),
+  // SF-10 vector mine: a short cool arc as it lobs, then the deployed body carries its identity in
+  // the entity mesh (visualFactory buildVectorMine). Kept minimal — the mine is not a flight weapon.
+  mine: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'mine',
+    mode: 'spark',
+    life: 0.20,
+    size0: 0.6,
+    size1: 0.1,
+    stretch: 0.4,
+    particleCount: 1,
+    coreColor: '#bcd8ff',
+    tailColor: '#28527a',
+    drag: 0.8,
+  }),
+  filament: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'kinetic', mode: 'streak', life: 0.28, size0: 0.22, stretch: 3.4,
+    streakLen: 8.4, streakOpacity: 0.72, coreColor: '#d7fff4', tailColor: '#1d4f48', drag: 0.08,
+  }),
+  'field-ring': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'emp', mode: 'streak', life: 0.1, size0: 0.9, stretch: 0.6,
+    streakLen: 1.4, streakOpacity: 0.55, coreColor: '#7ee7ff', tailColor: '#16306a', drag: 0.4,
+  }),
+  'filament-latch': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'missile', mode: 'streak', life: 0.4, size0: 0.55, stretch: 1.8,
+    streakLen: 3.6, streakOpacity: 0.6, coreColor: '#ffb15a', tailColor: '#4a2410', drag: 0.3,
+  }),
+  'well-collar': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'mine', mode: 'streak', life: 0.05, size0: 0.2, stretch: 0.2,
+    streakLen: 0.4, streakOpacity: 0.2, coreColor: '#9ecbff', tailColor: '#243058', drag: 0.9,
+  }),
+  wedge: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'kinetic', mode: 'tracer', life: 0.09, size0: 1.1, stretch: 0.7,
+    streakLen: 1.6, streakOpacity: 0.8, coreColor: '#e7eefc', tailColor: '#3a445c', drag: 0.55,
+  }),
+  'sticky-charge': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'missile', mode: 'tracer', life: 0.22, size0: 0.7, stretch: 1.2,
+    streakLen: 2.4, streakOpacity: 0.66, coreColor: '#ffcf70', tailColor: '#6a3810', drag: 0.45,
+  }),
+  'primer-arc': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'emp', mode: 'streak', life: 0.16, size0: 0.36, stretch: 2.4,
+    streakLen: 4.8, streakOpacity: 0.7, coreColor: '#d8f4ff', tailColor: '#145888', drag: 0.16,
+  }),
+  'cooker-seam': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'plasma', mode: 'streak', life: 0.34, size0: 0.48, stretch: 2.1,
+    streakLen: 6.2, streakOpacity: 0.74, coreColor: '#ff7a32', tailColor: '#6a280c', drag: 0.2,
+  }),
+  'driver-slug': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'kinetic', mode: 'tracer', life: 0.11, size0: 0.8, stretch: 1.6,
+    streakLen: 4.4, streakOpacity: 0.78, coreColor: '#f4f0e4', tailColor: '#4a463c', drag: 0.5,
+  }),
+});
+
+const PROJECTILE_TRAIL_VARIANTS = Object.freeze({
+  'continuous-beam': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.kinetic, variant: 'continuous-beam' }),
+  missile: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.missile, variant: 'missile' }),
+  torpedo: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.missile, variant: 'torpedo' }),
+  disruptor: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.emp, variant: 'disruptor' }),
+  railgun: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.rail, variant: 'railgun' }),
+  'siege-lance': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.rail, variant: 'siege-lance' }),
+  'thermal-bolt': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.plasma, variant: 'thermal-bolt' }),
+  'pulse-bolt': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.pulse, variant: 'pulse-bolt' }),
+  flak: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.kinetic, variant: 'flak' }),
+  autocannon: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.kinetic, variant: 'autocannon' }),
+  'concussion-slug': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.concussion, variant: 'concussion-slug' }),
+  'vector-mine': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.mine, variant: 'vector-mine' }),
+  filament: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.filament, variant: 'filament' }),
+  'field-ring': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['field-ring'], variant: 'field-ring' }),
+  'filament-latch': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['filament-latch'], variant: 'filament-latch' }),
+  'well-collar': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['well-collar'], variant: 'well-collar' }),
+  wedge: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.wedge, variant: 'wedge' }),
+  'sticky-charge': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['sticky-charge'], variant: 'sticky-charge' }),
+  'primer-arc': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['primer-arc'], variant: 'primer-arc' }),
+  'cooker-seam': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['cooker-seam'], variant: 'cooker-seam' }),
+  'driver-slug': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['driver-slug'], variant: 'driver-slug' }),
+});
+
+export function resolveProjectileTrailProfile(weaponId, projectileData = null) {
+  const data = projectileData || null;
+  const resolvedWeaponId = weaponId || (data && data.weaponId) || '';
+  const weaponDef = WEAPON_BY_ID.get(resolvedWeaponId) || null;
+  const presentation = resolveWeaponPresentationFamily(resolvedWeaponId, data, weaponDef);
+  // A pulse bolt belongs to the energy/plasma weapon family mechanically, but its wake is a short
+  // coherent ion shear. Reusing the thermal-plasma heat plan emitted three orange particle beads
+  // behind every cyan pulse at the real game camera.
+  return PROJECTILE_TRAIL_VARIANTS[presentation.variant] || PROJECTILE_TRAIL_VARIANTS.autocannon;
+}
+
+export function createProjectileTrailSpawnPlanScratch() {
+  const fallback = { size0: 0, stretch: 0 };
+  return {
+    skip: false,
+    reason: null,
+    class: 'kinetic',
+    mode: 'tracer',
+    emitCount: 0,
+    origin: { x: 0, z: 0 },
+    trailAxis: 0,
+    backVel: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    coreColor: '#ffffff',
+    tailColor: '#ffffff',
+    life: 0,
+    drag: 0,
+    streak: null,
+    sprite: null,
+    particle: null,
+    emitSmoke: false,
+    _streak: { width: 0, length: 0, opacity: 0, fallback },
+    _sprite: { size0: 0, size1: 0, aspect: 1 },
+    _particle: { size0: 0, size1: 0, stretch: 0 },
+  };
+}
+
+export function buildProjectileTrailSpawnPlan(profile, entity, burst = 1, out = null) {
+  const prof = profile || PROJECTILE_TRAIL_PROFILES.kinetic;
+  const plan = out || createProjectileTrailSpawnPlanScratch();
+  const vx = (entity && entity.vel && entity.vel.x) || 0;
+  const vz = (entity && entity.vel && entity.vel.z) || 0;
+  const speed = Math.hypot(vx, vz);
+  plan.skip = speed < 2;
+  plan.reason = plan.skip ? 'slow' : null;
+  plan.streak = null;
+  plan.sprite = null;
+  plan.particle = null;
+  plan.emitSmoke = false;
+  if (plan.skip) return plan;
+
+  const trailAxis = Math.atan2(vz, vx);
+  const backX = -vx / speed;
+  const backZ = -vz / speed;
+  const tailOff = ((entity && entity.radius) || 0.5) * 0.65;
+  const bx = entity.pos.x + backX * tailOff;
+  const bz = entity.pos.z + backZ * tailOff;
+  const emitCount = Math.max(1, Math.floor((prof.particleCount || 1) * (prof.spawnMul || 1) * burst));
+
+  plan.class = prof.class || 'kinetic';
+  plan.mode = prof.mode || 'spark';
+  plan.emitCount = emitCount;
+  plan.origin.x = bx;
+  plan.origin.z = bz;
+  plan.trailAxis = trailAxis;
+  plan.backVel.x = backX;
+  plan.backVel.z = backZ;
+  plan.vel.x = vx;
+  plan.vel.z = vz;
+  if (plan.class === 'plasma') {
+    // Match the authored projectile packet's allegiance-aware plasma palette. The wake remains
+    // structurally identifiable by its broad two-layer thermal shape; this only prevents a green
+    // player plasma body from towing an unrelated fixed-orange filament.
+    const team = entity && entity.team;
+    plan.coreColor = team === 1 ? '#ff7052' : (team === 0 ? '#d8fff0' : prof.coreColor);
+    plan.tailColor = team === 1 ? '#b82c1f' : (team === 0 ? '#188c65' : prof.tailColor);
+  } else {
+    plan.coreColor = prof.coreColor;
+    plan.tailColor = prof.tailColor;
+  }
+  plan.life = prof.life;
+  plan.drag = prof.drag;
+
+  if (prof.mode === 'streak' || prof.mode === 'tracer') {
+    const streak = plan._streak;
+    // Rail is a needle-thin electromagnetic trace. Pulse bolts retain a slightly broader ion wake
+    // so the two energy families remain structurally distinct at the game camera.
+    streak.width = Math.max(0.04, prof.size0 * (prof.class === 'rail' ? 0.28
+      : prof.class === 'kinetic' ? 0.24 : 0.42));
+    streak.length = prof.streakLen || 5.2;
+    streak.opacity = prof.streakOpacity || 0.72;
+    streak.fallback.size0 = prof.size0;
+    streak.fallback.stretch = prof.stretch || 2.2;
+    plan.streak = streak;
+  } else if (prof.mode === 'propelled') {
+    const streak = plan._streak;
+    streak.width = Math.max(0.10, prof.size0 * 0.18);
+    streak.length = prof.streakLen || 2.9;
+    streak.opacity = prof.streakOpacity || 0.58;
+    plan.streak = streak;
+    plan._sprite.size0 = prof.size0;
+    plan._sprite.size1 = prof.size1;
+    plan._sprite.aspect = 2.5;
+    plan.sprite = plan._sprite;
+  } else if (prof.mode === 'thermal-wake') {
+    const streak = plan._streak;
+    streak.width = Math.max(0.16, prof.size0 * 0.25);
+    streak.length = prof.streakLen || 3.15;
+    streak.opacity = prof.streakOpacity || 0.52;
+    plan.streak = streak;
+  } else if (prof.mode === 'disruption') {
+    plan._particle.size0 = prof.size0;
+    plan._particle.size1 = prof.size1;
+    plan._particle.stretch = prof.stretch || 0.7;
+    plan.particle = plan._particle;
+  } else {
+    plan._particle.size0 = prof.size0;
+    plan._particle.size1 = prof.size1;
+    plan._particle.stretch = prof.stretch || 0.3;
+    plan.particle = plan._particle;
+  }
+  return plan;
+}
+
+function _trailAssert(cond, msg, errors) {
+  if (!cond) errors.push(msg);
+}
+
+export function assertProjectileTrailProfileContracts() {
+  const errors = [];
+  const sample = {
+    pos: { x: 120, z: 40 },
+    vel: { x: 280, z: 40 },
+    radius: 1.2,
+  };
+
+  const kinetic = resolveProjectileTrailProfile('wpn_autocannon_m', { damageType: 'kinetic' });
+  _trailAssert(kinetic.class === 'kinetic', 'kinetic weapon must resolve to kinetic class', errors);
+  _trailAssert(kinetic.mode === 'tracer', 'kinetic weapon must use a short tracer mode', errors);
+  _trailAssert(kinetic.life < PROJECTILE_TRAIL_PROFILES.plasma.life, 'kinetic life shorter than plasma', errors);
+
+  const missile = resolveProjectileTrailProfile('wpn_missile_rack_m', { kind: 'missile', damageType: 'explosive' });
+  _trailAssert(missile.class === 'missile', 'missile weapon must resolve to missile class', errors);
+  _trailAssert(missile.mode === 'propelled', 'missile weapon must use attached propulsion mode', errors);
+  _trailAssert(missile.size0 > kinetic.size0, 'missile vapor wider than kinetic tracer', errors);
+
+  const plasma = resolveProjectileTrailProfile('wpn_plasma_cannon_m', { damageType: 'thermal' });
+  _trailAssert(plasma.class === 'plasma', 'plasma weapon must resolve to plasma class', errors);
+  _trailAssert(plasma.mode === 'thermal-wake', 'plasma weapon must use a connected thermal wake', errors);
+  _trailAssert(plasma.size0 > kinetic.size0, 'plasma wake wider than kinetic tracer', errors);
+
+  const rail = resolveProjectileTrailProfile('wpn_railgun_m', { damageType: 'kinetic' });
+  _trailAssert(rail.class === 'rail', 'railgun must resolve to rail class', errors);
+  _trailAssert(rail.mode === 'streak', 'railgun must use streak mode', errors);
+  _trailAssert(rail.stretch > plasma.stretch, 'rail trace stays more elongated than the plasma wake', errors);
+
+  const pulse = resolveProjectileTrailProfile('wpn_pulse_laser_m', { damageType: 'energy' });
+  _trailAssert(pulse.class === 'pulse', 'pulse laser must resolve to pulse trail class', errors);
+  _trailAssert(pulse.mode === 'streak', 'pulse laser must use a connected streak wake', errors);
+  _trailAssert(pulse.streakLen < rail.streakLen, 'pulse wake shorter than rail trace', errors);
+
+  const kineticPlan = buildProjectileTrailSpawnPlan(kinetic, sample, 1);
+  const missilePlan = buildProjectileTrailSpawnPlan(missile, sample, 1);
+  const plasmaPlan = buildProjectileTrailSpawnPlan(plasma, sample, 1);
+  const pulsePlan = buildProjectileTrailSpawnPlan(pulse, sample, 1);
+  const railPlan = buildProjectileTrailSpawnPlan(rail, sample, 1);
+
+  _trailAssert(kineticPlan.mode === 'tracer', 'kinetic spawn plan mode tracer', errors);
+  _trailAssert(missilePlan.mode === 'propelled', 'missile spawn plan mode propelled', errors);
+  _trailAssert(plasmaPlan.mode === 'thermal-wake', 'plasma spawn plan mode thermal-wake', errors);
+  _trailAssert(pulsePlan.mode === 'streak', 'pulse spawn plan mode streak', errors);
+  _trailAssert(railPlan.mode === 'streak', 'rail spawn plan mode streak', errors);
+  _trailAssert(railPlan.streak && railPlan.streak.width < 0.2, 'rail streak width thin', errors);
+  _trailAssert(railPlan.streak && railPlan.streak.length > 3, 'rail streak length long', errors);
+  _trailAssert(kineticPlan.streak && kineticPlan.streak.length > 1.5 && kineticPlan.streak.length < railPlan.streak.length,
+    'kinetic tracer must remain brief and shorter than the rail trace', errors);
+  _trailAssert(kineticPlan.particle === null, 'kinetic flight must not fall back to a glowing ball recipe', errors);
+  _trailAssert(missilePlan.sprite.size0 > railPlan.streak.width, 'missile vapor wider than rail streak', errors);
+  _trailAssert(missilePlan.streak.length < railPlan.streak.length,
+    'missile exhaust stays shorter than a rail trace', errors);
+  _trailAssert(plasmaPlan.streak && plasmaPlan.streak.width > railPlan.streak.width,
+    'plasma wake must remain wider than the rail trace', errors);
+  _trailAssert(plasmaPlan.streak && plasmaPlan.streak.length < railPlan.streak.length,
+    'plasma wake must remain shorter than the rail trace', errors);
+  _trailAssert(plasmaPlan.particle === null, 'plasma wake must not emit detached particle beads', errors);
+
+  if (errors.length) throw new Error(`projectile trail profile contracts failed:\n${errors.join('\n')}`);
+  return {
+    ok: true,
+    classes: {
+      kinetic: kinetic.class,
+      missile: missile.class,
+      plasma: plasma.class,
+      pulse: pulse.class,
+      rail: rail.class,
+    },
+    plans: {
+      kinetic: kineticPlan.mode,
+      missile: missilePlan.mode,
+      plasma: plasmaPlan.mode,
+      pulse: pulsePlan.mode,
+      rail: railPlan.mode,
+    },
+  };
+}

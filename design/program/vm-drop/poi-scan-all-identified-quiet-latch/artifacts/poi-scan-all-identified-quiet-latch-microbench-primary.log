@@ -1,0 +1,59 @@
+[
+  {
+    "name": "poi-scan-all-identified",
+    "medianSpeedup": 15.142,
+    "minSpeedup": 3.756,
+    "maxSpeedup": 16.518,
+    "pairs": [
+      3.756,
+      12.625,
+      15.266,
+      16.518,
+      15.19,
+      14.913,
+      15.142,
+      15.577,
+      14.938,
+      14.87,
+      15.31
+    ]
+  },
+  {
+    "name": "poi-scan-one-unidentified",
+    "medianSpeedup": 1.013,
+    "minSpeedup": 0.943,
+    "maxSpeedup": 1.242,
+    "pairs": [
+      1.242,
+      0.98,
+      1.013,
+      0.959,
+      0.943,
+      1.023,
+      0.96,
+      1.019,
+      1.02,
+      0.948,
+      1.077
+    ]
+  },
+  {
+    "name": "poi-scan-ceres-scale-4",
+    "medianSpeedup": 7.437,
+    "minSpeedup": 4.093,
+    "maxSpeedup": 11.123,
+    "pairs": [
+      6.82,
+      11.123,
+      7.437,
+      6.334,
+      7.026,
+      7.571,
+      7.3,
+      7.688,
+      4.093,
+      7.631,
+      8.042
+    ]
+  }
+]

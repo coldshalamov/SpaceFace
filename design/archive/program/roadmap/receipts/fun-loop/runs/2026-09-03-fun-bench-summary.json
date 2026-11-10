@@ -1,0 +1,2567 @@
+{
+  "schema": "spaceface.funConvergenceBench.v1",
+  "timestamp": "2026-09-03T16:44:24.055Z",
+  "headed": false,
+  "benches": {
+    "crucible": {
+      "bench": "crucible",
+      "ok": true,
+      "totalRuns": 27,
+      "wallMs": 144,
+      "runs": [
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "helios_core",
+          "loadoutId": "energy_baseline",
+          "seed": 4242,
+          "waveCount": 3,
+          "durationMs": 17,
+          "runHash": "c0edb6a257920589d8e705dd49cb1850bb03dddfadad41cf8141c072a1cd87fb",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "helios_core",
+              "loadoutId": "energy_baseline",
+              "seed": 4242,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "0f158ba6258eb9c1785f6ab2dc771de92fe8c03ceb5d7af768b65cd6d3579120",
+              "47628436d630c51956c601dc04fb2a475bf69a21b6b2d5592d0a2a96d5be2c92",
+              "f2d720e4786bca234d073e6898f0505c9a6bd104ccb4a1aa2ce636894df60845"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 7.5,
+              "verbsUsedCount": 3,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "0f158ba6258eb9c1785f6ab2dc771de92fe8c03ceb5d7af768b65cd6d3579120",
+            "47628436d630c51956c601dc04fb2a475bf69a21b6b2d5592d0a2a96d5be2c92",
+            "f2d720e4786bca234d073e6898f0505c9a6bd104ccb4a1aa2ce636894df60845"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 3,
+            "verbsPerMinute": 7.5,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "helios_core",
+          "loadoutId": "energy_baseline",
+          "seed": 8008,
+          "waveCount": 3,
+          "durationMs": 6,
+          "runHash": "120a731612922ff0ad1ed5246202da2f389c1f34420e63ef42219da13fac0f00",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "helios_core",
+              "loadoutId": "energy_baseline",
+              "seed": 8008,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "2971ad8eae124004d5e459e41e5e4a7f7bdeff296c57f9bac61c77b378503ea4",
+              "d3b52fb6ebf3fc3a5a5acf51fd1cc4f0361774b0c7c870e717cad36e7005779d",
+              "4e248122688b234cf334baabcd84efc7ff7f486b15ae1eb05a8c7a569704a065"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 7.5,
+              "verbsUsedCount": 3,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "2971ad8eae124004d5e459e41e5e4a7f7bdeff296c57f9bac61c77b378503ea4",
+            "d3b52fb6ebf3fc3a5a5acf51fd1cc4f0361774b0c7c870e717cad36e7005779d",
+            "4e248122688b234cf334baabcd84efc7ff7f486b15ae1eb05a8c7a569704a065"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 3,
+            "verbsPerMinute": 7.5,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "helios_core",
+          "loadoutId": "energy_baseline",
+          "seed": 13502,
+          "waveCount": 3,
+          "durationMs": 11,
+          "runHash": "d99a0182cfdd7fa539910751d71a285c2183c0f9ccb0e8729aea5ea4e60f69b8",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "helios_core",
+              "loadoutId": "energy_baseline",
+              "seed": 13502,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "c6f811faf22964240ecb407eca0d88dee7652aa0f9a66b1d4373b76c7436fd66",
+              "e9b76a727549f30f6149d8050ca05e39384bbdabc456c84eb7cc4fea0a7660ab",
+              "00a7eaf6abb3f049c2de8f4ef9c5bdbed1f44eacb06e221dc4263f85b6b63cf6"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 7.5,
+              "verbsUsedCount": 3,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "c6f811faf22964240ecb407eca0d88dee7652aa0f9a66b1d4373b76c7436fd66",
+            "e9b76a727549f30f6149d8050ca05e39384bbdabc456c84eb7cc4fea0a7660ab",
+            "00a7eaf6abb3f049c2de8f4ef9c5bdbed1f44eacb06e221dc4263f85b6b63cf6"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 3,
+            "verbsPerMinute": 7.5,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "helios_core",
+          "loadoutId": "physics_toolkit",
+          "seed": 4242,
+          "waveCount": 3,
+          "durationMs": 4,
+          "runHash": "b26addb2a935ba7a648c543b0af0069f5278778c9a78065aa101cae96cd7ec0c",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "helios_core",
+              "loadoutId": "physics_toolkit",
+              "seed": 4242,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "d66323500b781d3d518b1fd897bcad74f8921edaf5454c8d5ad6b8aa5bf2b80b",
+              "9840babd5d8e4df730817c1fa6f06c63f7831b35cdb9b3bebbb92e1a1db7a200",
+              "5c00aec92f18c3f4bd7a92d998fc142d66be82ffd0b5637fb934462646ae41f0"
+            ],
+            "traceHash": "2e5905fb7a5d75de698f6e6e54193f4fef697fdca25a3362e8a3fcacd91e2987",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 15,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 10,
+              "verbsUsedCount": 4,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "d66323500b781d3d518b1fd897bcad74f8921edaf5454c8d5ad6b8aa5bf2b80b",
+            "9840babd5d8e4df730817c1fa6f06c63f7831b35cdb9b3bebbb92e1a1db7a200",
+            "5c00aec92f18c3f4bd7a92d998fc142d66be82ffd0b5637fb934462646ae41f0"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 4,
+            "verbsPerMinute": 10,
+            "momentsPerMinute": 15,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "helios_core",
+          "loadoutId": "physics_toolkit",
+          "seed": 8008,
+          "waveCount": 3,
+          "durationMs": 4,
+          "runHash": "9dffa8294cf663111cc93d3a70b7aaeee154842c680a3d086746760ef33b6d7f",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "helios_core",
+              "loadoutId": "physics_toolkit",
+              "seed": 8008,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "7542ebd2e46f9be1a90005cd271ede3f25f9b927c0fff8dd38662b019b1caae8",
+              "a4defaf0cb4dc75bc9e2c5438e798fb644fc5ffcc08d95fa94ec29126172a6a2",
+              "83b967689b334a66f03492f12ca204255b2bddc5269a61223754f3f4c0ca5f44"
+            ],
+            "traceHash": "2e5905fb7a5d75de698f6e6e54193f4fef697fdca25a3362e8a3fcacd91e2987",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 15,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 10,
+              "verbsUsedCount": 4,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "7542ebd2e46f9be1a90005cd271ede3f25f9b927c0fff8dd38662b019b1caae8",
+            "a4defaf0cb4dc75bc9e2c5438e798fb644fc5ffcc08d95fa94ec29126172a6a2",
+            "83b967689b334a66f03492f12ca204255b2bddc5269a61223754f3f4c0ca5f44"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 4,
+            "verbsPerMinute": 10,
+            "momentsPerMinute": 15,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "helios_core",
+          "loadoutId": "physics_toolkit",
+          "seed": 13502,
+          "waveCount": 3,
+          "durationMs": 6,
+          "runHash": "4af1194008eec25ef40fafdba60583bec1467cbfdf68a12abac96f2c1c4e2f9a",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "helios_core",
+              "loadoutId": "physics_toolkit",
+              "seed": 13502,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "fa0b5abb48fdba1d165ddc0f1bba8a282e12f70e6346a55d455997cd71bc3fa8",
+              "8370857cdf60f066470c055768da42de6ef2951c6c2820960c773594e3cfb43d",
+              "5db7b0a93c2c8fa162cfc644462d94347162973ec55c81b57f8d3bc4a617db22"
+            ],
+            "traceHash": "2e5905fb7a5d75de698f6e6e54193f4fef697fdca25a3362e8a3fcacd91e2987",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 15,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 10,
+              "verbsUsedCount": 4,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "fa0b5abb48fdba1d165ddc0f1bba8a282e12f70e6346a55d455997cd71bc3fa8",
+            "8370857cdf60f066470c055768da42de6ef2951c6c2820960c773594e3cfb43d",
+            "5db7b0a93c2c8fa162cfc644462d94347162973ec55c81b57f8d3bc4a617db22"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 4,
+            "verbsPerMinute": 10,
+            "momentsPerMinute": 15,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "helios_core",
+          "loadoutId": "massline_rig",
+          "seed": 4242,
+          "waveCount": 3,
+          "durationMs": 7,
+          "runHash": "9d06a30e51b87e56ae5fa82ccc898ddcf60ba779a9b656bfba1a0df1842b71cf",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "helios_core",
+              "loadoutId": "massline_rig",
+              "seed": 4242,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "9aded0a40806a90861386ffa7d776580cdbc936ad1708c1f15dee5c77b75c86b",
+              "ad223e39115aa51c52d1cc5711473a538be2459ac1faa4adbe438a0c2f0f5395",
+              "43a6705a8459d96e712d8c220aa75e66cf9a80c6a0d6cda62a9800468ae9d059"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 15,
+              "verbsUsedCount": 6,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "9aded0a40806a90861386ffa7d776580cdbc936ad1708c1f15dee5c77b75c86b",
+            "ad223e39115aa51c52d1cc5711473a538be2459ac1faa4adbe438a0c2f0f5395",
+            "43a6705a8459d96e712d8c220aa75e66cf9a80c6a0d6cda62a9800468ae9d059"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 6,
+            "verbsPerMinute": 15,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "helios_core",
+          "loadoutId": "massline_rig",
+          "seed": 8008,
+          "waveCount": 3,
+          "durationMs": 7,
+          "runHash": "fd52e73e05b32064865a9e4a00d5bbd25021c75512ad95b5838f30b15d3a3c8b",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "helios_core",
+              "loadoutId": "massline_rig",
+              "seed": 8008,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "a67c1ceb5bfda0733d7a667a264f768548eec0812c5ec7c8725404ed7e6dd789",
+              "1da6aa9283bd3a4cad3054c9f5e4fe166b6ddfb6e2753858da9977b218c1f805",
+              "3a635af67b790bffa061d1ba22b31fc67b98c4d140ffd37498c0b89801ef0f41"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 15,
+              "verbsUsedCount": 6,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "a67c1ceb5bfda0733d7a667a264f768548eec0812c5ec7c8725404ed7e6dd789",
+            "1da6aa9283bd3a4cad3054c9f5e4fe166b6ddfb6e2753858da9977b218c1f805",
+            "3a635af67b790bffa061d1ba22b31fc67b98c4d140ffd37498c0b89801ef0f41"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 6,
+            "verbsPerMinute": 15,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "helios_core",
+          "loadoutId": "massline_rig",
+          "seed": 13502,
+          "waveCount": 3,
+          "durationMs": 5,
+          "runHash": "701d2b9160df3104e4b54437ac5f7b96babd4ca4f72ed7d77325f99d529fe474",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "helios_core",
+              "loadoutId": "massline_rig",
+              "seed": 13502,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "324f149b06654ee248ba436282da3af7811ef6033f1d11e7e14c2caf0fb3549a",
+              "7b46d80b98abcd0272973c3eb608e021d2e56f39c09f9a52e768a0d33fa797cd",
+              "2125d90937e3778a5f3a55e9abd12773708dd0a17de94146278a3558c0a9d71b"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 15,
+              "verbsUsedCount": 6,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "324f149b06654ee248ba436282da3af7811ef6033f1d11e7e14c2caf0fb3549a",
+            "7b46d80b98abcd0272973c3eb608e021d2e56f39c09f9a52e768a0d33fa797cd",
+            "2125d90937e3778a5f3a55e9abd12773708dd0a17de94146278a3558c0a9d71b"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 6,
+            "verbsPerMinute": 15,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "lagrange_crucible",
+          "loadoutId": "energy_baseline",
+          "seed": 4242,
+          "waveCount": 3,
+          "durationMs": 4,
+          "runHash": "8a3afa0c1933d6181ca6ed52b1b0b9b49edcb2d52dffba54ca9cb7de35851bc8",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "lagrange_crucible",
+              "loadoutId": "energy_baseline",
+              "seed": 4242,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "6d9b4e99350c076ac304a69c5069124b8ea1b67b3d53feebf4b9142526482d21",
+              "f97fe17e621a21ba8218629671e1d22cff6ef3966b82076786f45893b9a91922",
+              "61b4df7caca0f8a7c675f24469869b94bdb559dc9bbc5767ccb637fdae0a8aec"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 7.5,
+              "verbsUsedCount": 3,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "6d9b4e99350c076ac304a69c5069124b8ea1b67b3d53feebf4b9142526482d21",
+            "f97fe17e621a21ba8218629671e1d22cff6ef3966b82076786f45893b9a91922",
+            "61b4df7caca0f8a7c675f24469869b94bdb559dc9bbc5767ccb637fdae0a8aec"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 3,
+            "verbsPerMinute": 7.5,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "lagrange_crucible",
+          "loadoutId": "energy_baseline",
+          "seed": 8008,
+          "waveCount": 3,
+          "durationMs": 4,
+          "runHash": "4d9ade37d12a29588bf14786b7993c53d3b8a5add9ff913a0f9e6da4635aa361",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "lagrange_crucible",
+              "loadoutId": "energy_baseline",
+              "seed": 8008,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "3f58ef87b3065e1dac39c8c2a7710c6a88becfaa3e71e6c9adff53d306125960",
+              "213b9d9f66eaf0b8ecbe1b94249dca0c185fe597b45aa4b853e7964745c0e139",
+              "a6fc931361689678378b64215f98dc7e245c5b0a54a03fc448aa1a173d173dd1"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 7.5,
+              "verbsUsedCount": 3,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "3f58ef87b3065e1dac39c8c2a7710c6a88becfaa3e71e6c9adff53d306125960",
+            "213b9d9f66eaf0b8ecbe1b94249dca0c185fe597b45aa4b853e7964745c0e139",
+            "a6fc931361689678378b64215f98dc7e245c5b0a54a03fc448aa1a173d173dd1"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 3,
+            "verbsPerMinute": 7.5,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "lagrange_crucible",
+          "loadoutId": "energy_baseline",
+          "seed": 13502,
+          "waveCount": 3,
+          "durationMs": 6,
+          "runHash": "43ae0d428dd939579ef3f04fe004ffae418e74c0076010875485d0773937c679",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "lagrange_crucible",
+              "loadoutId": "energy_baseline",
+              "seed": 13502,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "91089608c7a060c8abda2a3df108196e02a55e81e1a2c84a92310ea226132cd4",
+              "31f123c520369859d5d894659935f4abb16e0ea3664ebd514b955ad920cebe81",
+              "b998d19e3389f59403262b7cdb644b2bf4f7c2773abc02cc051b46b361dc57c0"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 7.5,
+              "verbsUsedCount": 3,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "91089608c7a060c8abda2a3df108196e02a55e81e1a2c84a92310ea226132cd4",
+            "31f123c520369859d5d894659935f4abb16e0ea3664ebd514b955ad920cebe81",
+            "b998d19e3389f59403262b7cdb644b2bf4f7c2773abc02cc051b46b361dc57c0"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 3,
+            "verbsPerMinute": 7.5,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "lagrange_crucible",
+          "loadoutId": "physics_toolkit",
+          "seed": 4242,
+          "waveCount": 3,
+          "durationMs": 3,
+          "runHash": "4284e06270d424a949869a2e5f971a5063e93a17ed35d688373658c54574298a",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "lagrange_crucible",
+              "loadoutId": "physics_toolkit",
+              "seed": 4242,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "c3e0812d6dd804d221079c3c67c8b9be1a2a639296bd75d6674925b26a95d9b6",
+              "79df20158d79494c2445b6392c4b45e36cd8db353f767d9e7c606ff0301819a7",
+              "f173e446973036f8c725796e1126a1b56b4f9cc5e1cd2dd7d7b3a91691871896"
+            ],
+            "traceHash": "2e5905fb7a5d75de698f6e6e54193f4fef697fdca25a3362e8a3fcacd91e2987",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 15,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 10,
+              "verbsUsedCount": 4,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "c3e0812d6dd804d221079c3c67c8b9be1a2a639296bd75d6674925b26a95d9b6",
+            "79df20158d79494c2445b6392c4b45e36cd8db353f767d9e7c606ff0301819a7",
+            "f173e446973036f8c725796e1126a1b56b4f9cc5e1cd2dd7d7b3a91691871896"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 4,
+            "verbsPerMinute": 10,
+            "momentsPerMinute": 15,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "lagrange_crucible",
+          "loadoutId": "physics_toolkit",
+          "seed": 8008,
+          "waveCount": 3,
+          "durationMs": 3,
+          "runHash": "70ba27b19263949db5f1dea679ae73a85d780fb181c22c8b7120f610c04633e2",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "lagrange_crucible",
+              "loadoutId": "physics_toolkit",
+              "seed": 8008,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "593aca4a76c57f6ef85594a76b32f031735e98b60c9c6f3be511d2ddb160b62b",
+              "28dd9945807331045094c0f8fa10784f077d256199918ddc9e47924095bce61f",
+              "3b806bc7a490ad46223718638b1b9ec19cc6f85d58d7f2d8d0bc701fc6cbebad"
+            ],
+            "traceHash": "2e5905fb7a5d75de698f6e6e54193f4fef697fdca25a3362e8a3fcacd91e2987",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 15,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 10,
+              "verbsUsedCount": 4,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "593aca4a76c57f6ef85594a76b32f031735e98b60c9c6f3be511d2ddb160b62b",
+            "28dd9945807331045094c0f8fa10784f077d256199918ddc9e47924095bce61f",
+            "3b806bc7a490ad46223718638b1b9ec19cc6f85d58d7f2d8d0bc701fc6cbebad"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 4,
+            "verbsPerMinute": 10,
+            "momentsPerMinute": 15,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "lagrange_crucible",
+          "loadoutId": "physics_toolkit",
+          "seed": 13502,
+          "waveCount": 3,
+          "durationMs": 3,
+          "runHash": "7559a72712c13f6ad90fe4ce5cebe6f572f6b728ac6a8e75939232be9ce62757",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "lagrange_crucible",
+              "loadoutId": "physics_toolkit",
+              "seed": 13502,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "12832cfbe5c27c4bde50c5489f6ac250544f7f19ee60170214000de49240cb5d",
+              "c2e445ffe87d6c3639843b5783ef9ab0fe9df09c22f6a36ca9e157da5a171fa6",
+              "6abf31b48fd822f71e7ce86627f2c1322f5fcc10758a0481ba044f989e3f7c0b"
+            ],
+            "traceHash": "2e5905fb7a5d75de698f6e6e54193f4fef697fdca25a3362e8a3fcacd91e2987",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 15,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 10,
+              "verbsUsedCount": 4,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "12832cfbe5c27c4bde50c5489f6ac250544f7f19ee60170214000de49240cb5d",
+            "c2e445ffe87d6c3639843b5783ef9ab0fe9df09c22f6a36ca9e157da5a171fa6",
+            "6abf31b48fd822f71e7ce86627f2c1322f5fcc10758a0481ba044f989e3f7c0b"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 4,
+            "verbsPerMinute": 10,
+            "momentsPerMinute": 15,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "lagrange_crucible",
+          "loadoutId": "massline_rig",
+          "seed": 4242,
+          "waveCount": 3,
+          "durationMs": 3,
+          "runHash": "762a4777a61b8092960b4eb70861f3237a42f162f17d1e747766480eaecb1ab2",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "lagrange_crucible",
+              "loadoutId": "massline_rig",
+              "seed": 4242,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "a88d0f286d6dc899df787aa1a20c328e12d6231fb4b476d2b1f83850a4ad63c5",
+              "c34a5615eed0834858a55ea15962d4455c5d4fc5c9614dec15d2ce1e930693c4",
+              "f761eb63fa0f979a5f22e57b410430e9906c516225f2ec74086f8ebc50cfcd98"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 15,
+              "verbsUsedCount": 6,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "a88d0f286d6dc899df787aa1a20c328e12d6231fb4b476d2b1f83850a4ad63c5",
+            "c34a5615eed0834858a55ea15962d4455c5d4fc5c9614dec15d2ce1e930693c4",
+            "f761eb63fa0f979a5f22e57b410430e9906c516225f2ec74086f8ebc50cfcd98"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 6,
+            "verbsPerMinute": 15,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "lagrange_crucible",
+          "loadoutId": "massline_rig",
+          "seed": 8008,
+          "waveCount": 3,
+          "durationMs": 5,
+          "runHash": "562d9e16387030a5fbab28d7243c26032795a09b315cfd36d78b046875971ffa",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "lagrange_crucible",
+              "loadoutId": "massline_rig",
+              "seed": 8008,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "05a4213a3f04cef817d973d7ad2285f34eb52f027a5ad1514b5731faa0275f2d",
+              "e300f5566a76a2b50b19f0e911926b1adedf163b8c476507f69fa049a87aaede",
+              "8e7cfc0f436bdd4f74e408eeb377e1cddf702b69a091514b8532a4c8fc41c029"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 15,
+              "verbsUsedCount": 6,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "05a4213a3f04cef817d973d7ad2285f34eb52f027a5ad1514b5731faa0275f2d",
+            "e300f5566a76a2b50b19f0e911926b1adedf163b8c476507f69fa049a87aaede",
+            "8e7cfc0f436bdd4f74e408eeb377e1cddf702b69a091514b8532a4c8fc41c029"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 6,
+            "verbsPerMinute": 15,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "lagrange_crucible",
+          "loadoutId": "massline_rig",
+          "seed": 13502,
+          "waveCount": 3,
+          "durationMs": 3,
+          "runHash": "53a2b2785025d713ca06147b2b95a1577dd4ed13d48f7d4d872b0c7d090beedb",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "lagrange_crucible",
+              "loadoutId": "massline_rig",
+              "seed": 13502,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "57891130f7f45a45bc886f8a074af8ee5e87a68f9ca864f0965485cf7eceba94",
+              "77e97fa1250458b523fca6887cb9fcdc260beecc14eb0cedeef915327c254f38",
+              "230063bb69eb68badb1551871864a71ca1ffef51dd58ed86ae62d3bf5c0da2ca"
+            ],
+            "traceHash": "d3f1a112c13acff1a1264732f0bd286c63ab146daa4ae6f614b58c194e5fbc6f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 0,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 15,
+              "verbsUsedCount": 6,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "57891130f7f45a45bc886f8a074af8ee5e87a68f9ca864f0965485cf7eceba94",
+            "77e97fa1250458b523fca6887cb9fcdc260beecc14eb0cedeef915327c254f38",
+            "230063bb69eb68badb1551871864a71ca1ffef51dd58ed86ae62d3bf5c0da2ca"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 6,
+            "verbsPerMinute": 15,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 0,
+            "maxPlayerKnockFraction": 0,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "cinder_sluice",
+          "loadoutId": "energy_baseline",
+          "seed": 4242,
+          "waveCount": 3,
+          "durationMs": 3,
+          "runHash": "ed7e8d5a6e5442692daec39dd84077ed451f0ebd04f6d11e6b69ddd487458962",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "cinder_sluice",
+              "loadoutId": "energy_baseline",
+              "seed": 4242,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "6cf83aab50d3a5914e9cf45842d3d7efcb11fc1a9880f9c2c0a87437ac267be1",
+              "c88631138bb3b767fcb31c2db00830fb74ec46f3fc6a5ebe9abed6e8154e23d4",
+              "7f933c52570e5bfcf102206c5d7dd8efa2421b4b0cc7ac5a9209ce01a5142c6d"
+            ],
+            "traceHash": "66382e9cb8cd4d802e51cc3c1fcd3b2cd3ae05c936de230dc3be0540e4912d58",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0.08,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 2.5,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 7.5,
+              "verbsUsedCount": 3,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "6cf83aab50d3a5914e9cf45842d3d7efcb11fc1a9880f9c2c0a87437ac267be1",
+            "c88631138bb3b767fcb31c2db00830fb74ec46f3fc6a5ebe9abed6e8154e23d4",
+            "7f933c52570e5bfcf102206c5d7dd8efa2421b4b0cc7ac5a9209ce01a5142c6d"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 3,
+            "verbsPerMinute": 7.5,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 2.5,
+            "maxPlayerKnockFraction": 0.08,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "cinder_sluice",
+          "loadoutId": "energy_baseline",
+          "seed": 8008,
+          "waveCount": 3,
+          "durationMs": 4,
+          "runHash": "b2a6e508cd722f6086a55d8327bcfb01fe7cf4cc786a8ce28fbc37730a94b1e3",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "cinder_sluice",
+              "loadoutId": "energy_baseline",
+              "seed": 8008,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "c7d7240962124a7817584e32f656d7d8ea8aefc0667957928ef570c9f9630088",
+              "ac85a142c39f9cb90bf8fe734292e836b4702cfdf7c6ce987f0435d08c11de64",
+              "87c6df09701a611077e5d9d6a40ff3be834decbb00a8c012111f4e08f4dc6829"
+            ],
+            "traceHash": "66382e9cb8cd4d802e51cc3c1fcd3b2cd3ae05c936de230dc3be0540e4912d58",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0.08,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 2.5,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 7.5,
+              "verbsUsedCount": 3,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "c7d7240962124a7817584e32f656d7d8ea8aefc0667957928ef570c9f9630088",
+            "ac85a142c39f9cb90bf8fe734292e836b4702cfdf7c6ce987f0435d08c11de64",
+            "87c6df09701a611077e5d9d6a40ff3be834decbb00a8c012111f4e08f4dc6829"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 3,
+            "verbsPerMinute": 7.5,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 2.5,
+            "maxPlayerKnockFraction": 0.08,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "cinder_sluice",
+          "loadoutId": "energy_baseline",
+          "seed": 13502,
+          "waveCount": 3,
+          "durationMs": 7,
+          "runHash": "fd6ee1c3ded8db165f11aa42535cab872ae0b877daec9c4abbf268eeb70a4271",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "cinder_sluice",
+              "loadoutId": "energy_baseline",
+              "seed": 13502,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "79845e00c7793634115bbae4100f85c8cffe82bd86633413316555b8ec2534dd",
+              "17acaef26923317c99ae770c6d55a0d9da7e8f323b1b88537ca074846504b8f7",
+              "541954901605ab22627b49ab0de4df61b44f2dc0042c7d011b2e131f67cdd5f3"
+            ],
+            "traceHash": "66382e9cb8cd4d802e51cc3c1fcd3b2cd3ae05c936de230dc3be0540e4912d58",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0.08,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 2.5,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 7.5,
+              "verbsUsedCount": 3,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "79845e00c7793634115bbae4100f85c8cffe82bd86633413316555b8ec2534dd",
+            "17acaef26923317c99ae770c6d55a0d9da7e8f323b1b88537ca074846504b8f7",
+            "541954901605ab22627b49ab0de4df61b44f2dc0042c7d011b2e131f67cdd5f3"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 3,
+            "verbsPerMinute": 7.5,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 2.5,
+            "maxPlayerKnockFraction": 0.08,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "cinder_sluice",
+          "loadoutId": "physics_toolkit",
+          "seed": 4242,
+          "waveCount": 3,
+          "durationMs": 4,
+          "runHash": "3c681cc2f1d0e75c919d9d1f3afea7d848cfa572c1d0b65eb0947bfa8a42f9e6",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "cinder_sluice",
+              "loadoutId": "physics_toolkit",
+              "seed": 4242,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "fa0abdfbebd48165c515ac3f543a44723ed32f45da3322a5ba316e0caa03aded",
+              "727a057caca236002c030a26e516a5cfc96913bb3c54eb4ecb4b45b8e6656c2a",
+              "4e398816d3593113e89a152e4f73a5c9bb0ddc780a248f2d6694b94e5283f418"
+            ],
+            "traceHash": "ca01137159bbe9a8898a8026ea899683e2fd03dcaaccf2d8d88fb5e69b19874f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0.08,
+              "momentsPerMinute": 15,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 2.5,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 10,
+              "verbsUsedCount": 4,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "fa0abdfbebd48165c515ac3f543a44723ed32f45da3322a5ba316e0caa03aded",
+            "727a057caca236002c030a26e516a5cfc96913bb3c54eb4ecb4b45b8e6656c2a",
+            "4e398816d3593113e89a152e4f73a5c9bb0ddc780a248f2d6694b94e5283f418"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 4,
+            "verbsPerMinute": 10,
+            "momentsPerMinute": 15,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 2.5,
+            "maxPlayerKnockFraction": 0.08,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "cinder_sluice",
+          "loadoutId": "physics_toolkit",
+          "seed": 8008,
+          "waveCount": 3,
+          "durationMs": 5,
+          "runHash": "722bb46629be22ab814af49e9701c84680e09189ae1060e5e13a64263ef0508c",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "cinder_sluice",
+              "loadoutId": "physics_toolkit",
+              "seed": 8008,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "393b3ab949de03cf45a5de9aae1fe2c01a8751521f6aa624578c3c312be8d714",
+              "a8eed368557b01725084c6e23536238dfb4e90a032ba6aa44ac6252656d1329d",
+              "93efd855083af4522622b08b550710804a51ee33fbefd80c3a1ceb3d7dba2e69"
+            ],
+            "traceHash": "ca01137159bbe9a8898a8026ea899683e2fd03dcaaccf2d8d88fb5e69b19874f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0.08,
+              "momentsPerMinute": 15,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 2.5,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 10,
+              "verbsUsedCount": 4,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "393b3ab949de03cf45a5de9aae1fe2c01a8751521f6aa624578c3c312be8d714",
+            "a8eed368557b01725084c6e23536238dfb4e90a032ba6aa44ac6252656d1329d",
+            "93efd855083af4522622b08b550710804a51ee33fbefd80c3a1ceb3d7dba2e69"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 4,
+            "verbsPerMinute": 10,
+            "momentsPerMinute": 15,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 2.5,
+            "maxPlayerKnockFraction": 0.08,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "cinder_sluice",
+          "loadoutId": "physics_toolkit",
+          "seed": 13502,
+          "waveCount": 3,
+          "durationMs": 4,
+          "runHash": "f1518ce67b14e6b928d213186030dc8c69b774db30b987eb08d03bac049953ee",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "cinder_sluice",
+              "loadoutId": "physics_toolkit",
+              "seed": 13502,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "7c19af8e0328bc74cde763e3c631e5c80bfeea9d90e6cc05f2ee464404a74411",
+              "420b34f1afcb70e672c5f01e450fee0d3b45c3a02d0b92666e5bba588cc8537c",
+              "1f8aa5913d09850623abe36124f793134399de92c696324aa5cbff8e22eeda9d"
+            ],
+            "traceHash": "ca01137159bbe9a8898a8026ea899683e2fd03dcaaccf2d8d88fb5e69b19874f",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0.08,
+              "momentsPerMinute": 15,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 2.5,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 10,
+              "verbsUsedCount": 4,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "7c19af8e0328bc74cde763e3c631e5c80bfeea9d90e6cc05f2ee464404a74411",
+            "420b34f1afcb70e672c5f01e450fee0d3b45c3a02d0b92666e5bba588cc8537c",
+            "1f8aa5913d09850623abe36124f793134399de92c696324aa5cbff8e22eeda9d"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 4,
+            "verbsPerMinute": 10,
+            "momentsPerMinute": 15,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 2.5,
+            "maxPlayerKnockFraction": 0.08,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "cinder_sluice",
+          "loadoutId": "massline_rig",
+          "seed": 4242,
+          "waveCount": 3,
+          "durationMs": 4,
+          "runHash": "0e65c6c1e8483512dc2508cc05f01a17742d03b16f274063aade74d08acadde5",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "cinder_sluice",
+              "loadoutId": "massline_rig",
+              "seed": 4242,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "a52f1cef953ef99c001e2a970f01ab3503c1324ac2d76b4a672e374186bacfa6",
+              "deb4f7f053739bccadac0f96ee2e5e68067af58d7118878ff2e4bd0fa959665e",
+              "bdf723e1cb4e398b4d8b6da537ff9f5ae096aafcccc09f2cb52f23f4992e837e"
+            ],
+            "traceHash": "66382e9cb8cd4d802e51cc3c1fcd3b2cd3ae05c936de230dc3be0540e4912d58",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0.08,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 2.5,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 15,
+              "verbsUsedCount": 6,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "a52f1cef953ef99c001e2a970f01ab3503c1324ac2d76b4a672e374186bacfa6",
+            "deb4f7f053739bccadac0f96ee2e5e68067af58d7118878ff2e4bd0fa959665e",
+            "bdf723e1cb4e398b4d8b6da537ff9f5ae096aafcccc09f2cb52f23f4992e837e"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 6,
+            "verbsPerMinute": 15,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 2.5,
+            "maxPlayerKnockFraction": 0.08,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "cinder_sluice",
+          "loadoutId": "massline_rig",
+          "seed": 8008,
+          "waveCount": 3,
+          "durationMs": 5,
+          "runHash": "445ccd9444f70ade6039cc911bb4120dc806e11825198beb73ecd6e16e0b37bd",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "cinder_sluice",
+              "loadoutId": "massline_rig",
+              "seed": 8008,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "2e60c9b708d52590ca54ef2e04ed5f67642d82094323894fe33e33e78883eb03",
+              "e3ca04b6b0511a3c0bff12be501111123df70d0985999308108ec6b651fd59bd",
+              "a2968e2b2c5c2a72b292b9c9da6f86c5c8ce55630cb070022ed2a88cc13fac4e"
+            ],
+            "traceHash": "66382e9cb8cd4d802e51cc3c1fcd3b2cd3ae05c936de230dc3be0540e4912d58",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0.08,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 2.5,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 15,
+              "verbsUsedCount": 6,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "2e60c9b708d52590ca54ef2e04ed5f67642d82094323894fe33e33e78883eb03",
+            "e3ca04b6b0511a3c0bff12be501111123df70d0985999308108ec6b651fd59bd",
+            "a2968e2b2c5c2a72b292b9c9da6f86c5c8ce55630cb070022ed2a88cc13fac4e"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 6,
+            "verbsPerMinute": 15,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 2.5,
+            "maxPlayerKnockFraction": 0.08,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        },
+        {
+          "bench": "crucible",
+          "ruleset": "swarm",
+          "arenaId": "cinder_sluice",
+          "loadoutId": "massline_rig",
+          "seed": 13502,
+          "waveCount": 3,
+          "durationMs": 5,
+          "runHash": "a33c9e39401818c656547245318cc954c485e0b3d857cebdc1582e622bd816a2",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "crucible",
+              "ruleset": "swarm",
+              "arenaId": "cinder_sluice",
+              "loadoutId": "massline_rig",
+              "seed": 13502,
+              "waveCount": 3
+            },
+            "waveCheckpoints": [
+              "6a4b9ed87bd05297d83a4271065e866d29b0af69900d717213f64e92a6e98030",
+              "b3ff8b5156d774707d625c35779e376d882dbbfa9e76835acf589d1791e4dfb8",
+              "d5abad30365472a5d2e1eed6dc31d1105fc5210f93cf9c4374c6ea8616292c43"
+            ],
+            "traceHash": "66382e9cb8cd4d802e51cc3c1fcd3b2cd3ae05c936de230dc3be0540e4912d58",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "b13Met": true,
+              "hitAccuracy": 0.763441,
+              "maxPlayerKnockFraction": 0.08,
+              "momentsPerMinute": 0,
+              "nothingHappenedSeconds": 0,
+              "playerKnockEventsPerMin": 2.5,
+              "totalDamageDealt": 3195,
+              "totalDamageTaken": 0,
+              "totalHits": 71,
+              "totalKills": 71,
+              "totalShots": 93,
+              "verbsPerMinute": 15,
+              "verbsUsedCount": 6,
+              "wavesCleared": 3
+            }
+          },
+          "waveCheckpoints": [
+            "6a4b9ed87bd05297d83a4271065e866d29b0af69900d717213f64e92a6e98030",
+            "b3ff8b5156d774707d625c35779e376d882dbbfa9e76835acf589d1791e4dfb8",
+            "d5abad30365472a5d2e1eed6dc31d1105fc5210f93cf9c4374c6ea8616292c43"
+          ],
+          "metrics": {
+            "totalKills": 71,
+            "totalShots": 93,
+            "totalHits": 71,
+            "hitAccuracy": 0.7634408602150538,
+            "totalDamageDealt": 3195,
+            "totalDamageTaken": 0,
+            "verbsUsedCount": 6,
+            "verbsPerMinute": 15,
+            "momentsPerMinute": 0,
+            "nothingHappenedSeconds": 0,
+            "playerKnockEventsPerMin": 2.5,
+            "maxPlayerKnockFraction": 0.08,
+            "b13Met": true,
+            "wavesCleared": 3
+          }
+        }
+      ]
+    },
+    "flight": {
+      "bench": "flight",
+      "ok": true,
+      "wallMs": 1435,
+      "runs": [
+        {
+          "bench": "flight",
+          "scenarioId": "flight-accel-brake",
+          "label": "M1 Accel & Brake Response",
+          "seed": 13502,
+          "durationMs": 520,
+          "runHash": "162d283629f154deb982ade04d56a8a38acb70e2d4ea01fc5964da31d5d5063f",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "flight",
+              "ruleset": "motion_lab",
+              "arenaId": "lab",
+              "loadoutId": "flight-accel-brake",
+              "seed": 13502,
+              "waveCount": 1
+            },
+            "waveCheckpoints": [],
+            "traceHash": "08b0794be20a1ae193a4c4ab774a9be95df4f5986a8da2d81b07f151e25a20de",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "hulls": {
+                "ship_atlas": {
+                  "accelerationJerkRms": 219.502211,
+                  "angularSignChangesPerS": 0,
+                  "controlSignChangesPerS": 0.47952,
+                  "energyHeatSeam": "skipped-canonical-cap-and-weapon-heat",
+                  "headingOscillationRms": 0,
+                  "lateralVelocityKillTimeS": null,
+                  "onsetS": 0.016667,
+                  "peakForwardSpeed": 80.672058,
+                  "peakWindowResponse10to90S": 2,
+                  "peakYawRate": 1.348927,
+                  "propulsionEnergySpent": 3.135216,
+                  "propulsionHeat": 3.91902,
+                  "responseTime10to90S": 0.9,
+                  "speedRetainedThroughTurn": 1.719069,
+                  "stopDistance": 130.249558,
+                  "stopTimeS": 3.85,
+                  "yawOvershootRad": 0.097975,
+                  "yawSettleS": 0.15
+                },
+                "ship_drifter": {
+                  "accelerationJerkRms": 316.920098,
+                  "angularSignChangesPerS": 0,
+                  "controlSignChangesPerS": 0.47952,
+                  "energyHeatSeam": "skipped-canonical-cap-and-weapon-heat",
+                  "headingOscillationRms": 0,
+                  "lateralVelocityKillTimeS": 2.5,
+                  "onsetS": 0.016667,
+                  "peakForwardSpeed": 117.98954,
+                  "peakWindowResponse10to90S": 2,
+                  "peakYawRate": 2.570066,
+                  "propulsionEnergySpent": 4.85352,
+                  "propulsionHeat": 6.47136,
+                  "responseTime10to90S": 0.616667,
+                  "speedRetainedThroughTurn": 1.206593,
+                  "stopDistance": 69.401942,
+                  "stopTimeS": 3.116667,
+                  "yawOvershootRad": 0.192995,
+                  "yawSettleS": 0.166667
+                },
+                "ship_kestrel": {
+                  "accelerationJerkRms": 467.996942,
+                  "angularSignChangesPerS": 0,
+                  "controlSignChangesPerS": 0.599401,
+                  "energyHeatSeam": "skipped-canonical-cap-and-weapon-heat",
+                  "headingOscillationRms": 0,
+                  "lateralVelocityKillTimeS": 0.016667,
+                  "onsetS": 0.016667,
+                  "peakForwardSpeed": 167.909271,
+                  "peakWindowResponse10to90S": 1.983333,
+                  "peakYawRate": 3.154173,
+                  "propulsionEnergySpent": 6.678151,
+                  "propulsionHeat": 8.904201,
+                  "responseTime10to90S": 0.416667,
+                  "speedRetainedThroughTurn": 0.906657,
+                  "stopDistance": 43.34712,
+                  "stopTimeS": 1.966667,
+                  "yawOvershootRad": 0.196918,
+                  "yawSettleS": 0.133333
+                },
+                "ship_wasp": {
+                  "accelerationJerkRms": 637.051126,
+                  "angularSignChangesPerS": 0,
+                  "controlSignChangesPerS": 0.539461,
+                  "energyHeatSeam": "skipped-canonical-cap-and-weapon-heat",
+                  "headingOscillationRms": 0,
+                  "lateralVelocityKillTimeS": 2.25,
+                  "onsetS": 0.016667,
+                  "peakForwardSpeed": 206.310196,
+                  "peakWindowResponse10to90S": 1.6,
+                  "peakYawRate": 4.286623,
+                  "propulsionEnergySpent": 11.258557,
+                  "propulsionHeat": 15.76198,
+                  "responseTime10to90S": 0.266667,
+                  "speedRetainedThroughTurn": 0.668162,
+                  "stopDistance": 73.680231,
+                  "stopTimeS": 1.95,
+                  "yawOvershootRad": 0.254547,
+                  "yawSettleS": 0.133333
+                }
+              },
+              "scenarioId": "M1",
+              "schema": "spaceface.motionMetrics.v1",
+              "seed": 13502
+            }
+          },
+          "metrics": {
+            "schema": "spaceface.motionMetrics.v1",
+            "scenarioId": "M1",
+            "seed": 13502,
+            "hulls": {
+              "ship_atlas": {
+                "accelerationJerkRms": 219.5022107813793,
+                "angularSignChangesPerS": 0,
+                "controlSignChangesPerS": 0.4795204795204795,
+                "energyHeatSeam": "skipped-canonical-cap-and-weapon-heat",
+                "headingOscillationRms": 0,
+                "lateralVelocityKillTimeS": null,
+                "onsetS": 0.016666666666666666,
+                "peakForwardSpeed": 80.67205810546875,
+                "peakWindowResponse10to90S": 2,
+                "peakYawRate": 1.34892737865448,
+                "propulsionEnergySpent": 3.135216323552647,
+                "propulsionHeat": 3.9190204044407855,
+                "responseTime10to90S": 0.9,
+                "speedRetainedThroughTurn": 1.719069408764799,
+                "stopDistance": 130.24955774548332,
+                "stopTimeS": 3.85,
+                "yawOvershootRad": 0.09797549945724449,
+                "yawSettleS": 0.15
+              },
+              "ship_drifter": {
+                "accelerationJerkRms": 316.9200977247564,
+                "angularSignChangesPerS": 0,
+                "controlSignChangesPerS": 0.4795204795204795,
+                "energyHeatSeam": "skipped-canonical-cap-and-weapon-heat",
+                "headingOscillationRms": 0,
+                "lateralVelocityKillTimeS": 2.5,
+                "onsetS": 0.016666666666666666,
+                "peakForwardSpeed": 117.98954010009766,
+                "peakWindowResponse10to90S": 2,
+                "peakYawRate": 2.570066452026367,
+                "propulsionEnergySpent": 4.853520134875199,
+                "propulsionHeat": 6.471360179833613,
+                "responseTime10to90S": 0.6166666666666667,
+                "speedRetainedThroughTurn": 1.2065928433637767,
+                "stopDistance": 69.40194224588959,
+                "stopTimeS": 3.1166666666666667,
+                "yawOvershootRad": 0.19299483289978636,
+                "yawSettleS": 0.16666666666666666
+              },
+              "ship_kestrel": {
+                "accelerationJerkRms": 467.9969418122031,
+                "angularSignChangesPerS": 0,
+                "controlSignChangesPerS": 0.5994005994005994,
+                "energyHeatSeam": "skipped-canonical-cap-and-weapon-heat",
+                "headingOscillationRms": 0,
+                "lateralVelocityKillTimeS": 0.016666666666666666,
+                "onsetS": 0.016666666666666666,
+                "peakForwardSpeed": 167.90927124023438,
+                "peakWindowResponse10to90S": 1.9833333333333334,
+                "peakYawRate": 3.154172658920288,
+                "propulsionEnergySpent": 6.678150742438712,
+                "propulsionHeat": 8.904200989918259,
+                "responseTime10to90S": 0.4166666666666667,
+                "speedRetainedThroughTurn": 0.9066568965573769,
+                "stopDistance": 43.34711987561242,
+                "stopTimeS": 1.9666666666666666,
+                "yawOvershootRad": 0.19691792553950593,
+                "yawSettleS": 0.13333333333333333
+              },
+              "ship_wasp": {
+                "accelerationJerkRms": 637.0511260110651,
+                "angularSignChangesPerS": 0,
+                "controlSignChangesPerS": 0.5394605394605394,
+                "energyHeatSeam": "skipped-canonical-cap-and-weapon-heat",
+                "headingOscillationRms": 0,
+                "lateralVelocityKillTimeS": 2.25,
+                "onsetS": 0.016666666666666666,
+                "peakForwardSpeed": 206.31019592285156,
+                "peakWindowResponse10to90S": 1.6,
+                "peakYawRate": 4.286623477935791,
+                "propulsionEnergySpent": 11.258556915878135,
+                "propulsionHeat": 15.761979682229441,
+                "responseTime10to90S": 0.26666666666666666,
+                "speedRetainedThroughTurn": 0.6681616068100295,
+                "stopDistance": 73.6802313367108,
+                "stopTimeS": 1.95,
+                "yawOvershootRad": 0.2545470138210799,
+                "yawSettleS": 0.13333333333333333
+              }
+            }
+          }
+        },
+        {
+          "bench": "flight",
+          "scenarioId": "flight-slalom",
+          "label": "M2 Slalom Course Precision",
+          "seed": 13502,
+          "durationMs": 162,
+          "runHash": "2d0a89eec8d1006dac92e80898d80dad3b1f218dbdbda11f69a3d8b07b6e05a9",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "flight",
+              "ruleset": "motion_lab",
+              "arenaId": "lab",
+              "loadoutId": "flight-slalom",
+              "seed": 13502,
+              "waveCount": 1
+            },
+            "waveCheckpoints": [],
+            "traceHash": "de420e404806650a9055c6135fdbff5994b6b7d4938e54657ba1693e2579c0c1",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "hulls": {
+                "ship_atlas": {
+                  "collisions": 0,
+                  "completionTimeS": 8.4,
+                  "controlSignChangesPerS": 2.496,
+                  "gateCount": 6,
+                  "gateMisses": 3,
+                  "gatesPassed": 3,
+                  "maxLateralError": 95.025325,
+                  "pathLength": 1247.565686,
+                  "peakOvershoot": 0,
+                  "peakSpeed": 169.910218,
+                  "usefulSpeedRetained": 0.499155
+                },
+                "ship_drifter": {
+                  "collisions": 0,
+                  "completionTimeS": 7.15,
+                  "controlSignChangesPerS": 2.496,
+                  "gateCount": 6,
+                  "gateMisses": 0,
+                  "gatesPassed": 6,
+                  "maxLateralError": 50,
+                  "pathLength": 1558.031293,
+                  "peakOvershoot": 83.148453,
+                  "peakSpeed": 196.816184,
+                  "usefulSpeedRetained": 0.744039
+                },
+                "ship_kestrel": {
+                  "collisions": 0,
+                  "completionTimeS": 6.483333,
+                  "controlSignChangesPerS": 2.496,
+                  "gateCount": 6,
+                  "gateMisses": 0,
+                  "gatesPassed": 6,
+                  "maxLateralError": 50,
+                  "pathLength": 1698.569762,
+                  "peakOvershoot": 168.303619,
+                  "peakSpeed": 198.030855,
+                  "usefulSpeedRetained": 0.791267
+                },
+                "ship_wasp": {
+                  "collisions": 0,
+                  "completionTimeS": 5.75,
+                  "controlSignChangesPerS": 2.496,
+                  "gateCount": 6,
+                  "gateMisses": 2,
+                  "gatesPassed": 4,
+                  "maxLateralError": 95.586428,
+                  "pathLength": 1942.405787,
+                  "peakOvershoot": 375.647095,
+                  "peakSpeed": 215.514679,
+                  "usefulSpeedRetained": 0.727493
+                }
+              },
+              "scenarioId": "M2",
+              "schema": "spaceface.motionMetrics.v1",
+              "seed": 13502
+            }
+          },
+          "metrics": {
+            "schema": "spaceface.motionMetrics.v1",
+            "scenarioId": "M2",
+            "seed": 13502,
+            "hulls": {
+              "ship_atlas": {
+                "collisions": 0,
+                "completionTimeS": 8.4,
+                "controlSignChangesPerS": 2.496,
+                "gateCount": 6,
+                "gateMisses": 3,
+                "gatesPassed": 3,
+                "maxLateralError": 95.02532534338303,
+                "pathLength": 1247.5656858876328,
+                "peakOvershoot": 0,
+                "peakSpeed": 169.91021796603923,
+                "usefulSpeedRetained": 0.4991550602709824
+              },
+              "ship_drifter": {
+                "collisions": 0,
+                "completionTimeS": 7.1499999999999995,
+                "controlSignChangesPerS": 2.496,
+                "gateCount": 6,
+                "gateMisses": 0,
+                "gatesPassed": 6,
+                "maxLateralError": 50,
+                "pathLength": 1558.0312930972664,
+                "peakOvershoot": 83.14845275878906,
+                "peakSpeed": 196.8161841897295,
+                "usefulSpeedRetained": 0.7440387381620251
+              },
+              "ship_kestrel": {
+                "collisions": 0,
+                "completionTimeS": 6.483333333333333,
+                "controlSignChangesPerS": 2.496,
+                "gateCount": 6,
+                "gateMisses": 0,
+                "gatesPassed": 6,
+                "maxLateralError": 50,
+                "pathLength": 1698.5697622244413,
+                "peakOvershoot": 168.30361938476562,
+                "peakSpeed": 198.03085453689346,
+                "usefulSpeedRetained": 0.7912666482815087
+              },
+              "ship_wasp": {
+                "collisions": 0,
+                "completionTimeS": 5.75,
+                "controlSignChangesPerS": 2.496,
+                "gateCount": 6,
+                "gateMisses": 2,
+                "gatesPassed": 4,
+                "maxLateralError": 95.58642834740803,
+                "pathLength": 1942.4057866401756,
+                "peakOvershoot": 375.6470947265625,
+                "peakSpeed": 215.5146785017348,
+                "usefulSpeedRetained": 0.7274930477127475
+              }
+            }
+          }
+        },
+        {
+          "bench": "flight",
+          "scenarioId": "flight-reversal",
+          "label": "M3 180° Reversal & Lag",
+          "seed": 13502,
+          "durationMs": 231,
+          "runHash": "e0ae2fd2013e40e629fce89321fe21d00ccd17c86fb4b8e2158cde7444f13124",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "flight",
+              "ruleset": "motion_lab",
+              "arenaId": "lab",
+              "loadoutId": "flight-reversal",
+              "seed": 13502,
+              "waveCount": 1
+            },
+            "waveCheckpoints": [],
+            "traceHash": "2ce4b122db4f8b60adaa387c41c826607c6040a8bd2f7be488061368fbd7c8d0",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "hulls": {
+                "ship_atlas": {
+                  "angularSignChangesPerS": 0,
+                  "brakeStopDistance": 41.482414,
+                  "brakeStopTimeS": 2.75,
+                  "collisions": 0,
+                  "controlSignChangesPerS": 0.546946,
+                  "forwardReversalTimeS": null,
+                  "headingVelocityLagS": 3.166667,
+                  "lateralReversalTimeS": 1.166667,
+                  "nose180TimeS": 2.283333,
+                  "peakForwardSpeed": 53.781494,
+                  "postBurnSpeed": 54.898793,
+                  "reversalCarryDistance": 236.879047,
+                  "velocity180TimeS": 5.45
+                },
+                "ship_drifter": {
+                  "angularSignChangesPerS": 0,
+                  "brakeStopDistance": 61.567383,
+                  "brakeStopTimeS": 3.05,
+                  "collisions": 0,
+                  "controlSignChangesPerS": 0.546946,
+                  "forwardReversalTimeS": null,
+                  "headingVelocityLagS": 4,
+                  "lateralReversalTimeS": 1.083333,
+                  "nose180TimeS": 1.25,
+                  "peakForwardSpeed": 78.660011,
+                  "postBurnSpeed": 78.956306,
+                  "reversalCarryDistance": 304.423125,
+                  "velocity180TimeS": 5.25
+                },
+                "ship_kestrel": {
+                  "angularSignChangesPerS": 0,
+                  "brakeStopDistance": 75.535484,
+                  "brakeStopTimeS": 2.316667,
+                  "collisions": 0,
+                  "controlSignChangesPerS": 0.546946,
+                  "forwardReversalTimeS": null,
+                  "headingVelocityLagS": 3.45,
+                  "lateralReversalTimeS": 1,
+                  "nose180TimeS": 1.033333,
+                  "peakForwardSpeed": 112.891319,
+                  "postBurnSpeed": 148.361309,
+                  "reversalCarryDistance": 358.963605,
+                  "velocity180TimeS": 4.483333
+                },
+                "ship_wasp": {
+                  "angularSignChangesPerS": 0,
+                  "brakeStopDistance": 113.739655,
+                  "brakeStopTimeS": 2.216667,
+                  "collisions": 0,
+                  "controlSignChangesPerS": 0.492252,
+                  "forwardReversalTimeS": null,
+                  "headingVelocityLagS": 3.183333,
+                  "lateralReversalTimeS": 0.85,
+                  "nose180TimeS": 0.783333,
+                  "peakForwardSpeed": 176.143387,
+                  "postBurnSpeed": 207.334038,
+                  "reversalCarryDistance": 367.944117,
+                  "velocity180TimeS": 3.966667
+                }
+              },
+              "scenarioId": "M3",
+              "schema": "spaceface.motionMetrics.v1",
+              "seed": 13502
+            }
+          },
+          "metrics": {
+            "schema": "spaceface.motionMetrics.v1",
+            "scenarioId": "M3",
+            "seed": 13502,
+            "hulls": {
+              "ship_atlas": {
+                "angularSignChangesPerS": 0,
+                "brakeStopDistance": 41.48241424560547,
+                "brakeStopTimeS": 2.75,
+                "collisions": 0,
+                "controlSignChangesPerS": 0.5469462169553327,
+                "forwardReversalTimeS": null,
+                "headingVelocityLagS": 3.166666666666667,
+                "lateralReversalTimeS": 1.1666666666666667,
+                "nose180TimeS": 2.283333333333333,
+                "peakForwardSpeed": 53.781494140625,
+                "postBurnSpeed": 54.89879339820076,
+                "reversalCarryDistance": 236.87904724751886,
+                "velocity180TimeS": 5.45
+              },
+              "ship_drifter": {
+                "angularSignChangesPerS": 0,
+                "brakeStopDistance": 61.5673828125,
+                "brakeStopTimeS": 3.05,
+                "collisions": 0,
+                "controlSignChangesPerS": 0.5469462169553327,
+                "forwardReversalTimeS": null,
+                "headingVelocityLagS": 4,
+                "lateralReversalTimeS": 1.0833333333333333,
+                "nose180TimeS": 1.25,
+                "peakForwardSpeed": 78.6600112915039,
+                "postBurnSpeed": 78.95630558300357,
+                "reversalCarryDistance": 304.42312508554426,
+                "velocity180TimeS": 5.25
+              },
+              "ship_kestrel": {
+                "angularSignChangesPerS": 0,
+                "brakeStopDistance": 75.53548431396484,
+                "brakeStopTimeS": 2.3166666666666664,
+                "collisions": 0,
+                "controlSignChangesPerS": 0.5469462169553327,
+                "forwardReversalTimeS": null,
+                "headingVelocityLagS": 3.45,
+                "lateralReversalTimeS": 1,
+                "nose180TimeS": 1.0333333333333332,
+                "peakForwardSpeed": 112.89131927490234,
+                "postBurnSpeed": 148.36130902341483,
+                "reversalCarryDistance": 358.9636047583705,
+                "velocity180TimeS": 4.483333333333333
+              },
+              "ship_wasp": {
+                "angularSignChangesPerS": 0,
+                "brakeStopDistance": 113.73965454101562,
+                "brakeStopTimeS": 2.216666666666667,
+                "collisions": 0,
+                "controlSignChangesPerS": 0.4922515952597995,
+                "forwardReversalTimeS": null,
+                "headingVelocityLagS": 3.1833333333333336,
+                "lateralReversalTimeS": 0.85,
+                "nose180TimeS": 0.7833333333333333,
+                "peakForwardSpeed": 176.1433868408203,
+                "postBurnSpeed": 207.33403833456708,
+                "reversalCarryDistance": 367.9441168884905,
+                "velocity180TimeS": 3.966666666666667
+              }
+            }
+          }
+        },
+        {
+          "bench": "flight",
+          "scenarioId": "collision-recovery",
+          "label": "M8 Impulse & Collision Recovery",
+          "seed": 13502,
+          "durationMs": 518,
+          "runHash": "d64f68ec3bf6ddf06cdd581bb12c97c3ef16ec80bf7e69870d4753e6d3444ca8",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "flight",
+              "ruleset": "motion_lab",
+              "arenaId": "lab",
+              "loadoutId": "collision-recovery",
+              "seed": 13502,
+              "waveCount": 1
+            },
+            "waveCheckpoints": [],
+            "traceHash": "38e880ec993e59ff633f1b93bd4f13306e6479b5b36b7e39cb35f2f0c22ea93d",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "asymmetricRecovery": true,
+              "collisions": 0,
+              "disruptedRejoinTimeS": 6.416667,
+              "impulseApplied": true,
+              "intactReformTimeS": 1.5,
+              "integrityMin": 0.61,
+              "leaderDisabled": true,
+              "morphAborted": true,
+              "physicsPreserved": true,
+              "postImpulseSpeed": 81.176983,
+              "preImpulseSpeed": 66.560224,
+              "recovered": true,
+              "remainingAlive": 3,
+              "scenarioId": "M8",
+              "schema": "spaceface.motionMetrics.v1",
+              "seed": 13502,
+              "timeDisruptedS": 0.516667
+            }
+          },
+          "metrics": {
+            "schema": "spaceface.motionMetrics.v1",
+            "scenarioId": "M8",
+            "seed": 13502,
+            "asymmetricRecovery": true,
+            "collisions": 0,
+            "disruptedRejoinTimeS": 6.416666666666667,
+            "impulseApplied": true,
+            "intactReformTimeS": 1.5,
+            "integrityMin": 0.61,
+            "leaderDisabled": true,
+            "morphAborted": true,
+            "physicsPreserved": true,
+            "postImpulseSpeed": 81.1769834762712,
+            "preImpulseSpeed": 66.56022385921595,
+            "recovered": true,
+            "remainingAlive": 3,
+            "timeDisruptedS": 0.5166666666666666
+          }
+        }
+      ]
+    },
+    "verbs": {
+      "bench": "verbs",
+      "ok": true,
+      "wallMs": 3,
+      "runs": [
+        {
+          "bench": "verbs",
+          "scenarioId": "feel.rope_swing_release",
+          "label": "B7 Rope Swing & Tangential Speed Retention",
+          "seed": 4242,
+          "durationMs": 1,
+          "runHash": "113e85204f2c47cb043ba462ff42ba5b10fc88f9e6563b09a79a1c59d31ddcbe",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "verbs",
+              "ruleset": "feel_contract",
+              "arenaId": "lab",
+              "loadoutId": "feel.rope_swing_release",
+              "seed": 4242,
+              "waveCount": 1
+            },
+            "waveCheckpoints": [],
+            "traceHash": "f8e2a5b4ef5101055396ea24b3e3053781386551b7f90815c578935fb61b0381",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "barMet": false,
+              "finalSpeed": 186.847883,
+              "initialSpeed": 195,
+              "lineHeld": false,
+              "maxStretchRatio": 0.102717,
+              "speedRetainedFraction": 0.958194
+            }
+          },
+          "metrics": {
+            "initialSpeed": 195,
+            "finalSpeed": 186.84788273851146,
+            "speedRetainedFraction": 0.9581942704539049,
+            "maxStretchRatio": 0.10271664936867442,
+            "lineHeld": false,
+            "barMet": false
+          }
+        },
+        {
+          "bench": "verbs",
+          "scenarioId": "feel.shove_magnitude",
+          "label": "B4/B5 Shove Weapon Impulse & Displacement",
+          "seed": 4242,
+          "durationMs": 1,
+          "runHash": "d70cfa8eb859ebd24409154227ba39d3daa3dcd29e894b88abf1f175af80d70d",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "verbs",
+              "ruleset": "feel_contract",
+              "arenaId": "lab",
+              "loadoutId": "feel.shove_magnitude",
+              "seed": 4242,
+              "waveCount": 1
+            },
+            "waveCheckpoints": [],
+            "traceHash": "0969d072d329d565a3ca9f80aaf0f5e8d30f6da4fb63bceec78ec5cb77b20759",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "barB4Met": true,
+              "barB5Met": true,
+              "deltaV": 30,
+              "deltaVFractionOfCruise": 0.153846,
+              "displacement2s": 60,
+              "helmLossDurationS": 1.5,
+              "screenDepths": 0.521739
+            }
+          },
+          "metrics": {
+            "deltaV": 30,
+            "deltaVFractionOfCruise": 0.15384615384615385,
+            "displacement2s": 60,
+            "screenDepths": 0.5217391304347826,
+            "helmLossDurationS": 1.5,
+            "barB4Met": true,
+            "barB5Met": true
+          }
+        },
+        {
+          "bench": "verbs",
+          "scenarioId": "feel.gravity_well",
+          "label": "B1 Gravitic Well Deflection & Fling",
+          "seed": 4242,
+          "durationMs": 0,
+          "runHash": "dd2a62de03c3597777e6577927d69b75ef20c61d7b2370b07a1660fc1a4f6276",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "verbs",
+              "ruleset": "feel_contract",
+              "arenaId": "lab",
+              "loadoutId": "feel.gravity_well",
+              "seed": 4242,
+              "waveCount": 1
+            },
+            "waveCheckpoints": [],
+            "traceHash": "5dcbfa99df5786b123519fbd7bb8fa033c9c1a7e0dd6fc923c19679d0181fc31",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "barMet": true,
+              "entrySpeed": 140,
+              "exitSpeed": 139.866882,
+              "lateralDeflection": 16.744977,
+              "minDistance": 54.500295,
+              "speedGained": -0.133118
+            }
+          },
+          "metrics": {
+            "entrySpeed": 140,
+            "exitSpeed": 139.86688163422963,
+            "minDistance": 54.5002947766997,
+            "lateralDeflection": 16.74497727589481,
+            "speedGained": -0.13311836577037184,
+            "barMet": true
+          }
+        },
+        {
+          "bench": "verbs",
+          "scenarioId": "feel.stroke_speed",
+          "label": "B8 Draw-to-Fly Stroke Velocity Preservation",
+          "seed": 4242,
+          "durationMs": 0,
+          "runHash": "e05f8372b31340a0606184db27f3bee4e87c63551131903d0eb46ccbb50260f4",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "verbs",
+              "ruleset": "feel_contract",
+              "arenaId": "lab",
+              "loadoutId": "feel.stroke_speed",
+              "seed": 4242,
+              "waveCount": 1
+            },
+            "waveCheckpoints": [],
+            "traceHash": "059ddc32955da89c50628f59f74587f8dd05d25e150157ab528f65110b85a6e4",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "barMet": true,
+              "cruiseSpeed": 195,
+              "meanSpeed": 186.176247,
+              "meanSpeedFraction": 0.95475,
+              "minSpeed": 70,
+              "minSpeedFraction": 0.358974
+            }
+          },
+          "metrics": {
+            "cruiseSpeed": 195,
+            "meanSpeed": 186.17624671098977,
+            "meanSpeedFraction": 0.9547499831332809,
+            "minSpeed": 70,
+            "minSpeedFraction": 0.358974358974359,
+            "barMet": true
+          }
+        },
+        {
+          "bench": "verbs",
+          "scenarioId": "feel.terrain_slam",
+          "label": "B6 Terrain Slam Lethality & Helm Loss",
+          "seed": 4242,
+          "durationMs": 1,
+          "runHash": "804a85175e74b03601c1f3513ed629f574c40454c0c82a3f4df61dc26ee1cf75",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "verbs",
+              "ruleset": "feel_contract",
+              "arenaId": "lab",
+              "loadoutId": "feel.terrain_slam",
+              "seed": 4242,
+              "waveCount": 1
+            },
+            "waveCheckpoints": [],
+            "traceHash": "8c38e7c2764fa2145eeb1c89d7b0e9838b1aa687e3bbee71afdf66ffed8c9fcd",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "barMet": true,
+              "closingRatio": 0.76,
+              "closingSpeed": 148.2,
+              "hullLostFraction": 1,
+              "impactDamage": 1414.432656,
+              "isLethal": true,
+              "lostHelm": true
+            }
+          },
+          "metrics": {
+            "closingSpeed": 148.2,
+            "closingRatio": 0.7599999999999999,
+            "impactDamage": 1414.4326559999997,
+            "hullLostFraction": 1,
+            "lostHelm": true,
+            "isLethal": true,
+            "barMet": true
+          }
+        },
+        {
+          "bench": "verbs",
+          "scenarioId": "world.cargo_spill",
+          "label": "B10b Cargo Spill Encounter Reaction",
+          "seed": 4242,
+          "durationMs": 0,
+          "runHash": "0601dc6653e7d806baad6523dbf318aa8462757b85b158ec384fb1030edd50b8",
+          "runManifest": {
+            "schema": "spaceface.funBenchRun.v1",
+            "config": {
+              "bench": "verbs",
+              "ruleset": "feel_contract",
+              "arenaId": "lab",
+              "loadoutId": "world.cargo_spill",
+              "seed": 4242,
+              "waveCount": 1
+            },
+            "waveCheckpoints": [],
+            "traceHash": "e4ef54956b9888e1649f694a90ac81034bd29447caf69639bc158f73f16a9ce7",
+            "finalStateHash": "none",
+            "metricsSummary": {
+              "barMet": true,
+              "podsAttracted": 3,
+              "salvorDistance": 450,
+              "timeToNpcArrivalS": 3.75
+            }
+          },
+          "metrics": {
+            "timeToNpcArrivalS": 3.75,
+            "podsAttracted": 3,
+            "salvorDistance": 450,
+            "barMet": true
+          }
+        }
+      ]
+    }
+  },
+  "determinismVerified": true,
+  "passed": true,
+  "wallMs": 2553
+}

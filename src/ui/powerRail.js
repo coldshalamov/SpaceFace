@@ -1,0 +1,843 @@
+// src/ui/powerRail.js — J06 The Power Rail (build_map §11.12).
+//
+// THE FIVE POWERS (owner 2026-10-22, src/systems/powerVerbs.js). Eight overlapping verbs (Charge,
+// Blast, Seed, Well, Repel, Cone, Skim, Bomb) became five, one job each, and the rank shows exactly
+// those five on the number row, plus the Line and the travel-drive lamp:
+//   1 PULL   a gravity well at the aim point; it grips the locked target three times as hard.
+//   2 SHOVE  the repulsor pulse at the ship, plus every armed charge and drift bomb goes off.
+//   3 PIN    the anchor Mass Seed; it locks where it lands, ready for the Line.
+//   4 BOMB   the selected ordnance: a drift bomb, or the sticky charge (Comma cycles).
+//   5 RIG    the clearing cone, or the skim scoop in a planet band.
+//   LINE     the tether (Space / F).
+// Each power is its own band, so the ORRERY Cluster prints each one by name with its key
+// ("PULL 1 · SHOVE 2 …") instead of hiding several behind a group label. Nothing here invents a
+// verb: every power drives an owner that already existed.
+//
+// ── Two design rules that are load-bearing ──────────────────────────────────────────────────────
+//
+// 1. NO rAF, EVER. `check:ui-frame-sleep` asserts the UI stops doing frame work at rest, and a
+//    nine-slot rail redrawing cooldown sweeps every frame is exactly the kind of thing that keeps a
+//    tab awake forever. The radial sweep is an SVG `stroke-dashoffset` CSS animation whose duration
+//    is written ONCE when the cooldown starts; the compositor runs it and JS never ticks. When
+//    nothing is cooling, this module does no work at all.
+//
+// 2. KEY LABELS COME FROM THE BINDING TABLE. Every flight verb here is rebindable
+//    (`src/systems/input.js`), so a hardcoded "4" would lie the moment a player remapped it. Slots
+//    render the label their action actually resolves to, and an unbound action renders as an empty
+//    socket rather than a phantom key.
+//
+// ── The slot-claim contract ─────────────────────────────────────────────────────────────────────
+// Modal prompts need the number row (`Digit1`–`3` are already prompt answers). Rather than have
+// prompts and the rail race for the same keys, a prompt CLAIMS the slots it needs:
+//
+//   hud:slotClaim  { claimId, slots:[1..9], answers:[label], expiresAt, mode:'SINGLE'|'PARTIAL'|'FULL' }
+//   hud:slotRelease{ claimId }
+//
+//   SINGLE  — one slot is borrowed; the rest stay live.
+//   PARTIAL — the listed slots are borrowed; unlisted slots stay live.
+//   FULL    — the whole rail is borrowed; every slot shows the prompt's answers or goes inert.
+//
+// Claims stack; the most recent claim owns a contested slot, and releasing it restores whatever was
+// underneath. A claim with a past `expiresAt` is dropped on the next render rather than trusted, so
+// a prompt that dies without releasing cannot wedge the rail permanently.
+
+import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
+import { FIELD_DEFS } from '../data/fields.js';
+import { GYRE_SNARE } from '../data/gyreSnare.js';
+import { runOwnsReward } from '../combat/rewardEligibility.js';
+import { fhGlyph } from './views/fhGlyphs.js';
+import { arsenalIcon } from './orrery/arsenalGlyphs.js';
+import { repulsionTrapFitted, resolveImpulseChargeCapacity } from '../data/impulseChargeReadModel.js';
+import { cruiseChargeProgress, isCharging, isCruising } from '../systems/cruise.js';
+import { isSwarmRuleset } from '../systems/survivalSwarm.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { bombUsesCharge, playerImpulseCharges, resolveRigTarget } from '../systems/powerVerbs.js';
+import { injectPowerRailLayouts } from './orrery/power-railLayouts.js';
+
+// The rail's composition sheet rides the model's import path: every surface that renders the rail
+// (the flight Cluster through hudAdapter, the ORRERY flight preview, the QA fixture) imports THIS
+// module, and the rail has no mount of its own to inject from. Headless-safe — with no document it
+// does no work. What the sheet owns (rest-light law, hover/focus/press states): see the header of
+// src/ui/orrery/power-railLayouts.js.
+injectPowerRailLayouts();
+import { armedOrdnanceCounts, readCloakState, resolveBombAction } from '../data/arsenalPresentation.js';
+import { LINE_BANK, lineWords, pinWords, pullWords, shoveWords, staticVerbSentence } from '../data/arsenalWords.js';
+import { collectorRailSlot } from '../data/collectorKnot.js';
+import { collectorFitted } from '../core/fields/fieldReadModel.js';
+
+export const BAND_DRIVE = 'DRIVE';
+export const BAND_PULL = 'PULL';
+export const BAND_SHOVE = 'SHOVE';
+export const BAND_PIN = 'PIN';
+// The bomb power keeps the BAY band id: its band label prints the live bay badge ("BAY 2/6").
+export const BAND_BAY = 'BAY';
+export const BAND_RIG = 'RIG';
+export const BAND_LINE = 'LINE';
+// Retired band ids (the eight-verb rank). Kept exported so an old import resolves; no slot uses them.
+export const BAND_ORDNANCE = 'ORDNANCE';
+export const BAND_FIELDWORK = 'FIELDS';
+
+export const CLAIM_SINGLE = 'SINGLE';
+export const CLAIM_PARTIAL = 'PARTIAL';
+export const CLAIM_FULL = 'FULL';
+
+/** Slot states, most severe last — `worstState` uses this order to resolve conflicts. */
+export const SLOT_STATES = ['ready', 'armed', 'cooling', 'unaffordable', 'locked', 'empty'];
+
+// The rank. `action` names an entry in the input binding table; `null` is an authored empty socket
+// (a slot the design reserves but nothing fills yet) — deliberately visible, because a gap the
+// player can SEE reads as "this fills in later", while a hidden gap reads as "there is nothing".
+// Glyphs name the kit's produced filled family (`src/ui/views/fhGlyphs.js`, drawn from
+// `assets/ui/kit/icons/24/`). That family carries a mark for every verb here — seed, well, repel,
+// cone, skim and line exist nowhere else in the game — because it was drawn for these sockets. The
+// old values borrowed generic menu line-icons (`danger` twice, `target` for Seed, `boost` for
+// Repel); two slots wearing the same outline is precisely what made the rail unreadable at a glance.
+//
+// `description` is the player-facing "what pressing this does" bank. It is enumerated here, at the
+// one write site, and read verbatim by every surface that explains a verb (tier-2 `[data-why]` tips,
+// the ORRERY Cluster's ordnance keys, the rail's own aria/title) — no surface composes its own prose.
+export const RAIL_SLOTS = Object.freeze([
+  // FB-002 slot 0 — the travel-drive latch. It owns no digit (Num Lock/F8 is the verb, never a
+  // hotbar seat) and no prompt may borrow it; it is the rail's one state socket: the latch's
+  // off/spooling/engaged/cooldown reads where the pilot's eyes already live.
+  { index: 0, band: BAND_DRIVE, action: 'travelBurn', name: 'Burn', glyph: 'rig',
+    description: staticVerbSentence('travel') },
+  // Slots 1–5 are the five powers; each index is its own number-row digit.
+  { index: 1, band: BAND_PULL, action: 'pull', name: 'Pull', glyph: 'well',
+    description: staticVerbSentence('pull') },
+  { index: 2, band: BAND_SHOVE, action: 'shove', name: 'Shove', glyph: 'repel',
+    description: staticVerbSentence('shove') },
+  { index: 3, band: BAND_PIN, action: 'pin', name: 'Pin', glyph: 'seed',
+    description: staticVerbSentence('pin') },
+  { index: 4, band: BAND_BAY, action: 'bomb', name: 'Bomb', glyph: 'weapon',
+    description: staticVerbSentence('bomb') },
+  { index: 5, band: BAND_RIG, action: 'rig', name: 'Rig', glyph: 'cone',
+    description: staticVerbSentence('rig') },
+  // The Line has no digit (Space / F); index 6 keeps it off the power row's own numbers.
+  { index: 6, band: BAND_LINE, action: 'tether', name: 'Line', glyph: 'tether',
+    description: LINE_BANK },
+]);
+
+// Support verbs beside the rank. They are not number-row powers and no prompt may claim them, so they
+// live outside RAIL_SLOTS (the rank's digit/claim contract) — but they are verbs the pilot must be able
+// to FIND and read: the Gyre (hold to gather, release to throw) and a fitted cloak. The ORRERY Cluster
+// unfolds them after the Line; the words come from the arsenal presentation, never from here.
+export const SUPPORT_SLOTS = Object.freeze([
+  { index: 7, band: 'GYRE', action: 'gyreSnare', name: 'Gyre', glyph: 'gyre',
+    description: staticVerbSentence('gyre') },
+  { index: 8, band: 'CLOAK', action: 'cloak', name: 'Cloak', glyph: 'cloak',
+    description: staticVerbSentence('cloak') },
+]);
+
+/** The rail index of each power, the Line and the bomb bay (one place, so no reader hardcodes a digit). */
+export const POWER_SLOT = Object.freeze({ pull: 1, shove: 2, pin: 3, bomb: 4, rig: 5, line: 6 });
+/** The support verbs' indexes (beside the rank, never on the number row). */
+export const SUPPORT_SLOT = Object.freeze({ gyre: 7, cloak: 8 });
+export const BOMB_SLOT_INDEX = POWER_SLOT.bomb;
+
+/** Static description for a slot index, or '' — the enumerated bank above, read verbatim. */
+export function slotDescription(index) {
+  const slot = RAIL_SLOTS.find((s) => s.index === index) || SUPPORT_SLOTS.find((s) => s.index === index);
+  return (slot && slot.description) || '';
+}
+
+const BANDS = [BAND_DRIVE, BAND_PULL, BAND_SHOVE, BAND_PIN, BAND_BAY, BAND_RIG, BAND_LINE];
+
+// Sweep ring geometry. r=13 in a 32-box leaves room for the 1.6 stroke without clipping.
+//
+// SWEEP_CIRCUMFERENCE is duplicated in the `@keyframes sf-pslot-sweep` rule in uiRoot.js, because
+// CSS keyframes cannot read a JS constant. If the two drift apart the sweep silently stops at the
+// wrong angle — a cooldown that looks finished while the slot is still cooling. `power-rail.test`
+// reads the stylesheet and pins them together rather than trusting the comment.
+export const SWEEP_R = 13;
+export const SWEEP_CIRCUMFERENCE = 2 * Math.PI * SWEEP_R;
+
+/**
+ * Turn a KeyboardEvent `code` into the label a player recognises. `Digit4` is "4", not "Digit4",
+ * and a chord like `Shift+O` survives intact.
+ */
+export function codeToLabel(code) {
+  const raw = String(code == null ? '' : code);
+  if (!raw) return '';
+  const digit = /^Digit(\d)$/.exec(raw);
+  if (digit) return digit[1];
+  const numpad = /^Numpad(\d)$/.exec(raw);
+  if (numpad) return `Num${numpad[1]}`;
+  if (raw === 'Comma') return ',';
+  if (raw === 'Period') return '.';
+  if (raw === 'Minus') return '-';
+  if (raw === 'Equal') return '=';
+  if (raw === 'Semicolon') return ';';
+  if (raw === 'Quote') return "'";
+  if (raw === 'Backquote') return '`';
+  if (raw === 'Backslash' || raw === 'IntlBackslash') return '\\';
+  if (raw === 'BracketLeft') return '[';
+  if (raw === 'BracketRight') return ']';
+  if (raw === 'Slash') return '/';
+  if (raw === 'MetaLeft') return 'L-Meta';
+  if (raw === 'MetaRight') return 'R-Meta';
+  if (raw === 'NumpadEnter') return 'Num Enter';
+  if (raw === 'NumpadAdd') return 'Num +';
+  if (raw === 'NumpadSubtract') return 'Num -';
+  if (raw === 'NumpadMultiply') return 'Num *';
+  if (raw === 'NumpadDivide') return 'Num /';
+  if (raw === 'NumpadDecimal') return 'Num .';
+  if (raw === 'PageUp') return 'Pg Up';
+  if (raw === 'PageDown') return 'Pg Dn';
+  if (raw === 'Insert') return 'Ins';
+  if (raw === 'Delete') return 'Del';
+  if (raw === 'PrintScreen') return 'PrtSc';
+  if (raw === 'ContextMenu') return 'Menu';
+  if (raw === 'Escape') return 'Esc';
+  if (raw === 'Backspace') return 'Bksp';
+  const letter = /^Key([A-Z])$/.exec(raw);
+  if (letter) return letter[1];
+  // Last resort is never the raw DOM code — split the camel case at least ('IntlRo' → 'Ro').
+  return raw.replace(/^(Key|Digit|Numpad)/, '').replace(/([a-z])([A-Z])/g, '$1 $2') || raw;
+}
+
+/**
+ * Resolve each slot's live key label from a binding table shaped like input.js's
+ * `{ actionName: ['Digit4', ...] }`. An action with no binding returns '' so the slot can render as
+ * an empty socket instead of claiming a key that does nothing.
+ *
+ * A slot prefers the DIGIT that matches its own rank (`1`–`9`) when the action carries one, so the
+ * rank reads as one hotbar instead of `Y R SPACE 4 5 6 7 8 9` — the number row is the row the
+ * player reaches for (and the row prompts borrow via the slot-claim contract). The digit is a real
+ * binding, never a decoration: unbind it and the label falls back to the action's primary code.
+ *
+ * After the digit, the label prefers the first code that is not a LOCK key (Num/Caps/Scroll Lock —
+ * real bindings, but not keys every chassis has: a laptop with no Num Lock reads "DRIVE NUM LOCK"
+ * as a key it cannot press, RC-06). A lock is named only when no non-lock code is bound, so a sole
+ * Num Lock still prints NUM LOCK. The binding arrays are never reordered — this is a display
+ * preference over the same live data, and every surface reading resolveSlotLabels/resolveSlotKeys
+ * (the rail, the Cluster's ordnance crescent, the tips) inherits it.
+ */
+const LOCK_KEY_CODES = new Set(['NumLock', 'CapsLock', 'ScrollLock']);
+
+export function resolveSlotLabels(bindings) {
+  const table = bindings || {};
+  const out = {};
+  for (const slot of [...RAIL_SLOTS, ...SUPPORT_SLOTS]) {
+    if (!slot.action) { out[slot.index] = ''; continue; }
+    const codes = slotCodes(table, slot.action);
+    const ownDigit = codes.find((c) => c === `Digit${slot.index}`);
+    const usable = codes.find((c) => !LOCK_KEY_CODES.has(c));
+    out[slot.index] = codeToLabel(ownDigit || usable || codes[0]);
+  }
+  return out;
+}
+
+/**
+ * Every key a player can press for each slot, `['3', 'Space', 'F']` — the tip's key line. The
+ * displayed label first (what the socket prints), then the rest in binding order.
+ */
+export function resolveSlotKeys(bindings) {
+  const table = bindings || {};
+  const out = {};
+  const labels = resolveSlotLabels(table);
+  for (const slot of [...RAIL_SLOTS, ...SUPPORT_SLOTS]) {
+    if (!slot.action) { out[slot.index] = ''; continue; }
+    const rest = slotCodes(table, slot.action)
+      .map(codeToLabel)
+      .filter((l) => l && l !== labels[slot.index]);
+    out[slot.index] = [labels[slot.index], ...rest].filter(Boolean).join(' · ');
+  }
+  return out;
+}
+
+function slotCodes(table, action) {
+  const codes = table[action];
+  return Array.isArray(codes) ? codes.filter(Boolean) : (codes ? [codes] : []);
+}
+
+/**
+ * The tier-2 `[data-why]` phrase for one verb slot — composed ONCE here so every surface (the
+ * Cluster's ordnance keys, the rail, help) says the same words:
+ *
+ *   Line — throw the tether line onto a body and haul it — tap to latch or cut (Space · F · 3)
+ *   Ready
+ *
+ * `keys`/`why` may be empty; nothing is invented to fill a gap (empty why renders no state line).
+ */
+export function railSlotTip({ name, keys = '', description = '', why = '' } = {}) {
+  const what = [name, description].filter(Boolean).join(' — ');
+  const head = keys ? `${what} (${keys})` : what;
+  return [head, why].filter(Boolean).join('\n');
+}
+
+/** Most severe of two states, per SLOT_STATES order. */
+export function worstState(a, b) {
+  const ia = SLOT_STATES.indexOf(a);
+  const ib = SLOT_STATES.indexOf(b);
+  if (ia < 0) return b;
+  if (ib < 0) return a;
+  return ia >= ib ? a : b;
+}
+
+/**
+ * Fold the active claims over the base slot model.
+ *
+ * Exported and pure so the contract can be tested without a DOM: claim precedence is the part most
+ * likely to break subtly, and a headless test beats driving nine buttons through a browser.
+ */
+export function applyClaims(slotState, claims, now) {
+  const live = (claims || [])
+    .filter((c) => c && c.claimId)
+    // A claim whose deadline has passed is dropped rather than honoured: a prompt that dies without
+    // releasing must not be able to hold the rail hostage.
+    .filter((c) => !(Number.isFinite(c.expiresAt) && c.expiresAt <= now));
+  if (!live.length) return { slots: slotState, claimed: false, mode: null };
+
+  const out = slotState.map((s) => ({ ...s }));
+  let mode = null;
+  // Later claims win a contested slot, so a prompt opened on top of a prompt owns the keys.
+  for (const claim of live) {
+    mode = claim.mode || CLAIM_PARTIAL;
+    const answers = Array.isArray(claim.answers) ? claim.answers : [];
+    const targets = claim.mode === CLAIM_FULL
+      // Slot 0 is the drive's state lamp — it owns no answer key and no prompt may borrow it.
+      ? out.map((s) => s.index).filter((i) => i !== 0)
+      : (Array.isArray(claim.slots) ? claim.slots : []).filter((i) => i !== 0);
+    targets.forEach((slotIndex, i) => {
+      const slot = out.find((s) => s.index === slotIndex);
+      if (!slot) return;
+      slot.claimedBy = claim.claimId;
+      slot.answer = answers[i] != null ? answers[i] : null;
+      // A FULL claim blanks anything it has no answer for, so the rail cannot show a live power
+      // beside a prompt answer and imply both keys do something.
+      slot.state = slot.answer != null ? 'ready' : (claim.mode === CLAIM_FULL ? 'empty' : slot.state);
+    });
+  }
+  return { slots: out, claimed: true, mode };
+}
+
+/**
+ * Read the live slot model out of game state.
+ *
+ * Pure and exported so the rail's honesty is testable without a running sim — this function is the
+ * one place where "what the HUD claims" and "what the systems actually own" have to agree, and each
+ * field below is read from that system's real writer, not from a HUD-local mirror:
+ *
+ *   1 pull   state.fields.cooldowns.well              (fields.js, seconds, runtime-only)
+ *   2 shove  state.fields.cooldowns.repulsor + the armed charge net and armed drift bombs
+ *   3 pin    state.player.massSeed.cooldownUntil      (massSeed.js, seconds)
+ *   4 bomb   the sticky charge while one is aboard, else the bomb bay model (bombUsesCharge)
+ *   5 rig    state.fields.coneActive / the planet record's collectorOn + band (resolveRigTarget)
+ *   6 line   state.player.tether
+ *
+ * `nowS` is sim seconds, matching the cooldown clocks.
+ */
+// ── SWARM-03: the rail answers "why now" (SWARM_EXPANSION §10) ─────────────────────────
+// In a live Swarm run a slot gains `live: true` the moment its verb is tactically real:
+//
+//   2 Shove — armed ordnance is actually on the field (the state already says ARMED; the
+//             pulse is the "a pack is near it" cue — the swarm room always has one)
+//   6 Line  — the massline's own acquisition receipt has a READY hostile on it. The
+//             tether system publishes that candidate every tick; the pulse quotes it
+//             rather than re-deriving range/obstruction rules the latch already owns
+//   1 Pull  — a deployed well is holding a pack (≥2 run bodies inside its footprint),
+//             OR a pack is clumped inside one well footprint within deploy range, so
+//             dropping one now would catch them
+//
+// Adventure keeps the quiet rail: the flags are computed only while `liveSwarmRail`
+// holds, so a campaign flight never sees a pulse it did not earn.
+export const SWARM_WELL_PACK_MIN = 2;        // bodies inside a live footprint that make it "holding"
+export const SWARM_WELL_OPPORTUNITY_MIN = 3; // a clump this size is worth a fresh well
+/** The slot a tactically-live verb is on. Exported so tests pin the contract, not the layout.
+ *  `blast` and `well` are the pre-merge names of the same two cues (Shove and Pull). */
+export const SWARM_LIVE_SLOTS = Object.freeze({ shove: 2, line: 6, pull: 1, blast: 2, well: 1 });
+
+function liveSwarmRail(s) {
+  const run = s && s.run;
+  return !!(run && typeof run === 'object' && !Array.isArray(run)
+    && run.kind === 'survival' && run.phase !== 'inactive' && run.phase !== 'ended'
+    && isSwarmRuleset(run.ruleset));
+}
+
+function swarmHostiles(s) {
+  const out = [];
+  const entities = s && s.entities;
+  if (!entities || typeof entities.values !== 'function') return out;
+  for (const e of entities.values()) {
+    if (!e || e.alive === false || !e.pos) continue;
+    if (!runOwnsReward(e)) continue;
+    out.push(e);
+  }
+  return out;
+}
+
+/**
+ * The Line pulse: the massline acquisition receipt (published every tick by
+ * tetherGameplay — "you can see what the Massline will grab before you press") names a
+ * READY candidate that is a run-owned hostile: a body in latch reach you can throw.
+ */
+function swarmLineLive(s) {
+  const selected = s && s.masslineAcquisition && s.masslineAcquisition.selected;
+  if (!selected || selected.status !== 'ready' || selected.targetId == null) return false;
+  const target = s.entities && typeof s.entities.get === 'function'
+    ? s.entities.get(selected.targetId) : null;
+  return !!(target && target.alive !== false && runOwnsReward(target));
+}
+
+/**
+ * The Well pulse: a pack inside the footprint. Two honest readings, both true cues —
+ * a well you already dropped is HOLDING a pack (throw the charge, now), or a pack is
+ * clumped inside one well footprint close enough to catch with a fresh deploy.
+ */
+function swarmWellLive(s, hostiles, player) {
+  const def = FIELD_DEFS && FIELD_DEFS.well;
+  const wellR = Number(def && def.radius) || 190;
+  const deployed = s && s.fields && s.fields.deployed;
+  if (deployed && typeof deployed === 'object') {
+    for (const rec of Object.values(deployed)) {
+      if (!rec || rec.kind !== 'well' || rec.emitterId == null) continue;
+      const emitter = s.entities && typeof s.entities.get === 'function'
+        ? s.entities.get(rec.emitterId) : null;
+      if (!emitter || emitter.alive === false || !emitter.pos) continue;
+      let inside = 0;
+      for (const h of hostiles) {
+        const dx = h.pos.x - emitter.pos.x;
+        const dz = h.pos.z - emitter.pos.z;
+        if (dx * dx + dz * dz <= wellR * wellR) inside += 1;
+      }
+      if (inside >= SWARM_WELL_PACK_MIN) return 'Your well is holding a pack';
+    }
+  }
+  // No deployed well: is there a clump the deploy range can reach? Any hostile with at
+  // least SWARM_WELL_OPPORTUNITY_MIN-1 neighbours inside one footprint is a pack.
+  const reach = Number(def && def.deployRange) || 520;
+  if (player && player.pos) {
+    for (const h of hostiles) {
+      const pdx = h.pos.x - player.pos.x;
+      const pdz = h.pos.z - player.pos.z;
+      if (pdx * pdx + pdz * pdz > reach * reach) continue;
+      let neighbours = 0;
+      for (const other of hostiles) {
+        if (other === h) continue;
+        const dx = other.pos.x - h.pos.x;
+        const dz = other.pos.z - h.pos.z;
+        if (dx * dx + dz * dz <= wellR * wellR) neighbours += 1;
+        if (neighbours >= SWARM_WELL_OPPORTUNITY_MIN - 1) return 'A pack is in well range';
+      }
+    }
+  }
+  return null;
+}
+
+export function readRailModel(state, nowS) {
+  const s = state || {};
+  const player = s.player || {};
+  const fields = s.fields || {};
+  const cooldowns = fields.cooldowns || {};
+  const now = Number.isFinite(nowS) ? nowS : 0;
+
+  const cooling = (until) => {
+    const readyAt = Number(until);
+    if (!Number.isFinite(readyAt) || readyAt <= now) return null;
+    return { state: 'cooling', cooldownMs: Math.max(0, (readyAt - now) * 1000) };
+  };
+
+  const seedCd = cooling(player.massSeed && player.massSeed.cooldownUntil);
+  const wellCd = cooling(cooldowns.well);
+  const repCd = cooling(cooldowns.repulsor);
+  const hull = s.entities?.get?.(s.playerId);
+  const charges = playerImpulseCharges(s);
+  const throwCd = Math.max(0, hull?.data?.impulseCharges?.throwCdT || 0);
+  const capacity = resolveImpulseChargeCapacity(s);
+  const chargeWhy = charges <= 0 ? 'No impulse charges in cargo'
+    : throwCd > 0 ? `Arming — ${Math.ceil(throwCd)}s` : 'Ready';
+  // What a Shove press will set off: armed charges, armed drift bombs and planted sticky charges, by the
+  // owners' own predicates (arsenalPresentation.armedOrdnanceCounts reads the typed `charges` bucket,
+  // not the fat entityList).
+  const armedCounts = armedOrdnanceCounts(s, now);
+  const armed = armedCounts.charges + armedCounts.plants > 0;
+
+  const bay = readBombBayModel(s, now);
+  // SWARM-03 — tactical-live flags, swarm runs only. Computed once here so both presenters
+  // (the DOM rail's [data-live] and the ORRERY Cluster's is-live) quote the same answer.
+  const swarm = liveSwarmRail(s);
+  let lineLiveWhy = null;
+  let wellLiveWhy = null;
+  if (swarm) {
+    const hostiles = swarmHostiles(s);
+    if (swarmLineLive(s)) lineLiveWhy = 'Latch is in reach — a body you can throw';
+    wellLiveWhy = swarmWellLive(s, hostiles, hull);
+  }
+  const armedOrdnance = armed || bay.armedCount > 0 || armedCounts.total > 0;
+  const blastLive = swarm && armedOrdnance;
+  // BOMB throws the sticky charge while one is aboard, unless the ordnance cycle chose a drift bomb —
+  // the same predicate the input layer uses, so the socket and the press agree.
+  const bombAct = resolveBombAction(s);
+  const bombSlot = bombAct.action === 'callin' ? {
+    // A stocked swarm call-in outranks the drift bomb on the press (input.js), so the socket names it.
+    name: `${bombAct.name} ×${bombAct.stock}`, glyph: bombAct.id,
+    state: 'ready', cooldownMs: 0, badge: 'CALL-IN', callin: true,
+    why: `Ready · ${bombAct.stock} ${bombAct.stock === 1 ? 'charge' : 'charges'} left this run`,
+    description: `${bombAct.name}: one Bomb press calls it in and spends one. With none left, Bomb falls back to your drift bomb.`,
+  } : bombUsesCharge(s) ? {
+    name: `Charge${charges > 0 ? ` ×${charges}` : ''}${repulsionTrapFitted(s) ? ' · +Trap' : ''}`,
+    glyph: 'munitions',
+    state: throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000,
+    capacity, badge: 'CHARGE', charge: true,
+    why: `${chargeWhy} · up to ${capacity}`,
+    description: 'Sticky impulse charge. It sticks where it lands; Shove sets it off. Cycle to reach your drift bombs.',
+  } : bay;
+  // VERB-16: the 3 s cruise spool is a verb-shelf meter. The rail owns no cruise clock — it
+  // reads the cruise system's writer (state.player.cruise) through its query helpers, so the
+  // shelf shows the spool rising 0→1 while charging and the engaged state after. ORRERY owns
+  // how this paints; this model only makes the numbers reachable on the default route.
+  const cruiseProgress = cruiseChargeProgress(s);
+  const cruiseState = isCruising(s) ? 'cruising' : (isCharging(s) ? 'charging' : 'off');
+  // FB-002 slot 0 — the travel-drive latch reads its own published kernel record
+  // (state.input.travelDrive, one address, systems/input.js owns the write). The socket is a
+  // state lamp, not an ordnance key: engaged/spooling read armed, the cooldown reads cooling,
+  // and an absent record reads ready like every inert verb.
+  const travelDrive = (s.input && s.input.travelDrive && typeof s.input.travelDrive === 'object')
+    ? s.input.travelDrive : null;
+  const driveState = travelDrive && typeof travelDrive.state === 'string' ? travelDrive.state : 'off';
+  return {
+    cruiseChargeProgress: cruiseProgress,
+    cruiseEngaged: cruiseState === 'cruising',
+    cruiseCharging: cruiseState === 'charging',
+    cruiseState,
+    0: {
+      state: driveState === 'engaged' || driveState === 'spooling' ? 'armed'
+        : driveState === 'cooldown' ? 'cooling' : 'ready',
+      why: driveState === 'engaged' ? 'Burn engaged — the drive holds your speed'
+        : driveState === 'spooling' ? 'Drive spooling'
+          : driveState === 'cooldown' ? 'Drive cooling'
+            : 'Drive latched off',
+    },
+    // 1 PULL — the well.
+    1: { ...(wellCd || { state: 'ready' }),
+      live: wellCd ? undefined : (wellLiveWhy != null || undefined),
+      why: wellCd ? `Recharging — ${Math.ceil(wellCd.cooldownMs / 1000)}s` : (wellLiveWhy || 'Ready'),
+      // The Collector Maw (packet 05): the socket names the current role and the next press.
+      ...(collectorRailSlot(s, collectorFitted(s)) || {}) },
+    // 2 SHOVE — the repulsor, plus the detonation of armed ordnance. Armed ordnance makes the key
+    // ARMED even while the repulsor recharges: the press still sets the ordnance off.
+    2: armedOrdnance ? {
+      state: 'armed',
+      live: blastLive || undefined,
+      why: blastLive ? 'Armed — the pack is on the field'
+        : `Armed — Shove sets off ${armedCounts.total > 0 ? armedCounts.total : 'them'}`,
+    } : repCd ? { ...repCd, why: `Recharging — ${Math.ceil(repCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
+    // 3 PIN — the anchor Mass Seed.
+    3: seedCd ? { ...seedCd, why: `Recharging — ${Math.ceil(seedCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
+    // 4 BOMB — the drift bomb bay, or the sticky charge when it is the chosen ordnance.
+    4: bombSlot,
+    // 5 RIG — the clearing cone, or the skim scoop in a planet band.
+    5: rigSlotState(s),
+    // 6 LINE — the tether.
+    6: { state: player.tether?.active ? 'armed' : 'ready',
+      live: lineLiveWhy != null || undefined,
+      why: player.tether?.active ? 'Line is live' : (lineLiveWhy || 'Ready') },
+    // 7 GYRE — hold to gather, release to throw (the Gyre system's own published phase).
+    7: gyreSlotState(s, hull),
+    // 8 CLOAK — the fitted module's own runtime; absent when none is fitted (or the mode has no cloak).
+    8: cloakSlotState(s),
+  };
+}
+
+/** Derived only: this HUD never owns ammo, readiness, selection or countdown clocks.
+ * PQ-205.03: the socket shows the LOADED rack only. A bag with no `rack` (hand-built
+ * fixtures that predate the fitted rack) reads exactly as it did before. */
+export function readBombBayModel(state, nowS) {
+  const rt = state.bombs || {};
+  const cells = rt.rack && Array.isArray(rt.rack.cells) ? rt.rack.cells : null;
+  const loaded = cells ? cells.filter((c) => c && c.count > 0) : null;
+  const cell = loaded ? loaded.find((c) => c.id === rt.selectedId) || loaded[0] : null;
+  const def = cells ? (cell ? bombDef(cell.id) : null) : bombDef(rt.selectedId);
+  let deployed = 0, armedCount = 0, fields = 0, worldCount = 0;
+  const index = state.entityIndex;
+  const source = index?.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.bombs)
+    ? index.bombs : state.entityList || [];
+  for (const e of source) {
+    if (!e?.alive || e.type !== 'bomb') continue;
+    worldCount++;
+    if (e.data?.ownerId !== state.playerId) continue;
+    deployed++;
+    if (e.data.phase === 'field') fields++;
+    if (e.data.phase === 'drift' && nowS >= e.data.armedAt) armedCount++;
+  }
+  const until = def ? Math.max(rt.cooldownUntil || 0, rt.cooldowns?.[def.id] || 0) : 0;
+  const bayFull = deployed >= BOMB_DRIFT.maxActive;
+  const worldFull = worldCount >= BOMB_DRIFT.maxWorldActive;
+  const full = bayFull || worldFull;
+  const fullWhy = bayFull
+    ? 'Bay is full — trigger armed ordnance'
+    : 'Field is full of armed ordnance — wait for one to finish';
+  const owner = state.entities?.get?.(state.playerId);
+  const locked = !owner?.alive || owner.flags?.docked || state.mode !== 'flight';
+  if (cells && !def) {
+    // A fitted cell that has been shot dry is still that family. An unassigned socket is the
+    // only record that reads as an empty rack. Lookup is the catalog id, not bombDef's fallback.
+    const dry = dryFittedBomb(cells);
+    if (dry) {
+      return {
+        name: dry.shortName,
+        glyph: dry.id,
+        state: locked ? 'locked' : 'empty',
+        cooldownMs: 0, deployed, armedCount, fields,
+        badge: 'BAY',
+        why: locked ? 'Undock to use the bay' : `${dry.name} empty — restock at a station shipworks`,
+        description: `${dry.name} ×0. ${dry.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
+      };
+    }
+    return {
+      name: 'Bay', glyph: 'weapon',
+      state: locked ? 'locked' : 'empty',
+      cooldownMs: 0, deployed, armedCount, fields,
+      badge: 'RACK EMPTY',
+      why: locked ? 'Undock to use the bay' : 'Rack empty — restock at a station shipworks',
+      description: `Bomb rack empty — rearm at a station shipworks. ${armedCount} armed; ${fields} active fields.`,
+    };
+  }
+  return {
+    name: def.shortName, glyph: def.id,
+    state: locked || full ? 'locked' : until > nowS ? 'cooling' : 'ready',
+    cooldownMs: Math.max(0, until - nowS) * 1000, deployed, armedCount, fields,
+    // Bombs OUT of the ship, not bombs in the rack: "BAY 0/6" over a loaded key read as an empty
+    // magazine. The legend counts drifting bombs only while there are some.
+    badge: deployed > 0 ? `BAY ${deployed}/${BOMB_DRIFT.maxActive}` : 'BAY',
+    why: locked ? (full ? fullWhy : 'Undock to use the bay')
+      : full ? fullWhy
+        : until > nowS ? `Recharging — ${Math.ceil(until - nowS)}s` : 'Ready',
+    // Rack honesty: the loaded magazine count rides the description, never the name.
+    description: `${def.name}${cell ? ` ×${cell.count} loaded` : ''}. ${def.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
+  };
+}
+
+function dryFittedBomb(cells) {
+  for (const cell of cells) {
+    if (!cell || cell.count !== 0 || cell.id == null) continue;
+    const known = BOMB_DEFS[cell.id];
+    if (known) return known;
+  }
+  return null;
+}
+
+// RIG reads the same predicate the input layer uses (resolveRigTarget), so the socket's "why" names
+// the rig the next press will actually toggle.
+function rigSlotState(state) {
+  if (state.fields && state.fields.coneActive) return { state: 'armed', name: 'Cone', glyph: 'cone', why: 'Cone is on — press to fold it' };
+  const planet = state.planet;
+  const rec = planet && planet.active && planet.player ? planet.player : null;
+  if (rec && rec.collectorOn === true) return { state: 'armed', name: 'Scoop', glyph: 'skim', why: 'Scoop is open — press to close it' };
+  return resolveRigTarget(state) === 'skim'
+    ? { state: 'ready', name: 'Scoop', glyph: 'skim', why: 'In a planet band — press to open the scoop' }
+    : { state: 'ready', name: 'Cone', glyph: 'cone', why: 'Ready — the clearing cone' };
+}
+
+// GYRE reads the Gyre system's published phase (state.gyreSnare is its runtime mirror, never saved).
+function gyreSlotState(state, hull) {
+  const g = state.gyreSnare || {};
+  const cap = Number(hull && hull.cap);
+  const need = GYRE_SNARE.capActivateMin;
+  if (g.phase === 'holding') return { state: 'armed', why: 'Holding a ball — release to throw it' };
+  if (g.phase === 'beaming') return { state: 'armed', why: 'Gathering — release to stop, hold to keep building' };
+  if (g.phase === 'launching' || Number(g.liveBalls) > 0) return { state: 'ready', why: 'Ball thrown — it flies for a few seconds' };
+  if (Number.isFinite(cap) && cap < need) return { state: 'unaffordable', why: `Needs ${need} charge to start` };
+  return { state: 'ready', why: 'Ready — hold to gather, release to throw' };
+}
+
+// CLOAK reads the cloak system's own runtime through the shared state reader. `locked` renders as a dim,
+// unavailable socket; the Cluster hides it entirely when no cloak is fitted.
+function cloakSlotState(state) {
+  const c = readCloakState(state);
+  if (c.state === 'unavailable') return { state: 'locked', why: c.reason, absent: !c.module };
+  if (c.state === 'active' || c.state === 'revealed') return { state: 'armed', why: c.reason };
+  if (c.state === 'depleted') return { state: 'unaffordable', why: c.reason };
+  return { state: 'ready', why: 'Ready — press to go dark' };
+}
+
+function sweepSvg() {
+  return `<svg class="sf-pslot__sweep" viewBox="0 0 32 32" aria-hidden="true" focusable="false">`
+    + `<circle cx="16" cy="16" r="${SWEEP_R}" `
+    + `stroke-dasharray="${SWEEP_CIRCUMFERENCE.toFixed(2)}" `
+    + `stroke-dashoffset="0"/></svg>`;
+}
+
+function escapeRailText(value) {
+  return String(value).replaceAll('&', '&amp;').replaceAll('\"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+}
+
+/** A key cap is two or three characters wide: long key names print short (the accessible name keeps
+ *  the full one). SPACE touched the socket's glyph. */
+const KEY_CAP_SHORT = Object.freeze({ SPACE: 'SPC', SHIFT: 'SHF', 'L-SHIFT': 'LSH', 'R-SHIFT': 'RSH', CTRL: 'CTL', 'L-CTRL': 'LCT', 'R-CTRL': 'RCT', ENTER: 'ENT', ESCAPE: 'ESC', BACKSPACE: 'BSP', BKSP: 'BSP', DELETE: 'DEL', CAPSLOCK: 'CAP', 'NUM LOCK': 'NLK', 'CAPS LOCK': 'CAP', 'L-META': 'LMT', 'R-META': 'RMT', 'PG UP': 'PGU', 'PG DN': 'PGD', 'NUM ENTER': 'NEN', 'PRINT SCREEN': 'PRT', 'CONTEXT MENU': 'MENU', 'SCR LK': 'SLK', TAB: 'TAB' });
+function capLabel(label) {
+  const text = String(label || '');
+  if (text.length <= 3) return text;
+  const upper = text.toUpperCase();
+  if (KEY_CAP_SHORT[upper]) return KEY_CAP_SHORT[upper];
+  // Numpad rebinds print `Num4` (4 chars): keeping the digit beats truncating every pad key to NUM.
+  const numpad = /^NUM(\d)$/.exec(upper);
+  if (numpad) return 'N' + numpad[1];
+  return upper.slice(0, 3);
+}
+
+/**
+ * The socket's printed words — the plain-English verb the press fires, never the tool's code
+ * noun ("Draws in", not "well"; owner 2026-10-28). The band label above already names the
+ * power, so the socket says what the press DOES. Static verbs come from the same word bank
+ * the arsenal presentation reads; the bay's and the rig's live model records already name
+ * the next press, so here they are only rephrased verb-first ("throw Charge ×3").
+ */
+function socketVerb(slot, given) {
+  switch (slot.index) {
+    case POWER_SLOT.pull: return given.name || pullWords().verb;   // a fitted Collector Maw names itself
+    case POWER_SLOT.shove: return shoveWords().verb;
+    case POWER_SLOT.pin: return pinWords().verb;
+    case POWER_SLOT.bomb: {
+      const n = String(given.name || '');
+      if (!n) return slot.name;                                     // a model with no words keeps the power name
+      if (n === 'Bay') return 'Rack empty';
+      if (given.state !== 'ready' && given.state !== 'cooling') return n;  // empty/locked names its payload
+      if (given.callin) return `call in ${n}`;
+      if (given.charge) return `throw ${n}`;
+      return `drop ${n}`;
+    }
+    case POWER_SLOT.rig: {
+      const skim = given.glyph === 'skim';
+      const on = given.state === 'armed';
+      return skim ? (on ? 'Harvesting ore' : 'Harvest ore') : (on ? 'Clearing a path' : 'Clear a path');
+    }
+    case POWER_SLOT.line: return lineWords().verb;
+    default: return given.name || slot.name;
+  }
+}
+
+function slotMarkup(slot, label) {
+  const name = slot.answer != null ? slot.answer : slot.name;
+  // A claimed socket is answering a prompt, so it shows the answer word and no verb mark: a glyph
+  // under a borrowed key would advertise a power the press will not fire.
+  const art = slot.answer != null ? '' : arsenalIcon(slot.glyph, 24) || fhGlyph(slot.glyph, 24);
+  // The spoken name keeps the power word the print dropped ("Pull · Draws in, key 1") so the
+  // socket does not read as a bare verb to a screen reader.
+  const spoken = slot.answer != null || name === slot.power ? name : `${slot.power} · ${name}`;
+  const described = spoken
+    ? `${spoken}${label ? `, key ${label}` : ''}, ${slot.state}`
+    : `${label ? `key ${label}` : 'unbound socket'}, ${slot.state}`;
+  return `<button type="button" class="sf-pslot" data-slot="${slot.index}" data-state="${slot.state}"`
+    + ` data-live="${slot.live === true ? 'true' : 'false'}"`
+    + ` data-band="${slot.band}" tabindex="-1" aria-label="${escapeRailText(described + (slot.description ? '. ' + slot.description : ''))}" title="${escapeRailText(slot.description || described)}">`
+    + `<span class="sf-pslot__key" aria-hidden="true">${capLabel(label) || '·'}</span>`
+    + `<span class="sf-pslot__art" aria-hidden="true">${art}</span>`
+    + sweepSvg()
+    + (name ? `<span class="sf-pslot__name">${name}</span>` : '')
+    + `</button>`;
+}
+
+/**
+ * Build the rail. Returns a controller; the caller owns mounting `el` and calling `update`.
+ *
+ * `update` is idempotent and does no work when nothing changed, so parking the game on a menu costs
+ * nothing. It is safe to call every frame, but it does not need to be called every frame.
+ */
+export function createPowerRail(options = {}) {
+  const doc = options.document || (typeof document !== 'undefined' ? document : null);
+  if (!doc) throw new Error('createPowerRail needs a document');
+
+  const el = doc.createElement('div');
+  el.className = 'sf-prail';
+  el.setAttribute('role', 'group');
+  el.setAttribute('aria-label', 'Power rail');
+
+  let labels = resolveSlotLabels(options.bindings);
+  let cycleLabel = codeToLabel(options.bindings?.cycleBomb?.[0]) || 'unbound';
+  let claims = [];
+  let lastSignature = '';
+  const slotNodes = new Map();
+
+  function baseSlots(model) {
+    const byIndex = model || {};
+    return RAIL_SLOTS.map((slot) => {
+      const given = byIndex[slot.index] || {};
+      // No binding means no key to press, so the socket is empty regardless of what the sim thinks.
+      const bound = Boolean(slot.action) && Boolean(labels[slot.index]);
+      return {
+        index: slot.index,
+        band: slot.band,
+        power: slot.name,
+        name: socketVerb(slot, given),
+        glyph: given.glyph || slot.glyph,
+        badge: given.badge || '',
+        description: (given.description || slot.description || '')
+          + (slot.index === BOMB_SLOT_INDEX ? ` Cycle: ${cycleLabel}. Shove sets armed ordnance off: ${labels[POWER_SLOT.shove] || 'unbound'}.` : ''),
+        why: given.why || '',
+        live: given.live === true,
+        state: bound ? (given.state || 'ready') : 'empty',
+        cooldownMs: Number(given.cooldownMs) || 0,
+        answer: null,
+        claimedBy: null,
+      };
+    });
+  }
+
+  function render(model, now) {
+    const resolved = applyClaims(baseSlots(model), claims, now);
+    // Signature covers everything that changes pixels EXCEPT cooldown remaining — that animates in
+    // CSS, so letting it into the signature would rebuild the DOM every frame and defeat the point.
+    const signature = resolved.slots
+      .map((s) => `${s.index}:${s.state}:${s.answer == null ? s.name : `=${s.answer}`}:${labels[s.index]}:${s.glyph}:${s.badge}:${s.description}:${s.why}:${s.live === true ? 'L' : ''}`)
+      .join('|');
+    if (signature === lastSignature) return;
+    lastSignature = signature;
+
+    // REMOVE the attribute when nothing is claimed. Setting it to '' still leaves `data-claimed=""`
+    // in the DOM, which matches the `[data-claimed]` selector — so every slot name rendered in the
+    // "prompt is borrowing this key" amber even on an idle rail.
+    if (resolved.claimed) el.dataset.claimed = String(resolved.mode);
+    else delete el.dataset.claimed;
+    el.innerHTML = BANDS.map((band) => {
+      const inBand = resolved.slots.filter((s) => s.band === band);
+      return `<div class="sf-prail__band" data-band="${band}">`
+        + `<span class="sf-prail__label">${band === BAND_BAY ? escapeRailText(inBand[0]?.badge || 'BAY') : band}</span>`
+        + `<div class="sf-prail__slots">${inBand.map((s) => slotMarkup(s, labels[s.index])).join('')}</div>`
+        + `</div>`;
+    }).join('');
+
+    slotNodes.clear();
+    for (const node of el.querySelectorAll('[data-slot]')) {
+      slotNodes.set(Number(node.getAttribute('data-slot')), node);
+    }
+    for (const slot of resolved.slots) startSweep(slot);
+  }
+
+  // Hand the cooldown to CSS. Writing `animation-duration` once and letting the compositor run the
+  // dash sweep is what keeps this module off the frame loop entirely.
+  function startSweep(slot) {
+    const node = slotNodes.get(slot.index);
+    if (!node) return;
+    const ring = node.querySelector('.sf-pslot__sweep circle');
+    if (!ring) return;
+    if (slot.state === 'cooling' && slot.cooldownMs > 0) {
+      ring.style.animation = 'none';
+      void ring.getBoundingClientRect();
+      ring.style.animation = `sf-pslot-sweep ${slot.cooldownMs}ms linear forwards`;
+    } else {
+      ring.style.animation = 'none';
+    }
+  }
+
+  return {
+    el,
+    /** Refresh key labels after a rebind. */
+    setBindings(bindings) { labels = resolveSlotLabels(bindings); cycleLabel = codeToLabel(bindings?.cycleBomb?.[0]) || 'unbound'; lastSignature = ''; },
+    /** `model` is `{ [slotIndex]: { state, name, glyph, cooldownMs } }`. */
+    update(model, now = 0) { render(model, now); },
+    claim(payload) {
+      if (!payload || !payload.claimId) return;
+      claims = claims.filter((c) => c.claimId !== payload.claimId).concat([payload]);
+      lastSignature = '';
+    },
+    release(claimId) {
+      claims = claims.filter((c) => c.claimId !== claimId);
+      lastSignature = '';
+    },
+    /** Test seam: the claims the rail currently believes are live. */
+    activeClaims() { return claims.slice(); },
+    destroy() { claims = []; slotNodes.clear(); el.remove(); },
+  };
+}

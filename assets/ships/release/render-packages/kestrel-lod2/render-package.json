@@ -1,0 +1,7604 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.kestrel-lod2.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.3499999940395355,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentNodeId": "sf.render.kestrel-lod2.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.3499999940395355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.800000011920929,
+        -2.0999999046325684,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentNodeId": "sf.render.kestrel-lod2.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.800000011920929,
+        -2.0999999046325684,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.850000381469727,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentNodeId": "sf.render.kestrel-lod2.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.850000381469727,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.260000228881836,
+        -1.0800000429153442,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentNodeId": "sf.render.kestrel-lod2.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.260000228881836,
+        -1.0800000429153442,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.600000023841858,
+        0.44999998807907104,
+        -6.599999904632568,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentNodeId": "sf.render.kestrel-lod2.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.600000023841858,
+        0.44999998807907104,
+        -6.599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.600000023841858,
+        0.44999998807907104,
+        6.599999904632568,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentNodeId": "sf.render.kestrel-lod2.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.600000023841858,
+        0.44999998807907104,
+        6.599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -14.050000190734863,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentNodeId": "sf.render.kestrel-lod2.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -14.050000190734863,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.4500000476837158,
+        1.9500000476837158,
+        -3.799999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentNodeId": "sf.render.kestrel-lod2.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.4500000476837158,
+        1.9500000476837158,
+        -3.799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.619999885559082,
+        1.4299999475479126,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentNodeId": "sf.render.kestrel-lod2.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.619999885559082,
+        1.4299999475479126,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.kestrel-lod2",
+  "collisions": [
+    {
+      "id": "sf.render.kestrel-lod2.collision",
+      "nodeId": "sf.render.kestrel-lod2.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "4b6a3b3776412df696e98f32bb6d5daee0d21be612493c06c3859c0454d0d55b",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-drive-core"
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-nav-port"
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-hull-green.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-hull-green"
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-warning.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-warning"
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-sensor-dish-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-sensor-dish-mechanical"
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-armor-cap-hook-armor-port-armor.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-armor-cap-hook-armor-port-armor"
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-feed-hook-sensor-dish-lights-cyan.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-feed-hook-sensor-dish-lights-cyan"
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanical"
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark"
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-hatch-hook-secondary-pod-armor.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-hatch-hook-secondary-pod-armor"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          12.326436996459961,
+          3.468119221578116,
+          5.869407884507146
+        ],
+        "min": [
+          -12.99088191986084,
+          -2.805773096929068,
+          -5.869415513901677
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7261d31e12e9e85944f0f91059fd72e438584736e5f00aef08505c3986793563",
+      "id": "sf.render.kestrel-lod2.mesh.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL.002",
+      "nodeId": "sf.render.kestrel-lod2.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 814
+    },
+    {
+      "bounds": {
+        "max": [
+          12.898354530334473,
+          2.794845601078734,
+          6.199264935230275
+        ],
+        "min": [
+          -13.296927452087402,
+          -2.794845601078734,
+          -6.199264935230275
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "18e2d0132258ebcdf5e0d663ab8edd4acb451ff00de46e4d47e9645026ad0e2d",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-armor.primitive.0",
+      "indexCount": 5433,
+      "indexed": true,
+      "materialHash": "c51ab11e1351fa4ea0ffe236f4657593e2edb45097ce4e5eb4fcedb153b18ae2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1898
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.319999620318413,
+          2.3060026843770762,
+          0.07999999821186066
+        ],
+        "min": [
+          -10.479999616742134,
+          2.1939973156229238,
+          -0.07999999821186066
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3367d71a7f090f22bdf2e780330034c85038622116f2c5f2076dc91136e4bfc6",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-beacon-amber-beacon.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber_beacon",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-beacon-amber-beacon",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.450274322162045,
+          0.40717580914497375,
+          0.40661735018668593
+        ],
+        "min": [
+          -13.706183578838932,
+          -0.40717580914497375,
+          -0.4066407450097603
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ccbe8fa9740e06ede704c7e08ffa308e26d9fb663a0ada4ad04cab12fa6eea9a",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-brushedmetal.primitive.0",
+      "indexCount": 186,
+      "indexed": true,
+      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 69
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.514981269836426,
+          1.2697346100827709,
+          1.2717525959014893
+        ],
+        "min": [
+          -13.514981269836426,
+          -1.26973484850135,
+          -1.2717533111572266
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "76f7ba231fbba94ec09cdfc0286d7b43f4feebbdf560772fac09884bee5bffe7",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-drive-core.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 22
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.119999885559082,
+          0.8060026322205109,
+          -6.220000267028809
+        ],
+        "min": [
+          -9.279999732971191,
+          0.6939973677794891,
+          -6.380000114440918
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bfa7c642dadca02bfa4cde86eda35d49981db3078b6a1f294b8d21473d971d33",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_PORT",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.119999885559082,
+          0.8060026322205109,
+          6.380000114440918
+        ],
+        "min": [
+          -9.279999732971191,
+          0.6939973677794891,
+          6.220000267028809
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7cf1120b7e70b61c720a5f1eb721268264e61ac2a8bb56f20126b4c12b8297d0",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.14278975129127502,
+          1.8455488113073368,
+          -3.4045334838704333
+        ],
+        "min": [
+          -3.0454978942871094,
+          0.5544514032693845,
+          -5.292771957032277
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "03ca292864f39d7b2b435529753e515191914634f2fbe1c2edf91018d1148099",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-hull-green.primitive.0",
+      "indexCount": 162,
+      "indexed": true,
+      "materialHash": "489af0f7b34a6c0de783470a6359c5a337473747d2a978ee0ea3146290e15fb0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_SECONDARY_POD_Hull_green",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-hull-green",
+      "primitiveIndex": 0,
+      "vertexCount": 61
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.45640055232870314,
+          1.8935589443325038,
+          -3.3564772605895996
+        ],
+        "min": [
+          -0.7435995251573351,
+          0.5064412702442173,
+          -5.343523025512695
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "70e0c6f0258921690db310112e54bf71526140bfd59ad9f1ce531b53029c8fa0",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-warning.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e5bcf3a67891d52767ce8ee07808ca5b5e57ddba954468f2cca9460e363a802b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_SECONDARY_POD_Warning",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.0032692183820164,
+          2.8481123447418213,
+          1.0962575018455027
+        ],
+        "min": [
+          -2.3963999519976222,
+          2.1016924381256104,
+          0.7045846641014576
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ba4bcd25a102435c97fb825587702d374d8b79e503453bdb63e1e22b6ca8d647",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-sensor-dish-mechanical.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_SENSOR_DISH_Mechanical",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hook-sensor-dish-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          12.898669242858887,
+          2.498354862078788,
+          5.695450328036479
+        ],
+        "min": [
+          -12.397916793823242,
+          -1.4420051077452916,
+          -5.694073699160747
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ca88a12deb7f51840ff4567720d7ea518706dbf236d2547955e6411372142d73",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hull.primitive.0",
+      "indexCount": 2889,
+      "indexed": true,
+      "materialHash": "53a230f9028e56097e6132ac7d76bac0cedf528de2e54239febd57f892c45222",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 812
+    },
+    {
+      "bounds": {
+        "max": [
+          4.797430515289307,
+          2.308538329827941,
+          0.33175687589030767
+        ],
+        "min": [
+          -10.197726249694824,
+          2.1675883410094614,
+          -0.27231450476031804
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8e1d22b4214ab7e64e00c7b1421a45657f7cf56cb2f6d32f8c2234d28914547c",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-lights-cyan.primitive.0",
+      "indexCount": 9,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Cyan",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 9
+    },
+    {
+      "bounds": {
+        "max": [
+          6.481385707855225,
+          3.0496036766700816,
+          3.0498014325410456
+        ],
+        "min": [
+          -12.300000190734863,
+          -3.0496036766700816,
+          -3.4529245728761286
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30cc38e9ebcd7d2a3cee8fc482b999ef10470904c269da1c4f4ef7df46b5ac8a",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-livery.primitive.0",
+      "indexCount": 1122,
+      "indexed": true,
+      "materialHash": "fe57aee950af931b05c1aecba2b78cf8325b15fae3a33dd974fe64821f8fc908",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 351
+    },
+    {
+      "bounds": {
+        "max": [
+          13.29938793182373,
+          2.8953792959579916,
+          3.5962941706895455
+        ],
+        "min": [
+          -14.120523452758789,
+          -2.8953792959579916,
+          -3.5978028834581
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c986a90eb9d23c13604255d63307f4f281366042883d3e9fa9b735dae50c7a5",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-mechanical.primitive.0",
+      "indexCount": 2370,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 962
+    },
+    {
+      "bounds": {
+        "max": [
+          13.398362159729004,
+          2.8957523603582236,
+          6.309263227143607
+        ],
+        "min": [
+          -14.120523452758789,
+          -2.8957523603582236,
+          -6.309263227143607
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f2e141558a1ca6afbedc3542dcad220d5d7bf82e1746bfbd16b35dfbff6b94f8",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-mechanicaldark.primitive.0",
+      "indexCount": 1368,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 547
+    },
+    {
+      "bounds": {
+        "max": [
+          3.9921200275421143,
+          0.7547491962546544,
+          -3.4011831407082482
+        ],
+        "min": [
+          0.49891674518585205,
+          0.6225560729866786,
+          -5.797929751442631
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "724c7c4bf2b4fa75c7196abfe1124ab70de4c64c8ea341b080cdc5d98bbc9bd7",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-armor-cap-hook-armor-port-armor.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "c51ab11e1351fa4ea0ffe236f4657593e2edb45097ce4e5eb4fcedb153b18ae2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-armor-cap-hook-armor-port-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          7.200693607330322,
+          2.1344028093934555,
+          0.7753893869525728
+        ],
+        "min": [
+          2.599424123764038,
+          1.5985452591359117,
+          -0.7767158287174043
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ba2a1c79bb4a6c40632a92fb7b79827366e65171252e3dc3581fce8dd6595d05",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-canopy-canopy.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD2_MOTION_KESTREL_CANOPY_CANOPY",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-canopy-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 79
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.5099998712539673,
+          3.591664114713516,
+          0.9500000476837158
+        ],
+        "min": [
+          -2.6100000143051147,
+          3.568335732698593,
+          0.8499999046325684
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e75ecfee641c83f0ae89e1147afdbf0efce383da42b412c335ba9c9174f58a53",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-feed-hook-sensor-dish-lights-cyan.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-feed-hook-sensor-dish-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.6055523658936262,
+          3.7699848137358556,
+          1.7557443380355835
+        ],
+        "min": [
+          -2.8714675401503804,
+          2.344354299499618,
+          0.04380696639418602
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "34a223087e230541a68434abd03926dc12f4eb1accdc84bed1b21d8e178729f4",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanical.primitive.0",
+      "indexCount": 396,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 166
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.6055523658936262,
+          3.7699848137358556,
+          1.7557443380355835
+        ],
+        "min": [
+          -2.8714675401503804,
+          2.344354299499618,
+          0.04380696639418602
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "452ac00d01000d6bfe5bb63776c5ad5b882b662a9687361e138ec5179d2d5179",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.551007020883473,
+          1.384749483160585,
+          -1.142320990562439
+        ],
+        "min": [
+          -13.638834250843873,
+          0.5562066623643934,
+          -1.9818294048309326
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5dfe6f7d215414d804790b33ab28a22f43362116b35bf74e91adb9a400a86ed0",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-0-mechanicaldark.primitive.0",
+      "indexCount": 114,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_IRIS_0_MechanicalDark",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 49
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.539013737927068,
+          2.048838808488634,
+          0.41675472259521484
+        ],
+        "min": [
+          -13.62682736467303,
+          1.4217548823835582,
+          -0.41678789258003235
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e34ecdc735d1f18cdf395fbb8c9a8d3f3e92df9225016e9f18d3b903b832219c",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-1-mechanicaldark.primitive.0",
+      "indexCount": 114,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_IRIS_1_MechanicalDark",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 49
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.526980563610254,
+          1.384661313112132,
+          1.9819833040237427
+        ],
+        "min": [
+          -13.614849884450974,
+          0.5564391352578479,
+          1.1420725584030151
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bf1dfb46ab8fc31959be2d7a8b47e440ffc75e5196d1b4c3efd140bb6e99ce51",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-2-mechanicaldark.primitive.0",
+      "indexCount": 114,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_IRIS_2_MechanicalDark",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 50
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.551007020883473,
+          -0.5562066623643934,
+          1.9818294048309326
+        ],
+        "min": [
+          -13.638834250843873,
+          -1.384749483160585,
+          1.142320990562439
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0f2ac09341c9897d02b15cfd771c9acf18fb3fe4c54d7d6876a6e6a5d0a93e0d",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-3-mechanicaldark.primitive.0",
+      "indexCount": 114,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_IRIS_3_MechanicalDark",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-3-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 49
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.539013737927068,
+          -1.4217548823835582,
+          0.41678789258003235
+        ],
+        "min": [
+          -13.62682736467303,
+          -2.048838808488634,
+          -0.41675472259521484
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "df13a93480d43f1b55681c1c82b7d60ed7f11c577d9f1117b2eadba2b9fadf24",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-4-mechanicaldark.primitive.0",
+      "indexCount": 114,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_IRIS_4_MechanicalDark",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-4-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 49
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.526980563610254,
+          -0.5564391352578479,
+          -1.1420725584030151
+        ],
+        "min": [
+          -13.614849884450974,
+          -1.384661313112132,
+          -1.9819833040237427
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b68d43faef20fe49c755b9652098de239092db67f8a09d3ee9f8ae39d1cccd0d",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-5-mechanicaldark.primitive.0",
+      "indexCount": 114,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_IRIS_5_MechanicalDark",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-5-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 50
+    },
+    {
+      "bounds": {
+        "max": [
+          12.748180389404297,
+          -0.7136222529028224,
+          0.33663624099822964
+        ],
+        "min": [
+          11.901987075805664,
+          -1.3863778305436802,
+          -0.3356028454694363
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8ae4c13c03f1d2b323d61522ed72fc1757aec500c5ee1f8bda8f3a36592e4eac",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-mining-beacon-amber.primitive.0",
+      "indexCount": 111,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_MINING_Beacon_Amber",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-mining-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 43
+    },
+    {
+      "bounds": {
+        "max": [
+          12.748180389404297,
+          -0.7136222529028224,
+          0.33663624099822964
+        ],
+        "min": [
+          11.901987075805664,
+          -1.3863778305436802,
+          -0.3356028454694363
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9aa9185166485f1a627d4f5abd2af89ea430d8166724351affb5f3952e262756",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-mining-mechanicaldark.primitive.0",
+      "indexCount": 123,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_MINING_MechanicalDark",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-mining-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 49
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.2400000095367432,
+          1.7080012599328778,
+          -4.309999942779541
+        ],
+        "min": [
+          -1.3199999332427979,
+          1.6519986277123668,
+          -4.389999866485596
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ab2972e7102ef28ce90577dbf65b5030e60acc0ddd871cc914ee4a7165432744",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-beacon-amber.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_Beacon_Amber",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.552048683166504,
+          1.6600753181868164,
+          -4.283060147552963
+        ],
+        "min": [
+          -2.8469595909118652,
+          1.5780343915081652,
+          -4.416949675292496
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f78be8db5d23873ca51050b99cbf1ee4ee32f401e33035edba748ef95ec4be2a",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-mechanical.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_Mechanical",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.3320590257644653,
+          1.6969647047541825,
+          -4.2849269649582045
+        ],
+        "min": [
+          -1.5679411888122559,
+          1.543299717040381,
+          -4.416966841499315
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "966384b9b43205d8c07afd0f6f30281e8e87c26de3c8cfdc18a8f97328e4e1c4",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-mechanicaldark.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_MechanicalDark",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.6771820783615112,
+          1.6029622857850125,
+          -4.2730494134175165
+        ],
+        "min": [
+          -2.9229512214660645,
+          1.498029797764487,
+          -4.42695039584762
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "70b20d81014b6bffc7100dc31b110add38cd50e6cbd1a7acfce43ad13cf8f948",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-shoulder-mechanical.primitive.0",
+      "indexCount": 96,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_POD_ARM_SHOULDER_Mechanical",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-shoulder-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 42
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.5010241270065308,
+          1.918984234564057,
+          -3.7508902345519477
+        ],
+        "min": [
+          -2.6989755630493164,
+          1.8408927319123833,
+          -4.947525521673638
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b80198f80410fce5e4526c78c2b9758a467b61fd562961ffbeb4857fc07c0016",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-hatch-hook-secondary-pod-armor.primitive.0",
+      "indexCount": 96,
+      "indexed": true,
+      "materialHash": "c51ab11e1351fa4ea0ffe236f4657593e2edb45097ce4e5eb4fcedb153b18ae2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-hatch-hook-secondary-pod-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 42
+    },
+    {
+      "bounds": {
+        "max": [
+          5.923435688018799,
+          -1.0778493914877916,
+          1.182556982458531
+        ],
+        "min": [
+          3.4797284603118896,
+          -1.3081471886361098,
+          0.9588220759025226
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ee0222dd2fa2c9b1a92bbb53e0871b7153c03b416b1a3d4dbd2fdf3008c58681",
+      "id": "sf.render.kestrel-lod2.mesh.lod2-warning.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "e5bcf3a67891d52767ce8ee07808ca5b5e57ddba954468f2cca9460e363a802b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.kestrel-lod2.mesh.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "489af0f7b34a6c0de783470a6359c5a337473747d2a978ee0ea3146290e15fb0",
+      "id": "material:489af0f7b34a6c0de783470a",
+      "name": "Material_Hull_green",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "53a230f9028e56097e6132ac7d76bac0cedf528de2e54239febd57f892c45222",
+      "id": "material:53a230f9028e56097e6132ac",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "id": "material:85add90c89b799ae69ad3e2f",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "id": "material:be05a75f6364bf5672ea6503",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "id": "material:bfa183b9b652162d020ab353",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c51ab11e1351fa4ea0ffe236f4657593e2edb45097ce4e5eb4fcedb153b18ae2",
+      "id": "material:c51ab11e1351fa4ea0ffe236",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "e5bcf3a67891d52767ce8ee07808ca5b5e57ddba954468f2cca9460e363a802b",
+      "id": "material:e5bcf3a67891d52767ce8ee0",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "id": "material:f64dcbc7e999cc81995955b9",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "fe57aee950af931b05c1aecba2b78cf8325b15fae3a33dd974fe64821f8fc908",
+      "id": "material:fe57aee950af931b05c1aecb",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.kestrel-lod2.mesh.collision-hull",
+      "localTransform": [
+        12.6586594581604,
+        0,
+        0,
+        0,
+        0,
+        12.6586594581604,
+        0,
+        0,
+        0,
+        0,
+        12.6586594581604,
+        0,
+        -0.33222246170043945,
+        0.3311730623245239,
+        -0.000003814697265625,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        12.6586594581604,
+        0,
+        0,
+        0,
+        0,
+        12.6586594581604,
+        0,
+        0,
+        0,
+        0,
+        12.6586594581604,
+        0,
+        -0.33222246170043945,
+        0.3311730623245239,
+        -0.000003814697265625,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-armor",
+      "localTransform": [
+        13.097640991210938,
+        0,
+        0,
+        0,
+        0,
+        13.097640991210938,
+        0,
+        0,
+        0,
+        0,
+        13.097640991210938,
+        0,
+        -0.19928646087646484,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        13.097640991210938,
+        0,
+        0,
+        0,
+        0,
+        13.097640991210938,
+        0,
+        0,
+        0,
+        0,
+        13.097640991210938,
+        0,
+        -0.19928646087646484,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-beacon-amber-beacon",
+      "localTransform": [
+        0.07999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.07999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.07999999821186066,
+        0,
+        -10.399999618530273,
+        2.25,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber_beacon",
+      "nodeName": "LOD2_Beacon_Amber_beacon",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.07999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.07999999821186066,
+        0,
+        0,
+        0,
+        0,
+        0.07999999821186066,
+        0,
+        -10.399999618530273,
+        2.25,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-brushedmetal",
+      "localTransform": [
+        0.40717580914497375,
+        0,
+        0,
+        0,
+        0,
+        0.40717580914497375,
+        0,
+        0,
+        0,
+        0,
+        0.40717580914497375,
+        0,
+        -13.578228950500488,
+        0,
+        -0.00001169741153717041,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.40717580914497375,
+        0,
+        0,
+        0,
+        0,
+        0.40717580914497375,
+        0,
+        0,
+        0,
+        0,
+        0.40717580914497375,
+        0,
+        -13.578228950500488,
+        0,
+        -0.00001169741153717041,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-drive-core",
+      "localTransform": [
+        1.271752953529358,
+        0,
+        0,
+        0,
+        0,
+        1.271752953529358,
+        0,
+        0,
+        0,
+        0,
+        1.271752953529358,
+        0,
+        -13.514981269836426,
+        -1.1920928955078125e-7,
+        -3.5762786865234375e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_DRIVE_CORE",
+      "nodeName": "LOD2_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1.271752953529358,
+        0,
+        0,
+        0,
+        0,
+        1.271752953529358,
+        0,
+        0,
+        0,
+        0,
+        1.271752953529358,
+        0,
+        -13.514981269836426,
+        -1.1920928955078125e-7,
+        -3.5762786865234375e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-nav-port",
+      "localTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -9.199999809265137,
+        0.75,
+        -6.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+      "nodeName": "LOD2_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -9.199999809265137,
+        0.75,
+        -6.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-nav-starboard",
+      "localTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -9.199999809265137,
+        0.75,
+        6.300000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -9.199999809265137,
+        0.75,
+        6.300000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-hull-green",
+      "localTransform": [
+        1.5941438227891922,
+        0,
+        0,
+        0,
+        0,
+        1.5941438227891922,
+        0,
+        0,
+        0,
+        0,
+        1.5941438227891922,
+        0,
+        -1.4513540714979172,
+        1.2000001072883606,
+        -4.348652720451355,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_SECONDARY_POD_Hull_green",
+      "nodeName": "LOD2_HOOK_SECONDARY_POD_Hull_green",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1.5941438227891922,
+        0,
+        0,
+        0,
+        0,
+        1.5941438227891922,
+        0,
+        0,
+        0,
+        0,
+        1.5941438227891922,
+        0,
+        -1.4513540714979172,
+        1.2000001072883606,
+        -4.348652720451355,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-warning",
+      "localTransform": [
+        0.9935228824615479,
+        0,
+        0,
+        0,
+        0,
+        0.9935228824615479,
+        0,
+        0,
+        0,
+        0,
+        0.9935228824615479,
+        0,
+        -0.6000000387430191,
+        1.2000001072883606,
+        -4.3500001430511475,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_SECONDARY_POD_Warning",
+      "nodeName": "LOD2_HOOK_SECONDARY_POD_Warning",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.9935228824615479,
+        0,
+        0,
+        0,
+        0,
+        0.9935228824615479,
+        0,
+        0,
+        0,
+        0,
+        0.9935228824615479,
+        0,
+        -0.6000000387430191,
+        1.2000001072883606,
+        -4.3500001430511475,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hook-sensor-dish-mechanical",
+      "localTransform": [
+        0.37320995330810547,
+        0,
+        0,
+        0,
+        0,
+        0.37320995330810547,
+        0,
+        0,
+        0,
+        0,
+        0.37320995330810547,
+        0,
+        -2.1998345851898193,
+        2.474902391433716,
+        0.9004210829734802,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_SENSOR_DISH_Mechanical",
+      "nodeName": "LOD2_HOOK_SENSOR_DISH_Mechanical",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.37320995330810547,
+        0,
+        0,
+        0,
+        0,
+        0.37320995330810547,
+        0,
+        0,
+        0,
+        0,
+        0.37320995330810547,
+        0,
+        -2.1998345851898193,
+        2.474902391433716,
+        0.9004210829734802,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-hull",
+      "localTransform": [
+        12.648293018341064,
+        0,
+        0,
+        0,
+        0,
+        12.648293018341064,
+        0,
+        0,
+        0,
+        0,
+        12.648293018341064,
+        0,
+        0.25037622451782227,
+        0.528174877166748,
+        0.0006883144378662109,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        12.648293018341064,
+        0,
+        0,
+        0,
+        0,
+        12.648293018341064,
+        0,
+        0,
+        0,
+        0,
+        12.648293018341064,
+        0,
+        0.25037622451782227,
+        0.528174877166748,
+        0.0006883144378662109,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-lights-cyan",
+      "localTransform": [
+        7.497578382492065,
+        0,
+        0,
+        0,
+        0,
+        7.497578382492065,
+        0,
+        0,
+        0,
+        0,
+        7.497578382492065,
+        0,
+        -2.700147867202759,
+        2.238063335418701,
+        0.029721185564994812,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Cyan",
+      "nodeName": "LOD2_Lights_Cyan",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        7.497578382492065,
+        0,
+        0,
+        0,
+        0,
+        7.497578382492065,
+        0,
+        0,
+        0,
+        0,
+        7.497578382492065,
+        0,
+        -2.700147867202759,
+        2.238063335418701,
+        0.029721185564994812,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-livery",
+      "localTransform": [
+        9.390692949295044,
+        0,
+        0,
+        0,
+        0,
+        9.390692949295044,
+        0,
+        0,
+        0,
+        0,
+        9.390692949295044,
+        0,
+        -2.9093072414398193,
+        0,
+        -0.2015615701675415,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        9.390692949295044,
+        0,
+        0,
+        0,
+        0,
+        9.390692949295044,
+        0,
+        0,
+        0,
+        0,
+        9.390692949295044,
+        0,
+        -2.9093072414398193,
+        0,
+        -0.2015615701675415,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-mechanical",
+      "localTransform": [
+        13.70995569229126,
+        0,
+        0,
+        0,
+        0,
+        13.70995569229126,
+        0,
+        0,
+        0,
+        0,
+        13.70995569229126,
+        0,
+        -0.4105677604675293,
+        0,
+        -0.0007543563842773438,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        13.70995569229126,
+        0,
+        0,
+        0,
+        0,
+        13.70995569229126,
+        0,
+        0,
+        0,
+        0,
+        13.70995569229126,
+        0,
+        -0.4105677604675293,
+        0,
+        -0.0007543563842773438,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-mechanicaldark",
+      "localTransform": [
+        13.759442806243896,
+        0,
+        0,
+        0,
+        0,
+        13.759442806243896,
+        0,
+        0,
+        0,
+        0,
+        13.759442806243896,
+        0,
+        -0.3610806465148926,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        13.759442806243896,
+        0,
+        0,
+        0,
+        0,
+        13.759442806243896,
+        0,
+        0,
+        0,
+        0,
+        13.759442806243896,
+        0,
+        -0.3610806465148926,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-armor-cap-hook-armor-port-armor",
+      "localTransform": [
+        1.746601641178131,
+        0,
+        0,
+        0,
+        0,
+        1.746601641178131,
+        0,
+        0,
+        0,
+        0,
+        1.746601641178131,
+        0,
+        -0.004481613636016846,
+        0.06865262985229492,
+        -1.1995563507080078,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+      "nodeName": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+      "nodePath": [
+        0,
+        16,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1.746601641178131,
+        0,
+        0,
+        0,
+        0,
+        1.746601641178131,
+        0,
+        0,
+        0,
+        0,
+        1.746601641178131,
+        0,
+        2.245518386363983,
+        0.6886526346206665,
+        -4.5995564460754395,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-canopy-canopy",
+      "localTransform": [
+        2.300634741783142,
+        0,
+        0,
+        0,
+        0,
+        2.300634741783142,
+        0,
+        0,
+        0,
+        0,
+        2.300634741783142,
+        0,
+        2.300058960914612,
+        0.24647402949631214,
+        -0.0006632208824157715,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_CANOPY_CANOPY",
+      "nodeName": "LOD2_MOTION_KESTREL_CANOPY_CANOPY",
+      "nodePath": [
+        0,
+        17,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        2.300634741783142,
+        0,
+        0,
+        0,
+        0,
+        2.300634741783142,
+        0,
+        0,
+        0,
+        0,
+        2.300634741783142,
+        0,
+        4.90005886554718,
+        1.8664740342646837,
+        -0.0006632208824157715,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-feed-hook-sensor-dish-lights-cyan",
+      "localTransform": [
+        0.05000007152557373,
+        0,
+        0,
+        0,
+        0,
+        0.05000007152557373,
+        0,
+        0,
+        0,
+        0,
+        0.05000007152557373,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+      "nodeName": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+      "nodePath": [
+        0,
+        18,
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.05000007152557373,
+        0,
+        0,
+        0,
+        0,
+        0.05000007152557373,
+        0,
+        0,
+        0,
+        0,
+        0.05000007152557373,
+        0,
+        -2.559999942779541,
+        3.5799999237060547,
+        0.8999999761581421,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanical",
+      "localTransform": [
+        0.8559686858206987,
+        0,
+        0,
+        0,
+        0,
+        0.8559686858206987,
+        0,
+        0,
+        0,
+        0,
+        0.8559686858206987,
+        0,
+        -0.038509905338287354,
+        0.20716965198516846,
+        -0.00022432394325733185,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+      "nodeName": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+      "nodePath": [
+        0,
+        18,
+        0,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.8559686858206987,
+        0,
+        0,
+        0,
+        0,
+        0.8559686858206987,
+        0,
+        0,
+        0,
+        0,
+        0.8559686858206987,
+        0,
+        -2.238509953022003,
+        3.057169556617737,
+        0.8997756522148848,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark",
+      "localTransform": [
+        0.8559686858206987,
+        0,
+        0,
+        0,
+        0,
+        0.8559686858206987,
+        0,
+        0,
+        0,
+        0,
+        0.8559686858206987,
+        0,
+        -0.038509905338287354,
+        0.20716965198516846,
+        -0.00022432394325733185,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+      "nodeName": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+      "nodePath": [
+        0,
+        18,
+        0,
+        1
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.8559686858206987,
+        0,
+        0,
+        0,
+        0,
+        0.8559686858206987,
+        0,
+        0,
+        0,
+        0,
+        0.8559686858206987,
+        0,
+        -2.238509953022003,
+        3.057169556617737,
+        0.8997756522148848,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-0-mechanicaldark",
+      "localTransform": [
+        0.4197542071342468,
+        0,
+        0,
+        0,
+        0,
+        0.4197542071342468,
+        0,
+        0,
+        0,
+        0,
+        0.4197542071342468,
+        0,
+        -0.04492044512880966,
+        0.10547806322574615,
+        -0.06385129690170288,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_IRIS_0_MechanicalDark",
+      "nodeName": "LOD2_MOTION_KESTREL_IRIS_0_MechanicalDark",
+      "nodePath": [
+        0,
+        19,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.4197542071342468,
+        0,
+        0,
+        0,
+        0,
+        0.4197542071342468,
+        0,
+        0,
+        0,
+        0,
+        0.4197542071342468,
+        0,
+        -13.594920635863673,
+        0.9704780727624893,
+        -1.5620751976966858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-1-mechanicaldark",
+      "localTransform": [
+        0.4167713075876236,
+        0,
+        0,
+        0,
+        0,
+        0.4167713075876236,
+        0,
+        0,
+        0,
+        0,
+        0.4167713075876236,
+        0,
+        -0.03292036056518555,
+        0.005296826362609863,
+        -0.00001658499240875244,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_IRIS_1_MechanicalDark",
+      "nodeName": "LOD2_MOTION_KESTREL_IRIS_1_MechanicalDark",
+      "nodePath": [
+        0,
+        20,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.4167713075876236,
+        0,
+        0,
+        0,
+        0,
+        0.4167713075876236,
+        0,
+        0,
+        0,
+        0,
+        0.4167713075876236,
+        0,
+        -13.582920551300049,
+        1.7352968454360962,
+        -0.00001658499240875244,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-2-mechanicaldark",
+      "localTransform": [
+        0.41995537281036377,
+        0,
+        0,
+        0,
+        0,
+        0.41995537281036377,
+        0,
+        0,
+        0,
+        0,
+        0.41995537281036377,
+        0,
+        -0.020915033295750618,
+        0.10555021464824677,
+        0.063804030418396,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_IRIS_2_MechanicalDark",
+      "nodeName": "LOD2_MOTION_KESTREL_IRIS_2_MechanicalDark",
+      "nodePath": [
+        0,
+        21,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.41995537281036377,
+        0,
+        0,
+        0,
+        0,
+        0.41995537281036377,
+        0,
+        0,
+        0,
+        0,
+        0.41995537281036377,
+        0,
+        -13.570915224030614,
+        0.9705502241849899,
+        1.562027931213379,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-3-mechanicaldark",
+      "localTransform": [
+        0.4197542071342468,
+        0,
+        0,
+        0,
+        0,
+        0.4197542071342468,
+        0,
+        0,
+        0,
+        0,
+        0.4197542071342468,
+        0,
+        -0.04492044512880966,
+        -0.10547806322574615,
+        0.06385129690170288,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_IRIS_3_MechanicalDark",
+      "nodeName": "LOD2_MOTION_KESTREL_IRIS_3_MechanicalDark",
+      "nodePath": [
+        0,
+        22,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.4197542071342468,
+        0,
+        0,
+        0,
+        0,
+        0.4197542071342468,
+        0,
+        0,
+        0,
+        0,
+        0.4197542071342468,
+        0,
+        -13.594920635863673,
+        -0.9704780727624893,
+        1.5620751976966858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-4-mechanicaldark",
+      "localTransform": [
+        0.4167713075876236,
+        0,
+        0,
+        0,
+        0,
+        0.4167713075876236,
+        0,
+        0,
+        0,
+        0,
+        0.4167713075876236,
+        0,
+        -0.03292036056518555,
+        -0.005296826362609863,
+        0.00001658499240875244,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_IRIS_4_MechanicalDark",
+      "nodeName": "LOD2_MOTION_KESTREL_IRIS_4_MechanicalDark",
+      "nodePath": [
+        0,
+        23,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.4167713075876236,
+        0,
+        0,
+        0,
+        0,
+        0.4167713075876236,
+        0,
+        0,
+        0,
+        0,
+        0.4167713075876236,
+        0,
+        -13.582920551300049,
+        -1.7352968454360962,
+        0.00001658499240875244,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-5-mechanicaldark",
+      "localTransform": [
+        0.41995537281036377,
+        0,
+        0,
+        0,
+        0,
+        0.41995537281036377,
+        0,
+        0,
+        0,
+        0,
+        0.41995537281036377,
+        0,
+        -0.020915033295750618,
+        -0.10555021464824677,
+        -0.063804030418396,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_IRIS_5_MechanicalDark",
+      "nodeName": "LOD2_MOTION_KESTREL_IRIS_5_MechanicalDark",
+      "nodePath": [
+        0,
+        24,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.41995537281036377,
+        0,
+        0,
+        0,
+        0,
+        0.41995537281036377,
+        0,
+        0,
+        0,
+        0,
+        0.41995537281036377,
+        0,
+        -13.570915224030614,
+        -0.9705502241849899,
+        -1.562027931213379,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-mining-beacon-amber",
+      "localTransform": [
+        0.4230966567993164,
+        0,
+        0,
+        0,
+        0,
+        0.4230966567993164,
+        0,
+        0,
+        0,
+        0,
+        0.4230966567993164,
+        0,
+        0.2250833511352539,
+        -8.940696716308594e-8,
+        0.0005166977643966675,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_MINING_Beacon_Amber",
+      "nodeName": "LOD2_MOTION_KESTREL_MINING_Beacon_Amber",
+      "nodePath": [
+        0,
+        25,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.4230966567993164,
+        0,
+        0,
+        0,
+        0,
+        0.4230966567993164,
+        0,
+        0,
+        0,
+        0,
+        0.4230966567993164,
+        0,
+        12.32508373260498,
+        -1.0500000417232513,
+        0.0005166977643966675,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-mining-mechanicaldark",
+      "localTransform": [
+        0.4230966567993164,
+        0,
+        0,
+        0,
+        0,
+        0.4230966567993164,
+        0,
+        0,
+        0,
+        0,
+        0.4230966567993164,
+        0,
+        0.2250833511352539,
+        -8.940696716308594e-8,
+        0.0005166977643966675,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_MINING_MechanicalDark",
+      "nodeName": "LOD2_MOTION_KESTREL_MINING_MechanicalDark",
+      "nodePath": [
+        0,
+        25,
+        1
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.4230966567993164,
+        0,
+        0,
+        0,
+        0,
+        0.4230966567993164,
+        0,
+        0,
+        0,
+        0,
+        0.4230966567993164,
+        0,
+        12.32508373260498,
+        -1.0500000417232513,
+        0.0005166977643966675,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-beacon-amber",
+      "localTransform": [
+        0.039999961853027344,
+        0,
+        0,
+        0,
+        0,
+        0.039999961853027344,
+        0,
+        0,
+        0,
+        0,
+        0.039999961853027344,
+        0,
+        1.6200001239776611,
+        0.12999999150633812,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_Beacon_Amber",
+      "nodeName": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_Beacon_Amber",
+      "nodePath": [
+        0,
+        26,
+        1,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.039999961853027344,
+        0,
+        0,
+        0,
+        0,
+        0.039999961853027344,
+        0,
+        0,
+        0,
+        0,
+        0.039999961853027344,
+        0,
+        -1.2799999713897705,
+        1.6799999438226223,
+        -4.349999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-mechanical",
+      "localTransform": [
+        0.6474554538726807,
+        0,
+        0,
+        0,
+        0,
+        0.6474554538726807,
+        0,
+        0,
+        0,
+        0,
+        0.6474554538726807,
+        0,
+        0.7004959583282471,
+        0.06905490253120661,
+        -0.0000050067901611328125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_Mechanical",
+      "nodeName": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_Mechanical",
+      "nodePath": [
+        0,
+        26,
+        1,
+        1
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.6474554538726807,
+        0,
+        0,
+        0,
+        0,
+        0.6474554538726807,
+        0,
+        0,
+        0,
+        0,
+        0.6474554538726807,
+        0,
+        -2.1995041370391846,
+        1.6190548548474908,
+        -4.3500049114227295,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-mechanicaldark",
+      "localTransform": [
+        0.11794108152389526,
+        0,
+        0,
+        0,
+        0,
+        0.11794108152389526,
+        0,
+        0,
+        0,
+        0,
+        0.11794108152389526,
+        0,
+        1.449999988079071,
+        0.07013225858099759,
+        -0.0009469985961914062,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_MechanicalDark",
+      "nodeName": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_MechanicalDark",
+      "nodePath": [
+        0,
+        26,
+        1,
+        2
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.11794108152389526,
+        0,
+        0,
+        0,
+        0,
+        0.11794108152389526,
+        0,
+        0,
+        0,
+        0,
+        0.11794108152389526,
+        0,
+        -1.4500001072883606,
+        1.6201322108972818,
+        -4.35094690322876,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-shoulder-mechanical",
+      "localTransform": [
+        0.6228845715522766,
+        0,
+        0,
+        0,
+        0,
+        0.6228845715522766,
+        0,
+        0,
+        0,
+        0,
+        0.6228845715522766,
+        0,
+        -0.600066602230072,
+        0.0004960894584655762,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_POD_ARM_SHOULDER_Mechanical",
+      "nodeName": "LOD2_MOTION_KESTREL_POD_ARM_SHOULDER_Mechanical",
+      "nodePath": [
+        0,
+        26,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.6228845715522766,
+        0,
+        0,
+        0,
+        0,
+        0.6228845715522766,
+        0,
+        0,
+        0,
+        0,
+        0.6228845715522766,
+        0,
+        -2.300066649913788,
+        1.5504960417747498,
+        -4.349999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-hatch-hook-secondary-pod-armor",
+      "localTransform": [
+        0.5989757180213928,
+        0,
+        0,
+        0,
+        0,
+        0.5989757180213928,
+        0,
+        0,
+        0,
+        0,
+        0.5989757180213928,
+        0,
+        -0.5999998450279236,
+        -0.04006147384643555,
+        0.0007920265197753906,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+      "nodeName": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+      "nodePath": [
+        0,
+        27,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        0.5989757180213928,
+        0,
+        0,
+        0,
+        0,
+        0.5989757180213928,
+        0,
+        0,
+        0,
+        0,
+        0.5989757180213928,
+        0,
+        -2.0999998450279236,
+        1.8799384832382202,
+        -4.349207878112793,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.lod2-warning",
+      "localTransform": [
+        1.2218536138534546,
+        0,
+        0,
+        0,
+        0,
+        1.2218536138534546,
+        0,
+        0,
+        0,
+        0,
+        1.2218536138534546,
+        0,
+        4.701582074165344,
+        -1.1929982900619507,
+        1.0706895291805267,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1.2218536138534546,
+        0,
+        0,
+        0,
+        0,
+        1.2218536138534546,
+        0,
+        0,
+        0,
+        0,
+        1.2218536138534546,
+        0,
+        4.701582074165344,
+        -1.1929982900619507,
+        1.0706895291805267,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-armor-cap",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.25,
+        0.6200000047683716,
+        -3.4000000953674316,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_ARMOR_CAP",
+      "nodeName": "MOTION_KESTREL_ARMOR_CAP",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.25,
+        0.6200000047683716,
+        -3.4000000953674316,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.5999999046325684,
+        1.6200000047683716,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_CANOPY",
+      "nodeName": "MOTION_KESTREL_CANOPY",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.5999999046325684,
+        1.6200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-dish",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.200000047683716,
+        2.8499999046325684,
+        0.8999999761581421,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_DISH",
+      "nodeName": "MOTION_KESTREL_DISH",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.200000047683716,
+        2.8499999046325684,
+        0.8999999761581421,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-dish-feed",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3599998950958252,
+        0.7300000190734863,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_DISH_FEED",
+      "nodeName": "MOTION_KESTREL_DISH_FEED",
+      "nodePath": [
+        0,
+        18,
+        0,
+        2
+      ],
+      "parentId": "sf.render.kestrel-lod2.mesh.motion-kestrel-dish-stem",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.559999942779541,
+        3.5799999237060547,
+        0.8999999761581421,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-dish-stem",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_DISH_STEM",
+      "nodeName": "MOTION_KESTREL_DISH_STEM",
+      "nodePath": [
+        0,
+        18,
+        0
+      ],
+      "parentId": "sf.render.kestrel-lod2.mesh.motion-kestrel-dish",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.200000047683716,
+        2.8499999046325684,
+        0.8999999761581421,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        0.8650000095367432,
+        -1.498223900794983,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_IRIS_0",
+      "nodeName": "MOTION_KESTREL_IRIS_0",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        0.8650000095367432,
+        -1.498223900794983,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        1.7300000190734863,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_IRIS_1",
+      "nodeName": "MOTION_KESTREL_IRIS_1",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        1.7300000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        0.8650000095367432,
+        1.498223900794983,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_IRIS_2",
+      "nodeName": "MOTION_KESTREL_IRIS_2",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        0.8650000095367432,
+        1.498223900794983,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        -0.8650000095367432,
+        1.498223900794983,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_IRIS_3",
+      "nodeName": "MOTION_KESTREL_IRIS_3",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        -0.8650000095367432,
+        1.498223900794983,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        -1.7300000190734863,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_IRIS_4",
+      "nodeName": "MOTION_KESTREL_IRIS_4",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        -1.7300000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        -0.8650000095367432,
+        -1.498223900794983,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_IRIS_5",
+      "nodeName": "MOTION_KESTREL_IRIS_5",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.550000190734863,
+        -0.8650000095367432,
+        -1.498223900794983,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-mining",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.100000381469727,
+        -1.0499999523162842,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_MINING",
+      "nodeName": "MOTION_KESTREL_MINING",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12.100000381469727,
+        -1.0499999523162842,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-pod-arm-elbow",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2000000476837158,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_POD_ARM_ELBOW",
+      "nodeName": "MOTION_KESTREL_POD_ARM_ELBOW",
+      "nodePath": [
+        0,
+        26,
+        1
+      ],
+      "parentId": "sf.render.kestrel-lod2.mesh.motion-kestrel-pod-arm-shoulder",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.9000000953674316,
+        1.5499999523162842,
+        -4.349999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-pod-arm-shoulder",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7000000476837158,
+        1.5499999523162842,
+        -4.349999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_POD_ARM_SHOULDER",
+      "nodeName": "MOTION_KESTREL_POD_ARM_SHOULDER",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7000000476837158,
+        1.5499999523162842,
+        -4.349999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-pod-hatch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.5,
+        1.9199999570846558,
+        -4.349999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_POD_HATCH",
+      "nodeName": "MOTION_KESTREL_POD_HATCH",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.5,
+        1.9199999570846558,
+        -4.349999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-strut-f",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        -1.899999976158142,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_STRUT_F",
+      "nodeName": "MOTION_KESTREL_STRUT_F",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        -1.899999976158142,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-strut-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4,
+        -2.1500000953674316,
+        -1.600000023841858,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_STRUT_P",
+      "nodeName": "MOTION_KESTREL_STRUT_P",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4,
+        -2.1500000953674316,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.mesh.motion-kestrel-strut-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4,
+        -2.1500000953674316,
+        1.600000023841858,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KESTREL_STRUT_S",
+      "nodeName": "MOTION_KESTREL_STRUT_S",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.kestrel-lod2.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4,
+        -2.1500000953674316,
+        1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kestrel-lod2.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "KESTREL_V4_LOD2_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kestrel-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "98a5ef3d86c0c15f887799e7b26ad7a9844db4bae6bdb0bf184acced6a70939d"
+    },
+    "sourceGlb": {
+      "bytes": 472460,
+      "sha256": "536eec1c8e675aede05e5b4c7bcc93916be16433dfb28cd5fdfbe0ed455bb3ca",
+      "uri": "kestrel_lod2.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 192516,
+    "resources": [
+      {
+        "bytes": 5381,
+        "mimeType": "image/ktx2",
+        "sha256": "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+        "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
+      },
+      {
+        "bytes": 72992,
+        "mimeType": "image/ktx2",
+        "sha256": "884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5",
+        "uri": "../_shared/images/884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5.ktx2"
+      },
+      {
+        "bytes": 58536,
+        "mimeType": "image/ktx2",
+        "sha256": "a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4",
+        "uri": "../_shared/images/a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4.ktx2"
+      },
+      {
+        "bytes": 114191,
+        "mimeType": "image/ktx2",
+        "sha256": "adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3",
+        "uri": "../_shared/images/adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3.ktx2"
+      },
+      {
+        "bytes": 6409,
+        "mimeType": "image/ktx2",
+        "sha256": "d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065",
+        "uri": "../_shared/images/d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065.ktx2"
+      },
+      {
+        "bytes": 35770,
+        "mimeType": "image/ktx2",
+        "sha256": "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3",
+        "uri": "../_shared/images/d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3.ktx2"
+      }
+    ],
+    "sha256": "165d014198b349a2a51b21458d336dc00ee519ab314b669910a9a7454a31dc23",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.3610806465148926,
+        0.360190568532887,
+        0
+      ],
+      "max": [
+        13.398362159729004,
+        3.7699848137358556,
+        6.380000114440918
+      ],
+      "min": [
+        -14.120523452758789,
+        -3.0496036766700816,
+        -6.380000114440918
+      ],
+      "size": [
+        27.518885612487793,
+        6.819588490405938,
+        12.760000228881836
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1.271752953529358,
+          0,
+          0,
+          0,
+          0,
+          1.271752953529358,
+          0,
+          0,
+          0,
+          0,
+          1.271752953529358,
+          0,
+          -13.514981269836426,
+          -1.1920928955078125e-7,
+          -3.5762786865234375e-7,
+          1
+        ],
+        "name": "LOD2_HOOK_DRIVE_CORE",
+        "planIndex": 6,
+        "tags": {
+          "drive": "core",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.lod2-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -9.199999809265137,
+          0.75,
+          -6.300000190734863,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 8,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.lod2-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -9.199999809265137,
+          0.75,
+          6.300000190734863,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 10,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.lod2-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.5941438227891922,
+          0,
+          0,
+          0,
+          0,
+          1.5941438227891922,
+          0,
+          0,
+          0,
+          0,
+          1.5941438227891922,
+          0,
+          -1.4513540714979172,
+          1.2000001072883606,
+          -4.348652720451355,
+          1
+        ],
+        "name": "LOD2_HOOK_SECONDARY_POD_Hull_green",
+        "planIndex": 12,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_SECONDARY_POD_Hull_green",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_SECONDARY_POD_Hull_green",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-hull-green"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.9935228824615479,
+          0,
+          0,
+          0,
+          0,
+          0.9935228824615479,
+          0,
+          0,
+          0,
+          0,
+          0.9935228824615479,
+          0,
+          -0.6000000387430191,
+          1.2000001072883606,
+          -4.3500001430511475,
+          1
+        ],
+        "name": "LOD2_HOOK_SECONDARY_POD_Warning",
+        "planIndex": 14,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_SECONDARY_POD_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_SECONDARY_POD_Warning",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.37320995330810547,
+          0,
+          0,
+          0,
+          0,
+          0.37320995330810547,
+          0,
+          0,
+          0,
+          0,
+          0.37320995330810547,
+          0,
+          -2.1998345851898193,
+          2.474902391433716,
+          0.9004210829734802,
+          1
+        ],
+        "name": "LOD2_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 16,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.lod2-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.25,
+          0.6200000047683716,
+          -3.4000000953674316,
+          1
+        ],
+        "name": "MOTION_KESTREL_ARMOR_CAP",
+        "planIndex": 24,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_armor_cap",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              2.25
+            ],
+            [
+              0,
+              1,
+              0,
+              3.4000000953674316
+            ],
+            [
+              0,
+              0,
+              1,
+              0.6200000047683716
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_ARMOR_CAP",
+          "spaceface": {
+            "motionGroup": "kestrel_armor_cap"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_ARMOR_CAP",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-armor-cap"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.746601641178131,
+          0,
+          0,
+          0,
+          0,
+          1.746601641178131,
+          0,
+          0,
+          0,
+          0,
+          1.746601641178131,
+          0,
+          2.245518386363983,
+          0.6886526346206665,
+          -4.5995564460754395,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+        "planIndex": 25,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-armor-cap-hook-armor-port-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.5999999046325684,
+          1.6200000047683716,
+          0,
+          1
+        ],
+        "name": "MOTION_KESTREL_CANOPY",
+        "planIndex": 27,
+        "tags": {
+          "canopy": true,
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_canopy",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              2.5999999046325684
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              1.6200000047683716
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_CANOPY",
+          "spaceface": {
+            "motionGroup": "kestrel_canopy"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_CANOPY",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-canopy"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.200000047683716,
+          2.8499999046325684,
+          0.8999999761581421,
+          1
+        ],
+        "name": "MOTION_KESTREL_DISH",
+        "planIndex": 29,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_dish",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -2.200000047683716
+            ],
+            [
+              0,
+              1,
+              0,
+              -0.8999999761581421
+            ],
+            [
+              0,
+              0,
+              1,
+              2.8499999046325684
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_DISH",
+          "spaceface": {
+            "motionGroup": "kestrel_dish"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_DISH",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-dish"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.200000047683716,
+          2.8499999046325684,
+          0.8999999761581421,
+          1
+        ],
+        "name": "MOTION_KESTREL_DISH_STEM",
+        "planIndex": 30,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_dish_stem",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_DISH_STEM",
+          "spaceface": {
+            "motionGroup": "kestrel_dish_stem"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_DISH_STEM",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-dish-stem"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          -2.238509953022003,
+          3.057169556617737,
+          0.8997756522148848,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 31,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          -2.238509953022003,
+          3.057169556617737,
+          0.8997756522148848,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+        "planIndex": 33,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.559999942779541,
+          3.5799999237060547,
+          0.8999999761581421,
+          1
+        ],
+        "name": "MOTION_KESTREL_DISH_FEED",
+        "planIndex": 35,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_dish_feed",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -0.3599998950958252
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.7300000190734863
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_DISH_FEED",
+          "spaceface": {
+            "motionGroup": "kestrel_dish_feed"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_DISH_FEED",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-dish-feed"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.05000007152557373,
+          0,
+          0,
+          0,
+          0,
+          0.05000007152557373,
+          0,
+          0,
+          0,
+          0,
+          0.05000007152557373,
+          0,
+          -2.559999942779541,
+          3.5799999237060547,
+          0.8999999761581421,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+        "planIndex": 36,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-feed-hook-sensor-dish-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.550000190734863,
+          0.8650000095367432,
+          -1.498223900794983,
+          1
+        ],
+        "name": "MOTION_KESTREL_IRIS_0",
+        "planIndex": 38,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_iris_0",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -13.550000190734863
+            ],
+            [
+              0,
+              1,
+              0,
+              1.498223900794983
+            ],
+            [
+              0,
+              0,
+              1,
+              0.8650000095367432
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_IRIS_0",
+          "spaceface": {
+            "motionGroup": "kestrel_iris_0"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_IRIS_0",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-0"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.550000190734863,
+          1.7300000190734863,
+          0,
+          1
+        ],
+        "name": "MOTION_KESTREL_IRIS_1",
+        "planIndex": 40,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_iris_1",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -13.550000190734863
+            ],
+            [
+              0,
+              1,
+              0,
+              1.0593194546942763e-16
+            ],
+            [
+              0,
+              0,
+              1,
+              1.7300000190734863
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_IRIS_1",
+          "spaceface": {
+            "motionGroup": "kestrel_iris_1"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_IRIS_1",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-1"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.550000190734863,
+          0.8650000095367432,
+          1.498223900794983,
+          1
+        ],
+        "name": "MOTION_KESTREL_IRIS_2",
+        "planIndex": 42,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_iris_2",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -13.550000190734863
+            ],
+            [
+              0,
+              1,
+              0,
+              -1.498223900794983
+            ],
+            [
+              0,
+              0,
+              1,
+              0.8650000095367432
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_IRIS_2",
+          "spaceface": {
+            "motionGroup": "kestrel_iris_2"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_IRIS_2",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-2"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.550000190734863,
+          -0.8650000095367432,
+          1.498223900794983,
+          1
+        ],
+        "name": "MOTION_KESTREL_IRIS_3",
+        "planIndex": 44,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_iris_3",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -13.550000190734863
+            ],
+            [
+              0,
+              1,
+              0,
+              -1.498223900794983
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.8650000095367432
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_IRIS_3",
+          "spaceface": {
+            "motionGroup": "kestrel_iris_3"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_IRIS_3",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-3"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.550000190734863,
+          -1.7300000190734863,
+          0,
+          1
+        ],
+        "name": "MOTION_KESTREL_IRIS_4",
+        "planIndex": 46,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_iris_4",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -13.550000190734863
+            ],
+            [
+              0,
+              1,
+              0,
+              -3.177958562606176e-16
+            ],
+            [
+              0,
+              0,
+              1,
+              -1.7300000190734863
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_IRIS_4",
+          "spaceface": {
+            "motionGroup": "kestrel_iris_4"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_IRIS_4",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-4"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.550000190734863,
+          -0.8650000095367432,
+          -1.498223900794983,
+          1
+        ],
+        "name": "MOTION_KESTREL_IRIS_5",
+        "planIndex": 48,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_iris_5",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -13.550000190734863
+            ],
+            [
+              0,
+              1,
+              0,
+              1.498223900794983
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.8650000095367432
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_IRIS_5",
+          "spaceface": {
+            "motionGroup": "kestrel_iris_5"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_IRIS_5",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-5"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          12.100000381469727,
+          -1.0499999523162842,
+          0,
+          1
+        ],
+        "name": "MOTION_KESTREL_MINING",
+        "planIndex": 50,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_mining",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              12.100000381469727
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              -1.0499999523162842
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_MINING",
+          "spaceface": {
+            "motionGroup": "kestrel_mining"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_MINING",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-mining"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.7000000476837158,
+          1.5499999523162842,
+          -4.349999904632568,
+          1
+        ],
+        "name": "MOTION_KESTREL_POD_ARM_SHOULDER",
+        "planIndex": 53,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_pod_arm_shoulder",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -1.7000000476837158
+            ],
+            [
+              0,
+              1,
+              0,
+              4.349999904632568
+            ],
+            [
+              0,
+              0,
+              1,
+              1.5499999523162842
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_POD_ARM_SHOULDER",
+          "spaceface": {
+            "motionGroup": "kestrel_pod_arm_shoulder"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_POD_ARM_SHOULDER",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-pod-arm-shoulder"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.9000000953674316,
+          1.5499999523162842,
+          -4.349999904632568,
+          1
+        ],
+        "name": "MOTION_KESTREL_POD_ARM_ELBOW",
+        "planIndex": 55,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_pod_arm_elbow",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -1.2000000476837158
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_POD_ARM_ELBOW",
+          "spaceface": {
+            "motionGroup": "kestrel_pod_arm_elbow"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_POD_ARM_ELBOW",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-pod-arm-elbow"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.5,
+          1.9199999570846558,
+          -4.349999904632568,
+          1
+        ],
+        "name": "MOTION_KESTREL_POD_HATCH",
+        "planIndex": 59,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_pod_hatch",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -1.5
+            ],
+            [
+              0,
+              1,
+              0,
+              4.349999904632568
+            ],
+            [
+              0,
+              0,
+              1,
+              1.9199999570846558
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_POD_HATCH",
+          "spaceface": {
+            "motionGroup": "kestrel_pod_hatch"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_POD_HATCH",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-pod-hatch"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.5989757180213928,
+          0,
+          0,
+          0,
+          0,
+          0.5989757180213928,
+          0,
+          0,
+          0,
+          0,
+          0.5989757180213928,
+          0,
+          -2.0999998450279236,
+          1.8799384832382202,
+          -4.349207878112793,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+        "planIndex": 60,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-hatch-hook-secondary-pod-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          -1.899999976158142,
+          0,
+          1
+        ],
+        "name": "MOTION_KESTREL_STRUT_F",
+        "planIndex": 62,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_strut_f",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              4.599999904632568
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              -1.899999976158142
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_STRUT_F",
+          "spaceface": {
+            "motionGroup": "kestrel_strut_f"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_STRUT_F",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-strut-f"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4,
+          -2.1500000953674316,
+          -1.600000023841858,
+          1
+        ],
+        "name": "MOTION_KESTREL_STRUT_P",
+        "planIndex": 63,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_strut_p",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -4
+            ],
+            [
+              0,
+              1,
+              0,
+              1.600000023841858
+            ],
+            [
+              0,
+              0,
+              1,
+              -2.1500000953674316
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_STRUT_P",
+          "spaceface": {
+            "motionGroup": "kestrel_strut_p"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_STRUT_P",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-strut-p"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4,
+          -2.1500000953674316,
+          1.600000023841858,
+          1
+        ],
+        "name": "MOTION_KESTREL_STRUT_S",
+        "planIndex": 64,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kestrel_strut_s",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -4
+            ],
+            [
+              0,
+              1,
+              0,
+              -1.600000023841858
+            ],
+            [
+              0,
+              0,
+              1,
+              -2.1500000953674316
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KESTREL_STRUT_S",
+          "spaceface": {
+            "motionGroup": "kestrel_strut_s"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KESTREL_STRUT_S",
+            "recordIds": [
+              "sf.render.kestrel-lod2.mesh.motion-kestrel-strut-s"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.3499999940395355,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 65,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.kestrel-lod2.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.800000011920929,
+          -2.0999999046325684,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 66,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.kestrel-lod2.anchor.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.850000381469727,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 67,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.kestrel-lod2.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          12.260000228881836,
+          -1.0800000429153442,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 68,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.kestrel-lod2.anchor.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.600000023841858,
+          0.44999998807907104,
+          -6.599999904632568,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 69,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.kestrel-lod2.anchor.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.600000023841858,
+          0.44999998807907104,
+          6.599999904632568,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 70,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.kestrel-lod2.anchor.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -14.050000190734863,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 71,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.kestrel-lod2.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.4500000476837158,
+          1.9500000476837158,
+          -3.799999952316284,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 72,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.kestrel-lod2.anchor.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          12.619999885559082,
+          1.4299999475479126,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 73,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.kestrel-lod2.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "drive": 1,
+      "glass": 1,
+      "hull": 6,
+      "mechanical": 16,
+      "signal": 7,
+      "warning": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "hull"
+      }
+    ],
+    "motionBank": {
+      "bytes": 42134,
+      "rigId": "kestrel_dish",
+      "sha256": "6172b3e52a0c340e2fbbc6c6ea116eaa55edefc31f0ddbfb41d02667d3c958a7",
+      "uri": "assets/ships/motions/kestrel.motion.json"
+    },
+    "nodeCount": 74,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          13.097640991210938,
+          0,
+          0,
+          0,
+          0,
+          13.097640991210938,
+          0,
+          0,
+          0,
+          0,
+          13.097640991210938,
+          0,
+          -0.19928646087646484,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.07999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.07999999821186066,
+          0,
+          -10.399999618530273,
+          2.25,
+          0,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber_beacon",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.40717580914497375,
+          0,
+          0,
+          0,
+          0,
+          0.40717580914497375,
+          0,
+          0,
+          0,
+          0,
+          0.40717580914497375,
+          0,
+          -13.578228950500488,
+          0,
+          -0.00001169741153717041,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.271752953529358,
+          0,
+          0,
+          0,
+          0,
+          1.271752953529358,
+          0,
+          0,
+          0,
+          0,
+          1.271752953529358,
+          0,
+          -13.514981269836426,
+          -1.1920928955078125e-7,
+          -3.5762786865234375e-7,
+          1
+        ],
+        "name": "LOD2_HOOK_DRIVE_CORE_1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.271752953529358,
+            0,
+            0,
+            0,
+            0,
+            1.271752953529358,
+            0,
+            0,
+            0,
+            0,
+            1.271752953529358,
+            0,
+            -13.514981269836426,
+            -1.1920928955078125e-7,
+            -3.5762786865234375e-7,
+            1
+          ],
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -9.199999809265137,
+          0.75,
+          -6.300000190734863,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT_1",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -9.199999809265137,
+          0.75,
+          6.300000190734863,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD_1",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5941438227891922,
+          0,
+          0,
+          0,
+          0,
+          1.5941438227891922,
+          0,
+          0,
+          0,
+          0,
+          1.5941438227891922,
+          0,
+          -1.4513540714979172,
+          1.2000001072883606,
+          -4.348652720451355,
+          1
+        ],
+        "name": "LOD2_HOOK_SECONDARY_POD_Hull_green_1",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9935228824615479,
+          0,
+          0,
+          0,
+          0,
+          0.9935228824615479,
+          0,
+          0,
+          0,
+          0,
+          0.9935228824615479,
+          0,
+          -0.6000000387430191,
+          1.2000001072883606,
+          -4.3500001430511475,
+          1
+        ],
+        "name": "LOD2_HOOK_SECONDARY_POD_Warning_1",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.37320995330810547,
+          0,
+          0,
+          0,
+          0,
+          0.37320995330810547,
+          0,
+          0,
+          0,
+          0,
+          0.37320995330810547,
+          0,
+          -2.1998345851898193,
+          2.474902391433716,
+          0.9004210829734802,
+          1
+        ],
+        "name": "LOD2_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.648293018341064,
+          0,
+          0,
+          0,
+          0,
+          12.648293018341064,
+          0,
+          0,
+          0,
+          0,
+          12.648293018341064,
+          0,
+          0.25037622451782227,
+          0.528174877166748,
+          0.0006883144378662109,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.497578382492065,
+          0,
+          0,
+          0,
+          0,
+          7.497578382492065,
+          0,
+          0,
+          0,
+          0,
+          7.497578382492065,
+          0,
+          -2.700147867202759,
+          2.238063335418701,
+          0.029721185564994812,
+          1
+        ],
+        "name": "LOD2_Lights_Cyan",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.390692949295044,
+          0,
+          0,
+          0,
+          0,
+          9.390692949295044,
+          0,
+          0,
+          0,
+          0,
+          9.390692949295044,
+          0,
+          -2.9093072414398193,
+          0,
+          -0.2015615701675415,
+          1
+        ],
+        "name": "LOD2_Livery",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          13.70995569229126,
+          0,
+          0,
+          0,
+          0,
+          13.70995569229126,
+          0,
+          0,
+          0,
+          0,
+          13.70995569229126,
+          0,
+          -0.4105677604675293,
+          0,
+          -0.0007543563842773438,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          13.759442806243896,
+          0,
+          0,
+          0,
+          0,
+          13.759442806243896,
+          0,
+          0,
+          0,
+          0,
+          13.759442806243896,
+          0,
+          -0.3610806465148926,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.2218536138534546,
+          0,
+          0,
+          0,
+          0,
+          1.2218536138534546,
+          0,
+          0,
+          0,
+          0,
+          1.2218536138534546,
+          0,
+          4.701582074165344,
+          -1.1929982900619507,
+          1.0706895291805267,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.746601641178131,
+          0,
+          0,
+          0,
+          0,
+          1.746601641178131,
+          0,
+          0,
+          0,
+          0,
+          1.746601641178131,
+          0,
+          2.245518386363983,
+          0.6886526346206665,
+          -4.5995564460754395,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor_1",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "damageRole": "armor",
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          2.300634741783142,
+          0,
+          0,
+          0,
+          0,
+          2.300634741783142,
+          0,
+          0,
+          0,
+          0,
+          2.300634741783142,
+          0,
+          4.90005886554718,
+          1.8664740342646837,
+          -0.0006632208824157715,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_CANOPY_CANOPY",
+        "planIndex": 28,
+        "tags": {
+          "canopy": true,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          -2.238509953022003,
+          3.057169556617737,
+          0.8997756522148848,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          -2.238509953022003,
+          3.057169556617737,
+          0.8997756522148848,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark_1",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.05000007152557373,
+          0,
+          0,
+          0,
+          0,
+          0.05000007152557373,
+          0,
+          0,
+          0,
+          0,
+          0.05000007152557373,
+          0,
+          -2.559999942779541,
+          3.5799999237060547,
+          0.8999999761581421,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan_1",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4197542071342468,
+          0,
+          0,
+          0,
+          0,
+          0.4197542071342468,
+          0,
+          0,
+          0,
+          0,
+          0.4197542071342468,
+          0,
+          -13.594920635863673,
+          0.9704780727624893,
+          -1.5620751976966858,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_IRIS_0_MechanicalDark",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4167713075876236,
+          0,
+          0,
+          0,
+          0,
+          0.4167713075876236,
+          0,
+          0,
+          0,
+          0,
+          0.4167713075876236,
+          0,
+          -13.582920551300049,
+          1.7352968454360962,
+          -0.00001658499240875244,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_IRIS_1_MechanicalDark",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.41995537281036377,
+          0,
+          0,
+          0,
+          0,
+          0.41995537281036377,
+          0,
+          0,
+          0,
+          0,
+          0.41995537281036377,
+          0,
+          -13.570915224030614,
+          0.9705502241849899,
+          1.562027931213379,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_IRIS_2_MechanicalDark",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4197542071342468,
+          0,
+          0,
+          0,
+          0,
+          0.4197542071342468,
+          0,
+          0,
+          0,
+          0,
+          0.4197542071342468,
+          0,
+          -13.594920635863673,
+          -0.9704780727624893,
+          1.5620751976966858,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_IRIS_3_MechanicalDark",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4167713075876236,
+          0,
+          0,
+          0,
+          0,
+          0.4167713075876236,
+          0,
+          0,
+          0,
+          0,
+          0.4167713075876236,
+          0,
+          -13.582920551300049,
+          -1.7352968454360962,
+          0.00001658499240875244,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_IRIS_4_MechanicalDark",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.41995537281036377,
+          0,
+          0,
+          0,
+          0,
+          0.41995537281036377,
+          0,
+          0,
+          0,
+          0,
+          0.41995537281036377,
+          0,
+          -13.570915224030614,
+          -0.9705502241849899,
+          -1.562027931213379,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_IRIS_5_MechanicalDark",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4230966567993164,
+          0,
+          0,
+          0,
+          0,
+          0.4230966567993164,
+          0,
+          0,
+          0,
+          0,
+          0.4230966567993164,
+          0,
+          12.32508373260498,
+          -1.0500000417232513,
+          0.0005166977643966675,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_MINING_Beacon_Amber",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4230966567993164,
+          0,
+          0,
+          0,
+          0,
+          0.4230966567993164,
+          0,
+          0,
+          0,
+          0,
+          0.4230966567993164,
+          0,
+          12.32508373260498,
+          -1.0500000417232513,
+          0.0005166977643966675,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_MINING_MechanicalDark",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6228845715522766,
+          0,
+          0,
+          0,
+          0,
+          0.6228845715522766,
+          0,
+          0,
+          0,
+          0,
+          0.6228845715522766,
+          0,
+          -2.300066649913788,
+          1.5504960417747498,
+          -4.349999904632568,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_POD_ARM_SHOULDER_Mechanical",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.039999961853027344,
+          0,
+          0,
+          0,
+          0,
+          0.039999961853027344,
+          0,
+          0,
+          0,
+          0,
+          0.039999961853027344,
+          0,
+          -1.2799999713897705,
+          1.6799999438226223,
+          -4.349999904632568,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_Beacon_Amber",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6474554538726807,
+          0,
+          0,
+          0,
+          0,
+          0.6474554538726807,
+          0,
+          0,
+          0,
+          0,
+          0.6474554538726807,
+          0,
+          -2.1995041370391846,
+          1.6190548548474908,
+          -4.3500049114227295,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_Mechanical",
+        "planIndex": 57,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.11794108152389526,
+          0,
+          0,
+          0,
+          0,
+          0.11794108152389526,
+          0,
+          0,
+          0,
+          0,
+          0.11794108152389526,
+          0,
+          -1.4500001072883606,
+          1.6201322108972818,
+          -4.35094690322876,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_MechanicalDark",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.5989757180213928,
+          0,
+          0,
+          0,
+          0,
+          0.5989757180213928,
+          0,
+          0,
+          0,
+          0,
+          0.5989757180213928,
+          0,
+          -2.0999998450279236,
+          1.8799384832382202,
+          -4.349207878112793,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor_1",
+        "planIndex": 61,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/kestrel_lod2.glb"
+  },
+  "runtimeHash": "e212aa28b49e77df7c9c626451a952226037f5929f20336630d7a1db27316cd8",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          13.398362159729004,
+          3.7699848137358556,
+          6.380000114440918
+        ],
+        "min": [
+          -14.120523452758789,
+          -3.0496036766700816,
+          -6.380000114440918
+        ]
+      },
+      "id": "sf.render.kestrel-lod2.body",
+      "nodeIds": [
+        "sf.render.kestrel-lod2.mesh.collision-hull",
+        "sf.render.kestrel-lod2.mesh.lod2-armor",
+        "sf.render.kestrel-lod2.mesh.lod2-beacon-amber-beacon",
+        "sf.render.kestrel-lod2.mesh.lod2-brushedmetal",
+        "sf.render.kestrel-lod2.mesh.lod2-hook-drive-core",
+        "sf.render.kestrel-lod2.mesh.lod2-hook-nav-port",
+        "sf.render.kestrel-lod2.mesh.lod2-hook-nav-starboard",
+        "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-hull-green",
+        "sf.render.kestrel-lod2.mesh.lod2-hook-secondary-pod-warning",
+        "sf.render.kestrel-lod2.mesh.lod2-hook-sensor-dish-mechanical",
+        "sf.render.kestrel-lod2.mesh.lod2-hull",
+        "sf.render.kestrel-lod2.mesh.lod2-lights-cyan",
+        "sf.render.kestrel-lod2.mesh.lod2-livery",
+        "sf.render.kestrel-lod2.mesh.lod2-mechanical",
+        "sf.render.kestrel-lod2.mesh.lod2-mechanicaldark",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-armor-cap-hook-armor-port-armor",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-canopy-canopy",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-feed-hook-sensor-dish-lights-cyan",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanical",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-0-mechanicaldark",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-1-mechanicaldark",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-2-mechanicaldark",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-3-mechanicaldark",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-4-mechanicaldark",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-iris-5-mechanicaldark",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-mining-beacon-amber",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-mining-mechanicaldark",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-beacon-amber",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-mechanical",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-elbow-mechanicaldark",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-arm-shoulder-mechanical",
+        "sf.render.kestrel-lod2.mesh.lod2-motion-kestrel-pod-hatch-hook-secondary-pod-armor",
+        "sf.render.kestrel-lod2.mesh.lod2-warning",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-armor-cap",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-canopy",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-dish",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-dish-feed",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-dish-stem",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-0",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-1",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-2",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-3",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-4",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-iris-5",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-mining",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-pod-arm-elbow",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-pod-arm-shoulder",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-pod-hatch",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-strut-f",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-strut-p",
+        "sf.render.kestrel-lod2.mesh.motion-kestrel-strut-s",
+        "sf.render.kestrel-lod2.root"
+      ]
+    }
+  ]
+}

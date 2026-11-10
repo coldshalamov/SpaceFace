@@ -1,0 +1,62 @@
+{
+  "gateOk": true,
+  "gateErrors": [],
+  "totalTriangles": 20486,
+  "hullTriangles": 9188,
+  "lodTriangles": {
+    "lod0": 15452,
+    "lod1": 4796,
+    "lod2": 226
+  },
+  "drawEstimates": {
+    "lod0": 9,
+    "lod1": 9,
+    "lod2": 1
+  },
+  "sockets": [
+    "SOCKET_Camera_Focus",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Engine_Main",
+    "SOCKET_Mining_Front",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard",
+    "SOCKET_Trail_Main",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Weapon_Front"
+  ],
+  "materials": [
+    "Material_Mechanical",
+    "Material_Cyan",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Red_Paint",
+    "Material_Warm"
+  ],
+  "tangentPrimitiveCount": 20,
+  "uvPrimitiveCount": 20,
+  "lod0AabbSize": [
+    15.775000095367432,
+    2.297586143016815,
+    6.049999713897705
+  ],
+  "collisionBounds": {
+    "min": [
+      -7.256499767303467,
+      -1.0568896532058716,
+      -2.7829999923706055
+    ],
+    "max": [
+      7.256499767303467,
+      1.0568896532058716,
+      2.7829999923706055
+    ],
+    "size": [
+      14.512999534606934,
+      2.113779306411743,
+      5.565999984741211
+    ]
+  },
+  "sourceSha256": "D6C1AEF862193505802D318B3576ED66AF33D5F37B9E1685C760AADB7F22943C",
+  "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline\\source\\wholeships\\ashline_dart.glb",
+  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline\\blender\\ashline_dart_production.blend"
+}

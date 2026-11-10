@@ -1,0 +1,127 @@
+From 816e6473ca915f03df608f0053a0f89892b9d080 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 07:37:41 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20status-attached?=
+ =?UTF-8?q?=20VFX=20when=20empty=20(~134=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight paid Object.keys(combat.entities) collect plus Set/Map
+housekeeping every presented frame with zero burn/goo victims. Alloc-free
+for...in + STATUS_ROW_IDS; latch after first empty collect+empty cooldown;
+wake on statusNextPendingSeq. Soft-GPU fps not claimed. Picture ON.
+---
+ src/render/statusAttachedVfx.js | 11 +++++++++--
+ src/render/vfx.js               | 35 +++++++++++++++++++++++++++++----
+ 2 files changed, 40 insertions(+), 6 deletions(-)
+
+diff --git a/src/render/statusAttachedVfx.js b/src/render/statusAttachedVfx.js
+index 54d483733..726715f9a 100644
+--- a/src/render/statusAttachedVfx.js
++++ b/src/render/statusAttachedVfx.js
+@@ -30,6 +30,9 @@ const STATUS_ROWS = Object.freeze({
+     authoredLife: 0.7,
+   }),
+ });
++// Frozen id list — Object.keys(STATUS_ROWS) inside the entity loop allocated every
++// presented frame. Soft-GPU fps not claimed.
++const STATUS_ROW_IDS = Object.freeze([STATUS_ATTACHED_BURN_ID, STATUS_ATTACHED_GOO_ID]);
+ 
+ function clamp(v, lo, hi) {
+   const n = Number(v);
+@@ -85,13 +88,17 @@ export function collectStatusAttachedVictims(state, out = []) {
+   const px = player && player.pos ? Number(player.pos.x) || 0 : 0;
+   const pz = player && player.pos ? Number(player.pos.z) || 0 : 0;
+   _rankedUsed = 0;
+-  for (const key of Object.keys(table)) {
++  // for...in over the combat table — Object.keys(table) allocated a fresh array
++  // every presented frame (contradicted the alloc-free contract above). Soft-GPU
++  // fps not claimed.
++  for (const key in table) {
+     const runtime = table[key];
+     const statuses = runtime && runtime.statuses;
+     if (!statuses) continue;
+     const entity = entities.get(key) || entities.get(Number(key));
+     if (!entity || entity.alive === false || !entity.pos) continue;
+-    for (const statusId of Object.keys(STATUS_ROWS)) {
++    for (let si = 0; si < STATUS_ROW_IDS.length; si++) {
++      const statusId = STATUS_ROW_IDS[si];
+       const active = statuses[statusId];
+       const remainingS = statusRemainingSeconds(active, tick);
+       if (!(remainingS > 0)) continue;
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 69ba2fa35..193d38e7e 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1335,6 +1335,12 @@ export const vfx = {
+     this._seamMarkersQuietDrawWu = 0;
+     this._seamMarkersQuietPulseKey = '';
+     this._seamMarkersQuietAt = 0;
++    // Quiet settled flight: status-attached collect walked combat.entities via
++    // Object.keys every presented frame even with zero burn/goo victims. Latch
++    // after first empty collect+empty cooldown; wake on statusNextPendingSeq.
++    // Soft-GPU fps not claimed.
++    this._statusAttachedQuietEmpty = false;
++    this._statusAttachedQuietSeq = -1;
+     this._energyPlumeWasRelevant = false;
+     // Quiet settled flight: _hideEnergyPlumes used to re-run plasma/retro/fleet.reset
+     // every idle tick (fleet walks ships + family plume/rcs and clears the #100
+@@ -2190,12 +2196,12 @@ export const vfx = {
+     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
+     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
+     add('heat:changed', (p) => this._onLawHeatChanged(p));
+-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
+     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
+-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('save:restoring', () => this._resetRibbonTrails());
+-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('world:playerRelocated', () => this._resetRibbonTrails());
+     add('settings:changed', (p) => {
+       if (!p || p.section !== 'video') return;
+@@ -13693,9 +13699,24 @@ export const vfx = {
+   },
+ 
+   _updateStatusAttachedVfx(dt) {
+-    if (!this._scene || !this.state || this.state.mode !== 'flight') return;
++    if (!this._scene || !this.state || this.state.mode !== 'flight') {
++      this._statusAttachedQuietEmpty = false;
++      return;
++    }
+     if (!this._statusAttachedCd) this._statusAttachedCd = new Map();
+     if (!this._statusAttachedVictims) this._statusAttachedVictims = [];
++    // Quiet-empty residual: consecutive idle ticks still paid Object.keys(combat.entities)
++    // collect + Set/Map housekeeping with zero burn/goo victims. Latch after first
++    // empty collect + empty cooldown; wake when statusNextPendingSeq advances (new
++    // status apply). Soft-GPU fps not claimed.
++    const combat = this.state.combat;
++    const pendingSeq = combat && Number.isInteger(combat.statusNextPendingSeq)
++      ? combat.statusNextPendingSeq
++      : 0;
++    if (this._statusAttachedQuietEmpty
++      && pendingSeq === this._statusAttachedQuietSeq) {
++      return;
++    }
+     const acc = statusAttachedAccessibility(this.state.settings);
+     const victims = collectStatusAttachedVictims(this.state, this._statusAttachedVictims);
+     const live = this._statusAttachedLive || (this._statusAttachedLive = new Set());
+@@ -13739,6 +13760,12 @@ export const vfx = {
+       if (!live.has(key)) stale.push(key);
+     }
+     for (let i = 0; i < stale.length; i++) cd.delete(stale[i]);
++    if (victims.length === 0 && cd.size === 0) {
++      this._statusAttachedQuietEmpty = true;
++      this._statusAttachedQuietSeq = pendingSeq;
++    } else {
++      this._statusAttachedQuietEmpty = false;
++    }
+   },
+ 
+   /**
+-- 
+2.47.3
+

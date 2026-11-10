@@ -1,0 +1,48 @@
+{
+  "ok": true,
+  "asset": "place_lane_beacon",
+  "source": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\place_lane_beacon.glb",
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\place_lane_beacon.glb",
+  "liveBounds": {
+    "min": [
+      -1.75,
+      -1.75,
+      -5.099999904632568
+    ],
+    "max": [
+      9.100000381469727,
+      1.75,
+      9.399999618530273
+    ]
+  },
+  "lod": {
+    "lod0": {
+      "triangles": 6328,
+      "objects": [
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm",
+        "LOD0_HOOK_EMISSIVE"
+      ]
+    },
+    "lod1": {
+      "triangles": 3052,
+      "objects": [
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical",
+        "LOD1_Merged_Material_Warm",
+        "LOD1_HOOK_EMISSIVE"
+      ]
+    },
+    "lod2": {
+      "triangles": 916,
+      "objects": [
+        "LOD2_Merged_Material_Hull",
+        "LOD2_Merged_Material_Mechanical",
+        "LOD2_HOOK_EMISSIVE"
+      ]
+    }
+  },
+  "modifierOrUvFailures": [],
+  "bytes": 503076
+}

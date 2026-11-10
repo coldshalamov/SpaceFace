@@ -1,0 +1,226 @@
+{
+  "schema": "spaceface.simScenario.v1",
+  "id": "crucible.physics-swarm",
+  "version": 1,
+  "title": "Crucible physics swarm",
+  "description": "Combat Lab physics_toolkit Hornet versus the physics_swarm package: 10 wasps, 1 reaver, 1 corsair, 3 collision anchors. Player holds fire at wasp_2 (clear of the mid-axis collision anchor). Hostiles spawn through makeEnemySpawnSpec with encounter context.",
+  "evidenceClass": "focused-fixture",
+  "runtimeProfile": "focused-lab",
+  "seed": 8008,
+  "ticks": 240,
+  "dt": 0.016666666666666666,
+  "world": {
+    "fixtureProfile": "empty-flight",
+    "sectorId": "sector_helios_prime",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "flightBackend": "v3",
+    "aiBackend": "legacy",
+    "credits": 100000
+  },
+  "systems": ["actions", "flightV3", "weapons", "physics", "combat"],
+  "entities": [
+    {
+      "alias": "player",
+      "profile": "ship_hornet",
+      "role": "player",
+      "team": 0,
+      "factionId": "faction_free",
+      "isPlayer": true,
+      "pos": { "x": 0, "z": 0 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 1.256637060559932,
+      "loadout": ["wpn_concussion_cannon_m", "wpn_gravity_marker_s", "wpn_momentum_sink_s"],
+      "persistent": true
+    },
+    {
+      "alias": "wasp_0",
+      "profile": "wasp_swarmer",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": 230, "z": 0 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 3.141592653589793,
+      "overrides": { "level": 1 },
+      "persistent": true
+    },
+    {
+      "alias": "wasp_1",
+      "profile": "wasp_swarmer",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": 186.073909, "z": 135.190608 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 3.141592653589793,
+      "overrides": { "level": 1 },
+      "persistent": true
+    },
+    {
+      "alias": "wasp_2",
+      "profile": "wasp_swarmer",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": 71.073909, "z": 218.742999 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 3.141592653589793,
+      "overrides": { "level": 1 },
+      "persistent": true
+    },
+    {
+      "alias": "wasp_3",
+      "profile": "wasp_swarmer",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": -71.073909, "z": 218.742999 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 3.141592653589793,
+      "overrides": { "level": 1 },
+      "persistent": true
+    },
+    {
+      "alias": "wasp_4",
+      "profile": "wasp_swarmer",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": -186.073909, "z": 135.190608 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 3.141592653589793,
+      "overrides": { "level": 1 },
+      "persistent": true
+    },
+    {
+      "alias": "wasp_5",
+      "profile": "wasp_swarmer",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": -230, "z": 0 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 0,
+      "overrides": { "level": 1 },
+      "persistent": true
+    },
+    {
+      "alias": "wasp_6",
+      "profile": "wasp_swarmer",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": -186.073909, "z": -135.190608 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 0,
+      "overrides": { "level": 1 },
+      "persistent": true
+    },
+    {
+      "alias": "wasp_7",
+      "profile": "wasp_swarmer",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": -71.073909, "z": -218.742999 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 0,
+      "overrides": { "level": 1 },
+      "persistent": true
+    },
+    {
+      "alias": "wasp_8",
+      "profile": "wasp_swarmer",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": 71.073909, "z": -218.742999 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 3.141592653589793,
+      "overrides": { "level": 1 },
+      "persistent": true
+    },
+    {
+      "alias": "wasp_9",
+      "profile": "wasp_swarmer",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": 186.073909, "z": -135.190608 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 3.141592653589793,
+      "overrides": { "level": 1 },
+      "persistent": true
+    },
+    {
+      "alias": "reaver_0",
+      "profile": "reaver_pirate",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": 285, "z": 0 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 3.141592653589793,
+      "overrides": { "level": 2 },
+      "persistent": true
+    },
+    {
+      "alias": "corsair_0",
+      "profile": "corsair_raider",
+      "role": "hostile",
+      "team": 1,
+      "pos": { "x": 315, "z": 0 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 3.141592653589793,
+      "overrides": { "level": 2 },
+      "persistent": true
+    },
+    {
+      "alias": "anchor_0",
+      "profile": "payload.anchor",
+      "role": "collision-anchor",
+      "team": 2,
+      "pos": { "x": 131.566003, "z": -115.392318 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 0,
+      "overrides": { "radius": 18, "mass": 1600 },
+      "persistent": true
+    },
+    {
+      "alias": "anchor_1",
+      "profile": "payload.anchor",
+      "role": "collision-anchor",
+      "team": 2,
+      "pos": { "x": 203, "z": 0 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 0,
+      "overrides": { "radius": 22, "mass": 2500 },
+      "persistent": true
+    },
+    {
+      "alias": "anchor_2",
+      "profile": "payload.anchor",
+      "role": "collision-anchor",
+      "team": 2,
+      "pos": { "x": 173.667123, "z": 152.317859 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 0,
+      "overrides": { "radius": 26, "mass": 3400 },
+      "persistent": true
+    }
+  ],
+  "frames": [
+    { "tick": 0, "input": { "moveX": 0, "moveZ": 0, "turnIntent": 0, "boost": false, "fire": true, "aimAngle": 0 } }
+  ],
+  "metrics": [
+    { "name": "invariant.finiteState", "version": 1, "threshold": { "op": "==", "value": 1 } },
+    { "name": "invariant.noNegativeResources", "version": 1, "threshold": { "op": "==", "value": 1 } },
+    { "name": "trace.min", "version": 1, "params": { "signal": "cap" }, "threshold": { "op": "<", "value": 260 } }
+  ],
+  "assertions": [
+    { "kind": "metric", "metric": "invariant.finiteState", "op": "==", "value": 1 },
+    { "kind": "metric", "metric": "invariant.noNegativeResources", "op": "==", "value": 1 },
+    { "kind": "metric", "metric": "trace.min", "op": "<", "value": 260 },
+    { "kind": "holds", "signal": "playerAlive", "holdsTicks": 240 }
+  ],
+  "trace": { "signals": ["playerAlive", "hull", "cap", "playerX", "playerZ"], "sampleEvery": 1 },
+  "fixtureExceptions": [
+    "focused systems list (actions,flightV3,weapons,physics,combat) — not production-manifest evidence"
+  ],
+  "observer": { "enabled": false },
+  "notes": {
+    "combatLabStarterPackageId": "physics_toolkit",
+    "combatLabEnemyPackageId": "physics_swarm",
+    "mapping": "Human Combat Lab physics_swarm at tick zero: hull and loadout from physics_toolkit, 10 wasp_swarmer + 1 reaver_pirate + 1 corsair_raider, 3 collision anchors. No scheduled waves. Player faces wasp_2 so the held-fire line is not the mid-axis anchor. trace.min cap fails if the gun never spends capacitor. The runner does not sample hostile hull; the check script fails if the final checkpoint has no team-1 hull drop. Hostiles do not return fire (no AI in the focused system list)."
+  }
+}

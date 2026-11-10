@@ -1,0 +1,42 @@
+{
+  "mask_carbon": {
+    "description": "Soft directional carbon/soot exhaust wedge from engine root",
+    "name": "mask_carbon",
+    "scale_px": 150
+  },
+  "mask_chips": {
+    "description": "Clustered hard-edged paint chips strictly near panel edges",
+    "name": "mask_chips",
+    "scale_px": 12
+  },
+  "mask_corrosion": {
+    "description": "Speckled cellular rust growth around seed locations",
+    "name": "mask_corrosion",
+    "scale_px": 25
+  },
+  "mask_edgewear": {
+    "description": "Bright highlights at panel edges and corners",
+    "name": "mask_edgewear",
+    "scale_px": 4
+  },
+  "mask_heatradial": {
+    "description": "Off-center radial scorch with circular heat banding rings",
+    "name": "mask_heatradial",
+    "scale_px": 260
+  },
+  "mask_panelfade": {
+    "description": "Per-panel flat contrast offset simulating replacement panels",
+    "name": "mask_panelfade",
+    "scale_px": 180
+  },
+  "mask_recessdust": {
+    "description": "Dust and dirt accumulation in crevices with wide falloff",
+    "name": "mask_recessdust",
+    "scale_px": 35
+  },
+  "mask_streaking": {
+    "description": "Directional liquid drips running downwards from panel features",
+    "name": "mask_streaking",
+    "scale_px": 6
+  }
+}

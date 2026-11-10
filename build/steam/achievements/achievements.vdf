@@ -1,0 +1,768 @@
+"SpaceFaceAchievements"
+{
+	"schema"		"spaceface.steamAchievements.v1"
+	"source"		"src/data/achievements.js"
+	"achievements"
+	{
+		"1"
+		{
+			"api_name"		"SF_BERTH_ASSIGNED"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Berth Assigned"
+				}
+				"desc"
+				{
+					"english"		"Dock at a station."
+				}
+				"icon"		"SF_BERTH_ASSIGNED_achieved.jpg"
+				"icon_gray"		"SF_BERTH_ASSIGNED_unachieved.jpg"
+			}
+		}
+		"2"
+		{
+			"api_name"		"SF_ROCK_HAS_A_PRICE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Rock Has a Price"
+				}
+				"desc"
+				{
+					"english"		"Mine ore from an asteroid or salvage it from a wreck."
+				}
+				"icon"		"SF_ROCK_HAS_A_PRICE_achieved.jpg"
+				"icon_gray"		"SF_ROCK_HAS_A_PRICE_unachieved.jpg"
+			}
+		}
+		"3"
+		{
+			"api_name"		"SF_PAPER_TRAIL"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Paper Trail"
+				}
+				"desc"
+				{
+					"english"		"Buy or sell cargo at a station market."
+				}
+				"icon"		"SF_PAPER_TRAIL_achieved.jpg"
+				"icon_gray"		"SF_PAPER_TRAIL_unachieved.jpg"
+			}
+		}
+		"4"
+		{
+			"api_name"		"SF_SIGNED_AND_DELIVERED"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Signed and Delivered"
+				}
+				"desc"
+				{
+					"english"		"Complete a contract."
+				}
+				"icon"		"SF_SIGNED_AND_DELIVERED_achieved.jpg"
+				"icon_gray"		"SF_SIGNED_AND_DELIVERED_unachieved.jpg"
+			}
+		}
+		"5"
+		{
+			"api_name"		"SF_OUT_OF_THE_POCKET"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Out of the Pocket"
+				}
+				"desc"
+				{
+					"english"		"Jump to another system."
+				}
+				"icon"		"SF_OUT_OF_THE_POCKET_achieved.jpg"
+				"icon_gray"		"SF_OUT_OF_THE_POCKET_unachieved.jpg"
+			}
+		}
+		"6"
+		{
+			"api_name"		"SF_MADE_CONTACT"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Made Contact"
+				}
+				"desc"
+				{
+					"english"		"Latch the Massline onto another body."
+				}
+				"icon"		"SF_MADE_CONTACT_achieved.jpg"
+				"icon_gray"		"SF_MADE_CONTACT_unachieved.jpg"
+			}
+		}
+		"7"
+		{
+			"api_name"		"SF_LIGHT_SHIPS_ARE_AMMUNITION"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Light Ships Are Ammunition"
+				}
+				"desc"
+				{
+					"english"		"Throw a body with the Massline."
+				}
+				"icon"		"SF_LIGHT_SHIPS_ARE_AMMUNITION_achieved.jpg"
+				"icon_gray"		"SF_LIGHT_SHIPS_ARE_AMMUNITION_unachieved.jpg"
+			}
+		}
+		"8"
+		{
+			"api_name"		"SF_RAZOR_RELEASE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Razor Release"
+				}
+				"desc"
+				{
+					"english"		"Let go of a swing at the exact moment: a razor-rated release."
+				}
+				"icon"		"SF_RAZOR_RELEASE_achieved.jpg"
+				"icon_gray"		"SF_RAZOR_RELEASE_unachieved.jpg"
+			}
+		}
+		"9"
+		{
+			"api_name"		"SF_KEEP_THE_SPEED"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Keep the Speed"
+				}
+				"desc"
+				{
+					"english"		"Whip a tethered mass into something at crushing speed."
+				}
+				"icon"		"SF_KEEP_THE_SPEED_achieved.jpg"
+				"icon_gray"		"SF_KEEP_THE_SPEED_unachieved.jpg"
+			}
+		}
+		"10"
+		{
+			"api_name"		"SF_INTO_THE_CRUCIBLE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Into the Crucible"
+				}
+				"desc"
+				{
+					"english"		"Finish a Crucible run, however it ends."
+				}
+				"icon"		"SF_INTO_THE_CRUCIBLE_achieved.jpg"
+				"icon_gray"		"SF_INTO_THE_CRUCIBLE_unachieved.jpg"
+			}
+		}
+		"11"
+		{
+			"api_name"		"SF_TENTH_WAVE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Tenth Wave"
+				}
+				"desc"
+				{
+					"english"		"Reach wave 10 in the Crucible."
+				}
+				"icon"		"SF_TENTH_WAVE_achieved.jpg"
+				"icon_gray"		"SF_TENTH_WAVE_unachieved.jpg"
+			}
+		}
+		"12"
+		{
+			"api_name"		"SF_BETTER_THAN_LAST_TIME"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Better Than Last Time"
+				}
+				"desc"
+				{
+					"english"		"Beat your own best score in a Crucible challenge."
+				}
+				"icon"		"SF_BETTER_THAN_LAST_TIME_achieved.jpg"
+				"icon_gray"		"SF_BETTER_THAN_LAST_TIME_unachieved.jpg"
+			}
+		}
+		"13"
+		{
+			"api_name"		"SF_SAME_SEED_SAME_DAY"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Same Seed, Same Day"
+				}
+				"desc"
+				{
+					"english"		"Finish a Crucible daily run."
+				}
+				"icon"		"SF_SAME_SEED_SAME_DAY_achieved.jpg"
+				"icon_gray"		"SF_SAME_SEED_SAME_DAY_unachieved.jpg"
+			}
+		}
+		"14"
+		{
+			"api_name"		"SF_WALKED_OUT"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Walked Out"
+				}
+				"desc"
+				{
+					"english"		"Extract from a Crucible swarm at the refit bench instead of dying in it."
+				}
+				"icon"		"SF_WALKED_OUT_achieved.jpg"
+				"icon_gray"		"SF_WALKED_OUT_unachieved.jpg"
+			}
+		}
+		"15"
+		{
+			"api_name"		"SF_PAPERWORK_FILED"
+			"hidden"		"1"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Paperwork Filed"
+				}
+				"desc"
+				{
+					"english"		"Get yourself declared WANTED."
+				}
+				"icon"		"SF_PAPERWORK_FILED_achieved.jpg"
+				"icon_gray"		"SF_PAPERWORK_FILED_unachieved.jpg"
+			}
+		}
+		"16"
+		{
+			"api_name"		"SF_SIX_FIGURES"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Six Figures"
+				}
+				"desc"
+				{
+					"english"		"Earn 100,000 credits over your career."
+				}
+				"icon"		"SF_SIX_FIGURES_achieved.jpg"
+				"icon_gray"		"SF_SIX_FIGURES_unachieved.jpg"
+			}
+		}
+		"17"
+		{
+			"api_name"		"SF_RETURNING_CALLER"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Returning Caller"
+				}
+				"desc"
+				{
+					"english"		"Dock at ten stations."
+				}
+				"icon"		"SF_RETURNING_CALLER_achieved.jpg"
+				"icon_gray"		"SF_RETURNING_CALLER_unachieved.jpg"
+			}
+		}
+		"18"
+		{
+			"api_name"		"SF_TEN_PERMITS"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Ten Permits"
+				}
+				"desc"
+				{
+					"english"		"Complete ten contracts."
+				}
+				"icon"		"SF_TEN_PERMITS_achieved.jpg"
+				"icon_gray"		"SF_TEN_PERMITS_unachieved.jpg"
+			}
+		}
+		"19"
+		{
+			"api_name"		"SF_THE_HUNDRED_THOUSAND"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Seven Figures"
+				}
+				"desc"
+				{
+					"english"		"Earn a million credits over your career."
+				}
+				"icon"		"SF_THE_HUNDRED_THOUSAND_achieved.jpg"
+				"icon_gray"		"SF_THE_HUNDRED_THOUSAND_unachieved.jpg"
+			}
+		}
+		"20"
+		{
+			"api_name"		"SF_QUARRY"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Quarry"
+				}
+				"desc"
+				{
+					"english"		"Bring aboard a thousand units of ore and salvage."
+				}
+				"icon"		"SF_QUARRY_achieved.jpg"
+				"icon_gray"		"SF_QUARRY_unachieved.jpg"
+			}
+		}
+		"21"
+		{
+			"api_name"		"SF_LONG_HAUL"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Long Haul"
+				}
+				"desc"
+				{
+					"english"		"Complete twenty-five jumps."
+				}
+				"icon"		"SF_LONG_HAUL_achieved.jpg"
+				"icon_gray"		"SF_LONG_HAUL_unachieved.jpg"
+			}
+		}
+		"22"
+		{
+			"api_name"		"SF_SALVAGE_CREW"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Salvage Crew"
+				}
+				"desc"
+				{
+					"english"		"Throw fifty bodies with the Massline."
+				}
+				"icon"		"SF_SALVAGE_CREW_achieved.jpg"
+				"icon_gray"		"SF_SALVAGE_CREW_unachieved.jpg"
+			}
+		}
+		"23"
+		{
+			"api_name"		"SF_TWO_HULLS_ONE_ROPE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Two Hulls, One Rope"
+				}
+				"desc"
+				{
+					"english"		"Release one ship under load into another hull."
+				}
+				"icon"		"SF_TWO_HULLS_ONE_ROPE_achieved.jpg"
+				"icon_gray"		"SF_TWO_HULLS_ONE_ROPE_unachieved.jpg"
+			}
+		}
+		"24"
+		{
+			"api_name"		"SF_KEEP_THE_HEAVY_END"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Keep the Heavy End Moving"
+				}
+				"desc"
+				{
+					"english"		"Kill with the mass that is still on the line."
+				}
+				"icon"		"SF_KEEP_THE_HEAVY_END_achieved.jpg"
+				"icon_gray"		"SF_KEEP_THE_HEAVY_END_unachieved.jpg"
+			}
+		}
+		"25"
+		{
+			"api_name"		"SF_WATCH_THE_CABLE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Watch the Cable"
+				}
+				"desc"
+				{
+					"english"		"Kill a hull that crosses a loaded tether."
+				}
+				"icon"		"SF_WATCH_THE_CABLE_achieved.jpg"
+				"icon_gray"		"SF_WATCH_THE_CABLE_unachieved.jpg"
+			}
+		}
+		"26"
+		{
+			"api_name"		"SF_ONE_MISTAKE_THREE_WRECKS"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"One Mistake, Three Wrecks"
+				}
+				"desc"
+				{
+					"english"		"Wreck three or more hulls in one throw."
+				}
+				"icon"		"SF_ONE_MISTAKE_THREE_WRECKS_achieved.jpg"
+				"icon_gray"		"SF_ONE_MISTAKE_THREE_WRECKS_unachieved.jpg"
+			}
+		}
+		"27"
+		{
+			"api_name"		"SF_STILL_FLYING"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Still Flying"
+				}
+				"desc"
+				{
+					"english"		"Clear a kill-shot by a hair."
+				}
+				"icon"		"SF_STILL_FLYING_achieved.jpg"
+				"icon_gray"		"SF_STILL_FLYING_unachieved.jpg"
+			}
+		}
+		"28"
+		{
+			"api_name"		"SF_DRAGGED_ALL_THE_WAY"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Dragged All the Way In"
+				}
+				"desc"
+				{
+					"english"		"Tow a hostile into a fatal collision."
+				}
+				"icon"		"SF_DRAGGED_ALL_THE_WAY_achieved.jpg"
+				"icon_gray"		"SF_DRAGGED_ALL_THE_WAY_unachieved.jpg"
+			}
+		}
+		"29"
+		{
+			"api_name"		"SF_THE_ROCK_WON"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"The Rock Won"
+				}
+				"desc"
+				{
+					"english"		"Redirect a body into terrain for the kill."
+				}
+				"icon"		"SF_THE_ROCK_WON_achieved.jpg"
+				"icon_gray"		"SF_THE_ROCK_WON_unachieved.jpg"
+			}
+		}
+		"30"
+		{
+			"api_name"		"SF_OUT_THE_OTHER_SIDE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Out the Other Side"
+				}
+				"desc"
+				{
+					"english"		"Let a gravity well carry a body into a kill."
+				}
+				"icon"		"SF_OUT_THE_OTHER_SIDE_achieved.jpg"
+				"icon_gray"		"SF_OUT_THE_OTHER_SIDE_unachieved.jpg"
+			}
+		}
+		"31"
+		{
+			"api_name"		"SF_ONE_JOB_LEFT"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"One Job Left"
+				}
+				"desc"
+				{
+					"english"		"Put a wreck back in motion for a kill."
+				}
+				"icon"		"SF_ONE_JOB_LEFT_achieved.jpg"
+				"icon_gray"		"SF_ONE_JOB_LEFT_unachieved.jpg"
+			}
+		}
+		"32"
+		{
+			"api_name"		"SF_COVER_NOT_GUARANTEED"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Cover Is Not a Guarantee"
+				}
+				"desc"
+				{
+					"english"		"Bank a shot around cover that kills."
+				}
+				"icon"		"SF_COVER_NOT_GUARANTEED_achieved.jpg"
+				"icon_gray"		"SF_COVER_NOT_GUARANTEED_unachieved.jpg"
+			}
+		}
+		"33"
+		{
+			"api_name"		"SF_BACK_WITH_YOUR_NAME"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Back With Your Name On It"
+				}
+				"desc"
+				{
+					"english"		"Return hostile ordnance to kill its owner."
+				}
+				"icon"		"SF_BACK_WITH_YOUR_NAME_achieved.jpg"
+				"icon_gray"		"SF_BACK_WITH_YOUR_NAME_unachieved.jpg"
+			}
+		}
+		"34"
+		{
+			"api_name"		"SF_RODE_THE_BLAST"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Rode the Blast"
+				}
+				"desc"
+				{
+					"english"		"Ride a blast's momentum clear of a threat."
+				}
+				"icon"		"SF_RODE_THE_BLAST_achieved.jpg"
+				"icon_gray"		"SF_RODE_THE_BLAST_unachieved.jpg"
+			}
+		}
+		"35"
+		{
+			"api_name"		"SF_YOU_FIT"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"You Fit"
+				}
+				"desc"
+				{
+					"english"		"Escape through a moving gap between two hulls."
+				}
+				"icon"		"SF_YOU_FIT_achieved.jpg"
+				"icon_gray"		"SF_YOU_FIT_unachieved.jpg"
+			}
+		}
+		"36"
+		{
+			"api_name"		"SF_SECOND_IMPULSE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Second Impulse"
+				}
+				"desc"
+				{
+					"english"		"Correct a body with a second impulse into a kill."
+				}
+				"icon"		"SF_SECOND_IMPULSE_achieved.jpg"
+				"icon_gray"		"SF_SECOND_IMPULSE_unachieved.jpg"
+			}
+		}
+		"37"
+		{
+			"api_name"		"SF_ROPE_WELL_WRECK"
+			"hidden"		"1"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Rope, Well, Wreck"
+				}
+				"desc"
+				{
+					"english"		"Pass a body from a rope through a well into a wreck."
+				}
+				"icon"		"SF_ROPE_WELL_WRECK_achieved.jpg"
+				"icon_gray"		"SF_ROPE_WELL_WRECK_unachieved.jpg"
+			}
+		}
+		"38"
+		{
+			"api_name"		"SF_TWO_HULLS_ONE_ROCK"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Two Hulls, One Rope, One Rock"
+				}
+				"desc"
+				{
+					"english"		"Drive a Twin Bridle pair into terrain."
+				}
+				"icon"		"SF_TWO_HULLS_ONE_ROCK_achieved.jpg"
+				"icon_gray"		"SF_TWO_HULLS_ONE_ROCK_unachieved.jpg"
+			}
+		}
+		"39"
+		{
+			"api_name"		"SF_HIS_OWN_WINGMAN"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"His Own Wingman"
+				}
+				"desc"
+				{
+					"english"		"Shove a wreck into a hull of its own faction."
+				}
+				"icon"		"SF_HIS_OWN_WINGMAN_achieved.jpg"
+				"icon_gray"		"SF_HIS_OWN_WINGMAN_unachieved.jpg"
+			}
+		}
+		"40"
+		{
+			"api_name"		"SF_PERFECT_CUT"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Perfect Cut"
+				}
+				"desc"
+				{
+					"english"		"Land a razor-rated release that kills."
+				}
+				"icon"		"SF_PERFECT_CUT_achieved.jpg"
+				"icon_gray"		"SF_PERFECT_CUT_unachieved.jpg"
+			}
+		}
+	}
+}

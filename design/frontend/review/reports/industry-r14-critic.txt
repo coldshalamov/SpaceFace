@@ -1,0 +1,153 @@
+STATION INDUSTRY TAB — ROUND 14 CRITIC (owner criteria gate: (a) weight >= 2:1 against the glass, (b) one signature interaction)
+
+Stills read (scratchpad/shots/):
+- wt-before-station-industry-{1920,1280}
+- wt-a7-station-industry-{1920,1280,2560}
+- wt-st-industry-partial-1920
+- wt-st-industry-hover-1920
+- wt-st-industry-live-1920 (a 940x460 fixture of the lit state, drawn on its own)
+
+Method:
+- Crops are crops/i14-*. Every figure below comes from sharp .raw() rows, columns or radial profiles. L = Rec.709 luma. Contrast is WCAG against the glass beside the element.
+- Ring centre at 1920 is (1164,596).
+- I read the source only to name causes (chainBeam.js, industry.js, crafting.js, lampKey.js). Nothing was edited.
+
+r12 items, all landed (checked in a7-1920):
+- The cursor is gone from the fitted 1920 list (x=40 is a uniform band 259–985).
+- The header reads "· T1 · 0 OF 7 READY".
+- Ticks sit on the names: Microchips 407–408 against a name centre of 408; Circuitry 452–453; Hull Plate 496–497.
+- The augment rungs carry "FROM …" at L126.
+
+1. VERDICT: NOT PASSED under the owner gate. Letter score 8.0 (r12: 8.1); no axis under 7.
+   (a) weight: FAIL. It is close. Five of the eight measured parts now carry body at 2.0–2.3:1. Three do not:
+   - the product node;
+   - the disabled FABRICATE key;
+   - the node pictograms.
+   (b) signature: FAIL. The named signature ("hold FABRICATE, the beam runs inputs → ring → output") does not exist in the code:
+   - FABRICATE is a click;
+   - the beam pulses are ambient arrival animation;
+   - every refine job is instant, so nothing ever flows.
+
+2. AXES (r12 in brackets)
+  Composition          8.1  [8.0]
+     - The bezel gives the stage a real object at its centre for the first time.
+     - The right third is still the weakest: a wire product node, a ghost key, and the empty 203 px band.
+  Hierarchy            7.9  [8.1]
+     - Every body sits at one light: bezel L71–78, run track L66–72, stock bands L70, spine band L67. So no body leads.
+     - The product, the point of the screen, is the faintest thing in the chain.
+     - Reason (L190) and title still lead the words.
+  Legibility           8.2  [8.2]  Unchanged: names 6.0:1, sub-lines 4.7:1, "FROM" words L126.
+  ORRERY fidelity      8.2  [8.2]  The bands are §3.1 bloom-as-geometry done as bodies. The product ring, the key rim and the pictograms are still hairlines.
+  Craft / detail       8.0  [8.0]
+     - The scale is cut cleanly through the bezel, with a clean window for REFINE. Ticks sit on the names.
+     - Mixed weight family in one chain: 5–13 px bands beside a 2 px dashed product ring and 1 px pictograms.
+  Interaction clarity  7.7  [8.1]  Judged now against the signature:
+     - the verb is a click;
+     - the flow is ambient;
+     - the ring's time label is untrue for timed jobs (blocker 5);
+     - hover lifts the rung's tick, not its word.
+
+3. (a) WEIGHT — every part measured against its glass (bar: a band is body at >= 2:1, ≈L70 on ≈L10)
+
+  Passes (body):
+  - Process bezel. Band 13 px (r 116–128), L71–78, 2.13–2.30:1 against the inside glass rgb(10,10,11). Measured at 45°, 100°, 135°, 200°, 225°, 260° and 300°.
+    · Before: 1 px core L109 only, scale L58–63.
+    · 1280: band 672–685 at L72–81.
+  - Run track. Band 6 px (r 138–144), L66–72, 2.10:1, with a 2 px core L108–158. Capped at 12 o'clock around the reason leader.
+  - Stock gauges.
+    · Iron and Titanium bands at x 686–692 and 746–753: L70–71, ≈2.1:1, core L118–170.
+    · Partial state (Iron 2/3): lit fill L244 with a bead.
+    · Before: 1 px L60.
+  - Ladder spine. 7 px band x 36–42 at L67, 2.0:1, plus a 2 px core x 39–40 at L156. Before: 1 px L96.
+  - Tab rail (shell). 7 px band y 1053–1059 at L91, plus core 1055–1056 at L177. Before: 2 px L39.
+  - Beams. 2 px cores: iron at x=880, 523–524, L73–85; output at x=1450, 598–599, L87; bloom L24–26. These are lines of light carrying a relationship, not bodies, so they are acceptable as drawn.
+  Margin: every band sits at 2.0–2.3:1, right on the bar. Nothing has headroom if the glass under it lightens. For example, the key's local floor is L28–34.
+
+  Fails (wire or generic):
+  - (i) Product node (orr-chain__node--out), 1606–1696 x 555–645 at 1920.
+    · A 2 px dashed core, L102–115 (x 1646–1647, 1691–1692; y 596–597, 638–639), with no band and an interior of L19–32.
+    · In the lit fixture it is a 2 px ring, L244 at x 679–680 / 732–733, with an EMPTY interior (L8).
+    · The thing the chain makes is the one pure wire left in it.
+  - (ii) Disabled FABRICATE key, 1565–1738 x 738–781. A 1 px rim at L117–131 around the see-through world floor (L28–34). It reads as a generic ghost button.
+  - (iii) Node pictograms. The input cube (711–729 x 490–507) and the product glyph (≈1640–1662 x 590–610) are 1 px line drawings at L87–112: literally a wireframe icon inside each node.
+  Outside this tab's scope: the shell's HULL / FUEL / HOLD / MUNITIONS gauges (top right) are thin rings on every station tab. They belong to the shell critic.
+
+4. (b) SIGNATURE — "hold FABRICATE and the beam runs inputs → the process ring → the output"
+  Not in the code:
+  - industry.js:285 calls `dressLampKey(build)` with no `{ hold:true }`.
+  - industry.js:344–349: a click calls attemptIndustryBuild, then re-renders 80 ms later.
+  - chainBeam.js:226–233 and :343–352: the ice pulses are `animateMotion repeatCount=indefinite`, started on arrival whenever the recipe can run. They play whether or not the player does anything.
+  - All 19 blueprints have timeS: 0. crafting.js makes refine instant, so a refine "run" is a count that jumps.
+  - assemble / augment / ship queue for 20 / 35 / 120 s (crafting.js DEFAULT_TIME_S), and only those fill the run track.
+  Cannot be performed on arrival: at Helios every one of the 19 rungs is blocked, so the player's first sight of Industry is an instrument that never moves.
+  Verdict: no signature exists yet. What is there is a good chain drawing with a click under it. FAIL.
+  What makes it strong and Industry's own (blocker 1 below): the bezel IS the hold ring.
+  - While FABRICATE is held, one ice pulse per unit leaves each input node (Iron 3, Titanium 1), and each stock band drains by what it gives.
+  - The bezel's lit arc sweeps clockwise from the REFINE window over ≈900 ms.
+  - At full, a pulse fires down the output beam. The product node fills (band + disc lit), and "2 PER RUN" rolls into the hold.
+  - Release early and the pulses fall back and the bands refill.
+  - Timed jobs then hand over to the run track's bead.
+  No other screen fills its own instrument with the materials you spent.
+
+5. BLOCKERS, IN ORDER
+  1. (b) Build the signature.
+     Change:
+     - industry.js:285 → `dressLampKey(build, { hold:true })`, with the build moved from the click handler (:344) to the hold's completion event.
+     - chainBeam: add a `run(frac)` method that draws the hold's progress as the bezel's lit arc (the existing orr-chain__timearc path, driven by frac instead of the constant timeFrac:1 at industry.js:281).
+     - At frac 0→1: per-unit pulses along each input beam; stock bands draining by need/have.
+     - At 1: one output pulse, the product node filling, and the qty roll.
+     - Cancel reverses.
+     - Reduced motion: the end state is shown at once.
+     Check: a held-state still at 46% shows the bezel lit to ≈46% from the window, with 1–2 pulses mid-beam on each input and a partly drained Iron band.
+  2. (a) Give the product node body.
+     Target: chainBeam.js output node, 1606–1696 x 555–645.
+     Change:
+     - Give it the input nodes' build: a 5 px band at bone .31 (≈L70, 2.1:1) under the 2 px core, and a disc fill at bone .06.
+     - Blocked shows dashes on the edge only, over the band.
+     - On completion the band lights (L244) with a bead.
+     Check: the ring's band ≥ L68 all the way round; interior ≥ L20.
+  3. (a) The disabled FABRICATE key becomes an unlit lamp, not a ghost button.
+     Target: lampKey.js disabled state, 1565–1738 x 738–781.
+     Change:
+     - Drop the 1 px rim.
+     - Fill the key's own cut shape at bone .2. Over the local floor L30 that is ≈L70, 2:1.
+     - Put the verb at bone .55.
+     Blast radius: this is library code, so walk every disabled Lamp Key.
+     Check: field ≥ L68; verb ≥ 4.5:1 on the field.
+  4. (a) Pictograms as produced art.
+     Target: the input and product glyphs (1 px, L87–112).
+     Change: filled two-tone custom SVG pictograms at 18–22 px (lit face bone .7, shade .35) for ore, ingot and module, one per material family.
+     Check: no glyph stroke under 2 px; lit face ≥ L150.
+  5. Truth defect (small, one cause, fix with this unit).
+     Where: industry.js:276 builds timeLabel from bp.timeS, which is 0 for all 19 blueprints. So the ring says "0 S · INSTANT" for jobs that crafting.js queues for 20 s (assemble), 35 s (augment) and 120 s (ship).
+     Change: export buildDuration from src/systems/crafting.js and use it at :276.
+  6. Hover says where the hand is.
+     Evidence:
+     - wt-st-industry-hover: the hovered rung's name stays L140.
+     - Only its tick lifts (605–606, x 36–43, L166 / L129), and the whole spine band brightens from L67 to L92.
+     Change:
+     - Lift the hovered name to bone .8 (≈L190).
+     - Draw ORRERY's focus segment: a 3 px x row-height light segment on the spine at bone .7, instead of brightening the whole spine.
+  7. The blocked arrival teaches the chain.
+     Evidence: the ring's heart is "—" in a 250 px dark disc, on a station where nothing can run.
+     Change: hover or press on the blocked ring plays blocker 1's run at 25% light and ends at the reason ("NEEDS REFINERY"). The player learns the instrument before finding a refinery.
+  8. Fixture note (not a game defect).
+     Evidence: the lit fixture shows two different fractions on concentric arcs: bezel lit to ≈59% (212°), run-track bead at ≈40% (145°).
+     Why it does not show in game: industry.js:281 pins timeFrac:1.
+     Once blocker 1 makes the bezel the hold, keep the run track empty while holding, so the two never disagree.
+  Expected after 1–4 (5–7 are cheap and should ride along): (a) PASS, (b) PASS, and a letter score of ≈8.4:
+    Composition 8.3 · Hierarchy 8.3 · Legibility 8.2 · Fidelity 8.5 · Craft 8.4 · Interaction 8.6.
+
+6. LANDMARKS (a7, 1920)
+  - Ring centre (1164,596).
+  - Bezel r 116–128, L71–78. Ring core r 130–131, L110–117 (blocked). Run track r 138–144: band L66–72, core L108–158.
+  - Glass: inside rgb(10,10,11); outside the ring rgb(13,12,12).
+  - Iron node: band x 686–692 / 746–753 at y=500, L70–71; core L118–170. Glyph 711–729 x 490–507, 1 px, L87–104.
+  - Titanium node: same build at y=700.
+  - Product node: dashed core x 1646–1647 / 1691–1692, y 596–597 / 638–639, L102–115. Interior L19–32.
+  - Beams: iron x=880 core 523–524 (L73–85); out x=1450 core 598–599 (L87).
+  - Spine: band x 36–42 L67, core x 39–40 L156, y 259–985. On hover: band L92, core L177, hovered tick L166.
+  - Key: 1565–1738 x 738–781, rim L117–131, verb L131, local floor L28–34.
+  - Tab rail: band y 1053–1059 L91, core 1055–1056 L177.
+  - 1280: bezel 672–685 at y=430, L72–81; run track 658–663 (L62–68, core L127–143).
+  - Lit fixture (940x460): bezel lit L187–197, unlit L76–96; output ring core L244 at 679–680, interior L8; "2" L244.

@@ -1,0 +1,463 @@
+// PQ-158.03 — composed themes. Four state themes with motifs, per-sector beds, faction stings
+// via the Band. Pure data + resolver; the adaptive matrix drives authored stems. Audio is
+// presentation — this file never writes sim state.
+
+import { BAND_BED_PROFILES } from './bandBeds.js';
+import { MUSIC_STEMS } from '../data/audioRecipes.js';
+import { resolveScoreIdentity, resolveFactionColour } from './scoreDirector.js';
+import { COMPOSED_SECTOR_BEDS } from './sectorScoreBeds.js';
+
+export const THEME_MATRIX_SEED = 15803;
+
+export const THEME_STATES = Object.freeze(['travel', 'combat', 'station', 'wanted', 'boss']);
+// The five adaptive stems. A travel, B tension, C combat, D station, E boss. Every fader
+// loop in the audio host reads this one list; a sixth stem is one edit here plus one data row.
+export const STEM_KEYS = Object.freeze(['A', 'B', 'C', 'D', 'E']);
+
+// X4 #5 — ONE tempo per state. `src/data/audioRecipes.js` owns the MUSIC_STEMS row (id, label,
+// bpm); the motif reads it so the authored theme, the runtime sequencer and the Help/spec text
+// cannot disagree. A row-less state falls back to its old authored tempo.
+export const STEM_ID_BY_STATE = Object.freeze({
+  travel: 'stem_a',
+  wanted: 'stem_b',
+  combat: 'stem_c',
+  station: 'stem_d',
+  boss: 'stem_e',
+});
+function stemBpm(state, fallback) {
+  const row = MUSIC_STEMS.find((r) => r && r.id === STEM_ID_BY_STATE[state]);
+  return row && Number.isFinite(row.bpm) ? row.bpm : fallback;
+}
+
+// Huggable travel lead: rising A-minor arpeggio to the octave. A stranger can hum "A C E A".
+export const TRAVEL_MOTIF = Object.freeze({
+  id: 'travel_outbound',
+  name: 'Outbound',
+  hummable: 'A C E A',
+  key: 'Am',
+  bpm: stemBpm('travel', 80),
+  stem: 'A',
+  notes: Object.freeze(['A', 'C', 'E', 'A']),
+  octaves: Object.freeze([4, 5, 5, 5]),
+  steps: Object.freeze([
+    Object.freeze({ bar: 0, beat: 0, note: 'A', oct: 4, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 4, note: 'C', oct: 5, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 8, note: 'E', oct: 5, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 12, note: 'A', oct: 5, dur: 8 }),
+  ]),
+});
+
+export const COMBAT_MOTIF = Object.freeze({
+  id: 'combat_press',
+  name: 'Press',
+  hummable: 'A E A C',
+  key: 'Am',
+  bpm: stemBpm('combat', 130),
+  stem: 'C',
+  notes: Object.freeze(['A', 'E', 'A', 'C']),
+  octaves: Object.freeze([3, 4, 3, 4]),
+  steps: Object.freeze([
+    Object.freeze({ bar: 0, beat: 0, note: 'A', oct: 3, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 4, note: 'E', oct: 4, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 8, note: 'A', oct: 3, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 12, note: 'C', oct: 4, dur: 8 }),
+  ]),
+});
+
+export const STATION_MOTIF = Object.freeze({
+  id: 'station_berth',
+  name: 'Berth',
+  hummable: 'C E G B',
+  key: 'C',
+  bpm: stemBpm('station', 72),
+  stem: 'D',
+  notes: Object.freeze(['C', 'E', 'G', 'B']),
+  octaves: Object.freeze([4, 4, 4, 4]),
+  steps: Object.freeze([
+    Object.freeze({ bar: 0, beat: 0, note: 'C', oct: 4, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 4, note: 'E', oct: 4, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 8, note: 'G', oct: 4, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 12, note: 'B', oct: 4, dur: 8 }),
+  ]),
+});
+
+export const WANTED_MOTIF = Object.freeze({
+  id: 'wanted_mark',
+  name: 'Mark',
+  hummable: 'A Bb A E',
+  key: 'Am',
+  bpm: stemBpm('wanted', 95),
+  stem: 'B',
+  notes: Object.freeze(['A', 'Bb', 'A', 'E']),
+  octaves: Object.freeze([3, 3, 3, 3]),
+  steps: Object.freeze([
+    Object.freeze({ bar: 0, beat: 0, note: 'A', oct: 3, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 4, note: 'Bb', oct: 3, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 8, note: 'A', oct: 3, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 12, note: 'E', oct: 3, dur: 8 }),
+  ]),
+});
+
+// X4: a fifth authored theme for the boss. Low fourths, then a raised sixth answering them —
+// the same "something is walking toward you" shape as the combat motif, a register lower and
+// slower to breathe. Distinct from every other interval signature by test.
+//
+// X4 #3: a boss fight is not the combat loop louder. 100 BPM (the fight is 130), a two-bar phrase
+// with real rests, and the phrase's last note lands on bar 2 — `bar` is a BAR, i.e. sixteen
+// sixteenth steps, the same grid the sequencer's `step % 16` uses.
+export const BOSS_MOTIF = Object.freeze({
+  id: 'boss_warden',
+  name: 'Warden',
+  hummable: 'A D A F#',
+  key: 'Am',
+  bpm: stemBpm('boss', 100),
+  stem: 'E',
+  notes: Object.freeze(['A', 'D', 'A', 'F#']),
+  octaves: Object.freeze([2, 2, 2, 3]),
+  steps: Object.freeze([
+    Object.freeze({ bar: 0, beat: 0, note: 'A', oct: 2, dur: 6 }),
+    Object.freeze({ bar: 0, beat: 8, note: 'D', oct: 2, dur: 6 }),
+    Object.freeze({ bar: 1, beat: 0, note: 'A', oct: 2, dur: 4 }),
+    Object.freeze({ bar: 1, beat: 8, note: 'F#', oct: 3, dur: 8 }),
+  ]),
+});
+
+/** Sixteenth steps in one motif bar. `beat` is the sequencer's sixteenth index (step % 16). */
+export const MOTIF_STEPS_PER_BAR = 16;
+
+/** How many bars a written motif occupies (its last step's bar + 1). */
+export function motifPhraseBars(motif) {
+  const steps = (motif && Array.isArray(motif.steps) && motif.steps.length) ? motif.steps : motifStepsLike(motif);
+  let bars = 1;
+  for (const row of steps) bars = Math.max(bars, (Number(row && row.bar) || 0) + 1);
+  return bars;
+}
+
+/** The read-only estimate a motif without explicit steps would produce (notes at quarter notes). */
+function motifStepsLike(motif) {
+  const notes = (motif && motif.notes) || [];
+  return notes.map((note, i) => ({ bar: 0, beat: i * 4 }));
+}
+
+export const THEME_MOTIFS = Object.freeze({
+  travel: TRAVEL_MOTIF,
+  combat: COMBAT_MOTIF,
+  station: STATION_MOTIF,
+  wanted: WANTED_MOTIF,
+  boss: BOSS_MOTIF,
+});
+
+// Stem weights keyed by the player-facing states. A=travel bed, B=tension/wanted,
+// C=combat, D=station/docked, E=boss. Authored, not a threat-scalar remix of one pad.
+export const THEME_STEM_WEIGHTS = Object.freeze({
+  travel: Object.freeze({ A: 1.0, B: 0.0, C: 0.0, D: 0.0, E: 0.0 }),
+  combat: Object.freeze({ A: 0.25, B: 0.35, C: 1.0, D: 0.0, E: 0.0 }),
+  station: Object.freeze({ A: 0.15, B: 0.1, C: 0.0, D: 1.0, E: 0.0 }),
+  wanted: Object.freeze({ A: 0.2, B: 1.0, C: 0.35, D: 0.0, E: 0.0 }),
+  boss: Object.freeze({ A: 0.05, B: 0.2, C: 0.3, D: 0.0, E: 1.0 }),
+});
+
+// Legacy music-state names the sequencer already understands.
+export const THEME_TO_MUSIC_STATE = Object.freeze({
+  travel: 'calm',
+  combat: 'combat',
+  station: 'docked',
+  wanted: 'tense',
+  boss: 'combat',
+});
+
+function bed(id, hzA, hzB, waveA, waveB, noise, tone, label, stemWeights) {
+  return Object.freeze({
+    id, hzA, hzB, waveA, waveB, noise, tone, label,
+    signature: `${waveA}:${hzA}:${waveB}:${hzB}:${noise}:${tone}`,
+    // FB-122 — sector register of the combat bed. Neutral (all 1) leaves state weights intact.
+    stemWeights: Object.freeze(stemWeights || { A: 1, B: 1, C: 1, D: 1, E: 1 }),
+  });
+}
+
+/** State weights × sector register. State identity stays on `stemWeights`; this is what is heard. */
+export function mixAudibleStemWeights(stateWeights, sectorWeights) {
+  const out = {};
+  for (const key of STEM_KEYS) {
+    const sector = sectorWeights && Number.isFinite(sectorWeights[key]) ? sectorWeights[key] : 1;
+    out[key] = Math.round((Number(stateWeights && stateWeights[key]) || 0) * sector * 1000) / 1000;
+  }
+  return Object.freeze(out);
+}
+
+/** WANTED motif transposed by two semitones per heat tier. Band 1 is unison. */
+// THE EAR: the director's continuous faders (phase x intensity) on the sector's register. Null
+// when the director has not read this state yet (or disagrees on docking), so the caller keeps
+// the authored state row.
+export function scoreStemWeights(frame, theme) {
+  if (!frame || !frame.stemWeights || !theme) return null;
+  // X4: the boss row is an authored mix, not a phase fader — the boss stem leads for its whole
+  // life instead of being re-mixed by the fight phase.
+  if (theme.state === 'boss' || frame.boss === true) return null;
+  if ((theme.state === 'station') !== (frame.phase === 'dock')) return null;
+  // The sector colours the mix but never overturns the phase's lead: a hub that thins its
+  // tension stem (Helios B 0.4) still lets a chase lead with it.
+  const sector = theme.sectorStemWeights || {};
+  const out = {};
+  for (const key of STEM_KEYS) {
+    const k = Number.isFinite(sector[key]) ? sector[key] : 1;
+    const f = key === frame.stem ? SCORE_LEAD_SECTOR_FLOOR + (1 - SCORE_LEAD_SECTOR_FLOOR) * k : k;
+    out[key] = Math.round((Number(frame.stemWeights[key]) || 0) * f * 1000) / 1000;
+  }
+  return Object.freeze(applySwarmStemLift(out, sector, theme.bed && theme.bed.place && theme.bed.place.swarmLift));
+}
+
+export const SCORE_LEAD_SECTOR_FLOOR = 0.6;
+
+export function wantedMotifRate(band) {
+  const steps = Math.max(0, Math.min(4, (Number(band) || 1) - 1));
+  return Math.round(Math.pow(2, (steps * 2) / 12) * 1000) / 1000;
+}
+
+// Per-sector beds: each sector a stranger can name from the bed alone (unique hz/wave/noise).
+export const SECTOR_BEDS = Object.freeze({
+  sector_helios_prime: bed('bed_helios', 82.4, 164.8, 'sine', 'triangle', 0.06, 1480, 'Helios Prime', { A: 1, B: 0.4, C: 0.55, D: 0.85 }),
+  sector_ceres_belt: bed('bed_ceres', 73, 110, 'triangle', 'sine', 0.22, 720, 'Ceres Belt'),
+  sector_tethys_junction: bed('bed_tethys', 110, 220, 'square', 'sine', 0.14, 1840, 'Tethys Junction'),
+  sector_vesta_forge: bed('bed_vesta', 55, 110, 'sawtooth', 'triangle', 0.28, 540, 'Vesta Forge'),
+  sector_pallas_drift: bed('bed_pallas', 98, 147, 'triangle', 'sine', 0.1, 1240, 'Pallas Drift'),
+  sector_io_reach: bed('bed_io', 65, 97.5, 'sawtooth', 'sine', 0.34, 680, 'Io Reach'),
+  sector_charon_expanse: bed('bed_charon', 49, 73.5, 'sine', 'sine', 0.18, 420, 'Charon Expanse'),
+  sector_sker_haven: bed('bed_sker', 72, 145, 'sawtooth', 'square', 0.48, 720, 'Sker Haven', { A: 0.25, B: 1, C: 1, D: 0.15 }),
+  sector_veil_nebula: bed('bed_veil', 61.8, 92.7, 'sine', 'triangle', 0.08, 540, 'Veil Nebula'),
+  sector_ashfall_reach: bed('bed_ashfall', 44, 88, 'sawtooth', 'sine', 0.4, 380, 'Ashfall Reach'),
+});
+
+export const DEFAULT_SECTOR_BED = bed('bed_void', 70, 140, 'sine', 'sine', 0.12, 900, 'Open void');
+
+function sting(factionId, profileKey, hz, wave, label) {
+  return Object.freeze({
+    factionId,
+    profileKey,
+    profile: (profileKey && Object.hasOwn(BAND_BED_PROFILES, profileKey)) ? BAND_BED_PROFILES[profileKey] : null,
+    hz,
+    wave,
+    label,
+    signature: `${profileKey}:${hz}:${wave}`,
+  });
+}
+
+// Faction identity through the Band: one sting per code faction, unique hz+profile.
+export const FACTION_STINGS = Object.freeze({
+  faction_scn: sting('faction_scn', 'civil_service', 196, 'square', 'Concord'),
+  faction_mts: sting('faction_mts', 'routing_loop', 247, 'triangle', 'Meridian'),
+  faction_dmc: sting('faction_dmc', 'frontier_ballad', 165, 'triangle', 'Drift'),
+  faction_reach: sting('faction_reach', 'pirate_roast', 139, 'sawtooth', 'Reach'),
+  faction_quiet: sting('faction_quiet', 'numbers_station', 440, 'sine', 'Quiet'),
+  faction_choir: sting('faction_choir', 'harmonic_drone', 330, 'sine', 'Choir'),
+  faction_free: sting('faction_free', 'investigative', 220, 'triangle', 'Frontier'),
+  faction_vael: sting('faction_vael', 'landmark_override', 82, 'sine', 'Vael'),
+  faction_archive: sting('faction_archive', 'landmark_override', 103, 'sine', 'Archive'),
+  faction_fulfillment: sting('faction_fulfillment', 'routing_loop', 262, 'square', 'Fulfillment'),
+  faction_pitborn: sting('faction_pitborn', 'pirate_roast', 131, 'sawtooth', 'Pitborn'),
+  faction_understory: sting('faction_understory', 'harmonic_drone', 98, 'sine', 'Understory'),
+  faction_verge_layers: sting('faction_verge_layers', 'numbers_station', 494, 'sine', 'Verge-Layer'),
+  faction_helix: sting('faction_helix', 'numbers_station', 523, 'sine', 'Helix'),
+});
+
+function clamp01(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
+export function resolveSectorBed(sectorId) {
+  // hasOwn: a prototype-keyed id ('toString' &c.) must fall through to the hashed bed, not
+  // resolve an inherited Object member as a bed row.
+  if (sectorId && Object.hasOwn(SECTOR_BEDS, sectorId)) return SECTOR_BEDS[sectorId];
+  if (sectorId && Object.hasOwn(COMPOSED_SECTOR_BEDS, sectorId)) return COMPOSED_SECTOR_BEDS[sectorId];
+  const id = String(sectorId || '');
+  if (!id) return DEFAULT_SECTOR_BED;
+  // Unknown sector: still unique so a blind listen does not collapse to the void bed.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193) >>> 0;
+  const hzA = 48 + (h % 80);
+  const hzB = hzA * (h & 1 ? 1.5 : 2);
+  const waves = ['sine', 'triangle', 'sawtooth', 'square'];
+  return bed(`bed_${id}`, hzA, hzB, waves[h % 4], waves[(h >>> 3) % 4], 0.08 + ((h >>> 8) % 40) / 100, 400 + (h % 1400), id);
+}
+
+export function resolveFactionSting(factionId) {
+  // hasOwn: 'toString' would otherwise return an inherited function as a sting row.
+  if (factionId && Object.hasOwn(FACTION_STINGS, factionId)) return FACTION_STINGS[factionId];
+  return null;
+}
+
+/** Band intent for a sector bed. Wave/hz/noise ride the existing Band graph; no second writer. */
+export function sectorBedToBandIntent(bed, options = {}) {
+  if (!bed) return Object.freeze({ active: false, reason: 'no-bed', layer: 'place' });
+  return Object.freeze({
+    active: true,
+    layer: 'place',
+    place: bed.place || null,
+    strength: options.strength == null ? 0.45 : options.strength,
+    channelId: bed.id,
+    bed: Object.freeze({
+      kind: bed.id,
+      hzA: bed.hzA,
+      hzB: bed.hzB,
+      waveA: bed.waveA,
+      waveB: bed.waveB,
+      noise: bed.noise,
+      tone: bed.tone,
+      composition: bed.composition || null,
+    }),
+  });
+}
+
+// THE EAR: a hunter closing before any shot lands (threat in the committed/approach band) is a
+// chase. The chase rides the tension stem's mix, but it is NOT the law: the theme state stays
+// `travel` (so nothing that reads `wanted` — the law mark, recipes, UI — fires for an unwanted
+// pilot) and the matrix carries a separate `pursuit` flag.
+export const PURSUIT_THREAT = 0.3;
+
+export function resolveThemeState(input = {}) {
+  if (input.docked || input.station) return 'station';
+  if (input.bossActive) return 'boss';
+  if (input.wanted) return 'wanted';
+  const threat = clamp01(input.threat);
+  if (input.inCombat || threat >= 0.6) return 'combat';
+  return 'travel';
+}
+
+/** An unwanted pilot under a committed hunter, short of a fight. */
+export function resolvePursuit(input = {}, state = resolveThemeState(input)) {
+  return state === 'travel' && !input.wanted && clamp01(input.threat) >= PURSUIT_THREAT;
+}
+
+// Chase mix: the tension stem leads over a thinned travel bed; no combat drums yet.
+export const PURSUIT_STEM_WEIGHTS = Object.freeze({ A: 0.35, B: 0.9, C: 0.2, D: 0.0, E: 0.0 });
+
+/**
+ * SWARM-06 — the chain's music lift, 0..1. A running Swarm chain drags the audible stem mix
+ * toward the combat register without changing the STATE row the rest of the matrix resolves —
+ * same bed, same motif, a hotter mix of it. Pure and bounded: 40 chain saturates.
+ */
+export const SWARM_LIFT_CHAIN_FULL = 40;
+export function swarmChainLift(chain) {
+  const c = Math.max(0, Number(chain) || 0);
+  return Math.min(1, c / SWARM_LIFT_CHAIN_FULL);
+}
+
+/**
+ * The lifted mix: blend each audible stem toward the combat row's sector-registered weight,
+ * never downward — a station mix stays a station mix, it just lets the fight bleed in.
+ */
+export function applySwarmStemLift(audibleWeights, sectorWeights, lift) {
+  const k = clamp01(lift);
+  if (k <= 0) return audibleWeights;
+  const combat = THEME_STEM_WEIGHTS.combat;
+  const out = {};
+  for (const key of STEM_KEYS) {
+    const base = Number(audibleWeights && audibleWeights[key]) || 0;
+    const sector = sectorWeights && Number.isFinite(sectorWeights[key]) ? sectorWeights[key] : 1;
+    const toward = (Number(combat[key]) || 0) * sector;
+    out[key] = Math.round((base + Math.max(0, toward - base) * k) * 1000) / 1000;
+  }
+  return Object.freeze(out);
+}
+
+/**
+ * Adaptive matrix: game presentation snapshot → authored stem weights, motif, per-sector bed,
+ * optional faction sting. Pure.
+ */
+export function resolveThemeMatrix(input = {}) {
+  const state = THEME_STATES.includes(input.state) ? input.state : resolveThemeState(input);
+  const motif = THEME_MOTIFS[state];
+  const pursuit = resolvePursuit(input, state);
+  const stemWeights = pursuit ? PURSUIT_STEM_WEIGHTS : THEME_STEM_WEIGHTS[state];
+  const bedRow = resolveSectorBed(input.sectorId);
+  const sectorStemWeights = bedRow.stemWeights;
+  let audibleStemWeights = mixAudibleStemWeights(stemWeights, sectorStemWeights);
+  // SWARM-06: `input.swarmLift` (0..1) is the chain's hand on the faders — the same state row,
+  // driven hotter as the run's kill chain climbs.
+  audibleStemWeights = applySwarmStemLift(audibleStemWeights, sectorStemWeights, input.swarmLift);
+  const stingRow = resolveFactionSting(input.factionId);
+  const score = resolveScoreIdentity(input.sectorId);
+  const factionColour = resolveFactionColour(input.factionId);
+  // The place intent the Band runtime's score director and room tone read: the same inputs this
+  // resolver was handed, so the room and the stems answer one state read.
+  // `scoreThreat` is the host's live-hostile read (no damage-window tail): the score's aftermath
+  // starts when the last hostile is gone, not six seconds later when the hit timer expires.
+  const liveThreat = Number.isFinite(input.scoreThreat) ? clamp01(input.scoreThreat) : clamp01(input.threat);
+  const place = Object.freeze({
+    sectorId: input.sectorId || null,
+    factionId: input.factionId || null,
+    docked: !!(input.docked || input.station),
+    wanted: !!input.wanted,
+    inCombat: !!input.inCombat && liveThreat > 0,
+    threat: liveThreat,
+    swarmLift: clamp01(input.swarmLift),
+    working: !!input.working,
+    workPresence: clamp01(input.workPresence),
+  });
+  const stem = MUSIC_STEMS.find((row) => row && row.id === `stem_${motif.stem.toLowerCase()}`)
+    || MUSIC_STEMS[0];
+  return Object.freeze({
+    schema: 'spaceface.themeMatrix.v1',
+    seed: THEME_MATRIX_SEED,
+    state,
+    musicState: pursuit ? 'tense' : THEME_TO_MUSIC_STATE[state],
+    motif,
+    stemWeights,
+    sectorStemWeights,
+    audibleStemWeights,
+    stemId: motif.stem,
+    stemDef: stem,
+    bed: Object.freeze({ ...bedRow, place }),
+    sting: stingRow,
+    pursuit,
+    score,
+    factionColour,
+    hummable: motif.hummable,
+  });
+}
+
+const NOTE_INDEX = Object.freeze({
+  C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5,
+  'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11,
+});
+
+export function intervalSignature(notes) {
+  const idx = (Array.isArray(notes) ? notes : []).map((n) => NOTE_INDEX[n]);
+  // typeof, not == null: a prototype-keyed note maps to an inherited function — truthy, non-null —
+  // and would produce a garbage 'NaN,NaN' signature instead of the contracted '' for invalid input.
+  if (idx.some((v) => typeof v !== 'number') || idx.length < 2) return '';
+  const out = [];
+  for (let i = 1; i < idx.length; i += 1) out.push((idx[i] - idx[0] + 12) % 12);
+  return out.join(',');
+}
+
+/** Blind listen: name the state from the interval shape, never from the hummable label. */
+export function identifyThemeFromIntervals(signature) {
+  const wanted = String(signature || '');
+  for (const state of THEME_STATES) {
+    if (intervalSignature(THEME_MOTIFS[state].notes) === wanted) return state;
+  }
+  return null;
+}
+
+/** Blind listen: name the sector from hz/wave signature, never from the label. */
+export function identifySectorBedFromSignature(signature) {
+  const wanted = String(signature || '');
+  for (const [sectorId, row] of Object.entries(SECTOR_BEDS)) {
+    if (row.signature === wanted) return sectorId;
+  }
+  return null;
+}
+
+export function themeMotifsAreDistinct() {
+  const phrases = THEME_STATES.map((s) => THEME_MOTIFS[s].hummable);
+  const signatures = Object.values(SECTOR_BEDS).map((b) => b.signature);
+  const stings = Object.values(FACTION_STINGS).map((s) => s.signature);
+  return {
+    motifs: new Set(phrases).size === phrases.length,
+    beds: new Set(signatures).size === signatures.length,
+    stings: new Set(stings).size === stings.length,
+  };
+}

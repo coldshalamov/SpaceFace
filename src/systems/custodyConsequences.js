@@ -1,0 +1,637 @@
+// Durable world consequences for nonlethal custody transfers.
+//
+// surrenderRecovery owns the physical capture and payout. This listener records what was captured
+// beneath the already-saved player blob, then projects the arrest into the canonical sector field.
+// It never writes sector danger, credits, or reputation directly.
+//
+// PQ-151.03 — the same ledger also holds the player's impound bill (insurance deductible +
+// restitution). Law posts the yard; this file is the only writer of the bill. Heat and economy
+// stay behind their events.
+import { hash32 } from '../core/rng.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { SECTORS } from '../data/sectors.js';
+import { SHIPS } from '../data/ships.js';
+
+const RECOVERY_SOURCE = 'custodyRecovery';
+const RECOVERY_STATIONS = new Map(SECTORS.flatMap((sector) => (sector.stations || [])
+  .map((station) => [station.id, { ...station, sectorId: sector.id }])));
+const RECOVERY_GOODS = new Map(COMMODITIES.map((good) => [good.id, good]));
+
+export const IMPOUND_RESTITUTION_CR = 700;
+export const IMPOUND_WORK_S = 4;
+// RC-461 — restitution follows the hull actually flown: a yard bill is a fraction of the catalog
+// price of the hull in the pound, floored at the flat rate above so a cheap frame still carries a
+// real obligation. Catalog price only — never a station discount, live mass, damage, or resale.
+export const IMPOUND_RESTITUTION_RATE = 0.02;
+
+const HULL_PRICE_BY_ID = new Map(SHIPS.map((def) => [def.id, Math.max(0, Math.round(Number(def.price) || 0))]));
+
+const CAPTURE_HISTORY_CAP = 24;
+const SETTLED_ID_CAP = 128;
+const INTEL_MILESTONES = Object.freeze([2, 4, 7]);
+const NETWORK_PREFIX = Object.freeze(['Red', 'Black', 'Ash', 'Cinder', 'Hollow', 'Broken']);
+const NETWORK_NOUN = Object.freeze(['Latch', 'Wake', 'Ledger', 'Spur', 'Beacon', 'Hook']);
+const NETWORK_KIND = Object.freeze(['Network', 'Crew', 'Ring', 'Syndicate']);
+
+export const custodyConsequences = {
+  name: 'custodyConsequences',
+
+  init(ctx) {
+    // destroy-first like every other registered listener: a re-init must unsubscribe the old
+    // handlers before wiring the new ones or each event lands twice.
+    this.destroy();
+    this.state = ctx.state;
+    this.bus = ctx.bus || null;
+    this.helpers = ctx.helpers || {};
+    this.registry = ctx.registry || null;
+    const ledger = ensureLedger(this.state);
+    // Existing saves may already contain repeat capture profiles from the capture-ledger packet.
+    // Schedule their first unapplied milestone instead of requiring one more arrest to wake it up.
+    for (const profile of Object.values(ledger.profiles)) scheduleIntel(profile, currentDay(this.state));
+    this._onCustody = (payload) => this._record(payload || {});
+    this._onDayTick = (payload) => this._matureIntel(payload || {});
+    this._onImpoundPosted = (payload) => openImpoundBill(this.state, payload || {});
+    this._onImpoundWorked = (payload) => applyImpoundWork(this.state, payload || {});
+    this._onImpoundRecovered = (payload) => closeImpoundBill(this.state, payload || {});
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('law:custodyTransfer', this._onCustody);
+      this.bus.on('day:tick', this._onDayTick);
+      this.bus.on('law:impoundPosted', this._onImpoundPosted);
+      this.bus.on('law:impoundWorked', this._onImpoundWorked);
+      this.bus.on('law:impoundRecovered', this._onImpoundRecovered);
+      this._recoveryListeners = [
+        ['dock:docked', (p) => this._offerRecovery(p?.stationId)],
+        ['aftermath:custodyFreight', (p) => this._recordRaidFreight(p)],
+        ['aftermath:custodySurvivor', (p) => this._recordRaidSurvivor(p)],
+        ['survivorPod:resolved', (p) => this._resolveRaidSurvivor(p)],
+        ['combat:aftermathChosen', (p) => this._chooseField(p)],
+        ['cargo:delivered', (p) => this._deliverRecovery(p)],
+      ];
+      for (const [name, fn] of this._recoveryListeners) this.bus.on(name, fn);
+    }
+  },
+
+  newGame() {
+    if (this.state && this.state.player) this.state.player.custodyLedger = freshLedger();
+  },
+
+  _raidCase(payload) {
+    if (!payload?.fingerprint || !payload.sectorId) return null;
+    const cases = ensureLedger(this.state).raidAftermath;
+    const key = `raid:${payload.fingerprint}`;
+    return cases[key] || (cases[key] = {
+      key, fingerprint: payload.fingerprint, sectorId: payload.sectorId,
+      forPerson: payload.forPerson || 'the raided hauler', pos: payload.pos || null,
+      lines: [], survivors: {}, deliveries: [], status: 'open',
+    });
+  },
+
+  _recordRaidFreight(payload) {
+    const row = this._raidCase(payload);
+    if (!row || !RECOVERY_GOODS.has(payload.commodityId)) return null;
+    let line = row.lines.find((entry) => entry.commodityId === payload.commodityId && entry.manifestId === payload.manifestId);
+    if (!line) {
+      line = { commodityId: payload.commodityId, manifestId: payload.manifestId, qty: 0, returnedQty: 0 };
+      row.lines.push(line);
+    }
+    line.qty = Math.max(line.qty, Math.floor(Number(payload.scatteredQty) || 0));
+    const stationRecoveredQty = Math.max(Number(line.stationRecoveredQty) || 0, Number(payload.stationRecoveredQty) || 0);
+    line.returnedQty = Math.min(line.qty, line.returnedQty + stationRecoveredQty - (Number(line.stationRecoveredQty) || 0));
+    line.stationRecoveredQty = stationRecoveredQty;
+    this._refreshRaidCase(row);
+    return row;
+  },
+
+  _recordRaidSurvivor(payload) {
+    const row = this._raidCase(payload);
+    if (!row || !payload.survivorId) return null;
+    row.survivors[payload.survivorId] ||= { survivorId: payload.survivorId, entityId: payload.entityId, outcome: 'pending' };
+    this._refreshRaidCase(row);
+    return row;
+  },
+
+  _resolveRaidSurvivor(payload) {
+    if (!payload?.id) return;
+    for (const row of Object.values(ensureLedger(this.state).raidAftermath)) {
+      const survivor = row.survivors[payload.id];
+      if (!survivor || survivor.outcome !== 'pending') continue;
+      survivor.outcome = payload.outcome;
+      survivor.resolvedAt = payload.t;
+      this._refreshRaidCase(row);
+    }
+  },
+
+  _refreshRaidCase(row) {
+    const wasSettled = row.status === 'settled';
+    const freightOpen = row.lines.some((line) => line.returnedQty < line.qty);
+    const people = Object.values(row.survivors);
+    row.status = freightOpen || people.some((person) => person.outcome !== 'rescued') ? 'open' : 'settled';
+    if (row.status === 'settled' && !wasSettled) {
+      row.settledAt = Number(this.state.simTime) || 0;
+      this._emit('custody:aftermathSettled', { key: row.key, fingerprint: row.fingerprint });
+    }
+    this._emit('custody:aftermathChanged', { key: row.key, sectorId: row.sectorId });
+    return row;
+  },
+
+  _chooseField(payload) {
+    for (const row of Object.values(ensureLedger(this.state).raidAftermath)) {
+      if (row.sectorId !== payload?.sectorId || row.status !== 'open') continue;
+      row.lastChoice = payload.id;
+      this._emit('comms:log', {
+        from: 'FREIGHT CUSTODY', kind: 'encounter',
+        text: `${row.forPerson}: ${row.lines.reduce((sum, line) => sum + line.qty - line.returnedQty, 0)}u freight still unreturned. ${payload.id === 'escape' ? 'You can return later; the custody record stays open.' : 'Rescue and freight settle only on an actual handoff.'}`,
+      });
+    }
+  },
+
+  _recoveryProjects() {
+    const bills = Object.values(this.state.lawSecurity?.composed || {})
+      .filter((bill) => bill.kind === 'restitution' && bill.status === 'open' && bill.recovery);
+    return [
+      ...bills.map((bill) => ({ key: bill.key, causeId: bill.causeId, forPerson: bill.forPerson,
+        remainingCr: bill.remainingCr, ...bill.recovery })),
+      ...Object.values(ensureLedger(this.state).raidAftermath).filter((row) => row.status === 'open'),
+    ];
+  },
+
+  _offerRecovery(stationId) {
+    const station = RECOVERY_STATIONS.get(stationId);
+    if (!station) return null;
+    let firstOffer = null;
+    for (const project of this._recoveryProjects()) {
+      if (project.sectorId !== station.sectorId) continue;
+      if ((this.state.missions?.active || []).some((m) => m.source === RECOVERY_SOURCE && m.cause?.fingerprint === project.key)) continue;
+      const line = project.lines.find((entry) => entry.qty > entry.returnedQty);
+      if (!line) continue;
+      const good = RECOVERY_GOODS.get(line.commodityId);
+      if (!good) continue;
+      const qty = Math.min(line.qty - line.returnedQty,
+        project.causeId ? Math.ceil(project.remainingCr / good.basePrice) : Infinity);
+      const offer = {
+        id: `custody:${hash32(this.state.meta?.seed || 1, project.key, line.commodityId, line.returnedQty, project.remainingCr || 0).toString(36)}`,
+        source: RECOVERY_SOURCE, type: 'cargo_delivery', stationId, factionId: null,
+        reward_cr: 0, collateral_cr: 0, riskTier: 1, time_limit_s: 1800, preloadedCargo: false,
+        destStationId: stationId, destSectorId: project.sectorId, distance: 0,
+        title: `${project.causeId ? 'Pay back the wake' : 'Return the raid freight'}: ${qty}u ${good.name} for ${project.forPerson}`,
+        summary: `Recover the original lots at ${Math.round(project.pos?.x || 0)}, ${Math.round(project.pos?.z || 0)}, or buy legitimate replacements at the market. Return up to ${qty}u to ${station.name || stationId}. Cargo space: ${qty * good.volPerU}u for the full load; partial deliveries accepted. Recovered goods settle this incident only. No deposit or supplied cargo. Decline or abort ${project.causeId ? 'keeps the remaining bill payable.' : 'leaves freight and survivor custody open.'}`,
+        params: { cmdtyId: line.commodityId, qty, cargoValue: qty * good.basePrice, fValue: 1, taskTime: 30 },
+        cause: { tag: project.causeId ? 'restitution' : 'raid_custody', fingerprint: project.key,
+          manifestId: line.manifestId || project.manifestId || null },
+      };
+      this._emit('mission:offered', offer);
+      firstOffer ||= offer;
+    }
+    return firstOffer;
+  },
+
+  prepareRecoveryDelivery(mission) {
+    const project = this._recoveryProjects().find((row) => row.key === mission.cause?.fingerprint);
+    const line = project?.lines.find((entry) => entry.commodityId === mission.params.cmdtyId
+      && (!mission.cause.manifestId || (entry.manifestId || project.manifestId) === mission.cause.manifestId));
+    if (!line) return false;
+    const unit = RECOVERY_GOODS.get(line.commodityId)?.basePrice || 1;
+    mission.params.qty = Math.min(line.qty - line.returnedQty,
+      project.causeId ? Math.ceil(project.remainingCr / unit) : Infinity);
+    return mission.params.qty > 0;
+  },
+
+  authorizesRecovery(manifestId) {
+    if (typeof manifestId !== 'string' || !manifestId) return false;
+    const projects = this._recoveryProjects();
+    return (this.state.missions?.active || []).some((mission) => {
+      if (mission.source !== RECOVERY_SOURCE || mission.status !== 'active'
+        || mission.cause?.manifestId !== manifestId) return false;
+      const project = projects.find((row) => row.key === mission.cause.fingerprint);
+      return !!project?.lines.some((line) => (line.manifestId || project.manifestId) === manifestId
+        && line.commodityId === mission.params.cmdtyId && line.qty > line.returnedQty);
+    });
+  },
+
+  _deliverRecovery(payload) {
+    const mission = this.state.missions?.active?.find((m) => m.id === payload?.missionId && m.source === RECOVERY_SOURCE);
+    if (!mission || mission.destStationId !== payload.stationId || mission.params.cmdtyId !== payload.commodityId) return 0;
+    const project = this._recoveryProjects().find((row) => row.key === mission.cause?.fingerprint);
+    const line = project?.lines.find((entry) => entry.commodityId === payload.commodityId
+      && (!mission.cause.manifestId || (entry.manifestId || project.manifestId) === mission.cause.manifestId));
+    if (!line || project.deliveries.includes(mission.id)) return 0;
+    const units = Math.min(Math.max(0, Math.floor(Number(payload.qty) || 0)), line.qty - line.returnedQty);
+    if (!(units > 0)) return 0;
+    if (project.causeId) {
+      return this.registry?.get('lawSecurity')?.creditRestitutionDelivery({
+        causeId: project.causeId, commodityId: payload.commodityId, qty: units, deliveryId: mission.id,
+      }) || 0;
+    }
+    project.deliveries.push(mission.id);
+    line.returnedQty += units;
+    this._refreshRaidCase(project);
+    return units;
+  },
+
+  _record(payload) {
+    if (!payload || payload.outcome !== 'custody' || payload.entityId == null) return null;
+    const state = this.state;
+    const entity = state.entities && state.entities.get && state.entities.get(payload.entityId);
+    if (!eligible(entity, state)) return null;
+    const ledger = ensureLedger(state);
+    const receiptId = String(payload.id || `surrender-custody:${payload.entityId}`);
+    // Core deliberately recycles entity ids. Pair the upstream receipt id with its authoritative
+    // sim timestamp so a later ship reusing that id is not mistaken for a duplicate synchronous
+    // custody event.
+    const settlementKey = `${receiptId}@${Number(payload.t) || 0}`;
+    if (ledger.settledIds.includes(settlementKey)) return null;
+
+    const data = entity.data || {};
+    const ai = data.ai || {};
+    const sectorId = payload.sectorId || state.world && state.world.currentSectorId || null;
+    if (!sectorId) return null;
+    const offenderFactionId = entity.factionId || payload.factionId || null;
+    const archetype = String(ai.archetype || data.aiArchetype || data.shipClass || entity.type || 'unknown');
+    const shipClass = String(data.shipClass || entity.type || 'ship');
+    const offenderType = String(data.lootTableId || archetype);
+    const profileId = `${offenderFactionId || 'unknown'}:${offenderType}`;
+    const profile = ledger.profiles[profileId] || {
+      profileId,
+      factionId: offenderFactionId,
+      offenderType,
+      archetype,
+      shipClass,
+      captureCount: 0,
+      totalBountyCr: 0,
+      firstCapturedAt: Number(state.simTime) || 0,
+      lastCapturedAt: null,
+      lastSectorId: null,
+      lastStationId: null,
+      lastAuthorityFactionId: null,
+      pendingIntelMilestone: null,
+      pendingIntelDay: null,
+      appliedIntelMilestone: 0,
+      networkName: null,
+    };
+    normalizeProfile(profile);
+    const bountyCr = Math.max(0, Math.round(Number(data.bountyCr) || 0));
+    profile.captureCount += 1;
+    profile.totalBountyCr += bountyCr;
+    profile.lastCapturedAt = Number(state.simTime) || 0;
+    profile.lastSectorId = sectorId;
+    profile.lastStationId = payload.stationId || null;
+    profile.lastAuthorityFactionId = payload.authorityFactionId || null;
+    scheduleIntel(profile, currentDay(state));
+    ledger.profiles[profileId] = profile;
+
+    const record = {
+      receiptId,
+      settlementKey,
+      entityId: entity.id,
+      offenderFactionId,
+      authorityFactionId: payload.authorityFactionId || null,
+      profileId,
+      offenderType,
+      archetype,
+      shipClass,
+      bountyCr,
+      stationId: payload.stationId || null,
+      sectorId,
+      repeatIndex: profile.captureCount,
+      capturedAt: Number(state.simTime) || 0,
+    };
+    ledger.totalCaptured += 1;
+    ledger.captures.push(record);
+    if (ledger.captures.length > CAPTURE_HISTORY_CAP) ledger.captures.splice(0, ledger.captures.length - CAPTURE_HISTORY_CAP);
+    ledger.settledIds.push(settlementKey);
+    if (ledger.settledIds.length > SETTLED_ID_CAP) ledger.settledIds.splice(0, ledger.settledIds.length - SETTLED_ID_CAP);
+
+    const impulse = custodyImpulse(record);
+    this._emit('sectorsim:impulse', impulse);
+    this._emit('custody:recorded', { ...record, worldImpulse: { ...impulse } });
+    this._emit('law:custodyAcknowledged', {
+      entityId: record.entityId,
+      stationId: record.stationId,
+      authorityFactionId: record.authorityFactionId,
+      profileId,
+      repeatIndex: record.repeatIndex,
+      t: record.capturedAt,
+    });
+    this._say(record);
+    return record;
+  },
+
+  _matureIntel(payload) {
+    const ledger = ensureLedger(this.state);
+    const day = Number.isFinite(Number(payload.days))
+      ? Math.max(0, Math.floor(Number(payload.days)))
+      : currentDay(this.state);
+    const matured = [];
+    for (const profileId of Object.keys(ledger.profiles).sort()) {
+      const profile = normalizeProfile(ledger.profiles[profileId]);
+      const milestone = profile.pendingIntelMilestone;
+      if (!milestone || day < profile.pendingIntelDay) continue;
+      profile.networkName = profile.networkName || networkNameFor(this.state, profile.profileId);
+      profile.appliedIntelMilestone = milestone;
+      profile.pendingIntelMilestone = null;
+      profile.pendingIntelDay = null;
+      const intel = {
+        profileId: profile.profileId,
+        networkName: profile.networkName,
+        factionId: profile.factionId,
+        authorityFactionId: profile.lastAuthorityFactionId || null,
+        sectorId: profile.lastSectorId,
+        stationId: profile.lastStationId,
+        offenderType: profile.offenderType,
+        archetype: profile.archetype,
+        captureCount: profile.captureCount,
+        milestone,
+        day,
+      };
+      const impulse = intelligenceImpulse(intel);
+      this._emit('pirateRumor:counterIntel', { ...intel, worldImpulse: { ...impulse } });
+      this._emit('sectorsim:impulse', impulse);
+      this._surfaceRepeatProfile(profile, intel);
+      matured.push(intel);
+      scheduleIntel(profile, day);
+    }
+    return matured;
+  },
+
+  _say(record) {
+    const text = record.repeatIndex > 1
+      ? `CONTROL: custody confirmed. Repeat ${record.archetype.replace(/_/g, ' ')} profile linked.`
+      : 'CONTROL: custody confirmed. Hull and crew entered into the warrant ledger.';
+    const voice = this.helpers && this.helpers.voice;
+    const spoken = !!(voice && typeof voice.say === 'function' && voice.say({
+      channel: 'info',
+      kind: 'custodyConsequences',
+      id: `custodyConsequences:${record.receiptId}`,
+      text,
+      ttl: 3,
+    }));
+    // A refused voice.say (arbiter busy) must not drop the line silently — fall back to toast.
+    if (!spoken) this._emit('toast', { text, kind: 'good', ttl: 3 });
+    return true;
+  },
+
+  _surfaceRepeatProfile(profile, intel) {
+    const headline = `Custody interviews linked the ${profile.networkName} repeat-offender profile; patrol intelligence updated.`;
+    this._emit('news:headline', {
+      headline,
+      text: headline,
+      kind: 'custody-intelligence',
+      sectorId: intel.sectorId,
+      stationId: intel.stationId,
+      factionId: intel.authorityFactionId,
+      profileId: profile.profileId,
+      captureCount: profile.captureCount,
+      networkName: profile.networkName,
+      milestone: intel.milestone,
+    });
+  },
+
+  _emit(event, payload) {
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
+  },
+
+  destroy() {
+    if (this.bus && typeof this.bus.off === 'function') {
+      if (this._onCustody) this.bus.off('law:custodyTransfer', this._onCustody);
+      if (this._onDayTick) this.bus.off('day:tick', this._onDayTick);
+      if (this._onImpoundPosted) this.bus.off('law:impoundPosted', this._onImpoundPosted);
+      if (this._onImpoundWorked) this.bus.off('law:impoundWorked', this._onImpoundWorked);
+      if (this._onImpoundRecovered) this.bus.off('law:impoundRecovered', this._onImpoundRecovered);
+      for (const [name, fn] of this._recoveryListeners || []) this.bus.off(name, fn);
+    }
+    this._onCustody = this._onDayTick = null;
+    this._onImpoundPosted = this._onImpoundWorked = this._onImpoundRecovered = null;
+    this._recoveryListeners = [];
+  },
+};
+
+function freshLedger() {
+  return { totalCaptured: 0, captures: [], profiles: {}, settledIds: [], impound: null, raidAftermath: {} };
+}
+
+function ensureLedger(state) {
+  const player = state.player || (state.player = {});
+  if (!player.custodyLedger || typeof player.custodyLedger !== 'object') player.custodyLedger = freshLedger();
+  const ledger = player.custodyLedger;
+  ledger.totalCaptured = Math.max(0, Math.floor(Number(ledger.totalCaptured) || 0));
+  if (!Array.isArray(ledger.captures)) ledger.captures = [];
+  if (!ledger.profiles || typeof ledger.profiles !== 'object' || Array.isArray(ledger.profiles)) ledger.profiles = {};
+  for (const profile of Object.values(ledger.profiles)) normalizeProfile(profile);
+  if (!Array.isArray(ledger.settledIds)) ledger.settledIds = [];
+  ledger.impound = normalizeImpoundBill(ledger.impound);
+  if (!ledger.raidAftermath || typeof ledger.raidAftermath !== 'object' || Array.isArray(ledger.raidAftermath)) ledger.raidAftermath = {};
+  return ledger;
+}
+
+export function quoteImpoundBill(player) {
+  const ins = player && player.insurance && typeof player.insurance === 'object' ? player.insurance : {};
+  const deductible = Math.max(0, Math.round(Number(ins.deductibleCr) || 500));
+  const restitution = ins.insuredModules ? 0 : restitutionForPlayer(player);
+  return deductible + restitution;
+}
+
+/**
+ * RC-461 — the restitution half of the bill for the hull in the pound. The active hull is named by
+ * `ownedShips[activeShipIndex].defId`; an invalid index, an unknown definition, or a hull the
+ * catalog prices at zero all fall back to the flat floor rather than guessing at another owned
+ * hull (a parked expensive ship is not the one the yard is holding, and an unreadable index is
+ * not permission to read a different slot). Pure catalog arithmetic.
+ */
+function restitutionForPlayer(player) {
+  const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const index = player ? player.activeShipIndex : null;
+  const slot = Number.isInteger(index) && index >= 0 && index < owned.length ? owned[index] : null;
+  const defId = slot && typeof slot.defId === 'string' ? slot.defId : null;
+  const price = defId ? HULL_PRICE_BY_ID.get(defId) : null;
+  const scaled = Number.isFinite(price) ? Math.floor(price * IMPOUND_RESTITUTION_RATE) : 0;
+  return Math.max(IMPOUND_RESTITUTION_CR, scaled);
+}
+
+export function impoundBillFor(state) {
+  const ledger = state && state.player && state.player.custodyLedger;
+  return ledger && ledger.impound && typeof ledger.impound === 'object' ? ledger.impound : null;
+}
+
+export function isImpoundWorkComplete(bill) {
+  return !!(bill && bill.status === 'open' && bill.workS >= bill.workNeedS);
+}
+
+export function openImpoundBill(state, payload) {
+  if (!state || !payload) return null;
+  const ledger = ensureLedger(state);
+  const existing = normalizeImpoundBill(ledger.impound);
+  const billId = typeof payload.billId === 'string' && payload.billId ? payload.billId : null;
+  if (existing && existing.status === 'open') {
+    if (billId && existing.billId && existing.billId !== billId) return existing;
+    // A pre-dedup saved bill can lack billId entirely; backfill it or closeImpoundBill's
+    // identity check could never pass and the impound softlocks.
+    if (!existing.billId && billId) existing.billId = billId;
+    if (payload.yard) existing.yard = posOf(payload.yard);
+    if (payload.lock) existing.lock = posOf(payload.lock);
+    if (payload.work) existing.work = posOf(payload.work);
+    if (payload.yardId != null) existing.yardId = payload.yardId;
+    if (payload.lockId != null) existing.lockId = payload.lockId;
+    if (payload.clerkId != null) existing.clerkId = payload.clerkId;
+    // A repost names its sector — a cross-sector repost must not keep the bill's stale
+    // sectorId or the yard reads as sector-local to a place it isn't.
+    if (payload.sectorId) existing.sectorId = payload.sectorId;
+    ledger.impound = existing;
+    return existing;
+  }
+  const owedCr = Math.max(0, Math.round(Number(payload.owedCr) || quoteImpoundBill(state.player)));
+  const bill = {
+    billId: billId || `impound:${state.meta && state.meta.seed || 1}`,
+    status: 'open',
+    owedCr,
+    remainingCr: owedCr,
+    workS: 0,
+    workNeedS: IMPOUND_WORK_S,
+    yard: posOf(payload.yard),
+    lock: posOf(payload.lock),
+    work: posOf(payload.work),
+    yardId: payload.yardId != null ? payload.yardId : null,
+    lockId: payload.lockId != null ? payload.lockId : null,
+    clerkId: payload.clerkId != null ? payload.clerkId : null,
+    sectorId: payload.sectorId || (state.world && state.world.currentSectorId) || null,
+    postedAt: Number(payload.postedAt != null ? payload.postedAt : state.simTime) || 0,
+    method: null,
+  };
+  ledger.impound = bill;
+  return bill;
+}
+
+export function applyImpoundWork(state, payload) {
+  const bill = impoundBillFor(state);
+  if (!bill || bill.status !== 'open') return null;
+  // PB-CONS-D / SF-164 — yard labor settles only the bill it was worked against. A
+  // shift event naming a different bill credits nothing; an unlabeled one still
+  // lands on the single open bill (there is never more than one).
+  const forBill = payload && typeof payload.billId === 'string' && payload.billId ? payload.billId : null;
+  if (forBill && bill.billId && forBill !== bill.billId) return bill;
+  const dt = Number(payload && payload.dt);
+  if (!(dt > 0)) return bill;
+  bill.workS = Math.min(bill.workNeedS, (Number(bill.workS) || 0) + dt);
+  // PB-CONS-D / SF-153 / SF-164 — confirmed work credits the bill as it accrues, not
+  // only at shift end. Half the shift owes half the bill, so paying the remainder in
+  // credits stays a real door and a partial shift leaves an exact partial debt.
+  // Credit is capped at the obligation itself: labor shrinks a debt, never mints
+  // money, and never raises what is still owed.
+  const earnedCr = bill.workNeedS > 0
+    ? Math.min(bill.owedCr, Math.round(bill.owedCr * (bill.workS / bill.workNeedS)))
+    : bill.owedCr;
+  bill.remainingCr = Math.max(0, Math.min(bill.remainingCr, bill.owedCr - earnedCr));
+  return bill;
+}
+
+export function closeImpoundBill(state, payload) {
+  const bill = impoundBillFor(state);
+  if (!bill || bill.status !== 'open') return bill;
+  if (!payload || payload.accepted !== true || payload.source !== 'lawSecurity') return bill;
+  // The native recovery receipt names the yard's bill. A late/replayed receipt for an
+  // earlier impound cannot discharge the new obligation occupying this ledger slot.
+  if (typeof payload.billId !== 'string' || payload.billId !== bill.billId) return bill;
+  const method = payload.method;
+  if (method !== 'pay' && method !== 'work' && method !== 'steal') return bill;
+  bill.status = method === 'pay' ? 'paid' : method === 'work' ? 'worked' : 'stolen';
+  bill.method = method;
+  bill.remainingCr = method === 'steal' ? bill.owedCr : 0;
+  bill.closedAt = Number(payload.t != null ? payload.t : state && state.simTime) || 0;
+  return bill;
+}
+
+function normalizeImpoundBill(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  value.owedCr = Math.max(0, Math.round(Number(value.owedCr) || 0));
+  value.remainingCr = Math.max(0, Math.round(Number(value.remainingCr) || 0));
+  value.workS = Math.max(0, Number(value.workS) || 0);
+  value.workNeedS = Math.max(0, Number(value.workNeedS) || IMPOUND_WORK_S);
+  value.yard = posOf(value.yard);
+  value.lock = posOf(value.lock);
+  value.work = posOf(value.work);
+  if (value.status !== 'open' && value.status !== 'paid' && value.status !== 'worked' && value.status !== 'stolen') {
+    value.status = 'open';
+  }
+  return value;
+}
+
+function posOf(value) {
+  return { x: Number(value && value.x) || 0, z: Number(value && value.z) || 0 };
+}
+
+function normalizeProfile(profile) {
+  if (!profile || typeof profile !== 'object') return profile;
+  profile.captureCount = Math.max(0, Math.floor(Number(profile.captureCount) || 0));
+  profile.appliedIntelMilestone = Math.max(0, Math.floor(Number(profile.appliedIntelMilestone) || 0));
+  profile.pendingIntelMilestone = Number.isFinite(Number(profile.pendingIntelMilestone))
+    ? Math.max(0, Math.floor(Number(profile.pendingIntelMilestone))) || null : null;
+  profile.pendingIntelDay = Number.isFinite(Number(profile.pendingIntelDay))
+    ? Math.max(0, Math.floor(Number(profile.pendingIntelDay))) : null;
+  profile.networkName = profile.networkName || null;
+  return profile;
+}
+
+function currentDay(state) {
+  if (Number.isFinite(Number(state && state.days))) return Math.max(0, Math.floor(Number(state.days)));
+  return Math.max(0, Math.floor((Number(state && state.simTime) || 0) / 600));
+}
+
+function scheduleIntel(profile, day) {
+  if (!profile || profile.pendingIntelMilestone) return false;
+  const applied = Math.max(0, profile.appliedIntelMilestone | 0);
+  const milestone = INTEL_MILESTONES.find((value) => value > applied && profile.captureCount >= value) || null;
+  if (!milestone) return false;
+  profile.pendingIntelMilestone = milestone;
+  profile.pendingIntelDay = Math.max(0, Math.floor(Number(day) || 0)) + 1;
+  return true;
+}
+
+function networkNameFor(state, profileId) {
+  const seed = state && state.meta && state.meta.seed || 1;
+  const pick = (list, salt) => list[hash32(seed, profileId, salt) % list.length];
+  return `${pick(NETWORK_PREFIX, 'prefix')} ${pick(NETWORK_NOUN, 'noun')} ${pick(NETWORK_KIND, 'kind')}`;
+}
+
+function eligible(entity, state) {
+  if (!entity || entity.id === state.playerId || !['ship', 'drone'].includes(entity.type)) return false;
+  const data = entity.data || {};
+  const ai = data.ai || {};
+  if (data.isBoss || data.encounterBoss || data.missionBoss || data.aceMemory
+    || ai.isBoss || ai.fanatic || ai.ace || ai.moraleImmune || ai.surrenderImmune) return false;
+  const authored = [ai.archetype, ai.aiArchetype, ai.role, ai.spawnContext, ai.encounterKind, data.aiArchetype, data.role]
+    .filter(Boolean).join(' ').toLowerCase();
+  return !/(^|[\s_-])(boss|miniboss|fanatic)([\s_-]|$)/.test(authored)
+    && !authored.includes('named_hunter')
+    && !authored.includes('ace_return');
+}
+
+function custodyImpulse(record) {
+  const bountyMagnitude = Math.min(0.012, record.bountyCr / 50_000);
+  const repeatMagnitude = Math.min(0.008, Math.max(0, record.repeatIndex - 1) * 0.004);
+  return {
+    kind: 'custody_transfer',
+    sectorId: record.sectorId,
+    danger: -(0.012 + bountyMagnitude + repeatMagnitude),
+    pricePressure: -0.003,
+    factionId: record.authorityFactionId,
+    influenceDelta: 0.012 + Math.min(0.012, record.repeatIndex * 0.003),
+    profileId: record.profileId,
+    receiptId: record.receiptId,
+  };
+}
+
+function intelligenceImpulse(intel) {
+  const magnitude = Math.min(0.032, 0.012 + intel.milestone * 0.0025);
+  return {
+    kind: 'custody_intelligence',
+    sectorId: intel.sectorId,
+    danger: -magnitude,
+    pricePressure: -0.004,
+    factionId: intel.authorityFactionId,
+    influenceDelta: Math.min(0.04, 0.014 + intel.milestone * 0.003),
+    profileId: intel.profileId,
+    milestone: intel.milestone,
+    networkName: intel.networkName,
+  };
+}
+
+export default custodyConsequences;

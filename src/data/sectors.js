@@ -1,0 +1,1697 @@
+// src/data/sectors.js – canonical persistent galaxy graph.
+// Sector IDs use sector_ prefix; station IDs use station_ prefix; faction IDs use faction_ prefix.
+// Fixed geography (stations/gates/fields/POIs) merged from sectorAnchors.js — see design/world-identity/PIPELINE.md.
+import {
+  applySectorAnchors,
+  CERES_WRECK_CATHEDRAL_LOCAL_POS,
+  CERES_SECOND_MEASURE_LOCAL_POS,
+} from './sectorAnchors.js';
+import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegions/index.js';
+import { applyClaimableBodySites } from './claimableBodies.js';
+import { KETTLE_LINE_POIS } from './kettleLine.js';
+import { VESPER } from './vesper.js';
+import { RUUD } from './ruud.js';
+import { SOLSTICE } from './solstice.js';
+import { applyPlanetStateAssignments } from './planetStates.js';
+import { appendPq019FacilityPois } from './heistFacilities.js';
+import { BOLUS_PALETTE, bolusSectorCard } from './theBolus.js';
+import { appendSectorWonderPois } from './sectorWonders.js';
+// Per ARCHITECTURE §0.8:
+//   dangerTier(s) = clamp(round((1 - s.security) * 5), 0, 5)
+//   wealthIndex(s) = clamp(0.3 + 0.16*tier + 0.10*(1-security), 0.3, 1.6)
+//   dangerIndex(s) = clamp(0.05 + 0.22*tier + 0.25*(1-security), 0, 1.0)
+// Pure data + pure math helpers, no imports.
+
+export const STATION_TYPES = ['trade_hub', 'refinery', 'mining', 'fab', 'military', 'blackmarket', 'research'];
+export const HAZARD_TYPES  = ['dense_asteroid', 'nebula', 'radiation', 'debris'];
+export const POI_TYPES     = ['beacon', 'derelict', 'cache', 'colony', 'anomaly', 'wormhole', 'wreck'];
+
+export const SECTOR_PALETTE_CLASSES = {
+  // Lacquer & Starlight: warm keys, blue-violet shadows, dark negative space.
+  core: {
+    // Sun-warmed inhabited machinery; cooler reflected light separates its shadow planes.
+    key: 0xffe2bd, rim: 0x82baf0, fill: 0xa3b4dd, ambient: 0x45516f,
+    fog: 0x05070b, fogDensity: 0, nebulaTint: 0x2450a0, dust: 0x8ec0e8,
+  },
+  belt: {
+    key: 0xffd59a, rim: 0x71a4bf, fill: 0xbca58d, ambient: 0x594a52,
+    fog: 0x090705, fogDensity: 0.00002, nebulaTint: 0x8a4a1e, dust: 0xc0793d,
+  },
+  fringe: {
+    key: 0xffb07a, rim: 0x9875ce, fill: 0xbc91a6, ambient: 0x51435d,
+    fog: 0x090504, fogDensity: 0.00003, nebulaTint: 0x8a1e1e, dust: 0xc15032,
+  },
+  anomaly: {
+    key: 0xc8b6ff, rim: 0x54ffb0, fill: 0x4ddc92, ambient: 0x494760,
+    fog: 0x08050d, fogDensity: 0.00012, nebulaTint: 0x5a1e8a, dust: 0x79ffc8,
+  },
+  // Wet interior. Luminance stays inside the palette check; the room goes dark at runtime.
+  viscera: BOLUS_PALETTE,
+};
+
+const CORE_SECTORS = [
+  {
+    id: 'sector_helios_prime', name: 'Helios Prime', tier: 0, security: 0.98, charted: true,
+    scenic: true,
+    factionId: 'faction_scn', position: { x: 0, y: 0 }, worldRadius: 3500,
+    palette: SECTOR_PALETTE_CLASSES.core,
+    // Tutorial home sector: NO hostile spawns (enemyDensity 0). A brand-new pilot must not be
+    // hunted before learning the ropes; danger ramps up only in neighbouring sectors.
+    trafficPerMin: 18, enemyDensity: 0, enemyLevel: [1, 2],
+    neighbors: ['sector_ceres_belt', 'sector_tethys_junction', 'sector_vesta_forge'],
+    stations: [
+      { id: 'station_helios',     name: 'Helios Station',  type: 'trade_hub', factionId: 'faction_scn', size: 'L', services: ['trade','shipyard','refuel','repair','missions'],
+        // Helios keeps a standing shortage book for the starter seam's iron. This changes only the
+        // listing's stock equilibrium; the commodity price curve and every other market stay shared.
+        marketEquilibriumFactors: { cmdty_ore_iron: 0.09 },
+        chartNote: "Everything in stock, everything watched. Fair prices, constant questions." },
+      { id: 'station_coalition',  name: 'Coalition HQ',    type: 'military',  factionId: 'faction_scn', size: 'M', services: ['missions','repair','refuel'],
+        chartNote: "Concord's desk. Clean contracts, and a clean record while you're docked." },
+    ],
+    // A small safe asteroid claim close to the spawn point so new pilots can learn mining before
+    // the wider sector opens up (no hostiles here).
+    // Overnight B2 density: starter belt is findable and larger; secondary field near Coalition HQ.
+    fields: [
+      {
+        id: 'f_helios_starter', type: 'ast_common_rock', countWeight: 1.0,
+        center: { x: 720, z: -260 }, clusterRadius: 380, count: 42,
+        // WF-06 starter-seam loop-lock (GDD_2_0 §5.5 "mining teaches the tether; the tether
+        // feeds mining"): the scattered claim rock stays common (its yield table tops under the
+        // bulk-haul core threshold, so nothing in the scatter is ever too big to scoop), and the
+        // tether verb is taught AT the seam by three authored heavy boulders pinned into the
+        // claim. Each is an ast_metallic mass with authored hp/yield inside that type's own
+        // tables — fracturing one leaves a core chunk only the Massline can move, and the tag
+        // routes it to Ceres Refinery (no Helios station pays refine). Positions are
+        // sector-local, inside the cluster, clear of the Claim Cracker mouth (720,-420) and the
+        // claim-mark/locker props. `material: 'rock'` pins the surface tag: environmentMaterials
+        // stamps a metal surface as optic-tagged and the mining beam refuses optic-tagged bodies
+        // (systems/mining.js applyMining opticMaterial guard) — see the demo defect ledger row
+        // for that surface-tag/lattice-guard collision; ore comes from the type, not the surface.
+        boulders: [
+          { id: 'helios_boulder_mass', type: 'ast_metallic', material: 'rock',
+            pos: { x: 600, z: -300 }, radius: 20, oreHP: 860, yieldU: 30 },
+          { id: 'helios_boulder_mid', type: 'ast_metallic', material: 'rock',
+            pos: { x: 830, z: -180 }, radius: 17, oreHP: 700, yieldU: 27 },
+          { id: 'helios_boulder_rim', type: 'ast_metallic', material: 'rock',
+            pos: { x: 640, z: -120 }, radius: 15, oreHP: 600, yieldU: 25 },
+        ],
+      },
+      {
+        id: 'f_helios_outer', type: 'ast_metallic', countWeight: 0.7,
+        center: { x: -900, z: 640 }, clusterRadius: 320, count: 28,
+      },
+    ],
+    hazards: [],
+    pois: [
+      { id: 'poi_tutorial', type: 'beacon', name: 'Tutorial Beacon' },
+      { id: 'poi_vesper_rehearsal', type: 'anomaly', name: 'Vesper’s Rehearsal',
+        pos: { ...VESPER.anchor }, runtimeOwner: 'vesper', scannerSignalKind: 'anomaly',
+        discoveryPlate: { title: 'SV-3 / Kinetic Choir',
+          body: 'Three loose resonators and a moth-winged survey machine. Scan the conductor; Massline a bell, pull, and release. The chart marks the rehearsal site, not the moving band.' } },
+      {
+        id: 'poi_memorial',
+        type: 'beacon',
+        name: 'The Candle Fleet',
+        scannerSignalKind: 'archive',
+        // Landmark-quest contract (landmark_c3_pit_bearing): the close pulse must be
+        // retakeable after the signal investigation, because the accepted filing asks for
+        // one more pass at the plinth.
+        repeatableScannerSignal: true,
+        flavorTargetRef: 'landmark_c3_candle_fleet',
+        discoveryPlate: {
+          title: 'What Was the Pit?',
+          body: "Twenty-four candles burn around a deliberately dark twenty-fifth plinth. Its black-box record carries one telemetry smear on the Pit convoy's final course.",
+        },
+      },
+      {
+        id: 'poi_helios_yard',
+        type: 'derelict',
+        name: 'Outer Yard Derelict',
+        discoveryPlate: {
+          title: 'Outer Yard Decommission Frame',
+          body: 'The stripped structural rib of an early transport berth, towed into the outer debris cluster when Helios Station expanded. Cold welds and cutting torch scars mark where the modular gantry was salvaged.',
+        },
+      },
+      // Lane furniture (design/fiction/LANE_FURNITURE.md). Deliberately placed ON the corridor a
+      // new pilot actually flies — spawn, tutorial beacon, starter seam — because the camera can
+      // only see ~50 world units of ground plane and clutter parked anywhere else is radar content.
+      { id: 'poi_helios_lane_pin', type: 'beacon', name: 'Corridor Pin 44-C' },
+      { id: 'poi_helios_tally', type: 'beacon', name: 'Helios Weigh-Point' },
+      { id: 'poi_helios_claim_mark', type: 'beacon', name: 'Starter Seam Claim' },
+      {
+        id: 'poi_helios_locker',
+        type: 'cache',
+        scannerSignalKind: 'cache',
+        name: 'Bonded Cold Locker',
+        // Sealed-cache payoff (world.js _spawnCachePayoffs): investigating pops this lot as a
+        // real anchored cargo pod — the plate's "untouched specimen compartment", payable.
+        contents: { commodityId: 'cmdty_ore_silverium', amount: 3 },
+        discoveryPlate: {
+          title: 'Bonded Cold Locker',
+          body: 'A pressurized ore-sample locker anchored to the starter seam bedrock. Heavy Concord inspection seals from the initial Helios survey remain intact over an untouched specimen compartment.',
+        },
+      },
+      {
+        id: 'poi_helios_bay7',
+        type: 'cache',
+        scannerSignalKind: 'cache',
+        name: 'Helios Bay 7',
+        discoveryPlate: {
+          title: 'Bay 7 — Shelved Grid',
+          body: 'A maintenance pad the station still files tickets for. The odor is consistent with transit. No action.',
+        },
+      },
+      { id: 'poi_helios_ash_pin', type: 'derelict', name: 'Ash Pin — SPAN-HOLD',
+        discoveryPlate: { title: 'Span-Hold 9',
+          body: 'A claim pin burned down to its own socket. The SPAN-HOLD partnership registered this rock in the first Ceres rush, lapsed, and left the pin to cook in the sun. Its ash line still reads on a scanner as a lane marker, which is more than the partnership ever got back.' } },
+      { id: 'poi_helios_whistle', type: 'derelict', name: 'Outer Yard Whistle',
+        discoveryPlate: { title: 'The Whistle',
+          body: 'A decommissioned approach horn cut loose when the yard frame came down. Its residual charge ticks one flat note across the approach band; the yard logs it as weather, and the weather has never once objected.' } },
+      {
+        // The Pit convoy's final leg: the dark plinth's black-box smear (landmark
+        // quest landmark_c3_pit_bearing) resolves to this drift line, and the
+        // relighting procession walks its bearing. Investigating the sealed cache
+        // marker pops one real pod (world.js _spawnCachePayoffs) — the Pit's own
+        // relief air, still waiting on the escort that was sold elsewhere.
+        id: 'poi_helios_pit_line',
+        type: 'cache',
+        scannerSignalKind: 'cache',
+        name: 'The Pit Line',
+        contents: { commodityId: 'cmdty_volatiles', amount: 3 },
+        discoveryPlate: {
+          title: 'The Pit Line',
+          body: 'Sealed relief pods hold formation along a dead-straight drift line, nose-on to the old toll cut. The convoy ran dark to slip it, and the escort was sold on before the rendezvous. A recall notice, re-stamped and redirected, is still lashed to the lead pod. One compartment reads full.',
+        },
+      },
+      {
+        // Concord customs waypoint on the bare Coalition chord.
+        id: 'poi_helios_picket',
+        type: 'beacon',
+        name: 'Checkpoint Niner',
+        discoveryPlate: {
+          title: 'Checkpoint Niner',
+          body: 'A Concord interdiction buoy holding the mid-chord between the trade ring and Coalition HQ. The scale weighs everything twice here — ore out, resumes in. The lamp has been green for eleven months, and nobody left on the roster remembers who to ask about a yellow one.',
+        },
+      },
+      {
+        // Survey chalk on the Fleet→Pit Line bearing; the relighting procession walks past it.
+        id: 'poi_helios_smear_pin',
+        type: 'beacon',
+        name: 'Smear Marker 7',
+        discoveryPlate: {
+          title: 'Smear Marker 7',
+          body: 'A survey pin with chalk on the flanks: one arrow, no number, laid on the bearing that runs from the Candle Fleet out toward the rim. Whoever drew it pressed hard enough to score the metal, and then never filed the leg.',
+        },
+      },
+      {
+        // The chart names the real wreck, not a second derelict prop: the unique-wreck
+        // program owns the body (rumor -> bearing ring -> fixed position), so this row
+        // carries no pos and runtimeOwner keeps _spawnPOIs from minting a decoy beside it.
+        id: 'poi_helios_choir_tender',
+        type: 'wreck',
+        name: 'Relief-Freighter Choir-Tender',
+        uniqueWreckId: 'wreck_choir_tender',
+        runtimeOwner: 'uniqueWrecks',
+      },
+      // ── S-01 third-shift departure furniture (ATTENTION ledger) ────────────────────────
+      // One authored beat on each gate leg — the three ~3k WU corridors every outbound
+      // pilot flies had nothing past Checkpoint Niner. Inline `pos` per the Tally
+      // precedent: sectorAnchors.js is a contended table and applySectorAnchors leaves
+      // unanchored rows untouched.
+      {
+        // Station→Ceres leg, ~70% out, clear of the f_helios_outer cluster.
+        id: 'poi_helios_shift_bell',
+        type: 'beacon',
+        name: 'Shift Bell 3',
+        pos: { x: -1288, z: 988 },
+        landmarkGlb: 'place_tally_post',
+        visualRadius: 9,
+        factionId: 'faction_scn',
+        chartNote: 'A horn on the Ceres leg. Rings at the end of third shift; first shift has never heard it.',
+        discoveryPlate: {
+          title: 'Shift Bell 3',
+          body: 'A brass relay buoy the harbour rings to end third shift. The bell log lists it as decommissioned twice; the night crews list it as the only clock that matters. It rings on the Ceres heading because that is the leg the ore scows take home.',
+        },
+      },
+      {
+        // Station→Tethys leg, halfway: the manifest that named the wrong mass.
+        id: 'poi_helios_misdeclared',
+        type: 'beacon',
+        name: 'Misdeclared Marker 12-K',
+        pos: { x: 1834, z: 586 },
+        landmarkGlb: 'place_nav_buoy',
+        visualRadius: 10,
+        factionId: 'faction_scn',
+        chartNote: 'A transit marker broadcasting the wrong mass. Two corrections filed; the buoy kept the first one.',
+        discoveryPlate: {
+          title: 'Marker 12-K',
+          body: 'A lane marker filed at fourteen tonnes that has always broadcast forty-one. Customs corrected the record in triplicate; the buoy outvoted it. Traffic navigates by the buoy and files by the record, which is why the audits never reconcile.',
+        },
+      },
+      {
+        // Station→Vesta leg, mid-chord: unclaimed freight orbiting its own paperwork.
+        id: 'poi_helios_lost_freight',
+        type: 'derelict',
+        name: 'Lost Freight Apron',
+        pos: { x: 576, z: 1390 },
+        landmarkGlb: 'place_container_rack',
+        visualRadius: 14,
+        factionId: 'faction_scn',
+        discoveryPlate: {
+          title: 'Lost Freight Apron',
+          body: 'Six racks of bonded crates in a slow orbit of their own claim tag. Every crate is filed as in-transit to a berth that closed in the last expansion. Nothing here is legally lost, so nothing here may be legally opened.',
+        },
+      },
+      {
+        // Coalition-side drift, on the HQ→Vesta-gate short chord: the tug that never
+        // clocked out.
+        id: 'poi_helios_overtime',
+        type: 'derelict',
+        name: 'Overtime Berth',
+        pos: { x: -644, z: 1617 },
+        landmarkGlb: 'place_dead_hulk',
+        discoveryPlate: {
+          title: 'Overtime Berth',
+          body: 'A yard tug parked nose-in on a berth marker, drive cold, tow line still made fast to nothing. Her shift ticket is open and accruing. The yard stopped paying into it years ago; nobody has found the form that ends a shift retroactively.',
+        },
+      },
+      // ATTENTION S-11 — claim culture at the outer seam: the starter field already carries
+      // the claim mark and the ash pin; the outer field gets the tag crews actually left.
+      {
+        id: 'poi_helios_seam_tag', type: 'beacon', name: 'Seam Tag 19',
+        pos: { x: -780, z: 700 }, landmarkGlb: 'place_asteroid_graffiti', visualRadius: 16,
+        discoveryPlate: {
+          title: 'Seam Tag 19',
+          body: 'Stencil paint on the outer field\u2019s biggest rock: a hull mark, three tally strokes, and a date nobody files anymore. The starter crews tag the seam they learned on; the nineteenth tag is the one that stuck, because the eighteenth is on a rock somebody mined.',
+        },
+      },
+      // ATTENTION S-12 — pilgrim dressing attending the Candle Fleet: the mooring where the
+      // family rafts tie up on the convoy\u2019s date.
+      {
+        id: 'poi_helios_pilgrim_moor', type: 'beacon', name: 'Pilgrim Mooring',
+        pos: { x: 1560, z: -700 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10,
+        discoveryPlate: {
+          title: 'Pilgrim Mooring',
+          body: 'A mooring buoy a watch off the Candle Fleet where the family rafts tie up on the convoy\u2019s date. Ribbons, chalk names, a thermos left for a father who isn\u2019t coming back for it. The harbour master logs the moorings and never counts them.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'sector_ceres_belt', name: 'Ceres Belt', tier: 1, security: 0.72, charted: true,
+    factionId: 'faction_dmc', position: { x: -3, y: 2 }, worldRadius: 4200,
+    industries: { mining: true, refinery: true },
+    palette: SECTOR_PALETTE_CLASSES.belt,
+    // First-hop starter pocket: the ambient pool funds the authored Belt-Shadow ambush pack
+    // (zone_ceres_ambush fields 3-4 Reach incl. a detonator dart) — planZoneSpawns splits the
+    // grant round-robin across every zoned want, so a starved pool re-derives the old 1-2-ship
+    // duet no matter how the zone presence is authored. Readability stays owned by the [1,2]
+    // level band and the clustered named zones, not by a thin spawn pool. Tier-2 sectors
+    // restore the full combat band and authored elites.
+    trafficPerMin: 10, enemyDensity: 0.73, enemyLevel: [1, 2],
+    neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_pallas_drift'],
+    stations: [
+      { id: 'station_ceres',   name: 'Ceres Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['trade','refuel','repair','ore_buy','refine','missions'],
+        // The crackers split feed into fuel cells three shifts long — more than the belt burns.
+        // This standing cell surplus changes only the listing's stock equilibrium; the commodity
+        // price curve and every other market stay shared (cheap end of the west-cut cell run).
+        // A contracts desk: the first gate destination has to be able to give a new pilot work
+        // (the refinery OFFER_MIX posts cargo/bulk/patrol/tow), or the corridor's only station
+        // is a place to sell and leave.
+        marketEquilibriumFactors: { cmdty_fuel_cells: 2.4 },
+        chartNote: 'Refinery row — buys ore dear, sells plates cheap, and the yard desk always needs another run moved.' },
+      { id: 'station_beltout', name: 'Belt Outpost',   type: 'mining',   factionId: 'faction_dmc', size: 'S', services: ['trade','missions','ore_buy'],
+        // Rock crews eat same-shift and the ration skiff never lands enough — a standing
+        // provisions shortage. Same shared curve; only this listing's stock equilibrium moves
+        // (dear end of the Drift Market ration run).
+        marketEquilibriumFactors: { cmdty_food: 0.1 },
+        chartNote: 'Rock crews and a scale. Ore moves same-shift; nothing else does.' },
+    ],
+    fields: [
+      { id: 'f_ceres_1', type: 'ast_metallic',    countWeight: 1.0 },
+      { id: 'f_ceres_2', type: 'ast_common_rock', countWeight: 1.0 },
+      { id: 'f_ceres_3', type: 'ast_metallic',    countWeight: 0.8 },
+    ],
+    hazards: [ { type: 'dense_asteroid', center: { x: 600, z: -400 }, radius: 700, intensity: 0.5 } ],
+    pois: [
+      { id: 'poi_driller', type: 'derelict', name: 'Abandoned Driller',
+        discoveryPlate: { title: 'Sold Twice',
+          body: 'A head-class rig abandoned bit-down on a face it never cracked. The Ceres yard records list it sold for scrap twice. The armor plating bolted over its survey lamps is presumably the second buyer\u2019s work.' } },
+      { id: 'poi_survey',  type: 'cache',    name: 'Survey Cache', contents: { commodityId: 'cmdty_ore_copper', amount: 4 } },
+      {
+        // First light on the inbound leg from the Helios gate.
+        id: 'poi_ceres_flare_rack',
+        type: 'beacon',
+        name: 'Refinery Flare Rack',
+        discoveryPlate: {
+          title: 'Refinery Flare Rack',
+          body: 'The crackers\' burn-off, racked and shielded so the arrival queue can read it from a belt away — the first light on the leg in from the Helios gate. When the rack goes dark the row is on safety hold and the scale closes with it.',
+        },
+      },
+      {
+        // The arrival queue's tally, two-thirds down the inbound leg.
+        id: 'poi_ceres_weigh_pin',
+        type: 'beacon',
+        name: 'Inbound Weigh Pin',
+        discoveryPlate: {
+          title: 'Inbound Weigh Pin',
+          body: 'The refinery queue\'s tally post. Chalk rows list berth times by shift — eighteen minutes on a good one. The oldest row has been scratched out and rewritten so many times the plate is now a hole.',
+        },
+      },
+      {
+        id: 'poi_ceres_throughline',
+        type: 'beacon',
+        name: 'Throughline Weigh Beacon',
+        factionId: 'faction_dmc',
+      },
+      {
+        id: 'world_site_wreck_cathedral', type: 'wreck', name: 'Wreck Cathedral',
+        anchor: CERES_WRECK_CATHEDRAL_LOCAL_POS,
+        runtimeOwner: 'asteroidSites',
+      },
+      // RU-7's empty work yard: actual encounter owns its two physical bodies.
+      { id: 'poi_ruckus_work_yard', type: 'anomaly', name: 'RUCKUS · Open Work Order',
+        pos: { x: 680, z: 640 }, runtimeOwner: 'ruckus', scannerSignalKind: 'anomaly', dressingExclusionRadius: 480,
+        chartNote: 'An old demolition retriever is keeping one pressure core. Scan to hail. Massline the core and throw it.',
+        discoveryPlate: { title: 'RU-7 / Open Work Order',
+          body: 'The crew clocks stopped. The retrieval service did not. Scan to wake RUCKUS; throw his caged core with the Massline. Three returns earn a pressure present. A held line pauses its countdown. Keep clear of the amber ring.' } },
+      { id: 'world_site_ceres_second_measure', type: 'wreck', name: 'Second Measure Shipbreak',
+        anchor: CERES_SECOND_MEASURE_LOCAL_POS, runtimeOwner: 'asteroidSites' },
+      // The Kettle Line drift trail (src/data/kettleLine.js): three authored convoy pieces
+      // strung along a drift line off the Helios-gate approach. Plain POI rows; the scan tells
+      // and the payoff pod live in that module and its owners.
+      ...KETTLE_LINE_POIS,
+      { id: 'poi_ceres_closed_refinery', type: 'anomaly', name: 'The Closed Refinery', pos: { x: 1600, z: 1800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      {
+        id: 'poi_solstice_lantern',
+        type: 'anomaly',
+        name: 'The Star Lantern',
+        pos: { ...SOLSTICE.anchor },
+        runtimeOwner: 'solstice',
+        scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'SL-9 / The Star Lantern',
+          body: 'An ancient gyroscopic astronomical lantern turning on the cold rim of Ceres Belt. Three floating focus prisms orbit its captive stellar heart. Scan to hail; ride the beam to recharge, or tether the prisms into alignment to ignite the lantern.',
+        },
+      },
+      // S-02 ATTENTION — the belt's claim grammar, dead, and ration run, all on inline pos so
+      // contended sectorAnchors.js stays untouched (S-01 precedent). Bodies are GLBs already
+      // admitted on the core graph.
+      {
+        // Claim Forty-Tag: a worked claim's pin on f_ceres_1's south rim. Paper first, charges
+        // second — the belt's whole law in one marker.
+        id: 'poi_ceres_claim_tag',
+        type: 'beacon', name: 'Claim Forty-Tag', factionId: 'faction_dmc',
+        pos: { x: 640, z: -500 }, landmarkGlb: 'place_claim_mark', visualRadius: 6,
+        chartNote: 'Worked claim, stamps legible. The tally post on the inbound leg lists its shift.',
+        discoveryPlate: { title: 'Claim Forty-Tag',
+          body: 'A claim pin seated in drilled rock, its stamp plate still legible under the dust: FORTY-TAG, Drift Shift Board, third issue. The rock it marks has been worked to the face and back — someone kept this claim alive through three crews by paying the filing fee on time, every time.' } },
+      {
+        // Re-stake on Forty: the second pin stamped over the first. The claim outlived its crew.
+        id: 'poi_ceres_restake',
+        type: 'beacon', name: 'Re-stake on Forty', factionId: 'faction_dmc',
+        pos: { x: 676, z: -512 }, landmarkGlb: 'place_claim_mark', visualRadius: 5,
+        discoveryPlate: { title: 'Re-stake on Forty',
+          body: 'A second claim pin driven four hands from the first, stamped fourth issue over the third. The Board lapsed the claim when the crew missed two tallies, then re-filed it to their replacement the same shift. The rock never knew the difference. The families did.' } },
+      {
+        // Ash Pin on the Pallas leg — the bare southwest corridor's only furniture: a claim pin
+        // burned to its socket, still transmitting a survey ID nobody answers to.
+        id: 'poi_ceres_ash_pin',
+        type: 'beacon', name: 'Ash Pin on the Pallas Leg', factionId: 'faction_dmc',
+        pos: { x: -1100, z: 2000 }, landmarkGlb: 'place_ash_pin', visualRadius: 6,
+        chartNote: 'Burned claim pin. Still pings a survey ID. Nobody answers to it.',
+        discoveryPlate: { title: 'Ash Pin on the Pallas Leg',
+          body: 'A claim pin cooked down to its socket by whatever took the crew — hull burn, drive flash, the record is one line long. The pin still transmits its survey ID on the old band. Drift crews pass it slow. Not from superstition: the ID is still on the Board\u2019s books, and the books are what the belt has instead of graves.' } },
+      {
+        // Cathedral Vigil: a worklight left burning for the Second Measure's dead on the
+        // Cathedral approach. The named dead belong to the place, not the memorial feed.
+        id: 'poi_ceres_vigil',
+        type: 'beacon', name: 'Cathedral Vigil', factionId: 'faction_dmc',
+        pos: { x: 980, z: 2190 }, landmarkGlb: 'place_worklight_tower', visualRadius: 9,
+        discoveryPlate: { title: 'Cathedral Vigil',
+          body: 'A worklight tower parked on the Cathedral approach, lamps pointed in, power cell swapped on a schedule nobody ordered. Under the mounting plate someone welded two names from the Second Measure\u2019s manifest — Okafor, Breen — because the shipbreak\u2019s own tally reads only tonnage.' } },
+      {
+        // Lapsed Claim Cache: the Skeptic's payoff — one real cache on the Pallas leg, contents
+        // modest, plate explaining the lapse. The pin-holder never came back.
+        id: 'poi_ceres_lapsed_cache',
+        type: 'cache', name: 'Lapsed Claim Cache',
+        pos: { x: -420, z: 1240 }, landmarkGlb: 'place_debris_chunk', visualRadius: 10,
+        contents: { commodityId: 'cmdty_ore_copper', amount: 3 },
+        discoveryPlate: { title: 'Lapsed Claim Cache',
+          body: 'A sacked assay locker tucked under a spun-out claim rock, pin still mounted above it. The ore inside was weighed, tagged, and never collected — the crew\u2019s toll receipt is dated three weeks before the Board struck their claim. The rock keeps what the dead already paid for.' } },
+      {
+        // Short-Ration Pod: the cmdty_food 0.1 shortage at Belt Outpost made physical — a
+        // provisions pod that missed its window and drifted past the approach.
+        id: 'poi_ceres_short_ration',
+        type: 'derelict', name: 'Short-Ration Pod', factionId: 'faction_dmc',
+        pos: { x: 1400, z: -1150 }, landmarkGlb: 'place_cargo_pod_standard', visualRadius: 8,
+        discoveryPlate: { title: 'Short-Ration Pod',
+          body: 'A provisions pod off the Belt Outpost approach, missed by the skiff that was supposed to catch it and logged as delivered anyway. The manifest says forty ration bricks. The outpost\u2019s mess board says the crew ate paste that week. Both records are correct.' } },
+      // ATTENTION S-11 — claim culture on the two busiest seams: the filed stake at
+      // f_ceres_2 and the lamp rig the shift abandoned mid-tear-down at f_ceres_1.
+      {
+        id: 'poi_ceres_shaft_seven', type: 'beacon', name: 'Shaft 7 Stake',
+        pos: { x: -600, z: 300 }, landmarkGlb: 'place_claim_mark', visualRadius: 5,
+        discoveryPlate: {
+          title: 'SHAFT 7',
+          body: 'A Drift Miners claim stake filed SHAFT 7, SEAM LEDGER PAGE GONE. Nine of eleven crews came back from the cave-in; the stake marks the cut, not the rescue. Belt crews touch it for luck they don\u2019t name.',
+        },
+      },
+      {
+        id: 'poi_ceres_three_lamp', type: 'derelict', name: 'Three-Lamp Corner',
+        pos: { x: 500, z: -650 }, landmarkGlb: 'place_worklight_tower', visualRadius: 12,
+        discoveryPlate: {
+          title: 'Three-Lamp Corner',
+          body: 'A survey lamp rig the shift abandoned mid-tear-down — two lamps dead, one still burning on battery years past its rating. The refinery lists it as navigation furniture now; the crew list says it was supposed to come home on the second skiff.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'sector_tethys_junction', name: 'Tethys Junction', tier: 1, security: 0.65, charted: true,
+    scenic: true,
+    factionId: 'faction_mts', position: { x: 3, y: 2 }, worldRadius: 4000,
+    palette: SECTOR_PALETTE_CLASSES.core,
+    trafficPerMin: 14, enemyDensity: 0.20, enemyLevel: [1, 2],
+    neighbors: ['sector_helios_prime', 'sector_ceres_belt', 'sector_vesta_forge', 'sector_io_reach'],
+    stations: [
+      { id: 'station_tethys',  name: 'Tethys Trade Hub', type: 'trade_hub', factionId: 'faction_mts', size: 'L',
+        missionProfile: 'contracts_hub', boardAnchorType: 'escort',
+        dispatchLabel: 'JUNCTION DISPATCH', dispatchConflictKey: 'faction_dmc:faction_mts',
+        services: ['trade','shipyard','refuel','repair','missions'],
+        chartNote: 'Convoys, patrols, and sealed freight change hands under the live DMC–MTS front board.' },
+      { id: 'station_customs', name: 'Customs Gate',      type: 'military',  factionId: 'faction_scn', size: 'S', services: ['toll','scan','refuel'],
+        chartNote: 'Toll plate and a scanner. Everything transits; nothing transits unread.' },
+    ],
+    fields: [ { id: 'f_tethys_1', type: 'ast_common_rock', countWeight: 1.0 } ],
+    hazards: [],
+    pois: [
+      {
+        id: 'poi_blackmkt', type: 'cache', name: 'Black Market Contact', hidden: true,
+        factionId: 'faction_quiet', requiresActiveScan: true, scannerSignalKind: 'ambush',
+        manualInvestigation: true,
+      },
+      { id: 'poi_tethys_weigh', type: 'beacon', name: 'Weigh-Slip Buoy', factionId: 'faction_mts' },
+      { id: 'poi_tethys_customs_log', type: 'beacon', name: 'Customs Log Relay', factionId: 'faction_scn' },
+      { id: 'poi_tethys_split_station', type: 'anomaly', name: 'The Split Station', pos: { x: -800, z: 1600 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      // WF-03 — The Tally (zone_tethys_tally, authoredPlaces.js): the toll/count plaza on the
+      // inbound Helios approach. The scan gate pins straddle the Helios-gate -> Meridian chord
+      // (~109 WU off the poi_tethys_customs_log relay, the last log before the line); the queue
+      // runs in past the tally post and the held-for-count pen to the Customs Gate scan face, so
+      // inbound traffic physically crosses the count. Lane-furniture grammar from
+      // design/fiction/LANE_FURNITURE.md (WT-TETH desk codes, green/red pass chevrons, gold tally
+      // lamps) using the packaged props Helios already ships. Inline `pos` for the same reason as
+      // the Vesta landmark below: sectorAnchors.js is a contended table; applySectorAnchors
+      // leaves unanchored pois untouched, and a pos means _spawnPOIs scatters nothing.
+      { id: 'poi_tethys_tally_queue_head', type: 'beacon', name: 'Queue Head Buoy', pos: { x: -1341, z: -901 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10 },
+      { id: 'poi_tethys_tally_queue_inner', type: 'beacon', name: 'Queue Inner Buoy', pos: { x: -1245, z: -1065 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10 },
+      { id: 'poi_tethys_tally_gate_red', type: 'beacon', name: 'Scan Gate — Red Side', pos: { x: -1100, z: -795 }, landmarkGlb: 'place_lane_pin', visualRadius: 10 },
+      { id: 'poi_tethys_tally_gate_green', type: 'beacon', name: 'Scan Gate — Green Side', pos: { x: -1033, z: -907 }, landmarkGlb: 'place_lane_pin', visualRadius: 10 },
+      {
+        id: 'poi_tethys_tally_post',
+        type: 'beacon',
+        name: 'The Tally Post',
+        pos: { x: -770, z: -885 },
+        landmarkGlb: 'place_tally_post',
+        visualRadius: 12,
+        factionId: 'faction_mts',
+        discoveryPlate: {
+          title: 'The Tally Post — WT-TETH-19',
+          body: 'Meridian gold on a Concord frame. Every hull inbound from Helios crosses the '
+            + 'scan gate and holds open for count here; the queue lamps run group-of-three for '
+            + 'the standard limit. The desk codes it WT-TETH-19 — the lane just calls it the Tally.',
+        },
+      },
+      { id: 'poi_tethys_tally_rack', type: 'derelict', name: 'Held-for-Count Rack', pos: { x: -710, z: -990 }, landmarkGlb: 'place_container_rack', visualRadius: 14,
+        discoveryPlate: { title: 'Held, For Count',
+          body: 'Nine racks of bonded freight the Tally desk seized and never finished counting. The desk still codes them pending; the queue lamps have outlived three desk supervisors. Nothing here has been legally lost, which is why nobody has legally taken it.' } },
+      { id: 'poi_tethys_tally_pod', type: 'derelict', name: 'Seized Cargo Pod', pos: { x: -660, z: -1050 }, landmarkGlb: 'place_cargo_pod_standard', visualRadius: 8,
+        discoveryPlate: { title: 'Exhibit A',
+          body: 'One pod off a hauler that ran the gate dark. The seizure stamp is still legible; the manifest is not. It sits where the desk can see it, which is where the desk wants it.' } },
+      { id: 'poi_tethys_tally_light', type: 'beacon', name: 'Count-Face Worklight', pos: { x: -650, z: -950 }, landmarkGlb: 'place_worklight_tower', visualRadius: 8 },
+      // RUBRIC / HM-11 (src/data/rubric.js, src/systems/rubric.js): the Customs Gate's retired hull marker works a
+      // filing it was ordered to mark CLEARED. South of the held-for-count rack, off the inbound queue lane.
+      { id: 'poi_rubric_marking_line', type: 'anomaly', name: 'RUBRIC · The Marking Line',
+        pos: { x: -790, z: -1190 }, runtimeOwner: 'rubric', scannerSignalKind: 'anomaly', dressingExclusionRadius: 180,
+        chartNote: 'A hull marker will not mark a moving hull. Scan to read its work; put a line on the hull and bring it to rest.',
+        discoveryPlate: {
+          title: 'HM-11 / The Marking Line',
+          body: 'A retired Customs Gate stencil drone hangs hull F-41 on a slack line south of the count rack. The hull is filed CLEARED. The drone has painted a different answer beside it. Scan to read its work; it will not mark a moving hull, so put a line on the hull and bring it to rest.',
+        } },
+      // S-03 ATTENTION — the junction's three bare legs get the Tally's own grammar (same GLB
+      // vocabulary, inline pos so sectorAnchors stays untouched). The bustle had one road;
+      // now it has four.
+      {
+        // Convoy Marshal Nine — the MTS marshal buoy on the Io Reach leg, the run every
+        // frontier convoy takes. It counts hulls out the door the way the Tally counts them in.
+        id: 'poi_tethys_marshal_nine',
+        type: 'beacon', name: 'Convoy Marshal Nine', factionId: 'faction_mts',
+        pos: { x: 1500, z: 1400 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10,
+        chartNote: 'Outbound marshal buoy. Convoys form on its lamps before the Reach run.',
+        discoveryPlate: { title: 'Convoy Marshal Nine',
+          body: 'A Meridian marshal buoy on the Io corridor, painted over a Concord lane keeper whose serial still bleeds through. Outbound hulls form on its lamps in groups of three — the same count grammar the Tally runs inbound, reversed. Its log lists every convoy that ever left on time. The log is a short file.' } },
+      {
+        // Form-Up Post — the assembly tally staggered off the marshal.
+        id: 'poi_tethys_formup',
+        type: 'beacon', name: 'Form-Up Post', factionId: 'faction_mts',
+        pos: { x: 1650, z: 1560 }, landmarkGlb: 'place_tally_post', visualRadius: 9,
+        discoveryPlate: { title: 'Form-Up Post',
+          body: 'The convoy assembly tally. Chalk columns list hull counts by departure window — three deep is standard, four is a good week, five means somebody is lying about their manifest. The post has never once been written on by the desk it belongs to.' } },
+      {
+        // Refused Consignment — freight that failed the outbound count, parked off-lane and
+        // still tagged. Nothing here may be legally opened; the tag is the whole joke.
+        id: 'poi_tethys_refused',
+        type: 'derelict', name: 'Refused Consignment', factionId: 'faction_mts',
+        pos: { x: 1560, z: 1700 }, landmarkGlb: 'place_cargo_pod_standard', visualRadius: 8,
+        discoveryPlate: { title: 'Refused Consignment',
+          body: 'A bonded pod set off-lane after the form-up count found a mass the manifest declined to mention. It carries two tags: the marshal\u2019s REFUSED stamp and the consignee\u2019s address correction, filed four cycles ago, still pending. The refusal is the only complete document on board.' } },
+      {
+        // Second Count Buoy — the toll's older layer on the Vesta leg: a Concord count
+        // station from before the Meridian lease, lamps out, mount still standing.
+        id: 'poi_tethys_second_count',
+        type: 'beacon', name: 'Second Count Buoy', factionId: 'faction_scn',
+        pos: { x: -1000, z: 1150 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10,
+        chartNote: 'Dead Concord count station. The Meridian toll is the second one this lane has paid.',
+        discoveryPlate: { title: 'Second Count Buoy',
+          body: 'A Concord count buoy, decommissioned when the lane lease changed hands. Its lamps are dark but the mount is still standing and the seal is still on the housing — the desk that retired it filed the shutdown, filed the salvage order, and filed the waiver when nobody came. The Vesta leg paid a toll before it paid this one. It will pay another after.' } },
+      {
+        // The Re-filed Hull — impounded mid-lane when its desk collapsed; still flagged HELD.
+        // The Skeptic's lane story: the hold outlived the desk that placed it.
+        id: 'poi_tethys_refiled',
+        type: 'derelict', name: 'The Re-filed Hull',
+        pos: { x: -1500, z: 1450 }, landmarkGlb: 'place_dead_hulk', visualRadius: 14,
+        discoveryPlate: { title: 'The Re-filed Hull',
+          body: 'A short-haul freighter flagged HELD where the lane used to bend. The customs desk that seized her was re-filed twice — first as a Meridian annex, then as a line item — and the hold order transferred with the furniture. Her crew signed the release forms years ago. The hold did not.' } },
+      // ATTENTION S-11 — the braid's weigh-post on the inner field: informal trade the
+      // lane counts and nobody files.
+      {
+        id: 'poi_tethys_braid_tally', type: 'beacon', name: 'Braid Tally',
+        pos: { x: -460, z: 620 }, landmarkGlb: 'place_tally_post', visualRadius: 9,
+        discoveryPlate: {
+          title: 'Braid Tally',
+          body: 'A weigh-post on the braid\u2019s inner field where three lanes\u2019 worth of ore changes hands informally. The post\u2019s brass plate is worn to the grain; the tally marks are fresh every shift, and none of them are filed.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'sector_vesta_forge', name: 'Vesta Forge', tier: 1, security: 0.60, charted: true,
+    factionId: 'faction_dmc', position: { x: 0, y: 4 }, worldRadius: 4300,
+    palette: SECTOR_PALETTE_CLASSES.belt,
+    trafficPerMin: 9, enemyDensity: 0.25, enemyLevel: [1, 2],
+    neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_charon_expanse'],
+    stations: [
+      { id: 'station_forge',  name: 'Forge Foundry', type: 'fab',    factionId: 'faction_dmc',   size: 'M', services: ['trade','shipyard','repair','refine','module_craft'],
+        chartNote: 'Plate and fittings out the door. Bring alloy, leave with modules.' },
+      { id: 'station_vesta_outlying_yard', name: 'Forge Outlying Yard', type: 'fab', factionId: 'faction_dmc', size: 'S', services: ['repair','refine'],
+        chartNote: 'The foundry’s outer jig. Plate comes off the line and waits here for a hull.' },
+      { id: 'station_depot3', name: 'Refuel Depot',  type: 'mining', factionId: 'faction_choir', size: 'S', services: ['refuel', 'missions'],
+        chartNote: 'Pumps for the slag crews, and a posted board. The Choir posts shift work in verses.' },
+    ],
+    fields: [
+      { id: 'f_vesta_1', type: 'ast_metallic',    countWeight: 1.0 },
+      { id: 'f_vesta_2', type: 'ast_metallic',    countWeight: 1.0 },
+      { id: 'f_vesta_3', type: 'ast_crystalline', countWeight: 0.6 },
+    ],
+    hazards: [ { type: 'radiation', center: { x: -540, z: -480 }, radius: 600, intensity: 0.4 } ],
+    pois: [
+      { id: 'poi_freighter', type: 'derelict', name: 'Derelict Freighter',
+        discoveryPlate: { title: 'Slag-Run Nineteen',
+          body: 'A Meridian ore hauler parked on the beltward approach with her drive cold and her holds open. The radiation shadow says she has been here longer than the hazard map that should have flagged her. Nobody claims her because claiming her means towing her.' } },
+      {
+        id: 'poi_vesta_slag_relay', type: 'beacon', name: 'Slag-Choir Relay', factionId: 'faction_choir',
+        requiresActiveScan: true, scannerSignalKind: 'ore', manualInvestigation: true,
+      },
+      {
+        id: 'poi_vesta_ore_cache', type: 'cache', name: 'Shift-End Ore Cache', hidden: true,
+        factionId: 'faction_dmc', requiresActiveScan: true, scannerSignalKind: 'ore',
+        manualInvestigation: true,
+      },
+      // PQ-153.02 hero landmark (depth program C13e, lore `landmark_c13e_resonant_cathedral`).
+      // Anchors zone_vesta_forge beside the foundry it was raised against: (-330,1060) sits ~350 WU
+      // off station_forge with the f_vesta_3 crystal field's rim (~460 WU out, rocks to r360)
+      // composing its eastern sky (f_vesta_3 centres (120,980), due east of the cathedral;
+      // +z is north), clear of the vesta_storm_lane sheet at (680,320). The 2026-09-25
+      // landmark still review parked at (-1050,1180) and framed nothing but black — the old spot was
+      // 740 WU from the foundry and 1100+ WU from any field, a bare void the sector's dressing never
+      // reaches. `pos` is inline sector-local (the frontier-region precedent) because
+      // sectorAnchors.js is a contended table this packet does not own; applySectorAnchors leaves
+      // unanchored pois untouched. A `pos` on the record means _spawnPOIs scatters nothing for it.
+      {
+        id: 'poi_vesta_resonant_cathedral',
+        type: 'anomaly',
+        name: 'The Resonant Cathedral',
+        landmark: true,
+        pos: { x: -330, z: 1060 },
+        landmarkGlb: 'place_landmark_resonant_cathedral',
+        visualRadius: 30,
+        // D54 hero-landmark scale: twin spires read ~110 WU, not a ship-sized prop.
+        placeTargetRadius: 110,
+        factionId: 'faction_choir',
+        scannerSignalKind: 'archive',
+        flavorTargetRef: 'landmark_c13e_resonant_cathedral',
+        dressingExclusionRadius: 170,
+        discoveryPlate: {
+          title: 'The Resonant Cathedral',
+          body: 'Twin spires and a resonance arch raised where the Choir first sang inside a '
+            + 'foundry\u2019s own roar \u2014 its harmonic still tuned to the Forge\u2019s old shift rhythm.',
+        },
+      },
+      { id: 'poi_vesta_red_cable_yard', type: 'anomaly', name: 'Red Cable Yard', pos: { x: -1400, z: -900 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ruud_fin3', type: 'anomaly', name: 'HOOK-LEFT · Fin-3',
+        pos: { x: RUUD.fin.x, z: RUUD.fin.z }, runtimeOwner: 'ruud', scannerSignalKind: 'anomaly',
+        dressingExclusionRadius: RUUD.dressingExclusion,
+        chartNote: 'A living suit on radiator fin Fin-3. The cab stamped the rotation complete. The hook did not move.' },
+      // ATTENTION S-11 — the Forge's cold line and the guild's gallery: a drill platform
+      // bought back twice on paper, and the face every welder burns a mark into.
+      {
+        id: 'poi_vesta_cold_line', type: 'derelict', name: 'Cold Drill Four',
+        pos: { x: 740, z: 260 }, landmarkGlb: 'place_drill_platform_cold', visualRadius: 24,
+        discoveryPlate: {
+          title: 'Cold Drill Four',
+          body: 'A foundry drill platform parked cold over a seam that turned out to be slag all the way down. The Forge bought the mast back twice on paper; both times the paperwork outlived the crew. Its beacon lamp still blinks the shift code for break.',
+        },
+      },
+      {
+        id: 'poi_vesta_gallery_rock', type: 'beacon', name: 'Gallery Rock',
+        pos: { x: 180, z: 940 }, landmarkGlb: 'place_asteroid_graffiti', visualRadius: 16,
+        discoveryPlate: {
+          title: 'Gallery Rock',
+          body: 'The guild wall in miniature — every welder who served a forge rotation has burned a mark on this face. New apprentices get the south flank, where the slag spray can\u2019t reach. The oldest mark is dated before the foundry floor was poured.',
+        },
+      },
+      // S-04 ATTENTION — hot industry, pride. The burn gets a workforce; the foundry gets an
+      // official signature and a waste stream. Pairs with the S-11 additions rather than
+      // repeating them: Gallery Rock is the welders' wall; the Stamp Post below signs the work.
+      {
+        // Hot Face Claim: the best ore face sits inside the radiation pocket. Crews work it
+        // in watches; the pin is re-stamped every rotation — the roster is the claim.
+        id: 'poi_vesta_hot_face',
+        type: 'beacon', name: 'Hot Face Claim', factionId: 'faction_dmc',
+        pos: { x: -480, z: -320 }, landmarkGlb: 'place_claim_mark', visualRadius: 6,
+        chartNote: 'Worked on watches. The pin is re-stamped every rotation.',
+        discoveryPlate: { title: 'Hot Face Claim',
+          body: 'A claim pin inside the burn, its stamp plate layered seven deep. Face crews pull this claim in twenty-minute watches and re-stamp the pin every rotation — whoever holds the watch holds the face. The oldest stamp belongs to a crew that held it for four watches straight and is remembered as either heroes or an argument against it.' } },
+      {
+        // The Lead Hedge: staging containers at the hazard's north rim. The plate carries
+        // the vigil — chalk watch-tallies, some columns ending mid-tally. No separate
+        // memorial: the belt already keeps one.
+        id: 'poi_vesta_lead_hedge',
+        type: 'derelict', name: 'The Lead Hedge', factionId: 'faction_dmc',
+        pos: { x: -540, z: 140 }, landmarkGlb: 'place_container_rack', visualRadius: 14,
+        discoveryPlate: { title: 'The Lead Hedge',
+          body: 'A rank of lead-lined staging containers parked at the burn\u2019s edge, where face crews suit up and wait their watch. Each door carries a chalk tally — one stroke per watch survived. Most columns run to the floor. A few end mid-tally, and nobody erases those; the next crew chalks a fresh door and keeps the count honest.' } },
+      {
+        // Guild Stamp Post: the OFFICIAL maker's-mark tally on the Outlying Yard approach —
+        // the counterpart to Gallery Rock's welder wall. The gallery signs the welders;
+        // this post signs the work.
+        id: 'poi_vesta_guild_stamps',
+        type: 'beacon', name: 'Guild Stamp Post', factionId: 'faction_dmc',
+        pos: { x: -700, z: 420 }, landmarkGlb: 'place_tally_post', visualRadius: 9,
+        chartNote: 'Maker\u2019s marks, oldest at the base. Unsigned plate does not ship.',
+        discoveryPlate: { title: 'Guild Stamp Post',
+          body: 'The yard\u2019s maker\u2019s-mark post — the official twin of the welders\u2019 gallery on the far field. Every shift\u2019s stamp is struck here before it goes on the plate: Foundry Second Pour near the crown, Third Pour below it, the oldest marks worn to bright ghosts at the base. The gallery signs the welders. This signs the work. A buyer who knows the post can read a hull\u2019s whole provenance off a single strike.' } },
+      {
+        // Reject Run: mis-stamped plate dumped mid-route on the Tethys leg rather than
+        // shipped unsigned. The waste stream of a proud foundry.
+        id: 'poi_vesta_reject_run',
+        type: 'derelict', name: 'Reject Run',
+        pos: { x: 1500, z: -900 }, landmarkGlb: 'place_container_rack', visualRadius: 13,
+        discoveryPlate: { title: 'Reject Run',
+          body: 'A parked rack of hull plate on the Tethys run, every sheet struck with the guild\u2019s cull-mark — a stamp over the stamp. The convoy master dumped the lot rather than deliver work the post had disowned. The plate is sound. The mark was wrong. On Vesta that is the same as scrap, and the crews will tell you why that is a virtue.' } },
+      {
+        // Kilnward Buoy: guild-marked nav buoy on the Charon leg — signed even at the edge
+        // of the map; the plate convoys form on it for the Expanse run.
+        id: 'poi_vesta_kilnward',
+        type: 'beacon', name: 'Kilnward Buoy', factionId: 'faction_dmc',
+        pos: { x: 1600, z: 2400 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10,
+        chartNote: 'Guild-marked lane keeper. Plate convoys form here for the Charon run.',
+        discoveryPlate: { title: 'Kilnward Buoy',
+          body: 'A lane keeper on the Charon corridor, hull-side struck with the foundry\u2019s mark and a pour date. The yard maintains it out of pocket — the lane fee does not reach this far, but the convoys do, and Vesta signs what it uses. Outbound plate forms on its lamp; inbound ore reads it as the foundry\u2019s front gate.' } },
+    ],
+  },
+  {
+    id: 'sector_pallas_drift', name: 'Pallas Drift', tier: 2, security: 0.42, charted: true,
+    factionId: 'faction_mts', position: { x: -5, y: 5 }, worldRadius: 4500,
+    palette: SECTOR_PALETTE_CLASSES.fringe,
+    trafficPerMin: 7, enemyDensity: 0.40, enemyLevel: [4, 7],
+    neighbors: ['sector_ceres_belt', 'sector_io_reach', 'sector_sker_haven'],
+    stations: [
+      { id: 'station_drift',    name: 'Drift Market', type: 'trade_hub',   factionId: 'faction_mts',   size: 'M', services: ['trade','refuel','repair','missions'],
+        // The Drift feeds the fringe — every unlisted crew buys rations here, and the intake
+        // keeps overshooting. This standing provisions surplus changes only the listing's stock
+        // equilibrium; the shared price curve turns it into the cheap end of the Belt ration run.
+        marketEquilibriumFactors: { cmdty_food: 2.4 },
+        chartNote: 'Open board, thin oversight. Good rates on cargo nobody wants logged.' },
+      { id: 'station_smuggler', name: 'Smuggler Den', type: 'blackmarket', factionId: 'faction_quiet', size: 'S', services: ['black_market','missions','refuel'],
+        chartNote: 'No manifest, no memory. The Quiet keep the lights on, the records off.' },
+    ],
+    fields: [
+      { id: 'f_pallas_1', type: 'ast_metallic', countWeight: 1.0 },
+      { id: 'f_pallas_2', type: 'ast_icy',       countWeight: 0.9 },
+      { id: 'f_pallas_3', type: 'ast_icy',       countWeight: 0.7 },
+    ],
+    hazards: [ { type: 'nebula', center: { x: 400, z: 600 }, radius: 800, intensity: 0.4 } ],
+    pois: [
+      { id: 'poi_ravel', type: 'anomaly', name: 'RAVEL · The Unraveller',
+        pos: { x: -940, z: 620 }, runtimeOwner: 'ravel', scannerSignalKind: 'anomaly',
+        dressingExclusionRadius: 300, chartNote: 'Three borrowed weights. Scan to hail; scan again to challenge.' },
+      {
+        id: 'poi_pwreck', type: 'wreck', name: 'Pirate Wreckage',
+        requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        manualInvestigation: true,
+        discoveryPlate: { title: 'Somebody\u2019s Problem',
+          body: 'Kinetic kill, close work — the hull came apart from the inside. Whatever the crew was carrying left with whoever won. The suit scores in the plating read older than the wreck.' },
+      },
+      {
+        id: 'poi_hcache', type: 'cache', name: 'Hidden Cache', hidden: true,
+        requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        manualInvestigation: true,
+      },
+      {
+        id: 'poi_quiessence',
+        type: 'anomaly',
+        name: 'The Quiessence',
+        landmark: true,
+        scannerSignalKind: 'archive',
+        visualRadius: 24,
+        scanRange: 900,
+        flavorTargetRef: 'landmark_c14_quiessence',
+        bandProximityRadius: 1600,
+        bandLandmarkFleet: 17,
+        dressingExclusionRadius: 700,
+        discoveryPlate: {
+          title: 'The Quiessence Census',
+          body: 'Seventeen intact freighters hold formation around one violet buoy. Every hull reports a different living-crew count; every bunk is warm; no transmitter answers by name.',
+        },
+      },
+      { id: 'poi_pallas_empty_habitat', type: 'anomaly', name: 'The Empty Habitat', pos: { x: 500, z: -1900 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_pallas_empty_foundry', type: 'anomaly', name: 'Empty Foundry', pos: { x: 1200, z: 900 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
+      // ATTENTION S-11 — the drift files on faith: the ninth stake on the filed-in-faith
+      // rock, and the tag face where the crews leave labor instead of names.
+      {
+        id: 'poi_pallas_faith_stake', type: 'beacon', name: 'Faith Filing Ninth',
+        pos: { x: -260, z: -560 }, landmarkGlb: 'place_claim_mark', visualRadius: 5,
+        discoveryPlate: {
+          title: 'Faith Filing Ninth',
+          body: 'The ninth stake on a rock the registry calls FILED-IN-FAITH: eight filings on trust, none on a survey. The drift doesn\u2019t disapprove — it prices the stake the same either way. Somebody\u2019s tenth is already cut and waiting in a locker.',
+        },
+      },
+      {
+        id: 'poi_pallas_tag_drift', type: 'beacon', name: 'Drift Tag',
+        pos: { x: 920, z: 480 }, landmarkGlb: 'place_asteroid_graffiti', visualRadius: 16,
+        discoveryPlate: {
+          title: 'Drift Tag',
+          body: 'Collective marks and Free marks layered until the paint is a census. The drift crews tag what they worked and nothing else — a whole rock of labor and not one name. Senna\u2019s book has them anyway.',
+        },
+      },
+      // S-05 ATTENTION — drift culture: the kitchen's line, the kept mooring, the den's
+      // doorbell, the off-ledger float, the last cheap air. Inline pos; admitted GLBs.
+      {
+        // The Mess Line: Drift Market feeds the fringe (the authored 2.4 food surplus);
+        // this is the loading bay the ration run actually uses.
+        id: 'poi_pallas_mess_line',
+        type: 'derelict', name: 'The Mess Line', factionId: 'faction_mts',
+        pos: { x: 900, z: -1100 }, landmarkGlb: 'place_container_rack', visualRadius: 13,
+        chartNote: 'Ration pods staged for the outbound skiffs. The fringe\u2019s kitchen.',
+        discoveryPlate: { title: 'The Mess Line',
+          body: 'Racks of ration pods staged off the market\u2019s south apron, chalk-sorted by skiff and shift. Every unlisted crew on the fringe eats through this line — the intake always overshoots and the surplus always clears. Nobody asks where a pod goes once it leaves the rack. That is the whole arrangement.' } },
+      {
+        // Skerward Ward-Buoy: a local-maintained marker on the Sker leg, kept lit out of
+        // pocket — last cheap air before Sker prices.
+        id: 'poi_pallas_sker_ward',
+        type: 'beacon', name: 'Skerward Ward-Buoy', factionId: 'faction_mts',
+        pos: { x: -1400, z: 2100 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10,
+        chartNote: 'Last cheap air before Sker. Kept lit by the crews, not the lane fee.',
+        discoveryPlate: { title: 'Skerward Ward-Buoy',
+          body: 'A lane keeper on the Sker corridor, maintained out of pocket by the crews that use it — the lane fee ends at the last station. Its lamp reads both directions: AIR CHEAP THIS SIDE, one way; PAY BEFORE YOU BREATHE, the other. Skerbound crews check the lamp the way other people check a door.' } },
+      {
+        // The Eighteenth Mooring: an empty berth kept on the Quiessence's approach, outside
+        // the fleet's exclusion. Drift custom — keep the place, don't ask the name.
+        id: 'poi_pallas_eighteenth',
+        type: 'beacon', name: 'The Eighteenth Mooring',
+        pos: { x: -1100, z: -1550 }, landmarkGlb: 'place_lane_pin', visualRadius: 8,
+        chartNote: 'An empty kept berth, lamp burning. The count stays at eighteen.',
+        discoveryPlate: { title: 'The Eighteenth Mooring',
+          body: 'A mooring pin planted on the Quiessence\u2019s approach, lamp burning, berth empty. Seventeen freighters hold formation inside the murk; the drift keeps an eighteenth slot on the outside for the one that never arrived — or the one that might still leave. The pin is repainted every season. Nobody knows whose season keeps it, and asking is considered bad bookkeeping.' } },
+      {
+        // Off-Books Berth: unlogged freight at the nebula's south rim — the murk eats the
+        // scanner, the grease-pencil tallies keep the count.
+        id: 'poi_pallas_off_books',
+        type: 'derelict', name: 'Off-Books Berth', factionId: 'faction_quiet',
+        pos: { x: 250, z: 1350 }, landmarkGlb: 'place_cold_locker', visualRadius: 11,
+        discoveryPlate: { title: 'Off-Books Berth',
+          body: 'Cold lockers staged where the murk eats a scanner clean. The tally marks are grease pencil, not stencil — wiped and rewritten between shifts, legible only at arm\u2019s length. Freight here never met a manifest, and the berths turn over too fast to keep a grudge. It is still a ledger. It is just a ledger that can be erased.' } },
+      {
+        // The Quiet Bell: a whistle-buoy on the Smuggler Den approach. Regulars ring it
+        // once — the den's doorbell, and the only record the house keeps of who called.
+        id: 'poi_pallas_quiet_bell',
+        type: 'beacon', name: 'The Quiet Bell', factionId: 'faction_quiet',
+        pos: { x: -950, z: 700 }, landmarkGlb: 'place_whistle', visualRadius: 6,
+        chartNote: 'Ring once on approach. The house keeps no other record.',
+        discoveryPlate: { title: 'The Quiet Bell',
+          body: 'A whistle-buoy on the den\u2019s approach lane. Regulars run their manifold across it once — one note, no more — and the house hears a regular the way a door hears a key. Strangers who ring twice are answered by silence, which at the den is a complete sentence. It is the only roll the house calls, and nobody is asked to sign it.' } },
+      {
+        // The Smuggler's Archipelago: the den's broken harbor, threaded along the Sker run.
+        // Four Reach tolls nobody collected — regulars know the gaps, strangers pay in paint.
+        id: 'poi_den_arch_a', type: 'wreck', name: 'Archipelago Hulk', factionId: 'faction_quiet',
+        pos: { x: -1180, z: 940 }, landmarkGlb: 'place_dead_hulk', visualRadius: 12,
+        requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        manualInvestigation: true,
+        discoveryPlate: { title: 'Archipelago Hulk',
+          body: 'A collier that missed its gap. The reef current has been dressing the wound for years — plate peeling off in shingles, cargo long since ferried into the den. The paint on the flanks is Quiet grey over Reach grey over somebody else\u2019s name.' } },
+      { id: 'poi_den_arch_b', type: 'derelict', name: 'Gutted Lighter', factionId: 'faction_quiet',
+        pos: { x: -1330, z: 1300 }, landmarkGlb: 'place_debris_chunk', visualRadius: 9,
+        requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        manualInvestigation: true,
+        discoveryPlate: { title: 'Gutted Lighter',
+          body: 'Stripped to the keel and left where it died. Every fitting that unbolted is in the Drift Market by now; what is left is the archipelago\u2019s own street sign — the turn before the den, where the bell can hear you.' } },
+      { id: 'poi_den_arch_c', type: 'wreck', name: 'Split Freighter', factionId: 'faction_quiet',
+        pos: { x: -1520, z: 1720 }, landmarkGlb: 'place_dead_hulk', visualRadius: 12,
+        requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        manualInvestigation: true,
+        discoveryPlate: { title: 'Split Freighter',
+          body: 'Broke her back on the middle rock and settled across the channel. The gap under the stern is the wide door — the one the den\u2019s regulars take at speed. The salvage crews leave her beached there on purpose: a fence costs nothing to keep.' } },
+      { id: 'poi_den_arch_d', type: 'derelict', name: 'Toll Hulk', factionId: 'faction_quiet',
+        pos: { x: -1700, z: 2140 }, landmarkGlb: 'place_dead_hulk', visualRadius: 11,
+        requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        manualInvestigation: true,
+        discoveryPlate: { title: 'Toll Hulk',
+          body: 'An old Reach gunboat parked across the Sker line, collecting a toll it no longer has the guns to argue for. Somebody keeps its lamp lit anyway. Out here even the wreckage has a round to run.' } },
+    ],
+  },
+  {
+    id: 'sector_io_reach', name: 'Io Reach', tier: 2, security: 0.35, charted: true,
+    factionId: 'faction_free', position: { x: 5, y: 5 }, worldRadius: 4600,
+    palette: SECTOR_PALETTE_CLASSES.fringe,
+    trafficPerMin: 5, enemyDensity: 0.50, enemyLevel: [5, 8],
+    neighbors: ['sector_tethys_junction', 'sector_pallas_drift', 'sector_charon_expanse', 'sector_veil_nebula'],
+    stations: [
+      { id: 'station_reach', name: 'Reach Station', type: 'trade_hub', factionId: 'faction_free', size: 'M', services: ['trade','repair','refuel','missions'], contested: true,
+        chartNote: 'Contested floor. Prices swing with whoever holds the docks this week.' },
+      { id: 'station_io_merc', name: 'Mercenary Outpost', type: 'blackmarket', factionId: 'faction_quiet', size: 'M',
+        missionProfile: 'bounty_board', boardAnchorType: 'bounty_hunt',
+        services: ['black_market','missions','repair','refuel'],
+        minRep: -30,
+        chartNote: 'Quiet contracting post. The writ wall pays by the job; the berth vets standing.' },
+    ],
+    fields: [
+      { id: 'f_io_1', type: 'ast_metallic',    countWeight: 1.0 },
+      { id: 'f_io_2', type: 'ast_crystalline', countWeight: 0.8 },
+    ],
+    hazards: [
+      { type: 'dense_asteroid', center: { x: -500, z: -300 }, radius: 700, intensity: 0.5 },
+      { type: 'nebula',         center: { x: 700,  z: 400  }, radius: 900, intensity: 0.45 },
+    ],
+    pois: [
+      { id: 'poi_merc',    type: 'colony',   name: 'Mercenary Outpost', factionId: 'faction_quiet' },
+      {
+        id: 'poi_cruiser', type: 'derelict', name: 'Derelict Cruiser',
+        flavorTargetRef: 'landmark_c1_wreck_cathedral_concord_vigilant',
+        discoveryPlate: {
+          title: 'The Wreck Cathedral',
+          body: 'The Concord Vigilant held this lane nine hours while civilians jumped behind her. Concord claims the bow and the Frontier claims the stern, so neither tows her — scavengers nest in the engine bells instead.',
+        },
+      },
+      // V2 §6 / M3: a claimable industrial moon — a body the player can claim and build on.
+      { id: 'poi_claim_pallas', type: 'colony', name: 'Pallas Industrial Moon', claimable: true, size: 'M' },
+      {
+        id: 'poi_io_shepherds_ring', type: 'anomaly', name: "Shepherd's Ring",
+        pos: { x: -1100, z: 700 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: "Shepherd's Ring",
+          body: 'A perfect ring of anchor organisms penned around a relay that died calling nothing. Reach crews cut through it like weather; the ring holds formation anyway — a containment measure that outlived whatever it was built to pen.',
+        },
+      },
+      {
+        id: 'poi_io_listening_field', type: 'anomaly', name: 'Listening Field',
+        pos: { x: 800, z: -1400 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Listening Field',
+          body: 'Seven receivers hold a fix on a coordinate no chart admits. The contracting post buys the output tapes by the spool and labels them static; the buyers keep asking for more.',
+        },
+      },
+      // ATTENTION S-11 — the Reach's listening mast and the burned pin it files as an
+      // honest grave. // ATTENTION S-12 — the vigil array attending the Wreck Cathedral.
+      {
+        id: 'poi_io_quiet_mast', type: 'derelict', name: 'Quiet Mast',
+        pos: { x: 600, z: -420 }, landmarkGlb: 'place_pirate_sensor_mast', visualRadius: 14,
+        discoveryPlate: {
+          title: 'Quiet Mast',
+          body: 'A listening mast welded to the field\u2019s largest rock, pointed at nothing the chart shows. The contracting post won\u2019t say whose it is; the welds are Reach-shop, the cable runs are Quiet, and the dish faces the lane home.',
+        },
+      },
+      {
+        id: 'poi_io_burn_stake', type: 'derelict', name: 'Burn Claim Pin',
+        pos: { x: -1120, z: -260 }, landmarkGlb: 'place_ash_pin', visualRadius: 6,
+        discoveryPlate: {
+          title: 'Burn Claim Pin',
+          body: 'A claim pin cooked black in its socket — the filing survived the fire that took the cabin. The Reach doesn\u2019t pull burned pins; it files them as honest graves and leaves the ore to whoever files second.',
+        },
+      },
+      {
+        id: 'poi_io_cathedral_vigil', type: 'beacon', name: 'Vigil Array',
+        pos: { x: -1560, z: -660 }, landmarkGlb: 'place_memorial_array', visualRadius: 18,
+        discoveryPlate: {
+          title: 'Vigil Array',
+          body: 'A ribbon-strung array of cut plates off the Vigilant\u2019s stern, refitted every Reach founding day. Nine of the ribbons name the nine hours; the tenth is blank. The scavengers in the engine bells leave the array strictly alone.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'sector_charon_expanse', name: 'Charon Expanse', tier: 2, security: 0.30, charted: true,
+    factionId: 'faction_dmc', industries: { refinery: true }, position: { x: 2, y: 7 }, worldRadius: 4800,
+    palette: SECTOR_PALETTE_CLASSES.belt,
+    trafficPerMin: 4, enemyDensity: 0.50, enemyLevel: [5, 9],
+    neighbors: ['sector_vesta_forge', 'sector_io_reach', 'sector_ashfall_reach'],
+    stations: [
+      { id: 'station_expanse', name: 'Expanse Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M',
+        missionProfile: 'bounty_board', boardAnchorType: 'bounty_hunt',
+        services: ['ore_buy','refuel','repair','refine','missions','scan_tech'],
+        chartNote: 'Deep-belt intake and hunter exchange. The writ wall tracks raiders, wrecks, and radiation-lane patrols.' },
+    ],
+    fields: [
+      { id: 'f_charon_1', type: 'ast_rare_exotic', countWeight: 0.7 },
+      { id: 'f_charon_2', type: 'ast_metallic',    countWeight: 1.0 },
+      { id: 'f_charon_3', type: 'ast_rare_exotic', countWeight: 0.6 },
+    ],
+    hazards: [
+      { type: 'radiation',      center: { x: 300,  z: -700 }, radius: 700, intensity: 0.5 },
+      { type: 'dense_asteroid', center: { x: -600, z: 500  }, radius: 650, intensity: 0.5 },
+    ],
+    pois: [
+      { id: 'poi_colony', type: 'colony', name: 'Abandoned Mining Colony', claimable: true, size: 'S' },
+      { id: 'poi_charon_lung_marker', type: 'beacon', name: 'Lung Marker', factionId: 'faction_dmc' },
+      {
+        id: 'poi_charon_tether_wreck', type: 'wreck', name: 'Snapped-Tether Hab-Pod',
+        scannerSignalKind: 'distress', survivorPod: true, recoveryEncounter: true,
+        flavorTargetRef: 'landmark_c7_lung_of_charon',
+        discoveryPlate: {
+          title: 'Snapped-Tether Hab-Pod',
+          body: 'A hab pod cut loose mid-shift, distress loop still cycling on a battery that should have died years ago. Something inside is still waiting on the pickup that never came.',
+        },
+      },
+      {
+        // Alien Ecology program (AE-040): discovery/map identity for the Cinder Nursery; the
+        // world-site manifest owns the visible body, so this row mints no marker prop.
+        id: 'world_site_charon_cinder_nursery', type: 'wreck', name: 'Cinder Nursery',
+        anchor: { x: 1700, z: -1400 },
+        runtimeOwner: 'asteroidSites',
+        scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Cinder Nursery',
+          body: 'A wreck cluster where the salvage markers disagree with each other and nothing holds still between scans. The Understory keeps the lights; the wrecks keep the seeds.',
+        },
+      },
+      // Alien Ecology waves A/B + machine layer: second sites spawn via materializeAlienEcology /
+      // materializeMachineLayer — markerless rows carry scanner/map identity only.
+      {
+        id: 'poi_charon_warm_freighter', type: 'anomaly', name: 'Warm Freighter',
+        pos: { x: -2200, z: 900 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'The Warm Freighter',
+          body: 'A freighter holding reactor standby with no crew aboard and no distress in its log. The hull reads warm in a cold belt — and the heat is not the reactor.',
+        },
+      },
+      {
+        id: 'poi_charon_hull_garden', type: 'anomaly', name: 'Three Hull Garden',
+        pos: { x: 800, z: 2400 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Three Hull Garden',
+          body: 'Three dead hulls returning on one bearing, bridged by filaments that grew between them. Salvors call it a garden because calling it a web raises the question of what spun it.',
+        },
+      },
+      {
+        id: 'poi_charon_pylon_field', type: 'anomaly', name: 'Unidentified Lattice',
+        pos: { x: 2400, z: 600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'The Unidentified Lattice',
+          body: 'Three pale pylons holding a dead triangle over the lane. Nothing biological crosses inside it alive; the Expanse files it under hazards and the pylons file nothing.',
+        },
+      },
+      {
+        id: 'poi_charon_star_marker', type: 'anomaly', name: 'Star Marker',
+        pos: { x: -2200, z: -800 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Star Marker',
+          body: 'A fixed reference older than every name on the sector\u2019s chart. Navigators trim against it without agreeing on who planted it, or what it marks.',
+        },
+      },
+      {
+        id: 'poi_charon_broken_shepherd', type: 'anomaly', name: 'Broken Shepherd',
+        pos: { x: 1000, z: 1900 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Broken Shepherd',
+          body: 'A corridor engine that lost the corridor it was built to keep. The growth reads the gap in its shape; the refinery reads it as scrap nobody has claimed.',
+        },
+      },
+      {
+        id: 'poi_charon_preserved_cockpit', type: 'anomaly', name: 'The Preserved Cockpit',
+        pos: { x: 2300, z: 400 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'The Preserved Cockpit',
+          body: 'One cockpit held intact inside a sheath of growth, occupant vitals still cycling on a readout nobody services. The Quiet have no comment. The Quiet never do.',
+        },
+      },
+      {
+        id: 'poi_charon_empty_skin', type: 'anomaly', name: 'The Empty Skin',
+        pos: { x: -900, z: -2200 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'The Empty Skin',
+          body: 'A shed membrane the size of a cutter — flagged fauna by the scanner, empty by the eye. Whatever molted here was last tracked going station-ward.',
+        },
+      },
+      // ATTENTION S-11 — the reading room's lamp-lit stake and the intake town's relic.
+      // ATTENTION S-13 — the tether wreck's memorial buoy: the convoy filed the names.
+      {
+        id: 'poi_charon_reader_stake', type: 'beacon', name: 'Reader\u2019s Stake',
+        pos: { x: 1060, z: 340 }, landmarkGlb: 'place_claim_mark', visualRadius: 5,
+        discoveryPlate: {
+          title: 'Reader\u2019s Stake',
+          body: 'A claim stake with a reading lamp welded on top — the only light in the sector somebody paid to keep lit. Smugglers call the field the reading room; the stake is why. Under it, in chalk: TAKE NOTHING YOU CAN\u2019T RETURN.',
+        },
+      },
+      {
+        id: 'poi_charon_slurry', type: 'derelict', name: 'Slurry Relic',
+        pos: { x: -920, z: -480 }, landmarkGlb: 'place_slurry_tank', visualRadius: 16,
+        discoveryPlate: {
+          title: 'Slurry Relic',
+          body: 'A cracked slurry tank from the intake town\u2019s first wash plant, towed here the day the convoy left and never missed. The seal still holds; what\u2019s inside isn\u2019t ore anymore, and the registry knows better than to ask what.',
+        },
+      },
+      {
+        id: 'poi_charon_tether_memorial', type: 'beacon', name: 'Tether Memorial',
+        pos: { x: -1140, z: 300 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10,
+        discoveryPlate: {
+          title: 'Tether Memorial',
+          body: 'The intake town\u2019s evacuation convoy filed a memorial buoy beside the snapped tether: names burned into the casing, one per bunk that didn\u2019t make the last boat. Foreman Del Okra. The school roster\u2019s second page. The tether below is still theirs.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'sector_sker_haven', name: 'Sker Haven', tier: 3, security: 0.08, charted: false,
+    factionId: 'faction_reach', position: { x: -7, y: 8 }, worldRadius: 5000,
+    palette: SECTOR_PALETTE_CLASSES.fringe,
+    // WORLD-07 — the Bazaar is the Reach's market stop, not hollow frontier: a light apron of
+    // haulers/smugglers/couriers clusters near station_sker. enemyDensity stays authored.
+    trafficPerMin: 9, enemyDensity: 0.70, enemyLevel: [7, 11],
+    neighbors: ['sector_pallas_drift', 'sector_veil_nebula'],
+    stations: [
+      { id: 'station_sker', name: 'Sker Bazaar', type: 'blackmarket', factionId: 'faction_reach', size: 'M', services: ['black_market','repair','refuel','missions'], repGated: true,
+        chartNote: "Reach hospitality — you're vouched for or you're cargo. Rates follow standing." },
+    ],
+    fields: [ { id: 'f_sker_1', type: 'ast_rare_exotic', countWeight: 0.8 } ],
+    hazards: [
+      { type: 'dense_asteroid', center: { x: 500,  z: 300  }, radius: 800, intensity: 0.6 },
+      { type: 'dense_asteroid', center: { x: -500, z: -400 }, radius: 700, intensity: 0.6 },
+    ],
+    pois: [
+      {
+        id: 'poi_bounty', type: 'wreck', name: 'Bounty Wrecks',
+        requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        manualInvestigation: true, recoveryEncounter: true,
+        discoveryPlate: {
+          title: 'Bounty Wrecks',
+          body: 'A drift of dead hulls where posted marks came to collect and got collected instead. The Bazaar sells charts to the field with the warning page stapled on twice.',
+        },
+      },
+      {
+        id: 'poi_stash', type: 'cache', name: 'Stash Cache', hidden: true,
+        contents: { commodityId: 'cmdty_stolen_goods', amount: 2 },
+        discoveryPlate: {
+          title: 'The Stash',
+          body: 'A sealed cache tucked where the asteroid pockets shadow each other, lashed under three different owners\u2019 marks. In the Haven, unclaimed mass is a rumor with coordinates.',
+        },
+      },
+      // PQ-153.02 hero landmark (depth program C13d, lore `landmark_c13d_skerris_throne`).
+      // Anchors zone_sker_haven (Skerris Deep) ON the approach to the Bazaar: (300,-550) sits on
+      // the charted Pallas gate (2274,-3411) -> Sker Bazaar (-540,680) chord, threading the gap
+      // between the sector's two dense_asteroid pockets (873 WU off the first, 813 off the second
+      // — both clear), so a pilot arriving from Pallas flies past the fortress on final approach.
+      // The 2026-09-25 landmark still review parked at (-1500,1350) — 1170 WU BEYOND the Bazaar,
+      // off every approach, framed against bare black. A fortress welded from captured hulls, so
+      // it now has its own Forge body (tools/blender/forge). Inline `pos` for the same reason as the
+      // Vesta landmark above.
+      {
+        id: 'poi_sker_throne',
+        type: 'colony',
+        name: 'The Skerris Throne',
+        landmark: true,
+        pos: { x: 300, z: -550 },
+        landmarkGlb: 'place_landmark_skerris_throne',
+        visualRadius: 34,
+        // D54 hero-landmark scale: the welded-hull fortress reads ~150 WU.
+        placeTargetRadius: 150,
+        factionId: 'faction_reach',
+        scannerSignalKind: 'archive',
+        repeatableScannerSignal: true,
+        flavorTargetRef: 'landmark_c13d_skerris_throne',
+        dressingExclusionRadius: 170,
+        discoveryPlate: {
+          title: 'The Skerris Throne',
+          body: 'A fortress welded from captured hulls, every plate a raid trophy with a story on '
+            + 'scan. No architect designed the Throne \u2014 survivors kept welding.',
+        },
+      },
+      // Alien Ecology deep pocket + machine causeway (AE-110..115).
+      {
+        id: 'poi_sker_harvest_deep', type: 'anomaly', name: 'The Harvest Deep',
+        pos: { x: -1500, z: -1600 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'The Harvest Deep',
+          body: 'A density column of stacked returns with no transponders, and the whole pocket moves together. Skerris elders call it the Deep the way you name a debt you do not discuss.',
+        },
+      },
+      {
+        id: 'poi_sker_null_causeway', type: 'anomaly', name: 'Null Causeway',
+        pos: { x: 600, z: 1400 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Null Causeway',
+          body: 'A sterile lane machine-cut through the dense pocket, older than the map that ignores it. Refugee convoys use it because nothing in it scans back — which is exactly the problem.',
+        },
+      },
+      {
+        id: 'poi_sker_red_snow', type: 'anomaly', name: 'Red Snow',
+        pos: { x: 400, z: -1800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Red Snow',
+          body: 'A frost field tinted red by spore layers buried under the ice — pretty, and wrong, in that order. Haven kids dare each other to fly through it; the elders stopped telling them not to.',
+        },
+      },
+      {
+        id: 'poi_sker_quiet_dock', type: 'anomaly', name: 'Quiet Dock',
+        pos: { x: -1600, z: 800 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Quiet Dock',
+          body: 'A dormant drydock berthed for a hull scale nothing human flies. The Haven welds its name boards facing away from it, and the dock does not seem to mind.',
+        },
+      },
+      // ATTENTION S-11 — the toll-saint's private ledger on the seam, and the one honest
+      // history in the sector. // ATTENTION S-12 — the penance moor on the Throne's
+      // approach. // ATTENTION S-13 — the bounty hulk's tally: the names the writ didn't.
+      {
+        id: 'poi_sker_tally_wall', type: 'beacon', name: 'Vane\u2019s Tally',
+        pos: { x: 660, z: -360 }, landmarkGlb: 'place_tally_post', visualRadius: 9,
+        discoveryPlate: {
+          title: 'Vane\u2019s Tally',
+          body: 'A toll-saint\u2019s tally post at the field edge, counting what the Bazaar never sees: every hull that cuts the seam without paying the lane. The marks are in Vane\u2019s own hand — the only ledger in Sker the Reach doesn\u2019t tax.',
+        },
+      },
+      {
+        id: 'poi_sker_marked_rock', type: 'beacon', name: 'Marked Rock',
+        pos: { x: 780, z: -480 }, landmarkGlb: 'place_asteroid_graffiti', visualRadius: 16,
+        discoveryPlate: {
+          title: 'Marked Rock',
+          body: 'Every flag that\u2019s ever held the Haven has been painted on this rock and painted over. The current top layer is Free green over Reach crimson over something older that might be a map. Nobody strips it — it\u2019s the only honest history in the sector.',
+        },
+      },
+      {
+        id: 'poi_sker_penance_moor', type: 'beacon', name: 'Penance Moor',
+        pos: { x: 520, z: -700 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10,
+        discoveryPlate: {
+          title: 'Penance Moor',
+          body: 'The Reach charges a vouch-price to tie a ribbon on the Throne\u2019s own approach: penance, priced. Penitents pay anyway — the moor fills up fastest after a raid goes wrong, and the Bazaar\u2019s clerks do not ask whose raid it was.',
+        },
+      },
+      {
+        id: 'poi_sker_bounty_tally', type: 'beacon', name: 'Bounty Tally',
+        pos: { x: 1300, z: 850 }, landmarkGlb: 'place_tally_post', visualRadius: 9,
+        discoveryPlate: {
+          title: 'Bounty Tally',
+          body: 'The dead hulk\u2019s kill-marks are stenciled tallies on the sail — eleven, professionally spaced, in the marksman\u2019s own hand. Rook\u2019s clerks counted a twelfth on the engine block before the hull cooled. The tally post beside it carries the names the writ didn\u2019t.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'sector_veil_nebula', name: 'Veil Nebula', tier: 3, security: 0.12, charted: false,
+    scenic: true, industries: { research: true },
+    factionId: 'faction_free', position: { x: 7, y: 9 }, worldRadius: 5200,
+    palette: SECTOR_PALETTE_CLASSES.anomaly,
+    trafficPerMin: 0, enemyDensity: 0.65, enemyLevel: [8, 12],
+    neighbors: ['sector_io_reach', 'sector_sker_haven'],
+    wormholeTo: { sectorId: 'sector_ashfall_reach', gatedBy: 'tech:tech_long_range_survey', machineGate: 'route_veil_ashfall' },
+    stations: [
+      { id: 'station_veil', name: 'Research Station Veil', type: 'research', factionId: 'faction_free', size: 'M', services: ['scan_tech','missions','repair','refuel'],
+        chartNote: "Instruments first, hospitality never. Sells readings it won't explain." },
+    ],
+    fields: [ { id: 'f_veil_1', type: 'ast_gas_cloud', countWeight: 1.0 } ],
+    hazards: [
+      { type: 'nebula',    center: { x: 0,   z: 0    }, radius: 3000, intensity: 0.9 },
+      { type: 'radiation', center: { x: 200, z: -200 }, radius: 600,  intensity: 0.6 },
+    ],
+    pois: [
+      {
+        id: 'poi_anomaly', type: 'anomaly', name: 'The Resonance Obelisk', hidden: true,
+        triangulation: { requiredPings: 3, minBaselineWu: 350, minBearingDeltaDeg: 8 },
+        flavorTargetRef: 'landmark_c2_resonance_obelisk',
+        resonanceScanResponse: true,
+        discoveryPlate: {
+          title: 'The Resonance Obelisk',
+          body: 'Material analysis returns nothing recognized as matter, and the pulse interval is shorter than every prior scan record. Vael patrol logs tighten after each pulse — the dark companion is a door that forgot its other side.',
+        },
+      },
+      {
+        id: 'poi_wormhole', type: 'wormhole', name: 'Wormhole',
+        gatedBy: 'tech:tech_long_range_survey', machineGate: 'route_veil_ashfall',
+        discoveryPlate: {
+          title: 'The Veil Wormhole',
+          body: 'A stable throat in the fog that answers only to long-range survey credentials. Station Veil sells the approach math and declines to publish what comes back through.',
+        },
+      },
+      {
+        id: 'poi_veil_far_sounding', type: 'wormhole', name: 'Far Sounding', pos: { x: 3100, z: -2400 },
+        discoveryPlate: {
+          title: 'Far Sounding',
+          body: 'A second aperture at the fog\u2019s edge, listed in no public route table. The research station\u2019s instruments ping it on a schedule the staff will not annotate.',
+        },
+      },
+      // Alien Ecology (AE-066) + Verge-Layer structures (AE-101/102/108).
+      {
+        id: 'poi_veil_quiet_ice', type: 'anomaly', name: 'Quiet Ice',
+        pos: { x: 900, z: 1500 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Quiet Ice',
+          body: 'A cold mining body whose spectral return says clean ice while the subsurface pockets disagree. Every assay filed here gets resampled; every resample comes back cleaner and less believable.',
+        },
+      },
+      {
+        id: 'poi_veil_survey_monolith', type: 'anomaly', name: 'Pale Spire',
+        pos: { x: -1400, z: 600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'The Pale Spire',
+          body: 'A pale monolith mapping the nebula at geological patience. It does not acknowledge hails — and neither does the fog it is mapping.',
+        },
+      },
+      {
+        id: 'poi_veil_revoked_gate', type: 'anomaly', name: 'Silent Gate',
+        pos: { x: 2100, z: -1600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'The Silent Gate',
+          body: 'An intact transit gate whose authority was pulled, not broken. Whatever closed it could open it; Station Veil has stopped asking it to.',
+        },
+      },
+      {
+        id: 'poi_veil_black_orchard', type: 'anomaly', name: 'The Black Orchard',
+        pos: { x: -1700, z: -800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'The Black Orchard',
+          body: 'Rooted glass organisms in rows, growing in shadowed fog like an orchard planted by something that had only heard orchards described.',
+        },
+      },
+      {
+        id: 'poi_veil_containment_ring', type: 'anomaly', name: 'Containment Ring',
+        pos: { x: -900, z: -1900 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Containment Ring',
+          body: 'Five pylons holding a ring seal over something that outgrew what it sealed. The fog here is not weather; the ring is not a warning — it is a lid.',
+        },
+      },
+      {
+        id: 'poi_veil_exception_chamber', type: 'anomaly', name: 'Exception Chamber',
+        pos: { x: 1800, z: 1400 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Exception Chamber',
+          body: 'A room that adjudicates by proximity — approaching it is a filing, and the answer comes back stamped. Station Veil logs it under phenomena with casework.',
+        },
+      },
+      // ATTENTION S-11 — the murmur buoy the station keeps reopening, and the Choir's
+      // filing on the field face.
+      {
+        id: 'poi_veil_murmur_buoy', type: 'beacon', name: 'Murmur Buoy',
+        pos: { x: -340, z: 580 }, landmarkGlb: 'place_nav_buoy', visualRadius: 10,
+        discoveryPlate: {
+          title: 'Murmur Buoy',
+          body: 'A navigation buoy whose signal arrives as a murmur two hertz under the lane band — Station Veil logs it as anomalous-but-benign, file CLOSED-REOPENED six times. The research crews hum along when they pass. Nobody\u2019s admitted to starting that.',
+        },
+      },
+      {
+        id: 'poi_veil_choir_tag', type: 'beacon', name: 'Choir Tag',
+        pos: { x: -220, z: 700 }, landmarkGlb: 'place_asteroid_graffiti', visualRadius: 16,
+        discoveryPlate: {
+          title: 'Choir Tag',
+          body: 'Hymn notation etched into the rock face in the Ascendant hand — not graffiti, a filing. The Choir marks places it intends to sing back to. This one\u2019s notation ends mid-phrase, which the Veil staff have learned not to find ominous.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'sector_ashfall_reach', name: 'Ashfall Reach', tier: 4, security: 0.05, charted: false,
+    factionId: 'faction_vael', threat: 'vael', position: { x: 4, y: 11 }, worldRadius: 5500,
+    palette: SECTOR_PALETTE_CLASSES.anomaly,
+    trafficPerMin: 0, enemyDensity: 0.80, enemyLevel: [10, 15],
+    neighbors: ['sector_charon_expanse'],
+    stations: [
+      { id: 'station_ashcache', name: 'Ruined Cache Station', type: 'blackmarket', factionId: 'faction_vael', size: 'S', services: ['black_market','repair','refuel','missions'], repGated: true,
+        chartNote: "Vael salvage, half-lit. Buys what shouldn't exist at what it shouldn't cost." },
+    ],
+    fields: [
+      { id: 'f_ash_1', type: 'ast_rare_exotic', countWeight: 1.0 },
+      { id: 'f_ash_2', type: 'ast_rare_exotic', countWeight: 1.0 },
+    ],
+    hazards: [
+      {
+        // The charted Roaming Burn. `radius` is the storm's ROAM ENVELOPE, not the burn body:
+        // the live burn is an 840 WU core that circles this envelope on the deterministic law
+        // in environmentalMachinery.js (ASHFALL_BURN_*), venting on the same clock heart as
+        // the ISC Lighthouse's survey window. world.js _resolveMovingHazards stamps the live
+        // center/radius/intensity scale every tick; `afterBossDefeat` still owns the base
+        // intensity (world.js _applyBossHazardAftermath).
+        id: 'hazard_ashfall_burn', type: 'radiation', center: { x: 0, z: 0 }, radius: 2000,
+        intensity: 0.8, moving: true,
+        afterBossDefeat: { poiId: 'poi_boss', intensity: 0.35 },
+      },
+      { type: 'debris',    center: { x: 400, z: 300 }, radius: 800,  intensity: 0.5 },
+      { id: 'hazard_ashfall_slag_yard', type: 'debris', center: { x: 1100, z: -200 }, radius: 640, intensity: 0.45 },
+    ],
+    pois: [
+      {
+        id: 'poi_boss', type: 'anomaly', name: 'Boss Arena Signal',
+        flavorTargetRef: 'landmark_c5_iron_maw',
+        discoveryPlate: {
+          title: 'Iron Maw Defeated',
+          body: 'The Vael-grown Deep-Mother that guarded Ashfall\'s vault is dead. Its silent arena signal now marks a navigable grave.',
+        },
+        defeatNews: {
+          kind: 'combat-aftermath',
+          text: 'ASHFALL RELAY: the Iron Maw is dead. Salvagers are already racing for the vault coordinates released from its arena signal.',
+        },
+      },
+      {
+        id: 'poi_vault', type: 'cache', name: 'Ancient Vault', hidden: true,
+        unlockAfterBossId: 'poi_boss',
+        discoveryPlate: {
+          title: 'The Deep-Mother Vault',
+          body: 'Behind the Iron Maw was no treasury, but a growth archive: hull-seed genealogies, failed warship molts, and one empty cradle still warm enough to register on the scanner.',
+        },
+      },
+      {
+        id: 'poi_vault_maw', type: 'anomaly', name: 'The Vault Maw',
+        factionId: 'faction_vael',
+        scannerSignalKind: 'archive',
+        repeatableScannerSignal: true,
+        flavorTargetRef: 'landmark_c4_vault_maw',
+        discoveryPlate: {
+          title: 'The Vault Maw',
+          body: 'A heavily armored pre-collapse archive sealed behind interlocking petal-plates. The locking seam bears thousands of false cryptographic keyways tied to ancient defensive countermeasures, guarding historical ledgers expunged from all modern sector registries.',
+        },
+      },
+      // Alien Ecology wave B + Verge-Layer structures (AE-086, AE-103..106).
+      {
+        id: 'poi_ashfall_breathing_dock', type: 'anomaly', name: 'Breathing Dock',
+        pos: { x: -1200, z: 1800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'The Breathing Dock',
+          body: 'A station fragment still cycling pressure with no crew logged — something inside uses the docking valves as lungs. Ashfall scav crews berth on the other side of the field, on principle.',
+        },
+      },
+      {
+        id: 'poi_ashfall_gate_underlayer', type: 'anomaly', name: 'Gate Underlayer',
+        pos: { x: 1600, z: -1600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Gate Underlayer',
+          body: 'Maintenance arms still work original machine geometry under the human gantries welded on top. The raiders built over a foundry floor that never stopped working.',
+        },
+      },
+      {
+        id: 'poi_ashfall_ossuary', type: 'anomaly', name: 'Ranked Frames',
+        pos: { x: -2000, z: -1200 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Ranked Frames',
+          body: 'Hundreds of dormant machine frames standing in perfect rank order — none broken, all stored. The Vael count them before raids the way priests count knives.',
+        },
+      },
+      {
+        id: 'poi_ashfall_black_vault', type: 'anomaly', name: 'Black Vault',
+        pos: { x: 2200, z: 2000 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Black Vault',
+          body: 'Sealed containment that answers every scan with a thermal signature and nothing else. It is warm, it is closed, and the clans post a marksman on it like a promise.',
+        },
+      },
+      {
+        id: 'poi_ashfall_maintenance', type: 'anomaly', name: 'Active Maintenance',
+        pos: { x: 600, z: -2200 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Active Maintenance',
+          body: 'A working machine doing repairs at geological patience, indifferent to the raider territory drawn over it. Crews tag it and move on — the only thing in the Reach nobody claims.',
+        },
+      },
+      // AE-113 — the drydock that became the organism.
+      {
+        id: 'poi_ashfall_converted_yards', type: 'anomaly', name: 'Converted Yards',
+        pos: { x: 800, z: 800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Converted Yards',
+          body: 'A drydock complex where the superstructure became the organism — the yard cranes flex on a slow cycle like gills. Ships were cut here once; what cuts back now is the yard.',
+        },
+      },
+      {
+        id: 'poi_ashfall_towed_moonlet', type: 'anomaly', name: 'The Towed Moonlet',
+        pos: { x: -200, z: -1500 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'The Towed Moonlet',
+          body: 'A contaminated body under tow toward populated space, manifest stamped clean by someone who never looked at it. The tow crew is still attached to the line. The tow crew is a decade dead.',
+        },
+      },
+      {
+        id: 'poi_ashfall_sterile_zone', type: 'anomaly', name: 'Old Sterile Zone',
+        pos: { x: 1400, z: -600 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'Old Sterile Zone',
+          body: 'A machine-burned exclusion crater — the only clean ground in the Reach, sterilized so completely even the ash storm skips it. Whatever stood here warranted the burn.',
+        },
+      },
+      {
+        id: 'poi_ashfall_the_line', type: 'anomaly', name: 'The Line',
+        pos: { x: -800, z: 1600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'The Line',
+          body: 'A patrolled quarantine boundary the chart refuses to draw — a line you learn by crossing it once. The Vael wardens enforce it without ever admitting it exists.',
+        },
+      },
+      // ATTENTION S-11 — Kurtz's unregistered mark and the lamp that survived the Burn.
+      // ATTENTION S-12 — the keykeepers' watch outside the Vault Maw's scan shadow.
+      {
+        id: 'poi_ashfall_kurtz_mark', type: 'beacon', name: 'Kurtz\u2019s Mark',
+        pos: { x: 700, z: -220 }, landmarkGlb: 'place_claim_mark', visualRadius: 5,
+        discoveryPlate: {
+          title: 'Kurtz\u2019s Mark',
+          body: 'A claim mark stamped with no registry serial — just a name filed in charcoal that\u2019s been re-blackened for years. The Ashfall ledger says the rock belongs to whoever keeps the mark fresh. Kurtz\u2019s mark is always fresh.',
+        },
+      },
+      {
+        id: 'poi_ashfall_burn_lamp', type: 'derelict', name: 'Burn Lamp',
+        pos: { x: -1060, z: -860 }, landmarkGlb: 'place_worklight_tower', visualRadius: 12,
+        discoveryPlate: {
+          title: 'Burn Lamp',
+          body: 'A worklight tower fused at the base by the Roaming Burn, still throwing light across a field nobody works. The raiders leave it lit — a lamp that survived the Burn is better company than most crews out here.',
+        },
+      },
+      {
+        id: 'poi_ashfall_keykeeper', type: 'beacon', name: 'Keykeeper\u2019s Watch',
+        pos: { x: -860, z: 1150 }, landmarkGlb: 'place_ash_pin', visualRadius: 6,
+        discoveryPlate: {
+          title: 'Keykeeper\u2019s Watch',
+          body: 'A burned pin set just outside the Vault Maw\u2019s scan shadow where the keykeepers kept their watch: one mark per key tried, one name per key that woke the guard. The tally runs long. The names run short.',
+        },
+      },
+    ],
+  },
+];
+
+export const SECTORS = [
+  ...CORE_SECTORS.map((sector) => {
+    const additions = FRONTIER_CORE_NEIGHBOR_PATCHES[sector.id];
+    return additions
+      ? { ...sector, neighbors: [...sector.neighbors, ...additions] }
+      : sector;
+  }),
+  ...FRONTIER_SECTORS,
+  { ...bolusSectorCard(), palette: SECTOR_PALETTE_CLASSES.viscera },
+]
+  .map(appendPq019FacilityPois)
+  .map(applySectorAnchors)
+  .map(appendSectorWonderPois)
+  .map(applyClaimableBodySites)
+  .map(applyPlanetStateAssignments);
+
+const CONTACT_STATION_BY_ID = new Map(SECTORS.flatMap((sector) =>
+  (sector.stations || []).map((station) => [station.id, station])));
+
+// Locking a berth discloses public services only; the black-market desk stays hidden.
+export function stationContactServices(stationId) {
+  const station = CONTACT_STATION_BY_ID.get(stationId);
+  return (station?.services || []).filter((service) => service !== 'black_market');
+}
+
+// Security helper functions per ARCHITECTURE §0.8.
+const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
+
+export function dangerTier(sector) {
+  return clamp(Math.round((1 - sector.security) * 5), 0, 5);
+}
+
+export function wealthIndex(sector) {
+  const tier = sector.tier;
+  return clamp(0.3 + 0.16 * tier + 0.10 * (1 - sector.security), 0.3, 1.6);
+}
+
+export function dangerIndex(sector) {
+  const tier = sector.tier;
+  return clamp(0.05 + 0.22 * tier + 0.25 * (1 - sector.security), 0, 1.0);
+}
+
+export function surveyDataPrice(sector) {
+  const tier = Math.max(0, Number(sector && sector.tier) || 0);
+  return Math.round(750 + tier * 1250);
+}
+
+// ── PQ-170.01 — station growth ladders ──────────────────────────────────────────────────────────
+// A station physically expands because of player-supplied throughput: goods the player sells at
+// its market and freight the player's Trade Relay convoys land there. claims.js owns the durable
+// per-station ledger (state.claims.stationGrowth) and the stamping; this table only authors WHAT
+// each station type grows and at WHAT cumulative throughput. It is a separate constant on purpose:
+// world copies every station record into runtime state and the data checks validate the station
+// shape, so growth never rides on the station record itself.
+//
+// Rung 1 is sized for one session on the starter hull: a Kestrel hold is 250 volume and every raw
+// ore is 1.0 vol/u, so one full load plus a partial second sold at the same station crosses it.
+// Later rungs are the endgame pull — a relay feeding one station over hours of play.
+//
+// Each rung: id, name, tag (short label stamped onto the live station's name), throughputU
+// (cumulative units), relayFeeCut (the player's relay convoys sold at a grown station keep more of
+// the sale), powerBonus (feeds the owning faction's war power in factions.js), line (dock/news copy;
+// tokens {station} {module} {units}).
+const GROWTH_RUNG_1_U = 150;
+const GROWTH_RUNG_2_U = 450;
+const GROWTH_RUNG_3_U = 1000;
+
+function growthRung(id, name, tag, throughputU, relayFeeCut, powerBonus, line) {
+  return Object.freeze({ id, name, tag, throughputU, relayFeeCut, powerBonus, line });
+}
+
+export const STATION_GROWTH_LADDERS = Object.freeze({
+  trade_hub: Object.freeze([
+    growthRung('growth_bonded_annex', 'Bonded Freight Annex', 'BONDED ANNEX', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} opens a Bonded Freight Annex — {units}u of your freight paid for the plating.'),
+    growthRung('growth_exchange_ring', 'Exchange Ring', 'EXCHANGE RING', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} rings a second exchange floor around the annex your deliveries built.'),
+    growthRung('growth_lane_authority', 'Lane Authority Office', 'LANE AUTHORITY', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} charters a Lane Authority Office — your route is now the one the charts are drawn from.'),
+  ]),
+  refinery: Object.freeze([
+    growthRung('growth_bulk_intake', 'Bulk Intake Dock', 'BULK INTAKE', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} fits a Bulk Intake Dock — {units}u of your ore kept the crackers hot long enough to earn it.'),
+    growthRung('growth_second_cracker', 'Second Cracking Line', 'SECOND LINE', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} lights a second cracking line on the back of your deliveries.'),
+    growthRung('growth_slag_gantry', 'Slag Export Gantry', 'EXPORT GANTRY', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} raises a Slag Export Gantry — the refinery now ships what your hauls made.'),
+  ]),
+  mining: Object.freeze([
+    growthRung('growth_ore_scale', 'Ore Scale Annex', 'SCALE ANNEX', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} bolts on an Ore Scale Annex — {units}u across your scale bought the second weigh-bay.'),
+    growthRung('growth_crusher_deck', 'Crusher Deck', 'CRUSHER DECK', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} opens a Crusher Deck; rock crews credit your hauls for the shift.'),
+    growthRung('growth_loading_arm', 'Bulk Loading Arm', 'LOADING ARM', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} swings out a Bulk Loading Arm — built for the tonnage you keep bringing.'),
+  ]),
+  fab: Object.freeze([
+    growthRung('growth_receiving_bay', 'Parts Receiving Bay', 'RECEIVING BAY', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} opens a Parts Receiving Bay — {units}u of your alloy and fittings filled the first racks.'),
+    growthRung('growth_assembly_two', 'Assembly Hall Two', 'HALL TWO', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} seals Assembly Hall Two, fed by the line you keep supplying.'),
+    growthRung('growth_fitting_yard', 'Certified Fitting Yard', 'FITTING YARD', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} certifies a Fitting Yard — the foundry now builds on your throughput.'),
+  ]),
+  military: Object.freeze([
+    growthRung('growth_provisioning_wing', 'Provisioning Wing', 'PROVISIONING', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} commissions a Provisioning Wing — {units}u of your supply stocked the first lockers.'),
+    growthRung('growth_patrol_hangar', 'Patrol Hangar Annex', 'PATROL HANGAR', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} opens a Patrol Hangar Annex on the strength of your deliveries.'),
+    growthRung('growth_tender_berth', 'Fleet Tender Berth', 'TENDER BERTH', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} lays a Fleet Tender Berth — the desk now counts your route as logistics.'),
+  ]),
+  blackmarket: Object.freeze([
+    growthRung('growth_unlisted_warehouse', 'Unlisted Warehouse', 'UNLISTED STORE', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} quietly adds an Unlisted Warehouse — {units}u of your freight moved through without a manifest.'),
+    growthRung('growth_back_channel_berth', 'Back-Channel Berth', 'BACK BERTH', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} cuts a Back-Channel Berth for the hulls that keep feeding it.'),
+    growthRung('growth_quiet_vault', 'Quiet Ledger Vault', 'LEDGER VAULT', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} seals a Quiet Ledger Vault — your route is the one nobody writes down.'),
+  ]),
+  research: Object.freeze([
+    growthRung('growth_sample_lab', 'Sample Intake Lab', 'INTAKE LAB', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} opens a Sample Intake Lab — {units}u of your cargo gave the instruments something to read.'),
+    growthRung('growth_instrument_deck', 'Second Instrument Deck', 'INSTRUMENT DECK', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} powers a Second Instrument Deck on the supply line you run.'),
+    growthRung('growth_field_annex', 'Field Station Annex', 'FIELD ANNEX', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} builds a Field Station Annex — the station now depends on what you bring.'),
+  ]),
+});
+
+const EMPTY_GROWTH_LADDER = Object.freeze([]);
+export const STATION_GROWTH_DEFAULT_TYPE = 'trade_hub';
+
+/** The authored growth ladder for a station record (or a live station's `data`). */
+export function stationGrowthLadderFor(station) {
+  if (!station) return EMPTY_GROWTH_LADDER;
+  const type = station.type || station.stationTypeId;
+  return STATION_GROWTH_LADDERS[type] || STATION_GROWTH_LADDERS[STATION_GROWTH_DEFAULT_TYPE] || EMPTY_GROWTH_LADDER;
+}
+
+/** How many rungs a cumulative throughput has earned on a ladder. Pure. */
+export function stationGrowthRungFor(ladder, throughputU) {
+  const units = Math.max(0, Number(throughputU) || 0);
+  let rung = 0;
+  for (const step of ladder || EMPTY_GROWTH_LADDER) {
+    if (units < step.throughputU) break;
+    rung += 1;
+  }
+  return rung;
+}
+
+function trophyHead(tier, id, name, masslineHeadId, baseId, defaultAceId) {
+  return Object.freeze({ tier, id, name, masslineHeadId, baseId, defaultAceId });
+}
+
+// PQ-170.03 — one legendary Massline head per ace promotion tier. Lineage is who you took it from.
+export const ACE_TROPHY_HEADS = Object.freeze([
+  trophyHead(1, 'unique_no_cut_filament', 'No-Cut Filament', 'monofilament_sweep', 'mod_monofilament_sweep_m', 'ace_yara_no_cut'),
+  trophyHead(2, 'unique_toll_saint_bridle', 'Toll-Saint Bridle', 'twin_bridle', 'mod_twin_bridle_m', 'ace_toll_saint_venn'),
+  trophyHead(3, 'unique_broken_ring_whip', 'Broken-Ring Whip', 'elastic_whip', 'mod_elastic_whip_m', 'ace_mako_broken_ring'),
+]);
+const ACE_TROPHY_BY_MODULE = new Map(ACE_TROPHY_HEADS.map((row) => [row.id, row]));
+const ACE_TROPHY_BY_TIER = new Map(ACE_TROPHY_HEADS.map((row) => [row.tier, row]));
+
+export function aceTrophyHeadByModuleId(id) {
+  return ACE_TROPHY_BY_MODULE.get(id) || null;
+}
+
+export function aceTrophyHeadByTier(tier) {
+  return ACE_TROPHY_BY_TIER.get(tier | 0) || null;
+}
+
+/** Fitted trophy plus lineage from the claims ledger, if the player is wearing one. */
+export function trophyFromFittings(fittings, ledger) {
+  if (!Array.isArray(fittings)) return null;
+  for (const id of fittings) {
+    if (typeof id !== 'string') continue;
+    const def = aceTrophyHeadByModuleId(id);
+    if (!def) continue;
+    const rec = ledger && ledger.byModuleId && ledger.byModuleId[id];
+    return {
+      tier: def.tier,
+      id: def.id,
+      name: def.name,
+      masslineHeadId: def.masslineHeadId,
+      baseId: def.baseId,
+      defaultAceId: def.defaultAceId,
+      aceId: rec && rec.aceId || def.defaultAceId,
+      aceName: rec && rec.aceName || null,
+    };
+  }
+  return null;
+}

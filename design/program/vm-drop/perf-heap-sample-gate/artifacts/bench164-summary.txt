@@ -1,0 +1,5 @@
+run1 hull quiet med off 4.70 on 0.225 x20.9 floor x16.8 | perFrame off 62.7 on 6.2 | live change on 10.23 off 10.88 (x1.06) | liveChanged 0/300 key 140|345|140|345|ship_kestrel | mem tight 2.63->0.000 perFrame 52.1
+run2 hull quiet med off 4.95 on 0.225 x22.0 floor x12.7 | perFrame off 61.2 on 5.5 | live change on 10.03 off 10.35 (x1.03) | liveChanged 0/300 key 140|345|140|345|ship_kestrel | mem tight 2.42->0.000 perFrame 55.0
+run3 hull quiet med off 4.77 on 0.225 x21.2 floor x11.4 | perFrame off 64.2 on 7.5 | live change on 10.05 off 10.30 (x1.02) | liveChanged 0/300 key 140|345|140|345|ship_kestrel | mem tight 2.73->0.000 perFrame 60.8
+run4 hull quiet med off 6.10 on 0.225 x27.1 floor x17.0 | perFrame off 59.7 on 6.8 | live change on 11.42 off 11.47 (x1.00) | liveChanged 0/300 key 140|345|140|345|ship_kestrel | mem tight 2.70->0.000 perFrame 52.1
+run5 hull quiet med off 4.65 on 0.225 x20.7 floor x17.7 | perFrame off 61.7 on 4.7 | live change on 10.03 off 10.45 (x1.04) | liveChanged 0/300 key 140|345|140|345|ship_kestrel | mem tight 2.77->0.000 perFrame 50.4

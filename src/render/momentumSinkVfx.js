@@ -1,0 +1,297 @@
+import { DEFAULT_VFX_ADMISSION_PRIORITY } from '../presentation/vfxAdmissionPriority.js';
+
+export const MOMENTUM_SINK_VFX_HZ = 12;
+export const MOMENTUM_SINK_VFX_TARGET_CAPACITY = 6;
+export const MOMENTUM_SINK_VFX_DEADBAND_SPEED = 0.25;
+
+// These are the already-established causal/current-target tiers used by the thrown-body cue.
+// Momentum Sink shares those tiers rather than reserving capacity or inventing a new priority lane.
+const PLAYER_CAUSED_PRIORITY = 0.92;
+const CURRENT_TARGET_PRIORITY = 0.98;
+const MAX_AUTHORED_RELATIVE_SPEED = 180;
+const RESIDUE_LIFE_S = 1 / MOMENTUM_SINK_VFX_HZ;
+
+// Stored-minus-live speed that reads as a fully loaded clamp. Below this the sink is merely
+// trailing the body; at it, the bungee is holding real tension and the cue should say so.
+const TENSION_BITE_SPEED = 6;
+
+// The brace phase is read from the target's OWN position, for two reasons.
+//
+// The planner is pure and is resolved TWICE per cadence pulse — once to rank candidates, once to
+// emit — so a module counter would advance twice and hand the two reads different poses. Position
+// is identical across both, and moves continuously with the body, so successive 12 Hz pulses vary
+// coherently (roughly a sixth of a cycle per pulse at ordinary combat speeds) instead of stamping
+// the same three parallel dashes over and over, which is what made a working clamp read as a
+// strobing decal. A parked body holds one pose, which is correct: nothing is converging.
+//
+// Wrapped BEFORE scaling. Galactic-global coordinates are large, and multiplying first would spend
+// the whole float mantissa on the integer part and leave the fraction as noise.
+const BRACE_MODULUS_X = 37;
+const BRACE_MODULUS_Z = 43;
+const TAU = Math.PI * 2;
+
+function bracePhase(x, z) {
+  const u = ((x % BRACE_MODULUS_X) / BRACE_MODULUS_X + (z % BRACE_MODULUS_Z) / BRACE_MODULUS_Z) * 0.5;
+  return u - Math.floor(u);
+}
+
+export const MOMENTUM_SINK_VFX_COLORS = Object.freeze({
+  core: '#fff0bf',
+  compression: '#ff9d48',
+  particleStart: '#fff5d6',
+  particleEnd: '#ff713d',
+});
+
+export const INERTIAL_SHUNT_VFX_COLORS = Object.freeze({
+  core: '#e8f6ff',
+  transfer: '#7ec8ff',
+});
+
+export function createInertialShuntVfxPlanScratch() {
+  return {
+    active: false,
+    x: 0,
+    z: 0,
+    axisX: 0,
+    axisZ: 0,
+    length: 0,
+    width: 0,
+    opacity: 0,
+    life: 0,
+    particleCount: 0,
+    admissionPriority: DEFAULT_VFX_ADMISSION_PRIORITY,
+  };
+}
+
+/**
+ * Contact flash along the momentum-transfer axis. Sim owns the dump; this planner
+ * only names the streak a later spawn path (or the existing presentation:vfxCue
+ * listener) can draw. No new pool.
+ */
+export function resolveInertialShuntVfxPlan(out, input) {
+  if (!out) return null;
+  resetShuntPlan(out);
+  if (!input) return out;
+  const position = input.position;
+  if (!finiteXZ(position)) return out;
+  const axisX = Number(input.axisX);
+  const axisZ = Number(input.axisZ);
+  const axisLen = Math.hypot(axisX, axisZ);
+  if (!(axisLen > 1e-6)) return out;
+  const targetDeltaV = Number(input.targetDeltaV);
+  if (!(Number.isFinite(targetDeltaV) && targetDeltaV > MOMENTUM_SINK_VFX_DEADBAND_SPEED)) return out;
+  const radiusInput = Number(input.radius);
+  const radius = clamp(Number.isFinite(radiusInput) ? radiusInput : 8, 2, 30);
+  const speedT = clamp01(targetDeltaV / MAX_AUTHORED_RELATIVE_SPEED);
+  const motionReduce = input.motionReduce === true;
+  const flashReduce = input.flashReduce === true;
+  out.active = true;
+  out.x = position.x;
+  out.z = position.z;
+  out.axisX = axisX / axisLen;
+  out.axisZ = axisZ / axisLen;
+  out.length = motionReduce
+    ? clamp(8 + speedT * 10, 6, 18)
+    : clamp(12 + radius * 0.4 + speedT * 22, 10, 36);
+  out.width = motionReduce ? 0.35 : clamp(0.4 + speedT * 0.35, 0.4, 1);
+  out.opacity = motionReduce ? 0.28 : 0.62 + speedT * 0.2;
+  out.life = RESIDUE_LIFE_S;
+  out.particleCount = motionReduce || flashReduce ? 0 : 3;
+  out.admissionPriority = input.playerCaused === true
+    ? PLAYER_CAUSED_PRIORITY
+    : DEFAULT_VFX_ADMISSION_PRIORITY;
+  return out;
+}
+
+function resetShuntPlan(plan) {
+  plan.active = false;
+  plan.x = 0;
+  plan.z = 0;
+  plan.axisX = 0;
+  plan.axisZ = 0;
+  plan.length = 0;
+  plan.width = 0;
+  plan.opacity = 0;
+  plan.life = 0;
+  plan.particleCount = 0;
+  plan.admissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
+  return plan;
+}
+
+export function createMomentumSinkVfxPlanScratch() {
+  return {
+    active: false,
+    targetX: 0,
+    targetZ: 0,
+    targetVelocityX: 0,
+    targetVelocityZ: 0,
+    frameVelocityX: 0,
+    frameVelocityZ: 0,
+    relativeVelocityX: 0,
+    relativeVelocityZ: 0,
+    relativeSpeed: 0,
+    axisX: 0,
+    axisZ: 0,
+    perpX: 0,
+    perpZ: 0,
+    radius: 0,
+    life: 0,
+    width: 0,
+    length: 0,
+    opacity: 0,
+    centerOffset: 0,
+    sideOffset: 0,
+    convergenceSpeed: 0,
+    particleSpeed: 0,
+    carryX: 0,
+    carryZ: 0,
+    streakCount: 0,
+    particleCount: 0,
+    admissionPriority: DEFAULT_VFX_ADMISSION_PRIORITY,
+  };
+}
+
+/**
+ * Resolve one allocation-free world-space Momentum Sink presentation plan.
+ *
+ * The stored attacker-frame velocity is combat-owned truth. This planner never looks up an
+ * attacker, writes velocity, or subtracts the render frame origin. Existing VFX spawners own the
+ * single global-to-frame conversion.
+ *
+ * PQ-026.00: optional `storedReceding` is the bungee's tension read. When omitted, length still
+ * tracks live relative speed so the damper trail is unchanged.
+ */
+export function resolveMomentumSinkVfxPlan(out, input) {
+  if (!out) return null;
+  const plan = out;
+  resetPlan(plan);
+  if (!input || input.frameReady !== true) return plan;
+
+  const position = input.targetPosition;
+  const velocity = input.targetVelocity;
+  const frameVelocity = input.frameVelocity;
+  if (!finiteXZ(position) || !finiteXZ(velocity) || !finiteXZ(frameVelocity)) return plan;
+
+  const relativeX = velocity.x - frameVelocity.x;
+  const relativeZ = velocity.z - frameVelocity.z;
+  const relativeSpeed = Math.hypot(relativeX, relativeZ);
+  if (!Number.isFinite(relativeSpeed) || !(relativeSpeed > MOMENTUM_SINK_VFX_DEADBAND_SPEED)) {
+    return plan;
+  }
+
+  const axisX = -relativeX / relativeSpeed;
+  const axisZ = -relativeZ / relativeSpeed;
+  if (!Number.isFinite(axisX) || !Number.isFinite(axisZ)) return plan;
+
+  const radiusInput = Number(input.radius);
+  const radius = clamp(Number.isFinite(radiusInput) ? radiusInput : 6, 2, 30);
+  const storedReceding = Number(input.storedReceding);
+  const tensionSpeed = Number.isFinite(storedReceding) && storedReceding > relativeSpeed
+    ? storedReceding
+    : relativeSpeed;
+  const speedT = clamp01(
+    (tensionSpeed - MOMENTUM_SINK_VFX_DEADBAND_SPEED)
+      / (MAX_AUTHORED_RELATIVE_SPEED - MOMENTUM_SINK_VFX_DEADBAND_SPEED),
+  );
+  const motionReduce = input.motionReduce === true;
+  const flashReduce = input.flashReduce === true;
+  const fullLength = clamp(6 + radius * 0.45 + speedT * 18, 7, 31);
+  const fullWidth = clamp(0.26 + radius * 0.025 + speedT * 0.2, 0.3, 0.92);
+  const fullOpacity = 0.58 + speedT * 0.18;
+
+  plan.active = true;
+  plan.targetX = position.x;
+  plan.targetZ = position.z;
+  plan.targetVelocityX = velocity.x;
+  plan.targetVelocityZ = velocity.z;
+  plan.frameVelocityX = frameVelocity.x;
+  plan.frameVelocityZ = frameVelocity.z;
+  plan.relativeVelocityX = relativeX;
+  plan.relativeVelocityZ = relativeZ;
+  plan.relativeSpeed = relativeSpeed;
+  // This is the signed convergence direction: frame velocity minus target velocity.
+  plan.axisX = axisX;
+  plan.axisZ = axisZ;
+  plan.perpX = -axisZ;
+  plan.perpZ = axisX;
+  plan.radius = radius;
+  plan.life = RESIDUE_LIFE_S;
+  plan.length = motionReduce ? clamp(fullLength * 0.62, 5, 15) : fullLength;
+  plan.width = motionReduce ? fullWidth * 0.78 : fullWidth;
+  plan.opacity = motionReduce
+    ? (flashReduce ? 0.22 : 0.3)
+    : (flashReduce ? fullOpacity * 0.54 : fullOpacity);
+  // A LOADED clamp and a merely trailing one should not look the same. `storedReceding` is the
+  // bungee's tension read and until now only fed length/width/opacity, so a sink holding real
+  // tension was just a slightly longer streak. Now the bite pulls the compression front in against
+  // the hull and drives the braces harder inward, which is the verb the tool is actually doing.
+  const bite = clamp01((tensionSpeed - relativeSpeed) / TENSION_BITE_SPEED);
+  const brace = 1 + 0.18 * Math.sin(bracePhase(position.x, position.z) * TAU);
+  plan.centerOffset = radius * (0.65 - 0.18 * bite) + plan.length * 0.22;
+  plan.sideOffset = motionReduce
+    ? 0
+    : clamp(clamp(radius * 0.55 + speedT * 2.5, 2, 18) * brace * (1 - 0.22 * bite), 1.5, 18);
+  plan.convergenceSpeed = motionReduce
+    ? 0
+    : clamp((4 + relativeSpeed * 0.05) * brace * (1 + 0.85 * bite), 4, 18);
+  plan.particleSpeed = motionReduce
+    ? 0
+    : clamp((6 + relativeSpeed * 0.07) * brace, 6, 24);
+  // Carry follows the target's real translation; only the side channels add convergence travel.
+  plan.carryX = velocity.x;
+  plan.carryZ = velocity.z;
+  plan.streakCount = motionReduce ? 1 : 3;
+  plan.particleCount = motionReduce || flashReduce ? 0 : 2;
+  plan.admissionPriority = input.targetRelevant === true
+    ? CURRENT_TARGET_PRIORITY
+    : input.playerCaused === true
+      ? PLAYER_CAUSED_PRIORITY
+      : DEFAULT_VFX_ADMISSION_PRIORITY;
+  return plan;
+}
+
+function resetPlan(plan) {
+  plan.active = false;
+  plan.targetX = 0;
+  plan.targetZ = 0;
+  plan.targetVelocityX = 0;
+  plan.targetVelocityZ = 0;
+  plan.frameVelocityX = 0;
+  plan.frameVelocityZ = 0;
+  plan.relativeVelocityX = 0;
+  plan.relativeVelocityZ = 0;
+  plan.relativeSpeed = 0;
+  plan.axisX = 0;
+  plan.axisZ = 0;
+  plan.perpX = 0;
+  plan.perpZ = 0;
+  plan.radius = 0;
+  plan.life = 0;
+  plan.width = 0;
+  plan.length = 0;
+  plan.opacity = 0;
+  plan.centerOffset = 0;
+  plan.sideOffset = 0;
+  plan.convergenceSpeed = 0;
+  plan.particleSpeed = 0;
+  plan.carryX = 0;
+  plan.carryZ = 0;
+  plan.streakCount = 0;
+  plan.particleCount = 0;
+  plan.admissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
+  return plan;
+}
+
+function finiteXZ(value) {
+  return !!value
+    && typeof value.x === 'number' && Number.isFinite(value.x)
+    && typeof value.z === 'number' && Number.isFinite(value.z);
+}
+
+function clamp01(value) {
+  return value <= 0 ? 0 : value >= 1 ? 1 : value;
+}
+
+function clamp(value, min, max) {
+  return value < min ? min : value > max ? max : value;
+}

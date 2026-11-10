@@ -1,0 +1,717 @@
+{
+  "assetId": "docking_collar",
+  "category": "habitat-dock",
+  "description": "docking collar",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_PASSAGE_-1_0",
+      "position": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_PASSAGE_1_0",
+      "position": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          2,
+          0.18,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          2,
+          0.18,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          2,
+          3.6,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          2.0
+        ],
+        "size": [
+          2,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          2.0
+        ],
+        "size": [
+          2,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          2,
+          3.6,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          -2.0
+        ],
+        "size": [
+          2,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          -2.0
+        ],
+        "size": [
+          2,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.0,
+          2.25
+        ],
+        "size": [
+          0.55,
+          0.6,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.0,
+          -2.25
+        ],
+        "size": [
+          0.55,
+          0.6,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.8,
+          0.0,
+          2.25
+        ],
+        "size": [
+          0.55,
+          0.6,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.8,
+          0.0,
+          -2.25
+        ],
+        "size": [
+          0.55,
+          0.6,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.6,
+          2.17
+        ],
+        "size": [
+          1.6,
+          0.16,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.65,
+          0.18,
+          2.17
+        ],
+        "size": [
+          0.22,
+          0.65,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.65,
+          0.18,
+          2.17
+        ],
+        "size": [
+          0.22,
+          0.65,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.6,
+          -2.17
+        ],
+        "size": [
+          1.6,
+          0.16,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.65,
+          0.18,
+          -2.17
+        ],
+        "size": [
+          0.22,
+          0.65,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.65,
+          0.18,
+          -2.17
+        ],
+        "size": [
+          0.22,
+          0.65,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          -1.65,
+          -0.0
+        ],
+        "size": [
+          0.2,
+          0.055,
+          3.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.8,
+          -1.65,
+          -0.0
+        ],
+        "size": [
+          0.2,
+          0.055,
+          3.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -1.1399999856948853,
+      -1.9399999380111694,
+      -2.450000047683716
+    ],
+    "max": [
+      1.1399999856948853,
+      2.1575000286102295,
+      2.450000047683716
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "docking_collar_lod0.glb",
+      "triangles": 9728,
+      "draws": 8,
+      "bytes": 761200,
+      "method": "source",
+      "sha256": "366e1df14a5fcbdd6dc7284ad79a234114d8c4c83c2ad88cb89e218a3697fe2e"
+    },
+    {
+      "level": 1,
+      "file": "docking_collar_lod1.glb",
+      "triangles": 3890,
+      "draws": 8,
+      "bytes": 484896,
+      "method": "Forge-decimation",
+      "sha256": "7611174065ab970b79863225d0914a7ca74cc7961e28401865b3b0d3beced144"
+    },
+    {
+      "level": 2,
+      "file": "docking_collar_lod2.glb",
+      "triangles": 1750,
+      "draws": 8,
+      "bytes": 377816,
+      "method": "Forge-decimation",
+      "sha256": "be2b0b3ce3f5a50b669d98c060f66793f1ec1b5a92e4075a2a5c88b373b334ac"
+    }
+  ]
+}

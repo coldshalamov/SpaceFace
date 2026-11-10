@@ -1,0 +1,195 @@
+// PACKET HIERARCHY-6 — instrument grammar on the remaining live screens:
+// sandbox, live station market, Combat Lab controls + telemetry, save/load, help.
+// Source contracts: 12px floor, one DISPLAY, colour by meaning, --sf-data-face on figures,
+// no hardcoded hex, no roleless cyan/azure, no animation:infinite, no native title=,
+// no forbidden class vocabulary, SVG tokens on inline style, words beside every hue.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import { auditTypeFloor } from '../scripts/check-type-floor.mjs';
+import { NATIVE_TITLE_RE, nativeTitlePropWrites } from '../scripts/check-ui-native-titles.mjs';
+import { chartTrendColor, chartTrendRole, legalityRole as marketLegalityRole } from '../src/ui/station/screens/market.js';
+import { legalityRole as helpLegalityRole } from '../src/ui/screens/help.js';
+import { slotBadgeRole } from '../src/ui/screens/saveLoad.js';
+import { labSpeedRole } from '../src/ui/screens/crucibleLabControls.js';
+import { telemetryHostilesRole } from '../src/ui/screens/crucibleLabTelemetry.js';
+
+// Frontend Task B (design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md §1.2) moved the load
+// screen (src/ui/screens/saveLoad.js) onto the kit: it owns no CSS any more, so the injected-style
+// contracts below no longer apply to it. Its type scale, faces and colour law are styles/kit.css
+// (the sheet's grammar); its meaning roles (slotBadgeRole) and words-beside-colour strings are still
+// asserted below. Frontend Task C §1.3 did the same for the live station market
+// (src/ui/station/screens/market.js): it is styles/kit.css + styles/station.css now; its meaning roles
+// (chartTrendRole, legalityRole) stay exported and asserted. Frontend Task D moved help
+// (src/ui/screens/help.js) onto the kit the same way: no injected CSS, `.sf-help-now` an inert hook on
+// the kit title's profile line; legalityRole and its words-beside-colour strings stay asserted. Task D
+// §1.4 also moved the Combat Lab controls and telemetry (crucibleLabControls.js, crucibleLabTelemetry.js)
+// onto kit rows: both style blocks are deleted, `.sf-lab-speed-now sf-fig` / `.sf-lab-tel-tick sf-fig`
+// stay as inert hooks, and their meaning roles (labSpeedRole, telemetryHostilesRole) stay asserted.
+const FILES = [
+  'src/ui/screens/sandbox.js',
+];
+const DISPLAY = new Map([
+  ['src/ui/screens/sandbox.js', '.sf-sandbox-now'],
+]);
+const PINNED_FORBIDDEN = /(?:\bpanel\b|sf-menu|sf-menu-wide|sf-panel|sx-panel)/;
+const ALLOWED_PX = new Set([12, 13, 14, 15, 19, 20, 22, 28, 40, 64]);
+const HEX_RE = /#[0-9a-fA-F]{3,8}\b/;
+
+function load(rel) {
+  return readFileSync(fileURLToPath(new URL('../' + rel, import.meta.url)), 'utf8');
+}
+
+function stripComments(src) {
+  return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+}
+
+function pxSizes(src) {
+  const out = [];
+  const longhand = /font-size:\s*([0-9]+(?:\.[0-9]+)?)px/g;
+  let m;
+  while ((m = longhand.exec(src))) out.push(Number(m[1]));
+  const shorthand = /(^|[;{]|\s)font:\s*[^;}]*?([0-9]+(?:\.[0-9]+)?)px/g;
+  while ((m = shorthand.exec(src))) out.push(Number(m[2]));
+  return out;
+}
+
+test('type floor: nothing in the six screens or their owning sheet is authored below 12px', () => {
+  // Every screen in this packet rides styles/kit.css now (see the header note): the sheet is
+  // audited directly so the coverage guard measures the grammar that actually paints them.
+  const { findings } = auditTypeFloor(['styles/kit.css', ...FILES]);
+  assert.deepEqual(findings, [], JSON.stringify(findings, null, 2));
+  for (const rel of FILES) {
+    const code = stripComments(load(rel));
+    assert.equal((code.match(/font-size:\s*[0-9.]+rem/g) || []).length, 0, rel + ' still uses rem font-size');
+    assert.equal((code.match(/font-size:\s*[0-9.]+em/g) || []).length, 0, rel + ' still uses em font-size');
+    for (const size of pxSizes(code)) {
+      assert.ok(size >= 12, rel + ' font-size ' + size + 'px is below the floor');
+      assert.ok(ALLOWED_PX.has(size), rel + ' font-size ' + size + 'px is not on the grammar scale');
+    }
+  }
+});
+
+test('each screen still mounts its named eye-winner hook', () => {
+  // DISPLAY sizing lives on the kit scale (--k-fs-*) now; what the packet still owns is that the
+  // named eye-winner hook keeps mounting on each screen.
+  for (const rel of FILES) {
+    const code = load(rel);
+    assert.ok(code.includes(DISPLAY.get(rel).slice(1)), rel + ' lost its DISPLAY hook ' + DISPLAY.get(rel));
+    assert.equal((stripComments(code).match(/font-size:\s*28px/g) || []).length, 0,
+      rel + ' authors a DISPLAY size in the screen source — that belongs to the kit scale');
+  }
+});
+
+test('every figure keeps its sf-fig hook; the sheet owns the face', () => {
+  // --sf-data-face still resolves on the sheet stack (deckplate.generated.css → --dp-face-read);
+  // the screens no longer author the binding, they mount the hook.
+  for (const rel of FILES) {
+    const code = load(rel);
+    assert.match(code, /sf-fig/, rel + ' has no .sf-fig figure class');
+  }
+  assert.match(load('src/ui/screens/sandbox.js'), /className = 'sf-fig'/);
+  assert.match(load('src/ui/screens/crucibleLabControls.js'), /sf-lab-speed-now sf-fig/);
+  assert.match(load('src/ui/screens/crucibleLabTelemetry.js'), /sf-lab-tel-tick sf-fig/);
+});
+
+test('colour is by meaning: zero hardcoded hex, no roleless cyan/azure', () => {
+  // Meaning roles moved to the kit token family (--k-*/--dp-*) with the CSS; what the screen
+  // source must never do is spend a raw literal or a roleless accent.
+  for (const rel of FILES) {
+    const code = stripComments(load(rel));
+    assert.equal((code.match(HEX_RE) || []).length, 0, rel + ' still authors a hardcoded hex literal');
+    assert.equal((code.match(/var\(--accent\)|var\(--accent,|#39d0ff|#4aa8ff/g) || []).length, 0,
+      rel + ' still spends the roleless cyan/azure accent');
+    assert.equal((code.match(/var\(--accent-3\)|#c08bff/g) || []).length, 0,
+      rel + ' still spends roleless purple');
+    assert.equal((code.match(/animation:[^;}]*\binfinite\b/g) || []).length, 0,
+      rel + ' has animation: infinite');
+  }
+});
+
+test('trend / legality / speed / badge colour is a meaning role, not a rainbow', () => {
+  assert.equal(chartTrendRole(true), 'you');
+  assert.equal(chartTrendRole(false), 'foe');
+  // The station screens moved onto Deckplate, the one token system (owner unification ruling
+  // 2026-09-22; station kit commit e00f13491): the 'you' trend paints the lamp, 'foe' the lamp
+  // driven to failure. The meaning roles above are unchanged; only the token root moved.
+  assert.equal(chartTrendColor(true), 'var(--dp-lamp)');
+  assert.equal(chartTrendColor(false), 'var(--dp-danger)');
+  assert.equal(marketLegalityRole('contraband'), 'foe');
+  assert.equal(marketLegalityRole('restricted'), 'goal');
+  assert.equal(marketLegalityRole('legal'), 'calm');
+  assert.equal(helpLegalityRole('contraband'), 'foe');
+  assert.equal(helpLegalityRole('restricted'), 'goal');
+  assert.equal(helpLegalityRole('legal'), 'calm');
+  assert.equal(slotBadgeRole('Current'), 'you');
+  assert.equal(slotBadgeRole('Latest'), 'goal');
+  assert.equal(slotBadgeRole('Recovery'), 'foe');
+  assert.equal(slotBadgeRole('v3'), 'calm');
+  assert.equal(labSpeedRole(1), 'calm');
+  assert.equal(labSpeedRole(2), 'you');
+  assert.equal(labSpeedRole(0.5), 'goal');
+  assert.equal(telemetryHostilesRole(0), 'calm');
+  assert.equal(telemetryHostilesRole(3), 'foe');
+});
+
+test('SVG meaning colours ride inline style, never a presentation attribute', () => {
+  for (const rel of FILES) {
+    const code = stripComments(load(rel));
+    assert.doesNotMatch(code, /stroke="var\(/, rel + ' paints a var() stroke presentation attribute');
+    assert.doesNotMatch(code, /fill="var\(/, rel + ' paints a var() fill presentation attribute');
+    assert.doesNotMatch(code, /stop-color="var\(/, rel + ' paints a var() stop-color presentation attribute');
+  }
+});
+
+test('no native title=; naming avoids pulse/blink/flash and card/menu/panel/modal', () => {
+  for (const rel of FILES) {
+    const body = load(rel);
+    assert.equal([...body.matchAll(new RegExp(NATIVE_TITLE_RE.source, 'g'))].length, 0, rel + ' writes title=');
+    assert.equal(nativeTitlePropWrites(body).length, 0, rel + ' writes .title');
+    const classes = [...stripComments(body).matchAll(/class(?:Name)?=["'`]([^"'`]+)["'`]/g)].map((m) => m[1]);
+    for (const cls of classes) {
+      assert.doesNotMatch(cls, /pulse|blink|flash/, rel + ' class ' + cls);
+      if (/panel|card|menu|modal/.test(cls)) {
+        assert.match(cls, PINNED_FORBIDDEN, rel + ' introduced forbidden class ' + cls);
+      }
+    }
+  }
+});
+
+test('crest / stage / apron zones are named on each screen', () => {
+  for (const rel of FILES) {
+    const code = load(rel);
+    assert.match(code, /\bsf-crest\b/, rel);
+    assert.match(code, /\bsf-stage\b/, rel);
+    assert.match(code, /\bsf-apron\b/, rel);
+  }
+});
+
+test('no state rests on hue alone: the words sit beside every colour', () => {
+  const sandbox = load('src/ui/screens/sandbox.js');
+  assert.match(sandbox, /result\.ok \? 'Ready' : 'Invalid'/);
+  const mkt = load('src/ui/station/screens/market.js');
+  // The register's trend glyph carries the movement as a number (▲3%); demand is a word.
+  assert.match(mkt, /demandWord/);
+  // The market rewrite split the register: route-intel wording lives in tradeLogic, and the
+  // legality words ride the presentation map beside their colour classes.
+  assert.match(load('src/ui/market/tradeLogic.js'), /Tracked contract/);
+  assert.match(load('src/ui/views/marketPresentation.js'), /contraband: 'Contraband'/);
+  const controls = load('src/ui/screens/crucibleLabControls.js');
+  assert.match(controls, /Invulnerable: on/);
+  assert.match(controls, /Invulnerable: off/);
+  const save = load('src/ui/screens/saveLoad.js');
+  assert.match(save, /Empty slot/);
+  assert.match(save, /'Current'/);
+  assert.match(save, /'Latest'/);
+  assert.match(save, /'Recovery'/);
+  const help = load('src/ui/screens/help.js');
+  assert.match(help, /is-' \+ legalRole/);
+  assert.match(help, /c\.legality/);
+  const tel = load('src/ui/screens/crucibleLabTelemetry.js');
+  assert.match(tel, /Live hostiles/);
+  assert.match(tel, /UNAVAILABLE_MARK/);
+});

@@ -1,0 +1,134 @@
+From e404c8cd41efb3fcbe9d1a5ad91c9f98063c6a7e Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 07:25:06 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-skip=20energy=20relevant?=
+ =?UTF-8?q?=20probe=20when=20hide-latched=20(~4.3=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+After #103, consecutive quiet ticks still paid full `_energyPlumeRelevant`
+(player `_engineDriveFor` + trail-candidate drive walk). While
+`_energyQuietHidden`, cheap maybe-awake (input/actuators/throttle/boost/
+speed-proxy) gates the full probe. Soft-GPU fps not claimed. Picture ON.
+---
+ src/render/vfx.js | 89 ++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 88 insertions(+), 1 deletion(-)
+
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 80322ca6e..07b2180d8 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -12202,6 +12202,84 @@ export const vfx = {
+     return resolveBloomRadianceScale(video);
+   },
+ 
++  // Cheap wake while `_energyQuietHidden`: input / actuators / throttle / boost /
++  // speed-proxy only — no full `_engineDriveFor` trail walk. Conservative: may
++  // false-wake into the full relevant path (hide latch still early-returns); must
++  // not miss a real thrust/coast wake. Soft-GPU fps not claimed.
++  _energyQuietMaybeAwake() {
++    const energy = this._energy;
++    if (energy && (
++      energy.plumeDrive > 0.02
++      || energy.boostBlend > 0.02
++      || (energy.rcsSystem && energy.rcsSystem.pool.activeImpulseCount > 0)
++    )) return true;
++    const player = this.state.entities && this.state.entities.get(this.state.playerId);
++    if (player && player.alive && player.type === 'ship' && this._usesProductionThruster(player)) {
++      const actuators = this._actuatorsFor(player);
++      if (actuators && (
++        Math.abs(actuators.lateral || 0) > 0.001
++        || Math.abs(actuators.yaw || 0) > 0.001
++        || (actuators.reverse || 0) > 0.001
++      )) return true;
++      const inp = this.state.input;
++      if (inp) {
++        if (Number.isFinite(inp.turnIntent) && Math.abs(inp.turnIntent) > 0.2) return true;
++        if (Number.isFinite(inp.moveZ) && inp.moveZ > 0.05) return true;
++      }
++      if (player.flags && player.flags.boosting) return true;
++      const frame = player._flightFrame || {};
++      if ((Number.isFinite(frame.throttle) && frame.throttle > 0.03)
++        || (Number.isFinite(frame.commandedThrottle) && frame.commandedThrottle > 0.03)) {
++        return true;
++      }
++      // Coast wake: same speedDrive thresholds full relevant uses (0.15 / brake band).
++      const vx = player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0;
++      const vz = player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0;
++      if (vx !== 0 || vz !== 0) {
++        const speed = Math.hypot(vx, vz);
++        const maxFromEntity = Number.isFinite(player.maxSpeed) ? player.maxSpeed : 0;
++        const maxFromFrame = Number.isFinite(frame.maxSpeed) ? frame.maxSpeed : 0;
++        const maxSpeed = Math.max(1, maxFromEntity || maxFromFrame || 120);
++        const speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
++        if (speedDrive > 0.15 || speedDrive * 0.40 > 0.03) return true;
++      }
++    }
++    const list = this._trailCandidates;
++    if (list) {
++      for (let i = 0; i < list.length; i++) {
++        const e = list[i];
++        if (!e || !e.alive || e.type !== 'ship') continue;
++        if (player && e.id === player.id) continue;
++        if (e.flags && e.flags.docked) continue;
++        if (e.flags && e.flags.boosting) return true;
++        const frame = e._flightFrame || {};
++        if ((Number.isFinite(frame.throttle) && frame.throttle > 0.03)
++          || (Number.isFinite(frame.commandedThrottle) && frame.commandedThrottle > 0.03)) {
++          return true;
++        }
++        const actuators = this._actuatorsFor(e);
++        if (actuators && (
++          Math.abs(actuators.lateral || 0) > 0.001
++          || Math.abs(actuators.yaw || 0) > 0.001
++          || (actuators.reverse || 0) > 0.001
++          || (actuators.main || 0) > 0.03
++        )) return true;
++        const vx = e.vel && Number.isFinite(e.vel.x) ? e.vel.x : 0;
++        const vz = e.vel && Number.isFinite(e.vel.z) ? e.vel.z : 0;
++        if (vx !== 0 || vz !== 0) {
++          const speed = Math.hypot(vx, vz);
++          const maxFromEntity = Number.isFinite(e.maxSpeed) ? e.maxSpeed : 0;
++          const maxFromFrame = Number.isFinite(frame.maxSpeed) ? frame.maxSpeed : 0;
++          const maxSpeed = Math.max(1, maxFromEntity || maxFromFrame || 120);
++          const speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
++          // Matches `_engineDriveFor` idle band: drive ≈ speedDrive*0.40 when throttle/boost idle.
++          if (speedDrive * 0.40 > 0.03) return true;
++        }
++      }
++    }
++    return false;
++  },
++
+   _energyPlumeRelevant() {
+     if (!this._productionThrusterEnabled()) return false;
+     const energy = this._energy;
+@@ -12291,6 +12369,15 @@ export const vfx = {
+       this._disposeEnergy();
+       return false;
+     }
++    // Quiet-hidden residual after #103: consecutive idle ticks still paid full
++    // `_energyPlumeRelevant` (player `_engineDriveFor` + trail-candidate walk). Cheap
++    // maybe-awake first; false-wake falls through to full relevant (hide latch holds).
++    if (this._energyQuietHidden) {
++      const masslineWake = legacyEnergyMaterialsEnabled && this._energyMasslineRelevant();
++      if (!masslineWake && !(productionThrusterEnabled && this._energyQuietMaybeAwake())) {
++        return false;
++      }
++    }
+     // The production Hitch exhaust is the ship's primary propulsion feedback. It follows the
+     // Engine trails setting and must not disappear because a legacy profile disabled the older
+     // HDR-energy-material experiment. That legacy toggle continues to own only the Massline volume.
+@@ -13255,7 +13342,7 @@ export const vfx = {
+ 
+   _hideEnergyPlumes() {
+     // Already cold after a prior quiet hide: skip plasma/retro/fleet.reset churn.
+-    // Wake paths (_updateEnergy plume/massline relevant) clear _energyQuietHidden.
++    // Wake paths (_updateEnergy maybe-awake / plume/massline relevant) clear _energyQuietHidden.
+     if (this._energyQuietHidden) return;
+     this._releasePlayerPlumeEventLight();
+     const energy = this._energy;
+-- 
+2.47.3
+

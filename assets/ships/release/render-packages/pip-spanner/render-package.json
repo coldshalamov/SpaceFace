@@ -1,0 +1,3914 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.pip-spanner",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "a671472e40526bd5e063b726943d899dc03bbd5bf5c5c642bb6d982de4114684",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-hull.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-l-hull"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-livery.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-l-livery"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-l-mechanical"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-mechanicaldark.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-l-mechanicaldark"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-hull.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-r-hull"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-livery.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-r-livery"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-r-mechanical"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-mechanicaldark.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-r-mechanicaldark"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-item-cradle-armor.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-item-cradle-armor"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-item-cradle-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-item-cradle-mechanical"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-item-cradle-mechanicaldark.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-item-cradle-mechanicaldark"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-pointer-livery.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-pointer-livery"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-pointer-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-pointer-mechanical"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-armor.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-armor"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-hull.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-hull"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-lights-cyan.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-lights-cyan"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-livery.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-livery"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-mechanical"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-mechanicaldark.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-mechanicaldark"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-armor.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-armor"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-hull.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-hull"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-lights-warm.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-lights-warm"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-livery.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-livery"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-mechanical.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-mechanical"
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-mechanicaldark.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-mechanicaldark"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          7.096508502960205,
+          0.7100671880754046,
+          -1.6810068762796815
+        ],
+        "min": [
+          1.1839045286178589,
+          -0.06006720819197214,
+          -4.330103191087872
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b0c4acdeb5d4e0875aa0a954be2f1e71351e590345a20a50c4746944a2efdf0e",
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-hull.primitive.0",
+      "indexCount": 1221,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_CLAW_L__Hull",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-l-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 400
+    },
+    {
+      "bounds": {
+        "max": [
+          5.178039486659917,
+          0.7085073473338481,
+          -2.581202268600464
+        ],
+        "min": [
+          4.6219397232399855,
+          -0.05848225899380405,
+          -3.992316722869873
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b9f63cad516a3ecb0e948a80f31aaaac2ce1dde723fa9a246c453def5fd98155",
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-livery.primitive.0",
+      "indexCount": 1416,
+      "indexed": true,
+      "materialHash": "1589ebf832930595f5ea34576c7f5bda74ffaad185dcba1a4f4b83caafb3ab75",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_CLAW_L__Livery",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-l-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 409
+    },
+    {
+      "bounds": {
+        "max": [
+          6.854999542236328,
+          0.7700097697047176,
+          -1.6449466847476988
+        ],
+        "min": [
+          2.2963926792144775,
+          0.5924902422162114,
+          -3.669587502569196
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f56eb5231cef0307c2bc993555c249a8a4727130f12d9277bd117d34d4ea1f9e",
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-mechanical.primitive.0",
+      "indexCount": 2256,
+      "indexed": true,
+      "materialHash": "565f2d849f328789cf4e1285d589d380c0e76ffb74ce149bfc400e193a0e6591",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_CLAW_L__Mechanical",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-l-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 728
+    },
+    {
+      "bounds": {
+        "max": [
+          7.0965094566345215,
+          0.7448903715815124,
+          -1.4801230453486611
+        ],
+        "min": [
+          1.1838972568511963,
+          -0.0598903654720363,
+          -4.32987689743088
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7d75e1d388ea24d9ecf91c9e2735904850183ac1f91f9c02b79bf5b2b6ebfc15",
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-mechanicaldark.primitive.0",
+      "indexCount": 2007,
+      "indexed": true,
+      "materialHash": "f67467b963fd22c96ce5a3fad93de0e8b2149105c13408719e0b242e40645fde",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_CLAW_L__MechanicalDark",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-l-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 670
+    },
+    {
+      "bounds": {
+        "max": [
+          7.096508502960205,
+          0.7100671880754046,
+          4.330103191087872
+        ],
+        "min": [
+          1.1839045286178589,
+          -0.06006720819197214,
+          1.6810068762796815
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1f9017c09e23a2987eca09749f1a82240caf096b11c83b8fd3ae058c2530cf85",
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-hull.primitive.0",
+      "indexCount": 1218,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_CLAW_R__Hull",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-r-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 399
+    },
+    {
+      "bounds": {
+        "max": [
+          5.178038056148442,
+          0.7084852973405715,
+          3.992316722869873
+        ],
+        "min": [
+          4.621938292728511,
+          -0.058504308987080644,
+          2.581202268600464
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4736e6b044fbbce9b625c7ddac34fddf33040f37f3ca6fe98ffde9a06b64fa7c",
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-livery.primitive.0",
+      "indexCount": 1416,
+      "indexed": true,
+      "materialHash": "1589ebf832930595f5ea34576c7f5bda74ffaad185dcba1a4f4b83caafb3ab75",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_CLAW_R__Livery",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-r-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 408
+    },
+    {
+      "bounds": {
+        "max": [
+          6.854999542236328,
+          0.7700097697047176,
+          3.669587502569196
+        ],
+        "min": [
+          2.2963926792144775,
+          0.5924902422162114,
+          1.6449466847476988
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d12e1b8d2ecad9e1b6ac1fcab8a30d8136b04ffbbe1750bcb91931ef4114445b",
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-mechanical.primitive.0",
+      "indexCount": 2256,
+      "indexed": true,
+      "materialHash": "565f2d849f328789cf4e1285d589d380c0e76ffb74ce149bfc400e193a0e6591",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_CLAW_R__Mechanical",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-r-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 728
+    },
+    {
+      "bounds": {
+        "max": [
+          7.0965094566345215,
+          0.7448903715815124,
+          4.32987689743088
+        ],
+        "min": [
+          1.1838972568511963,
+          -0.0598903654720363,
+          1.4801230453486611
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "83a870b13670ea5bbedf3a4cdf60a0c2d31cc5103b82578e5522785b63db9912",
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-mechanicaldark.primitive.0",
+      "indexCount": 2010,
+      "indexed": true,
+      "materialHash": "f67467b963fd22c96ce5a3fad93de0e8b2149105c13408719e0b242e40645fde",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_CLAW_R__MechanicalDark",
+      "nodeId": "sf.render.pip-spanner.node.lod0-claw-r-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 673
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8333724107768723,
+          0.6899606184630601,
+          1.159999966621399
+        ],
+        "min": [
+          0.7562472853634171,
+          0.39003936484763935,
+          -1.159999966621399
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "20106f543d85872dcd7e74ac44f1312338a8ae3da2b5474bea2905a87aa4b11b",
+      "id": "sf.render.pip-spanner.node.lod0-item-cradle-armor.primitive.0",
+      "indexCount": 1320,
+      "indexed": true,
+      "materialHash": "bd9529899fde6bd8da54a0c08491580c236a04ba2e93807963c5d4d788693028",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ITEM_CRADLE__Armor",
+      "nodeId": "sf.render.pip-spanner.node.lod0-item-cradle-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 402
+    },
+    {
+      "bounds": {
+        "max": [
+          1.3620497350886733,
+          0.6305810622377506,
+          2.8411872386932373
+        ],
+        "min": [
+          0.15575691411939563,
+          0.08188777794407692,
+          -2.8411872386932373
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8b60e49d5e1b35a1e753e1a94ed91a2981ea2b1692d6e28c4d3c7fe6896d4f24",
+      "id": "sf.render.pip-spanner.node.lod0-item-cradle-mechanical.primitive.0",
+      "indexCount": 1800,
+      "indexed": true,
+      "materialHash": "565f2d849f328789cf4e1285d589d380c0e76ffb74ce149bfc400e193a0e6591",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ITEM_CRADLE__Mechanical",
+      "nodeId": "sf.render.pip-spanner.node.lod0-item-cradle-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 554
+    },
+    {
+      "bounds": {
+        "max": [
+          1.590034724949015,
+          0.8100045835342079,
+          1.059999942779541
+        ],
+        "min": [
+          0.9499651772993676,
+          0.6699954355392784,
+          -1.059999942779541
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cdfc6eb5bca819e72a6440c614f082cfbda13d0a458a2c7edac75de4ff8ac419",
+      "id": "sf.render.pip-spanner.node.lod0-item-cradle-mechanicaldark.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "f67467b963fd22c96ce5a3fad93de0e8b2149105c13408719e0b242e40645fde",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ITEM_CRADLE__MechanicalDark",
+      "nodeId": "sf.render.pip-spanner.node.lod0-item-cradle-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 340
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.853758811950684,
+          1.8250106136879698,
+          -2.6803161775014055
+        ],
+        "min": [
+          -6.246240139007568,
+          1.6149893243231996,
+          -2.9996841276743758
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2e5b295f04494e8cc9d9de29bc5895c5a439cc8150d0dd652e63ebe551f07eb9",
+      "id": "sf.render.pip-spanner.node.lod0-pip-pointer-livery.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "1589ebf832930595f5ea34576c7f5bda74ffaad185dcba1a4f4b83caafb3ab75",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_PIP_POINTER__Livery",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-pointer-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.031517028808594,
+          1.8580830941781041,
+          -2.7762248201933706
+        ],
+        "min": [
+          -7.930335998535156,
+          1.6399625887290004,
+          -3.6707854585084116
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bbfdeb21e960aa4eab1b6a8d0e2e6fb55fcd05e2c71ff699081bf8bae56bdbd8",
+      "id": "sf.render.pip-spanner.node.lod0-pip-pointer-mechanical.primitive.0",
+      "indexCount": 660,
+      "indexed": true,
+      "materialHash": "565f2d849f328789cf4e1285d589d380c0e76ffb74ce149bfc400e193a0e6591",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_PIP_POINTER__Mechanical",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-pointer-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 204
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.694999694824219,
+          2.139581292593894,
+          -3.8049997091293335
+        ],
+        "min": [
+          -10.885000228881836,
+          1.9404186311121605,
+          -4.995000243186951
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "76fa00d032b0421967d394e5db5a6f73cf0dc8d163156492c4bf055f3145145c",
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-armor.primitive.0",
+      "indexCount": 720,
+      "indexed": true,
+      "materialHash": "bd9529899fde6bd8da54a0c08491580c236a04ba2e93807963c5d4d788693028",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_PIP_ROOT__Armor",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 224
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.928357124328613,
+          3.2938863710826394,
+          -3.104803655546797
+        ],
+        "min": [
+          -9.578864097595215,
+          1.320020250850344,
+          -5.695128824311602
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bb87279fb091e34ca3d53e7da1f4baa46f3b5573c9a92354917c084d146509bf",
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-hull.primitive.0",
+      "indexCount": 705,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_PIP_ROOT__Hull",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 284
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.704929695155006,
+          2.953069701169151,
+          -4.065000057220459
+        ],
+        "min": [
+          -8.203069343541282,
+          2.4549300527828755,
+          -4.735000133514404
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "59908d1509c4c896d461c727f9ee1ce852df945cdeab2c94c2e54fb0698158cd",
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-lights-cyan.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "6826ca6eab4a7ddee4656fcbcb27ebf2fe2cf96b0c449731ef39c1a7715fe25e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_PIP_ROOT__Lights_Cyan",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          -8.803446840409718,
+          3.2917840800774445,
+          -3.3294637203216553
+        ],
+        "min": [
+          -9.116317678328075,
+          1.320005146454538,
+          -5.470616340637207
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6c59989490b2c108b1448efa3e8459e9cc0829a140318a0ab375d2f2d5d3096f",
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-livery.primitive.0",
+      "indexCount": 768,
+      "indexed": true,
+      "materialHash": "1589ebf832930595f5ea34576c7f5bda74ffaad185dcba1a4f4b83caafb3ab75",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_PIP_ROOT__Livery",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 301
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.658949851989746,
+          2.9911169158960167,
+          -3.390000608273922
+        ],
+        "min": [
+          -10.420000076293945,
+          1.5999325168584997,
+          -4.854999515703739
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7ad847f92a4115f7c60b4bb68b2021ea15bca7dd31fa20cb7614f13f305769a2",
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-mechanical.primitive.0",
+      "indexCount": 2448,
+      "indexed": true,
+      "materialHash": "565f2d849f328789cf4e1285d589d380c0e76ffb74ce149bfc400e193a0e6591",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_PIP_ROOT__Mechanical",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 796
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.955627918243408,
+          2.9510347741667458,
+          -3.1218895607662294
+        ],
+        "min": [
+          -10.699999809265137,
+          1.3474466902192404,
+          -5.67908290093421
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "87f019acf5637b1628b19e3f7c24def617d66500cbcc1a0a631b7a409748cb8a",
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-mechanicaldark.primitive.0",
+      "indexCount": 3615,
+      "indexed": true,
+      "materialHash": "f67467b963fd22c96ce5a3fad93de0e8b2149105c13408719e0b242e40645fde",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_PIP_ROOT__MechanicalDark",
+      "nodeId": "sf.render.pip-spanner.node.lod0-pip-root-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1102
+    },
+    {
+      "bounds": {
+        "max": [
+          2.434360366739738,
+          1.009873847880824,
+          4.510000228881836
+        ],
+        "min": [
+          -5.600148540415275,
+          -0.45459962955997735,
+          -4.510000228881836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f402692b175bce526f72dd4f5b67cff2984cc76da5181d40da736d8c29905a0e",
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-armor.primitive.0",
+      "indexCount": 7728,
+      "indexed": true,
+      "materialHash": "bd9529899fde6bd8da54a0c08491580c236a04ba2e93807963c5d4d788693028",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SPANNER_ROOT__Armor",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 2464
+    },
+    {
+      "bounds": {
+        "max": [
+          1.3081805956997794,
+          0.8099846806639002,
+          4.438255786895752
+        ],
+        "min": [
+          -5.500838185612194,
+          -0.45998468662436465,
+          -4.438255786895752
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "68fa13cd0401057d06762445699d636656b62a15dc91586efad4aa76c169e6b8",
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-hull.primitive.0",
+      "indexCount": 1728,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SPANNER_ROOT__Hull",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 592
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.979974427316195,
+          1.1325155077525721,
+          0.9800000190734863
+        ],
+        "min": [
+          -3.380025706198209,
+          1.0774845303944005,
+          -0.9800000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "91fe0549f8fee70676796721bd4d3686a73f68ac88806bfbd49cfc054b5d7a40",
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-lights-warm.primitive.0",
+      "indexCount": 480,
+      "indexed": true,
+      "materialHash": "bbada0153aa8bac62c2f7dd54feb73261d9278a054b0eb9a2a955967b419ca5f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SPANNER_ROOT__Lights_Warm",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 206
+    },
+    {
+      "bounds": {
+        "max": [
+          1.879890243518588,
+          1.0597644028822222,
+          4.510000228881836
+        ],
+        "min": [
+          -4.809890667903659,
+          -0.4597644684473313,
+          -4.510000228881836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c6c6aeda3b850b71813cf636f5caac34b02b2bbe85f6c5a9d2b3f9ba7fe2ff7b",
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-livery.primitive.0",
+      "indexCount": 2808,
+      "indexed": true,
+      "materialHash": "1589ebf832930595f5ea34576c7f5bda74ffaad185dcba1a4f4b83caafb3ab75",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SPANNER_ROOT__Livery",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 1008
+    },
+    {
+      "bounds": {
+        "max": [
+          2.07014670415157,
+          1.1000701341763601,
+          4.049999713897705
+        ],
+        "min": [
+          -4.227270985081136,
+          -0.30007015205775356,
+          -4.049999713897705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3d996822741144d3697af75fe8746a2900152e69b3b4c1bcad807e672568e589",
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-mechanical.primitive.0",
+      "indexCount": 4932,
+      "indexed": true,
+      "materialHash": "565f2d849f328789cf4e1285d589d380c0e76ffb74ce149bfc400e193a0e6591",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SPANNER_ROOT__Mechanical",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1660
+    },
+    {
+      "bounds": {
+        "max": [
+          1.3287633822388245,
+          1.1722539432596257,
+          4.505000114440918
+        ],
+        "min": [
+          -4.7002678082413265,
+          -0.699753917033582,
+          -4.505000114440918
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c1f0b2a2261c0caafea4dce4a73a2911567001331a4c120d656423e071a8cc65",
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-mechanicaldark.primitive.0",
+      "indexCount": 4848,
+      "indexed": true,
+      "materialHash": "f67467b963fd22c96ce5a3fad93de0e8b2149105c13408719e0b242e40645fde",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SPANNER_ROOT__MechanicalDark",
+      "nodeId": "sf.render.pip-spanner.node.lod0-spanner-root-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1450
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "1589ebf832930595f5ea34576c7f5bda74ffaad185dcba1a4f4b83caafb3ab75",
+      "id": "material:1589ebf832930595f5ea3457",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "565f2d849f328789cf4e1285d589d380c0e76ffb74ce149bfc400e193a0e6591",
+      "id": "material:565f2d849f328789cf4e1285",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6826ca6eab4a7ddee4656fcbcb27ebf2fe2cf96b0c449731ef39c1a7715fe25e",
+      "id": "material:6826ca6eab4a7ddee4656fcb",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "id": "material:98b096766a0680120cab6218",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "bbada0153aa8bac62c2f7dd54feb73261d9278a054b0eb9a2a955967b419ca5f",
+      "id": "material:bbada0153aa8bac62c2f7dd5",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "bd9529899fde6bd8da54a0c08491580c236a04ba2e93807963c5d4d788693028",
+      "id": "material:bd9529899fde6bd8da54a0c0",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f67467b963fd22c96ce5a3fad93de0e8b2149105c13408719e0b242e40645fde",
+      "id": "material:f67467b963fd22c96ce5a3fa",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.pip-spanner.node.claw-l",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.6200000047683716,
+        0.30000001192092896,
+        -3.5999999046325684,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "CLAW_L",
+      "nodeName": "CLAW_L",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.pip-spanner.node.spanner-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.6200000047683716,
+        0.30000001192092896,
+        -3.5999999046325684,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.claw-r",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.6200000047683716,
+        0.30000001192092896,
+        3.5999999046325684,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "CLAW_R",
+      "nodeName": "CLAW_R",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.pip-spanner.node.spanner-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.6200000047683716,
+        0.30000001192092896,
+        3.5999999046325684,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.item-cradle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.25,
+        0.800000011920929,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "ITEM_CRADLE",
+      "nodeName": "ITEM_CRADLE",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.pip-spanner.node.spanner-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.25,
+        0.800000011920929,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-hull",
+      "localTransform": [
+        2.956301987171173,
+        0,
+        0,
+        0,
+        0,
+        2.956301987171173,
+        0,
+        0,
+        0,
+        0,
+        2.956301987171173,
+        0,
+        2.5202065110206604,
+        0.02499997802078724,
+        0.5944448709487915,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_CLAW_L__Hull",
+      "nodeName": "LOD0_CLAW_L__Hull",
+      "nodePath": [
+        0,
+        1,
+        0,
+        0
+      ],
+      "parentId": "sf.render.pip-spanner.node.claw-l",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        2.956301987171173,
+        0,
+        0,
+        0,
+        0,
+        2.956301987171173,
+        0,
+        0,
+        0,
+        0,
+        2.956301987171173,
+        0,
+        4.140206515789032,
+        0.3249999899417162,
+        -3.005555033683777,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-livery",
+      "localTransform": [
+        0.7055572271347046,
+        0,
+        0,
+        0,
+        0,
+        0.7055572271347046,
+        0,
+        0,
+        0,
+        0,
+        0.7055572271347046,
+        0,
+        3.2799896001815796,
+        0.025012532249093056,
+        0.3132404088973999,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_CLAW_L__Livery",
+      "nodeName": "LOD0_CLAW_L__Livery",
+      "nodePath": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "parentId": "sf.render.pip-spanner.node.claw-l",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        0.7055572271347046,
+        0,
+        0,
+        0,
+        0,
+        0.7055572271347046,
+        0,
+        0,
+        0,
+        0,
+        0.7055572271347046,
+        0,
+        4.899989604949951,
+        0.325012544170022,
+        -3.2867594957351685,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-mechanical",
+      "localTransform": [
+        2.2793034315109253,
+        0,
+        0,
+        0,
+        0,
+        2.2793034315109253,
+        0,
+        0,
+        0,
+        0,
+        2.2793034315109253,
+        0,
+        2.9556961059570312,
+        0.3812499940395355,
+        0.9427328109741211,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_CLAW_L__Mechanical",
+      "nodeName": "LOD0_CLAW_L__Mechanical",
+      "nodePath": [
+        0,
+        1,
+        0,
+        2
+      ],
+      "parentId": "sf.render.pip-spanner.node.claw-l",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        2.2793034315109253,
+        0,
+        0,
+        0,
+        0,
+        2.2793034315109253,
+        0,
+        0,
+        0,
+        0,
+        2.2793034315109253,
+        0,
+        4.575696110725403,
+        0.6812500059604645,
+        -2.6572670936584473,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-l-mechanicaldark",
+      "localTransform": [
+        2.9563060998916626,
+        0,
+        0,
+        0,
+        0,
+        2.9563060998916626,
+        0,
+        0,
+        0,
+        0,
+        2.9563060998916626,
+        0,
+        2.5202033519744873,
+        0.04249999113380909,
+        0.6949999332427979,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_CLAW_L__MechanicalDark",
+      "nodeName": "LOD0_CLAW_L__MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        0,
+        3
+      ],
+      "parentId": "sf.render.pip-spanner.node.claw-l",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        2.9563060998916626,
+        0,
+        0,
+        0,
+        0,
+        2.9563060998916626,
+        0,
+        0,
+        0,
+        0,
+        2.9563060998916626,
+        0,
+        4.140203356742859,
+        0.34250000305473804,
+        -2.9049999713897705,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-hull",
+      "localTransform": [
+        2.956301987171173,
+        0,
+        0,
+        0,
+        0,
+        2.956301987171173,
+        0,
+        0,
+        0,
+        0,
+        2.956301987171173,
+        0,
+        2.5202065110206604,
+        0.02499997802078724,
+        -0.5944448709487915,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_CLAW_R__Hull",
+      "nodeName": "LOD0_CLAW_R__Hull",
+      "nodePath": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "parentId": "sf.render.pip-spanner.node.claw-r",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        2.956301987171173,
+        0,
+        0,
+        0,
+        0,
+        2.956301987171173,
+        0,
+        0,
+        0,
+        0,
+        2.956301987171173,
+        0,
+        4.140206515789032,
+        0.3249999899417162,
+        3.005555033683777,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-livery",
+      "localTransform": [
+        0.7055572271347046,
+        0,
+        0,
+        0,
+        0,
+        0.7055572271347046,
+        0,
+        0,
+        0,
+        0,
+        0.7055572271347046,
+        0,
+        3.279988169670105,
+        0.02499048225581646,
+        -0.3132404088973999,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_CLAW_R__Livery",
+      "nodeName": "LOD0_CLAW_R__Livery",
+      "nodePath": [
+        0,
+        1,
+        1,
+        1
+      ],
+      "parentId": "sf.render.pip-spanner.node.claw-r",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        0.7055572271347046,
+        0,
+        0,
+        0,
+        0,
+        0.7055572271347046,
+        0,
+        0,
+        0,
+        0,
+        0.7055572271347046,
+        0,
+        4.899988174438477,
+        0.3249904941767454,
+        3.2867594957351685,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-mechanical",
+      "localTransform": [
+        2.2793034315109253,
+        0,
+        0,
+        0,
+        0,
+        2.2793034315109253,
+        0,
+        0,
+        0,
+        0,
+        2.2793034315109253,
+        0,
+        2.9556961059570312,
+        0.3812499940395355,
+        -0.9427328109741211,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_CLAW_R__Mechanical",
+      "nodeName": "LOD0_CLAW_R__Mechanical",
+      "nodePath": [
+        0,
+        1,
+        1,
+        2
+      ],
+      "parentId": "sf.render.pip-spanner.node.claw-r",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        2.2793034315109253,
+        0,
+        0,
+        0,
+        0,
+        2.2793034315109253,
+        0,
+        0,
+        0,
+        0,
+        2.2793034315109253,
+        0,
+        4.575696110725403,
+        0.6812500059604645,
+        2.6572670936584473,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-claw-r-mechanicaldark",
+      "localTransform": [
+        2.9563060998916626,
+        0,
+        0,
+        0,
+        0,
+        2.9563060998916626,
+        0,
+        0,
+        0,
+        0,
+        2.9563060998916626,
+        0,
+        2.5202033519744873,
+        0.04249999113380909,
+        -0.6949999332427979,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_CLAW_R__MechanicalDark",
+      "nodeName": "LOD0_CLAW_R__MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        1,
+        3
+      ],
+      "parentId": "sf.render.pip-spanner.node.claw-r",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        2.9563060998916626,
+        0,
+        0,
+        0,
+        0,
+        2.9563060998916626,
+        0,
+        0,
+        0,
+        0,
+        2.9563060998916626,
+        0,
+        4.140203356742859,
+        0.34250000305473804,
+        2.9049999713897705,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-item-cradle-armor",
+      "localTransform": [
+        1.159999966621399,
+        0,
+        0,
+        0,
+        0,
+        1.159999966621399,
+        0,
+        0,
+        0,
+        0,
+        1.159999966621399,
+        0,
+        0.04480984807014465,
+        -0.2600000202655792,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ITEM_CRADLE__Armor",
+      "nodeName": "LOD0_ITEM_CRADLE__Armor",
+      "nodePath": [
+        0,
+        1,
+        2,
+        0
+      ],
+      "parentId": "sf.render.pip-spanner.node.item-cradle",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1.159999966621399,
+        0,
+        0,
+        0,
+        0,
+        1.159999966621399,
+        0,
+        0,
+        0,
+        0,
+        1.159999966621399,
+        0,
+        1.2948098480701447,
+        0.5399999916553497,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-item-cradle-mechanical",
+      "localTransform": [
+        2.8411872386932373,
+        0,
+        0,
+        0,
+        0,
+        2.8411872386932373,
+        0,
+        0,
+        0,
+        0,
+        2.8411872386932373,
+        0,
+        -0.4910966753959656,
+        -0.4437655918300152,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ITEM_CRADLE__Mechanical",
+      "nodeName": "LOD0_ITEM_CRADLE__Mechanical",
+      "nodePath": [
+        0,
+        1,
+        2,
+        1
+      ],
+      "parentId": "sf.render.pip-spanner.node.item-cradle",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        2.8411872386932373,
+        0,
+        0,
+        0,
+        0,
+        2.8411872386932373,
+        0,
+        0,
+        0,
+        0,
+        2.8411872386932373,
+        0,
+        0.7589033246040344,
+        0.3562344200909138,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-item-cradle-mechanicaldark",
+      "localTransform": [
+        1.059999942779541,
+        0,
+        0,
+        0,
+        0,
+        1.059999942779541,
+        0,
+        0,
+        0,
+        0,
+        1.059999942779541,
+        0,
+        0.019999951124191284,
+        -0.06000000238418579,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ITEM_CRADLE__MechanicalDark",
+      "nodeName": "LOD0_ITEM_CRADLE__MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        2,
+        2
+      ],
+      "parentId": "sf.render.pip-spanner.node.item-cradle",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1.059999942779541,
+        0,
+        0,
+        0,
+        0,
+        1.059999942779541,
+        0,
+        0,
+        0,
+        0,
+        1.059999942779541,
+        0,
+        1.2699999511241913,
+        0.7400000095367432,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-pointer-livery",
+      "localTransform": [
+        0.19624066352844238,
+        0,
+        0,
+        0,
+        0,
+        0.19624066352844238,
+        0,
+        0,
+        0,
+        0,
+        0.19624066352844238,
+        0,
+        1.8500001430511475,
+        -0.06000000238418579,
+        0.7699999809265137,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_PIP_POINTER__Livery",
+      "nodeName": "LOD0_PIP_POINTER__Livery",
+      "nodePath": [
+        0,
+        0,
+        6,
+        0
+      ],
+      "parentId": "sf.render.pip-spanner.node.pip-pointer",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        0.19624066352844238,
+        0,
+        0,
+        0,
+        0,
+        0.19624066352844238,
+        0,
+        0,
+        0,
+        0,
+        0.19624066352844238,
+        0,
+        -6.049999475479126,
+        1.7199999690055847,
+        -2.8400001525878906,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-pointer-mechanical",
+      "localTransform": [
+        0.9494094848632812,
+        0,
+        0,
+        0,
+        0,
+        0.9494094848632812,
+        0,
+        0,
+        0,
+        0,
+        0.9494094848632812,
+        0,
+        0.9190731048583984,
+        -0.03097712993621826,
+        0.3864949941635132,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_PIP_POINTER__Mechanical",
+      "nodeName": "LOD0_PIP_POINTER__Mechanical",
+      "nodePath": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "parentId": "sf.render.pip-spanner.node.pip-pointer",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        0.9494094848632812,
+        0,
+        0,
+        0,
+        0,
+        0.9494094848632812,
+        0,
+        0,
+        0,
+        0,
+        0.9494094848632812,
+        0,
+        -6.980926513671875,
+        1.7490228414535522,
+        -3.223505139350891,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-armor",
+      "localTransform": [
+        0.5950002670288086,
+        0,
+        0,
+        0,
+        0,
+        0.5950002670288086,
+        0,
+        0,
+        0,
+        0,
+        0.5950002670288086,
+        0,
+        -1.890000343322754,
+        0.13999998569488525,
+        1.1920928955078125e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_PIP_ROOT__Armor",
+      "nodeName": "LOD0_PIP_ROOT__Armor",
+      "nodePath": [
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.pip-spanner.node.pip-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        0.5950002670288086,
+        0,
+        0,
+        0,
+        0,
+        0.5950002670288086,
+        0,
+        0,
+        0,
+        0,
+        0.5950002670288086,
+        0,
+        -10.289999961853027,
+        2.0399999618530273,
+        -4.399999976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-hull",
+      "localTransform": [
+        1.3252534866333008,
+        0,
+        0,
+        0,
+        0,
+        1.3252534866333008,
+        0,
+        0,
+        0,
+        0,
+        1.3252534866333008,
+        0,
+        0.14638900756835938,
+        0.4069533348083496,
+        0.000033855438232421875,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_PIP_ROOT__Hull",
+      "nodeName": "LOD0_PIP_ROOT__Hull",
+      "nodePath": [
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.pip-spanner.node.pip-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1.3252534866333008,
+        0,
+        0,
+        0,
+        0,
+        1.3252534866333008,
+        0,
+        0,
+        0,
+        0,
+        1.3252534866333008,
+        0,
+        -8.253610610961914,
+        2.3069533109664917,
+        -4.399966239929199,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-lights-cyan",
+      "localTransform": [
+        0.33500003814697266,
+        0,
+        0,
+        0,
+        0,
+        0.33500003814697266,
+        0,
+        0,
+        0,
+        0,
+        0.33500003814697266,
+        0,
+        0.4460000991821289,
+        0.8039999008178711,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_PIP_ROOT__Lights_Cyan",
+      "nodeName": "LOD0_PIP_ROOT__Lights_Cyan",
+      "nodePath": [
+        0,
+        0,
+        2
+      ],
+      "parentId": "sf.render.pip-spanner.node.pip-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        0.33500003814697266,
+        0,
+        0,
+        0,
+        0,
+        0.33500003814697266,
+        0,
+        0,
+        0,
+        0,
+        0.33500003814697266,
+        0,
+        -7.9539995193481445,
+        2.703999876976013,
+        -4.400000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-livery",
+      "localTransform": [
+        1.0705763101577759,
+        0,
+        0,
+        0,
+        0,
+        1.0705763101577759,
+        0,
+        0,
+        0,
+        0,
+        1.0705763101577759,
+        0,
+        -0.559882640838623,
+        0.4058946371078491,
+        -0.00003993511199951172,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_PIP_ROOT__Livery",
+      "nodeName": "LOD0_PIP_ROOT__Livery",
+      "nodePath": [
+        0,
+        0,
+        3
+      ],
+      "parentId": "sf.render.pip-spanner.node.pip-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1.0705763101577759,
+        0,
+        0,
+        0,
+        0,
+        1.0705763101577759,
+        0,
+        0,
+        0,
+        0,
+        1.0705763101577759,
+        0,
+        -8.959882259368896,
+        2.305894613265991,
+        -4.400040030479431,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-mechanical",
+      "localTransform": [
+        1.3805251121520996,
+        0,
+        0,
+        0,
+        0,
+        1.3805251121520996,
+        0,
+        0,
+        0,
+        0,
+        1.3805251121520996,
+        0,
+        -0.6394753456115723,
+        0.3955247402191162,
+        0.2775000333786011,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_PIP_ROOT__Mechanical",
+      "nodeName": "LOD0_PIP_ROOT__Mechanical",
+      "nodePath": [
+        0,
+        0,
+        4
+      ],
+      "parentId": "sf.render.pip-spanner.node.pip-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1.3805251121520996,
+        0,
+        0,
+        0,
+        0,
+        1.3805251121520996,
+        0,
+        0,
+        0,
+        0,
+        1.3805251121520996,
+        0,
+        -9.039474964141846,
+        2.2955247163772583,
+        -4.122500061988831,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-pip-root-mechanicaldark",
+      "localTransform": [
+        1.8721859455108643,
+        0,
+        0,
+        0,
+        0,
+        1.8721859455108643,
+        0,
+        0,
+        0,
+        0,
+        1.8721859455108643,
+        0,
+        -0.427814245223999,
+        0.24924075603485107,
+        -0.00048613548278808594,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_PIP_ROOT__MechanicalDark",
+      "nodeName": "LOD0_PIP_ROOT__MechanicalDark",
+      "nodePath": [
+        0,
+        0,
+        5
+      ],
+      "parentId": "sf.render.pip-spanner.node.pip-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1.8721859455108643,
+        0,
+        0,
+        0,
+        0,
+        1.8721859455108643,
+        0,
+        0,
+        0,
+        0,
+        1.8721859455108643,
+        0,
+        -8.827813863754272,
+        2.149240732192993,
+        -4.40048623085022,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-armor",
+      "localTransform": [
+        4.510000228881836,
+        0,
+        0,
+        0,
+        0,
+        4.510000228881836,
+        0,
+        0,
+        0,
+        0,
+        4.510000228881836,
+        0,
+        -1.5828940868377686,
+        0.2776371091604233,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SPANNER_ROOT__Armor",
+      "nodeName": "LOD0_SPANNER_ROOT__Armor",
+      "nodePath": [
+        0,
+        1,
+        3
+      ],
+      "parentId": "sf.render.pip-spanner.node.spanner-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        4.510000228881836,
+        0,
+        0,
+        0,
+        0,
+        4.510000228881836,
+        0,
+        0,
+        0,
+        0,
+        4.510000228881836,
+        0,
+        -1.5828940868377686,
+        0.2776371091604233,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-hull",
+      "localTransform": [
+        4.438255786895752,
+        0,
+        0,
+        0,
+        0,
+        4.438255786895752,
+        0,
+        0,
+        0,
+        0,
+        4.438255786895752,
+        0,
+        -2.0963287949562073,
+        0.17499999701976776,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SPANNER_ROOT__Hull",
+      "nodeName": "LOD0_SPANNER_ROOT__Hull",
+      "nodePath": [
+        0,
+        1,
+        4
+      ],
+      "parentId": "sf.render.pip-spanner.node.spanner-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        4.438255786895752,
+        0,
+        0,
+        0,
+        0,
+        4.438255786895752,
+        0,
+        0,
+        0,
+        0,
+        4.438255786895752,
+        0,
+        -2.0963287949562073,
+        0.17499999701976776,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-lights-warm",
+      "localTransform": [
+        0.9800000190734863,
+        0,
+        0,
+        0,
+        0,
+        0.9800000190734863,
+        0,
+        0,
+        0,
+        0,
+        0.9800000190734863,
+        0,
+        -3.180000066757202,
+        1.1050000190734863,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SPANNER_ROOT__Lights_Warm",
+      "nodeName": "LOD0_SPANNER_ROOT__Lights_Warm",
+      "nodePath": [
+        0,
+        1,
+        5
+      ],
+      "parentId": "sf.render.pip-spanner.node.spanner-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        0.9800000190734863,
+        0,
+        0,
+        0,
+        0,
+        0.9800000190734863,
+        0,
+        0,
+        0,
+        0,
+        0.9800000190734863,
+        0,
+        -3.180000066757202,
+        1.1050000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-livery",
+      "localTransform": [
+        4.510000228881836,
+        0,
+        0,
+        0,
+        0,
+        4.510000228881836,
+        0,
+        0,
+        0,
+        0,
+        4.510000228881836,
+        0,
+        -1.4650002121925354,
+        0.2999999672174454,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SPANNER_ROOT__Livery",
+      "nodeName": "LOD0_SPANNER_ROOT__Livery",
+      "nodePath": [
+        0,
+        1,
+        6
+      ],
+      "parentId": "sf.render.pip-spanner.node.spanner-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        4.510000228881836,
+        0,
+        0,
+        0,
+        0,
+        4.510000228881836,
+        0,
+        0,
+        0,
+        0,
+        4.510000228881836,
+        0,
+        -1.4650002121925354,
+        0.2999999672174454,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-mechanical",
+      "localTransform": [
+        4.049999713897705,
+        0,
+        0,
+        0,
+        0,
+        4.049999713897705,
+        0,
+        0,
+        0,
+        0,
+        4.049999713897705,
+        0,
+        -1.0785621404647827,
+        0.3999999910593033,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SPANNER_ROOT__Mechanical",
+      "nodeName": "LOD0_SPANNER_ROOT__Mechanical",
+      "nodePath": [
+        0,
+        1,
+        7
+      ],
+      "parentId": "sf.render.pip-spanner.node.spanner-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        4.049999713897705,
+        0,
+        0,
+        0,
+        0,
+        4.049999713897705,
+        0,
+        0,
+        0,
+        0,
+        4.049999713897705,
+        0,
+        -1.0785621404647827,
+        0.3999999910593033,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.lod0-spanner-root-mechanicaldark",
+      "localTransform": [
+        4.505000114440918,
+        0,
+        0,
+        0,
+        0,
+        4.505000114440918,
+        0,
+        0,
+        0,
+        0,
+        4.505000114440918,
+        0,
+        -1.6857522130012512,
+        0.23625001311302185,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SPANNER_ROOT__MechanicalDark",
+      "nodeName": "LOD0_SPANNER_ROOT__MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        8
+      ],
+      "parentId": "sf.render.pip-spanner.node.spanner-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        4.505000114440918,
+        0,
+        0,
+        0,
+        0,
+        4.505000114440918,
+        0,
+        0,
+        0,
+        0,
+        4.505000114440918,
+        0,
+        -1.6857522130012512,
+        0.23625001311302185,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.pip-pointer",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5,
+        -0.12000000476837158,
+        0.7899999618530273,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "PIP_POINTER",
+      "nodeName": "PIP_POINTER",
+      "nodePath": [
+        0,
+        0,
+        6
+      ],
+      "parentId": "sf.render.pip-spanner.node.pip-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.899999618530273,
+        1.7799999713897705,
+        -3.6100001335144043,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.pip-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.399999618530273,
+        1.899999976158142,
+        -4.400000095367432,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "PIP_ROOT",
+      "nodeName": "PIP_ROOT",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.pip-spanner.node.sf20-19-preview-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.399999618530273,
+        1.899999976158142,
+        -4.400000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.sf20-19-preview-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF20_19_PREVIEW_ROOT",
+      "nodeName": "SF20_19_PREVIEW_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pip-spanner.node.spanner-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SPANNER_ROOT",
+      "nodeName": "SPANNER_ROOT",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.pip-spanner.node.sf20-19-preview-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pip-spanner.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "19ebd5d02514ae8344e4bab6b47823b5408a158eb7aea87d8ea278d148b0da81"
+    },
+    "sourceGlb": {
+      "bytes": 420740,
+      "sha256": "b3461cfd2d66740f84f505e8d8635bbbc8ec56fe7a0712bd79dca55cc5697a71",
+      "uri": "place_pip_spanner.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 427120,
+    "sha256": "f54364ce6e366c768c50911423a149e11ef0b2474e979e5c3f70136b6cb4ba65",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -1.8942453861236572,
+        1.2970662270245286,
+        -0.5925642977148828
+      ],
+      "max": [
+        7.0965094566345215,
+        3.2938863710826394,
+        4.510000228881836
+      ],
+      "min": [
+        -10.885000228881836,
+        -0.699753917033582,
+        -5.695128824311602
+      ],
+      "size": [
+        17.981509685516357,
+        3.9936402881162216,
+        10.205129053193438
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.399999618530273,
+          1.899999976158142,
+          -4.400000095367432,
+          1
+        ],
+        "name": "PIP_ROOT",
+        "planIndex": 2,
+        "tags": {
+          "instance": false,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "pip_root",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -8.399999618530273
+            ],
+            [
+              0,
+              1,
+              0,
+              4.400000095367432
+            ],
+            [
+              0,
+              0,
+              1,
+              1.899999976158142
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "PIP_ROOT",
+          "previewOnly": true,
+          "previewSemantic": "PIP_ROOT",
+          "spaceface": {
+            "motionGroup": "pip_root"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "PIP_ROOT",
+            "recordIds": [
+              "sf.render.pip-spanner.node.pip-root"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.899999618530273,
+          1.7799999713897705,
+          -3.6100001335144043,
+          1
+        ],
+        "name": "PIP_POINTER",
+        "planIndex": 15,
+        "tags": {
+          "instance": false,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "pip_pointer",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0.5
+            ],
+            [
+              0,
+              1,
+              0,
+              -0.7899999618530273
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.12000000476837158
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "PIP_POINTER",
+          "previewOnly": true,
+          "previewSemantic": "PIP_POINTER",
+          "spaceface": {
+            "motionGroup": "pip_pointer"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "PIP_POINTER",
+            "recordIds": [
+              "sf.render.pip-spanner.node.pip-pointer"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SPANNER_ROOT",
+        "planIndex": 20,
+        "tags": {
+          "instance": false,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "spanner_root",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "SPANNER_ROOT",
+          "previewOnly": true,
+          "previewSemantic": "SPANNER_ROOT",
+          "spaceface": {
+            "motionGroup": "spanner_root"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SPANNER_ROOT",
+            "recordIds": [
+              "sf.render.pip-spanner.node.spanner-root"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.6200000047683716,
+          0.30000001192092896,
+          -3.5999999046325684,
+          1
+        ],
+        "name": "CLAW_L",
+        "planIndex": 21,
+        "tags": {
+          "instance": false,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "claw_l",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              1.6200000047683716
+            ],
+            [
+              0,
+              1,
+              0,
+              3.5999999046325684
+            ],
+            [
+              0,
+              0,
+              1,
+              0.30000001192092896
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "CLAW_L",
+          "previewOnly": true,
+          "previewSemantic": "CLAW_L",
+          "spaceface": {
+            "motionGroup": "claw_l"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "CLAW_L",
+            "recordIds": [
+              "sf.render.pip-spanner.node.claw-l"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.6200000047683716,
+          0.30000001192092896,
+          3.5999999046325684,
+          1
+        ],
+        "name": "CLAW_R",
+        "planIndex": 30,
+        "tags": {
+          "instance": false,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "claw_r",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              1.6200000047683716
+            ],
+            [
+              0,
+              1,
+              0,
+              -3.5999999046325684
+            ],
+            [
+              0,
+              0,
+              1,
+              0.30000001192092896
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "CLAW_R",
+          "previewOnly": true,
+          "previewSemantic": "CLAW_R",
+          "spaceface": {
+            "motionGroup": "claw_r"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "CLAW_R",
+            "recordIds": [
+              "sf.render.pip-spanner.node.claw-r"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.25,
+          0.800000011920929,
+          0,
+          1
+        ],
+        "name": "ITEM_CRADLE",
+        "planIndex": 39,
+        "tags": {
+          "instance": false,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "item_cradle",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              1.25
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.800000011920929
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "ITEM_CRADLE",
+          "previewOnly": true,
+          "previewSemantic": "ITEM_CRADLE",
+          "spaceface": {
+            "motionGroup": "item_cradle"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "ITEM_CRADLE",
+            "recordIds": [
+              "sf.render.pip-spanner.node.item-cradle"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 5,
+      "hull": 7,
+      "mechanical": 11,
+      "signal": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 58,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.5950002670288086,
+          0,
+          0,
+          0,
+          0,
+          0.5950002670288086,
+          0,
+          0,
+          0,
+          0,
+          0.5950002670288086,
+          0,
+          -10.289999961853027,
+          2.0399999618530273,
+          -4.399999976158142,
+          1
+        ],
+        "name": "LOD0_PIP_ROOT__Armor_1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.3252534866333008,
+          0,
+          0,
+          0,
+          0,
+          1.3252534866333008,
+          0,
+          0,
+          0,
+          0,
+          1.3252534866333008,
+          0,
+          -8.253610610961914,
+          2.3069533109664917,
+          -4.399966239929199,
+          1
+        ],
+        "name": "LOD0_PIP_ROOT__Hull_1",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.33500003814697266,
+          0,
+          0,
+          0,
+          0,
+          0.33500003814697266,
+          0,
+          0,
+          0,
+          0,
+          0.33500003814697266,
+          0,
+          -7.9539995193481445,
+          2.703999876976013,
+          -4.400000095367432,
+          1
+        ],
+        "name": "LOD0_PIP_ROOT__Lights_Cyan_1",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0705763101577759,
+          0,
+          0,
+          0,
+          0,
+          1.0705763101577759,
+          0,
+          0,
+          0,
+          0,
+          1.0705763101577759,
+          0,
+          -8.959882259368896,
+          2.305894613265991,
+          -4.400040030479431,
+          1
+        ],
+        "name": "LOD0_PIP_ROOT__Livery_1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.3805251121520996,
+          0,
+          0,
+          0,
+          0,
+          1.3805251121520996,
+          0,
+          0,
+          0,
+          0,
+          1.3805251121520996,
+          0,
+          -9.039474964141846,
+          2.2955247163772583,
+          -4.122500061988831,
+          1
+        ],
+        "name": "LOD0_PIP_ROOT__Mechanical_1",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.8721859455108643,
+          0,
+          0,
+          0,
+          0,
+          1.8721859455108643,
+          0,
+          0,
+          0,
+          0,
+          1.8721859455108643,
+          0,
+          -8.827813863754272,
+          2.149240732192993,
+          -4.40048623085022,
+          1
+        ],
+        "name": "LOD0_PIP_ROOT__MechanicalDark_1",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.19624066352844238,
+          0,
+          0,
+          0,
+          0,
+          0.19624066352844238,
+          0,
+          0,
+          0,
+          0,
+          0.19624066352844238,
+          0,
+          -6.049999475479126,
+          1.7199999690055847,
+          -2.8400001525878906,
+          1
+        ],
+        "name": "LOD0_PIP_POINTER__Livery_1",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9494094848632812,
+          0,
+          0,
+          0,
+          0,
+          0.9494094848632812,
+          0,
+          0,
+          0,
+          0,
+          0.9494094848632812,
+          0,
+          -6.980926513671875,
+          1.7490228414535522,
+          -3.223505139350891,
+          1
+        ],
+        "name": "LOD0_PIP_POINTER__Mechanical_1",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.956301987171173,
+          0,
+          0,
+          0,
+          0,
+          2.956301987171173,
+          0,
+          0,
+          0,
+          0,
+          2.956301987171173,
+          0,
+          4.140206515789032,
+          0.3249999899417162,
+          -3.005555033683777,
+          1
+        ],
+        "name": "LOD0_CLAW_L__Hull_1",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7055572271347046,
+          0,
+          0,
+          0,
+          0,
+          0.7055572271347046,
+          0,
+          0,
+          0,
+          0,
+          0.7055572271347046,
+          0,
+          4.899989604949951,
+          0.325012544170022,
+          -3.2867594957351685,
+          1
+        ],
+        "name": "LOD0_CLAW_L__Livery_1",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.2793034315109253,
+          0,
+          0,
+          0,
+          0,
+          2.2793034315109253,
+          0,
+          0,
+          0,
+          0,
+          2.2793034315109253,
+          0,
+          4.575696110725403,
+          0.6812500059604645,
+          -2.6572670936584473,
+          1
+        ],
+        "name": "LOD0_CLAW_L__Mechanical_1",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.9563060998916626,
+          0,
+          0,
+          0,
+          0,
+          2.9563060998916626,
+          0,
+          0,
+          0,
+          0,
+          2.9563060998916626,
+          0,
+          4.140203356742859,
+          0.34250000305473804,
+          -2.9049999713897705,
+          1
+        ],
+        "name": "LOD0_CLAW_L__MechanicalDark_1",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.956301987171173,
+          0,
+          0,
+          0,
+          0,
+          2.956301987171173,
+          0,
+          0,
+          0,
+          0,
+          2.956301987171173,
+          0,
+          4.140206515789032,
+          0.3249999899417162,
+          3.005555033683777,
+          1
+        ],
+        "name": "LOD0_CLAW_R__Hull_1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7055572271347046,
+          0,
+          0,
+          0,
+          0,
+          0.7055572271347046,
+          0,
+          0,
+          0,
+          0,
+          0.7055572271347046,
+          0,
+          4.899988174438477,
+          0.3249904941767454,
+          3.2867594957351685,
+          1
+        ],
+        "name": "LOD0_CLAW_R__Livery_1",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.2793034315109253,
+          0,
+          0,
+          0,
+          0,
+          2.2793034315109253,
+          0,
+          0,
+          0,
+          0,
+          2.2793034315109253,
+          0,
+          4.575696110725403,
+          0.6812500059604645,
+          2.6572670936584473,
+          1
+        ],
+        "name": "LOD0_CLAW_R__Mechanical_1",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.9563060998916626,
+          0,
+          0,
+          0,
+          0,
+          2.9563060998916626,
+          0,
+          0,
+          0,
+          0,
+          2.9563060998916626,
+          0,
+          4.140203356742859,
+          0.34250000305473804,
+          2.9049999713897705,
+          1
+        ],
+        "name": "LOD0_CLAW_R__MechanicalDark_1",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.159999966621399,
+          0,
+          0,
+          0,
+          0,
+          1.159999966621399,
+          0,
+          0,
+          0,
+          0,
+          1.159999966621399,
+          0,
+          1.2948098480701447,
+          0.5399999916553497,
+          0,
+          1
+        ],
+        "name": "LOD0_ITEM_CRADLE__Armor_1",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.8411872386932373,
+          0,
+          0,
+          0,
+          0,
+          2.8411872386932373,
+          0,
+          0,
+          0,
+          0,
+          2.8411872386932373,
+          0,
+          0.7589033246040344,
+          0.3562344200909138,
+          0,
+          1
+        ],
+        "name": "LOD0_ITEM_CRADLE__Mechanical_1",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.059999942779541,
+          0,
+          0,
+          0,
+          0,
+          1.059999942779541,
+          0,
+          0,
+          0,
+          0,
+          1.059999942779541,
+          0,
+          1.2699999511241913,
+          0.7400000095367432,
+          0,
+          1
+        ],
+        "name": "LOD0_ITEM_CRADLE__MechanicalDark_1",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.510000228881836,
+          0,
+          0,
+          0,
+          0,
+          4.510000228881836,
+          0,
+          0,
+          0,
+          0,
+          4.510000228881836,
+          0,
+          -1.5828940868377686,
+          0.2776371091604233,
+          0,
+          1
+        ],
+        "name": "LOD0_SPANNER_ROOT__Armor_1",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.438255786895752,
+          0,
+          0,
+          0,
+          0,
+          4.438255786895752,
+          0,
+          0,
+          0,
+          0,
+          4.438255786895752,
+          0,
+          -2.0963287949562073,
+          0.17499999701976776,
+          0,
+          1
+        ],
+        "name": "LOD0_SPANNER_ROOT__Hull_1",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9800000190734863,
+          0,
+          0,
+          0,
+          0,
+          0.9800000190734863,
+          0,
+          0,
+          0,
+          0,
+          0.9800000190734863,
+          0,
+          -3.180000066757202,
+          1.1050000190734863,
+          0,
+          1
+        ],
+        "name": "LOD0_SPANNER_ROOT__Lights_Warm_1",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.510000228881836,
+          0,
+          0,
+          0,
+          0,
+          4.510000228881836,
+          0,
+          0,
+          0,
+          0,
+          4.510000228881836,
+          0,
+          -1.4650002121925354,
+          0.2999999672174454,
+          0,
+          1
+        ],
+        "name": "LOD0_SPANNER_ROOT__Livery_1",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.049999713897705,
+          0,
+          0,
+          0,
+          0,
+          4.049999713897705,
+          0,
+          0,
+          0,
+          0,
+          4.049999713897705,
+          0,
+          -1.0785621404647827,
+          0.3999999910593033,
+          0,
+          1
+        ],
+        "name": "LOD0_SPANNER_ROOT__Mechanical_1",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.505000114440918,
+          0,
+          0,
+          0,
+          0,
+          4.505000114440918,
+          0,
+          0,
+          0,
+          0,
+          4.505000114440918,
+          0,
+          -1.6857522130012512,
+          0.23625001311302185,
+          0,
+          1
+        ],
+        "name": "LOD0_SPANNER_ROOT__MechanicalDark_1",
+        "planIndex": 57,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_pip_spanner.glb"
+  },
+  "runtimeHash": "46f5a3fdb28601e1fbf278fddef57c1bc97cd16f284bd6a8ccfec7fdedd24bb4",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          7.0965094566345215,
+          3.2938863710826394,
+          4.510000228881836
+        ],
+        "min": [
+          -10.885000228881836,
+          -0.699753917033582,
+          -5.695128824311602
+        ]
+      },
+      "id": "sf.render.pip-spanner.body",
+      "nodeIds": [
+        "sf.render.pip-spanner.node.claw-l",
+        "sf.render.pip-spanner.node.claw-r",
+        "sf.render.pip-spanner.node.item-cradle",
+        "sf.render.pip-spanner.node.lod0-claw-l-hull",
+        "sf.render.pip-spanner.node.lod0-claw-l-livery",
+        "sf.render.pip-spanner.node.lod0-claw-l-mechanical",
+        "sf.render.pip-spanner.node.lod0-claw-l-mechanicaldark",
+        "sf.render.pip-spanner.node.lod0-claw-r-hull",
+        "sf.render.pip-spanner.node.lod0-claw-r-livery",
+        "sf.render.pip-spanner.node.lod0-claw-r-mechanical",
+        "sf.render.pip-spanner.node.lod0-claw-r-mechanicaldark",
+        "sf.render.pip-spanner.node.lod0-item-cradle-armor",
+        "sf.render.pip-spanner.node.lod0-item-cradle-mechanical",
+        "sf.render.pip-spanner.node.lod0-item-cradle-mechanicaldark",
+        "sf.render.pip-spanner.node.lod0-pip-pointer-livery",
+        "sf.render.pip-spanner.node.lod0-pip-pointer-mechanical",
+        "sf.render.pip-spanner.node.lod0-pip-root-armor",
+        "sf.render.pip-spanner.node.lod0-pip-root-hull",
+        "sf.render.pip-spanner.node.lod0-pip-root-lights-cyan",
+        "sf.render.pip-spanner.node.lod0-pip-root-livery",
+        "sf.render.pip-spanner.node.lod0-pip-root-mechanical",
+        "sf.render.pip-spanner.node.lod0-pip-root-mechanicaldark",
+        "sf.render.pip-spanner.node.lod0-spanner-root-armor",
+        "sf.render.pip-spanner.node.lod0-spanner-root-hull",
+        "sf.render.pip-spanner.node.lod0-spanner-root-lights-warm",
+        "sf.render.pip-spanner.node.lod0-spanner-root-livery",
+        "sf.render.pip-spanner.node.lod0-spanner-root-mechanical",
+        "sf.render.pip-spanner.node.lod0-spanner-root-mechanicaldark",
+        "sf.render.pip-spanner.node.pip-pointer",
+        "sf.render.pip-spanner.node.pip-root",
+        "sf.render.pip-spanner.node.sf20-19-preview-root",
+        "sf.render.pip-spanner.node.spanner-root"
+      ]
+    }
+  ]
+}

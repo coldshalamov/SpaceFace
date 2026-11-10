@@ -1,0 +1,257 @@
+From 95eb33e502346506ae01e04ac8abcb130339eee1 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 04:48:36 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20retain=20settled=20clearance=20?=
+ =?UTF-8?q?floor=20off-roof=20(~2.1=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet chase follow still walked structural clearance every frame after
+#63+#65+#72. When cam X/Y/Z are bit-identical, structural is
+station/place-only (or empty), and the last floor was -Infinity (off-roof
+quiet flight), return the cached floor. Asteroid/wreck structural skips
+retain; under-roof retains confirm authored stamps. Soft-GPU fps not claimed.
+---
+ src/render/renderer.js                      |  74 ++++++++++++
+ test/camera-clearance-floor-retain.test.mjs | 122 ++++++++++++++++++++
+ 2 files changed, 196 insertions(+)
+ create mode 100644 test/camera-clearance-floor-retain.test.mjs
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index 3cb5d0227..c61a9196d 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -1617,6 +1617,19 @@ export function getCameraClearanceAsteroidNeverRoofExcludeForBench() {
+   return CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE !== false;
+ }
+ 
++// Settled chase: cam X/Y/Z bit-identical after damp settle. Retain the last floor so a quiet
++// follow() skips the structural walk + box-cache hits. Box rewrites bump a module epoch so a
++// drifting capital rock / authored stamp change cannot return a stale roof. Soft-GPU fps not claimed.
++let CAMERA_CLEARANCE_FLOOR_RETAIN = true;
++let _clearanceBoxEpoch = 0;
++export function setCameraClearanceFloorRetainForBench(enabled) {
++  CAMERA_CLEARANCE_FLOOR_RETAIN = enabled !== false;
++  return CAMERA_CLEARANCE_FLOOR_RETAIN;
++}
++export function getCameraClearanceFloorRetainForBench() {
++  return CAMERA_CLEARANCE_FLOOR_RETAIN !== false;
++}
++
+ function asteroidClearanceSpanHint(data) {
+   const body = data && data.asteroidBody;
+   if (!body || !body.scale) return 0;
+@@ -1660,6 +1673,7 @@ function cameraClearanceBoxForMesh(mesh) {
+       rec.posX = posX;
+       rec.posZ = posZ;
+       rec.box = null;
++      _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
+       return null;
+     }
+     data.cameraClearanceNeverRoof = false;
+@@ -1683,6 +1697,7 @@ function cameraClearanceBoxForMesh(mesh) {
+   rec.posX = posX;
+   rec.posZ = posZ;
+   rec.box = box;
++  _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
+   return box;
+ }
+ 
+@@ -1719,6 +1734,65 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
+     }
+     owner._clearanceMeshesVersion = owner._meshesVersion;
+   }
++  if (CAMERA_CLEARANCE_FLOOR_RETAIN) {
++    // Moving structural kinds (asteroid / wreck) can drift or grow without a
++    // _meshesVersion bump; never retain across them — full walk stays authoritative.
++    // Stations/places are authored-static: cam identity + boxEpoch + a light
++    // authored-stamp check is enough (pending→authored must not return a stale
++    // -Infinity from the empty-substrate frame).
++    let staticStructural = true;
++    for (let i = 0; i < structural.length; i++) {
++      const kind = structural[i] && structural[i].userData && structural[i].userData.kind;
++      if (kind === 'asteroid' || kind === 'wreck') { staticStructural = false; break; }
++    }
++    const cache = owner._clearanceFloorCache || (owner._clearanceFloorCache = {
++      camX: NaN,
++      camZ: NaN,
++      camY: NaN,
++      meshesVersion: -1,
++      boxEpoch: -1,
++      floor: -Infinity,
++    });
++    if (staticStructural
++        && cache.camX === camX && cache.camZ === camZ && cache.camY === camY
++        && cache.meshesVersion === owner._clearanceMeshesVersion
++        && cache.boxEpoch === _clearanceBoxEpoch) {
++      // Quiet flight is almost always off-roof (floor === -Infinity). Trust cam
++      // identity there — spawn/despawn bumps _meshesVersion. Under a roof, also
++      // confirm authored stamps so pending→authored on a station cannot keep a
++      // stale empty floor (PIC-07 style in-place stamp without map churn).
++      if (cache.floor === -Infinity) return cache.floor;
++      let stampsFresh = true;
++      for (let i = 0; stampsFresh && i < structural.length; i++) {
++        const data = structural[i].userData;
++        const cached = data && data.cameraClearanceBox;
++        if (!cached
++            || cached.assetState !== (data.authoredAssetState || '')
++            || cached.compositionId !== (data.authoredCompositionId || '')) {
++          stampsFresh = false;
++        }
++      }
++      if (stampsFresh) return cache.floor;
++    }
++    let floor = -Infinity;
++    for (let i = 0; i < structural.length; i++) {
++      const box = cameraClearanceBoxForMesh(structural[i]);
++      if (!box) continue;
++      if (camX < box.minX - CAMERA_CLEARANCE_MARGIN_WU || camX > box.maxX + CAMERA_CLEARANCE_MARGIN_WU) continue;
++      if (camZ < box.minZ - CAMERA_CLEARANCE_MARGIN_WU || camZ > box.maxZ + CAMERA_CLEARANCE_MARGIN_WU) continue;
++      const roof = box.maxY + CAMERA_CLEARANCE_MARGIN_WU;
++      if (camY >= roof) continue;
++      if (roof > floor) floor = roof;
++    }
++    cache.camX = camX;
++    cache.camZ = camZ;
++    cache.camY = camY;
++    cache.meshesVersion = owner._clearanceMeshesVersion;
++    cache.boxEpoch = _clearanceBoxEpoch;
++    cache.floor = floor;
++    return floor;
++  }
++
+   let floor = -Infinity;
+   for (let i = 0; i < structural.length; i++) {
+     const box = cameraClearanceBoxForMesh(structural[i]);
+diff --git a/test/camera-clearance-floor-retain.test.mjs b/test/camera-clearance-floor-retain.test.mjs
+new file mode 100644
+index 000000000..3bafa52dd
+--- /dev/null
++++ b/test/camera-clearance-floor-retain.test.mjs
+@@ -0,0 +1,122 @@
++/**
++ * Camera clearance floor retain: settled cam X/Y/Z returns the cached floor;
++ * box rewrite / mesh churn / bench-off still match a fresh walk. Soft-GPU fps
++ * not claimed.
++ */
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++import {
++  cameraClearanceFloorAt,
++  setCameraClearanceFloorRetainForBench,
++  getCameraClearanceFloorRetainForBench,
++  setCameraClearanceAsteroidSpanRejectForBench,
++  setCameraClearanceAsteroidNeverRoofExcludeForBench,
++} from '../src/render/renderer.js';
++
++function stationAt(x, z, span = 200, h = 60, kind = 'station') {
++  const root = new THREE.Group();
++  root.position.set(x, 0, z);
++  root.userData.kind = kind;
++  root.userData.authoredAssetState = 'authored';
++  root.add(new THREE.Mesh(
++    new THREE.BoxGeometry(span, h, span),
++    new THREE.MeshBasicMaterial(),
++  ));
++  root.updateMatrixWorld(true);
++  return root;
++}
++
++function ownerWith(...meshes) {
++  const map = new Map();
++  for (let i = 0; i < meshes.length; i++) map.set(i + 1, meshes[i]);
++  return { _meshes: map, _meshesVersion: 1 };
++}
++
++test('floor retain is on by default and bench toggle restores always-walk', () => {
++  assert.equal(getCameraClearanceFloorRetainForBench(), true);
++  setCameraClearanceFloorRetainForBench(false);
++  assert.equal(getCameraClearanceFloorRetainForBench(), false);
++  setCameraClearanceFloorRetainForBench(true);
++  assert.equal(getCameraClearanceFloorRetainForBench(), true);
++});
++
++test('settled cam retains the same floor as a fresh walk', () => {
++  setCameraClearanceAsteroidSpanRejectForBench(true);
++  setCameraClearanceAsteroidNeverRoofExcludeForBench(true);
++  setCameraClearanceFloorRetainForBench(true);
++  const owner = ownerWith(stationAt(0, 0));
++  const first = cameraClearanceFloorAt(owner, 0, 0, 10);
++  assert.ok(Number.isFinite(first) && first > -Infinity, `expected a roof, got ${first}`);
++  const second = cameraClearanceFloorAt(owner, 0, 0, 10);
++  assert.equal(second, first);
++  setCameraClearanceFloorRetainForBench(false);
++  owner._clearanceFloorCache = null;
++  const fresh = cameraClearanceFloorAt(owner, 0, 0, 10);
++  assert.equal(fresh, first);
++  setCameraClearanceFloorRetainForBench(true);
++});
++
++test('cam move forces a fresh walk (retain miss)', () => {
++  setCameraClearanceFloorRetainForBench(true);
++  const owner = ownerWith(stationAt(0, 0));
++  const a = cameraClearanceFloorAt(owner, 0, 0, 10);
++  const b = cameraClearanceFloorAt(owner, 400, 0, 10);
++  assert.ok(a > -Infinity);
++  assert.equal(b, -Infinity);
++});
++
++test('authored stamp change busts retain and refreshes the floor', () => {
++  setCameraClearanceFloorRetainForBench(true);
++  const station = stationAt(0, 0, 200, 60);
++  const owner = ownerWith(station);
++  const before = cameraClearanceFloorAt(owner, 0, 0, 10);
++  // Replace geometry so setFromObject derives a taller roof, and bump the stamp so
++  // the box cache + floor retain both miss.
++  station.remove(station.children[0]);
++  station.add(new THREE.Mesh(
++    new THREE.BoxGeometry(200, 120, 200),
++    new THREE.MeshBasicMaterial(),
++  ));
++  station.updateMatrixWorld(true);
++  station.userData.authoredAssetState = 'authored-v2';
++  const after = cameraClearanceFloorAt(owner, 0, 0, 10);
++  assert.ok(after > before, `taller station should raise the roof (${before} -> ${after})`);
++});
++
++test('retain on/off agree across settled and moving cams', () => {
++  setCameraClearanceAsteroidSpanRejectForBench(true);
++  setCameraClearanceAsteroidNeverRoofExcludeForBench(true);
++  const owner = ownerWith(stationAt(0, 0), stationAt(300, 80, 200, 60, 'place'));
++
++  for (let i = 0; i < 40; i++) {
++    const settled = i % 3 !== 0;
++    const t = i * 0.17;
++    const x = settled ? 0 : Math.sin(t) * 40;
++    const z = settled ? 0 : Math.cos(t) * 40;
++    const y = settled ? 10 : 10 + Math.sin(t) * 2;
++
++    setCameraClearanceFloorRetainForBench(false);
++    owner._clearanceFloorCache = null;
++    const off = cameraClearanceFloorAt(owner, x, z, y);
++
++    setCameraClearanceFloorRetainForBench(true);
++    owner._clearanceFloorCache = null;
++    const primed = cameraClearanceFloorAt(owner, x, z, y);
++    const on = cameraClearanceFloorAt(owner, x, z, y);
++    assert.equal(primed, off, `prime mismatch at i=${i}`);
++    assert.equal(on, off, `retain mismatch at i=${i}`);
++  }
++  setCameraClearanceFloorRetainForBench(true);
++});
++
++test('bench-off skips the retain cache', () => {
++  setCameraClearanceFloorRetainForBench(false);
++  const owner = ownerWith(stationAt(0, 0));
++  const a = cameraClearanceFloorAt(owner, 0, 0, 10);
++  assert.ok(owner._clearanceFloorCache == null);
++  const b = cameraClearanceFloorAt(owner, 0, 0, 10);
++  assert.equal(a, b);
++  assert.ok(owner._clearanceFloorCache == null);
++  setCameraClearanceFloorRetainForBench(true);
++});
+-- 
+2.47.3
+

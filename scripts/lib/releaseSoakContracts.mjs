@@ -1,0 +1,804 @@
+// Fail-closed release-soak evidence contracts.
+//
+// Primary acceptance is available only to a real browser/Electron run whose
+// raw samples, lifecycle proof, cycles, settings, and content-hashed artifacts
+// agree with their summaries. Synthetic contract fixtures can test this schema
+// but can never become primary evidence.
+
+import { createHash } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { createReadStream } from 'node:fs';
+import { lstat, readFile } from 'node:fs/promises';
+import path from 'node:path';
+
+export const RELEASE_SOAK_SCHEMA = 'spaceface.releaseSoak.v1';
+export const RUNTIME_INPUT_FINGERPRINT_SCHEMA = 'spaceface.releaseSoakRuntimeInputs.v1';
+/** Structured full-quality frame-pacing attribution output (measurement-only; not primary soak acceptance). */
+export const PERFORMANCE_ATTRIBUTION_SCHEMA = 'spaceface.performanceAttribution.v1';
+export const REQUIRED_PRIMARY_CYCLE_MARKS = Object.freeze([
+  'undock',
+  'flight-input',
+  'save-written',
+  'load-restored',
+  'economy-restored',
+  'docked',
+  'market-opened',
+  'trade-roundtrip',
+]);
+
+export const PERF_BUDGET = Object.freeze({
+  targetFrameMs: 16.7,
+  floorFrameMs: 33.3,
+  hitchThresholdMs: 32,
+  maxHeapGrowthMb: 30,
+  maxHeapGrowthBytes: 30 * 1024 * 1024,
+});
+export const REQUIRED_STEADY_PHASES = Object.freeze(['flight_steady', 'context_recover_steady']);
+
+/** Route tags supported by the attribution sampler (additive; does not weaken soak gates). */
+export const ATTRIBUTION_ROUTE_TAGS = Object.freeze([
+  'flight_steady',
+  'mining_tether_active',
+  'docked_market_ui',
+  'context_recover_steady',
+]);
+
+/** Diagnostic A/B variants — attribution only; must restore settings/timeScale exactly. */
+export const ATTRIBUTION_DIAGNOSTIC_VARIANTS = Object.freeze([
+  'baseline',
+  'sim_paused',
+  'bloom_off',
+  'background_hidden',
+  'non_player_entities_hidden',
+  'stations_places_hidden',
+  'non_player_ships_hidden',
+  'vfx_hidden',
+  'material_basic_override',
+  'material_depth_override',
+]);
+
+export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true } = {}) {
+  const failures = [];
+  if (!envelope || typeof envelope !== 'object') {
+    return { pass: false, failures: ['evidence envelope must be an object'], envelope: null };
+  }
+
+  if (envelope.schema !== RELEASE_SOAK_SCHEMA) failures.push(`evidence schema must be ${RELEASE_SOAK_SCHEMA}`);
+  if (!nonempty(envelope.taskId)) failures.push('evidence taskId is required');
+  if (!isIso8601(envelope.generatedAt)) failures.push('evidence generatedAt must be an ISO 8601 string');
+  if (!nonempty(envelope.worktreeId) || !nonempty(envelope.worktreeDigest)) {
+    failures.push('evidence worktreeId and worktreeDigest are required');
+  }
+  const realRuntime = envelope.runtimeKind === 'browser' || envelope.runtimeKind === 'electron';
+  if (!realRuntime && envelope.runtimeKind !== 'synthetic') failures.push('runtimeKind must be browser, electron, or synthetic');
+  if (typeof envelope.primaryAcceptance !== 'boolean') failures.push('primaryAcceptance must be boolean');
+  if (envelope.runtimeKind === 'synthetic' && envelope.primaryAcceptance !== false) {
+    failures.push('synthetic evidence cannot claim primary acceptance');
+  }
+  if (envelope.primaryAcceptance === true && !realRuntime) failures.push('primary acceptance requires a real browser or Electron runtime');
+  if (envelope.primaryAcceptance === true && envelope.injectedState !== false) failures.push('primary evidence must declare injectedState=false');
+  if (envelope.primaryAcceptance === true && envelope.inputSource !== 'keyboard-mouse') {
+    failures.push('primary evidence must use the public keyboard-mouse route');
+  }
+  if (envelope.primaryAcceptance === true) {
+    const start = envelope.fingerprints?.start;
+    const end = envelope.fingerprints?.end;
+    if (!start || !end) failures.push('primary evidence requires start/end worktree fingerprints');
+    else {
+      if (start.digest !== envelope.worktreeDigest || start.id !== envelope.worktreeId) failures.push('start fingerprint does not bind the evidence worktree');
+      const coverage = envelope.sourceOverlay?.coverage;
+      if (envelope.sourceOverlay != null && coverage?.valid !== true) {
+        failures.push('source overlay coverage is unknown or incomplete');
+      }
+      const fullRuntimeOverlay = coverage?.valid === true
+        && coverage.fullRuntime === true
+        && /^all-runtime(?:-|$)/i.test(String(envelope.sourceOverlay?.coverage?.captureScope || ''))
+        && Number.isSafeInteger(envelope.sourceOverlay?.coverage?.pinnedPathCount)
+        && envelope.sourceOverlay.coverage.pinnedPathCount > 0;
+      if (fullRuntimeOverlay) {
+        const requested = envelope.sourceOverlay?.requested;
+        const served = envelope.sourceOverlay?.served;
+        const servedAtEnd = envelope.sourceOverlay?.servedAtEnd;
+        if (requested?.strictRuntimeIsolation !== true
+            || served?.strictRuntimeIsolation !== true
+            || servedAtEnd?.strictRuntimeIsolation !== true) {
+          failures.push('full-runtime source overlay did not prove strict runtime isolation');
+        }
+        if (!sourceOverlayIdentityMatches(requested, served)
+            || !sourceOverlayIdentityMatches(requested, servedAtEnd)) {
+          failures.push('full-runtime source overlay identity was not stable for the entire capture');
+        }
+        if (envelope.sourceStability?.mode !== 'served-overlay'
+            || envelope.sourceStability?.pass !== true
+            || envelope.sourceStability?.uncoveredRuntimeInputsStable !== true
+            || typeof envelope.sourceStability?.uncoveredHeadStable !== 'boolean') {
+          failures.push('full-runtime source overlay did not prove uncovered runtime-input stability and record HEAD status');
+        }
+        if (envelope.runtimeInputs?.scope !== 'uncovered-runtime-inputs'
+            || !Array.isArray(envelope.runtimeInputs?.changedPaths)
+            || envelope.runtimeInputs.changedPaths.length !== 0
+            || !stableRuntimeInputPair(envelope.runtimeInputs)) {
+          failures.push('full-runtime source overlay lacks a clean, path-attributed uncovered runtime-input fingerprint');
+        }
+      } else if (end.digest !== start.digest || end.id !== start.id) {
+        const runtimeInputs = envelope.runtimeInputs;
+        const runtimeInputStable = envelope.sourceOverlay == null
+          && envelope.sourceStability?.mode === 'runtime-inputs'
+          && envelope.sourceStability?.pass === true
+          && envelope.sourceStability?.runtimeInputsStable === true
+          && envelope.sourceStability?.runtimeInputsSchema === RUNTIME_INPUT_FINGERPRINT_SCHEMA
+          && runtimeInputs?.scope === 'runtime-inputs'
+          && Array.isArray(runtimeInputs?.changedPaths)
+          && runtimeInputs.changedPaths.length === 0
+          && stableRuntimeInputPair(runtimeInputs);
+        if (!runtimeInputStable) failures.push('worktree fingerprint changed during capture');
+      }
+    }
+  }
+
+  validateChecks(envelope.checks, envelope.primaryAcceptance === true, failures);
+  validateCycles(envelope.cycles, envelope.primaryAcceptance === true, failures);
+
+  const artifactsRequired = envelope.primaryAcceptance === true;
+  if (artifactsRequired) {
+    if (!Array.isArray(envelope.artifacts) || envelope.artifacts.length === 0) {
+      failures.push('content-hashed artifacts are required for primary acceptance');
+    } else {
+      for (const artifact of envelope.artifacts) {
+        if (!nonempty(artifact?.kind) || !nonempty(artifact?.path)) failures.push('each artifact needs kind and path');
+        if (!Number.isInteger(artifact?.bytes) || artifact.bytes < 1) failures.push(`artifact ${artifact?.path || '<missing>'} needs positive bytes`);
+        if (!/^[a-f0-9]{64}$/i.test(String(artifact?.sha256 || ''))) failures.push(`artifact ${artifact?.path || '<missing>'} needs sha256`);
+      }
+      if (!envelope.artifacts.some((artifact) => artifact.kind === 'screenshot')) failures.push('primary evidence requires screenshot artifacts');
+    }
+  }
+
+  if (!envelope.quality || typeof envelope.quality !== 'object') {
+    failures.push('evidence quality section is required');
+  } else {
+    failures.push(...validateNoQualityShortcuts(envelope.quality).failures);
+    const start = validateSettingsTruth(envelope.quality.startSettings);
+    const end = validateSettingsTruth(envelope.quality.endSettings, { expected: envelope.quality.startSettings });
+    failures.push(...start.failures.map((failure) => `quality start: ${failure}`));
+    failures.push(...end.failures.map((failure) => `quality end: ${failure}`));
+    if (envelope.quality.settingsPass !== (start.pass && end.pass && validateNoQualityShortcuts(envelope.quality).pass)) {
+      failures.push('quality.settingsPass does not match recomputed settings/shortcut validation');
+    }
+  }
+
+  if (!envelope.performance || typeof envelope.performance !== 'object') failures.push('evidence performance section is required');
+  else failures.push(...validatePerformanceEvidence(envelope.performance).failures);
+
+  if (!envelope.memory || typeof envelope.memory !== 'object') failures.push('evidence memory section is required');
+  else failures.push(...validateMemoryEvidence(envelope.memory).failures);
+
+  validateErrors(envelope.errors, failures);
+  if (envelope.primaryAcceptance === true) {
+    validateContextLoss(envelope.contextLoss, failures);
+    failures.push(...validateCleanupEvidence(envelope.cleanup, { runtimeKind: envelope.runtimeKind }).failures);
+  }
+
+  return { pass: failures.length === 0, failures: [...new Set(failures)], envelope };
+}
+
+function stableRuntimeInputPair(runtimeInputs) {
+  const start = runtimeInputs?.start;
+  const end = runtimeInputs?.end;
+  return start?.schema === RUNTIME_INPUT_FINGERPRINT_SCHEMA
+    && end?.schema === RUNTIME_INPUT_FINGERPRINT_SCHEMA
+    && /^[a-f0-9]{64}$/i.test(String(start.digest || ''))
+    && start.digest === end.digest
+    && Number.isSafeInteger(start.fileCount)
+    && start.fileCount > 0
+    && start.fileCount === end.fileCount
+    && Array.isArray(start.missingPaths) && start.missingPaths.length === 0
+    && Array.isArray(end.missingPaths) && end.missingPaths.length === 0;
+}
+
+function validateChecks(checks, primary, failures) {
+  if (!Array.isArray(checks) || checks.length === 0) {
+    failures.push('evidence checks array is required');
+    return;
+  }
+  for (const check of checks) {
+    if (!nonempty(check?.name) || !['pass', 'fail', 'skip'].includes(check?.status)) failures.push('each check needs a name and valid status');
+  }
+  const failed = checks.filter((check) => check?.status === 'fail');
+  if (failed.length) failures.push(`evidence checks failed: ${failed.map((check) => check.name).join(', ')}`);
+  if (primary && checks.some((check) => check?.status !== 'pass')) failures.push('primary evidence may not contain fail or skip checks');
+  if (primary && !checks.some((check) => check?.status === 'pass')) failures.push('primary evidence requires passing checks');
+}
+
+function sourceOverlayIdentityMatches(expected, observed) {
+  if (!expected || !observed) return false;
+  const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  if (expected.strictRuntimeIsolation === true) fields.push('strictRuntimeIsolation');
+  return fields.every((field) => expected[field] === observed[field]);
+}
+
+function validateCycles(cycles, primary, failures) {
+  if (!cycles || !Number.isInteger(cycles.count) || cycles.count < 1) {
+    failures.push('evidence cycles.count must be a positive integer');
+    return;
+  }
+  if (!Array.isArray(cycles.results) || cycles.results.length !== cycles.count) {
+    failures.push('evidence cycles.results length must equal cycles.count');
+    return;
+  }
+  if (!primary) return;
+  cycles.results.forEach((result, index) => {
+    if (result?.index !== index) failures.push(`cycle ${index} index is missing or out of order`);
+    if (result?.pass !== true) failures.push(`cycle ${index} did not pass`);
+    if (!Array.isArray(result?.marks)) failures.push(`cycle ${index} marks are required`);
+    else for (const mark of REQUIRED_PRIMARY_CYCLE_MARKS) if (!result.marks.includes(mark)) failures.push(`cycle ${index} missing ${mark}`);
+    if (!Number.isInteger(result?.sampleCount) || result.sampleCount < 1) failures.push(`cycle ${index} needs finite runtime samples`);
+  });
+}
+
+export function validateNoQualityShortcuts(quality) {
+  const failures = [];
+  if (!quality || typeof quality !== 'object') return { pass: false, failures: ['quality object is required'] };
+  if (quality.settingsOverridesApplied !== false) failures.push('quality.settingsOverridesApplied must be false');
+  if (quality.authoredAssetFallback === true || quality.authoredReady === false) failures.push('authored assets fell back or were not ready');
+  if (quality.physicsSimplification === true) failures.push('physics simplification was applied');
+  return { pass: failures.length === 0, failures };
+}
+
+export function validateSettingsTruth(settings, { expected = null } = {}) {
+  const failures = [];
+  if (!settings || typeof settings !== 'object' || !settings.video || typeof settings.video !== 'object') {
+    return { pass: false, failures: ['settings.video truth object is required'] };
+  }
+  const video = settings.video;
+  if (!Number.isFinite(video.renderScale) || video.renderScale <= 0) failures.push('settings.video.renderScale must be finite and positive');
+  if (video.pixelRatioCap != null && (!Number.isFinite(video.pixelRatioCap) || video.pixelRatioCap <= 0)) failures.push('settings.video.pixelRatioCap must be null or finite and positive');
+  for (const key of ['shadows', 'bloom']) if (typeof video[key] !== 'boolean') failures.push(`settings.video.${key} must be boolean`);
+  if (!nonempty(video.particleQuality)) failures.push('settings.video.particleQuality is required');
+  if (expected) {
+    const expectedVideo = expected?.video;
+    if (!expectedVideo || typeof expectedVideo !== 'object') failures.push('expected start settings.video is required');
+    else {
+      for (const key of ['renderScale', 'pixelRatioCap', 'shadows', 'bloom', 'particleQuality']) {
+        if (!sameValue(video[key], expectedVideo[key])) failures.push(`settings.video.${key} changed during the probe`);
+      }
+    }
+  }
+  return { pass: failures.length === 0, failures };
+}
+
+// Documented min-spec policy: a frame gap the page did not consume is scheduling,
+// not gameplay work. Only samples the game's own hitch classifier stamped
+// externalScheduling leave the floor series. Unstamped over-threshold samples —
+// attribution off, verdict lost, anything — stay counted: the exclusion is a
+// classifier verdict, never a size-based guess.
+function floorSeries(samples) {
+  return samples.filter((sample) => sample?.hitchOwner !== 'externalScheduling');
+}
+
+export function validatePerformanceEvidence(perf) {
+  const failures = [];
+  if (!Array.isArray(perf?.samples) || perf.samples.length === 0) return { pass: false, failures: ['performance.samples array is required'] };
+  if (perf.samples.some((sample) => !Number.isFinite(sample?.frameMs) || sample.frameMs <= 0)) failures.push('performance samples must all contain finite positive frameMs');
+  if (perf.samples.some((sample) => !REQUIRED_STEADY_PHASES.includes(sample?.phaseTag))) {
+    failures.push('performance samples must be tagged as an allowed uninterrupted steady-state phase');
+  }
+  for (const phaseTag of REQUIRED_STEADY_PHASES) {
+    const phaseSamples = perf.samples.filter((sample) => sample?.phaseTag === phaseTag);
+    const floorPhaseSamples = floorSeries(phaseSamples);
+    if (phaseSamples.length < 150) failures.push(`performance phase ${phaseTag} requires at least 150 consecutive rAF samples`);
+    if (floorPhaseSamples.length < 150) failures.push(`performance phase ${phaseTag} has fewer than 150 policy-relevant frames after the externalScheduling exclusion`);
+    const claimedPhase = perf?.phases?.[phaseTag];
+    const computedPhase = summarizeSamples(phaseSamples);
+    if (!claimedPhase || typeof claimedPhase !== 'object') failures.push(`performance.phases.${phaseTag} is required`);
+    else {
+      for (const key of ['sampleCount', 'p50', 'p95', 'p99', 'max', 'hitchesOver32Ms']) {
+        if (!nearlyEqual(claimedPhase[key], computedPhase[key])) failures.push(`performance.phases.${phaseTag}.${key} does not match raw samples`);
+      }
+    }
+    const floorPhase = summarizeSamples(floorSeries(phaseSamples));
+    if (Number.isFinite(floorPhase.p95) && floorPhase.p95 > PERF_BUDGET.floorFrameMs) failures.push(`${phaseTag} p95 ${floorPhase.p95} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
+    if (Number.isFinite(floorPhase.p99) && floorPhase.p99 > PERF_BUDGET.floorFrameMs) failures.push(`${phaseTag} p99 ${floorPhase.p99} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
+    if (floorPhase.hitchesOver32Ms !== 0) failures.push(`${phaseTag} contains ${floorPhase.hitchesOver32Ms} game-owned hitches over ${PERF_BUDGET.hitchThresholdMs} ms`);
+  }
+  const computed = summarizeSamples(perf.samples);
+  const claimed = perf.frameMs;
+  if (!claimed || typeof claimed !== 'object') failures.push('performance.frameMs is required');
+  else {
+    for (const key of ['sampleCount', 'p50', 'p95', 'p99', 'max', 'hitchesOver32Ms']) {
+      if (!nearlyEqual(claimed[key], computed[key])) failures.push(`performance.frameMs.${key} does not match raw samples`);
+    }
+  }
+  const floorComputed = summarizeSamples(floorSeries(perf.samples));
+  if (Number.isFinite(floorComputed.p95) && floorComputed.p95 > PERF_BUDGET.floorFrameMs) failures.push(`performance p95 ${floorComputed.p95} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
+  if (Number.isFinite(floorComputed.p99) && floorComputed.p99 > PERF_BUDGET.floorFrameMs) failures.push(`performance p99 ${floorComputed.p99} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
+  if (floorComputed.hitchesOver32Ms !== 0) failures.push(`performance contains ${floorComputed.hitchesOver32Ms} game-owned hitches over ${PERF_BUDGET.hitchThresholdMs} ms`);
+  return { pass: failures.length === 0, failures, computed, floor: floorComputed };
+}
+
+export function validateMemoryEvidence(memory) {
+  const failures = [];
+  if (memory?.retainedAfterGc !== true) failures.push('memory must be retained post-GC evidence');
+  if (memory?.comparableState !== 'docked-market') failures.push('memory endpoints must use comparable docked-market state');
+  if (memory?.startSnapshot?.docked !== true || memory?.endSnapshot?.docked !== true) failures.push('memory endpoint snapshots must both be docked');
+  if (!Number.isFinite(memory?.heapBytesStart)) failures.push('memory.heapBytesStart must be finite');
+  if (!Number.isFinite(memory?.heapBytesEnd)) failures.push('memory.heapBytesEnd must be finite');
+  if (Number.isFinite(memory?.heapBytesStart) && Number.isFinite(memory?.heapBytesEnd)) {
+    const growth = memory.heapBytesEnd - memory.heapBytesStart;
+    if (!nearlyEqual(memory.heapGrowthBytes, growth)) failures.push('memory.heapGrowthBytes does not match start/end');
+    if (memory.withinBudget !== (growth <= PERF_BUDGET.maxHeapGrowthBytes)) failures.push('memory.withinBudget does not match computed growth');
+    if (growth > PERF_BUDGET.maxHeapGrowthBytes) failures.push(`heap growth ${bytesToMb(growth)} MB exceeds ${PERF_BUDGET.maxHeapGrowthMb} MB`);
+  }
+  for (const key of ['geometries', 'textures', 'programs']) {
+    const range = memory?.[key];
+    if (!range || !Number.isFinite(range.start) || !Number.isFinite(range.end) || !Number.isFinite(range.delta)) {
+      failures.push(`memory.${key} needs finite start/end/delta`);
+      continue;
+    }
+    const delta = range.end - range.start;
+    if (!nearlyEqual(range.delta, delta)) failures.push(`memory.${key}.delta does not match start/end`);
+    if (key !== 'programs' && delta > 50) failures.push(`memory.${key} grew by ${delta}`);
+    if (key === 'programs' && delta > 0) failures.push(`memory.programs grew by ${delta}`);
+  }
+  return { pass: failures.length === 0, failures };
+}
+
+function validateErrors(errors, failures) {
+  if (!errors || typeof errors !== 'object') {
+    failures.push('evidence errors section is required');
+    return;
+  }
+  for (const key of ['pageErrors', 'requestFailures', 'glErrors', 'consoleErrors', 'httpErrors', 'warnings']) {
+    if (!Array.isArray(errors[key])) failures.push(`errors.${key} must be an array`);
+    else if (errors[key].length) failures.push(`${key} present: ${errors[key].length}`);
+  }
+}
+
+export function validateContextLoss(contextLoss, failures) {
+  if (!contextLoss || typeof contextLoss !== 'object') {
+    failures.push('context-loss evidence is required');
+    return;
+  }
+  for (const key of ['available', 'lostEvent', 'restoredEvent', 'meshResourceReady', 'pixelProof', 'frameAdvanced', 'worldSubmissionAdvanced', 'recovered']) {
+    if (contextLoss[key] !== true) failures.push(`contextLoss.${key} must be true`);
+  }
+  if (contextLoss.meshRebuilt !== true && contextLoss.meshRetained !== true) {
+    failures.push('contextLoss must prove either rebuilt or retained mesh identity');
+  }
+  if (contextLoss.before !== false || contextLoss.after !== false) failures.push('context must be live before and after the controlled loss');
+  const pixels = contextLoss.pixelAdvancement;
+  if (pixels?.pass !== true || pixels.firstNonblank !== true || pixels.secondNonblank !== true
+      || !Number.isSafeInteger(pixels.width) || pixels.width <= 0 || !Number.isSafeInteger(pixels.height) || pixels.height <= 0
+      || !Number.isSafeInteger(pixels.sampleWidth) || pixels.sampleWidth <= 0 || !Number.isSafeInteger(pixels.sampleHeight) || pixels.sampleHeight <= 0
+      || !Number.isSafeInteger(pixels.changedPixels) || pixels.changedPixels <= 0
+      || pixels.changedPixels > pixels.sampleWidth * pixels.sampleHeight
+      || !Number.isSafeInteger(pixels.firstWorldSubmittedFrames) || pixels.firstWorldSubmittedFrames < 0
+      || !Number.isSafeInteger(pixels.secondWorldSubmittedFrames)
+      || pixels.worldFrameDelta !== pixels.secondWorldSubmittedFrames - pixels.firstWorldSubmittedFrames
+      || pixels.worldFrameDelta <= 0) failures.push('context loss requires changing nonblank pixels and advancing world submissions in matching captures');
+  const tail = contextLoss.tailAdvancement;
+  if (tail?.pass !== true || !Number.isSafeInteger(tail.start?.tick) || !Number.isSafeInteger(tail.end?.tick)
+      || !Number.isSafeInteger(tail.start?.worldSubmittedFrames) || !Number.isSafeInteger(tail.end?.worldSubmittedFrames)
+      || tail.tickDelta !== tail.end.tick - tail.start.tick || tail.tickDelta <= 0
+      || tail.worldFrameDelta !== tail.end.worldSubmittedFrames - tail.start.worldSubmittedFrames || tail.worldFrameDelta <= 0) {
+    failures.push('context recovery tail requires advancing simulation and world submissions');
+  }
+}
+
+export function validateCleanupEvidence(cleanup, { runtimeKind = 'browser' } = {}) {
+  const failures = [];
+  if (!cleanup || typeof cleanup !== 'object') return { pass: false, failures: ['cleanup evidence is required'] };
+  if (cleanup.pageClosed !== true) failures.push('page was not closed');
+  if (cleanup.reportPass !== true) failures.push('owned runtime cleanup report did not pass');
+  const owned = cleanup.ownedReport;
+  if (!owned || owned.pass !== true) failures.push('full owned runtime cleanup report is missing or failed');
+  if (cleanup.portsReleased !== true) failures.push('owned listening ports were not released');
+  if (cleanup.serverReleased !== true) failures.push('owned server/listener was not released');
+  if (runtimeKind === 'electron') {
+    if (cleanup.processExited !== true) failures.push('Electron process exit was not confirmed');
+    if (cleanup.browserDisconnected !== true) failures.push('Electron application connection was not released');
+    if (owned?.gracefulProcessCloseConfirmed !== true) failures.push('Electron graceful process close was not confirmed');
+    if (owned?.forceClose?.attempted === true) failures.push('Electron force-close fallback was required');
+    if (owned?.precloseUrlCheck?.pass !== true || owned?.urlTracker?.pass !== true) failures.push('Electron canonical URL lifecycle cleanup failed');
+    if (owned?.processHealth?.pass !== true || owned?.listenerReleased !== true) failures.push('Electron process/listener health cleanup failed');
+  } else if (cleanup.browserDisconnected !== true && cleanup.browserClosed !== true) failures.push('browser was not released');
+  return { pass: failures.length === 0, failures };
+}
+
+export async function validateArtifactFiles(root, artifacts, { lstatImpl = lstat, readFileImpl = readFile, requireClaims = false } = {}) {
+  const failures = [];
+  const verified = [];
+  if (!Array.isArray(artifacts) || artifacts.length === 0) return { pass: false, failures: ['artifacts must be a non-empty array'], verified };
+  for (const artifact of artifacts) {
+    if (!nonempty(artifact?.path)) { failures.push('artifact missing path'); continue; }
+    if (requireClaims && (!Number.isInteger(artifact.bytes) || artifact.bytes < 1 || !/^[a-f0-9]{64}$/i.test(String(artifact.sha256 || '')))) {
+      failures.push(`artifact integrity claims are required: ${artifact.path}`);
+      continue;
+    }
+    const filePath = path.resolve(root, artifact.path);
+    const relative = path.relative(path.resolve(root), filePath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) { failures.push(`artifact path escapes root: ${artifact.path}`); continue; }
+    try {
+      const metadata = await lstatImpl(filePath);
+      if (!metadata.isFile() || metadata.isSymbolicLink?.()) { failures.push(`artifact is not a regular file: ${artifact.path}`); continue; }
+      const contents = await readFileImpl(filePath);
+      if (contents.length < 1) { failures.push(`artifact is empty: ${artifact.path}`); continue; }
+      const sha256 = createHash('sha256').update(contents).digest('hex');
+      if (artifact.bytes != null && artifact.bytes !== contents.length) failures.push(`artifact byte count mismatch: ${artifact.path}`);
+      if (artifact.sha256 != null && artifact.sha256 !== sha256) failures.push(`artifact hash mismatch: ${artifact.path}`);
+      verified.push({ ...artifact, bytes: contents.length, sha256 });
+    } catch (error) {
+      failures.push(`artifact missing or unreadable: ${artifact.path} (${error.code || error.message})`);
+    }
+  }
+  return { pass: failures.length === 0, failures, verified };
+}
+
+// Unlike `git diff --binary`, this never buffers binary patches. Git metadata is
+// bounded and each changed/untracked file is streamed into the digest.
+export async function strictWorktreeFingerprint(root, { excludePaths = [] } = {}) {
+  const excluded = new Set(excludePaths.map(normalizeFingerprintPath).filter(Boolean));
+  const filtered = excluded.size > 0;
+  const digest = createHash('sha256');
+  const head = (await runGitCapture(root, ['rev-parse', 'HEAD'])).trim();
+  const branch = (await runGitCapture(root, ['branch', '--show-current'])).trim();
+  if (!/^[a-f0-9]{40}$/i.test(head)) throw new Error('unable to resolve git HEAD for release-soak fingerprint');
+  digest.update(`HEAD\0${head}\0BRANCH\0${branch}\0`);
+  if (filtered) {
+    // A source overlay can safely hide mutations only for the exact files it serves. Keep
+    // all status/diff records for every other path, including HEAD/branch above, so CSS,
+    // assets, launchers, and newly-added modules still invalidate the capture.
+    await hashFilteredGitRecords(root, ['status', '--porcelain=v1', '-z', '--untracked-files=all'], digest, 'STATUS', excluded, 'status');
+    await hashFilteredGitRecords(root, ['diff', '--raw', '-z', 'HEAD'], digest, 'DIFF', excluded, 'raw');
+    await hashFilteredGitRecords(root, ['diff', '--cached', '--raw', '-z'], digest, 'INDEX', excluded, 'raw');
+  } else {
+    await streamGitIntoHash(root, ['status', '--porcelain=v2', '-z', '--untracked-files=all'], digest, 'STATUS');
+    await streamGitIntoHash(root, ['diff', '--raw', '-z', 'HEAD'], digest, 'DIFF');
+    await streamGitIntoHash(root, ['diff', '--cached', '--raw', '-z'], digest, 'INDEX');
+  }
+  const changed = new Set([
+    ...splitNul(await runGitCapture(root, ['diff', '--name-only', '-z'])),
+    ...splitNul(await runGitCapture(root, ['diff', '--cached', '--name-only', '-z'])),
+    ...splitNul(await runGitCapture(root, ['ls-files', '--others', '--exclude-standard', '-z'])),
+  ]);
+  const effectiveChanged = [...changed]
+    .filter((relative) => !excluded.has(normalizeFingerprintPath(relative)))
+    .sort();
+  for (const relative of effectiveChanged) {
+    const absolute = path.resolve(root, relative);
+    const safe = path.relative(path.resolve(root), absolute);
+    if (safe.startsWith('..') || path.isAbsolute(safe)) throw new Error(`fingerprint path escapes root: ${relative}`);
+    let metadata;
+    try { metadata = await lstat(absolute); } catch (error) {
+      if (error.code === 'ENOENT') { digest.update(`MISSING\0${relative}\0`); continue; }
+      throw error;
+    }
+    if (!metadata.isFile() || metadata.isSymbolicLink()) throw new Error(`fingerprint refuses non-regular path: ${relative}`);
+    digest.update(`FILE\0${relative}\0${metadata.size}\0`);
+    await pipeFileIntoHash(absolute, digest);
+    digest.update('\0');
+  }
+  const value = digest.digest('hex');
+  return { id: `${head.slice(0, 12)}-${value.slice(0, 16)}`, digest: value, head, branch, changedFileCount: effectiveChanged.length };
+}
+
+/**
+ * Fingerprint only files that can supply the running game or its local launch shell.
+ * This intentionally ignores Git metadata and harness/docs churn while remaining
+ * sensitive to tracked, staged, unstaged, deleted, and non-ignored untracked runtime files.
+ */
+export async function strictRuntimeInputFingerprint(root, {
+  excludePaths = [],
+  includeFileHashes = false,
+  strictOverlayIsolation = false,
+} = {}) {
+  const digest = createHash('sha256');
+  const excluded = new Set(excludePaths.map(normalizeFingerprintPath));
+  if ([...excluded].some((relative) => !relative)) {
+    throw new Error('runtime input exclusions must be normalized repository paths');
+  }
+  const paths = splitNul(await runGitCapture(root, [
+    'ls-files', '--cached', '--others', '--exclude-standard', '-z', '--',
+    'index.html', 'package.json', 'package-lock.json', 'server.js', 'electron',
+    'src', 'styles', 'assets', 'vendor', 'scripts/lib',
+  ])).map(normalizeFingerprintPath).filter((relative) => !new Set([
+    'scripts/lib/releaseSoakProbe.mjs',
+    'scripts/lib/releaseSoakContracts.mjs',
+    'scripts/lib/alphaLiveBaselineContracts.mjs',
+    'scripts/lib/alphaLiveBaselineElectronContracts.mjs',
+    'scripts/lib/electronTestIsolation.mjs',
+    'scripts/lib/browser-issues.mjs',
+    'scripts/lib/playwrightCspPolling.mjs',
+  ]).has(relative))
+    .filter((relative) => !isGuidanceInputPath(relative))
+    .filter((relative) => !excluded.has(relative)
+      || isStrictOverlayHostInputPath(relative))
+    .filter((relative) => strictOverlayIsolation !== true
+      || !isStrictOverlayRuntimePath(relative)
+      || isStrictOverlayHostInputPath(relative))
+    .sort();
+  const rootPath = path.resolve(root);
+  const files = includeFileHashes ? [] : null;
+  for (const relative of paths) {
+    const normalized = normalizeFingerprintPath(relative);
+    if (!normalized) throw new Error(`runtime input path is not normalized: ${relative}`);
+    const absolute = path.resolve(rootPath, normalized);
+    const safe = path.relative(rootPath, absolute);
+    if (safe.startsWith('..') || path.isAbsolute(safe)) throw new Error(`runtime input path escapes root: ${relative}`);
+    let metadata;
+    try { metadata = await lstat(absolute); } catch (error) {
+      if (error.code === 'ENOENT') {
+        digest.update(`MISSING\0${normalized}\0`);
+        if (files) files.push({ path: normalized, missing: true, sha256: null });
+        continue;
+      }
+      throw error;
+    }
+    if (!metadata.isFile() || metadata.isSymbolicLink()) {
+      throw new Error(`runtime input fingerprint refuses non-regular path: ${normalized}`);
+    }
+    digest.update(`FILE\0${normalized}\0${metadata.size}\0`);
+    const fileHash = includeFileHashes ? createHash('sha256') : null;
+    await pipeFileIntoHash(absolute, digest, fileHash);
+    digest.update('\0');
+    if (files) files.push({ path: normalized, missing: false, sha256: fileHash.digest('hex') });
+  }
+  return {
+    schema: RUNTIME_INPUT_FINGERPRINT_SCHEMA,
+    digest: digest.digest('hex'),
+    fileCount: paths.length,
+    ...(files ? { files } : {}),
+  };
+}
+
+/** Return only changed runtime paths, with the content identities already computed by the fingerprint. */
+export function diffRuntimeInputFiles(before, after) {
+  if (!Array.isArray(before) || !Array.isArray(after)) return null;
+  const left = new Map(before.map((entry) => [entry.path, entry]));
+  const right = new Map(after.map((entry) => [entry.path, entry]));
+  const paths = [...new Set([...left.keys(), ...right.keys()])].sort();
+  return paths.filter((relative) => {
+    const a = left.get(relative), b = right.get(relative);
+    return !a || !b || a.missing !== b.missing || a.sha256 !== b.sha256;
+  }).map((relative) => ({
+    path: relative,
+    before: left.has(relative) ? { missing: left.get(relative).missing, sha256: left.get(relative).sha256 } : null,
+    after: right.has(relative) ? { missing: right.get(relative).missing, sha256: right.get(relative).sha256 } : null,
+  }));
+}
+
+export function normalizeFingerprintPath(value) {
+  const normalized = String(value || '').replaceAll('\\', '/').replace(/^\.\//, '');
+  if (!normalized || normalized.startsWith('/') || /^[A-Za-z]:\//.test(normalized)) return null;
+  const segments = normalized.split('/');
+  if (segments.includes('..')) return null;
+  return normalized;
+}
+
+function isGuidanceInputPath(relative) {
+  const name = path.posix.basename(relative).toUpperCase();
+  return name === 'AGENTS.MD' || name === 'CLAUDE.MD';
+}
+
+// These modules execute in the Node host and are imported directly by the launchers/server;
+// an HTTP source overlay cannot freeze the code that is serving that overlay.
+const STRICT_OVERLAY_HOST_INPUTS = new Set([
+  'scripts/lib/gameServer.cjs',
+  'scripts/lib/visualProbeServer.mjs',
+  'scripts/lib/staticCachePolicy.cjs',
+  'scripts/lib/playerSaveStore.cjs',
+  'scripts/lib/userContentStore.cjs',
+]);
+
+function isStrictOverlayHostInputPath(relative) {
+  return STRICT_OVERLAY_HOST_INPUTS.has(relative);
+}
+
+function isStrictOverlayRuntimePath(relative) {
+  if (relative === 'index.html' || relative === 'vendor/three.module.js') return true;
+  if (relative.startsWith('src/')) return /\.(?:js|json)$/i.test(relative);
+  if (relative.startsWith('scripts/lib/')) return /\.(?:js|mjs|cjs)$/i.test(relative);
+  return relative.startsWith('styles/');
+}
+
+async function hashFilteredGitRecords(cwd, args, hash, label, excluded, kind) {
+  const output = await runGitCapture(cwd, args);
+  hash.update(`${label}\0`);
+  const records = splitNul(output);
+  if (kind === 'status') {
+    for (let index = 0; index < records.length; index += 1) {
+      const record = records[index];
+      const paths = [record.slice(3)];
+      if (record[0] === 'R' || record[0] === 'C') {
+        if (index + 1 < records.length) paths.push(records[++index]);
+      }
+      if (paths.every((entry) => excluded.has(normalizeFingerprintPath(entry)))) continue;
+      for (const entry of [record, ...paths.slice(1)]) hash.update(`${entry}\0`);
+    }
+    return;
+  }
+  for (let index = 0; index < records.length; index += 1) {
+    const header = records[index];
+    if (!header.startsWith(':')) {
+      // Raw diff output is expected to be header/path groups. Preserve an unexpected
+      // record conservatively instead of accidentally treating it as an excluded path.
+      hash.update(`${header}\0`);
+      continue;
+    }
+    const status = header.trim().slice(-1);
+    const pathCount = status === 'R' || status === 'C' ? 2 : 1;
+    const paths = [];
+    for (let count = 0; count < pathCount && index + 1 < records.length; count += 1) paths.push(records[++index]);
+    if (paths.every((entry) => excluded.has(normalizeFingerprintPath(entry)))) continue;
+    hash.update(`${header}\0`);
+    for (const entry of paths) hash.update(`${entry}\0`);
+  }
+}
+
+function runGitCapture(cwd, args, maxBytes = 64 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('git', args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const chunks = []; let bytes = 0; let stderr = '';
+    child.stdout.on('data', (chunk) => { bytes += chunk.length; if (bytes > maxBytes) child.kill(); else chunks.push(chunk); });
+    child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (bytes > maxBytes) reject(new Error(`git ${args[0]} metadata exceeded ${maxBytes} bytes`));
+      else if (code !== 0) reject(new Error(`git ${args.join(' ')} failed (${code}): ${stderr.trim()}`));
+      else resolve(Buffer.concat(chunks).toString('utf8'));
+    });
+  });
+}
+
+function streamGitIntoHash(cwd, args, hash, label) {
+  return new Promise((resolve, reject) => {
+    hash.update(`${label}\0`);
+    const child = spawn('git', args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stderr = '';
+    child.stdout.on('data', (chunk) => hash.update(chunk));
+    child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+    child.on('error', reject);
+    child.on('close', (code) => code === 0 ? resolve() : reject(new Error(`git ${args.join(' ')} failed (${code}): ${stderr.trim()}`)));
+  });
+}
+
+function pipeFileIntoHash(filePath, hash, secondaryHash = null) {
+  return new Promise((resolve, reject) => {
+    const stream = createReadStream(filePath);
+    stream.on('data', (chunk) => {
+      hash.update(chunk);
+      if (secondaryHash) secondaryHash.update(chunk);
+    });
+    stream.on('end', resolve);
+    stream.on('error', reject);
+  });
+}
+
+export function bytesToMb(bytes) { return Math.round(bytes / 1024 / 1024 * 100) / 100; }
+
+export function summarizeSamples(samples) {
+  const values = (Array.isArray(samples) ? samples : []).filter((sample) => Number.isFinite(sample?.frameMs) && sample.frameMs > 0).map((sample) => sample.frameMs).sort((a, b) => a - b);
+  return {
+    sampleCount: values.length,
+    p50: percentile(values, 0.50),
+    p95: percentile(values, 0.95),
+    p99: percentile(values, 0.99),
+    max: values.length ? values[values.length - 1] : null,
+    hitchesOver32Ms: values.filter((value) => value > PERF_BUDGET.hitchThresholdMs).length,
+  };
+}
+
+/**
+ * Additive optional validation for performance-attribution.json.
+ * Does not participate in primary release-soak acceptance and never weakens soak gates.
+ */
+export function validatePerformanceAttribution(doc) {
+  const failures = [];
+  if (!doc || typeof doc !== 'object') {
+    return { pass: false, failures: ['attribution document must be an object'] };
+  }
+  if (doc.schema !== PERFORMANCE_ATTRIBUTION_SCHEMA) {
+    failures.push(`schema must be ${PERFORMANCE_ATTRIBUTION_SCHEMA}`);
+  }
+  if (doc.kind !== 'diagnostic-measurement') {
+    failures.push('kind must be "diagnostic-measurement" (not a shippable fix)');
+  }
+  if (doc.qualityPreserving !== true) {
+    failures.push('qualityPreserving must be true (no resolution/effect/asset shortcuts)');
+  }
+  if (!Array.isArray(doc.windows) || doc.windows.length === 0) {
+    failures.push('windows array is required and must be non-empty');
+  } else {
+    for (let i = 0; i < doc.windows.length; i += 1) {
+      failures.push(...validateAttributionWindow(doc.windows[i], i));
+    }
+  }
+  if (doc.variants != null) {
+    if (!Array.isArray(doc.variants)) failures.push('variants must be an array when present');
+    else {
+      for (const variant of doc.variants) {
+        if (!ATTRIBUTION_DIAGNOSTIC_VARIANTS.includes(variant?.id) && variant?.id !== 'baseline') {
+          // allow listed ids only
+          if (!nonempty(variant?.id)) failures.push('each variant needs an id');
+        }
+        if (variant && variant.diagnostic !== true && variant.id !== 'baseline') {
+          failures.push(`variant ${variant.id} must be labeled diagnostic:true`);
+        }
+        if (variant && variant.restored !== true) {
+          failures.push(`variant ${variant?.id || '<missing>'} must report restored:true`);
+        }
+      }
+    }
+  }
+  return { pass: failures.length === 0, failures: [...new Set(failures)] };
+}
+
+function validateAttributionWindow(window, index) {
+  const failures = [];
+  const prefix = `windows[${index}]`;
+  if (!window || typeof window !== 'object') return [`${prefix} must be an object`];
+  if (!ATTRIBUTION_ROUTE_TAGS.includes(window.routeTag) && !REQUIRED_STEADY_PHASES.includes(window.routeTag)) {
+    if (!nonempty(window.routeTag)) failures.push(`${prefix}.routeTag is required`);
+  }
+  const frame = window.frameMs || window.raf;
+  if (!frame || typeof frame !== 'object') failures.push(`${prefix}.frameMs (rAF summary) is required`);
+  else {
+    for (const key of ['sampleCount', 'p50', 'p95', 'p99', 'max', 'hitchesOver32Ms']) {
+      if (!(key in frame)) failures.push(`${prefix}.frameMs.${key} is required`);
+    }
+  }
+  if (!window.routeProof || typeof window.routeProof !== 'object') {
+    failures.push(`${prefix}.routeProof is required`);
+  } else {
+    if (typeof window.routeProof.mode !== 'string') failures.push(`${prefix}.routeProof.mode is required`);
+    if (typeof window.routeProof.docked !== 'boolean') failures.push(`${prefix}.routeProof.docked is required`);
+    if (window.routeTag === 'docked_market_ui') {
+      if (window.routeProof.docked !== true) failures.push(`${prefix} docked_market_ui must prove docked=true`);
+      if (window.routeProof.uiOnlyPath !== true) {
+        failures.push(`${prefix} docked_market_ui must label uiOnlyPath=true (not zero-cost render)`);
+      }
+    }
+    if (window.routeTag === 'mining_tether_active') {
+      const vfx = window.routeProof.vfxSubsystems || {};
+      const mining = Number(vfx.miningBeam) || 0;
+      const tether = Number(vfx.tetherCable) || 0;
+      const startVfx = window.routeProof.start?.vfxSubsystems || {};
+      const startMining = Number(startVfx.miningBeam) || 0;
+      const startTether = Number(startVfx.tetherCable) || 0;
+      const vfxIsolationWindow = window.diagnostic === true && window.diagnosticVariant === 'vfx_hidden';
+      if (vfxIsolationWindow && (startMining < 1 && startTether < 1)) {
+        failures.push(`${prefix} vfx_hidden must prove miningBeam or tetherCable active before isolation`);
+      } else if (vfxIsolationWindow && (mining > 0 || tether > 0)) {
+        failures.push(`${prefix} vfx_hidden must suppress miningBeam and tetherCable during measurement`);
+      } else if (!vfxIsolationWindow && mining < 1 && tether < 1) {
+        failures.push(`${prefix} mining_tether_active must prove miningBeam or tetherCable VFX active`);
+      }
+    }
+  }
+  if (!window.settings || typeof window.settings !== 'object') {
+    failures.push(`${prefix}.settings start/end truth is required`);
+  } else {
+    if (!window.settings.start || !window.settings.end) failures.push(`${prefix}.settings.start/end required`);
+  }
+  if (!window.gpuTimers || typeof window.gpuTimers !== 'object') {
+    failures.push(`${prefix}.gpuTimers capability status is required`);
+  } else if (!['available', 'unavailable', 'ok', 'disjoint'].includes(window.gpuTimers.status)
+    && window.gpuTimers.available !== true && window.gpuTimers.available !== false) {
+    failures.push(`${prefix}.gpuTimers must report available/status`);
+  }
+  // Optional rich fields — when present, shape-check only.
+  if (window.cpu && typeof window.cpu !== 'object') failures.push(`${prefix}.cpu must be an object`);
+  if (window.draw && typeof window.draw !== 'object') failures.push(`${prefix}.draw must be an object`);
+  if (window.post && typeof window.post !== 'object') failures.push(`${prefix}.post must be an object`);
+  return failures;
+}
+
+export function percentile(sorted, ratio) {
+  if (!sorted.length) return null;
+  return sorted[Math.min(sorted.length - 1, Math.ceil((sorted.length - 1) * ratio))];
+}
+
+function splitNul(value) { return String(value || '').split('\0').filter(Boolean); }
+function nonempty(value) { return typeof value === 'string' && value.trim().length > 0; }
+function sameValue(a, b) { return a === b || (a == null && b == null); }
+function nearlyEqual(a, b) { return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= 0.001; }
+function isIso8601(value) { return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.test(value); }

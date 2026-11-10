@@ -1,0 +1,449 @@
+import { createHash } from 'node:crypto';
+import { readFile, readdir } from 'node:fs/promises';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+
+const LITERAL = String.raw`("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\`(?:\\.|[^\`\\])*\`)`;
+
+export function makeLocalizationKey(filePath, sink, message) {
+  const normalizedPath = normalizePath(filePath).toLowerCase();
+  const context = `${normalizedPath}\n${String(sink)}\n${normalizeMessage(message)}`;
+  const digest = createHash('sha256').update(context).digest('hex').slice(0, 12);
+  return `loc.${slug(normalizedPath.replace(/\.[^.]+$/, ''))}.${slug(sink)}.${digest}`;
+}
+
+export function inventoryText({ path: filePath, source, kind = null, config = {} }) {
+  const normalizedPath = normalizePath(filePath);
+  const sourceText = String(source || '');
+  const fileKind = kind || (normalizedPath.endsWith('.html') ? 'html' : 'js');
+  const entries = new Map();
+  const add = (messageValue, sink, index = 0) => {
+    const message = normalizeMessage(messageValue);
+    if (!isVisibleCopy(message) || looksCodeOnly(message)) return;
+    // Feature systems also use `name` and `detail` for internal identifiers. Do not turn
+    // those into player copy merely because this root is now part of the inventory.
+    if (normalizedPath.startsWith('src/features/') &&
+        (message.includes('${') || (sink === 'field:name' && /^(?:[a-z]+(?:[A-Z_][A-Za-z0-9_]*)+|[a-z]+:[\w:.-]+)$/.test(message)) ||
+         ((sink === 'field:detail' || sink === 'field:warning') && /^[a-z][a-z0-9_]*$/.test(message)))) return;
+    const key = makeLocalizationKey(normalizedPath, sink, message);
+    const entry = Object.freeze({
+      key,
+      message,
+      path: normalizedPath,
+      sink,
+      line: lineAt(sourceText, index),
+    });
+    const prior = entries.get(key);
+    if (!prior || entry.line < prior.line) entries.set(key, entry);
+  };
+
+  if (fileKind === 'html') {
+    inventoryHtml(sourceText, 0, config, add);
+  } else {
+    inventoryJavaScript(sourceText, config, add, normalizedPath);
+  }
+  return [...entries.values()].sort(compareEntry);
+}
+
+export async function buildLocalizationInventory({ rootDir, surfaces, exemptions, sourceFiles = null }) {
+  const files = sourceFiles ? sourceFiles.map(({ path: filePath }) => ({ path: filePath, kind: filePath.endsWith('.html') ? 'html' : 'js' }))
+    : await collectSurfaceFiles(rootDir, surfaces);
+  const first = [];
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const source = sourceFiles ? sourceFiles[i].source : await readFile(path.join(rootDir, file.path), 'utf8');
+    first.push(...inventoryText({ path: file.path, source, kind: file.kind, config: surfaces }));
+  }
+  first.sort(compareEntry);
+  const conflicts = [];
+  const byKey = new Map();
+  for (const entry of first) {
+    const prior = byKey.get(entry.key);
+    if (prior && prior.message !== entry.message) conflicts.push({ key: entry.key, messages: [prior.message, entry.message] });
+    else if (!prior) byKey.set(entry.key, entry);
+  }
+  const exemptionList = Array.isArray(exemptions && exemptions.exemptions) ? exemptions.exemptions : [];
+  const exemptionErrors = [];
+  const exemptKeys = new Set();
+  for (let index = 0; index < exemptionList.length; index++) {
+    const exemption = exemptionList[index] || {};
+    if (!String(exemption.reason || '').trim()) {
+      exemptionErrors.push(`exemption ${index} has no explanation`);
+      continue;
+    }
+    if (!exemption.key || !byKey.has(exemption.key)) {
+      exemptionErrors.push(`exemption ${index} does not match an extracted key`);
+      continue;
+    }
+    exemptKeys.add(exemption.key);
+  }
+  const entries = [...byKey.values()].filter((entry) => !exemptKeys.has(entry.key)).sort(compareEntry);
+  const digest = inventoryDigest(entries);
+  return Object.freeze({
+    schema: 'spaceface.localizationInventory.v1',
+    digest,
+    entries: Object.freeze(entries),
+    conflicts: Object.freeze(conflicts),
+    exemptionErrors: Object.freeze(exemptionErrors),
+    stats: Object.freeze({
+      filesScanned: files.length,
+      candidates: byKey.size,
+      extracted: entries.length,
+      exempted: exemptKeys.size,
+      unresolved: conflicts.length + exemptionErrors.length,
+    }),
+  });
+}
+
+// Load one immutable Git tree without consulting the working tree or checking it out. Paths are
+// selected by the same root, extension and prefix-exclusion rules as the live inventory.
+export function readGitLocalizationSource(rootDir, ref) {
+  const git = (args, options = {}) => execFileSync('git', args, { cwd: rootDir, maxBuffer: 512 * 1024 * 1024, ...options });
+  const commit = git(['rev-parse', '--verify', '--end-of-options', `${ref}^{commit}`], { encoding: 'utf8' }).trim();
+  const read = file => git(['show', `${commit}:${file}`], { encoding: 'utf8' });
+  const surfaces = JSON.parse(read('scripts/localization-surfaces.json'));
+  const exemptions = JSON.parse(read('scripts/localization-exemptions.json'));
+  const tree = git(['ls-tree', '-rz', '--full-tree', commit], { encoding: 'utf8' }).split('\0').filter(Boolean).map(row => {
+    const match = /^(\d+) blob ([0-9a-f]+)\t([\s\S]+)$/.exec(row);
+    return match && { mode: match[1], oid: match[2], path: match[3] };
+  }).filter(row => row && (row.mode === '100644' || row.mode === '100755'));
+  const extensions = new Set((surfaces.extensions || ['.js', '.mjs', '.html']).map(String));
+  const selected = [];
+  for (const row of Array.isArray(surfaces.roots) ? surfaces.roots : []) {
+    const root = normalizePath(typeof row === 'string' ? row : row.path);
+    if (!root || excluded(root, surfaces.excludes)) continue;
+    const matches = tree.filter(file => (path.extname(root) ? file.path === root : file.path.startsWith(`${root}/`))
+      && !excluded(file.path, surfaces.excludes) && extensions.has(path.posix.extname(file.path)));
+    const exists = tree.some(file => path.extname(root) ? file.path === root : file.path.startsWith(`${root}/`));
+    if (!exists && (path.extname(root) ? extensions.has(path.extname(root)) : true)) {
+      throw new Error(`localization source root missing in ${commit}: ${root}`);
+    }
+    selected.push(...matches);
+  }
+  selected.sort((a, b) => a.path.localeCompare(b.path));
+  const output = git(['cat-file', '--batch'], { input: selected.map(file => file.oid).join('\n') + '\n' });
+  let offset = 0;
+  const sourceFiles = selected.map(file => {
+    const end = output.indexOf(10, offset), header = output.subarray(offset, end).toString('utf8');
+    const match = /^([0-9a-f]+) blob (\d+)$/.exec(header);
+    if (!match || match[1] !== file.oid) throw new Error(`invalid Git blob response for ${file.path}`);
+    const start = end + 1, finish = start + Number(match[2]);
+    if (finish >= output.length || output[finish] !== 10) throw new Error(`truncated Git blob for ${file.path}`);
+    offset = finish + 1;
+    return { path: file.path, source: output.subarray(start, finish).toString('utf8') };
+  });
+  return { commit, surfaces, exemptions, sourceFiles };
+}
+
+export function renderGeneratedCatalog(inventory) {
+  const messages = {};
+  const sources = {};
+  for (const entry of inventory.entries || []) {
+    messages[entry.key] = entry.message;
+    sources[entry.key] = `${entry.path}:${entry.line} ${entry.sink}`;
+  }
+  const lines = [
+    '// Generated by scripts/extract-localization.mjs --write. Do not edit by hand.',
+    '// Catalog literals are stored as JSON text so module eval only interns the strings; the',
+    '// objects materialize lazily on first access (deferredObject) or the post-eval localization',
+    '// warm, never inside the blocking post-gate eval task.',
+    `import { deferredObject } from '../pipeline.js';`,
+    `export const locale = 'en-US';`,
+    `export const inventoryDigest = '${inventory.digest}';`,
+    `const MESSAGES_JSON = ${JSON.stringify(JSON.stringify(messages))};`,
+    `const SOURCES_JSON = ${JSON.stringify(JSON.stringify(sources))};`,
+    `export const messages = deferredObject(() => Object.freeze(JSON.parse(MESSAGES_JSON)));`,
+    `export const sources = deferredObject(() => Object.freeze(JSON.parse(SOURCES_JSON)));`,
+    'export default messages;',
+    '',
+  ];
+  return lines.join('\n');
+}
+
+/** Runtime payload kept outside the JavaScript bundle and fetched during boot. */
+export function renderGeneratedCatalogJson(inventory) {
+  const messages = {};
+  for (const entry of inventory.entries || []) messages[entry.key] = entry.message;
+  return `${JSON.stringify({
+    schema: 'spaceface.localizationCatalog.v1',
+    locale: 'en-US',
+    inventoryDigest: inventory.digest,
+    messages,
+  }, null, 2)}\n`;
+}
+
+export function inventoryDigest(entries) {
+  const stable = (entries || []).map((entry) => [entry.key, entry.message, entry.path, entry.sink, entry.line]);
+  return createHash('sha256').update(JSON.stringify(stable)).digest('hex');
+}
+
+async function collectSurfaceFiles(rootDir, surfaces = {}) {
+  const out = [];
+  const roots = Array.isArray(surfaces.roots) ? surfaces.roots : [];
+  const extensions = new Set((surfaces.extensions || ['.js', '.mjs', '.html']).map(String));
+  for (const row of roots) {
+    const rel = normalizePath(typeof row === 'string' ? row : row.path);
+    if (!rel || excluded(rel, surfaces.excludes)) continue;
+    const absolute = path.join(rootDir, rel);
+    if (path.extname(rel)) {
+      if (extensions.has(path.extname(rel))) out.push({ path: rel, kind: rel.endsWith('.html') ? 'html' : 'js' });
+      continue;
+    }
+    await walk(absolute, rel, out, extensions, surfaces.excludes);
+  }
+  return out.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+async function walk(absoluteDir, relativeDir, out, extensions, excludes) {
+  const rows = await readdir(absoluteDir, { withFileTypes: true });
+  rows.sort((a, b) => a.name.localeCompare(b.name));
+  for (const row of rows) {
+    const rel = normalizePath(path.posix.join(relativeDir, row.name));
+    if (excluded(rel, excludes)) continue;
+    if (row.isDirectory()) await walk(path.join(absoluteDir, row.name), rel, out, extensions, excludes);
+    else if (row.isFile() && extensions.has(path.extname(row.name))) {
+      out.push({ path: rel, kind: rel.endsWith('.html') ? 'html' : 'js' });
+    }
+  }
+}
+
+function inventoryJavaScript(source, config, add, filePath) {
+  const fields = [...new Set([...arrayOr(config.recognizedCopyFields, [
+    'name', 'label', 'title', 'text', 'desc', 'description', 'subtitle', 'summary', 'hint',
+    'headline', 'body', 'message', 'objective', 'ariaLabel', 'placeholder',
+  ]), ...arrayOr(config.scopedCopyFields?.[filePath], [])])];
+  if (fields.length) {
+    const re = new RegExp(`(?:^|[,{]\\s*|\\n\\s*)\\b(${fields.map(escapeRe).join('|')})\\s*:\\s*${LITERAL}`, 'gm');
+    for (const match of source.matchAll(re)) {
+      const literalIndex = match.index + match[0].lastIndexOf(match[2]);
+      add(decodeStartingExpression(source, literalIndex, match[2], filePath.startsWith('src/features/')), `field:${match[1]}`, match.index);
+    }
+  }
+
+  // These functions return whole player-facing objectives, and these calls record whole
+  // receipt/itinerary lines. Restrict them by file and sink so arbitrary return values,
+  // identifiers and asset paths do not become catalog messages.
+  for (const name of arrayOr(config.scopedReturnFunctions?.[filePath], [])) {
+    const start = new RegExp(`\\bfunction\\s+${escapeRe(name)}\\s*\\([^)]*\\)\\s*\\{`).exec(source);
+    if (!start) continue;
+    const end = source.indexOf('\n}', start.index + start[0].length);
+    if (end < 0) continue;
+    const body = source.slice(start.index, end);
+    const re = new RegExp(`\\breturn\\s+${LITERAL}`, 'g');
+    for (const match of body.matchAll(re)) {
+      const index = start.index + match.index + match[0].lastIndexOf(match[1]);
+      add(decodeStartingExpression(source, index, match[1]), `return:${name}`, start.index + match.index);
+    }
+  }
+  for (const [prefix, names] of Object.entries(config.scopedTextCalls || {})) {
+    if (!filePath.startsWith(prefix)) continue;
+    const re = new RegExp(`\\b(${arrayOr(names, []).map(escapeRe).join('|')})\\s*\\(\\s*[A-Za-z_$][\\w$]*\\s*,\\s*${LITERAL}`, 'g');
+    for (const match of source.matchAll(re)) {
+      const index = match.index + match[0].lastIndexOf(match[2]);
+      add(decodeStartingExpression(source, index, match[2]), `call:${match[1]}`, match.index);
+    }
+  }
+
+  const properties = arrayOr(config.domTextProperties, ['textContent', 'innerText']);
+  if (properties.length) {
+    const re = new RegExp(`\\b([A-Za-z_$][\\w$]*)\\s*\\.\\s*(${properties.map(escapeRe).join('|')})\\s*=\\s*${LITERAL}`, 'g');
+    for (const match of source.matchAll(re)) {
+      const literalIndex = match.index + match[0].lastIndexOf(match[3]);
+      const message = decodeStartingExpression(source, literalIndex, match[3]);
+      if (/style/i.test(match[1]) || looksLikeStylesheet(message)) continue;
+      add(message, `dom:${match[2]}`, match.index);
+    }
+  }
+
+  const attrs = arrayOr(config.htmlAttributes, ['aria-label', 'title', 'placeholder']);
+  if (attrs.length) {
+    const re = new RegExp(`\\.setAttribute\\(\\s*(['"])(?:${attrs.map(escapeRe).join('|')})\\1\\s*,\\s*${LITERAL}`, 'g');
+    for (const match of source.matchAll(re)) {
+      const attrMatch = match[0].match(/setAttribute\(\s*['"]([^'"]+)/);
+      add(decodeLiteral(match[2]), `attr:${attrMatch && attrMatch[1] || 'visible'}`, match.index);
+    }
+  }
+
+  const htmlRe = new RegExp(`\\.innerHTML\\s*=\\s*${LITERAL}`, 'g');
+  for (const match of source.matchAll(htmlRe)) {
+    inventoryHtml(decodeLiteral(match[1]), match.index, config, add);
+  }
+  const templateRe = /`(?:\\.|[^`\\])*`/g;
+  for (const match of source.matchAll(templateRe)) {
+    const decoded = decodeLiteral(match[0]);
+    if (/<[A-Za-z][^>]*>/.test(decoded)) inventoryHtml(decoded, match.index, config, add);
+  }
+}
+
+function inventoryHtml(htmlValue, baseIndex, config, add) {
+  const html = String(htmlValue || '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+  const attrs = arrayOr(config.htmlAttributes, ['aria-label', 'title', 'placeholder']);
+  if (attrs.length) {
+    const attrRe = new RegExp(`\\b(${attrs.map(escapeRe).join('|')})\\s*=\\s*(["'])([\\s\\S]*?)\\2`, 'gi');
+    for (const match of html.matchAll(attrRe)) add(decodeTemplateExpressions(match[3]), `attr:${match[1].toLowerCase()}`, baseIndex + match.index);
+  }
+  for (const match of html.matchAll(/>([^<>]+)</g)) {
+    const text = decodeTemplateExpressions(match[1]);
+    add(text, 'template:text', baseIndex + match.index);
+  }
+}
+
+function decodeLiteral(literal) {
+  if (!literal || literal.length < 2) return '';
+  const quote = literal[0];
+  let body = literal.slice(1, -1);
+  if (quote === '`') body = decodeTemplateExpressions(body);
+  return decodeEscapes(body);
+}
+
+function decodeStartingExpression(source, literalIndex, literal, multiline = false) {
+  const after = literalIndex + literal.length;
+  if (!/^\s*\+/.test(source.slice(after))) return decodeLiteral(literal);
+  const expression = source.slice(literalIndex, expressionEnd(source, literalIndex, multiline));
+  const tokens = splitTopLevelPlus(expression);
+  if (tokens.length < 2) return decodeLiteral(literal);
+  const names = new Map();
+  let message = '';
+  for (const tokenValue of tokens) {
+    const token = tokenValue.trim();
+    if (!token) continue;
+    if (isCompleteLiteral(token)) {
+      message += decodeLiteral(token);
+    } else {
+      const base = token.replace(/[^A-Za-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'value';
+      const used = names.get(base) || 0;
+      names.set(base, used + 1);
+      message += `{${used ? `${base}_${used + 1}` : base}}`;
+    }
+  }
+  return message;
+}
+
+function expressionEnd(source, start, multiline = false) {
+  let quote = null;
+  let escaped = false;
+  let depth = 0;
+  for (let index = start; index < source.length; index++) {
+    const char = source[index];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === quote) quote = null;
+      continue;
+    }
+    if (char === '"' || char === "'" || char === '`') { quote = char; continue; }
+    if (char === '(' || char === '[') { depth++; continue; }
+    if (char === ')' || char === ']') {
+      if (depth > 0) { depth--; continue; }
+      return index;
+    }
+    if (multiline && depth === 0 && char === '\n' && /\+\s*$/.test(source.slice(start, index))) continue;
+    if (depth === 0 && (char === ';' || char === ',' || char === '}' || char === '\n')) return index;
+  }
+  return source.length;
+}
+
+function splitTopLevelPlus(expression) {
+  const out = [];
+  let quote = null;
+  let escaped = false;
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < expression.length; index++) {
+    const char = expression[index];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === quote) quote = null;
+      continue;
+    }
+    if (char === '"' || char === "'" || char === '`') { quote = char; continue; }
+    if (char === '(' || char === '[' || char === '{') { depth++; continue; }
+    if (char === ')' || char === ']' || char === '}') { depth = Math.max(0, depth - 1); continue; }
+    if (char === '+' && depth === 0) {
+      out.push(expression.slice(start, index));
+      start = index + 1;
+    }
+  }
+  out.push(expression.slice(start));
+  return out;
+}
+
+function isCompleteLiteral(value) {
+  if (value.length < 2) return false;
+  const quote = value[0];
+  return (quote === '"' || quote === "'" || quote === '`') && value[value.length - 1] === quote;
+}
+
+function decodeTemplateExpressions(value) {
+  const names = new Map();
+  return String(value || '').replace(/\$\{([^{}]+)\}/g, (_whole, expression) => {
+    const base = String(expression).trim().replace(/[^A-Za-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'value';
+    const used = names.get(base) || 0;
+    names.set(base, used + 1);
+    return `{${used ? `${base}_${used + 1}` : base}}`;
+  });
+}
+
+function decodeEscapes(value) {
+  return String(value || '')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t')
+    .replace(/\\`/g, '`')
+    .replace(/\\'/g, "'")
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, '\\');
+}
+
+function normalizeMessage(value) {
+  return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+}
+
+function isVisibleCopy(message) {
+  return message.length > 0 && /[\p{L}\p{N}]/u.test(message);
+}
+
+function looksCodeOnly(message) {
+  if (/^(?:https?:|\.\/|\.\.\/|[A-Za-z0-9_.-]+\.(?:js|mjs|css|json|png|svg|glb))/.test(message)) return true;
+  return looksLikeStylesheet(message);
+}
+
+function looksLikeStylesheet(message) {
+  return /(?:^|\s)[.#][A-Za-z_-][\w-]*\s*\{|@media\b|\b(?:position|display|color|background|transform|font-size)\s*:/.test(message);
+}
+
+function normalizePath(value) {
+  return String(value || '').replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+function slug(value) {
+  return String(value || 'copy').replace(/[^a-z0-9]+/gi, '.').replace(/^\.+|\.+$/g, '').toLowerCase() || 'copy';
+}
+
+function lineAt(source, index) {
+  let line = 1;
+  for (let i = 0; i < index; i++) if (source.charCodeAt(i) === 10) line++;
+  return line;
+}
+
+function compareEntry(a, b) {
+  return a.key.localeCompare(b.key) || a.path.localeCompare(b.path) || a.line - b.line;
+}
+
+function arrayOr(value, fallback) {
+  return Array.isArray(value) ? value.map(String) : fallback;
+}
+
+function escapeRe(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function excluded(filePath, patterns = []) {
+  return (patterns || []).some((pattern) => {
+    const normalized = normalizePath(pattern).replace(/\*\*\/\*$/, '');
+    return filePath === normalized || filePath.startsWith(`${normalized}/`);
+  });
+}

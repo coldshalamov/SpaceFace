@@ -1,0 +1,240 @@
+{
+  "camera": {
+    "x": 0,
+    "z": 0,
+    "zoom": 3.2
+  },
+  "composition": "field-assisted-bank-shot",
+  "description": "Thrust and a turn past a stone body, with the shipped Bank Shot module in the utility slot. The coloured disc exports as a place, not as a force the lab does not have. The pack weapon is validated by the user-content loader and is not mounted in this lab fit.",
+  "encounter": {
+    "context": "encounter",
+    "cooldownS": 480,
+    "deck": "combat",
+    "factionId": "faction_reach",
+    "id": "dock_bank_shot",
+    "order": 1003,
+    "pressureCost": 12,
+    "proximity": true,
+    "script": "ambush",
+    "shape": {
+      "actor": "field_anchor_controller",
+      "place": [
+        "mining_belt"
+      ],
+      "situation": "ambush",
+      "twist": "none"
+    },
+    "squad": {
+      "archetypes": [
+        "field_anchor_controller"
+      ]
+    },
+    "tier": "minor",
+    "title": "Bank corridor",
+    "weight": 1,
+    "zoneTypes": [
+      "mining_belt"
+    ]
+  },
+  "evidenceClass": "focused-fixture",
+  "fixtureExceptions": [
+    "focused-fixture authored in Creator's Dock; not production-manifest evidence"
+  ],
+  "frames": [
+    {
+      "input": {
+        "aimAngle": 0.4,
+        "boost": false,
+        "fire": true,
+        "moveX": 0,
+        "moveZ": 1,
+        "turnIntent": 0.45
+      },
+      "tick": 0
+    }
+  ],
+  "grid": {
+    "size": 10,
+    "snap": true
+  },
+  "id": "dock.bank-shot",
+  "inputEvents": [],
+  "notes": {
+    "composition": "field-assisted-bank-shot",
+    "creatorsDock": "1",
+    "expectedObservation": "Under turnIntent 0.45 and thrust, playerRot ends below -0.5. The stone is a collider. No force-field object is written."
+  },
+  "objects": [
+    {
+      "angularVelocity": 0,
+      "factionId": "faction_free",
+      "heading": 0,
+      "id": "player",
+      "isPlayer": true,
+      "kind": "actor",
+      "label": "Hitch banking",
+      "loadout": [
+        "wpn_pulse_laser_s",
+        "mod_engine_ion_m",
+        "mod_shield_booster_s",
+        "mod_bank_shot"
+      ],
+      "persistent": true,
+      "profile": "ship.starter",
+      "role": "player",
+      "team": 0,
+      "velX": 0,
+      "velZ": 0,
+      "x": 0,
+      "z": 0
+    },
+    {
+      "angularVelocity": 0,
+      "heading": 0,
+      "id": "stone",
+      "kind": "actor",
+      "label": "bank stone",
+      "overrides": {
+        "mass": 800,
+        "radius": 8
+      },
+      "persistent": true,
+      "profile": "asteroid.mid",
+      "role": "bank",
+      "team": 2,
+      "velX": 0,
+      "velZ": 0,
+      "x": 40,
+      "z": 30
+    },
+    {
+      "fieldKind": "place",
+      "gameplay": true,
+      "id": "bank_zone",
+      "kind": "field",
+      "label": "place export, not a sim force",
+      "note": "User-content place. The lab has no force-field object. The stone actor is the physical bank.",
+      "place": {
+        "center": {
+          "x": 40,
+          "z": 30
+        },
+        "factionId": "faction_scn",
+        "id": "zone_dock_bank_corridor",
+        "name": "Bank Corridor",
+        "radius": 80,
+        "reason": "A sanctioned stone lane where a shot can bank off the claim rocks.",
+        "sectorId": "sector_helios_prime",
+        "threat": 1,
+        "type": "mining_belt"
+      },
+      "radius": 80,
+      "x": 40,
+      "z": 30
+    },
+    {
+      "id": "turned",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "heading fell through the bank",
+      "metric": "trace.final",
+      "op": "<",
+      "signal": "playerRot",
+      "value": -0.5,
+      "x": -90,
+      "z": -10
+    },
+    {
+      "assertion": {
+        "byTick": 179,
+        "kind": "eventByTick",
+        "op": ">",
+        "signal": "playerX",
+        "value": 0.5
+      },
+      "id": "along_x",
+      "kind": "trigger",
+      "labOnly": true,
+      "label": "moved off the start",
+      "radius": 18,
+      "shape": "circle",
+      "x": 70,
+      "z": -20
+    },
+    {
+      "id": "speed",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "still moving",
+      "metric": "flight.finalSpeed",
+      "op": ">=",
+      "value": 0.5,
+      "x": -90,
+      "z": -30
+    },
+    {
+      "assertion": {
+        "holdsTicks": 60,
+        "kind": "holds",
+        "signal": "playerAlive"
+      },
+      "id": "alive_bank",
+      "kind": "trigger",
+      "labOnly": true,
+      "label": "player stays alive",
+      "radius": 12,
+      "shape": "circle",
+      "x": -90,
+      "z": 10
+    },
+    {
+      "from": "player",
+      "gameplay": false,
+      "id": "to_stone",
+      "kind": "route",
+      "label": "bank line",
+      "to": "stone"
+    }
+  ],
+  "observer": {
+    "enabled": false
+  },
+  "runtimeProfile": "focused-lab",
+  "schema": "spaceface.creatorsDock.v1",
+  "seed": 11003,
+  "standardInvariants": true,
+  "ticks": 180,
+  "title": "Field-assisted bank shot",
+  "traceSignals": [],
+  "version": 1,
+  "weapon": {
+    "attackTraits": [
+      "mod_bank_shot"
+    ],
+    "damageType": "kinetic",
+    "dmg": 6,
+    "energyCost": 2,
+    "id": "wpn_dock_bank_needle",
+    "mass": 2,
+    "name": "Bank Needle",
+    "price": 0,
+    "projSpeed": 340,
+    "purchasable": false,
+    "range": 220,
+    "rof": 4,
+    "sentence": "A short kinetic bolt meant to kiss stone and leave on a new line.",
+    "size": "S",
+    "slotType": "weapon",
+    "tier": 1,
+    "tracking": "fixed"
+  },
+  "world": {
+    "aiBackend": "legacy",
+    "credits": 5000,
+    "fixtureProfile": "empty-flight",
+    "flightBackend": "v3",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "sectorId": "sector_helios_prime"
+  }
+}

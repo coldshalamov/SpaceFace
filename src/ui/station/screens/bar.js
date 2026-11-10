@@ -1,0 +1,994 @@
+import { barFrameHtml } from '../../views/stationFrames.js';
+import { mountDataState } from '../../uiPrimitives.js';
+import { stationRegularRecognition } from '../stationArrival.js';
+// src/ui/station/screens/bar.js — "Bar": the conversation as a kit panel (Frontend Task C §1.8).
+// Left: who is here tonight as a column of words, then the leads as rows (survey data and board
+// jobs with a priced / named verb). Right: the contact's role, name and portrait (the one image
+// allowed, 240 px, no frame), what they remember of you, what they just said as the emphasised
+// sentence, what you can ask as words, and any offer their reply produced as sentences and a word.
+// Reuses the existing contact engine in ../barContacts.js — no gameplay reinvented.
+// Emits ui:talkContact / ui:purchaseSurveyData / ui:acceptMission / ui:pushScreen.
+// Field Hardware chrome (kit plates, keys, quiet type) is pinned from this module. Ask, accept,
+// buy rumor, inspect, and map verbs stay the same.
+// `.sx-bar`, `.sx-bar-row[data-contact]`, `.sx-bar-row__role`, `.sx-talk`, `.sx-talk__reply`,
+// `.sx-choice[data-choice]`, `.sx-bar-offer*`, `[data-inspect]`, `[data-bigpic]` are hooks.
+import {
+  generateContacts,
+  tellBarDeedOnce,
+  installGhostConvoyBarListener,
+  installOreLotBarListener,
+  getChoices,
+  buildReply,
+  emitBarContactChoice,
+  openDossArchiveMap,
+  openVonnFreightLossMap,
+  availableSurveyOffer,
+  surveyOfferLabel,
+  missionBoardSlots,
+  barContactIntelTags,
+  barRegularStoryLine,
+} from '../barContacts.js';
+import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
+import { mountContactPortrait } from '../../portraitArt.js';
+import { createWaveform, createVoiceArc, voiceEnvelope } from '../../orrery/waveform.js';
+import { createReplyDial } from '../../orrery/barReplyDial.js';
+import { injectOrreryStationBar } from '../../orrery/station-barLayouts.js';
+import { typewriter, decrypt } from '../../orrery/text.js';
+import { reducedMotion } from '../../orrery/motion.js';
+import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
+import { BINDINGS } from '../../bindings.js';
+import { missionConsequenceSummary, missionPreflight } from '../../missionPreflight.js';
+import { acceptMissionOnLane } from '../../adventureDecisions.js';
+import {
+  frontierRumorOffer,
+  frontierRumorOwned,
+  TETHYS_BLACK_MARKET_DISCOVERY,
+} from '../../../data/frontierRumors.js';
+import { DOSS_ARCHIVE_CONTACT_ID, dossArchiveMapOffer } from '../../../data/dossArchive.js';
+import { VONN_FREIGHT_CONTACT_ID, vonnFreightLossMapOffer } from '../../../data/vonnFreightLoss.js';
+import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
+import { dressComms, watchComms } from './comms.js';
+import { dressEvents, watchEvents } from './events.js';
+import {
+  ensureInteriorStyle,
+  paintCap,
+  paintKey,
+  paintLegend,
+  paintMarking,
+  paintPlate,
+  paintRow,
+  pin,
+  pinKeyrack,
+  syncKeys,
+} from './fhChrome.js';
+import { markStationControl, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
+
+const STYLE_ID = 'sf-station-bar-fh';
+function ensureBarStyle() {
+  ensureInteriorStyle();
+  if (typeof document === 'undefined' || !document.head) return;
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = STYLE_ID;
+  // ORRERY overrides (bar-r15 B2-B4): scoped past the station-tabs sheet's specificity so they win
+  // on weight alone, whatever the injection order. P matches that sheet's root plus our own column.
+  const P = 'html body #screens > .sx-berth.orr-station';
+  const PG = 'html.sf-gamepad-focus body #screens > .sx-berth.orr-station';
+  const BONE = '236 230 216';
+  const spine = (x, a) => `linear-gradient(90deg, transparent ${x}px, rgb(${BONE} / ${a}) ${x}px, rgb(${BONE} / ${a}) ${x + 2}px, transparent ${x + 2}px) 0 0 / 100% 100% no-repeat`;
+  const band = (x, a) => `linear-gradient(90deg, transparent ${x - 2.5}px, rgb(${BONE} / ${a}) ${x - 2.5}px, rgb(${BONE} / ${a}) ${x + 4.5}px, transparent ${x + 4.5}px) 0 0 / 100% 100% no-repeat`;
+  style.textContent =
+    '.sx-bar .k-word.fh-key::after{display:none!important}' +
+    '.sx-bar .fh-keyrack{gap:6px!important;align-items:center!important;flex-wrap:wrap!important}' +
+    '.sx-bar .sx-lead.fh-row,.sx-bar .sx-intel.fh-row,.sx-bar .sx-bar-offer__stake.fh-row{box-shadow:none!important;background-color:transparent!important}' +
+    // B4: the reply backings touch, so the per-reply spine paint tiles into one continuous band
+    `${P} .sx-bar .sx-talk .sx-talk__choices{gap:0!important;row-gap:0!important}` +
+    // B2: no rectangular focus plate — the spine cursor segment stays, the veil fades from the spine to 0 within 200px
+    `${P} .sx-bar .sx-talk .sx-talk__choices > li .sx-choice:is(:hover, :focus-visible),` +
+    `${PG} .sx-bar .sx-talk .sx-talk__choices > li .sx-choice:focus{background:${spine(30, 0.62)}, ${band(30, 0.38)}, ` +
+    'linear-gradient(90deg, transparent 0 30px, rgb(12 15 20 / .55) 34px, rgb(12 15 20 / 0) 230px)!important}' +
+    // B3: the ladder band off the floor (.27 -> .32, about lum 80); the hover lift restated so it survives
+    `${P} .sx-bar .sx-bar__hang::after{background:${spine(3, 0.55)}, ${band(3, 0.32)}!important}` +
+    `${P} .sx-bar .sx-bar__hang:is(:hover, :focus-within)::after{background:${spine(3, 0.62)}, ${band(3, 0.38)}!important}` +
+    // B5: an offer is the reply's consequence — it settles in on the settle preset (transform+opacity
+    // only; reduce-motion lands it at once like every other arrival on this screen)
+    '@keyframes sf-bar-offer-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}' +
+    `${P} .sx-bar .sx-bar-offer{animation:sf-bar-offer-in 260ms cubic-bezier(.22,.61,.36,1) both}` +
+    `html.sf-reduce-motion ${P} .sx-bar .sx-bar-offer{animation:none}`;
+  document.head.appendChild(style);
+}
+
+const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
+const roleLabel = (c) => {
+  const authored = typeof c.roleLabel === 'string' ? c.roleLabel.trim() : '';
+  return authored || String(c.role || 'contact').replace(/_/g, ' ');
+};
+const mid = (m) => (m && (m.id != null ? m.id : m.missionId));
+const rewardOf = (m) => Math.max(0, Math.round(Number(
+  m && (m.reward != null ? m.reward : (m.reward_cr != null ? m.reward_cr : (m.rewardCr != null ? m.rewardCr : m.payout))),
+) || 0));
+
+/** Durable, optional station handoff for the authored first purchased Tethys rumor. */
+export function tethysRumorGuidance(state, stationId) {
+  const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+  if (stationId !== discovery.stationId) return null;
+  const record = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId
+    && state.world.frontierRumors.byId[discovery.rumorId];
+  if (!record || record.phase !== 'rumored') return null;
+  return {
+    rumorId: discovery.rumorId,
+    sectorId: discovery.sectorId,
+    label: 'Quiet Traffic Lead',
+  };
+}
+
+export function openTethysRumorGuidanceMap(ctx, stationId) {
+  const guidance = tethysRumorGuidance(ctx && ctx.state, stationId);
+  if (!guidance) return false;
+  return openGalaxyMap(ctx, {
+    focus: MAP_FOCUS.SYSTEM,
+    sectorId: guidance.sectorId,
+    label: guidance.label,
+    source: 'station-bar:tethys-rumor-guidance',
+  });
+}
+
+/** An offer's one verb as a primary word (the `sx-btn-primary` of old, in kit clothes). */
+function offerWord(attrs, label) {
+  return `<ul class="k-words k-words--row sx-bar-offer__foot"><li><button type="button" ${stationControlAttrs('offer')} class="k-word k-word--emph k-word--primary sx-bar-offer__verb" ${attrs}>${label}</button></li></ul>`;
+}
+
+export function createBarScreen(ctx) {
+  installGhostConvoyBarListener(ctx && ctx.bus, ctx && ctx.state);
+  installOreLotBarListener(ctx && ctx.bus, ctx && ctx.state);
+  const el = document.createElement('div');
+  el.className = 'k-panel sx-bar';
+  el.innerHTML = barFrameHtml();
+  const railEl = el.querySelector('.sx-bar__rail');
+  const stageEl = el.querySelector('.sx-bar__stage');
+  const leadsEl = el.querySelector('.sx-bar__leads');
+  railEl.setAttribute('role', 'tablist');
+
+  let selectedId = null;
+  let visible = false;
+  let erisLocalVisitId = null;
+  let erisLeftVisitId = null;
+  let erisOpenAnnounced = false;
+  let erisServedVisitId = null;
+  let erisLastReply = null;
+  let saidText = null;   // what the selected contact just said
+  // ORRERY (design/frontend/ORRERY.md §6 Bar): the portrait as cinema, the line typed as it is
+  // spoken with a Waveform breathing under the name, the words resolving on arrival.
+  let wave = null;
+  let dial = null;   // the replies as a dial on her voice arc (barReplyDial.js); the list mirrors it
+  let spokenText = null;   // the line the waveform has already voiced
+  let stopType = null;
+  const stopDecrypt = [];
+  let pendingMissionOffer = null;
+  let pendingFrontierRumorOffer = null;
+  let acceptedMissionId = null;
+  let pinnedContact = null;
+  // THE WORLD REMEMBERS (U-E): the one deed a contact opens with this dock. `opener` is memoised by
+  // generateContacts so re-renders keep the same line; `told` flips once the line has been drawn.
+  let deedSession = { stationId: null, opener: undefined, told: false };
+  const offDockDeed = ctx && ctx.bus && typeof ctx.bus.on === 'function'
+    ? ctx.bus.on('dock:docked', () => { deedSession = { stationId: null, opener: undefined, told: false }; })
+    : null;
+  const offErisUndock = ctx?.bus?.on?.('dock:undocked', () => { erisLeftVisitId = erisLocalVisitId; });
+
+  function dressShell() {
+    const shell = (el.closest && el.closest('.sx-berth, .sx-app, .k-screen'))
+      || (typeof document !== 'undefined' ? document : el);
+    dressEvents(shell);
+    dressComms(shell);
+  }
+
+  function dressRail() {
+    ensureBarStyle();
+    paintLegend(railEl.querySelector('.k-caps'), true);
+    pinKeyrack(railEl.querySelector('.sx-bar__rows'));
+    for (const btn of railEl.querySelectorAll('[data-contact]')) {
+      paintKey(btn, 'legend');
+      pin(btn, {
+        'min-height': '44px',
+        'flex-direction': 'column',
+        'align-items': 'flex-start',
+        'justify-content': 'center',
+        width: '100%',
+      });
+    }
+    syncKeys(railEl);
+  }
+
+  function dressStage() {
+    ensureBarStyle();
+    injectOrreryStationBar();
+    if (stageEl.querySelector('.sx-empty')) {
+      paintLegend(stageEl.querySelector('.sx-empty'), true);
+      return;
+    }
+    const talk = stageEl.querySelector('.sx-talk') || stageEl;
+    paintPlate(talk, 'sunk');
+    paintLegend(stageEl.querySelector('.sx-talk__role'), true);
+    paintMarking(stageEl.querySelector('.sx-talk__name'));
+    pinKeyrack(stageEl.querySelector('.sx-talk__choices'));
+    for (const btn of stageEl.querySelectorAll('[data-choice]')) paintKey(btn, 'legend');
+    for (const offer of stageEl.querySelectorAll('.sx-bar-offer')) {
+      paintPlate(offer, 'edge');
+      pinKeyrack(offer.querySelector('.sx-bar-offer__chips'));
+      pinKeyrack(offer.querySelector('.sx-bar-offer__foot'));
+      for (const chip of offer.querySelectorAll('.sx-bar-offer__chip')) paintCap(chip);
+      for (const row of offer.querySelectorAll('.sx-bar-offer__stake')) paintRow(row, false);
+      const verb = offer.querySelector('.sx-bar-offer__verb');
+      if (verb) paintKey(verb, 'primary');
+    }
+    syncKeys(stageEl);
+  }
+
+  function dressLeads() {
+    ensureBarStyle();
+    for (const cap of leadsEl.querySelectorAll('.k-caps')) paintLegend(cap, true);
+    for (const row of leadsEl.querySelectorAll('.sx-lead, .sx-intel')) paintRow(row, false);
+    pinKeyrack(leadsEl.querySelector('.sx-bar__foot'));
+    pinKeyrack(leadsEl.querySelector('.sx-lead__rows'));
+    for (const btn of leadsEl.querySelectorAll('[data-survey], [data-inspect], [data-log]')) {
+      paintKey(btn, btn.hasAttribute('data-log') ? 'legend' : 'small');
+    }
+    syncKeys(leadsEl);
+    dressShell();
+  }
+
+  const sid = () => (ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId) || null;
+  const erisVisitId = () => {
+    const savedId = ctx.state?.story?.flags?.eris_choir_bar_service?.visitId;
+    return Number.isSafeInteger(savedId) ? Math.max(savedId, erisLocalVisitId || 0) : erisLocalVisitId;
+  };
+  function erisVisitCommand(choiceId, visitId = null) {
+    if (sid() !== 'station_eris_margin' || ctx.state?.story?.flags?.eris_choir_chair_claimed == null) return;
+    ctx.bus?.emit('ui:talkContact', { canonicalKey: 'eris_choir_chair', stationId: sid(), choiceId,
+      visitId, requestId: `eris:${visitId}:${choiceId}` });
+  }
+  function enterErisVisit() {
+    if (sid() !== 'station_eris_margin' || ctx.state?.story?.flags?.eris_choir_chair_claimed == null) return;
+    const service = ctx.state?.story?.flags?.eris_choir_bar_service;
+    const savedId = Number.isSafeInteger(service?.visitId) ? service.visitId : 0;
+    const id = Math.max(savedId, erisLocalVisitId || 0);
+    const left = erisLeftVisitId === id || (!erisLocalVisitId && !service?.active);
+    erisLocalVisitId = left ? id + 1 : id;
+    erisOpenAnnounced = true;
+    erisVisitCommand('bar_enter', erisLocalVisitId);
+  }
+  function contacts(state) {
+    try {
+      if (deedSession.stationId !== sid()) deedSession = { stationId: sid(), opener: undefined, told: false };
+      const generated = generateContacts(sid(), state, { deedSession }) || [];
+      const chair = generated.find((contact) => contact.canonicalKey === 'eris_choir_chair');
+      if (chair) {
+        const service = state?.story?.flags?.eris_choir_bar_service;
+        const visit = erisVisitId();
+        chair.erisChoirServed = (Number.isSafeInteger(visit) && erisServedVisitId === visit) ||
+          (service?.active === true && service.served === true && service.visitId === visit);
+      }
+      if (pinnedContact && pinnedContact.pinStationId && pinnedContact.pinStationId !== sid()) pinnedContact = null;
+      if (pinnedContact && !generated.some((contact) => contact.id === pinnedContact.id)) {
+        return [pinnedContact, ...generated];
+      }
+      // A sold story buyer keeps their closing word even if the sim's settle has not reached
+      // this frame yet (worker transport): the pin replaces the stale offer in place.
+      if (pinnedContact && pinnedContact.storyBuyer) {
+        return generated.map((contact) => (contact.id === pinnedContact.id ? pinnedContact : contact));
+      }
+      return generated;
+    } catch (_) { return pinnedContact ? [pinnedContact] : []; }
+  }
+  function selected(state) {
+    const list = contacts(state);
+    return list.find((c) => c.id === selectedId) || list.find((c) => c.deedId) || list[0] || null;
+  }
+
+  function missionOfferAvailable(state, missionId) {
+    const boards = state && state.missions && state.missions.boards;
+    if (!missionId || !boards) return false;
+    for (const board of Object.values(boards)) {
+      if (Array.isArray(board && board.slots)
+        && board.slots.some((offer) => offer && String(offer.id) === String(missionId))) return true;
+    }
+    return false;
+  }
+
+  function missionOfferHtml(state) {
+    if (acceptedMissionId) {
+      const label = `Mission Log (${BINDINGS.missionLog.label})`;
+      return `<section class="sx-bar-offer is-accepted" aria-label="Accepted mission handoff">` +
+        `<p class="k-sentence sx-bar-offer__state"><span class="k-good">Accepted and tracked.</span> ${escapeHtml(label)} carries the route, timer, and progress. Launch when Departure Check is green.</p>` +
+        offerWord(`data-open-mission-log="${escapeHtml(String(acceptedMissionId))}"`, `Open ${escapeHtml(label)}`) +
+      `</section>`;
+    }
+    const offer = pendingMissionOffer;
+    if (!offer || !missionOfferAvailable(state, offer.id)) return '';
+    const preflight = missionPreflight(offer, state);
+    const consequences = missionConsequenceSummary(offer);
+    const unmet = offer.requirementUnmet || offer.lockedReason || preflight.blocker || null;
+    return `<section class="sx-bar-offer" aria-label="Mission readiness">` +
+      `<ul class="k-words k-words--row sx-bar-offer__chips">${preflight.chips.map((chip) =>
+        `<li class="k-t-fine sx-bar-offer__chip is-${escapeHtml(chip.kind)} ${chip.kind === 'bad' || chip.kind === 'loss' ? 'k-bad' : (chip.kind === 'good' || chip.kind === 'gain' ? 'k-good' : 'k-62')}">${escapeHtml(chip.text)}</li>`).join('')}</ul>` +
+      `<ul class="k-rows sx-bar-offer__stakes">${consequences.chips.map((chip) =>
+        `<li class="k-row k-row--static sx-bar-offer__stake is-${escapeHtml(chip.kind)}"><span class="k-62">${escapeHtml(chip.label)}</span><span class="k-row__num ${chip.kind === 'loss' || chip.kind === 'bad' ? 'k-bad' : ''}">${escapeHtml(chip.text)}</span></li>`).join('')}</ul>` +
+      (preflight.warning ? `<p class="k-sentence sx-bar-offer__warning">${escapeHtml(preflight.warning)}</p>` : '') +
+      (unmet ? `<p class="k-sentence k-bad sx-bar-offer__blocker">${escapeHtml(unmet)}</p>` : '') +
+      offerWord(`data-accept-mission="${escapeHtml(String(offer.id))}"${unmet ? ' disabled' : ''}`, 'Accept + track') +
+    `</section>`;
+  }
+
+  function frontierRumorOfferHtml() {
+    const offer = pendingFrontierRumorOffer;
+    if (!offer) return '';
+    return `<section class="sx-bar-offer" aria-label="Frontier rumor card">` +
+      `<p class="k-sentence sx-bar-offer__state">${escapeHtml(offer.kindLabel)} · ${entitySpanHtml('sector:' + offer.sectorId, escapeHtml(offer.sectorName))} search area · ${fmt(offer.price)} cr.</p>` +
+      `<p class="k-sentence sx-bar-offer__warning">Approximate bearing only — no waypoint or automatic discovery.</p>` +
+      offerWord(`data-buy-frontier-rumor="${escapeHtml(offer.id)}"`, `Buy rumor card · ${fmt(offer.price)} cr`) +
+    `</section>`;
+  }
+
+  function tethysRumorGuidanceHtml(state) {
+    const guidance = tethysRumorGuidance(state, sid());
+    if (!guidance) return '';
+    return `<section class="sx-bar-offer" aria-label="Quiet Traffic Lead guidance">` +
+      `<p class="k-sentence sx-bar-offer__state"><span class="k-good">Quiet Traffic Lead added.</span> Tethys holds a broad amber search area. Select the ring, fly it manually, and pulse the scanner.</p>` +
+      offerWord('data-open-tethys-rumor-map aria-label="Open Tethys search map for the Quiet Traffic Lead"', 'Open Tethys search map') +
+    `</section>`;
+  }
+
+  function dossArchiveMapOfferHtml(state, contact) {
+    if (!contact || contact.id !== DOSS_ARCHIVE_CONTACT_ID || !dossArchiveMapOffer(state)) return '';
+    return `<section class="sx-bar-offer" aria-label="Doss archive cross-reference">` +
+      `<p class="k-sentence sx-bar-offer__state"><span class="k-good">Archive cross-reference.</span> The Candle Fleet is a map reference only. It does not set a course or create a mission.</p>` +
+      offerWord('data-open-doss-archive-map aria-label="Open the system map at The Candle Fleet archive cross-reference"', 'Open Candle Fleet map') +
+    `</section>`;
+  }
+
+  // Unlike the legacy Doss string template above, this new case surface is composed from semantic
+  // nodes so all copy stays text and the map-only control has an explicit accessible name.
+  function appendVonnFreightLossMapOffer(state, contact) {
+    if (!contact || contact.id !== VONN_FREIGHT_CONTACT_ID || !vonnFreightLossMapOffer(state)) return;
+    const mount = stageEl.querySelector('.sx-talk');
+    if (!mount || mount.querySelector('[data-vonn-freight-loss-map-offer]')) return;
+    const offer = document.createElement('section');
+    offer.className = 'sx-bar-offer';
+    offer.setAttribute('data-vonn-freight-loss-map-offer', '');
+    offer.setAttribute('aria-label', 'Sker-Run freight wreck');
+    const stateLine = document.createElement('p');
+    stateLine.className = 'k-sentence sx-bar-offer__state';
+    const heading = document.createElement('span');
+    heading.className = 'k-good';
+    heading.textContent = 'Verified wreck marker. ';
+    const copy = document.createElement('span');
+    copy.textContent = 'Evidence marker only — opens the system map and does not set a course or create a mission.';
+    stateLine.append(heading, copy);
+    const foot = document.createElement('ul');
+    foot.className = 'k-words k-words--row sx-bar-offer__foot';
+    const item = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'k-word k-word--emph k-word--primary sx-bar-offer__verb';
+    markStationControl(button, 'open-wreck-map');
+    button.setAttribute('data-open-vonn-freight-loss-map', '');
+    button.textContent = stationControlLabel('open-wreck-map');
+    button.setAttribute('aria-label', 'Open the system map at the verified Sker-Run freight wreck.');
+    item.append(button);
+    foot.append(item);
+    offer.append(stateLine, foot);
+    mount.appendChild(offer);
+  }
+
+  // ---------- rail: who is here tonight ----------
+  function leadsKeysHint() {
+    const rows = leadsEl.querySelector('.sx-lead__rows');
+    if (!rows || leadsEl.querySelector('.sx-bar__leadkeys')) return;
+    const first = rows.querySelector('.sx-lead');
+    if (first) first.classList.add('is-current');
+    const hint = document.createElement('p');
+    hint.className = 'k-caps sx-bar__keys sx-bar__leadkeys';
+    hint.setAttribute('aria-hidden', 'true');
+    hint.textContent = 'Tab lead \u00b7 Enter inspects';
+    rows.insertAdjacentElement('afterend', hint);
+  }
+  function railKeysHint() {
+    const rows = railEl.querySelector('.sx-bar__rows');
+    if (!rows || railEl.querySelector('.sx-bar__keys')) return;
+    const hint = document.createElement('p');
+    hint.className = 'k-caps sx-bar__keys';
+    hint.setAttribute('aria-hidden', 'true');
+    hint.textContent = '\u2191\u2193 Contact';
+    rows.insertAdjacentElement('afterend', hint);
+  }
+  function renderRail(state) {
+    const list = contacts(state);
+    if (!list.length) {
+      // Empty tells a tiny story (the contracts board's shape): why it is quiet and a way out.
+      railEl.innerHTML = `<p class="k-caps">Here tonight</p>`;
+      const quiet = document.createElement('div');
+      railEl.appendChild(quiet);
+      mountDataState(quiet, 'empty', {
+        code: 'BAR_QUIET',
+        compact: true,
+        headline: 'Nobody in tonight.',
+        fills: 'The regulars arrive with the day shift. The ones worth talking to arrive after a job makes you worth the hello.',
+        verb: {
+          label: 'Open the Chart',
+          onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'bar-empty' }),
+        },
+      });
+      dressRail();
+      return;
+    }
+    if (!selectedId) selectedId = (list.find((c) => c.deedId) || list[0]).id;
+    railEl.innerHTML =
+      `<p class="k-caps">Here tonight</p>` +
+      `<ul class="k-words sx-bar__rows">` +
+      list.map((c) => {
+        const on = c.id === selectedId;
+        return (
+          `<li><button type="button" ${stationControlAttrs('contact')} class="k-word k-word--emph sx-bar-row${on ? ' is-active' : ''}" data-contact="${escapeHtml(c.id)}" role="tab" aria-selected="${on}"${on ? ' aria-current="true"' : ''} tabindex="${on ? 0 : -1}">` +
+            `${c.memoryGlyph ? `<span aria-label="Contact record">${escapeHtml(c.memoryGlyph)}</span> ` : ''}${escapeHtml(c.name || 'Contact')}` +
+            `<span class="k-word-sub sx-bar-row__role">${escapeHtml(roleLabel(c))} · ${escapeHtml(stationRegularRecognition(state, c).label)}</span>` +
+          `</button></li>`
+        );
+      }).join('') +
+      `</ul>`;
+    dressRail();
+    railKeysHint();
+  }
+
+  // ---------- stage: the conversation ----------
+  function renderStage(state) {
+    const c = selected(state);
+    if (!c) {
+      mountDataState(stageEl, 'empty', {
+        code: 'BAR_EMPTY',
+        headline: 'The bar is empty tonight.',
+        fills: 'Everyone who drinks at a port this thin is out earning. Busier stations keep their regulars past second bell.',
+        verb: {
+          label: 'Open the Chart',
+          onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'bar-empty' }),
+        },
+      });
+      dressStage();
+      return;
+    }
+    const memory = stationContactMemoryFor(state, c.id);
+    let memLine = '';
+    try {
+      // A regular you have met speaks their advanced line first — the visit ladder answers
+      // with what changed since last time; the flat memory sentence stays the fallback.
+      memLine = barRegularStoryLine(c, state, sid())
+        || stationContactMemoryLine(memory, c.line) || c.line || '';
+    } catch (_) { memLine = c.line || ''; }
+    // A contact with something to say about the pilot says it first, even if you have met before.
+    if (c.deedId || c.trackerId) memLine = c.line;
+    memLine = `${stationRegularRecognition(state, c).reaction} ${memLine}`.trim();
+    const choices = (() => { try { return getChoices(c.role, c) || []; } catch (_) { return []; } })();
+
+    stageEl.innerHTML =
+      `<div class="sx-talk">` +
+        `<header class="sx-talk__head">` +
+          `<div class="sx-talk__id">` +
+            `<p class="k-caps sx-talk__role">${escapeHtml(roleLabel(c))}</p>` +
+            `<h2 class="k-display k-t-title sx-talk__name">${escapeHtml(c.name || 'Contact')}</h2>` +
+            (memLine ? `<p class="k-sentence sx-talk__memory">${escapeHtml(memLine)}</p>` : '') +
+          `</div>` +
+          `<span class="sx-talk__avatar" data-bigpic aria-hidden="true"></span>` +
+        `</header>` +
+        `<p class="k-sentence k-sentence--emph sx-talk__reply${saidText ? ' is-said' : ' is-idle'}">` +
+          `${escapeHtml(saidText || c.approach || 'They look up as you approach. Ask them something.')}` +
+        `</p>` +
+        `<ul class="k-words sx-talk__choices" aria-label="What you can ask">` +
+          (choices.length
+            ? choices.map((ch) => `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--emph sx-choice" data-choice="${escapeHtml(ch.id)}"${ch.disabled ? ` disabled title="${escapeHtml(ch.reason || '')}"` : ''}>${escapeHtml(ch.label)}</button></li>`).join('')
+            : `<li class="k-sentence sx-muted">They have nothing to say.</li>`) +
+        `</ul>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
+      `</div>`;
+
+    appendVonnFreightLossMapOffer(state, c);
+
+    // Told exactly once per dock, and only when the line is on a live screen (not a hidden cache).
+    if (c.deedId && el.isConnected !== false
+      && !(el.closest && el.closest('[hidden]'))
+      && stageEl.querySelector('.sx-talk__memory')) {
+      tellBarDeedOnce(state, c, deedSession, sid());
+    }
+
+    const big = stageEl.querySelector('[data-bigpic]');
+    if (big) {
+      // The chair is a place, not a face: show the barkeep who serves it.
+      const portraitContact = c.canonicalKey === 'eris_choir_chair'
+        ? contacts(state).find((contact) => contact.role === 'barkeep' && contact.id !== c.id) || c
+        : c;
+      try { mountContactPortrait(big, portraitContact, { className: 'sx-portrait sx-portrait--lg', size: 1024, eager: true }); } catch (_) {}
+    }
+    dressStage();
+    composeStage(c);
+  }
+
+  /** The waveform under the name; a fresh line is typed while the bars speak; labels resolve. */
+  function composeStage(c) {
+    if (dial) { try { dial.dispose(); } catch (_) {} dial = null; }
+    if (wave) { wave.dispose(); wave = null; }
+    if (stopType) { stopType(); stopType = null; }
+    for (const stop of stopDecrypt.splice(0)) stop();
+    const idEl = stageEl.querySelector('.sx-talk__id');
+    const nameEl = stageEl.querySelector('.sx-talk__name');
+    if (idEl && nameEl) {
+      // the voice on the person: the Waveform drawn on an open arc anchored to the portrait's speaking side (never
+      // closing round the head), its bars the line's own envelope, labelled by the spoken line through a leader
+      // that runs level from the last glyph and elbows at 45 degrees to the arc's track
+      const lineEl = stageEl.querySelector('.sx-talk__reply.is-said') || stageEl.querySelector('.sx-talk__memory') || stageEl.querySelector('.sx-talk__reply');
+      const lineText = String((lineEl ? lineEl.textContent : c.line) || '');
+      // the leader labels the voice, so it anchors to the same line whose envelope the bars carry —
+      // at rest that is the memory (her opening words ride in it); once she speaks, the said line
+      const spokenEl = lineEl || stageEl.querySelector('.sx-talk__memory') || nameEl;
+      const avatar = stageEl.querySelector('[data-bigpic]');
+      try {
+        const sr = stageEl.getBoundingClientRect();
+        const ar = avatar ? avatar.getBoundingClientRect() : null;
+        // the words' own extent (a range over the text), not the element's box
+        let mr = spokenEl.getBoundingClientRect();
+        try { const rg = document.createRange(); rg.selectNodeContents(spokenEl); const rr = rg.getBoundingClientRect(); if (rr.width > 0) mr = rr; } catch (_) { /* the box stands in */ }
+        // the voice arc draws in the stage's own css px (its viewBox is clientWidth x clientHeight); at 1440p the
+        // shell is zoomed and rects come back in zoomed px, so every rect offset is divided by the zoom
+        const z = stageEl.offsetWidth > 0 ? sr.width / stageEl.offsetWidth : 1;
+        // On a phone this reserved-chair row has long copy over the barkeep portrait;
+        // its decorative arc otherwise paints across the words.
+        const chairArcFits = c.canonicalKey !== 'eris_choir_chair' || sr.width / z >= 500;
+        if (chairArcFits && ar && ar.width > 120 * z && sr.width > 0) {
+          const compact = sr.width / z < 1000;
+          const cx = (ar.left - sr.left + ar.width * 0.48) / z;
+          const cy = (ar.top - sr.top + ar.height * 0.44) / z;
+          const r = (ar.width * 0.42) / z;
+          const speak = createVoiceArc(stageEl, { text: lineText, cx, cy, r, bars: compact ? 48 : 64, leaderFrom: { x: (mr.right - sr.left) / z, y: (mr.top - sr.top + mr.height / 2) / z } });
+          if (speak) {
+            wave = { speak() {}, idle() {}, dispose() { speak.dispose(); } };
+            // B1: the replies as a dial on her voice arc — one tick per reply on a short arc
+            // concentric with the voice (outside her bars, in the dark glass), a bone cursor
+            // swinging on the existing dial.focus wiring, focus previewing the reply's own
+            // envelope against hers with her standing tick leaning warm or cold. Commit
+            // re-renders the stage, so her answer becomes the voice (lineText above).
+            try {
+              const btns = [...stageEl.querySelectorAll('.sx-talk__choices [data-choice]')];
+              dial = createReplyDial(speak, {
+                replies: btns.map((b) => b.textContent || ''),
+                leans: btns.map((b) => leanForChoice(b)),
+                focus: currentChoiceIndex(),
+                onHover: (i) => previewChoice(i),
+                onPick: (i) => { const t = choiceBtns()[i]; if (t && !t.disabled) t.click(); else previewChoice(i); },
+                onTurn: (dir) => previewChoice(currentChoiceIndex() + dir),
+              });
+            } catch (_) { dial = null; }
+          }
+        }
+      } catch (_) { wave = null; }
+    }
+    const firstChoice = stageEl.querySelector('.sx-choice');
+    if (firstChoice) firstChoice.classList.add('is-current');
+    // the keys, said once at the scale's foot
+    const choices = stageEl.querySelector('.sx-talk__choices');
+    if (choices && firstChoice && !stageEl.querySelector('.sx-talk__keys')) {
+      const hint = document.createElement('p');
+      hint.className = 'k-caps sx-talk__keys';
+      hint.setAttribute('aria-hidden', 'true');
+      const shortcutCount = Math.min(9, stageEl.querySelectorAll('.sx-choice').length);
+      hint.textContent = `${shortcutCount === 1 ? '1' : `1\u2013${shortcutCount}`} \u00b7 Enter answers`;
+      choices.insertAdjacentElement('afterend', hint);
+    }
+    const reply = stageEl.querySelector('.sx-talk__reply');
+    if (reply && saidText && saidText !== spokenText && !reducedMotion()) {
+      spokenText = saidText;
+      const text = reply.textContent;
+      const ms = Math.min(6000, 300 + text.length * 22);
+      if (wave) wave.speak(ms);
+      stopType = typewriter(reply, text, { cps: 46, onDone: () => { if (wave) wave.idle(); stopType = null; } });
+    } else if (!saidText) spokenText = null;
+    if (reducedMotion()) return;
+    const targets = [...stageEl.querySelectorAll('.sx-talk__role, .sx-choice')].filter(Boolean);
+    targets.forEach((node, i) => { const text = node.textContent; if (text) stopDecrypt.push(decrypt(node, text, { duration: 220, delay: 40 + i * 40 })); });
+  }
+
+  // ---------- leads: intel + survey + board jobs ----------
+  function renderLeads(state) {
+    const c = selected(state);
+    const stationId = sid();
+    let tags = [];
+    try { tags = (c ? barContactIntelTags(c, state, stationId) : []) || []; } catch (_) { tags = []; }
+    let survey = null;
+    try { survey = availableSurveyOffer(state, stationId); } catch (_) { survey = null; }
+    let leads = [];
+    let boardCount = 0;
+    try { const all = missionBoardSlots(state, stationId) || []; boardCount = all.length; leads = all.slice(0, 3); } catch (_) { leads = []; }
+    const credits = Math.max(0, Math.floor(Number(state && state.player && state.player.credits) || 0));
+
+    const intelHtml = tags.length
+      ? `<ul class="k-rows sx-intel__rows">${tags.map((t) =>
+          `<li class="k-row k-row--static sx-intel sx-intel--${escapeHtml(t.kind || 'info')}"><span class="k-row__name">${escapeHtml(t.label)}</span><span class="k-row__sub">${escapeHtml(t.text)}</span></li>`).join('')}</ul>`
+      : `<p class="k-sentence sx-muted">Nothing worth repeating yet.</p>`;
+
+    const surveyRow = survey
+      ? `<li class="k-row k-row--static sx-lead sx-lead--survey">` +
+          `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${entitySpanHtml('sector:' + survey.sectorId, escapeHtml(survey.sectorName))}</span>` +
+            `<span class="k-row__sub sx-lead__s">${escapeHtml(surveyOfferLabel ? (surveyOfferLabel(survey) || 'Nav data') : 'Nav data')}</span></span>` +
+          `<button type="button" ${stationControlAttrs('buy-survey')} class="k-word k-word--fine sx-lead__go" data-survey="${escapeHtml(survey.sectorId)}"${credits >= survey.price ? '' : ' disabled'}>${stationControlLabel('buy-survey')} · ${fmt(survey.price)} cr</button>` +
+        `</li>`
+      : '';
+
+    const leadRows = leads.map((m) => `<li class="k-row k-row--static sx-lead">` +
+        `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${entitySpanHtml('contract:' + mid(m), escapeHtml(m.title || 'Contract'))}</span>` +
+          `<span class="k-row__sub sx-lead__s">${fmt(rewardOf(m))} cr</span></span>` +
+        `<button type="button" ${stationControlAttrs('inspect-lead')} class="k-word k-word--fine sx-lead__go" data-inspect="${escapeHtml(String(mid(m)))}">${stationControlLabel('inspect-lead')}</button>` +
+      `</li>`).join('');
+
+    leadsEl.innerHTML =
+      `<p class="k-caps">Leads</p>` +
+      (surveyRow || leadRows
+        ? `<ul class="k-rows sx-lead__rows">${surveyRow}${leadRows}</ul>`
+        : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
+      // the board verb carries the board's count; the intel facts live on the Missions tab (the count is
+      // the one that matters here, so it rides the verb instead of a block of its own)
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li><li><button type="button" ${stationControlAttrs('play-manifest')} class="k-word k-word--fine" data-play-manifest>${stationControlLabel('play-manifest')}</button></li></ul>` +
+      `<div class="sx-bar__intel" hidden><p class="k-caps sx-intel__head">Intel</p>${intelHtml}</div>`;
+    dressLeads();
+    leadsKeysHint();
+  }
+
+  // the spine runs from the first heading's cap line to twelve px under the board key: never bare past the rail
+  function seatSpine() {
+    try {
+      const hang = el.querySelector('.sx-bar__hang');
+      const first = railEl.querySelector('.k-caps') || railEl;
+      // the board key alone (a selector list would return lead 1's own button first)
+      const last = leadsEl.querySelector('[data-station-control="open-board"]') || leadsEl.querySelector('.sx-bar__log') || leadsEl;
+      if (!hang || !first || !last) return;
+      const hr = hang.getBoundingClientRect();
+      // css px: rects are zoomed at 1440p, scrollTop and the custom properties are not
+      const z = hang.offsetWidth > 0 ? hr.width / hang.offsetWidth : 1;
+      const top = (first.getBoundingClientRect().top - hr.top) / z + hang.scrollTop;
+      // never past the rail's visible box: the fade completes inside it instead of being cut by the scroll edge
+      const bottom = Math.min((last.getBoundingClientRect().bottom - hr.top) / z + hang.scrollTop + 12, hang.scrollTop + hang.clientHeight - 1);
+      hang.style.setProperty('--bar-spine-top', `${Math.round(top)}px`);
+      hang.style.setProperty('--bar-spine-h', `${Math.max(0, Math.round(bottom - top))}px`);
+      // the contacts' minor ticks: one lands on the Hand's row
+      const rows = railEl.querySelector('.sx-bar__rows');
+      const chosen = rows && rows.querySelector('.sx-bar-row.is-active, .sx-bar-row[aria-selected="true"], .sx-bar-row[aria-current="true"]');
+      if (rows && chosen) {
+        const rrRect = rows.getBoundingClientRect(); const crRect = chosen.getBoundingClientRect();
+        const rr = { top: rrRect.top / z }; const cr = { top: crRect.top / z, height: crRect.height / z };
+        const armY = Math.floor(cr.top + cr.height / 2);
+        const top0 = Math.round(rr.top);
+        rows.style.setProperty('--bar-tick-y', `${(((armY - top0) % 8) + 8) % 8}px`);
+        chosen.style.setProperty('--bar-arm-y', `${armY - Math.round(cr.top)}px`);
+      }
+    } catch (_) { /* cosmetic */ }
+  }
+  function renderAll(state) { renderRail(state); renderStage(state); renderLeads(state); seatSpine(); if (typeof requestAnimationFrame === 'function') requestAnimationFrame(seatSpine); }
+
+  // ---------- interactions ----------
+  function selectContact(id, focus) {
+    if (!id || id === selectedId) return;
+    selectedId = id; saidText = null; pendingMissionOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
+    const st = ctx.state || {};
+    renderRail(st); renderStage(st); renderLeads(st);
+    if (focus) {
+      const word = railEl.querySelector(`[data-contact="${CSS.escape(id)}"]`);
+      if (word && typeof word.focus === 'function') word.focus();
+    }
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+  }
+
+  railEl.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-contact]'); if (!b) return;
+    selectContact(b.getAttribute('data-contact'), false);
+  });
+  // one reply is current at rest (the first); the pointer or the focus moves the mark
+  const setCurrentChoice = (btn) => {
+    for (const b of stageEl.querySelectorAll('.sx-choice.is-current')) if (b !== btn) b.classList.remove('is-current');
+    if (btn) btn.classList.add('is-current');
+  };
+  // the dial and the list are one control: every road to a reply (pointer, wheel, keys, gamepad focus)
+  // lands on the button AND swings the dial, so Enter always says the reply the cursor is on
+  const choiceBtns = () => [...stageEl.querySelectorAll('.sx-talk__choices [data-choice]')];
+  const currentChoiceIndex = () => {
+    const btns = choiceBtns();
+    const i = btns.findIndex((b) => b.classList.contains('is-current'));
+    return i < 0 ? 0 : i;
+  };
+  function previewChoice(i) {
+    const btns = choiceBtns();
+    if (!btns.length) return;
+    const btn = btns[((i % btns.length) + btns.length) % btns.length];
+    setCurrentChoice(btn);
+    if (dial) dial.focus(btns.indexOf(btn));
+    if (btn && typeof btn.focus === 'function' && document.activeElement !== btn) {
+      try { btn.focus({ preventScroll: true }); } catch (_) { btn.focus(); }
+    }
+  }
+  // a farewell or a refusal cools her; a question or an order warms her. Deterministic, from the
+  // reply's own id and words; the dial leans her standing tick with it.
+  const COLD_REPLY_RE = /(bye|farewell|safe flying|not interested|dismiss|clean\b|leave|never mind|no thanks|enough|threat|pay up|\blie\b)/i;
+  const leanForChoice = (btn) => (COLD_REPLY_RE.test(`${btn.getAttribute('data-choice') || ''} ${(btn.textContent || '')}`) ? -1 : 1);
+  // A newly rendered choice can appear under a stationary pointer after the
+  // answer is revealed. Do not move focus back to it until the pointer moves.
+  let awaitingPointerMove = false;
+  stageEl.addEventListener('pointermove', (ev) => {
+    if (!awaitingPointerMove) return;
+    awaitingPointerMove = false;
+    const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice');
+    const i = b ? choiceBtns().indexOf(b) : -1;
+    if (i >= 0) previewChoice(i);
+  });
+  stageEl.addEventListener('pointerover', (ev) => {
+    if (awaitingPointerMove) return;
+    const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice');
+    if (!b) return;
+    const i = choiceBtns().indexOf(b);
+    if (i >= 0) previewChoice(i);
+    else setCurrentChoice(b);
+  });
+  stageEl.addEventListener('focusin', (ev) => {
+    const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice');
+    if (!b) return;
+    setCurrentChoice(b);
+    if (dial) dial.focus(choiceBtns().indexOf(b));
+  });
+  // a reply's numeral turns the dial first (the cursor swings, the reply previews); a second press says it
+  stageEl.addEventListener('keydown', (ev) => {
+    if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    const t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    const btns = choiceBtns();
+    if (/^[1-9]$/.test(ev.key)) {
+      const btn = btns[Number(ev.key) - 1];
+      if (!btn || btn.disabled) return;
+      ev.preventDefault();
+      if (btn.classList.contains('is-current') && document.activeElement === btn) btn.click();
+      else previewChoice(Number(ev.key) - 1);
+      return;
+    }
+    // arrows walk the dial (it wraps: dials turn round); Home/End jump its ends; Enter says it natively
+    if (t && t.closest && t.closest('.sx-choice')) {
+      const cur = btns.indexOf(t.closest('.sx-choice'));
+      if (cur < 0) return;
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowRight') { ev.preventDefault(); previewChoice(cur + 1); }
+      else if (ev.key === 'ArrowUp' || ev.key === 'ArrowLeft') { ev.preventDefault(); previewChoice(cur - 1); }
+      else if (ev.key === 'Home') { ev.preventDefault(); previewChoice(0); }
+      else if (ev.key === 'End') { ev.preventDefault(); previewChoice(btns.length - 1); }
+    }
+  });
+  railEl.addEventListener('keydown', (ev) => {
+    const words = [...railEl.querySelectorAll('[data-contact]')];
+    const cur = words.indexOf(ev.target.closest('[data-contact]'));
+    if (cur < 0 || !words.length) return;
+    let next = -1;
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowRight') next = (cur + 1) % words.length;
+    else if (ev.key === 'ArrowUp' || ev.key === 'ArrowLeft') next = (cur - 1 + words.length) % words.length;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = words.length - 1;
+    else return;
+    ev.preventDefault();
+    selectContact(words[next].getAttribute('data-contact'), true);
+  });
+
+  stageEl.addEventListener('click', async (ev) => {
+    if (ev.target.closest('[data-open-vonn-freight-loss-map]')) {
+      if (openVonnFreightLossMap(ctx) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
+      return;
+    }
+    if (ev.target.closest('[data-open-doss-archive-map]')) {
+      if (openDossArchiveMap(ctx) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
+      return;
+    }
+    if (ev.target.closest('[data-open-tethys-rumor-map]')) {
+      if (openTethysRumorGuidanceMap(ctx, sid()) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
+      return;
+    }
+    const rumorButton = ev.target.closest('[data-buy-frontier-rumor]');
+    if (rumorButton && !rumorButton.disabled) {
+      const rumorId = rumorButton.getAttribute('data-buy-frontier-rumor');
+      const offer = frontierRumorOffer(ctx.state || {}, sid());
+      if (!offer || offer.id !== rumorId) {
+        pendingFrontierRumorOffer = null;
+        saidText = 'That rumor card is no longer available.';
+        renderStage(ctx.state || {});
+        return;
+      }
+      const credits = Math.max(0, Math.floor(Number(ctx.state && ctx.state.player && ctx.state.player.credits) || 0));
+      if (credits < offer.price) {
+        saidText = `You need ${fmt(offer.price)} cr for that rumor card.`;
+        if (ctx.bus) ctx.bus.emit('toast', { text: 'Not enough credits for a rumor card', kind: 'warn', ttl: 3 });
+        renderStage(ctx.state || {});
+        return;
+      }
+      if (ctx.bus) {
+        ctx.bus.emit('ui:purchaseFrontierRumor', { rumorId, stationId: sid() });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      }
+      if (frontierRumorOwned(ctx.state || {}, rumorId)) {
+        pendingFrontierRumorOffer = null;
+        saidText = `${offer.kindLabel} added as an approximate amber search area. You still have to find it.`;
+      }
+      renderStage(ctx.state || {});
+      renderLeads(ctx.state || {});
+      return;
+    }
+    const accept = ev.target.closest('[data-accept-mission]');
+    if (accept && !accept.disabled) {
+      const missionId = accept.getAttribute('data-accept-mission');
+      const wasAvailable = missionOfferAvailable(ctx.state || {}, missionId);
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      // The worker-lane rpc returns the authoritative verdict; the emitted path
+      // (main lane) has no ack, so acceptance is verified by re-reading the offer.
+      const res = await acceptMissionOnLane(ctx.bus, missionId);
+      const laneAccepted = res && res.ok === true && res.emitted !== true;
+      const markAccepted = () => {
+        acceptedMissionId = missionId;
+        pendingMissionOffer = null;
+        saidText = `Accepted + tracked. Mission Log (${BINDINGS.missionLog.label}) now carries route, timer, and progress. Undock when Departure Check is green.`;
+      };
+      if (wasAvailable && !missionOfferAvailable(ctx.state || {}, missionId)) {
+        markAccepted();
+      } else if (laneAccepted) {
+        markAccepted();
+      } else {
+        saidText = wasAvailable
+          ? 'Mission still pending. Resolve the readiness blocker before accepting.'
+          : 'That offer is no longer available.';
+      }
+      renderStage(ctx.state || {});
+      renderLeads(ctx.state || {});
+      return;
+    }
+    if (ev.target.closest('[data-open-mission-log]')) {
+      if (ctx.bus) ctx.bus.emit('ui:pushScreen', { id: 'missionLog', source: 'station-bar' });
+      return;
+    }
+    const b = ev.target.closest('[data-choice]'); if (!b || b.disabled) return;
+    const st = ctx.state || {};
+    const c = selected(st); if (!c) return;
+    const choiceId = b.getAttribute('data-choice');
+    if (c.canonicalKey === 'eris_choir_chair' && !erisOpenAnnounced) enterErisVisit();
+    if (c.canonicalKey === 'eris_choir_chair' && choiceId === 'free_drink') erisLastReply = null;
+    if (ctx.bus) {
+      emitBarContactChoice(ctx.bus, {
+        contactId: c.id, choiceId, stationId: sid(),
+        canonicalKey: c.canonicalKey || null, trackerId: c.trackerId || null, name: c.name,
+        role: c.role || null, // INF-074: lets contact memory tell barkeeps from merchants
+        ...(c.canonicalKey === 'eris_choir_chair' ? {
+          visitId: erisVisitId(), requestId: `eris:${erisVisitId()}:${choiceId}`,
+        } : {}),
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+    }
+    let result = null;
+    try { result = buildReply(c.role, choiceId, ctx, sid(), c); } catch (_) { result = null; }
+    if (result && result.uniqueWreckRumor && ctx.bus) ctx.bus.emit('uniqueWreck:rumorHeard', result.uniqueWreckRumor);
+    if (result && result.endgameResolved) {
+      pinnedContact = {
+        ...c,
+        line: '47-A closed. 47-B pending.',
+        choices: [{ id: 'closed', label: 'Safe flying.' }],
+      };
+    } else if (result && result.pinContact) {
+      pinnedContact = { ...result.pinContact, pinStationId: sid() };
+    }
+    saidText = (result && result.text) || 'They shrug.';
+    if (c.canonicalKey === 'eris_choir_chair' && erisLastReply?.visitId === erisVisitId()) {
+      saidText = erisLastReply.outcome === 'settled' ? 'Your drink for this visit has been served.'
+        : 'The barkeep cannot pour just now. Try again shortly.';
+    }
+    if (result?.missionOffer && ctx.bus) ctx.bus.emit('comms:popup', {
+      id: `bar-lead:${c.id}:${result.missionOffer.id || choiceId}`,
+      sender: c.name || 'Contact', contactId: c.id, text: saidText,
+      category: 'story', ttl: Math.max(8, Math.ceil(saidText.length / 18)), persist: true,
+    });
+    pendingMissionOffer = result && result.missionOffer || null;
+    pendingFrontierRumorOffer = result && result.frontierRumorOffer || null;
+    acceptedMissionId = null;
+    awaitingPointerMove = true;
+    renderStage(ctx.state || {});
+    renderLeads(ctx.state || {});
+    // A short viewport may be scrolled down to the selected choice. The new
+    // answer is above it, so reveal and focus it only after an explicit choice,
+    // never during a passive refresh or when the cached screen is reopened.
+    const reply = stageEl.querySelector('.sx-talk__reply');
+    if (reply) {
+      reply.setAttribute('tabindex', '-1');
+      if (typeof reply.focus === 'function') {
+        try { reply.focus({ preventScroll: true }); } catch (_) { reply.focus(); }
+      }
+      if (typeof reply.scrollIntoView === 'function') reply.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  });
+
+  leadsEl.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-play-manifest]')) {
+      const opponent = selected(ctx.state || {});
+      if (!opponent || !ctx.bus) return;
+      ctx.state.ui.manifestOpponent = { id: opponent.id, name: opponent.name };
+      ctx.bus.emit('ui:pushScreen', { id: 'manifest', source: 'station-bar' });
+      return;
+    }
+    const sv = ev.target.closest('[data-survey]');
+    if (sv && !sv.disabled) {
+      if (ctx.bus) {
+        ctx.bus.emit('ui:purchaseSurveyData', { sectorId: sv.getAttribute('data-survey'), stationId: sid() });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      }
+      setTimeout(() => renderAll(ctx.state || {}), 70);
+      return;
+    }
+    const inspect = ev.target.closest('[data-inspect]');
+    if (inspect) {
+      if (ctx.bus) {
+        ctx.bus.emit('station:navigate', { destination: 'contracts', options: { missionId: inspect.getAttribute('data-inspect') } });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      }
+      return;
+    }
+    if (ev.target.closest('[data-log]') && ctx.bus) ctx.bus.emit('station:navigate', { destination: 'contracts' });
+  });
+
+  watchEvents();
+  watchComms();
+
+  const offRecognition = ['stationContact:changed', 'faction:repChanged'].map((event) => {
+    const handler = () => { if (visible) renderAll(ctx.state || {}); };
+    ctx.bus?.on(event, handler);
+    return () => ctx.bus?.off(event, handler);
+  });
+  const offErisReceipt = ctx.bus?.on?.('comms:log', (event) => {
+    if (sid() !== 'station_eris_margin' || event?.source !== 'eris_choir_chair'
+        || (event.outcome !== 'settled' && event.outcome !== 'refused') || event.visitId !== erisVisitId()) return;
+    erisLastReply = { visitId: event.visitId, outcome: event.outcome };
+    if (event.outcome === 'settled') erisServedVisitId = event.visitId;
+    if (!visible) return;
+    if (selectedId === 'contact_eris_choir_chair' || selected(ctx.state || {})?.canonicalKey === 'eris_choir_chair') {
+      saidText = event.outcome === 'settled' ? 'Your drink for this visit has been served.'
+        : 'The barkeep cannot pour just now. Try again shortly.';
+    }
+    renderAll(ctx.state || {});
+  });
+
+  return {
+    el,
+    onShow(c) {
+      if (!visible) enterErisVisit();
+      visible = true;
+      renderAll((c || ctx).state || {});
+    },
+    onHide() {
+      visible = false;
+      erisOpenAnnounced = false;
+      const leavingVisitId = erisVisitId();
+      // A station overlay hides the shell but leaves this tab mounted. Only a real tab
+      // departure removes it; defer until the station has swapped its panel.
+      queueMicrotask(() => {
+        if (!visible && !el.isConnected && Number.isSafeInteger(leavingVisitId)) {
+          erisLeftVisitId = leavingVisitId;
+          if (selectedId === 'contact_eris_choir_chair' || selected(ctx.state || {})?.canonicalKey === 'eris_choir_chair') saidText = null;
+          erisVisitCommand('bar_leave', leavingVisitId);
+        }
+      });
+    },
+    refresh(c) { renderAll((c || ctx).state || {}); },
+    dispose() {
+      visible = false;
+      offRecognition.forEach((off) => off());
+      if (typeof offErisReceipt === 'function') offErisReceipt();
+      pinnedContact = null;
+      if (typeof offDockDeed === 'function') offDockDeed();
+      if (typeof offErisUndock === 'function') offErisUndock();
+      if (dial) { try { dial.dispose(); } catch (_) {} dial = null; }
+      if (wave) { wave.dispose(); wave = null; }
+      if (stopType) { stopType(); stopType = null; }
+      for (const stop of stopDecrypt.splice(0)) stop();
+    },
+  };
+}

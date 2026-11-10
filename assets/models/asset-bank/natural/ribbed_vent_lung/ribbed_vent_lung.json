@@ -1,0 +1,125 @@
+{
+  "assetId": "ribbed_vent_lung",
+  "category": "growth",
+  "description": "ribbed vent lung; reusable growth assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_HOST_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -1.2,
+          0.06,
+          -0.0
+        ],
+        "size": [
+          0.54,
+          0.12,
+          0.54
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.12,
+          0.06,
+          -0.0
+        ],
+        "size": [
+          0.54,
+          0.12,
+          0.54
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "growth",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.6968753337860107,
+      -0.0005025097052566707,
+      -0.9806897640228271
+    ],
+    "max": [
+      1.6150000095367432,
+      1.0413568019866943,
+      1.008972406387329
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ribbed_vent_lung_lod0.glb",
+      "triangles": 13928,
+      "draws": 4,
+      "bytes": 611024,
+      "method": "source",
+      "sha256": "b50f24c7e37171118381119f0a640e6ed98d90ae0f01de6deb8fd7bc183d0588"
+    },
+    {
+      "level": 1,
+      "file": "ribbed_vent_lung_lod1.glb",
+      "triangles": 5570,
+      "draws": 4,
+      "bytes": 290164,
+      "method": "Forge-decimation",
+      "sha256": "bab4e30d73155879d0521ac0806c6cd3581f0cf3421bd2152d9675b83a83042f"
+    },
+    {
+      "level": 2,
+      "file": "ribbed_vent_lung_lod2.glb",
+      "triangles": 2506,
+      "draws": 4,
+      "bytes": 166312,
+      "method": "Forge-decimation",
+      "sha256": "a6b591993494425baf03101400cdaa3f3f1417617bd2fce0267aef121b39bee9"
+    }
+  ]
+}

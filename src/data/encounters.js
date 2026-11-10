@@ -1,0 +1,664 @@
+// src/data/encounters.js — ENCOUNTER SHAPE DEFINITIONS (the "what happens here" layer).
+//
+// The encounterDirector runs a deterministic, pressure-budgeted campaign from this catalogue: it
+// plans a small seeded schedule per sector-day (planEncounters), then a 1 Hz pacing gate decides
+// WHEN each planned shape actually fires, based on pressure, spacing rules, and fire-time gates.
+// This file is pure data + pure helpers — no imports, no Three.js, no RNG (callers pass their
+// seeded sim RNG). Each shape declares:
+//   * tier         — 'major' | 'minor' | 'ambient'. Majors are rare (≤1/10min), minors paced
+//                    (≤2/10min); ambient is quiet world-life that never counts against those caps.
+//   * deck         — 'combat' | 'civilian'. The two decks spend SEPARATE pressure pools so ambient
+//                    civilian life never starves combat pressure and vice versa.
+//   * weight       — relative selection weight when the planner rolls a slot.
+//   * zoneTypes    — sectorZones ZONE_TYPES ids this shape can anchor to. No matching zone → the
+//                    shape is simply not schedulable in that sector (additive, never crashes).
+//   * script       — the director-side phase script that runs this shape (telegraph → offer →
+//                    conflict/resolution → outcome → receipt). Symbolic id, resolved in
+//                    encounterScripts.js — data stays serializable.
+//   * pressureCost — pressure spent from the deck's pool when the shape fires. Spending IS the
+//                    pacing valve: a fired encounter buys quiet time after it.
+//   * cooldownS    — per-shape refire cooldown (sector-scoped, sim-time seconds).
+//   * gates        — fire-time eligibility read from live state (cargo value, contraband, bounty,
+//                    claims, named-captain pool). Planner schedules the slot; an ineligible slot
+//                    fizzles quietly instead of spawning an unmotivated encounter.
+//   * proximity    — if true the shape only fires while the player is on/near its anchor zone
+//                    (zone reason is sacred: no spawns near the player without a why-here).
+//   * squad/escort/boss/genuine/bait — spawn recipes; archetypes reference src/data/enemies.js.
+//   * context      — ai.spawnContext for spawned ships. Hostiles 'encounter'; lawful 'patrol';
+//                    civilians 'convoy_civilian' (non-danger). factionId is READABILITY only —
+//                    hostility is decided by scanner.isHostileToPlayer via team/passive/lawful/
+//                    context, never by factionId.
+//   * bark         — the ONE primary comms line spoken on entry (one-voice law).
+//   * choices      — compact choice descriptors for the offer phase. The director emits
+//                    `encounter:choiceOffered` and accepts `encounter:choose`; every choice also
+//                    has a PHYSICAL read (brake to pay, fly off to run, fire to refuse) so no
+//                    modal UI is ever required. `timeoutChoice` is the deterministic default.
+//
+// Copy contract: one authored inline line per voice event, callsigns in caps on hails, and receipts
+// factual about what changed. One-voice timing and UI fit are validated without English word-count
+// or punctuation taste rules so localization and distinct faction voices remain viable.
+
+import { ENCOUNTERS as SHIPPED_ENCOUNTERS } from './encounters/index.generated.js';
+import { validateEncounterShape } from './encounters/shape.js';
+import { deepFreeze } from './encounters/catalog.js';
+import { ZONE_TYPES } from './sectorZones.js';
+import { ENEMY_TYPES } from './enemies.js';
+import {
+  userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
+} from './userContent.js';
+
+// ─────────────────────────────── user content (PQ-172.00) ───────────────────────────────
+// User-dropped JSON encounter records merge into the shipped registry here, at module-eval time.
+// A user record IS a flat encounter record (the same shape defineEncounter produces) plus `order`
+// (planner sort position — user range starts at 1000, shipped orders end at 342) and an optional
+// `barks` table of mod-authored lines ({key: line|[lines]}). Script ids may only reuse shipped
+// director scripts — JSON mods never introduce new behavior code (packet non-goal).
+
+const USER_ENCOUNTER_ORDER_MIN = 1000;
+const USER_ENCOUNTER_TIERS = new Set(['major', 'minor', 'ambient']);
+const USER_ENCOUNTER_DECKS = new Set(['combat', 'civilian', 'mystery', 'patrol']);
+const USER_ENCOUNTER_KEYS = new Set([
+  'id', 'order', 'tier', 'deck', 'weight', 'zoneTypes', 'script', 'pressureCost', 'cooldownS',
+  'proximity', 'gates', 'shape', 'barks', 'receipts',
+  'factionId', 'context', 'squad', 'escort', 'boss', 'bossName', 'genuine', 'bait',
+  'bark', 'beatS', 'choices', 'timeoutChoice', 'primaryLine', 'title',
+  'aftermath', 'anchorPoiId', 'approachR', 'behavior', 'cachePool', 'civilian',
+  'engagementTrigger', 'entranceS', 'followOnStub', 'follows', 'genuineChance', 'graffitiOn',
+  'guardPay', 'identifyPay', 'identifyPayStep', 'intendedCadence', 'investigateR',
+  'killCachePool', 'mirrorCourse', 'motive', 'noCombat', 'noCredits', 'offerS', 'phaseGate',
+  'predation', 'presenceNodeId', 'rare', 'requiredPings', 'requiredRep', 'rescuePay', 'routeId',
+  'runtimeReady', 'scanS', 'scanTellR', 'services', 'source', 'springR', 'telegraph',
+  'transitS', 'triggerKind', 'unitsPerHauler', 'variant', 'windowS',
+]);
+// Scripts that are runtime-registered machinery or director-internal stubs — not standalone
+// data scripts. A JSON record cannot supply the registration code these need (no script mods).
+const USER_ENCOUNTER_FORBIDDEN_SCRIPTS = new Set(['selfRegistered', 'followOnStub']);
+
+const USER_ENEMY_IDS = new Set(ENEMY_TYPES.map((e) => e.id));
+const USER_BARK_LINES = {};   // `${encounterId}:${barkKey}` -> string | string[]
+
+function userEncounterSquadProblem(recipe, field) {
+  if (recipe == null) return null;
+  if (typeof recipe !== 'object' || Array.isArray(recipe)) return `${field} must be an object`;
+  if (recipe.archetypes != null) {
+    if (!Array.isArray(recipe.archetypes)) return `${field}.archetypes must be an array`;
+    for (const archetype of recipe.archetypes) {
+      if (!USER_ENEMY_IDS.has(archetype)) return `${field}.archetypes references unknown archetype "${archetype}"`;
+    }
+  }
+  return null;
+}
+
+function userEncounterProblem(rec, baseIds, baseScripts, claimedOrders) {
+  if (!rec || typeof rec !== 'object' || Array.isArray(rec)) return 'record must be an object';
+  for (const key of Object.keys(rec)) {
+    if (!USER_ENCOUNTER_KEYS.has(key)) return `unknown field "${key}"`;
+  }
+  if (typeof rec.id !== 'string' || !/^[a-z][a-z0-9_]{1,79}$/.test(rec.id)) {
+    return 'id must be a lowercase_snake string';
+  }
+  if (!Number.isInteger(rec.order) || rec.order < USER_ENCOUNTER_ORDER_MIN) {
+    return `order must be an integer >= ${USER_ENCOUNTER_ORDER_MIN} (shipped range is below it)`;
+  }
+  if (claimedOrders.has(rec.order)) return `order ${rec.order} collides with another user encounter`;
+  if (!USER_ENCOUNTER_TIERS.has(rec.tier)) return 'tier must be major, minor, or ambient';
+  if (!USER_ENCOUNTER_DECKS.has(rec.deck)) return 'deck must be combat, civilian, mystery, or patrol';
+  if (!Number.isInteger(rec.weight) || rec.weight < 1) return 'weight must be a positive integer';
+  if (!Array.isArray(rec.zoneTypes) || !rec.zoneTypes.length) return 'zoneTypes must be a non-empty array';
+  for (const zt of rec.zoneTypes) {
+    if (!ZONE_TYPES[zt]) return `zoneTypes references unknown zone type "${zt}"`;
+  }
+  if (typeof rec.script !== 'string' || !baseScripts.has(rec.script)) {
+    return `script "${rec.script}" is not a shipped encounter script — JSON content cannot add scripts`;
+  }
+  if (USER_ENCOUNTER_FORBIDDEN_SCRIPTS.has(rec.script)) {
+    return `script "${rec.script}" is runtime-registered machinery, not usable from JSON`;
+  }
+  if (rec.gates != null && (typeof rec.gates !== 'object' || Array.isArray(rec.gates))) {
+    return 'gates must be an object';
+  }
+  for (const field of ['squad', 'escort', 'genuine', 'bait', 'boss']) {
+    const problem = userEncounterSquadProblem(rec[field], field);
+    if (problem) return problem;
+  }
+  if (rec.bark != null && typeof rec.bark !== 'string') return 'bark must be a bark id string';
+  if (rec.barks != null) {
+    if (typeof rec.barks !== 'object' || Array.isArray(rec.barks)) return 'barks must be an object';
+    for (const [key, line] of Object.entries(rec.barks)) {
+      const ok = typeof line === 'string'
+        || (Array.isArray(line) && line.length > 0 && line.every((l) => typeof l === 'string'));
+      if (!ok) return `barks.${key} must be a string or non-empty string array`;
+    }
+    if (rec.bark != null && !(rec.bark in rec.barks) && !(rec.bark in ENCOUNTER_BARKS)) {
+      return `bark "${rec.bark}" is not a shipped bark id and is not declared in this record's barks`;
+    }
+  } else if (rec.bark != null && !(rec.bark in ENCOUNTER_BARKS)) {
+    return `bark "${rec.bark}" is not a shipped bark id (declare custom lines via "barks")`;
+  }
+  if (rec.receipts != null && (typeof rec.receipts !== 'object' || Array.isArray(rec.receipts))) {
+    return 'receipts must be an object of outcome -> line';
+  }
+  try {
+    validateEncounterShape(rec.shape, rec.id);
+  } catch (error) {
+    return error.message;
+  }
+  return null;
+}
+
+function mergeUserEncounters(base) {
+  const candidates = userContentCandidates('encounters')
+    .slice()
+    .sort((a, b) => (a.record?.order ?? 0) - (b.record?.order ?? 0));
+  // No payload → return the shipped registry untouched: reference identity and freeze state are
+  // exactly what consumers saw before the loader existed.
+  if (!candidates.length) return base;
+  const baseIds = new Set(Object.keys(base));
+  const baseScripts = new Set(Object.values(base).map((e) => e.script));
+  const claimedOrders = new Set();
+  const merged = { ...base };
+  for (const cand of candidates) {
+    const rec = cand.record;
+    const problem = userEncounterProblem(rec, baseIds, baseScripts, claimedOrders)
+      || claimUserContentId('encounters', rec && rec.id, cand.modId, baseIds);
+    if (problem) {
+      rejectUserContent(cand.modId, 'encounters', rec && rec.id, problem, cand.file);
+      continue;
+    }
+    const record = { ...rec };
+    delete record.order;
+    if (record.barks) {
+      for (const [key, line] of Object.entries(record.barks)) {
+        USER_BARK_LINES[`${record.id}:${key}`] = line;
+      }
+      if (record.bark && record.bark in record.barks) record.bark = `${record.id}:${record.bark}`;
+      delete record.barks;
+    }
+    merged[record.id] = deepFreeze(record);
+    claimedOrders.add(rec.order);
+    acceptUserContent(cand.modId, 'encounters', record.id, cand.file);
+  }
+  return Object.freeze(merged);
+}
+
+
+export { NAMED_CAPTAINS, FACTION_LABELS } from './encounterIdentity.js';
+
+/** Bark lines keyed by bark id. Values are a string or a variant array (seeded pick via barkText).
+ *  `{key}` placeholders are substituted after pick. Lines use the one-voice route, remain safe for
+ *  its inline UI surface, and preserve required callsign/placeholder semantics.
+ *
+ *  Faction suitability (pool members — not runtime-filtered):
+ *    toll_demand [0,1,3] Reach transactional; [2,4] Vael smuggler customs voice.
+ *    patrol_scan_hail [0,1,3] Concord bureaucratic; [2,4] Meridian border-control voice. */
+export const ENCOUNTER_BARKS = Object.freeze({
+  // toll — Reach [0,1,3] transactional; Vael [2,4] customs/smuggler phrasing
+  toll_demand: Object.freeze([
+    'REACH: toll {amount} cr. Cut thrust to pay, or run.',
+    'REACH: lane fee {amount}. Brake to transfer, or break formation.',
+    'VAEL: transit tax {amount} cr. Settle now or we vector you.',
+    'REACH: your cargo weighs {amount}. Pay calm or we scrape the hold.',
+    'VAEL: customs at {amount}. Drop thrust or we board for inventory.',
+  ]),
+  toll_paid_ack: Object.freeze([
+    'Smart trade. Lane is yours.',
+    'Credits received. Resume on your heading.',
+    'Fair rate. You are cleared through Reach lanes.',
+    'Toll logged. We part on good terms.',
+    'Payment good. Keep your thrust trimmed, pilot.',
+  ]),
+  toll_refused_ack: Object.freeze([
+    'Wrong answer. Take the cargo.',
+    'Then we take it from the hull.',
+    'Refusal noted. Raiders, peel their hold.',
+    'No pay means salvage rights. Engage.',
+    'Wrong call. We board and strip cargo.',
+  ]),
+  toll_flee_ack: Object.freeze([
+    'Runner. Burn them down.',
+    'He bolted. Pack, chase and cut thrust.',
+    'Runner tagged. Do not let them reach lane.',
+    'Vector shift detected. Hunters, full burn.',
+    'Fleeing. Close range and gut their drive.',
+  ]),
+  toll_broke_ack: Object.freeze([
+    'Empty pockets. Take it out of the hull.',
+    'Zero balance. We invoice in hull plate.',
+    'No credits. Collect from whatever cargo moves.',
+    'Broke answer. Scrape the hold for value.',
+    'Accounts dry. Payment due in stripped cargo.',
+  ]),
+  // minefield wake demand — Reach jackal crew; tithe is weighed in goods, not credits
+  wake_tithe_demand: Object.freeze([
+    'REACH: jettison a {amount} cr tithe or clear the wake.',
+    'REACH: tithe {amount} in goods, or we take the hold.',
+    'JACKAL: weigh off {amount} cr of cargo, or run the mines.',
+  ]),
+  wake_tithe_paid: Object.freeze([
+    'Tithe taken. The wake holds its fire.',
+    'Weigh-off good. Clear the lane.',
+    'Taken. The mines stay sleeping.',
+  ]),
+  // dart shepherd — the Reach pack that runs leashed bombs instead of pointing guns
+  dart_shepherd_demand: Object.freeze([
+    'REACH: bombs on the leash, hauler. Weigh off {amount} in goods or the darts fly.',
+    'JACKAL: see the darts? {amount} in cargo puts them back to sleep.',
+    'REACH: tithe {amount} from the hold — or we crack your hull with ordnance.',
+    'SHEPHERD: {amount} in goods buys the leash. Otherwise my darts eat your drive.',
+    'REACH: the pack runs fused. {amount} weighed off, or you meet them moving.',
+  ]),
+  dart_shepherd_spring: Object.freeze([
+    'Leash cut. The darts pick their own meal.',
+    'Fuses lit — fly, little bombs.',
+    'No tithe. Cut them loose.',
+  ]),
+  dart_shepherd_paid: Object.freeze([
+    'Weighed off. The darts go back to sleep.',
+    'Good tithe. The leash holds today.',
+    'Taken. The bombs stay parked.',
+  ]),
+  dart_shepherd_refused: Object.freeze([
+    'Wrong answer. Darts, run.',
+    'Denied. Feed them the hull.',
+    'No tithe. Loose the pack.',
+  ]),
+  dart_shepherd_flee: Object.freeze([
+    'Runner. The leash has a long reach.',
+    'Gone. The shepherd counts another debt.',
+    'Burn off then. The darts remember the bearing.',
+  ]),
+  dart_shepherd_broke: Object.freeze([
+    'Empty hold. The darts collect what the cargo could not pay.',
+    'Nothing to weigh. The bombs invoice the hull.',
+  ]),
+  // vael warden convoy — lawful freight under guardian screen
+  warden_convoy_alert: Object.freeze([
+    'TRAFFIC ALERT: Vael freighter under warden screen. Raiders want the hold; the screen wants the lane.',
+    'VAEL: convoy under screen. Raiders closing — pick a side or keep clear.',
+  ]),
+  // patrol scan — Concord [0,1,3] bureaucratic; Meridian [2,4] border-control voice
+  patrol_scan_hail: Object.freeze([
+    'CONCORD: cut thrust for scan.',
+    'CONCORD: hold vector for customs sweep.',
+    'MERIDIAN: slow thrust. Manifest and hull scan.',
+    'CONCORD: match patrol speed. Submit for inspection.',
+    'MERIDIAN: traffic hold. Hold transponder open for scan.',
+  ]),
+  patrol_scan_clear: Object.freeze([
+    'Clear. Fly safe.',
+    'Hold reads clean. Resume on lane.',
+    'Manifest matches. You are released.',
+    'No flags. Continue on assigned vector.',
+    'Inspection complete. Transponder cleared.',
+  ]),
+  patrol_scan_caught: Object.freeze([
+    'Contraband confirmed. Fine logged, goods seized.',
+    'Illegal cargo flagged. Fine assessed, hold emptied.',
+    'Manifest mismatch. Contraband seized, fine recorded.',
+    'Hidden goods found. Penalty logged, cargo impounded.',
+    'Smuggled items confirmed. Fine due, cargo forfeited.',
+  ]),
+  patrol_scan_refused: Object.freeze([
+    'Scan refused. Transponder flagged.',
+    'Noncompliance logged. Transponder marked for review.',
+    'Refusal recorded. Patrol will shadow your wake.',
+    'You fled inspection. Flag set on your beacon.',
+    'Scan denied. Concord tags your transponder dirty.',
+  ]),
+  // ambush
+  ambush_tele: Object.freeze([
+    'Sensor ghosts in the belt shadow. Stay sharp.',
+    'Contacts flicker off the belt edge. Eyes up.',
+    'Mass signatures hiding in the lane shadow.',
+    'Radar clutter ahead. Something masks a group.',
+    'Bogies blink on and off the asteroid shelf.',
+  ]),
+  ambush_spring: Object.freeze([
+    'Ambush. Cut them off — nobody leaves with cargo.',
+    'Now! Box them in — cargo stays with us!',
+    'Spring it! Cut thrust and take their hold!',
+    'Ambush live! Nobody vectors out with that cargo!',
+    'Trap sprung! Raiders in — strip them clean!',
+    'We watched you pass twice, courier. Third time pays!',
+    'Same wake as the manifest said. Take the hold, leave the hull!',
+  ]),
+  snare_warn:         'Mass-snare charging dead ahead. Break vector.',
+  // ghost on the bearing — Quiet contract demand; terse, priced, no small talk
+  ghost_contract_demand: Object.freeze([
+    'Contract on your bearing. {amount} cr buys it back. Decide.',
+    'You are the listed target. {amount} cr, or the lock stays.',
+    'A price on your hull: {amount} cr. Pay, hold, or run.',
+  ]),
+  ghost_contract_bought_ack: Object.freeze([
+    'Paid. Contract void. Forget the bearing.',
+    'Received. Your name is off the ledger.',
+    'Done. The lock is a dead tone now.',
+  ]),
+  ghost_refused_ack: Object.freeze([
+    'Refusal filed. The contract stands.',
+    'Noted. Collection is now kinetic.',
+    'Terms rejected. The ghost keeps its fee.',
+  ]),
+  ghost_flee_ack: Object.freeze([
+    'Runner. The contract follows the lane.',
+    'Gone. We keep the bearing.',
+    'Burn if you like. The ledger does not tire.',
+  ]),
+  ghost_broke_ack: Object.freeze([
+    'Insufficient funds. The contract pays in hull.',
+    'No credits. The price moves to your plate.',
+  ]),
+  ghost_spring: Object.freeze([
+    'Contract live. Hold still.',
+    'The lock closes. Quiet collects.',
+    'Terms expired. The ghost fires first.',
+  ]),
+  // distress
+  distress_call: Object.freeze([
+    'Mayday. Drive dead, shields failing. Anyone.',
+    'Mayday! Reactor cold, hull venting. Need assist!',
+    'Distress! Drives out, life support thin. Respond!',
+    'Mayday! Stranded, debris field. Any hull nearby?',
+    'Emergency! Power lost, beacon weak. Please respond!',
+  ]),
+  distress_assist_ack: Object.freeze([
+    'Answer heard. Hold on. Come in on the bearing.',
+    'Copy that hail. We are still here. The mark is live.',
+    'Someone answered. Keep coming. We cannot move.',
+  ]),
+  distress_rescued_ack: Object.freeze([
+    'You came. Thought nobody would.',
+    'Did not think anyone would answer that hail.',
+    'Rescue confirmed. I owe you more than credits.',
+    'You are here. I had written us off already.',
+    'Help arrived. I will remember this vector, pilot.',
+  ]),
+  distress_bait_spring: Object.freeze([
+    'Gotcha. Light them up.',
+    'Trap set! Burn them down before they bolt!',
+    'Got you! Reach pack, take their hull apart!',
+    'Bait taken! Cut thrust and gut their cargo!',
+    'Spring it! They bit — light them up now!',
+  ]),
+  scan_tell_bait:     'Signal reads wrong. No pods. Weapons hot.',
+  scan_tell_genuine:  'One heartbeat aboard. Hull venting.',
+  // convoy / traders / patrol
+  convoy_depart: Object.freeze([
+    '{faction} convoy on the lane — {cargo} for {dest}.',
+    '{faction} bulk haul forming — {cargo} bound for {dest}.',
+    '{faction} escorted train moving {cargo} toward {dest}.',
+    'Lane traffic: {faction} convoy with {cargo} for {dest}.',
+    '{faction} freighters rolling — {cargo} earmarked for {dest}.',
+    '{faction} train casts off — {cargo} for {dest}. Escort is jumpy, keep your lane.',
+    'Third {faction} run this shift — {cargo} for {dest}. Something up the lane is buying.',
+  ]),
+  convoy_guard_ack:   'Escort logged. {faction} remembers this.',
+  convoy_raid_ack:    'Claim logged. The pack watches your guns.',
+  curtain_convoy_alert: 'TRAFFIC ALERT: freighter under PD screen. Raiders want the hold; the escort wants the lane.',
+  trader_pass: Object.freeze([
+    'Hauler on approach. {cargo} for {dest}.',
+    'Single freighter inbound — {cargo} for {dest}.',
+    'Trader ping: {cargo} manifest, routing toward {dest}.',
+    'Independent hauler passing through with {cargo} for {dest}.',
+    'Cargo runner on lane, {cargo} ticketed to {dest}.',
+  ]),
+  patrol_beat_hail: Object.freeze([
+    'Concord patrol on station. Fly clean.',              // [0] original shipped line
+    'CONCORD: patrol unit holding this lane. Fly clean.',
+    'CONCORD: sector sweep active. Keep transponder honest.',
+    'CONCORD: marking traffic. Observe lane limits.',
+    'CONCORD: enforcement on station. No irregular thrust.',
+  ]),
+  resonance_obelisk_patrol_hail: Object.freeze([
+    'VAEL: the counted pulse shortens. Leave the dark companion unread.',
+    'VAEL: another reading, another watch. Withdraw from the old door.',
+    'VAEL: the obelisk records you. Our ring closes with its count.',
+  ]),
+  // B7 civilian set pieces
+  yard_towout_alert: 'YARD CONTROL: dead hauler drifting on the crusher mouth. Tow it clear or the jaw eats it.',
+  archive_dive_alert: 'ARCHIVE RELAY: dead core pinging in the field. Scavenger flight inbound — scan it before they strip it.',
+  liner_toll_run_alert: 'TRAFFIC ALERT: liner holding at the gate line for customs scan. Escort her through or break the picket.',
+  // salvage
+  salvage_ping: Object.freeze([
+    'Salvage transponder, faint. Derelict field marked.',
+    'Weak salvage beacon nearby. Worth a look.',
+    'Faint salvage ping off the sensor shelf.',
+    'Transponder ghost logged. Someone left cargo.',
+    'Scrap signal brushing past local sensors.',
+  ]),
+  // hunters
+  bounty_notice: Object.freeze([
+    'Bounty board paid up front. Nothing personal.',
+    'Contract posted. I am here to collect your hull.',
+    'Board paid this job. Your transponder is the target.',
+    'Bounty issued. I get paid whether you run or not.',
+    'Upfront contract. Collect alive or stripped — same pay.',
+    'You are the third hull on this poster. The last two argued.',
+    'The clerk priced you before you finished docking. Read the writ.',
+  ]),
+  hunter_iask:        'Range is mine, pilot. Sable Iask. Hold still.',
+  hunter_sorrel:      'Redcut Sorrel. Brace. I like the sound.',
+  hunter_vane:        'Vane the Ash. My wasps eat missiles. Try.',
+  miniboss_taunt:     'You picked the wrong lane, pilot. This one is mine.',
+  // claims
+  claim_ping:         'Your claim beacon reports contacts picking the seam.',
+  claim_defense_arrival: 'REACH: {count} hulls on {claim}. We take freight, not prisoners.',
+  // anomaly whisper discovery chain (the whisper has a findable source now)
+  whisper_reveal: Object.freeze([
+    'The whisper was {name}.',
+    'Source resolved: {name}.',
+    'Got it — the whisper was {name}.',
+  ]),
+  whisper_scan_hint: 'Signal has a source, {range} out. Hold it on your scanner.',
+  whisper_broken:    'The source is wreckage now. Partial data recovered.',
+});
+
+// User records may reference shipped barks; initialize the table before validation.
+export const ENCOUNTERS = mergeUserEncounters(SHIPPED_ENCOUNTERS);
+
+/** CHN UNKNOWN whisper pool (anomaly ambience — lowercase on purpose; seeded pick). */
+export const WHISPER_LINES = Object.freeze([
+  'count the quiet between your engines.',
+  'the lanes remember older wakes.',
+  'your mass sings at the threshold.',
+  'someone is keeping your tally. keep flying.',
+  'the third rock past the gate has your name filed under it.',
+  'they weigh what you jettison. all of it. always.',
+  'a captain you unpaid is counting your turns.',
+  'the debt is not credits. the debt is memory.',
+  'your transponder rhymes with a name in a dead ledger.',
+  'two crews fled from you. the third is watching how you fly.',
+  'the salvage rig asks after you by hull color.',
+  'what the front remembers, the whisper repeats.',
+  'the toll you skipped still counts your engine note.',
+  'someone weighed your shadow at the last gate.',
+  'your name is shorter in every ledger but one.',
+  'the dark between lanes keeps a tally of the brave.',
+]);
+
+/** What the whisper turns out to be once investigated (seeded pick per encounter). */
+export const WHISPER_SOURCE_NAMES = Object.freeze([
+  'a dead survey relay',
+  'a pre-Collapse probe',
+  'a choir penitence buoy',
+  'a corpse-light cache',
+  "a mutineers' dead-drop",
+  'a weigh-slip buoy still counting hulls',
+  "a toll-keeper's retired ledger beacon",
+  'a claimed seam marker with fresh welds',
+  'a grudge beacon naming one transponder',
+  'a yard tender\'s lost inventory drone',
+  'a toll buoy repeating a dead crew\'s tally',
+  'a Concord marker beacon still filing reports',
+  'a crashed courier\'s looping claim ping',
+  'a choir lament buoy off its interval',
+]);
+
+/** Receipt templates keyed `shapeId.outcome`. Short, factual, never overclaiming: every line here
+ *  states only consequences the director actually applied (or that sanctioned systems applied). */
+export const ENCOUNTER_RECEIPTS = Object.freeze({
+  'pirate_toll.paid':        'TOLL PAID — {amount} cr. Cargo intact, Reach cools.',
+  'pirate_toll.cleared':     'RAIDERS DOWN — toll lane cleared.',
+  'pirate_toll.escaped':     'TOLL EVADED — Reach marks your wake.',
+  'minefield_wake.paid':     'TITHE PAID — {tithe}. The wake holds its fire and peels off to scoop.',
+  'minefield_wake.cleared':  'WAKE CLEARED — mine rack scrap and a half-finished weigh-slip remain.',
+  'minefield_wake.escaped':  'WAKE EVADED — the trap did not hold you.',
+  'dart_shepherd.paid':      'WEIGH-OFF PAID — {tithe}. The shepherd reins the darts in.',
+  'dart_shepherd.cleared':   'SHEPHERD DOWN — the dart pack breaks leash and scatters.',
+  'dart_shepherd.escaped':   'LEASH EVADED — the shepherd reels the bombs back to the belt.',
+  'vael_lane_tithe.paid':    'TITHE PAID — {amount} cr. Cargo intact, Vael cools.',
+  'vael_lane_tithe.cleared': 'SCREEN BROKEN — tithe lane cleared.',
+  'vael_lane_tithe.escaped': 'TITHE EVADED — Vael marks your wake.',
+  'vael_station_screen.cleared': 'SCREEN BROKEN — the checkpoint approach goes unguarded.',
+  'vael_station_screen.escaped': 'SCREEN SLIPPED — the wardens hold their station.',
+  'vael_warden_convoy.arrived':  'CONVOY ARRIVED — {dest} takes delivery.',
+  'vael_warden_convoy.guarded':  'CONVOY GUARDED — Vael owes you. {pay} cr.',
+  'vael_warden_convoy.robbed':   'CONVOY RAIDED — law logs the incident.',
+  'vael_warden_convoy.lost':     'CONVOY LOST — {dest} prices will feel it.',
+  'patrol_scan.clean':       'SCAN CLEAR — Concord logged you clean.',
+  'patrol_scan.fined':       'FINED {fine} cr — contraband seized.',
+  'patrol_scan.bribed':      'BRIBE TAKEN — patrol looked away.',
+  'patrol_scan.dumped':      'CARGO DUMPED — hold reads clean.',
+  'patrol_scan.ran':         'SCAN REFUSED — Concord flagged your transponder.',
+  'ambush_snare.cleared':    'AMBUSH BROKEN — Reach pack destroyed.',
+  'ambush_snare.escaped':    'AMBUSH EVADED — they wait for slower prey.',
+  'scavengers_fresh_wreck.cleared': 'WRECK RECLAIMED — the scavenger party scattered for good.',
+  'scavengers_fresh_wreck.escaped': 'SCAVENGERS SLIP AWAY — the wreck stays theirs for now.',
+  'distress_call.rescued':   'RESCUE COMPLETE — {faction} remembers. {pay} cr.',
+  'distress_call.lost':      'SIGNAL LOST — you were too late.',
+  'distress_call.bait_broken':'BAIT BROKEN — Reach ambush undone.',
+  'distress_call.escaped':   'BAIT ESCAPED — the trap resets somewhere dark.',
+  'convoy_departure.arrived':'CONVOY ARRIVED — {dest} {cargo} supply rises.',
+  'convoy_departure.guarded':'CONVOY GUARDED — {faction} owes you. {pay} cr.',
+  'convoy_departure.robbed': 'CONVOY RAIDED — law logs the incident.',
+  'convoy_departure.lost':   'CONVOY LOST — {dest} prices will feel it.',
+  'curtain_convoy.arrived':  'CONVOY ARRIVED — {dest} {cargo} supply rises.',
+  'curtain_convoy.guarded':  'CONVOY GUARDED — {faction} owes you. {pay} cr.',
+  'curtain_convoy.escorted': 'CONVOY ESCORTED — {dest} takes delivery under your wing.',
+  'curtain_convoy.robbed':   'CONVOY RAIDED — law logs the incident.',
+  'curtain_convoy.lost':     'CONVOY LOST — {dest} prices will feel it.',
+  'trader_run.arrived':      'HAULER ARRIVED — {dest} takes delivery.',
+  'trader_run.robbed':       'HAULER RAIDED — law logs the incident.',
+  'trader_run.lost':         'HAULER LOST — {dest} prices will feel it.',
+  'ghost_on_the_bearing.cleared': 'GHOST BROKEN — the Quiet bearing goes silent.',
+  'ghost_on_the_bearing.escaped': 'GHOST EVADED — it keeps to the dark between lanes.',
+  'ghost_on_the_bearing.paid': 'CONTRACT VOIDED — {amount} cr bought the lock\'s release.',
+  'pattern_refrain.cleared':  'REFRAIN BROKEN — the Choir withdraws its verse.',
+  'pattern_refrain.escaped':  'REFRAIN EVADED — the pattern resolves without you.',
+  'salvage_signal.recovered':'BLACK BOX RECOVERED — new lead logged.',
+  'salvage_signal.stripped': 'CACHE STRIPPED — salvage secured.',
+  'named_hunter.killed':     'HUNTER DOWN — {name} removed from the lanes.',
+  'named_hunter.escaped':    'HUNTER ESCAPED — {name} will return stronger.',
+  'bounty_hunter.cleared':   'CONTRACT VOIDED — hunters down.',
+  'bounty_hunter.escaped':   'HUNTERS SHAKEN — the bounty stands.',
+  'claim_threat.defended':   'CLAIM DEFENDED — scavengers driven off.',
+  'claim_threat.partial':    'CLAIM PARTLY HELD — raiders took losses and freight.',
+  'claim_threat.retreated':  'CLAIM ABANDONED — the stripping crew owns the seam.',
+  'claim_threat.timeout':    'CLAIM OVERRUN — defense window expired.',
+  'claim_threat.destroyed':  'CLAIM DEFENSE LOST — rescue and repairs dispatched.',
+  'claim_threat.ignored':    'CLAIM UNANSWERED — crews resolved the raid off-screen.',
+  'claim_threat.picked':     'CLAIM PICKED — scavengers stripped the seam edge.',
+  'tether_control_raider_ambush.cleared': 'TETHER RAIDER DOWN — Massline contest broken.',
+  'tether_control_raider_ambush.escaped': 'TETHER RAIDER EVADED — the specialist drops the line.',
+  'tether_control_raider_wake.cleared':   'WAKE RAIDER DOWN — contested line cleared.',
+  'tether_control_raider_wake.escaped':   'WAKE RAIDER EVADED — anchor contact fades.',
+  'tether_control_raider_hunter.cleared': 'CONTROL HUNTER DOWN — enemy Massline silenced.',
+  'tether_control_raider_hunter.escaped': 'CONTROL HUNTER EVADED — the hunter loses anchor.',
+  'anomaly_whisper.identified': 'SIGNAL IDENTIFIED — {name}. Survey data sold, {pay} cr.',
+  'anomaly_whisper.broken':     'SIGNAL BROKEN — source destroyed. Partial data, {pay} cr.',
+});
+
+/** Convoy/trader cargo table: which goods run the lanes (seeded pick). Kept to liquid, legible
+ *  mid-value commodities so "supply rises" is a real, visible market sentence. */
+export const CONVOY_CARGO = Object.freeze([
+  Object.freeze({ commodityId: 'cmdty_refined_metals', label: 'refined metals' }),
+  Object.freeze({ commodityId: 'cmdty_volatiles', label: 'ice volatiles' }),
+  Object.freeze({ commodityId: 'cmdty_ore_iron', label: 'iron ore' }),
+  Object.freeze({ commodityId: 'cmdty_ice_water', label: 'water ice' }),
+]);
+
+/** Toll pricing: min(12% of cargo value, 400), floored to a round 10, minimum 50. */
+export function tollAmountFor(cargoValue) {
+  const v = Math.max(0, Number(cargoValue) || 0);
+  const raw = Math.min(0.12 * v, 400);
+  return Math.max(50, Math.round(raw / 10) * 10);
+}
+
+/** All encounters whose tier matches, as an array (stable order = definition order). */
+export function encountersByTier(tier) {
+  return Object.values(ENCOUNTERS).filter((e) => e.tier === tier);
+}
+
+/** Encounters schedulable in a sector = those with at least one matching zone type present. */
+export function encountersForZoneTypes(zoneTypeSet, tier) {
+  const out = [];
+  for (const enc of Object.values(ENCOUNTERS)) {
+    if (tier && enc.tier !== tier) continue;
+    if (!enc.zoneTypes || !enc.zoneTypes.some((zt) => zoneTypeSet.has(zt))) continue;
+    out.push(enc);
+  }
+  return out;
+}
+
+/** Deterministic uint32 hash (FNV-1a) — inline so this module stays import-free. */
+function barkHash32(...args) {
+  let h = 0x811c9dc5;
+  const str = args.join('|');
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/** The bark text for a bark id with `{key}` substitution (empty string if unknown).
+ *  Array values pick one variant deterministically from barkId + pickKey (encounter id). */
+export function barkText(barkId, vars, pickKey) {
+  const raw = USER_BARK_LINES[barkId] ?? ENCOUNTER_BARKS[barkId];
+  if (!raw) return '';
+  let line;
+  if (Array.isArray(raw)) {
+    const key = pickKey != null ? String(pickKey) : String(barkId);
+    const h = barkHash32('encounter-bark', barkId, key);
+    line = raw[h % raw.length];
+  } else {
+    line = raw;
+  }
+  return fmt(line || '', vars);
+}
+
+/** The receipt text for a shape+outcome with `{key}` substitution ('' if the outcome is silent). */
+export function receiptText(shapeId, outcome, vars) {
+  return fmt(ENCOUNTER_RECEIPTS[`${shapeId}.${outcome}`] || '', vars);
+}
+
+// Classic shape per script: the 010–120 originals whose receipt rows double as the family
+// voice. Newer shapes on the same scripts resolve silently unless they carry their own
+// rows — the director falls back to these so no outcome goes quiet. Scripts without an
+// entry stay silent by design (patrolBeat resolves quietly; self-registered shapes carry
+// their own receipts; followOnStub never resolves).
+export const RECEIPT_FAMILY_BY_SCRIPT = Object.freeze({
+  toll: 'pirate_toll',
+  ambush: 'ambush_snare',
+  patrolScan: 'patrol_scan',
+  convoy: 'convoy_departure',
+  traderRun: 'trader_run',
+  distress: 'distress_call',
+  salvageSignal: 'salvage_signal',
+  whisper: 'anomaly_whisper',
+  bountyHunter: 'bounty_hunter',
+  claimThreat: 'claim_threat',
+  namedHunter: 'named_hunter',
+});
+
+/** Shape receipt with family fallback: own row, else the script's classic row, else ''. */
+export function receiptTextWithFallback(shapeId, script, outcome, vars) {
+  return receiptText(shapeId, outcome, vars)
+    || receiptText(RECEIPT_FAMILY_BY_SCRIPT[script], outcome, vars);
+}
+
+/** Tiny `{key}` template substitution (pure; missing keys render as ''). */
+export function fmt(text, vars) {
+  if (!text || !vars) return text || '';
+  return text.replace(/\{(\w+)\}/g, (_, k) => (vars[k] != null ? String(vars[k]) : ''));
+}

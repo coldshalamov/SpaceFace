@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/salvage_cutter.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/salvage_cutter",
+  "focus": [
+    0.3,
+    0.0,
+    0.5549
+  ],
+  "boundsMin": [
+    -10.1,
+    -3.67,
+    -2.0
+  ],
+  "boundsMax": [
+    10.7,
+    3.67,
+    3.1098
+  ],
+  "size": [
+    20.8,
+    7.34,
+    5.1098
+  ],
+  "lightScale": 1.9259,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "triangles": 120,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "triangles": 240,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Cyan",
+      "triangles": 108,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Glass",
+      "triangles": 224,
+      "materials": [
+        "Material_Glass"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Hull",
+      "triangles": 2194,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Mechanical",
+      "triangles": 3188,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Warm",
+      "triangles": 1400,
+      "materials": [
+        "Material_Warm"
+      ]
+    }
+  ],
+  "triangles": 7474,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/salvage_cutter/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/salvage_cutter/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/salvage_cutter/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

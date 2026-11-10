@@ -1,0 +1,18 @@
+// Deterministic JSON for dock projects, exports, and agent responses.
+// Key order is sorted. Array order is preserved. No timestamps.
+
+export function stableStringify(value) {
+  return `${JSON.stringify(sortValue(value), null, 2)}\n`;
+}
+
+export function sortValue(value) {
+  if (Array.isArray(value)) return value.map(sortValue);
+  if (!value || typeof value !== 'object') return value;
+  const out = {};
+  for (const key of Object.keys(value).sort()) out[key] = sortValue(value[key]);
+  return out;
+}
+
+export function sameJson(a, b) {
+  return stableStringify(a) === stableStringify(b);
+}

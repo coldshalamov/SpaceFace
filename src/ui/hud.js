@@ -1,0 +1,7397 @@
+// Flight HUD (ARCHITECTURE §5.5, design spec "HUD LAYOUT") — always-mounted flight overlay.
+//
+// Layout:
+//   bottom-left   : ORRERY hull / shield / armour / energy / heat / speed / ordnance Cluster
+//   bottom-center : contextual travel and braking tape
+//   bottom-right  : radar (radar.js) with target panel (targetPanel.js) above it
+//   top-center    : alert queue (alerts.js renders into #alerts directly)
+//   top-right     : active objective line + off-screen objective arrow
+//
+// Update split (§5.5):
+//   - frame path: cheap local transforms/classes only.
+//   - numerics via textContent @10Hz.
+//   - compositor-heavy overlays use explicit time cadences instead of implicit per-frame work.
+//   - lists and contextual cargo panels rebuild only on their data events.
+//
+// The HUD READS state for display and never mutates sim state (§5, §0.6).
+
+import { createRadar } from './radar.js';
+import { mountIonStormHud } from './ionStormHud.js';
+import { mountTravelVectorHud } from './travelVectorHud.js';
+import { createTargetPanel, targetDisplayName, authoredSiteRosterDetail } from './targetPanel.js';
+import { createFloatingText } from './floatingText.js';
+import { createDamageIndicators } from './damageIndicators.js';
+import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
+import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
+import { icon } from './station/icons.js';
+import { glyphSvg, hasGlyph } from './glyphs.js';
+import { wantedAlertText, wantedReasonText } from './wantedReason.js';
+import { formatCount } from './numberFormat.js';
+import { reservedCargoQty, salvageBayReading, sellableCargoQty } from '../systems/cargo.js';
+import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP } from '../systems/fuelCrack.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { laneInputWrite, laneWriteSetting } from '../core/simLaneCommands.js';
+import { SECTORS } from '../data/sectors.js';
+import { STORY_BEATS } from '../data/missions.js';
+import { PERSISTENT_CARGO } from '../data/narrative.js';
+import { SHIPS } from '../data/ships.js';
+import { evaluateArrivalCue, isEarnedSpeed, resolveThrusterCap } from '../core/flight/flightTelemetry.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { previewBrakeStop, resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
+import { travelFlag } from '../data/featureFlags.js';
+import { BINDINGS, promptLabel } from './bindings.js';
+import { plottedRouteEngageTeach } from './map/mapRouteRibbon.js';
+import { coreText } from './localizedCoreCopy.js';
+import { localizeText } from '../localization/sourceText.js';
+import { journeyActForBeat, journeyActLabel, journeyActStoryClosed, journeyActTrackerLabel } from '../data/journeyActs.js';
+import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterweightCircuit/definition.js';
+import { isRunSealed } from '../core/runSeal.js';
+import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
+import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { crackerRunEntryGuidance } from './crackerRunGuidance.js';
+import { objectiveIsOffSector } from './objectiveSector.js';
+import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
+import { livingWorkStatusText } from '../data/contactHail.js';
+import { fuelReserveWarning } from './fuelReserveWarning.js';
+import { holdLeanChips } from './cargoConscience.js';
+import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
+import { objectiveText } from './sim/missionRecap.js';
+import { adventureDecisionHudLine } from './adventureDecisions.js';
+import { mountOrreryCluster } from './orrery/hudAdapter.js';
+import { createForkInstrument } from './forkInstrument.js';
+// FB-012 — the flight HUD mounts the stunt callout layer, so a wrecking ball, a clothesline or
+// a tow kill is NAMED in adventure too, not only inside a Crucible run. The layer self-gates:
+// its quiet path renders nothing and drops its frame listener when there is nothing to say.
+import { ensureStuntCallout, releaseStuntCallout } from './stuntCallout.js';
+import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
+import { createThreatHalo } from './threatHalo.js';
+import { targetBracketShape } from './targetBracket.js';
+import { flightBearingAngle, resolveFlightEdgePlacement, resolveSelectedTargetMarker } from './flightViewProjection.js';
+import { resolveSteeringView } from '../systems/racingSteer.js';
+import {
+  createObjectiveRecall,
+  rememberObjective,
+  dismissObjective,
+  recallObjective,
+  objectiveVisible,
+} from './objectiveRecall.js';
+import { mountRadarKit } from './views/flightInstruments.js';
+import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
+import {
+  createTargetTruth, projectTargetTruth, lineLeadSolution, SELECTION_STATUS, TARGET_REASON,
+} from '../combat/targetTruth.js';
+import { classifyContact, contactMark, gunLineDenial, isSurrenderedContact } from '../combat/contactClassifier.js';
+import { confirm } from './confirm.js';
+import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
+import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
+import { planGaugeSettle } from './effects/gaugeSettle.js';
+import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
+import { createHudDragController } from './hudLayout.js';
+import {
+  MAX_GRAVITY_MARK_OVERLAYS,
+} from './gravityMarkOverlay.js';
+import {
+  fillActiveMassCouplingTargets,
+  MAX_MOMENTUM_SINK_OVERLAYS,
+  momentumSinkAttribution,
+} from './momentumSinkOverlay.js';
+import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
+import {
+  buildCorridorOpeningWaypoint,
+} from '../missions/corridorOpeningReadModel.js';
+import {
+  admitReceipt,
+  contactRosterExpanded,
+  firstUseAttachKind,
+  formatRosterCount,
+  hudJobFromState,
+  markFirstUseHint,
+  noteFirstWantedMark,
+  shouldShowFirstUseHint,
+  flightInstrumentRects,
+  bingoFuelLine,
+  masslineInstrumentReadout,
+  masslineInstrumentVisible,
+  openingInstructionSolo,
+  placeHudString,
+  receiptLaneRect,
+  shipGlyphBox,
+} from './hudAttention.js';
+
+// ---- Aerospace Optical G-Lag & G-LOC simulation helpers (Blueprint Category D) ----
+export function stepHudGLagSpring(spring, targetX, targetY, dt, reducedMotion = false) {
+  if (!spring) return { x: 0, y: 0, vx: 0, vy: 0, targetX: 0, targetY: 0 };
+  if (reducedMotion) {
+    spring.x = 0;
+    spring.y = 0;
+    spring.vx = 0;
+    spring.vy = 0;
+    spring.targetX = 0;
+    spring.targetY = 0;
+    return spring;
+  }
+  const clampedDt = Math.min(0.05, Math.max(0.001, dt || 1 / 60));
+  spring.targetX = targetX;
+  spring.targetY = targetY;
+
+  // 2nd-order damped spring: wn = 22 rad/s, zeta = 0.78
+  const wn = 22;
+  const zeta = 0.78;
+  const k = wn * wn;
+  const c = 2 * zeta * wn;
+
+  const fx = -k * (spring.x - targetX) - c * spring.vx;
+  const fy = -k * (spring.y - targetY) - c * spring.vy;
+
+  spring.vx += fx * clampedDt;
+  spring.vy += fy * clampedDt;
+  spring.x += spring.vx * clampedDt;
+  spring.y += spring.vy * clampedDt;
+
+  if (Math.abs(targetX) < 0.02 && Math.abs(targetY) < 0.02 &&
+      Math.abs(spring.x) < 0.02 && Math.abs(spring.y) < 0.02 &&
+      Math.abs(spring.vx) < 0.05 && Math.abs(spring.vy) < 0.05) {
+    spring.x = 0;
+    spring.y = 0;
+    spring.vx = 0;
+    spring.vy = 0;
+  }
+  return spring;
+}
+
+export function calculateHudGLagTarget(player, dt, lastVel, isBoosting = false) {
+  if (!player) return { x: 0, y: 0 };
+  const curVelX = Number.isFinite(player.vel?.x) ? player.vel.x : 0;
+  const curVelZ = Number.isFinite(player.vel?.z) ? player.vel.z : 0;
+  const lastVx = lastVel ? (Number.isFinite(lastVel.x) ? lastVel.x : curVelX) : curVelX;
+  const lastVz = lastVel ? (Number.isFinite(lastVel.z) ? lastVel.z : curVelZ) : curVelZ;
+  const safeDt = Math.min(0.05, Math.max(0.001, dt || 1 / 60));
+
+  const accelX = (curVelX - lastVx) / safeDt;
+  const accelZ = (curVelZ - lastVz) / safeDt;
+
+  let angVel = 0;
+  if (Number.isFinite(player.angVel)) {
+    angVel = player.angVel;
+  } else if (Number.isFinite(player.angularVelocity)) {
+    angVel = player.angularVelocity;
+  }
+
+  // Linear accel: +X world (right) -> -X target (left lag)
+  // Linear accel: +Z world (up/forward) -> +Y target (downward lag)
+  // Angular vel: turning right (+yaw) -> -X target (left lag)
+  const boostBonus = isBoosting ? 2.2 : 0;
+  let tx = -accelX * 0.022 - angVel * 1.15;
+  let ty = (accelZ + boostBonus) * 0.022;
+
+  // Clamp to max bounds: 1.0 - 5.5 px
+  tx = Math.max(-5.5, Math.min(5.5, tx));
+  ty = Math.max(-5.5, Math.min(5.5, ty));
+
+  return { x: tx, y: ty };
+}
+
+export function calculateGLocIntensity(sustainedTime) {
+  if (!Number.isFinite(sustainedTime) || sustainedTime <= 0.6) return 0;
+  return Math.min(1.0, (sustainedTime - 0.6) / 1.2);
+}
+
+// Max-rate = turning at >=75% of the hull's OWN derived yaw ceiling (the old absolute 2.2 rad/s bar
+// was ~75% of the mid fleet hull's ~2.9 rad/s ceiling); boost lowers the bar to 48% of ceiling,
+// today's 1.4/2.2 ratio. A missing/zero ceiling fails closed — an unknown hull never fakes the read.
+export function isSustainedMaxRateTurn(turnRate, turnCeiling, isBoosting = false) {
+  if (!Number.isFinite(turnRate) || !Number.isFinite(turnCeiling) || turnCeiling <= 0) return false;
+  return turnRate > turnCeiling * (isBoosting ? 0.48 : 0.75);
+}
+
+// ── Mission tracker helpers ──────────────────────────────────────────────────────────────────
+const MT_STATION_BY_ID = new Map();
+const MT_SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s.name]));
+for (const sec of SECTORS) {
+  for (const st of sec.stations || []) {
+    MT_STATION_BY_ID.set(st.id, st.name);
+  }
+}
+const MT_CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const PERSISTENT_CARGO_BY_ID = new Map(PERSISTENT_CARGO.map((c) => [c.id, c]));
+const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const STATION_ROLE_LABELS = {
+  trade_hub: 'Trade Hub',
+  refinery: 'Refinery',
+  mining: 'Mining',
+  fab: 'Fabricator',
+  military: 'Military',
+  blackmarket: 'Black Market',
+  research: 'Research',
+};
+
+function cargoDisplayName(id) {
+  const c = MT_CMDTY_BY_ID.get(id) || PERSISTENT_CARGO_BY_ID.get(id);
+  return c?.name || 'Unidentified cargo';
+}
+
+export function manifestSummary(e) {
+  const man = e && e.data && e.data.manifest;
+  if (Array.isArray(man) && man.length) {
+    const top = man.slice(0, 2).map((it) => `${cargoDisplayName(it.id)} ×${it.qty}`).join(', ');
+    return man.length > 2 ? `${top} +${man.length - 2}` : top;
+  }
+  const pool = e && e.data && (e.data.salvagePool || e.data.authoredSalvagePool);
+  if (pool && typeof pool === 'object') {
+    const entries = Object.entries(pool).filter(([_, qty]) => Number(qty) > 0);
+    if (entries.length) {
+      const top = entries.slice(0, 2).map(([id, qty]) => `${cargoDisplayName(id)} ×${qty}`).join(', ');
+      return entries.length > 2 ? `${top} +${entries.length - 2}` : top;
+    }
+  }
+  return 'stripped';
+}
+
+export function targetLockChipText(target, lockProgress) {
+  if (isSurrenderedContact(target)) return 'SURRENDERED';
+  if (lockProgress >= 1) return 'LOCKED';
+  return (lockProgress < 0.45 ? 'ACQUIRING ' : 'TRACKING ') + Math.round(lockProgress * 100) + '%';
+}
+
+function stationRoleLabel(id) {
+  return STATION_ROLE_LABELS[id] || String(id || 'unknown').replace(/_/g, ' ');
+}
+
+function isPersistentCargoId(state, id) {
+  const locked = state && state.story && state.story.persistentCargo;
+  return Array.isArray(locked) && locked.includes(id);
+}
+
+function cargoVolumeForRow(state, id, qty, def) {
+  if (isPersistentCargoId(state, id) && PERSISTENT_CARGO_BY_ID.has(id)) return 0;
+  const volPerU = def ? (def.volPerU || 1) : 1;
+  return qty * volPerU;
+}
+
+function mtSectorName(id) {
+  return MT_SECTOR_BY_ID.get(id) || id || 'target sector';
+}
+
+function respawnStationName(id) {
+  return MT_STATION_BY_ID.get(id) || String(id || 'safe station').replace(/^station_/, '').replace(/_/g, ' ');
+}
+
+export function respawnToastText(payload = {}) {
+  const parts = ['Recovered at ' + respawnStationName(payload.stationId)];
+  const cost = Math.max(0, Math.round(Number(payload.costCr) || 0));
+  // PRO-03: locale-aware, not a pinned 'en-US'. The payload may carry the state so a settings
+  // choice is honoured before the runtime locale has been applied.
+  const locale = payload && payload.locale;
+  if (cost > 0) parts.push('recovery ' + formatCount(cost, payload, { locale }) + ' cr');
+  if (typeof payload.insuranceStatus === 'string' && payload.insuranceStatus) {
+    parts.push(payload.insuranceStatus.toLowerCase());
+  }
+  const refund = Math.max(0, Math.round(Number(payload.refundCr) || 0));
+  if (refund > 0) parts.push('insurance +' + formatCount(refund, payload, { locale }) + ' cr');
+  const cargoLostQty = Math.max(0, Math.round(Number(payload.cargoLostQty) || 0));
+  if (cargoLostQty > 0) parts.push('cargo lost ' + cargoLostQty + 'u');
+  else if (payload.cargoLost) parts.push('cargo lost');
+  const invulnS = Math.max(0, Math.round(Number(payload.invulnS) || 0));
+  if (invulnS > 0) parts.push(invulnS + 's shields online');
+  return parts.join(' - ');
+}
+
+function mtRouteGuidance(state, waypoint) {
+  if (!state || !waypoint || !waypoint.sectorId) return null;
+  const currentSectorId = state.world && state.world.currentSectorId;
+  if (!currentSectorId || currentSectorId === waypoint.sectorId) return null;
+  const route = state.nav && state.nav.route;
+  const legs = route && Array.isArray(route.legs) ? route.legs : [];
+  const first = legs[0];
+  const last = legs[legs.length - 1];
+  if (first && last && first.from === currentSectorId && last.to === waypoint.sectorId) {
+    const hops = route.totalHops || legs.length;
+    const fuel = Math.round(route.totalFuel || legs.reduce((sum, leg) => sum + (leg.fuel || 0), 0));
+    return {
+      next: `Next jump: ${mtSectorName(first.to)}`,
+      destination: first.to === waypoint.sectorId ? '' : `To ${mtSectorName(waypoint.sectorId)}`,
+      summary: `${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F`,
+    };
+  }
+  return {
+    next: `Plot route to ${mtSectorName(waypoint.sectorId)}`,
+    summary: `${BINDINGS.starmap.label} Star Map`,
+  };
+}
+
+export function resolveHudNavStation(state, stationId) {
+  if (!state || !stationId) return null;
+  const index = state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1) {
+    const byStationId = index.byStationId;
+    const indexed = byStationId && byStationId.get(stationId);
+    if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+    const buckets = [index.stations, index.dockStations];
+    for (const stations of buckets) {
+      if (!stations || !stations.length) continue;
+      for (const e of stations) {
+        if (e && e.alive !== false && e.type === 'station' && e.data && e.data.stationId === stationId) return e;
+      }
+    }
+    return null;
+  }
+  for (const e of state.entityList || []) {
+    if (e && e.type === 'station' && e.alive !== false && e.data && e.data.stationId === stationId) return e;
+  }
+  return null;
+}
+
+// INF-058: one objective projection. The HUD used to run its own poorer copy of the mission log's
+// objective wording — no set-piece phases, no express/open hauler variants, no survey-sample recon
+// — so the same contract read differently in flight than in the log. Every surface (HUD, log,
+// local map, station contracts) now speaks missionLog.objectiveText, the existing projection.
+function mtObjectiveText(m) {
+  return objectiveText(m);
+}
+
+function mtFmtTime(s) {
+  s = Math.max(0, Math.floor(s));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}m ${sec < 10 ? '0' : ''}${sec}s`;
+}
+
+// The opening's muted-safe caption: a short tutorial line that shares the objective tracker's
+// secondary line. It never replaces the actionable objective (mtObj) — it only supplements it.
+export function tutorialTrackerCaptionText(state) {
+  if (!state) return '';
+  const gameplay = state.settings && state.settings.gameplay;
+  if (gameplay && gameplay.tutorialHints === false) return '';
+  const ob = state.onboarding;
+  if (!ob || ob.active !== true || ob.finished === true) return '';
+  if (state.mode !== 'flight') return '';
+  // The Crucible's sealed HUD keeps the campaign tracker quiet at its owner.
+  if (state.run && state.run.kind === 'survival' && isRunSealed(state)) return '';
+  const now = Number(state.simTime) || 0;
+  const captions = Array.isArray(ob.trackerCaptions) ? ob.trackerCaptions : [];
+  for (const rec of captions) {
+    if (!rec || typeof rec !== 'object') continue;
+    const startAtS = Number(rec.startAtS);
+    const endAtS = Number(rec.endAtS);
+    if (!Number.isFinite(startAtS) || !Number.isFinite(endAtS)) continue;
+    if (typeof rec.text !== 'string' || !rec.text) continue;
+    if (startAtS <= now && now < endAtS) return rec.text;
+  }
+  return '';
+}
+
+export function paintTutorialTrackerCaption(element, state) {
+  const text = tutorialTrackerCaptionText(state);
+  if (!text) {
+    if (element) setDisplay(element, false);
+    return false;
+  }
+  setText(element, text);
+  // The deadline-urgency tone belongs to the objective, never to a tutorial caption.
+  setClass(element, 'sf-mt-urgent', false);
+  setDisplay(element, true);
+  return true;
+}
+
+export function objectiveTravelReadout(state, wp, out = null) {
+  const result = out && typeof out === 'object' ? out : {};
+  const pos = wp && wp.pos;
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (objectiveIsOffSector(state, wp) || !pos || !player || !player.pos) {
+    result.distanceWu = null;
+    result.closingSpeed = 0;
+    result.etaS = null;
+    result.distanceText = 'ROUTE PENDING';
+    result.etaText = 'ETA —';
+    return result;
+  }
+  const dist = Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z);
+  const vel = player.vel || { x: 0, z: 0 };
+  const closingSpeed = dist > 0
+    ? ((Number(vel.x) || 0) * (pos.x - player.pos.x) + (Number(vel.z) || 0) * (pos.z - player.pos.z)) / dist
+    : 0;
+  const etaS = closingSpeed > 5 ? dist / closingSpeed : null;
+  const distanceText = dist >= 1000 ? `${(dist / 1000).toFixed(1)}k u` : `${Math.round(dist)} u`;
+  const etaText = etaS == null
+    ? 'ETA —'
+    : `ETA ${etaS < 60 ? `${Math.max(1, Math.round(etaS))}s` : `${Math.round(etaS / 60)}m`}`;
+  result.distanceWu = dist;
+  result.closingSpeed = closingSpeed;
+  result.etaS = etaS;
+  result.distanceText = distanceText;
+  result.etaText = etaText;
+  return result;
+}
+
+// INF-019: the contacts-roster closing marker reads steady. The raw marker recomputes
+// per sample and straddles its show threshold while contacts slide past, so a borderline
+// value flickers the glyph on and off every sample. A freshly accepted value holds for a
+// further beat: chatter inside the window keeps showing the old text, and a genuinely
+// sustained change lands the moment the hold expires. Pure over the caller's clock so both
+// the roster (wall time) and tests (fixed stamps) share it.
+export const CLOSING_MARKER_HOLD_MS = 350;
+export function steadyClosingMarker(prev, rawText, nowMs) {
+  const text = prev && typeof prev.text === 'string' ? prev.text : '';
+  const holdUntil = prev && Number.isFinite(prev.holdUntil) ? prev.holdUntil : 0;
+  if (rawText === text) return { text, holdUntil, changed: false };
+  if (nowMs < holdUntil) return { text, holdUntil, changed: false };
+  return { text: rawText, holdUntil: nowMs + CLOSING_MARKER_HOLD_MS, changed: true };
+}
+
+const BRAKE_MODE_WORDS = Object.freeze({ 'direct-counterthrust': 'brake', 'flip-and-burn': 'flip & burn' });
+
+export function brakeModeWords(mode) {
+  const key = String(mode || '');
+  return BRAKE_MODE_WORDS[key] || key.replace(/-/g, ' ');
+}
+
+// INF-086: compact live handling consequence, pure over a ships derived-stats object.
+// Returns null at/under design mass (full thrust — including a full-volume load of
+// feathers), else the thrust penalty the mass law applies to the flown accelerations.
+// Volume stays the only capacity; this number only bends handling, never gates loading.
+export function cargoHandlingNote(derived) {
+  const load = derived && Number.isFinite(derived.massLoadFactor) ? derived.massLoadFactor : 1;
+  if (!(load < 1)) return null;
+  const pct = Math.round((1 - load) * 100);
+  if (!(pct > 0)) return null;
+  return { text: `-${pct}% thrust`, pct };
+}
+
+// The mass half of the same readout: carried vs design, for the tooltip. Null when the
+// derived object carries no mass accounting (headless/early), never a zero-mass claim.
+export function cargoMassLine(derived) {
+  const cargo = derived && Number.isFinite(derived.cargoMass) ? derived.cargoMass : null;
+  const design = derived && Number.isFinite(derived.designMass) && derived.designMass > 0
+    ? derived.designMass : null;
+  if (cargo == null || design == null) return null;
+  return `Mass: ${Math.round(cargo)} / design ${Math.round(design)}`;
+}
+
+function mtWaypointDistance(state, wp) {
+  return objectiveTravelReadout(state, wp).distanceText;
+}
+
+/**
+ * Eight-way bearing for the active goal. Overhead keeps the radar's fixed world orientation;
+ * stern view follows the presented camera so the arrow continues to name a useful turn.
+ */
+export function objectiveBearingGlyph(state, wp) {
+  const pos = wp && wp.pos;
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (objectiveIsOffSector(state, wp) || !pos || !player || !player.pos) return '';
+  const dx = Number(pos.x) - Number(player.pos.x);
+  const dz = Number(pos.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return '•';
+  // The live camera basis includes stern turn lag; the fixed overhead convention remains
+  // screen-right = -X, screen-up = +Z, matching the radar.
+  const octant = Math.round((flightBearingAngle(state, player, pos) / (Math.PI * 2)) * 8);
+  return ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(octant + 8) % 8];
+}
+
+/**
+ * The same bearing as objectiveBearingGlyph, in dial degrees (0 = screen up, clockwise), for the
+ * objective's bearing dial. Null when there is no bearing to show.
+ */
+export function objectiveBearingDeg(state, wp) {
+  const pos = wp && wp.pos;
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (objectiveIsOffSector(state, wp) || !pos || !player || !player.pos) return null;
+  const dx = Number(pos.x) - Number(player.pos.x);
+  const dz = Number(pos.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return null;
+  return ((flightBearingAngle(state, player, pos) * 180) / Math.PI + 360) % 360;
+}
+
+/**
+ * Project an off-screen goal onto the HUD edge using the same fixed world orientation as the
+ * radar. Do not use worldToScreen() for a point behind the chase camera: perspective projection
+ * mirrors that point across the screen, which makes the arrow send the player away from the goal.
+ *
+ * The camera never yaws and the radar deliberately maps +X left / +Z up, so this is the stable
+ * player-relative bearing contract for the edge cue.
+ */
+export function resolveObjectiveEdgePlacement(width, height, player, target, margin = 34, out = null) {
+  const playerPos = player && player.pos;
+  const targetPos = target && target.pos ? target.pos : target;
+  if (!playerPos || !targetPos) return null;
+  const worldDx = Number(targetPos.x) - Number(playerPos.x);
+  const worldDz = Number(targetPos.z) - Number(playerPos.z);
+  const length = Math.hypot(worldDx, worldDz);
+  if (!Number.isFinite(worldDx) || !Number.isFinite(worldDz) || length < 0.001) return null;
+
+  const w = Math.max(320, Number(width) || 1280);
+  const h = Math.max(240, Number(height) || 720);
+  // Same transform as radar.js: +X appears left and +Z appears up in the fixed chase view.
+  const dx = -worldDx / length;
+  const dy = -worldDz / length;
+  const mx = Math.max(24, w / 2 - margin);
+  const my = Math.max(24, h / 2 - margin);
+  const tx = Math.abs(dx) > 0.001 ? mx / Math.abs(dx) : Infinity;
+  const ty = Math.abs(dy) > 0.001 ? my / Math.abs(dy) : Infinity;
+  const edgeT = Math.min(tx, ty);
+  const x = w / 2 + dx * edgeT;
+  const y = h / 2 + dy * edgeT;
+  const edge = x > w * 0.72
+    ? 'right'
+    : (x < w * 0.28 ? 'left' : (dy < 0 ? 'top' : 'bottom'));
+  const result = out && typeof out === 'object' ? out : {};
+  result.x = x;
+  result.y = y;
+  result.edge = edge;
+  result.angleRad = Math.atan2(dy, dx);
+  return result;
+}
+
+// Selected bearing only: the mobile touch deck is a body sibling and can cover the
+// bottom/right edge. Use the HUD's already-cached touch rectangles; do not measure
+// layout while updating the cue. Moving the cue keeps its camera-derived angle intact.
+export function avoidSelectedTargetTouchControls(marker, text, obstacles, height) {
+  const labelWidth = Math.min(280, Math.max(80, String(text || '').length * 8));
+  const edge = marker.edge, minY = 40, maxY = Math.max(minY, height - 50);
+  let x = marker.x, y = marker.y;
+  const touch = Array.isArray(obstacles) ? obstacles : [];
+  for (let pass = 0; pass <= touch.length; pass++) {
+    let left = x - 8, right = x + 24;
+    if (edge === 'left') right = Math.max(right, x + 20 + labelWidth);
+    else if (edge === 'right') left = Math.min(left, x - 20 - labelWidth);
+    else { left = Math.min(left, x + 8 - labelWidth / 2); right = Math.max(right, x + 8 + labelWidth / 2); }
+    const above = edge === 'bottom' ? 36 : 10;
+    const below = edge === 'top' ? 52 : 26;
+    let blocked = null;
+    for (const rect of touch) {
+      if (rect.owner !== 'touch-control') continue;
+      if (left < rect.right && right > rect.left && y - above < rect.bottom && y + below > rect.top) {
+        blocked = rect; break;
+      }
+    }
+    if (!blocked) break;
+    const next = y >= height / 2 ? blocked.top - below - 4 : blocked.bottom + above + 4;
+    const clamped = Math.max(minY, Math.min(maxY, next));
+    if (Math.abs(clamped - y) < .01) break;
+    y = clamped;
+  }
+  marker.x = x; marker.y = y;
+  return marker;
+}
+
+/**
+ * FB-065 — a physics contract condition says when it is pending, progressing or broken, in
+ * flight. missions.js already emits the three states from the per-tick evaluator and the
+ * turn-in refusal; the HUD's objective slot is the one consumer. The record is UI-owned
+ * (`state.ui.missionTerms` — never a sim write), keyed by mission id, and bounded by the
+ * active mission list that already owns the slot.
+ */
+export const MISSION_TERM_BROKEN_HOLD_S = 4;
+
+export function noteMissionTermEvent(state, payload, kind) {
+  if (!state || !payload || payload.missionId == null) return null;
+  const ui = state.ui || (state.ui = {});
+  const terms = ui.missionTerms || (ui.missionTerms = {});
+  const missionId = String(payload.missionId);
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const label = String(payload.label || 'contract term');
+  if (kind === 'broken') {
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: 'broken',
+      onBreach: payload.onBreach || null,
+      brokenAt: now,
+    };
+  } else if (kind === 'progress') {
+    const count = Math.max(0, Math.round(Number(payload.count) || 0));
+    const target = Math.max(1, Math.round(Number(payload.target) || 1));
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: count >= target ? 'satisfied' : 'progress',
+      count,
+      target,
+      at: now,
+    };
+  } else if (kind === 'satisfied') {
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: 'satisfied',
+      count: 1,
+      target: 1,
+      at: now,
+    };
+  } else {
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: 'pending',
+      remaining: Math.max(0, Math.round(Number(payload.remaining) || 0)) || null,
+      at: now,
+    };
+  }
+  return terms[missionId];
+}
+
+/**
+ * The state word a live term contributes to the objective line, or null. Pending shows the
+ * term; progress shows the fraction; broken swaps the word and stays for
+ * MISSION_TERM_BROKEN_HOLD_S, then falls silent — the mission itself carries the consequence.
+ */
+export function missionTermWord(state, missionId) {
+  if (!state || missionId == null) return null;
+  const rec = state.ui && state.ui.missionTerms && state.ui.missionTerms[String(missionId)];
+  if (!rec) return null;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  if (rec.state === 'broken') {
+    if (now - (Number(rec.brokenAt) || 0) > MISSION_TERM_BROKEN_HOLD_S) return null;
+    return { word: 'BROKEN', text: `TERM BROKEN — ${rec.label}`, tone: 'broken' };
+  }
+  if (rec.state === 'progress') {
+    return {
+      word: `${rec.count}/${rec.target}`,
+      text: `TERM ${rec.label} — ${rec.count}/${rec.target}`,
+      tone: 'progress',
+    };
+  }
+  if (rec.state === 'satisfied') {
+    return { word: 'MET', text: `TERM ${rec.label} — MET`, tone: 'met' };
+  }
+  return { word: 'PENDING', text: `TERM ${rec.label} — PENDING`, tone: 'pending' };
+}
+
+/**
+ * Voice the break once at mission priority (the 'objective' channel, tier 60). 'fail' terms
+ * otherwise only toast; 'forfeit' terms are already voiced by missions' own comms line — so
+ * this announces the unannounced half and never double-speaks a break. The `id` pins one
+ * queue entry per (mission, condition) so a repeated breach can never stack the floor.
+ */
+export function announceTermBreak(bus, payload) {
+  if (!bus || typeof bus.emit !== 'function' || !payload) return false;
+  if (payload.onBreach === 'forfeit') return false;
+  bus.emit('voice:say', {
+    channel: 'objective',
+    kind: 'missionTerm',
+    id: `mission-term-broken:${payload.missionId}:${payload.conditionId || 'term'}`,
+    text: `Contract term broken: ${payload.label || 'standing term'}.`,
+    ttl: 4,
+  });
+  return true;
+}
+
+function mtObjectiveAction(action, wp) {
+  const verb = String(action || 'Open the Mission Log').trim();
+  // Prefer the physical target label; sector name is the fallback for cross-sector guidance.
+  const destination = String(wp && (wp.label || wp.mapLabel || wp.sectorName) || '').trim();
+  if (!destination || /\b(to|at|near)\b/i.test(verb) || verb.toLowerCase().includes(destination.toLowerCase())) return verb;
+  return `${verb} · ${destination}`;
+}
+
+/**
+ * Resolve the sole flight command without combining state from different navigation owners.
+ * A matching mission waypoint may carry its tracked mission's timer; every other live waypoint
+ * temporarily owns the command by itself while leaving mission tracking untouched.
+ */
+export function resolveFlightObjectiveCommand(
+  state,
+  waypoint = (state && state.nav && state.nav.waypoint) || buildCorridorOpeningWaypoint(state),
+) {
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  const active = (state && state.missions && state.missions.active) || [];
+  const tracked = trackedId
+    ? active.find((mission) => mission && mission.id === trackedId && mission.status === 'active')
+    : null;
+  const navWaypoint = state && state.nav && state.nav.waypoint;
+  const course = state && state.counterweightCircuitView;
+  const attempt = course && course.journal && course.journal.attempt;
+  // The published attempt is temporary context, not a new navigation waypoint. An urgent
+  // claim defense remains actionable, and a stale mirror cannot follow the pilot out of flight.
+  if (state?.mode === 'flight' && state?.world?.currentSectorId === COUNTERWEIGHT_SECTOR_ID
+    && navWaypoint?.kind !== 'claim_defense' && course?.attemptId != null
+    && attempt?.eventId === course.eventId && attempt?.phase === course.phase
+    && (course.phase === 'staged' || course.phase === 'running')
+    && attempt.legs?.[attempt.legIndex]?.hint) {
+    return { owner: 'counterweight-course', attempt, preparing: !!course.admission, waypoint: null };
+  }
+  const trackedOwnsWaypoint = !!(
+    tracked && navWaypoint && navWaypoint.kind === 'mission' && navWaypoint.missionId === tracked.id
+  );
+
+  if (tracked && (!navWaypoint || trackedOwnsWaypoint)) {
+    return { owner: 'tracked-mission', mission: tracked, waypoint: navWaypoint || null };
+  }
+
+  if (waypoint) return { owner: 'navigation', mission: null, waypoint };
+
+  const candidate = active.find((mission) => mission && mission.status === 'active');
+  if (candidate) return { owner: 'untracked-mission', mission: candidate, waypoint: null };
+  if (state && state.story && STORY_BEATS[state.story.beatIndex]) {
+    return { owner: 'story', mission: null, waypoint: null };
+  }
+  return null;
+}
+
+function mtMarkerLine(state, wp, suffix = '') {
+  const bearing = objectiveBearingGlyph(state, wp);
+  const travel = objectiveTravelReadout(state, wp);
+  const route = wp && wp.pos
+    ? `◆ AMBER DIAMOND / GOAL · ${travel.distanceText} · ${travel.etaText}${bearing ? ` · ${bearing}` : ''}`
+    : `NO GOAL MARKER · ${BINDINGS.missionLog.label} MISSION LOG`;
+  return suffix ? `${route} · ${suffix}` : route;
+}
+
+/**
+ * The readings half of the destination: the bearing glyph leads, then distance, ETA and any extras,
+ * joined by one separator. It is its own line under the destination, so a long destination can
+ * wrap by words without ever stranding a separator at a line end or the bearing glyph alone on a
+ * line (the bench caught "... ETA 13s ·" over a lone arrow). Short enough to fit one line.
+ */
+function mtReadingsLine(bearing, distanceText, etaText, extra = '') {
+  const lead = [bearing, distanceText].map((part) => String(part || '').trim()).filter(Boolean).join(' ');
+  return [lead, etaText, extra].map((part) => String(part || '').trim()).filter(Boolean).join(' · ');
+}
+
+/**
+ * W1 Journey: the act is its own tracker line, never folded into the objective verb. It stays
+ * hidden once the book closes (endgame/sandbox) because there is no live act to name.
+ */
+function journeyActTrackerLine(state) {
+  const story = state && state.story;
+  if (!story) return '';
+  if (journeyActStoryClosed(story)) return '';
+  const act = journeyActForBeat(story.beatIndex);
+  return act ? localizeText(journeyActTrackerLabel(act)) : '';
+}
+
+/** Full act heading for the title/aria label (the tracker itself shows the short form). */
+function journeyActTrackerFullLine(state) {
+  const story = state && state.story;
+  if (!story || journeyActStoryClosed(story)) return '';
+  const act = journeyActForBeat(story.beatIndex);
+  return act ? localizeText(journeyActLabel(act)) : '';
+}
+
+/**
+ * One painted destination for the live flight tracker: where, then a line break, then the readings
+ * (the tracker sets white-space:pre-line). Titles and GOAL restatements stay off.
+ */
+export function flightDestinationSurface(state, command) {
+  const actLine = journeyActTrackerLine(state);
+  // Crucible runs are sealed from campaign navigation. Keep the mission tracker quiet at its
+  // owner, rather than relying only on the run-focus stylesheet to catch inherited story state.
+  if (state && state.run && state.run.kind === 'survival' && isRunSealed(state)) {
+    return { show: false, line: '', urgent: false, actLine: '' };
+  }
+  if (!command) return { show: false, line: '', urgent: false, actLine };
+  if (command.owner === 'counterweight-course') {
+    const title = localizeText(command.attempt.title);
+    const hint = localizeText(command.attempt.legs[command.attempt.legIndex].hint);
+    const line = command.preparing
+      ? localizeText('{title} — preparing course', { title })
+      : `${hint}\n${title}`;
+    return { show: true, line, urgent: false, actLine };
+  }
+  if (command.owner === 'tracked-mission') {
+    const tracked = command.mission;
+    const waypoint = command.waypoint;
+    const action = mtObjectiveAction(waypoint && waypoint.reason || mtObjectiveText(tracked), waypoint);
+    const travel = objectiveTravelReadout(state, waypoint);
+    let deadline = '';
+    let urgent = false;
+    if (tracked && tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
+      const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
+      deadline = mtFmtTime(remaining);
+      urgent = remaining < 120;
+    }
+    // A cross-sector objective has no local fix — the honest answer is the gate that starts the
+    // trip, with the plot step named, never a bare "ROUTE PENDING" the pilot cannot act on.
+    let readings = mtReadingsLine(
+      objectiveBearingGlyph(state, waypoint),
+      travel.distanceText,
+      // An unknown ETA is left out, not printed as a placeholder dash.
+      travel.etaS == null ? '' : travel.etaText,
+      deadline,
+    );
+    const routeGuide = mtRouteGuidance(state, waypoint);
+    if (routeGuide) {
+      readings = [routeGuide.next, routeGuide.destination,
+        `${BINDINGS.starmap.label} Star Map`, deadline].filter(Boolean).join(' · ');
+    } else if (travel.distanceText === 'ROUTE PENDING') {
+      const gateFix = resolveObjectiveGatePresentation(state);
+      if (gateFix && gateFix.pos) {
+        const gateTravel = objectiveTravelReadout(state, { pos: gateFix.pos });
+        readings = mtReadingsLine('', `Next: ${gateFix.label}`, gateTravel.distanceText, `${BINDINGS.localmap.label} to plot`);
+      } else if (gateFix) {
+        readings = mtReadingsLine('', `Next: ${gateFix.label}`, `open the ${BINDINGS.localmap.label} map to plot`, '');
+      }
+    }
+    // FB-065: one state word on the same line, never a second line — the objective slot stays
+    // a single line. A broken term also takes the urgent tone for its four-second hold.
+    const term = missionTermWord(state, tracked && tracked.id);
+    if (term) urgent = urgent || term.tone === 'broken';
+    const objectiveLine = term ? `${action} · ${term.text}` : action;
+    return { show: true, line: readings ? `${objectiveLine}\n${readings}` : objectiveLine, urgent, actLine };
+  }
+  if (command.owner === 'navigation') {
+    const wp = command.waypoint;
+    const entry = crackerRunEntryGuidance(state, wp);
+    if (entry) {
+      const mouth = { pos: entry.mouth.pos };
+      const reading = mtReadingsLine(objectiveBearingGlyph(state, mouth),
+        objectiveTravelReadout(state, mouth).distanceText, '');
+      const entryReading = mtReadingsLine(objectiveBearingGlyph(state, entry.entry),
+        objectiveTravelReadout(state, entry.entry).distanceText, '');
+      return { show: true, urgent: false, actLine,
+        line: `${localizeText(entry.label)}\n${localizeText('Entry buoy')} ${entryReading} · ${localizeText('Mouth')} ${reading}\n${localizeText(entry.instruction)}` };
+    }
+    const travel = objectiveTravelReadout(state, wp);
+    const routeGuide = mtRouteGuidance(state, wp);
+    const action = mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);
+    const readings = routeGuide
+      ? [routeGuide.next, routeGuide.destination,
+        `${BINDINGS.starmap.label} Star Map`].filter(Boolean).join(' · ')
+      : mtReadingsLine(objectiveBearingGlyph(state, wp), travel.distanceText,
+        travel.etaS == null ? '' : travel.etaText);
+    return {
+      show: true,
+      line: readings ? `${action}\n${readings}` : action,
+      urgent: false,
+      actLine,
+    };
+  }
+  if (command.owner === 'untracked-mission') {
+    const candidate = command.mission;
+    return {
+      show: true,
+      line: coreText('trackContract', {
+        key: BINDINGS.missionLog.label,
+        contract: candidate.title || candidate.name || 'one contract',
+      }),
+      urgent: false,
+      actLine,
+    };
+  }
+  if (command.owner === 'story') {
+    return {
+      show: true,
+      line: coreText('chooseStoryAction', { key: BINDINGS.missionLog.label }),
+      urgent: false,
+      actLine,
+    };
+  }
+  return { show: false, line: '', urgent: false, actLine };
+}
+
+/**
+ * Geometry contract for the persistent flight anchors. Values mirror the authored desktop CSS and
+ * intentionally reserve a clear center/lower-middle playfield. Used by the objective hierarchy
+ * regression to cover both the 1280x720 floor and 1920x1080 target without launching the game.
+ */
+export function resolveObjectiveHudLayout(width, height) {
+  const w = Math.max(320, Number(width) || 1280);
+  const h = Math.max(240, Number(height) || 720);
+  const compact = w <= 760 || h <= 620;
+  // Ultrawide safe frame (A_LIST_GAPS §4 / design/frontend/RESPONSIVE_STRATEGY.md): anchored
+  // instruments clamp to a centred 16:9-ish box so a 21:9 player is not asked to read the far
+  // corners. At ≤16:9 the inset is exactly 0 and every coordinate is unchanged. World
+  // projections still use the FULL viewport — only anchored readouts rebase.
+  const safeInsetX = Math.max(0, (w - h * 16 / 9) / 2);
+  const safeLeft = safeInsetX;
+  const safeRight = w - safeInsetX;
+  const safeWidth = safeRight - safeLeft;
+  const edge = compact ? 8 : 12;
+  const bottom = compact ? 96 : 12;
+  const objectiveWidth = Math.min(compact ? 300 : 245, safeWidth - edge * 2);
+  const objectiveHeight = compact ? 68 : 84;
+  const vitalsWidth = compact ? 152 : 272;
+  const vitalsHeight = compact ? 124 : 170;
+  const stackGap = 8;
+  const rightWidth = compact ? 150 : 198;
+  const rightHeight = compact ? 320 : 410;
+  const actionWidth = Math.min(compact ? 420 : 520, safeWidth - edge * 2);
+  const actionHeight = compact ? 64 : 76;
+  const layout = {
+    viewport: { x: 0, y: 0, width: w, height: h },
+    safe: { insetX: safeInsetX, left: safeLeft, right: safeRight, width: safeWidth },
+    objective: {
+      x: safeLeft + edge,
+      y: Math.max(edge, h - bottom - vitalsHeight - stackGap - objectiveHeight),
+      width: objectiveWidth,
+      height: objectiveHeight,
+    },
+    vitals: { x: safeLeft + edge, y: h - bottom - vitalsHeight, width: vitalsWidth, height: vitalsHeight },
+    action: { x: safeLeft + (safeWidth - actionWidth) / 2, y: h - (compact ? 72 : 88), width: actionWidth, height: actionHeight },
+    rightDock: {
+      x: safeRight - edge - rightWidth,
+      y: Math.max(edge, h - bottom - rightHeight),
+      width: rightWidth,
+      height: rightHeight,
+    },
+    // The bottom-centre command deck (speed readout, fire-control strip, travel tape) floats above
+    // the action row — its band is h-104..h-88 worst case plus up to ~180px of stacked instruments.
+    // In ORRERY the deck is hidden but the travel tape is re-seated on this same band above the
+    // receipt lane (~h-140..h-86), so the reservation still reaches the floor instruments.
+    commandDeck: {
+      x: safeLeft + (safeWidth - Math.min(320, Math.max(190, safeWidth - 640))) / 2,
+      y: h - 74 - 220,
+      width: Math.min(320, Math.max(190, safeWidth - 640)),
+      height: 220,
+    },
+    centerSafe: {
+      x: safeLeft + Math.max(objectiveWidth + edge + 32, safeWidth * 0.28),
+      y: Math.max(72, h * 0.14),
+      width: Math.max(0, safeWidth - Math.max(objectiveWidth + edge + 32, safeWidth * 0.28) - Math.max(rightWidth + edge + 32, safeWidth * 0.2)),
+      height: Math.max(0, h * 0.56),
+    },
+  };
+  layout.receipt = receiptLaneRect(layout);
+  return layout;
+}
+
+const EMPTY_FLIGHT_TEXT_OBSTACLES = Object.freeze([]);
+
+/** Immutable geometry rows shared with world-anchored HUD labels. */
+export function freezeFlightTextObstacles(entries = []) {
+  const frozen = [];
+  for (const entry of entries || []) {
+    const rect = entry && entry.rect ? entry.rect : entry;
+    const owner = entry && typeof entry.owner === 'string' ? entry.owner : '';
+    if (!owner || !rect) continue;
+    const left = Number(rect.left ?? rect.x);
+    const top = Number(rect.top ?? rect.y);
+    const right = Number(rect.right ?? (left + Number(rect.width)));
+    const bottom = Number(rect.bottom ?? (top + Number(rect.height)));
+    const width = Number(rect.width ?? (right - left));
+    const height = Number(rect.height ?? (bottom - top));
+    if (![left, top, right, bottom, width, height].every(Number.isFinite) || width <= 0 || height <= 0) continue;
+    frozen.push(Object.freeze({ owner, left, top, right, bottom, width, height }));
+  }
+  return frozen.length ? Object.freeze(frozen) : EMPTY_FLIGHT_TEXT_OBSTACLES;
+}
+
+export function createFlightTextObstacleCache() {
+  let snapshot = EMPTY_FLIGHT_TEXT_OBSTACLES;
+  return Object.freeze({
+    read() { return snapshot; },
+    publish(entries) {
+      snapshot = freezeFlightTextObstacles(entries);
+      return snapshot;
+    },
+  });
+}
+
+/** Maximum persistent contact rows before truthful category overflow takes over. */
+export function contactDisplayLimit(width, height) {
+  const w = Math.max(320, Number(width) || 1280);
+  const h = Math.max(240, Number(height) || 720);
+  if (w <= 900 || h <= 650) return 3;
+  if (w <= 1400 || h <= 820) return 4;
+  return 5;
+}
+
+/** Selected contact, active threats and allies must never be buried under ambient traffic. */
+export function contactDisplayBand(contact, targetId) {
+  if (!contact) return 5;
+  if (contact.e && contact.e.id === targetId) return 0;
+  if (contact.hostile) return 1;
+  if (contact.ally) return 2;
+  if (contact.isWreck) return 3;
+  return 4;
+}
+
+/** Compact, truthful receipt for contacts omitted by the responsive row cap. */
+export function contactOverflowSummary(contacts, visibleCount) {
+  const omitted = (contacts || []).slice(Math.max(0, visibleCount | 0));
+  if (!omitted.length) return '';
+  const counts = { threat: 0, ally: 0, wreck: 0, other: 0 };
+  for (const contact of omitted) {
+    if (contact.hostile) counts.threat++;
+    else if (contact.ally) counts.ally++;
+    else if (contact.isWreck) counts.wreck++;
+    else counts.other++;
+  }
+  const parts = [];
+  for (const [key, count] of Object.entries(counts)) {
+    if (count) parts.push(`${count} ${key.toUpperCase()}${count === 1 ? '' : 'S'}`);
+  }
+  if (parts.length === 1) return `+${parts[0]}`;
+  return `+${omitted.length} · ${parts.join(' · ')}`;
+}
+
+/**
+ * Wave G7 — the contacts list stays out of the flight HUD until the player locks something.
+ * A pin, a nearby hostile, or a scan does not mount it. Half opacity is not hidden.
+ */
+export function contactRosterVisible({ locked = false } = {}) {
+  return locked === true;
+}
+
+/** Detach the roster until a lock exists, then seat it in front of the radar. */
+export function mountContactRoster(parent, roster, radar, locked) {
+  if (!parent || !roster) return false;
+  if (!contactRosterVisible({ locked })) {
+    if (roster.parentNode) roster.parentNode.removeChild(roster);
+    return false;
+  }
+  if (roster.parentNode !== parent) {
+    if (radar && radar.parentNode === parent) parent.insertBefore(roster, radar);
+    else parent.appendChild(roster);
+  }
+  return true;
+}
+
+/** One truthful reading for the manual Travel Burn stopping cue. The route executor owns braking
+ * while engaged, and an inactive autopilot target without a visible waypoint is stale state rather
+ * than a destination the player is still approaching. */
+export function travelTapeNavigationState(nav = {}) {
+  const autopilot = nav.autopilot || null;
+  const autopilotActive = !!(autopilot && autopilot.active === true);
+  const executorEngaged = !!(nav.executor && nav.executor.engaged === true);
+  const waypointPos = nav.waypoint && nav.waypoint.pos;
+  const target = waypointPos || (autopilotActive && autopilot && autopilot.target) || null;
+  const arrival = target && Number.isFinite(target.x) && Number.isFinite(target.z)
+    ? {
+      x: target.x,
+      z: target.z,
+      radius: Math.max(0, Number(autopilot && autopilot.arrivalRadius) || 36),
+    }
+    : null;
+  return { manual: !autopilotActive && !executorEngaged, arrival };
+}
+
+/** The stop vector a held pilot brake is buying right now — the kernel's own brake law carried
+ * to rest (propulsionKernel.previewBrakeStop), never a second braking model. Null whenever the
+ * brake is not held, so "the model carries it while braking and nothing otherwise" is structural. */
+export function resolveBrakeStopPreview(player, profile, input) {
+  if (!player || !input) return null;
+  const braking = !!((input.actions && input.actions.brake) || input.brake);
+  if (!braking) return null;
+  const mode = (player._flightFrame && player._flightFrame.assistMode) || input.assistMode || 'assisted';
+  return previewBrakeStop(player, profile, mode);
+}
+
+// INST-35 — the HUD's velocity model: speed against the thruster cap, carrying the earned-speed
+// flag the readout marks. Pure. The ORRERY Speed Dial already owns the gauge, so this adds no
+// widget — just the flag and the text mark (`EARNED`), a non-colour carrier per the repo's
+// semantics rule and ORRERY's labelled-state direction. The cap is telemetry's
+// `resolveThrusterCap` (the catalog's governed combat speed), never re-derived here.
+export function buildVelocityReadout(playerOrSpeed, profileOrCap, out = null) {
+  const speed = typeof playerOrSpeed === 'number'
+    ? playerOrSpeed
+    : Math.hypot(
+      Number(playerOrSpeed && playerOrSpeed.vel && playerOrSpeed.vel.x) || 0,
+      Number(playerOrSpeed && playerOrSpeed.vel && playerOrSpeed.vel.z) || 0,
+    );
+  const thrusterCap = typeof profileOrCap === 'number' ? profileOrCap : resolveThrusterCap(profileOrCap);
+  const earnedSpeed = isEarnedSpeed(speed, thrusterCap);
+  const result = out && typeof out === 'object' ? out : {};
+  result.speed = speed;
+  result.thrusterCap = thrusterCap;
+  result.earnedSpeed = earnedSpeed;
+  result.text = `${Math.max(0, Math.round(speed))} u/s${earnedSpeed ? ' · EARNED' : ''}`;
+  result.spoken = speedUnitSpeech(speed, earnedSpeed);
+  return result;
+}
+
+/** Spelled-out speed. The visible unit stays u/s. */
+export function speedUnitSpeech(speed, earned = false) {
+  const n = Math.max(0, Math.round(Number(speed) || 0));
+  return earned ? `${n} world units per second, earned` : `${n} world units per second`;
+}
+
+/** Spelled-out distance. The visible unit stays WU or u. Empty when the text is not a distance. */
+export function distanceUnitSpeech(distanceText) {
+  const raw = String(distanceText || '').trim();
+  if (!raw || raw === 'ROUTE PENDING') return '';
+  if (/\bWU\b/.test(raw)) return raw.replace(/\bWU\b/g, 'world units');
+  if (/\d(?:\.\d+)?\s*u\b/i.test(raw)) return raw.replace(/(\d(?:\.\d+)?)\s*u\b/i, '$1 world units');
+  return '';
+}
+
+function cargoOccupied(cargo) {
+  if (!cargo) return false;
+  const items = cargo.items;
+  if (items && typeof items === 'object') {
+    for (const key of Object.keys(items)) {
+      if (Number(items[key]) > 0) return true;
+    }
+  }
+  return Number(cargo.usedVolume) > 0;
+}
+
+function receiptCombatNow() {
+  const job = typeof document !== 'undefined' && document.body && document.body.dataset
+    ? document.body.dataset.sfHudJob
+    : '';
+  return job === 'fight' || job === 'hurt';
+}
+
+function applySpeedSpeech(el, spoken) {
+  if (!el || !spoken) return;
+  setTitle(el, spoken);
+  setAttr(el, 'aria-label', spoken);
+}
+
+function applyDistanceSpeech(el, distanceText) {
+  const spoken = distanceUnitSpeech(distanceText);
+  if (!el || !spoken) return '';
+  setTitle(el, spoken);
+  setAttr(el, 'aria-label', spoken);
+  return spoken;
+}
+
+/** The first cargo:changed that fills an empty hold, once per profile. Does not open the panel. */
+export function noteFirstCargoLanding(state, { wasEmpty = false, cargo = null, bindingLabel = '' } = {}) {
+  if (!state || !state.player || !wasEmpty || !cargoOccupied(cargo)) return '';
+  const gameplay = state.settings && state.settings.gameplay;
+  if (gameplay && gameplay.tutorialHints === false) return '';
+  if (!shouldShowFirstUseHint(state.player.hints, 'firstCargoManifest')) return '';
+  const key = String(bindingLabel || '').trim();
+  const line = key ? `Cargo aboard. Manifest ${key}.` : 'Cargo aboard. Open the manifest.';
+  if (!admitReceipt({ text: line, kind: 'info', combat: receiptCombatNow() }).admit) return '';
+  state.player.hints = markFirstUseHint(state.player.hints, 'firstCargoManifest');
+  return line;
+}
+
+/** The first plotted cross-sector route, once per profile. Does not engage it. */
+export function speakPlottedRouteTeach(state, bus) {
+  if (!state || !state.player) return '';
+  const gameplay = state.settings && state.settings.gameplay;
+  if (gameplay && gameplay.tutorialHints === false) return '';
+  if (!shouldShowFirstUseHint(state.player.hints, 'plottedRouteEngage')) return '';
+  const nav = state.nav || {};
+  const engaged = !!(nav.executor && nav.executor.engaged === true);
+  const line = plottedRouteEngageTeach(nav.route, {
+    engaged,
+    mapHome: 'Star Map',
+    mapLabel: promptLabel('starmap'),
+  });
+  if (!line) return '';
+  if (!admitReceipt({ text: line, kind: 'info', combat: receiptCombatNow() }).admit) return '';
+  state.player.hints = markFirstUseHint(state.player.hints, 'plottedRouteEngage');
+  if (bus && typeof bus.emit === 'function') bus.emit('toast', { text: line, kind: 'info', ttl: 6 });
+  return line;
+}
+
+/** Non-colour flight feedback for the manufactured route read model. The travel owner publishes
+ * this status; the HUD only names it and never interprets or changes drive behavior. */
+export function travelTapeLaneStatus(status = null) {
+  if (!status || status.manufactured !== true || status.inLane !== true) return '';
+  if (status.infrastructureStage === 'aligning') return 'THROUGHLINE ALIGNING';
+  if (status.infrastructureOperational !== true) return 'THROUGHLINE OFFLINE';
+  const multiplier = Number(status.ceilingMult);
+  const label = Number.isFinite(multiplier) && multiplier > 1
+    ? String(Math.round(multiplier * 10) / 10)
+    : '1';
+  return `THROUGHLINE ×${label}`;
+}
+
+// Ordinary-load HUD gates, kept in lockstep with src/render/vfx.js:229-230
+// (TETHER_TAUT_LOAD / TETHER_OVERLOAD_LOAD) so the cable and the status line never disagree about
+// whether the Massline is working. These key off tether.load, NOT tether.strain — see the note on
+// masslineTetherStatus below.
+const TETHER_STATUS_LOADED_LOAD = 0.5;
+const TETHER_STATUS_HIGH_LOAD = 0.88;
+const MASSLINE_HEAD_LABELS = Object.freeze({
+  tractor: 'TRACTOR',
+  elastic_whip: 'ELASTIC WHIP',
+  frame_coupler: 'FRAME COUPLER',
+  monofilament_sweep: 'MONOFILAMENT',
+  transverse_snare: 'TRANSVERSE SNARE',
+  twin_bridle: 'TWIN BRIDLE',
+});
+
+/**
+ * Resolve the truthful Massline status copy from the gameplay-owned tether mirror.
+ * Normal-load strain remains useful telemetry but is not a failure alarm. STRAINED/CRITICAL and
+ * warning color are reserved for explicitly breakable, extreme-overload operations.
+ *
+ * WHY THE ORDINARY BRANCHES DO NOT KEY OFF tether.strain ALONE.
+ *
+ * tether.strain is the honest physical ratio lastTension / breakTension, and for tether_standard
+ * breakTension is 10500000 (src/data/combatDefs.js:234) because the Massline is deliberately
+ * near-unbreakable. Measured with scripts/probe-tether-visual-drive.mjs (640-mass asteroid latched,
+ * full main thrust opposing the line for 240 ticks, line HELD) strain peaks at ~1e-4. So the two
+ * ordinary branches below used to read `strain > 0.85` / `strain > 0.6` and those halves were
+ * unreachable dead code — the status line was saved only by its phase fallback, and any operation
+ * that produced load without the sim naming a phase read as a bare LOCKED.
+ *
+ * The fix is NOT to rescale strain (the envelope is a protected hand-tuned value, build plan §3.5
+ * row 2). It is to key onto tether.load / tether.phase, the presentation-oriented signals that
+ * actually vary in play (same probe: load 0 → 0.55, phase slack → capture → loaded). This mirrors
+ * what src/render/vfx.js:3337-3338 already does for the cable.
+ *
+ * strain survives in two places, both legitimate:
+ *   - the automaticBreakAllowed branches, the engineered extreme-load endpoint where the physical
+ *     ratio genuinely can approach the envelope and CRITICAL/STRAINED is a real alarm;
+ *   - as an UPPER escape hatch on the ordinary branches, so that if physical strain ever does climb
+ *     it still overtakes the presentation read rather than being ignored.
+ */
+export function masslineTetherStatus(tether) {
+  const strain = Number.isFinite(tether && tether.strain) ? Math.max(0, tether.strain) : 0;
+  // Saves written before tether.load existed degrade to the strain read rather than reporting 0.
+  const load = Number.isFinite(tether && tether.load)
+    ? Math.max(0, Math.min(1, tether.load))
+    : Math.min(1, strain);
+  const phase = (tether && tether.phase) || 'slack';
+  const automaticBreakAllowed = tether && tether.automaticBreakAllowed === true;
+  const operation = tether && tether.reeling
+    ? 'REELING'
+    : tether && tether.payingOut
+      ? 'PAYING OUT'
+      : tether && tether.lineControl
+        ? 'LINE CONTROL'
+        : '';
+  let status;
+  if (automaticBreakAllowed && strain > 0.85) status = 'CRITICAL';
+  else if (automaticBreakAllowed && strain > 0.6) status = 'STRAINED';
+  else if (tether && tether.kind === 'transverse_snare' && phase === 'deploying') status = 'DEPLOYING';
+  else if (tether && tether.kind === 'transverse_snare' && phase === 'armed') status = 'ARMED';
+  else if (tether && tether.kind === 'transverse_snare' && phase === 'caught') status = 'CAUGHT';
+  else if (tether && tether.kind === 'twin_bridle'
+      && (phase === 'overload' || load > TETHER_STATUS_HIGH_LOAD || strain > 0.85)) status = 'HIGH LOAD';
+  else if (tether && tether.kind === 'twin_bridle') status = 'LINKED';
+  else if (phase === 'overload' || load > TETHER_STATUS_HIGH_LOAD || strain > 0.85) {
+    status = operation ? `${operation} · HIGH LOAD` : 'HIGH LOAD';
+  } else if (phase === 'loaded' || load > TETHER_STATUS_LOADED_LOAD || strain > 0.6) {
+    status = operation ? `${operation} · LOADED` : 'LOADED';
+  } else status = operation || 'LOCKED';
+  const headLabel = MASSLINE_HEAD_LABELS[tether && tether.headId] || '';
+  return {
+    text: headLabel ? `${headLabel} · ${status}` : status,
+    warn: automaticBreakAllowed && strain > 0.6,
+  };
+}
+
+/** Frame-rate-independent 5 Hz presentation clock for contact-roster DOM work. */
+export function createContactRosterClock() {
+  return createHudClock(5, false);
+}
+
+export function consumeContactRosterClock(clock, dt) {
+  return consumeHudClock(clock, dt) > 0;
+}
+
+function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+/** One threat-bearing arc on the ring around the ship: screen angle `a` (radians), ±`s` wide. */
+function threatArcPath(a, r = 48, s = 0.28) {
+  const x0 = (r * Math.cos(a - s)).toFixed(1);
+  const y0 = (r * Math.sin(a - s)).toFixed(1);
+  const x1 = (r * Math.cos(a + s)).toFixed(1);
+  const y1 = (r * Math.sin(a + s)).toFixed(1);
+  return `M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}`;
+}
+// M1 doctrine player-tells: map live ai:telegraph kinds (+ doctrineId fallback) to HUD tell ids.
+const DOCTRINE_TELL_BY_KIND = Object.freeze({
+  engine_flare: 'FLYBY',
+  attach_spool: 'TETHER',
+  weapon_charge: 'CHARGE',
+  shield_lance: 'CHARGE',
+  // S7 — the swarm sheet's cue kinds, mapped so every telegraphed cohort ability lands a
+  // HUD chip as well as its in-world tell.
+  pack_call: 'CALL',
+  wake_mines: 'MINES',
+  field_spool: 'ANCHOR',
+  sensor_ghost: 'GHOST',
+  detonator_fuse: 'FUSE',
+});
+const DOCTRINE_TELL_BY_ID = Object.freeze({
+  interceptor_flyby: 'FLYBY',
+  tether_control_raider: 'TETHER',
+  ranged_disengager: 'CHARGE',
+  shield_breaker: 'CHARGE',
+});
+const DOCTRINE_TELL_HINT = Object.freeze({
+  FLYBY: 'Break the beam',
+  TETHER: 'Deny the latch',
+  CHARGE: 'Close or break LOS',
+  LAUNCH: 'Mass inbound — move',
+  INCOMING: 'Sidestep or send it back',
+  CALL: 'Kill the caller first',
+  MINES: 'Keep one flank clear',
+  ANCHOR: 'Displace it or stay outside',
+  GHOST: 'It relocates after the shot',
+  FUSE: 'It goes off where it dies',
+});
+const DOCTRINE_TELL_ICON = Object.freeze({
+  // Fallback literals carry \uFE0E (monochrome text presentation) themselves because ⚠/⛔ default
+  // to color emoji on platforms that ship an emoji font; the palette's own icons are pre-fixed.
+  FLYBY: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  TETHER: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  CHARGE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  LAUNCH: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  INCOMING: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  CALL: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  MINES: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  ANCHOR: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  GHOST: SEMANTIC_PALETTE.info?.icon || '⚠\uFE0E',
+  FUSE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+});
+// The same tells, drawn: accessibility.js names each palette state's drawn equivalent in its
+// `glyph` column (a station/icons.js name), so the chip renders the mark as an ELEMENT through
+// the shared glyphs.js vocabulary instead of printing a font character. Names are resolved into
+// glyphs.js via this alias; a name with no drawn path in the table falls back to the text icon.
+const DOCTRINE_TELL_GLYPH_ALIAS = Object.freeze({
+  warning: 'warn',       // the drawn triangle-and-bang
+  danger: 'err',         // drawn stop mark — the palette's ⊘ prohibition mark has no path yet
+  target: 'iff_target',
+  info: 'info',
+  chevron: 'iff_ally',
+});
+function tellGlyphName(tellId) {
+  const paletteState = (tellId === 'TETHER' || tellId === 'LAUNCH') ? 'warning' : 'danger';
+  const named = SEMANTIC_PALETTE[paletteState] && SEMANTIC_PALETTE[paletteState].glyph;
+  const name = named && DOCTRINE_TELL_GLYPH_ALIAS[named];
+  return name && hasGlyph(name) ? name : null;
+}
+const TELL_POOL_SIZE = 3;
+const DEFAULT_TELEGRAPH_TICKS = 30;
+const TELL_VISUAL_WIDTH = 240;
+const TELL_VISUAL_HEIGHT = 30;
+const TELL_LAYOUT_GAP = 8;
+const LEAD_PIP_RADIUS = 8.5;
+const LEAD_PIP_CIRCUMFERENCE = Math.PI * 2 * LEAD_PIP_RADIUS;
+const LEAD_PIP_ARC_FRACTION = 0.72;
+const LEAD_PIP_ARC_LENGTH = LEAD_PIP_CIRCUMFERENCE * LEAD_PIP_ARC_FRACTION;
+const LEAD_PIP_GAP_CENTER_OFFSET = (LEAD_PIP_ARC_FRACTION + (1 - LEAD_PIP_ARC_FRACTION) * 0.5) * (Math.PI * 2);
+
+export function doctrineTellKind(payload) {
+  if (!payload) return null;
+  // Hostile-hands phases specialize the shared kinds: a charging enemy's throw and the mass it
+  // releases are different player decisions, so they carry different tells.
+  if (payload.phase === 'body_launch') return 'LAUNCH';
+  if (payload.phase === 'incoming_mass') return 'INCOMING';
+  const byKind = DOCTRINE_TELL_BY_KIND[String(payload.kind || '')];
+  if (byKind) return byKind;
+  return DOCTRINE_TELL_BY_ID[String(payload.doctrineId || '')] || null;
+}
+
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.width
+    && a.x + a.width > b.x
+    && a.y < b.y + b.height
+    && a.y + a.height > b.y;
+}
+
+/**
+ * Place one transient doctrine tell without covering the persistent objective/vitals/action/radar
+ * anchors. `projected` is the authoritative worldToScreen result; the returned direction always
+ * follows that original projection even when the chip yields to a reserved HUD rectangle.
+ */
+export function resolveDoctrineTellPlacement(width, height, projected, slotIndex = 0, extraReserved = null, previousOffset = null, dimensions = null) {
+  const w = Math.max(320, Number(width) || 1280);
+  const h = Math.max(240, Number(height) || 720);
+  const px = Number(projected && projected.x);
+  const py = Number(projected && projected.y);
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return null;
+
+  const chipWidth = Math.min(Number(dimensions?.width) || TELL_VISUAL_WIDTH, w - 16);
+  const chipHeight = Math.min(Number(dimensions?.height) || TELL_VISUAL_HEIGHT, h - 16);
+  const halfW = chipWidth / 2;
+  const halfH = chipHeight / 2;
+  const centerX = w / 2;
+  const centerY = h / 2;
+  let dx = px - centerX;
+  let dy = py - centerY;
+  const length = Math.hypot(dx, dy);
+  if (length < 0.001) {
+    dx = 0;
+    dy = -1;
+  } else {
+    dx /= length;
+    dy /= length;
+  }
+  const directionDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+  const onScreen = !!(projected && projected.onScreen);
+  const stackOffset = Math.max(0, Math.min(TELL_POOL_SIZE - 1, Math.floor(Number(slotIndex) || 0)))
+    * (chipHeight + 6);
+  let x;
+  let y;
+  if (onScreen) {
+    x = Math.max(halfW + TELL_LAYOUT_GAP, Math.min(w - halfW - TELL_LAYOUT_GAP, px));
+    y = Math.max(halfH + TELL_LAYOUT_GAP,
+      Math.min(h - halfH - TELL_LAYOUT_GAP, py - 38 - stackOffset));
+  } else {
+    const extentX = Math.max(1, centerX - halfW - TELL_LAYOUT_GAP);
+    const extentY = Math.max(1, centerY - halfH - TELL_LAYOUT_GAP);
+    const tx = Math.abs(dx) > 0.001 ? extentX / Math.abs(dx) : Infinity;
+    const ty = Math.abs(dy) > 0.001 ? extentY / Math.abs(dy) : Infinity;
+    const edgeDistance = Math.min(tx, ty);
+    x = centerX + dx * edgeDistance;
+    y = centerY + dy * edgeDistance - stackOffset;
+    y = Math.max(halfH + TELL_LAYOUT_GAP, Math.min(h - halfH - TELL_LAYOUT_GAP, y));
+  }
+
+  const layout = resolveObjectiveHudLayout(w, h);
+  const reserved = [layout.objective, layout.vitals, layout.action, layout.rightDock, layout.commandDeck]
+    .filter(Boolean);
+  // Live-measured extras (the top-left context strip — a nominal rect cannot know when it is
+  // populated or how tall content makes it, so the caller passes its measured box). Empty stays
+  // unreserved, so a collapsed strip never deflects chips from open field.
+  if (extraReserved) reserved.push(...[].concat(extraReserved).filter(Boolean));
+  const asRect = (cx, cy) => ({
+    x: cx - halfW,
+    y: cy - halfH,
+    width: chipWidth,
+    height: chipHeight,
+  });
+  // Retain a valid offset from this same projected body as it moves. This avoids
+  // labels swapping sides on successive frames while still yielding immediately
+  // to another label or a newly opened HUD/control region.
+  if (onScreen && previousOffset && Number.isFinite(previousOffset.x) && Number.isFinite(previousOffset.y)) {
+    const priorX = px + previousOffset.x, priorY = py + previousOffset.y;
+    if (priorX >= halfW + TELL_LAYOUT_GAP && priorX <= w - halfW - TELL_LAYOUT_GAP
+      && priorY >= halfH + TELL_LAYOUT_GAP && priorY <= h - halfH - TELL_LAYOUT_GAP
+      && reserved.every((anchor) => !rectsOverlap(asRect(priorX, priorY), anchor))) {
+      return { x: priorX, y: priorY, width: chipWidth, height: chipHeight, onScreen, directionDeg };
+    }
+  }
+  for (let pass = 0; pass < reserved.length; pass++) {
+    const collision = reserved.find((anchor) => rectsOverlap(asRect(x, y), anchor));
+    if (!collision) break;
+    // A corner chip can touch two stacked anchors (objective + vitals, or right dock + action).
+    // Consider the outer edge of every reserved rectangle so one adjustment can clear the stack.
+    const candidates = reserved.flatMap((anchor) => [
+      { x, y: anchor.y - halfH - TELL_LAYOUT_GAP },
+      { x, y: anchor.y + anchor.height + halfH + TELL_LAYOUT_GAP },
+      { x: anchor.x - halfW - TELL_LAYOUT_GAP, y },
+      { x: anchor.x + anchor.width + halfW + TELL_LAYOUT_GAP, y },
+    ]).map((candidate) => ({
+      x: Math.max(halfW + TELL_LAYOUT_GAP, Math.min(w - halfW - TELL_LAYOUT_GAP, candidate.x)),
+      y: Math.max(halfH + TELL_LAYOUT_GAP, Math.min(h - halfH - TELL_LAYOUT_GAP, candidate.y)),
+    })).filter((candidate) => reserved.every((anchor) => !rectsOverlap(asRect(candidate.x, candidate.y), anchor)));
+    if (!candidates.length) {
+      // A corner can require moving on both axes at once. Try the bounded set of
+      // obstacle edges before falling back to the visible, viewport-clamped cue.
+      const xs = [x], ys = [y];
+      for (const anchor of reserved) {
+        xs.push(anchor.x - halfW - TELL_LAYOUT_GAP, anchor.x + anchor.width + halfW + TELL_LAYOUT_GAP);
+        ys.push(anchor.y - halfH - TELL_LAYOUT_GAP, anchor.y + anchor.height + halfH + TELL_LAYOUT_GAP);
+      }
+      for (const cx of xs) for (const cy of ys) {
+        const candidate = { x: Math.max(halfW + TELL_LAYOUT_GAP, Math.min(w - halfW - TELL_LAYOUT_GAP, cx)),
+          y: Math.max(halfH + TELL_LAYOUT_GAP, Math.min(h - halfH - TELL_LAYOUT_GAP, cy)) };
+        if (reserved.every(anchor => !rectsOverlap(asRect(candidate.x, candidate.y), anchor))) candidates.push(candidate);
+      }
+      if (!candidates.length) break;
+    }
+    candidates.sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
+    x = candidates[0].x;
+    y = candidates[0].y;
+  }
+
+  return { x, y, width: chipWidth, height: chipHeight, onScreen, directionDeg };
+}
+
+// JS-side last-written cache — mirror setStyle. Reading el.textContent every call forces a
+// DOM text walk (and can flush layout); hud.frame self-time in cpu-profile-flight was ~38 ms
+// over 60 s settled with dozens of setText sites on every slow/overlay tick.
+export function setText(el, text) {
+  if (!el) return;
+  if (el._sfText === text) return;
+  el._sfText = text;
+  el.textContent = text;
+}
+function setScaleX(el, value, opts = null) {
+  if (!el) return;
+  const min = opts && Number.isFinite(opts.min) ? opts.min : 0;
+  const max = opts && Number.isFinite(opts.max) ? opts.max : 1;
+  const raw = Number.isFinite(value) ? value : 0;
+  const bounded = raw < min ? min : raw > max ? max : raw;
+  const next = Math.round(bounded * 1000) / 1000;
+  if (el._sfScaleX === next) return;
+  el._sfScaleX = next;
+  el.style.transform = `scaleX(${next})`;
+}
+// JS-side last-written cache — never read el.style/dataset (those can themselves dirty or miss).
+function setStyle(el, prop, value) {
+  if (!el) return;
+  const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+  if (cache[prop] === value) return;
+  cache[prop] = value;
+  el.style[prop] = value;
+}
+
+// Optical G-lag / bloom translate3d writes. Call sites used to rebuild
+// `translate3d(${(x).toFixed(2)}px,...)` every frame; setStyle only skipped the DOM
+// write after the template alloc. Cache hundredths-of-a-px (+ suffix/plain) so a still
+// offset skips toFixed + template entirely. Same rounding → same picture.
+function setLagTranslate(el, x, y, opts = null) {
+  if (!el) return;
+  const suffix = (opts && opts.suffix) || '';
+  const plain = (opts && Object.prototype.hasOwnProperty.call(opts, 'plain'))
+    ? opts.plain
+    : 'none';
+  // Exact-zero fast path matches the old `if (x !== 0 || y !== 0)` call-site gate:
+  // no toFixed, and subsequent settled frames are two property reads.
+  if (x === 0 && y === 0) {
+    if (el._sfLagActive === false && el._sfLagPlain === plain) return;
+    el._sfLagActive = false;
+    el._sfLagQx = 0;
+    el._sfLagQy = 0;
+    el._sfLagSuf = '';
+    el._sfLagPlain = plain;
+    const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+    if (cache.transform === plain) return;
+    cache.transform = plain;
+    el.style.transform = plain;
+    return;
+  }
+  const nx = Number(x);
+  const ny = Number(y);
+  const ox = Number.isFinite(nx) ? nx : 0;
+  const oy = Number.isFinite(ny) ? ny : 0;
+  if (ox === 0 && oy === 0) {
+    if (el._sfLagActive === false && el._sfLagPlain === plain) return;
+    el._sfLagActive = false;
+    el._sfLagQx = 0;
+    el._sfLagQy = 0;
+    el._sfLagSuf = '';
+    el._sfLagPlain = plain;
+    const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+    if (cache.transform === plain) return;
+    cache.transform = plain;
+    el.style.transform = plain;
+    return;
+  }
+  const qx = Math.round(ox * 100);
+  const qy = Math.round(oy * 100);
+  if (
+    el._sfLagActive === true
+    && el._sfLagQx === qx
+    && el._sfLagQy === qy
+    && el._sfLagSuf === suffix
+  ) return;
+  el._sfLagActive = true;
+  el._sfLagQx = qx;
+  el._sfLagQy = qy;
+  el._sfLagSuf = suffix;
+  el._sfLagPlain = null;
+  const next = `translate3d(${(qx / 100).toFixed(2)}px,${(qy / 100).toFixed(2)}px,0)${suffix}`;
+  const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+  cache.transform = next;
+  el.style.transform = next;
+}
+
+// Restart a one-shot credits chip pulse without `void el.offsetWidth` (forced sync layout).
+// Remove pulse classes now; add the next class on the following animation frame so the
+// browser applies the removal first. A newer pulse bumps `_sfCredPulseToken` and cancels
+// a stale scheduled add. Exported for the portable microbench / focused test.
+const CREDITS_PULSE_CLASSES = ['sf-credits--gain', 'sf-credits--spend'];
+export function restartCreditsChipPulse(chip, pulseClass, schedule = null) {
+  if (!chip || !chip.classList) return false;
+  const next = pulseClass === 'sf-credits--spend' ? 'sf-credits--spend' : 'sf-credits--gain';
+  chip.classList.remove(...CREDITS_PULSE_CLASSES);
+  const token = (chip._sfCredPulseToken = (chip._sfCredPulseToken | 0) + 1);
+  const run = typeof schedule === 'function'
+    ? schedule
+    : (typeof requestAnimationFrame === 'function'
+      ? requestAnimationFrame.bind(globalThis)
+      : (fn) => setTimeout(fn, 0));
+  run(() => {
+    if (chip._sfCredPulseToken !== token) return;
+    chip.classList.add(next);
+  });
+  return true;
+}
+
+/** Portable A/B: count sync layout reads (offsetWidth) for legacy vs no-reflow pulse restart. */
+export function runCreditsPulseReflowAb({ rounds = 2000 } = {}) {
+  let legacyLayouts = 0;
+  let modernLayouts = 0;
+  const mkChip = (counter) => ({
+    classList: {
+      values: new Set(),
+      remove(...xs) { xs.forEach((x) => this.values.delete(x)); },
+      add(...xs) { xs.forEach((x) => this.values.add(x)); },
+      contains(x) { return this.values.has(x); },
+    },
+    get offsetWidth() { counter.n++; return 120; },
+  });
+  const legacyCounter = { n: 0 };
+  const modernCounter = { n: 0 };
+  const legacyChip = mkChip(legacyCounter);
+  const modernChip = mkChip(modernCounter);
+  const queueSchedule = [];
+  const schedule = (fn) => queueSchedule.push(fn);
+
+  const t0 = performance.now();
+  for (let i = 0; i < rounds; i++) {
+    legacyChip.classList.remove('sf-credits--gain', 'sf-credits--spend');
+    void legacyChip.offsetWidth;
+    legacyChip.classList.add(i & 1 ? 'sf-credits--spend' : 'sf-credits--gain');
+  }
+  const legacyMs = performance.now() - t0;
+
+  const t1 = performance.now();
+  for (let i = 0; i < rounds; i++) {
+    restartCreditsChipPulse(modernChip, i & 1 ? 'sf-credits--spend' : 'sf-credits--gain', schedule);
+  }
+  while (queueSchedule.length) queueSchedule.shift()();
+  const modernMs = performance.now() - t1;
+
+  legacyLayouts = legacyCounter.n;
+  modernLayouts = modernCounter.n;
+  const layoutReduction = modernLayouts === 0 && legacyLayouts > 0
+    ? legacyLayouts // treat zero modern reads as full elimination (N→0)
+    : (modernLayouts > 0 ? legacyLayouts / modernLayouts : 1);
+  return {
+    rounds,
+    legacy: { ms: legacyMs, layoutReads: legacyLayouts },
+    modern: { ms: modernMs, layoutReads: modernLayouts },
+    layoutReduction,
+    layoutEliminated: modernLayouts === 0 && legacyLayouts > 0,
+    // Primary KPI: sync layout reads must go to zero. Soft-GPU / Node wall is noise here —
+    // the player-facing win is the ~100 ms early-flight hitch from forced reflow.
+    primary: 'layoutReads',
+  };
+}
+
+function setCssVar(el, name, value) {
+  if (!el) return;
+  const cache = el._sfCssVar || (el._sfCssVar = Object.create(null));
+  if (cache[name] === value) return;
+  cache[name] = value;
+  el.style.setProperty(name, value);
+}
+function setOpacity(el, value) {
+  if (!el) return;
+  const next = String(value);
+  if (el._sfOpacity === next) return;
+  el._sfOpacity = next;
+  el.style.opacity = next;
+}
+export function setAttr(el, name, value) {
+  if (!el) return;
+  const text = String(value);
+  const cache = el._sfAttr || (el._sfAttr = Object.create(null));
+  if (cache[name] === text) return;
+  cache[name] = text;
+  el.setAttribute(name, text);
+}
+// removeAttribute is not part of setAttr's cache: poison the slot so the next setAttr writes
+// even when the text matches the pre-clear value, and skip the DOM call once cleared.
+export function clearAttr(el, name) {
+  if (!el) return;
+  const cache = el._sfAttr || (el._sfAttr = Object.create(null));
+  const needsClear = cache[name] !== undefined || el.hasAttribute(name);
+  cache[name] = undefined;
+  if (needsClear) el.removeAttribute(name);
+}
+function setDataEdge(el, edge) {
+  if (!el) return;
+  const next = edge == null ? '' : String(edge);
+  if (el._sfDataEdge === next) return;
+  el._sfDataEdge = next;
+  if (next) el.setAttribute('data-edge', next);
+  else el.removeAttribute('data-edge');
+}
+function setTitle(el, title) {
+  if (!el) return;
+  const next = title == null ? '' : String(title);
+  if (el._sfTitle === next) return;
+  el._sfTitle = next;
+  el.title = next;
+}
+export function setHidden(el, hidden) {
+  if (!el) return;
+  const next = !!hidden;
+  if (el._sfHidden === next) return;
+  el._sfHidden = next;
+  el.hidden = next;
+}
+// Screen-space HUD overlays: position with translate3d only (never per-frame left/top layout).
+// Quantized numeric early-out: the settled path used to rebuild the transform string every call
+// just to strcmp it against _sfHudTransform. Cache tenths-of-a-px / tenths-of-a-deg keys so a
+// still overlay skips toFixed + template alloc entirely. Picture unchanged (same rounding).
+function setHudScreenTransform(el, x, y, opts = null) {
+  if (!el) return;
+  const nx = Number(x);
+  const ny = Number(y);
+  if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+  const center = !opts || opts.center !== false;
+  const hasRotate = !!(opts && Number.isFinite(opts.rotate));
+  const customOffset = (opts && opts.offset) || '';
+  const qx = Math.round(nx * 10);
+  const qy = Math.round(ny * 10);
+  const qr = hasRotate ? Math.round(opts.rotate * 10) : 0;
+  if (
+    el._sfHudTx === qx
+    && el._sfHudTy === qy
+    && el._sfHudTr === qr
+    && el._sfHudTc === center
+    && el._sfHudTo === customOffset
+  ) return;
+  el._sfHudTx = qx;
+  el._sfHudTy = qy;
+  el._sfHudTr = qr;
+  el._sfHudTc = center;
+  el._sfHudTo = customOffset;
+  const rotate = hasRotate ? ` rotate(${(qr / 10).toFixed(1)}deg)` : '';
+  const offset = customOffset || (center ? 'translate(-50%,-50%)' : '');
+  const next = `translate3d(${(qx / 10).toFixed(1)}px,${(qy / 10).toFixed(1)}px,0) ${offset}${rotate}`.trim();
+  el._sfHudTransform = next;
+  el.style.transform = next;
+}
+function setClass(el, cls, active) {
+  if (el && el.classList.contains(cls) !== !!active) el.classList.toggle(cls, !!active);
+}
+// World-anchored marks: a one-frame off-screen flicker (edge crossing, a late mesh admission)
+// hard-blinks the mark. Writers stamp `el._sfOkAt` on every good projection; consumers keep the
+// mark visible through a grace window so an edge-straddling read is a dip, not a strobe.
+const WORLD_MARK_GRACE_MS = 150;
+function markStillLive(el) {
+  return !!el && (performance.now() - (el._sfOkAt || 0)) < WORLD_MARK_GRACE_MS;
+}
+function stampMarkLive(el) {
+  el._sfOkAt = performance.now();
+}
+function setDisplay(el, visible, mode = 'block') {
+  if (!el) return;
+  const next = visible ? mode : 'none';
+  const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+  if (cache.display === next) return;
+  cache.display = next;
+  el.style.display = next;
+}
+
+function createHudClock(hz, startReady = true) {
+  return { step: 1 / Math.max(1, hz || 1), elapsed: startReady ? Infinity : 0, lastDt: 1 / Math.max(1, hz || 1) };
+}
+function consumeHudClock(clock, dt) {
+  clock.elapsed += dt;
+  if (clock.elapsed < clock.step) return 0;
+  const runDt = Number.isFinite(clock.elapsed) ? clock.elapsed : clock.step;
+  clock.elapsed = 0;
+  clock.lastDt = runDt;
+  return runDt;
+}
+function forceHudClock(clock) {
+  clock.elapsed = Infinity;
+}
+
+function injectDeathStyle() {
+  if (document.getElementById('sf-death-style')) return;
+  const s = document.createElement('style');
+  s.id = 'sf-death-style';
+  s.textContent = `
+  .sf-death { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; z-index:1500; pointer-events:none; opacity:0; }
+  .sf-death[hidden] { display:none !important; }
+  .sf-death.show { animation:sf-death-seq 2.4s ease forwards; }
+  @keyframes sf-death-seq { 0%{opacity:0;} 8%{opacity:1;} 70%{opacity:1;} 100%{opacity:0;} }
+  .sf-death__big { font-family:var(--k-display); font-weight:800; font-size:var(--k-fs-title); line-height:.9; letter-spacing:-.02em; color:var(--k-red); }
+  .sf-death__sub { font-family:var(--k-text); font-size:var(--k-fs-emph); color:var(--k-bone-62); }
+  body.sf-deathflash::after { content:''; position:fixed; inset:0; z-index:1400; pointer-events:none;
+    background:rgb(6 8 15 / .35); animation:sf-deathflash .7s ease forwards; }
+  @keyframes sf-deathflash { 0%{opacity:0;} 15%{opacity:1;} 100%{opacity:0;} }
+  `;
+  document.head.appendChild(s);
+}
+
+// Travel Burn instrument styles (atlas D5 / W1-6 / W1-9). Lives here rather than in uiRoot.js's
+// injectHudCss because hud.js already owns several self-injected stylesheets and this instrument is
+// wholly hud-local.
+//
+// Colour is never the only carrier of state (WCAG 1.4.1 and this repo's non-colour-semantics rule):
+// every drive state also prints its NAME, V-MAX is a labelled rule, the earned cap is a labelled
+// caret, and BRAKE NOW pairs a ▲ glyph with the words. A forced-colors block restates every
+// hairline in system colours so the instrument survives with author colours discarded.
+function injectTravelTapeStyle() {
+  if (document.getElementById('sf-vtape-style')) return;
+  const s = document.createElement('style');
+  s.id = 'sf-vtape-style';
+  s.textContent = `
+  .sf-vtape { --vt-brass:var(--k-bone-62); --vt-amber:var(--k-signal); --vt-teal:var(--k-text-live);
+    position:relative; width:min(312px,42vw); margin:0 auto 6px; padding:8px 12px;
+    border-radius:4px; border:1px solid rgb(236 230 216 / .12);
+    background:linear-gradient(180deg, rgb(16 20 28 / .90), rgb(11 14 20 / .90));
+    box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 10px 24px -8px rgb(0 0 0 / .68);
+    display:flex; flex-direction:column; gap:4px; pointer-events:none;
+    font-family:var(--dp-face-read, "Instrument Sans", sans-serif);
+    opacity:0; visibility:hidden;
+    transition:opacity .22s ease, visibility .22s; }
+  .sf-vtape.sf-vtape--on { opacity:1; visibility:visible; }
+  .sf-vtape__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+    flex-wrap:wrap; padding-bottom:5px; border-bottom:1px solid rgb(236 230 216 / .08);
+    font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:12px; font-weight:600; letter-spacing:.05em; }
+  .sf-vtape__state { color:var(--vt-brass); flex:0 0 auto; }
+  .sf-vtape[data-state="engaged"] .sf-vtape__state { color:var(--vt-amber); }
+  .sf-vtape[data-state="braking"] .sf-vtape__state { color:var(--vt-amber); }
+  .sf-vtape--stopping .sf-vtape__arclabel { color:var(--vt-amber); }
+  .sf-vtape[data-state="cooldown"] .sf-vtape__state { color:var(--k-bone-38); }
+  /* The spool note stays inside the instrument's own box: a long break reason wraps to a second
+     line rather than running over the neighbouring cluster readouts. */
+  .sf-vtape__spool { color:var(--k-bone-62); font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:12px;
+    letter-spacing:.015em; word-spacing:.08em; min-width:0; max-width:100%; text-align:right; overflow-wrap:anywhere; }
+  /* --- the tape itself: a linear 0..headroom scale --- */
+  /* margin-top reserves the caret-label lane: CAP / V-MAX sit between the head row and the
+     tape instead of overprinting the state and spool text. */
+  .sf-vtape__track { position:relative; height:3px; border-radius:1.5px; margin-top:20px; overflow:visible; background:rgb(236 230 216 / .20); }
+  /* Surveyor's graticule — the same grid identity the chart uses (D4), not decoration. */
+  .sf-vtape__grat { position:absolute; inset:0;
+    display:none; }
+  .sf-vtape__fill { position:absolute; left:0; top:0; bottom:0; width:100%; border-radius:1.5px;
+    transform:scaleX(0); transform-origin:left center;
+    background:var(--vt-teal);
+    transition:transform .1s linear; }
+  .sf-vtape[data-state="engaged"] .sf-vtape__fill { background:var(--vt-amber); }
+  /* Earned-cap caret: how much of the ceiling the ramp has actually unlocked so far. */
+  .sf-vtape__cap { position:absolute; top:-1px; bottom:-1px; width:2px; left:0; transform:translateX(-1px);
+    background:var(--vt-amber); transition:left .1s linear; }
+  .sf-vtape__caplabel { position:absolute; bottom:calc(100% + 3px); left:50%; transform:translateX(-50%);
+    font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-size:12px; font-weight:500;
+    font-variant-numeric:tabular-nums; letter-spacing:.02em; color:var(--dp-ink-dim, #9ba3b0); white-space:nowrap; }
+  /* The caret labels share one lane above the tape (the track's margin-top reserves it). A CAP
+     mark that would run under the V-MAX label anchors left of its caret; one hugging the tape's
+     left edge anchors right of it instead of sliding off the instrument. */
+  .sf-vtape__cap--label-left .sf-vtape__caplabel { left:auto; right:calc(100% + 4px); transform:none; }
+  .sf-vtape__cap--label-right .sf-vtape__caplabel { left:calc(100% + 4px); transform:none; }
+  /* V-MAX: the per-family ceiling from resolveTravelCeiling(). A LABELLED RULE, never a bare tint. */
+  .sf-vtape__vmax { position:absolute; top:-2px; bottom:-2px; width:0; left:88%;
+    border-left:1px dashed var(--vt-brass); }
+  .sf-vtape__vmaxlabel { position:absolute; bottom:calc(100% + 3px); right:4px; left:auto; text-align:right; white-space:nowrap;
+    font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-size:12px; font-weight:500;
+    font-variant-numeric:tabular-nums; letter-spacing:.02em; color:var(--vt-brass); }
+  /* --- approach row: the stopping arc (W1-9) --- */
+  .sf-vtape__approach { display:none; flex-direction:column; gap:5px; margin-top:4px; }
+  .sf-vtape--approach .sf-vtape__approach { display:flex; }
+  .sf-vtape__arc { position:relative; height:3px; border-radius:1.5px; background:rgb(236 230 216 / .20); }
+  /* Span from the ship to where it would actually come to rest. */
+  .sf-vtape__arcstop { position:absolute; left:0; top:0; bottom:0; width:0; border-radius:1.5px;
+    background:var(--vt-teal); transition:width .1s linear; }
+  /* The arrival ring. When the stop span runs past it, you are going to overshoot — and that is
+     allowed to happen (D9.8): the instrument reports, it never brakes for you. */
+  .sf-vtape__arcring { position:absolute; top:-2px; bottom:-2px; width:0; left:50%;
+    border-left:1px solid var(--vt-amber); transition:left .1s linear; }
+  .sf-vtape__arclabel { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-size:12px;
+    font-variant-numeric:tabular-nums; letter-spacing:.02em; word-spacing:.08em; color:var(--k-bone-62); }
+  .sf-vtape--overshoot .sf-vtape__arcstop { background:var(--k-red); }
+  .sf-vtape--overshoot .sf-vtape__arclabel { color:var(--k-red); }
+  /* --- BRAKE NOW --- */
+  .sf-vtape__brake { display:none; align-items:center; justify-content:center; gap:5px; margin-top:2px;
+    padding:2px 0; font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:12px; font-weight:600; color:var(--vt-amber); }
+  .sf-vtape--brake .sf-vtape__brake { display:flex; animation:sf-vtape-brake 1s steps(2,end) infinite; }
+  .sf-vtape__brakeglyph { font-size:var(--k-fs-data); display:inline-flex; align-items:center; }
+  .sf-vtape__brakeglyph svg { display:block; }
+  @keyframes sf-vtape-brake { 0%,50%{opacity:1;} 51%,100%{opacity:.42;} }
+  /* With ORRERY on, the chassis the tape is built into is visibility:hidden — and --on's
+     visibility:visible re-shows the tape through it, drawing it across the cluster's ordnance
+     crescent (seen live over the RIG/BAY keys). In ORRERY the tape is re-parented to #hud and
+     takes the cleared bottom-centre band below .ml2-meters. */
+  #hud[data-hud="orrery"] > .sf-vtape { position:absolute; left:50%; bottom:20px; margin:0;
+    transform:translateX(-50%); }
+  /* Below the 1280 floor the band between the Cluster's ordnance crescent and the right dock is
+     narrower than the tape. Anchor it to the dock's left edge and scale it to fit that band
+     (--sf-vtape-fit steps are set with --sf-hud-edge-fit in hudStyles). */
+  @media (max-width: 1279px), (max-height: 719px) {
+    #hud[data-hud="orrery"] > .sf-vtape { left:auto; right:calc(var(--sf-dock-w, 236px) + 36px);
+      transform:scale(var(--sf-vtape-fit, .85)); transform-origin:100% 100%; }
+    #hud[data-hud="orrery"] > .sf-vtape :is(.sf-vtape__head, .sf-vtape__spool, .sf-vtape__caplabel,
+      .sf-vtape__vmaxlabel, .sf-vtape__arclabel, .sf-vtape__brake) { font-size:calc(12px / var(--sf-vtape-fit, .85)); }
+    #hud[data-hud="orrery"] > .sf-vtape .sf-vtape__track { margin-top:calc(20px / var(--sf-vtape-fit, .85)); }
+  }
+  /* Phone band: the dock-anchored row collapses onto the ORRERY cluster, so the tape
+     moves into the open lane directly above the cluster (left-anchored like it).
+     The bottom offset tracks the cluster's own scaled height, not a magic band. */
+  @media (max-width: 640px) {
+    #hud[data-hud="orrery"] > .sf-vtape { left:calc(8px + var(--sf-safe-inset-x, 0px)); right:auto;
+      bottom:calc(24px + var(--orr-cluster-h, 232px) + 8px); transform:scale(var(--sf-vtape-fit, .62));
+      transform-origin:0 100%; max-width:calc(100vw - 16px); }
+    #hud[data-hud="orrery"] > .sf-vtape :is(.sf-vtape__head, .sf-vtape__spool, .sf-vtape__caplabel,
+      .sf-vtape__vmaxlabel, .sf-vtape__arclabel, .sf-vtape__brake) { font-size:calc(12px / var(--sf-vtape-fit, .62)); }
+    #hud[data-hud="orrery"] > .sf-vtape .sf-vtape__track { margin-top:calc(20px / var(--sf-vtape-fit, .62)); }
+  }
+  /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
+     just stops blinking — suppressing the animation must never suppress the message. */
+  @media (prefers-reduced-motion: reduce) {
+    .sf-vtape, .sf-vtape__fill, .sf-vtape__cap, .sf-vtape__arcstop, .sf-vtape__arcring { transition:none; }
+    .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
+  }
+  html.sf-reduce-motion .sf-vtape, html.sf-reduce-motion .sf-vtape__fill, html.sf-reduce-motion .sf-vtape__cap,
+  html.sf-reduce-motion .sf-vtape__arcstop, html.sf-reduce-motion .sf-vtape__arcring { transition:none; }
+  html.sf-reduce-motion .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
+  html.sf-reduce-flash .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
+  /* The shared DRIVE gauge, while the burn is the consumer using it (W1-4 one-pool-one-gauge).
+     The numeric readout also gains a ⟫ marker, so this is never colour-only. */
+  .sf-bar--burn .sf-bar__fill { background:var(--k-signal); }
+  /* Forced colors: author colours are discarded, so restate every hairline structurally. */
+  @media (forced-colors: active) {
+    .sf-vtape { border:1px solid CanvasText; background:Canvas; forced-color-adjust:none;
+      color:CanvasText; }
+    .sf-vtape__track, .sf-vtape__arc { border:1px solid CanvasText; background:Canvas; }
+    .sf-vtape__fill, .sf-vtape__arcstop { background:Highlight; }
+    .sf-vtape__cap, .sf-vtape__vmax, .sf-vtape__arcring { border-color:CanvasText; background:CanvasText; }
+    .sf-vtape__vmax { border-left:1px dashed CanvasText; background:none; }
+    .sf-vtape__state, .sf-vtape__caplabel, .sf-vtape__vmaxlabel, .sf-vtape__arclabel, .sf-vtape__brake { color:CanvasText; }
+  }
+  `;
+  document.head.appendChild(s);
+}
+
+// An anchored marker must never precede the hull it marks. state.render.meshes is the renderer's
+// submitted-roots map: a registered root with mesh.visible === false is held back (runway, pending
+// authored decode, publication gap) and a hull type with no root has not been admitted yet. The sim
+// position still projects on-screen in both cases, which is exactly the marker-over-nothing bug.
+// When the meshes map is absent entirely (headless/tests) keep the sim anchor; entities flagged
+// _noMesh never own a hull and keep theirs too. The returned point is the presented pose converted
+// back to world space so the marker tracks what is actually drawn, not the latest tick.
+export function presentedEntityAnchorPos(state, entity, out) {
+  if (!entity) return null;
+  const meshes = state.render && state.render.meshes;
+  if (!meshes || typeof meshes.get !== 'function') return entity.pos || null;
+  const mesh = entity.id != null ? meshes.get(entity.id) : null;
+  if (mesh) {
+    const pos = mesh.position;
+    if (mesh.visible !== true || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const origin = state.world && state.world.frameOrigin;
+    out.x = pos.x + (origin && Number.isFinite(origin.x) ? origin.x : 0);
+    out.y = 0;
+    out.z = pos.z + (origin && Number.isFinite(origin.z) ? origin.z : 0);
+    return out;
+  }
+  return entity._noMesh === true && entity.pos ? entity.pos : null;
+}
+
+export function createHud(ctx, alerts) {
+  const { state, helpers } = ctx;
+  const root = document.getElementById('hud');
+  // The HUD is rebuilt when the UI system is re-initialised (for example after a runtime
+  // recovery). Keep every bus subscription owned by this instance so a detached HUD cannot
+  // continue doing work or retain its old state through the shared bus.
+  const hudUnsubscribers = [];
+  // The HUD frame is the single pre-paint placement owner. Event bursts only mark it dirty.
+  let receiptLanePlacementDirty = true;
+  let receiptIdleSlowTicks = 0;
+  let receiptGeometryReusable = false;
+  let receiptGeometryKeep = false;
+  function invalidateReceiptLane(clearGeometry = true) {
+    receiptLanePlacementDirty = true;
+    if (clearGeometry) {
+      receiptGeometryReusable = false;
+      receiptGeometryKeep = false;
+    }
+    if (!receiptGeometryRects) {
+      // A content change before the first measured flush still asks the next flush to retain the
+      // geometry it measures, so subsequent content changes can reuse it.
+      if (!clearGeometry) receiptGeometryKeep = true;
+      return;
+    }
+    if (!clearGeometry) {
+      // Content-only change (toast/alert/caption text or show/hide): unrelated HUD obstacles did
+      // not move, so keep their measured rects and re-measure only the lane/card/caption through
+      // the style-write eviction. Selector membership can change, so drop the query lists. The
+      // measured map survives the flush so the next content change can reuse it.
+      receiptGeometryReusable = true;
+      receiptGeometryKeep = true;
+      receiptGeometryRects.bm = null;
+      receiptGeometryRects.q = null;
+      receiptGeometryRects.resp = null;
+      return;
+    }
+    // A layout/settings/content invalidation makes every cached rect and selector list stale.
+    // The 10 Hz busy-lane safety tick re-places through `refreshReceiptLanePlacement` instead.
+    receiptGeometryRects.clear();
+    receiptGeometryRects.bm = null;
+    receiptGeometryRects.q = null;
+    receiptGeometryRects.resp = null;
+    receiptGeometryRects.gap = null;
+  }
+  // The busy-lane safety tick may re-place against the last measured geometry. It never wins over a
+  // real invalidation: that frame must re-measure so the placement reflects the current DOM.
+  function refreshReceiptLanePlacement() {
+    if (receiptLanePlacementDirty) return;
+    receiptLanePlacementDirty = true;
+    receiptGeometryReusable = receiptGeometryRects !== null;
+    receiptGeometryKeep = true;
+  }
+  const on = (event, listener, opts = undefined) => {
+    if (!ctx.bus || typeof ctx.bus.on !== 'function') return null;
+    const unsubscribe = ctx.bus.on(event, listener, opts);
+    if (typeof unsubscribe === 'function') hudUnsubscribers.push(unsubscribe);
+    return unsubscribe;
+  };
+  root.innerHTML = '';
+  root.dataset.objectiveHierarchy = 'one-objective-one-action-one-threat';
+  injectTravelTapeStyle();
+
+  // The context rail stays separate from the ORRERY flight instrument.
+  const leftContext = document.createElement('div');
+  leftContext.className = 'sf-leftcontext';
+  // FRONTEND_PROGRAM Wave 1: the contextual column (comms tape, log, objective, first-use card) is
+  // ONE comms strip anchored top-left, and the instrument cluster owns the bottom-left. Stacked
+  // together they made the screen bottom-heavy and pushed the column off the top at 1280x720.
+  // Modules that adopt into the column find it by class, so its parent is free to change.
+  root.appendChild(leftContext);
+
+  // PQ-195.02: the capture-fork instrument is a TRANSIENT contextual entry, not an anchor. It
+  // attaches itself into this existing column only while the SP-07 load is the player's situation
+  // (towing it, or bringing it to the catcher fork) and fully detaches when it is not.
+  const forkInstrument = createForkInstrument();
+  const ionStormHud = mountIonStormHud(root, state);
+  const travelVectorHud = mountTravelVectorHud(root, state, helpers);
+  forkInstrument.mount(leftContext);
+
+  // FB-012 — mount the stunt callout layer from the flight HUD path. Adventure now names its
+  // stunts; the Crucible-only score fields stay gated inside the layer itself. Idle-quiet: the
+  // layer's update returns false and stops listening for frames when nothing is on screen.
+  ensureStuntCallout({ state, bus: ctx.bus, onFlightTextGeometryChange: invalidateTransientOverlayGeometry });
+
+  // Reserve the active Cluster's rendered height for the comms strip. A viewport scale
+  // step can change that height, so both ResizeObserver and resize publish the same value.
+  const publishClusterReserve = () => {
+    const occupant = root.querySelector('.orr-hud-cluster .orr-cluster');
+    if (!occupant) return;
+    const rect = occupant.getBoundingClientRect();
+    const h = Math.max(0, (typeof window !== 'undefined' ? window.innerHeight : 0) - rect.top);
+    root.style.setProperty('--sf-cluster-h', `${Math.ceil(h)}px`);
+  };
+  let clusterSizeObserver = null;
+  let leftContextSizeObserver = null;
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('resize', publishClusterReserve);
+  }
+  root.classList.add('sf-hud--cluster');
+  // Comms is initialized a few lines before createHud() by uiRoot. Adopt the existing feed into the
+  // context rail now that its stable home exists; the module keeps an absolute fallback for boot.
+  const existingComms = document.getElementById('sf-comms');
+  if (existingComms) leftContext.prepend(existingComms);
+  // J07 comms ribbon. The FEED was already adopted into this column; the two floating chrome
+  // buttons were not -- .sf-comm-backlog-btn sat at (20,20) and #sf-contact-hail at (85,20), a
+  // detached pair of boxes in the top-left corner with nothing around them.
+  //
+  // They are adopted into a quiet frequency tape at the head of the contextual column: one row,
+  // a channel label, and the two live nodes re-parented rather than rebuilt. Re-parenting is the
+  // same trick the feed above uses, and it keeps every listener those modules installed.
+  const commsTape = document.createElement('div');
+  commsTape.className = 'sf-commtape';
+  commsTape.innerHTML = '<span class="sf-commtape__band">RADIO</span>'
+    + '<span id="news-ticker" class="sf-commtape__news" hidden></span>'
+    + '<span class="sf-commtape__slots"></span>';
+  const newsTickerHost = commsTape.querySelector('#news-ticker');
+  const commsTapeSlots = commsTape.querySelector('.sf-commtape__slots');
+  // Both modules mount into #ui-root during boot. If either has not arrived yet, adopt it on the
+  // next frame rather than leaving an empty housing behind (SCREENS_A 1.4: contextual surfaces
+  // never leave an empty housing).
+  const adoptCommsChrome = () => {
+    for (const id of ['sf-comm-backlog-btn', 'sf-contact-hail', 'sf-comm-trace-host']) {
+      const node = document.getElementById(id) || document.querySelector('.' + id);
+      if (node && node.parentNode !== commsTapeSlots) commsTapeSlots.appendChild(node);
+    }
+    if (!commsTapeSlots.childElementCount && (!newsTickerHost || newsTickerHost.hidden)) commsTape.setAttribute('hidden', '');
+    else commsTape.removeAttribute('hidden');
+  };
+  adoptCommsChrome();
+  // adoptCommsChrome has already run once, above. The extra frame is a second pass for chrome
+  // that mounts after this HUD does — a convenience, not a requirement. Calling rAF bare made
+  // createHud throw outright anywhere there is no rAF, which took the entire headless contact
+  // roster suite down with `ReferenceError: requestAnimationFrame is not defined` before a
+  // single assertion ran. A nicety must not be able to prevent the HUD from being built.
+  const _commsAdoptFrame = typeof requestAnimationFrame === 'function'
+    ? requestAnimationFrame(adoptCommsChrome)
+    : null;
+  leftContext.prepend(commsTape);
+  // marketNews owns the feed and may have initialized before this HUD rebuilt its tape host.
+  if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('news:render');
+  // The threat ring around the ship: bearing arcs to near hostiles (red is threat-only).
+  const threatRing = document.createElement('div');
+  threatRing.className = 'sf-threat-ring';
+  threatRing.setAttribute('aria-hidden', 'true');
+  threatRing.innerHTML = '<svg viewBox="-60 -60 120 120" focusable="false">'
+    + '<circle class="sf-threat-ring__halo" r="48"></circle>'
+    + '<path class="sf-threat-ring__ticks" d="M0 -51V-45M51 0H45M0 51V45M-51 0H-45"></path>'
+    + '<path class="sf-threat-ring__track" d="' + threatArcPath(Math.PI / 2, 48, 0.7) + '"></path>'
+    + '<path class="sf-threat-ring__tether" d="' + threatArcPath(Math.PI / 2, 48, 0.7) + '" stroke-dasharray="0 200"></path>'
+    + '<path class="sf-threat-ring__arc" d=""></path><path class="sf-threat-ring__arc" d=""></path>'
+    + '<path class="sf-threat-ring__arc" d=""></path></svg>';
+  root.appendChild(threatRing);
+  const threatArcs = threatRing.querySelectorAll('.sf-threat-ring__arc');
+  const tetherArc = threatRing.querySelector('.sf-threat-ring__tether');
+
+  // Weak-point reveals (BP-02): a scan pulse exposes a large hostile's soft spot. We keep this UI-side
+  // (keyed by entity id, expiring) rather than on the sim entity — the target panel reads it to show
+  // "where to hit" for the selected target. Populated by the scanner's flag-gated scan:weakPoint cue.
+  const revealedWeakPoints = new Map();
+  on('scan:weakPoint', (p) => {
+    if (!p || p.entityId == null) return;
+    revealedWeakPoints.set(p.entityId, { label: p.label, hint: p.hint, until: p.until || 0 });
+  });
+
+  // ---- top-left: mission tracker (shows the tracked mission objective + timer) ----
+  const missionTracker = document.createElement('div');
+  missionTracker.className = 'sf-mission-tracker';
+  missionTracker.style.display = 'none';
+  // Distance changes continuously; this is a labelled region, not a live region, so assistive
+  // technology does not announce the objective again on every HUD refresh.
+  missionTracker.setAttribute('role', 'region');
+  missionTracker.setAttribute('aria-label', 'Active objective');
+  missionTracker.innerHTML =
+    '<div class="sf-mt-title mono"></div>' +
+    '<div class="sf-mt-obj mono"></div>' +
+    '<div class="sf-mt-time mono"></div>';
+  // ORRERY: the objective's bearing as a small dial beside its words -- a ring, its quarter ticks,
+  // and the amber needle toward the objective (the skin shows it; the old face never does)
+  const mtDial = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  mtDial.setAttribute('class', 'sf-mt-dial');
+  mtDial.setAttribute('viewBox', '0 0 34 34');
+  mtDial.setAttribute('aria-hidden', 'true');
+  mtDial.style.display = 'none';
+  mtDial.innerHTML = '<circle cx="17" cy="17" r="13" class="sf-mt-dial__ring"/>'
+    + '<path d="M17 2.5 L17 6.5 M31.5 17 L27.5 17 M17 31.5 L17 27.5 M2.5 17 L6.5 17" class="sf-mt-dial__ticks"/>'
+    + '<g class="sf-mt-dial__needle"><path d="M14.4 17 L17 3.8 L19.6 17 Z"/><circle cx="17" cy="17" r="2.8"/></g>';
+  missionTracker.prepend(mtDial);
+  const mtNeedle = mtDial.querySelector('.sf-mt-dial__needle');
+  let mtNeedleDeg = null;
+  leftContext.appendChild(missionTracker);   // relocated into the bottom-left contextual column
+  missionTracker.style.pointerEvents = 'auto';
+  const objectiveHudDrag = createHudDragController({
+    state, bus: ctx.bus, element: missionTracker, key: 'objective', documentRef: document,
+  });
+  const mtTitle = missionTracker.querySelector('.sf-mt-title');
+  const mtObj = missionTracker.querySelector('.sf-mt-obj');
+  const mtTime = missionTracker.querySelector('.sf-mt-time');
+  const mtCompact = document.createElement('div');
+  mtCompact.className = 'sf-mt-compact';
+  const mtAction = document.createElement('div'); mtAction.className = 'sf-mt-compact-action';
+  const mtReadings = document.createElement('div'); mtReadings.className = 'sf-mt-compact-readings';
+  mtCompact.append(mtAction, mtReadings);
+  const mtDetailsButton = document.createElement('button');
+  mtDetailsButton.type = 'button'; mtDetailsButton.className = 'sf-mt-details-button';
+  mtDetailsButton.textContent = 'Details';
+  mtDetailsButton.setAttribute('aria-controls', 'sf-objective-details');
+  mtDetailsButton.setAttribute('aria-expanded', 'false');
+  const mtDetails = document.createElement('section');
+  mtDetails.id = 'sf-objective-details'; mtDetails.className = 'sf-mt-details'; mtDetails.hidden = true;
+  mtDetails.setAttribute('aria-label', 'Objective details');
+  const mtDetailsText = document.createElement('div'); mtDetailsText.className = 'sf-mt-details-text';
+  mtDetailsText.setAttribute('tabindex', '0');
+  const mtDetailsClose = document.createElement('button'); mtDetailsClose.type = 'button';
+  mtDetailsClose.textContent = 'Close'; mtDetailsClose.className = 'sf-mt-details-close';
+  mtDetails.append(mtDetailsClose, mtDetailsText);
+  missionTracker.insertBefore(mtCompact, mtTime);
+  missionTracker.append(mtDetailsButton, mtDetails);
+  const setMissionDetails = (open, returnFocus = false) => {
+    mtDetails.hidden = !open;
+    mtDetailsButton.setAttribute('aria-expanded', String(open));
+    if (open) mtDetailsClose.focus?.();
+    else if (returnFocus) mtDetailsButton.focus?.();
+    flightTextObstaclesStale = true;
+    alertLanePlacementStale = true;
+    invalidateReceiptLane();
+  };
+  // Ctrl-drag belongs to the tracker, not its interactive disclosure or scroll surface.
+  const protectMissionDetailsPointer = (event) => { if (event.ctrlKey) event.stopPropagation(); };
+  mtDetailsButton.addEventListener('pointerdown', protectMissionDetailsPointer);
+  mtDetails.addEventListener('pointerdown', protectMissionDetailsPointer);
+  mtDetailsButton.addEventListener('click', () => setMissionDetails(mtDetails.hidden));
+  mtDetailsClose.addEventListener('click', () => setMissionDetails(false, true));
+  mtDetails.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setMissionDetails(false, true); }
+  });
+  // The secondary tracker line carries tutorial captions; it is a labelled line inside the
+  // tracker's existing region, not a second live region.
+  if (mtTime) mtTime.setAttribute('aria-label', 'Tutorial caption');
+  const objectiveRecall = createObjectiveRecall();
+  let lastFlightObjectiveOwner = null;
+  if (ctx.bus) {
+    // FB-065 — the three condition states the sim already emits, surfaced on the objective
+    // slot this same tracker owns. Progress never voices; the break voices once at mission
+    // priority (announceTermBreak skips the already-voiced 'forfeit' half).
+    on('mission:conditionPending', (p) => noteMissionTermEvent(state, p, 'pending'));
+    on('mission:conditionProgress', (p) => noteMissionTermEvent(state, p, 'progress'));
+    on('mission:conditionSatisfied', (p) => noteMissionTermEvent(state, p, 'satisfied'));
+    on('mission:conditionBroken', (p) => {
+      noteMissionTermEvent(state, p, 'broken');
+      announceTermBreak(ctx.bus, p);
+    });
+    // A settled or removed contract stops speaking — stale words must never outlive the job.
+    on('mission:failed', (p) => {
+      const terms = state.ui && state.ui.missionTerms;
+      if (terms && p && p.missionId != null) delete terms[String(p.missionId)];
+    });
+    on('mission:completed', (p) => {
+      const terms = state.ui && state.ui.missionTerms;
+      if (terms && p && p.missionId != null) delete terms[String(p.missionId)];
+    });
+    on('hud:recallObjective', () => {
+      if (objectiveRecall.dismissed) {
+        const restored = recallObjective(objectiveRecall);
+        if (restored) {
+          setText(mtObj, restored);
+          setDisplay(missionTracker, true);
+        }
+      } else {
+        dismissObjective(objectiveRecall);
+        setDisplay(missionTracker, false);
+      }
+    });
+  }
+
+  // ---- Travel Burn instrument (atlas D5 / W1-6 / W1-9) -----------------------------------------
+  // A CONTEXTUAL instrument, not a new permanent panel. D9.9 forbids permanent panels because the
+  // reported density paradox ("too little useful information, yet crowded") is a progressive-
+  // disclosure failure; an instrument that is entirely absent during ordinary flight and reveals
+  // only while the travel drive is spooling/engaged/cooling — or while the ship is closing on its
+  // own ceiling — serves that reasoning rather than skirting it. It reuses the appear-then-fade
+  // idiom the contextual stat chips above already established, so it inherits an existing visual
+  // vocabulary instead of introducing a competing one, and it fades out COMPLETELY (an instrument
+  // that reveals and then stays is a permanent panel with extra steps).
+  //
+  // NOTE FOR THE RECORD: D5 says to draw V-MAX "on the velocity tape" as though that instrument
+  // already shipped. It does not exist — speed was a bare numeric chip with a hover tip, and the
+  // "prograde tick" is a world-projected vector marker, not a linear scale. The tape is built here.
+  //
+  // Aesthetics are bound by the Surveyor's Table identity: warm black, brass, amber, restrained
+  // teal, technical type. Deliberately NOT built: any screen-edge arc, peripheral vignette or
+  // cockpit framing (rejected first-person motifs — this is a third-person game).
+  const vtape = document.createElement('div');
+  vtape.className = 'sf-vtape';
+  vtape.dataset.state = 'off';
+  // Not a live region: speed changes continuously and would flood a screen reader. The BRAKE NOW
+  // cue below carries its own assertive live region, because that one IS an event worth announcing.
+  vtape.setAttribute('role', 'group');
+  vtape.setAttribute('aria-label', 'Travel drive');
+  vtape.innerHTML =
+    '<div class="sf-vtape__head">' +
+      '<span class="sf-vtape__state mono" data-k="tstate">OFF</span>' +
+      '<span class="sf-vtape__spool" data-k="tspool"></span>' +
+    '</div>' +
+    '<div class="sf-vtape__track">' +
+      '<div class="sf-vtape__grat"></div>' +
+      '<div class="sf-vtape__fill" data-k="tfill"></div>' +
+      '<div class="sf-vtape__cap" data-k="tcap"><span class="sf-vtape__caplabel mono">LIMIT</span></div>' +
+      '<div class="sf-vtape__vmax" data-k="tvmax"><span class="sf-vtape__vmaxlabel mono" data-k="tvmaxtext">TOP SPEED</span></div>' +
+    '</div>' +
+    '<div class="sf-vtape__approach" data-k="tapproach">' +
+      '<div class="sf-vtape__arc"><div class="sf-vtape__arcstop" data-k="tarcstop"></div>' +
+      '<div class="sf-vtape__arcring" data-k="tarcring"></div></div>' +
+      '<div class="sf-vtape__arclabel mono" data-k="tarclabel"></div>' +
+    '</div>' +
+    '<div class="sf-vtape__brake" data-k="tbrake" role="alert" aria-live="assertive">' +
+      // The drawn warn mark (glyphs.js), not the ▲ font character — same channel as the doctrine tells.
+      '<span class="sf-vtape__brakeglyph" aria-hidden="true">' + glyphSvg('warn', 12) + '</span>' +
+      '<span class="mono">BRAKE NOW</span></div>';
+  root.appendChild(vtape);
+
+  // The visible tether ring and HUD state remain shared with the ORRERY Cluster.
+  function updateTetherFeedback(tether, latching, ml) {
+    if (latching && tether) {
+      const status = masslineTetherStatus(tether);
+      setAttr(root, 'data-tether', status.warn ? 'strain' : 'latched');
+      const load = ml && Number.isFinite(ml.load) ? Math.max(0, Math.min(1, ml.load)) : 0;
+      setAttr(tetherArc, 'stroke-dasharray', `${(load * 67).toFixed(1)} 200`);
+      return;
+    }
+    setAttr(tetherArc, 'stroke-dasharray', '0 200');
+    const selected = state.masslineAcquisition && state.masslineAcquisition.selected;
+    setAttr(root, 'data-tether', selected && selected.status === 'ready' ? 'ready' : 'idle');
+  }
+  const vt = {
+    root: vtape,
+    state: vtape.querySelector('[data-k=tstate]'),
+    spool: vtape.querySelector('[data-k=tspool]'),
+    fill: vtape.querySelector('[data-k=tfill]'),
+    cap: vtape.querySelector('[data-k=tcap]'),
+    vmax: vtape.querySelector('[data-k=tvmax]'),
+    vmaxText: vtape.querySelector('[data-k=tvmaxtext]'),
+    approach: vtape.querySelector('[data-k=tapproach]'),
+    arcStop: vtape.querySelector('[data-k=tarcstop]'),
+    arcRing: vtape.querySelector('[data-k=tarcring]'),
+    arcLabel: vtape.querySelector('[data-k=tarclabel]'),
+    brake: vtape.querySelector('[data-k=tbrake]'),
+  };
+  let _vtapeAlpha = 0;      // smooth-damped reveal so it eases in rather than popping
+  let _vtapeBrakeOn = false;
+
+  // ---- bottom-right: target panel + radar ----
+  const rightDock = document.createElement('div');
+  rightDock.className = 'sf-rightdock';
+  rightDock.setAttribute('tabindex', '0');
+  rightDock.setAttribute('role', 'group');
+  rightDock.setAttribute('aria-label', 'Contacts and flight controls');
+  const targetPanel = createTargetPanel(ctx);
+  let lastTargetSurrendered = false;
+  
+  // Overview Strip (§2)
+  const elOverview = document.createElement('div');
+  elOverview.className = 'sf-overview';
+  
+  const radar = createRadar(ctx);
+  mountRadarKit(radar.el);
+  rightDock.append(targetPanel.el, elOverview, radar.el);
+  root.appendChild(rightDock);
+
+  // ORRERY is the sole owner of the bottom-left vitals, speed and ordnance instruments.
+  const orreryCluster = mountOrreryCluster(root, state, { bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null, bus: ctx.bus, helpers });
+  if (orreryCluster && radar && typeof radar.setOrreryFrame === 'function') radar.setOrreryFrame(true);
+  if (orreryCluster) {
+    const clusterEl = orreryCluster.host.querySelector('.orr-cluster');
+    if (clusterEl && typeof ResizeObserver === 'function') {
+      clusterSizeObserver = new ResizeObserver(publishClusterReserve);
+      clusterSizeObserver.observe(clusterEl);
+    }
+    publishClusterReserve();
+  }
+  // The context strip's box feeds the edge-arrow obstacle set (D240): its height follows content
+  // (a tracker appearing, the comms tape refilling), not only window resizes, so the box must
+  // re-measure whenever the strip itself does.
+  if (typeof ResizeObserver === 'function') {
+    leftContextSizeObserver = new ResizeObserver(invalidateAndPlaceHudOverlays);
+    leftContextSizeObserver.observe(leftContext);
+  }
+  // Sector law is created with comms before the HUD. Moving the same live node avoids a second card
+  // competing with toasts in the upper-right corner while preserving all presenter state/listeners.
+  const existingSectorLaw = document.getElementById('sf-sector-law');
+  if (existingSectorLaw && document.documentElement?.dataset?.sfMobile !== '1') rightDock.prepend(existingSectorLaw);
+
+  // Target Arcs Overlay (§3)
+  const targetArcs = document.createElement('div');
+  targetArcs.id = 'sf-target-arcs';
+  targetArcs.className = 'sf-target-arcs';
+  targetArcs.style.display = 'none';
+  targetArcs.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:block; overflow:visible;">
+      <circle class="sf-arc-shield" />
+      <circle class="sf-arc-armor" />
+      <circle class="sf-arc-hull" />
+    </svg>
+  `;
+  root.appendChild(targetArcs);
+  const targetArcsSvg = targetArcs.querySelector('svg');
+  const targetArcShield = targetArcs.querySelector('.sf-arc-shield');
+  const targetArcArmor = targetArcs.querySelector('.sf-arc-armor');
+  const targetArcHull = targetArcs.querySelector('.sf-arc-hull');
+
+  // floating combat text (damage numbers, ore yield, credits, kills)
+  const floatingText = createFloatingText(ctx);
+
+  // directional damage indicators (red arcs at screen edge showing where hits came from)
+  const dmgInd = createDamageIndicators().bind(
+    () => state.entities.get(state.playerId),
+    state.playerId,
+  );
+  root.appendChild(dmgInd.el);
+  on('combat:damage', (p) => dmgInd.onDamage(p), { presentation: true });
+  on('projectile:nearMiss', (p) => dmgInd.onNearMiss(p));
+  on('physics:impact', (p) => {
+    const other = state.entities && state.entities.get
+      ? state.entities.get(p && p.aId === state.playerId ? p.bId : p && p.aId)
+      : null;
+    // The pooled receipt's pos object is refilled per contact — the cue must snapshot,
+    // never retain it.
+    const fallbackPos = p && p.pos ? { x: p.pos.x, z: p.pos.z } : null;
+    const cue = buildReducedMotionContactCue({
+      ...p,
+      otherPos: (other && other.pos) || fallbackPos,
+    }, state.playerId);
+    if (cue) dmgInd.onDamage(cue);
+  }, { presentation: true });
+
+  // Shield blowout visual cue: momentary HUD glitch/flicker when player shields collapse
+  let shieldBlowoutTimer = null;
+  on('shieldDown', (p) => {
+    if (!p || p.combatantId !== state.playerId) return;
+    root.classList.add('sf-hud--blowout');
+    if (shieldBlowoutTimer) clearTimeout(shieldBlowoutTimer);
+    shieldBlowoutTimer = setTimeout(() => {
+      root.classList.remove('sf-hud--blowout');
+      shieldBlowoutTimer = null;
+    }, 450);
+  });
+
+  // ---- objective tracker (relocated to the bottom-left contextual column) + off-screen arrow.
+  // The arrow (below) stays a root-level, world-following overlay; only the objective LIST moves. ----
+  const objWrap = document.createElement('div');
+  objWrap.className = 'sf-objectives';
+  objWrap.style.display = 'none';
+  leftContext.appendChild(objWrap);
+
+  // ---- Phase 4: nav readout (destination / distance / ETA) — relocated from top-center into the
+  // bottom-left contextual column (persistent "where I'm going" state belongs in the left anchor). ----
+  const elNavReadout = document.createElement('div');
+  elNavReadout.className = 'sf-nav-readout';
+  elNavReadout.style.display = 'none';
+  elNavReadout.innerHTML =
+    '<div class="sf-nav-label mono">—</div>' +
+    '<div class="sf-nav-meta"><span class="sf-nav-dist">0 u</span> · ETA <span class="sf-nav-eta">—</span></div>';
+  leftContext.appendChild(elNavReadout);
+  const elNavLabel = elNavReadout.querySelector('.sf-nav-label');
+  const elNavDist = elNavReadout.querySelector('.sf-nav-dist');
+  const elNavEta = elNavReadout.querySelector('.sf-nav-eta');
+  applyDistanceSpeech(elNavDist, '0 u');
+  const elDecision = document.createElement('div');
+  elDecision.className = 'sf-nav-label';
+  elDecision.style.display = 'none';
+  leftContext.appendChild(elDecision);
+  let decisionText = '';
+  function updateAdventureDecisionLine() {
+    const next = state.ui && state.ui.docked ? adventureDecisionHudLine(state) : '';
+    if (next === decisionText) return;
+    decisionText = next;
+    elDecision.style.display = next ? '' : 'none';
+    if (elDecision.textContent !== next) elDecision.textContent = next;
+  }
+
+
+  const arrow = document.createElement('div');
+  arrow.className = 'sf-objarrow';
+  arrow.style.display = 'none';
+  arrow.setAttribute('role', 'img');
+  arrow.setAttribute('aria-label', 'Current objective marker');
+  // One glyph SVG carrying both states of the goal mark (hudStyles picks by class): the edge cue
+  // is the kit's objective chevron (assets/ui/kit/assets/svg/plates/objective-chevron.svg — the
+  // icon family's notched construction, ported verbatim) riding --sf-arrow-angle; the on-screen
+  // mark is the GOAL diamond in the same light. Shape carries the meaning — diamond = here,
+  // chevron = that way — colour only repeats it, so it survives colour-blind play.
+  arrow.innerHTML =
+    '<svg class="sf-objarrow__glyph" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path class="sf-objarrow__mark-bloom" d="M12 3.4 20.6 12 12 20.6 3.4 12Z"/>' +
+      '<path class="sf-objarrow__mark" d="M12 3.4 20.6 12 12 20.6 3.4 12Z"/>' +
+      '<path class="sf-objarrow__chev" d="M9 3.8 17.8 12 9 20.2 5.6 16.8 11 12 5.6 7.2Z"/>' +
+    '</svg>' +
+    '<span class="sf-objarrow__label mono"></span>';
+  root.appendChild(arrow);
+  const arrowLabel = arrow.querySelector('.sf-objarrow__label');
+  // Selected contacts keep their own named bearing when they leave the picture, including
+  // unarmed targets behind the ship. Reuse the shared navigation chevron's material/shape.
+  const targetEdge = document.createElement('div');
+  targetEdge.className = 'sf-objarrow sf-objarrow--edge sf-target-edge';
+  targetEdge.style.display = 'none';
+  targetEdge.setAttribute('role', 'img');
+  targetEdge.innerHTML = arrow.innerHTML;
+  root.appendChild(targetEdge);
+  const targetEdgeLabel = targetEdge.querySelector('.sf-objarrow__label');
+  const targetMarkerRecord = {};
+  const firstUse = document.createElement('div');
+  firstUse.className = 'sf-firstuse';
+  firstUse.hidden = true;
+  firstUse.setAttribute('role', 'status');
+  root.appendChild(firstUse);
+  let firstUseHint = null;
+  const firstUseProjectionWorld = { x: 0, y: 0, z: 0 };
+  const firstUseProjectionScreen = { x: 0, y: 0, onScreen: false };
+  on('hud:firstUse', (payload) => {
+    if (!payload || !payload.text) return;
+    const kind = firstUseAttachKind(payload.verbId);
+    // G13: a HUD string is not a caption on the player's hull. A hint whose only anchor is the
+    // player ("Research unlocked gear.", "Fit the module.") goes to the ordinary receipt line;
+    // hints anchored to a station, rock or latched body still float at that body.
+    if (kind === 'player' && (payload.entityId == null || payload.entityId === state.playerId)) {
+      ctx.bus.emit('toast', { text: payload.text, kind: 'info', ttl: 7 });
+      return;
+    }
+    firstUseHint = {
+      verbId: payload.verbId,
+      text: payload.text,
+      kind,
+      entityId: payload.entityId,
+      until: (state.simTime || 0) + 7,
+    };
+    setText(firstUse, payload.text);
+    setHidden(firstUse, false);
+  });
+  // The ordinary navigation marker paints at the retained overlay cadence for as long as a live
+  // waypoint exists. Keep its projection and presenter records with this HUD instance so the hot
+  // path rewrites scalar fields rather than constructing four (on-screen) or five (edge) records.
+  const objectiveProjectionWorld = { x: 0, y: 0, z: 0 };
+  const objectiveProjectionScreen = { x: 0, y: 0, onScreen: false };
+  const objectiveWaypointRecord = { pos: null };
+  const objectiveTravelRecord = {
+    distanceWu: null,
+    closingSpeed: 0,
+    etaS: null,
+    distanceText: 'ROUTE PENDING',
+    etaText: 'ETA —',
+  };
+  const objectiveEdgeRecord = { x: 0, y: 0, edge: 'top', angleRad: 0 };
+
+  // ---- combat HUD: lock-on ring and target lock diamond ----
+
+  // Lock-on instrument (SVG near reticle). Shows when a homing weapon is acquiring a lock.
+  // ORRERY rebuild: the kit's own lock reticle construction (assets/ui/kit/assets/svg/reticle/
+  // reticle-lock.svg — corner brackets that close on a target round a centre pip) carrying the
+  // kit cooldown-ring progress contract (socket-cooldown-ring.svg: full-circumference dasharray,
+  // dashoffset = C·(1−progress), rotate −90) on a graduated scale ring. All strokes, no boxes;
+  // states ride warm bone → paper readings → the Hand amber (hudStyles owns the state tones).
+  const lockRing = document.createElement('div');
+  lockRing.className = 'sf-lockring';
+  const LOCK_R = 30, LOCK_C = Math.PI * 2 * LOCK_R;
+  // Brackets quote the kit reticle-lock arms, rescaled from its 56 grid to this 72 grid
+  // (inset 10→13, arm 8→11): four L-strokes on one path family, never border divs.
+  lockRing.innerHTML =
+    `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">` +
+    `<circle cx="36" cy="36" r="34" class="sf-lockring__scale"/>` +
+    `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__track"/>` +
+    `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__fill" ` +
+    `stroke-dasharray="${LOCK_C}" stroke-dashoffset="${LOCK_C}" ` +
+    `transform="rotate(-90 36 36)"/>` +
+    `<circle cx="36" cy="36" r="5" class="sf-lockring__pip"/>` +
+    `</svg>` +
+    `<div class="sf-lockring__brackets" aria-hidden="true">` +
+    `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--tl" d="M13 24 V13 H24"/>` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--tr" d="M48 13 H59 V24"/>` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--br" d="M59 48 V59 H48"/>` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--bl" d="M24 59 H13 V48"/>` +
+    `</svg>` +
+    `</div>` +
+    `<div class="sf-lockring__label"></div>`;
+  root.appendChild(lockRing);
+  const lockFill = lockRing.querySelector('.sf-lockring__fill');
+  const lockLabel = lockRing.querySelector('.sf-lockring__label');
+  const lockBrackets = lockRing.querySelector('.sf-lockring__brackets');
+  let _wasLocked = false;   // rising-edge tracker for the lock-acquired audio cue
+  // Clear-on-transition trackers: lock-ring data-stage / latch class are removed by DOM calls
+  // only on the frames where the state actually leaves them, not every idle frame.
+  let _lockStageApplied = false;
+  let _latchApplied = false;
+  lockRing.addEventListener('animationend', () => {
+    lockRing.classList.remove('sf-lockring--latch');
+    // The latch flag tracks both elements; the ring just cleared itself, so the flag now
+    // reflects only the diamond's retained class.
+    _latchApplied = !!(lockDiamond && lockDiamond.classList.contains('sf-lockdiamond--locked'));
+  });
+
+  // G-LOC peripheral vignette (tunnel vision under sustained high-G turns)
+  const glocVignette = document.createElement('div');
+  glocVignette.className = 'sf-gloc-vignette';
+  glocVignette.setAttribute('aria-hidden', 'true');
+  root.appendChild(glocVignette);
+
+  // Split-second electronic disruption scanline static overlay (EMP / shield collapse shock)
+  const glitchOverlay = document.createElement('div');
+  glitchOverlay.className = 'sf-hud-glitch-overlay';
+  glitchOverlay.setAttribute('aria-hidden', 'true');
+  root.appendChild(glitchOverlay);
+
+  // Aerospace Optical G-Lag & G-LOC simulation state
+  const opticalGLag = { x: 0, y: 0, vx: 0, vy: 0, targetX: 0, targetY: 0 };
+  // G-LOC vignette teardown: the fade-out (CSS .12s) must finish before the fullscreen layer
+  // sleeps — the old instant display:none cut the vignette off at the sustained-turn boundary.
+  let _glocHideTimer = null;
+  let _glocFraction = 0;
+  const lastPlayerVel = { x: 0, z: 0 };
+  let lastPlayerShield = -1;
+  let gLocSustainedTime = 0;
+  let disruptionTimeout = null;
+
+  function triggerElectronicDisruption(cause = 'shield') {
+    const isMotionReduced = getMotionReduced() || !!(state.settings && state.settings.video && state.settings.video.motionReduce);
+    const isFlashReduced = getFlashReduced() || !!(state.settings && state.settings.video && state.settings.video.flashReduce);
+    const reduced = isMotionReduced || isFlashReduced;
+    // The restrained audio blip is the cue under Reduce, not a second effect: the audio system
+    // owns mute gating centrally, so emitting here is silent for muted players and identifying
+    // for everyone else. Never gate words behind the flash gate with it.
+    if (ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+    }
+    if (reduced) {
+      // INF-100: the scanline flash stays off, but the hazard must still read as words — EMP has
+      // no banner or caption anywhere else, so a muted Reduce player would otherwise lose the hit
+      // entirely. A short label replaces the flash; full mode is unchanged below.
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        ctx.bus.emit('toast', {
+          text: cause === 'emp' ? 'EMP HIT — systems disrupted' : 'SHIELDS COLLAPSED',
+          kind: 'warn',
+          ttl: 1.8,
+        });
+      }
+      return;
+    }
+    root.classList.remove('sf-hud--glitch');
+    if (glitchOverlay) glitchOverlay.classList.remove('active');
+    void root.offsetWidth; // force animation restart
+    root.classList.add('sf-hud--glitch');
+    if (glitchOverlay) glitchOverlay.classList.add('active');
+    if (disruptionTimeout) clearTimeout(disruptionTimeout);
+    disruptionTimeout = setTimeout(() => {
+      root.classList.remove('sf-hud--glitch');
+      if (glitchOverlay) glitchOverlay.classList.remove('active');
+      disruptionTimeout = null;
+    }, 180);
+  }
+
+  // EMP / Shield collapse listeners on event bus
+  if (ctx.bus && typeof ctx.bus.on === 'function') {
+    on('combat:damage', (p) => {
+      if (!p) return;
+      if (p.targetId === state.playerId && (p.brokeShield || p.shieldBroke || p.damageType === 'emp' || p.emp)) {
+        triggerElectronicDisruption(p.damageType === 'emp' ? 'emp' : 'shield_collapse');
+      }
+    }, { presentation: true });
+    on('combat:emp', (p) => {
+      if (!p || p.targetId === state.playerId) {
+        triggerElectronicDisruption('emp');
+      }
+    });
+  }
+
+  // FR-1: prograde (velocity-vector) tick. An always-on, unlabeled read of where inertia carries
+  // the ship if thrust cuts now — projected through the authoritative worldToScreen, never a magic
+  // screen anchor. It is a gauge (constant size, never animates) that fades out near rest. When it
+  // and the centered aim reticle diverge, you can read "facing vs travel" without instruments.
+  const proTick = document.createElement('div');
+  proTick.className = 'sf-protick';
+  // The wrapper keeps the 8x2 anchor box and its heading rotation (the placement contract is
+  // pinned and quantized); the box itself is no longer the mark — it centres the instrument.
+  proTick.style.cssText =
+    'position:absolute;left:0;top:0;width:8px;height:2px;margin-left:-4px;margin-top:-1px;' +
+    'opacity:0;pointer-events:none;will-change:transform,opacity;transform-origin:center;';
+  // The mark is the kit's twin-tick prograde bracket (assets/ui/kit/assets/svg/reticle/
+  // reticle-pro-tick.svg), ported in HUD voice: a bloom stroke under a core stroke, token
+  // colours (hudStyles). The ticks are laid along the wrapper's X so the gap between them
+  // opens along the velocity vector the wrapper rotates to — the prograde point rides the gap.
+  proTick.innerHTML =
+    '<svg class="sf-protick__svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path class="sf-protick__bloom" d="M3 12h6M15 12h6"/>' +
+      '<path class="sf-protick__tick" d="M3 12h6M15 12h6"/>' +
+    '</svg>';
+  root.appendChild(proTick);
+  let _proAlpha = 0;   // smooth-damped opacity so it eases in/out, never pops
+  // The moving-flight path projects two points every visible frame. Keep both input and output
+  // records per HUD instance so high-refresh play does not manufacture four short-lived objects
+  // per frame; A and B must remain distinct until their screen-space delta is consumed.
+  const progradeWorldA = { x: 0, y: 0, z: 0 };
+  const progradeWorldB = { x: 0, y: 0, z: 0 };
+  const progradeScreenA = { x: 0, y: 0, onScreen: false };
+  const progradeScreenB = { x: 0, y: 0, onScreen: false };
+  const progradeTransformOptions = { offset: 'translate(-4px,-1px)', rotate: 0 };
+  const defaultFuel = { current: 100, max: 100 };
+  const targetPanelUpdateOptions = { slow: false, weakPoint: null };
+
+  // Target lock sigil — follows the locked target's screen position. ORRERY rebuild: the three
+  // shape variants quote the world-space selection sigil's own class emblems
+  // (src/render/selectionSigil.js — hostile hexagram / friendly hexagon rosette / cargo
+  // eight-point star), simplified to DOM scale, so the screen bracket and the world sigil speak
+  // the same geometry. Shape carries the class; colour stays a reinforcement, never the channel.
+  const lockDiamond = document.createElement('div');
+  lockDiamond.className = 'sf-lockdiamond';
+  lockDiamond.innerHTML =
+    '<div class="sf-lockdiamond__inner">' +
+    '<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    // hostile: two interlocking triangles (the hexagram) inside a twelve-point tick burst
+    '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--hostile">' +
+    '<path d="M14 4 5.34 19 22.66 19Z M14 24 22.66 9 5.34 9Z"/>' +
+    '<circle cx="14" cy="14" r="11.5" stroke-dasharray="1.5 1.51"/>' +
+    '</g>' +
+    // friendly: the hexagon rosette — outer hexagon, six spokes, closed counter-phase hub
+    '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--friendly">' +
+    '<path d="M14 4 22.66 9 22.66 19 14 24 5.34 19 5.34 9Z"/>' +
+    '<path d="M14 10.2V5.4 M17.29 12.1 21.45 9.7 M17.29 15.9 21.45 18.3 M14 17.8V22.6 M10.71 15.9 6.55 18.3 M10.71 12.1 6.55 9.7"/>' +
+    '<path d="M19.4 14 16.7 18.68 11.3 18.68 8.6 14 11.3 9.32 16.7 9.32Z"/>' +
+    '</g>' +
+    // cargo: two squares at 45 degrees — the eight-point star — around a smaller square hub
+    '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--cargo">' +
+    '<path d="M14 4 24 14 14 24 4 14Z"/>' +
+    '<path d="M6.93 6.93H21.07V21.07H6.93Z"/>' +
+    '<path d="M14 8.5 19.5 14 14 19.5 8.5 14Z"/>' +
+    '</g>' +
+    '</svg></div>';
+  root.appendChild(lockDiamond);
+  // A selected target is projected five times per visible frame: once for the lock diamond, once
+  // for the arc center, and once for each of the three arc radii. Keep one center pair and one edge
+  // pair per mounted HUD so the renderer can fill them in place without changing call order or
+  // aliasing the center result while the edge projections are sampled.
+  const targetProjectionWorld = { x: 0, y: 0, z: 0 };
+  const targetProjectionScreen = { x: 0, y: 0, onScreen: false };
+  const targetRadiusWorld = { x: 0, y: 0, z: 0 };
+  const targetRadiusScreen = { x: 0, y: 0, onScreen: false };
+
+  function projectTargetCenter(pos) {
+    targetProjectionWorld.x = pos.x;
+    targetProjectionWorld.y = 0;
+    targetProjectionWorld.z = pos.z;
+    return helpers.worldToScreen(targetProjectionWorld, targetProjectionScreen);
+  }
+
+  function targetPixelRadius(pos, worldRadius, center) {
+    targetRadiusWorld.x = pos.x + worldRadius;
+    targetRadiusWorld.y = 0;
+    targetRadiusWorld.z = pos.z;
+    const edge = helpers.worldToScreen(targetRadiusWorld, targetRadiusScreen);
+    if (!edge.onScreen) return worldRadius * 3;
+    return Math.max(1, Math.abs(edge.x - center.x));
+  }
+
+  const presentedAnchorWorld = { x: 0, y: 0, z: 0 };
+  function presentedEntityAnchor(entity) {
+    return presentedEntityAnchorPos(state, entity, presentedAnchorWorld);
+  }
+
+  // Gravity Mark is a simulation state, not target selection. A fixed DOM pool follows every live
+  // player-authored mark (bounded to six) so retargeting cannot make the state disappear or jump.
+  const gravityMarkOverlays = [];
+  for (let i = 0; i < MAX_GRAVITY_MARK_OVERLAYS; i++) {
+    const marker = document.createElement('div');
+    marker.className = 'sf-gravity-mark';
+    marker.setAttribute('role', 'img');
+    marker.setAttribute('aria-label', 'Gravity-marked target');
+    marker.innerHTML = '<div class="sf-gravity-mark__ring" aria-hidden="true"></div>'
+      + '<div class="sf-gravity-mark__core" aria-hidden="true"></div>'
+      + '<div class="sf-gravity-mark__label mono">GRAVITY MARK</div>';
+    root.appendChild(marker);
+    gravityMarkOverlays.push(marker);
+  }
+  const gravityMarkTargets = [];
+  const momentumSinkTargets = [];
+  let massCouplingScanTick = -Infinity;
+  // Shared per-frame projection scratch for the mass-coupling overlay pools. Sequential use only.
+  const overlayProjectionWorld = { x: 0, y: 0, z: 0 };
+  const overlayProjectionScreen = { x: 0, y: 0, onScreen: false };
+
+  function scanMassCouplingOverlays(player) {
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
+    if (player && (tick < massCouplingScanTick || tick - massCouplingScanTick >= 6)) {
+      fillActiveMassCouplingTargets(
+        state,
+        player.id,
+        gravityMarkTargets,
+        momentumSinkTargets,
+        gravityMarkOverlays.length,
+        MAX_MOMENTUM_SINK_OVERLAYS,
+      );
+      massCouplingScanTick = tick;
+    } else if (!player) {
+      gravityMarkTargets.length = 0;
+      momentumSinkTargets.length = 0;
+      massCouplingScanTick = -Infinity;
+    }
+  }
+
+  function updateGravityMarkOverlays(player) {
+    scanMassCouplingOverlays(player);
+    for (let i = 0; i < gravityMarkOverlays.length; i++) {
+      const marker = gravityMarkOverlays[i];
+      const entity = gravityMarkTargets[i];
+      const anchor = entity && entity.alive !== false ? presentedEntityAnchor(entity) : null;
+      if (!anchor || !helpers.worldToScreen) {
+        setClass(marker, 'visible', markStillLive(marker));
+        continue;
+      }
+      overlayProjectionWorld.x = anchor.x;
+      overlayProjectionWorld.z = anchor.z;
+      const projected = helpers.worldToScreen(overlayProjectionWorld, overlayProjectionScreen);
+      if (!projected.onScreen) {
+        setClass(marker, 'visible', markStillLive(marker));
+        continue;
+      }
+      stampMarkLive(marker);
+      setClass(marker, 'visible', true);
+      setHudScreenTransform(marker, projected.x, projected.y);
+    }
+  }
+
+  // Momentum Sink advertises its explicit reference frame and remaining window. Its fixed pool
+  // shares Gravity Mark's retained 10 Hz collection pass, avoiding a second entity traversal.
+  const momentumSinkOverlays = [];
+  for (let i = 0; i < MAX_MOMENTUM_SINK_OVERLAYS; i++) {
+    const marker = document.createElement('div');
+    marker.className = 'sf-momentum-sink';
+    marker.setAttribute('role', 'img');
+    marker.innerHTML = '<div class="sf-momentum-sink__bracket" aria-hidden="true"></div>'
+      + '<div class="sf-momentum-sink__axis" aria-hidden="true"></div>'
+      + '<div class="sf-momentum-sink__label mono">MOMENTUM SINK · '
+      + '<span class="sf-momentum-sink__src">YOUR FRAME</span> · '
+      + '<span class="sf-momentum-sink__t">0s</span></div>';
+    root.appendChild(marker);
+    momentumSinkOverlays.push({ marker, source: marker.querySelector('.sf-momentum-sink__src'),
+      remaining: marker.querySelector('.sf-momentum-sink__t'), seconds: -1,
+      sourceText: null, hostile: null, aria: null });
+  }
+
+  function updateMomentumSinkOverlays(player) {
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
+    scanMassCouplingOverlays(player);
+    for (let i = 0; i < momentumSinkOverlays.length; i++) {
+      const overlay = momentumSinkOverlays[i];
+      const entity = momentumSinkTargets[i];
+      const anchor = entity && entity.alive !== false ? presentedEntityAnchor(entity) : null;
+      if (!anchor || !helpers.worldToScreen) {
+        setClass(overlay.marker, 'visible', markStillLive(overlay.marker));
+        continue;
+      }
+      overlayProjectionWorld.x = anchor.x;
+      overlayProjectionWorld.z = anchor.z;
+      const projected = helpers.worldToScreen(overlayProjectionWorld, overlayProjectionScreen);
+      if (!projected.onScreen) {
+        setClass(overlay.marker, 'visible', markStillLive(overlay.marker));
+        continue;
+      }
+      const runtime = state.combat && state.combat.entities && state.combat.entities[String(entity.id)];
+      const active = runtime && runtime.statuses && runtime.statuses[MOMENTUM_SINK_STATUS_ID];
+      const seconds = active ? Math.max(0, Math.ceil((active.expiresTick - tick) / 60)) : 0;
+      // A hostile hauler (the Kraken's wake trawl) writes its own id onto the pilot's frame —
+      // the marker names it and wears the hostile slot instead of claiming YOUR FRAME.
+      const attribution = momentumSinkAttribution(state, active, player.id);
+      if (overlay.sourceText !== attribution.label) {
+        overlay.sourceText = attribution.label;
+        setText(overlay.source, attribution.label);
+      }
+      if (overlay.hostile !== attribution.hostile) {
+        overlay.hostile = attribution.hostile;
+        if (attribution.hostile) overlay.marker.dataset.relation = 'hostile';
+        else overlay.marker.removeAttribute('data-relation');
+      }
+      const aria = attribution.hostile
+        ? `Momentum Sink inbound${attribution.label === 'INBOUND' ? ' from a hostile frame' : ` from ${attribution.label}`}, ${seconds} seconds remaining`
+        : `Momentum Sink target, bound to your velocity frame, ${seconds} seconds remaining`;
+      if (overlay.seconds !== seconds || overlay.aria !== aria) {
+        overlay.seconds = seconds;
+        overlay.aria = aria;
+        setText(overlay.remaining, `${seconds}s`);
+        overlay.marker.setAttribute('aria-label', aria);
+      }
+      stampMarkLive(overlay.marker);
+      setClass(overlay.marker, 'visible', true);
+      setHudScreenTransform(overlay.marker, projected.x, projected.y);
+    }
+  }
+
+  // Lead pip (BP-02) — world-space "aim here" marker at the ballistic lead solution for the current
+  // target. Player-only HUD; solved via the same lead model the guns use (src/ai/gunnery.js).
+  const leadPip = document.createElement('div');
+  leadPip.className = 'sf-leadpip';
+  leadPip.innerHTML =
+    `<svg class="sf-leadpip__svg" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">` +
+      `<circle class="sf-leadpip__full" cx="11" cy="11" r="${LEAD_PIP_RADIUS}"/>` +
+      `<circle class="sf-leadpip__arc" cx="11" cy="11" r="${LEAD_PIP_RADIUS}" ` +
+        `stroke-dasharray="${LEAD_PIP_ARC_LENGTH.toFixed(2)} ${LEAD_PIP_CIRCUMFERENCE.toFixed(2)}"/>` +
+      `<line class="sf-leadpip__tick" x1="11" y1="2.2" x2="11" y2="5.4"/>` +
+      `<line class="sf-leadpip__tick" x1="2.2" y1="11" x2="5.4" y2="11"/>` +
+      // Packet 02: drawn only while the shot line is BLOCKED (shape, not colour: a struck-through pip)
+      `<line class="sf-leadpip__deny" x1="3.6" y1="18.4" x2="18.4" y2="3.6"/>` +
+    `</svg>`;
+  root.appendChild(leadPip);
+  const leadPipArc = leadPip.querySelector('.sf-leadpip__arc');
+  // Packet 02 target truth. ONE projection (src/combat/targetTruth.js) says what is selected and
+  // what the guns will actually address; the bracket, the pip and this tag all read it. When the
+  // Massline owns the guns the effective hull can differ from the selection, and a confident
+  // bracket or pip on the selected hull would lie — so that hull wears a small LINE TARGET tag
+  // (shape + words, never colour alone) and the lead pip rides it with the tether-constrained solve.
+  const targetTruth = createTargetTruth();
+  const lineTargetTag = document.createElement('div');
+  lineTargetTag.className = 'sf-aimtag';
+  lineTargetTag.setAttribute('aria-hidden', 'true');
+  lineTargetTag.innerHTML =
+    '<svg class="sf-aimtag__mark" viewBox="0 0 16 10" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<path d="M0 5H9.5"/><path d="M9.5 5 12.5 2 15.5 5 12.5 8Z"/></svg>' +
+    '<span class="sf-aimtag__text">LINE TARGET</span>';
+  root.appendChild(lineTargetTag);
+  const lineTargetText = lineTargetTag.querySelector('.sf-aimtag__text');
+  let gunLineBlocked = false; // refreshed on the overlay cadence (a line-of-sight query per 30 Hz tick)
+  // Minimal contact marks (packet 02): a living contact whose hull is too small on screen to read as
+  // a ship by silhouette gets one restrained mark in the radar's own IFF shapes — triangle
+  // (hostile), diamond (friendly), square (neutral worker); dashed when it is down, a filled core
+  // when it has the player in its sights. Shape carries relation, colour only reinforces; debris
+  // and the selected hull never get one. A fixed pool of the nearest few; static (no animation),
+  // so reduced motion needs no variant.
+  const CONTACT_MARK_POOL = 8;
+  // One path per mark, its geometry swapped by shape — plus a second dark-ink pass underneath
+  // (the decal the lit stroke prints on; see .sf-cmark__back in hudStyles). 4 DOM nodes a mark,
+  // not 6: the flight HUD is already over its DOM grammar budget, so the pool stays small.
+  const CONTACT_MARK_PATH = {
+    triangle: 'M7 2.6 11.8 11 2.2 11Z',
+    square: 'M3 3H11V11H3Z',
+    diamond: 'M7 1.8 12.2 7 7 12.2 1.8 7Z',
+  };
+  const CONTACT_MARK_RANGE_SQ = 900 * 900;
+  const contactMarkEls = [];
+  for (let i = 0; i < CONTACT_MARK_POOL; i++) {
+    const el = document.createElement('div');
+    el.className = 'sf-cmark';
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML =
+      '<svg viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path class="sf-cmark__back" d="M7 2.6 11.8 11 2.2 11Z"/>' +
+      '<path class="sf-cmark__shape" d="M7 2.6 11.8 11 2.2 11Z"/>' +
+      '<circle class="sf-cmark__core" cx="7" cy="7" r="1.5"/></svg>';
+    el._sfShapePath = el.querySelector('.sf-cmark__shape');
+    el._sfBackPath = el.querySelector('.sf-cmark__back');
+    root.appendChild(el);
+    contactMarkEls.push(el);
+  }
+  const contactMarkNear = Array.from({ length: CONTACT_MARK_POOL }, () => ({ e: null, d2: 0 }));
+  const contactMarkClass = {};
+  const contactMarkWorld = { x: 0, y: 0, z: 0 };
+  const contactMarkScreen = { x: 0, y: 0, onScreen: false };
+  const contactMarkEdgeWorld = { x: 0, y: 0, z: 0 };
+  const contactMarkEdgeScreen = { x: 0, y: 0, onScreen: false };
+  // The pip's solver: the line's own constrained solve for the hull on the line, the free-flight
+  // lead for everything else. Created once; no per-frame allocation.
+  // The line's solve uses the speed the FIRE PATH uses for it (targetTruth.lineLeadSolution), not
+  // the pip's gun-only speed: in a mixed battery the two differ, and the pip must describe the
+  // angle the guns actually take.
+  const truthLeadSolution = (shooter, target, speed) => (
+    targetTruth.tetherTargetId != null && target && target.id === targetTruth.tetherTargetId
+      ? lineLeadSolution(state, shooter, target)
+      : leadSolution(shooter, target, speed));
+  // Shared hidden verdict: computeLeadPipOverlay is only called with a live target; the
+  // no-target path below runs every frame and never mutates the verdict (visible/x/y reads).
+  const leadPipHidden = Object.freeze({ visible: false });
+  const threatHalo = createThreatHalo(root, ctx.bus);
+
+  // ---- death / respawn feedback banner ----
+  injectDeathStyle();
+  const deathBanner = document.createElement('div');
+  deathBanner.className = 'sf-death';
+  deathBanner.hidden = true;
+  deathBanner.setAttribute('aria-hidden', 'true');
+  deathBanner.setAttribute('role', 'alert');
+  deathBanner.innerHTML = '<div class="sf-death__big">SHIP DESTROYED</div><div class="sf-death__sub">Emergency recovery online…</div>';
+  root.appendChild(deathBanner);
+  let deathHideTimer = 0;
+  on('player:death', () => {
+    clearTimeout(deathHideTimer);
+    deathBanner.hidden = false;
+    deathBanner.removeAttribute('aria-hidden');
+    deathBanner.classList.remove('show'); void deathBanner.offsetWidth; // restart animation
+    deathBanner.classList.add('show');
+    document.body.classList.add('sf-deathflash');
+    setTimeout(() => document.body.classList.remove('sf-deathflash'), 700);
+    deathHideTimer = setTimeout(() => {
+      deathBanner.classList.remove('show');
+      deathBanner.hidden = true;
+      deathBanner.setAttribute('aria-hidden', 'true');
+    }, 2500);
+  });
+  on('player:respawn', (payload) => {
+    ctx.bus.emit('toast', {
+      text: respawnToastText(payload || {}),
+      kind: payload && payload.cargoLost ? 'warn' : 'good',
+      ttl: 5,
+    });
+  });
+
+  // ---- presentation captions (accessibility: subtitles for audio/gameplay cues) ----
+  // presentationAdapters emits presentation:caption { text, assertive, shape, ... } for important
+  // cues, but nothing subscribed — the events were emitted into the void. This mounts a visible
+  // caption box (bottom-center, like subtitles) + an aria-live region so screen readers announce
+  // the same text. The hook already carries text + an assertive flag for high-priority cues, so
+  // wiring it closes the audio-caption accessibility gap for free.
+  if (!document.getElementById('sf-caption-style')) {
+    const cs = document.createElement('style');
+    cs.id = 'sf-caption-style';
+    cs.textContent = `
+    .sf-caption { position:absolute; left:50%; bottom:14%; transform:translate(-50%, 8px);
+      max-width:min(80vw, 640px); padding:0;
+      color:var(--k-text-live); font-family:var(--k-text); font-size:var(--k-fs-body); line-height:1.35; text-align:center;
+      pointer-events:none; opacity:0; transition:opacity .18s ease, transform .18s ease;
+      z-index:40; }
+    .sf-caption.show { opacity:1; transform:translate(-50%, 0); }
+    .sf-caption.assertive { color:var(--k-signal); }
+    @media (prefers-reduced-motion: reduce) { .sf-caption { transition:opacity .18s ease; transform:translate(-50%,0); } }
+    `;
+    document.head.appendChild(cs);
+  }
+  const caption = document.createElement('div');
+  caption.className = 'sf-caption';
+  caption.hidden = true;
+  caption.setAttribute('aria-hidden', 'true');
+  root.appendChild(caption);
+  // Two dedicated live regions so we never mutate aria-live on a single element.
+  const livePolite = document.createElement('div');
+  livePolite.className = 'sr-only';
+  livePolite.setAttribute('aria-live', 'polite');
+  livePolite.setAttribute('role', 'status');
+  livePolite.setAttribute('aria-atomic', 'true');
+  root.appendChild(livePolite);
+  const liveAssertive = document.createElement('div');
+  liveAssertive.className = 'sr-only';
+  liveAssertive.setAttribute('aria-live', 'assertive');
+  liveAssertive.setAttribute('role', 'alert');
+  liveAssertive.setAttribute('aria-atomic', 'true');
+  root.appendChild(liveAssertive);
+  let captionHideTimer = 0;
+  let captionFadeTimer = 0;
+  // Restarting the fade-in needs a style flush between remove('show') and add('show'), and reading
+  // offsetWidth forces a synchronous layout of the whole HUD. A burst of captions in one frame (game
+  // start posts dozens) paid that flush every time - ~1 s of a 2.5 s loading freeze. The first caption of
+  // a frame restarts the fade; later ones in the same frame only swap the text (the fade is already running).
+  let captionFlushedThisFrame = false;
+  const releaseCaptionFlush = () => { captionFlushedThisFrame = false; };
+  on('presentation:caption', (p) => {
+    if (!p || !p.text) return;
+    clearTimeout(captionHideTimer);
+    clearTimeout(captionFadeTimer);
+    externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
+    // Route to the appropriate live region so screen readers get the right politeness without
+    // mutating aria-live on a single element (which confuses some ATs).
+    const live = p.assertive ? liveAssertive : livePolite;
+    live.textContent = '';
+    live.textContent = p.text;
+    // Opening one-instruction rule (hudAttention): physical events are not sentences — while the
+    // objective owns the first two minutes the visible caption retires. The live-region line
+    // above still lands for assistive tech, which is not on screen.
+    if (openingInstructionSolo(state) || (p.physical === true && p.showVisible === false)) {
+      caption.classList.remove('show');
+      caption.hidden = true;
+      flightTextObstaclesStale = true;
+      invalidateReceiptLane(false);
+      return;
+    }
+    caption.textContent = p.text;
+    caption.hidden = false;
+    caption.classList.toggle('assertive', !!p.assertive);
+    caption.classList.remove('show');
+    if (!captionFlushedThisFrame) {
+      void caption.offsetWidth; // restart fade-in (one forced layout per frame at most)
+      captionFlushedThisFrame = true;
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(releaseCaptionFlush);
+      else setTimeout(releaseCaptionFlush, 16);
+    }
+    caption.classList.add('show');
+    invalidateReceiptLane(false);
+    // A voice body carries its real duration — the caption outlives a long slow-register bark
+    // instead of dying mid-word (assertive/polite defaults stand for non-voice captions).
+    const readableTtl = Math.max(2400, Math.min(12000, Math.ceil((caption.scrollHeight || 0) / 19) * 900));
+    const ttl = Number.isFinite(p.durationMs) && p.durationMs > 0
+      ? Math.max(2400, p.durationMs)
+      : Math.max(p.assertive ? 3200 : 2400, readableTtl);
+    captionHideTimer = setTimeout(() => {
+      caption.classList.remove('show');
+      captionFadeTimer = setTimeout(() => {
+        caption.hidden = true;
+          externalCaptionsStale = true;
+          flightTextObstaclesStale = true;
+          invalidateReceiptLane(false);
+      }, 220); // let the fade-out finish before hiding
+    }, ttl);
+  });
+
+  // ---- M1 doctrine player-tells (FLYBY / TETHER / CHARGE) + truthful tether prompt ownership ----
+  // Max three pooled tell chips. Enemy-linked when on-screen; truthful off-screen edge chip with
+  // direction (text chip — not a visor/screen-edge arc). Listens to live ai:telegraph from
+  // tacticalAI combatDoctrine (engine_flare / attach_spool / weapon_charge).
+  if (!document.getElementById('sf-tell-style')) {
+    const ts = document.createElement('style');
+    ts.id = 'sf-tell-style';
+    ts.textContent = `
+    .sf-tells { position:absolute; inset:0; z-index:36; pointer-events:none; overflow:hidden; }
+    .sf-tell-link { position:absolute; left:0; top:0; height:1px; background:var(--k-red);
+      opacity:.7; transform-origin:0 50%; pointer-events:none; }
+    .sf-tell {
+      position:absolute; left:0; top:0; display:none; align-items:center; gap:6px;
+      max-width:min(42vw, 280px); padding:0;
+      color:var(--k-text-live); font-family:var(--k-text);
+      font-size:var(--k-fs-data); line-height:1.2; white-space:nowrap;
+      will-change:transform, opacity; opacity:0;
+    }
+    .sf-tell.is-on { display:inline-flex; opacity:1; }
+    .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; display:inline-flex; align-items:center; }
+    .sf-tell__glyph { display:block; }
+    .sf-tell__kind { font-weight:700; font-size:var(--k-fs-data); color:var(--k-red); }
+    .sf-tell--TETHER .sf-tell__kind { color:var(--k-signal); }
+    .sf-tell--LAUNCH .sf-tell__kind { color:var(--k-signal); }
+    .sf-tell__hint { color:var(--k-bone-62); font-size:var(--k-fs-data);
+      overflow:hidden; text-overflow:ellipsis; }
+    .sf-tell__dir { color:var(--k-bone-62); font-size:var(--k-fs-data); margin-left:2px; flex:0 0 auto; }
+    .sf-tell.is-offscreen .sf-tell__dir { display:inline; }
+    .sf-tell:not(.is-offscreen) .sf-tell__dir { display:none; }
+    .sf-tell.is-pulse { animation:sf-tell-pulse .45s ease-out 1; }
+    @keyframes sf-tell-pulse {
+      0% { filter:brightness(1.35); }
+      100% { filter:brightness(1); }
+    }
+    html.sf-reduce-motion .sf-tell.is-pulse,
+    html.sf-reduce-flash .sf-tell.is-pulse { animation:none !important; }
+    @media (prefers-reduced-motion: reduce) {
+      .sf-tell.is-pulse { animation:none !important; }
+    }
+    `;
+    document.head.appendChild(ts);
+  }
+  const tellRoot = document.createElement('div');
+  tellRoot.className = 'sf-tells';
+  // Visual chips are decorative for AT; a single shared assertive region announces once.
+  tellRoot.setAttribute('aria-hidden', 'true');
+  root.appendChild(tellRoot);
+  // Reuse the existing assertive live region when present; otherwise a dedicated tell announcer.
+  const tellLiveAssertive = liveAssertive || (() => {
+    const el = document.createElement('div');
+    el.className = 'sr-only';
+    el.setAttribute('aria-live', 'assertive');
+    el.setAttribute('role', 'alert');
+    el.setAttribute('aria-atomic', 'true');
+    root.appendChild(el);
+    return el;
+  })();
+  const tellSlots = [];
+  for (let i = 0; i < TELL_POOL_SIZE; i++) {
+    const linkEl = document.createElement('div');
+    linkEl.className = 'sf-tell-link';
+    linkEl.hidden = true;
+    tellRoot.appendChild(linkEl);
+    const el = document.createElement('div');
+    el.className = 'sf-tell';
+    // Non-live visual chip — no per-chip assertive region (avoids triple SR double-announce).
+    el.setAttribute('aria-hidden', 'true');
+    el.hidden = true;
+    el.innerHTML =
+      '<span class="sf-tell__icon" aria-hidden="true"></span>' +
+      '<span class="sf-tell__kind"></span>' +
+      '<span class="sf-tell__hint"></span>' +
+      '<span class="sf-tell__dir" aria-hidden="true">▸</span>';
+    tellRoot.appendChild(el);
+    tellSlots.push({
+      el, linkEl, layoutOffset: null, geometry: { width: TELL_VISUAL_WIDTH, height: TELL_VISUAL_HEIGHT },
+      iconEl: el.querySelector('.sf-tell__icon'),
+      kindEl: el.querySelector('.sf-tell__kind'),
+      hintEl: el.querySelector('.sf-tell__hint'),
+      dirEl: el.querySelector('.sf-tell__dir'),
+      entityId: null,
+      tellId: null,
+      startedTick: -1,
+      expiresAtTick: -1,
+      age: Infinity,
+      announced: '',
+    });
+  }
+  const tellGeometryObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => {
+    for (const entry of entries) {
+      const slot = tellSlots.find(item => item.el === entry.target);
+      const rect = entry.contentRect;
+      if (slot && rect?.width > 0 && rect?.height > 0) {
+        slot.geometry = { width: rect.width + 8, height: rect.height + 8 };
+      }
+    }
+  }) : null;
+  for (const slot of tellSlots) tellGeometryObserver?.observe(slot.el);
+  hudUnsubscribers.push(() => tellGeometryObserver?.disconnect());
+  // Per-frame doctrine-tell projection scratch + shared centered-transform options (never mutated).
+  const tellProjectionWorld = { x: 0, y: 0, z: 0 };
+  const tellProjectionScreen = { x: 0, y: 0, onScreen: false };
+  const tellTransformCentered = Object.freeze({ center: true });
+
+  function retireTell(slot) {
+    if (!slot || slot.age >= Infinity) return;
+    slot.entityId = null;
+    slot.tellId = null;
+    slot.startedTick = -1;
+    slot.expiresAtTick = -1;
+    slot.age = Infinity;
+    slot.announced = '';
+    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse',
+      'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE', 'sf-tell--LAUNCH', 'sf-tell--INCOMING');
+    slot.el.hidden = true;
+    slot.linkEl.hidden = true;
+    slot.layoutOffset = null;
+    slot.iconGlyph = null;
+    slot.iconEl.innerHTML = '';
+    setText(slot.iconEl, '');
+    setText(slot.kindEl, '');
+    setText(slot.hintEl, '');
+  }
+
+  function acquireTellSlot(entityId) {
+    let free = null;
+    let oldest = tellSlots[0];
+    for (const slot of tellSlots) {
+      if (slot.entityId === entityId && slot.age < Infinity) return slot;
+      if (slot.age >= Infinity && !free) free = slot;
+      if (slot.age > oldest.age) oldest = slot;
+    }
+    return free || oldest;
+  }
+
+  function pushDoctrineTell(payload) {
+    const tellId = doctrineTellKind(payload);
+    if (!tellId) return;
+    const entityId = payload.entityId;
+    if (entityId == null) return;
+    // Only surface tells aimed at the player (or legacy emissions with no target field).
+    if (payload.targetId != null && payload.targetId !== state.playerId) return;
+    const tick = Number.isInteger(payload.tick) ? payload.tick
+      : (Number.isInteger(state.tick) ? state.tick : 0);
+    // Floor to ≥30 sim ticks so HUD never under-telegraphs the sim hold-fire window.
+    const durationTicks = Math.max(30, Math.floor(Number(payload.durationTicks) || DEFAULT_TELEGRAPH_TICKS));
+    const slot = acquireTellSlot(entityId);
+    const wasSame = slot.entityId === entityId && slot.tellId === tellId && slot.age < Infinity;
+    if (!wasSame) slot.layoutOffset = null;
+    slot.entityId = entityId;
+    slot.tellId = tellId;
+    slot.startedTick = tick;
+    slot.expiresAtTick = tick + durationTicks;
+    slot.age = 0;
+    const kindLabel = tellId;
+    const hint = DOCTRINE_TELL_HINT[tellId] || '';
+    const icon = DOCTRINE_TELL_ICON[tellId] || '⚠';
+    slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE',
+      'sf-tell--LAUNCH', 'sf-tell--INCOMING');
+    slot.el.classList.add(`sf-tell--${tellId}`);
+    // The drawn mark renders as an element (innerHTML with internally-authored markup from
+    // glyphs.js); the text icon stays a textContent write. Labels below remain text either way.
+    const glyphName = tellGlyphName(tellId);
+    if (glyphName) {
+      if (slot.iconGlyph !== glyphName) {
+        slot.iconGlyph = glyphName;
+        slot.iconEl.innerHTML = glyphSvg(glyphName, 12, 'sf-tell__glyph');
+      }
+    } else {
+      slot.iconGlyph = null;
+      setText(slot.iconEl, icon);
+    }
+    setText(slot.kindEl, kindLabel);
+    setText(slot.hintEl, hint);
+    slot.el.hidden = false;
+    slot.el.classList.add('is-on');
+    // A new kind changes its text width. Measure only on the tell event; the
+    // observer maintains this cache on later responsive/font-size changes.
+    if (!wasSame) {
+      const tellBox = slot.el.getBoundingClientRect?.();
+      if (tellBox?.width > 0 && tellBox?.height > 0) slot.geometry = { width: tellBox.width + 8, height: tellBox.height + 8 };
+    }
+    // Visual chips are non-live (aria-hidden); one shared assertive region announces once.
+    const announce = `${kindLabel}. ${hint}`.trim();
+    if (announce !== slot.announced) {
+      slot.announced = announce;
+      tellLiveAssertive.textContent = '';
+      tellLiveAssertive.textContent = announce;
+    }
+    // Pulse only on fresh tell; honor reduce-motion / reduce-flash (class + runtime flags).
+    const allowPulse = !getMotionReduced() && !getFlashReduced()
+      && !(typeof document !== 'undefined' && document.documentElement
+        && (document.documentElement.classList.contains('sf-reduce-motion')
+          || document.documentElement.classList.contains('sf-reduce-flash')));
+    if (!wasSame && allowPulse) {
+      slot.el.classList.remove('is-pulse');
+      void slot.el.offsetWidth;
+      slot.el.classList.add('is-pulse');
+    } else {
+      slot.el.classList.remove('is-pulse');
+    }
+  }
+
+  on('ai:telegraph', (p) => pushDoctrineTell(p || {}));
+
+  function updateDoctrineTells(frameDt) {
+    const w2s = helpers && helpers.worldToScreen;
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
+    const w = (typeof window !== 'undefined' && window.innerWidth) || 1280;
+    const h = (typeof window !== 'undefined' && window.innerHeight) || 720;
+    const placed = [];
+    if (tellSlots.some(slot => slot.age < Infinity)) refreshFlightTextObstacleSnapshot();
+    const touchReserved = getFlightTextObstacles()
+      .filter(row => row.owner === 'touch-control' || row.owner === 'responsive-overlay')
+      .map(row => ({ x: row.left, y: row.top, width: row.width, height: row.height }));
+    for (let slotIndex = 0; slotIndex < tellSlots.length; slotIndex++) {
+      const slot = tellSlots[slotIndex];
+      if (slot.age >= Infinity) continue;
+      slot.age += frameDt;
+      if (tick > slot.expiresAtTick) { retireTell(slot); continue; }
+      const ent = state.entities && state.entities.get && state.entities.get(slot.entityId);
+      if (!ent || ent.alive === false || !ent.pos) { retireTell(slot); continue; }
+      if (!w2s) {
+        // The shared live-region announcement remains available, but a visual chip without an
+        // authoritative projection would lie about direction and therefore stays hidden.
+        setDisplay(slot.el, false);
+        slot.linkEl.hidden = true;
+        continue;
+      }
+      tellProjectionWorld.x = ent.pos.x;
+      tellProjectionWorld.z = ent.pos.z;
+      const proj = w2s(tellProjectionWorld, tellProjectionScreen);
+      const measuredLeft = objectiveEdgeObstacles().left;
+      const placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex,
+        [measuredLeft, ...touchReserved, ...placed], slot.layoutOffset, slot.geometry);
+      if (!placement) { setDisplay(slot.el, false); slot.linkEl.hidden = true; continue; }
+      placed.push({ x: placement.x - placement.width / 2, y: placement.y - placement.height / 2,
+        width: placement.width, height: placement.height });
+      slot.layoutOffset = placement.onScreen ? { x: placement.x - proj.x, y: placement.y - proj.y } : null;
+      setDisplay(slot.el, true, 'inline-flex');
+      setClass(slot.el, 'is-offscreen', !placement.onScreen);
+      setHudScreenTransform(slot.el, placement.x, placement.y, tellTransformCentered);
+      const anchorX = Math.max(0, Math.min(w, proj.x)), anchorY = Math.max(0, Math.min(h, proj.y));
+      const lineX = anchorX - placement.x, lineY = anchorY - placement.y;
+      const edge = Math.min(Math.abs(lineX) > .001 ? placement.width / 2 / Math.abs(lineX) : Infinity,
+        Math.abs(lineY) > .001 ? placement.height / 2 / Math.abs(lineY) : Infinity);
+      const startFraction = Math.min(1, edge);
+      const lineLength = Math.hypot(lineX, lineY) * (1 - startFraction);
+      slot.linkEl.hidden = !placement.onScreen || lineLength < 4;
+      if (!slot.linkEl.hidden) {
+        setStyle(slot.linkEl, 'width', `${lineLength.toFixed(1)}px`);
+        const startX = placement.x + lineX * startFraction, startY = placement.y + lineY * startFraction;
+        setStyle(slot.linkEl, 'transform', `translate(${startX.toFixed(1)}px,${startY.toFixed(1)}px) rotate(${Math.atan2(lineY, lineX)}rad)`);
+      }
+      if (slot.dirEl) setStyle(slot.dirEl, 'transform', `rotate(${placement.directionDeg.toFixed(1)}deg)`);
+      setHidden(slot.el, false);
+      setClass(slot.el, 'is-on', true);
+    }
+  }
+
+  // ---- HUD meta-arc: the three phases of complicity (STABLE LOAD, tag flicker, manifest ghost) ----
+  // Mounted as a HUD sub-component (like the death banner). Driven by hud:phase / hud:tagFlicker
+  // events the story system emits. Inject its CSS once, then create + tick it.
+  if (!document.getElementById('sf-hudmeta-style')) {
+    const ms = document.createElement('style');
+    ms.id = 'sf-hudmeta-style';
+    ms.textContent = HUD_META_CSS;
+    document.head.appendChild(ms);
+  }
+  const hudMeta = createHudMeta(ctx);
+
+  // ---- cargo hold physical style sheet ----
+  const CARGO_HOLD_CSS = `
+  .sf-cargo-panel {
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(980px, calc(100vw - 32px));
+    height: min(600px, calc(100vh - 32px));
+    background: color-mix(in srgb, var(--panel) 96%, transparent);
+    border: 1px solid var(--visor-cyan);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 30px color-mix(in srgb, var(--visor-cyan) 15%, transparent);
+    z-index: 1000;
+    pointer-events: auto;
+    font-family: var(--mono, monospace);
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sf-cargo-panel.open {
+    display: flex;
+  }
+  /* Same HUD-overlay contract as the comms feed: a modal screen owns the frame while it is up;
+     the hold stays open in state and returns when the screen closes. */
+  body.ui-modal-open .sf-cargo-panel.open,
+  body.ui-live-screen .sf-cargo-panel.open { display: none; }
+  .sf-cargo-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--panel-edge);
+    background: color-mix(in srgb, var(--panel-2) 40%, transparent);
+  }
+  .sf-cargo-title-group {
+    display: flex;
+    flex-direction: column;
+  }
+  .sf-cargo-panel__title {
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: .06em;
+    color: var(--visor-cyan);
+  }
+  .sf-cargo-status-tag {
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    color: var(--ink-dim);
+  }
+  .sf-cargo-gauges {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+  }
+  .sf-cargo-gauge-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sf-gauge-label {
+    font-size: 12px;
+    color: var(--ink-dim);
+    display: flex;
+    flex-direction: column;
+  }
+  .sf-gauge-label span {
+    font-weight: bold;
+    color: var(--visor-cyan);
+  }
+  .sf-cargo-lean--warm { color: var(--visor-cyan); }
+  .sf-cargo-lean--cool { color: var(--warn); }
+  .sf-cargo-panel__head { --k-signal: var(--dp-lamp); }
+  .sf-cargo-panel__close:hover,
+  .sf-cargo-panel__close:active { translate: none; box-shadow: none; filter: none; }
+  .sf-cargo-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .sf-cargo-left-rail {
+    width: 160px;
+    flex: 0 0 160px;
+    border-right: 1px solid var(--panel-edge);
+    background: color-mix(in srgb, var(--panel-2) 20%, transparent);
+    display: flex;
+    flex-direction: column;
+    padding: 15px 10px;
+    gap: 10px;
+    overflow-y: auto;
+  }
+  .sf-cargo-left-rail { --k-signal: var(--dp-lamp); }
+  .sf-cargo-rail-btn { width: 100%; text-align: left; white-space: normal; }
+  .sf-cargo-rail-btn:hover,
+  .sf-cargo-rail-btn:active { translate: none; box-shadow: none; filter: none; }
+  .sf-cargo-panel .k-word:hover,
+  .sf-cargo-panel .k-word:focus-visible,
+  .sf-cargo-panel .k-word:active { color: var(--k-text-live); }
+  .sf-cargo-panel .k-word--primary:is(:hover, :focus-visible, :active),
+  .sf-cargo-panel .k-word[aria-current="true"] { color: var(--k-signal, var(--dp-lamp)); }
+  .sf-cargo-panel .k-word--danger:is(:hover, :focus-visible, :active) { color: var(--k-red); }
+  .sf-cargo-panel .k-word:focus-visible { outline: 2px solid var(--dp-lamp) !important; outline-offset: 3px; }
+  .sf-cargo-centerpiece {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--panel-edge);
+  }
+  .sf-cargo-hex-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.25;
+    z-index: 1;
+  }
+  .sf-cargo-flicker-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.15;
+    z-index: 2;
+  }
+  .sf-cargo-schematic {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 12px;
+    padding: 20px;
+    overflow-y: auto;
+    z-index: 5;
+  }
+  .sf-cargo-block {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 140px;
+    height: 120px;
+    box-sizing: border-box;
+    z-index: 10;
+    position: relative;
+  }
+  .sf-cargo-block.legal {
+    border: 1px solid var(--visor-cyan-dim);
+    background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+  }
+  .sf-cargo-block.restricted {
+    border: 1px solid var(--warn);
+    background: color-mix(in srgb, var(--warn) 6%, color-mix(in srgb, var(--panel-2) 70%, transparent));
+  }
+  .sf-cargo-block.contraband {
+    border: 1px solid var(--danger);
+    background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--danger) 5%, transparent), color-mix(in srgb, var(--danger) 5%, transparent) 10px, color-mix(in srgb, var(--danger) 15%, transparent) 10px, color-mix(in srgb, var(--danger) 15%, transparent) 20px);
+  }
+  .sf-cargo-block.free-space {
+    border: 1px dashed var(--ink-mute);
+    background: transparent;
+    cursor: default;
+  }
+  .sf-cargo-block:hover, .sf-cargo-block.selected {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  }
+  .sf-cargo-block.legal:hover, .sf-cargo-block.legal.selected {
+    border-color: var(--visor-cyan);
+    background: color-mix(in srgb, var(--visor-cyan) 10%, color-mix(in srgb, var(--panel-2) 70%, transparent));
+    box-shadow: 0 0 15px color-mix(in srgb, var(--visor-cyan) 20%, transparent);
+  }
+  .sf-cargo-block.restricted:hover, .sf-cargo-block.restricted.selected {
+    border-color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 15%, color-mix(in srgb, var(--panel-2) 70%, transparent));
+    box-shadow: 0 0 15px color-mix(in srgb, var(--warn) 20%, transparent);
+  }
+  .sf-cargo-block.contraband:hover, .sf-cargo-block.contraband.selected {
+    border-color: var(--danger);
+    background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--danger) 10%, transparent), color-mix(in srgb, var(--danger) 10%, transparent) 10px, color-mix(in srgb, var(--danger) 25%, transparent) 10px, color-mix(in srgb, var(--danger) 25%, transparent) 20px);
+    box-shadow: 0 0 15px color-mix(in srgb, var(--danger) 20%, transparent);
+  }
+  .sf-cargo-block-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  .sf-cargo-block-name {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .sf-cargo-lock-icon {
+    display: flex;
+    align-items: center;
+    color: var(--warn);
+  }
+  .sf-cargo-lock-icon svg { display: block; }
+  .sf-cargo-block-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sf-cargo-block-qty {
+    font-size: 12px;
+    color: var(--accent-2);
+  }
+  .sf-cargo-block-vol {
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .sf-cargo-badge {
+    font-size: 12px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-weight: bold;
+    align-self: flex-start;
+    margin-top: 4px;
+  }
+  .sf-cargo-badge.fragile {
+    background: color-mix(in srgb, var(--warn) 15%, transparent);
+    color: var(--warn);
+    border: 1px solid var(--warn);
+  }
+  .sf-cargo-badge.special {
+    background: color-mix(in srgb, var(--visor-cyan) 15%, transparent);
+    color: var(--visor-cyan);
+    border: 1px solid var(--visor-cyan-dim);
+  }
+  .sf-cargo-badge.mission {
+    background: color-mix(in srgb, var(--accent-2) 15%, transparent);
+    color: var(--accent-2);
+    border: 1px solid var(--accent-2);
+  }
+  .sf-cargo-supply-tree {
+    height: 180px;
+    border-top: 1px solid var(--panel-edge);
+    background: color-mix(in srgb, var(--panel-2) 15%, transparent);
+    padding: 15px 20px;
+    overflow: hidden;
+    z-index: 5;
+  }
+  .sf-cargo-supply-title {
+    font-size: 12px;
+    color: var(--ink-mute);
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .sf-cargo-supply-chart {
+    height: 140px;
+  }
+  .sf-cargo-inspector {
+    width: 260px;
+    padding: 20px;
+    background: color-mix(in srgb, var(--panel-2) 20%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    z-index: 10;
+  }
+  .sf-inspector-empty {
+    color: var(--ink-mute);
+    font-size: 12px;
+    text-align: center;
+    margin: auto 0;
+  }
+  .sf-inspector-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    height: 100%;
+  }
+  .sf-ins-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--visor-cyan);
+    margin: 0;
+    border-bottom: 1px solid var(--panel-edge);
+    padding-bottom: 8px;
+  }
+  .sf-ins-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sf-ins-meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  .sf-ins-meta-row span:first-child {
+    color: var(--ink-dim);
+  }
+  .sf-ins-meta-row span:last-child {
+    color: var(--ink);
+    font-weight: bold;
+  }
+  .sf-ins-market {
+    background: color-mix(in srgb, var(--panel-2) 30%, transparent);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sf-ins-market h4 {
+    font-size: 12px;
+    margin: 0;
+    text-transform: uppercase;
+    color: var(--visor-cyan);
+    letter-spacing: 0.05em;
+  }
+  .sf-ins-buyer {
+    font-size: 12px;
+    color: var(--ink);
+    line-height: 1.4;
+    margin: 0;
+  }
+  .sf-ins-actions {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .sf-ins-actions { --k-signal: var(--dp-lamp); }
+  .sf-ins-actions .k-word { width: 100%; box-sizing: border-box; }
+  .sf-ins-actions .k-word:focus-visible { outline: 2px solid var(--dp-lamp) !important; outline-offset: 3px; }
+  .sf-ins-actions .k-word:hover,
+  .sf-ins-actions .k-word:active { translate: none; box-shadow: none; filter: none; }
+  .sf-ins-actions .k-word:disabled { opacity: 1; }
+  .sf-cargo-ledger {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow: hidden;
+    z-index: 5;
+  }
+  .sf-ledger-header {
+    font-size: 12px;
+    color: var(--visor-cyan);
+    font-weight: bold;
+    margin-bottom: 12px;
+    letter-spacing: 0.05em;
+  }
+  .sf-ledger-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sf-ledger-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: color-mix(in srgb, var(--panel-2) 40%, transparent);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .sf-ledger-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sf-ledger-title {
+    font-weight: bold;
+    color: var(--ink);
+  }
+  .sf-ledger-side {
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-right: 6px;
+  }
+  .sf-ledger-side.buy {
+    background: color-mix(in srgb, var(--visor-cyan) 15%, transparent);
+    color: var(--visor-cyan);
+  }
+  .sf-ledger-side.sell {
+    background: color-mix(in srgb, var(--warn) 15%, transparent);
+    color: var(--warn);
+  }
+  .sf-ledger-station {
+    color: var(--ink-dim);
+  }
+  .sf-ledger-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .sf-ledger-val {
+    font-weight: bold;
+    color: var(--accent-2);
+  }
+  .sf-ledger-profit {
+    font-size: 12px;
+    color: var(--good);
+  }
+  .sf-cargo-empty-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--ink-mute);
+    font-size: 13px;
+    width: 100%;
+  }
+  .sf-cargo-beam-mount {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 900;
+  }
+  `;
+
+  if (!document.getElementById('sf-cargohold-style')) {
+    const ms = document.createElement('style');
+    ms.id = 'sf-cargohold-style';
+    ms.textContent = CARGO_HOLD_CSS;
+    document.head.appendChild(ms);
+  }
+
+  // ---- cargo panel overlay ----
+  const cargoPanel = document.createElement('div');
+  cargoPanel.className = 'sf-cargo-panel';
+  cargoPanel.setAttribute('role', 'dialog');
+  cargoPanel.setAttribute('aria-label', 'Cargo hold');
+  cargoPanel.innerHTML = `
+    <div class="sf-cargo-panel__head">
+      <div class="sf-cargo-title-group">
+        <span class="sf-cargo-panel__title">CARGO HOLD MANIFEST</span>
+        <span class="sf-cargo-status-tag">MANIFEST ACQUIRED</span>
+      </div>
+      <div class="sf-cargo-gauges">
+        <div class="sf-cargo-gauge-item" id="sf-gauge-used">
+          <span class="sf-gauge-label">CAPACITY: <span class="sf-cargo-summary-used">0 / 40 u</span></span>
+        </div>
+        <div class="sf-cargo-gauge-item" id="sf-gauge-risk">
+          <span class="sf-gauge-label">SCAN RISK: <span class="sf-cargo-summary-risk">0%</span></span>
+        </div>
+        <div class="sf-cargo-gauge-item" id="sf-gauge-lean">
+          <span class="sf-gauge-label">HOLD READS: <span class="sf-cargo-summary-lean"></span></span>
+        </div>
+      </div>
+      <button class="k-word k-word--emph sf-cargo-panel__close" type="button" aria-label="Close cargo hold">Close · Esc</button>
+    </div>
+    <div class="sf-cargo-body">
+      <div class="sf-cargo-left-rail" role="tablist" aria-label="Cargo hold">
+        <button class="k-word k-word--emph k-word--primary sf-cargo-rail-btn active" data-tab="cargo" type="button" role="tab" aria-selected="true" aria-current="true">Cargo</button>
+        <button class="k-word k-word--emph sf-cargo-rail-btn" data-tab="materials" type="button" role="tab" aria-selected="false">Materials</button>
+        <button class="k-word k-word--emph sf-cargo-rail-btn" data-tab="salvage" type="button" role="tab" aria-selected="false">Salvage</button>
+        <button class="k-word k-word--emph sf-cargo-rail-btn" data-tab="mission" type="button" role="tab" aria-selected="false">Mission</button>
+        <button class="k-word k-word--emph sf-cargo-rail-btn" data-tab="ledger" type="button" role="tab" aria-selected="false">Ledger</button>
+      </div>
+      <div class="sf-cargo-centerpiece">
+        <div class="sf-cargo-hex-bg"></div>
+        <div class="sf-cargo-flicker-bg"></div>
+        <div class="sf-cargo-schematic"></div>
+        <div class="sf-cargo-supply-tree"></div>
+      </div>
+      <div class="sf-cargo-inspector">
+        <div class="sf-inspector-empty">No item selected. Select a block to inspect.</div>
+        <div class="sf-inspector-content" style="display:none;">
+          <h3 class="sf-ins-name">Commodity</h3>
+          <div class="sf-ins-meta">
+            <div class="sf-ins-meta-row"><span>Units/Vol:</span><span class="sf-ins-qty">0 u / 0 u</span></div>
+            <div class="sf-ins-meta-row"><span>Legality:</span><span class="sf-ins-legal">LEGAL</span></div>
+            <div class="sf-ins-meta-row"><span>Avg Basis:</span><span class="sf-ins-basis">N/A</span></div>
+          </div>
+          <div class="sf-ins-market">
+            <h4>Market Intelligence</h4>
+            <p class="sf-ins-buyer">Best Buyer: None</p>
+          </div>
+          <div class="sf-ins-actions">
+            <button class="k-word k-word--emph k-word--primary sf-btn-route" type="button">Set course</button>
+            <button class="k-word k-word--danger sf-btn-jettison" type="button">Jettison</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  root.appendChild(cargoPanel);
+
+  // mount route beam overlay
+  const beamMount = document.createElement('div');
+  beamMount.className = 'sf-cargo-beam-mount';
+  cargoPanel.appendChild(beamMount);
+  const beamFx = createRouteBeam(beamMount, { width: 980, height: 600 });
+
+  // mount background hexPattern
+  const hexBg = cargoPanel.querySelector('.sf-cargo-hex-bg');
+  const hexFx = createHexPattern(hexBg, { cols: 15, rows: 6, size: 16, width: 560, height: 260 });
+  const hexCells = [];
+  for (let cIdx = 0; cIdx < 15; cIdx++) {
+    for (let rIdx = 0; rIdx < 6; rIdx++) {
+      const isEdge = cIdx === 0 || cIdx === 14 || rIdx === 0 || rIdx === 5;
+      hexCells.push({ col: cIdx, row: rIdx, kind: isEdge ? 'neutral' : 'good', intensity: isEdge ? 0.12 : 0.04 });
+    }
+  }
+  hexFx.setCells(hexCells);
+
+  // mount flickerGrid
+  const flickerBg = cargoPanel.querySelector('.sf-cargo-flicker-bg');
+  const gridFx = createFlickerGrid(flickerBg, { width: 560, height: 260, cell: 8, gap: 2, token: '--visor-cyan' });
+
+  // mount gauges
+  const gaugeUsedEl = cargoPanel.querySelector('#sf-gauge-used');
+  const gaugeUsedFx = createCircularGauge(gaugeUsedEl, { size: 36, stroke: 4, kind: 'route' });
+
+  const gaugeRiskEl = cargoPanel.querySelector('#sf-gauge-risk');
+  const gaugeRiskFx = createCircularGauge(gaugeRiskEl, { size: 36, stroke: 4, kind: 'danger' });
+  const cargoGaugeSettle = {
+    used: { value: 0, peakTimer: 0 },
+    risk: { value: 0, peakTimer: 0 },
+  };
+  function clearCargoGaugeSettle(slot) {
+    if (!slot) return;
+    if (slot.peakTimer) clearTimeout(slot.peakTimer);
+    slot.peakTimer = 0;
+  }
+  function setCircularGaugeTransition(fx, ms, overshoot) {
+    const arc = fx && fx.svg && fx.svg.querySelector ? fx.svg.querySelector('.sf-fx-gauge__arc') : null;
+    if (!arc) return;
+    const eased = overshoot ? 'cubic-bezier(.24,1.26,.34,1)' : 'cubic-bezier(.19,.9,.29,1)';
+    arc.style.transition = `stroke-dashoffset ${Math.max(1, Math.round(ms))}ms ${eased}, stroke 160ms var(--ease, ease-out)`;
+  }
+  function applySettledCircularGauge(slot, fx, nextValue, settleMeta, effectMeta) {
+    if (!slot || !fx) return;
+    clearCargoGaugeSettle(slot);
+    const plan = planGaugeSettle(slot.value, nextValue, settleMeta);
+    slot.value = plan.targetValue;
+    if (plan.immediate) {
+      setCircularGaugeTransition(fx, 1, false);
+      fx.setValue(plan.targetValue, effectMeta);
+      return;
+    }
+    setCircularGaugeTransition(fx, plan.upMs, true);
+    fx.setValue(plan.peakValue, effectMeta);
+    slot.peakTimer = setTimeout(() => {
+      setCircularGaugeTransition(fx, plan.downMs, false);
+      fx.setValue(plan.targetValue, effectMeta);
+      slot.peakTimer = 0;
+    }, plan.upMs);
+  }
+
+  const supplyTreeEl = cargoPanel.querySelector('.sf-cargo-supply-tree');
+  const supplyTreeTitle = document.createElement('div');
+  supplyTreeTitle.className = 'sf-cargo-supply-title';
+  supplyTreeTitle.textContent = 'Catalog Supply Chain';
+  const supplyTreeMount = document.createElement('div');
+  supplyTreeMount.className = 'sf-cargo-supply-chart';
+  supplyTreeEl.append(supplyTreeTitle, supplyTreeMount);
+  const supplyTreeFx = createSupplyTree(supplyTreeMount, { width: 520, height: 140 });
+
+  let cargoPanelOpen = false;
+  if (state.ui) state.ui.cargoPanelOpen = false;
+  let activeTab = 'cargo';
+  let selectedCommodityId = null;
+
+  const CMDTY_MAP = new Map();
+  function buildCmdtyMap() {
+    if (CMDTY_MAP.size > 0) return;
+    for (const c of COMMODITIES) CMDTY_MAP.set(c.id, c);
+  }
+
+  function getAverageBasis(s, commodityId) {
+    const player = s.player;
+    const lots = player && player.tradeLots && player.tradeLots[commodityId];
+    if (!lots || !lots.length) return null;
+    let totalCost = 0;
+    let totalQty = 0;
+    for (const lot of lots) {
+      totalCost += lot.qty * lot.unit;
+      totalQty += lot.qty;
+    }
+    return totalQty > 0 ? Math.round(totalCost / totalQty) : null;
+  }
+
+  function getMissionCargoIds(s) {
+    const ids = new Set();
+    if (s.missions && Array.isArray(s.missions.active)) {
+      for (const m of s.missions.active) {
+        if (m.status === 'active' && m.params && m.params.cmdtyId) {
+          ids.add(m.params.cmdtyId);
+        }
+      }
+    }
+    return ids;
+  }
+
+  function cargoMemoryAgeLabel(s, seenAt) {
+    const now = Math.max(0, Number(s && s.simTime) || 0);
+    const ageS = Math.max(0, now - Math.max(0, Number(seenAt) || 0));
+    if (ageS < 60) return 'fresh';
+    return Math.max(1, Math.round(ageS / 60)) + ' min ago';
+  }
+
+  function supplyTreeNodesFor(commodityId) {
+    const def = CMDTY_MAP.get(commodityId);
+    if (!def) return [];
+    const nodes = [{ id: commodityId, label: def.name, role: 'hub' }];
+    for (const role of def.producedBy || []) {
+      nodes.push({ id: 'produce:' + role, label: stationRoleLabel(role), role: 'produce' });
+    }
+    for (const role of def.consumedBy || []) {
+      nodes.push({ id: 'consume:' + role, label: stationRoleLabel(role), role: 'consume' });
+    }
+    return nodes;
+  }
+
+  function updateSupplyTree(commodityId, hasKnownBuyer) {
+    if (!commodityId) {
+      supplyTreeTitle.textContent = 'Catalog Supply Chain';
+      supplyTreeFx.setNodes([]);
+      supplyTreeFx.setFlow(false);
+      return;
+    }
+    const def = CMDTY_MAP.get(commodityId);
+    supplyTreeTitle.textContent = def
+      ? `Catalog Supply Chain: ${def.category}`
+      : 'Catalog Supply Chain';
+    const nodes = supplyTreeNodesFor(commodityId);
+    if (hasKnownBuyer) {
+      for (const node of nodes) {
+        if (node.role === 'consume') node.flow = true;
+      }
+    }
+    supplyTreeFx.setNodes(nodes);
+    supplyTreeFx.setFlow(!!hasKnownBuyer);
+  }
+
+  function updateInspector(commodityId) {
+    const emptyEl = cargoPanel.querySelector('.sf-inspector-empty');
+    const contentEl = cargoPanel.querySelector('.sf-inspector-content');
+
+    if (!commodityId) {
+      emptyEl.style.display = 'block';
+      contentEl.style.display = 'none';
+      updateSupplyTree(null, false);
+      beamFx.setPath([], { active: false });
+      return;
+    }
+
+    emptyEl.style.display = 'none';
+    contentEl.style.display = 'flex';
+
+    const def = CMDTY_MAP.get(commodityId);
+    const qty = (state.player && state.player.cargo && state.player.cargo.items || {})[commodityId] || 0;
+    const vol = def ? (def.volPerU || 1) * qty : qty;
+    const name = cargoDisplayName(commodityId);
+
+    contentEl.querySelector('.sf-ins-name').textContent = name;
+    contentEl.querySelector('.sf-ins-qty').textContent = `${qty} u / ${vol.toFixed(1)} u`;
+
+    const legalEl = contentEl.querySelector('.sf-ins-legal');
+    const legality = def ? def.legality : 'legal';
+    legalEl.textContent = legality.toUpperCase();
+    if (legality === 'contraband') {
+      legalEl.style.color = 'var(--danger)';
+    } else if (legality === 'restricted') {
+      legalEl.style.color = 'var(--warn)';
+    } else {
+      legalEl.style.color = 'var(--visor-cyan)';
+    }
+
+    const basisText = contentEl.querySelector('.sf-ins-basis');
+    const basis = getAverageBasis(state, commodityId);
+    basisText.textContent = basis != null ? `${formatCount(basis, state)} CR` : 'N/A';
+
+    const buyerText = contentEl.querySelector('.sf-ins-buyer');
+    const routeBtn = contentEl.querySelector('.sf-btn-route');
+    const best = bestKnownSellFor(state, commodityId);
+
+    if (best) {
+      const age = cargoMemoryAgeLabel(state, best.seenAt);
+      const jumps = best.jumps == null ? '?' : best.jumps;
+      const jumpText = jumps === 1 ? '1 jump' : `${jumps} jumps`;
+      buyerText.innerHTML = `Best Buyer: <b>${escapeHtml(best.stationName)}</b><br>Price: <span class="mono" style="color:var(--accent-2);">${formatCount(best.sell, state)} CR</span> (${escapeHtml(age)}, ${escapeHtml(jumpText)})`;
+      routeBtn.disabled = false;
+      routeBtn.onclick = () => {
+        applyTradeNavigation(ctx, best.stationId, commodityId);
+      };
+    } else {
+      buyerText.innerHTML = `Best Buyer: <b>None Known</b><br><span style="color:var(--ink-mute);">No market data recorded.</span>`;
+      routeBtn.disabled = true;
+      routeBtn.onclick = null;
+    }
+
+    const jetBtn = contentEl.querySelector('.sf-btn-jettison');
+    const persistent = isPersistentCargoId(state, commodityId);
+    // NXB-025 — the seal binds the reserved count; units free of the manifest still dump.
+    const sealed = reservedCargoQty(state, commodityId);
+    const jettable = persistent ? 0 : sellableCargoQty(state, commodityId);
+    const isLocked = jettable <= 0;
+
+    if (isLocked) {
+      jetBtn.disabled = true;
+      jetBtn.onclick = null;
+      jetBtn.textContent = 'Jettison';
+      if (persistent) {
+        jetBtn.title = 'Personal effects cannot be jettisoned';
+        jetBtn.setAttribute('aria-label', 'Jettison unavailable. Personal effects cannot be jettisoned');
+      } else {
+        jetBtn.title = 'Contract cargo cannot be jettisoned';
+        jetBtn.setAttribute('aria-label', 'Jettison unavailable. Contract cargo cannot be jettisoned');
+      }
+    } else {
+      const dumpQty = Math.min(qty, jettable);
+      jetBtn.disabled = false;
+      jetBtn.title = sealed > 0
+        ? `Jettison ${dumpQty} free units of ${name} — ${sealed} sealed for contract`
+        : `Jettison all ${dumpQty} units of ${name}`;
+      jetBtn.textContent = 'Jettison';
+      jetBtn.setAttribute('aria-label', `Jettison ${dumpQty} units of ${name}`);
+      jetBtn.onclick = async () => {
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        const ok = await confirm({
+          title: 'Confirm Jettison',
+          body: `Are you sure you want to jettison ${dumpQty}× ${name}? This action is permanent.${sealed > 0 ? ` (${sealed} units are sealed for a contract and stay aboard.)` : ''}`,
+          confirmLabel: 'Jettison',
+          danger: true
+        });
+        if (ok) {
+          ctx.bus.emit('cargo:jettison', { commodityId, qty: dumpQty });
+        }
+      };
+    }
+
+    const crackBtn = contentEl.querySelector('.sf-btn-crack');
+    if (commodityId !== FUEL_CELL_ID) {
+      if (crackBtn) crackBtn.remove();
+    } else {
+      const actions = contentEl.querySelector('.sf-ins-actions');
+      const button = crackBtn || document.createElement('button');
+      if (!crackBtn && actions) {
+        button.type = 'button';
+        button.className = 'k-word k-word--emph sf-btn-crack';
+        button.textContent = 'Crack';
+        actions.appendChild(button);
+      }
+      if (button && actions) {
+        const plan = planFuelCrack(state);
+        const refused = !plan || plan.mode === 'refuse';
+        button.disabled = refused;
+        button.textContent = 'Crack';
+        button.title = refused
+          ? (plan && plan.reason) || 'Cannot crack a fuel cell'
+          : plan.mode === 'cook'
+            ? plan.reason
+            : `Crack one cell into the tank (${FUEL_CELL_SIP})`;
+        button.onclick = () => {
+          const now = planFuelCrack(state);
+          if (!now || now.mode === 'refuse') return;
+          ctx.bus.emit('audio:cue', { id: 'ui_click' });
+          ctx.bus.emit('fuel:crackCell', {});
+        };
+      }
+    }
+
+    updateSupplyTree(commodityId, !!best);
+
+    setTimeout(() => {
+      if (!cargoPanelOpen) return;
+      const parentRect = cargoPanel.getBoundingClientRect();
+      const elBlock = cargoPanel.querySelector(`.sf-cargo-block[data-id="${commodityId}"]`);
+      const elBuyerCard = cargoPanel.querySelector('.sf-ins-market');
+      if (elBlock && elBuyerCard && best) {
+        const rA = elBlock.getBoundingClientRect();
+        const rB = elBuyerCard.getBoundingClientRect();
+        const ptA = {
+          x: rA.left + rA.width / 2 - parentRect.left,
+          y: rA.top + rA.height / 2 - parentRect.top
+        };
+        const ptB = {
+          x: rB.left + rB.width / 2 - parentRect.left,
+          y: rB.top + rB.height / 2 - parentRect.top
+        };
+        beamFx.setPath([ptA, ptB], { active: true, kind: 'route' });
+      } else {
+        beamFx.setPath([], { active: false });
+      }
+    }, 50);
+  }
+
+  function refreshCargoPanel() {
+    if (!cargoPanelOpen) return;
+    buildCmdtyMap();
+
+    const c = (state.player || {}).cargo || {};
+    const playerEntity = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const settleMeta = {
+      reducedMotion: getMotionReduced(),
+      shieldRegenRate: playerEntity && playerEntity.shieldRegenRate,
+      inertia: playerEntity && playerEntity.flightModel && playerEntity.flightModel.inertia,
+    };
+    const items = c.items || {};
+    const used = Math.round(c.usedVolume || 0);
+    const cap = Math.round(c.capVolume || 40);
+
+    applySettledCircularGauge(cargoGaugeSettle.used, gaugeUsedFx, cap > 0 ? used / cap : 0, settleMeta, { label: `${used}/${cap} u` });
+    cargoPanel.querySelector('.sf-cargo-summary-used').textContent = `${used} / ${cap} u`;
+
+    let hasContraband = false;
+    for (const id in items) {
+      if (items[id] > 0) {
+        const def = CMDTY_MAP.get(id);
+        if (def && def.legality === 'contraband') hasContraband = true;
+      }
+    }
+    applySettledCircularGauge(cargoGaugeSettle.risk, gaugeRiskFx, hasContraband ? 0.75 : 0, settleMeta, { label: hasContraband ? '75%' : '0%' });
+    cargoPanel.querySelector('.sf-cargo-summary-risk').textContent = hasContraband ? '75%' : '0%';
+
+    // HOLD READS — the Cargo Conscience's moral leans, surfaced as chips. A lean is a read,
+    // never a rep delta; a neutral hold renders '—' rather than a fake label.
+    const leanHost = cargoPanel.querySelector('.sf-cargo-summary-lean');
+    if (leanHost) {
+      // Pure recompute per panel refresh — O(item types) — so a loaded save can never print a
+      // stale session's leans (state.ui is not serialized; cargoConscience keeps its own
+      // authoritative copy for system readers/tests).
+      const chips = holdLeanChips(c);
+      leanHost.replaceChildren();
+      const labels = [];
+      chips.forEach((entry) => {
+        if (!entry || (entry.lean !== 'warm' && entry.lean !== 'cool')) return;
+        labels.push(entry.label);
+        if (labels.length > 1) leanHost.appendChild(document.createTextNode(' · '));
+        const chip = document.createElement('span');
+        chip.className = `sf-cargo-lean sf-cargo-lean--${entry.lean}`;
+        chip.textContent = entry.label;
+        leanHost.appendChild(chip);
+      });
+      if (!labels.length) leanHost.textContent = '—';
+      const gaugeItem = leanHost.closest('.sf-cargo-gauge-item') || leanHost;
+      gaugeItem.setAttribute('role', 'status');
+      gaugeItem.setAttribute('aria-label',
+        labels.length ? `Hold reads: ${labels.join(', ')}` : 'Hold reads: neutral');
+    }
+
+    const schematicEl = cargoPanel.querySelector('.sf-cargo-schematic');
+    const supplyTreeEl = cargoPanel.querySelector('.sf-cargo-supply-tree');
+
+    if (activeTab === 'ledger') {
+      schematicEl.style.display = 'none';
+      supplyTreeEl.style.display = 'none';
+      let led = cargoPanel.querySelector('.sf-cargo-ledger');
+      if (!led) {
+        led = document.createElement('div');
+        led.className = 'sf-cargo-ledger';
+        cargoPanel.querySelector('.sf-cargo-centerpiece').appendChild(led);
+      }
+      led.style.display = 'flex';
+
+      const ledgerList = state.player.tradeLedger || [];
+      if (!ledgerList.length) {
+        led.innerHTML = `
+          <div class="sf-ledger-header">RECENT TRANSACTIONS</div>
+          <div class="sf-cargo-empty-msg">No transactions recorded in ledger.</div>
+        `;
+      } else {
+        let rowsHtml = '';
+        for (const entry of ledgerList) {
+          const name = escapeHtml(cargoDisplayName(entry.commodityId));
+          const sideClass = entry.side === 'buy' ? 'buy' : 'sell';
+          const sideText = sideClass.toUpperCase();
+          const age = escapeHtml(cargoMemoryAgeLabel(state, entry.seenAt));
+          const stn = escapeHtml(respawnStationName(entry.stationId));
+          const qty = Math.max(0, Math.floor(Number(entry.qty) || 0));
+          const total = Math.max(0, Math.round(Number(entry.total) || 0));
+          const profit = Math.round(Number(entry.profit) || 0);
+          const profitHtml = profit > 0 ? `<span class="sf-ledger-profit">+${formatCount(profit, state)} CR</span>` : '';
+          rowsHtml += `
+            <div class="sf-ledger-row">
+              <div class="sf-ledger-left">
+                <span class="sf-ledger-title"><span class="sf-ledger-side ${sideClass}">${sideText}</span> ${qty}× ${name}</span>
+                <span class="sf-ledger-station">${stn} (${age})</span>
+              </div>
+              <div class="sf-ledger-right">
+                <span class="sf-ledger-val">${formatCount(total, state)} CR</span>
+                ${profitHtml}
+              </div>
+            </div>
+          `;
+        }
+        led.innerHTML = `
+          <div class="sf-ledger-header">RECENT TRANSACTIONS</div>
+          <div class="sf-ledger-list">${rowsHtml}</div>
+        `;
+      }
+      beamFx.setPath([], { active: false });
+      updateInspector(null);
+      return;
+    }
+
+    schematicEl.style.display = 'flex';
+    supplyTreeEl.style.display = 'block';
+    const led = cargoPanel.querySelector('.sf-cargo-ledger');
+    if (led) led.style.display = 'none';
+
+    const missionCmdtyIds = getMissionCargoIds(state);
+    const keys = Object.keys(items).filter(id => {
+      if (items[id] <= 0) return false;
+      const def = CMDTY_MAP.get(id);
+      if (activeTab === 'materials') {
+        return def && (def.category === 'raw ore' || def.category === 'gas' || def.category === 'crystal');
+      }
+      if (activeTab === 'salvage') {
+        return def && def.category === 'salvage';
+      }
+      if (activeTab === 'mission') {
+        return missionCmdtyIds.has(id);
+      }
+      return true;
+    });
+
+    schematicEl.innerHTML = '';
+
+    if (!keys.length) {
+      schematicEl.innerHTML = `<div class="sf-cargo-empty-msg">No items in this category.</div>`;
+      updateInspector(null);
+      beamFx.setPath([], { active: false });
+      return;
+    }
+
+    let totalFilteredVolume = 0;
+    const itemVolumes = {};
+    for (const id of keys) {
+      const qty = items[id];
+      const def = CMDTY_MAP.get(id);
+      const vol = cargoVolumeForRow(state, id, qty, def);
+      itemVolumes[id] = vol;
+      totalFilteredVolume += vol;
+    }
+
+    const frag = document.createDocumentFragment();
+    for (const id of keys) {
+      const qty = items[id];
+      const def = CMDTY_MAP.get(id);
+      const name = escapeHtml(cargoDisplayName(id));
+      const vol = itemVolumes[id];
+      const persistent = isPersistentCargoId(state, id);
+      // NXB-025 — the lock marks units that cannot leave; a partly-sealed lot still
+      // carries its contract badge but is not all locked.
+      const isLocked = persistent || sellableCargoQty(state, id) <= 0;
+
+      let legalClass = 'legal';
+      if (def && def.legality === 'restricted') legalClass = 'restricted';
+      if (def && def.legality === 'contraband') legalClass = 'contraband';
+
+      const block = document.createElement('div');
+      block.className = `sf-cargo-block ${legalClass}`;
+      if (selectedCommodityId === id) block.classList.add('selected');
+      block.dataset.id = id;
+      block.style.flex = `${Math.max(1, Math.round(vol))} ${Math.max(1, Math.round(vol))} 140px`;
+
+      let badgeHtml = '';
+      if (def) {
+        if (id === 'cmdty_volatiles' || id === 'cmdty_medical') {
+          badgeHtml = `<span class="sf-cargo-badge fragile">FRAGILE</span>`;
+        } else if (def.category === 'exotic' || def.category === 'tech') {
+          badgeHtml = `<span class="sf-cargo-badge special">EXOTIC</span>`;
+        } else if (missionCmdtyIds.has(id)) {
+          badgeHtml = `<span class="sf-cargo-badge mission">CONTRACT</span>`;
+        }
+      }
+
+      block.innerHTML = `
+        <div class="sf-cargo-block-top">
+          <span class="sf-cargo-block-name">${name}</span>
+          ${isLocked ? `<span class="sf-cargo-lock-icon" title="Locked — needed for an active contract or the story">${icon('lock', 12)}</span>` : ''}
+        </div>
+        <div class="sf-cargo-block-bottom">
+          <span class="sf-cargo-block-qty">${qty} units</span>
+          <span class="sf-cargo-block-vol">${vol.toFixed(1)} u vol</span>
+          ${badgeHtml}
+        </div>
+      `;
+
+      block.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        selectedCommodityId = id;
+        schematicEl.querySelectorAll('.sf-cargo-block').forEach(b => b.classList.remove('selected'));
+        block.classList.add('selected');
+        updateInspector(id);
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      });
+
+      frag.appendChild(block);
+    }
+
+    const freeVol = Math.max(0, cap - used);
+    if (freeVol > 0 && activeTab === 'cargo') {
+      const freeBlock = document.createElement('div');
+      freeBlock.className = 'sf-cargo-block free-space';
+      freeBlock.style.flex = `${Math.max(1, Math.round(freeVol))} ${Math.max(1, Math.round(freeVol))} 140px`;
+      freeBlock.innerHTML = `
+        <div class="sf-cargo-block-top">
+          <span class="sf-cargo-block-name" style="color:var(--ink-mute);">FREE CAPACITY</span>
+        </div>
+        <div class="sf-cargo-block-bottom">
+          <span class="sf-cargo-block-qty" style="color:var(--ink-mute);">${freeVol} u free</span>
+        </div>
+      `;
+      frag.appendChild(freeBlock);
+    }
+
+    schematicEl.appendChild(frag);
+
+    if (!selectedCommodityId && keys.length > 0) {
+      selectedCommodityId = keys[0];
+      const firstBlock = schematicEl.querySelector(`.sf-cargo-block[data-id="${selectedCommodityId}"]`);
+      if (firstBlock) firstBlock.classList.add('selected');
+    }
+
+    if (selectedCommodityId) {
+      updateInspector(selectedCommodityId);
+    } else {
+      updateInspector(null);
+    }
+  }
+
+  const railBtns = cargoPanel.querySelectorAll('.sf-cargo-rail-btn');
+  function markCargoRail(btn) {
+    railBtns.forEach((b) => {
+      const on = b === btn;
+      b.classList.toggle('active', on);
+      b.classList.toggle('k-word--primary', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (on) b.setAttribute('aria-current', 'true');
+      else b.removeAttribute('aria-current');
+    });
+  }
+  railBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      markCargoRail(btn);
+      activeTab = btn.dataset.tab;
+      selectedCommodityId = null;
+      refreshCargoPanel();
+      gridFx.reveal({
+        resolveTo: (c, r, cols, rows) => {
+          return 0.1 + 0.4 * Math.sin(c * 0.5) * Math.cos(r * 0.5);
+        },
+        durationMs: 400
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+    });
+  });
+
+  // Listen for the jettison event in case the cargo system doesn't handle it natively
+  on('cargo:jettison', ({ commodityId, qty }) => {
+    const cargoSys = ctx.registry && ctx.registry.get('cargo');
+    if (cargoSys && cargoSys.jettison) {
+      // On the worker lane the facade returns a Promise of the dumped count;
+      // main-side it resolves a number through the same await.
+      Promise.resolve(cargoSys.jettison(commodityId, qty || 1)).then((dumped) => {
+        if (dumped > 0) {
+          const name = cargoDisplayName(commodityId);
+          ctx.bus.emit('toast', { text: `Jettisoned ${dumped}× ${name}`, kind: 'warn', ttl: 2 });
+        }
+      });
+    }
+  });
+
+  // Toggle function
+  function toggleCargoPanel() {
+    cargoPanelOpen = !cargoPanelOpen;
+    if (state.ui) state.ui.cargoPanelOpen = cargoPanelOpen;
+    cargoPanel.classList.toggle('open', cargoPanelOpen);
+
+    gridFx.setActive(cargoPanelOpen);
+    hexFx.setActive(cargoPanelOpen);
+    beamFx.setActive(cargoPanelOpen);
+    gaugeUsedFx.setActive(cargoPanelOpen);
+    gaugeRiskFx.setActive(cargoPanelOpen);
+
+    if (cargoPanelOpen) {
+      refreshCargoPanel();
+      try { cargoCloseBtn.focus({ preventScroll: true }); } catch { /* pointer still closes the hold */ }
+      gridFx.reveal({
+        resolveTo: (c, r, cols, rows) => {
+          return 0.1 + 0.4 * Math.sin(c * 0.5) * Math.cos(r * 0.5);
+        },
+        durationMs: 400
+      });
+    } else {
+      clearCargoGaugeSettle(cargoGaugeSettle.used);
+      clearCargoGaugeSettle(cargoGaugeSettle.risk);
+      beamFx.setPath([], { active: false });
+    }
+    ctx.bus.emit('audio:cue', { id: cargoPanelOpen ? 'ui_open' : 'ui_back' });
+  }
+
+  // close function
+  function closeCargoPanel() {
+    if (!cargoPanelOpen) return;
+    cargoPanelOpen = false;
+    if (state.ui) state.ui.cargoPanelOpen = false;
+    cargoPanel.classList.remove('open');
+
+    gridFx.setActive(false);
+    hexFx.setActive(false);
+    beamFx.setActive(false);
+    gaugeUsedFx.setActive(false);
+    gaugeRiskFx.setActive(false);
+    clearCargoGaugeSettle(cargoGaugeSettle.used);
+    clearCargoGaugeSettle(cargoGaugeSettle.risk);
+    beamFx.setPath([], { active: false });
+
+    ctx.bus.emit('audio:cue', { id: 'ui_back' });
+  }
+
+  // Close button
+  const cargoCloseBtn = cargoPanel.querySelector('.sf-cargo-panel__close');
+  cargoCloseBtn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    closeCargoPanel();
+  });
+
+  // Refresh when cargo changes. The first fill of an empty hold names the manifest key once.
+  let holdWasEmpty = !cargoOccupied(state.player && state.player.cargo);
+  on('cargo:changed', (payload) => {
+    if (cargoPanelOpen) refreshCargoPanel();
+    const cargo = (payload && payload.cargo) || (state.player && state.player.cargo);
+    const line = noteFirstCargoLanding(state, {
+      wasEmpty: holdWasEmpty,
+      cargo,
+      bindingLabel: promptLabel('cargo'),
+    });
+    holdWasEmpty = !cargoOccupied(cargo);
+    if (line) ctx.bus.emit('toast', { text: line, kind: 'info', ttl: 6 });
+  });
+
+  // Expose toggle/close for the input system
+  on('ui:toggleCargo', toggleCargoPanel);
+  on('ui:closeCargo', closeCargoPanel);
+
+  // Close on ESC when panel focus is inside it; ui/input.js handles the global flight case.
+  cargoPanel.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') { ev.stopPropagation(); closeCargoPanel(); }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Event-driven objective refresh; cargo panels and HUD meta own their own data updates.
+  // ---------------------------------------------------------------------------
+  let objDirty = true;
+  on('mission:updated', () => { objDirty = true; });
+  on('mission:accepted', () => { objDirty = true; });
+  on('mission:completed', () => { objDirty = true; });
+
+  // Reticle accuracy bloom: the crosshair expands with sustained fire and contracts when cool — a
+  // classic combat-readability cue. Driven by the player's own combat:fire events; _recoilBloom
+  // spikes on each shot and decays each frame. Applied as a scale on the reticle's inner SVG (not
+  // the reticle div, whose transform centers it — scaling the div would recenter awkwardly).
+  let _recoilBloom = 0;   // 0 = rested (scale 1), up to ~1 (scale ~1.25) under sustained fire
+  on('combat:fire', (p) => {
+    if (!p || p.ownerId !== state.playerId) return;
+    _recoilBloom = Math.min(1, _recoilBloom + 0.35);
+  });
+
+  // WANTED indicator (V2 §20b / cut-list #15): a persistent red alert when the player's heat is
+  // above the lawful-engagement threshold. Event-driven from the heat system's heat:changed.
+  // INF-077: the alert traces the heat to its convicting incident (see wantedReason.js) —
+  // the accepted receipt's kind, affected party, and witness/jurisdiction basis. Suspicion
+  // without a receipt shows no reason at all, never a witness claim.
+  let wantedActive = false;
+  if (alerts) {
+    on('heat:changed', (p) => {
+      const v = p && typeof p.value === 'number' ? p.value : (state.player && state.player.heat) || 0;
+      const wanted = v >= 0.15;
+      const reason = wantedReasonText(p, state.player);
+      if (wanted && !wantedActive) {
+        alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, false), ttl: Infinity });
+        wantedActive = true;
+        const teach = noteFirstWantedMark(state, true);
+        if (teach) ctx.bus.emit('toast', { text: teach, kind: 'info', ttl: 6 });
+      } else if (wanted && wantedActive) {
+        // refresh the text to show the new tier (raise dedups by key but updates text/sev)
+        alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, true), ttl: Infinity });
+      } else if (!wanted && wantedActive) {
+        alerts.clear('wanted');
+        wantedActive = false;
+      }
+    });
+  }
+
+  // Forced weapon-heat vent (Micro-Loops): when the player's guns peg heatMax, weapons.js locks them
+  // out for ~2s while heat dumps. Raise a top-center alert so the lockout
+  // reads as a rhythm beat ("vent, then resume"), not a dead trigger.
+  on('weapons:vent', (p) => {
+    if (!p || p.ownerId !== state.playerId) return;
+    const venting = p.phase === 'start';
+    if (alerts) {
+      if (venting) alerts.raise({ key: 'wpn-vent', sev: 'warn', text: 'WEAPONS VENTING', ttl: 2.3 });
+      else alerts.clear('wpn-vent');
+    }
+    if (venting) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+  });
+
+  let lastObjectivesSig = '';
+  function refreshObjectives() {
+    objDirty = false;
+    // One-objective law: contract lists belong in the on-demand Mission Log. The flight HUD has
+    // exactly one command surface (missionTracker), including when nothing has been tracked yet.
+    // Keep the legacy node mounted for compatibility with probes, but never paint its old 1–4 row
+    // stack; that stack was the source of repeated, overlapping mission copy in the live capture.
+    lastObjectivesSig = '__active-objective-owns-attention__';
+    if (objWrap.textContent) objWrap.textContent = '';
+    setDisplay(objWrap, false);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Combat HUD update — lock ring + target lock diamond
+  // ---------------------------------------------------------------------------
+  function hideContactMarks(from = 0) {
+    for (let j = from; j < contactMarkEls.length; j++) setClass(contactMarkEls[j], 'visible', false);
+  }
+
+  function updateContactMarks(p, selectedId, effectiveId) {
+    if (!p || !p.pos || !helpers.worldToScreen) { hideContactMarks(0); return; }
+    let n = 0;
+    for (const e of indexedShipLikeScan(state)) {
+      if (!e || e === p || e.alive === false || !e.pos) continue;
+      const dx = e.pos.x - p.pos.x;
+      const dz = e.pos.z - p.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > CONTACT_MARK_RANGE_SQ) continue;
+      // keep the nearest few, sorted by range (insertion into a fixed pool: no allocation)
+      let at = n < CONTACT_MARK_POOL ? n : CONTACT_MARK_POOL - 1;
+      if (n >= CONTACT_MARK_POOL && d2 >= contactMarkNear[at].d2) continue;
+      if (n < CONTACT_MARK_POOL) n += 1;
+      while (at > 0 && contactMarkNear[at - 1].d2 > d2) {
+        contactMarkNear[at].e = contactMarkNear[at - 1].e;
+        contactMarkNear[at].d2 = contactMarkNear[at - 1].d2;
+        at -= 1;
+      }
+      contactMarkNear[at].e = e;
+      contactMarkNear[at].d2 = d2;
+    }
+    let used = 0;
+    for (let i = 0; i < n && used < CONTACT_MARK_POOL; i++) {
+      const e = contactMarkNear[i].e;
+      // the hull the guns address already wears the lead pip / LINE TARGET tag: no second mark
+      if (effectiveId != null && e.id === effectiveId) continue;
+      const anchor = presentedEntityAnchor(e);
+      if (!anchor) continue;
+      classifyContact(state, e, contactMarkClass, { selectedId });
+      if (!contactMarkClass.living || !contactMarkClass.observed || contactMarkClass.selected) continue;
+      contactMarkWorld.x = anchor.x; contactMarkWorld.y = 0; contactMarkWorld.z = anchor.z;
+      const c = helpers.worldToScreen(contactMarkWorld, contactMarkScreen);
+      if (!c.onScreen) continue;
+      contactMarkEdgeWorld.x = anchor.x + (Number(e.radius) || 8); contactMarkEdgeWorld.y = 0; contactMarkEdgeWorld.z = anchor.z;
+      const edge = helpers.worldToScreen(contactMarkEdgeWorld, contactMarkEdgeScreen);
+      const px = edge.onScreen ? Math.max(1, Math.abs(edge.x - c.x)) : 0;
+      const mark = contactMark(contactMarkClass, px);
+      if (!mark) continue;
+      const el = contactMarkEls[used++];
+      const markPath = CONTACT_MARK_PATH[mark.shape] || CONTACT_MARK_PATH.square;
+      setAttr(el._sfShapePath, 'd', markPath);
+      setAttr(el._sfBackPath, 'd', markPath);
+      setAttr(el, 'data-shape', mark.shape);
+      setAttr(el, 'data-variant', mark.variant);
+      setAttr(el, 'data-relation', mark.relation);
+      setClass(el, 'visible', true);
+      setHudScreenTransform(el, c.x, c.y - px - 11);
+    }
+    hideContactMarks(used);
+  }
+
+  function updateCombatHud(p, slow, overlayTick) {
+    if (!p) {
+      setClass(lockRing, 'active', false);
+      setClass(lockRing, 'locked', false);
+      setClass(lockRing, 'sf-lockring--latch', false);
+      setClass(lockDiamond, 'visible', false);
+      setDisplay(targetEdge, false);
+      setClass(leadPip, 'visible', false);
+      setClass(lineTargetTag, 'visible', false);
+      hideContactMarks(0);
+      updateGravityMarkOverlays(null);
+      updateMomentumSinkOverlays(null);
+      threatHalo.update(null, null, null);
+      return;
+    }
+
+    const combat = p.data && p.data.combat;
+    const weapons = p.data && p.data.weapons;
+
+    // ---- Lock-on progress ring ----
+    // Show when the player has a lock-requiring weapon and is building/holding a lock.
+    const lockProgress = combat ? (combat.lockProgress || 0) : 0;
+    const isLocking = lockProgress > 0 && lockProgress < 1;
+    const isLocked = lockProgress >= 1;
+    if (isLocking || isLocked) {
+      stampMarkLive(lockRing);
+      setClass(lockRing, 'active', true);
+      setClass(lockRing, 'locked', isLocked);
+      const offset = LOCK_C * (1 - lockProgress);
+      const offsetText = offset.toFixed(2);
+      setAttr(lockFill, 'stroke-dashoffset', offsetText);
+      const stage = isLocked ? 'locked' : (lockProgress < 0.45 ? 'acquiring' : 'tracking');
+      setAttr(lockRing, 'data-stage', stage);
+      if (lockDiamond) setAttr(lockDiamond, 'data-stage', stage);
+      _lockStageApplied = true;
+      const lockTarget = combat.lockTarget != null
+        ? resolveWorldPresentationEntity(state, combat.lockTarget) : null;
+      setText(lockLabel, targetLockChipText(lockTarget, lockProgress));
+      if (isLocked) {
+        if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1)');
+      } else if (stage === 'tracking') {
+        if (lockBrackets) {
+          const bScale = 1.4 - (lockProgress - 0.45) * 0.72;
+          setStyle(lockBrackets, 'transform', `scale(${bScale.toFixed(3)})`);
+        }
+      } else {
+        if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1.4)');
+      }
+      const innerRing = lockRing._sfInner || (lockRing._sfInner = lockRing.firstElementChild);
+      if (innerRing) {
+        setLagTranslate(innerRing, opticalGLag.x * 0.95, opticalGLag.y * 0.95);
+      }
+    } else {
+      // Lock progress wobbling on the cone edge must not blink the ring: hold through the
+      // mark-grace window, then retire (the CSS fades opacity, visibility sleeps the layer).
+      const ringLive = markStillLive(lockRing);
+      setClass(lockRing, 'active', ringLive);
+      setClass(lockRing, 'locked', false);
+      if (!ringLive && _lockStageApplied) {
+        _lockStageApplied = false;
+        clearAttr(lockRing, 'data-stage');
+        if (lockDiamond) clearAttr(lockDiamond, 'data-stage');
+      }
+      if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1.4)');
+      const innerRing = lockRing._sfInner || (lockRing._sfInner = lockRing.firstElementChild);
+      if (innerRing) setLagTranslate(innerRing, 0, 0);
+    }
+    // Lock-acquired tone & snap-shut latch: fire on rising edge (not-locked → locked).
+    if (isLocked && !_wasLocked) {
+      ctx.bus.emit('audio:cue', { id: 'lock_acquired' });
+      if (!getMotionReduced()) {
+        lockRing.classList.remove('sf-lockring--latch');
+        void lockRing.offsetWidth;
+        lockRing.classList.add('sf-lockring--latch');
+        if (lockDiamond) {
+          lockDiamond.classList.remove('sf-lockdiamond--locked');
+          void lockDiamond.offsetWidth;
+          lockDiamond.classList.add('sf-lockdiamond--locked');
+        }
+        _latchApplied = true;
+      } else if (_latchApplied) {
+        _latchApplied = false;
+        lockRing.classList.remove('sf-lockring--latch');
+        if (lockDiamond) lockDiamond.classList.remove('sf-lockdiamond--locked');
+      }
+    } else if (!isLocked && _latchApplied) {
+      _latchApplied = false;
+      lockRing.classList.remove('sf-lockring--latch');
+      if (lockDiamond) lockDiamond.classList.remove('sf-lockdiamond--locked');
+    }
+    _wasLocked = isLocked;
+
+    // ---- Target lock diamond (world-space overlay on locked/selected target) ----
+    // Packet 02: the bracket's subject is the SELECTION as target truth judges it — a recycled id,
+    // a dead body or a hull the player's sensors cannot see gets no bracket (no wallhack, no
+    // inheritance). A concealed/recycled hull retires at once instead of riding the mark grace.
+    const truth = projectTargetTruth(state, targetTruth);
+    const tid = truth.selectedId;
+    if (truth.selectedStatus === SELECTION_STATUS.CONCEALED || truth.selectedStatus === SELECTION_STATUS.RECYCLED) {
+      lockDiamond._sfOkAt = 0;
+    }
+    const tgt = tid != null ? resolveWorldPresentationEntity(state, tid) : null;
+    const tgtAnchor = tgt && tgt.alive ? presentedEntityAnchor(tgt) : null;
+    // A known selected contact may outlive its rendered mesh. Only an offscreen cue can
+    // fall back to its live position; never draw a bracket over an unpresented onscreen hull.
+    const cueAnchor = tgtAnchor || (tgt && tgt.pos);
+    if (tgt && tgt.alive && cueAnchor && Number.isFinite(cueAnchor.x)
+      && Number.isFinite(cueAnchor.z) && helpers.worldToScreen) {
+      const proj = projectTargetCenter(cueAnchor);
+      const marker = resolveSelectedTargetMarker(p, tgt, proj, window.innerWidth, window.innerHeight, targetMarkerRecord);
+      if (proj.onScreen && tgtAnchor) {
+        setDisplay(targetEdge, false);
+        stampMarkLive(lockDiamond);
+        setClass(lockDiamond, 'visible', true);
+        setHudScreenTransform(lockDiamond, proj.x, proj.y);
+        // Tint: red when missile-locked, cyan when just selected/tracking.
+        const tgtLocked = isLocked && combat && combat.lockTarget === tid;
+        setClass(lockDiamond, 'locked-tgt', tgtLocked);
+        const shape = targetBracketShape(tgt, isHostileToPlayer(tgt, p ? p.team : 0, state));
+        setAttr(lockDiamond, 'data-shape', shape);
+        const innerDiamond = lockDiamond._sfInner || (lockDiamond._sfInner = lockDiamond.firstElementChild);
+        if (innerDiamond) {
+          const spin = shape === 'bracket-friendly' ? ' rotate(45deg)' : '';
+          setLagTranslate(innerDiamond, opticalGLag.x * 0.9, opticalGLag.y * 0.9, {
+            suffix: spin,
+            plain: spin ? 'rotate(45deg)' : 'none',
+          });
+        }
+      } else {
+        setClass(lockDiamond, 'visible', false);
+        if (marker && !proj.onScreen) {
+          // Same presenter as the roster/panel: an unscanned wreck-like keeps its broadcast
+          // callsign but never leaks its private name or scan label onto the edge ribbon.
+          const name = String(targetDisplayName(tgt)).replace(/\s+/g, ' ').trim().slice(0, 26);
+          const text = `TARGET${marker.aft ? ' AFT' : ''} · ${name} · ${Math.round(marker.distance)} u`;
+          setText(targetEdgeLabel, text);
+          setAttr(targetEdge, 'aria-label', text);
+          setDataEdge(targetEdge, marker.edge);
+          setCssVar(targetEdge, '--sf-arrow-angle', `${marker.angleRad}rad`);
+          // Share the objective cue's cached layout boxes without changing its direction.
+          let edgeX = marker.x, edgeY = marker.y;
+          const obstacles = objectiveEdgeObstacles();
+          const { left: leftBox, right: rightBox, orrery: orreryBox } = obstacles;
+          if (orreryBox && edgeX < orreryBox.right && edgeY > orreryBox.top - 16) {
+            if (marker.edge === 'bottom') edgeX = orreryBox.right + 18;
+            else edgeY = orreryBox.top - 18;
+          } else if (leftBox && edgeX < leftBox.right && edgeY > leftBox.top - 14 && edgeY < leftBox.bottom + 14) {
+            edgeX = leftBox.right + 18;
+          } else if (rightBox && edgeX > rightBox.left && edgeY > rightBox.top - 14 && edgeY < rightBox.bottom + 14) {
+            edgeX = rightBox.left - 18;
+          }
+          const edgeSafeInset = Math.max(0, (window.innerWidth - window.innerHeight * 16 / 9) / 2);
+          if (edgeSafeInset > 0) edgeX = Math.min(Math.max(edgeX, edgeSafeInset + 34), window.innerWidth - edgeSafeInset - 34);
+          marker.x = edgeX; marker.y = edgeY;
+          avoidSelectedTargetTouchControls(marker, text, getFlightTextObstacles(), window.innerHeight);
+          setStyle(targetEdge, 'transform', `translate3d(${marker.x}px,${marker.y}px,0)`);
+          setDisplay(targetEdge, true);
+        } else setDisplay(targetEdge, false);
+      }
+    } else {
+      setDisplay(targetEdge, false);
+      setClass(lockDiamond, 'visible', markStillLive(lockDiamond));
+    }
+
+    updateGravityMarkOverlays(p);
+    updateMomentumSinkOverlays(p);
+
+    // ---- Lead pip (BP-02) — pure gate in gunnery; HUD only applies screen coords ----
+    // The opts literal stays per-call: helpers.worldToScreen is rebound on renderer
+    // regeneration, so a mount-time capture would go stale (the hidden verdict is shared).
+    // Packet 02: the pip belongs on the hull the guns address (the effective target, or a selected
+    // hostile when assist is off), not on the selection when the line has claimed the guns.
+    const leadId = truth.leadTargetId;
+    const leadEnt = leadId == null ? null : (leadId === tid ? tgt : resolveWorldPresentationEntity(state, leadId));
+    const leadAnchor = leadEnt && leadEnt.alive ? presentedEntityAnchor(leadEnt) : null;
+    const pipOverlay = leadAnchor ? computeLeadPipOverlay(p, leadEnt, state, {
+      worldToScreen: helpers.worldToScreen,
+      isHostileToPlayer,
+      leadSolution: truthLeadSolution,
+      hasBallisticWeapon,
+      primaryProjSpeed,
+    }) : leadPipHidden;
+    if (pipOverlay.visible) {
+      stampMarkLive(leadPip);
+      setClass(leadPip, 'visible', true);
+      setHudScreenTransform(leadPip, pipOverlay.x, pipOverlay.y);
+      setClass(leadPip, 'on-solution', pipOverlay.onSolution);
+      const innerPip = leadPip._sfInner || (leadPip._sfInner = leadPip.firstElementChild);
+      if (innerPip) {
+        setLagTranslate(innerPip, opticalGLag.x * 1.05, opticalGLag.y * 1.05);
+      }
+      if (leadPipArc && !pipOverlay.onSolution) {
+        const pointer = state.input && state.input.pointerScreen;
+        const fallbackX = ((typeof window !== 'undefined' && Number.isFinite(window.innerWidth))
+          ? window.innerWidth
+          : 1280) * 0.5;
+        const fallbackY = ((typeof window !== 'undefined' && Number.isFinite(window.innerHeight))
+          ? window.innerHeight
+          : 720) * 0.5;
+        const reticleX = pointer && pointer.active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
+        const reticleY = pointer && pointer.active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
+        const angleRad = Math.atan2(reticleY - pipOverlay.y, reticleX - pipOverlay.x);
+        const rotateDeg = ((angleRad - LEAD_PIP_GAP_CENTER_OFFSET) * 180 / Math.PI).toFixed(2);
+        setSvgAttr(leadPipArc, 'transform', `rotate(${rotateDeg} 11 11)`);
+      }
+    } else {
+      setClass(leadPip, 'visible', markStillLive(leadPip));
+    }
+    // Blocked at the point of intent: the straight shot to the hull the pip rides, judged by the same
+    // line-of-sight witness and shield-panel intercept the shot obeys (combat/contactClassifier.js).
+    if (overlayTick) gunLineBlocked = !!(leadEnt && leadEnt.alive && gunLineDenial(state, p, leadEnt));
+    if (!leadEnt) gunLineBlocked = false;
+    setAttr(leadPip, 'data-denial', gunLineBlocked ? 'blocked' : 'none');
+    setText(lineTargetText, gunLineBlocked ? 'LINE TARGET · BLOCKED' : 'LINE TARGET');
+    // LINE TARGET: shown only when the guns address a hull that is NOT the selection, so the
+    // player is never left reading a confident mark on the wrong ship.
+    let tagShown = false;
+    if (truth.divergent && truth.reason === TARGET_REASON.LINE_TARGET && helpers.worldToScreen) {
+      const effId = truth.effectiveGunTargetId;
+      const effEnt = effId === tid ? tgt : resolveWorldPresentationEntity(state, effId);
+      const effAnchor = effEnt && effEnt.alive ? presentedEntityAnchor(effEnt) : null;
+      if (effAnchor) {
+        const effProj = projectTargetCenter(effAnchor);
+        if (effProj.onScreen) {
+          const effX = effProj.x;
+          const effY = effProj.y + Math.max(16, targetPixelRadius(effAnchor, Number(effEnt.radius) || 8, effProj)) + 8;
+          stampMarkLive(lineTargetTag);
+          setClass(lineTargetTag, 'visible', true);
+          setHudScreenTransform(lineTargetTag, effX, effY, { offset: 'translate(-50%,0)' });
+          tagShown = true;
+        }
+      }
+    }
+    if (!tagShown) setClass(lineTargetTag, 'visible', markStillLive(lineTargetTag));
+    // Edge-of-screen threat indicators live on the overlay cadence: their inputs (hostile set,
+    // projected edge placement) are refreshed at 30 Hz alongside the other world-anchored DOM.
+    if (overlayTick) {
+      threatHalo.update(p, state, helpers.worldToScreen);
+      updateContactMarks(p, truth.selectedId, truth.effectiveGunTargetId);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 60Hz cheap path
+  // ---------------------------------------------------------------------------
+  let lowShieldActive = false, lowHullActive = false, lowFuelActive = false, fuelWarnArmed = false;
+  let bingoFuelActive = false;
+  let elReticle = null;
+  let cachedNavStationId = null;
+  let cachedNavEntity = null;
+  let cachedNavListLength = -1;
+  let cachedNavIndexVersion = -1;
+  let lastNavLabel = '';
+  let lastNavDist = '';
+  let lastNavEta = '';
+  let lastObjectiveMarkerText = '';
+  let lastObjectiveSig = null;
+  // Objective-arrow mode latch (on-screen diamond vs edge chevron): null until the first sample.
+  let _objarrowOnscreen = null;
+  let _objarrowModeStreak = 0;
+  let _objarrowModeWanted = null;
+  const numericClock = createHudClock(10);
+  const targetClock = createHudClock(20);
+  const overlayClock = createHudClock(30);
+  const radarClock = createHudClock(10);
+
+  function syncSafetyAlerts(p, hullFrac, shieldFrac, fuelFrac) {
+    if (!alerts || !p) return;
+    if (hullFrac == null) hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
+    if (shieldFrac == null) shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
+    // Hysteresis: shield regen ≈ incoming DPS parks the fraction ON the 20% line and strobed the
+    // pill at the top-center stack. Arm deeper than the retire boundary; same for hull.
+    const lowShield = shieldFrac > 0 && shieldFrac < (lowShieldActive ? 0.24 : 0.16);
+    if (lowShield && !lowShieldActive) alerts.raise({ key: 'low-shield', sev: 'warn', text: 'SHIELDS LOW', ttl: Infinity });
+    if (!lowShield && lowShieldActive) alerts.clear('low-shield');
+    lowShieldActive = lowShield;
+    const lowHull = hullFrac > 0 && hullFrac < (lowHullActive ? 0.3 : 0.22);
+    if (lowHull && !lowHullActive) alerts.raise({ key: 'low-hull', sev: 'danger', text: 'HULL CRITICAL', ttl: Infinity });
+    if (!lowHull && lowHullActive) alerts.clear('low-hull');
+    lowHullActive = lowHull;
+    // RC-GLASS 474 — danger-quiet: while the hull is critical the tape and tracker dim so the
+    // vital instruments breathe; the class releases on the same 30% retire boundary.
+    if (root && root.classList) root.classList.toggle('sf-hud--danger-quiet', lowHull);
+    // The glass preset survives reload through settings and re-reads each sync.
+    const preset = state && state.settings ? String(state.settings.glassPreset || 'clean') : 'clean';
+    if (root && root.dataset && root.dataset.glassPreset !== preset) root.dataset.glassPreset = preset;
+    // A hidden-HUD tick calls this without a fuel sample. Leaving the lamp alone
+    // keeps a menu from clearing FUEL LOW and speaking it again on the way back.
+    if (fuelFrac == null) return;
+    const fuel = fuelReserveWarning(
+      { low: lowFuelActive },
+      fuelFrac,
+      fuelWarnArmed,
+    );
+    if (fuel.raise) alerts.raise({ key: 'low-fuel', sev: 'warn', text: 'FUEL LOW', ttl: Infinity });
+    if (fuel.speak && ctx.bus && typeof ctx.bus.emit === 'function') {
+      // Finite ttl takes the one-voice floor and the existing alert tone. The pill stays
+      // until the tank climbs back out. Empty still owns OUT OF FUEL on its own event.
+      ctx.bus.emit('alert', { key: 'fuel-low', sev: 'warn', text: 'FUEL LOW', ttl: 3 });
+    }
+    if (fuel.clear) alerts.clear('low-fuel');
+    lowFuelActive = fuel.low;
+    fuelWarnArmed = fuel.nextArmed;
+    // RC-GLASS 474 — the bingo-fuel line speaks once, deeper than FUEL LOW.
+    const bingoLine = bingoFuelLine(fuelFrac);
+    if (bingoLine && !bingoFuelActive) alerts.raise({ key: 'bingo-fuel', sev: 'danger', text: bingoLine, ttl: Infinity });
+    if (!bingoLine && bingoFuelActive) alerts.clear('bingo-fuel');
+    bingoFuelActive = !!bingoLine;
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, (ch) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    })[ch]);
+  }
+
+  function setSvgAttr(el, name, value) {
+    setAttr(el, name, value);
+  }
+
+  function setTargetArcDash(el, radius, fraction, cx, cy) {
+    const c = 2 * Math.PI * radius;
+    const maxArc = c * (300 / 360);
+    const fill = fraction * maxArc;
+    setSvgAttr(el, 'stroke-dasharray', `${fill} ${c}`);
+    setSvgAttr(el, 'transform', `rotate(-150 ${cx} ${cy})`);
+  }
+
+  function getIffData(e, playerTeam) {
+    let iff = 'neutral';
+    if (e.team === playerTeam || e.team === 0) {
+      iff = e.id === state.playerId ? 'ally' : 'friendly';
+    } else if (isHostileToPlayer(e, playerTeam, state)) {
+      iff = 'hostile';
+    }
+    const isGhost = e.data && (e.data.isGhost || e.data.ghost || e.data.kind === 'unknown');
+    const data = SEMANTIC_PALETTE[iff] || SEMANTIC_PALETTE.neutral;
+    // Roster glyphs render through src/ui/glyphs.js (inline SVG), keyed to the same silhouettes as
+    // SEMANTIC_PALETTE.shape; the dashed ghost_* variants mark unconfirmed contacts.
+    const icon = isGhost ? `ghost_${iff}` : `iff_${iff}`;
+    return {
+      iff,
+      color: `var(${data.cssVar})`,
+      icon,
+      isGhost
+    };
+  }
+
+  // Contact-roster class glyphs — names in src/ui/glyphs.js, rendered as inline SVG. The old
+  // ⚔ ⛏ ▲ ⚹ ⎔ ⌃ text stand-ins rendered at mixed weights and depended on emoji-presentation
+  // workarounds; the SVG set reads as one coherent size/complexity ladder (scout..capital).
+  function getClassGlyph(e) {
+    if (!e) return 'unknown';
+    if (e.type === 'station') return 'station';
+    if (e.type === 'wreck') return 'wreck';
+    if (e.type === 'asteroid') return 'asteroid';
+
+    const def = e.data && e.data.defId ? SHIP_BY_ID.get(e.data.defId) : null;
+    const family = (def && def.visuals && def.visuals.family) || '';
+    const role = (e.role || (def && def.role) || '').toLowerCase();
+
+    if (family === 'scout' || role.includes('scout') || role.includes('starter')) return 'scout';
+    if (family === 'fighter' || role.includes('fighter')) return 'fighter';
+    if (family === 'freighter' || role.includes('freighter') || role.includes('cargo')) return 'freighter';
+    if (family === 'miner' || role.includes('miner')) return 'miner';
+    if (family === 'frigate' || role.includes('frigate')) return 'frigate';
+    if (family === 'capital' || role.includes('capital')) return 'capital';
+    if (role.includes('gunship')) return 'gunship';
+
+    const sClass = (e.shipClass || '').toLowerCase();
+    if (sClass === 'fighter') return 'fighter';
+    if (sClass === 'gunship') return 'gunship';
+    if (sClass === 'frigate') return 'frigate';
+    if (sClass === 'capital') return 'capital';
+
+    return 'scout';
+  }
+
+  const overviewClock = createContactRosterClock();
+  // Retained, keyed contact rows (PERF). The strip used to guard a full `innerHTML = ''` teardown
+  // behind a signature string that embedded Math.round(dist) and Math.round(closingSpeed) per
+  // contact. Those tick on nearly every 5 Hz sample while the player is flying, so the guard almost
+  // never hit and the roster paid subtree teardown + HTML parse + listener rebinding + style
+  // recalc five times a second, forever. Rows are now keyed by entity id, reused across samples,
+  // and written field-by-field only where a value actually changed; a distance ticking 431 -> 430
+  // costs exactly one textContent write.
+  const overviewRows = new Map();      // entity id -> retained row record
+  let overviewStamp = 0;               // marks the rows touched by the current reconcile pass
+  let overviewFooter = null;           // retained overflow footer (detached when there is no overflow)
+  let overviewFooterAttached = false;
+  let overviewCountMode = false;       // JS-side latch for the sf-overview--count class
+  const _overviewContacts = [];        // retained scratch: cleared per call, never reallocated
+  const _overviewOrder = [];           // retained scratch: this sample's rows, in display order
+  let _overviewIdScratch = new Set();  // retained scratch: swapped with _knownContactIds each call
+  // Compact contacts roster (GDD 2.0 "Radar & Contacts"): only a lock mounts it (Wave G7), and an
+  // empty sample hides it even then. While mounted, scan/threat reveals and the manual PIN
+  // (state.settings.ui.overviewOpen, O key) expand it from the count line to full rows.
+  const OVERVIEW_HOSTILE_REVEAL_R = 2600;   // a hostile inside this radius keeps the strip open
+  const OVERVIEW_HOSTILE_DISARM_R = 2900;   // …and only an EMPTY band out here lets it stand down
+  const OVERVIEW_SCAN_REVEAL_MS = 7000;     // how long a scan pulse holds the strip open
+  const OVERVIEW_CONTACT_REVEAL_MS = 5000;  // how long a newly-arrived contact holds it open
+  let _overviewRevealUntil = 0;
+  // Threat-channel hysteresis: a hostile oscillating across the reveal radius used to flip five
+  // coupled visuals (ring, arcs, lamp, data-threat, roster reveal) at the 5 Hz sample rate.
+  let _threatNearLatch = false;
+  let _threatNearLastAt = -1e9;
+  let _overviewEmptyAllowedAt = 0;
+  let _knownContactIds = new Set();
+  function revealOverview(ms) {
+    const until = performance.now() + ms;
+    if (until > _overviewRevealUntil) _overviewRevealUntil = until;
+  }
+  // A scan pulse is the player explicitly asking "what's out there" — surface the strip immediately.
+  on('scan:completed', () => { revealOverview(OVERVIEW_SCAN_REVEAL_MS); updateOverview(); });
+  on('scan:pulse', () => revealOverview(OVERVIEW_SCAN_REVEAL_MS));
+
+  if (!state.settings) state.settings = {};
+  if (!state.settings.ui) state.settings.ui = {};
+  if (state.settings.ui.overviewOpen === undefined) {
+    // Default to on-demand (unpinned): the strip speaks only when scanned or when a threat arrives.
+    laneWriteSetting(state, 'settings.ui.overviewOpen', false);
+  }
+
+  on('ui:toggleOverview', () => {
+    laneWriteSetting(state, 'settings.ui.overviewOpen', !state.settings.ui.overviewOpen);
+    if (state.settings.ui.overviewOpen) revealOverview(OVERVIEW_SCAN_REVEAL_MS);
+    updateOverview();
+    ctx.bus.emit('toast', {
+      text: state.settings.ui.overviewOpen ? 'Contacts strip pinned' : 'Contacts strip on-demand',
+      kind: 'info', ttl: 1.6,
+    });
+    ctx.bus.emit('audio:cue', { id: state.settings.ui.overviewOpen ? 'ui_open' : 'ui_back' });
+  });
+
+  // One-word state → CSS class for the row's state chip + tier pips.
+  const OVERVIEW_STATE_CLASS = {
+    HOSTILE: 'hostile', PATROL: 'patrol', DERELICT: 'derelict', TRADER: 'trader',
+    MINER: 'miner', WINGMAN: 'ally', ALLY: 'ally', NEUTRAL: 'neutral',
+  };
+  // Threat tier is DRAWN, never typeset: three slanted segment pips, lit up to the tier — the
+  // same gauge language as the vital meters. The ▰/▱ codepoints rendered as missing-glyph boxes
+  // on platforms whose fallback fonts lack them (craft critic 2026-10-26), so the pips are
+  // elements: <i> children, .is-lit up to the tier. Structure is built once per row, toggled after.
+  function paintTierSegments(el, tier) {
+    const t = Number.isFinite(tier) ? Math.max(0, Math.min(3, tier)) : 0;
+    if (el.childElementCount !== 3) {
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < 3; i++) frag.appendChild(document.createElement('i'));
+      el.replaceChildren(frag);
+    }
+    const segs = el.children;
+    for (let i = 0; i < 3; i++) {
+      const lit = i < t;
+      if (segs[i].classList.contains('is-lit') !== lit) segs[i].classList.toggle('is-lit', lit);
+    }
+    // The pips are decorative <i> elements; the word still needs to reach assistive tech, which
+    // the ▰▱ text only ever read as noise. role=img makes the label announce.
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', `Threat tier ${t}`);
+  }
+
+
+  const OVERVIEW_TIER_TITLE = 'Threat tier (mass + faction)';
+
+  /**
+   * Build one retained contact row. Structure is created with createElement/textContent rather than
+   * an innerHTML template so that later updates can address individual spans; textContent supersedes
+   * the old escapeHtml(...) interpolation (it is not markup, so nothing is escaped twice).
+   * Every static class/style/attribute is written exactly once, here.
+   */
+  function createOverviewRow(entity) {
+    // dp-contact: the roster row is a printed line on the plate whose IFF mark is a lamp bead.
+    // The bead is a lens set into the row (deckplate); hover wakes it, a hostile tier drives it red.
+    const el = document.createElement('div');
+    el.className = 'sf-overview-row dp-contact';
+
+    const left = document.createElement('div');
+    left.className = 'sf-overview-row__left';
+    const lampEl = document.createElement('span');
+    lampEl.className = 'dp-contact__lamp';
+    lampEl.setAttribute('aria-hidden', 'true');
+    const iffIcon = document.createElement('span');
+    iffIcon.style.setProperty('font-weight', 'bold');
+    const glyphEl = document.createElement('span');
+    glyphEl.style.setProperty('color', 'var(--ink-dim)');
+    glyphEl.style.setProperty('font-size', '10px');
+    const nameEl = document.createElement('span');
+    nameEl.className = 'sf-overview-row__name';
+    // The text lives one level inside __name so the element's overflow-hidden box is an ancestor
+    // of the run: the visual ellipsis and every measure of the run's extent then agree — a
+    // clipped name can never read as painted under the state word beside it.
+    const nameTextEl = document.createElement('span');
+    nameEl.appendChild(nameTextEl);
+    const stateEl = document.createElement('span');
+    left.append(lampEl, iffIcon, glyphEl, nameEl);
+
+    const right = document.createElement('div');
+    right.className = 'sf-overview-row__right';
+    const tierEl = document.createElement('span');
+    tierEl.setAttribute('title', OVERVIEW_TIER_TITLE);
+    const distEl = document.createElement('span');
+    const speedEl = document.createElement('span');
+    speedEl.style.setProperty('width', '24px');
+    speedEl.style.setProperty('text-align', 'right');
+    // The state word belongs to the datum cluster, not the name lane: inside __left it stole the
+    // name's only flexible width and pushed callsigns to three wrapped lines at 1080p
+    // ("FIELD / COIL / CRADLE"). Beside the tier segments it keeps its fixed gap AND the name
+    // gets the whole lane back (craft critic r2).
+    right.append(stateEl, tierEl, distEl, speedEl);
+
+    el.append(left, right);
+
+    const rec = {
+      id: entity.id,
+      el, lampEl, iffIcon, glyphEl, nameEl, nameTextEl, stateEl, tierEl, distEl, speedEl,
+      detailEl: null,
+      attached: false,
+      stamp: 0,
+      // Last value written to each field. A write happens only when one of these changes.
+      name: '', iffColor: '', icon: '', glyph: '', stateWord: '', stateCls: '',
+      tier: -1, dist: null, speed: '', detail: '', selected: false, unscanned: false,
+    };
+
+    // Bound ONCE for the life of the row. Re-binding a fresh closure per sample was part of the
+    // teardown cost this rewrite removes; the record carries the live name so the toast stays current.
+    el.addEventListener('click', () => {
+      const contact = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(rec.id)
+        : null;
+      if (!presentationAllowsTargetLock(contact, state)) return;
+      if (!state.player) state.player = {};
+      laneInputWrite(state, 'player.targetId', rec.id);
+      laneInputWrite(state, 'input.targetAssistDisabled', false);
+      ctx.bus.emit('toast', { text: `Selected target: ${rec.name}`, kind: 'info', ttl: 2 });
+      updateOverview();
+    });
+
+    return rec;
+  }
+
+  /** Write only the fields of a retained row whose value actually changed this sample. */
+  function syncOverviewRow(rec, c, playerTeam, player, targetId) {
+    const e = c.e;
+    const iff = getIffData(e, playerTeam);
+    const glyph = getClassGlyph(e);
+    const siteDetail = authoredSiteRosterDetail(state, e, player, c.dist);
+    const sword = siteDetail != null ? '' : c.ally ? 'ALLY' : contactStateWord(e, playerTeam, state);
+    const stateCls = OVERVIEW_STATE_CLASS[sword] || 'neutral';
+    const scannedWreck = c.isWreck && wreckScanned(e);
+    const name = targetDisplayName(e, { concealWreck: c.isWreck && !scannedWreck });
+
+    // Derelict manifest line: unscanned shows only a ghost outline; a scan resolves the manifest
+    // + weak-point callout (GDD 2.0 §7.4).
+    let detail = '';
+    if (siteDetail != null) {
+      detail = siteDetail;
+    } else if (c.isWreck) {
+      // data.weakPoint is a string label on wrecks (scanner.js weakPointFor) but the object
+      // form ({label, arc…}) reaches wreck-likes via enemy defs — print the label, never the
+      // object ("WEAK [object Object]" read as a broken screen).
+      const weakWord = typeof e.data.weakPoint === 'string'
+        ? e.data.weakPoint
+        : (e.data.weakPoint && e.data.weakPoint.label) || '—';
+      detail = scannedWreck ? `${manifestSummary(e)} · WEAK ${weakWord}` : '??? UNSCANNED';
+    } else {
+      // RC-NPC-READ 477: a working hull's job phase rides the detail line — HAULER · LOADING.
+      const work = livingWorkStatusText(e, { depth: 'lock', state });
+      if (work) detail = work;
+    }
+
+    const rvx = ((e.vel && e.vel.x) || 0) - ((player.vel && player.vel.x) || 0);
+    const rvz = ((e.vel && e.vel.z) || 0) - ((player.vel && player.vel.z) || 0);
+    const closingSpeed = -((rvx * c.dx + rvz * c.dz) / (c.dist || 1));
+    const speedIcon = closingSpeed >= 0.5 ? '▸' : (closingSpeed <= -0.5 ? '▹' : '');
+    const rawSpeedText = Math.abs(closingSpeed) >= 0.5 ? `${speedIcon}${Math.round(Math.abs(closingSpeed))}` : '';
+    // INF-019: the per-sample marker holds a beat once accepted — no threshold flicker,
+    // no digit churn, and still exactly one textContent write per accepted change.
+    const speedMark = steadyClosingMarker(rec.speedMark, rawSpeedText, performance.now());
+    rec.speedMark = speedMark;
+    const speedText = speedMark.text;
+    const dist = Math.round(c.dist);
+    const unscanned = siteDetail == null && c.isWreck && !scannedWreck;
+    const selected = e.id === targetId;
+
+    if (rec.unscanned !== unscanned) { setClass(rec.el, 'unscanned', unscanned); rec.unscanned = unscanned; }
+    if (rec.selected !== selected) { setClass(rec.el, 'selected', selected); rec.selected = selected; }
+    if (rec.iffColor !== iff.color) {
+      rec.el.style.setProperty('--iff-color', iff.color);
+      rec.iffIcon.style.setProperty('color', iff.color);
+      rec.lampEl.style.setProperty('color', iff.color);
+      rec.lampEl.style.setProperty('background', iff.color);
+      rec.iffColor = iff.color;
+    }
+    if (rec.icon !== iff.icon) { rec.iffIcon.innerHTML = glyphSvg(iff.icon, 11); rec.icon = iff.icon; }
+    if (rec.glyph !== glyph) { rec.glyphEl.innerHTML = glyphSvg(glyph, 13); rec.glyph = glyph; }
+    if (rec.name !== name) {
+      // WORD JOINER after each hyphen: an explicit hyphen is a soft wrap opportunity, so a
+      // callsign like "Relief-Freighter Choir-Tender" broke "Choir-/Tender" mid-token and the
+      // checker read the run as cut off. With U+2060 the only breaks left are at spaces — the
+      // name wraps whole words (craft critic 2026-10-26). rec.name keeps the raw string for
+      // the selection toast.
+      rec.nameTextEl.textContent = name.replace(/-/g, '-⁠');
+      rec.name = name;
+    }
+    // A contact whose only name IS its state ("Derelict" + "DERELICT") reads as a stutter;
+    // keep the state class for colour, drop the duplicated word.
+    const shownSword = sword && sword.toLowerCase() === String(name).toLowerCase() ? '' : sword;
+    if (rec.stateWord !== shownSword) { rec.stateEl.textContent = shownSword; rec.stateWord = shownSword; }
+    if (rec.stateCls !== stateCls) {
+      // Rewrite the whole className: add-only would leave a stale sf-cs--<old> beside the new one.
+      rec.stateEl.className = `sf-overview-row__state sf-cs--${stateCls}`;
+      rec.tierEl.className = `sf-overview-row__tier sf-cs--${stateCls}`;
+      rec.stateCls = stateCls;
+    }
+    if (rec.tier !== c.threatTier) { paintTierSegments(rec.tierEl, c.threatTier); rec.tier = c.threatTier; }
+    if (rec.dist !== dist) {
+      rec.distEl.textContent = String(dist);
+      applyDistanceSpeech(rec.distEl, `${dist} u`);
+      rec.dist = dist;
+    }
+    if (rec.speed !== speedText) { rec.speedEl.textContent = speedText; rec.speed = speedText; }
+    if (rec.detail !== detail) {
+      if (detail) {
+        if (!rec.detailEl) {
+          rec.detailEl = document.createElement('div');
+          rec.detailEl.className = 'sf-overview-row__detail';
+          rec.el.appendChild(rec.detailEl);   // always after __left/__right, as in the old template
+        }
+        rec.detailEl.textContent = detail;
+      } else if (rec.detailEl) {
+        rec.el.removeChild(rec.detailEl);
+        rec.detailEl = null;
+      }
+      rec.detail = detail;
+    }
+  }
+
+  function updateOverview() {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const locked = !!(state.player && state.player.targetId != null);
+    if (!player || !player.pos) {
+      mountContactRoster(rightDock, elOverview, radar.el, false);
+      return;
+    }
+    const playerTeam = player.team;
+
+    // Retained scratch list: cleared and refilled, never reallocated (this runs at 5 Hz forever).
+    const contacts = _overviewContacts;
+    contacts.length = 0;
+    const consider = (e) => {
+      if (!e || !e.alive || e === player) return;
+      const isShip = verbAcceptsType('target', e.type); // PQ-015: shared ship|drone membership
+      const isWreck = isWreckLike(e);
+      if (!isShip && !isWreck) return;
+      if (!e.pos) return;
+
+      const dx = e.pos.x - player.pos.x;
+      const dz = e.pos.z - player.pos.z;
+      const dist = Math.hypot(dx, dz);
+      // Retention band: a listed contact stays listed to 5500 so a ship riding the 5200 line
+      // does not pop its roster row (and shift the target panel) every 5 Hz sample.
+      if (dist > 5200 && !(dist <= 5500 && _knownContactIds.has(e.id))) return;
+
+      const hostile = isHostileToPlayer(e, playerTeam, state);
+      const ally = !hostile && !isWreck && playerTeam !== 0 && e.team === playerTeam;
+      contacts.push({
+        e, dist, dx, dz, isWreck, hostile, ally,
+        threatTier: contactThreatTier(e, hostile),
+      });
+    };
+    const index = state.entityIndex;
+    const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.shipLike) && Array.isArray(index.wrecks));
+    if (indexed) {
+      for (const e of indexedShipLikeScan(state)) consider(e);
+      for (const e of indexedTypeScan(state, 'wrecks')) consider(e);
+      const dressing = state.world && state.world.dressing;
+      const dressingRows = dressing && Array.isArray(dressing.rows) ? dressing.rows : null;
+      if (dressingRows) {
+        for (let i = 0; i < dressingRows.length; i++) {
+          const e = dressingRows[i];
+          if (e && e.type === 'fx' && isWreckLike(e)) consider(e);
+        }
+      }
+    } else {
+      for (const e of state.entityList || []) consider(e);
+    }
+
+    // On-demand reveal bookkeeping: a fresh hostile/derelict arriving, or a hostile closing inside
+    // the reveal radius, surfaces the strip for a beat even when it isn't pinned (one-voice rule).
+    const nowMs = performance.now();
+    // Double-buffered id sets. _knownContactIds must stay the PREVIOUS sample's set while the
+    // current one is filled, so the two are swapped rather than aliased or reallocated.
+    const curIds = _overviewIdScratch;
+    curIds.clear();
+    let nearbyHostile = false;
+    let hostileContacts = 0;
+    for (const c of contacts) {
+      curIds.add(c.e.id);
+      if (c.hostile) hostileContacts += 1;
+      if (c.hostile && c.dist < OVERVIEW_HOSTILE_REVEAL_R) nearbyHostile = true;
+      if (!_knownContactIds.has(c.e.id) && (c.hostile || c.isWreck)) revealOverview(OVERVIEW_CONTACT_REVEAL_MS);
+    }
+    // The threat channel (FRONTEND_PROGRAM §2, option B): red is reserved for threat, so the HUD
+    // publishes one state the threat lamp and the red-only marks read — clear / contact / near.
+    // Latched with hysteresis (see the constants above): arm inside 2600, stand down only after a
+    // full second with nobody inside 2900 — a chasing hostile oscillating across the radius must
+    // not pulse the ring, arcs and lamp at sample rate.
+    if (nearbyHostile) {
+      _threatNearLatch = true;
+      _threatNearLastAt = nowMs;
+    } else {
+      let stillNear = false;
+      for (const c of contacts) {
+        if (c.hostile && c.dist < OVERVIEW_HOSTILE_DISARM_R) { stillNear = true; break; }
+      }
+      if (stillNear) _threatNearLastAt = nowMs;
+      if (!stillNear && nowMs - _threatNearLastAt > 1000) _threatNearLatch = false;
+    }
+    nearbyHostile = _threatNearLatch;
+    const threatState = nearbyHostile ? 'near' : (hostileContacts ? 'contact' : 'clear');
+    setAttr(root, 'data-threat', threatState);
+    // Threat bearings: a red arc on the ring around the ship points at each near hostile. The chase
+    // view has a fixed orientation (tacticalMapGrammar projectRadarPoint: a world offset dx,dz
+    // lies on screen toward -dx,-dz), so bearing needs no per-contact screen projection.
+    let threatArcIdx = 0;
+    if (nearbyHostile && player.pos) {
+      for (const c of contacts) {
+        if (threatArcIdx >= threatArcs.length) break;
+        if (!c.hostile || !(c.dist < OVERVIEW_HOSTILE_REVEAL_R) || !c.e || !c.e.pos) continue;
+        setAttr(threatArcs[threatArcIdx++], 'd',
+          threatArcPath(Math.atan2(-(c.e.pos.z - player.pos.z), -(c.e.pos.x - player.pos.x))));
+      }
+    }
+    for (let i = threatArcIdx; i < threatArcs.length; i++) setAttr(threatArcs[i], 'd', '');
+    _overviewIdScratch = _knownContactIds;
+    _knownContactIds = curIds;
+
+    const pinned = !!(state.settings && state.settings.ui && state.settings.ui.overviewOpen);
+    if (!mountContactRoster(rightDock, elOverview, radar.el, locked)) return;
+    // A lock mounts the list (G7), but a lock on something the roster cannot list — a target that
+    // died, drifted past 5200 WU, or is not a ship/derelict — leaves nothing to show. The inline
+    // display below would beat the stylesheet's `:empty { display:none }`, so an empty list would
+    // sit on the deck as a bare glass bar. Hide it here instead; rows stay retained while hidden
+    // and the next non-empty sample reconciles them back to the truth.
+    if (!contacts.length) {
+      // The strip sits in a bottom-anchored column: an empty sample between two non-empty ones
+      // yanked the target panel. Retire only after the roster has been empty for a beat; during
+      // the hold the retained rows simply keep their last written state.
+      if (nowMs > _overviewEmptyAllowedAt) {
+        setDisplay(elOverview, false);
+        return;
+      }
+      return;
+    }
+    _overviewEmptyAllowedAt = nowMs + 1500;
+
+    const targetId = state.player.targetId;
+    const expanded = contactRosterExpanded({
+      pinned,
+      nearbyHostile,
+      revealActive: nowMs < _overviewRevealUntil,
+      selected: targetId != null,
+    });
+    if (!expanded) {
+      setDisplay(elOverview, true, 'flex');
+      if (!overviewCountMode) {
+        overviewCountMode = true;
+        elOverview.classList.add('sf-overview--count');
+      }
+      const countText = formatRosterCount(contacts);
+      if (!overviewFooter) {
+        overviewFooter = document.createElement('div');
+        overviewFooter.className = 'sf-overview-footer';
+      }
+      setText(overviewFooter, countText);
+      setAttr(overviewFooter, 'data-hostile', hostileContacts ? 'true' : 'false');
+      if (!overviewFooter.parentNode) elOverview.appendChild(overviewFooter);
+      overviewFooterAttached = true;
+      for (const rec of overviewRows.values()) {
+        if (rec.attached && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+        rec.attached = false;
+      }
+      return;
+    }
+    if (overviewCountMode) {
+      overviewCountMode = false;
+      elOverview.classList.remove('sf-overview--count');
+    }
+    contacts.sort((a, b) => {
+      const bandDelta = contactDisplayBand(a, targetId) - contactDisplayBand(b, targetId);
+      if (bandDelta) return bandDelta;
+      if (a.hostile && b.hostile && a.threatTier !== b.threatTier) return b.threatTier - a.threatTier;
+      return a.dist - b.dist;
+    });
+
+    const displayLimit = contactDisplayLimit(
+      typeof window !== 'undefined' ? window.innerWidth : 1280,
+      typeof window !== 'undefined' ? window.innerHeight : 720,
+    );
+    setDisplay(elOverview, true, 'flex');
+
+    const visibleCount = Math.min(displayLimit, contacts.length);
+
+    // --- keyed reconcile -------------------------------------------------------------------
+    // Pass 1: stamp the rows that survive into this sample, so stale rows can be dropped BEFORE
+    // any reordering (index comparisons below must see only live rows).
+    overviewStamp++;
+    let retained = 0;
+    for (let i = 0; i < visibleCount; i++) {
+      const rec = overviewRows.get(contacts[i].e.id);
+      if (rec) { rec.stamp = overviewStamp; retained++; }
+    }
+    if (overviewRows.size > retained) {
+      for (const rec of overviewRows.values()) {
+        if (rec.stamp === overviewStamp) continue;
+        if (rec.attached) { elOverview.removeChild(rec.el); rec.attached = false; }
+        overviewRows.delete(rec.id);
+      }
+    }
+
+    // Pass 2: create only what is new and write only what changed.
+    const order = _overviewOrder;
+    order.length = 0;
+    for (let i = 0; i < visibleCount; i++) {
+      const c = contacts[i];
+      let rec = overviewRows.get(c.e.id);
+      if (!rec) {
+        rec = createOverviewRow(c.e);
+        rec.stamp = overviewStamp;
+        overviewRows.set(rec.id, rec);
+      }
+      syncOverviewRow(rec, c, playerTeam, player, targetId);
+      order.push(rec);
+    }
+
+    // Pass 3: ordering. Check first (a pure read) so the steady state performs zero DOM moves;
+    // a genuine reorder or insert re-appends the whole run, and appendChild MOVES a live node
+    // rather than recreating it.
+    let inOrder = true;
+    for (let i = 0; i < visibleCount; i++) {
+      if (elOverview.children[i] !== order[i].el) { inOrder = false; break; }
+    }
+    if (!inOrder) {
+      for (let i = 0; i < visibleCount; i++) {
+        elOverview.appendChild(order[i].el);
+        order[i].attached = true;
+      }
+    }
+
+    const overflow = contactOverflowSummary(contacts, visibleCount);
+    if (overflow) {
+      if (!overviewFooter) {
+        overviewFooter = document.createElement('div');
+        overviewFooter.className = 'sf-overview-footer';
+      }
+      setText(overviewFooter, overflow);
+      // The footer always trails the rows, so a row move can never land behind it.
+      if (!overviewFooterAttached || elOverview.children[visibleCount] !== overviewFooter) {
+        elOverview.appendChild(overviewFooter);
+        overviewFooterAttached = true;
+      }
+    } else if (overviewFooterAttached) {
+      elOverview.removeChild(overviewFooter);
+      overviewFooterAttached = false;
+    }
+  }
+
+  let _fadeOutTimer = null;
+
+  // Retire the ring set through its fade: remove `visible` and let the 260 ms timer sleep the
+  // element after the CSS opacity transition plays. Every hide reason routes here — the old
+  // off-screen / degenerate branches wrote display:none synchronously, which hard-cut a target
+  // straddling the frustum edge and then restarted the fade-in on the next on-screen frame.
+  function retireTargetArcs() {
+    setClass(targetArcs, 'visible', false);
+    if (!targetArcs.classList.contains('visible')) {
+      const cache = targetArcs._sfStyle || (targetArcs._sfStyle = Object.create(null));
+      if (cache.display !== 'none' && !_fadeOutTimer) {
+        _fadeOutTimer = setTimeout(() => {
+          if (!targetArcs.classList.contains('visible')) {
+            setDisplay(targetArcs, false);
+          }
+          _fadeOutTimer = null;
+        }, 260);
+      }
+    }
+  }
+
+  function resolveReticle() {
+    if (!elReticle) elReticle = document.getElementById('aim-reticle');
+  }
+
+  function updateTargetArcs() {
+    // Packet 02: health rings follow the identity- and sensor-true selection (no rings on a hull
+    // the player's sensors cannot see, none on a recycled number).
+    const tid = projectTargetTruth(state, targetTruth).selectedId;
+    const tgt = tid != null ? resolveWorldPresentationEntity(state, tid) : null;
+    const tgtAnchor = tgt && tgt.alive ? presentedEntityAnchor(tgt) : null;
+
+    if (!tgt || !tgt.alive || !tgtAnchor) {
+      retireTargetArcs();
+      return;
+    }
+
+    if (_fadeOutTimer) {
+      clearTimeout(_fadeOutTimer);
+      _fadeOutTimer = null;
+    }
+
+    const p = state.entities.get(state.playerId);
+    if (!p || !helpers.worldToScreen) {
+      retireTargetArcs();
+      return;
+    }
+
+    const center = projectTargetCenter(tgtAnchor);
+    if (!center.onScreen) {
+      // One-frame edge flickers hold at the last placement (mark grace); a real exit fades.
+      if (markStillLive(targetArcs)) return;
+      retireTargetArcs();
+      return;
+    }
+
+    // The ring set quantizes to whole px (all three projections still run every frame —
+    // they feed the shared lag record; the arcSig contract below counts on it): raw
+    // projected radii write float `r`/viewBox records (`25.80000000000001`) that no
+    // fixture can pin, for a sub-visible gain.
+    const rShield = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 12, center));
+    const rArmor = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 9, center));
+    const rHull = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 6, center));
+    
+    if (rShield <= 0) {
+      if (markStillLive(targetArcs)) return;   // degenerate-radius flicker at extreme range
+      retireTargetArcs();
+      return;
+    }
+
+    stampMarkLive(targetArcs);
+    setDisplay(targetArcs, true, 'block');
+    setClass(targetArcs, 'visible', true);
+    
+    const size = rShield * 2 + 10;
+    setStyle(targetArcs, 'width', `${size}px`);
+    setStyle(targetArcs, 'height', `${size}px`);
+    setHudScreenTransform(targetArcs, center.x, center.y);
+
+    if (!targetArcsSvg || !targetArcShield || !targetArcArmor || !targetArcHull) return;
+    setLagTranslate(targetArcsSvg, opticalGLag.x * 0.85, opticalGLag.y * 0.85);
+
+    const shieldFrac = tgt.shieldMax ? Math.max(0, Math.min(1, tgt.shield / tgt.shieldMax)) : 0;
+    const armorFrac = tgt.armorMax ? Math.max(0, Math.min(1, tgt.armorHp / tgt.armorMax)) : 0;
+    const hullFrac = tgt.hullMax ? Math.max(0, Math.min(1, tgt.hull / tgt.hullMax)) : 0;
+
+    // ~17 template strings are built per frame while a target is held, only for
+    // setAttr to compare them away. Quantize to sub-visible steps (1px size,
+    // ~0.15% arc fill) and skip the whole format pass when nothing moved.
+    const arcSig = Math.round(shieldFrac * 640)
+      + Math.round(armorFrac * 640) * 1024
+      + Math.round(hullFrac * 640) * 1048576
+      + Math.round(size) * 1073741824;
+    if (arcSig === updateTargetArcs._sig) return;
+    updateTargetArcs._sig = arcSig;
+
+    setSvgAttr(targetArcsSvg, 'width', size);
+    setSvgAttr(targetArcsSvg, 'height', size);
+    setSvgAttr(targetArcsSvg, 'viewBox', `0 0 ${size} ${size}`);
+
+    const cx = size / 2;
+    const cy = size / 2;
+
+    setSvgAttr(targetArcShield, 'cx', cx); setSvgAttr(targetArcShield, 'cy', cy); setSvgAttr(targetArcShield, 'r', rShield);
+    setSvgAttr(targetArcArmor, 'cx', cx);  setSvgAttr(targetArcArmor, 'cy', cy);  setSvgAttr(targetArcArmor, 'r', rArmor);
+    setSvgAttr(targetArcHull, 'cx', cx);   setSvgAttr(targetArcHull, 'cy', cy);   setSvgAttr(targetArcHull, 'r', rHull);
+
+    setTargetArcDash(targetArcShield, rShield, shieldFrac, cx, cy);
+    setTargetArcDash(targetArcArmor, rArmor, armorFrac, cx, cy);
+    setTargetArcDash(targetArcHull, rHull, hullFrac, cx, cy);
+  }
+
+  // Travel Burn instrument update (D5 / W1-6 / W1-9).
+  //
+  // Reveal rule (D9.9 progressive disclosure): absent during ordinary flight; present while the
+  // drive is spooling/engaged/cooling, or while the ship is closing on its own ceiling under its
+  // own steam — the two moments the ceiling and the stopping arc are worth screen space.
+  //
+  // THE CUE IS ADVISORY ONLY. Nothing in here touches state.input or applies a brake. D9.8 rejects
+  // auto-magic arrival and the product direction wants overshoot to stay possible: ignoring BRAKE
+  // NOW and sailing past the station IS the gameplay. The route follower auto-brakes; manual does
+  // not, and that asymmetry is deliberate.
+  const VTAPE_HEADROOM = 1.14;   // scale runs to 114% of V-MAX so the ceiling is a line, not the edge
+  function updateTravelTape(p, dtS, slow) {
+    if (!vt.root) return;
+    if (!travelFlag('travelBurn') || !p) {
+      if (_vtapeAlpha !== 0) { _vtapeAlpha = 0; setClass(vt.root, 'sf-vtape--on', false); }
+      return;
+    }
+
+    const drive = (state.input && state.input.travelDrive) || null;
+    const driveState = drive && TRAVEL_DRIVE_STATES.includes(drive.state) ? drive.state : 'off';
+    const profile = resolvePropulsionProfile(p, state);
+    // Never re-derive the ceiling here: prefer the value the kernel published, else the exported
+    // resolver. One owner for the rule (D5's amendment exists because a second copy drifted).
+    const ceiling = (drive && Number.isFinite(drive.ceiling) && drive.ceiling > 0)
+      ? drive.ceiling
+      : resolveTravelCeiling(profile);
+    const speed = Math.hypot(p.vel.x, p.vel.z);
+    const active = driveState !== 'off';
+    const nearCeiling = ceiling > 0 && speed >= ceiling * 0.8;
+    // A held pilot brake is a third reveal condition: the tape carries the stop vector the brake
+    // is buying even with the drive off — ordinary flight braking is exactly when it matters.
+    const brakeStop = resolveBrakeStopPreview(p, profile, state.input);
+    // A held comms fan or wingman wheel stands exactly where this tape sits; the wheel is the
+    // modal, so the tape yields while it is up instead of poking out from under its edge.
+    const radialHeld = !!(state.ui && (state.ui.commsRadialOpen || state.ui.wingmanRadialOpen));
+    const want = !radialHeld && (active || nearCeiling || !!brakeStop);
+
+    // Reveal/retire. The CSS opacity+visibility transition does the easing (and is disabled under
+    // prefers-reduced-motion); this tracked value only decides when the element is fully retired
+    // and can stop being updated at all. Fades out COMPLETELY when neither condition holds — an
+    // instrument that reveals and then lingers is a permanent panel with extra steps.
+    const rate = Math.max(0, dtS) * 4;
+    _vtapeAlpha = want ? Math.min(1, _vtapeAlpha + rate) : Math.max(0, _vtapeAlpha - rate);
+    setClass(vt.root, 'sf-vtape--on', want);
+    if (!want && _vtapeAlpha <= 0.001) {
+      setClass(vt.root, 'sf-vtape--brake', false);
+      setClass(vt.root, 'sf-vtape--approach', false);
+      setClass(vt.root, 'sf-vtape--stopping', false);
+      setClass(vt.root, 'sf-vtape--overshoot', false);
+      _vtapeBrakeOn = false;
+      return;
+    }
+
+    setAttr(vt.root, 'data-state', driveState === 'off' && brakeStop ? 'braking' : driveState);
+
+    // --- tape: current speed against the per-family ceiling ---
+    const scale = Math.max(1, ceiling * VTAPE_HEADROOM);
+    setScaleX(vt.fill, clamp01(speed / scale));
+    const capPct = clamp01((drive ? drive.cap : 0) / scale) * 100;
+    const vmaxPct = clamp01(ceiling / scale) * 100;
+    setStyle(vt.cap, 'left', capPct.toFixed(1) + '%');
+    setStyle(vt.vmax, 'left', vmaxPct.toFixed(1) + '%');
+    // CAP and V-MAX share the label lane above the tape: the cap label centres on its caret until
+    // it would run under the V-MAX label (it moves left of the caret), and near the tape's left
+    // edge it anchors right of the caret instead of sliding off the instrument.
+    setClass(vt.cap, 'sf-vtape__cap--label-left', capPct > vmaxPct - 28 && capPct > 8);
+    setClass(vt.cap, 'sf-vtape__cap--label-right', capPct <= 8);
+
+    if (slow) {
+      setText(vt.vmaxText, 'TOP SPEED ' + Math.round(ceiling));
+      // Every state prints its NAME — hue is never the only carrier (WCAG 1.4.1).
+      setText(vt.state, driveState === 'off'
+        ? (brakeStop ? 'BRAKING' : 'DRIVE OFF')
+        : 'DRIVE ' + driveState.toUpperCase());
+      let note = '';
+      if (driveState === 'spooling') note = 'DRIVE SPINNING UP…';
+      else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' u/s';
+      // The state label already prints DRIVE COOLDOWN — the note carries only WHY it broke.
+      // Known reasons get a word a pilot would use; unknown ones still humanize, never a raw slug.
+      else if (driveState === 'cooldown') {
+        const reason = drive && drive.breakReason ? String(drive.breakReason) : '';
+        note = reason === 'energy' ? 'OUT OF POWER'
+          : reason ? reason.replace(/_/g, ' ').toUpperCase() : '';
+      }
+      else if (nearCeiling) note = 'AT TOP SPEED';
+      // INST-35: speed the pilot earned (above the thruster cap) reads differently from speed
+      // the thrusters bought — a text mark on the existing note, never a second gauge.
+      const velocity = buildVelocityReadout(p, profile);
+      if (velocity.earnedSpeed) note = note ? `${note} · EARNED` : 'EARNED';
+      const laneStatus = travelTapeLaneStatus(state.travelLanes);
+      setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));
+      if (note.includes('u/s') || velocity.earnedSpeed) applySpeedSpeech(vt.spool, velocity.spoken);
+    }
+
+    // --- approach row: the stopping arc, manual burns and the held brake ---
+    const nav = state.nav || {};
+    const { manual, arrival } = travelTapeNavigationState(nav);
+
+    // The follower auto-brakes, so its arc would be noise. Only a hand-flown approach gets this.
+    const cue = (manual && arrival) ? evaluateArrivalCue(p, profile, arrival) : null;
+    const showArc = !!(cue && cue.active && Number.isFinite(cue.distance));
+    // With no destination on the row, the held brake's own stop vector takes it: the span is the
+    // distance to rest and the ring marks the rest point — same visual language as the arrival arc.
+    const showBrakeStop = !showArc
+      && !!(brakeStop && Number.isFinite(brakeStop.stopDistance) && brakeStop.stopDistance > 0);
+    setClass(vt.root, 'sf-vtape--approach', showArc || showBrakeStop);
+    setClass(vt.root, 'sf-vtape--stopping', showBrakeStop);
+
+    if (showArc) {
+      // The arc reads as a span: how far the ship WILL travel before rest, against where the
+      // arrival ring actually sits. When the stop span overruns the ring, you are overshooting.
+      const span = Math.max(cue.distance, cue.stopDistance, 1) * 1.1;
+      setStyle(vt.arcStop, 'width', (clamp01(cue.stopDistance / span) * 100).toFixed(1) + '%');
+      setStyle(vt.arcRing, 'left', (clamp01(cue.distance / span) * 100).toFixed(1) + '%');
+      setClass(vt.root, 'sf-vtape--overshoot', !!cue.overshoot);
+      if (slow) {
+        const arcText = cue.overshoot
+          ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' u / ARRIVAL ' + Math.round(cue.distance) + ' u'
+          : 'STOP ' + Math.round(cue.stopDistance) + ' u · ARRIVAL ' + Math.round(cue.distance)
+            + ' u · ' + brakeModeWords(cue.bestMode).toUpperCase();
+        setText(vt.arcLabel, arcText);
+        applyDistanceSpeech(vt.arcLabel, arcText);
+      }
+    } else if (showBrakeStop) {
+      const span = Math.max(brakeStop.stopDistance, 1) * 1.1;
+      const endPct = (clamp01(brakeStop.stopDistance / span) * 100).toFixed(1) + '%';
+      setStyle(vt.arcStop, 'width', endPct);
+      setStyle(vt.arcRing, 'left', endPct);
+      setClass(vt.root, 'sf-vtape--overshoot', false);
+      if (slow) {
+        const brakeText = 'BRAKING · SETTLES ~' + Math.round(brakeStop.stopDistance) + ' u';
+        setText(vt.arcLabel, brakeText);
+        applyDistanceSpeech(vt.arcLabel, brakeText);
+      }
+    }
+
+    // --- BRAKE NOW ---
+    const brakeOn = !!(cue && cue.brakeNow);
+    if (brakeOn !== _vtapeBrakeOn) {
+      _vtapeBrakeOn = brakeOn;
+      setClass(vt.root, 'sf-vtape--brake', brakeOn);
+      // role=alert announces once on reveal; keep the node in the tree so it is not re-announced
+      // every frame while the condition persists.
+      if (vt.brake) setAttr(vt.brake, 'aria-hidden', brakeOn ? 'false' : 'true');
+    }
+  }
+
+  function frame(dt, deferReceiptPlacement = false) {
+    // Read dirty obstacle geometry before this frame's HUD writes.
+    if (objectiveEdgeBoxes.stale) objectiveEdgeObstacles();
+    const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
+    const numericDt = consumeHudClock(numericClock, frameDt);
+    const targetDt = consumeHudClock(targetClock, frameDt);
+    const overlayDt = consumeHudClock(overlayClock, frameDt);
+    const radarDt = consumeHudClock(radarClock, frameDt);
+    const overviewTick = consumeContactRosterClock(overviewClock, frameDt);
+    const slow = numericDt > 0;
+    const targetTick = targetDt > 0;
+    const overlayTick = overlayDt > 0;
+    const radarTick = radarDt > 0;
+
+    const p = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    resolveReticle();
+    updateDoctrineTells(frameDt);
+
+    // --- Optical G-force lag & G-LOC simulation (Blueprint Category D) ---
+    const isMotionReduced = getMotionReduced() || !!(state.settings && state.settings.video && state.settings.video.motionReduce);
+    if (!p || isMotionReduced) {
+      stepHudGLagSpring(opticalGLag, 0, 0, frameDt, true);
+      gLocSustainedTime = 0;
+      if (glocVignette) {
+        setOpacity(glocVignette, '0');
+        // Same as the zero-fraction branch below: an invisible vignette leaves the compositor.
+        setStyle(glocVignette, 'display', 'none');
+      }
+    } else {
+      const isBoosting = !!(p.boost && p.boost.energy > 0 && state.input && state.input.actions && state.input.actions.boost);
+      const target = calculateHudGLagTarget(p, frameDt, lastPlayerVel, isBoosting);
+      stepHudGLagSpring(opticalGLag, target.x, target.y, frameDt, false);
+
+      lastPlayerVel.x = Number.isFinite(p.vel && p.vel.x) ? p.vel.x : 0;
+      lastPlayerVel.z = Number.isFinite(p.vel && p.vel.z) ? p.vel.z : 0;
+
+      // Monitor shield collapse (when player shield drops to 0 from >0)
+      const curShield = Number.isFinite(p.shield) ? p.shield : 0;
+      if (lastPlayerShield > 0 && curShield <= 0 && (p.shieldMax || 0) > 0) {
+        triggerElectronicDisruption('shield_collapse');
+      }
+      lastPlayerShield = curShield;
+
+      // G-LOC sustained turn detection
+      let angVel = 0;
+      if (Number.isFinite(p.angVel)) {
+        angVel = p.angVel;
+      } else if (Number.isFinite(p.angularVelocity)) {
+        angVel = p.angularVelocity;
+      }
+      const turnRate = Math.abs(angVel);
+      const isMaxRateTurn = isSustainedMaxRateTurn(turnRate, p.turnRate, isBoosting);
+      if (isMaxRateTurn) {
+        gLocSustainedTime += frameDt;
+      } else {
+        gLocSustainedTime = Math.max(0, gLocSustainedTime - frameDt * 2.8);
+      }
+      const gLocFraction = calculateGLocIntensity(gLocSustainedTime);
+      _glocFraction = gLocFraction;
+      if (glocVignette) {
+        if (gLocFraction > 0) {
+          setStyle(glocVignette, 'display', 'block');
+          if (_glocHideTimer) { clearTimeout(_glocHideTimer); _glocHideTimer = null; }
+          setOpacity(glocVignette, (gLocFraction * 0.55).toFixed(3));
+        } else {
+          setOpacity(glocVignette, '0');
+          // Let the opacity transition play out, then sleep the layer: without display:none the
+          // fullscreen will-change layer stayed in the compositor forever after the first fade.
+          if (!_glocHideTimer) {
+            _glocHideTimer = setTimeout(() => {
+              _glocHideTimer = null;
+              if (glocVignette && _glocFraction <= 0) setStyle(glocVignette, 'display', 'none');
+            }, 220);
+          }
+        }
+      }
+    }
+
+    if (!elReticle) elReticle = document.getElementById('aim-reticle');
+    const reticleInner = elReticle && (elReticle._sfInner || (elReticle._sfInner = elReticle.firstElementChild));
+    if (reticleInner) {
+      setLagTranslate(reticleInner, opticalGLag.x, opticalGLag.y);
+    }
+
+    // ORRERY Cluster: ordnance on the slow clock, speed/drift every frame; its own change detection
+    // means a settled frame writes nothing.
+    if (orreryCluster) orreryCluster.update(state, p, slow);
+    // PQ-195.02: the fork instrument rides the slow clock like the rail — its own change detection
+    // means a settled reading costs nothing, and a fast approach is heard within a tenth of a second.
+    if (slow) forkInstrument.update(state);
+    if (slow) ionStormHud.update();
+    travelVectorHud.update(p);
+
+    // Safety alerts stay live independently of the visual instrument owner.
+    if (p) {
+      const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
+      const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
+      const fuelState = state.fuel || defaultFuel;
+      const fuelFrac = fuelState.max > 0 ? clamp01(fuelState.current / fuelState.max) : 1;
+      syncSafetyAlerts(p, hullFrac, shieldFrac, fuelFrac);
+
+      // FR-1: prograde tick — where inertia is carrying us, projected each frame. Fades below
+      // 2 wu/s so a stationary ship shows nothing (never animates at rest).
+      {
+        const vel = p.vel;
+        const spd = vel ? Math.hypot(vel.x, vel.z) : 0;
+        const wantA = spd > 2 ? 0.9 : 0;
+        _proAlpha += (wantA - _proAlpha) * (1 - Math.exp(-6 * frameDt));
+        if (_proAlpha <= 0.02 || !helpers.worldToScreen || !p.pos) {
+          setOpacity(proTick, '0');
+        } else {
+          const k = (p.radius || 6) * 3;
+          const inv = 1 / (spd || 1);
+          const ux = vel.x * inv, uz = vel.z * inv;
+          const pAnchor = presentedEntityAnchor(p) || p.pos;
+          progradeWorldA.x = pAnchor.x;
+          progradeWorldA.y = 0;
+          progradeWorldA.z = pAnchor.z;
+          progradeWorldB.x = pAnchor.x + ux * k;
+          progradeWorldB.y = 0;
+          progradeWorldB.z = pAnchor.z + uz * k;
+          const A = helpers.worldToScreen(progradeWorldA, progradeScreenA);
+          const B = helpers.worldToScreen(progradeWorldB, progradeScreenB);
+          let dx = B.x - A.x, dy = B.y - A.y;
+          const dl = Math.hypot(dx, dy);
+          if (A.onScreen && dl > 0.001) {
+            dx /= dl; dy /= dl;
+            const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+            progradeTransformOptions.rotate = ang;
+            setHudScreenTransform(proTick, A.x + dx * 40, A.y + dy * 40, progradeTransformOptions);
+            setOpacity(proTick, _proAlpha.toFixed(3));
+          } else {
+            setOpacity(proTick, '0');
+          }
+        }
+      }
+    }
+
+    updateTravelTape(p, frameDt, slow);
+
+    if (slow && p) {
+      // Tether readout: status + target while latched. Control chips paint separately so the
+      // instrument value never becomes a rebind encyclopedia that overflows the deck.
+      const localTether = state.player && state.player.tether;
+      const remoteTether = state.player && state.player.remoteMassline;
+      const tether = localTether && localTether.active ? localTether : remoteTether;
+      const ml = masslineInstrumentReadout(tether);
+      const latching = masslineInstrumentVisible(tether);
+      if (document.body && document.body.dataset) {
+        const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
+        const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 720;
+        const hudLayout = resolveObjectiveHudLayout(viewportWidth, viewportHeight);
+        setAttr(document.body, 'data-sf-hud-job', hudJobFromState(state, tether, hudLayout));
+      }
+      updateTetherFeedback(tether, latching, ml);
+      const auto = !!(state.input && state.input.autoFire);
+      if (elReticle) setClass(elReticle, 'autofire', auto);
+      // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
+      // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.
+      _recoilBloom = Math.max(0, _recoilBloom - frameDt * 2.2);
+      if (elReticle) {
+        const inner = elReticle._sfInner || (elReticle._sfInner = elReticle.firstElementChild);
+        if (inner) {
+          const bloomQ = Math.round((1 + _recoilBloom * 0.25) * 1000);
+          const bloomScale = (bloomQ / 1000).toFixed(3);
+          setLagTranslate(inner, opticalGLag.x, opticalGLag.y, {
+            suffix: ` scale(${bloomScale})`,
+            plain: `scale(${bloomScale})`,
+          });
+        }
+      }
+    }
+
+    // --- mission tracker @10Hz ---
+    if (slow) {
+      speakPlottedRouteTeach(state, ctx.bus);
+      // Resolve corridor fallback once, then let the owner resolver keep mission/nav data disjoint.
+      const navWaypoint = state.nav && state.nav.waypoint;
+      const wp = navWaypoint || buildCorridorOpeningWaypoint(state);
+      const onboardingVerb = navWaypoint && navWaypoint.reason;
+      const command = resolveFlightObjectiveCommand(state, wp);
+      const dest = flightDestinationSurface(state, command);
+      if (lastFlightObjectiveOwner === 'counterweight-course' && command?.owner !== 'counterweight-course') {
+        // Recall can be pinned or dismissed while a course runs; it must not resurrect that
+        // course after the public attempt has ended or the pilot has left it.
+        objectiveRecall.text = dest.line || '';
+        objectiveRecall.snapshot = dest.line || '';
+      }
+      lastFlightObjectiveOwner = command?.owner || null;
+      // the dial's needle takes the nearest way round to the objective's bearing
+      const bearingDeg = command?.owner === 'counterweight-course'
+        ? null : objectiveBearingDeg(state, (command && command.waypoint) || wp);
+      if (bearingDeg != null && mtNeedle) {
+        let next = bearingDeg;
+        if (mtNeedleDeg != null) { while (next - mtNeedleDeg > 180) next -= 360; while (next - mtNeedleDeg < -180) next += 360; }
+        if (mtNeedleDeg == null || Math.abs(next - mtNeedleDeg) > 0.5) {
+          mtNeedleDeg = next;
+          mtNeedle.style.transform = `rotate(${next.toFixed(1)}deg)`;
+        }
+      }
+      setClass(missionTracker, 'sf-mt--nobearing', bearingDeg == null);
+      // mtTime's display is owned by paintTutorialTrackerCaption below; pre-hiding it here
+      // flipped its inline display none -> block on every tick while a caption was up.
+      if (dest.line) rememberObjective(objectiveRecall, dest.line);
+      const showObjective = objectiveVisible(objectiveRecall, dest.show);
+      // W1 Journey: the act is its own line above the objective, not a prefix buried in the
+      // action string (which prefers the beat-specific reason). The line also survives a
+      // dock-modal because the persistent `act:<n>` receipt is separate.
+      const actLine = dest.show && showObjective ? String(dest.actLine || '') : '';
+      setText(mtTitle, actLine);
+      // The 290px nowrap field shows the short act title; the full canon heading stays on the
+      // node's tooltip and accessible name so nothing is lost to the ellipsis.
+      const actFull = actLine ? journeyActTrackerFullLine(state) : '';
+      mtTitle.title = actFull;
+      if (actFull) mtTitle.setAttribute('aria-label', actFull);
+      else mtTitle.removeAttribute('aria-label');
+      setDisplay(mtTitle, !!actLine);
+      // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
+      // the objective's verb, distance and recall state above are untouched.
+      const showCaption = paintTutorialTrackerCaption(mtTime, state);
+      if (!showCaption) setClass(mtTime, 'sf-mt-urgent', dest.urgent);
+      if (!showObjective && !showCaption) {
+        if (!mtDetails.hidden) setMissionDetails(false);
+        setDisplay(missionTracker, false);
+      } else {
+        // A caption may be the only reason the tracker is up; never leave a stale objective
+        // line sitting above it.
+        const objective = showObjective ? (objectiveRecall.text || dest.line) : '';
+        setText(mtObj, objective);
+        const [action, ...readings] = objective.split('\n');
+        setText(mtAction, action);
+        setText(mtReadings, readings.join('\n'));
+        setText(mtDetailsText, [objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
+        setDisplay(missionTracker, true);
+      }
+    }
+
+    if (objDirty) refreshObjectives();
+
+    // --- target panel: DOM/compositor surface; update on a fixed HUD cadence ---
+    // Packet 02: the panel describes the selection as target truth judges it — never a concealed
+    // or recycled hull. selectedId passes ledger bodies (rocks, far actors) through unchanged.
+    const tgtId = projectTargetTruth(state, targetTruth).selectedId;
+    const target = tgtId != null ? resolveWorldPresentationEntity(state, tgtId) : null;
+    const targetSurrendered = isSurrenderedContact(target);
+    const surrenderChanged = targetSurrendered !== lastTargetSurrendered;
+    lastTargetSurrendered = targetSurrendered;
+    if (targetTick || surrenderChanged) {
+      const player = state.entities.get(state.playerId);
+      const combatRelevant = target && (target.type === 'ship' || target.type === 'drone')
+        && isHostileToPlayer(target, player ? player.team : 0, state);
+      const miningRelevant = target && target.type === 'asteroid';
+      const stationRelevant = target && target.type === 'station';
+      const objectSelected = !!(state.ui && state.ui.objectSelection
+        && state.ui.objectSelection.targetId === tgtId);
+      const routeOwnsAttention = !!(state.nav && state.nav.waypoint);
+      let weakPoint = null;
+      if (tgtId != null && revealedWeakPoints.size) {
+        const wp = revealedWeakPoints.get(tgtId);
+        if (wp && (!wp.until || (state.simTime || 0) < wp.until)) weakPoint = wp;
+        else if (wp) revealedWeakPoints.delete(tgtId);
+      }
+      if (routeOwnsAttention && target && !combatRelevant && !miningRelevant && !stationRelevant
+        && !targetSurrendered && !objectSelected && target.data?.worldSiteTargetable !== true) {
+        setDisplay(targetPanel.el, false);
+      } else {
+        targetPanelUpdateOptions.slow = slow || surrenderChanged;
+        targetPanelUpdateOptions.weakPoint = weakPoint;
+        targetPanel.update(targetPanelUpdateOptions);
+      }
+    }
+
+    // --- combat HUD: lock ring and target diamond ---
+    updateCombatHud(p, slow, overlayTick);
+
+    // --- world-space DOM overlays: batch transform/opacity writes ---
+    if (overlayTick) floatingText.update(overlayDt || frameDt);
+
+    // --- radar: canvas redraws are explicit, not tied to every render frame ---
+    if (radarTick) radar.draw();
+
+    // directional damage indicators advance + reposition on the overlay cadence.
+    if (overlayTick) dmgInd.tick(overlayDt || frameDt, helpers);
+
+    // --- off-screen objective arrow ---
+    if (overlayTick || slow) updateObjectiveArrow(p, slow);
+    if (overlayTick || slow) updateFirstUseHint(p);
+    if (slow) {
+      // Idle HUD (no receipt, caption, alert or external caption on screen): geometry only changes
+      // through the explicit invalidations (layout/settings/resize events), so re-placing on every
+      // 10 Hz tick just re-reads rects. Keep a 2 Hz safety refresh; stay at 10 Hz while any
+      // receipt-lane content is live.
+      const laneBusy = (toastsLaneEl && toastsLaneEl.childElementCount > 0)
+        || (alertsEl && alertsEl.childElementCount > 0)
+        || externalFlightCaptions.size > 0
+        || (caption && !caption.hidden && caption.classList.contains('show'));
+      receiptIdleSlowTicks = laneBusy ? 0 : receiptIdleSlowTicks + 1;
+      if (laneBusy) {
+        // Busy lane: keep the cadence but re-place from the last measured geometry. Real content
+        // and layout owners still invalidate; this tick is a safety net, not a re-measure.
+        refreshReceiptLanePlacement();
+      } else if (receiptIdleSlowTicks >= 5) {
+        receiptIdleSlowTicks = 0;
+        invalidateReceiptLane();
+      }
+    }
+    if (slow) updateAdventureDecisionLine();
+    if (slow) refreshLeftContextClasses();
+
+    // --- toasts/alerts expiry sweep ---
+    if (alerts && alerts.tick) alerts.tick();
+    // --- HUD meta-arc (STABLE LOAD line, tag flicker, manifest ghost) ---
+    if (overlayTick && hudMeta && hudMeta.tick) hudMeta.tick(overlayDt || frameDt);
+
+    // --- Target Arcs: update every frame for smooth 3D tracking ---
+    updateTargetArcs();
+
+    // --- Overview Strip: elapsed-time cadence stays at <=5 Hz at any render refresh rate. ---
+    if (overviewTick) updateOverview();
+    if (!deferReceiptPlacement) flushReceiptLane();
+  }
+
+  function tickHidden(dt) {
+    const p = state.entities.get(state.playerId);
+    syncSafetyAlerts(p);
+    if (alerts && alerts.tick) alerts.tick();
+  }
+
+  function resolveNavStation(nw) {
+    if (!nw || !nw.stationId) return null;
+    const index = state.entityIndex;
+    const indexVersion = index && index.__spacefaceEntityIndexV1 ? (index.version || 0) : -1;
+    const listLength = indexVersion >= 0 ? -1 : state.entityList.length;
+    if (
+      cachedNavStationId === nw.stationId &&
+      cachedNavIndexVersion === indexVersion &&
+      cachedNavListLength === listLength &&
+      cachedNavEntity &&
+      cachedNavEntity.alive !== false &&
+      cachedNavEntity.type === 'station'
+    ) {
+      return cachedNavEntity;
+    }
+    cachedNavStationId = nw.stationId;
+    cachedNavIndexVersion = indexVersion;
+    cachedNavListLength = listLength;
+    cachedNavEntity = resolveHudNavStation(state, nw.stationId);
+    return cachedNavEntity;
+  }
+
+  function updateObjectiveArrow(p, slow) {
+    if (lastFlightObjectiveOwner === 'counterweight-course') {
+      setDisplay(arrow, false);
+      setDisplay(elNavReadout, false);
+      setClass(elNavReadout, 'sf-nav--lock', false);
+      return;
+    }
+    // Priority: durable nav waypoint (mission/trade/story), else legacy mission-local waypoint.
+    const tracked = state.ui.trackedMissionId;
+    const objectiveOwnsAttention = !!tracked || !!(state.nav && state.nav.waypoint);
+    const active = (state.missions && state.missions.active) || [];
+    const m = tracked ? active.find((x) => x.id === tracked) : active[0];
+    let wp = null, wpLabel = null, navMeta = null;
+    if (state.nav && state.nav.waypoint) {
+      const nw = state.nav.waypoint;
+      if (objectiveIsOffSector(state, nw)) {
+        setDisplay(arrow, false);
+        setDisplay(elNavReadout, false);
+        setClass(elNavReadout, 'sf-nav--lock', false);
+        return;
+      }
+      let livePos = null;
+      if (nw.stationId) {
+        const station = resolveNavStation(nw);
+        if (station) livePos = station.pos;
+      }
+      const pos = livePos || resolveWaypointPresentationPosition(state, nw);
+      wpLabel = nw.label || nw.reason || nw.sectorName || 'Waypoint';
+      navMeta = nw;
+      if (pos) wp = pos;
+    }
+    if (!wp && m) {
+      wp = m.waypoint || m.targetPos || (m.objectives && m.objectives[0] && m.objectives[0].pos) || null;
+      wpLabel = wpLabel || m.title || m.name || 'Mission';
+    }
+    if (!wp) {
+      // Cross-sector objective with no local fix: point the arrow at the physical gate that
+      // starts the trip, so it answers "which way NOW?" instead of vanishing. The tracker text
+      // carries the plot step; the gate fix itself is presentation-only.
+      const gateFix = resolveObjectiveGatePresentation(state);
+      if (gateFix && gateFix.pos) {
+        wp = gateFix.pos;
+        wpLabel = wpLabel || gateFix.label;
+      }
+    }
+    if (!wp && navMeta) {
+      setDisplay(arrow, false);
+      setDisplay(elNavReadout, false);
+      // Cross-sector guidance already lives in the dominant ACTIVE OBJECTIVE tracker.
+      setClass(elNavReadout, 'sf-nav--lock', false);
+      return;
+    }
+    if (!wp || !p || !helpers.worldToScreen) {
+      setDisplay(arrow, false);
+      setDisplay(elNavReadout, false);
+      lastNavLabel = '';
+      lastObjectiveMarkerText = '';
+      lastObjectiveSig = null;
+      return;
+    }
+    objectiveProjectionWorld.x = wp.x;
+    objectiveProjectionWorld.y = 0;
+    objectiveProjectionWorld.z = wp.z;
+    const proj = helpers.worldToScreen(objectiveProjectionWorld, objectiveProjectionScreen);
+    // distance + ETA readout (always shown while a nav target is set)
+    const dist = Math.hypot(wp.x - p.pos.x, wp.z - p.pos.z);
+    const speed = Math.hypot(p.vel.x, p.vel.z);
+    const etaS = speed > 5 ? dist / speed : Infinity;
+    // A mission/navigation fix is not a combat target lock. Keep this legacy readout hidden while
+    // the active-objective tracker owns the same label/distance; the off-screen arrow still guides.
+    setDisplay(elNavReadout, false);
+    setClass(elNavReadout, 'sf-nav--lock', false);
+    const label = wpLabel || '—';
+    setTitle(arrow, label);
+    if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }
+    objectiveWaypointRecord.pos = wp;
+    // The marker text + aria string are pure functions of (label, displayed distance,
+    // displayed eta) — reproduce that quantization so the readout/format pass only
+    // runs when the rendered text would actually change.
+    const closing = dist > 0
+      ? ((Number(p.vel.x) || 0) * (wp.x - p.pos.x) + (Number(p.vel.z) || 0) * (wp.z - p.pos.z)) / dist
+      : 0;
+    const etaDisp = closing > 5 ? dist / closing : null;
+    const objectiveSig = label
+      + '|' + (dist >= 1000 ? Math.round(dist / 100) : Math.round(dist))
+      + '|' + (etaDisp == null ? -1 : etaDisp < 60 ? Math.max(1, Math.round(etaDisp)) : Math.round(etaDisp / 60));
+    if (objectiveSig !== lastObjectiveSig) {
+      lastObjectiveSig = objectiveSig;
+      const travel = objectiveTravelReadout(state, objectiveWaypointRecord, objectiveTravelRecord);
+      const conciseLabel = String(label).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 28) || 'OBJECTIVE';
+      const markerText = `GOAL · ${conciseLabel} · ${travel.distanceText} · ${travel.etaText}`;
+      if (markerText !== lastObjectiveMarkerText) {
+        setText(arrowLabel, markerText);
+        applyDistanceSpeech(arrowLabel, travel.distanceText);
+        setAttr(arrow, 'aria-label', `Current objective: ${conciseLabel}, ${travel.distanceText}, ${travel.etaText}`);
+        lastObjectiveMarkerText = markerText;
+      }
+    }
+    if (slow || !lastNavDist) {
+      const distText = Math.round(dist) + ' u';
+      const etaText = isFinite(etaS) ? (etaS < 60 ? Math.round(etaS) + 's' : Math.round(etaS / 60) + 'm') : '—';
+      if (distText !== lastNavDist) {
+        setText(elNavDist, distText);
+        applyDistanceSpeech(elNavDist, distText);
+        lastNavDist = distText;
+      }
+      if (etaText !== lastNavEta) { setText(elNavEta, etaText); lastNavEta = etaText; }
+    }
+    const w = window.innerWidth, h = window.innerHeight;
+    // Mode stability: on-screen and edge render entirely different glyph shapes (diamond vs
+    // chevron), so a waypoint projecting at the frustum margin swapped them frame-to-frame while
+    // turning. A mode change must be wanted three frames in a row before it is believed.
+    const wantOnscreen = !!proj.onScreen;
+    if (_objarrowOnscreen == null) _objarrowOnscreen = wantOnscreen;
+    if (wantOnscreen === _objarrowOnscreen) {
+      _objarrowModeStreak = 0;
+      _objarrowModeWanted = null;
+    } else {
+      if (_objarrowModeWanted !== wantOnscreen) {
+        _objarrowModeWanted = wantOnscreen;
+        _objarrowModeStreak = 0;
+      }
+      _objarrowModeStreak += 1;
+      if (_objarrowModeStreak >= 3) {
+        _objarrowOnscreen = wantOnscreen;
+        _objarrowModeStreak = 0;
+        _objarrowModeWanted = null;
+      }
+    }
+    if (_objarrowOnscreen) {
+      const x = Math.max(18, Math.min(w - 18, proj.x));
+      const y = Math.max(18, Math.min(h - 18, proj.y));
+      const overlapsLeftAnchor = x < 370 && y > h - 340;
+      const overlapsRightAnchor = x > w - 270 && y > h - 470;
+      const overlapsActionAnchor = y > h - 125 && x > w * 0.28 && x < w * 0.72;
+      setClass(arrow, 'sf-objarrow--onscreen', true);
+      setClass(arrow, 'sf-objarrow--edge', false);
+      setClass(arrow, 'sf-objarrow--compact', true);
+      setDataEdge(arrow, x > w * 0.62 ? 'right' : (y < 62 ? 'top' : 'left'));
+      setStyle(arrow, 'transform', `translate3d(${x}px,${y}px,0)`);
+      setDisplay(arrow, true);
+      return;
+    }
+    const edgePlacement = resolveSteeringView(state) === 'racing'
+      ? resolveFlightEdgePlacement(w, h, proj, 34, objectiveEdgeRecord)
+      : resolveObjectiveEdgePlacement(w, h, p, wp, 34, objectiveEdgeRecord);
+    if (!edgePlacement) {
+      setDisplay(arrow, false);
+      return;
+    }
+    setClass(arrow, 'sf-objarrow--edge', true);
+    setClass(arrow, 'sf-objarrow--onscreen', false);
+    // The edge arrow never lands on a machined plate: the left column and the right dock own
+    // their edges, so an arrow that would sit on one steps just inboard of it.
+    let edgeX = edgePlacement.x;
+    let edgeY = edgePlacement.y;
+    const obstacles = objectiveEdgeObstacles();
+    const leftBox = obstacles.left;
+    const rightBox = obstacles.right;
+    const orreryBox = obstacles.orrery;
+    // The ORRERY instrument is not a plate: stepping inboard of its box would park the arrow in
+    // the middle of the screen. On the left edge the arrow rides up above it; on the bottom edge
+    // it steps right of it. Either way it stays on its own edge and never lands on a numeral.
+    if (orreryBox && edgeX < orreryBox.right && edgeY > orreryBox.top - 16) {
+      if (edgePlacement.edge === 'bottom') edgeX = orreryBox.right + 18;
+      else edgeY = orreryBox.top - 18;
+    } else if (leftBox && edgeX < leftBox.right && edgeY > leftBox.top - 14 && edgeY < leftBox.bottom + 14) {
+      edgeX = leftBox.right + 18;
+    } else if (rightBox && edgeX > rightBox.left && edgeY > rightBox.top - 14 && edgeY < rightBox.bottom + 14) {
+      edgeX = rightBox.left - 18;
+    }
+    const edgeSafeInset = Math.max(0, (w - h * 16 / 9) / 2);
+    if (edgeSafeInset > 0) edgeX = Math.min(Math.max(edgeX, edgeSafeInset + 34), w - edgeSafeInset - 34);
+    setClass(arrow, 'sf-objarrow--compact', true);
+    setDataEdge(arrow, edgePlacement.edge);
+    setCssVar(arrow, '--sf-arrow-angle', `${edgePlacement.angleRad}rad`);
+    setDisplay(arrow, true);
+    setStyle(arrow, 'transform', `translate3d(${edgeX}px,${edgeY}px,0)`);
+  }
+
+  // Plate boxes for the objective edge arrow. Layout is stable across settled flight; only
+  // refresh on first edge use, resize, or an explicit HUD layout bump — never a 500 ms timer
+  // (that forced sync layout on soft-GPU every half-second while the arrow rode an edge).
+  const objectiveEdgeBoxes = {
+    stale: true,
+    left: null,
+    right: null,
+    rightEl: rightDock,
+    rail: null,
+    railEl: null,
+    orrery: null,
+    orreryEl: null,
+  };
+  function plateBox(el) {
+    if (!el || !el.isConnected || typeof el.getBoundingClientRect !== 'function') return null;
+    const box = readReceiptRect(el);
+    return box && box.width > 0 && box.height > 0 ? box : null;
+  }
+  function invalidateObjectiveEdgeBoxes() {
+    objectiveEdgeBoxes.stale = true;
+    externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
+    alertLanePlacementStale = true;
+  }
+  function invalidateTransientOverlayGeometry() {
+    // A fixed callout appearing/moving cannot change the structural HUD plates. Keep their
+    // settled boxes, but place new text/alerts in the same pre-paint turn as before.
+    externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
+    alertLanePlacementStale = true;
+    invalidateReceiptLane();
+  }
+  function invalidateAndPlaceHudOverlays() {
+    invalidateObjectiveEdgeBoxes();
+    invalidateReceiptLane();
+  }
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('resize', invalidateObjectiveEdgeBoxes);
+  }
+  function objectiveEdgeObstacles() {
+    if (!objectiveEdgeBoxes.stale) return objectiveEdgeBoxes;
+    objectiveEdgeBoxes.stale = false;
+    // The left obstacle is the live context strip (mission tracker + nav readout + comms), not
+    // the retired leftStack — under ORRERY that column stays mounted but hidden, which is why the
+    // box was nulled and edge chevrons landed on the strip's text (D240). An empty strip collapses
+    // to display:none, so plateBox returns null and nothing is reserved.
+    objectiveEdgeBoxes.left = plateBox(leftContext);
+    objectiveEdgeBoxes.right = plateBox(rightDock);
+    // Caption/receipt placement shares this geometry snapshot. The rail and dock only need to be
+    // read when the HUD layout changes, not on every slow presentation frame.
+    const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
+    objectiveEdgeBoxes.railEl = railEl;
+    const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
+    objectiveEdgeBoxes.orreryEl = orreryEl;
+    objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
+    objectiveEdgeBoxes.rail = railEl === orreryEl ? objectiveEdgeBoxes.orrery : plateBox(railEl);
+    // Finish the read batch before publishing a CSS variable that can dirty the HUD subtree.
+    // The prompt deck anchors its right edge to this var (styles/prompt-deck.css): measured here so
+    // decisions sit left of the dock column instead of growing over the target card. The dock's
+    // left edge only moves with the layout step, which is exactly this box's stale lifecycle.
+    if (objectiveEdgeBoxes.right && typeof document !== 'undefined'
+      && document.documentElement && document.documentElement.style
+      && typeof document.documentElement.style.setProperty === 'function') {
+      const value = `${Math.round(objectiveEdgeBoxes.right.left)}px`;
+      const style = document.documentElement.style;
+      if (style.getPropertyValue?.('--sf-rightdock-left') !== value) {
+        style.setProperty('--sf-rightdock-left', value);
+      }
+    }
+    return objectiveEdgeBoxes;
+  }
+  // Other persistent UI owners may register a short-lived flight caption. Keep those captions in
+  // this HUD's existing safe-band allocator so they share the same measured layout and cache as
+  // receipts and presentation captions.
+  const externalFlightCaptions = new Set();
+  const externalCaptionOpacity = new Map();
+  const yieldedFlightVisuals = new Map();
+  function restoreYieldedFlightVisuals() {
+    for (const [el, visibility] of yieldedFlightVisuals) el.style.visibility = visibility;
+    yieldedFlightVisuals.clear();
+  }
+  function yieldFlightVisual(el) {
+    if (!el?.style || yieldedFlightVisuals.has(el)) return;
+    yieldedFlightVisuals.set(el, el.style.visibility || '');
+    el.style.visibility = 'hidden';
+  }
+  const flightTextObstacleCache = createFlightTextObstacleCache();
+  let externalCaptionsStale = true;
+  // Receipt churn can invalidate the obstacle set many times per second and each
+  // snapshot re-measures the whole DOM. A 100 ms floor bounds the layout storm;
+  // a trailing retry guarantees convergence when the caller stops calling.
+  const FLIGHT_TEXT_OBSTACLE_MIN_MS = 100;
+  let flightTextObstacleSnapshotAt = -Infinity;
+  let flightTextObstacleRetry = null;
+  let flightTextObstaclesStale = true;
+  let alertLanePlacementStale = true;
+  let alertLanePlacementActive = false;
+  let alertLaneOriginalStyle = null;
+  let lastReceiptObstacle = null;
+  let lastCaptionObstacleVisible = null;
+
+  function refreshFlightTextObstacleSnapshot() {
+    if (!flightTextObstaclesStale) return;
+    const nowMs = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
+      ? performance.now() : Date.now();
+    const sinceLast = nowMs - flightTextObstacleSnapshotAt;
+    if (sinceLast < FLIGHT_TEXT_OBSTACLE_MIN_MS) {
+      if (flightTextObstacleRetry === null && typeof setTimeout === 'function') {
+        flightTextObstacleRetry = setTimeout(() => {
+          flightTextObstacleRetry = null;
+          refreshFlightTextObstacleSnapshot();
+        }, Math.ceil(FLIGHT_TEXT_OBSTACLE_MIN_MS - sinceLast) + 4);
+      }
+      return;
+    }
+    const qsa = (scope, selector) => {
+      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
+      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
+      let hit = queries.get(selector);
+      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
+      return hit;
+    };
+    const measured = objectiveEdgeObstacles();
+    const entries = [];
+    const seen = new Set();
+    const add = (owner, el, cachedRect = null) => {
+      if (!el || seen.has(el) || el.isConnected === false || el.hidden || el.style?.display === 'none') return;
+      const enteringOverlay = (owner === 'receipt' && el.classList?.contains('sf-toast')
+        && !el.classList.contains('sf-toast--out'))
+        || (owner === 'caption' && el.classList?.contains('sf-caption')
+          && el.classList.contains('show'));
+      if (el.style?.visibility === 'hidden' || el.style?.visibility === 'collapse'
+        || (!enteringOverlay && Number.parseFloat(el.style?.opacity) === 0)) return;
+      const getStyle = document.defaultView?.getComputedStyle || globalThis.getComputedStyle;
+      if (typeof getStyle === 'function') {
+        try {
+          const style = getStyle.call(document.defaultView || globalThis, el);
+          if (style?.display === 'none' || style?.visibility === 'hidden' || style?.visibility === 'collapse'
+            || (!enteringOverlay && Number.parseFloat(style?.opacity) === 0)) return;
+        } catch (_) { /* geometry remains the visibility fallback for partial DOM hosts */ }
+      }
+      // The dock alert's legacy readout writer runs after allocation and owns its fixed box.
+      const rect = cachedRect || (owner === 'alert' ? el.getBoundingClientRect?.() : readReceiptRect(el));
+      if (!rect || !(rect.width > 0) || !(rect.height > 0)) return;
+      seen.add(el);
+      entries.push({ owner, rect });
+    };
+
+    // Reuse the objective/radar/rail geometry already cached by the HUD's layout owner.
+    add('objective', leftContext, measured.left);
+    add('radar', rightDock, measured.right);
+    add('hud-rail', measured.railEl, measured.rail);
+    add('orrery', measured.orreryEl, measured.orrery);
+    const rootGroups = [
+      ['objective-text', '.sf-mt-obj, .sf-nav-readout, .sf-nav-label, .sf-commtape'],
+      ['vitals', '.sf-vitals, .sf-status'],
+      ['flight-control', '.sf-command-deck, .sf-prail, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'],
+      ['caption', '.sf-caption.show'],
+      ['receipt', '.sf-toast:not(.sf-toast--out)'],
+    ];
+    for (const [owner, selector] of rootGroups) {
+      for (const el of qsa(root, selector)) add(owner, el);
+    }
+    add('caption', caption);
+    for (const el of toastsLaneEl?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []) add('receipt', el);
+    for (const el of qsa(document, '#alerts > .sf-alert:not([hidden])')) add('alert', el);
+    for (const el of qsa(document, '.sf-stuntcall:not([hidden])')) add('stunt', el);
+    for (const el of externalFlightCaptions) add('flight-caption', el);
+    for (const el of responsiveOverlayObstacles()) {
+      add(el.closest?.('#sf-touch-overlay') ? 'touch-control' : 'responsive-overlay', el);
+    }
+
+    flightTextObstacleCache.publish(entries);
+    flightTextObstacleSnapshotAt = nowMs;
+    flightTextObstaclesStale = false;
+  }
+
+  function getFlightTextObstacles() {
+    return flightTextObstacleCache.read();
+  }
+  let overlayLayoutObserver = null;
+  const responsiveOverlayElements = new Set();
+  let touchOverlayOwner = null;
+  let touchOverlayObserver = null;
+  if (typeof ResizeObserver === 'function') {
+    overlayLayoutObserver = new ResizeObserver(entries => {
+      if (entries.length && entries.every(entry => externalFlightCaptions.has(entry.target))) {
+        invalidateTransientOverlayGeometry();
+      } else invalidateAndPlaceHudOverlays();
+    });
+    const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
+    if (railEl) overlayLayoutObserver.observe(railEl);
+    if (rightDock) overlayLayoutObserver.observe(rightDock);
+    if (leftContext) overlayLayoutObserver.observe(leftContext);
+    hudUnsubscribers.push(() => overlayLayoutObserver?.disconnect());
+  }
+  hudUnsubscribers.push(() => {
+    if (flightTextObstacleRetry !== null) {
+      clearTimeout(flightTextObstacleRetry);
+      flightTextObstacleRetry = null;
+    }
+  });
+  on('hud:layoutChanged', invalidateAndPlaceHudOverlays);
+  on('settings:changed', invalidateAndPlaceHudOverlays);
+  hudUnsubscribers.push(() => {
+    touchOverlayObserver?.disconnect();
+    responsiveOverlayElements.clear();
+  });
+
+  function responsiveOverlayObstacles() {
+    // The touch HUD is a body sibling, not a child of #hud. Reserve its actual rendered
+    // instruments rather than the desktop vitals rectangle that mobile flight replaces.
+    if (receiptGeometryRects?.resp) return receiptGeometryRects.resp;
+    const qsa = (scope, selector) => {
+      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
+      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
+      let hit = queries.get(selector);
+      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
+      return hit;
+    };
+    const touch = document.getElementById('sf-touch-overlay');
+    if (touch !== touchOverlayOwner) {
+      touchOverlayObserver?.disconnect();
+      touchOverlayOwner = touch;
+      if (touch && typeof MutationObserver === 'function') {
+        touchOverlayObserver = new MutationObserver(invalidateAndPlaceHudOverlays);
+        // Handedness/scale can move controls without resizing them. Only configuration
+        // attributes change placement; observing live readings would invalidate every frame.
+        touchOverlayObserver.observe(touch, {
+          attributes: true, attributeFilter: ['data-layout', 'data-lefty', 'style'],
+        });
+      }
+    }
+    const elements = [
+      ...qsa(root, '#race-tape'),
+      ...qsa(root, '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded'),
+      ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label') || [],
+    ];
+    const elementSet = new Set(elements);
+    for (const el of responsiveOverlayElements) {
+      if (!elementSet.has(el)) {
+        overlayLayoutObserver?.unobserve(el);
+        responsiveOverlayElements.delete(el);
+      }
+    }
+    for (const el of elements) {
+      if (!responsiveOverlayElements.has(el)) {
+        responsiveOverlayElements.add(el);
+        overlayLayoutObserver?.observe(el);
+      }
+    }
+    if (receiptGeometryRects) receiptGeometryRects.resp = elements;
+    return elements;
+  }
+
+  // Both roots are static index.html markup: resolve each once, retrying only while absent.
+  let toastsLaneEl = null;
+  let alertsEl = null;
+  let alertLaneObserver = null;
+  function cleanupAlertLanePlacement() {
+    alertLaneObserver?.disconnect();
+    if (alertLanePlacementActive) restoreAlertLanePlacement(alertsEl);
+  }
+  hudUnsubscribers.push(cleanupAlertLanePlacement);
+  function overlaySafeSlot(layout, w, h) {
+    const safe = layout && layout.centerSafe;
+    const measured = objectiveEdgeObstacles();
+    const rail = measured.rail;
+    const dock = measured.right;
+    const railVisible = rail && rail.width > 0 && rail.height > 0;
+    const dockVisible = dock && dock.width > 0 && dock.height > 0;
+    if (w > 760 && h <= 500 && layout?.safe) {
+      // In short mobile landscape the camera/Circuits key occupies the top row beside
+      // the status strip. Use the actual gap to its right and before the radar as one
+      // text column; a full-width band makes that key and the radar block every row.
+      const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+      const cameraKey = mobileFlight ? plateBox(root.querySelector('#race-tape .race-tape-options-trigger')) : null;
+      if (cameraKey && cameraKey.top < h / 3 && dockVisible) {
+        const left = Math.max(layout.safe.left + 12, cameraKey.right + 8, railVisible ? rail.right + 12 : 0);
+        const right = Math.min(layout.safe.right - 12, dock.left - 8);
+        if (right - left >= 200) return { x: left, width: right - left, wide: false };
+      }
+      const left = Math.max(layout.safe.left + 12, railVisible ? rail.right + 12 : layout.safe.left + 12);
+      // The right dock is tall on desktop but may sit above the actual caption/receipt band in
+      // compact landscape. Let vertical obstacle measurement reserve only the rows it occupies.
+      const right = layout.safe.right - 12;
+      if (right - left >= 160) {
+        const captionWidth = Math.max(160, Math.min(320, Math.round((railVisible ? rail.width : w * 0.42) - 24)));
+        return { x: left, width: right - left, wide: false,
+          captionSlot: { x: 12, width: Math.min(captionWidth, w - 24), wide: false } };
+      }
+    }
+    if (w > 1180 && safe && safe.width >= 180) {
+      const left = Math.max(safe.x, railVisible ? rail.right + 12 : safe.x);
+      const right = Math.min(safe.x + safe.width, dockVisible ? dock.left - 12 : safe.x + safe.width);
+      if (right - left >= 180) {
+        return { x: left, width: right - left, wide: true };
+      }
+    }
+    if (safe && safe.width >= 140 && h <= 620) {
+      const x = safe.x;
+      const width = safe.width;
+      if (width >= 140) return { x, width, wide: false };
+    }
+    // In portrait the canonical center-safe column collapses between the corner instruments.
+    // Use the full inset playfield above the dock/objective instead; those lower instruments
+    // remain clear even when long copy wraps or several receipts are present.
+    const x = (layout?.safe?.left || 0) + 12;
+    const width = Math.max(160, (layout?.safe?.width || w) - 24);
+    const slot = { x, width: Math.min(width, w - x - 12), wide: false };
+    const thumb = plateBox(document.getElementById('sf-touch-overlay')?.querySelector('.mf-buttons'));
+    if (w <= 760 && h > w && thumb) {
+      // Use the lane opposite the actual thumb cluster, including left-handed layouts.
+      // Full-width bands cannot fit a discovery between the portrait radar and touch keys.
+      const left = thumb.left + thumb.width / 2 > w / 2 ? x : thumb.right + 8;
+      const right = thumb.left + thumb.width / 2 > w / 2 ? thumb.left - 8 : x + slot.width;
+      if (right - left >= 80) slot.captionSlot = { x: left, width: right - left, wide: false };
+    }
+    return slot;
+  }
+  // Diagnostic comparison is local to this HUD. Geometry never survives a flush. Out-of-flow
+  // overlay writes invalidate their own tree, retaining unrelated settled obstacle measurements.
+  let receiptPlacementMode = 'shared';
+  let receiptGeometryRects = null;
+  function setReceiptPlacementMode(mode) {
+    if (mode !== 'shared' && mode !== 'original') throw new RangeError('Unknown receipt placement mode: ' + mode);
+    receiptPlacementMode = mode;
+    receiptGeometryRects?.clear();
+    if (receiptGeometryRects) receiptGeometryRects.bm = null;
+    externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
+    alertLanePlacementStale = true;
+    invalidateReceiptLane();
+    return mode;
+  }
+  function readReceiptRect(el) {
+    if (!el) return null;
+    if (receiptPlacementMode === 'original' || !receiptGeometryRects) return el.getBoundingClientRect?.();
+    if (!receiptGeometryRects.has(el)) receiptGeometryRects.set(el, el.getBoundingClientRect?.());
+    return receiptGeometryRects.get(el);
+  }
+  function setReceiptStyle(el, prop, value) {
+    if (receiptPlacementMode === 'shared') {
+      // Keep the old lane writer coherent when the diagnostic switches back to original.
+      if (el._sfStyle) el._sfStyle[prop] = value;
+      if (el.style[prop] === value) return;
+      if (prop !== 'pointerEvents' && prop !== 'opacity' && receiptGeometryRects) {
+        // Only these absolute/fixed overlay roots are independent of sibling layout. Their
+        // descendants (receipt/alert cards) and ancestors must still be measured after writes.
+        const isolated = el === caption || el === toastsLaneEl || el === alertsEl
+          || (externalFlightCaptions.has(el)
+            && (el.style.position === 'absolute' || el.style.position === 'fixed'));
+        receiptGeometryRects.bm = null;
+        if (!isolated) receiptGeometryRects.clear();
+        else for (const cached of receiptGeometryRects.keys()) {
+          if (cached === el || el.contains?.(cached) || cached.contains?.(el)) {
+            receiptGeometryRects.delete(cached);
+          }
+        }
+      }
+    }
+    el.style[prop] = value;
+  }
+  function freeOverlayBands(slot, h, layout, excludedElement = null, includeLiveCaptionsAndToasts = false, ignoreFlightGhost = false) {
+    // Inside one flush the selector walks and the band solve are pure functions of the DOM and the
+    // measured rects. Both memos live on the flush's rect Map; any geometry-changing write drops them.
+    const flushCache = receiptPlacementMode === 'shared' && !(excludedElement instanceof Set)
+      ? receiptGeometryRects : null;
+    const qsa = (scope, selector) => {
+      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
+      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
+      let hit = queries.get(selector);
+      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
+      return hit;
+    };
+    const memoKey = flushCache ? [slot.x, slot.width, h, includeLiveCaptionsAndToasts, ignoreFlightGhost,
+      yieldedFlightVisuals.size, externalFlightCaptions.size] : null;
+    if (flushCache && flushCache.bm) {
+      const hit = flushCache.bm.find((m) => m.layout === layout && m.ex === excludedElement
+        && m.key.every((v, n) => v === memoKey[n]));
+      if (hit) return hit.bands.map((band) => ({ ...band }));
+    }
+    const measured = objectiveEdgeObstacles();
+    const responsive = responsiveOverlayObstacles();
+    const responsiveRects = new Map(responsive.map(el => [el, readReceiptRect(el)]));
+    const hasTouchControls = responsive.some(el => el.closest?.('#sf-touch-overlay')
+      && responsiveRects.get(el)?.width > 0 && responsiveRects.get(el)?.height > 0);
+    const radarYielded = [...yieldedFlightVisuals.keys()].some(el => el.matches?.('.sf-radar-wrap'));
+    const isExcluded = (el) => excludedElement instanceof Set ? excludedElement.has(el) : el === excludedElement;
+    const candidates = [
+      ...qsa(root, '.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'),
+      ...qsa(document, '.sf-stuntcall:not([hidden])'),
+      ...(hasTouchControls ? qsa(root, '.sf-leftcontext') : []),
+      ...qsa(document, '#alerts > .sf-alert:not([hidden])'),
+      ...responsive.filter(el => !ignoreFlightGhost || !el.closest?.('.mf-ghost')),
+      ...(radarYielded ? qsa(root, '.sf-rightdock > *') : []),
+    ];
+    if (includeLiveCaptionsAndToasts) {
+      candidates.push(...qsa(root, '.sf-caption.show, .sf-toast:not(.sf-toast--out)'));
+    }
+    const blockers = candidates.map((el) => {
+      if ((radarYielded && el === measured.rightEl) || isExcluded(el) || yieldedFlightVisuals.has(el)
+          || Array.from(yieldedFlightVisuals.keys()).some(parent => parent.contains?.(el))) return null;
+      const rect = el === measured.railEl ? measured.rail
+        : el === measured.rightEl ? measured.right
+          : responsiveRects.get(el) || readReceiptRect(el);
+      return rect && {
+        left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+        width: rect.width, height: rect.height,
+        topInset: el.matches?.('.orr-cluster') ? 16 : 8,
+      };
+    }).filter((r) => r && r.width > 0 && r.height > 0
+      && r.left < slot.x + slot.width && r.right > slot.x);
+    for (const el of externalFlightCaptions) {
+      if (isExcluded(el) || yieldedFlightVisuals.has(el) || !el.isConnected || el.hidden || el.style?.display === 'none') continue;
+      const rect = readReceiptRect(el);
+      if (rect && rect.width > 0 && rect.height > 0
+        && rect.left < slot.x + slot.width && rect.right > slot.x) {
+        blockers.push({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+          width: rect.width, height: rect.height });
+      }
+    }
+    const viewportWidth = layout?.viewport?.width
+      || (typeof window !== 'undefined' ? window.innerWidth : 1280);
+    // Real mobile instruments replace these desktop corner estimates. Combining both
+    // erased the remaining portrait band and sent discoveries into the top-of-screen fallback.
+    const canonical = hasTouchControls ? [] : viewportWidth > 1180
+      ? [layout.commandDeck, layout.action]
+      : viewportWidth <= 760
+        ? [layout.objective, layout.vitals, layout.rightDock, layout.action]
+        : [layout.action];
+    for (const rect of canonical) {
+      if (rect && rect.width > 0 && rect.height > 0 && rect.x < slot.x + slot.width && rect.x + rect.width > slot.x) blockers.push({
+        left: rect.x, right: rect.x + rect.width, top: rect.y, bottom: rect.y + rect.height,
+      });
+    }
+    blockers.sort((a, b) => a.top - b.top);
+    const bands = [];
+    let cursor = 8;
+    for (const blocker of blockers) {
+      const top = Math.max(8, blocker.top - (blocker.topInset ?? 8));
+      const bottom = Math.min(h - 8, blocker.bottom + 8);
+      if (top > cursor + 1) bands.push({ top: cursor, bottom: top });
+      cursor = Math.max(cursor, bottom);
+    }
+    if (cursor < h - 8) bands.push({ top: cursor, bottom: h - 8 });
+    // The canonical lower corner bounds remain reserved when the DOM has not mounted them yet.
+    if (!hasTouchControls && !root.querySelector?.('.orr-hud-cluster .orr-cluster')) {
+      for (const anchor of [layout.objective, layout.vitals, layout.rightDock, layout.action]) {
+        if (anchor && anchor.x < slot.x + slot.width && anchor.x + anchor.width > slot.x) {
+          const next = [];
+          for (const band of bands) {
+            if (anchor.y <= band.top || anchor.y + anchor.height >= band.bottom) { next.push(band); continue; }
+            next.push({ top: band.top, bottom: anchor.y - 8 }, { top: anchor.y + anchor.height + 8, bottom: band.bottom });
+          }
+          bands.splice(0, bands.length, ...next.filter((band) => band.bottom - band.top > 0));
+        }
+      }
+    }
+    const result = bands.filter((band) => band.bottom - band.top >= 48).sort((a, b) => b.bottom - b.top - (a.bottom - a.top));
+    if (flushCache) (flushCache.bm || (flushCache.bm = [])).push({ layout, ex: excludedElement, key: memoKey,
+      bands: result.map((band) => ({ ...band })) });
+    return result;
+  }
+  const ALERT_LANE_STYLE_KEYS = ['position', 'left', 'right', 'top', 'bottom', 'width', 'maxHeight',
+    'overflowY', 'transform', 'pointerEvents', 'boxSizing'];
+  const ALERT_LANE_OWNED_CSS_PROPERTIES = new Set([
+    // CSSOM serializes our four inset longhand writes back to the `inset` shorthand. Treat that
+    // canonical form as owned too, or MutationObserver mistakes its own write batch for outside
+    // geometry and repeatedly runs the synchronous layout allocator.
+    'position', 'left', 'right', 'top', 'bottom', 'inset', 'width', 'max-height', 'overflow-y',
+    'transform', 'pointer-events', 'box-sizing',
+  ]);
+  function alertLaneStyleMutationIsOwned(record, lane) {
+    if (!record || record.type !== 'attributes' || record.target !== lane
+      || record.attributeName !== 'style' || !('oldValue' in record)) return false;
+    const externalStyle = (styleText) => String(styleText || '').split(';').map((declaration) => {
+      const colon = declaration.indexOf(':');
+      if (colon < 0) return '';
+      const property = declaration.slice(0, colon).trim().toLowerCase();
+      return ALERT_LANE_OWNED_CSS_PROPERTIES.has(property) ? '' : `${property}:${declaration.slice(colon + 1).trim()}`;
+    }).filter(Boolean).sort().join(';');
+    return externalStyle(record.oldValue) === externalStyle(lane.getAttribute?.('style'));
+  }
+  function restoreAlertLanePlacement(lane) {
+    if (!lane || !alertLanePlacementActive) return;
+    const write = receiptPlacementMode === 'shared' ? setReceiptStyle : setStyle;
+    for (const key of ALERT_LANE_STYLE_KEYS) write(lane, key, alertLaneOriginalStyle?.[key] || '');
+    alertLanePlacementActive = false;
+    alertLaneOriginalStyle = null;
+  }
+  function placeAlertLaneInSafeBands(layout, w, h) {
+    if (!alertLanePlacementStale) return;
+    alertLanePlacementStale = false;
+    if (alertsEl === null) alertsEl = document.getElementById('alerts');
+    const lane = alertsEl;
+    if (!lane) { alertLanePlacementStale = true; return; }
+    const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+    if (!mobileFlight) { restoreAlertLanePlacement(lane); return; }
+    const alertCards = [...(lane.querySelectorAll?.(':scope > .sf-alert:not([hidden])') || [])];
+    const getStyle = document.defaultView?.getComputedStyle || globalThis.getComputedStyle;
+    const visibleCards = alertCards.filter((el) => {
+      if (!el || el.hidden || el.style?.display === 'none' || el.style?.visibility === 'hidden') return false;
+      if (typeof getStyle === 'function') {
+        try {
+          const style = getStyle.call(document.defaultView || globalThis, el);
+          if (style?.display === 'none' || style?.visibility === 'hidden' || style?.visibility === 'collapse') return false;
+        } catch (_) { /* partial DOM hosts use the element rectangle below */ }
+      }
+      const rect = el.getBoundingClientRect?.();
+      return !rect || (rect.width > 0 && rect.height > 0);
+    });
+    if (!visibleCards.length) { restoreAlertLanePlacement(lane); return; }
+    if (!alertLaneOriginalStyle) {
+      alertLaneOriginalStyle = Object.fromEntries(ALERT_LANE_STYLE_KEYS.map((key) => [key, lane.style?.[key] || '']));
+    }
+    alertLanePlacementActive = true;
+    const slot = overlaySafeSlot(layout, w, h);
+    if (!slot || !(slot.width > 0)) { restoreAlertLanePlacement(lane); return; }
+    const write = receiptPlacementMode === 'shared' ? setReceiptStyle : setStyle;
+    for (const [key, value] of Object.entries({ position: 'fixed', left: `${Math.round(slot.x)}px`,
+      right: 'auto', top: '0px', bottom: 'auto', width: `${Math.round(slot.width)}px`, maxHeight: 'none',
+      overflowY: 'visible', transform: 'none', pointerEvents: 'none', boxSizing: 'border-box' })) {
+      write(lane, key, value);
+    }
+    const contentHeight = Math.max(48, lane.scrollHeight || visibleCards.reduce((sum, el) =>
+      sum + (el.getBoundingClientRect?.().height || 0), 0));
+    const bands = freeOverlayBands(slot, h, layout, new Set(alertCards));
+    const band = bands.find((candidate) => candidate.bottom - candidate.top >= contentHeight + 8) || bands[0];
+    if (!band) { restoreAlertLanePlacement(lane); return; }
+    const bandHeight = Math.max(48, Math.round(band.bottom - band.top - 8));
+    write(lane, 'top', `${Math.round(band.top + 4)}px`);
+    write(lane, 'maxHeight', `${bandHeight}px`);
+    write(lane, 'overflowY', contentHeight > bandHeight ? 'auto' : 'visible');
+    write(lane, 'pointerEvents', contentHeight > bandHeight ? 'auto' : 'none');
+  }
+  function placeCaptionInSafeSlot(target, layout, slot, laneRoot, band = null, measuredScrollHeight = null) {
+    if (!target || target.hidden || !slot) return;
+    const h = typeof window !== 'undefined' ? window.innerHeight : 720;
+    const available = band || freeOverlayBands(slot, h, layout)[0] || { top: 8, bottom: h - 8 };
+    const laneRect = laneRoot?.querySelector?.('.sf-toast:not(.sf-toast--out)') ? readReceiptRect(laneRoot) : null;
+    const top = laneRect ? Math.max(available.top, laneRect.bottom + 12) : available.top;
+    const maxHeight = Math.max(48, Math.round(available.bottom - top));
+    // fit-content depends on available inline space as well as max-width. Keep the original
+    // final read on first placement or a moved column; only a settled column can reuse height.
+    const reuseHeight = measuredScrollHeight != null && target.style.position === 'absolute'
+      && target.style.left === `${Math.round(slot.x)}px` && target.style.right === 'auto'
+      && target.style.bottom === 'auto' && target.style.width === 'fit-content'
+      && target.style.maxWidth === `${Math.round(slot.width)}px` && target.style.overflowY === 'visible'
+      && target.style.textAlign === 'center' && target.style.transform === 'none';
+    setReceiptStyle(target, 'position', 'absolute');
+    setReceiptStyle(target, 'left', `${Math.round(slot.x)}px`);
+    setReceiptStyle(target, 'right', 'auto');
+    setReceiptStyle(target, 'top', `${Math.round(top)}px`);
+    setReceiptStyle(target, 'bottom', 'auto');
+    setReceiptStyle(target, 'width', 'fit-content');
+    setReceiptStyle(target, 'maxWidth', `${Math.round(slot.width)}px`);
+    setReceiptStyle(target, 'maxHeight', `${maxHeight}px`);
+    // One read: a second scrollHeight after the overflowY write forced another layout, and a
+    // scrollbar only makes overflowing text taller, so the pointer decision cannot change.
+    const overflows = (reuseHeight ? measuredScrollHeight : target.scrollHeight) > maxHeight;
+    setReceiptStyle(target, 'overflowY', overflows ? 'auto' : 'visible');
+    setReceiptStyle(target, 'textAlign', 'center');
+    setReceiptStyle(target, 'transform', 'none');
+    setReceiptStyle(target, 'pointerEvents', overflows ? 'auto' : 'none');
+  }
+  function placeExternalFlightCaptions(layout, w, h) {
+    if (!externalFlightCaptions.size || !externalCaptionsStale) return;
+    externalCaptionsStale = false;
+    restoreYieldedFlightVisuals();
+    const slot = overlaySafeSlot(layout, w, h);
+    const mobile = plateBox(document.getElementById('sf-touch-overlay')?.querySelector('.mf-buttons'));
+    for (const el of externalFlightCaptions) {
+      if (!el || !el.isConnected || el.hidden || el.style?.display === 'none') continue;
+      const touchOwner = document.getElementById('sf-touch-overlay');
+      if (el.dataset?.flightCritical === 'true') {
+        receiptGeometryRects?.clear();
+        touchOwner?.classList.remove('mf-notice-priority');
+      }
+      const slots = mobile && slot.captionSlot ? [slot.captionSlot, slot] : [slot];
+      if (mobile && el.dataset?.flightCritical === 'true') {
+        const width = Math.min(240, Math.max(0, w - 24));
+        slots.push({ x: 12, width, wide: false }, { x: Math.round(w * .33), width: Math.min(width, Math.round(w * .27)), wide: false }, { x: Math.round((w - width) / 2), width, wide: false }, { x: w - width - 12, width, wide: false });
+      }
+      let placement = null;
+      for (const candidate of slots) {
+        // Wrapping changes height: measure only after applying this lane's actual width.
+        prepareReceiptCaptionSize(candidate, el);
+        const bands = freeOverlayBands(candidate, h, layout, el, true);
+        const height = Math.max(48, el.scrollHeight || el.getBoundingClientRect?.().height || 48);
+        const band = bands.find((available) => available.bottom - available.top >= height + 8);
+        if (band) { placement = { slot: candidate, band, height }; break; }
+        if ((!mobile || el.dataset?.flightCritical === 'true') && bands[0]
+            && (!placement || (el.dataset?.flightCritical === 'true'
+              && bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top))) {
+          placement = { slot: candidate, band: bands[0], height };
+        }
+      }
+      if (!placement && mobile && el.dataset?.flightCritical === 'true') {
+        // The teaching ghost is decorative; a time-limited authority notice takes
+        // priority when a small screen cannot fit both alongside the controls.
+        for (const candidate of slots) {
+          prepareReceiptCaptionSize(candidate, el);
+          const bands = freeOverlayBands(candidate, h, layout, el, true, true);
+          if (bands[0] && (!placement || bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top)) {
+            placement = { slot: candidate, band: bands[0] };
+          }
+        }
+        if (placement) {
+          receiptGeometryRects?.clear();
+          touchOwner?.classList.add('mf-notice-priority');
+        }
+      }
+      if (!placement && mobile && el.dataset?.flightCritical === 'true') {
+        // Yield only informational visuals, in priority order. Input controls remain
+        // blockers, and their owners/state continue running while visually covered.
+        const tiers = [
+          [...root.querySelectorAll('.sf-caption.show, .sf-toast:not(.sf-toast--out)'),
+            ...Array.from(externalFlightCaptions).filter(other => other !== el && other.dataset?.flightCritical !== 'true')],
+          [...root.querySelectorAll('.sf-leftcontext, .sf-mt-obj')],
+          [...root.querySelectorAll('.sf-radar-wrap')],
+        ];
+        for (const tier of tiers) {
+          for (const visual of tier) yieldFlightVisual(visual);
+          for (const candidate of slots) {
+            const bands = freeOverlayBands(candidate, h, layout, el, true, true);
+            if (bands[0] && (!placement || bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top)) {
+              placement = { slot: candidate, band: bands[0] };
+            }
+          }
+          if (placement) break;
+        }
+        if (placement) {
+          receiptGeometryRects?.clear();
+          touchOwner?.classList.add('mf-notice-priority');
+        }
+      }
+      if (!placement && !mobile) placement = { slot, band: { top: 8, bottom: h - 8 } };
+      if (!placement) {
+        if (el.dataset?.flightCritical === 'true') {
+          restoreYieldedFlightVisuals();
+          receiptGeometryRects?.clear();
+          touchOwner?.classList.remove('mf-notice-priority');
+        }
+        // A low-priority visual waits within its existing lifetime, never over the controls.
+        // Opacity leaves its live announcement intact; no queue or expiry clock is restarted.
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+        continue;
+      }
+      el.style.opacity = externalCaptionOpacity.get(el) || '';
+      placeCaptionInSafeSlot(el, layout, placement.slot, null, placement.band,
+        receiptPlacementMode === 'shared' && el.style.maxWidth === `${Math.round(placement.slot.width)}px`
+          ? placement.height ?? null : null);
+    }
+  }
+  function clearExternalFlightCaptionPlacement(el) {
+    if (!el?.style) return;
+    el.style.opacity = externalCaptionOpacity.get(el) || '';
+    externalCaptionOpacity.delete(el);
+    for (const key of ['position', 'left', 'right', 'top', 'bottom', 'width', 'maxWidth', 'maxHeight',
+      'overflowY', 'textAlign', 'transform', 'pointerEvents']) el.style[key] = '';
+  }
+  function registerExternalFlightCaption(el) {
+    if (!el) return false;
+    if (externalFlightCaptions.has(el)) return true;
+    externalFlightCaptions.add(el);
+    if (el.dataset?.flightCritical === 'true') overlayLayoutObserver?.observe(el);
+    externalCaptionOpacity.set(el, el.style?.opacity || '');
+    externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
+    invalidateReceiptLane(false);
+    return true;
+  }
+  function refreshExternalFlightCaption(el) {
+    if (!el || !externalFlightCaptions.has(el)) return false;
+    externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
+    invalidateReceiptLane(false);
+    return true;
+  }
+  function releaseExternalFlightCaption(el) {
+    if (!el || !externalFlightCaptions.delete(el)) return false;
+    overlayLayoutObserver?.unobserve(el);
+    if (el.dataset?.flightCritical === 'true') document.getElementById('sf-touch-overlay')?.classList.remove('mf-notice-priority');
+    if (el.dataset?.flightCritical === 'true') restoreYieldedFlightVisuals();
+    clearExternalFlightCaptionPlacement(el);
+    externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
+    invalidateReceiptLane(false);
+    return true;
+  }
+  function placeOrdinaryCaptionInSafeBands(layout, w, h) {
+    if (!caption || caption.hidden || !caption.classList.contains('show')) return;
+    const slot = overlaySafeSlot(layout, w, h);
+    let captionSlot = slot.captionSlot || slot;
+    const captionMaxWidth = `${Math.round(captionSlot.width)}px`;
+    if (receiptPlacementMode === 'shared') {
+      prepareReceiptCaptionSize(captionSlot);
+    }
+    let captionBands = slot.captionSlot ? freeOverlayBands(captionSlot, h, layout) : freeOverlayBands(slot, h, layout);
+    if (receiptPlacementMode === 'original' && (caption.style.overflowY !== 'visible' || caption.style.maxWidth !== captionMaxWidth
+      || caption.style.width !== 'fit-content')) {
+      setReceiptStyle(caption, 'width', 'fit-content');
+      setReceiptStyle(caption, 'maxWidth', captionMaxWidth);
+      setReceiptStyle(caption, 'maxHeight', 'none');
+      setReceiptStyle(caption, 'overflowY', 'visible');
+    }
+    let captionScrollHeight = caption.scrollHeight;
+    let captionHeight = Math.max(48, captionScrollHeight || caption.getBoundingClientRect?.().height || 0);
+    let captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
+    if (slot.captionSlot && !captionBand) {
+      captionSlot = slot;
+      if (receiptPlacementMode === 'shared') prepareReceiptCaptionSize(captionSlot);
+      captionBands = freeOverlayBands(slot, h, layout);
+      if (receiptPlacementMode === 'original') setReceiptStyle(caption, 'maxWidth', `${Math.round(captionSlot.width)}px`);
+      captionScrollHeight = caption.scrollHeight;
+      captionHeight = Math.max(48, captionScrollHeight || caption.getBoundingClientRect?.().height || 0);
+      captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
+    }
+    placeCaptionInSafeSlot(caption, layout, captionSlot, null, captionBand || captionBands[0],
+      receiptPlacementMode === 'shared' ? captionScrollHeight : null);
+  }
+  // The main UI frame calls this after its prompt, toast and caption ticks. Standalone HUD
+  // users flush at the end of frame() instead. No second rAF or slow-tick delay is needed.
+  function flushReceiptLane() {
+    if (!receiptLanePlacementDirty) return;
+    receiptLanePlacementDirty = false;
+    if (receiptPlacementMode !== 'shared') {
+      receiptGeometryRects = null;
+      placeReceiptLane();
+      return;
+    }
+    // Content/layout invalidations measure from scratch; the busy-lane safety tick may re-place
+    // against the last measured geometry. A content-only flush keeps the measured map for the
+    // next content change. The band memo is per-flush either way.
+    const reuse = receiptGeometryReusable && receiptGeometryRects !== null;
+    const keep = receiptGeometryKeep || reuse;
+    receiptGeometryReusable = false;
+    receiptGeometryKeep = false;
+    if (!reuse) receiptGeometryRects = new Map();
+    receiptGeometryRects.bm = null;
+    try { placeReceiptLane(); }
+    catch (error) {
+      // A failed placement cannot retain a half-invalidated snapshot.
+      receiptGeometryRects = null;
+      receiptGeometryReusable = false;
+      receiptGeometryKeep = false;
+      throw error;
+    }
+    finally { if (!keep) receiptGeometryRects = null; }
+  }
+  function prepareReceiptLaneSize(laneRoot, laneWidth) {
+    const write = receiptPlacementMode === 'shared' ? setReceiptStyle : setStyle;
+    write(laneRoot, 'width', `${Math.round(laneWidth)}px`);
+    // A scrolling lane narrows its cards. Measure natural content only after removing that
+    // scrollbar; a settled non-scrolling lane needs no max-height reset.
+    if (laneRoot.style.overflowY !== 'visible') {
+      write(laneRoot, 'maxHeight', 'none');
+      write(laneRoot, 'overflowY', 'visible');
+    }
+    write(laneRoot, 'pointerEvents', 'none');
+  }
+  function prepareReceiptCaptionSize(captionSlot, target = caption) {
+    setReceiptStyle(target, 'width', 'fit-content');
+    setReceiptStyle(target, 'maxWidth', `${Math.round(captionSlot.width)}px`);
+    // Visible overflow has no scrollbar and scrollHeight still reports the full text. Keep a
+    // settled cap rather than toggling it none -> px on every flush; reset a scrolling caption.
+    if (receiptPlacementMode === 'original' || target.style.overflowY !== 'visible') {
+      setReceiptStyle(target, 'maxHeight', 'none');
+    }
+    setReceiptStyle(target, 'overflowY', 'visible');
+  }
+  function placeReceiptLane(resolvedLayout = null) {
+    if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
+    const laneRoot = toastsLaneEl;
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
+    const h = typeof window !== 'undefined' ? window.innerHeight : 720;
+    const layout = resolvedLayout || resolveObjectiveHudLayout(w, h);
+    placeAlertLaneInSafeBands(layout, w, h);
+    if (!laneRoot || !layout.receipt) {
+      placeOrdinaryCaptionInSafeBands(layout, w, h);
+      placeExternalFlightCaptions(layout, w, h);
+      refreshFlightTextObstacleSnapshot();
+      return;
+    }
+    const lane = layout.receipt;
+    const activeReceipt = laneRoot.querySelector?.('.sf-toast:not(.sf-toast--out)');
+    const captionVisible = caption && !caption.hidden && caption.classList.contains('show');
+    if (activeReceipt !== lastReceiptObstacle || captionVisible !== lastCaptionObstacleVisible) {
+      externalCaptionsStale = true;
+      flightTextObstaclesStale = true;
+      lastReceiptObstacle = activeReceipt;
+      lastCaptionObstacleVisible = captionVisible;
+    }
+    if (!activeReceipt && !captionVisible) {
+      placeExternalFlightCaptions(layout, w, h);
+      placeFlightReadouts(w, h);
+      refreshFlightTextObstacleSnapshot();
+      return;
+    }
+    const sharedGeometry = receiptPlacementMode === 'shared';
+    if (!activeReceipt && sharedGeometry) {
+      // The ordinary caption owner computes these same bands. Do not measure and discard
+      // both receipt/caption slots before calling it when no receipt is present.
+      placeOrdinaryCaptionInSafeBands(layout, w, h);
+      placeExternalFlightCaptions(layout, w, h);
+      placeFlightReadouts(w, h);
+      refreshFlightTextObstacleSnapshot();
+      return;
+    }
+    const slot = overlaySafeSlot(layout, w, h);
+    let captionSlot = slot.captionSlot || slot;
+    const laneWidth = Math.min(lane.width, slot.width);
+    const laneLeft = slot.x + (slot.width - laneWidth) / 2;
+    if (sharedGeometry) {
+      // Set both wrapping constraints BEFORE the first geometry read. The old sequence
+      // flushed obstacles, wrote lane width, flushed cards, then wrote/flushed the caption.
+      prepareReceiptLaneSize(laneRoot, laneWidth);
+      if (captionVisible) prepareReceiptCaptionSize(captionSlot);
+    }
+    const bands = freeOverlayBands(slot, h, layout);
+    let captionBands = slot.captionSlot ? freeOverlayBands(captionSlot, h, layout) : bands;
+    if (!activeReceipt) {
+      placeOrdinaryCaptionInSafeBands(layout, w, h);
+      placeExternalFlightCaptions(layout, w, h);
+      placeFlightReadouts(w, h);
+      refreshFlightTextObstacleSnapshot();
+      return;
+    }
+    if (!sharedGeometry) prepareReceiptLaneSize(laneRoot, laneWidth);
+    const receiptCards = [...(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || [])];
+    const receiptGap = (() => {
+      if (typeof getComputedStyle !== 'function') return 0;
+      if (receiptGeometryRects && receiptGeometryRects.gap != null) return receiptGeometryRects.gap;
+      const gap = Math.max(0, parseFloat(getComputedStyle(laneRoot).rowGap) || 0);
+      if (receiptGeometryRects) receiptGeometryRects.gap = gap;
+      return gap;
+    })();
+    const receiptHeight = Math.max(lane.height,
+      receiptCards.reduce((sum, card) => sum + (readReceiptRect(card)?.height || 0), 0)
+        + Math.max(0, receiptCards.length - 1) * receiptGap);
+    if (captionVisible && !sharedGeometry) prepareReceiptCaptionSize(captionSlot);
+    let captionScrollHeight = captionVisible ? caption.scrollHeight : 0;
+    let captionHeight = captionVisible ? Math.max(48, captionScrollHeight || caption.getBoundingClientRect?.().height || 0) : 0;
+    const gap = captionVisible ? 12 : 0;
+    if (captionVisible && slot.captionSlot && !captionBands.some((band) => band.bottom - band.top >= captionHeight + 8)) {
+      // At compact landscape sizes an alert can consume the small left strip above the power
+      // instrument. Keep the narration in the measured rail-to-dock corridor instead of falling
+      // back across the instruments; overflow remains scrollable there with the receipts.
+      captionSlot = slot;
+      captionBands = bands;
+      slot.captionSlot = null;
+      if (sharedGeometry) prepareReceiptCaptionSize(captionSlot);
+      else setReceiptStyle(caption, 'maxWidth', `${Math.round(captionSlot.width)}px`);
+      captionScrollHeight = caption.scrollHeight;
+      captionHeight = Math.max(48, captionScrollHeight || caption.getBoundingClientRect?.().height || 0);
+    }
+    const splitBand = captionVisible ? ((slot.captionSlot ? captionBands : bands).find((band) => band.bottom - band.top >= captionHeight + 8)
+      || (slot.captionSlot ? captionBands : bands)[0]) : null;
+    const receiptBand = captionVisible && splitBand
+      ? (slot.captionSlot
+        ? bands.find((band) => band.bottom - band.top >= receiptHeight + 8)
+        : bands.find((band) => band !== splitBand && band.bottom - band.top >= receiptHeight + 8))
+      : null;
+    const combinedBand = captionVisible && !receiptBand
+      ? bands.find((band) => band.bottom - band.top >= receiptHeight + captionHeight + gap + 8)
+      : null;
+    const sharedBand = receiptBand || combinedBand || bands[0] || { top: 8, bottom: h - 8 };
+    let laneTop = receiptBand ? receiptBand.top : sharedBand.top;
+    let receiptMaxHeight = receiptBand ? sharedBand.bottom - sharedBand.top
+      : Math.min(receiptHeight, Math.max(48, Math.floor((sharedBand.bottom - sharedBand.top) * (captionVisible ? 0.54 : 1))));
+    if (captionVisible && !receiptBand) receiptMaxHeight = Math.min(receiptMaxHeight, Math.max(48, sharedBand.bottom - sharedBand.top - captionHeight - gap));
+    const write = sharedGeometry ? setReceiptStyle : setStyle;
+    write(laneRoot, 'maxHeight', `${Math.round(receiptMaxHeight)}px`);
+    write(laneRoot, 'overflowY', receiptHeight > receiptMaxHeight ? 'auto' : 'visible');
+    write(laneRoot, 'pointerEvents', receiptHeight > receiptMaxHeight ? 'auto' : 'none');
+    write(laneRoot, 'left', `${Math.round(laneLeft)}px`);
+    write(laneRoot, 'top', `${Math.round(laneTop)}px`);
+    write(laneRoot, 'bottom', 'auto');
+    write(laneRoot, 'right', 'auto');
+    write(laneRoot, 'transform', 'none');
+    const captionBand = receiptBand ? splitBand : sharedBand;
+    if (captionVisible) {
+      if (!receiptBand) captionBand.top = laneTop + receiptMaxHeight + gap;
+      placeCaptionInSafeSlot(caption, layout, captionSlot, receiptBand ? null : laneRoot, captionBand,
+        sharedGeometry ? captionScrollHeight : null);
+    }
+    placeExternalFlightCaptions(layout, w, h);
+    placeFlightReadouts(w, h);
+    refreshFlightTextObstacleSnapshot();
+  }
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    const repositionHudOverlays = () => invalidateReceiptLane();
+    window.addEventListener('resize', repositionHudOverlays);
+    hudUnsubscribers.push(() => window.removeEventListener('resize', repositionHudOverlays));
+  }
+  on('hud:receiptGeometryChanged', () => {
+    externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
+    invalidateReceiptLane(false);
+  });
+  if (typeof MutationObserver !== 'undefined') {
+    const alertLaneOptions = {
+      attributes: true, attributeFilter: ['class', 'hidden', 'style'], attributeOldValue: true,
+      childList: true, subtree: true, characterData: true,
+    };
+    const observeAlertLane = () => {
+      const alertLane = document.getElementById('alerts');
+      if (!alertLane || alertLaneObserver) return false;
+      alertLaneObserver = new MutationObserver((records) => {
+        if (records?.length && records.every((record) => alertLaneStyleMutationIsOwned(record, alertLane))) return;
+        const layoutChange = !!records?.some((record) => record.target === document.documentElement
+          && record.attributeName === 'data-sf-mobile-flight');
+        alertLanePlacementStale = true;
+        flightTextObstaclesStale = true;
+        invalidateReceiptLane(layoutChange);
+      });
+      alertLaneObserver.observe(alertLane, alertLaneOptions);
+      if (document.documentElement) alertLaneObserver.observe(document.documentElement, {
+        attributes: true, attributeFilter: ['data-sf-mobile-flight'],
+      });
+      alertLanePlacementStale = true;
+      invalidateReceiptLane();
+      return true;
+    };
+    if (!observeAlertLane()) {
+      const waitForAlertLane = new MutationObserver(() => {
+        if (observeAlertLane()) waitForAlertLane.disconnect();
+      });
+      waitForAlertLane.observe(document.documentElement, { childList: true, subtree: true });
+      hudUnsubscribers.push(() => waitForAlertLane.disconnect());
+    }
+  }
+
+  function placeFlightBox(el, rect) {
+    if (!el || !rect || !el.style) return;
+    setStyle(el, 'position', 'fixed');
+    setStyle(el, 'left', `${Math.round(rect.x)}px`);
+    setStyle(el, 'top', `${Math.round(rect.y)}px`);
+    setStyle(el, 'width', `${Math.round(rect.width)}px`);
+    setStyle(el, 'height', `${Math.round(rect.height)}px`);
+    setStyle(el, 'margin', '0');
+    setStyle(el, 'right', 'auto');
+    setStyle(el, 'bottom', 'auto');
+    setStyle(el, 'transform', 'none');
+  }
+
+  // Only the dock prompt needs a computed box; the Cluster owns its instrument layout.
+  function placeFlightReadouts(w, h) {
+    const boxes = flightInstrumentRects(w, h);
+    if (alertsEl === null) alertsEl = document.getElementById('alerts');
+    // The dock alert is created/removed by alerts.js — a query must run each slow tick, but
+    // scoped to the small #alerts subtree instead of a document-wide selector match.
+    const dock = alertsEl ? alertsEl.querySelector('.sf-alert--dock') : null;
+    if (dock) placeFlightBox(dock, boxes.dockPrompt);
+  }
+
+  function updateFirstUseHint(player) {
+    if (!firstUseHint) {
+      setHidden(firstUse, true);
+      return;
+    }
+    if ((state.simTime || 0) > firstUseHint.until) {
+      firstUseHint = null;
+      setHidden(firstUse, true);
+      return;
+    }
+    setHidden(firstUse, false);
+    setText(firstUse, firstUseHint.text);
+    let pos = player && player.pos;
+    if (firstUseHint.entityId != null && state.entities && state.entities.get) {
+      const ent = state.entities.get(firstUseHint.entityId);
+      if (ent && ent.pos) pos = presentedEntityAnchor(ent);
+    } else if (firstUseHint.kind === 'station' && state.nav && state.nav.waypoint && state.nav.waypoint.pos) {
+      pos = state.nav.waypoint.pos;
+    }
+    if (!pos || !helpers.worldToScreen) {
+      setHidden(firstUse, firstUseHint.kind !== 'player');
+      return;
+    }
+    firstUseProjectionWorld.x = pos.x;
+    firstUseProjectionWorld.z = pos.z;
+    const proj = helpers.worldToScreen(firstUseProjectionWorld, firstUseProjectionScreen);
+    if (!proj) {
+      setHidden(firstUse, firstUseHint.kind !== 'player');
+      return;
+    }
+    const rawX = proj.onScreen ? proj.x : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1280) - 24, proj.x));
+    const rawY = proj.onScreen ? proj.y - 28 : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerHeight : 720) - 24, proj.y));
+    const onPlayer = !firstUseHint.entityId || firstUseHint.entityId === state.playerId;
+    const hull = shipGlyphBox();
+    const cleared = onPlayer
+      ? placeHudString(
+        { x: rawX, y: rawY },
+        { x: proj.x, y: proj.y },
+        Math.max(hull.width, hull.height),
+      )
+      : { x: rawX, y: rawY };
+    setHudScreenTransform(firstUse, cleared.x, cleared.y);
+  }
+
+  // The comms strip used to hide/show through two :has() rules on #hud; every hidden/inline-style
+  // write inside it then scheduled a style invalidation over the whole HUD each frame. The same
+  // states are classes now, recomputed on the slow tick (and once at mount). Semantics match the
+  // old selectors exactly: empty = every direct child hidden or inline display:none (zero children
+  // counts as empty); crun = a direct .sf-crun child that is not hidden.
+  function refreshLeftContextClasses() {
+    let empty = true;
+    let crun = false;
+    for (const child of leftContext.children) {
+      const childHidden = child.hidden || child.style.display === 'none';
+      if (!childHidden) empty = false;
+      if (child.classList.contains('sf-crun') && !child.hidden) crun = true;
+    }
+    setClass(leftContext, 'sf-leftcontext--empty', empty);
+    setClass(leftContext, 'sf-leftcontext--crun', crun);
+  }
+
+  function setVisible(v) {
+    setDisplay(root, !!v, 'block');
+    if (hudMeta && hudMeta.setVisible) hudMeta.setVisible(v);
+  }
+
+  function forceRefresh() {
+    objDirty = true;
+    forceHudClock(numericClock);
+    forceHudClock(targetClock);
+    forceHudClock(overlayClock);
+    forceHudClock(radarClock);
+    lastNavDist = '';
+    lastNavEta = '';
+    if (radar.invalidate) radar.invalidate();
+    if (targetPanel.forceRefresh) targetPanel.forceRefresh();
+  }
+
+  // Moment 3 (Task B §2.3): the HUD arrives on undock. Four anchors settle 200 ms apart, each with
+  // an `open` cue; under reduced motion they appear at once and one `open` plays. Positions move by
+  // transform only (the kit's .k-in), so the frame-sleep contract holds.
+  let arriveTimers = [];
+  function arrive() {
+    for (const t of arriveTimers) clearTimeout(t);
+    arriveTimers = [];
+    const steps = [
+      [orreryCluster && orreryCluster.host, 'bottom'],
+      [leftContext, 'left'],
+      [rightDock, 'right'],
+    ];
+    if (kitReducedMotion()) {
+      for (const [el, from] of steps) if (el) kitSettle(el, { from, state: 'hud:arrive' });
+      kitCue('open');
+      return;
+    }
+    steps.forEach(([el, from], i) => {
+      if (!el) return;
+      kitSettle(el, { from, delay: i * 200, state: 'hud:arrive' });
+      if (i === 0) kitCue('open');
+      else arriveTimers.push(setTimeout(() => kitCue('open'), i * 200));
+    });
+  }
+
+  // Comms is mounted just before the HUD. Adopt an already-visible flight caption once this
+  // allocator exists; subsequent dock/undock/visibility changes call these same idempotent APIs.
+  if (state.mode === 'flight' && !(state.ui && state.ui.docked)) {
+    for (const el of document.querySelectorAll?.('.sf-airlock--flight-safe, #sf-sector-law[data-flight-critical="true"]:not([hidden])') || []) {
+      externalFlightCaptions.add(el);
+    }
+    if (externalFlightCaptions.size) invalidateReceiptLane(false);
+  }
+
+  refreshLeftContextClasses();
+
+  return {
+    frame, flushReceiptLane, setReceiptPlacementMode, tickHidden, forceRefresh, setVisible, refreshObjectives, arrive,
+    registerExternalFlightCaption, refreshExternalFlightCaption, releaseExternalFlightCaption,
+    getFlightTextObstacles,
+    getGLagOffset: () => ({ x: opticalGLag.x, y: opticalGLag.y }),
+    getGLocVignetteOpacity: () => Number(glocVignette ? glocVignette.style.opacity || 0 : 0),
+    triggerElectronicDisruption,
+    getDisrupted: () => root.classList.contains('sf-hud--glitch'),
+    destroy() {
+      for (const t of arriveTimers) clearTimeout(t);
+      if (disruptionTimeout) {
+        clearTimeout(disruptionTimeout);
+        disruptionTimeout = null;
+      }
+      objectiveHudDrag.destroy();
+      // FB-012 — the flight HUD owns the stunt callout mount; releasing it here mirrors the
+      // Crucible results screen's dispose (the layer re-ensures idempotently on next mount).
+      releaseStuntCallout();
+      for (const unsubscribe of hudUnsubscribers.splice(0)) {
+        try { unsubscribe(); } catch (_) { /* bus teardown is best effort */ }
+      }
+      for (const el of externalFlightCaptions) clearExternalFlightCaptionPlacement(el);
+      restoreYieldedFlightVisuals();
+      externalFlightCaptions.clear();
+      clearCargoGaugeSettle(cargoGaugeSettle.used);
+      clearCargoGaugeSettle(cargoGaugeSettle.risk);
+      if (radar && typeof radar.destroy === 'function') radar.destroy();
+      if (floatingText && typeof floatingText.destroy === 'function') floatingText.destroy();
+      if (hudMeta && typeof hudMeta.destroy === 'function') hudMeta.destroy();
+      if (orreryCluster) orreryCluster.dispose();
+      forkInstrument.destroy();
+      ionStormHud.destroy();
+      travelVectorHud.destroy();
+      threatHalo.destroy();
+      if (clusterSizeObserver) clusterSizeObserver.disconnect();
+      if (leftContextSizeObserver) leftContextSizeObserver.disconnect();
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('resize', publishClusterReserve);
+        window.removeEventListener('resize', invalidateObjectiveEdgeBoxes);
+      }
+    },
+  };
+}

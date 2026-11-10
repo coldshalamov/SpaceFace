@@ -1,0 +1,6 @@
+[main-thread-profile 00:50:00] launching isolated Electron; fresh temporary evidence profile (cold GPU program cache and HTTP cache)
+[main-thread-profile 00:50:45] New Game seed 47
+[main-thread-profile 00:51:03] profiling 60000 ms of held-thrust flight
+[main-thread-profile 00:52:04] top-level owner: (idle) @ native:0 (60.4%)
+[main-thread-profile 00:52:04] long tasks in window: 64
+[main-thread-profile 00:52:04] report /workspace/spaceface-master-witness/.devshots/main-thread-profile/settled-60s/report.md

@@ -1,0 +1,27 @@
+{
+  "package": "SpaceFace Finish & Expansion Pack",
+  "version": "1.0",
+  "prepared": "2026-09-28/29",
+  "delivery": "supporting documents, not runtime implementation",
+  "source_pins": {
+    "master": "9a30ffc00204a943ed9307deb56cb8bf23687ad9",
+    "alien_pr_170": "580ed7bb99de164253f6bb43fd9fc385ae3c1504"
+  },
+  "counts": {
+    "programs": 24,
+    "build_tasks": 240,
+    "inference_tasks": 96,
+    "missions": 36,
+    "model_briefs": 36,
+    "effect_audio_briefs": 32
+  },
+  "markdown_documents": 498,
+  "approx_markdown_word_count": 210733,
+  "offline_navigator": "INDEX.html",
+  "start": "START_HERE.md",
+  "agent_prompt": "prompts/BOOT_AGENT.txt",
+  "validation": "validation_report.json",
+  "game_test_status": "NOT_RUN",
+  "repo_mutation": "NONE",
+  "contains_fonts_or_external_media": false
+}
