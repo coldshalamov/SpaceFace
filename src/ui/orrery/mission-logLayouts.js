@@ -89,6 +89,13 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
   @media (min-width: 640px) and (max-height: 820px) {
     ${ML} .sf-mlog-card { padding: 8px 16px 10px; }
   }
+  /* 640-760 wide at any height (640x900, 700x900, 760x1000): the card is one column here as on
+     phones, so the full 24px sides came straight out of the terms and OPEN ON THE CHART (card
+     +116-126px, medallions under the fold at 700x900); the short-frame 8/16/10 inset holds at
+     every height */
+  @media (min-width: 640px) and (max-width: 760px) {
+    ${ML} .sf-mlog-card { padding: 8px 16px 10px; }
+  }
   /* wide 701-820 tall (1280x720): the archive's 22px route lead drops to 12px so the band starts
      where it did with no inset (y557 vs master 559) and the course track stays above the fold.
      At <=700 tall the archive's own 6px lead stands. */
@@ -101,6 +108,13 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
   @media (min-width: 1101px) and (min-height: 821px) {
     ${ML} .sf-mlog-card { padding-top: 10px; }
     ${ML} .sf-mlog-card > .ml-route-host { margin-top: clamp(24px, 3.6vh, 46px); }
+  }
+  /* ...and 1101-1365 wide (1101x900, 1194x834, 1200x900, 1280x900): the 24px sides narrowed the
+     reading column, so the title went to 3 lines and the medallions under the fold. As at
+     761-1100, the sides drop to 8px and a 4px column gap gives the dial its room back; 1366+
+     keeps 24px, where it fits. */
+  @media (min-width: 1101px) and (max-width: 1365px) and (min-height: 821px) {
+    ${ML} .sf-mlog-card { padding-left: 8px; padding-right: 8px; column-gap: 4px; }
   }
   /* 761-1100 wide at any height (800x600 ... 1024x768, 900x900, 1100x900, tablet portrait): the
      dial column is fixed, so the side inset is 8px and the column gap (>=641 tall) or the dial
