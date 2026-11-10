@@ -12,6 +12,8 @@
 
 **Build this alongside the line above:** the wreck and cargo persisting through Continue, and one rival heading for them.
 
+**Also written out, 2026-11-10:** pause, quit-and-resume for a Swarm run, never being stuck and saves that survive updates are in [19 — What players expect](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/19_WHAT_PLAYERS_EXPECT.md).
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
