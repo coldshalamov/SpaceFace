@@ -237,25 +237,13 @@ export const wreckChoicePrompt = {
       for (const offer of (board && board.slots || [])) {
         if (!offer || offer.source !== 'salvage') continue;
         const podId = offer.params && offer.params.survivorPodId;
-        if (podId) {
-          // Only a pod still aboard in THIS sector re-prompts; a stripped/rescued record's offer
-          // is gone already (missions withdrew it on survivorPod:stripped / accept).
-          const rec = this._state.survivorPod && this._state.survivorPod.promotedByPoint
-            && this._state.survivorPod.promotedByPoint[podId];
-          if (!rec || rec.stripped || rec.rescueSelected) continue;
-          if (rec.sectorId && sectorId && rec.sectorId !== sectorId) continue;
-          this._offerCard(offer);
-          continue;
-        }
-        // A non-pod offer carrying an authored choice is the same open decision: an answered
-        // pick ran the canonical accept and the row was withdrawn, so a still-boarded row for
-        // THIS sector is an unanswered choice (or a refused one owed a retry) that earns its
-        // card back. Plain TAKE/LEAVE offers stay dismissed — LEAVE is a dismissal, not a debt.
-        const authored = offer.choice && Array.isArray(offer.choice.options)
-          && offer.choice.options.some((o) => o && o.id);
-        if (!authored) continue;
-        const offerSector = offer.sectorId || (offer.params && offer.params.wreckSectorId) || null;
-        if (offerSector && sectorId && offerSector !== sectorId) continue;
+        if (!podId) continue;
+        // Only a pod still aboard in THIS sector re-prompts; a stripped/rescued record's offer
+        // is gone already (missions withdrew it on survivorPod:stripped / accept).
+        const rec = this._state.survivorPod && this._state.survivorPod.promotedByPoint
+          && this._state.survivorPod.promotedByPoint[podId];
+        if (!rec || rec.stripped || rec.rescueSelected) continue;
+        if (rec.sectorId && sectorId && rec.sectorId !== sectorId) continue;
         this._offerCard(offer);
       }
     }

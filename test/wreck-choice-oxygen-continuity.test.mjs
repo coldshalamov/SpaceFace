@@ -129,32 +129,6 @@ test('an ordinary communicator offer keeps its untimed card and the choose seam'
   } finally { f.close(); }
 });
 
-test('Continue restores an unanswered authored wreck choice in-sector', () => {
-  const choiceOffer = { id: 'choice-offer', source: 'salvage', salvagePointId: 'claim',
-    sectorId: 'ceres', title: 'Black box claim', summary: 'Two parties want this wreck.',
-    choice: { prompt: 'Hand it over or keep it?', options: [
-      { id: 'handover', label: 'Hand over' }, { id: 'keep', label: 'Keep it' }] } };
-  const f = boot(5, { offer: choiceOffer, podRecord: false });
-  try {
-    assert.equal(f.deck.size, 1);
-    f.bus.emit('save:loaded', {});
-    assert.equal(f.deck.size, 1, 'an unanswered authored choice survives Continue');
-    assert.match(f.text(), /Hand it over or keep it\?/);
-    // A refused pick stays boarded with the stamp — the retry is still owed its card.
-    f.state.missions.boards.station.slots[0].params = { wreckChoiceId: 'keep' };
-    f.bus.emit('save:loaded', {});
-    assert.equal(f.deck.size, 1, 'a refused pick still owes the choice its card');
-    // An accepted pick withdrew the row — nothing left to restore.
-    f.state.missions.boards.station.slots = [];
-    f.bus.emit('save:loaded', {});
-    assert.equal(f.deck.size, 0);
-    // A choice owed on a wreck in another sector does not re-prompt here.
-    f.state.missions.boards.station.slots = [{ ...choiceOffer, sectorId: 'other' }];
-    f.bus.emit('save:loaded', {});
-    assert.equal(f.deck.size, 0);
-  } finally { f.close(); }
-});
-
 // Same minimal DOM contract used by the existing prompt-deck suite.
 function promptDeckDocument(width, height) {
   const listeners = new Map();
