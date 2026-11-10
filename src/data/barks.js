@@ -2991,6 +2991,18 @@ export function pilotPersonalityHailFor(kind, rng) {
   return { register: cell.register, text: cell.lines[pickIndex(rng, cell.lines.length)] };
 }
 
+// Gratitude parcel — the captain whose load you saved sends it ahead. One line,
+// spoken from the hull that owed you, as the gift pod clears the bay.
+export const GRATITUDE_PARCEL_REGISTER = Object.freeze([
+  'There — a case sent ahead. You kept her flying, captain.',
+  'Owed you since the raid. Case is away — it is yours.',
+  'Delivery done, debt paid. Watch for my pod, friend.',
+]);
+
+export function gratitudeParcelBarkFor(rng) {
+  return GRATITUDE_PARCEL_REGISTER[pickIndex(rng, GRATITUDE_PARCEL_REGISTER.length)];
+}
+
 // A freight raider clearing its escape leash (encounterScripts freight-custody). The thief
 // names its own take as it goes — one line per hull, spoken over the getaway transponder burn.
 export const FREIGHT_RAIDER_ESCAPE_REGISTER = Object.freeze([
@@ -3300,6 +3312,8 @@ export default {
   spillVultureBarkFor,
   PILOT_PERSONALITY_HAILS,
   pilotPersonalityHailFor,
+  GRATITUDE_PARCEL_REGISTER,
+  gratitudeParcelBarkFor,
   FREIGHT_RAIDER_ESCAPE_REGISTER,
   GRANDEE_REGISTER,
   sectorGreetingBarkFor,

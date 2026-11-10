@@ -21,6 +21,7 @@ import {
   rivalScavengerLineFor,
   spillVultureBarkFor,
   pilotPersonalityHailFor,
+  gratitudeParcelBarkFor,
   sectorGreetingBarkFor,
   surrenderBarkFor,
   trafficRoleHail,
@@ -857,6 +858,16 @@ export const barkDirector = {
       this._speakEventLine(entity, 'vulture-departed', 'vultures:departed',
         (_f, i) => spillVultureBarkFor('departed', i));
     };
+    // The saved captain's own voice: the gift pod clearing the bay is the moment
+    // the debt is paid, spoken from the hull that owed it — once per captain.
+    this._onGratitudeParcel = (payload) => {
+      const state = this.state;
+      if (!state || !payload) return;
+      const entity = state.entities && state.entities.get && state.entities.get(payload.entityId);
+      if (!entity || !entity.data) return;
+      this._speakEventLine(entity, 'gratitude-parcel', 'gratitude:parcel',
+        (_f, i) => gratitudeParcelBarkFor(i));
+    };
     this._onFulfillmentProvoked = (payload) => this._speakFulfillmentProvoked(payload || {});
     this._onAdministrativeRouting = (payload) => this._speakAdministrativeRouting(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
@@ -885,6 +896,8 @@ export const barkDirector = {
       this.bus.on('vultures:dispatch', this._onVultureArrived);
       this.bus.on('vultures:race', this._onVultureRace);
       this.bus.on('vultures:departed', this._onVultureDeparted);
+      // The saved captain's gift pod clearing the bay speaks from the hull that owed it.
+      this.bus.on('gratitude:parcel', this._onGratitudeParcel);
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
       this.bus.on('encounter:patrolIntervened', this._onPatrolIntervened);
       this.bus.on('harasser:disengaged', this._onHarasserDisengaged);
@@ -3195,6 +3208,7 @@ export const barkDirector = {
       if (this._onVultureArrived) this.bus.off('vultures:dispatch', this._onVultureArrived);
       if (this._onVultureRace) this.bus.off('vultures:race', this._onVultureRace);
       if (this._onVultureDeparted) this.bus.off('vultures:departed', this._onVultureDeparted);
+      if (this._onGratitudeParcel) this.bus.off('gratitude:parcel', this._onGratitudeParcel);
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
       if (this._onPatrolIntervened) this.bus.off('encounter:patrolIntervened', this._onPatrolIntervened);
       if (this._onHarasserDisengaged) this.bus.off('harasser:disengaged', this._onHarasserDisengaged);
@@ -3266,6 +3280,7 @@ export const barkDirector = {
     this._onVultureArrived = null;
     this._onVultureRace = null;
     this._onVultureDeparted = null;
+    this._onGratitudeParcel = null;
     this._onLawWarrantReleased = null;
     this._onLawDistressRaised = null;
     this._onCounterHintSpawn = null;

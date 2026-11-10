@@ -12,6 +12,7 @@ import { ownsWinnowRecoveryHull, normalizeWinnowRecovery, admitWinnowRecovery, r
 import { cancelAnvilSpillRendezvous } from '../world/anvilSpillRecovery.js';
 import { bindRestoredCharonSupply, materializeCharonSupply, ownsCharonSupplyHull, charonSupplyRoundBoundary, reconcileCharonSupply, stepCharonSupply, releaseCharonSupply, normalizeCharonSupply, charonSupplyPickupReceipt, charonSupplySpillReceipt, charonSupplyDestroyed } from '../world/charonSalvageSupply.js';
 import { spillVulturesSpillReceipt, spillVulturesPickupReceipt, spillVulturesDestroyed, stepSpillVultures, releaseSpillVultures } from '../world/spillVultures.js';
+import { gratitudeParcelArrivalReceipt, stepGratitudeParcel, releaseGratitudeParcel } from '../world/gratitudeParcel.js';
 import { pilotPersonalityDef, pilotPersonalityDrive, pilotPersonalityFor } from '../data/pilotPersonalities.js';
 import { releaseTallyPause, tallyPassageTarget, isTallyPassageJob } from './tethysTallyPassage.js';
 import { TETHYS_TALLY, tallyMarks, tallyRouteDuration } from '../data/tethysTallyPassage.js';
@@ -1806,6 +1807,8 @@ export const traffic = {
     this.bus.on('freight:cargoSpilled', p => spillVulturesSpillReceipt(this, p || {}));
     this.bus.on('pickup:collected', p => spillVulturesPickupReceipt(this, p || {}));
     this.bus.on('entity:destroyed', p => spillVulturesDestroyed(this, p || {}));
+    // Gratitude parcel: the hauler you saved owes a gift pod on its next close pass.
+    this.bus.on('freight:arrival', p => gratitudeParcelArrivalReceipt(this, p || {}));
     this.bus.on('well:haulerDragged', (p) => this._onWellHaulerDragged(p || {}));
     this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
     this.bus.on('survivorPod:boarded', (p) => this._onSurvivorPodRescued(p || {}));
@@ -3652,6 +3655,8 @@ export const traffic = {
     // The spill convergence is sector-scoped transient work: a hard exit folds it
     // rather than letting a vulture chase a spill into the next sector.
     releaseSpillVultures(this);
+    // The armed gratitude pass folds too; the unpaid debt waits for a later arrival.
+    releaseGratitudeParcel(this);
     // The core system exposes helpers.removeEntity (marks alive=false; the renderer/physics GC it).
     // Fall back to a direct alive=false if the helper shape differs across builds.
     const helper = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
@@ -3905,6 +3910,7 @@ export const traffic = {
     reconcileWinnowRecovery(this);
     reconcileCharonSupply(this);
     stepSpillVultures(this);
+    stepGratitudeParcel(this);
     syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
     this._stepPocketMeteorPass(dt, state);
