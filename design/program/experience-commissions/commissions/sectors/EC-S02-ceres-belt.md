@@ -18,6 +18,8 @@
 
 **Build first (Slice 1):** Winching — the swing is the toy every other Ceres job leans on. Then The Ninth Mouth.
 
+**Written out, 2026-11-10:** this town's jobs, its heist and its street moments are written beat by beat in [13 — Jobs and heists](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/13_JOBS_AND_HEISTS.md). Build those as written; where a job there shares a name with one in the brief below, they are the same job.
+
 ### How to build this town and check your own work
 
 Work in this order. Each step ends with something you looked at.
