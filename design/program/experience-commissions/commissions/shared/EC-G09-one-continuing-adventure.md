@@ -14,6 +14,8 @@
 
 **Build first, replacing the line above:** one "next" line that the tutorial hands straight to the story job.
 
+**Also written out, 2026-11-10:** every book of the story is staged — what the player sees and does, where, and at what rope class — in [16 — The story, shown](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/16_THE_STORY_SHOWN.md), with the cast's places and the five doors' last acts. The plot does not change; the staging does.
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
