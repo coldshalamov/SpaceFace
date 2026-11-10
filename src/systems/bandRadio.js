@@ -10,6 +10,7 @@ import { WEATHER_SECTOR_IDS } from '../data/environmentalMachinery.js';
 import { localizeText } from '../localization/sourceText.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
+import { isCivilianEntity } from '../combat/stuntContracts.js';
 import {
   BAND_BEARING_TEMPLATE,
   BAND_CHANNEL_BY_ID,
@@ -120,6 +121,13 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
       keys.push('player.break_blockade');
     }
     return keys;
+  }
+  if (event === 'player:death') {
+    // PL-55: killed by TRAFFIC — a civilian hull, not a hostile. The receipt's killerId
+    // still resolves at emit time; the law layer's own civilian test decides "traffic".
+    const killer = payload.killerId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload.killerId) : null;
+    return killer && isCivilianEntity(killer) ? ['player.killed_by_traffic'] : [];
   }
   if (event === 'line:classChanged') {
     // PL-56: the lineProgression owner emits this only when the class ladder moves UP —
@@ -239,7 +247,7 @@ export const bandRadio = {
     });
     this._listen('band:bearingResolved', (payload) => this._acceptBearingResolution(payload));
     this._listen('band:bearingUnavailable', (payload) => this._rejectBearingResolution(payload));
-    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged']) {
+    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged', 'player:death']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
         for (const eventKey of deriveBandEventKeys(event, payload || {}, this.state)) {
