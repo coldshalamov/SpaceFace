@@ -66,6 +66,7 @@ import { planSwarmOpeningVolley } from './swarmOpeningVolley.js';
 import { planSwarmOpeningSpitter } from './swarmOpeningSpitter.js';
 import { planSwarmOpeningCrossfire } from './swarmOpeningCrossfire.js';
 import { planSwarmOpeningFlanks, SWARM_OPENING_FLANK_GATES } from './swarmOpeningFlanks.js';
+import { planSwarmFortifiedFlanks } from './swarmFortifiedFlanks.js';
 import {
   BROOD_CHARGER_DASH_MAX_S,
   BROOD_CHARGER_DASH_SPEED,
@@ -245,6 +246,7 @@ export function createBroodEngine(deps = {}) {
   const bus = deps.bus && typeof deps.bus.emit === 'function' ? deps.bus : null;
   const fieldList = typeof deps.fieldList === 'function' ? deps.fieldList : () => EMPTY_FIELDS;
   const getState = typeof deps.getState === 'function' ? deps.getState : () => null;
+  const fortifyIngress = typeof deps.fortifyIngress === 'function' ? deps.fortifyIngress : () => null;
   const routeDamage = typeof deps.routeDamage === 'function' ? deps.routeDamage : null;
 
   // body state
@@ -949,10 +951,14 @@ export function createBroodEngine(deps = {}) {
     if (!openingVolleyAttempted) {
       if (foundryScore) openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: null };
       const mite = familyIndex.get('mite');
-      const course = mite == null ? null : planSwarmOpeningFlanks(
-        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]);
+      const fortified = foundryScore && mite != null ? planSwarmFortifiedFlanks(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite], fortifyIngress()) : null;
+      // Do not let invulnerable idle packs walk through a paid line before it may fire.
+      if (fortified && !swarmPilotHasActed(state)) return 0;
+      const course = fortified || (mite == null ? null : planSwarmOpeningFlanks(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]));
       if (course) openingRamp = { remaining: 0, lastTick: state.tick, group: 0,
-        course, gates: SWARM_OPENING_FLANK_GATES };
+        course, gates: course.gates || SWARM_OPENING_FLANK_GATES };
     }
     const deferred = [];
     let spawned = 0, groupIndex = openingRamp?.group || 0;
@@ -1079,7 +1085,7 @@ export function createBroodEngine(deps = {}) {
             liveFamilyRadius[famIdx], { clearance: BROOD_SPAWN_ROCK_CLEARANCE,
               ...(packReserved ? { reserved: packReserved, reservedClearance: 1,
                 clusterCenter: { x: cx, z: cz }, clusterRadius: 30, clusterAngle: 0 } : {}) });
-          if (!open || (packReserved && Math.hypot(open.x - cx, open.z - cz) > 30.001) || (course && Math.hypot(open.x - ax, open.z - az) > 300)) { owed++; continue; }
+          if (!open || (packReserved && Math.hypot(open.x - cx, open.z - cz) > 30.001) || (course && Math.hypot(open.x - ax, open.z - az) > (course.maxPlayerDistance || 300))) { owed++; continue; }
           spawnAt(slot, famIdx, open.x, open.z);
           if (packReserved) packReserved.push({ alive: true, pos: { x: open.x, z: open.z }, radius: liveFamilyRadius[famIdx] });
           if (liveFamilyDef[famIdx] && liveFamilyDef[famIdx].burrows) parkBurrower(slot);

@@ -1,4 +1,6 @@
 import { fortifyAvailable } from '../swarmFortifyPanel.js';
+import { SWARM_FORTIFY_DEVICES } from '../../data/swarmFortify.js';
+import { swarmFoundryRound } from '../../data/swarmFoundryScore.js';
 // Crucible draft surface (PQ-133 / CRU-016) and refit surface (CRU-017).
 //
 // Both are pure DOM over receipts. They read the open offers, the re-roll price and the fittable
@@ -744,8 +746,13 @@ export function firstSwarmIntermission(run, offers) {
     ? `Service: ${repair.name.trim()} (${repair.price} cr).`
     : offers.some(buyable)
       ? 'Buy for round 2, or keep your salvage.'
-      : 'Keep your salvage; no purchase is available now.';
-  return `Round 1 cleared. ${choice} Rearrange loadout for spares, or Fortify the field. Launch round 2 when ready.`;
+      : 'Keep your salvage; no purchase is available on this armory shelf.';
+  const foundry = swarmFoundryRound({ arenaId: run.arenaId, wave: 2,
+    mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit });
+  const preparation = foundry && wallet >= SWARM_FORTIFY_DEVICES.tesla_pair.cost
+    ? `Rearrange loadout for spares, or Fortify the field: Tesla Pair (${SWARM_FORTIFY_DEVICES.tesla_pair.cost} cr) cuts crossings; Kinetic Turret (${SWARM_FORTIFY_DEVICES.kinetic_turret.cost} cr) spends ${SWARM_FORTIFY_DEVICES.kinetic_turret.effect.ammo} rounds.`
+    : 'Rearrange loadout for spares, or Fortify the field.';
+  return `Round 1 cleared. ${choice} ${preparation} Launch round 2 when ready.`;
 }
 
 /** SWARM-04 §6.5 — the next-round sentence shared by the armory and the refit bench. */

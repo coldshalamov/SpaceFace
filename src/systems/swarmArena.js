@@ -765,6 +765,7 @@ export const swarmArena = {
     this._brood = createBroodEngine({
       bus: this.bus,
       getState: () => this.state,
+      fortifyIngress: () => this.registry?.get?.('swarmFortify')?.getIngressPolicy?.() || null,
       fieldList: () => {
         const fields = this.registry && this.registry.get ? this.registry.get('fields') : null;
         return fields && typeof fields.kernelList === 'function' ? fields.kernelList() : null;

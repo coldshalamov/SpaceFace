@@ -828,6 +828,7 @@ test('an empty full-hull turret reload is paid once and fires again in the next 
     assert.ok(sim.state.entityList.includes(enemy));
     const fire = [];
     sim.bus.on('combat:fire', (event) => { if (event.ownerId === turret.id) fire.push(event); });
+    noteSwarmPilotAction(sim.state);
     for (let tick = 0; tick < 3; tick++) sim.step();
     assert.ok(fire.length > 0, 'the reloaded turret must fire through the canonical weapons owner in wave two');
     assert.equal(turret.data.swarmFortify.ammo, 31, 'the real shot consumes one finite round');
