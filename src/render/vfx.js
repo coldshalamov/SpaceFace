@@ -116,6 +116,7 @@ import {
 } from './vfxProfiles.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { createBroodPresentation } from './broodPresentation.js';
+import { readSwarmBroodPresentation } from '../data/swarmTurretPresentation.js';
 import { presentedAnchorRot, presentedAnchorXZ } from './presentedAnchor.js';
 import { readOwnedExceptionalSpeed } from './velocityLanguage.js';
 import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
@@ -7633,7 +7634,7 @@ export const vfx = {
     const pres = this._broodPresentation;
     if (!pres) return false;
     const state = this.state;
-    const view = state && state.swarmBrood;
+    const view = readSwarmBroodPresentation(state);
     if (!view || !(view.aliveCount > 0)) return pres.update(null, dt, {});
     const settings = state.settings || null;
     const video = settings && settings.video;

@@ -538,7 +538,7 @@ export function createSimLaneRuntime({
     else applyDomainPathUpdate(domainHolder, { ...u, segs }, domainTouched);
     state[root] = domainHolder.get(root);
   }
-  function applyDomainUpdates(updates) {
+  function applyDomainUpdates(updates, sourceGeneration) {
     if (!Array.isArray(updates) || !updates.length) return;
     for (const key of DOMAIN_MIRROR_KEYS) {
       if (key.indexOf('.') === -1 && state[key] === undefined) state[key] = {};
@@ -546,6 +546,9 @@ export function createSimLaneRuntime({
     let touchedEmits = null;
     let dockRelease = false;
     for (const u of updates) {
+      // Turret geometry is lifetime-bound. An old in-flight reply must not draw
+      // the previous room after a local restart; leave other domain rules alone.
+      if (u?.segs?.[0] === 'swarmTurretPublic' && sourceGeneration !== lifecycleGeneration) continue;
       // The UI's committed undock is a main-side transition, but the
       // authoritative ui.docked fold lands here later.  ScreenManager already
       // popped the station before that mirror reply, so remember the edge and
@@ -1004,7 +1007,7 @@ export function createSimLaneRuntime({
     }
     if (Array.isArray(msg.auxUpserts)) applyAuxUpserts(readModel, msg.auxUpserts);
     if (Array.isArray(msg.auxRemovals)) applyAuxRemovals(readModel, msg.auxRemovals);
-    applyDomainUpdates(msg.domainUpdates);
+    applyDomainUpdates(msg.domainUpdates, msg.lifecycleGeneration);
     if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
     reconcileEntities();
     const vp = viewportSize();
@@ -1116,7 +1119,7 @@ export function createSimLaneRuntime({
     }
     if (Array.isArray(msg.auxUpserts) && msg.auxUpserts.length) applyAuxUpserts(readModel, msg.auxUpserts);
     if (Array.isArray(msg.auxRemovals) && msg.auxRemovals.length) applyAuxRemovals(readModel, msg.auxRemovals);
-    applyDomainUpdates(msg.domainUpdates);
+    applyDomainUpdates(msg.domainUpdates, msg.lifecycleGeneration);
     if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
     const mirrorDone = nowMs();
     reconcileEntities();
@@ -2250,6 +2253,7 @@ export function createSimLaneRuntime({
     setLifecycleGeneration(value) {
       const nextGeneration = Number.isSafeInteger(value) && value >= 0 ? value : lifecycleGeneration;
       if (nextGeneration !== lifecycleGeneration) {
+        state.swarmTurretPublic = null;
         revokeCeresCradleReceipts(readModel, state);
         clearLanePendingTarget(state);
         ceresActuationTick = -1;

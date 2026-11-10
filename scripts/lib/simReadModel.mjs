@@ -1,3 +1,4 @@
+import { projectSwarmTurretPresentation } from '../../src/data/swarmTurretPresentation.js';
 import { projectIlexGreenhouse } from '../../src/data/ilexGreenhouse.js';
 import { foldSwarmSpecialistPresentation } from '../../src/data/swarmSpecialistPresentation.js';
 import { bindCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
@@ -893,6 +894,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'dockingPresentation',
   // Hail and the Ward's contact readers need a bounded account of the actual work history.
   'npcJobs.lanternWard',
+  // Only turret mounts and their exact beam geometry, never the Brood simulation tree.
+  'swarmTurretPublic',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -1099,6 +1102,7 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'swarmTurretPublic') return { project: 'swarmTurret', hotPresentation: true };
   if (segs.length === 1 && segs[0] === 'world.counterweightCircuit.discovered') return { hotPresentation: true };
   if (segs.length === 1 && ['dockingPresentation', 'counterweightCircuitOffer', 'counterweightCircuitView', 'breakwaterSpurOffer', 'breakwaterSpurView', 'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady'].includes(segs[0])) return { hotPresentation: true };
   if (segs.length === 1 && ['planet.active', 'planet.siteId'].includes(segs[0])) return { hotPresentation: true };
@@ -1329,6 +1333,7 @@ function projectLastShiftLocalRecord(source) {
 }
 
 function projectDomainLeaf(rule, v, state) {
+  if (rule?.project === 'swarmTurret') return projectSwarmTurretPresentation(state);
   if (rule?.project === 'lastShiftLocalReport') return projectLastShiftLocalRecord(v);
   if (rule?.project === 'stationYard') {
     const stationId = state?.ui?.docked === true && state.ui.dockedStationId;
@@ -1467,6 +1472,7 @@ function projectDomainLeaf(rule, v, state) {
 }
 
 function expandDepthFor(segs) {
+  if (segs[0] === 'swarmTurretPublic') return 0;
   // These roots are bounded presentation projections, even when a diagnostic
   // profile expands every root. Expanding their raw sources would bypass the
   // projector, and the facade must retain the same atomic projected path.
@@ -2284,6 +2290,11 @@ export function createDomainDiffer(options = {}) {
 
   return {
     paths,
+    // Main clears lifetime-bound turret geometry even when a paused source is unchanged.
+    resendSwarmTurretPresentation() {
+      const node = paths.get('swarmTurretPublic');
+      if (node?.leaf) node.lastSign = -1;
+    },
     // An owner event may require one mutable leaf before its normal cold slot. Keep the
     // previous signature: an unchanged value still ships nothing, and the next diff resumes
     // the usual cadence. A lazy leaf needs no flag before its first (already eager) sign.

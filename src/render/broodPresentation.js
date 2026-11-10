@@ -585,10 +585,13 @@ export function createBroodPresentation(scene, capacity = 400) {
     // draws the walking edge at full burn — the marker IS the segment the engine cuts.
     let beamN = 0;
     if (view && Array.isArray(view.beams)) {
+      // Sim headings turn +X toward +Z, opposite Three's positive Y rotation.
       for (const beam of view.beams) {
+        // A covered muzzle has no edge. Never submit a singular zero-scale matrix.
+        if (!(beam.range > 0)) continue;
         if (beam.state === 0) {
           if (beamN < LINE_CAP) {
-            quat.setFromAxisAngle(axis, beam.a0);
+            quat.setFromAxisAngle(axis, -beam.a0);
             pos.set(beam.x + Math.cos(beam.a0) * beam.range * 0.5, 0.35,
               beam.z + Math.sin(beam.a0) * beam.range * 0.5);
             scl.set(beam.range, 0.5, 0.7);
@@ -597,7 +600,7 @@ export function createBroodPresentation(scene, capacity = 400) {
             beamN += 1;
           }
           if (beamN < LINE_CAP) {
-            quat.setFromAxisAngle(axis, beam.a1);
+            quat.setFromAxisAngle(axis, -beam.a1);
             pos.set(beam.x + Math.cos(beam.a1) * beam.range * 0.5, 0.35,
               beam.z + Math.sin(beam.a1) * beam.range * 0.5);
             scl.set(beam.range, 0.5, 0.7);
@@ -610,10 +613,10 @@ export function createBroodPresentation(scene, capacity = 400) {
         if (beamN >= LINE_CAP) break;
         const t = beam.total > 0 ? Math.min(1, beam.t / beam.total) : 1;
         const a = beam.a0 + (beam.a1 - beam.a0) * t;
-        quat.setFromAxisAngle(axis, a);
+        quat.setFromAxisAngle(axis, -a);
         pos.set(beam.x + Math.cos(a) * beam.range * 0.5, 0.45,
           beam.z + Math.sin(a) * beam.range * 0.5);
-        scl.set(beam.range, 1, Math.max(1, beam.width / 0.14));
+        scl.set(beam.range, 1, Math.max(1, 2 * beam.width / 0.14));
         matrix.compose(pos, quat, scl);
         mbeams.setMatrixAt(beamN, matrix);
         beamN += 1;

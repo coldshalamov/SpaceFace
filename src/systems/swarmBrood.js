@@ -49,7 +49,7 @@
 import { mulberry32 } from '../core/rng.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { occupantGenerationOf } from '../core/entity.js';
-import { queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { physicsBodyNativeReady, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
@@ -593,6 +593,8 @@ export function createBroodEngine(deps = {}) {
   const beamT = new Float32Array(BEAM_MAX);
   const beamTotal = new Float32Array(BEAM_MAX);
   const beamRange = new Float32Array(BEAM_MAX);
+  // The authored reach remains intact; physical cover clips only this tick's edge.
+  const beamReach = new Float32Array(BEAM_MAX);
   const beamWidth = new Float32Array(BEAM_MAX);
   const beamDamage = new Float32Array(BEAM_MAX);
   const beamAlive = new Uint8Array(BEAM_MAX);
@@ -2694,6 +2696,7 @@ export function createBroodEngine(deps = {}) {
       beamT[b] = 0;
       beamTotal[b] = def.beamSweepS > 0 ? def.beamSweepS : 1;
       beamRange[b] = def.beamRange > 0 ? def.beamRange : 130;
+      beamReach[b] = beamRange[b];
       beamWidth[b] = def.beamWidth > 0 ? def.beamWidth : 5;
       beamDamage[b] = def.beamDamage > 0 ? def.beamDamage : 18;
       beamHitPlayer[b] = 0;
@@ -2740,7 +2743,11 @@ export function createBroodEngine(deps = {}) {
       segA.z = beamZ[b];
       segB.x = beamX[b] + Math.cos(a) * beamRange[b];
       segB.z = beamZ[b] + Math.sin(a) * beamRange[b];
-      if (!beamHitPlayer[b] && signatureRef && signatureRef.alive !== false) {
+      const cover = beamCoverFraction(beamWidth[b]);
+      beamReach[b] = beamRange[b] * cover;
+      segB.x = segA.x + (segB.x - segA.x) * cover;
+      segB.z = segA.z + (segB.z - segA.z) * cover;
+      if (cover > 0 && !beamHitPlayer[b] && signatureRef && signatureRef.alive !== false) {
         const hit = segmentCircleT(segA, segB, playerX, playerZ, beamWidth[b] + playerRad);
         if (hit != null) {
           beamHitPlayer[b] = 1;
@@ -2748,7 +2755,7 @@ export function createBroodEngine(deps = {}) {
         }
       }
       for (let j = 0; j < CAP; j++) {
-        if (!alive[j] || j === owner) continue;
+        if (cover <= 0 || !alive[j] || j === owner) continue;
         const hit = segmentCircleT(segA, segB, px[j], pz[j],
           beamWidth[b] + liveFamilyRadius[family[j]]);
         if (hit != null) kill(j, 'terrain', px[j], pz[j], creditUntil[j] > simTime);
@@ -2766,6 +2773,28 @@ export function createBroodEngine(deps = {}) {
         }
       }
     }
+  }
+
+  // Cover is a live native solid, not the flock's padded collision disc. Inspect the
+  // asteroid index directly: the 64-entry movement cache must not make later stones
+  // transparent. No damage, custody or movement is written here.
+  function beamCoverFraction(width) {
+    const state = getState();
+    const stones = indexedTypeScan(state, 'asteroids');
+    let nearest = 1;
+    for (let r = 0; r < stones.length; r++) {
+      const stone = stones[r];
+      if (stone?.type !== 'asteroid' || stone.alive === false || stone.collides === false
+        || stone.physicsBody === false || state.entities?.get?.(stone.id) !== stone
+        || !physicsBodyNativeReady(stone)
+        || !Number.isFinite(stone.pos?.x) || !Number.isFinite(stone.pos?.z)) continue;
+      const body = resolvePhysicsBodySpec(stone);
+      if (!body || body.material === 'sensor' || body.material === 'massline_sensor'
+        || !(Number.isFinite(body.radius) && body.radius > 0)) continue;
+      const contact = segmentCircleT(segA, segB, stone.pos.x, stone.pos.z, body.radius + width);
+      if (contact != null && contact < nearest) nearest = contact;
+    }
+    return nearest;
   }
 
   /**
@@ -4592,7 +4621,7 @@ export function createBroodEngine(deps = {}) {
       rec.x = beamX[b]; rec.z = beamZ[b];
       rec.a0 = beamA0[b]; rec.a1 = beamA1[b];
       rec.t = beamT[b]; rec.total = beamTotal[b];
-      rec.range = beamRange[b]; rec.width = beamWidth[b];
+      rec.range = beamReach[b]; rec.width = beamWidth[b];
       rec.state = 1;
       beamRecN += 1;
     }
