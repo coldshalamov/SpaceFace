@@ -885,12 +885,34 @@ export function foundryForemanIntermission(run) {
   if (run.wave === 12) return 'Round 12 cleared. Next, cross the Cutter’s plated nose and attack the flank. A Glassback follows: guns cannot crack its shell. Keep loose mass within reach, or ram it and leave the shards. Repair or restock what your build needs.';
   if (run.wave === 13) return 'Round 13 cleared. Next, a Point-Defense Screen covers the Cutter. Break the escort or circle its fire before working the Cutter’s flank. Check your repairs and ammunition; no purchase is required.';
   if (run.wave === 14) return 'Round 14 cleared. The Mirrorjaw Foreman is next. Leave its locked charge lane, cross behind the prow and attack during the coast. The stern also vents: keep moving. Prepare your own build before launch.';
-  if (run.wave === 15) return 'Round 15 cleared. If Foreman wreckage survives, use it if it suits your build. Swarm continues to round 16. Repair, restock or keep your purse.';
+
   return null;
 }
 
+/** A five-round post-boss act returns to the existing bench, never a new ending. */
+export function foundrySecondExitIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm'
+    || !['draft', 'refit'].includes(run.phase) || run.wave < 15 || run.wave > 20
+    || (run.telemetry?.startWave || 1) > run.wave
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 20,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  if (run.wave === 20) {
+    const purse = Number.isInteger(run.credits) && run.credits > 0 ? run.credits : 0;
+    return run.phase === 'draft'
+      ? `Round 20 cleared. ${purse} cr remains. Buy only what you want to carry on, then open the exit bench to refit, bank or extract. Spending reduces what you can take home.`
+      : `Second exit reached. Fit earned spares${purse > 1 ? ', bank part of your purse,' : ''} or extract. Launch round 21 to keep this run and its field going. Swarm continues.`;
+  }
+  if (run.phase !== 'draft') return null;
+  if (run.wave === 15) return 'Round 15 cleared. Swarm continues to round 16. If Foreman wreckage survives, use it if it suits your build. The Raider threatens a loaded line: swing away from its spool or release, then punish the miss. Repair, restock or keep your purse for the second exit after round 20.';
+  if (run.wave === 16) return 'Round 16 cleared. Next, a Bellows and pack can use a surviving solid bank. Shoot until it swells, then finish it or let the fuse burst it. Stay clear or use the shove against the bank. Repair or save your purse; no purchase is required.';
+  if (run.wave === 17) return 'Round 17 cleared. Next, a Bruiser commits to its flared pass. Slip sideways, then punish the recovery. Keep room to move instead of trapping yourself against a bank.';
+  if (run.wave === 18) return 'Round 18 cleared. Next, Iron Kraken opens alone. Dodge its marked arms and locked jet, then fire into the open front core during recovery. A Bellows pocket follows if a solid bank is still usable. Choose what to repair and what to save.';
+  return 'Round 19 cleared. One round to the second exit: a screen covers the Raider, then the Bruiser joins. Pick the exposed threat and preserve an escape lane. The forecast event and crowd follow. Clear to refit, bank or extract; you may keep flying afterward.';
+}
+
 export function swarmArmoryExitLabel(run) {
-  return run?.wave === 10 && run.phase === 'draft' && foundryFirstExitIntermission(run)
+  return run?.phase === 'draft' && ((run.wave === 10 && foundryFirstExitIntermission(run))
+    || (run.wave === 20 && foundrySecondExitIntermission(run)))
     ? 'Open exit bench' : `Launch round ${(run?.wave || 0) + 1}`;
 }
 
@@ -1586,6 +1608,7 @@ export const crucibleDraftScreen = {
       ?? foundryFirstExitIntermission(context.state?.run)
       ?? foundryRecoveryIntermission(context.state?.run)
       ?? foundryForemanIntermission(context.state?.run)
+      ?? foundrySecondExitIntermission(context.state?.run)
       ?? firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
@@ -2529,6 +2552,7 @@ export const crucibleRefitScreen = {
     const run = context && context.state ? context.state.run : null;
     const lines = refitFootLines(run);
     if (this._sub) this._sub.textContent = foundryFirstExitIntermission(run)
+      ?? foundrySecondExitIntermission(run)
       ?? 'Strip a hardpoint, or choose any spare the run has earned and fit it.';
     const setNote = (node, text) => {
       if (!node) return;

@@ -16,6 +16,11 @@ const rows = [
   ['crack_the_shell', 'Crack the shell', 'The Cutter opens alone: cross its plated nose and attack the flank. A Glassback follows beside usable loose mass if the lane is clear. Guns cannot crack its shell; ram or throw mass, then leave the shards.', 1080, 1, 1080, 1080],
   ['peel_the_screen', 'Peel the screen', 'A Point-Defense Screen covers the Cutter. Break the escort or circle its firing position; then work the Cutter flank. The crowd follows.', 840, 1, 840, 840],
   ['cross_the_foreman', 'Cross the Foreman', 'Read the Foreman alone first. Leave the locked charge lane, cross behind its mirrored prow and attack during the coast. Watch the stern vent; the Lawman and crowd follow.', 1200, 1200, 1200, 1200],
+  ['keep_your_line', 'Keep your line', 'The Tether-Control Raider opens alone. Its spool commits to your loaded line: swing the anchor away or release before the cut. Fight with guns if you prefer; the crowd follows.', 840, 1, 840, 840],
+  ['ring_the_bell', 'Ring the Bellows', 'A Bellows and pack can open beside surviving solid cover. Shoot until it swells, then finish it or let the fuse burst it. Keep clear of the shockwave, or turn its shove into the bank. The crowd follows.', 600, 600, 600, 600],
+  ['slip_the_weight', 'Slip the weight', 'The Bruiser opens alone. Its engine flare announces a committed pass: slip sideways, then attack while it hauls around. Leave room to escape; the crowd follows.', 840, 1, 840, 840],
+  ['cross_the_kraken', 'Cross the Kraken', 'Iron Kraken opens alone. Dodge the marked arms and locked jet; fire into its open front core during recovery. A Bellows pocket follows if solid cover is still usable. Keep an escape lane before the crowd arrives.', 1080, 1080, 1080, 1080],
+  ['earn_the_second_exit', 'Earn the second exit', 'A screen covers the Raider; the Bruiser follows. Choose an exposed target, keep an escape lane, then face the forecast event and the crowd. Clear to refit, bank or extract, or carry on.', 1200, 1200, 1200, 1200],
 ];
 
 export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparation,
@@ -26,7 +31,7 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparati
   // competes with the wreck payoff on round six.
   arenaPhase: index === 4 || index === 14 ? 'boss' : 'loose_plate',
   massGap: false,
-  events: index === 9 ? 'seeded' : 'quiet',
+  events: index === 9 || index === 19 ? 'seeded' : 'quiet',
   broodPacketSize: 18,
   broodPacketGapS: 0.75,
   bankReadS: index === 6 ? 8 : 0,
@@ -37,6 +42,17 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparati
   ...(index === 11 ? { debutAtTick: 0, leecherAtTick: 600 } : {}),
   ...(index === 12 ? { debutAtTick: 0, glassbackAtTick: 480 } : {}),
   ...(index === 13 ? { debutAtTick: 0 } : {}),
+  // Post-Foreman is one five-round act ending at the existing second exit.
+  // The schedule borrows ordinary owed seats; each package keeps its real AI.
+  ...(index >= 15 ? { protectForeground: true, bankScene: false } : {}),
+  ...(index === 15 || index === 17 ? { debutAtTick: 0 } : {}),
+  ...(index === 16 ? { bellowsAtTick: 1 } : {}),
+  ...(index === 18 ? { bellowsAtTick: 480, characterForeground: true } : {}),
+  ...(index === 19 ? { eventReadTicks: 720, foregroundShips: Object.freeze([
+    Object.freeze({ enemyId: 'pd_screen_escort', role: 'support', gate: 'nw', readTicks: 1 }),
+    Object.freeze({ enemyId: 'tether_control_raider', role: 'control', gate: 'nw', readTicks: 1 }),
+    Object.freeze({ enemyId: 'bruiser_brawler', role: 'anchor', gate: 'se', readTicks: 360 }),
+  ]) } : {}),
 })));
 
 export function swarmFoundryRound({ arenaId, wave, mutators = [], circuitRound = null } = {}) {

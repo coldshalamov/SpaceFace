@@ -556,7 +556,7 @@ function planSwarmWave({ seed, arenaId, wave, rng, mutators, buildSummary, swarm
   }
   // Character heavies have their own finite seat. Weighted roster picks would turn a
   // readable eight-arm arrival into a random three-Kraken reinforcement pack.
-  const character = !foundry && !heaviesOnly && !circuitRound && !bossWave && !debuting && !act && !massGap
+  const character = (!foundry || foundry.characterForeground) && !heaviesOnly && !circuitRound && !bossWave && !debuting && !act && !massGap
     ? ironKrakenForSwarmWave(w) : null;
   let characterLanded = false;
   if (character) {
@@ -568,9 +568,10 @@ function planSwarmWave({ seed, arenaId, wave, rng, mutators, buildSummary, swarm
     if (donor) {
       donor.count -= 1;
       donor.batchSize = Math.max(1, Math.min(donor.batchSize || donor.count, donor.count));
-      packages.push({ atTick: SWARM_DEBUT_TICKS, gateGroup: swarmFreeGateFor(w, packages.map(pkg => pkg.gateGroup)),
+      packages.push({ atTick: foundry?.characterForeground ? 0 : SWARM_DEBUT_TICKS, gateGroup: swarmFreeGateFor(w, packages.map(pkg => pkg.gateGroup)),
         role: 'elite', enemyId: character.enemyId, count: 1, batchSize: 1, batchGapTicks: 0,
-        staged: true, distance: character.spawnDistance, characterScoreId: character.scoreId });
+        staged: true, distance: character.spawnDistance, characterScoreId: character.scoreId,
+        ...(foundry?.characterForeground ? { foundryReadTicks: 1 } : {}) });
       characterLanded = true;
     }
   }
@@ -588,10 +589,24 @@ function planSwarmWave({ seed, arenaId, wave, rng, mutators, buildSummary, swarm
         count: 1, batchSize: 1, batchGapTicks: 0, staged: true, distance: 280 });
     }
   }
+  if (foundry?.foregroundShips) for (const foreground of foundry.foregroundShips) {
+    // Spend an ordinary seat, preferring one already belonging to this family.
+    // No free enemy, changed quota, or competing attack owner enters the act.
+    const donor = packages.find(pkg => !pkg.debut && !pkg.champion && !pkg.staged
+      && pkg.enemyId === foreground.enemyId && pkg.count > 1)
+      || packages.find(pkg => !pkg.debut && !pkg.champion && !pkg.staged && pkg.count > 1);
+    if (!donor) continue;
+    donor.count -= 1;
+    donor.batchSize = Math.max(1, Math.min(donor.batchSize || donor.count, donor.count));
+    packages.push({ atTick: 0, gateGroup: foreground.gate,
+      role: foreground.role, enemyId: foreground.enemyId, count: 1, batchSize: 1,
+      batchGapTicks: 0, staged: true, distance: foreground.role === 'support' ? 230 : 280,
+      foundryReadTicks: foreground.readTicks });
+  }
   if (foundry) {
     packages = packages.map(pkg => ({ ...pkg,
       ...(pkg.debut && Number.isInteger(foundry.debutAtTick) ? { atTick: foundry.debutAtTick } : {}),
-      readAfterTicks: pkg.champion ? 0 : pkg.debut || (['break_the_guard', 'peel_the_screen'].includes(foundry.id) && pkg.staged)
+      readAfterTicks: Number.isInteger(pkg.foundryReadTicks) ? pkg.foundryReadTicks : pkg.champion ? 0 : pkg.debut || (['break_the_guard', 'peel_the_screen'].includes(foundry.id) && pkg.staged)
         ? foundry.debutReadTicks : foundry.shipReadTicks,
     }));
   }

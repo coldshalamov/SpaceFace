@@ -37,7 +37,7 @@ for(const wave of [11,12])test(`round ${wave}: finite recovery score, truthful f
  const next=swarmNextLine(swarmForecastForRun(run,wave));assert.match(next,wave===11?/scrape/:/switches flank/);assert.doesNotMatch(next,/invisib|unseen/i);
  if(wave===12){const debut=p.schedule.filter(e=>e.debut);assert.equal(debut.length,1);assert.equal(debut[0].enemyId,'quiet_ghost');assert.equal(debut[0].atTick,0);assert.equal(debut[0].readAfterTicks,1);}
  for(const options of [{arenaId:'the_hive'},{mutators:['heavies_only']},{circuitRound:{kind:'survive'}}])assert.equal(planFor(wave,options).swarm.foundry,undefined);
- assert.equal(planFor(16).swarm.foundry,undefined);
+ assert.equal(planFor(21).swarm.foundry,undefined);
 });
 for(const wave of [11,12])test(`round ${wave}: idle, staged latch and finite paced reserve use active time`,t=>{
  const h=fixture(t,wave);h.tick(1200);assert.equal(h.engine.view.aliveCount,0);assert.equal(h.ships().length,0);assert.equal(h.engine.view.pendingCount,swarmBroodPopulation(wave));

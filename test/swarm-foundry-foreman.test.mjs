@@ -14,7 +14,7 @@ import {planSwarmOpeningGlassback} from '../src/systems/swarmOpeningGlassback.js
 import {swarmQuota,swarmConcurrent} from '../src/data/swarmMode.js';
 import {swarmBroodPopulation} from '../src/data/swarmBrood.js';
 import {swarmRoundPreview} from '../src/data/swarmLadder.js';
-import {foundryForemanIntermission,swarmForecastForRun,swarmNextLine} from '../src/ui/screens/crucibleDraft.js';
+import {foundrySecondExitIntermission,foundryForemanIntermission,swarmForecastForRun,swarmNextLine} from '../src/ui/screens/crucibleDraft.js';
 const DT=1/60,seed=4242;
 const planFor=(wave,extra={})=>planWave({seed,wave,arenaId:'helios_core',ruleset:'swarm',...extra});
 function fixture(t,wave,{rock=true}={}){
@@ -37,7 +37,7 @@ for(const wave of [13,14,15])test(`round ${wave}: source-owned foreground, finit
  const next=swarmNextLine(swarmForecastForRun(run,wave));assert.match(next,wave===13?/Guns cannot crack/:wave===14?/screen/i:/locked charge/);assert.doesNotMatch(next,/cop(?:y|ies).*gun|shoots down|hold missiles/i);
  for(const extra of [{arenaId:'the_hive'},{mutators:['dense']},{mutators:['heavies_only']},{circuitRound:{kind:'survive'}}])assert.equal(planFor(wave,extra).swarm.foundry,undefined);
  for(const extra of [{swarmStake:'high'},{swarmThreats:['thick_pack']},{buildSummary:{dominant:'massline'}},{buildSummary:{dominant:'gunnery'}}]){const variant=planFor(wave,extra);assert.ok(variant.swarm.foundry);assert.equal(variant.schedule.filter(x=>x.debut).reduce((n,x)=>n+x.count,0),1);}
- assert.equal(planFor(16).swarm.foundry,undefined);
+ assert.equal(planFor(21).swarm.foundry,undefined);
 });
 test('PD companion spends one ordinary seat; Foreman and its Lawman retain their actual owners',()=>{
  const p=planFor(14);const pair=p.schedule.filter(x=>x.debut||x.staged);assert.deepEqual(pair.map(x=>x.enemyId),['pd_screen_escort','customs_cutter']);assert.ok(pair.every(x=>x.count===1&&x.atTick===0&&x.readAfterTicks===1));assert.equal(pair[0].gateGroup,pair[1].gateGroup);
@@ -78,7 +78,7 @@ test('unavailable mass falls back in bounded ordinary packets, without an empty 
 });
 test('Armory prepares the actual next fight and never claims a checkpoint clear',()=>{
  const run={...createRunState({kind:'survival',ruleset:'swarm',seed}),arenaId:'helios_core',wave:12,phase:'draft',credits:137};
- for(const [wave,re] of [[12,/Glassback/],[13,/Point-Defense/],[14,/locked charge lane/],[15,/continues to round 16/]]){run.wave=wave;const before=JSON.stringify(run);assert.match(foundryForemanIntermission(run),re);assert.equal(JSON.stringify(run),before);assert.equal(foundryForemanIntermission({...run,telemetry:{...run.telemetry,startWave:wave+1}}),null);}
+ for(const [wave,re] of [[12,/Glassback/],[13,/Point-Defense/],[14,/locked charge lane/],[15,/continues to round 16/]]){run.wave=wave;const before=JSON.stringify(run);assert.match((foundryForemanIntermission(run) ?? foundrySecondExitIntermission(run)),re);assert.equal(JSON.stringify(run),before);assert.equal(foundryForemanIntermission({...run,telemetry:{...run.telemetry,startWave:wave+1}}),null);}
  for(const extra of [{phase:'active'},{arenaId:'the_hive'},{arenaMutators:['dense']},{telemetry:{circuit:{}}}])assert.equal(foundryForemanIntermission({...run,...extra}),null);
 });
 

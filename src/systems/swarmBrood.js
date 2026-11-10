@@ -46,6 +46,7 @@
 // sample scratch and the kill receipt scratch are all retained; a step allocates nothing. The
 // renderer consumes the same retained buffers through the published view.
 
+import { planSwarmBellowsPocket } from './swarmBellowsPocket.js';
 import { foundryScoreFromPlan } from '../data/swarmFoundryScore.js';
 import { planSwarmOpeningLeecher } from './swarmOpeningLeecher.js';
 import { planSwarmOpeningGlassback } from './swarmOpeningGlassback.js';
@@ -957,7 +958,7 @@ export function createBroodEngine(deps = {}) {
     const familyIndex = buildFamilyIndex();
     // Let the guard pair speak before the second new shape. This clock counts
     // active pilot play; waiting in the room cannot spend the Cyst's approach.
-    const lessonAtTick = foundryScore?.glassbackAtTick ?? foundryScore?.leecherAtTick ?? foundryScore?.cystAtTick;
+    const lessonAtTick = foundryScore?.bellowsAtTick ?? foundryScore?.glassbackAtTick ?? foundryScore?.leecherAtTick ?? foundryScore?.cystAtTick;
     if (!openingVolleyAttempted && lessonAtTick > foundryTicks) {
       // Approach the authored edge without spending another half-second poll.
       // The Cyst's full six-second read must finish before the ship crowd at840.
@@ -997,6 +998,22 @@ export function createBroodEngine(deps = {}) {
     // through to ordinary arrivals, never teleports props or delays the round.
     if (!openingVolleyAttempted) {
       openingVolleyAttempted = true;
+      const bellows = familyIndex.get('bellows'), bellMite = familyIndex.get('mite');
+      const bellScene = foundryScore?.bellowsAtTick != null && bellows != null && bellMite != null
+        ? planSwarmBellowsPocket(state, state.run, liveWave, pendingPlan,
+          liveFamilyRadius[bellows], liveFamilyRadius[bellMite]) : null;
+      const bellSlots = [];
+      for (let i = 0; bellScene && i < CAP && bellSlots.length < 4; i++) if (!alive[i]) bellSlots.push(i);
+      if (bellScene && bellSlots.length === 4) {
+        spawnAt(bellSlots[0], bellows, bellScene.bellows.x, bellScene.bellows.z);
+        for (let i = 1; i < 4; i++) spawnAt(bellSlots[i], bellMite, bellScene.mites[i - 1].x, bellScene.mites[i - 1].z);
+        pendingPlan.find(part => part.id === 'bellows').count -= 1;
+        pendingPlan.find(part => part.id === 'mite').count -= 3;
+        assignMotherShares(); publish(); return 4;
+      }
+      // No suitable bank: an otherwise empty lesson resumes bounded arrivals.
+      // The Kraken still owns its full read when its optional pocket is missing.
+      if (foundryScore?.bellowsAtTick != null) recoveryFallback = !foundryScore.characterForeground;
       const glassback = familyIndex.get('glassback');
       const shell = foundryScore?.glassbackAtTick != null && glassback != null
         ? planSwarmOpeningGlassback(state, state.run, liveWave, pendingPlan, liveFamilyRadius[glassback]) : null;
@@ -1097,7 +1114,7 @@ export function createBroodEngine(deps = {}) {
     }
     // Admit the whole vignette atomically before the usual gate arrivals. It spends the
     // existing plan and never moves the chosen rock or an already-live brood body.
-    if (!bankPlayed && !spawnRequestedBankAttempted && !['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt', 'crack_the_shell', 'peel_the_screen', 'cross_the_foreman'].includes(foundryScore?.id)) {
+    if (!bankPlayed && !spawnRequestedBankAttempted && foundryScore?.bankScene !== false && !['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt', 'crack_the_shell', 'peel_the_screen', 'cross_the_foreman'].includes(foundryScore?.id)) {
       spawnRequestedBankAttempted = true;
       const layout = planSwarmBank(state, state?.run, liveWave, pendingPlan);
       const charger = familyIndex.get('charger'), spitter = familyIndex.get('spitter');
