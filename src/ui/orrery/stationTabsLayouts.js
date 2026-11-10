@@ -2176,10 +2176,33 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:12em !important; }
   /* the input's Source in market and the ring's way out are station buttons here, so they read as buttons:
      no chevron cap (STATION_STANDARD section 5), inset off their own border, and a wrapped label breaks
-     between words instead of a cramped centred pair. */
-  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb > .orr-chain__source { display:block !important; box-sizing:border-box; width:fit-content !important; max-width:100% !important; min-height:0 !important; margin-top:5px !important; padding:5px 9px !important; line-height:14px !important; text-align:left !important; text-wrap:balance; white-space:normal !important; overflow-wrap:normal !important; word-break:keep-all !important; letter-spacing:.06em !important; }
-  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { padding:5px 9px !important; line-height:14px !important; text-align:left !important; letter-spacing:.06em !important; }
+     between words instead of a cramped centred pair. Side padding 7px and letter-spacing .04em keep
+     "SOURCE IN MARKET" on one line from ~1024w (the 149px box was 2.5px short at 9px / .06em).
+     text-wrap:balance + word-break:keep-all are omitted — they forced a 54px 3-line stack at ≤91px
+     and ran into the next input. Normal wrapping stays on 1–2 lines and keeps the 760–1100 look. */
+  /* Name and count share one text flow so "Iron Ore 0/1" (and a wrapped "Composite Alloys 0/1")
+     stay compact. The node pitch is capped by chain width here (~60–80px), and a stacked name,
+     count and 2–3 line button already exceeded it. */
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) { display:block !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) :is(.orr-chain__name, .orr-chain__count) { display:inline !important; font-size:12px !important; line-height:14px !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__count { margin-left:.5em !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb { display:block !important; margin-top:2px !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb > .orr-chain__source { display:block !important; box-sizing:border-box; width:fit-content !important; max-width:100% !important; min-height:0 !important; margin-top:0 !important; padding:5px 7px !important; line-height:14px !important; text-align:left !important; white-space:normal !important; overflow-wrap:normal !important; letter-spacing:.04em !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { padding:5px 7px !important; line-height:14px !important; text-align:left !important; letter-spacing:.04em !important; }
   ${D} .orr-ind-chain .orr-chain__verb > :is(.orr-chain__source, .orr-chain__wayout)::before { content:none !important; }
+}
+/* Tightest short-desktop Industry rows (651–759 × ≤640): 2-line Source buttons with 5px
+   padding were still ~40px and overlapped the next name. 2px vertical padding keeps the
+   inset treatment and a 2-line cap at ≤26–32px. */
+@media (min-width:651px) and (max-width:759px) and (max-height:640px) {
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb > .orr-chain__source { padding:2px 7px !important; line-height:13px !important; }
+}
+/* Node pitch is otherwise capped at 52*sc (~60px at 670w, ~82px at 800w), which a
+   compact name/count plus a 2–3 line Source button still exceeds. Raise the cap
+   and give the scrollable chain enough height so every Source button in this
+   band clears the next input, including Pelican's longer names. 900w+ already clears. */
+@media (min-width:651px) and (max-width:899px) and (max-height:640px) {
+  ${D} .orr-ind-chain { --orr-chain-pitch-cap: 112px; height:max(196px, calc(var(--orr-chain-input-count, 2) * 116px + 20px)) !important; min-height:max(196px, calc(var(--orr-chain-input-count, 2) * 116px + 20px)) !important; }
 }
 /* Factions at 700×460-class (≤800 wide, ≤640 tall): the one-band head let the standing column sit
    beside the authority kicker, and at this width the two printed on each other (D223). The kicker
@@ -2380,7 +2403,7 @@ ${T} .sx-ledger .st-ledger-board-head { text-wrap:balance; }
   ${D} .sx-ind__stage { padding-bottom:24px !important; scroll-padding-block:12px 24px; }
   ${D} .sx-fab { --orr-ind-flow-readings:1; display:flex !important; flex-direction:column; gap:0;
     height:auto !important; min-height:100%; min-width:0; box-sizing:border-box; padding-bottom:0 !important; }
-  ${D} .sx-fab > .orr-ind-chain { flex:none; margin:12px 0 !important; }
+  ${D} .sx-fab > .orr-ind-chain { flex:none; margin:12px 0 !important; --orr-chain-pitch-cap: 112px; height:max(196px, calc(var(--orr-chain-input-count, 2) * 116px + 20px)) !important; min-height:max(196px, calc(var(--orr-chain-input-count, 2) * 116px + 20px)) !important; }
   ${D} .sx-fab > :is(.sx-fab-chain-reason, .sx-fab-chain-output) {
     position:static !important; inset:auto !important; transform:none !important; flex:none;
     width:auto !important; max-width:100% !important; min-width:0; align-self:stretch;
@@ -2392,8 +2415,10 @@ ${T} .sx-ledger .st-ledger-board-head { text-wrap:balance; }
   ${D} .sx-fab-chain-reason .orr-chain__verb { max-width:100%; margin:0 !important; text-align:left !important; }
   ${D} .sx-fab-chain-reason .orr-chain__blocknote { font-size:12px !important; line-height:1.3 !important; white-space:normal !important; }
   ${D} .sx-fab-chain-reason .orr-chain__wayout { min-height:28px !important; max-width:100% !important;
-    margin:6px 0 0 !important; padding:4px 8px !important; box-sizing:border-box;
-    font-size:12px !important; line-height:1.3 !important; white-space:normal !important; text-align:left !important; }
+    margin:6px 0 0 !important; padding:5px 7px !important; box-sizing:border-box;
+    font-size:12px !important; line-height:14px !important; letter-spacing:.04em !important;
+    white-space:normal !important; text-align:left !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__wayout::before { content:none !important; }
   ${D} .sx-fab-chain-reason .orr-chain__wayout:focus-visible { outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px !important; }
   ${D} .sx-fab > .sx-fab-chain-output { flex-direction:row; align-items:baseline; gap:12px; margin:0 !important; }
   ${D} .sx-fab-chain-output .orr-chain__qty { font-size:30px !important; line-height:1 !important; text-align:left !important; }
