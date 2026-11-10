@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier C — a waystation.** A landmark, one face, the toy and your mark. Small on purpose; one pass.
+
 **One line:** an open-air yard where a heavy load teaches you the corners.
 
 **Landmark:** the Cut — a canyon lined with winch anchors, signal flags and passing bays. **Shift:** one-way traffic by flag; haulers thread through on a schedule. **Toy:** fixed anchors — clip your tow line to one and swing a load you could never turn by thrust alone.
