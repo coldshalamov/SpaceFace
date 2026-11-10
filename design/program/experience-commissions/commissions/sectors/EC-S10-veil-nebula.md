@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier B — an outpost.** A landmark, two faces, the toy, your mark and one job. Do not build the brief's full list; the card's Slice 1 is the whole of this PR.
+
 **One line:** a lighthouse in a storm, and an instrument that reads heavier than it should.
 
 **Landmark:** Research Station Veil, its beam sweeping the fog. **Shift:** the Sweep. The beam turns, the storm walls pulse, the survey hull flies its circuit. **Toy:** the cold-draw mouth bends the path of anything solid — sling things round it. Tow a rod into the storm and you can call a strike where you want it.
