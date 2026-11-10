@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier C — a waystation.** A landmark, one face, the toy and your mark. Small on purpose; one pass.
+
 **One line:** a wall of hatches, each with one small light, and nobody saw you.
 
 **Landmark:** the Fence — a long dim wall of numbered hatches. **Shift:** the lights change, and that is the only announcement of which hatch is open. One courier passes. **Toy:** the hatches — the right lot in the right hatch goes in with a soft thunk and a green light; the wrong one and every light on the wall goes dark for a full minute while the town holds its breath.
